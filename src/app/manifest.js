@@ -1,0 +1,14 @@
+export default function manifest() {
+    return {
+        name: "Sesli Asistan",
+        short_name: "Asistan",
+        start_url: "/",
+        display: "standalone",
+        background_color: "#f5f6f8",
+        theme_color: "#4f46e5",
+        icons: [
+            { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+    };
+}

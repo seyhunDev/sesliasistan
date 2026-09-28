@@ -1,0 +1,91 @@
+import { NextResponse } from "next/server";
+import { callClaude } from "@/lib/ai/anthropic";
+import { callGemini } from "@/lib/ai/gemini";
+import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
+import { requireUser, unauthorized } from "@/lib/server/auth";
+
+export const runtime = "nodejs";
+
+const DEV = process.env.NODE_ENV !== "production";
+
+function pickProvider() {
+  const p = (process.env.AI_PROVIDER || "").toLowerCase();
+  if (p === "gemini" || p === "anthropic") return p;
+  if (process.env.GEMINI_API_KEY) return "gemini";
+  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  return "";
+}
+const hasKey = (p) => (p === "gemini" ? !!process.env.GEMINI_API_KEY : p === "anthropic" ? !!process.env.ANTHROPIC_API_KEY : false);
+// Geliştirmede hata ayrıntısı da döner (yayında gizli kalır)
+const bad = (error, status = 400, detail = "", extra = {}) =>
+  NextResponse.json({ error, ...extra, ...(DEV && detail ? { detail } : {}) }, { status });
+
+function ask(provider, user) {
+  if (provider === "gemini") {
+    return callGemini({
+      model: process.env.GEMINI_MODEL,
+      system: ASSISTANT_SYSTEM,
+      user,
+      schema: ASSISTANT_TOOL.input_schema,
+      maxTokens: 8192,
+      timeoutMs: 35000,
+    });
+  }
+  return callClaude({
+    model: process.env.AI_MODEL_TEXT || "claude-haiku-4-5-20251001",
+    system: ASSISTANT_SYSTEM,
+    tool: ASSISTANT_TOOL,
+    messages: [{ role: "user", content: user }],
+    maxTokens: 2048,
+  });
+}
+
+export async function POST(request) {
+  const au = await requireUser(request);
+  if (!au.ok) return unauthorized();
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Geçersiz istek");
+  }
+  const text = String(body?.text ?? "").trim().slice(0, 1000);
+  if (!text) return bad("Metin boş");
+  const digest = String(body?.digest ?? "").slice(0, 26000);
+  // Ad yalnızca harf/rakam ve birkaç işaretten oluşabilir (istem enjeksiyonunu önler)
+  const name = String(body?.name ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30);
+  const history = (Array.isArray(body?.history) ? body.history : [])
+    .slice(-6)
+    .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
+    .join("\n");
+
+  const provider = pickProvider();
+  if (!hasKey(provider) || (provider === "gemini" && !process.env.GEMINI_MODEL)) {
+    return bad("Yapay zeka anahtarı veya modeli tanımlı değil", 503, `provider=${provider || "yok"}, GEMINI_MODEL=${process.env.GEMINI_MODEL || "boş"}`);
+  }
+
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""`;
+
+  try {
+    const t0 = Date.now();
+    const raw = await ask(provider, user);
+    const ms = Date.now() - t0;
+    const r = parseAssistant(raw);
+    console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}`);
+    if (!r.message && !r.items.length && !r.actions.length && !r.navigate) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
+    return NextResponse.json({ ...r, source: "ai", provider, ms });
+  } catch (e) {
+    console.error(`[assistant:${provider}]`, e.message);
+    if (e.status === 429) {
+      const msg = e.daily
+        ? "Yapay zekanın günlük ücretsiz kotası doldu (sabah 10 civarı yenilenir). Bu arada bugün, yarın ve bu hafta sorularına kayıtlardan cevap veriyorum."
+        : `Yapay zekanın ücretsiz kotası şu an dolu. ${e.retryAfter} saniye sonra tekrar dene.`;
+      return bad(msg, 429, e.message, { retryAfter: e.retryAfter });
+    }
+    if (e.status === 503) {
+      return bad("Yapay zeka şu an çok yoğun. Birkaç dakika sonra tekrar dene; bu arada bugün, yarın ve bu hafta sorularına kayıtlardan cevap veriyorum.", 503, e.message, { retryAfter: e.retryAfter });
+    }
+    return bad("Asistan şu an yanıt vermedi", 502, e.message);
+  }
+}

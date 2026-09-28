@@ -1,0 +1,86 @@
+import { z } from "zod";
+
+export const CATEGORIES = ["Antrenman", "Toplantı", "Kamp", "Yarış", "Ekipman", "Genel"];
+
+// Claude'a verilen araç: çıktı bu şemaya uymak zorunda
+export const TOOL = {
+  name: "kaydet",
+  description: "Kullanıcının söylediklerini plan, görev ve notlara ayırır ve kısa bir yanıt yazar.",
+  input_schema: {
+    type: "object",
+    properties: {
+      message: {
+        type: "string",
+        description: "Kullanıcıya 1-2 cümlelik Türkçe yanıt: ne anladığını söyle. Kritik bilgi eksikse (planın günü, tek günlük planın saati) kısa bir soru sor.",
+      },
+      items: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            type: { type: "string", enum: ["plan", "task", "note"] },
+            title: { type: "string", description: "Kısa başlık" },
+            body: { type: "string", description: "Yalnızca not için: notun tam metni" },
+            date: { type: "string", description: "YYYY-MM-DD ya da boş. Plan tarihi veya görev son tarihi." },
+            endDate: { type: "string", description: "Çok günlü plan için bitiş, YYYY-MM-DD ya da boş" },
+            time: { type: "string", description: "24 saatlik HH:MM ya da boş (yalnızca plan). Saat uydurma." },
+            allDay: { type: "boolean", description: "Yalnızca plan: kullanıcı 'tüm gün', 'fark etmez', 'saat yok' dediyse true" },
+            place: { type: "string", description: "Yer (yalnızca plan) ya da boş" },
+            category: { type: "string", enum: CATEGORIES },
+            linkToPlan: { type: "boolean", description: "Aynı ifadedeki plana bağlı görev/not ise true" },
+          },
+          required: ["type", "title"],
+        },
+      },
+    },
+    required: ["items", "message"],
+  },
+};
+
+const D = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).catch("");
+const T = z.string().regex(/^\d{2}:\d{2}$/).or(z.literal("")).catch("");
+const S = z.string().catch("");
+
+const Item = z.object({
+  type: z.enum(["plan", "task", "note"]),
+  title: z.string().min(1),
+  body: S,
+  date: D,
+  endDate: D,
+  time: T,
+  allDay: z.boolean().catch(false),
+  place: S,
+  category: S,
+  linkToPlan: z.boolean().catch(false),
+});
+
+export const cleanMessage = (m) => (typeof m === "string" ? m.trim().slice(0, 300) : "");
+
+// Claude/Gemini çıktısını doğrular ve arayüzün kullandığı taslak biçimine çevirir
+export function toDrafts(raw) {
+  const items = (Array.isArray(raw) ? raw : [])
+    .map((x) => Item.safeParse(x))
+    .filter((r) => r.success)
+    .map((r) => r.data);
+
+  const drafts = items.map((i) => ({
+    type: i.type,
+    title: i.title.trim(),
+    body: i.type === "note" ? (i.body || i.title).trim() : "",
+    date: i.type === "note" ? "" : i.date,
+    endDate: i.type === "plan" ? i.endDate : "",
+    time: i.type === "plan" ? i.time : "",
+    allDay: i.type === "plan" ? !!i.allDay && !i.time : false,
+    place: i.type === "plan" ? i.place : "",
+    cat: CATEGORIES.includes(i.category) ? i.category : "Genel",
+    link: i.linkToPlan,
+  }));
+
+  const plan = drafts.find((d) => d.type === "plan");
+  drafts.forEach((d) => {
+    if (d.type === "plan") return;
+    d.link = !!plan && d.link;
+    if (d.link && d.type === "task" && !d.date) d.date = plan.date; // bağlı görevin tarihi plan tarihi
+  });
+  return drafts;
+}

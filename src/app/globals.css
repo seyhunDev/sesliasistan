@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --fg: #111827;
+  --mut: #6b7280;
+  --line: #e5e7eb;
+  --acc: #4f46e5;
+  --acc2: #4f46e5; /* gradyan kullanan eski dosyalar düz renk görünsün */
+  --rec: #ef4444;
+  --ok: #10b981;
+  --proc: #f59e0b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-fg: var(--fg);
+  --color-mut: var(--mut);
+  --color-line: var(--line);
+  --color-acc: var(--acc);
+  --color-acc2: var(--acc2);
+  --color-rec: var(--rec);
+  --color-ok: var(--ok);
+  --color-proc: var(--proc);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+*, ::before, ::after { border-color: var(--line); }
 
+html { height: 100%; color-scheme: light; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  padding-top: env(safe-area-inset-top);
 }
+
+@keyframes ripple { from { transform: scale(1); opacity: .45; } to { transform: scale(1.7); opacity: 0; } }
+.animate-ripple { animation: ripple 1.8s ease-out infinite; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+.animate-pop { animation: pop .3s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Okunurken hareket eden ses göstergesi */
+@keyframes eq { 0%, 100% { height: 4px; } 50% { height: 16px; } }
+.eq { display: flex; align-items: center; gap: 3px; height: 16px; }
+.eq i { width: 3px; border-radius: 2px; background: var(--acc); animation: eq .9s ease-in-out infinite; }
+.eq i:nth-child(2) { animation-delay: .15s; }
+.eq i:nth-child(3) { animation-delay: .3s; }
+.eq i:nth-child(4) { animation-delay: .45s; }
+
+/* Mikrofon ve gönder düğmesi animasyonları */
+@keyframes animin { from { opacity: 0; transform: scale(.6); } }
+.anim-in { animation: animin .28s cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } }
+.fade-in { animation: fadein .22s ease-out both; }
+@keyframes popbtn { 0% { transform: scale(.8); } 100% { transform: scale(1); } }
+.pop-btn { animation: popbtn .3s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes dots { 0%, 80%, 100% { transform: scale(.55); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; animation: dots 1.2s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: .15s; }
+.dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes recdot { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.rec-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--rec); animation: recdot 1.2s ease-in-out infinite; flex: none; }
+.wave-mask { -webkit-mask-image: linear-gradient(to right, transparent, #000 35%); mask-image: linear-gradient(to right, transparent, #000 35%); }
+
+/* Ara animasyon ekranı */
+@keyframes orbit { to { transform: rotate(360deg); } }
+.orbit { animation: orbit 1.3s linear infinite; }
+.orbit-rev { animation: orbit 2.4s linear infinite reverse; }
+@keyframes burst { from { transform: scale(.7); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
+.burst { animation: burst .7s ease-out forwards; }
+@keyframes softpulse { 50% { transform: scale(1.07); } }
+.softpulse { animation: softpulse 1.6s ease-in-out infinite; }
+@keyframes stepin { from { opacity: 0; transform: translateX(-8px); } }
+.step-in { animation: stepin .35s ease-out both; }
+
+/* Fiş okunurken tarama çizgisi */
+@keyframes scan { 0% { top: 0; } 50% { top: calc(100% - 3px); } 100% { top: 0; } }
+.scanline { position: absolute; left: 0; right: 0; height: 3px; background: var(--acc); box-shadow: 0 0 18px 6px rgba(79, 70, 229, .35); animation: scan 2.4s ease-in-out infinite; }
+
+/* Ana sayfa konuşma küresi */
+@keyframes orbspin { to { transform: rotate(360deg); } }
+@keyframes morph {
+  0%, 100% { border-radius: 42% 58% 55% 45% / 45% 45% 55% 55%; }
+  33% { border-radius: 55% 45% 40% 60% / 55% 40% 60% 45%; }
+  66% { border-radius: 45% 55% 60% 40% / 40% 60% 45% 55%; }
+}
+@keyframes glow { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: .9; transform: scale(1.08); } }
+.orb { position: relative; width: 176px; height: 176px; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
+.orb-glow { position: absolute; inset: -34px; border-radius: 50%; background: radial-gradient(circle, rgba(79, 70, 229, .38), rgba(124, 58, 237, .16) 45%, transparent 70%); filter: blur(14px); animation: glow 5s ease-in-out infinite; }
+.orb-shape { position: absolute; inset: 0; overflow: hidden; animation: morph 9s ease-in-out infinite; box-shadow: 0 24px 60px -12px rgba(79, 70, 229, .5), inset 0 0 36px rgba(255, 255, 255, .28); }
+.orb-fill { position: absolute; inset: -30%; background: conic-gradient(from 0deg, #4f46e5, #7c3aed, #06b6d4, #6366f1, #4f46e5); filter: blur(10px); animation: orbspin 10s linear infinite; }
+.orb-shine { position: absolute; inset: 0; background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .6), transparent 42%); }
+.home-aura { background: radial-gradient(circle, rgba(79, 70, 229, .10), rgba(6, 182, 212, .05) 45%, transparent 70%); filter: blur(24px); }
