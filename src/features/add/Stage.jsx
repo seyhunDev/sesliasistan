@@ -6,7 +6,7 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 // Ortadaki büyük animasyonlu daire. mode: listening | busy | done
 function Orb({ mode, level = 0, icon }) {
-  const rgb = mode === "listening" ? "239,68,68" : mode === "done" ? "16,185,129" : "79,70,229";
+  const rgb = mode === "listening" ? "239,68,68" : mode === "done" ? "16,185,129" : "62,110,132";
   const scale = mode === "listening" ? 1 + Math.min(1, level) * 0.3 : 1; // ses seviyesiyle nefes alır
   return (
     <div className="relative grid size-44 place-items-center" aria-hidden="true">
@@ -113,7 +113,7 @@ export function ProcessingStage({ step, voice, heard, secs, onCancel }) {
     <div className="fade-in flex min-h-full flex-col items-center py-2 text-center">
       <div className="flex w-full flex-1 flex-col items-center justify-center">
         <Orb mode={step === "preparing" ? "done" : "busy"} icon={step === "preparing" ? "check" : "spark"} />
-        <p className="mt-1 text-[19px] font-semibold tracking-tight">{title}</p>
+        <p className="mt-1 text-[20px] font-semibold tracking-tight">{title}</p>
         {step === "thinking" && (
           <p className="mt-1 text-[13px] tabular-nums text-mut">
             {secs} sn{secs >= 8 ? " · biraz uzun sürüyor, yoğunluk olabilir" : ""}

@@ -1,10 +1,8 @@
 "use client";
 
-import { useAuth } from "@/features/auth/AuthProvider";
 import { OwnerHome } from "@/features/home/OwnerHome";
-import { StaffHome } from "@/features/home/StaffHome";
 
+// Ana hesap ve çalışan aynı ana sayfayı kullanır; çalışan yalnızca kendi kayıtlarını görür
 export default function HomePage() {
-  const { role } = useAuth();
-  return role === "staff" ? <StaffHome /> : <OwnerHome />;
+  return <OwnerHome />;
 }

@@ -8,21 +8,29 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
+import { useReceipt } from "@/features/receipts/ReceiptProvider";
+import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
 import { Composer } from "@/features/add/Composer";
 import { Thread } from "@/features/add/Thread";
 import { ListeningStage, ProcessingStage } from "@/features/add/Stage";
 import { useSpeech } from "@/hooks/useSpeech";
+import { fixNames } from "@/lib/names";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
-import { PAGES, buildPatch, describeAction, isNo, isYes, localNavigate, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { cached as cachedWeather, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
+import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
+import { PAGES, buildPatch, describeAction, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { brainCommand, localCommand } from "@/lib/commands";
+import { labelFromAI, labelFromCommand } from "@/lib/brain/model";
+import { record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 const BEAT = 350;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const EXAMPLES = ["Bu hafta neler var?", "Görevleri aç", "Tekneleri hazırla görevini tamamla", "Yarınki antrenmanı sil", "Bu yıl kaç plan yaptık?"];
+const EXAMPLES = ["Bu hafta neler var?", "Fiş yükle", "Yarın saat 10'da antrenman ekle", "Not al malzeme odası dolu", "Tekneleri hazırla görevini tamamla", "Yardım"];
 const EMPTY = { show: [], pending: null, nav: "", engine: "", awaiting: false };
 
 export function AssistantSheet({ open, onClose, seed }) {
@@ -30,8 +38,13 @@ export function AssistantSheet({ open, onClose, seed }) {
   const toast = useToast();
   const tts = useTts();
   const { profile } = useAuth();
-  const { plans, tasks, notes, receipts, toggleTask, updateRecord, deleteRecord } = useData();
+  const { plans, tasks, notes, receipts, toggleTask, updateRecord, deleteRecord, members, isStaff } = useData();
+  // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
+  const staff = isStaff ? [] : members;
+  const staffNames = staff.map((m) => m.name).filter(Boolean);
   const { openAdd } = useAdd();
+  const { openReceipt } = useReceipt();
+  const { openMeeting } = useMeeting();
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
@@ -54,7 +67,9 @@ export function AssistantSheet({ open, onClose, seed }) {
   const busy = phase !== "idle";
 
   const sp = useSpeech({
-    onFinal: (tx, mode) => {
+    names: staffNames,
+    onFinal: (raw, mode) => {
+      const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx));
       else run(text ? `${text} ${tx}` : tx, true);
     },
@@ -64,7 +79,7 @@ export function AssistantSheet({ open, onClose, seed }) {
   const transcribing = sp.status === "transcribing";
 
   const startAuto = () => {
-    if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true });
+    if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true });
   };
   const scrollLater = () =>
     setTimeout(() => scrollRef.current?.querySelector("[data-last-reply]")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
@@ -98,6 +113,7 @@ export function AssistantSheet({ open, onClose, seed }) {
 
   function handle(r, s, viaVoice) {
     const msg = (r.message || "").trim();
+    record(s, labelFromAI(r), "ai"); // öğrenme verisi
 
     // Yeni kayıt: "Yeni kayıt" ekranına devret (eksik bilgiyi orada tamamlar)
     if (r.intent === "create" && r.items?.length) {
@@ -169,9 +185,18 @@ export function AssistantSheet({ open, onClose, seed }) {
       if (isNo(s)) return cancelPending(true);
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
     }
-    // Yalnızca "görevleri aç" gibi kısa gezinme komutları anında
-    const page = localNavigate(s);
-    if (page) return go(page, `${PAGES[page].label} sayfasını açıyorum.`);
+    // Sporcu yoklaması: Yoklama ekranı açılır ve söylenen orada işlenir (önizleyip kaydedersin)
+    if (canSeeAthletes(profile?.email) && wantsAttendance(s)) {
+      onClose();
+      router.push(`/athletes/attendance?say=${encodeURIComponent(s)}`);
+      return;
+    }
+    // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
+    const cmd = localCommand(s, { plans, tasks, notes });
+    if (cmd) {
+      record(s, labelFromCommand(cmd), "local");
+      return runLocal(cmd, s, viaVoice);
+    }
 
     const id = ++runId.current;
     ctrl.current?.abort();
@@ -179,7 +204,12 @@ export function AssistantSheet({ open, onClose, seed }) {
     ctrl.current = c;
     setPhase("thinking");
     try {
-      const r = await askAssistant({ text: s, name: firstName, digest: buildDigest({ plans, tasks, notes, receipts, name: firstName }), history }, c.signal);
+      // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
+      const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
+      const weather = wx ? weatherDigest(await loadWeather().catch(() => cachedWeather())) : "";
+      const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather].filter(Boolean).join("\n\n");
+      if (id !== runId.current) return;
+      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
@@ -187,7 +217,13 @@ export function AssistantSheet({ open, onClose, seed }) {
       handle(r, s, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
-      // Yapay zeka yok: ekleme isteğiyse Yeni kayıt ekranına devret (orada yedek kurallarla kart hazırlanır)
+      // Yapay zeka yok: önce öğrenilmiş örneklerden tahmin (kendi küçük modelimiz)
+      const guessed = brainCommand(s);
+      if (guessed) {
+        toast("Yapay zekaya ulaşamadım, öğrendiklerime göre hazırladım. Kontrol et.");
+        return runLocal(guessed, s, viaVoice);
+      }
+      // Ekleme isteğine benziyorsa Yeni kayıt ekranına devret (orada yedek kurallarla kart hazırlanır)
       if (looksLikeCreate(s)) {
         toast("Yapay zekaya ulaşamadım, kaydı basit kurallarla hazırlıyorum. Kontrol et.");
         onClose();
@@ -200,6 +236,27 @@ export function AssistantSheet({ open, onClose, seed }) {
     } finally {
       if (id === runId.current) setPhase("idle");
     }
+  }
+
+  // Hızlı komutlar (lib/commands): fiş kamerası, sayfa, yeni kayıt, görev tamamlama, özet
+  function runLocal(cmd, s, viaVoice) {
+    if (cmd.type === "receipt") {
+      navigator.vibrate?.(8);
+      onClose();
+      openReceipt({ camera: true });
+    } else if (cmd.type === "meeting") {
+      navigator.vibrate?.(8);
+      onClose();
+      openMeeting();
+    } else if (cmd.type === "navigate") go(cmd.page, `${PAGES[cmd.page].label} sayfasını açıyorum.`);
+    else if (cmd.type === "create") {
+      onClose();
+      openAdd({ prefill: { text: s, items: cmd.items, message: cmd.message, engine: cmd.brain ? "brain" : "local" }, voice: viaVoice });
+    } else if (cmd.type === "complete") {
+      toggleTask(cmd.id);
+      toast("1 görev güncellendi");
+      reply(`Tamam, ${cmd.title} görevini tamamladım.`, { show: [{ kind: "task", id: cmd.id }], engine: "local" }, viaVoice);
+    } else reply(cmd.message, { show: cmd.show, engine: cmd.brain ? "brain" : "local" }, viaVoice);
   }
 
   function confirmPending(fromText = false) {
@@ -303,7 +360,11 @@ export function AssistantSheet({ open, onClose, seed }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
 
-  const shown = cards.show.map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) })).filter((x) => x.rec);
+  // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
+  const shown = cards.show
+    .filter((x, i, a) => a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i)
+    .map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) }))
+    .filter((x) => x.rec);
   const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant")?.text || "";
   const askObj = cards.awaiting
     ? {
@@ -364,7 +425,7 @@ export function AssistantSheet({ open, onClose, seed }) {
                 <p className="mt-5 px-1 text-[13px] text-mut">Programını özetlerim, sayfa açarım, görev tamamlarım, yeni kayıt başlatırım. Örnekler:</p>
                 <div className="mt-2.5 flex flex-col gap-2">
                   {EXAMPLES.map((ex) => (
-                    <button key={ex} onClick={() => run(ex, false, true)} className="rounded-xl border border-line bg-card px-3.5 py-2.5 text-left text-[14.5px] transition active:scale-[.98]">
+                    <button key={ex} onClick={() => run(ex, false, true)} className="rounded-xl border border-line bg-card px-3.5 py-2.5 text-left text-[15px] transition active:scale-[.98]">
                       “{ex}”
                     </button>
                   ))}
@@ -377,7 +438,7 @@ export function AssistantSheet({ open, onClose, seed }) {
             {error && (
               <div className="fade-in mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
                 <p className="flex items-center gap-2 text-[15px] font-semibold"><Icon name="alert" className="size-[18px]" /> Şu an yanıt veremedim</p>
-                <p className="mt-1 text-[13.5px] opacity-90">{error}</p>
+                <p className="mt-1 text-[14px] opacity-90">{error}</p>
                 <button onClick={() => run(heard, voice, true)} className="mt-3 h-10 rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white transition active:scale-95">Tekrar dene</button>
               </div>
             )}

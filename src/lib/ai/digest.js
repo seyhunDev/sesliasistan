@@ -20,7 +20,8 @@ export function weekRange(s) {
   return { start, end: addDate(start, 6) };
 }
 
-export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [], name = "", now = new Date() }) {
+// members: ana hesabın çalışanları [{ uid, name }]; verilirse kayıtlara sorumlu adları ve çalışan özeti eklenir
+export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [], name = "", members = [], now = new Date() }) {
   const today = fmt(now);
   const { start: ws, end: we } = weekRange(today);
   const { start: ns, end: ne } = weekRange(addDate(today, 7));
@@ -30,10 +31,17 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
   const prevYm = fmt(new Date(year, now.getMonth() - 1, 1)).slice(0, 7);
 
   const pTitle = (id) => plans.find((p) => p.id === id)?.title || "-";
+  // Sorumlular: çalışan adları (ekleyen çalışan da sorumlu sayılır)
+  const whoIds = (r) => [...new Set([...(Array.isArray(r.assignees) ? r.assignees : (r.people || []).filter((u) => u !== r.createdByUid)), r.createdByUid])];
+  const who = (r) => {
+    if (!members.length) return "";
+    const names = whoIds(r).map((u) => members.find((m) => m.uid === u)?.name).filter(Boolean);
+    return ` | sorumlu:${names.join(", ") || "-"}`;
+  };
   const inR = (p, a, b) => p.date <= b && (p.endDate || p.date) >= a;
   const byP = (x, y) => `${x.date}${x.time || ""}`.localeCompare(`${y.date}${y.time || ""}`);
-  const pl = (p) => `p:${p.id} | ${p.date} ${dn(p.date)}${p.endDate && p.endDate !== p.date ? ` → ${p.endDate} ${dn(p.endDate)}` : ""} | ${p.time || "tüm gün"} | ${p.title} | ${p.place || "-"} | ${p.cat || "Genel"}`;
-  const tl = (t) => `t:${t.id} | son:${t.due ? `${t.due} ${dn(t.due)}` : "-"} | ${t.done ? "tamam" : "açık"} | ${t.title} | plan:${t.planId ? pTitle(t.planId) : "-"}`;
+  const pl = (p) => `p:${p.id} | ${p.date} ${dn(p.date)}${p.endDate && p.endDate !== p.date ? ` → ${p.endDate} ${dn(p.endDate)}` : ""} | ${p.time || "tüm gün"} | ${p.title} | ${p.place || "-"} | ${p.cat || "Genel"}${who(p)}`;
+  const tl = (t) => `t:${t.id} | son:${t.due ? `${t.due} ${dn(t.due)}` : "-"} | ${t.done ? "tamam" : "açık"} | ${t.title} | plan:${t.planId ? pTitle(t.planId) : "-"}${who(t)}`;
   const nl = (n) => `n:${n.id} | ${(n.createdAt || "").slice(0, 10)} | ${n.title} | ${(n.body || "").replace(/\s+/g, " ").slice(0, 80)}`;
   const block = (title, lines, max = 40) =>
     `## ${title}\n${lines.length ? lines.slice(0, max).join("\n") + (lines.length > max ? `\n(+${lines.length - max} daha)` : "") : "- yok"}`;
@@ -60,6 +68,18 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
     `KULLANICI ADI: ${name || "(verilmedi)"}`,
     `ŞİMDİ: ${today} ${DN[now.getDay()]} ${p2(now.getHours())}:${p2(now.getMinutes())} (Europe/Istanbul)`,
     `BU HAFTA: ${ws} → ${we} | GELECEK HAFTA: ${ns} → ${ne} | BU AY: ${monthStart} → ${monthEnd} | YIL: ${year}`,
+    ...(members.length
+      ? [
+        block(
+          "KİŞİLER (ekip ya da aile; sorumlu atanabilecek kişiler)",
+          members.map((m) => {
+            const mine = open.filter((t) => whoIds(t).includes(m.uid));
+            const late = mine.filter((t) => t.due && t.due < today).length;
+            return `${m.name} | açık görev: ${mine.length}${late ? ` (${late} gecikmiş)` : ""}`;
+          }),
+        ),
+      ]
+      : []),
     block("BUGÜN PLANLAR", plansIn(today, today)),
     block("BUGÜN SON TARİHLİ AÇIK GÖREVLER", dueIn(today, today)),
     block("GECİKMİŞ AÇIK GÖREVLER (son tarihi geçmiş)", open.filter((t) => t.due && t.due < today).sort((x, y) => x.due.localeCompare(y.due)).map(tl)),

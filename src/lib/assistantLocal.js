@@ -29,6 +29,20 @@ export function localNavigate(text) {
   return hit ? hit[0] : null;
 }
 
+// "fiş aç", "fiş yükle", "faturayı çek", "yeni fiş" gibi istekler yapay zekaya gitmeden fiş kamerasını açar.
+// "fişleri aç/göster" (çoğul) sayfaya gider, soru cümleleri yapay zekaya kalır.
+const RECEIPT_ADD = /(^|\s)(yükle|ekle|çek|tara|okut|gir|kaydet|oluştur|gönder)/;
+const RECEIPT_OPEN = /(^|\s)(aç|açsana|açar|açalım|açın|yeni)(?=$|\s)/;
+export function localReceipt(text) {
+  const t = lower(text).replace(/[.,!?'’]/g, " ").replace(/\s+/g, " ").trim();
+  if (!t || t.split(" ").length > 7 || QUESTION.test(t)) return false;
+  if (/(^|\s)kamera/.test(t) && /(aç|başlat)/.test(t)) return true;
+  const m = t.match(/(^|\s)(fiş|fatura)(\S*)/);
+  if (!m) return false;
+  if (RECEIPT_ADD.test(t)) return true;
+  return !/^(ler|lar)/.test(m[3]) && RECEIPT_OPEN.test(t);
+}
+
 export const isYes = (s) => /^(evet|tamam|olur|onayla|onaylıyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
 export const isNo = (s) => /^(hayır|hayir|vazgeç|iptal|yapma|olmasın|istemiyorum|dur)(?=$|[\s.,!?])/.test(lower(s).trim());
 

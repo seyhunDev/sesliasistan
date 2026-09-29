@@ -41,7 +41,7 @@ export function Composer({ value, onChange, onSend, onMic, busy, placeholder = "
   }, [value]);
 
   return (
-    <div className="rounded-3xl border border-line bg-card transition-[box-shadow,border-color] duration-300 focus-within:border-acc focus-within:shadow-[0_0_0_4px_rgba(79,70,229,0.10)]">
+    <div className="rounded-3xl border border-line bg-card transition-[box-shadow,border-color] duration-300 focus-within:border-acc focus-within:shadow-[0_0_0_4px_rgba(62,110,132,0.10)]">
       <div className="fade-in flex items-end gap-1 py-1.5 pl-4 pr-1.5">
         <textarea
           ref={ta}

@@ -1,7 +1,7 @@
 export const TL = (n) => (n || 0).toLocaleString("tr-TR", { style: "currency", currency: "TRY" });
 
 export const initials = (name = "") =>
-  name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR");
 
 const pad = (n) => String(n).padStart(2, "0");
 const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -38,3 +38,6 @@ export const when = (p) =>
 
 export const isUpcoming = (p) => (p.endDate || p.date) >= todayStr();
 export const byStart = (a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`);
+
+// İlk harfi büyük yapar (Türkçe: "istanbul" -> "İstanbul"); baştaki boşlukları korur
+export const cap = (s = "") => s.replace(/^(\s*)(\S)/u, (_, sp, c) => sp + c.toLocaleUpperCase("tr-TR"));

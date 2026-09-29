@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { callClaude } from "@/lib/ai/anthropic";
-import { callGemini } from "@/lib/ai/gemini";
+import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { CATS, calcTotals } from "@/lib/receipts";
 
@@ -136,9 +136,9 @@ function pickProvider() {
 const hasKey = (p) => (p === "gemini" ? !!process.env.GEMINI_API_KEY && !!process.env.GEMINI_MODEL : p === "anthropic" ? !!process.env.ANTHROPIC_API_KEY : false);
 const bad = (error, status = 400, detail = "") => NextResponse.json({ error, ...(DEV && detail ? { detail } : {}) }, { status });
 
-export async function POST(request) {
+async function handle(request) {
   const au = await requireUser(request);
-  if (!au.ok) return unauthorized();
+  if (!au.ok) return unauthorized(au);
 
   let body;
   try {
@@ -181,3 +181,5 @@ export async function POST(request) {
     return bad("Fiş okunamadı. Tekrar dene ya da elle gir.", 502, e.message);
   }
 }
+
+export const POST = withAiCool(handle);

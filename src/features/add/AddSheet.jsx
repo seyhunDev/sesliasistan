@@ -1,19 +1,29 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Screen } from "@/components/ui/Screen";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
 import { useSpeech } from "@/hooks/useSpeech";
 import { interpretText } from "@/services/aiService";
-import { addDays, todayStr } from "@/lib/utils/format";
+import { addDays, cap, rel, todayStr } from "@/lib/utils/format";
+import { localReceipt } from "@/lib/assistantLocal";
+import { localCreate } from "@/lib/commands";
+import { labelFromItems } from "@/lib/brain/model";
+import { ackState, assigneesOf, lockedFor } from "@/lib/people";
+import { fixNames, namesToUids, uidsToNames } from "@/lib/names";
+import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
 import { Composer } from "./Composer";
 import { DraftCard } from "./DraftCard";
+import { AssignedView, Replies } from "./Assigned";
+import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
 import { ListeningStage, ProcessingStage } from "./Stage";
@@ -23,15 +33,17 @@ const BEAT = 450; // "hazırlanıyor" adımının görünme süresi (ms)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TIME_CHIPS = [["Sabah 09:00", "09:00"], ["Öğleden sonra 14:00", "14:00"], ["Akşam 18:00", "18:00"]];
 
-const EDIT_TITLE = { plan: "Planı düzenle", task: "Görevi düzenle", note: "Notu düzenle" };
-const EXAMPLES = ["Haftaya pazartesi antrenman oluştur", "Cuma toplantı için sunum hazırla", "Optimist 3'ün ıskotası aşınmış"];
+const EDIT_TITLE = { plan: "Plan", task: "Görev", note: "Not" };
+const NEW_TITLE = { plan: "Yeni plan", task: "Yeni görev", note: "Yeni not" };
+const MANUAL = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "Not", "note"]];
 
 let seq = 0;
 const nid = () => `d${Date.now()}_${seq++}`;
-const blank = (type) => ({ _id: nid(), type, title: "", body: "", date: "", endDate: "", time: "", allDay: false, place: "", link: false, cat: "Genel" });
+const blank = (type) => ({ _id: nid(), type, title: "", body: "", date: "", endDate: "", time: "", allDay: false, place: "", link: false, cat: "Genel", assignees: [] });
 const isBlank = (d) => !(d.title || "").trim() && !(d.body || "").trim();
 // Yapay zekaya gönderilecek sade taslak (askedTime: bu plan için saat zaten soruldu, tekrar sorma)
-const pub = (d) => ({
+const pub = (d, members = []) => ({
+  ...(members.length ? { assignTo: uidsToNames(d.assignees, members) } : {}),
   type: d.type, title: d.title || "", body: d.body || "", date: d.date || "", endDate: d.endDate || "", time: d.time || "",
   allDay: !!d.allDay, askedTime: !!d._asked, place: d.place || "", category: d.cat || "Genel", linkToPlan: !!d.link,
 });
@@ -39,9 +51,11 @@ const pub = (d) => ({
 const carry = (old, next) =>
   next.map((d, i) => {
     const o = old[i] && old[i].type === d.type ? old[i] : null;
-    return { ...d, _id: o ? o._id : nid(), _asked: o ? !!o._asked : false, allDay: !!(d.allDay || o?.allDay) && !d.time };
+    return { ...d, title: cap(d.title || ""), _id: o ? o._id : nid(), _asked: o ? !!o._asked : false, assignees: d.assignees?.length ? d.assignees : o?.assignees || [], _general: !d.assignees?.length && !!o?._general, allDay: !!(d.allDay || o?.allDay) && !d.time };
   });
-const fresh = (x) => ({ ...x, _id: nid(), _asked: false, allDay: !!x.allDay && !x.time });
+const fresh = (x) => ({ ...x, title: cap(x.title || ""), _id: nid(), _asked: false, assignees: x.assignees || [], allDay: !!x.allDay && !x.time });
+// Kaydetmeden önce: başlık ve not metni büyük harfle başlasın, boşluklar temizlensin
+const tidy = (d) => ({ ...d, title: cap((d.title || "").trim()), body: cap((d.body || "").trim()), place: cap((d.place || "").trim()) });
 
 // Eksik bilgi: plan günü (zorunlu) ve tek günlük planın saati (cevap gelmezse tüm gün olur)
 const needOf = (d) => (d.type !== "plan" ? "" : !d.date ? "date" : !d.time && !d.endDate && !d.allDay ? "time" : "");
@@ -53,15 +67,18 @@ function firstNeed(list) {
   return null;
 }
 
-const fromRecord = (kind, r) =>
-  kind === "plan"
+const fromRecord = (kind, r) => ({
+  ...(kind === "plan"
     ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", cat: r.cat }
     : kind === "task"
       ? { ...blank("task"), title: r.title, date: r.due || "", cat: r.cat }
-      : { ...blank("note"), title: r.title, body: r.body, cat: r.cat };
+      : { ...blank("note"), title: r.title, body: r.body, cat: r.cat }),
+  assignees: assigneesOf(r),
+});
 
-const toPatch = (d) =>
-  d.type === "plan"
+const toPatch = (raw) => {
+  const d = tidy(raw);
+  return d.type === "plan"
     ? {
       title: d.title.trim(),
       date: d.date,
@@ -75,6 +92,16 @@ const toPatch = (d) =>
     : d.type === "task"
       ? { title: d.title.trim(), due: d.date || null }
       : { title: (d.title || d.body).trim(), body: (d.body || d.title).trim() };
+};
+
+// "bugün", "dün" küçük; diğer tarihler olduğu gibi ("27 Eyl Paz")
+const relLow = (isoStr) => {
+  const t = rel(isoStr.slice(0, 10));
+  return /^(Bugün|Dün|Yarın)$/.test(t) ? t.toLocaleLowerCase("tr-TR") : t;
+};
+
+// Düzenlemede değişiklik var mı: kaydedilecek alanlar + sorumlular
+const editKey = (d) => JSON.stringify([toPatch(d), [...(d.assignees || [])].sort()]);
 
 const check = (d) => {
   if (d.type === "note" ? !(d.title.trim() || d.body.trim()) : !d.title.trim()) return "Başlık gerekli";
@@ -87,7 +114,9 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { plans, tasks, notes, saveDrafts, updateRecord, deleteRecord } = useData();
+  const { plans, tasks, notes, saveDrafts, updateRecord, removeWithUndo, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone, addReply } = useData();
+  const { openReceipt } = useReceipt();
+  const router = useRouter();
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState([]);
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
@@ -98,8 +127,10 @@ export function AddSheet({ open, onClose, seed }) {
   const [turns, setTurns] = useState([]); // konuşma: { role: "user" | "assistant", text, chip? }
   const [ask, setAsk] = useState(null); // bekleyen soru: { idx, kind: "date" | "time" }
   const [editReply, setEditReply] = useState("");
+  const [pickAssign, setPickAssign] = useState(null); // kaydetmeden önce sorumlu sorusu: null | seçilen uid'ler
+  const [aiOpen, setAiOpen] = useState(false); // düzenlemede "sesle ya da yazarak değiştir" alanı
+  const orig = useRef(""); // düzenlemede açılıştaki hâl (değişiklik var mı?)
   const [error, setError] = useState("");
-  const [armed, setArmed] = useState(false);
   const scrollRef = useRef(null);
   const runId = useRef(0);
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
@@ -108,8 +139,12 @@ export function AddSheet({ open, onClose, seed }) {
   const live = useRef({});
   live.current = { open, text };
 
+  // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama için gider
+  const staffNames = !isStaff ? members.map((m) => m.name).filter(Boolean) : [];
   const sp = useSpeech({
-    onFinal: (tx, mode) => {
+    names: staffNames,
+    onFinal: (raw, mode) => {
+      const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx)); // metin kutuda kalsın, düzenleyip gönder
       else if (edit) runEdit(text ? `${text} ${tx}` : tx, true);
       else run(text ? `${text} ${tx}` : tx, true);
@@ -122,12 +157,34 @@ export function AddSheet({ open, onClose, seed }) {
   const firstName = (profile?.name || "").split(" ")[0];
   const rec = edit ? ({ plan: plans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
+  // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
+  const locked = !!edit && lockedFor(rec, myUid, isStaff);
   const plan = drafts.find((d) => d.type === "plan");
-  const title = edit ? EDIT_TITLE[edit.kind] : "Yeni kayıt";
+  // Ana hesap her kayda sorumlu çalışan(lar) seçebilir; çalışanın eklediği kayıt yine onda kalır
+  const canAssign = !isStaff && members.length > 0;
+  // Ana hesapta her zaman dizi (çalışan yoksa boş: kartta "Çalışan ekle" bağlantısı çıkar); çalışanda null
+  const assign = !isStaff ? members : null;
+  const addStaff = () => {
+    shut();
+    router.push("/staff");
+  };
+  const assignable = assign || [];
+  // Yapay zekanın verdiği sorumlu adlarını çalışan kimliklerine çevirir (atama yetkisi yoksa yok sayılır)
+  const withAssignees = ({ assignTo, ...x }) => (canAssign && Array.isArray(assignTo) ? { ...x, assignees: namesToUids(assignTo, members) } : x);
+  const manual = !edit && turns.length === 0 && drafts.length > 0; // konuşmadan, elle ekleme
+  const dirty = !!edit && !!drafts[0] && editKey(drafts[0]) !== orig.current;
+  const recMeta = rec
+    ? [
+      rec.createdByUid ? (nameOf(rec.createdByUid) === "Sen" ? "Sen ekledin" : `${nameOf(rec.createdByUid) || "Başkası"} ekledi`) : "",
+      rec.createdAt ? relLow(rec.createdAt) : "",
+      rec.updatedAt ? `düzenlendi ${relLow(rec.updatedAt)}` : "",
+    ].filter(Boolean).join(" · ")
+    : "";
+  const title = edit ? EDIT_TITLE[edit.kind] : manual && drafts.length === 1 ? NEW_TITLE[drafts[0].type] : "Yeni kayıt";
   const listening = sp.status === "listening";
   const transcribing = sp.status === "transcribing";
   const busy = phase !== "idle";
-  const chat = turns.length > 0 || drafts.length > 0;
+  const chat = turns.length > 0;
   const placeholder = edit
     ? "Sesle veya yazıyla değiştir · örn. “saati 10 yap”"
     : ask?.kind === "time"
@@ -136,7 +193,7 @@ export function AddSheet({ open, onClose, seed }) {
         ? "Günü yaz veya söyle · örn. “pazartesi”"
         : chat
           ? "Eklemek veya değiştirmek istediğin bir şey var mı?"
-          : "Yaz veya konuş…";
+          : "örn. Yarın 10'da antrenman";
 
   function cancelRun() {
     runId.current += 1;
@@ -150,13 +207,21 @@ export function AddSheet({ open, onClose, seed }) {
   // Sesle konuşulduysa asistan da sesle dinlemeye devam eder (sessizlikte kapanır, hata çıkarsa sessiz kalır)
   const startAuto = () => {
     const L = live.current;
-    if (L.open && !L.text) sp.start({ autoStop: SILENCE_MS, auto: true });
+    if (L.open && !L.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true });
   };
 
   // ---- Yeni kayıt: her mesaj aynı taslağı tamamlar veya günceller ----
   async function run(t, viaVoice = false) {
     const s = t.trim();
     if (!s) return toast("Yaz veya mikrofona bas");
+    // "Fiş yükle" gibi istekler plan/görev değil: fiş kamerasını aç
+    if (!drafts.length && localReceipt(s)) {
+      shut();
+      openReceipt({ camera: true });
+      return;
+    }
+    // İlk mesaj kısa ve kalıba uyuyorsa ("yarın 10'da antrenman ekle") yapay zekaya gitmeden hazırla
+    const quick = !drafts.length && !reply.message ? localCreate(s) : null;
     const id = ++runId.current;
     ctrl.current?.abort();
     const c = new AbortController();
@@ -164,7 +229,9 @@ export function AddSheet({ open, onClose, seed }) {
     if (viaVoice) setVoice(true);
 
     const known = drafts.filter((d) => !isBlank(d));
-    const ctx = known.length || reply.message ? { mode: "create", drafts: known.map(pub), last: reply.message } : null;
+    // Devamlılık: ilk mesaj + sonraki mesajlar + asistan yanıtları + güncel taslaklar birlikte gider
+    const history = turns.slice(-10).map((t) => ({ role: t.role, text: t.text }));
+    const ctx = known.length || reply.message || history.length ? { mode: "create", drafts: known.map((d) => pub(d, assignable)), last: reply.message, history } : null;
     snaps.current.push({ drafts, reply, turns, ask });
     setTurns((p) => [...p, { role: "user", text: s }]);
     setText("");
@@ -173,13 +240,14 @@ export function AddSheet({ open, onClose, seed }) {
     setAsk(null);
     setPhase("thinking");
     try {
-      const r = await interpretText(s, firstName, c.signal, ctx);
+      const r = quick ? { items: quick.items, message: quick.message, source: "local" } : await interpretText(s, firstName, c.signal, ctx, staffNames, seed?.prefer);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
       if (id !== runId.current) return;
 
-      let next = !r.items.length ? drafts : ctx ? carry(known, r.items) : [...drafts, ...r.items.map(fresh)];
+      const items = r.items.map(withAssignees);
+      let next = !items.length ? drafts : ctx ? carry(known, items) : [...drafts, ...items.map(fresh)];
       const need = firstNeed(next);
       const first = !!need && !next[need.idx]._asked; // bu soru ilk kez soruluyor
       if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -261,18 +329,19 @@ export function AddSheet({ open, onClose, seed }) {
     setEditReply("");
     setPhase("thinking");
     try {
-      const r = await interpretText(s, firstName, c.signal, { mode: "edit", drafts: [pub(cur)], last: "" });
+      const r = await interpretText(s, firstName, c.signal, { mode: "edit", drafts: [pub(cur, assignable)], last: "" }, staffNames);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
       if (id !== runId.current) return;
-      const n = r.items[0];
+      const n = r.items.map(withAssignees)[0];
       if (n && n.type === cur.type) {
         const clearTime = n.allDay === true && !n.time; // "tüm gün yap" / "saati kaldır"
         setDrafts([
           {
             ...cur,
             title: n.title || cur.title,
+            ...(n.assignees?.length ? { assignees: n.assignees } : {}),
             ...(cur.type === "plan"
               ? {
                 date: n.date || cur.date,
@@ -300,7 +369,7 @@ export function AddSheet({ open, onClose, seed }) {
 
   // Asistan yeni kayıt niyetini çözdüyse taslak kartlarla ve yanıtla açılır; eksik bilgiyi burada tamamlarsın
   function startPrefill(pf) {
-    let next = pf.items.map(fresh);
+    let next = pf.items.map(withAssignees).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     setDrafts(next);
@@ -342,23 +411,28 @@ export function AddSheet({ open, onClose, seed }) {
     startedFor.current = seed?.id;
     setText("");
     setPhase("idle");
-    setArmed(false);
     setHeard("");
     setError("");
     setTurns([]);
     setAsk(null);
     setEditReply("");
+    setPickAssign(null);
+    setAiOpen(false);
     setReply({ engine: "", message: "" });
     setVoice(!!seed?.voice);
     if (edit) {
       const list = { plan: plans, task: tasks, note: notes }[edit.kind] || [];
       const r = list.find((x) => x.id === edit.id);
-      setDrafts(r ? [fromRecord(edit.kind, r)] : []);
+      const d0 = r ? fromRecord(edit.kind, r) : null;
+      if (r) markSeen(edit.kind, edit.id); // başkası eklediyse: "görüldü"
+      orig.current = d0 ? editKey(d0) : "";
+      setDrafts(d0 ? [d0] : []);
       return;
     }
-    setDrafts(seed?.type ? [blank(seed.type)] : []);
+    setDrafts(seed?.type ? [{ ...blank(seed.type), ...(seed.date ? { date: seed.date } : {}) }] : []); // takvimden: seçili gün hazır gelir
     if (seed?.prefill) startPrefill(seed.prefill);
-    else if (seed?.text) run(seed.text, true);
+    else if (seed?.text) run(seed.text, !!seed.voice);
+    else if (seed?.listen) sp.start({ autoStop: SILENCE_MS }); // sayfa çubuğundaki mikrofon: açılır açılmaz dinler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
 
@@ -400,6 +474,8 @@ export function AddSheet({ open, onClose, seed }) {
     setError("");
   }
 
+  // Kaydet: sorumlusu olmayan kayıt varsa önce "Sorumlu eklemek ister misin?" sorulur (ana hesap, çalışan varken).
+  // Yapay zeka görevliyi anlamadıysa buradan elle seçilir.
   async function create() {
     if (text.trim()) return toast("Yazdığın metni önce gönder (↑) ya da sil");
     if (!drafts.length) return toast("Yaz, konuş veya aşağıdan ekle");
@@ -407,14 +483,33 @@ export function AddSheet({ open, onClose, seed }) {
       const e = check(d);
       if (e) return toast(e);
     }
-    const noTime = drafts.some((d) => d.type === "plan" && !d.time && !d.endDate && !d.allDay);
-    const r = await saveDrafts(drafts, { source: voice ? "voice" : "manual", by });
+    if (canAssign && drafts.some((d) => !d.assignees?.length && !d._general)) {
+      setPickAssign([]);
+      navigator.vibrate?.(8);
+      return;
+    }
+    finishCreate(drafts);
+  }
+
+  // pick: sorumlu sorusunda seçilenler; yalnızca sorumlusu olmayan kayıtlara eklenir
+  function saveWith(pick) {
+    setPickAssign(null);
+    finishCreate(drafts.map((d) => (!d.assignees?.length && !d._general && pick.length ? { ...d, assignees: pick } : d)));
+  }
+
+  async function finishCreate(list) {
+    const noTime = list.some((d) => d.type === "plan" && !d.time && !d.endDate && !d.allDay);
+    const r = await saveDrafts(list.map(tidy), { source: voice ? "voice" : "manual", by });
     if (!r || (r.plans + r.tasks + r.notes === 0)) return toast("Kayıt sırasında hata oluştu");
+    // Kullanıcının onayladığı sonuç: en değerli öğrenme örneği (ilk söylediği cümle + kaydettiği türler)
+    const said = turns.find((t) => t.role === "user" && !t.chip)?.text || heard;
+    if (said) record(said, labelFromItems(list), "user");
     const parts = [];
     if (r.plans) parts.push(`${r.plans} plan`);
     if (r.tasks) parts.push(`${r.tasks} görev`);
     if (r.notes) parts.push(`${r.notes} not`);
-    toast(`${parts.join(", ")} kaydedildi${noTime ? " · saat yok, tüm gün" : ""}`);
+    const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
+    toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}${noTime ? " · saat yok, tüm gün" : ""}`);
     navigator.vibrate?.([10, 40, 10]);
     onClose();
   }
@@ -423,20 +518,14 @@ export function AddSheet({ open, onClose, seed }) {
     const d = drafts[0];
     const e = d ? check(d) : "Kayıt bulunamadı";
     if (e) return toast(e);
-    updateRecord(edit.kind, edit.id, toPatch(d), by);
+    updateRecord(edit.kind, edit.id, { ...toPatch(d), ...(canAssign ? { assignees: d.assignees || [] } : {}) }, by);
     toast("Güncellendi");
     onClose();
   }
 
+  // Tek dokunuşla siler; bildirimdeki "Geri al" ile 5 sn içinde geri alınabilir
   function removeRecord() {
-    if (!armed) {
-      setArmed(true);
-      toast("Silmek için tekrar dokun");
-      setTimeout(() => setArmed(false), 2500);
-      return;
-    }
-    deleteRecord(edit.kind, edit.id);
-    toast("Silindi");
+    removeWithUndo(edit.kind, edit.id);
     onClose();
   }
 
@@ -462,7 +551,7 @@ export function AddSheet({ open, onClose, seed }) {
       <p className="flex items-center gap-2 text-[15px] font-semibold">
         <Icon name="alert" className="size-[18px]" /> Şu an anlayamadım
       </p>
-      <p className="mt-1 text-[13.5px] opacity-90">{error}</p>
+      <p className="mt-1 text-[14px] opacity-90">{error}</p>
       <button onClick={() => (edit ? runEdit(heard, voice) : run(heard, voice))} className="mt-3 h-10 rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white transition active:scale-95">
         Tekrar dene
       </button>
@@ -475,7 +564,13 @@ export function AddSheet({ open, onClose, seed }) {
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         <div className="flex items-center gap-2">
-          <SpeakToggle />
+          {edit && locked ? null : edit ? (
+            <button onClick={removeRecord} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-rec transition active:scale-90 active:bg-rec/10">
+              <Icon name="trash" className="size-5" />
+            </button>
+          ) : (
+            <SpeakToggle />
+          )}
           <button onClick={shut} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
             <Icon name="x" className="size-[18px]" />
           </button>
@@ -501,67 +596,125 @@ export function AddSheet({ open, onClose, seed }) {
             secs={secs}
             onCancel={transcribing ? sp.cancel : abort}
           />
+        ) : edit && locked && rec ? (
+          <AssignedView
+            kind={edit.kind}
+            rec={rec}
+            planTitle={linkedPlan}
+            myUid={myUid}
+            nameOf={nameOf}
+            onDone={(on) => {
+              setMyDone(edit.kind, edit.id, on);
+              toast(on ? "Tamamlandı olarak işaretlendi" : "Yeniden açıldı");
+            }}
+            onReply={(t) => {
+              addReply(edit.kind, edit.id, t);
+              toast("Not eklendi");
+            }}
+          />
         ) : edit ? (
           <>
-            {composer}
+            {errorCard}
+            {drafts[0] && (
+              <EditCard
+                d={drafts[0]}
+                meta={recMeta}
+                planTitle={linkedPlan}
+                done={!!rec?.done}
+                onToggleDone={() => {
+                  toggleTask(edit.id);
+                  toast(rec?.done ? "Görev yeniden açıldı" : "Görev tamamlandı");
+                }}
+                assign={assign}
+                onAddStaff={addStaff}
+                onChange={(patch) => update(0, patch)}
+                acks={
+                  rec && !isStaff
+                    ? assigneesOf(rec)
+                      .filter((u) => u !== rec.createdByUid)
+                      .map((u) => ({ uid: u, name: nameOf(u) || "Kişi", ...ackState(rec, u) }))
+                    : []
+                }
+              />
+            )}
+            {/* Atananların notları; ana hesap da yazabilir */}
+            {rec && (assigneesOf(rec).some((u) => u !== rec.createdByUid) || rec.replies) && (
+              <Replies rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Not yaz…" />
+            )}
+            <div className="mt-3" />
+            {/* Yapay zekayla değiştirme: istenince açılır */}
+            {aiOpen ? (
+              <div className="animate-pop">
+                {composer}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAiOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-[14px] font-medium text-mut transition active:bg-card"
+              >
+                <Icon name="spark" className="size-4 text-acc" /> Sesle ya da yazarak değiştir
+              </button>
+            )}
             {editReply && (
               <div className="fade-in mt-3 flex items-start gap-2.5">
                 <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white"><Icon name="spark" className="size-3.5" /></span>
                 <div className="min-w-0 rounded-2xl rounded-tl-md bg-card px-3.5 py-2.5 ring-1 ring-line">
-                  <p className="text-[15.5px] leading-snug">{editReply}</p>
+                  <p className="text-[15px] leading-snug">{editReply}</p>
                 </div>
               </div>
-            )}
-            {errorCard}
-            {drafts[0] && <DraftCard d={drafts[0]} index={0} plan={null} editing onChange={update} onType={changeType} onRemove={remove} />}
-            {linkedPlan && (
-              <p className="mt-3 flex items-center gap-1.5 px-1 text-[13px] text-mut">
-                <Icon name="cal" className="size-4" /> Bağlı plan: {linkedPlan}
-              </p>
             )}
           </>
         ) : (
           <>
-            {!chat && (
+            {manual ? (
+              /* Elle ekleme: yalnızca form */
               <>
-                {composer}
-                <div className="mt-5">
-                  <p className="px-1 text-[13px] text-mut">Plan mı, görev mi, not mu, ben ayırırım. Eksik bir şey olursa sorarım, cevabını eski mesajla birleştiririm. Örnekler:</p>
-                  <div className="mt-2.5 flex flex-col gap-2">
-                    {EXAMPLES.map((ex) => (
-                      <button key={ex} onClick={() => setText(ex)} className="rounded-xl border border-line bg-card px-3.5 py-2.5 text-left text-[14.5px] transition active:scale-[.98]">
-                        “{ex}”
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Thread turns={turns} engine={reply.engine} tts={tts} ask={askObj} canFix={!busy} onFix={fixLast} />
-            {errorCard}
-
-            {drafts.length > 0 && (
-              <section className="mt-6">
-                <h3 className="px-1 text-[15px] font-semibold">
-                  {reply.message ? "Bunları kaydedeceğim" : "Kaydedilecekler"} <span className="font-normal text-mut">({drafts.length})</span>
-                </h3>
                 {drafts.map((d, i) => (
-                  <ItemCard key={d._id} d={d} index={i} plan={plan} onChange={update} onType={changeType} onRemove={remove} />
+                  <div key={d._id} className={i ? "mt-6" : ""}>
+                    <DraftCard d={d} index={i} plan={plan} bare noRemove={drafts.length === 1} assign={assign} onAddStaff={addStaff} onChange={update} onType={changeType} onRemove={remove} />
+                  </div>
                 ))}
-              </section>
-            )}
-
-            {chat && (
-              <>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {[["plan", "+ Plan"], ["task", "+ Görev"], ["note", "+ Not"]].map(([t, l]) => (
-                    <button key={t} onClick={() => setDrafts((p) => [...p, blank(t)])} className="rounded-full border border-line bg-card px-3.5 py-2 text-sm font-medium transition active:scale-95">
+                <button onClick={() => setDrafts((p) => [...p, blank(drafts[drafts.length - 1].type)])} className="mx-auto mt-5 block text-[14px] font-medium text-mut transition active:opacity-50">
+                  + Bir kayıt daha
+                </button>
+              </>
+            ) : !chat ? (
+              /* Başlangıç: tek soru, tek yazı alanı, elle ekleme için üç sade düğme */
+              <div className="pt-6">
+                <p className="px-1 text-[22px] font-semibold leading-snug tracking-tight">Ne eklemek istersin?</p>
+                <p className="mt-1 px-1 text-[14px] text-mut">Yaz ya da konuş; plan, görev ya da not olarak ben ayırırım.</p>
+                <div className="mt-5">{composer}</div>
+                <div className="mt-8 flex items-center gap-2 px-1">
+                  <span className="mr-1 text-[13px] text-mut">Elle ekle</span>
+                  {MANUAL.map(([t, l, ic]) => (
+                    <button
+                      key={t}
+                      onClick={() => setDrafts([blank(t)])}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[14px] font-medium shadow-[0_1px_3px_rgba(38,40,44,.07)] transition active:scale-95"
+                    >
+                      <Icon name={ic} className="size-4 text-acc" />
                       {l}
                     </button>
                   ))}
                 </div>
-                {/* Yazı alanı altta sabit: cevabı hemen yazar veya konuşursun */}
+              </div>
+            ) : (
+              /* Konuşma: mesajlar + kaydedilecekler + altta yazı alanı */
+              <>
+                <Thread turns={turns} engine={reply.engine} tts={tts} ask={askObj} canFix={!busy} onFix={fixLast} />
+                {errorCard}
+                <section className="mt-6">
+                  {drafts.length > 0 && <h3 className="px-1 text-[13px] font-medium text-mut">Kaydedilecek · {drafts.length}</h3>}
+                  {drafts.length > 0 && (
+                    <div className="mt-2 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+                      {drafts.map((d, i) => (
+                        <ItemCard key={d._id} d={d} index={i} plan={plan} assign={assign} onAddStaff={addStaff} onChange={update} onType={changeType} onRemove={remove} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+                {/* Yazı alanı altta sabit: cevabı ya da değişikliği hemen yazar veya konuşursun */}
                 <div className="sticky bottom-0 -mx-5 mt-4 bg-bg px-5 pb-2 pt-3">{composer}</div>
               </>
             )}
@@ -570,25 +723,82 @@ export function AddSheet({ open, onClose, seed }) {
       </div>
 
       {/* Alt butonlar (sabit). Dinleme ve işleme sahnelerinde kendi butonları var. */}
-      {!staged && (
-        <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+      {!staged && !locked && (edit || drafts.length > 0) && (
+        <footer className="flex shrink-0 gap-2.5 bg-bg px-5 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
           {edit ? (
-            <>
-              <button onClick={removeRecord} className={`${secondary} ${armed ? "!border-transparent !bg-rec !text-white" : "text-rec"}`}>
-                {armed ? "Emin misin?" : "Sil"}
-              </button>
-              <button onClick={saveEdit} className={primary}>Kaydet</button>
-            </>
+            <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>
+              {dirty ? "Kaydet" : "Değişiklik yok"}
+            </button>
+          ) : pickAssign ? (
+            <AssignAsk
+              members={members}
+              pick={pickAssign}
+              count={drafts.filter((d) => !d.assignees?.length && !d._general).length}
+              total={drafts.length}
+              onPick={setPickAssign}
+              onSave={saveWith}
+              onBack={() => setPickAssign(null)}
+            />
           ) : (
-            <>
-              <button onClick={shut} className={secondary}>İptal</button>
-              <button onClick={create} disabled={drafts.length === 0} className={primary}>
-                Kaydet{drafts.length ? ` (${drafts.length})` : ""}
-              </button>
-            </>
+            <button onClick={create} className={`${primary} flex-1`}>
+              {drafts.length > 1 ? `Kaydet (${drafts.length})` : "Kaydet"}
+            </button>
           )}
         </footer>
       )}
     </Screen>
+  );
+}
+
+// Kaydetmeden önce: "Sorumlu eklemek ister misin?" Çalışan seçilirse sorumlusu olmayan kayıtlara eklenir.
+function AssignAsk({ members, pick, count, total, onPick, onSave, onBack }) {
+  const toggle = (uid) => onPick(pick.includes(uid) ? pick.filter((u) => u !== uid) : [...pick, uid]);
+  const names = pick.map((u) => members.find((m) => m.uid === u)?.name.split(" ")[0]).filter(Boolean);
+  return (
+    <div className="animate-pop w-full">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <b className="block text-[16px] font-semibold tracking-tight">Sorumlu eklemek ister misin?</b>
+          <small className="text-[13px] text-mut">
+            {total > 1 && count < total ? `Sorumlusu olmayan ${count} kayda eklenir.` : total > 1 ? `${total} kaydın hepsine eklenir.` : "Seçtiğin kişi kaydı kendi listesinde görür."}
+          </small>
+        </div>
+        <button type="button" onClick={onBack} aria-label="Geri" className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:bg-line">
+          <Icon name="x" className="size-4" />
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {members.map((m) => {
+          const on = pick.includes(m.uid);
+          return (
+            <button
+              key={m.uid}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(m.uid)}
+              className={`inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3.5 text-[15px] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-card text-fg ring-1 ring-line"}`}
+            >
+              <span className={`grid size-7 place-items-center rounded-full text-[12px] font-semibold ${on ? "bg-white/20" : "bg-acc/10 text-acc"}`}>
+                {on ? <Icon name="check" className="size-4" /> : (m.name || "?")[0]}
+              </span>
+              {m.name}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex gap-2.5">
+        <button type="button" onClick={() => onSave([])} className="h-12 flex-1 whitespace-nowrap rounded-xl border border-line bg-card px-2 text-[15px] font-semibold transition active:scale-[.98]">
+          Sorumlusuz kaydet
+        </button>
+        <button
+          type="button"
+          onClick={() => onSave(pick)}
+          disabled={!pick.length}
+          className="h-12 min-w-0 flex-1 truncate rounded-xl bg-acc px-3 text-[15px] font-semibold text-white transition active:scale-[.98] disabled:opacity-40"
+        >
+          {names.length ? `${names.join(", ")} ile kaydet` : "Kişi seç"}
+        </button>
+      </div>
+    </div>
   );
 }

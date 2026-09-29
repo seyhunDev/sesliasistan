@@ -1,4 +1,5 @@
 // Yalnızca sunucuda çalışır. Anahtar tarayıcıya çıkmaz.
+import { AsyncLocalStorage } from "node:async_hooks";
 
 // Claude'a verdiğimiz JSON şemasını Gemini'nin şema biçimine çevirir (tipler büyük harf)
 function toSchema(s) {
@@ -20,6 +21,61 @@ const G = globalThis.__gemini || (globalThis.__gemini = { cool: new Map(), think
 // cool: geçici olarak atlanan modeller (model -> { until, kind: "day" | "minute" | "gone", id })
 // thinkBad: düşünmeyi kapatma ayarını (thinkingBudget: 0) kabul etmeyen modeller
 // schemaBad: responseSchema'yı kabul etmeyen modeller
+
+// Google günlük kotayı Pasifik saatiyle gece yarısı sıfırlar (Türkiye'de ~10:00)
+function nextDailyReset(now = Date.now()) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date(now))
+      .map((x) => [x.type, x.value]),
+  );
+  const passed = ((+p.hour * 60 + +p.minute) * 60 + +p.second) * 1000;
+  return now + 24 * HOUR - passed + 60 * 1000; // 1 dk pay
+}
+
+// ---- Kota bilgisinin cihazla paylaşılması ----
+// Netlify her istekte yeni sunucu açabildiği için bellekteki "bekleyen modeller" kaybolur.
+// Bu yüzden telefon, sunucunun bildirdiği bekleme sürelerini saklayıp her istekte "x-ai-cool" başlığıyla geri gönderir.
+// Başlıktaki bilgi yalnızca o isteğe uygulanır (başka kullanıcıların isteklerini etkilemez).
+const reqCool = new AsyncLocalStorage();
+const MAX_SEED = 36 * HOUR;
+
+function parseCool(header) {
+  const out = new Map();
+  if (!header) return out;
+  try {
+    const now = Date.now();
+    for (const [m, until] of Object.entries(JSON.parse(header))) {
+      const u = Number(until);
+      if (typeof m === "string" && m.length < 80 && u > now && u < now + MAX_SEED) out.set(m, u);
+    }
+  } catch {}
+  return out;
+}
+// Bu istek için geçerli bekleme süresi (sunucu belleği ya da cihazın bildirdiği, hangisi daha uzunsa)
+const coolUntil = (m) => Math.max(G.cool.get(m)?.until || 0, reqCool.getStore()?.get(m) || 0);
+
+// Gemini dışındaki servisler için de (ör. "stt:openai") bekleme kaydı
+export const isCooling = (key) => coolUntil(key) > Date.now();
+export function markCool(key, ms) {
+  G.cool.set(key, { until: Date.now() + ms, kind: ms >= HOUR ? "day" : "minute", id: key });
+}
+
+// Route'u sarar: gelen başlığı okur, yanıta güncel bekleme listesini ekler
+export function withAiCool(handler) {
+  return async (request, ctx) => {
+    const seed = parseCool(request.headers.get("x-ai-cool"));
+    const res = await reqCool.run(seed, () => handler(request, ctx));
+    try {
+      const now = Date.now();
+      const all = new Map(seed);
+      for (const [m, v] of G.cool) if (v.until > now && v.kind !== "gone") all.set(m, Math.max(all.get(m) || 0, v.until));
+      const live = Object.fromEntries([...all].filter(([, u]) => u > now));
+      res.headers.set("x-ai-cool", JSON.stringify(live));
+    } catch {}
+    return res;
+  };
+}
 
 // 429 yanıtından hangi kotanın dolduğunu ve kaç saniye beklenmesi gerektiğini okur
 function quotaInfo(text) {
@@ -69,15 +125,15 @@ async function once(model, body, ms) {
 export async function callGemini({ model, system, user, schema, images = [], maxTokens = 4096, timeoutMs = 22000 }) {
   const all = [...new Set([model, ...(process.env.GEMINI_FALLBACK_MODELS || "").split(",").map((s) => s.trim())].filter(Boolean))];
   const now = Date.now();
-  const models = all.filter((m) => !(G.cool.get(m)?.until > now));
+  const models = all.filter((m) => !(coolUntil(m) > now));
   const skipped = all.filter((m) => !models.includes(m));
   const quotaSkipped = skipped.filter((m) => G.cool.get(m)?.kind !== "gone");
 
   const quotaErr = (msg, list) => {
-    const soonest = Math.min(...list.map((m) => G.cool.get(m)?.until || now + 60000));
+    const soonest = Math.min(...list.map((m) => coolUntil(m) || now + 60000));
     const err = new Error(msg);
     err.status = 429;
-    err.daily = list.every((m) => G.cool.get(m)?.kind === "day");
+    err.daily = list.every((m) => G.cool.get(m)?.kind === "day" || coolUntil(m) - now > 30 * 60 * 1000);
     err.retryAfter = Math.max(5, Math.ceil((soonest - Date.now()) / 1000));
     return err;
   };
@@ -152,8 +208,8 @@ export async function callGemini({ model, system, user, schema, images = [], max
 
         if (status === 429) {
           const q = quotaInfo(text);
-          // Günlük kota: 1 saat atla (sıfırlanınca kendiliğinden yeniden denenir). Dakikalık: bildirilen süre kadar.
-          G.cool.set(m, { until: Date.now() + (q.daily ? HOUR : Math.max(q.retry, 20) * 1000), kind: q.daily ? "day" : "minute", id: q.id });
+          // Günlük kota: sıfırlanana kadar (Pasifik gece yarısı) atla. Dakikalık: bildirilen süre kadar.
+          G.cool.set(m, { until: q.daily ? nextDailyReset() : Date.now() + Math.max(q.retry, 20) * 1000, kind: q.daily ? "day" : "minute", id: q.id });
           quotaHit.push(m);
           tried.push(`${m}:429${q.daily ? "/gün" : "/dk"}`);
           last = `Gemini 429 (${m}) kota doldu${q.id ? `: ${q.id}` : ""}`;

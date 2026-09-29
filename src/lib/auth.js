@@ -1,5 +1,6 @@
 // Firebase Auth tabanlı oturum yönetimi
 import {
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -51,6 +52,12 @@ export async function register(name, email, password) {
   });
 }
 
+// Şifre sıfırlama bağlantısı e-postayla gider (Türkçe)
+export async function resetPassword(email) {
+  auth.languageCode = "tr";
+  await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+}
+
 export async function logout() {
   await signOut(auth);
 }
@@ -61,7 +68,10 @@ export const authErrorMessage = (e) => {
     return "E-posta veya şifre hatalı.";
   if (code === "auth/email-already-in-use") return "Bu e-posta ile zaten bir hesap var.";
   if (code === "auth/weak-password") return "Şifre en az 6 karakter olmalı.";
-  if (code === "auth/invalid-email") return "Geçersiz e-posta adresi.";
-  if (code === "auth/too-many-requests") return "Çok fazla deneme. Lütfen bekle.";
-  return e?.message || "Bir hata oluştu. Tekrar dene.";
+  if (code === "auth/invalid-email" || code === "auth/missing-email") return "Geçerli bir e-posta adresi yaz.";
+  if (code === "auth/too-many-requests") return "Çok fazla deneme. Lütfen biraz bekle.";
+  if (code === "auth/network-request-failed") return "İnternet bağlantısı yok. Bağlantını kontrol edip tekrar dene.";
+  if (code === "auth/admin-restricted-operation" || code === "auth/operation-not-allowed") return "Yeni kayıt şu an kapalı.";
+  if (code === "auth/user-disabled") return "Bu hesap devre dışı bırakılmış.";
+  return "Bir sorun oluştu. Tekrar dene.";
 };

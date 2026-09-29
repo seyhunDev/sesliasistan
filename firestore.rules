@@ -1,6 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Kullanıcı profili: rol (owner | staff) ve bağlı olduğu işletme (orgId).
+    // Çalışan profilini yalnızca sunucu (ana hesap "Çalışan ekle" dediğinde) oluşturur.
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid
@@ -11,8 +14,77 @@ service cloud.firestore {
                     && request.resource.data.orgId == resource.data.orgId;
       allow delete: if false;
     }
-    match /orgs/{orgId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == orgId;
+
+    function signedIn() { return request.auth != null; }
+    // Ana hesap: işletme kimliği kendi uid'si ve çalışan profili değil (çalışan kendi uid'siyle sahte işletme açamaz).
+    // Profili olmayan eski hesaplar ana hesap sayılır.
+    function isOwner(orgId) {
+      return signedIn() && request.auth.uid == orgId
+          && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("role", "owner") != "staff");
+    }
+    // Çalışan: profilindeki orgId bu işletme ve rolü staff
+    function isStaff(orgId) {
+      let p = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return signedIn() && p.role == "staff" && p.orgId == orgId;
+    }
+    function mine() { return request.auth.uid in resource.data.get("people", []); }
+    function pay(d) { return d.get("payStatus", null); }
+    // Çalışanın dokunamayacağı alanlar: kimlerin göreceği, sorumlular, ekleyen, ödeme durumu
+    function lockedSame() {
+      return request.resource.data.get("people", []) == resource.data.get("people", [])
+          && request.resource.data.get("assignees", null) == resource.data.get("assignees", null)
+          && request.resource.data.get("createdByUid", null) == resource.data.get("createdByUid", null)
+          && pay(request.resource.data) == pay(resource.data)
+          && request.resource.data.get("paidAt", null) == resource.data.get("paidAt", null)
+          && request.resource.data.get("paidBy", null) == resource.data.get("paidBy", null);
+    }
+    // Bir alanda (map) yalnızca kendi anahtarı değişmiş mi: doneBy.{uid}, replies.{uid}, ack.{uid}
+    function ownKey(f) {
+      return request.resource.data.get(f, {}).diff(resource.data.get(f, {})).affectedKeys().hasOnly([request.auth.uid]);
+    }
+    // Başkasının (ana hesabın) verdiği kayıtta çalışan: yalnızca kendisi için tamamladı, not ve iletildi/görüldü
+    function assignedOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(["doneBy", "replies", "ack"])
+          && ownKey("doneBy") && ownKey("replies") && ownKey("ack");
+    }
+
+    match /orgs/{orgId} {
+      // Ana hesap: kendi işletmesindeki her şey
+      match /{document=**} {
+        allow read, write: if isOwner(orgId);
+      }
+
+      // Çalışan: yalnızca "people" listesinde kendisi olan kayıtlar
+      match /{col}/{id} {
+        allow read: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine();
+        allow create: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId)
+                      && request.resource.data.get("people", []) == [request.auth.uid]
+                      && request.resource.data.get("assignees", [request.auth.uid]) == [request.auth.uid]
+                      && request.resource.data.get("createdByUid", null) == request.auth.uid
+                      && pay(request.resource.data) in [null, "pending"];
+        // Kendi eklediğini değiştirir; başkasının verdiğinde yalnızca tamamladı / not / görüldü
+        allow update: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine() && lockedSame()
+                      && (resource.data.get("createdByUid", null) == request.auth.uid || assignedOnly());
+        allow delete: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId)
+                      && resource.data.get("createdByUid", null) == request.auth.uid
+                      && pay(resource.data) != "paid";
+      }
+
+      // Öğrenme verisi: her kişinin kendi belgesi ({uid}_{YYYY-MM}). Çalışan yalnızca kendisininkini okur/yazar;
+      // ana hesap (yukarıdaki kural) işletmedeki tüm belgeleri okur.
+      match /learn/{id} {
+        allow read: if isStaff(orgId) && id.matches(request.auth.uid + "_[0-9]{4}-[0-9]{2}");
+        allow create, update: if isStaff(orgId) && id.matches(request.auth.uid + "_[0-9]{4}-[0-9]{2}")
+                              && request.resource.data.uid == request.auth.uid;
+      }
+
+      // Çalışan: kendi üye kaydında yalnızca "son görülme" zamanını günceller (ana hesap listede görür)
+      match /members/{mid} {
+        allow update: if isStaff(orgId) && request.auth.uid == mid
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["lastSeen"])
+                      && request.resource.data.lastSeen == request.time;
+      }
     }
   }
 }

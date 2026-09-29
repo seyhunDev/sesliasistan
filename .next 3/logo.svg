@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sesli Asistan">
+  <rect width="512" height="512" rx="108" fill="#f97316"/>
+  <!-- simple mic: capsule + stand -->
+  <rect x="201" y="110" width="110" height="170" rx="55" fill="#fff"/>
+  <g fill="none" stroke="#fff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M161 272a95 95 0 0 0 190 0"/>
+    <path d="M256 367v48"/>
+    <path d="M201 423h110"/>
+  </g>
+</svg>

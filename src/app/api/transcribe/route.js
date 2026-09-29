@@ -1,32 +1,78 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { NextResponse } from "next/server";
+import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
 
 export const runtime = "nodejs";
 
-const MODEL = process.env.STT_MODEL || "gpt-4o-mini-transcribe";
 const HINT = "Spor kulübü, yelken, antrenman, Optimist, Laser, ıskota, fiş, fatura, KDV, plan, görev, not.";
+const MIN = 60 * 1000;
 
-function send(file, model) {
-  const fd = new FormData();
-  fd.append("file", file, file.name || "kayit.webm");
-  fd.append("model", model);
-  fd.append("language", "tr");
-  fd.append("prompt", HINT);
-  return fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-    body: fd,
-  });
+// OpenAI uyumlu ses çeviri servisleri (aynı istek biçimi)
+const WHISPER = {
+  groq: { url: "https://api.groq.com/openai/v1/audio/transcriptions", key: () => process.env.GROQ_API_KEY, model: () => process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo" },
+  openai: { url: "https://api.openai.com/v1/audio/transcriptions", key: () => process.env.OPENAI_API_KEY, model: () => process.env.STT_MODEL || "gpt-4o-mini-transcribe" },
+};
+
+// Kişi adları (çalışanlar): ses tanıma bunları doğru yazsın diye ipucuna eklenir
+const namesHint = (names) => (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "");
+
+async function viaWhisper(name, file, names) {
+  const s = WHISPER[name];
+  const send = (model) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name || "kayit.webm");
+    fd.append("model", model);
+    fd.append("language", "tr");
+    fd.append("prompt", HINT + namesHint(names));
+    return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(20000) });
+  };
+  let res = await send(s.model());
+  // OpenAI'da model adı hesapta yoksa eski, yaygın modele düş
+  if (name === "openai" && !res.ok && [400, 404].includes(res.status) && s.model() !== "whisper-1") res = await send("whisper-1");
+  if (res.ok) return String((await res.json()).text || "").trim();
+  const body = (await res.text()).slice(0, 300);
+  const err = new Error(`${name} ${res.status}: ${body}`);
+  // Kota/bakiye yok ya da anahtar geçersiz: bir süre bu servisi hiç deneme
+  if (res.status === 401 || res.status === 403 || /insufficient_quota|billing/i.test(body)) markCool(`stt:${name}`, 6 * 60 * MIN);
+  else if (res.status === 429) markCool(`stt:${name}`, (Number(res.headers.get("retry-after")) || 60) * 1000);
+  err.status = res.status;
+  throw err;
 }
 
-export async function POST(request) {
+// Gemini: ses dosyası doğrudan modele verilir
+const GSCHEMA = { type: "object", properties: { text: { type: "string", description: "Konuşmanın aynen yazıya dökülmüş hali" } }, required: ["text"] };
+async function viaGemini(file, names) {
+  const data = Buffer.from(await file.arrayBuffer()).toString("base64");
+  const mimeType = (file.type || "audio/webm").split(";")[0];
+  const out = await callGemini({
+    model: process.env.GEMINI_STT_MODEL || process.env.GEMINI_MODEL,
+    system: `Konuşma dili TÜRKÇE. Ses kaydını Türkçe olarak AYNEN yazıya dök; başka bir dile benzese de Türkçe kelimelerle yaz, İngilizceye ya da başka dile ÇEVİRME. Türkçe karakterleri (ç, ğ, ı, İ, ö, ş, ü) doğru kullan. Yorum yapma, özetleme, cevap verme; yalnızca söyleneni yaz. Konuşma yoksa text boş olsun. Sık geçen kelimeler: ${HINT}${namesHint(names)}`,
+    user: "Bu Türkçe kaydı yazıya dök.",
+    schema: GSCHEMA,
+    images: [{ mimeType, data }],
+    maxTokens: 1024,
+    timeoutMs: 20000,
+  });
+  return String(out?.text || "").trim();
+}
+
+// Denenecek servisler sırayla: STT_PROVIDER ile seçilen önce, sonra Groq, OpenAI, Gemini (anahtarı olanlar)
+function providers() {
+  const has = {
+    groq: !!process.env.GROQ_API_KEY,
+    openai: !!process.env.OPENAI_API_KEY,
+    gemini: !!(process.env.GEMINI_API_KEY && (process.env.GEMINI_STT_MODEL || process.env.GEMINI_MODEL)),
+  };
+  const first = (process.env.STT_PROVIDER || "").toLowerCase();
+  return [...new Set([first, "groq", "openai", "gemini"])].filter((p) => has[p]);
+}
+
+async function handle(request) {
   const au = await requireUser(request);
-  if (!au.ok) return unauthorized();
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json(
-      { error: "Bu modda ses çevirisi için sunucuda OPENAI_API_KEY gerekli. Safari'de (ana ekran dışında) canlı ses çalışır." },
-      { status: 501 },
-    );
+  if (!au.ok) return unauthorized(au);
+  const list = providers();
+  if (!list.length) {
+    return NextResponse.json({ error: "Ses çevirisi için sunucuda GROQ_API_KEY, OPENAI_API_KEY ya da GEMINI_API_KEY gerekli." }, { status: 501 });
   }
   let form;
   try {
@@ -37,19 +83,37 @@ export async function POST(request) {
   const file = form.get("audio");
   if (!file || typeof file === "string") return NextResponse.json({ error: "Ses dosyası yok" }, { status: 400 });
   if (file.size > 12 * 1024 * 1024) return NextResponse.json({ error: "Kayıt çok uzun" }, { status: 413 });
+  const names = [...new Set(String(form.get("names") || "").split(",").map((n) => n.replace(/[^\p{L} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))].slice(0, 60); // sporcu yoklamasında liste uzun olabilir
 
-  try {
-    let res = await send(file, MODEL);
-    // Model adı hesapta yoksa eski, yaygın modele düş
-    if (!res.ok && MODEL !== "whisper-1" && [400, 404].includes(res.status)) res = await send(file, "whisper-1");
-    if (!res.ok) {
-      console.error("[transcribe]", res.status, (await res.text()).slice(0, 300));
-      return NextResponse.json({ error: "Ses çevrilemedi" }, { status: 502 });
+  const tried = [];
+  let quota = false;
+  for (const p of list) {
+    if (p !== "gemini" && isCooling(`stt:${p}`)) {
+      tried.push(`${p}:beklemede`);
+      quota = true;
+      continue;
     }
-    const data = await res.json();
-    return NextResponse.json({ text: String(data.text || "").trim() });
-  } catch (e) {
-    console.error("[transcribe]", e.message);
-    return NextResponse.json({ error: "Ses çevirisi başarısız" }, { status: 502 });
+    try {
+      const t0 = Date.now();
+      const text = p === "gemini" ? await viaGemini(file, names) : await viaWhisper(p, file, names);
+      console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
+      return NextResponse.json({ text, provider: p });
+    } catch (e) {
+      if (e.status === 429 || e.status === 401 || e.status === 403) quota = true;
+      tried.push(`${p}:${e.status || "hata"}`);
+      console.error(`[transcribe:${p}]`, e.message.slice(0, 300));
+    }
   }
+  console.warn(`[transcribe] başarısız · ${tried.join(", ")}`);
+  return NextResponse.json(
+    {
+      error: quota
+        ? "Ses yazıya çevrilemedi: çeviri servislerinin kotası dolu. Şimdilik klavyedeki mikrofonla yazabilirsin."
+        : "Ses yazıya çevrilemedi, tekrar dene.",
+      tried,
+    },
+    { status: 502 },
+  );
 }
+
+export const POST = withAiCool(handle);

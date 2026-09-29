@@ -17,7 +17,8 @@ if (missing.length) {
 }
 
 // Tek uygulama örneği (sıcak yenilemede tekrar başlatılmaz)
-export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+// (Aynı sayfada ikinci bir Firebase uygulaması da olabilir: sporcular için "dikili")
+export const app = getApps().some((a) => a.name === "[DEFAULT]") ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // undefined alanlar yok sayılır (kaydetme düşmez); tarayıcıda çevrimdışı önbellek

@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Tile } from "@/components/dashboard/Row";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
+import { PayBadge, PendingPayments } from "@/features/receipts/Payment";
+import { whoText } from "@/lib/people";
 import { CAT, CATS, DOC, PAYS, TLk, catOf, parseTL, totalOf } from "@/lib/receipts";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
 
@@ -18,7 +21,10 @@ const shiftMonth = (m, n) => {
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 export default function ReceiptsPage() {
-  const { receipts, loading } = useData();
+  const { receipts: all, loading, myUid, nameOf } = useData();
+  // Ödenen fişler ayrı tutulur (listede ve toplamda yok), istenirse aşağıda gösterilir
+  const receipts = useMemo(() => all.filter((r) => r.payStatus !== "paid"), [all]);
+  const [showPaid, setShowPaid] = useState(false);
   const { openReceipt } = useReceipt();
   const [month, setMonth] = useState(() => todayStr().slice(0, 7)); // "" = tüm zamanlar
   const [q, setQ] = useState("");
@@ -33,12 +39,11 @@ export default function ReceiptsPage() {
   const users = useMemo(() => [...new Set(receipts.map((r) => r.createdBy?.name).filter(Boolean))], [receipts]);
   const active = [pay, by, min, max, review].filter(Boolean).length;
 
-  const list = useMemo(() => {
+  const [list, paid] = useMemo(() => {
     const lo = parseTL(min);
     const hi = parseTL(max);
     const s = q.trim().toLocaleLowerCase("tr-TR");
-    return receipts
-      .filter((r) => {
+    const match = (r) => {
         const t = totalOf(r);
         if (month && !(r.date || "").startsWith(month)) return false;
         if (cats.length && !cats.includes(r.cat)) return false;
@@ -49,9 +54,10 @@ export default function ReceiptsPage() {
         if (!Number.isNaN(hi) && t > hi) return false;
         if (s && !`${r.merchant} ${r.docNo || ""} ${r.taxId || ""} ${r.note || ""} ${(r.items || []).map((i) => i.n).join(" ")}`.toLocaleLowerCase("tr-TR").includes(s)) return false;
         return true;
-      })
-      .sort((a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`));
-  }, [receipts, month, q, cats, pay, by, min, max, review]);
+    };
+    const byDate = (a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`);
+    return [all.filter((r) => r.payStatus !== "paid" && match(r)).sort(byDate), all.filter((r) => r.payStatus === "paid" && match(r)).sort(byDate)];
+  }, [all, month, q, cats, pay, by, min, max, review]);
 
   const total = list.reduce((a, r) => a + totalOf(r), 0);
   const vat = list.reduce((a, r) => a + (r.totals?.vat || 0), 0);
@@ -98,19 +104,13 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[480px] px-5 pb-32 pt-3">
+    <main className="mx-auto max-w-[480px] px-5 pb-[calc(120px+env(safe-area-inset-bottom))]">
       {/* Başlık */}
-      <div className="flex items-center justify-between py-1.5">
-        <h1 className="text-[28px] font-bold tracking-tight">Fişler</h1>
-        <div className="flex gap-2">
-          <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
-            <Icon name="print" className="size-[18px]" />
-          </button>
-          <button onClick={() => openReceipt()} aria-label="Fiş ekle" className="grid size-9 place-items-center rounded-xl bg-acc text-white transition active:scale-95">
-            <Icon name="plus" className="size-5" />
-          </button>
-        </div>
-      </div>
+      <PageHeader title="Fişler">
+        <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
+          <Icon name="print" className="size-[18px]" />
+        </button>
+      </PageHeader>
 
       {/* Ay seçici */}
       <div className="mt-2 flex items-center justify-between rounded-2xl border border-line bg-card p-1">
@@ -127,7 +127,7 @@ export default function ReceiptsPage() {
 
       {/* Özet */}
       <div className="mt-3 rounded-2xl bg-acc p-4 text-white">
-        <div className="text-[30px] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
+        <div className="text-[28px] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
         <p className="text-[13px] opacity-80">
           {list.length} belge · KDV {TLk(vat)}
         </p>
@@ -149,10 +149,12 @@ export default function ReceiptsPage() {
         )}
       </div>
 
+      <PendingPayments />
+
       {pending > 0 && !review && (
         <button onClick={() => setReview(true)} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
           <Icon name="alert" className="size-5" />
-          <span className="flex-1 text-[14.5px] font-semibold">{pending} fiş kontrol bekliyor</span>
+          <span className="flex-1 text-[15px] font-semibold">{pending} fiş kontrol bekliyor</span>
           <Icon name="chev" className="size-4" />
         </button>
       )}
@@ -225,9 +227,7 @@ export default function ReceiptsPage() {
             <Icon name="receipt" className="size-7" />
           </span>
           <p className="mt-3 text-[15px] text-mut">{receipts.length ? "Bu filtrede fiş yok" : "Henüz fiş yok"}</p>
-          <button onClick={() => openReceipt()} className="mt-4 h-11 rounded-xl bg-acc px-5 text-[15px] font-semibold text-white active:scale-95">
-            Fiş ekle
-          </button>
+          {!receipts.length && <p className="mt-1 text-[13px] text-mut">Aşağıdan fotoğrafını çek ya da elle ekle.</p>}
         </div>
       ) : (
         days.map((d) => (
@@ -241,7 +241,9 @@ export default function ReceiptsPage() {
                     <b className="block truncate text-[15px] font-medium">{r.merchant || "İsimsiz"}</b>
                     <small className="block truncate text-[13px] text-mut">
                       {[r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
+                      {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
                     </small>
+                    {r.payStatus === "pending" && <small className="block text-[12px] font-semibold text-amber-700">Ödeme bekliyor</small>}
                   </span>
                   {r.status === "review" && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
                   <span className="shrink-0 text-[15px] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
@@ -251,6 +253,45 @@ export default function ReceiptsPage() {
           </section>
         ))
       )}
+
+      {/* Ödenenler: ayrı ve kapalı; istenince açılır */}
+      {paid.length > 0 && (
+        <section className="mt-8">
+          <button onClick={() => setShowPaid((v) => !v)} className="flex w-full items-center justify-between px-1 text-[13px] font-semibold text-mut active:opacity-60">
+            <span>Ödenenler · {paid.length} · {TLk(paid.reduce((a, r) => a + totalOf(r), 0))}</span>
+            <span className="font-medium text-acc">{showPaid ? "Gizle" : "Göster"}</span>
+          </button>
+          {showPaid && (
+            <div className="mt-2 divide-y divide-line overflow-hidden rounded-2xl bg-card opacity-80 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+              {paid.map((r) => (
+                <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
+                  <Tile icon={catOf(r.cat).icon} />
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[15px] font-medium">{r.merchant || "İsimsiz"}</b>
+                    <small className="block truncate text-[13px] text-mut">
+                      {[fdate(r.date), whoText(r, myUid, nameOf)].filter(Boolean).join(" · ")}
+                    </small>
+                  </span>
+                  <PayBadge r={r} />
+                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Ekleme: aynı sayfada fotoğraf çek ya da elle gir */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-6">
+        <div className="mx-auto flex max-w-[448px] gap-2">
+          <button onClick={() => openReceipt({ manual: true })} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-card text-[15px] font-semibold text-acc shadow-[0_6px_24px_-8px_rgba(38,40,44,.18)] ring-1 ring-line transition active:scale-[.98]">
+            <Icon name="edit" className="size-[18px]" /> Elle ekle
+          </button>
+          <button onClick={() => openReceipt()} className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-acc text-[15px] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.3)] transition active:scale-[.98]">
+            <Icon name="camera" className="size-5" /> Fiş fotoğrafı
+          </button>
+        </div>
+      </div>
     </main>
   );
 }

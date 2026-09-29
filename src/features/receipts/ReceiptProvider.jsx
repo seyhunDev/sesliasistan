@@ -6,6 +6,7 @@ import { ReceiptSheet } from "./ReceiptSheet";
 const Ctx = createContext({ openReceipt: () => {} });
 
 // openReceipt()                 -> yeni fiş (fotoğraf seçimiyle başlar)
+// openReceipt({ camera: true }) -> kamera hemen açılır ("fiş aç / fiş yükle" komutları)
 // openReceipt({ manual: true }) -> doğrudan elle giriş
 // openReceipt({ edit: id })     -> var olan fişi düzenle
 export function ReceiptProvider({ children }) {

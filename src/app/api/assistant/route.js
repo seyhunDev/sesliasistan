@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callClaude } from "@/lib/ai/anthropic";
-import { callGemini } from "@/lib/ai/gemini";
+import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 
@@ -28,7 +28,7 @@ function ask(provider, user) {
       user,
       schema: ASSISTANT_TOOL.input_schema,
       maxTokens: 8192,
-      timeoutMs: 35000,
+      timeoutMs: 20000,
     });
   }
   return callClaude({
@@ -40,9 +40,9 @@ function ask(provider, user) {
   });
 }
 
-export async function POST(request) {
+async function handle(request) {
   const au = await requireUser(request);
-  if (!au.ok) return unauthorized();
+  if (!au.ok) return unauthorized(au);
 
   let body;
   try {
@@ -55,6 +55,8 @@ export async function POST(request) {
   const digest = String(body?.digest ?? "").slice(0, 26000);
   // Ad yalnızca harf/rakam ve birkaç işaretten oluşabilir (istem enjeksiyonunu önler)
   const name = String(body?.name ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30);
+  // Ana hesabın çalışan adları: yeni kayıtlarda sorumlu atama için
+  const people = [...new Set((Array.isArray(body?.people) ? body.people : []).slice(0, 20).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))];
   const history = (Array.isArray(body?.history) ? body.history : [])
     .slice(-6)
     .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
@@ -71,7 +73,7 @@ export async function POST(request) {
     const t0 = Date.now();
     const raw = await ask(provider, user);
     const ms = Date.now() - t0;
-    const r = parseAssistant(raw);
+    const r = parseAssistant(raw, people);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}`);
     if (!r.message && !r.items.length && !r.actions.length && !r.navigate) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
     return NextResponse.json({ ...r, source: "ai", provider, ms });
@@ -89,3 +91,5 @@ export async function POST(request) {
     return bad("Asistan şu an yanıt vermedi", 502, e.message);
   }
 }
+
+export const POST = withAiCool(handle);

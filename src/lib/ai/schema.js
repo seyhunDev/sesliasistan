@@ -1,3 +1,4 @@
+import { matchPerson, namesInMessage } from "@/lib/names";
 import { z } from "zod";
 
 export const CATEGORIES = ["Antrenman", "Toplantı", "Kamp", "Yarış", "Ekipman", "Genel"];
@@ -28,6 +29,11 @@ export const TOOL = {
             place: { type: "string", description: "Yer (yalnızca plan) ya da boş" },
             category: { type: "string", enum: CATEGORIES },
             linkToPlan: { type: "boolean", description: "Aynı ifadedeki plana bağlı görev/not ise true" },
+            assignTo: {
+              type: "array",
+              items: { type: "string" },
+              description: "Sorumlu kişiler: yalnızca verilen kişi listesindeki adlar, listedeki yazımla. İş birine verilmediyse boş dizi.",
+            },
           },
           required: ["type", "title"],
         },
@@ -52,12 +58,25 @@ const Item = z.object({
   place: S,
   category: S,
   linkToPlan: z.boolean().catch(false),
+  assignTo: z.array(z.string()).optional().catch(undefined),
 });
 
 export const cleanMessage = (m) => (typeof m === "string" ? m.trim().slice(0, 300) : "");
 
+// Adları kişi listesindeki yazımına çevirir: ekli ("Sanver'e"), soyadsız, ses tanıma hatalı yazımlar da eşleşir; eşleşmeyen atılır
+function canon(names, people) {
+  const out = [];
+  for (const n of names) {
+    const hit = matchPerson(n, people);
+    if (hit && !out.includes(hit)) out.push(hit);
+  }
+  return out;
+}
+
 // Claude/Gemini çıktısını doğrular ve arayüzün kullandığı taslak biçimine çevirir
-export function toDrafts(raw) {
+// people: çalışan adları; verildiyse her kayda assignTo (sorumlular) eklenir.
+// message: yapay zekanın mesajı; "görevi Sanver'e verdim" deyip sorumluyu boş bıraktıysa oradan tamamlanır
+export function toDrafts(raw, people = [], message = "") {
   const items = (Array.isArray(raw) ? raw : [])
     .map((x) => Item.safeParse(x))
     .filter((r) => r.success)
@@ -74,7 +93,13 @@ export function toDrafts(raw) {
     place: i.type === "plan" ? i.place : "",
     cat: CATEGORIES.includes(i.category) ? i.category : "Genel",
     link: i.linkToPlan,
+    ...(people.length ? { assignTo: canon(i.assignTo || [], people) } : {}),
   }));
+
+  if (people.length && drafts.length && drafts.every((d) => !d.assignTo?.length)) {
+    const said = namesInMessage(message, people);
+    if (said.length) drafts.forEach((d) => (d.assignTo = said));
+  }
 
   const plan = drafts.find((d) => d.type === "plan");
   drafts.forEach((d) => {

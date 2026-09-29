@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Tile } from "@/components/dashboard/Row";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
+import { PayBox } from "@/features/receipts/Payment";
 import { DOC, TLk, catOf, mismatch, totalOf } from "@/lib/receipts";
 import { fdate, rel } from "@/lib/utils/format";
 
@@ -23,10 +24,10 @@ function Sec({ title, children }) {
 function Kv({ k, v, sub, strong }) {
   if (v === "" || v == null) return null;
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-2.5 text-[14.5px]">
+    <div className="flex items-start justify-between gap-4 px-4 py-2.5 text-[15px]">
       <span className="min-w-0 text-mut">
         {k}
-        {sub && <small className="block text-[12.5px]">{sub}</small>}
+        {sub && <small className="block text-[13px]">{sub}</small>}
       </span>
       <b className={`text-right tabular-nums ${strong ? "text-base font-bold text-fg" : "font-semibold"}`}>{v}</b>
     </div>
@@ -63,7 +64,7 @@ export default function ReceiptDetailPage() {
   const conf = r.conf;
 
   return (
-    <main className="mx-auto max-w-[480px] px-5 pb-32 pt-3">
+    <main className="mx-auto max-w-[480px] px-5 pb-[calc(40px+env(safe-area-inset-bottom))] pt-[calc(12px+env(safe-area-inset-top))]">
       <div className="flex items-center justify-between py-1.5">
         <Link href="/receipts" className={btn}><Icon name="back" className="size-[18px]" /> Fişler</Link>
         <button onClick={() => openReceipt({ edit: r.id })} className={btn}><Icon name="edit" className="size-[18px]" /> Düzenle</button>
@@ -80,16 +81,18 @@ export default function ReceiptDetailPage() {
             </button>
           )}
         </div>
-        <div className="mt-2 text-[30px] font-bold tracking-tight tabular-nums">{TLk(total)}</div>
-        <p className="text-[13.5px] text-mut">
+        <div className="mt-2 text-[28px] font-bold tracking-tight tabular-nums">{TLk(total)}</div>
+        <p className="text-[14px] text-mut">
           {[rel(r.date), r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
         </p>
         {bad && (
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[13.5px] font-semibold text-amber-800">
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[14px] font-semibold text-amber-800">
             <Icon name="alert" className="size-4" /> Kalemler {TLk(t.gross)}, fişte {TLk(r.declared)}
           </div>
         )}
       </div>
+
+      <PayBox r={r} />
 
       <Sec title={`Kalemler (${(r.items || []).length})`}>
         {(r.items || []).map((i, k) => (

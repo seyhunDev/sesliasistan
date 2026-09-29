@@ -2,15 +2,22 @@
 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
+import { PermissionsCard } from "@/features/permissions/PermissionsCard";
+import { BrainCard } from "@/features/brain/BrainCard";
+import { RemindersCard } from "@/features/reminders/RemindersCard";
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
+import { useData } from "@/features/data/DataProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
 import { useTts } from "@/features/speech/TtsProvider";
 import { logout } from "@/lib/auth";
 
-const ROLE_LABEL = { owner: "Ana hesap", staff: "Çalışan" };
+const ROLE_LABEL = { owner: "Ana hesap", staff: "Üye" };
 
 export function AccountCard() {
   const { profile, user } = useAuth();
   const tts = useTts();
+  const { members } = useData();
   if (!profile) return null;
   return (
     <div className="rounded-2xl border border-line bg-card p-4">
@@ -26,6 +33,19 @@ export function AccountCard() {
           <SpeakToggle withLabel />
         </div>
       )}
+
+      {profile.role === "owner" && (
+        <Link href="/staff" className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-bg px-3.5 py-3 active:opacity-60">
+          <span>
+            <b className="block text-[15px] font-medium">Kişiler</b>
+            <small className="text-[13px] text-mut">{members.length ? `${members.length} kişi · ekle, gör, kaldır` : "Kişi ekle (ekip ya da aile)"}</small>
+          </span>
+          <Icon name="chev" className="size-4 text-mut" />
+        </Link>
+      )}
+      <RemindersCard />
+      <PermissionsCard />
+      <BrainCard />
 
       <div className="mt-4">
         <Button variant="ghost" onClick={() => logout()}>Çıkış yap</Button>

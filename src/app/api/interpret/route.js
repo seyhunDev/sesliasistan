@@ -1,7 +1,7 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { NextResponse } from "next/server";
 import { callClaude } from "@/lib/ai/anthropic";
-import { callGemini } from "@/lib/ai/gemini";
+import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { interpretRules, refineRules } from "@/lib/ai/rules";
 import { TOOL, cleanMessage, toDrafts } from "@/lib/ai/schema";
 
@@ -20,6 +20,8 @@ Kurallar:
 - category: Antrenman, Toplantı, Kamp, Yarış, Ekipman veya Genel.
 - Plan başlığına yeri, saati veya "oluştur" gibi komut kelimelerini ekleme ("Kulüpte antrenman oluştur" değil "Antrenman"); yer place alanına gider.
 - Konuşma metni ses tanımadan geldiği için küçük yazım/sesteş hataları olabilir; anlamı koru, ama söylenmeyen bilgiyi ekleme.
+- Kişiler listesi verildiyse: ses tanıma adları bölebilir ya da yanlış yazabilir ("san ver" = Sanver). Listedeki bir kişiyi kastediyorsa başlıkta, notta ve message'da listedeki yazımı kullan.
+- Sorumlu (assignTo): kullanıcı işi birine VERİYORSA (ör. "Sanver tekneleri yıkasın", "Ali'ye söyle motoru kontrol etsin", "bunu Ali ile Sanver halletsin", "sorumlusu Ali") o kişiyi listedeki adıyla assignTo'ya yaz ve adı başlıktan çıkar ("Tekneleri yıka"). Kişiyle yapılan etkinlikte ya da kişiden söz edilen notta (ör. "Sanver ile toplantı", "Ali bugün gelmedi") atama yapma, adı başlıkta bırak. Listede olmayan kişiyi assignTo'ya yazma. assignTo'ya listedeki TAM adı yaz; soyad söylenmesi gerekmez, ekli ad ("Sanver'e") ya da ses tanımanın yanlış yazdığı ad ("san ver", "Sanvar") listedeki en yakın kişidir; tek başına ad önce ADI o olan kişiye aittir. message'da birine verdiğini söylüyorsan o kişi assignTo'da MUTLAKA olsun. Mevcut taslakta assignTo varsa kullanıcı değiştirmedikçe aynen koru. message'da atadığın kişiyi söyle ("görevi Sanver'e verdim").
 - Saat: tek günlük bir planın günü belli ama saati söylenmemişse saati BİR KEZ kısa bir soruyla sor ("Saat kaçta olsun?") ve time'ı boş bırak. Kullanıcı "tüm gün", "fark etmez", "saat yok" derse allDay true yap, time'ı boş bırak ve tekrar sorma. Çok günlü planlarda saati sorma. Aynı anda birden fazla soru sorma.
 - message: SESLİ OKUNACAK yanıt. Günlük konuşma diliyle, samimi, 1-2 kısa cümle yaz ve kullanıcıya verilen adıyla hitap et (ör. "Tamamdır Seyhun, yarın sabah dokuzda antrenmanı ve tekneleri hazırlama görevini hazırladım, kaydedebilirsin."). Resmi dil kullanma, sen diye hitap et. Emoji, madde işareti, parantez ve "09:00" gibi rakamlı saat yazma; saati "sabah dokuz", "akşam altı buçuk" gibi, günü "yarın", "cuma", "üç Ekim" gibi söyle. Bir planın tarihi belli değilse tarihi sor. Ad verilmediyse adsız, yine samimi yaz.`;
 
@@ -35,7 +37,7 @@ const hasKey = (p) => (p === "gemini" ? !!process.env.GEMINI_API_KEY : p === "an
 
 function ask(provider, user) {
   if (provider === "gemini") {
-    return callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: TOOL.input_schema });
+    return callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: TOOL.input_schema, timeoutMs: 12000 }); // geç kalırsa yedek kurallar
   }
   return callClaude({
     model: process.env.AI_MODEL_TEXT || "claude-haiku-4-5-20251001",
@@ -46,6 +48,9 @@ function ask(provider, user) {
 }
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
+
+// Ad yalnızca harf/rakam ve birkaç işaretten oluşabilir (istem enjeksiyonunu önler)
+const cleanName = (v, n = 40) => String(v ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, n);
 
 // ---- Konuşma bağlamı (mevcut kartlar + önceki yanıt) ----
 const str = (v, n = 300) => String(v ?? "").slice(0, n);
@@ -68,9 +73,15 @@ function cleanCtx(ctx) {
       place: str(d?.place, 80),
       category: str(d?.category, 20) || "Genel",
       linkToPlan: !!d?.linkToPlan,
+      ...(Array.isArray(d?.assignTo) ? { assignTo: d.assignTo.slice(0, 10).map((n) => cleanName(n)).filter(Boolean) } : {}),
     }))
     .filter((d) => d.title.trim() || d.body.trim());
-  return { drafts, mode: ctx.mode === "edit" ? "edit" : "create", last: str(ctx.last) };
+  // Konuşma geçmişi: kullanıcının ilk ve sonraki mesajları + asistanın yanıtları (devamlılık için)
+  const history = (Array.isArray(ctx.history) ? ctx.history : [])
+    .slice(-10)
+    .map((h) => ({ role: h?.role === "assistant" ? "assistant" : "user", text: str(h?.text) }))
+    .filter((h) => h.text.trim());
+  return { drafts, history, mode: ctx.mode === "edit" ? "edit" : "create", last: str(ctx.last) };
 }
 
 const toClient = (d) => ({
@@ -78,14 +89,23 @@ const toClient = (d) => ({
   cat: d.category || "Genel", link: d.linkToPlan, allDay: d.allDay, askedTime: d.askedTime,
 });
 
-function buildUser({ today, weekday, name, text, ctx }) {
-  const head = `Bugün: ${today} (${weekday}). Saat dilimi: Europe/Istanbul.\nKullanıcının adı: ${name || "(verilmedi)"}\n`;
-  if (!ctx || (!ctx.drafts.length && !ctx.last)) return `${head}\nKullanıcı metni:\n"""\n${text}\n"""`;
+const PREFER = { plan: "Planlar", task: "Görevler", note: "Notlar" };
+
+function buildUser({ today, weekday, name, text, ctx, people, prefer }) {
+  const staff = people.length ? `Kişiler (sorumlu atanabilecek kişiler): ${people.join(", ")}\n` : "";
+  const page = Object.hasOwn(PREFER, prefer)
+    ? `Kullanıcı ${PREFER[prefer]} sayfasından yazıyor: türü açıkça belli değilse ${prefer} olarak kaydet; açıkça başka tür söylüyorsa ona uy.\n`
+    : "";
+  const head = `Bugün: ${today} (${weekday}). Saat dilimi: Europe/Istanbul.\nKullanıcının adı: ${name || "(verilmedi)"}\n${staff}${page}`;
+  if (!ctx || (!ctx.drafts.length && !ctx.last && !ctx.history.length)) return `${head}\nKullanıcı metni:\n"""\n${text}\n"""`;
+  const convo = ctx.history.length
+    ? `Konuşmanın şimdiye kadarki hali (eskiden yeniye):\n${ctx.history.map((h) => `${h.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${h.text}`).join("\n")}\n`
+    : "";
   const rules =
     ctx.mode === "edit"
       ? `DÜZENLEME: Kullanıcı yalnızca bu tek kaydı değiştirmek istiyor. items içinde AYNI TÜRDE tek kayıt döndür; söylenmeyen alanları aynen koru. Saati kaldırmak veya tüm gün yapmak istiyorsa allDay true ve time boş. message'da ne değiştirdiğini kısaca söyle.`
       : `DEVAM: Kullanıcının yeni mesajı çoğunlukla asistanın sorusuna cevap veya mevcut taslağı tamamlayan/değiştiren bir düzeltme. items içinde GÜNCEL TAM listeyi döndür: değişmeyen kayıtları aynen koru, cevabı ilgili kayda işle (saat söylediyse plana time yaz; tarih söylediyse date yaz; günü değiştirdiyse plana bağlı görevlerin tarihini de güncelle). Yeni kayıt ekleme; yalnızca kullanıcı açıkça yeni bir plan, görev veya not söylüyorsa ekle. Kaldırmak istediği kaydı listeden çıkar. askedTime true olan planın saatini TEKRAR SORMA. Kullanıcı saati vermek istemiyorsa ("fark etmez", "tüm gün", "saat yok") allDay true yap, time'ı boş bırak ve "tüm gün olarak hazırlıyorum" de. Eksik bilgi kalmadıysa message'da kısaca onayla ve kaydedebileceğini söyle.`;
-  return `${head}\nMevcut taslak kayıtlar (JSON):\n${JSON.stringify(ctx.drafts)}\n${ctx.last ? `Asistanın önceki yanıtı: "${ctx.last}"\n` : ""}\nKullanıcının yeni mesajı:\n"""\n${text}\n"""\n\n${rules}`;
+  return `${head}\n${convo}\nMevcut taslak kayıtlar (JSON):\n${JSON.stringify(ctx.drafts)}\n${ctx.last && !ctx.history.length ? `Asistanın önceki yanıtı: "${ctx.last}"\n` : ""}\nKullanıcının yeni mesajı:\n"""\n${text}\n"""\n\nYeni mesajı konuşmanın tamamıyla BİRLİKTE değerlendir: ilk mesajda söylenen bilgiler (ne, hangi gün, saat, yer) yeni mesaj aksini söylemedikçe geçerli kalır; yeni mesaj yalnızca değiştirir, tamamlar ya da ekler.\n${rules}`;
 }
 
 // Eksik bilgi için tek soru (yedek kural motoru). Cevap gelmezse plan tüm gün olarak eklenir.
@@ -109,9 +129,9 @@ function rulesMessage(items, name) {
   return `Tamamdır${name ? " " + name : ""}, ${list} hazırladım.${q ? " " + q : ""}`;
 }
 
-export async function POST(request) {
+async function handle(request) {
   const au = await requireUser(request);
-  if (!au.ok) return unauthorized();
+  if (!au.ok) return unauthorized(au);
   let body;
   try {
     body = await request.json();
@@ -123,8 +143,9 @@ export async function POST(request) {
   if (!text) return bad("Metin boş");
   if (text.length > 2000) return bad("Metin çok uzun (en fazla 2000 karakter)");
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today) ? body.today : new Date().toISOString().slice(0, 10);
-  // Ad yalnızca harf/rakam ve birkaç işaretten oluşabilir (istem enjeksiyonunu önler)
-  const name = String(body?.name ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30);
+  const name = cleanName(body?.name, 30);
+  // Ana hesabın çalışanları: sorumlu atama ve adların doğru yazımı için (yalnızca adlar gelir)
+  const people = [...new Set((Array.isArray(body?.people) ? body.people : []).slice(0, 20).map((n) => cleanName(n)).filter(Boolean))];
   const ctx = cleanCtx(body?.context);
   const hasDrafts = !!ctx?.drafts.length;
 
@@ -151,10 +172,10 @@ export async function POST(request) {
   try {
     const weekday = new Date(`${today}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
     const t0 = Date.now();
-    const input = await ask(provider, buildUser({ today, weekday, name, text, ctx }));
+    const input = await ask(provider, buildUser({ today, weekday, name, text, ctx, people, prefer: body?.prefer }));
     const ms = Date.now() - t0;
     console.log(`[interpret:${provider}] toplam ${ms} ms${hasDrafts ? " (devam)" : ""}`);
-    const items = toDrafts(input?.items);
+    const items = toDrafts(input?.items, people, input?.message);
     if (!items.length && !hasDrafts) throw new Error("AI kayıt üretmedi");
     const message = cleanMessage(input?.message) || (items.length ? rulesMessage(items, name) : "Bunu tam anlayamadım, bir daha söyler misin?");
     return NextResponse.json({ items, message, source: "ai", provider, ms });
@@ -163,3 +184,5 @@ export async function POST(request) {
     return fallback("AI yanıt vermedi, yedek kurallar kullanıldı");
   }
 }
+
+export const POST = withAiCool(handle);

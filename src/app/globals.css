@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f7f9;
-  --card: #ffffff;
-  --fg: #111827;
-  --mut: #6b7280;
-  --line: #e5e7eb;
-  --acc: #4f46e5;
-  --acc2: #4f46e5; /* gradyan kullanan eski dosyalar düz renk görünsün */
-  --rec: #ef4444;
-  --ok: #10b981;
+  /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı, sakin deniz mavisi vurgu */
+  --bg: #f4f3ef;
+  --card: #fdfcfa;
+  --fg: #26282c;
+  --mut: #74777d;
+  --line: #e7e5df;
+  --acc: #3e6e84;
+  --acc2: #3e6e84; /* gradyan kullanan eski dosyalar düz renk görünsün */
+  --rec: #c8574f;
+  --ok: #4a8a64;
   --proc: #f59e0b;
 }
 
@@ -24,6 +25,11 @@
   --color-rec: var(--rec);
   --color-ok: var(--ok);
   --color-proc: var(--proc);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* Kalınlıklar bir kademe hafif: başlıklar dolgun ama bağırmıyor */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 590;
+  --font-weight-bold: 660;
 }
 
 *, ::before, ::after { border-color: var(--line); }
@@ -33,10 +39,14 @@ body {
   min-height: 100%;
   background: var(--bg);
   color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.45;
+  letter-spacing: -0.006em;
+  font-feature-settings: "cv11", "ss03"; /* Inter: sade "a", yuvarlak rakam biçimleri */
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
   padding-top: env(safe-area-inset-top);
@@ -88,7 +98,7 @@ body {
 
 /* Fiş okunurken tarama çizgisi */
 @keyframes scan { 0% { top: 0; } 50% { top: calc(100% - 3px); } 100% { top: 0; } }
-.scanline { position: absolute; left: 0; right: 0; height: 3px; background: var(--acc); box-shadow: 0 0 18px 6px rgba(79, 70, 229, .35); animation: scan 2.4s ease-in-out infinite; }
+.scanline { position: absolute; left: 0; right: 0; height: 3px; background: var(--acc); box-shadow: 0 0 18px 6px rgba(62, 110, 132, .35); animation: scan 2.4s ease-in-out infinite; }
 
 /* Ana sayfa konuşma küresi */
 @keyframes orbspin { to { transform: rotate(360deg); } }
@@ -99,8 +109,19 @@ body {
 }
 @keyframes glow { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: .9; transform: scale(1.08); } }
 .orb { position: relative; width: 176px; height: 176px; display: grid; place-items: center; -webkit-tap-highlight-color: transparent; }
-.orb-glow { position: absolute; inset: -34px; border-radius: 50%; background: radial-gradient(circle, rgba(79, 70, 229, .38), rgba(124, 58, 237, .16) 45%, transparent 70%); filter: blur(14px); animation: glow 5s ease-in-out infinite; }
-.orb-shape { position: absolute; inset: 0; overflow: hidden; animation: morph 9s ease-in-out infinite; box-shadow: 0 24px 60px -12px rgba(79, 70, 229, .5), inset 0 0 36px rgba(255, 255, 255, .28); }
-.orb-fill { position: absolute; inset: -30%; background: conic-gradient(from 0deg, #4f46e5, #7c3aed, #06b6d4, #6366f1, #4f46e5); filter: blur(10px); animation: orbspin 10s linear infinite; }
+.orb-glow { position: absolute; inset: -34px; border-radius: 50%; background: radial-gradient(circle, rgba(62, 110, 132, .38), rgba(79, 130, 153, .12) 45%, transparent 70%); filter: blur(14px); animation: glow 5s ease-in-out infinite; }
+.orb-shape { position: absolute; inset: 0; overflow: hidden; animation: morph 9s ease-in-out infinite; box-shadow: 0 24px 60px -12px rgba(62, 110, 132, .5), inset 0 0 36px rgba(255, 255, 255, .28); }
+.orb-fill { position: absolute; inset: -30%; background: conic-gradient(from 0deg, #3e6e84, #4f8299, #3a6577, #4a7c92, #3e6e84); filter: blur(10px); animation: orbspin 10s linear infinite; }
 .orb-shine { position: absolute; inset: 0; background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .6), transparent 42%); }
-.home-aura { background: radial-gradient(circle, rgba(79, 70, 229, .10), rgba(6, 182, 212, .05) 45%, transparent 70%); filter: blur(24px); }
+.home-aura { background: radial-gradient(circle, rgba(62, 110, 132, .10), rgba(6, 182, 212, .05) 45%, transparent 70%); filter: blur(24px); }
+
+/* Açılır listeler: tarayıcının kendi oku kenara yapışık ve cihaza göre farklı; yerine her yerde aynı, eşit boşluklu ok */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2374777d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.25rem !important;
+}

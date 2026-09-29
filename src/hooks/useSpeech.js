@@ -3,10 +3,12 @@ import { authFetch } from "@/lib/authFetch";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
+import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
+import { toWav16k } from "@/lib/speech/wav";
 
 const ERR = {
-  "not-allowed": "Mikrofon izni verilmedi. Tarayıcı ayarlarından bu siteye mikrofon izni ver.",
-  "service-not-allowed": "Bu cihazda ses tanıma kapalı. Ayarlar'dan Dikte'yi aç.",
+  "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
+  "service-not-allowed": "Bu cihazda ses tanıma kapalı. iPhone: Ayarlar › Genel › Klavye › Dikte'yi Etkinleştir'i aç, ayrıca Ayarlar › Siri'de Siri'yi aç.",
   "no-speech": "Ses duyulmadı, tekrar dene.",
   "audio-capture": "Mikrofon bulunamadı.",
   network: "Ses tanıma için internet gerekli.",
@@ -16,13 +18,17 @@ const FATAL = ["not-allowed", "service-not-allowed", "audio-capture", "language-
 const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
-const VOICE_LVL = 0.09; // kayıt yolunda "ses var" eşiği
+const VOICE_LVL = 0.035; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir)
+const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms)
 
 // status: "idle" | "listening" | "transcribing"
 // onFinal(text, mode): mode "send" (hemen gönder) | "edit" (metin kutuda kalsın)
-// start({ autoStop: ms }): bu kadar süre konuşulmazsa dinleme biter (0 = kapalı, örn. basılı tutma modu).
+// start({ autoStop: ms, auto, quiet }): autoStop kadar konuşulmazsa dinleme biter (0 = kapalı).
+//   auto: kendiliğinden başlatıldı (15 sn sessizlikte kapanır). quiet: hatalar gösterilmez
+//   (yalnızca yanıt okunduktan sonra yeniden dinlemede; kullanıcı düğmeye bastıysa hata hep görünür).
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
-export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
+// names: kişi adları (çalışanlar); ses çevirisine ipucu olarak gider ki doğru yazılsın
+export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -33,7 +39,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail };
+  cb.current = { onFinal, onFail, names };
   const fail = (m) => {
     if (!R.current.silent) cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
   };
@@ -85,7 +91,9 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
           sum += v * v;
         }
         raw = Math.min(1, Math.sqrt(sum / s.buf.length) * 4); // gerçek ses seviyesi (kayıt yolu)
-        if (raw > VOICE_LVL) {
+        // Ortam gürültüsünü öğren: en düşük seviye, yavaşça yükselerek
+        s.floor = s.floor == null ? raw : Math.min(raw, s.floor + 0.0004);
+        if (raw > Math.max(VOICE_LVL, s.floor * 3)) {
           s.voiceSeen = true;
           s.lastSpeech = now;
         }
@@ -101,11 +109,17 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
         stopRef.current?.("send");
         return;
       }
+      // Kayıt yolu: konuşuldu ve sustu, kendiliğinden gönder (canlı yazı olmadığı için bekletmeyelim)
+      if (s.kind === "server" && s.voiceSeen && now - s.lastSpeech >= END_SILENCE) {
+        stopRef.current?.("send");
+        return;
+      }
       if (s.autoStop > 0) {
         const silent = now - Math.max(s.lastSpeech || 0, s.t0);
         setRemaining(silent >= 3000 ? Math.max(0, Math.ceil((s.autoStop - silent) / 1000)) : null);
         if (silent >= s.autoStop) {
-          if (s.text || s.voiceSeen) stopRef.current?.("send"); // konuşulmuştu: gönder
+          // Kayıt yolunda ses ölçer yanılabilir (sessiz mikrofon, askıdaki ses motoru): kaydı atma, sunucu karar versin
+          if (s.text || s.voiceSeen || s.kind === "server") stopRef.current?.("send"); // konuşulmuştu: gönder
           else {
             cancelNow(); // hiç konuşulmadı: kapat
             fail(NO_SPEECH);
@@ -138,6 +152,8 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
     s.base = ""; // önceki oturumlardan biriken metin
 
     const begin = () => {
+      s.begunAt = Date.now();
+      s.gotResult = false;
       const rec = new SR();
       rec.lang = lang;
       rec.interimResults = true;
@@ -155,6 +171,8 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
           if (res.isFinal) f += res[0].transcript;
           else i += res[0].transcript;
         }
+        s.gotResult = true;
+        s.emptyEnds = 0;
         const pre = s.base ? `${s.base} ` : "";
         const full = `${pre}${f}${i}`.trim();
         if (full !== s.text) s.lastSpeech = Date.now();
@@ -165,9 +183,18 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
       };
       rec.onerror = (e) => {
         if (s.sid === sid && s.rec === rec) s.error = e.error;
+        if (e.error === "not-allowed") savePermission("microphone", "denied");
       };
       rec.onend = () => {
         if (s.sid !== sid || s.rec !== rec) return;
+        // Hiç sonuç vermeden hemen biten oturumlar (iPhone'da tanıma başlamadıysa): sonsuz döngüde "Dinliyorum"da kalma
+        if (!s.gotResult && Date.now() - s.begunAt < 1500) s.emptyEnds = (s.emptyEnds || 0) + 1;
+        if (s.emptyEnds >= 3 && !s.text) {
+          s.rec = null;
+          finish();
+          fail(ERR[s.error] || "Ses tanıma başlamadı. iPhone'da Ayarlar › Genel › Klavye › Dikte'yi aç ya da tekrar dene.");
+          return;
+        }
         // Motor kendiliğinden bitirdiyse (sessizlik, cümle sonu) ve kullanıcı hâlâ dinleniyorsa yeniden başlat
         if (s.status === "listening" && !FATAL.includes(s.error) && s.restarts < 80 && Date.now() - s.t0 < MAX_SEC * 1000) {
           s.restarts += 1;
@@ -199,10 +226,13 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      savePermission("microphone", "granted");
     } catch (e) {
+      const st = errorState(e);
+      if (st !== "error") savePermission("microphone", st);
       if (!alive()) return;
       finish();
-      fail(e.name === "NotAllowedError" ? ERR["not-allowed"] : ERR["audio-capture"]);
+      fail(st === "denied" ? `Mikrofon izni verilmedi. ${permissionHelp("microphone")}` : ERR["audio-capture"]);
       return;
     }
     if (!alive()) {
@@ -213,6 +243,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
+      ctx.resume?.().catch(() => {}); // iPhone'da askıda başlayabilir: seviye ölçümü için uyandır
       const an = ctx.createAnalyser();
       an.fftSize = 256;
       ctx.createMediaStreamSource(stream).connect(an);
@@ -238,8 +269,17 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
         return;
       }
       try {
+        // WAV'a çevir (her sağlayıcı tanır); olmazsa özgün kaydı gönder
+        let upload = blob;
+        let name = `kayit.${type.includes("mp4") ? "m4a" : "webm"}`;
+        try {
+          upload = await toWav16k(blob);
+          name = "kayit.wav";
+        } catch {}
+        if (!alive()) return;
         const fd = new FormData();
-        fd.append("audio", blob, `kayit.${type.includes("mp4") ? "m4a" : "webm"}`);
+        fd.append("audio", upload, name);
+        if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
         const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
         const data = await res.json().catch(() => ({}));
         if (!alive()) return;
@@ -272,7 +312,11 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
   const start = useCallback((opts = {}) => {
     const s = R.current;
     if (s.status !== "idle") return;
-    s.silent = !!opts.auto;
+    s.silent = !!opts.quiet;
+    if (!appAllowed("microphone")) {
+      fail(offMessage("microphone"));
+      return;
+    }
     if (!window.isSecureContext) {
       fail("Mikrofon için HTTPS gerekir. Tünel adresini (https://…) kullan.");
       return;
@@ -285,7 +329,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR" } = {}) {
     s.sid += 1;
     const sid = s.sid;
     Object.assign(s, {
-      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, analyser: null,
+      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, analyser: null, emptyEnds: 0, floor: null,
       stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
     });
     setFinalText("");

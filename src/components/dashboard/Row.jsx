@@ -19,7 +19,7 @@ export function Row({ icon, title, sub, right, badge, onClick, href }) {
         <b className="block truncate text-[15px] font-medium">{title}</b>
         {sub && <small className="mt-0.5 block truncate text-[13px] text-mut">{sub}</small>}
       </span>
-      {badge && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11.5px] font-semibold text-amber-800">{badge}</span>}
+      {badge && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[12px] font-semibold text-amber-800">{badge}</span>}
       {right ? (
         <span className="shrink-0 text-[15px] font-semibold tabular-nums">{right}</span>
       ) : (

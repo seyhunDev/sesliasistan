@@ -8,9 +8,11 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
+import { appAllowed, isMobile, mediaSupported, offMessage } from "@/lib/permissions";
 import { CAT, CATS, PAYS, TLk, VATS, calcTotals, confAvg, lowConf, parseQty, parseTL, toInput } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
 import { readReceipt } from "@/services/receiptService";
+import { CameraView } from "./CameraView";
 
 let seq = 0;
 const nid = () => `i${Date.now()}_${seq++}`;
@@ -87,7 +89,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const { receipts, saveReceipt, updateReceipt, deleteRecord, loadReceiptImage } = useData();
   const editId = seed?.edit || null;
 
-  const [stage, setStage] = useState("pick"); // pick | reading | form
+  const [stage, setStage] = useState("pick"); // pick | camera | reading | form
   const [form, setForm] = useState(emptyForm);
   const [conf, setConf] = useState(null);
   const [image, setImage] = useState(null); // gösterilen fotoğraf (dataURL)
@@ -98,7 +100,9 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const [more, setMore] = useState(false);
   const [armed, setArmed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [camError, setCamError] = useState("");
   const ctrl = useRef(null);
+  const camBack = useRef("pick"); // canlı kameradan vazgeçince dönülecek adım
   const camRef = useRef(null);
   const galRef = useRef(null);
 
@@ -109,6 +113,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
       return;
     }
     setError("");
+    setCamError("");
     setArmed(false);
     setSaving(false);
     setImageDirty(false);
@@ -126,7 +131,11 @@ export function ReceiptSheet({ open, onClose, seed }) {
     setForm(emptyForm());
     setConf(null);
     setImage(null);
-    setStage(seed?.manual ? "form" : "pick");
+    camBack.current = "pick";
+    if (seed?.camera && !appAllowed("camera")) setCamError(offMessage("camera"));
+    else if (seed?.camera && !mediaSupported()) setCamError("Bu tarayıcıda kamera doğrudan açılamıyor. Aşağıdan fotoğraf çekebilirsin.");
+    // seed.camera: "fiş yükle" gibi komutlarla gelindi, kamera hemen açılır
+    setStage(seed?.manual ? "form" : seed?.camera && mediaSupported() && appAllowed("camera") ? "camera" : "pick");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
 
@@ -165,7 +174,27 @@ export function ReceiptSheet({ open, onClose, seed }) {
   async function onFile(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) takeFile(file);
+  }
+
+  // Telefonda sistem kamerası (daha iyi odak), bilgisayarda uygulama içi kamera
+  function takePhoto() {
+    setCamError("");
+    if (!appAllowed("camera")) return setCamError(offMessage("camera"));
+    if (!isMobile() && mediaSupported()) {
+      camBack.current = stage === "camera" ? camBack.current : stage === "reading" ? (editId ? "form" : "pick") : stage;
+      setError("");
+      setStage("camera");
+    } else camRef.current?.click();
+  }
+
+  function onCamError(e) {
+    setCamError(e.message || "Kamera açılamadı");
+    setStage(camBack.current === "form" ? "form" : "pick");
+  }
+
+  async function takeFile(file) {
+    setCamError("");
     setStage("reading");
     setError("");
     try {
@@ -253,16 +282,31 @@ export function ReceiptSheet({ open, onClose, seed }) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
+        {/* Canlı kamera (kapanınca akış durur) */}
+        {open && stage === "camera" && (
+          <CameraView
+            onShot={takeFile}
+            onError={onCamError}
+            onGallery={() => galRef.current?.click()}
+            onCancel={() => setStage(camBack.current)}
+          />
+        )}
+
         {/* 1. Fotoğraf seç */}
         {stage === "pick" && (
           <div className="fade-in flex min-h-full flex-col items-center justify-center py-6 text-center">
+            {camError && (
+              <p className="mb-5 flex w-full max-w-[320px] items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-left text-[13px] leading-snug text-amber-900">
+                <Icon name="alert" className="mt-px size-4" /> {camError}
+              </p>
+            )}
             <span className="grid size-20 place-items-center rounded-3xl bg-card text-acc ring-1 ring-line">
               <Icon name="receipt" className="size-9" />
             </span>
             <p className="mt-4 text-[17px] font-semibold">Fişin fotoğrafını çek</p>
-            <p className="mt-1 text-[13.5px] text-mut">Düz zemine koy, tamamı görünsün</p>
+            <p className="mt-1 text-[14px] text-mut">Düz zemine koy, tamamı görünsün</p>
             <div className="mt-6 flex w-full max-w-[320px] flex-col gap-2.5">
-              <button onClick={() => camRef.current?.click()} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98]">
+              <button onClick={takePhoto} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98]">
                 <Icon name="camera" className="size-5" /> Fotoğraf çek
               </button>
               <button onClick={() => galRef.current?.click()} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-base font-semibold transition active:scale-[.98]">
@@ -287,7 +331,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                 <p className="flex items-center gap-2 text-[15px] font-semibold">
                   <Icon name="alert" className="size-[18px]" /> Okunamadı
                 </p>
-                <p className="mt-1 text-[13.5px]">{error}</p>
+                <p className="mt-1 text-[14px]">{error}</p>
                 <div className="mt-3 flex gap-2">
                   {aiImage && (
                     <button onClick={() => read(aiImage)} className="h-10 rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white active:scale-95">
@@ -297,7 +341,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                   <button onClick={() => { setError(""); setStage("form"); }} className="h-10 rounded-xl border border-amber-300 px-4 text-sm font-semibold active:scale-95">
                     Elle gir
                   </button>
-                  <button onClick={() => camRef.current?.click()} className="h-10 rounded-xl px-3 text-sm font-semibold active:scale-95">
+                  <button onClick={takePhoto} className="h-10 rounded-xl px-3 text-sm font-semibold active:scale-95">
                     Yeniden çek
                   </button>
                 </div>
@@ -319,6 +363,11 @@ export function ReceiptSheet({ open, onClose, seed }) {
         {/* 3. Form */}
         {stage === "form" && (
           <div className="fade-in space-y-4 pt-1">
+            {camError && (
+              <p className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-[13px] leading-snug text-amber-900">
+                <Icon name="alert" className="mt-px size-4" /> {camError}
+              </p>
+            )}
             {/* Fotoğraf + güven */}
             <div className="flex items-center gap-3">
               {image ? (
@@ -334,7 +383,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => camRef.current?.click()} className="grid size-16 place-items-center rounded-xl border border-dashed border-line bg-card text-mut active:scale-95">
+                <button type="button" onClick={takePhoto} className="grid size-16 place-items-center rounded-xl border border-dashed border-line bg-card text-mut active:scale-95">
                   <Icon name="camera" className="size-6" />
                 </button>
               )}

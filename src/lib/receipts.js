@@ -3,7 +3,7 @@ export const CAT = {
   Market: { icon: "cart", color: "#10b981" },
   Yakıt: { icon: "fuel", color: "#f59e0b" },
   Yemek: { icon: "utensils", color: "#ef4444" },
-  Ekipman: { icon: "anchor", color: "#4f46e5" },
+  Ekipman: { icon: "anchor", color: "#3e6e84" },
   Fatura: { icon: "zap", color: "#06b6d4" },
   Ulaşım: { icon: "nav", color: "#8b5cf6" },
   Bakım: { icon: "wrench", color: "#64748b" },

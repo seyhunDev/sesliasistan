@@ -56,7 +56,7 @@ export async function POST(request) {
   // TTS_ENGINE=device: Gemini ses kotası harcanmaz, istemci cihazın kendi sesiyle okur
   if (process.env.TTS_ENGINE === "device") return NextResponse.json({ error: "Sunucu sesi kapalı" }, { status: 501 });
   const au = await requireUser(request);
-  if (!au.ok) return unauthorized();
+  if (!au.ok) return unauthorized(au);
   if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "Ses anahtarı yok" }, { status: 501 });
 
   let body;

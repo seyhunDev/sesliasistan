@@ -1,4 +1,6 @@
 // Yedek yorumlayıcı: AI anahtarı yokken veya AI hata verdiğinde çalışır.
+import { normalizeSpeech } from "@/lib/speech/normalize";
+
 const MONR = "ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık";
 const MONS = MONR.split("|");
 const NUMW = { bir: 1, iki: 2, "üç": 3, "dört": 4, "beş": 5, "altı": 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, onbir: 11, oniki: 12 };
@@ -198,6 +200,7 @@ function expandDates(sg) {
 }
 
 export function interpretRules(text, today) {
+  text = normalizeSpeech(text);
   const base = new Date(`${today}T00:00`);
   const plus = (n) => {
     const d = new Date(base);
@@ -273,7 +276,7 @@ const ALLDAY = /(tüm gün|bütün gün|gün boyu|fark etmez|farketmez|saat yok|
 // append=true: Yeni kayıt ekranı (yeni bir şey söylenirse listeye eklenir). append=false: düzenleme (tek kayıt).
 export function refineRules(text, drafts, today, name = "", append = true) {
   const c = makeCtx(today);
-  const raw = text.trim();
+  const raw = normalizeSpeech(text);
   const x = parseWhen(raw, c);
   let time = x.time;
   // "10", "10 olsun", "saat 10.30 yap" gibi yalın saat cevabı

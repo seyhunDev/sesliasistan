@@ -20,7 +20,7 @@ export function RecordList({ items, plans, onOpen, onToggle }) {
     <div className="fade-in mt-5">
       {keys.map((k) => (
         <section key={k}>
-          <h3 className="mb-2 mt-4 px-1 text-[12.5px] font-semibold uppercase tracking-wider text-mut">{k === "Tarihsiz" ? "Tarihsiz" : fdate(k)}</h3>
+          <h3 className="mb-2 mt-4 px-1 text-[13px] font-semibold text-mut">{k === "Tarihsiz" ? "Tarihsiz" : fdate(k)}</h3>
           <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
             {groups[k].map((it) =>
               it.kind === "task" ? (
