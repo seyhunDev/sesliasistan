@@ -183,9 +183,10 @@ const hello = () => {
   return h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
 };
 
-// ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler.
-// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır ve günün içeriği
-// (HomeFeed) selamla öneriler arasında, sahnenin içinde kayar. Ana sayfada sahne kendiliğinden küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
+// ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta öneriler, büyük küre ve sekmeler.
+// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır: selam ve gün özeti
+// (yalnız ana sayfada), altında günün içeriği (HomeFeed) sahnenin içinde kayar. Ana sayfada sahne kendiliğinden
+// küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
 // kart/taslak/onay gerekince asistan tam açılır.
 // Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
 // tutamağa dokununca büyür. Boyut değişimi yükseklik geçişiyle yumuşak; geçiş sırasında gelen kaydırma olayları
@@ -265,8 +266,14 @@ export function TabBar({ cfg }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Geçiş bitince bir kez yazılır:
-  // her karede yazılırsa sayfa her karede yeniden dizilir (iPhone'da takılma).
+  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Aynı sayfada yalnızca büyür:
+  // sahne küçülünce boşluk da küçülseydi sayfa kısalır, kaydırma geri çekilir ve içerik kayardı (takvimde güne
+  // dokununca). Sayfa değişince sıfırlanır. Geçiş bitince bir kez yazılır (her karede yazılırsa iPhone'da takılır).
+  const peak = useRef(0);
+  useEffect(() => {
+    peak.current = box.current?.offsetHeight || 0;
+    if (peak.current) document.documentElement.style.setProperty("--stage-h", `${peak.current}px`);
+  }, [path]);
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -274,6 +281,8 @@ export function TabBar({ cfg }) {
     const ro = new ResizeObserver(() => {
       clearTimeout(t);
       t = setTimeout(() => {
+        if (el.offsetHeight <= peak.current) return;
+        peak.current = el.offsetHeight;
         quietUntil.current = Math.max(quietUntil.current, Date.now() + 300);
         document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`);
       }, 320);
@@ -395,6 +404,7 @@ export function TabBar({ cfg }) {
               ) : mode === "big" ? (
                 /* Boşta: selam, günün özeti, (ana sayfada) sıradaki ve senin için, öneriler, küre */
                 <div key="big" className="stage-in space-y-3.5 pb-4">
+                  {home && (
                   <div>
                     <p className="text-[0.6875rem] font-bold uppercase tracking-[.12em] text-acc">Asistan</p>
                     <p className="mt-1 text-[1.25rem] font-semibold leading-snug tracking-tight">
@@ -402,6 +412,7 @@ export function TabBar({ cfg }) {
                       {first ? `, ${first}` : ""}. <span className="font-medium text-mut">{summary}</span>
                     </p>
                   </div>
+                  )}
                   {home && (
                     <div
                       ref={feed}
