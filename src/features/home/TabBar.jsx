@@ -12,12 +12,9 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useKind } from "@/features/auth/useKind";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { useData } from "@/features/data/DataProvider";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
 import { HomeFeed } from "./OwnerHome";
-import { briefLine } from "./AssistantBrief";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -178,14 +175,9 @@ function NavTab({ href, icon, label, active, badge, onClick }) {
   );
 }
 
-const hello = () => {
-  const h = new Date().getHours();
-  return h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
-};
-
 // ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta öneriler, büyük küre ve sekmeler.
-// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır: selam ve gün özeti
-// (yalnız ana sayfada), altında günün içeriği (HomeFeed) sahnenin içinde kayar. Ana sayfada sahne kendiliğinden
+// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır ve günün içeriği
+// (HomeFeed) sahnenin içinde kayar. Ana sayfada sahne kendiliğinden
 // küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
 // kart/taslak/onay gerekince asistan tam açılır.
 // Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
@@ -200,8 +192,6 @@ export function TabBar({ cfg }) {
   const { openReceipt } = useReceipt();
   const { openBirthday } = useBirthday();
   const { unreadTotal } = useChat();
-  const { plans, tasks, myUid } = useData();
-  const { profile } = useAuth();
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
   const [small, setSmall] = useState(false);
@@ -361,9 +351,7 @@ export function TabBar({ cfg }) {
     setTyping(true);
   };
   const ask = (t) => (cfg.onSend ? cfg.onSend(t) : openAssistant({ text: t, dock: true, prefer: cfg.prefer, examples: cfg.ex }));
-  const summary = briefLine({ plans, tasks, uid: myUid, unread: unreadTotal });
   const chips = cfg.ex || ["Bugün neler var?", "Yarın 10'da antrenman ekle", "Ekibe yaz"];
-  const first = (profile?.name || "").split(" ")[0];
 
   return (
     <>
@@ -404,15 +392,6 @@ export function TabBar({ cfg }) {
               ) : mode === "big" ? (
                 /* Boşta: selam, günün özeti, (ana sayfada) sıradaki ve senin için, öneriler, küre */
                 <div key="big" className="stage-in space-y-3.5 pb-4">
-                  {home && (
-                  <div>
-                    <p className="text-[0.6875rem] font-bold uppercase tracking-[.12em] text-acc">Asistan</p>
-                    <p className="mt-1 text-[1.25rem] font-semibold leading-snug tracking-tight">
-                      {hello()}
-                      {first ? `, ${first}` : ""}. <span className="font-medium text-mut">{summary}</span>
-                    </p>
-                  </div>
-                  )}
                   {home && (
                     <div
                       ref={feed}
