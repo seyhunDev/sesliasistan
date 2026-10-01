@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 
 const CLOSE_AT = 110; // bu kadar piksel aşağı çekilirse kapanır
 const FLICK = 0.6; // ya da bu hızdan (px/ms) hızlı fırlatılırsa
 
+const noop = () => () => {};
 // Alttan açılan pencere: X ile, arka plana dokunarak, Esc ile ya da aşağı çekerek kapanır.
+// Sayfanın en üst katmanına (body) çizilir: kaydırılan ya da soldurma maskeli bir kutunun (ör. asistan sahnesi)
+// içinden açılsa da kırpılmaz, altında kalmaz.
 // Aşağı çekme tutamaçtan/başlıktan her zaman, içerikten yalnızca içerik en üstteyken çalışır.
 export function Sheet({ open, onClose, title, children }) {
   const [dy, setDy] = useState(0);
@@ -48,7 +52,8 @@ export function Sheet({ open, onClose, title, children }) {
   };
 
   const dragging = dy > 0;
-  return (
+  const client = useSyncExternalStore(noop, () => true, () => false);
+  const ui = (
     <>
       <div
         onClick={onClose}
@@ -80,4 +85,5 @@ export function Sheet({ open, onClose, title, children }) {
       </div>
     </>
   );
+  return client ? createPortal(ui, document.body) : ui;
 }
