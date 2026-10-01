@@ -48,7 +48,6 @@ const SILENCE_MS = 0; // Otomatik kapanma kapalı
 const ENDPOINT = 1300;
 const BEAT = 350;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const EXAMPLES = ["Bu hafta neler var?", "Fiş yükle", "Yarın saat 10'da antrenman ekle", "Not al malzeme odası dolu", "Tekneleri hazırla görevini tamamla", "Yardım"];
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
 const ASKED = /\?|\s(m[ıiuü])(\s|$)|gönderdin mi|gitti mi/i;
@@ -125,7 +124,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
   // Tür sayfasından açıldıysa ("plan" | "task" | "note"): ilk cümle o türde kayda çevrilir
   const preferRef = useRef("");
   const [prefer, setPrefer] = useState("");
-  const [examples, setExamples] = useState(null); // bulunduğu sayfaya göre örnekler (alt çubuktan gelir)
   // Açık ekran (sohbet ya da kayıt konuşması): { title, to, rec: { kind, id }, text } — asistan bu konuşmayı bilir,
   // alıcı söylenmeden "yaz/cevap ver" denirse mesaj buraya gider
   const focusRef = useRef(null);
@@ -896,7 +894,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     setMin(false);
     preferRef.current = seed?.prefer || "";
     setPrefer(seed?.prefer || "");
-    setExamples(seed?.examples || null);
     focusRef.current = seed?.focus || null;
     askTo.current = null;
     sentOk.current = false;
@@ -1115,18 +1112,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       <div ref={scrollRef} onPointerDown={() => menu && setMenu(false)} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-line px-4 pb-4 pt-2 text-[1rem]">
         {turns.length === 0 && !listening && !busy && !transcribing && (
           <div className="pt-3">
+            {/* Hazır örnek düğmeleri yok: öneriler, hızlı öğrenme verisi hazır olunca gelecek */}
             <p className="text-[0.8125rem] text-mut">
               {prefer
-                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin:`
-                : "Arka arkaya isteyebilirsin; bitince “bitir” de. Örnekler:"}
+                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin.`
+                : "Arka arkaya isteyebilirsin; bitince “bitir” de."}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(examples || EXAMPLES).map((ex) => (
-                <button key={ex} type="button" onClick={() => run(ex, false, true)} className="rounded-full bg-bg px-3 py-1.5 text-left text-[0.8125rem] transition active:scale-95">
-                  {ex}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
