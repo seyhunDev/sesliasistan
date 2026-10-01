@@ -83,6 +83,7 @@ const groupOf = (t, mine = []) => {
 const END = /^(?:tamam\s+)?(bitir|bitti|kapat|yeter|teşekkürler|teşekkür ederim|sağ ?ol|görüşürüz|şimdilik bu kadar|bu kadar|çıkış)(?=$|[\s.,!?])/i;
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
+const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
 const QUESTION = /\?\s*$|\b(neler var|ne var|kaç|hangi|ne zaman|göster|listele|özetle)\b/i;
@@ -299,8 +300,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
     }
     const list = drafts;
+    setPhase("thinking");
     const r = await saveDrafts(list.map(tidy), { source: viaVoice || convo.current ? "voice" : "manual", by });
-    if (!r || r.plans + r.tasks + r.notes === 0) return toast("Kayıt sırasında hata oluştu");
+    setPhase("idle");
+    // Kayıt veritabanına yazılamadıysa "kaydettim" denmez; taslak durur, yeniden "kaydet" denebilir
+    if (!r || r.error || r.plans + r.tasks + r.notes === 0)
+      return reply("Kaydedemedim, bir sorun çıktı. Taslak duruyor; tekrar “kaydet” diyebilirsin.", { engine: "local" }, viaVoice);
     const said = turns.find((t) => t.role === "user" && !t.chip)?.text;
     if (said) record(said, labelFromItems(list), "user");
     const parts = [r.plans && `${r.plans} plan`, r.tasks && `${r.tasks} görev`, r.notes && `${r.notes} not`].filter(Boolean);
@@ -308,7 +313,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     setDrafts([]);
     toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}`);
     navigator.vibrate?.([10, 40, 10]);
-    reply(`Kaydettim: ${parts.join(", ")}${who.length ? `, ${who.join(" ve ")} sorumlu` : ""}. Başka bir şey var mı?`, { engine: "local" }, viaVoice);
+    const what = `${parts.join(", ")}${who.length ? `, ${who.join(" ve ")} sorumlu` : ""}`;
+    reply(r.queued ? `Bağlantı zayıf: ${what} sıraya alındı, internet gelince kaydedilecek.` : `Kaydettim: ${what}. Başka bir şey var mı?`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
@@ -466,6 +472,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       if (DROP.test(s)) return dropDrafts(viaVoice);
       if (!QUESTION.test(s)) return refineDrafts(s, viaVoice);
     }
+    // Taslak yokken yalnızca "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
+    if (!drafts.length && !cards.pending && BARE_SAVE.test(s))
+      return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice);
     // Onay bekleyen işlem varsa "evet / hayır" yerelde çözülür
     if (!fresh && cards.pending) {
       const cw = cards.pending.send ? confirmWord(s) : "";
@@ -1320,7 +1329,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
                   <span className="text-mut">{sp.interim}</span>
                 </>
               ) : (
-                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : "Konuş; susunca kendiliğinden gönderilir"}</span>
+                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : "Dinliyorum…"}</span>
               )}
             </p>
             <button type="button" onClick={() => sp.cancel()} aria-label="Dinlemeyi durdur" className="grid size-12 shrink-0 place-items-center rounded-full bg-bg text-mut active:scale-90">

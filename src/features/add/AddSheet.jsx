@@ -528,7 +528,7 @@ export function AddSheet({ open, onClose, seed }) {
     if (r.tasks) parts.push(`${r.tasks} görev`);
     if (r.notes) parts.push(`${r.notes} not`);
     const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
-    toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}${noTime ? " · saat yok, tüm gün" : ""}`);
+    toast(`${parts.join(", ")} ${r.queued ? "sıraya alındı, internet gelince kaydedilecek" : "kaydedildi"}${who.length ? ` · ${who.join(", ")}` : ""}${noTime ? " · saat yok, tüm gün" : ""}`);
     navigator.vibrate?.([10, 40, 10]);
     onClose();
   }
