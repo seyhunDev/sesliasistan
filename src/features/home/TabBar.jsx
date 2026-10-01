@@ -113,9 +113,9 @@ function Composer({ cfg, onDone }) {
   );
 }
 
-// ASİSTAN KÜRESİ (tek düğme): deniz tonlarında ışıldayan küre; durumunu hareketiyle anlatır (globals.css .ai-orb).
+// ASİSTAN KÜRESİ (tek düğme, simgesiz): yumuşak ışık küresi; durumunu hareketiyle anlatır (globals.css .ai-orb).
 //   boşta     yavaşça döner                     dokun → dinlemeye başla
-//   dinliyor  sesinle büyür, halesi parlar      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   dinliyor  sesinle büyür, ince halka        dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
 //   düşünüyor hızlı döner                       dokun → vazgeç
 //   konuşuyor nefes alır                        dokun → sözünü kes, dinle
 // Basılı tut → yaz.
@@ -125,7 +125,7 @@ const ORB_LABEL = {
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
-export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[4.25rem]" }) {
+export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[3.75rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -156,13 +156,9 @@ export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[4.25re
         <span className="ai-fill" />
         <span className="ai-shine" />
       </span>
-      {state === "idle" && <Icon name="mic" className="relative size-6 text-white/90 drop-shadow-[0_1px_2px_rgba(20,40,60,.4)]" />}
     </button>
   );
 }
-
-// Kürenin altındaki tek satırlık durum (sade; ne olduğunu ve ne yapılabileceğini söyler)
-const STATUS = { idle: "Dokun ve konuş", listening: "Dinliyorum…", busy: "Düşünüyorum…", speaking: "Konuşuyor · dokun, sözünü kes" };
 
 // Dinlerken söylediğin canlı belirir (sağda, büyük ve sade; henüz kesinleşmeyen kısım soluk). Gönderilince asıl
 // balon (AssistantSheet) yerini alır.
@@ -464,7 +460,6 @@ export function TabBar({ cfg }) {
                           <Icon name="x" className="size-[1.375rem]" />
                         </button>
                       </div>
-                      <p key={state} className="fade-in mt-2.5 text-center text-[0.75rem] font-medium text-mut" aria-live="polite">{STATUS[state]}</p>
                     </div>
                   )}
                 </div>
@@ -494,7 +489,6 @@ export function TabBar({ cfg }) {
                         <Icon name="plus" className="size-6" />
                       </button>
                     </div>
-                    <p className="mt-2.5 text-center text-[0.75rem] font-medium text-mut">{STATUS.idle}</p>
                   </div>
                 </div>
               ) : (

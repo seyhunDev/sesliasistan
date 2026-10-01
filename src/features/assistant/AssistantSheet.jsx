@@ -29,7 +29,7 @@ import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { PAGES, buildPatch, describeAction, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { PAGES, buildPatch, describeAction, isEnd, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
 import { brainCommand, localCommand, sureGuess } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
@@ -83,7 +83,6 @@ const groupOf = (t, mine = []) => {
   return mine.includes(g) ? g : "";
 };
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
-const END = /^(?:tamam\s+)?(bitir|bitti|kapat|yeter|teşekkürler|teşekkür ederim|sağ ?ol|görüşürüz|şimdilik bu kadar|bu kadar|çıkış)(?=$|[\s.,!?])/i;
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
 const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
@@ -502,7 +501,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       convo.current = true; // sesle konuşuldu: sohbet sesli sürer
     }
     // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler")
-    if (END.test(s)) {
+    if (isEnd(s)) {
       tts.speak("Görüşürüz.");
       finish(true);
       return;

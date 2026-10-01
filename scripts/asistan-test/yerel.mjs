@@ -1,7 +1,7 @@
 // Yerel (yapay zekasız) asistan kuralları: insanların söyleyebileceği farklı cümlelerle.
 // Yalnızca hesaplama yapar; veritabanına ve yapay zekaya dokunmaz.
 import { localCommand, isMeeting, localCreate } from "@/lib/commands";
-import { localReceipt, isYes, isNo, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { localReceipt, isYes, isNo, localQuery, looksLikeCreate, isEnd } from "@/lib/assistantLocal";
 import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
@@ -129,6 +129,16 @@ group("Ön cevap")([
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
   ["bu konuda ne düşünüyorsun acaba söyle", PC("emin değil: genel giriş", (r) => r && !/plan|görev|not/.test(r.line))],
+]);
+
+// Sesle kapatma: konuşmayı bitiren sözler kapatır, bir şeyi kapatma isteği kapatmaz
+const END_T = (want) => ({ desc: want ? "konuşma kapanır" : "kapanmaz", fn: (s) => isEnd(s), ok: (r) => r === want });
+group("Sesle kapatma")([
+  ["kapat", END_T(true)], ["Teşekkürler.", END_T(true)], ["tamam teşekkür ederim", END_T(true)], ["tamamdır sağ ol", END_T(true)],
+  ["asistanı kapat", END_T(true)], ["kapatabilirsin", END_T(true)], ["kapatır mısın", END_T(true)], ["çok teşekkürler", END_T(true)],
+  ["eyvallah", END_T(true)], ["görüşürüz", END_T(true)], ["şimdilik bu kadar", END_T(true)], ["iyi akşamlar", END_T(true)], ["bitir", END_T(true)],
+  ["görevi kapat", END_T(false)], ["bildirimleri kapat", END_T(false)], ["yarın 10'da antrenman ekle", END_T(false)],
+  ["Ali'ye teşekkür mesajı gönder ve yarın gelmesini söyle", END_T(false)], ["sohbeti kapat", END_T(false)],
 ]);
 
 export default results;
