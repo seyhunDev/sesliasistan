@@ -186,21 +186,21 @@ select {
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
 
-/* Ana sayfa: sayfada yalnız hava durumu; içerik asistan sahnesinde kayar, sayfanın alt boşluğu gerekmez */
-body[data-dock][data-home] main { padding-bottom: 1rem; }
 
 /* Asistan düğmesi dinlerken: dışa doğru yumuşak dalga (sahnenin kenarında kırpılmayacak kadar küçük) */
 @keyframes orbripple { from { transform: scale(1); opacity: .35; } to { transform: scale(1.32); opacity: 0; } }
 .orb-ripple { animation: orbripple 1.6s ease-out infinite; }
 
+/* iPhone Safari: dönen/animasyonlu iç katmanlar yuvarlak köşeyle (border-radius + overflow) kırpılmaz, küre kare
+   görünür. Çekirdek bu yüzden ayrıca daire maskesiyle (clip-path + -webkit-mask) kırpılır. */
 /* ASİSTAN KÜRESİ: yumuşak, inci gibi ışık küresi (soft palet: deniz camı, sis lavantası, inci, açık nane).
    Katmanlar: hale · çekirdek (dönen renkler) · akışkan ışık (şekil değiştirir) · parıltı · halka (düşünürken).
    Yazı yok; durumu ince renk, boy ve hareketle anlatır.
    data-state: idle (nefes alır) · listening (sesle büyür, biraz aydınlanır; --lvl 0–1) · busy (lavantaya kayar, hızla
    döner, çevresinde ince halka) · speaking (nabız gibi atar) */
-.ai-orb { position: relative; display: grid; place-items: center; border-radius: 9999px; isolation: isolate; --lvl: 0; transform: scale(calc(1 + var(--lvl) * .14)); transition: transform .12s ease-out; }
+.ai-orb { position: relative; display: grid; place-items: center; border-radius: 9999px; isolation: isolate; --lvl: 0; transform: scale(calc(1 + var(--lvl) * .14)); transition: transform .12s ease-out; box-shadow: 0 12px 28px -14px rgba(60, 110, 130, .45); }
 .ai-orb .ai-halo { position: absolute; inset: -30%; z-index: -1; border-radius: 9999px; background: radial-gradient(circle, rgba(150, 202, 218, .5), rgba(196, 204, 240, .22) 52%, transparent 70%); filter: blur(14px); opacity: .55; transition: opacity .5s ease; }
-.ai-orb .ai-core { position: absolute; inset: 0; overflow: hidden; border-radius: 9999px; background: #c4dde5; box-shadow: 0 12px 28px -14px rgba(60, 110, 130, .45), inset 0 -10px 22px rgba(80, 130, 150, .22), inset 0 0 0 1px rgba(255, 255, 255, .5); animation: orbidle 5s ease-in-out infinite; transition: filter .6s ease; }
+.ai-orb .ai-core { position: absolute; inset: 0; overflow: hidden; border-radius: 9999px; clip-path: circle(50% at 50% 50%); -webkit-mask-image: radial-gradient(circle, #000 70%, #000 100%); background: #c4dde5; box-shadow: inset 0 -10px 22px rgba(80, 130, 150, .22), inset 0 0 0 1px rgba(255, 255, 255, .5); animation: orbidle 5s ease-in-out infinite; transition: filter .6s ease; }
 .ai-orb .ai-fill { position: absolute; inset: -40%; background: conic-gradient(from 0deg, #9fcbd8, #c9d3f3, #eef2f4, #a9dccb, #b7cfee, #9fcbd8); filter: blur(12px); animation: orbspin 12s linear infinite; }
 .ai-orb .ai-blob { position: absolute; inset: 14%; border-radius: 42% 58% 55% 45% / 45% 45% 55% 55%; background: radial-gradient(circle at 40% 35%, rgba(255, 255, 255, .85), rgba(255, 255, 255, .25) 55%, transparent 74%); filter: blur(6px); mix-blend-mode: soft-light; animation: morph 8s ease-in-out infinite, orbspin 18s linear infinite reverse; }
 .ai-orb .ai-shine { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 34% 25%, rgba(255, 255, 255, .7), transparent 38%); }
