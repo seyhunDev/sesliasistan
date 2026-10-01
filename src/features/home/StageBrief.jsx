@@ -20,7 +20,7 @@ export function StageBrief() {
     <button
       type="button"
       onClick={() => openAdd({ edit: { kind: "plan", id: n.plan.id } })}
-      className="flex w-full items-center gap-3 rounded-[1.25rem] bg-card px-4 py-3 text-left transition active:scale-[.99]"
+      className="flex w-full items-center gap-3 rounded-[1.25rem] bg-card px-4 py-3 text-left shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)] transition active:scale-[.99]"
     >
       <span className="w-14 shrink-0 text-center">
         <b className={`block font-bold tabular-nums ${n.plan.time ? "whitespace-nowrap text-[1.0625rem]" : "text-[0.8125rem] leading-tight"}`}>{n.plan.time || "Gün boyu"}</b>

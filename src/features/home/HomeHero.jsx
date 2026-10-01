@@ -27,12 +27,12 @@ function Gauge({ kn, gust }) {
   const at = (v) => 135 + (270 * Math.min(Math.max(v, 0), 25)) / 25;
   const [gx, gy] = pt(at(gust));
   return (
-    <svg viewBox="0 0 108 108" className="size-[6.25rem] shrink-0" aria-label={`Rüzgâr ${kn} knot, sağanak ${gust}`} role="img">
-      <path d={arc(135, 405)} fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="8" strokeLinecap="round" />
-      {kn > 0 && <path d={arc(135, at(kn))} fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" />}
-      <circle cx={gx} cy={gy} r="5" fill="none" stroke="#fff" strokeWidth="2.5" />
-      <text x="54" y="57" textAnchor="middle" fontSize="26" fontWeight="700" fill="#fff">{kn}</text>
-      <text x="54" y="74" textAnchor="middle" fontSize="11" fontWeight="600" fill="#fff" opacity=".8">knot</text>
+    <svg viewBox="0 0 108 108" className="size-[5.5rem] shrink-0 text-acc" aria-label={`Rüzgâr ${kn} knot, sağanak ${gust}`} role="img">
+      <path d={arc(135, 405)} fill="none" stroke="currentColor" strokeOpacity=".14" strokeWidth="8" strokeLinecap="round" />
+      {kn > 0 && <path d={arc(135, at(kn))} fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />}
+      <circle cx={gx} cy={gy} r="5" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <text x="54" y="57" textAnchor="middle" fontSize="26" fontWeight="700" fill="currentColor">{kn}</text>
+      <text x="54" y="74" textAnchor="middle" fontSize="11" fontWeight="600" fill="currentColor" opacity=".8">knot</text>
     </svg>
   );
 }
@@ -52,20 +52,20 @@ function DayStrip({ rows, plans, now }) {
     });
   const nh = now.getHours() + now.getMinutes() / 60;
   return (
-    <svg viewBox={`0 0 ${W} 70`} className="w-full" aria-hidden="true">
-      <rect x="0" y="46" width={W} height="7" rx="3.5" fill="rgba(255,255,255,.22)" />
+    <svg viewBox={`0 0 ${W} 70`} className="w-full text-acc" aria-hidden="true">
+      <rect x="0" y="46" width={W} height="7" rx="3.5" fill="currentColor" fillOpacity=".12" />
       {blocks.map(([a, b], i) => (
-        <rect key={i} x={a} y="46" width={Math.max(6, b - a)} height="7" rx="3.5" fill="#fff" />
+        <rect key={i} x={a} y="46" width={Math.max(6, b - a)} height="7" rx="3.5" fill="currentColor" />
       ))}
-      {line && <polyline points={line} fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />}
+      {line && <polyline points={line} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" opacity=".9" />}
       {nh >= H0 && nh <= H1 && (
         <>
-          <line x1={X(nh)} y1="4" x2={X(nh)} y2="54" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 3" />
-          <circle cx={X(nh)} cy="4" r="3.5" fill="#fff" />
+          <line x1={X(nh)} y1="4" x2={X(nh)} y2="54" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+          <circle cx={X(nh)} cy="4" r="3.5" fill="currentColor" />
         </>
       )}
       {[9, 12, 15, 18, 21].map((t) => (
-        <text key={t} x={X(t)} y="67" textAnchor={t === H1 ? "end" : "middle"} fontSize="10" fill="#fff" opacity=".7">
+        <text key={t} x={X(t)} y="67" textAnchor={t === H1 ? "end" : "middle"} fontSize="10" fill="currentColor" opacity=".7">
           {t}
         </text>
       ))}
@@ -94,18 +94,18 @@ export function HomeHero({ weather, next = true }) {
         type="button"
         onClick={() => (w ? setOpen(true) : refresh(true))}
         aria-label="Bugünün hava ayrıntısı"
-        className={`block w-full rounded-[1.625rem] bg-[#2c5163] px-[1.125rem] pt-[1.125rem] text-left text-white transition active:scale-[.99] ${n ? "pb-12" : "pb-3"}`}
+        className={`block w-full rounded-[1.25rem] bg-card px-4 pt-4 text-left text-fg shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)] transition active:scale-[.99] ${n ? "pb-12" : "pb-3"}`}
       >
         {w ? (
           <>
             <span className="flex items-center gap-3">
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.6875rem] font-semibold tracking-[.1em] text-white/70">{place.name.toLocaleUpperCase("tr-TR")} · ŞİMDİ</span>
+                <span className="block text-[0.6875rem] font-semibold tracking-[.1em] text-mut">{place.name.toLocaleUpperCase("tr-TR")} · ŞİMDİ</span>
                 <span className="mt-1.5 flex items-center gap-2.5">
-                  <Icon name={s.icon} className="size-8 [stroke-width:1.5]" />
-                  <span className="text-[2.625rem] font-semibold leading-none tracking-tight tabular-nums">{w.now.t}°</span>
+                  <Icon name={s.icon} className="size-7 text-acc [stroke-width:1.5]" />
+                  <span className="text-[2.25rem] font-semibold leading-none tracking-tight tabular-nums">{w.now.t}°</span>
                 </span>
-                <span className="mt-1.5 block truncate text-[0.8125rem] text-white/85">
+                <span className="mt-1.5 block truncate text-[0.8125rem] text-mut">
                   {s.label} · {windName(w.now.dir)[0]} yönünden
                 </span>
               </span>
@@ -118,7 +118,7 @@ export function HomeHero({ weather, next = true }) {
             )}
           </>
         ) : (
-          <span className="block py-3 text-[0.875rem] text-white/80">{err ? "Hava durumu alınamadı · tekrar dene" : `${place.name} hava durumu yükleniyor…`}</span>
+          <span className="block py-3 text-[0.875rem] text-mut">{err ? "Hava durumu alınamadı · tekrar dene" : `${place.name} hava durumu yükleniyor…`}</span>
         )}
       </button>
 
