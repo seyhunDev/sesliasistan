@@ -305,12 +305,20 @@ export function TabBar({ cfg }) {
       if (d > 0 && y > 40) setSmall(true);
       else if (d < 0 && y <= 8) setSmall(false);
     };
-    const onDown = (e) => !homeRef.current && !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
+    // Sayfaya dokununca küçülme tıklama bittikten SONRA olur: dokunuş başlarken (pointerdown) ekran değişirse
+    // iPhone Safari bunu "üzerine gelme" sayar ve tıklamayı yutar (ilk dokunuş boşa gider, ikinci kez dokunmak gerekir).
+    let t = 0;
+    const onClick = (e) => {
+      if (homeRef.current || box.current?.contains(e.target) || e.target.closest?.("[role=dialog]")) return;
+      clearTimeout(t);
+      t = setTimeout(() => setSmall(true), 0);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("click", onClick);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("click", onClick);
     };
   }, []);
   // iPhone: klavye açılınca sabit alt alan klavyenin arkasında kalır; yazarken sahne klavyenin üstüne taşınır
