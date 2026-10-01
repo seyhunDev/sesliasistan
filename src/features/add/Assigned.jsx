@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { repliesOf } from "@/lib/people";
 import { rel, when } from "@/lib/utils/format";
@@ -8,48 +8,253 @@ import { stamp } from "./EditCard";
 
 const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 
-// Kayda eklenen notlar (atanan kişilerin ve ana hesabın) + yeni not yazma
-export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Not ekle…" }) {
-  const [text, setText] = useState("");
+// Kayda yazılan mesajlar (atanan kişiler ve ana hesap): mesajlaşma uygulaması gibi.
+//   Benimkiler sağda (renkli balon), başkalarınınkiler solda (baş harf + ad). Arka arkaya aynı kişi = tek grup.
+//   Gün ayraçları (Bugün, Dün, 12 Eyl), açılışta görmediğim mesajların üstünde "Yeni mesajlar" çizgisi,
+//   son mesajımın altında "Görüldü" (karşı taraf kaydı açtıysa) ya da "Gönderildi". Uzun konuşmada son 30 mesaj.
+// Veri yapısı değişmedi: replies.{uid} = [{ at, text }]; görüldü bilgisi ack.{uid}.n.
+const SHOW_MSG = 30;
+const hmOf = (iso) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+const dayKey = (iso) => new Date(iso).toDateString();
+function dayText(iso) {
+  const k = dayKey(iso);
+  if (k === dayKey(Date.now())) return "Bugün";
+  if (k === dayKey(Date.now() - 864e5)) return "Dün";
+  return new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "short" });
+}
+const initialsOf = (n = "") =>
+  String(n)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((x) => x[0].toLocaleUpperCase("tr-TR"))
+    .join("") || "?";
+
+// assistant (verildiyse): { onAsk(text), onMic(), busy, panel, hint, mode, setMode, text, setText } — yazma alanında iki mod:
+//   Mesaj: yazdığın aynen gider · Asistan (✨ ya da mikrofon): kaydı değiştirir ve/veya mesajı senin yerine hazırlar;
+//   hazırlanan mesaj panel içinde onayla (Gönder) gider.
+// docked: yazma alanı burada çizilmez, ekranın altına sabitlenir (ReplyComposer); mesajlar geldikçe liste alta kayar
+export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz…", assistant, docked = false }) {
+  // Yazı da üstten gelebilir (asistan taslağındaki "Düzenle" metni kutuya koyar)
+  const [ownText, setOwnText] = useState("");
+  const text = assistant?.setText ? assistant.text : ownText;
+  const setText = assistant?.setText || setOwnText;
+  // Mod (msg | ai) verildiyse üstten gelir: asistan çalışırken bu bileşen ekrandan kalkıp geri geldiğinde seçim kaybolmasın
+  const [ownMode, setOwnMode] = useState("msg");
+  const mode = assistant?.mode || ownMode;
+  const setMode = assistant?.setMode || setOwnMode;
+  const [all, setAll] = useState(false);
+  // Açıldığı andaki "son baktığım" zaman: kayıt açılınca görüldü yazılır, ama çizgi bu açılışta yerinde kalsın
+  const [seenAt] = useState(() => rec?.ack?.[myUid]?.n || "");
+  // Konuşma açıkken gelenler zaten görülüyor: "Yeni mesajlar" çizgisi yalnızca açılıştan önce gelmiş okunmamışların üstünde
+  const [openedAt] = useState(() => new Date().toISOString());
   const list = repliesOf(rec);
+  const shown = all ? list : list.slice(-SHOW_MSG);
+  const firstNew = shown.findIndex((r) => r.uid !== myUid && String(r.at) > seenAt && String(r.at) < openedAt);
+  const others = [...new Set([rec?.createdByUid, ...(rec?.assignees || []), ...(rec?.people || [])])].filter((u) => u && u !== myUid);
+  const lastMine = [...list].reverse().find((r) => r.uid === myUid);
+  const seenBy = lastMine ? others.filter((u) => String(rec?.ack?.[u]?.n || "") >= String(lastMine.at)) : [];
+  const ai = !!assistant && mode === "ai";
   const send = () => {
     const t = text.trim();
     if (!t) return;
-    onSend(t);
+    if (ai) assistant.onAsk(t);
+    else onSend(t);
     setText("");
   };
+
+  // Mesajlaşma uygulaması gibi: açılışta en alttaki mesaj görünür; yeni mesaj gelince (kullanıcı yukarıda eski mesajları okumuyorsa
+  // ya da mesaj kendisininse) liste yumuşakça alta kayar
+  const box = useRef(null);
+  const count = useRef(-1);
+  const lastUid = list.at(-1)?.uid;
+  useEffect(() => {
+    const el = box.current?.closest("[data-scroll]");
+    const first = count.current < 0;
+    const grew = list.length > count.current;
+    count.current = list.length;
+    if (!el || !list.length || (!first && !grew)) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 220;
+    if (first || near || lastUid === myUid) requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: first ? "auto" : "smooth" }));
+  }, [list.length, lastUid, myUid]);
+
   return (
-    <div className="mt-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <h3 className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-mut">
-        <Icon name="note" className="size-4" /> Notlar{list.length ? ` · ${list.length}` : ""}
+    <div ref={box} className="mt-3 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]" aria-label="Mesajlar">
+      <h3 className="flex items-center gap-1.5 px-4 pt-3 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">
+        <Icon name="chat" className="size-4" /> Mesajlar{list.length ? ` · ${list.length}` : ""}
       </h3>
-      {list.map((r, i) => (
-        <div key={`${r.uid}-${r.at}-${i}`} className="border-b border-line py-2 last:border-0">
-          <p className="text-[12px] text-mut">
-            <b className="font-semibold text-fg">{r.uid === myUid ? "Sen" : nameOf(r.uid) || "Kişi"}</b> · {stamp(r.at)}
+
+      <div className="px-3 pb-1 pt-2">
+        {list.length > shown.length && (
+          <button type="button" onClick={() => setAll(true)} className="mb-2 w-full rounded-full py-1.5 text-[0.75rem] font-semibold text-acc active:bg-bg">
+            Önceki mesajlar ({list.length - shown.length})
+          </button>
+        )}
+        {!list.length && <p className="px-1 pb-2 text-[0.8125rem] text-mut">Henüz mesaj yok. Bu kayıtla ilgili yazdığın mesaj ilgili kişilere bildirim olarak gider.</p>}
+        {shown.map((r, i) => {
+          const mine = r.uid === myUid;
+          const prev = shown[i - 1];
+          const next = shown[i + 1];
+          const newDay = !prev || dayKey(prev.at) !== dayKey(r.at);
+          const near = (a, b) => a && b && a.uid === b.uid && dayKey(a.at) === dayKey(b.at) && Math.abs(Date.parse(b.at) - Date.parse(a.at)) < 5 * 60e3;
+          const head = !near(prev, r) || i === firstNew; // grubun ilk balonu: ad ve baş harf
+          const tail = !near(r, next) || i + 1 === firstNew; // grubun son balonu: saat
+          const name = mine ? "Sen" : nameOf(r.uid) || "Kişi";
+          return (
+            <div key={`${r.uid}-${r.at}-${i}`}>
+              {newDay && (
+                <p className="my-2 text-center">
+                  <span className="rounded-full bg-bg px-2.5 py-0.5 text-[0.6875rem] font-semibold text-mut">{dayText(r.at)}</span>
+                </p>
+              )}
+              {i === firstNew && (
+                <p className="my-2 flex items-center gap-2 text-[0.6875rem] font-semibold text-acc">
+                  <span className="h-px flex-1 bg-acc/30" /> Yeni mesajlar <span className="h-px flex-1 bg-acc/30" />
+                </p>
+              )}
+              <div className={`flex items-end gap-2 ${mine ? "justify-end" : ""} ${head ? "mt-2" : "mt-0.5"}`}>
+                {!mine && (
+                  <span className={`grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.625rem] font-bold text-acc ${tail ? "" : "invisible"}`}>{initialsOf(name)}</span>
+                )}
+                <div className={`flex max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`}>
+                  {head && !mine && <span className="mb-0.5 px-1 text-[0.6875rem] font-semibold text-mut">{name}</span>}
+                  <p
+                    className={`whitespace-pre-wrap break-words px-3 py-2 text-[0.9375rem] leading-snug ${
+                      mine ? "rounded-2xl rounded-br-md bg-acc text-white" : "rounded-2xl rounded-bl-md bg-bg text-fg"
+                    }`}
+                  >
+                    {r.text}
+                  </p>
+                  {tail && <span className="mt-0.5 px-1 text-[0.625rem] tabular-nums text-mut">{hmOf(r.at)}</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {lastMine && others.length > 0 && (
+          <p className="mt-0.5 px-1 text-right text-[0.625rem] font-medium text-mut">
+            {seenBy.length ? `Görüldü${others.length > 1 ? ` · ${seenBy.map((u) => nameOf(u) || "Kişi").join(", ")}` : ""}` : "Gönderildi"}
           </p>
-          <p className="whitespace-pre-wrap text-[15px] leading-snug">{r.text}</p>
+        )}
+      </div>
+
+      {/* Asistanın yanıtı ve bekleyen mesaj taslağı (onay) */}
+      {assistant?.panel}
+
+      {!docked && <Composer text={text} setText={setText} mode={mode} setMode={setMode} ai={ai} send={send} placeholder={placeholder} assistant={assistant} />}
+    </div>
+  );
+}
+
+// Yazma alanı: Mesaj (aynen gider) ya da Asistan (anlar, değiştirir, mesajı hazırlar)
+function Composer({ text, setText, mode, setMode, ai, send, placeholder, assistant, bare = false }) {
+  return (
+    <div className={bare ? "" : "border-t border-line px-3 pb-2.5 pt-2"}>
+      {assistant && (
+        <div className="mb-2 flex items-center gap-1.5" role="tablist" aria-label="Yazma modu">
+          {[
+            ["msg", "Mesaj", "chat"],
+            ["ai", "Asistan", "spark"],
+          ].map(([k, label, icon]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={mode === k}
+              onClick={() => setMode(k)}
+              className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[0.75rem] font-semibold transition active:scale-95 ${mode === k ? "bg-acc text-white" : "bg-bg text-mut"}`}
+            >
+              <Icon name={icon} className="size-3.5" /> {label}
+            </button>
+          ))}
+          <span className="min-w-0 flex-1 truncate text-right text-[0.6875rem] text-mut">{ai ? "Değiştir ya da mesajı yazdır" : "Yazdığın aynen gider"}</span>
         </div>
-      ))}
-      <div className="mt-2 flex items-end gap-2">
+      )}
+      <div className="flex items-end gap-2">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={1}
-          placeholder={placeholder}
-          aria-label="Not"
-          className="max-h-32 min-h-10 flex-1 resize-none rounded-xl bg-bg px-3 py-2.5 text-[15px] outline-none focus:bg-card focus:ring-1 focus:ring-acc"
+          placeholder={ai ? assistant.hint || "örn. saati 10 yap · Ali'ye kargoyu sor" : placeholder}
+          aria-label={ai ? "Asistana yaz" : "Mesaj"}
+          className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl ${bare ? "bg-card ring-1 ring-line" : "bg-bg"} px-3.5 py-2.5 text-[0.9375rem] outline-none [field-sizing:content] focus:bg-card focus:ring-1 focus:ring-acc ${ai ? "ring-1 ring-acc/40" : ""}`}
         />
-        <button onClick={send} disabled={!text.trim()} aria-label="Notu gönder" className="grid size-10 shrink-0 place-items-center rounded-full bg-acc text-white disabled:opacity-40 active:scale-90">
-          <Icon name="up" className="size-5" />
+        {assistant && (
+          <button type="button" onClick={assistant.onMic} disabled={assistant.busy} aria-label="Asistana sesle söyle" className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc active:scale-90 disabled:opacity-40">
+            <Icon name="mic" className="size-5" />
+          </button>
+        )}
+        <button type="button" onClick={send} disabled={!text.trim() || (ai && assistant.busy)} aria-label={ai ? "Asistana gönder" : "Mesajı gönder"} className={`grid size-10 shrink-0 place-items-center rounded-full text-white disabled:opacity-40 active:scale-90 ${ai ? "bg-fg" : "bg-acc"}`}>
+          <Icon name={ai ? "spark" : "up"} className="size-5" />
         </button>
       </div>
     </div>
   );
 }
 
-// Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için tamamladım der ve not ekler
-export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply }) {
+// Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte). Yazı ve mod asistan nesnesinden gelir (AddSheet'te tutulur).
+export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant }) {
+  const [ownText, setOwnText] = useState("");
+  const [ownMode, setOwnMode] = useState("msg");
+  const text = assistant?.setText ? assistant.text : ownText;
+  const setText = assistant?.setText || setOwnText;
+  const mode = assistant?.mode || ownMode;
+  const setMode = assistant?.setMode || setOwnMode;
+  const ai = !!assistant && mode === "ai";
+  const send = () => {
+    const t = text.trim();
+    if (!t) return;
+    if (ai) assistant.onAsk(t);
+    else onSend(t);
+    setText("");
+  };
+  return <Composer bare text={text} setText={setText} mode={mode} setMode={setMode} ai={ai} send={send} placeholder={placeholder} assistant={assistant} />;
+}
+
+// Asistanın kayıt içindeki yanıtı + bekleyen mesaj taslağı (Gönder / Düzenle / Vazgeç). Mesaj onaysız gitmez.
+// out: { text, done } · reply: asistanın cümlesi · saveToo: kaydedilmemiş değişiklik varsa düğme "Kaydet ve gönder"
+export function AssistantPanel({ reply, out, saveToo, onConfirm, onCancel, onEdit, kind }) {
+  if (!reply && !out) return null;
+  const label = out?.text ? (saveToo ? "Kaydet ve gönder" : "Gönder") : saveToo ? "Kaydet ve tamamla" : "Tamamla";
+  return (
+    <div className="fade-in border-t border-line px-3 py-3" aria-live="polite">
+      {reply && (
+        <div className="flex items-start gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white"><Icon name="spark" className="size-3.5" /></span>
+          <p className="min-w-0 rounded-2xl rounded-tl-md bg-bg px-3 py-2 text-[0.875rem] leading-snug">{reply}</p>
+        </div>
+      )}
+      {out && (
+        <div className="mt-2.5 rounded-2xl border border-dashed border-acc/50 bg-acc/[.04] p-3">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">{out.text ? "Gönderilecek mesaj" : "Onay bekliyor"}</p>
+          {out.text && <p className="mt-1 whitespace-pre-wrap text-[0.9375rem] leading-snug">{out.text}</p>}
+          {out.done && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-[0.8125rem] font-medium text-ok">
+              <Icon name="check" className="size-4" /> {KIND[kind] || "Kayıt"} tamamlandı olarak işaretlenecek
+            </p>
+          )}
+          <div className="mt-2.5 flex gap-2">
+            <button type="button" onClick={onConfirm} className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-acc px-3 text-[0.875rem] font-semibold text-white active:scale-[.98]">
+              <Icon name={out.text ? "up" : "check"} className="size-4" /> {label}
+            </button>
+            {out.text && (
+              <button type="button" onClick={onEdit} className="h-10 shrink-0 rounded-xl bg-card px-3 text-[0.875rem] font-semibold ring-1 ring-line active:scale-[.98]">
+                Düzenle
+              </button>
+            )}
+            <button type="button" onClick={onCancel} className="h-10 shrink-0 rounded-xl px-2.5 text-[0.875rem] font-semibold text-mut active:bg-bg">
+              Vazgeç
+            </button>
+          </div>
+          <p className="mt-1.5 text-[0.6875rem] text-mut">Sesle de onaylayabilirsin: “gönder” ya da “vazgeç”.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için tamamladım der ve mesaj yazar
+export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, assistant, docked = false }) {
   const mine = rec.doneBy?.[myUid];
   const by = nameOf(rec.createdByUid) || "Ana hesap";
   const rows = [
@@ -63,13 +268,13 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
   return (
     <div>
       <div className="rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-acc">{KIND[kind]}</p>
-        <h3 className="mt-1 text-[20px] font-semibold leading-snug">{rec.title}</h3>
-        {kind === "note" && rec.body && rec.body !== rec.title && <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed">{rec.body}</p>}
+        <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-acc">{KIND[kind]}</p>
+        <h3 className="mt-1 text-[1.25rem] font-semibold leading-snug">{rec.title}</h3>
+        {kind === "note" && rec.body && rec.body !== rec.title && <p className="mt-2 whitespace-pre-wrap text-[0.9375rem] leading-relaxed">{rec.body}</p>}
         {rows.length > 0 && (
           <ul className="mt-3 divide-y divide-line border-t border-line">
             {rows.map(([ic, label, value]) => (
-              <li key={label} className="flex items-center gap-3 py-2.5 text-[15px]">
+              <li key={label} className="flex items-center gap-3 py-2.5 text-[0.9375rem]">
                 <Icon name={ic} className="size-5 shrink-0 text-mut" />
                 <span>{label}</span>
                 <span className="ml-auto min-w-0 truncate text-right font-medium">{value}</span>
@@ -77,7 +282,7 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
             ))}
           </ul>
         )}
-        <p className="mt-3 flex items-center gap-1.5 text-[13px] text-mut">
+        <p className="mt-3 flex items-center gap-1.5 text-[0.8125rem] text-mut">
           <Icon name="user" className="size-4" /> {by} verdi{rec.createdAt ? ` · ${stamp(rec.createdAt)}` : ""} · değiştiremezsin
         </p>
       </div>
@@ -85,14 +290,14 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
       {/* Yalnızca kendisi için */}
       <button
         onClick={() => onDone(!mine)}
-        className={`mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold transition active:scale-[.98] ${mine ? "bg-ok/10 text-ok ring-1 ring-ok/30" : "bg-acc text-white"}`}
+        className={`mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold transition active:scale-[.98] ${mine ? "bg-ok/10 text-ok ring-1 ring-ok/30" : "bg-acc text-white"}`}
       >
         <Icon name="check" className="size-5 [stroke-width:2.5]" />
         {mine ? `Tamamladın · ${stamp(mine)}` : "Tamamladım"}
       </button>
-      {mine && <p className="mt-1 text-center text-[12px] text-mut">Geri almak için tekrar dokun</p>}
+      {mine && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
 
-      <Replies rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba not yaz…" />
+      <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" assistant={assistant} docked={docked} />
     </div>
   );
 }

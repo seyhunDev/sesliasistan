@@ -3,6 +3,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { cleanEmail, cleanKey } from "@/lib/pemKey";
 
 export const adminReady = () =>
   !!(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
@@ -14,8 +15,8 @@ function app() {
   return initializeApp({
     credential: cert({
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"), // tek satır ("\n") ya da çok satır
+      clientEmail: cleanEmail(process.env.FIREBASE_CLIENT_EMAIL),
+      privateKey: cleanKey(process.env.FIREBASE_PRIVATE_KEY), // tırnak, "\n", \r gibi yapıştırma bozulmalarına dayanıklı
     }),
   });
 }

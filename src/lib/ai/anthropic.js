@@ -1,3 +1,4 @@
+import { strongModel } from "./gemini";
 // Yalnızca sunucuda çalışır. Anahtar tarayıcıya çıkmaz.
 export async function callClaude({ model, system, messages, tool, maxTokens = 1024 }) {
   const ctrl = new AbortController();
@@ -11,7 +12,7 @@ export async function callClaude({ model, system, messages, tool, maxTokens = 10
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model,
+        model: strongModel("anthropic") || model,
         max_tokens: maxTokens,
         system,
         messages,

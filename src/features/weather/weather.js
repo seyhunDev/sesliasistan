@@ -1,9 +1,49 @@
 // Hava durumu ve rüzgâr: Open-Meteo (ücretsiz, anahtarsız). Rüzgâr knot (kn) olarak alınır.
 // Sonuç cihazda 30 dk saklanır; bağlantı yoksa son alınan gösterilir.
 
-export const PLACE = { name: "Dikili", lat: 39.0717, lon: 26.8886, tz: "Europe/Istanbul" };
+// Varsayılan konum; kişi Ayarlar › Hava durumu konumu'ndan il/ilçe seçebilir (cihazda ve profilde saklanır)
+export const PLACE = { name: "Dikili", region: "İzmir", lat: 39.0717, lon: 26.8886, tz: "Europe/Istanbul" };
 const TTL = 30 * 60e3;
 const KEY = "sa-weather";
+const PKEY = "sa-place";
+const placeKey = (p) => `${(+p.lat).toFixed(3)},${(+p.lon).toFixed(3)}`;
+
+export function getPlace() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PKEY) || "null");
+    if (p && Number.isFinite(+p.lat) && Number.isFinite(+p.lon) && p.name) return { ...PLACE, ...p };
+  } catch {}
+  return PLACE;
+}
+export const samePlace = (a, b) => !!a && !!b && placeKey(a) === placeKey(b);
+// Konumu değiştirir: önbellek geçersiz olur, açık ekranlar yenilenir
+export function setPlace(p) {
+  const clean = { name: String(p.name).slice(0, 60), region: String(p.region || "").slice(0, 60), lat: +p.lat, lon: +p.lon };
+  try {
+    localStorage.setItem(PKEY, JSON.stringify(clean));
+    localStorage.removeItem(KEY);
+  } catch {}
+  window.dispatchEvent(new Event("sa-place"));
+  return clean;
+}
+export const placeLabel = (p = getPlace()) => (p.region && p.region !== p.name ? `${p.name} · ${p.region}` : p.name);
+
+// İl/ilçe arama (Open-Meteo konum servisi, Türkiye): [{ name, region, lat, lon }]
+export async function searchPlaces(q, signal) {
+  const name = String(q || "").trim();
+  if (name.length < 2) return [];
+  const u = `https://geocoding-api.open-meteo.com/v1/search?${new URLSearchParams({ name, count: "10", language: "tr", countryCode: "TR", format: "json" })}`;
+  const res = await fetch(u, { signal });
+  if (!res.ok) throw new Error("Konum aranamadı");
+  const j = await res.json();
+  return (j.results || []).map((r) => ({ name: r.name, region: r.admin1 || "", district: r.admin2 && r.admin2 !== r.name ? r.admin2 : "", lat: r.latitude, lon: r.longitude }));
+}
+
+// Karşılaştırma bağlantıları: aynı yerin MGM (resmi) ve Windy tahmini
+export function compareLinks(p = getPlace()) {
+  const mgm = p.region ? `https://www.mgm.gov.tr/tahmin/il-ve-ilceler.aspx?${new URLSearchParams({ il: p.region, ilce: p.name })}` : "https://www.mgm.gov.tr/";
+  return { mgm, windy: `https://www.windy.com/?${(+p.lat).toFixed(3)},${(+p.lon).toFixed(3)},11` };
+}
 
 // WMO hava kodu -> Türkçe ad + simge
 export function sky(code, day = true) {
@@ -14,7 +54,7 @@ export function sky(code, day = true) {
   if (code >= 51 && code <= 57) return { label: "Çisenti", icon: "rain" };
   if (code >= 61 && code <= 67) return { label: "Yağmurlu", icon: "rain" };
   if (code >= 71 && code <= 77) return { label: "Kar", icon: "snow" };
-  if (code >= 80 && code <= 82) return { label: "Sağanak", icon: "rain" };
+  if (code >= 80 && code <= 82) return { label: "Sağanak yağış", icon: "rain" };
   if (code === 85 || code === 86) return { label: "Kar sağanağı", icon: "snow" };
   if (code >= 95) return { label: "Gök gürültülü", icon: "storm" };
   return { label: "—", icon: "cloud" };
@@ -89,7 +129,7 @@ export function dayHours(w, date) {
     .map(([time, t, code, day, wind, gust, dir]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir }));
 }
 
-// Yelkene uygun saat aralıkları: gündüz, 7–16 kn, hamle 22 kn altı. Örn. ["11–17"]
+// Yelkene uygun saat aralıkları: gündüz, 7–16 kn, sağanak 22 kn altı. Örn. ["11–17"]
 export function sailWindows(rows) {
   const out = [];
   let a = null;
@@ -115,9 +155,11 @@ function url(p) {
   return `https://api.open-meteo.com/v1/forecast?${q}`;
 }
 
+// Önbellek yalnızca seçili konuma aitse kullanılır
 export function cached() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "null");
+    const c = JSON.parse(localStorage.getItem(KEY) || "null");
+    return c && (!c.place || c.place === placeKey(getPlace())) ? c : null;
   } catch {
     return null;
   }
@@ -127,9 +169,11 @@ export function cached() {
 export async function loadWeather(force = false) {
   const old = cached();
   if (!force && old && Date.now() - old.at < TTL) return old;
-  const res = await fetch(url(PLACE), { signal: AbortSignal.timeout(10000) });
+  const p = getPlace();
+  const res = await fetch(url(p), { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error(`Hava durumu alınamadı (${res.status})`);
-  const data = shape(await res.json());
+  const j = await res.json();
+  const data = { ...shape(j), place: placeKey(p), placeName: p.name, model: { lat: j.latitude, lon: j.longitude, elevation: j.elevation } };
   try {
     localStorage.setItem(KEY, JSON.stringify(data));
   } catch {}
@@ -146,14 +190,14 @@ export const wantsWeather = (text) => WX.test(String(text || "").toLocaleLowerCa
 
 const DAYS = new Intl.DateTimeFormat("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: PLACE.tz });
 const dname = (s) => DAYS.format(new Date(`${s}T12:00:00`));
-const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}) ${kn} kn, hamle ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
+const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}) ${kn} kn, sağanak ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
 
 // Yapay zekaya giden hava özeti (düz metin, kısa)
 export function weatherDigest(w) {
   if (!w) return "";
   const age = Math.round((Date.now() - w.at) / 60000);
   const lines = [
-    `## HAVA DURUMU (${PLACE.name}, Open-Meteo; ${age < 2 ? "az önce" : `${age} dk önce`} alındı; rüzgâr knot, yön rüzgârın geldiği yön)`,
+    `## HAVA DURUMU (${placeLabel()}, Open-Meteo; ${age < 2 ? "az önce" : `${age} dk önce`} alındı; rüzgâr knot, yön rüzgârın geldiği yön)`,
     `ŞİMDİ: ${w.now.t}°C, ${sky(w.now.code, w.now.day).label}, ${wind(w.now.wind, w.now.gust, w.now.dir)}`,
     `BUGÜN (${dname(w.today.date || new Date().toISOString().slice(0, 10))}): ${w.today.min}–${w.today.max}°C${w.today.wind != null ? `, en yüksek rüzgâr ${wind(w.today.wind, w.today.gust, w.today.dir)}` : ""}`,
   ];

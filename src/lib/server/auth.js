@@ -30,25 +30,39 @@ function overLimit(uid) {
   return "";
 }
 
-// İzin listesinde olmayan hesap, listedeki bir ana hesabın çalışanıysa da kullanabilir
-// Yönetici bağlantısı yalnızca gerektiğinde yüklenir (diğer API'ler firebase-admin'e bağımlı olmasın)
-async function staffOfAllowed(uid, allowed) {
-  if (!(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY)) return false;
+// Hesabın rolü: kişi (çalışan) mı, kişiyse ana hesabı izin listesinde mi. { staff, ok }
+// Önce yönetici anahtarıyla; anahtar yoksa ya da çalışmazsa (Netlify'da bozuk anahtar) kişinin kendi profili kendi
+// oturumuyla okunur. Kişi profilini yalnızca sunucu oluşturabilir (kurallar istemcinin "staff" profil açmasına izin
+// vermez), bu yüzden profilde staff yazıyorsa kişi gerçekten bir ana hesaba bağlıdır. Anahtar sorunu kişileri engellemez.
+async function roleOf(uid, token, allowed) {
+  if (process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    try {
+      const { adminAuth, profileOf } = await import("@/lib/server/admin");
+      const p = await profileOf(uid);
+      if (p.role !== "staff") return { staff: false, ok: false };
+      if (!allowed.length) return { staff: true, ok: true };
+      const owner = await profileOf(p.orgId);
+      const email = (await adminAuth().getUser(p.orgId)).email?.toLowerCase();
+      return { staff: true, ok: owner.role === "owner" && allowed.includes(email) };
+    } catch (e) {
+      console.warn("[auth] yönetici anahtarı çalışmadı, profil kişinin oturumuyla okunuyor:", e?.message?.slice(0, 120));
+    }
+  }
   try {
-    const { adminAuth, profileOf } = await import("@/lib/server/admin");
-    const p = await profileOf(uid);
-    if (p.role !== "staff") return false;
-    const owner = await profileOf(p.orgId);
-    const email = (await adminAuth().getUser(p.orgId)).email?.toLowerCase();
-    return owner.role === "owner" && allowed.includes(email);
+    const pid = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const base = process.env.FIRESTORE_EMULATOR_HOST ? `http://${process.env.FIRESTORE_EMULATOR_HOST}/v1` : "https://firestore.googleapis.com/v1";
+    const res = await fetch(`${base}/projects/${pid}/databases/(default)/documents/users/${uid}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return { staff: false, ok: false };
+    const staff = (await res.json()).fields?.role?.stringValue === "staff";
+    return { staff, ok: staff };
   } catch {
-    return false;
+    return { staff: false, ok: false };
   }
 }
 
 async function check(uid, email, cached) {
   const allowed = allowList();
-  if (allowed.length && !allowed.includes((email || "").toLowerCase()) && !(cached?.staffOk ?? (await staffOfAllowed(uid, allowed)))) {
+  if (allowed.length && !allowed.includes((email || "").toLowerCase()) && !cached?.staffOk) {
     return { ok: false, status: 403, error: "Bu hesabın asistanı kullanma izni yok. Yöneticiden erişim iste." };
   }
   const over = overLimit(uid);
@@ -59,7 +73,7 @@ async function check(uid, email, cached) {
       error: over === "hour" ? "Kısa sürede çok fazla istek gönderildi. Biraz sonra tekrar dene." : "Bugünkü kullanım sınırına ulaşıldı. Yarın tekrar dene.",
     };
   }
-  return { ok: true, uid, email: (email || "").toLowerCase() };
+  return { ok: true, uid, email: (email || "").toLowerCase(), staff: !!cached?.staff };
 }
 
 // Token'ın içindeki kullanıcı kimliği (imza doğrulanmadan; yalnızca geliştirme kısayolunda kullanılır)
@@ -80,7 +94,9 @@ export async function requireUser(request) {
   const token = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   if (process.env.DEV_SKIP_AUTH === "1" && process.env.NODE_ENV !== "production") {
     const { uid, email } = token ? peek(token) : {};
-    return uid ? { ok: true, uid, email } : { ok: false, error: "Geliştirme modunda da giriş yapmış olmalısın." };
+    if (!uid) return { ok: false, error: "Geliştirme modunda da giriş yapmış olmalısın." };
+    const r = await roleOf(uid, token, []);
+    return { ok: true, uid, email, staff: r.staff };
   }
   const key = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!token || !key) return { ok: false };
@@ -98,7 +114,12 @@ export async function requireUser(request) {
     if (!u?.localId) return { ok: false };
     const entry = { uid: u.localId, email: u.email || "", exp: Date.now() + 5 * 60 * 1000 };
     const allowed = allowList();
-    if (allowed.length && !allowed.includes(entry.email.toLowerCase())) entry.staffOk = await staffOfAllowed(u.localId, allowed);
+    // İzin listesindeki e-posta ana hesaptır; değilse rolüne bakılır (kişi mi, ana hesabı izinli mi)
+    if (!allowed.includes(entry.email.toLowerCase())) {
+      const r = await roleOf(u.localId, token, allowed);
+      entry.staff = r.staff;
+      entry.staffOk = r.ok;
+    }
     cache.set(token, entry);
     if (cache.size > 200) cache.delete(cache.keys().next().value);
     return check(u.localId, u.email, entry);

@@ -1,9 +1,11 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { NextResponse } from "next/server";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { interpretRules, refineRules } from "@/lib/ai/rules";
-import { TOOL, cleanMessage, toDrafts } from "@/lib/ai/schema";
+import { TOOL, cleanMessage, cleanSend, toDrafts } from "@/lib/ai/schema";
+import { changeText, messageIntent } from "@/lib/ai/messageRules";
 
 export const runtime = "nodejs";
 
@@ -21,7 +23,7 @@ Kurallar:
 - Plan başlığına yeri, saati veya "oluştur" gibi komut kelimelerini ekleme ("Kulüpte antrenman oluştur" değil "Antrenman"); yer place alanına gider.
 - Konuşma metni ses tanımadan geldiği için küçük yazım/sesteş hataları olabilir; anlamı koru, ama söylenmeyen bilgiyi ekleme.
 - Kişiler listesi verildiyse: ses tanıma adları bölebilir ya da yanlış yazabilir ("san ver" = Sanver). Listedeki bir kişiyi kastediyorsa başlıkta, notta ve message'da listedeki yazımı kullan.
-- Sorumlu (assignTo): kullanıcı işi birine VERİYORSA (ör. "Sanver tekneleri yıkasın", "Ali'ye söyle motoru kontrol etsin", "bunu Ali ile Sanver halletsin", "sorumlusu Ali") o kişiyi listedeki adıyla assignTo'ya yaz ve adı başlıktan çıkar ("Tekneleri yıka"). Kişiyle yapılan etkinlikte ya da kişiden söz edilen notta (ör. "Sanver ile toplantı", "Ali bugün gelmedi") atama yapma, adı başlıkta bırak. Listede olmayan kişiyi assignTo'ya yazma. assignTo'ya listedeki TAM adı yaz; soyad söylenmesi gerekmez, ekli ad ("Sanver'e") ya da ses tanımanın yanlış yazdığı ad ("san ver", "Sanvar") listedeki en yakın kişidir; tek başına ad önce ADI o olan kişiye aittir. message'da birine verdiğini söylüyorsan o kişi assignTo'da MUTLAKA olsun. Mevcut taslakta assignTo varsa kullanıcı değiştirmedikçe aynen koru. message'da atadığın kişiyi söyle ("görevi Sanver'e verdim").
+- Sorumlu (assignTo): kullanıcı işi birine VERİYORSA (ör. "Sanver tekneleri yıkasın", "Ali'ye söyle motoru kontrol etsin", "Ali'nin benzin alma görevi var", "bunu Ali ile Sanver halletsin", "sorumlusu Ali") o kişiyi listedeki adıyla assignTo'ya yaz ve adı başlıktan çıkar ("Tekneleri yıka"). Kişiyle yapılan etkinlikte ya da kişiden söz edilen notta (ör. "Sanver ile toplantı", "Ali bugün gelmedi") atama yapma, adı başlıkta bırak. Listede olmayan kişiyi assignTo'ya yazma. assignTo'ya listedeki TAM adı yaz; soyad söylenmesi gerekmez, ekli ad ("Sanver'e") ya da ses tanımanın yanlış yazdığı ad ("san ver", "Sanvar") listedeki en yakın kişidir; tek başına ad önce ADI o olan kişiye aittir; aynı ada sahip birden fazla kişi varsa ve soyad söylenmediyse tahmin etme, assignTo'yu boş bırak (uygulama soracak). message'da birine verdiğini söylüyorsan o kişi assignTo'da MUTLAKA olsun. Mevcut taslakta assignTo varsa kullanıcı değiştirmedikçe aynen koru. message'da atadığın kişiyi söyle ("görevi Sanver'e verdim").
 - Saat: tek günlük bir planın günü belli ama saati söylenmemişse saati BİR KEZ kısa bir soruyla sor ("Saat kaçta olsun?") ve time'ı boş bırak. Kullanıcı "tüm gün", "fark etmez", "saat yok" derse allDay true yap, time'ı boş bırak ve tekrar sorma. Çok günlü planlarda saati sorma. Aynı anda birden fazla soru sorma.
 - message: SESLİ OKUNACAK yanıt. Günlük konuşma diliyle, samimi, 1-2 kısa cümle yaz ve kullanıcıya verilen adıyla hitap et (ör. "Tamamdır Seyhun, yarın sabah dokuzda antrenmanı ve tekneleri hazırlama görevini hazırladım, kaydedebilirsin."). Resmi dil kullanma, sen diye hitap et. Emoji, madde işareti, parantez ve "09:00" gibi rakamlı saat yazma; saati "sabah dokuz", "akşam altı buçuk" gibi, günü "yarın", "cuma", "üç Ekim" gibi söyle. Bir planın tarihi belli değilse tarihi sor. Ad verilmediyse adsız, yine samimi yaz.`;
 
@@ -81,7 +83,10 @@ function cleanCtx(ctx) {
     .slice(-10)
     .map((h) => ({ role: h?.role === "assistant" ? "assistant" : "user", text: str(h?.text) }))
     .filter((h) => h.text.trim());
-  return { drafts, history, mode: ctx.mode === "edit" ? "edit" : "create", last: str(ctx.last) };
+  // Kayıt içinden (düzenleme ya da çalışanın salt okunur kaydı): konuşmadaki diğer kişiler ve bekleyen mesaj taslağı
+  const thread = (Array.isArray(ctx.thread) ? ctx.thread : []).slice(0, 20).map((n) => cleanName(n)).filter(Boolean);
+  const mode = ["edit", "reply"].includes(ctx.mode) ? ctx.mode : "create";
+  return { drafts, history, mode, last: str(ctx.last), thread, pendingSend: str(ctx.pendingSend, 1000), kind: ["plan", "task", "note"].includes(ctx.kind) ? ctx.kind : "" };
 }
 
 const toClient = (d) => ({
@@ -90,6 +95,22 @@ const toClient = (d) => ({
 });
 
 const PREFER = { plan: "Planlar", task: "Görevler", note: "Notlar" };
+
+// Kayıt içinden mesaj gönderme kuralları (send / done)
+function messageRules(ctx) {
+  const who = ctx.thread.length ? ctx.thread.join(", ") : "";
+  if (!who)
+    return `MESAJ: Bu kayıtta kullanıcıdan başka kimse yok; mesaj gönderilemez, send HER ZAMAN boş. Kullanıcı birine yazmak isterse message'da önce o kişiyi sorumlu olarak eklemesi gerektiğini söyle.${ctx.kind === "task" ? " İşi bitirdiğini söylerse done true." : ""}`;
+  return `MESAJ: Bu kaydın bir mesajlaşması var. Kayıttaki diğer kişiler: ${who}. Mesaj kaydın konuşmasına gider ve bu kişilerin hepsi görür.
+- Kullanıcı birine yazmak, söylemek, sormak, haber vermek, iletmek ya da mesaj atmak isterse gönderilecek metni send'e yaz. Metni kullanıcının ağzından, karşı tarafa hitaben, kısa ve doğal yaz ("Ali'ye kargonun geciktiğini, cumaya kalacağını söyle" → "Kargo gecikti, cuma gelecek."). Kullanıcı metni aynen verdiyse ("Ali'ye yaz: yarın gelemiyorum") aynen kullan, yalnızca yazım ve noktalamayı düzelt. Söylenmeyen bilgi, selamlama, imza ve emoji ekleme. Soru soruyorsa soru cümlesi yaz.
+- Söylediği bir değişiklik komutu değil de bir durum, bilgi ya da cevapsa (ör. "kargo yola çıktı", "yarın gelemiyorum"), bunu mesaj olarak send'e yaz ve kaydı değiştirme.
+- Hem değişiklik hem mesaj isteyebilir ("saati 11 yap ve Ali'ye haber ver"): kaydı değiştir ve değişikliği anlatan kısa mesajı send'e yaz ("Saat 11'e alındı.").
+- Adı geçen kişi yukarıdaki listede yoksa send'i BOŞ bırak ve message'da o kişinin bu kayıtta olmadığını, önce sorumlu olarak eklemesi gerektiğini söyle. "Ana hesap" her zaman listededir.
+${ctx.pendingSend ? `- Bekleyen mesaj taslağı: "${ctx.pendingSend}". Kullanıcı bunu değiştirmek istiyorsa ("şunu da ekle", "daha kısa yaz", "saati de yaz") taslağın YENİ halini send'e yaz. Yeni bir şey istiyorsa ona göre davran.
+` : ""}- send doluysa message'da mesajı TEKRAR ETME; yalnızca "Mesajı hazırladım, göndereyim mi?" gibi kısa bir soru sor. Mesaj onaysız gönderilmez.
+- Kullanıcı işi bitirdiğini söylüyorsa ("tamamladım", "hallettim", "bitti") done true yap; söylemediyse false.
+- Mesaj istenmediyse send boş string.`;
+}
 
 function buildUser({ today, weekday, name, text, ctx, people, prefer }) {
   const staff = people.length ? `Kişiler (sorumlu atanabilecek kişiler): ${people.join(", ")}\n` : "";
@@ -102,8 +123,12 @@ function buildUser({ today, weekday, name, text, ctx, people, prefer }) {
     ? `Konuşmanın şimdiye kadarki hali (eskiden yeniye):\n${ctx.history.map((h) => `${h.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${h.text}`).join("\n")}\n`
     : "";
   const rules =
-    ctx.mode === "edit"
-      ? `DÜZENLEME: Kullanıcı yalnızca bu tek kaydı değiştirmek istiyor. items içinde AYNI TÜRDE tek kayıt döndür; söylenmeyen alanları aynen koru. Saati kaldırmak veya tüm gün yapmak istiyorsa allDay true ve time boş. message'da ne değiştirdiğini kısaca söyle.`
+    ctx.mode === "edit" || ctx.mode === "reply"
+      ? `${
+          ctx.mode === "reply"
+            ? `SALT OKUNUR KAYIT: Kullanıcı bu kaydı DEĞİŞTİREMEZ (kaydı başkası verdi). items içinde kaydı AYNEN döndür. Yalnızca mesaj gönderebilir (send) ve işi bitirdiğini bildirebilir (done). Bir değişiklik isterse ("saati değiştir") bunu kaydı verene soran kısa bir mesajı send'e yaz ve message'da değiştiremediğini, sorabileceğini söyle.`
+            : `DÜZENLEME: Kullanıcı yalnızca bu tek kaydı değiştirmek istiyor. items içinde AYNI TÜRDE tek kayıt döndür; söylenmeyen alanları aynen koru. Saati kaldırmak veya tüm gün yapmak istiyorsa allDay true ve time boş. message'da ne değiştirdiğini kısaca söyle.`
+        }\n${messageRules(ctx)}`
       : `DEVAM: Kullanıcının yeni mesajı çoğunlukla asistanın sorusuna cevap veya mevcut taslağı tamamlayan/değiştiren bir düzeltme. items içinde GÜNCEL TAM listeyi döndür: değişmeyen kayıtları aynen koru, cevabı ilgili kayda işle (saat söylediyse plana time yaz; tarih söylediyse date yaz; günü değiştirdiyse plana bağlı görevlerin tarihini de güncelle). Yeni kayıt ekleme; yalnızca kullanıcı açıkça yeni bir plan, görev veya not söylüyorsa ekle. Kaldırmak istediği kaydı listeden çıkar. askedTime true olan planın saatini TEKRAR SORMA. Kullanıcı saati vermek istemiyorsa ("fark etmez", "tüm gün", "saat yok") allDay true yap, time'ı boş bırak ve "tüm gün olarak hazırlıyorum" de. Eksik bilgi kalmadıysa message'da kısaca onayla ve kaydedebileceğini söyle.`;
   return `${head}\n${convo}\nMevcut taslak kayıtlar (JSON):\n${JSON.stringify(ctx.drafts)}\n${ctx.last && !ctx.history.length ? `Asistanın önceki yanıtı: "${ctx.last}"\n` : ""}\nKullanıcının yeni mesajı:\n"""\n${text}\n"""\n\nYeni mesajı konuşmanın tamamıyla BİRLİKTE değerlendir: ilk mesajda söylenen bilgiler (ne, hangi gün, saat, yer) yeni mesaj aksini söylemedikçe geçerli kalır; yeni mesaj yalnızca değiştirir, tamamlar ya da ekler.\n${rules}`;
 }
@@ -149,9 +174,53 @@ async function handle(request) {
   const ctx = cleanCtx(body?.context);
   const hasDrafts = !!ctx?.drafts.length;
 
+  const inRecord = ctx && (ctx.mode === "edit" || ctx.mode === "reply");
   const fallback = (warning) => {
     let items;
     let message;
+    if (inRecord && hasDrafts) {
+      const cur = ctx.drafts.map(toClient).slice(0, 1);
+      const intent = messageIntent(text, ctx.thread);
+      const canSend = ctx.thread.length > 0;
+      const done = !!intent?.done && (ctx.mode === "reply" || ctx.kind === "task");
+      let send = "";
+      let say = "";
+      items = cur;
+      const EDITISH = /(saat|tarih|gün|yer|başlık|ertele|değiştir|taşı|öne al|sonraya al|iptal et)/i;
+      if (intent?.unknown)
+        say = canSend
+          ? `${intent.unknown} bu kayıtta yok. Mesaj göndermek için önce onu sorumlu olarak ekle.`
+          : `Bu kayıtta senden başka kimse yok. ${intent.unknown} için önce onu sorumlu olarak ekle.`;
+      else if (!intent && ctx.mode === "reply" && EDITISH.test(text))
+        say = "Bu kaydı sen değiştiremezsin. İstersen ana hesaba sorayım; örneğin: ana hesaba yaz, saati 11 yapabilir miyiz?";
+      else if (intent?.indirect) say = "Bunu mesaja çeviremedim. Mesajı aynen söyler misin? Örneğin: Ali'ye yaz, kargo gecikti.";
+      else if (intent) {
+        send = intent.send;
+        if (intent.bare && ctx.mode === "edit") {
+          // "…yap ve Ali'ye haber ver": değişikliği kural motoruyla yap, özetini mesaj olarak hazırla
+          const r = intent.before ? refineRules(intent.before, cur, today, name, false) : null;
+          if (r) {
+            items = r.items.slice(0, 1);
+            send = changeText(cur[0], items[0]);
+          }
+          if (!send) say = "Ne yazayım? Mesajı söyler misin?";
+        }
+      } else if (ctx.mode === "edit") {
+        const r = refineRules(text, cur, today, name, false);
+        const changed = JSON.stringify(r.items[0]) !== JSON.stringify(cur[0]);
+        if (changed) {
+          items = r.items.slice(0, 1);
+          say = `${r.message} Kontrol edip kaydedebilirsin.`;
+        } else if (canSend) send = text.replace(/\s+/g, " ").trim().replace(/^./, (c) => c.toLocaleUpperCase("tr-TR"));
+        else say = r.message;
+      } else if (canSend && !say) send = text.replace(/\s+/g, " ").trim().replace(/^./, (c) => c.toLocaleUpperCase("tr-TR"));
+      if (send && !canSend) {
+        send = "";
+        say = "Bu kayıtta senden başka kimse yok. Mesaj göndermek için önce sorumlu ekle.";
+      }
+      if (!say) say = send ? "Mesajı hazırladım, göndereyim mi?" : done ? "Tamamlandı olarak işaretleyeyim mi?" : "Bunu anlayamadım, bir daha söyler misin?";
+      return NextResponse.json({ items, message: say, send, done, source: "rules", provider: "rules", ...(warning ? { warning } : {}) });
+    }
     if (hasDrafts) {
       const r = refineRules(text, ctx.drafts.map(toClient), today, name, ctx.mode !== "edit");
       items = ctx.mode === "edit" ? r.items.slice(0, 1) : r.items;
@@ -160,6 +229,12 @@ async function handle(request) {
       else message = `${r.message} ${askMissing(items) || "Hazırsa kaydedebilirsin."}`;
     } else {
       items = interpretRules(text, today);
+      // Tür sayfasından (Notlar, Planlar, Görevler) gelen tek kayıt: tür açıkça söylenmediyse o sayfanın türü
+      const pref = body?.prefer;
+      if (Object.hasOwn(PREFER, pref) && items.length === 1 && items[0].type !== pref && !/(^|\s)(plan|görev|not)(\s|$|[ıiuü])/iu.test(text)) {
+        const x = items[0];
+        items = [{ ...x, type: pref, ...(pref === "note" ? { body: x.body || text } : {}), ...(pref === "plan" ? { date: x.date || x.due || today } : {}), ...(pref === "task" && !x.due && x.date ? { due: x.date } : {}) }];
+      }
       message = rulesMessage(items, name);
     }
     return NextResponse.json({ items, message, source: "rules", provider: "rules", ...(warning ? { warning } : {}) });
@@ -167,6 +242,8 @@ async function handle(request) {
 
   const provider = pickProvider();
   if (!hasKey(provider)) return fallback();
+  // Kişilerde günlük asistan hakkı bittiyse yapay zeka yerine yedek kurallar (kayıt yine hazırlanır)
+  if (await overQuota(au, "assistant")) return fallback("Bugünkü asistan hakkın bitti; basit kurallarla hazırlandı.");
   if (provider === "gemini" && !process.env.GEMINI_MODEL) return fallback("GEMINI_MODEL boş, yedek kurallar kullanıldı");
 
   try {
@@ -175,10 +252,19 @@ async function handle(request) {
     const input = await ask(provider, buildUser({ today, weekday, name, text, ctx, people, prefer: body?.prefer }));
     const ms = Date.now() - t0;
     console.log(`[interpret:${provider}] toplam ${ms} ms${hasDrafts ? " (devam)" : ""}`);
-    const items = toDrafts(input?.items, people, input?.message);
+    let items = toDrafts(input?.items, people, input?.message);
     if (!items.length && !hasDrafts) throw new Error("AI kayıt üretmedi");
-    const message = cleanMessage(input?.message) || (items.length ? rulesMessage(items, name) : "Bunu tam anlayamadım, bir daha söyler misin?");
-    return NextResponse.json({ items, message, source: "ai", provider, ms });
+    // Kayıt içinden: mesaj taslağı ve tamamlama (kayıtta başka kimse yoksa mesaj gönderilmez; salt okunur kayıt değişmez)
+    const extra = {};
+    if (inRecord) {
+      const send = ctx.thread.length ? cleanSend(input?.send) : "";
+      const done = !!input?.done && (ctx.mode === "reply" || ctx.kind === "task");
+      if (ctx.mode === "reply") items = ctx.drafts.map(toClient).slice(0, 1);
+      Object.assign(extra, { send, done });
+    }
+    let message = cleanMessage(input?.message) || (items.length ? rulesMessage(items, name) : "Bunu tam anlayamadım, bir daha söyler misin?");
+    if (extra.send && !/\?/.test(message)) message = `${message} Göndereyim mi?`.trim();
+    return withQuota(NextResponse.json({ items, message, ...extra, source: "ai", provider, ms }), await spend(au, "assistant"));
   } catch (e) {
     console.error(`[interpret:${provider}]`, e.message);
     return fallback("AI yanıt vermedi, yedek kurallar kullanıldı");

@@ -124,3 +124,67 @@ export function namesInMessage(message, people = []) {
 
 // Kimliklerden adlar (yapay zekaya mevcut taslağı anlatmak için)
 export const uidsToNames = (uids = [], members = []) => uids.map((u) => members.find((m) => m.uid === u)?.name).filter(Boolean);
+
+// Kullanıcının kendi cümlesinden sorumlu(lar): yapay zeka seçmese de (ya da hızlı komut/yedek kurallarla hazırlansa da) atanır.
+// Kalıplar (ad kişi listesinde olmalı; soyad gerekmez):
+//   "Ali'nin benzin alma görevi", "Ali'nin işi"          (tamlayan + görev/iş)
+//   "Ali'ye söyle", "Ali'ye ver", "Sanver'e ata"          (yönelme + ver/söyle/ata/yaptır/bırak/ilet)
+//   "Ali benzin alsın", "Ali ve Sanver halletsin"         (ad + -sın/-sin/-sun/-sün)
+//   "sorumlu Ali", "sorumlusu Ali", "Ali sorumlu"
+// "Ali ile toplantı", "Ali'yle görüşme" atama sayılmaz.
+// Aynı ada sahip birden çok kişi ("Ali" → Ali Kaya, Ali Yılmaz): soyad ya da ikinci ad söylenmediyse seçim kullanıcıya sorulur
+export function sameName(raw, people = []) {
+  if (matchPerson(raw, people)) return [];
+  const names = people.map((p) => (typeof p === "string" ? p : p.name)).filter(Boolean);
+  for (const f of forms(raw)) {
+    const same = names.filter((n) => plain(n.split(/\s+/)[0]) === f);
+    if (same.length > 1) return same;
+  }
+  return [];
+}
+
+function scan(text, people = []) {
+  const t = String(text || "");
+  const found = [];
+  const ambiguous = []; // [{ said: "Ali", options: ["Ali Kaya", "Ali Yılmaz"] }]
+  if (!t || !people.length) return { found, ambiguous };
+  // Önceki kelimeyle birlikte de dener: "Ali Y.", "Mehmet Ali'ye", "Ali Yılmaz'ın"
+  const before = (w) => {
+    const m = t.match(new RegExp(`([\\p{L}]+\\.?)\\s+${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "u"));
+    return m ? `${m[1].replace(/\.$/, "")} ${w}` : "";
+  };
+  const add = (w0) => {
+    const pair = before(w0);
+    const hit2 = pair && matchPerson(pair, people);
+    const w = hit2 ? pair : w0;
+    const hit = hit2 || matchPerson(w0, people);
+    if (hit) {
+      if (!found.includes(hit)) found.push(hit);
+      return;
+    }
+    const options = sameName(w, people);
+    const said = w.replace(/['’][\p{L}]*$/u, "");
+    if (options.length && !ambiguous.some((x) => x.said === said)) ambiguous.push({ said, options });
+  };
+  const W = "[\\p{L}]+\\.?(?:['’][\\p{L}]+)?";
+  const chain = `((?:${W}\\s+ve\\s+)*${W})`;
+  const each = (m) => m.split(/\s+ve\s+/u);
+  // tamlayan + görev/iş
+  for (const m of t.matchAll(new RegExp(`${chain}\\s+(?:[\\p{L}]+\\s+){0,4}(?:görevi|görev|işi|işleri|vazifesi)\\b`, "giu")))
+    each(m[1]).forEach((w) => /(?:['’]?n?[ıiuü]n)$/iu.test(w) && add(w));
+  // yönelme + ver/söyle/ata…
+  for (const m of t.matchAll(new RegExp(`${chain}\\s+(?:[\\p{L}]+\\s+){0,4}(?:ver|söyle|ata|yaptır|bırak|ilet|havale et)`, "giu")))
+    if (/(?:['’]?y?[ae])$/iu.test(each(m[1]).at(-1))) each(m[1]).forEach(add);
+  // ad + -sın/-sin (istek), arada "ile" yoksa
+  for (const m of t.matchAll(new RegExp(`${chain}\\s+(?!ile\\b)(?:[\\p{L}]+\\s+){0,4}?[\\p{L}]+s[ıiuü]n(?:lar)?\\b`, "giu"))) {
+    const names = each(m[1]);
+    if (!/['’]?y?(?:le|la)$|^(ile)$/iu.test(names.at(-1))) names.forEach(add);
+  }
+  for (const m of t.matchAll(/sorumlu(?:su|ları|lari)?\s*[:：]?\s*([\p{L}]+)/giu)) add(m[1]);
+  for (const m of t.matchAll(/([\p{L}]+)\s+sorumlu\b/giu)) add(m[1]);
+  return { found, ambiguous };
+}
+
+export const assigneesInText = (text, people = []) => scan(text, people).found;
+// Sorumlular + belirsiz adlar (kullanıcıya "Hangi Ali?" diye sorulur)
+export const assigneeHints = (text, people = []) => scan(text, people);

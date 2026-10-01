@@ -60,16 +60,16 @@ export function Sheet({ open, onClose, title, children }) {
         aria-modal="true"
         aria-label={title}
         style={open && dragging ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[480px] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
+        className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[30rem] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
       >
-        <div className="flex max-h-[90dvh] flex-col rounded-t-3xl bg-card pb-[calc(20px+env(safe-area-inset-bottom))]">
+        <div className="flex max-h-[90dvh] flex-col rounded-t-3xl bg-card pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
           {/* Tutamaç + başlık + X: buradan her zaman aşağı çekilebilir */}
           <div onTouchStart={start(false)} onTouchMove={move} onTouchEnd={end} className="shrink-0 touch-none px-5 pt-3">
             <div className="mx-auto h-1 w-9 rounded-full bg-line" />
             <div className="mt-2 flex items-center justify-between pb-2">
-              <h2 className="text-[17px] font-semibold">{title}</h2>
+              <h2 className="text-[1.0625rem] font-semibold">{title}</h2>
               <button onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-bg text-mut transition active:scale-90">
-                <Icon name="x" className="size-[18px]" />
+                <Icon name="x" className="size-[1.125rem]" />
               </button>
             </div>
           </div>

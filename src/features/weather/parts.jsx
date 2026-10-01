@@ -15,10 +15,10 @@ export function Col({ label, icon, temp, wind, dir, strong }) {
   const l = windLevel(wind);
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-[11px] ${strong ? "font-semibold text-fg" : "text-mut"}`}>{label}</span>
-      <Icon name={icon} className="my-0.5 size-[18px] text-fg/75" />
-      <span className="text-[13px] font-medium tabular-nums">{temp}°</span>
-      <span className={`flex items-center gap-0.5 text-[11px] font-semibold tabular-nums ${l.tone}`}>
+      <span className={`text-[0.6875rem] ${strong ? "font-semibold text-fg" : "text-mut"}`}>{label}</span>
+      <Icon name={icon} className="my-0.5 size-[1.125rem] text-fg/75" />
+      <span className="text-[0.8125rem] font-medium tabular-nums">{temp}°</span>
+      <span className={`flex items-center gap-0.5 text-[0.6875rem] font-semibold tabular-nums ${l.tone}`}>
         <WindArrow deg={dir} />
         {wind}
       </span>

@@ -13,11 +13,11 @@ export function SpeakToggle({ withLabel }) {
       onClick={t.toggle}
       aria-pressed={t.enabled}
       aria-label={t.enabled ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
-      className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition active:scale-95 ${
+      className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold transition active:scale-95 ${
         t.enabled ? "bg-acc text-white" : "bg-bg text-mut"
       }`}
     >
-      <Icon name={t.enabled ? "volume" : "mute"} className="size-[18px]" />
+      <Icon name={t.enabled ? "volume" : "mute"} className="size-[1.125rem]" />
       {withLabel && (t.enabled ? "Açık" : "Kapalı")}
     </button>
   );

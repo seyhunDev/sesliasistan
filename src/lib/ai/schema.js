@@ -38,10 +38,18 @@ export const TOOL = {
           required: ["type", "title"],
         },
       },
+      send: {
+        type: "string",
+        description: "Yalnızca kayıt içinden (düzenleme) çağrıldığında: kaydın konuşmasına gönderilecek mesaj metni. Mesaj istenmediyse boş.",
+      },
+      done: { type: "boolean", description: "Yalnızca kayıt içinden: kullanıcı işi bitirdiğini söylediyse true" },
     },
     required: ["items", "message"],
   },
 };
+
+// Kayıt içinden gelen mesaj taslağı: tek paragraf, en çok 1000 karakter
+export const cleanSend = (m) => (typeof m === "string" ? m.replace(/\s+/g, " ").trim().slice(0, 1000) : "");
 
 const D = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")).catch("");
 const T = z.string().regex(/^\d{2}:\d{2}$/).or(z.literal("")).catch("");

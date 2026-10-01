@@ -9,9 +9,9 @@ export function WhoPill({ names = [], className = "", status }) {
   return (
     <span
       title={owner ? "Görevli yok · ana hesapta" : names.join(", ")}
-      className={`inline-flex ${owner ? "" : "max-w-[42%]"} shrink-0 items-center gap-1 self-center rounded-full py-0.5 pl-0.5 pr-2 text-[12px] font-medium ${owner ? "bg-line/70 text-mut" : "bg-acc/10 text-acc"} ${className}`}
+      className={`inline-flex ${owner ? "" : "max-w-[42%]"} shrink-0 items-center gap-1 self-center rounded-full py-0.5 pl-0.5 pr-2 text-[0.75rem] font-medium ${owner ? "bg-line/70 text-mut" : "bg-acc/10 text-acc"} ${className}`}
     >
-      <span className={`grid size-[18px] shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white ${owner ? "bg-mut/70" : "bg-acc"}`}>{first[0]}</span>
+      <span className={`grid size-[1.125rem] shrink-0 place-items-center rounded-full text-[0.625rem] font-semibold text-white ${owner ? "bg-mut/70" : "bg-acc"}`}>{first[0]}</span>
       <span className="truncate">{first}</span>
       {names.length > 1 && <span className="shrink-0">+{names.length - 1}</span>}
       {status && status !== "pending" && (

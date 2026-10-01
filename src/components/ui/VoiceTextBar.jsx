@@ -32,8 +32,8 @@ export function VoiceTextBar({ onMic, onSend, placeholder = "Yaz…", micLabel =
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-6">
-      <div className="mx-auto flex max-w-[448px] items-center gap-2">
+    <div data-bar="" className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-6">
+      <div className="mx-auto flex max-w-[28rem] items-center gap-2">
         {typing ? (
           <>
             <button type="button" onClick={close} aria-label="Yazmayı kapat" className={`grid size-12 shrink-0 place-items-center rounded-full bg-card text-mut transition active:scale-90 ${shadow}`}>
@@ -49,7 +49,7 @@ export function VoiceTextBar({ onMic, onSend, placeholder = "Yaz…", micLabel =
                 placeholder={placeholder}
                 enterKeyHint="send"
                 autoCapitalize="sentences"
-                className="min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-[15px] placeholder:text-mut"
+                className="min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-[0.9375rem] placeholder:text-mut"
               />
               <button
                 type="button"
@@ -68,12 +68,12 @@ export function VoiceTextBar({ onMic, onSend, placeholder = "Yaz…", micLabel =
             <button
               type="button"
               onClick={onMic}
-              className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-acc text-[16px] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.35)] transition active:scale-[.98]"
+              className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-acc text-[1rem] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.35)] transition active:scale-[.98]"
             >
-              <Icon name="mic" className="size-[22px]" />
+              <Icon name="mic" className="size-[1.375rem]" />
               <span className="truncate">{micLabel}</span>
             </button>
-            <button type="button" onClick={openType} aria-label="Yaz" className={`flex h-12 shrink-0 items-center gap-1.5 rounded-full bg-card px-4 text-[15px] font-semibold text-fg transition active:scale-95 ${shadow}`}>
+            <button type="button" onClick={openType} aria-label="Yaz" className={`flex h-12 shrink-0 items-center gap-1.5 rounded-full bg-card px-4 text-[0.9375rem] font-semibold text-fg transition active:scale-95 ${shadow}`}>
               <Icon name="keyboard" className="size-5 text-acc" />
               Yaz
             </button>
@@ -88,7 +88,7 @@ export function VoiceTextBar({ onMic, onSend, placeholder = "Yaz…", micLabel =
 export function BarButton({ icon, label, onClick }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} className={`grid size-12 shrink-0 place-items-center rounded-full bg-card text-acc transition active:scale-90 ${shadow}`}>
-      <Icon name={icon} className="size-[22px]" />
+      <Icon name={icon} className="size-[1.375rem]" />
     </button>
   );
 }

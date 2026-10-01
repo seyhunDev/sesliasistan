@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Geliştirmede sol alttaki Next.js "N" göstergesini gizle
-  devIndicators: false,
   // Telefondan HTTPS tünel adresiyle erişirken geliştirme sunucusu engellemesin
   allowedDevOrigins: ["*.trycloudflare.com", "*.ngrok-free.app", "*.ngrok-free.dev"],
   // Kamera (fiş) ve mikrofon (konuşma) bu sitede kullanılabilsin

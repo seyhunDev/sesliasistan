@@ -3,12 +3,54 @@ import crypto from "node:crypto";
 import webpush from "web-push";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/server/admin";
+import { unseenNotes } from "@/lib/people";
+import { GROUP_IDS, inGroup } from "@/lib/kinds";
 
 export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
+// Uygulama simgesindeki sayı: ana sayfadaki "Yenilikler" kartıyla aynı — bu kişinin henüz açmadığı, başkasının
+// eklediği/ona verdiği kayıtlar (son 14 gün) + başkalarının yazdığı görülmemiş notu olan kayıtlar (kayıt başına 1).
+// Ana hesap işletmedeki bütün kayıtları görür; kişi yalnızca içinde olduğu kayıtları. Okunmamış sohbetler de eklenir.
+export async function unreadCount(orgId, uid) {
+  if (!orgId || !uid) return 0;
+  const since = Date.now() - 14 * 864e5;
+  const owner = orgId === uid;
+  const cols = await Promise.all(
+    ["plans", "tasks", "notes"].map((k) => {
+      const c = adminDb().collection("orgs").doc(orgId).collection(k);
+      return (owner ? c : c.where("people", "array-contains", uid)).get().catch(() => null);
+    }),
+  );
+  // Okunmamış sohbetler (sessize alınanlar hariç): sohbet başına 1
+  const chats = adminDb().collection("orgs").doc(orgId).collection("chats");
+  // Sabit gruplardan (Ekip, Aile, Sporcular) yalnızca kişinin türüne uyanlar
+  const prof = owner ? null : (await adminDb().collection("users").doc(uid).get().catch(() => null))?.data();
+  const kind = owner ? "owner" : prof?.kind || "staff";
+  const fixed = GROUP_IDS.filter((g) => inGroup(g, kind));
+  const [mine, ...groups] = await Promise.all([chats.where("members", "array-contains", uid).get().catch(() => null), ...fixed.map((g) => chats.doc(g).get().catch(() => null))]);
+  let n = 0;
+  for (const c of [...(mine?.docs || []), ...groups.filter((g) => g?.exists)]) {
+    const d = c.data();
+    if (!d.muted?.[uid] && (d.seq || 0) > (d.read?.[uid] || 0)) n++;
+  }
+  cols.forEach((snap, i) => {
+    snap?.forEach((d) => {
+      const r = d.data();
+      if (i === 1 && r.done) return; // bitmiş görev sayılmaz
+      const t = Date.parse(r.createdAt || "");
+      const isNew = r.createdByUid && r.createdByUid !== uid && !r.ack?.[uid]?.r && !r.doneBy?.[uid] && (!t || t > since);
+      if (isNew || unseenNotes(r, uid).length) n++;
+    });
+  });
+  return Math.min(n, 99);
+}
+
 export async function sendTo(uid, payload) {
   const ref = adminDb().collection("users").doc(uid);
-  const push = (await ref.get()).data()?.push || {};
+  const user = (await ref.get()).data() || {};
+  const push = user.push || {};
+  if (!Object.keys(push).length) return 0;
+  if (payload.badge === undefined) payload = { ...payload, badge: await unreadCount(user.orgId || uid, uid).catch(() => undefined) };
   try {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
   } catch (e) {

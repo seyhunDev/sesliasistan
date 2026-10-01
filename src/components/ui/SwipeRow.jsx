@@ -174,7 +174,7 @@ export function SwipeRow({ actions, children }) {
               }`}
             >
               {/* Tam kaydırmada simge satırın kenarına yapışık gelir (iPhone Mail gibi) */}
-              <span className="flex shrink-0 flex-col items-center justify-center gap-1 text-[12px] font-semibold leading-none" style={{ width: BTN, opacity: armed ? 1 : fade }}>
+              <span className="flex shrink-0 flex-col items-center justify-center gap-1 text-[0.75rem] font-semibold leading-none" style={{ width: BTN, opacity: armed ? 1 : fade }}>
                 <Icon name={a.icon} className="size-5" />
                 {a.label}
               </span>

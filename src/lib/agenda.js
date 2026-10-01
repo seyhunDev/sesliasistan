@@ -121,8 +121,10 @@ export function pickTasks(tasks, today) {
   const open = tasks.filter((x) => !x.done);
   const byDue = (a, b) => (a.due || "").localeCompare(b.due || "");
   const out = [];
-  const t = open.filter((x) => x.due && x.due <= today).sort(byDue);
+  const late = open.filter((x) => x.due && x.due < today).sort(byDue);
+  const t = open.filter((x) => x.due === today);
   const y = open.filter((x) => x.due === tomorrow);
+  if (late.length) out.push({ key: "late", label: "Geciken", items: late });
   if (t.length) out.push({ key: "today", label: "Bugün", items: t });
   if (y.length) out.push({ key: "tomorrow", label: "Yarın", items: y });
   if (out.length) return out;

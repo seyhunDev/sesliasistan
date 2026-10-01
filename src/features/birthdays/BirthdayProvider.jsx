@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { leftLabel, nextBirthday } from "@/lib/agenda";
 import { cap, todayStr } from "@/lib/utils/format";
+import { matchPerson } from "@/lib/names";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const Ctx = createContext({ openBirthday: () => {} });
@@ -23,7 +24,7 @@ function Select({ value, onChange, label, className, children }) {
   );
 }
 
-// openBirthday({ edit: id } | { date: "YYYY-MM-DD" }) her yerden çağrılabilir
+// openBirthday({ edit: id } | { date: "YYYY-MM-DD" } | { prefill: { name, month, day, year } }) her yerden çağrılabilir
 export function BirthdayProvider({ children }) {
   const [state, setState] = useState(null); // { id?, name, memberUid, month, day, year, note }
   const openBirthday = useCallback((o = {}) => setState({ key: Date.now(), ...o }), []);
@@ -41,10 +42,19 @@ function BirthdaySheet({ seed, onClose }) {
   const toast = useToast();
   const rec = seed?.edit ? birthdays.find((b) => b.id === seed.edit) : null;
   const d0 = seed?.date || todayStr();
+  const pf = seed?.prefill; // cümleden gelen: { name, month, day, year }
   const [f, setF] = useState(() =>
     rec
-      ? { name: rec.name, memberUid: rec.memberUid || "", month: rec.month, day: rec.day, year: rec.year || "", note: rec.note || "" }
-      : { name: "", memberUid: "", month: +d0.slice(5, 7), day: +d0.slice(8, 10), year: "", note: "" },
+      ? { name: rec.name, memberUid: rec.memberUid || "", month: rec.month, day: rec.day, year: rec.year || "", note: rec.note || "", phone: rec.phone || "" }
+      : {
+          name: pf?.name || "",
+          memberUid: (pf?.name && !isStaff && members.find((m) => m.name === matchPerson(pf.name, members.map((x) => x.name)))?.uid) || "",
+          month: pf?.month || +d0.slice(5, 7),
+          day: pf?.day || +d0.slice(8, 10),
+          year: pf?.year || "",
+          note: "",
+          phone: "",
+        },
   );
   const set = (patch) => setF((p) => ({ ...p, ...patch }));
   const people = isStaff ? [] : members;
@@ -67,7 +77,7 @@ function BirthdaySheet({ seed, onClose }) {
       <div className="space-y-4 pb-2">
         {/* Kimin */}
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-mut">Kimin?</label>
+          <label className="mb-1.5 block text-[0.8125rem] font-medium text-mut">Kimin?</label>
           {people.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {people.map((m) => {
@@ -77,7 +87,7 @@ function BirthdaySheet({ seed, onClose }) {
                     key={m.uid}
                     type="button"
                     onClick={() => set(on ? { memberUid: "", name: "" } : { memberUid: m.uid, name: m.name })}
-                    className={`rounded-full px-3 py-1.5 text-[14px] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
+                    className={`rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
                   >
                     {m.name}
                   </button>
@@ -96,9 +106,9 @@ function BirthdaySheet({ seed, onClose }) {
 
         {/* Tarih */}
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-mut">Tarih</label>
+          <label className="mb-1.5 block text-[0.8125rem] font-medium text-mut">Tarih</label>
           <div className="flex gap-2">
-            <Select value={Math.min(f.day, days)} onChange={(v) => set({ day: +v })} label="Gün" className="w-[76px] shrink-0">
+            <Select value={Math.min(f.day, days)} onChange={(v) => set({ day: +v })} label="Gün" className="w-[4.75rem] shrink-0">
               {Array.from({ length: days }, (_, i) => (
                 <option key={i + 1} value={i + 1}>{i + 1}</option>
               ))}
@@ -114,10 +124,10 @@ function BirthdaySheet({ seed, onClose }) {
               inputMode="numeric"
               placeholder="Yıl"
               aria-label="Doğum yılı (isteğe bağlı)"
-              className={`${box} w-[76px] shrink-0 text-center`}
+              className={`${box} w-[4.75rem] shrink-0 text-center`}
             />
           </div>
-          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-mut">
+          <p className="mt-2 flex items-center gap-1.5 text-[0.8125rem] text-mut">
             <Icon name="cake" className="size-4 text-acc" />
             {longDay(next.date)}
             {next.age ? ` · ${next.age} yaşına giriyor` : ""}
@@ -125,6 +135,15 @@ function BirthdaySheet({ seed, onClose }) {
           </p>
         </div>
 
+        <input
+          value={f.phone}
+          onChange={(e) => set({ phone: e.target.value })}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="Telefon (arama ve WhatsApp için)"
+          className={field}
+        />
         <input value={f.note} onChange={(e) => set({ note: e.target.value })} placeholder="Not (isteğe bağlı): hediye fikri…" className={field} />
 
         <div className="flex gap-2.5 pt-1">
@@ -135,12 +154,12 @@ function BirthdaySheet({ seed, onClose }) {
                 removeWithUndo("birthday", rec.id);
                 onClose();
               }}
-              className="h-12 flex-1 rounded-xl border border-line bg-card text-[15px] font-semibold text-rec active:scale-[.98]"
+              className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold text-rec active:scale-[.98]"
             >
               Sil
             </button>
           )}
-          <button type="button" onClick={save} className="h-12 flex-[1.6] rounded-xl bg-acc text-[15px] font-semibold text-white active:scale-[.98]">
+          <button type="button" onClick={save} className="h-12 flex-[1.6] rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
             Kaydet
           </button>
         </div>

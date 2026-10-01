@@ -23,7 +23,9 @@ const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar se
 
 // status: "idle" | "listening" | "transcribing"
 // onFinal(text, mode): mode "send" (hemen gönder) | "edit" (metin kutuda kalsın)
-// start({ autoStop: ms, auto, quiet }): autoStop kadar konuşulmazsa dinleme biter (0 = kapalı).
+// start({ autoStop: ms, auto, quiet, endpoint: ms }): autoStop kadar konuşulmazsa dinleme biter (0 = kapalı).
+//   endpoint: konuşma başladıktan sonra bu kadar sessizlikte söylenen kendiliğinden gönderilir (canlı sohbet; 0 = kapalı).
+//   Kayıt yolunda bu zaten END_SILENCE ile yapılır; bu seçenek canlı yazı yolunda (Web Speech) da aynısını yapar.
 //   auto: kendiliğinden başlatıldı (15 sn sessizlikte kapanır). quiet: hatalar gösterilmez
 //   (yalnızca yanıt okunduktan sonra yeniden dinlemede; kullanıcı düğmeye bastıysa hata hep görünür).
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
@@ -111,6 +113,12 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
       }
       // Kayıt yolu: konuşuldu ve sustu, kendiliğinden gönder (canlı yazı olmadığı için bekletmeyelim)
       if (s.kind === "server" && s.voiceSeen && now - s.lastSpeech >= END_SILENCE) {
+        stopRef.current?.("send");
+        return;
+      }
+      // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
+      // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
+      if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {
         stopRef.current?.("send");
         return;
       }
@@ -331,6 +339,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, analyser: null, emptyEnds: 0, floor: null,
       stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
+      endpoint: opts.endpoint || 0,
     });
     setFinalText("");
     setInterim("");

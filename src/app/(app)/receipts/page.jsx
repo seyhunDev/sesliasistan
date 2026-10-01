@@ -11,6 +11,7 @@ import { PayBadge, PendingPayments } from "@/features/receipts/Payment";
 import { whoText } from "@/lib/people";
 import { CAT, CATS, DOC, PAYS, TLk, catOf, parseTL, totalOf } from "@/lib/receipts";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
+import { Loading } from "@/components/ui/Loader";
 
 const inp = "h-11 w-full min-w-0 rounded-xl border border-line bg-card px-3 text-base text-fg outline-none transition focus:border-acc";
 const shiftMonth = (m, n) => {
@@ -104,11 +105,11 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[480px] px-5 pb-[calc(120px+env(safe-area-inset-bottom))]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       {/* Başlık */}
       <PageHeader title="Fişler">
         <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
-          <Icon name="print" className="size-[18px]" />
+          <Icon name="print" className="size-[1.125rem]" />
         </button>
       </PageHeader>
 
@@ -117,7 +118,7 @@ export default function ReceiptsPage() {
         <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), -1))} aria-label="Önceki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg">
           <Icon name="back" className="size-5" />
         </button>
-        <button onClick={() => setMonth((m) => (m ? "" : todayStr().slice(0, 7)))} className="text-[15px] font-semibold capitalize">
+        <button onClick={() => setMonth((m) => (m ? "" : todayStr().slice(0, 7)))} className="text-[0.9375rem] font-semibold capitalize">
           {month ? monthLabel(month) : "Tüm zamanlar"}
         </button>
         <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), 1))} aria-label="Sonraki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg">
@@ -127,8 +128,8 @@ export default function ReceiptsPage() {
 
       {/* Özet */}
       <div className="mt-3 rounded-2xl bg-acc p-4 text-white">
-        <div className="text-[28px] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
-        <p className="text-[13px] opacity-80">
+        <div className="text-[1.75rem] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
+        <p className="text-[0.8125rem] opacity-80">
           {list.length} belge · KDV {TLk(vat)}
         </p>
         {total > 0 && (
@@ -138,7 +139,7 @@ export default function ReceiptsPage() {
                 <span key={c} style={{ width: `${(v / total) * 100}%`, background: catOf(c).color }} />
               ))}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] opacity-90">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.75rem] opacity-90">
               {catRank.slice(0, 3).map(([c, v]) => (
                 <span key={c} className="flex items-center gap-1">
                   <i className="size-2 rounded-full" style={{ background: catOf(c).color }} /> {c} {TLk(v)}
@@ -154,7 +155,7 @@ export default function ReceiptsPage() {
       {pending > 0 && !review && (
         <button onClick={() => setReview(true)} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
           <Icon name="alert" className="size-5" />
-          <span className="flex-1 text-[15px] font-semibold">{pending} fiş kontrol bekliyor</span>
+          <span className="flex-1 text-[0.9375rem] font-semibold">{pending} fiş kontrol bekliyor</span>
           <Icon name="chev" className="size-4" />
         </button>
       )}
@@ -162,7 +163,7 @@ export default function ReceiptsPage() {
       {/* Arama + filtre */}
       <div className="mt-3 flex gap-2">
         <div className="relative flex-1">
-          <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-mut" />
+          <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 size-[1.125rem] -translate-y-1/2 text-mut" />
           <input className={`${inp} pl-10`} type="search" placeholder="Ara" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <button
@@ -171,15 +172,15 @@ export default function ReceiptsPage() {
           className={`relative grid size-11 shrink-0 place-items-center rounded-xl border transition active:scale-95 ${open || active ? "border-acc bg-acc/10 text-acc" : "border-line bg-card"}`}
         >
           <Icon name="filter" className="size-5" />
-          {active > 0 && <span className="absolute -right-1 -top-1 grid size-[18px] place-items-center rounded-full bg-acc text-[11px] font-bold text-white">{active}</span>}
+          {active > 0 && <span className="absolute -right-1 -top-1 grid size-[1.125rem] place-items-center rounded-full bg-acc text-[0.6875rem] font-bold text-white">{active}</span>}
         </button>
       </div>
 
       {open && (
         <div className="fade-in mt-2 space-y-2 rounded-2xl border border-line bg-card p-3">
-          <div className="flex rounded-xl bg-bg p-[3px]">
+          <div className="flex rounded-xl bg-bg p-[0.1875rem]">
             {["", ...PAYS].map((p) => (
-              <button key={p || "all"} onClick={() => setPay(p)} className={`flex-1 rounded-[10px] py-2 text-sm font-semibold transition ${pay === p ? "bg-card shadow-sm" : "text-mut"}`}>
+              <button key={p || "all"} onClick={() => setPay(p)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${pay === p ? "bg-card shadow-sm" : "text-mut"}`}>
                 {p || "Tümü"}
               </button>
             ))}
@@ -194,7 +195,7 @@ export default function ReceiptsPage() {
             <input className={inp} inputMode="decimal" placeholder="En az ₺" value={min} onChange={(e) => setMin(e.target.value)} />
             <input className={inp} inputMode="decimal" placeholder="En çok ₺" value={max} onChange={(e) => setMax(e.target.value)} />
           </div>
-          <label className="flex items-center justify-between px-1 py-1 text-[15px]">
+          <label className="flex items-center justify-between px-1 py-1 text-[0.9375rem]">
             Yalnızca kontrol bekleyenler
             <input type="checkbox" className="size-5 accent-[var(--acc)]" checked={review} onChange={(e) => setReview(e.target.checked)} />
           </label>
@@ -220,33 +221,33 @@ export default function ReceiptsPage() {
 
       {/* Liste */}
       {loading ? (
-        <p className="py-14 text-center text-sm text-mut">Yükleniyor…</p>
+        <Loading />
       ) : days.length === 0 ? (
         <div className="py-14 text-center">
           <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-card text-mut ring-1 ring-line">
             <Icon name="receipt" className="size-7" />
           </span>
-          <p className="mt-3 text-[15px] text-mut">{receipts.length ? "Bu filtrede fiş yok" : "Henüz fiş yok"}</p>
-          {!receipts.length && <p className="mt-1 text-[13px] text-mut">Aşağıdan fotoğrafını çek ya da elle ekle.</p>}
+          <p className="mt-3 text-[0.9375rem] text-mut">{receipts.length ? "Bu filtrede fiş yok" : "Henüz fiş yok"}</p>
+          {!receipts.length && <p className="mt-1 text-[0.8125rem] text-mut">Aşağıdan fotoğrafını çek ya da elle ekle.</p>}
         </div>
       ) : (
         days.map((d) => (
           <section key={d}>
-            <h3 className="mb-2 mt-5 px-1 text-[13px] font-medium text-mut">{fdate(d)}</h3>
+            <h3 className="mb-2 mt-5 px-1 text-[0.8125rem] font-medium text-mut">{fdate(d)}</h3>
             <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
               {groups[d].map((r) => (
                 <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
                   <Tile icon={catOf(r.cat).icon} />
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[15px] font-medium">{r.merchant || "İsimsiz"}</b>
-                    <small className="block truncate text-[13px] text-mut">
+                    <b className="block truncate text-[0.9375rem] font-medium">{r.merchant || "İsimsiz"}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">
                       {[r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
                       {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
                     </small>
-                    {r.payStatus === "pending" && <small className="block text-[12px] font-semibold text-amber-700">Ödeme bekliyor</small>}
+                    {r.payStatus === "pending" && <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small>}
                   </span>
                   {r.status === "review" && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
-                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
+                  <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
                 </Link>
               ))}
             </div>
@@ -257,7 +258,7 @@ export default function ReceiptsPage() {
       {/* Ödenenler: ayrı ve kapalı; istenince açılır */}
       {paid.length > 0 && (
         <section className="mt-8">
-          <button onClick={() => setShowPaid((v) => !v)} className="flex w-full items-center justify-between px-1 text-[13px] font-semibold text-mut active:opacity-60">
+          <button onClick={() => setShowPaid((v) => !v)} className="flex w-full items-center justify-between px-1 text-[0.8125rem] font-semibold text-mut active:opacity-60">
             <span>Ödenenler · {paid.length} · {TLk(paid.reduce((a, r) => a + totalOf(r), 0))}</span>
             <span className="font-medium text-acc">{showPaid ? "Gizle" : "Göster"}</span>
           </button>
@@ -267,13 +268,13 @@ export default function ReceiptsPage() {
                 <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
                   <Tile icon={catOf(r.cat).icon} />
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[15px] font-medium">{r.merchant || "İsimsiz"}</b>
-                    <small className="block truncate text-[13px] text-mut">
+                    <b className="block truncate text-[0.9375rem] font-medium">{r.merchant || "İsimsiz"}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">
                       {[fdate(r.date), whoText(r, myUid, nameOf)].filter(Boolean).join(" · ")}
                     </small>
                   </span>
                   <PayBadge r={r} />
-                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
+                  <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
                 </Link>
               ))}
             </div>
@@ -282,12 +283,12 @@ export default function ReceiptsPage() {
       )}
 
       {/* Ekleme: aynı sayfada fotoğraf çek ya da elle gir */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-6">
-        <div className="mx-auto flex max-w-[448px] gap-2">
-          <button onClick={() => openReceipt({ manual: true })} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-card text-[15px] font-semibold text-acc shadow-[0_6px_24px_-8px_rgba(38,40,44,.18)] ring-1 ring-line transition active:scale-[.98]">
-            <Icon name="edit" className="size-[18px]" /> Elle ekle
+      <div data-bar="" className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-6">
+        <div className="mx-auto flex max-w-[28rem] gap-2">
+          <button onClick={() => openReceipt({ manual: true })} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_6px_24px_-8px_rgba(38,40,44,.18)] ring-1 ring-line transition active:scale-[.98]">
+            <Icon name="edit" className="size-[1.125rem]" /> Elle ekle
           </button>
-          <button onClick={() => openReceipt()} className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-acc text-[15px] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.3)] transition active:scale-[.98]">
+          <button onClick={() => openReceipt()} className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-acc text-[0.9375rem] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.3)] transition active:scale-[.98]">
             <Icon name="camera" className="size-5" /> Fiş fotoğrafı
           </button>
         </div>

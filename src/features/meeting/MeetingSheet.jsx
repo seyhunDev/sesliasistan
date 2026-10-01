@@ -9,6 +9,7 @@ import { MEETING_MAX_MS, useMeetingRecorder } from "@/hooks/useMeetingRecorder";
 import { deleteMeeting, listMeetings, saveMeeting } from "@/lib/meeting/store";
 import { toWav16k } from "@/lib/speech/wav";
 import { summarizeMeeting, transcribeChunk } from "@/services/meetingService";
+import { Loader } from "@/components/ui/Loader";
 
 const mmss = (ms) => {
   const s = Math.floor(ms / 1000);
@@ -124,7 +125,7 @@ export function MeetingSheet({ open, onClose }) {
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">Toplantı modu</h2>
         <button onClick={close} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
-          <Icon name="x" className="size-[18px]" />
+          <Icon name="x" className="size-[1.125rem]" />
         </button>
       </header>
 
@@ -135,8 +136,8 @@ export function MeetingSheet({ open, onClose }) {
               <span className="mx-auto grid size-16 place-items-center rounded-full bg-acc/10 text-acc">
                 <Icon name="users" className="size-8" />
               </span>
-              <p className="mt-3 text-[17px] font-semibold">Toplantıyı dinleyeyim</p>
-              <p className="mt-1 text-[14px] text-mut">En fazla 15 dakika. Bitince özet, kararlar ve yapılacak işleri çıkarırım. Yapay zekaya ulaşamazsam kaydı bu cihazda saklarım.</p>
+              <p className="mt-3 text-[1.0625rem] font-semibold">Toplantıyı dinleyeyim</p>
+              <p className="mt-1 text-[0.875rem] text-mut">En fazla 15 dakika. Bitince özet, kararlar ve yapılacak işleri çıkarırım. Yapay zekaya ulaşamazsam kaydı bu cihazda saklarım.</p>
               <button onClick={begin} className={`${btn} mt-5 w-full bg-acc text-white`}>
                 <Icon name="mic" className="size-5" /> Kaydı başlat
               </button>
@@ -144,18 +145,18 @@ export function MeetingSheet({ open, onClose }) {
 
             {pending.length > 0 && (
               <section className="mt-6">
-                <h3 className="px-1 text-[13px] font-semibold text-mut">Bekleyen toplantılar</h3>
+                <h3 className="px-1 text-[0.8125rem] font-semibold text-mut">Bekleyen toplantılar</h3>
                 <ul className="mt-2 space-y-2">
                   {pending.map((m) => {
                     const text = m.parts.map((p) => p.text).filter(Boolean).join(" ");
                     return (
                       <li key={m.id} className="rounded-2xl border border-line bg-card p-3.5">
-                        <p className="text-[15px] font-medium">{when(m.startedAt)} · {mmss(m.sec * 1000)}</p>
-                        <p className="text-[13px] text-mut">{m.status === "stt" ? "Ses yazıya çevrilemedi, kayıt saklı" : "Metin hazır, özet çıkarılamadı"}</p>
+                        <p className="text-[0.9375rem] font-medium">{when(m.startedAt)} · {mmss(m.sec * 1000)}</p>
+                        <p className="text-[0.8125rem] text-mut">{m.status === "stt" ? "Ses yazıya çevrilemedi, kayıt saklı" : "Metin hazır, özet çıkarılamadı"}</p>
                         <div className="mt-2.5 flex flex-wrap gap-2">
-                          <button onClick={() => run(m)} className="rounded-full bg-acc px-3.5 py-1.5 text-[13px] font-semibold text-white active:scale-95">Özetle</button>
-                          {text && <button onClick={() => asNote(text)} className="rounded-full border border-line px-3.5 py-1.5 text-[13px] font-semibold active:scale-95">Not olarak kaydet</button>}
-                          <button onClick={() => deleteMeeting(m.id).then(refresh)} className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-rec active:scale-95">Sil</button>
+                          <button onClick={() => run(m)} className="rounded-full bg-acc px-3.5 py-1.5 text-[0.8125rem] font-semibold text-white active:scale-95">Özetle</button>
+                          {text && <button onClick={() => asNote(text)} className="rounded-full border border-line px-3.5 py-1.5 text-[0.8125rem] font-semibold active:scale-95">Not olarak kaydet</button>}
+                          <button onClick={() => deleteMeeting(m.id).then(refresh)} className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-rec active:scale-95">Sil</button>
                         </div>
                       </li>
                     );
@@ -169,11 +170,11 @@ export function MeetingSheet({ open, onClose }) {
         {view === "rec" && (
           <div className="fade-in flex min-h-full flex-col">
             <div className="rounded-2xl border border-line bg-card p-5 text-center">
-              <p className="flex items-center justify-center gap-2 text-[13px] font-semibold text-rec">
+              <p className="flex items-center justify-center gap-2 text-[0.8125rem] font-semibold text-rec">
                 <i className="rec-dot" /> Kaydediliyor
               </p>
-              <p className="mt-2 text-[44px] font-bold tabular-nums leading-none">{mmss(rec.elapsed)}</p>
-              <p className="mt-1.5 text-[13px] tabular-nums text-mut">Kalan {mmss(left)}</p>
+              <p className="mt-2 text-[2.75rem] font-bold tabular-nums leading-none">{mmss(rec.elapsed)}</p>
+              <p className="mt-1.5 text-[0.8125rem] tabular-nums text-mut">Kalan {mmss(left)}</p>
               <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-bg">
                 <div className="h-full rounded-full bg-acc transition-[width] duration-300" style={{ width: `${pct}%` }} />
               </div>
@@ -184,8 +185,8 @@ export function MeetingSheet({ open, onClose }) {
               </div>
             </div>
 
-            <h3 className="mt-5 px-1 text-[13px] font-semibold text-mut">Metin (dakikada bir güncellenir)</h3>
-            <div ref={listRef} className="mt-2 max-h-[34vh] min-h-24 overflow-y-auto rounded-2xl border border-line bg-card p-3.5 text-[15px] leading-relaxed">
+            <h3 className="mt-5 px-1 text-[0.8125rem] font-semibold text-mut">Metin (dakikada bir güncellenir)</h3>
+            <div ref={listRef} className="mt-2 max-h-[34vh] min-h-24 overflow-y-auto rounded-2xl border border-line bg-card p-3.5 text-[0.9375rem] leading-relaxed">
               {rec.parts.length === 0 && <p className="text-mut">İlk dakika bitince metin burada görünecek…</p>}
               {rec.parts.map((p, i) => (
                 <p key={i} className={p.state === "ok" ? "" : "text-mut"}>
@@ -205,23 +206,23 @@ export function MeetingSheet({ open, onClose }) {
 
         {view === "work" && (
           <div className="fade-in flex flex-col items-center py-16 text-center">
-            <Icon name="load" className="size-8 animate-spin text-acc" />
-            <p className="mt-4 text-[16px] font-semibold">{work}</p>
-            <p className="mt-1 text-[13px] text-mut">Bu birkaç saniye sürebilir.</p>
+            <Loader size="lg" />
+            <p className="mt-4 text-[1rem] font-semibold">{work}</p>
+            <p className="mt-1 text-[0.8125rem] text-mut">Bu birkaç saniye sürebilir.</p>
           </div>
         )}
 
         {view === "result" && out?.result && (
           <div className="fade-in space-y-4">
             <div className="rounded-2xl border border-line bg-card p-4">
-              <p className="text-[13px] font-semibold text-mut">Özet</p>
-              <p className="mt-1 text-[17px] font-semibold">{out.result.title}</p>
-              <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed">{out.result.summary}</p>
+              <p className="text-[0.8125rem] font-semibold text-mut">Özet</p>
+              <p className="mt-1 text-[1.0625rem] font-semibold">{out.result.title}</p>
+              <p className="mt-2 whitespace-pre-line text-[0.9375rem] leading-relaxed">{out.result.summary}</p>
             </div>
             {out.result.decisions.length > 0 && (
               <div className="rounded-2xl border border-line bg-card p-4">
-                <p className="text-[13px] font-semibold text-mut">Kararlar</p>
-                <ul className="mt-2 space-y-1.5 text-[15px]">
+                <p className="text-[0.8125rem] font-semibold text-mut">Kararlar</p>
+                <ul className="mt-2 space-y-1.5 text-[0.9375rem]">
                   {out.result.decisions.map((d, i) => (
                     <li key={i} className="flex gap-2"><Icon name="check" className="mt-0.5 size-4 shrink-0 text-emerald-600" />{d}</li>
                   ))}
@@ -229,22 +230,22 @@ export function MeetingSheet({ open, onClose }) {
               </div>
             )}
             <div className="rounded-2xl border border-line bg-card p-4">
-              <p className="text-[13px] font-semibold text-mut">Eylem planı · {out.result.items.length}</p>
+              <p className="text-[0.8125rem] font-semibold text-mut">Eylem planı · {out.result.items.length}</p>
               {out.result.items.length ? (
-                <ul className="mt-2 space-y-1.5 text-[15px]">
+                <ul className="mt-2 space-y-1.5 text-[0.9375rem]">
                   {out.result.items.map((it, i) => (
                     <li key={i} className="flex items-baseline gap-2">
-                      <span className="w-12 shrink-0 text-[12px] font-semibold text-acc">{{ plan: "Plan", task: "Görev", note: "Not" }[it.type]}</span>
+                      <span className="w-12 shrink-0 text-[0.75rem] font-semibold text-acc">{{ plan: "Plan", task: "Görev", note: "Not" }[it.type]}</span>
                       <span className="min-w-0 flex-1">{it.title}{it.date && <span className="text-mut"> · {it.date}{it.time ? ` ${it.time}` : ""}</span>}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-[14px] text-mut">Yapılacak iş çıkmadı.</p>
+                <p className="mt-2 text-[0.875rem] text-mut">Yapılacak iş çıkmadı.</p>
               )}
             </div>
             <button onClick={toDrafts} className={`${btn} w-full bg-acc text-white`}>Özeti ve işleri kaydetmeye hazırla</button>
-            <button onClick={() => asNote(out.text)} className="h-11 w-full text-[15px] font-semibold text-mut active:text-fg">Yalnızca tam metni not olarak kaydet</button>
+            <button onClick={() => asNote(out.text)} className="h-11 w-full text-[0.9375rem] font-semibold text-mut active:text-fg">Yalnızca tam metni not olarak kaydet</button>
           </div>
         )}
 
@@ -253,11 +254,11 @@ export function MeetingSheet({ open, onClose }) {
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-amber-100 text-amber-800">
               <Icon name="alert" className="size-7" />
             </span>
-            <p className="mt-3 text-[17px] font-semibold">Kayıt bu cihazda saklandı</p>
-            <p className="mx-auto mt-1 max-w-[320px] text-[14px] text-mut">
+            <p className="mt-3 text-[1.0625rem] font-semibold">Kayıt bu cihazda saklandı</p>
+            <p className="mx-auto mt-1 max-w-[20rem] text-[0.875rem] text-mut">
               {out.saved === "stt" ? "Sesin bir kısmı yazıya çevrilemedi." : `Özet çıkarılamadı${out.error ? ` (${out.error})` : ""}.`} Toplantı modunda “Bekleyen toplantılar”dan tekrar özetleyebilirsin.
             </p>
-            <div className="mx-auto mt-5 flex max-w-[320px] flex-col gap-2">
+            <div className="mx-auto mt-5 flex max-w-[20rem] flex-col gap-2">
               {out.text && <button onClick={() => asNote(out.text)} className={`${btn} border border-line bg-card`}>Metni şimdi not olarak kaydet</button>}
               <button onClick={() => setView("home")} className={`${btn} bg-acc text-white`}>Tamam</button>
             </div>

@@ -1,5 +1,6 @@
 // Plan hatırlatmaları: hangi planın ne zaman hatırlatılacağını hesaplar.
 // Hem sunucudaki zamanlanmış görev (netlify/functions) hem uygulama kullanır; bu yüzden "@/" içe aktarması yok.
+import { reminderTextOf } from "./notifyText.js";
 
 export const LEADS = [
   { min: 15, label: "15 dk önce" },
@@ -49,11 +50,5 @@ export function dueReminders(plans, { lead, tz = DEFAULT_TZ, now = new Date(), w
 
 // Bildirim metni
 export function reminderText(plan, lead) {
-  const place = plan.place ? ` · ${plan.place}` : "";
-  let when;
-  if (!plan.time) when = lead >= 1440 ? "Yarın · tüm gün" : "Bugün · tüm gün";
-  else if (lead >= 1440) when = `Yarın ${plan.time}`;
-  else if (lead >= 60) when = `${lead / 60} saat sonra · ${plan.time}`;
-  else when = `${lead} dk sonra · ${plan.time}`;
-  return { title: plan.title || "Plan", body: `${when}${place}`, tag: `plan-${plan.id}`, url: "/plans" };
+  return { ...reminderTextOf(plan, lead), tag: `plan-${plan.id}`, url: "/plans" };
 }

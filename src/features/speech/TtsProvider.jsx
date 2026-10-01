@@ -70,9 +70,12 @@ export function TtsProvider({ children }) {
     load();
     if (dev) window.speechSynthesis.addEventListener?.("voiceschanged", load);
 
-    // iOS: ilk dokunuşta sesi aç, sonraki otomatik okumalar çalışır
+    // iOS: otomatik okumanın çalışması için sesin bir dokunuşla "açılması" gerekir (sessiz ses çalınır).
+    // Ama telefonda herhangi bir ses çalmak arka plandaki müziği/YouTube'u durdurur. Bu yüzden yalnızca
+    // sesli yanıt açıkken ve kişi asistanla uğraşırken yapılır: asistanı açınca, asistan/ekleme penceresinde (data-voice) dokununca ya da mikrofon açılınca.
+    // Uygulamayı açmak veya ana sayfada gezinmek sesi hiç açmaz.
     const unlock = () => {
-      if (unlocked.current) return;
+      if (unlocked.current || !on.current) return;
       unlocked.current = true;
       try {
         audio.current.src = silentWav();
@@ -86,15 +89,19 @@ export function TtsProvider({ children }) {
         } catch { }
       }
     };
+    const onTap = (e) => e.target?.closest?.("[data-voice]") && unlock();
+    const onMic = () => (unlock(), stop()); // mikrofon zaten sesi alır; konuşan yanıt susar
     const evs = ["pointerup", "click", "touchend"];
-    evs.forEach((e) => window.addEventListener(e, unlock, { capture: true, passive: true }));
+    evs.forEach((e) => window.addEventListener(e, onTap, { capture: true, passive: true }));
     // Mikrofon başlayınca konuşan ses susar (mikrofon kendi sesini duymasın)
-    window.addEventListener("sa-stop-tts", stop);
+    window.addEventListener("sa-stop-tts", onMic);
+    window.addEventListener("sa-tts-prime", unlock);
 
     return () => {
       if (dev) window.speechSynthesis.removeEventListener?.("voiceschanged", load);
-      evs.forEach((e) => window.removeEventListener(e, unlock, { capture: true }));
-      window.removeEventListener("sa-stop-tts", stop);
+      evs.forEach((e) => window.removeEventListener(e, onTap, { capture: true }));
+      window.removeEventListener("sa-stop-tts", onMic);
+      window.removeEventListener("sa-tts-prime", unlock);
       stop();
     };
   }, [stop]);

@@ -7,7 +7,8 @@ import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch } from "@/lib/receipts";
-import { isNewFor, lockedFor, peopleFor } from "@/lib/people";
+import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
+import { loadQuota } from "@/lib/quota";
 
 // Veri: orgs/{işletme}/plans | tasks | notes | receipts (+ receiptImages, members). İşletme = ana hesabın uid'si.
 // Her kayıtta createdByUid (ekleyen), assignees (sorumlu çalışanlar; boş = genel) ve people (görebilenler: ekleyen + sorumlular) bulunur.
@@ -61,6 +62,7 @@ export function DataProvider({ children }) {
   const staff = profile?.role === "staff";
   const [data, setData] = useState(EMPTY);
   const [members, setMembers] = useState([]); // ana hesabın çalışanları: [{ uid, name, email }]
+  const [extraBadge, setExtraBadge] = useState(0); // okunmamış sohbet sayısı (simgedeki sayıya eklenir)
   const [ready, setReady] = useState(false);
   const cur = useRef(data); // geri çağrılarda her zaman güncel veri
   cur.current = data;
@@ -84,6 +86,9 @@ export function DataProvider({ children }) {
   // Sorumlulara "sana atandı" bildirimi (sunucu her kişiye bir kez gönderir)
   const notifyAssign = (kind, id) =>
     authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id }) }).catch(() => {});
+  // Kayda not eklendi / kişi tamamladı: kaydı verene ve ana hesaba bildirim (metni sunucu kayıttan okur)
+  const notifyEvent = (kind, id, event) =>
+    authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, event }) }).catch(() => {});
 
   // Hata olursa kullanıcıya söyle. Ekrandaki iyimser değişikliği canlı dinleyici zaten geri alır.
   const fail = useCallback(
@@ -116,7 +121,11 @@ export function DataProvider({ children }) {
     };
     const unsubs = COLS.map((k) =>
       onSnapshot(
-        staff ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid)) : collection(db, "orgs", orgId, k),
+        staff
+          ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid))
+          : k === "birthdays" // doğum günleri kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
+            ? query(collection(db, "orgs", orgId, k), where("createdByUid", "==", uid))
+            : collection(db, "orgs", orgId, k),
         (snap) => {
           setData((p) => ({ ...p, [k]: snap.docs.map((d) => ({ ...d.data(), id: d.id })) }));
           done(k);
@@ -239,7 +248,7 @@ export function DataProvider({ children }) {
     const rec = cur.current[KEYS[kind]]?.find((x) => x.id === id);
     return lockedFor(rec, me.current.uid, me.current.staff);
   }, []);
-  const lockedMsg = useCallback(() => toast("Bu kaydı yalnızca ekleyen değiştirebilir. Tamamladım diyebilir ya da not ekleyebilirsin."), [toast]);
+  const lockedMsg = useCallback(() => toast("Bu kaydı yalnızca ekleyen değiştirebilir. Tamamladım diyebilir ya da mesaj yazabilirsin."), [toast]);
 
   // Atanan kişi: yalnızca kendisi için tamamlandı (doneBy.{uid})
   const setMyDone = useCallback(
@@ -250,6 +259,7 @@ export function DataProvider({ children }) {
       setData((p) => ({ ...p, [k]: p[k].map((x) => (x.id === id ? { ...x, doneBy: { ...(x.doneBy || {}), [u]: on ? now : undefined } } : x)) }));
       try {
         await updateDoc(doc(db, "orgs", getOrgId(), k, id), { [`doneBy.${u}`]: on ? now : deleteField() });
+        if (on) notifyEvent(kind, id, "done");
       } catch (e) {
         fail(e, "Güncelleme");
       }
@@ -257,7 +267,7 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
-  // Atanan kişi: kayda not ekler (replies.{uid} listesine). Ana hesap tüm notları görür.
+  // Kayda mesaj yazar (replies.{uid} listesine): atanan kişi ya da ana hesap. İlgililere bildirim gider.
   const addReply = useCallback(
     async (kind, id, text) => {
       const t = String(text || "").trim().slice(0, 1000);
@@ -270,8 +280,9 @@ export function DataProvider({ children }) {
       setData((p) => ({ ...p, [k]: p[k].map((x) => (x.id === id ? { ...x, replies: { ...(x.replies || {}), [u]: list } } : x)) }));
       try {
         await updateDoc(doc(db, "orgs", getOrgId(), k, id), { [`replies.${u}`]: list });
+        notifyEvent(kind, id, "reply");
       } catch (e) {
-        fail(e, "Not ekleme");
+        fail(e, "Mesaj gönderme");
       }
     },
     [getOrgId, fail],
@@ -317,8 +328,47 @@ export function DataProvider({ children }) {
     [getOrgId, fail, isLocked, lockedMsg],
   );
 
+  // Çalışan silemez: kendi eklediği kayıt için silme isteği gönderir (deleteReq), ana hesap onaylarsa silinir.
+  // Başkasının kaydı için istek de gönderilemez (değiştiremediği kayıt).
+  const requestDelete = useCallback(
+    async (kind, id, undo = true) => {
+      const k = KEYS[kind];
+      const rec = cur.current[k]?.find((x) => x.id === id);
+      const u = me.current.uid;
+      if (!rec || !u) return;
+      if (rec.createdByUid && rec.createdByUid !== u) return toast("Bu kaydı yalnızca ekleyen değiştirebilir.");
+      if (rec.deleteReq) return toast("Silme isteği zaten ana hesapta bekliyor.");
+      try {
+        await updateDoc(doc(db, "orgs", getOrgId(), k, id), { deleteReq: { by: u, at: new Date().toISOString() } });
+        notifyEvent(kind, id, "deleteReq");
+        toast(
+          "Silme isteği ana hesaba gönderildi",
+          undo
+            ? { duration: UNDO_MS, action: { label: "Geri al", onClick: () => updateDoc(doc(db, "orgs", getOrgId(), k, id), { deleteReq: deleteField() }).catch(() => {}) } }
+            : undefined,
+        );
+      } catch (e) {
+        fail(e, "Silme isteği");
+      }
+    },
+    [getOrgId, fail, toast],
+  );
+  // Ana hesap: çalışanın silme isteğini reddeder (kayıt kalır)
+  const rejectDelete = useCallback(
+    async (kind, id) => {
+      try {
+        await updateDoc(doc(db, "orgs", getOrgId(), KEYS[kind], id), { deleteReq: deleteField() });
+        toast("Silme isteği reddedildi, kayıt duruyor");
+      } catch (e) {
+        fail(e, "Reddetme");
+      }
+    },
+    [getOrgId, fail, toast],
+  );
+
   const deleteRecord = useCallback(
     async (kind, id) => {
+      if (me.current.staff && kind !== "birthday") return requestDelete(kind, id, false); // çalışan: ana hesabın onayına (doğum günü kişiye özel, kendisi siler)
       const k = KEYS[kind];
       const { tasks, notes } = cur.current; // silmeden önceki bağlı kayıtlar
       setData((p) => {
@@ -344,7 +394,7 @@ export function DataProvider({ children }) {
         fail(e, "Silme");
       }
     },
-    [getOrgId, fail],
+    [getOrgId, fail, requestDelete],
   );
 
   // ---- İletildi / görüldü ----
@@ -354,15 +404,28 @@ export function DataProvider({ children }) {
       const k = KEYS[kind];
       const rec = cur.current[k]?.find((x) => x.id === id);
       const u = me.current.uid;
-      if (!rec || !u || !rec.createdByUid || rec.createdByUid === u || rec.ack?.[u]?.r) return;
+      if (!rec || !u) return;
       const now = new Date().toISOString();
-      const patch = { [`ack.${u}.r`]: now, ...(rec.ack?.[u]?.d ? {} : { [`ack.${u}.d`]: now }) };
+      const patch = {};
+      // Başkasının eklediği kayıt ilk kez açıldı: görüldü (ve iletildi)
+      if (rec.createdByUid && rec.createdByUid !== u && !rec.ack?.[u]?.r) Object.assign(patch, { [`ack.${u}.r`]: now, ...(rec.ack?.[u]?.d ? {} : { [`ack.${u}.d`]: now }) });
+      // Başkalarının yeni mesajları görüldü (ana sayfadaki "Yenilikler" kartından düşer)
+      if (unseenNotes(rec, u).length) patch[`ack.${u}.n`] = now;
+      if (!Object.keys(patch).length) return;
       try {
         updateDoc(doc(db, "orgs", getOrgId(), k, id), patch).catch(() => {});
       } catch {}
     },
     [getOrgId],
   );
+
+  // Şu an açık olan konuşma ("plan-abc"): sunucu bu kişi o kaydı görürken yeni mesaj için telefona bildirim göndermez.
+  // Ekran açıkken 30 sn'de bir tazelenir; sunucu 75 sn'den eski bilgiyi yok sayar (uygulama kapanınca kendiliğinden düşer).
+  const setViewing = useCallback((key) => {
+    const u = me.current.uid;
+    if (!u) return;
+    updateDoc(doc(db, "users", u), { viewing: key ? { key, at: new Date().toISOString() } : deleteField() }).catch(() => {});
+  }, []);
 
   // Uygulama açıkken gelen yeni kayıtlar bu kişiye "iletildi" (bildirim kapalı olsa da)
   useEffect(() => {
@@ -380,6 +443,21 @@ export function DataProvider({ children }) {
     if (n) batch.commit().catch(() => {});
   }, [data, uid, orgId, ready]);
 
+  // Kişi (çalışan) hesabında günlük hakları sunucudan al (asistan ve fiş geri sayımı için)
+  useEffect(() => {
+    if (staff && ready) loadQuota(authFetch);
+  }, [staff, ready]);
+
+  // Uygulama simgesindeki sayı (iPhone'da ana ekrandaki uygulama, iOS 16.4+): ana sayfadaki "Yenilikler" kartıyla aynı —
+  // henüz açılmamış yeni kayıtlar + başkalarının yazdığı görülmemiş notu olan kayıtlar (kayıt başına 1)
+  useEffect(() => {
+    if (!uid || !ready || typeof navigator === "undefined" || !navigator.setAppBadge) return;
+    let n = extraBadge; // okunmamış sohbetler (ChatProvider bildirir)
+    for (const k of ["plans", "tasks", "notes"])
+      for (const r of data[k]) if (!(k === "tasks" && r.done) && ((isNewFor(r, uid) && !r.doneBy?.[uid]) || unseenNotes(r, uid).length)) n++;
+    (n ? navigator.setAppBadge(Math.min(n, 99)) : navigator.clearAppBadge()).catch(() => {});
+  }, [data, uid, ready, extraBadge]);
+
   // ---- Geri alınabilir silme ----
   // Kayıt hemen listeden kalkar, "Geri al" düğmeli bildirim çıkar. Süre dolunca gerçekten silinir.
   // Uygulama arka plana geçerse ya da kapanırsa bekleyen silmeler hemen uygulanır (kayıp olmaz).
@@ -395,6 +473,7 @@ export function DataProvider({ children }) {
   const removeWithUndo = useCallback(
     (kind, id) => {
       if (isLocked(kind, id)) return lockedMsg();
+      if (me.current.staff && kind !== "birthday") return requestDelete(kind, id); // çalışan: silme isteği (ana hesap onaylar); doğum günü kişiye özel, kendisi siler
       const key = `${kind}:${id}`;
       if (pending.current.has(key)) return;
       const commit = () => {
@@ -418,7 +497,7 @@ export function DataProvider({ children }) {
         },
       });
     },
-    [deleteRecord, toast, isLocked, lockedMsg],
+    [deleteRecord, toast, isLocked, lockedMsg, requestDelete],
   );
 
   useEffect(() => {
@@ -448,7 +527,7 @@ export function DataProvider({ children }) {
   }, [data, hidden, staff, uid]);
 
   // ---- Doğum günleri (her yıl tekrarlanır) ----
-  // b: { name, month, day, year|null, memberUid|null, note }. id verilirse günceller.
+  // b: { name, month, day, year|null, memberUid|null, note, phone }. id verilirse günceller.
   const saveBirthday = useCallback(
     (b, id) => {
       let ownerId;
@@ -465,6 +544,8 @@ export function DataProvider({ children }) {
         year: b.year ? Number(b.year) : null,
         memberUid: b.memberUid || null,
         note: String(b.note || "").trim(),
+        phone: String(b.phone || "").replace(/[^\d+ ]/g, "").trim(),
+        ...(b.athleteId ? { athleteId: String(b.athleteId) } : {}), // sporcudan eklendiyse (tekrar önerilmesin)
       };
       const now = new Date().toISOString();
       const p = id
@@ -606,6 +687,9 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
+  // Kişiler: ayrılanlar (silinenler) listelerde ve atamada çıkmaz; adları arşivde görünsün diye nameOf hepsini bilir
+  const activeMembers = useMemo(() => members.filter((m) => m.status !== "left"), [members]);
+
   // Kişi adı: ben → "Sen", çalışan → adı
   const nameOf = useCallback(
     (id) => (!id ? "" : id === me.current.uid ? "Sen" : members.find((m) => m.uid === id)?.name || (id === me.current.orgId ? "Ana hesap" : "")),
@@ -626,9 +710,9 @@ export function DataProvider({ children }) {
   return (
     <Ctx.Provider
       value={{
-        ...view, loading: !ready, members: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
-        saveDrafts, toggleTask, updateRecord, deleteRecord, removeWithUndo, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, markSeen, setMyDone, addReply, isLocked,
+        ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
+        saveDrafts, toggleTask, updateRecord, deleteRecord, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
+        saveBirthday, saveLessons, updateLesson, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
       }}
     >
       {ready ? children : null}

@@ -93,8 +93,8 @@ export function StaffCard({ page = false }) {
 
   return (
     <div className={page ? "" : "mt-4 rounded-xl bg-bg p-3.5"}>
-      {!page && <b className="block text-[15px] font-medium">Kişiler</b>}
-      <small className="block text-[13px] leading-snug text-mut">
+      {!page && <b className="block text-[0.9375rem] font-medium">Kişiler</b>}
+      <small className="block text-[0.8125rem] leading-snug text-mut">
         Eklediğin kişi (ekip arkadaşı ya da aile üyesi) kendi hesabıyla girer; yalnızca kendi eklediklerini ve sorumlu olduğu kayıtları görür.{members.length ? " Ayrıntı için dokun." : ""}
       </small>
 
@@ -110,21 +110,21 @@ export function StaffCard({ page = false }) {
               <li key={m.uid}>
                 <div className="flex items-center gap-3 px-3.5 py-2.5">
                   <button type="button" onClick={() => setOpenId(isOpen ? "" : m.uid)} className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-60">
-                    <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-[14px] font-semibold text-acc">
+                    <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-semibold text-acc">
                       {(m.name || "?")[0]}
                       <span className={`absolute -bottom-px -right-px size-3 rounded-full ring-2 ring-card ${online ? "bg-ok" : "bg-line"}`} />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[15px] font-medium">{m.name}</b>
-                      <small className={`block truncate text-[12px] ${online ? "font-medium text-ok" : "text-mut"}`}>{seen}</small>
-                      <small className="block truncate text-[12px] text-mut">{summary || "Üzerinde iş yok"}</small>
+                      <b className="block truncate text-[0.9375rem] font-medium">{m.name}</b>
+                      <small className={`block truncate text-[0.75rem] ${online ? "font-medium text-ok" : "text-mut"}`}>{seen}</small>
+                      <small className="block truncate text-[0.75rem] text-mut">{summary || "Üzerinde iş yok"}</small>
                     </span>
                     <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${isOpen ? "rotate-90" : ""}`} />
                   </button>
                 </div>
                 {isOpen && (
-                  <div className="border-t border-line bg-bg/60 px-3.5 py-3 text-[14px]">
-                    <p className="truncate text-[12px] text-mut">{m.email}</p>
+                  <div className="border-t border-line bg-bg/60 px-3.5 py-3 text-[0.875rem]">
+                    <p className="truncate text-[0.75rem] text-mut">{m.email}</p>
                     {w.tasks.length + w.plans.length === 0 ? (
                       <p className="mt-2 text-mut">Açık görevi ya da yaklaşan planı yok.</p>
                     ) : (
@@ -133,14 +133,14 @@ export function StaffCard({ page = false }) {
                           <li key={p.id} className="flex items-center gap-2">
                             <Icon name="cal" className="size-4 shrink-0 text-acc" />
                             <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                            <small className="shrink-0 text-[12px] text-mut">{rel(p.date)}{p.time ? ` ${p.time}` : ""}</small>
+                            <small className="shrink-0 text-[0.75rem] text-mut">{rel(p.date)}{p.time ? ` ${p.time}` : ""}</small>
                           </li>
                         ))}
                         {w.tasks.slice(0, 5).map((t) => (
                           <li key={t.id} className="flex items-center gap-2">
                             <Icon name="task" className="size-4 shrink-0 text-acc" />
                             <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                            {t.due && <small className="shrink-0 text-[12px] text-mut">{rel(t.due)}</small>}
+                            {t.due && <small className="shrink-0 text-[0.75rem] text-mut">{rel(t.due)}</small>}
                           </li>
                         ))}
                       </ul>
@@ -148,7 +148,7 @@ export function StaffCard({ page = false }) {
                     <button
                       onClick={() => remove(m)}
                       disabled={busy}
-                      className={`mt-3 rounded-full px-3 py-1.5 text-[13px] font-medium transition active:scale-95 ${armed === m.uid ? "bg-rec text-white" : "-ml-3 text-rec"}`}
+                      className={`mt-3 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${armed === m.uid ? "bg-rec text-white" : "-ml-3 text-rec"}`}
                     >
                       {armed === m.uid ? "Emin misin? Hesabı kaldır" : "Kişiyi kaldır"}
                     </button>
@@ -175,8 +175,8 @@ export function StaffCard({ page = false }) {
           onClick={() => setForm({ name: "", email: "", password: "" })}
           className={
             page
-              ? "mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[15px] font-semibold text-white transition active:scale-[.98]"
-              : "mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium text-acc active:opacity-60"
+              ? "mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]"
+              : "mt-3 inline-flex items-center gap-1.5 text-[0.875rem] font-medium text-acc active:opacity-60"
           }
         >
           <Icon name="plus" className="size-4" /> Kişi ekle

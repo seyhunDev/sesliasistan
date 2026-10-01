@@ -55,3 +55,16 @@ export function isNewFor(rec, uid) {
   const t = Date.parse(rec.createdAt || "");
   return !t || Date.now() - t < 14 * 864e5;
 }
+
+// Bu kişinin henüz görmediği notlar: başkalarının yazdığı, bu kişinin son bakışından (ack.{uid}.n) sonra, son 14 günde.
+// Kişi kaydı ilk kez açmadıysa (yeni kayıt) de sayılır. En eskiden en yeniye.
+export function unseenNotes(rec, uid) {
+  if (!rec || !uid) return [];
+  const seen = rec.ack?.[uid]?.n || "";
+  const since = new Date(Date.now() - 14 * 864e5).toISOString();
+  return Object.entries(rec.replies || {})
+    .filter(([by]) => by !== uid)
+    .flatMap(([by, list]) => (Array.isArray(list) ? list : []).map((r) => ({ by, at: String(r.at || ""), text: r.text })))
+    .filter((r) => r.at > seen && r.at > since)
+    .sort((a, b) => a.at.localeCompare(b.at));
+}

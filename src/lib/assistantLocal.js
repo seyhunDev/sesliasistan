@@ -7,6 +7,7 @@ export const PAGES = {
   plans: { path: "/plans", label: "Planlar" },
   notes: { path: "/notes", label: "Notlar" },
   tasks: { path: "/tasks", label: "Görevler" },
+  attendance: { path: "/athletes/attendance", label: "Yoklama" },
 };
 export const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
@@ -43,7 +44,7 @@ export function localReceipt(text) {
   return !/^(ler|lar)/.test(m[3]) && RECEIPT_OPEN.test(t);
 }
 
-export const isYes = (s) => /^(evet|tamam|olur|onayla|onaylıyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
+export const isYes =(s) => /^(evet|tamam|olur|onayla|onaylıyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
 export const isNo = (s) => /^(hayır|hayir|vazgeç|iptal|yapma|olmasın|istemiyorum|dur)(?=$|[\s.,!?])/.test(lower(s).trim());
 
 // Yapay zekanın önerdiği değişikliği kayda uygulanacak alanlara çevirir (takvim uyumlu alanlar dahil)

@@ -1,4 +1,5 @@
 // Firebase Auth tabanlı oturum yönetimi
+import { loginEmail } from "@/lib/kinds";
 import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -32,8 +33,9 @@ export function subscribe(cb) {
   return onAuthStateChanged(auth, () => cb());
 }
 
-export async function login(email, password) {
-  await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+// E-posta ya da kullanıcı adı (e-postası olmayan çocuk/sporcu hesapları: "ege.demir")
+export async function login(emailOrUser, password) {
+  await signInWithEmailAndPassword(auth, loginEmail(emailOrUser), password);
 }
 
 export async function register(name, email, password) {

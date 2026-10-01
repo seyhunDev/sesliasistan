@@ -17,7 +17,7 @@ export function WeekStrip() {
     <section className="rounded-2xl bg-card px-2 pb-2 pt-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
       <Link href="/calendar" className="mx-2 mb-1.5 flex items-center gap-1.5 active:opacity-60">
         <Icon name="cal" className="size-4 text-acc" />
-        <b className="flex-1 text-[14px] font-semibold">Takvim</b>
+        <b className="flex-1 text-[0.875rem] font-semibold">Takvim</b>
         <Icon name="chev" className="size-4 text-mut" />
       </Link>
       <div className="grid grid-cols-7">
@@ -28,14 +28,14 @@ export function WeekStrip() {
           const busy = p.length + open + bd;
           return (
             <Link key={d} href={`/calendar?d=${d}`} className="flex flex-col items-center gap-0.5 rounded-xl py-1.5 active:bg-bg">
-              <span className={`text-[11px] font-medium ${i === 0 ? "text-acc" : "text-mut"}`}>{i === 0 ? "Bugün" : WD(d)}</span>
-              <span className={`grid size-8 place-items-center rounded-full text-[15px] font-semibold tabular-nums ${i === 0 ? "bg-acc text-white" : "text-fg"}`}>{+d.slice(8)}</span>
+              <span className={`text-[0.6875rem] font-medium ${i === 0 ? "text-acc" : "text-mut"}`}>{i === 0 ? "Bugün" : WD(d)}</span>
+              <span className={`grid size-8 place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${i === 0 ? "bg-acc text-white" : "text-fg"}`}>{+d.slice(8)}</span>
               <span className="flex h-1.5 gap-0.5">
                 {p.length > 0 && <i className="size-1.5 rounded-full bg-acc" />}
                 {open > 0 && <i className="size-1.5 rounded-full bg-amber-600" />}
                 {bd > 0 && <i className="size-1.5 rounded-full bg-pink-500" />}
               </span>
-              <span className="text-[10px] tabular-nums text-mut">{busy ? busy : ""}</span>
+              <span className="text-[0.625rem] tabular-nums text-mut">{busy ? busy : ""}</span>
             </Link>
           );
         })}

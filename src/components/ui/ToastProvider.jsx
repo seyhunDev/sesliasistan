@@ -28,13 +28,13 @@ export function ToastProvider({ children }) {
       {children}
       <div
         role="status"
-        className={`fixed left-1/2 top-[calc(14px_+_env(safe-area-inset-top))] z-[60] flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pl-[18px] text-sm font-medium text-bg shadow-lg transition duration-300 ${
-          t.action ? "pr-2" : "pr-[18px]"
+        className={`fixed left-1/2 top-[calc(0.875rem_+_env(safe-area-inset-top))] z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pl-[1.125rem] text-sm font-medium text-bg shadow-lg transition duration-300 ${
+          t.action ? "pr-2" : "pr-[1.125rem]"
         } ${show ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-6 opacity-0"}`}
       >
         <span className="truncate py-0.5">{t.msg}</span>
         {t.action && (
-          <button onClick={act} className="shrink-0 rounded-full bg-bg/15 px-3 py-1 text-[13px] font-semibold text-bg transition active:scale-95">
+          <button onClick={act} className="shrink-0 rounded-full bg-bg/15 px-3 py-1 text-[0.8125rem] font-semibold text-bg transition active:scale-95">
             {t.action.label}
           </button>
         )}

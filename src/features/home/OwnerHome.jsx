@@ -1,110 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { AccountCard } from "@/features/auth/AccountCard";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
-import { PermissionPrompt } from "@/features/permissions/PermissionsCard";
 import { useData } from "@/features/data/DataProvider";
-import { VoiceTextBar } from "@/components/ui/VoiceTextBar";
-import { Sheet } from "@/components/ui/Sheet";
-import { useNow } from "@/hooks/useNow";
-import { planState } from "@/lib/agenda";
-import { initials, todayStr } from "@/lib/utils/format";
-import { HomeAgenda, NewItems, NextUp } from "./HomeAgenda";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
-import { WeatherCard } from "@/features/weather/WeatherCard";
-import { WeekStrip } from "./WeekStrip";
-import { QuickActions } from "./QuickActions";
+import { useWeather } from "@/features/weather/useWeather";
+import { useNow } from "@/hooks/useNow";
+import { pendingPlans } from "@/lib/agenda";
+import { useQuota } from "@/lib/quota";
+import { initials } from "@/lib/utils/format";
+import { BirthdayStrip } from "./BirthdayStrip";
+import { ForYou } from "./ForYou";
+import { HomeHero } from "./HomeHero";
+import { MoneyRow, TeamStrip } from "./TeamMoney";
+import { useKind } from "@/features/auth/useKind";
+import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { TodayCard } from "./TodayCard";
 
-// Özet odaklı ana sayfa: selamlama + günün tek satırı, sıradaki plan, her tür için tek kart.
-// Karta dokununca o türün sayfası açılır; ekleme ve görüntüleme orada birlikte. Alt menü yok.
-// Konuşma altta sabit çubuktaki büyük mikrofonla (asistan: sor, ekle, yönet).
+// Ana sayfa ("akıllı akış"), yukarıdan aşağı:
+//   gün ve tarih · zil · kişi › Dikili şimdi (rüzgâr göstergesi, gün şeridi) + Sıradaki plan ›
+//   Senin için (karar, rüzgâr, mesaj, geciken, yeni, ödeme; önem sırasıyla) › Bugün › doğum günü satırı (bugün/yarın) ›
+//   Ekip (ana hesap) › para › sayfalar › alt çubuk (+ · Konuş · Yaz).
+// Çalışanda Karar, Ekip ve Mailler yok; bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
-  const { openAssistant } = useAssistant();
-
-  const { plans, tasks } = useData();
+  const { plans, tasks, notes, birthdays, lessons, myUid } = useData();
+  const weather = useWeather();
   const now = useNow();
-  const [account, setAccount] = useState(false);
+  const staff = profile?.role === "staff";
+  const kind = useKind();
+  const qa = useQuota("assistant");
+  const qr = useQuota("receipt");
 
-  const h = now.getHours();
-  const greet = h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
-  const date = now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
-  const firstName = (profile?.name || "").split(" ")[0];
+  const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
+  const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+  const open = tasks.filter((t) => !t.done && !t.doneBy?.[myUid]).length;
 
-  // Günün tek satırı: bugün kalan plan ve bugün/geciken görev sayısı
-  const today = todayStr();
-  const leftPlans = plans.filter((p) => p.date <= today && (p.endDate || p.date) >= today && planState(p, now) !== "past").length;
-  const dueTasks = tasks.filter((t) => !t.done && t.due && t.due <= today).length;
-  const line = [leftPlans && `${leftPlans} plan`, dueTasks && `${dueTasks} görev`].filter(Boolean).join(", ");
-
+  const links = [
+    ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
+    ["/tasks", "task", "Görevler", open],
+    ["/notes", "note", "Notlar", notes.length],
+    ["/birthdays", "cake", "Doğum günleri", birthdays.length],
+    lessons.length > 0 && ["/schedule", "book", "Dersler"],
+    ["/archive", "archive", "Arşiv"],
+    !staff && ["/mail", "mail", "Mailler"],
+    staff && canSeeAthletes(profile?.email) && ["/athletes", "anchor", "Sporcular"], // ana hesapta Ekip kartında
+    isAthleteSide(kind) && ["/my-attendance", "check", kind === "parent" ? "Yoklama" : "Yoklamam"],
+  ].filter(Boolean);
 
   return (
-    <main className="relative mx-auto max-w-[480px] px-5 pb-[calc(110px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))]">
-      {/* Başlık: tarih + selamlama */}
-      <header className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] font-medium text-mut">
-            <span className="capitalize">{date}</span>
-            {line ? ` · bugün ${line}` : ""}
+    <main className="relative mx-auto max-w-[30rem] px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
+      <header className="flex items-center gap-2 px-1">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[1.25rem] font-semibold leading-tight tracking-tight">
+            <span className="capitalize">{day}</span> <span className="font-normal text-mut">{date}</span>
           </p>
-          <h1 className="mt-0.5 text-[24px] font-semibold leading-tight tracking-tight">
-            {greet}
-            {firstName ? `, ${firstName}` : ""}
-          </h1>
+          {staff && qa && qr && (
+            <p className="mt-0.5 text-[0.75rem] tabular-nums text-mut">
+              Bugün kalan · asistan {qa.left}/{qa.limit} · fiş {qr.left}/{qr.limit}
+            </p>
+          )}
         </div>
-        <button
-          onClick={() => setAccount(true)}
-          aria-label="Hesap"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[13px] font-semibold text-acc transition active:scale-90"
-        >
+        <Link href="/settings" aria-label="Ayarlar" className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc active:scale-90">
           {initials(profile?.name)}
-        </button>
+        </Link>
       </header>
-
-      <div className="flex justify-center [&>*]:mt-4">
-        <PermissionPrompt />
-      </div>
 
       <PaidNotice />
 
-      {/* Sana atanan / başkasının eklediği, henüz açılmamış kayıtlar */}
-      <div className="mt-4 empty:hidden">
-        <NewItems />
+      <div className="mt-4">
+        <HomeHero weather={weather} />
       </div>
 
-      {/* Hızlı işlemler */}
+      <div className="mt-5 empty:hidden">
+        <ForYou />
+      </div>
+
       <div className="mt-5">
-        <QuickActions />
+        <TodayCard />
       </div>
 
-      {/* Bu hafta: takvime kısa yol */}
-      <div className="mt-4">
-        <WeekStrip />
+      <div className="mt-3 empty:hidden">
+        <BirthdayStrip />
       </div>
 
-      {/* Hava ve rüzgâr (planları buna göre yapmak için) */}
-      <div className="mt-3">
-        <WeatherCard />
-      </div>
+      {!staff && (
+        <div className="mt-5">
+          <TeamStrip />
+        </div>
+      )}
 
-      {/* Sıradaki plan */}
-      <div className="mt-4">
-        <NextUp />
-      </div>
+      {canReceipts(kind) && (
+        <div className="mt-5">
+          <MoneyRow />
+        </div>
+      )}
 
-      {/* Özet */}
-      <div className="mt-4">
-        <HomeAgenda />
-      </div>
-
-      {/* Alt: konuş ya da yaz (asistan: sor, ekle, yönet) */}
-      <VoiceTextBar placeholder="Sor veya yaz…" onMic={() => openAssistant({ listen: true })} onSend={(t) => openAssistant({ text: t })} />
-
-      <Sheet open={account} onClose={() => setAccount(false)} title="Hesap">
-        <AccountCard />
-      </Sheet>
+      <nav aria-label="Sayfalar" className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+        {links.map(([href, icon, label, n]) => (
+          <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.06)] active:scale-95">
+            <Icon name={icon} className="size-4 text-acc" />
+            {label}
+            {n > 0 && <span className="tabular-nums text-mut">{n}</span>}
+          </Link>
+        ))}
+      </nav>
     </main>
   );
 }

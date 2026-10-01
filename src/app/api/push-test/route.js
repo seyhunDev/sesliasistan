@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { testText } from "@/lib/notifyText";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ export async function POST(request) {
   if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) return NextResponse.json({ error: "Geçersiz abonelik" }, { status: 400 });
   try {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
-    await webpush.sendNotification(sub, JSON.stringify({ title: "Bildirimler açık ✓", body: "Plan hatırlatmaları bu cihaza gelecek.", tag: "test", url: "/plans" }), { TTL: 600 });
+    await webpush.sendNotification(sub, JSON.stringify({ ...testText(), tag: "test", url: "/" }), { TTL: 600 });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[push-test]", e.statusCode, e.body || e.message);

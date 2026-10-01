@@ -1,4 +1,4 @@
-// Plan hatırlatmaları: Netlify bunu 5 dakikada bir çalıştırır.
+// Plan hatırlatmaları ve günlük özet: Netlify bunu 5 dakikada bir çalıştırır.
 // Hatırlatması açık kullanıcıların yaklaşan planlarına bakar, zamanı gelenler için telefona bildirim gönderir.
 // Gerekli ortam değişkenleri: FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY (hizmet hesabından), NEXT_PUBLIC_FIREBASE_PROJECT_ID,
 // NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
@@ -6,6 +6,10 @@ import webpush from "web-push";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { dueReminders, localNow, reminderText, remindKey } from "../../src/lib/reminders.js";
+import { due, eveningText, morningText } from "../../src/lib/summary.js";
+import { mailDigestText } from "../../src/lib/bankSheet.js";
+import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
+import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 
 export const config = { schedule: "*/5 * * * *" };
 
@@ -26,8 +30,7 @@ async function sendDueReminders() {
   }
   if (!getApps().length) {
     // Özel anahtar tek satır ("\n" ile) ya da çok satır girilmiş olabilir
-    const privateKey = env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
-    initializeApp({ credential: cert({ projectId, clientEmail: env.FIREBASE_CLIENT_EMAIL, privateKey }) });
+    initializeApp({ credential: cert({ projectId, clientEmail: cleanEmail(env.FIREBASE_CLIENT_EMAIL), privateKey: cleanKey(env.FIREBASE_PRIVATE_KEY) }) });
   }
   const db = getFirestore();
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
@@ -62,8 +65,100 @@ async function sendDueReminders() {
       await snap.docs.find((d) => d.id === p.id).ref.update({ [`reminded.${u.id}`]: remindKey(p, lead) });
     }
   }
-  console.log(`[reminders] ${users.size} kullanıcı, ${sent} bildirim`);
-  return new Response(`ok ${sent}`);
+  const summaries = await sendSummaries(db).catch((e) => (console.error("[summary]", e.message), 0));
+  const mails = await sendMailDigests(db).catch((e) => (console.error("[mail]", e.message), 0));
+  console.log(`[reminders] ${users.size} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail`);
+  return new Response(`ok ${sent} ${summaries} ${mails}`);
+}
+
+// Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
+async function sendSummaries(db) {
+  const [m, e] = await Promise.all([db.collection("users").where("summaryAt", ">", "").get(), db.collection("users").where("eveningAt", ">", "").get()]);
+  const users = new Map([...m.docs, ...e.docs].map((d) => [d.id, d]));
+  let n = 0;
+  for (const u of users.values()) {
+    const d = u.data();
+    const subs = Object.entries(d.push || {});
+    if (!subs.length) continue;
+    const tz = d.reminders?.tz || "Europe/Istanbul";
+    const today = localNow(tz).date;
+    const nowHM = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+    const morning = due(d.summaryAt, d.summarySent, today, nowHM);
+    const evening = due(d.eveningAt, d.eveningSent, today, nowHM);
+    if (!morning && !evening) continue;
+    const org = db.collection("orgs").doc(d.orgId || u.id);
+    const staff = d.role === "staff";
+    const mine = (x) => !staff || (x.people || []).includes(u.id);
+    const [p, t] = await Promise.all([
+      org.collection("plans").where("date", ">=", addDays(today, -14)).get(),
+      org.collection("tasks").where("done", "==", false).get(),
+    ]);
+    const data = { plans: p.docs.map((x) => x.data()).filter(mine), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
+    const send = async (msg, tag) => {
+      const payload = JSON.stringify({ ...msg, tag, url: "/" });
+      await Promise.all(
+        subs.map(async ([key, sub]) => {
+          try {
+            await webpush.sendNotification(sub, payload, { TTL: 3 * 3600 });
+            n++;
+          } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+          }
+        }),
+      );
+    };
+    if (morning) {
+      await send(morningText({ ...data, withTomorrow: !!d.summaryTomorrow }), `summary-${today}`);
+      await u.ref.update({ summarySent: today });
+    }
+    if (evening) {
+      await send(eveningText(data), `evening-${today}`);
+      await u.ref.update({ eveningSent: today });
+    }
+  }
+  return n;
+}
+
+// Gelen banka mailleri (Gmail betiği doğrudan veritabanına yazar, users.mailPending'i işaretler): son mailden 8 dakika sonra hepsi tek bildirimde (sabah 11'deki 3 hesap özeti gibi).
+// Betik Gmail'e 5 dakikada bir baktığı için bekleme bundan uzun: aynı anda gelenler ayrı bildirime bölünmez.
+const MAIL_QUIET = 8 * 60e3;
+async function sendMailDigests(db) {
+  const users = await db.collection("users").where("mailPending", "==", true).get();
+  let n = 0;
+  for (const u of users.docs) {
+    const d = u.data();
+    if (Date.now() - Date.parse(d.mailLastAt || 0) < MAIL_QUIET) continue;
+    const snap = await db.collection("orgs").doc(u.id).collection("mails").where("notified", "==", false).get();
+    if (!snap.empty) {
+      // Excel ekleri henüz okunmadıysa (uygulama açılmadıysa) burada okunur: bildirimde bakiyeler görünsün
+      const mails = await Promise.all(
+        snap.docs.map(async (x) => {
+          const m = x.data();
+          if (m.sheets || !m.raw?.length) return m;
+          const sheets = sheetsFromRaw(m.raw, xlsxOf(await import("xlsx")));
+          await x.ref.update({ sheets }).catch(() => {});
+          return { ...m, sheets };
+        }),
+      );
+      const payload = JSON.stringify({ ...mailDigestText(mails), tag: `mail-${snap.docs[0].id}`, url: "/mail" });
+      await Promise.all(
+        Object.entries(d.push || {}).map(async ([key, sub]) => {
+          try {
+            await webpush.sendNotification(sub, payload, { TTL: 6 * 3600 });
+            n++;
+          } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+          }
+        }),
+      );
+      const batch = db.batch();
+      snap.docs.forEach((x) => batch.update(x.ref, { notified: true }));
+      await batch.commit();
+    }
+    // Bu arada yeni mail geldiyse (belge değiştiyse) işaret kalır, bir sonraki turda gönderilir
+    await u.ref.update({ mailPending: false }, { lastUpdateTime: u.updateTime }).catch(() => {});
+  }
+  return n;
 }
 
 export default sendDueReminders;

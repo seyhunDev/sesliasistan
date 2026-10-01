@@ -39,11 +39,11 @@ function Row({ icon, label, value, tone, open, onToggle, children }) {
         type="button"
         onClick={onToggle}
         disabled={!expandable}
-        className="flex min-h-[52px] w-full items-center gap-3 px-4 text-left transition active:bg-bg disabled:active:bg-transparent"
+        className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left transition active:bg-bg disabled:active:bg-transparent"
       >
         <Icon name={icon} className="size-5 shrink-0 text-mut" />
-        <span className="shrink-0 text-[15px]">{label}</span>
-        <span className={`ml-auto min-w-0 truncate text-right text-[15px] ${tone || "text-mut"}`}>{value}</span>
+        <span className="shrink-0 text-[0.9375rem]">{label}</span>
+        <span className={`ml-auto min-w-0 truncate text-right text-[0.9375rem] ${tone || "text-mut"}`}>{value}</span>
         {expandable && <Icon name="chev" className={`size-4 shrink-0 text-mut/70 transition-transform ${open ? "rotate-90" : ""}`} />}
       </button>
       {open && <div className="animate-pop px-4 pb-3.5 pl-12">{children}</div>}
@@ -66,7 +66,7 @@ function DayChips({ value, onPick, onClear }) {
         {custom ? dayLabel(value).replace(/^(Bugün|Yarın) · /, "") : "Tarih seç"}
       </Picker>
       {onClear && value && (
-        <button type="button" onClick={onClear} className="shrink-0 rounded-full px-3 py-1.5 text-[14px] font-medium text-rec active:opacity-60">
+        <button type="button" onClick={onClear} className="shrink-0 rounded-full px-3 py-1.5 text-[0.875rem] font-medium text-rec active:opacity-60">
           Kaldır
         </button>
       )}
@@ -112,10 +112,10 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
           autoCapitalize="sentences"
           enterKeyHint="done"
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
-          className={`text-[24px] font-semibold leading-tight tracking-tight placeholder:text-mut/60 ${done ? "text-mut line-through" : "text-fg"}`}
+          className={`text-[1.5rem] font-semibold leading-tight tracking-tight placeholder:text-mut/60 ${done ? "text-mut line-through" : "text-fg"}`}
         />
       </div>
-      {meta && <p className={`mt-1.5 text-[13px] text-mut ${d.type === "task" ? "pl-10" : ""}`}>{meta}</p>}
+      {meta && <p className={`mt-1.5 text-[0.8125rem] text-mut ${d.type === "task" ? "pl-10" : ""}`}>{meta}</p>}
 
       {/* Not metni */}
       {d.type === "note" && (
@@ -125,7 +125,7 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
             onChange={(e) => onChange({ body: e.target.value })}
             placeholder="Not"
             autoCapitalize="sentences"
-            className="min-h-[96px] text-[16px] leading-relaxed text-fg placeholder:text-mut/60"
+            className="min-h-[6rem] text-[1rem] leading-relaxed text-fg placeholder:text-mut/60"
           />
         </div>
       )}
@@ -143,7 +143,7 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
               onToggle={toggle("date")}
             >
               <DayChips value={d.date} onPick={(v) => put({ date: v, ...(d.endDate && v > d.endDate ? { endDate: "" } : {}) })} />
-              {rel(d.date) && <p className="mt-2 text-[13px] text-mut">{rel(d.date)}</p>}
+              {rel(d.date) && <p className="mt-2 text-[0.8125rem] text-mut">{rel(d.date)}</p>}
             </Row>
             <Row
               icon="flag"
@@ -188,16 +188,16 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
               </Row>
             )}
             <li className="border-b border-line">
-              <label className="flex min-h-[52px] items-center gap-3 px-4">
+              <label className="flex min-h-[3.25rem] items-center gap-3 px-4">
                 <Icon name="pin" className="size-5 shrink-0 text-mut" />
-                <span className="shrink-0 text-[15px]">Yer</span>
+                <span className="shrink-0 text-[0.9375rem]">Yer</span>
                 <input
                   value={d.place}
                   onChange={(e) => onChange({ place: e.target.value })}
                   placeholder="Ekle"
                   autoCapitalize="words"
                   enterKeyHint="done"
-                  className="min-w-0 flex-1 bg-transparent text-right text-[15px] text-fg outline-none placeholder:text-mut"
+                  className="min-w-0 flex-1 bg-transparent text-right text-[0.9375rem] text-fg outline-none placeholder:text-mut"
                 />
               </label>
             </li>
@@ -246,15 +246,15 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
                 );
               })}
             </div>
-            <p className="mt-2 text-[13px] text-mut">Seçilen kişiler bu kaydı kendi listesinde görür.</p>
+            <p className="mt-2 text-[0.8125rem] text-mut">Birden fazla kişi seçebilirsin; seçilenler bu kaydı kendi listesinde görür.</p>
           </Row>
         )}
         {assign && !assign.length && onAddStaff && (
           <li className="border-b border-line">
-            <button type="button" onClick={onAddStaff} className="flex min-h-[52px] w-full items-center gap-3 px-4 text-left active:bg-bg">
+            <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
               <Icon name="users" className="size-5 shrink-0 text-mut" />
-              <span className="text-[15px]">Sorumlu</span>
-              <span className="ml-auto text-[15px] font-medium text-acc">Kişi ekle</span>
+              <span className="text-[0.9375rem]">Sorumlu</span>
+              <span className="ml-auto text-[0.9375rem] font-medium text-acc">Kişi ekle</span>
             </button>
           </li>
         )}
@@ -266,13 +266,13 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
       {acks.length > 0 && (
         <div className="mt-3 rounded-2xl bg-card px-4 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
           {acks.map((a) => (
-            <p key={a.uid} className="flex items-center gap-2 py-1 text-[14px]">
+            <p key={a.uid} className="flex items-center gap-2 py-1 text-[0.875rem]">
               <Icon
                 name={a.key === "sent" || a.key === "pending" || a.key === "done" ? "check" : "checks"}
                 className={`size-4 shrink-0 [stroke-width:2.5] ${a.key === "done" ? "text-ok" : a.key === "read" ? "text-sky-600" : a.key === "pending" ? "text-line" : "text-mut"}`}
               />
               <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
-              <span className={`shrink-0 text-[13px] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : "text-mut"}`}>
+              <span className={`shrink-0 text-[0.8125rem] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : "text-mut"}`}>
                 {a.label}
                 {a.at ? ` · ${stamp(a.at)}` : ""}
               </span>

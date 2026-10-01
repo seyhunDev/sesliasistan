@@ -8,11 +8,13 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { appAllowed, isMobile, mediaSupported, offMessage } from "@/lib/permissions";
+import { appAllowed, isMobile, mediaSupported, offMessage, savePermission } from "@/lib/permissions";
 import { CAT, CATS, PAYS, TLk, VATS, calcTotals, confAvg, lowConf, parseQty, parseTL, toInput } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
 import { readReceipt } from "@/services/receiptService";
 import { CameraView } from "./CameraView";
+import { Loader } from "@/components/ui/Loader";
+import { QuotaPill } from "@/components/ui/QuotaPill";
 
 let seq = 0;
 const nid = () => `i${Date.now()}_${seq++}`;
@@ -66,13 +68,13 @@ function L({ label, children, className = "" }) {
 
 function Seg({ value, options, onChange }) {
   return (
-    <div className="flex rounded-xl bg-bg p-[3px]">
+    <div className="flex rounded-xl bg-bg p-[0.1875rem]">
       {options.map(([v, l]) => (
         <button
           key={v}
           type="button"
           onClick={() => onChange(v)}
-          className={`flex-1 rounded-[10px] py-2 text-sm font-semibold transition ${value === v ? "bg-card text-fg shadow-sm" : "text-mut"}`}
+          className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${value === v ? "bg-card text-fg shadow-sm" : "text-mut"}`}
         >
           {l}
         </button>
@@ -173,8 +175,11 @@ export function ReceiptSheet({ open, onClose, seed }) {
 
   async function onFile(e) {
     const file = e.target.files?.[0];
+    const fromCamera = e.target === camRef.current;
     e.target.value = "";
-    if (file) takeFile(file);
+    if (!file) return;
+    if (fromCamera) savePermission("camera", "granted"); // telefonun kamerası açılıp fotoğraf çekildi: kamera kullanılabiliyor
+    takeFile(file);
   }
 
   // Telefonda sistem kamerası (daha iyi odak), bilgisayarda uygulama içi kamera
@@ -275,9 +280,12 @@ export function ReceiptSheet({ open, onClose, seed }) {
       <input ref={galRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
 
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
-        <h2 className="text-xl font-bold tracking-tight">{title}</h2>
+        <h2 className="flex min-w-0 items-center gap-2 text-xl font-bold tracking-tight">
+          <span className="truncate">{title}</span>
+          <QuotaPill kind="receipt" />
+        </h2>
         <button onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
-          <Icon name="x" className="size-[18px]" />
+          <Icon name="x" className="size-[1.125rem]" />
         </button>
       </header>
 
@@ -296,23 +304,23 @@ export function ReceiptSheet({ open, onClose, seed }) {
         {stage === "pick" && (
           <div className="fade-in flex min-h-full flex-col items-center justify-center py-6 text-center">
             {camError && (
-              <p className="mb-5 flex w-full max-w-[320px] items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-left text-[13px] leading-snug text-amber-900">
+              <p className="mb-5 flex w-full max-w-[20rem] items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-left text-[0.8125rem] leading-snug text-amber-900">
                 <Icon name="alert" className="mt-px size-4" /> {camError}
               </p>
             )}
             <span className="grid size-20 place-items-center rounded-3xl bg-card text-acc ring-1 ring-line">
               <Icon name="receipt" className="size-9" />
             </span>
-            <p className="mt-4 text-[17px] font-semibold">Fişin fotoğrafını çek</p>
-            <p className="mt-1 text-[14px] text-mut">Düz zemine koy, tamamı görünsün</p>
-            <div className="mt-6 flex w-full max-w-[320px] flex-col gap-2.5">
+            <p className="mt-4 text-[1.0625rem] font-semibold">Fişin fotoğrafını çek</p>
+            <p className="mt-1 text-[0.875rem] text-mut">Düz zemine koy, tamamı görünsün</p>
+            <div className="mt-6 flex w-full max-w-[20rem] flex-col gap-2.5">
               <button onClick={takePhoto} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98]">
                 <Icon name="camera" className="size-5" /> Fotoğraf çek
               </button>
               <button onClick={() => galRef.current?.click()} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-base font-semibold transition active:scale-[.98]">
                 <Icon name="image" className="size-5" /> Galeriden seç
               </button>
-              <button onClick={() => setStage("form")} className="h-11 text-[15px] font-medium text-mut transition active:text-fg">
+              <button onClick={() => setStage("form")} className="h-11 text-[0.9375rem] font-medium text-mut transition active:text-fg">
                 Elle gir
               </button>
             </div>
@@ -322,16 +330,16 @@ export function ReceiptSheet({ open, onClose, seed }) {
         {/* 2. Okunuyor */}
         {stage === "reading" && (
           <div className="fade-in flex flex-col items-center py-4 text-center">
-            <div className="relative w-full max-w-[320px] overflow-hidden rounded-2xl bg-card ring-1 ring-line">
+            <div className="relative w-full max-w-[20rem] overflow-hidden rounded-2xl bg-card ring-1 ring-line">
               {image ? <img src={image} alt="Fiş" className="max-h-[52vh] w-full object-contain" /> : <div className="h-64" />}
               {!error && <span className="scanline" aria-hidden="true" />}
             </div>
             {error ? (
               <div className="mt-5 w-full rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left text-amber-900">
-                <p className="flex items-center gap-2 text-[15px] font-semibold">
-                  <Icon name="alert" className="size-[18px]" /> Okunamadı
+                <p className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+                  <Icon name="alert" className="size-[1.125rem]" /> Okunamadı
                 </p>
-                <p className="mt-1 text-[14px]">{error}</p>
+                <p className="mt-1 text-[0.875rem]">{error}</p>
                 <div className="mt-3 flex gap-2">
                   {aiImage && (
                     <button onClick={() => read(aiImage)} className="h-10 rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white active:scale-95">
@@ -348,11 +356,11 @@ export function ReceiptSheet({ open, onClose, seed }) {
               </div>
             ) : (
               <>
-                <p className="mt-5 flex items-center gap-2 text-[17px] font-semibold">
-                  <Icon name="load" className="size-5 animate-spin text-acc" /> Fiş okunuyor
+                <p className="mt-5 flex items-center gap-2 text-[1.0625rem] font-semibold">
+                  <Loader size="sm" /> Fiş okunuyor
                 </p>
-                <p className="mt-1 text-[13px] tabular-nums text-mut">{secs} sn{secs >= 12 ? " · yoğunluk olabilir" : ""}</p>
-                <button onClick={cancelRead} className="mt-4 h-10 px-4 text-[15px] font-semibold text-mut active:text-fg">
+                <p className="mt-1 text-[0.8125rem] tabular-nums text-mut">{secs} sn{secs >= 12 ? " · yoğunluk olabilir" : ""}</p>
+                <button onClick={cancelRead} className="mt-4 h-10 px-4 text-[0.9375rem] font-semibold text-mut active:text-fg">
                   Vazgeç
                 </button>
               </>
@@ -364,7 +372,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
         {stage === "form" && (
           <div className="fade-in space-y-4 pt-1">
             {camError && (
-              <p className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-[13px] leading-snug text-amber-900">
+              <p className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-[0.8125rem] leading-snug text-amber-900">
                 <Icon name="alert" className="mt-px size-4" /> {camError}
               </p>
             )}
@@ -395,7 +403,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                 ) : (
                   <span className="inline-block rounded-full bg-bg px-2.5 py-1 text-xs font-semibold text-mut">Elle</span>
                 )}
-                {lowAny && <p className="mt-1 text-[13px] text-amber-800">Turuncu alanları kontrol et</p>}
+                {lowAny && <p className="mt-1 text-[0.8125rem] text-amber-800">Turuncu alanları kontrol et</p>}
               </div>
               {image && (
                 <button type="button" onClick={() => galRef.current?.click()} className="text-sm font-semibold text-acc active:opacity-50">
@@ -435,8 +443,8 @@ export function ReceiptSheet({ open, onClose, seed }) {
             {/* Kalemler */}
             <section>
               <div className="mb-2 flex items-center justify-between px-0.5">
-                <h3 className={`text-[15px] font-semibold ${lowConf(conf, "items") ? "text-amber-800" : ""}`}>Kalemler</h3>
-                <span className="text-[13px] text-mut">{live.items.length}</span>
+                <h3 className={`text-[0.9375rem] font-semibold ${lowConf(conf, "items") ? "text-amber-800" : ""}`}>Kalemler</h3>
+                <span className="text-[0.8125rem] text-mut">{live.items.length}</span>
               </div>
               <div className="space-y-2">
                 {form.items.map((i) => {
@@ -450,14 +458,14 @@ export function ReceiptSheet({ open, onClose, seed }) {
                           <Icon name="x" className="size-4" />
                         </button>
                       </div>
-                      <div className="mt-2 grid grid-cols-[60px_1fr_78px] gap-2">
+                      <div className="mt-2 grid grid-cols-[3.75rem_1fr_4.875rem] gap-2">
                         <input inputMode="decimal" className={`${inp} ${ok} h-10 text-center`} value={i.q} onChange={(e) => setItem(i.key, { q: e.target.value })} aria-label="Adet" />
                         <input inputMode="decimal" className={`${inp} ${i.u && Number.isNaN(u) ? warn : ok} h-10 text-right tabular-nums`} value={i.u} onChange={(e) => setItem(i.key, { u: e.target.value })} placeholder="Birim ₺" aria-label="Birim fiyat" />
                         <select className={`${inp} ${lowConf(conf, "vat") ? warn : ok} h-10 px-2`} value={i.r} onChange={(e) => setItem(i.key, { r: Number(e.target.value) })} aria-label="KDV">
                           {VATS.map((v) => <option key={v} value={v}>%{v}</option>)}
                         </select>
                       </div>
-                      {line != null && line !== 0 && <p className="mt-1.5 text-right text-[13px] tabular-nums text-mut">{TLk(line)}</p>}
+                      {line != null && line !== 0 && <p className="mt-1.5 text-right text-[0.8125rem] tabular-nums text-mut">{TLk(line)}</p>}
                     </div>
                   );
                 })}
@@ -469,11 +477,11 @@ export function ReceiptSheet({ open, onClose, seed }) {
 
             {/* Toplam */}
             <section className="rounded-2xl border border-line bg-card p-3.5">
-              <div className="flex justify-between text-[14px] text-mut">
+              <div className="flex justify-between text-[0.875rem] text-mut">
                 <span>KDV</span>
                 <span className="tabular-nums">{TLk(totals.vat)}</span>
               </div>
-              <div className="mt-1 flex justify-between text-[15px] font-semibold">
+              <div className="mt-1 flex justify-between text-[0.9375rem] font-semibold">
                 <span>Kalemler</span>
                 <span className="tabular-nums">{TLk(totals.gross)}</span>
               </div>
@@ -481,7 +489,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                 <input inputMode="decimal" className={`${inp} ${lowConf(conf, "total") || (hasDeclared && !matched) ? warn : ok} text-right text-lg font-semibold tabular-nums`} value={form.declared} onChange={(e) => set({ declared: e.target.value })} placeholder={toInput(totals.gross) || "0,00"} />
               </L>
               {hasDeclared && (
-                <p className={`mt-2 flex items-center gap-1.5 text-[13px] font-semibold ${matched ? "text-emerald-700" : "text-amber-800"}`}>
+                <p className={`mt-2 flex items-center gap-1.5 text-[0.8125rem] font-semibold ${matched ? "text-emerald-700" : "text-amber-800"}`}>
                   <Icon name={matched ? "check" : "alert"} className="size-4" />
                   {matched ? "Kalemler toplamla eşleşiyor" : `Fark: ${TLk(diff)}`}
                 </p>
@@ -510,7 +518,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
       </div>
 
       {stage === "form" && (
-        <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           {editId ? (
             <button onClick={remove} className={`${btn1} ${armed ? "!border-transparent !bg-rec !text-white" : "text-rec"}`}>
               {armed ? "Emin misin?" : "Sil"}

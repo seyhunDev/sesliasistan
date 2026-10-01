@@ -8,6 +8,8 @@ import { Sheet } from "@/components/ui/Sheet";
 import { VoiceTextBar } from "@/components/ui/VoiceTextBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useData } from "@/features/data/DataProvider";
+import { mirrorChanges } from "@/features/athletes/mirror";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, message, saveAttendance, useDikili } from "@/features/athletes/data";
@@ -16,6 +18,8 @@ import { NamesSheet } from "@/features/athletes/NamesSheet";
 import { useSpeech } from "@/hooks/useSpeech";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
+import { Loader, Loading } from "@/components/ui/Loader";
+import { ListeningOverlay } from "@/features/add/Stage";
 
 const ST = {
   present: { label: "Geldi", short: "Geldi", on: "bg-ok text-white", tone: "text-ok" },
@@ -63,6 +67,7 @@ function Roll() {
   const [date, setDate] = useState(today);
   const [cls, setCls] = useState("");
   const [local, setLocal] = useState({}); // "tarih|id" -> durum | null (bu oturumda yapılan işaretler)
+  const { members, myUid } = useData(); // uygulamada hesabı olan sporcuların yoklama kopyası için
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null); // yapay zeka önerisi
   const said = useRef(false);
@@ -98,6 +103,7 @@ function Roll() {
     setLocal((l) => ({ ...l, ...Object.fromEntries(keys.map((id) => [`${d}|${id}`, changes[id]])) }));
     try {
       await saveAttendance(d, changes);
+      mirrorChanges(myUid, members, d, changes); // sporcu kendi yoklamasını uygulamada görsün
       if (note) toast(note);
     } catch (e) {
       setLocal(prev);
@@ -147,7 +153,7 @@ function Roll() {
   const count = (s) => list.filter((a) => stateOf(a) === s).length;
 
   return (
-    <main className="mx-auto max-w-[480px] px-5 pb-[calc(120px+env(safe-area-inset-bottom))]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Yoklama" sub={data && !err ? `${list.length} aktif sporcu` : "Kulüp verisi"} back="/athletes">
         {data && !err && (
           <button onClick={() => setNames(true)} aria-label="Ses adları" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
@@ -159,21 +165,21 @@ function Roll() {
       {err?.code === "permission-denied" ? (
         <DikiliLogin denied={!!user} onDone={reload} />
       ) : err ? (
-        <button onClick={reload} className="mt-4 w-full rounded-2xl bg-card px-4 py-4 text-left text-[14px]">
+        <button onClick={reload} className="mt-4 w-full rounded-2xl bg-card px-4 py-4 text-left text-[0.875rem]">
           <b className="block font-semibold text-rec">{err.text}</b>
           <span className="text-mut">Tekrar denemek için dokun</span>
         </button>
       ) : !data ? (
-        <p className="mt-10 text-center text-[14px] text-mut">Sporcular yükleniyor…</p>
+        <Loading label="Sporcular yükleniyor" />
       ) : (
         <>
           {/* Ses adları hazır değilse: bir kez yapay zekayla hazırla (adlar karışmasın) */}
           {lack.length > 0 && (
             <div className="mb-3 rounded-2xl bg-acc/10 px-4 py-3">
-              <p className="text-[13px] leading-snug">
+              <p className="text-[0.8125rem] leading-snug">
                 <b className="font-semibold">{lack.length} sporcunun ses adları hazır değil.</b> Yapay zeka adları bir kez inceleyip söylenişleri ve karışabilecekleri (ör. Deniz / Aren Deniz) ayırsın; sesli yoklama daha doğru olur.
               </p>
-              <button onClick={prepare} disabled={prep} className="mt-2 h-9 rounded-lg bg-acc px-4 text-[13px] font-semibold text-white disabled:opacity-50">
+              <button onClick={prepare} disabled={prep} className="mt-2 h-9 rounded-lg bg-acc px-4 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
                 {prep ? "Hazırlanıyor…" : "Hazırla"}
               </button>
             </div>
@@ -185,8 +191,8 @@ function Roll() {
               <Icon name="back" className="size-5" />
             </button>
             <button onClick={() => setDate(today)} className="min-w-0 flex-1 text-center">
-              <b className="block truncate text-[15px] font-semibold capitalize">{dayLabel(date)}</b>
-              <small className={`text-[12px] ${date === today ? "text-acc" : "text-mut"}`}>{date === today ? "Bugün" : "Bugüne dön"}</small>
+              <b className="block truncate text-[0.9375rem] font-semibold capitalize">{dayLabel(date)}</b>
+              <small className={`text-[0.75rem] ${date === today ? "text-acc" : "text-mut"}`}>{date === today ? "Bugün" : "Bugüne dön"}</small>
             </button>
             <button onClick={() => setDate((d) => shift(d, 1))} disabled={date >= today} aria-label="Sonraki gün" className="grid size-10 place-items-center rounded-xl active:bg-bg disabled:opacity-30">
               <Icon name="chev" className="size-5" />
@@ -200,7 +206,7 @@ function Roll() {
                 <button
                   key={c.id || "all"}
                   onClick={() => setCls(c.id)}
-                  className={`h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition active:scale-95 ${cls === c.id ? "bg-acc text-white" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
+                  className={`h-8 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-medium transition active:scale-95 ${cls === c.id ? "bg-acc text-white" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
                 >
                   {c.name}
                 </button>
@@ -209,24 +215,24 @@ function Roll() {
           )}
 
           {/* Özet + toplu */}
-          <div className="mt-3 flex items-center gap-3 px-1 text-[13px]">
+          <div className="mt-3 flex items-center gap-3 px-1 text-[0.8125rem]">
             <span className="text-ok">{count("present")} geldi</span>
             <span className="text-rec">{count("absent")} yok</span>
             <span className="text-amber-600">{count("excused")} izinli</span>
             <span className="text-mut">{unmarked.length} boş</span>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <button onClick={() => bulk("present")} disabled={!list.length} className="h-10 rounded-xl bg-card text-[14px] font-semibold text-ok shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98] disabled:opacity-40">
+            <button onClick={() => bulk("present")} disabled={!list.length} className="h-10 rounded-xl bg-card text-[0.875rem] font-semibold text-ok shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98] disabled:opacity-40">
               Hepsi geldi
             </button>
-            <button onClick={() => bulk("absent")} disabled={!unmarked.length} className="h-10 rounded-xl bg-card text-[14px] font-semibold text-rec shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98] disabled:opacity-40">
+            <button onClick={() => bulk("absent")} disabled={!unmarked.length} className="h-10 rounded-xl bg-card text-[0.875rem] font-semibold text-rec shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98] disabled:opacity-40">
               Kalanlar gelmedi
             </button>
           </div>
 
           {busy && (
-            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-4 text-[14px] text-mut">
-              <Icon name="load" className="size-5 animate-spin text-acc" /> Söylediğin işleniyor…
+            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-4 text-[0.875rem] text-mut">
+              <Loader size="sm" /> Söylediğin işleniyor…
             </div>
           )}
 
@@ -237,8 +243,8 @@ function Roll() {
               return (
                 <li key={a.id} className="flex items-center gap-2 py-2 pl-4 pr-2">
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[15px] font-medium">{a.studentName}</b>
-                    {!cls && classes[a.currentClassId] && <small className="block truncate text-[12px] text-mut">{classes[a.currentClassId]}</small>}
+                    <b className="block truncate text-[0.9375rem] font-medium">{a.studentName}</b>
+                    {!cls && classes[a.currentClassId] && <small className="block truncate text-[0.75rem] text-mut">{classes[a.currentClassId]}</small>}
                   </span>
                   <span className="flex shrink-0 gap-1">
                     {Object.entries(ST).map(([k, v]) => (
@@ -246,7 +252,7 @@ function Roll() {
                         key={k}
                         onClick={() => tap(a, k)}
                         aria-pressed={s === k}
-                        className={`h-9 w-[54px] rounded-lg text-[13px] font-semibold transition active:scale-95 ${s === k ? v.on : "bg-bg text-mut"}`}
+                        className={`h-9 w-[3.375rem] rounded-lg text-[0.8125rem] font-semibold transition active:scale-95 ${s === k ? v.on : "bg-bg text-mut"}`}
                       >
                         {v.short}
                       </button>
@@ -256,17 +262,11 @@ function Roll() {
               );
             })}
           </ul>
-          <p className="mt-3 text-center text-[12px] text-mut">Söyle: “Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi”</p>
+          <p className="mt-3 text-center text-[0.75rem] text-mut">Söyle: “Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi”</p>
         </>
       )}
 
-      {listening && (
-        <div className="fixed inset-x-0 bottom-[calc(84px+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-[448px] items-center gap-3 rounded-2xl bg-fg px-4 py-3 text-white shadow-lg">
-          <span className="size-2.5 animate-pulse rounded-full bg-rec" />
-          <span className="min-w-0 flex-1 truncate text-[14px]">{`${sp.finalText || ""}${sp.interim || ""}` || "Dinliyorum… kim geldi, kim gelmedi?"}</span>
-          <button onClick={() => sp.stop("send")} className="rounded-full bg-white/15 px-3 py-1.5 text-[13px] font-semibold">Bitti</button>
-        </div>
-      )}
+      <ListeningOverlay sp={sp} hint="Kim geldi, kim gelmedi? Ör. “Ali ve Zeynep geldi”" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
       {data && !err && <VoiceTextBar placeholder="Ali ve Zeynep geldi…" micLabel="Yoklamayı söyle" onMic={() => sp.start({ autoStop: 6000 })} onSend={run} />}
 
       <NamesSheet open={names} onClose={() => setNames(false)} idx={idx} save={save} athletes={active} classes={classes} />
@@ -287,26 +287,26 @@ function Preview({ p, athletes, onClose, onSave }) {
     <Sheet open={!!p} onClose={onClose} title="Yoklama önizleme">
       {p && (
         <>
-          <p className="-mt-1 text-[14px] text-mut">
+          <p className="-mt-1 text-[0.875rem] text-mut">
             <span className="font-medium capitalize text-fg">{dayLabel(p.date)}</span>
             {p.message ? ` · ${p.message}` : ""}
           </p>
           <div className="mt-3 space-y-3">
             {groups.map(([s, ids]) => (
               <div key={s || "clear"} className="rounded-2xl bg-bg px-4 py-3">
-                <b className={`text-[13px] font-semibold ${s ? ST[s].tone : "text-mut"}`}>
+                <b className={`text-[0.8125rem] font-semibold ${s ? ST[s].tone : "text-mut"}`}>
                   {s ? ST[s].label : "İşareti kaldır"} · {ids.length}
                 </b>
-                <p className="mt-1 text-[14px] leading-relaxed">{ids.map((id) => name[id]).join(", ")}</p>
+                <p className="mt-1 text-[0.875rem] leading-relaxed">{ids.map((id) => name[id]).join(", ")}</p>
               </div>
             ))}
             {p.unknown?.length > 0 && (
-              <p className="rounded-2xl bg-amber-500/10 px-4 py-3 text-[13px] text-amber-700">Eşleştiremediklerim: {p.unknown.join(", ")}</p>
+              <p className="rounded-2xl bg-amber-500/10 px-4 py-3 text-[0.8125rem] text-amber-700">Eşleştiremediklerim: {p.unknown.join(", ")}</p>
             )}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 pb-2">
-            <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[15px] font-semibold">Vazgeç</button>
-            <button onClick={() => onSave(p)} className="h-12 rounded-xl bg-acc text-[15px] font-semibold text-white active:scale-[.98]">Kaydet</button>
+            <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Vazgeç</button>
+            <button onClick={() => onSave(p)} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Kaydet</button>
           </div>
         </>
       )}

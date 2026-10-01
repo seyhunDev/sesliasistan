@@ -31,8 +31,8 @@ export function ItemCard({ d, index, plan, assign, onAddStaff, onChange, onType,
         <button type="button" onClick={() => setOpen((o) => !o)} className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-60">
           <Icon name={m.icon} className="size-5 shrink-0 text-acc" />
           <span className="min-w-0 flex-1">
-            <b className="block truncate text-[15px] font-medium">{title}</b>
-            <small className={`block truncate text-[13px] ${missing ? "font-medium text-amber-700" : "text-mut"}`}>{meta.join(" · ")}</small>
+            <b className="block truncate text-[0.9375rem] font-medium">{title}</b>
+            <small className={`block truncate text-[0.8125rem] ${missing ? "font-medium text-amber-700" : "text-mut"}`}>{meta.join(" · ")}</small>
           </span>
           <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${isOpen ? "rotate-90" : ""}`} />
         </button>
@@ -58,10 +58,10 @@ function QuickAssign({ d, index, members, onChange }) {
   const set = (v) => onChange(index, { assignees: v, _general: !v.length }); // "Genel" bilinçli seçildi: kaydederken tekrar sorulmaz
   const toggle = (uid) => set(cur.includes(uid) ? cur.filter((u) => u !== uid) : [...cur, uid]);
   const chip = (on) =>
-    `inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`;
+    `inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`;
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto px-3.5 pb-3 [scrollbar-width:none]">
-      <span className="mr-0.5 flex shrink-0 items-center gap-1 text-[12px] font-medium text-mut">
+      <span className="mr-0.5 flex shrink-0 items-center gap-1 text-[0.75rem] font-medium text-mut">
         <Icon name="users" className="size-3.5" /> Sorumlu
       </span>
       <button type="button" onClick={() => set([])} className={chip(!cur.length && d._general)}>

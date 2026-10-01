@@ -11,5 +11,5 @@ export const canSeeAthletes = (email) => !!email && list().includes(String(email
 // Asistana söylenen yoklama mı? ("yoklama: Ali ve Zeynep geldi", "bugün antrenmana Ali gelmedi")
 export const wantsAttendance = (text) => {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
-  return t.includes("yoklama") || (/(antrenman|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu)/.test(t));
+  return t.includes("yoklama") || (/(antrenman|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu|katıldı|katılmadı|katılmayan|vardı|yoktu|gelmiş|gelmemiş)/.test(t));
 };

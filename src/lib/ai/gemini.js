@@ -38,6 +38,10 @@ function nextDailyReset(now = Date.now()) {
 // Bu yüzden telefon, sunucunun bildirdiği bekleme sürelerini saklayıp her istekte "x-ai-cool" başlığıyla geri gönderir.
 // Başlıktaki bilgi yalnızca o isteğe uygulanır (başka kullanıcıların isteklerini etkilemez).
 const reqCool = new AsyncLocalStorage();
+// Bu istek güçlü sürümle mi (ayarlardaki seçim). Güçlü model: GEMINI_MODEL_STRONG (Anthropic için AI_MODEL_STRONG).
+const reqPower = new AsyncLocalStorage();
+export const strongModel = (provider = "gemini") =>
+  reqPower.getStore() ? (provider === "anthropic" ? process.env.AI_MODEL_STRONG : process.env.GEMINI_MODEL_STRONG) || "" : "";
 const MAX_SEED = 36 * HOUR;
 
 function parseCool(header) {
@@ -65,7 +69,9 @@ export function markCool(key, ms) {
 export function withAiCool(handler) {
   return async (request, ctx) => {
     const seed = parseCool(request.headers.get("x-ai-cool"));
-    const res = await reqCool.run(seed, () => handler(request, ctx));
+    // "Güçlü sürüm": kullanıcı ayarlardan açtıysa telefon x-ai-power: strong gönderir
+    const strong = request.headers.get("x-ai-power") === "strong";
+    const res = await reqPower.run(strong, () => reqCool.run(seed, () => handler(request, ctx)));
     try {
       const now = Date.now();
       const all = new Map(seed);
@@ -123,7 +129,8 @@ async function once(model, body, ms) {
 // 404 (model kapalı): 24 saat atlanır. 429 (kota): kota süresi boyunca atlanır.
 // Başarısız olursa hata nesnesinde status (503 yoğun | 429 kota) ve retryAfter (sn) bulunur.
 export async function callGemini({ model, system, user, schema, images = [], maxTokens = 4096, timeoutMs = 22000 }) {
-  const all = [...new Set([model, ...(process.env.GEMINI_FALLBACK_MODELS || "").split(",").map((s) => s.trim())].filter(Boolean))];
+  // Güçlü sürüm açıksa önce güçlü model; kotası doluysa ya da hata verirse normal modellere düşer
+  const all = [...new Set([strongModel("gemini"), model, ...(process.env.GEMINI_FALLBACK_MODELS || "").split(",").map((s) => s.trim())].filter(Boolean))];
   const now = Date.now();
   const models = all.filter((m) => !(coolUntil(m) > now));
   const skipped = all.filter((m) => !models.includes(m));

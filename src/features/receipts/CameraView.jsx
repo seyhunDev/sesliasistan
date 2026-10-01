@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { openCamera } from "@/lib/permissions";
+import { Loader } from "@/components/ui/Loader";
 
 // Uygulama içi canlı kamera: sesli komutla ("fiş yükle") ve bilgisayarda kullanılır.
 // Dokunma gerektirmediği için yapay zeka beklemeden hemen açılabilir.
@@ -56,20 +57,20 @@ export function CameraView({ onShot, onError, onGallery, onCancel }) {
           muted
           autoPlay
           onLoadedMetadata={() => setReady(true)}
-          className="h-[62vh] max-h-[640px] w-full object-contain"
+          className="h-[62vh] max-h-[40rem] w-full object-contain"
         />
         {/* Fişi hizalama çerçevesi */}
         <span aria-hidden="true" className="pointer-events-none absolute inset-x-[12%] inset-y-[6%] rounded-xl border-2 border-dashed border-white/60" />
         {!ready && (
           <span className="absolute inset-0 grid place-items-center text-white/80">
-            <Icon name="load" className="size-7 animate-spin" />
+            <Loader size="lg" className="text-white/80" />
           </span>
         )}
         {flash && <span aria-hidden="true" className="absolute inset-0 bg-white/70" />}
       </div>
-      <p className="mt-3 text-[14px] text-mut">Fişi çerçeveye sığdır, düz tut</p>
+      <p className="mt-3 text-[0.875rem] text-mut">Fişi çerçeveye sığdır, düz tut</p>
 
-      <div className="mt-4 flex w-full max-w-[320px] items-center justify-between">
+      <div className="mt-4 flex w-full max-w-[20rem] items-center justify-between">
         <button onClick={onGallery} aria-label="Galeriden seç" className="grid size-12 place-items-center rounded-full border border-line bg-card text-mut active:scale-90">
           <Icon name="image" className="size-5" />
         </button>
@@ -77,7 +78,7 @@ export function CameraView({ onShot, onError, onGallery, onCancel }) {
           onClick={shoot}
           disabled={!ready}
           aria-label="Fotoğraf çek"
-          className="grid size-[72px] place-items-center rounded-full bg-acc text-white shadow-lg ring-4 ring-acc/25 transition active:scale-90 disabled:opacity-50"
+          className="grid size-[4.5rem] place-items-center rounded-full bg-acc text-white shadow-lg ring-4 ring-acc/25 transition active:scale-90 disabled:opacity-50"
         >
           <Icon name="camera" className="size-7" />
         </button>

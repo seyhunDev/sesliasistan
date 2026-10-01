@@ -27,6 +27,11 @@ export default function LoginPage() {
     setBusy(true);
     try {
       if (mode === "reset") {
+        if (!email.includes("@")) {
+          setError("Kullanıcı adıyla açılan hesabın şifresini ana hesap yeniler (Kişiler › kişi › Şifreyi değiştir).");
+          setBusy(false);
+          return;
+        }
         await resetPassword(email);
         setMode("sent");
       } else {
@@ -44,8 +49,8 @@ export default function LoginPage() {
   if (mode === "sent") {
     return (
       <div>
-        <h1 className="text-[22px] font-semibold tracking-tight">E-postanı kontrol et</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-mut">
+        <h1 className="text-[1.375rem] font-semibold tracking-tight">E-postanı kontrol et</h1>
+        <p className="mt-2 text-[0.9375rem] leading-relaxed text-mut">
           <b className="font-medium text-fg">{email}</b> adresine kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderdik. Gelmediyse gereksiz (spam) klasörüne de bak.
         </p>
         <Button className="mt-6" onClick={() => go("login")}>Girişe dön</Button>
@@ -56,35 +61,48 @@ export default function LoginPage() {
   const reset = mode === "reset";
   return (
     <form onSubmit={onSubmit}>
-      <h1 className="text-[22px] font-semibold tracking-tight">{reset ? "Şifreni sıfırla" : "Giriş yap"}</h1>
-      <p className="mt-1 text-[14px] text-mut">{reset ? "E-postanı yaz, sıfırlama bağlantısı gönderelim." : "Hesabınla devam et."}</p>
+      <h1 className="text-[1.375rem] font-semibold tracking-tight">{reset ? "Şifreni sıfırla" : "Giriş yap"}</h1>
+      <p className="mt-1 text-[0.875rem] text-mut">{reset ? "E-postanı yaz, sıfırlama bağlantısı gönderelim." : "Hesabınla devam et."}</p>
 
       <div className="mt-6 space-y-4">
-        <Field label="E-posta" type="email" autoComplete="email" inputMode="email" placeholder="ornek@eposta.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+        <Field
+          label={reset ? "E-posta" : "E-posta ya da kullanıcı adı"}
+          type={reset ? "email" : "text"}
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="email"
+          placeholder={reset ? "ornek@eposta.com" : "ornek@eposta.com ya da ege.demir"}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus
+        />
         {!reset && <PasswordField autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}
       </div>
 
       {!reset && (
         <div className="mt-2 text-right">
-          <button type="button" onClick={() => go("reset")} className="text-[13px] font-medium text-acc active:opacity-60">
+          <button type="button" onClick={() => go("reset")} className="text-[0.8125rem] font-medium text-acc active:opacity-60">
             Şifremi unuttum
           </button>
         </div>
       )}
 
-      {error && <p role="alert" className="mt-4 rounded-xl bg-rec/10 px-3.5 py-2.5 text-[14px] text-rec">{error}</p>}
+      {error && <p role="alert" className="mt-4 rounded-xl bg-rec/10 px-3.5 py-2.5 text-[0.875rem] text-rec">{error}</p>}
 
       <Button type="submit" loading={busy} className="mt-5">
         {reset ? "Bağlantı gönder" : "Giriş yap"}
       </Button>
 
       {reset ? (
-        <button type="button" onClick={() => go("login")} className="mt-4 block w-full text-center text-[14px] font-medium text-mut active:opacity-60">
+        <button type="button" onClick={() => go("login")} className="mt-4 block w-full text-center text-[0.875rem] font-medium text-mut active:opacity-60">
           Girişe dön
         </button>
       ) : (
         SIGNUP && (
-          <p className="mt-5 text-center text-[14px] text-mut">
+          <p className="mt-5 text-center text-[0.875rem] text-mut">
             Hesabın yok mu? <Link href="/register" className="font-semibold text-acc">Kayıt ol</Link>
           </p>
         )

@@ -64,7 +64,7 @@ export function DikiliLogin({ onDone, denied }) {
   // Giriş var ama kurallar izin vermiyor
   if (denied && user) {
     return (
-      <section className="mt-4 rounded-2xl bg-card px-4 py-4 text-[14px] shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <section className="mt-4 rounded-2xl bg-card px-4 py-4 text-[0.875rem] shadow-[0_1px_3px_rgba(38,40,44,.05)]">
         <b className="block font-semibold text-rec">Bu hesabın sporcuları görme izni yok.</b>
         <p className="mt-1 text-mut">{user.email} ile bağlısın. Kulüp uygulamasında yönetici olan hesapla bağlan.</p>
         <button onClick={() => disconnect()} className="mt-3 h-10 w-full rounded-xl bg-bg font-semibold active:scale-[.98]">
@@ -76,8 +76,8 @@ export function DikiliLogin({ onDone, denied }) {
 
   return (
     <form onSubmit={submit} className="mt-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <b className="block text-[16px] font-semibold">Kulüp hesabına bağlan</b>
-      <p className="mt-1 text-[13px] leading-snug text-mut">
+      <b className="block text-[1rem] font-semibold">Kulüp hesabına bağlan</b>
+      <p className="mt-1 text-[0.8125rem] leading-snug text-mut">
         Sporcular Dikili kulüp uygulamasında duruyor. O uygulamada kullandığın e-posta ve şifreyle bir kez bağlan; bu cihazda hatırlanır.
       </p>
       <input
@@ -86,7 +86,7 @@ export function DikiliLogin({ onDone, denied }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="E-posta"
-        className="mt-3 h-11 w-full rounded-xl bg-bg px-3.5 text-[15px] outline-none"
+        className="mt-3 h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none"
       />
       <input
         type="password"
@@ -94,13 +94,13 @@ export function DikiliLogin({ onDone, denied }) {
         value={pass}
         onChange={(e) => setPass(e.target.value)}
         placeholder="Şifre"
-        className="mt-2 h-11 w-full rounded-xl bg-bg px-3.5 text-[15px] outline-none"
+        className="mt-2 h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none"
       />
-      {msg && <p className={`mt-2 text-[13px] ${msg.includes("gönderildi") ? "text-ok" : "text-rec"}`}>{msg}</p>}
-      <button type="submit" disabled={busy || !email || !pass} className="mt-3 h-11 w-full rounded-xl bg-acc text-[15px] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
+      {msg && <p className={`mt-2 text-[0.8125rem] ${msg.includes("gönderildi") ? "text-ok" : "text-rec"}`}>{msg}</p>}
+      <button type="submit" disabled={busy || !email || !pass} className="mt-3 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
         {busy ? "Bağlanıyor…" : "Bağlan"}
       </button>
-      <button type="button" onClick={reset} className="mt-2 w-full py-1 text-[13px] text-mut">
+      <button type="button" onClick={reset} className="mt-2 w-full py-1 text-[0.8125rem] text-mut">
         Şifremi unuttum
       </button>
     </form>

@@ -16,9 +16,9 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
       {turns.map((t, i) =>
         t.role === "user" ? (
           <div key={i} className="fade-in flex flex-col items-end">
-            <p className="max-w-[85%] rounded-2xl rounded-br-md bg-fg/[.06] px-3.5 py-2 text-[15px] leading-snug">{t.text}</p>
+            <p className="max-w-[85%] rounded-2xl rounded-br-md bg-fg/[.06] px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
             {canFix && i === lastUser && (
-              <button onClick={onFix} className="mt-1 px-1 text-[12px] font-medium text-mut transition active:opacity-50">
+              <button onClick={onFix} className="mt-1 px-1 text-[0.75rem] font-medium text-mut transition active:opacity-50">
                 {t.chip ? "Geri al" : "Düzelt"}
               </button>
             )}
@@ -27,11 +27,11 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
           <div key={i} className="fade-in" {...(i === last ? { "data-last-reply": "1" } : {})}>
             <div className="flex items-start gap-2">
               <Icon name="spark" className="mt-1 size-3.5 shrink-0 text-acc" />
-              <p className="min-w-0 text-[15px] leading-snug">{t.text}</p>
+              <p className="min-w-0 text-[1rem] leading-snug">{t.text}</p>
             </div>
             {i === last && (
               <>
-                <div className="mt-1.5 flex items-center gap-3 pl-5.5 text-[12px] text-mut">
+                <div className="mt-1.5 flex items-center gap-3 pl-5.5 text-[0.75rem] text-mut">
                   {tts.supported && (
                     <button
                       type="button"
@@ -58,7 +58,7 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
                           key={c.label}
                           type="button"
                           onClick={c.onPick}
-                          className="rounded-full bg-card px-3 py-1.5 text-[14px] font-medium ring-1 ring-line transition active:scale-95"
+                          className="rounded-full bg-card px-3 py-1.5 text-[0.875rem] font-medium ring-1 ring-line transition active:scale-95"
                         >
                           {c.label}
                         </button>
@@ -66,12 +66,12 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
                       <button
                         type="button"
                         onClick={ask.onMic}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-acc px-3 py-1.5 text-[14px] font-semibold text-white transition active:scale-95"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-acc px-3 py-1.5 text-[0.875rem] font-semibold text-white transition active:scale-95"
                       >
                         <Icon name="mic" className="size-3.5" /> Sesle cevapla
                       </button>
                     </div>
-                    {ask.hint && <p className="mt-1.5 text-[12px] text-mut">{ask.hint}</p>}
+                    {ask.hint && <p className="mt-1.5 text-[0.75rem] text-mut">{ask.hint}</p>}
                   </div>
                 )}
               </>

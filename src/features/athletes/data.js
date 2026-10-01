@@ -33,7 +33,7 @@ export async function loadAthletes() {
     return plain({
       id: d.id, studentName: a.studentName || "", studentTc: a.studentTc || "", status: a.status || "",
       currentClassId: a.currentClassId || "", currentCoachId: a.currentCoachId || "",
-      parentName: a.parentName || "", parentPhone: a.parentPhone || "", studentBirthDate: a.studentBirthDate || null,
+      parentName: a.parentName || "", parentPhone: a.parentPhone || "", parentEmail: a.parentEmail || "", studentBirthDate: a.studentBirthDate || null,
       // Yoklama: { 2026: { "09-29": "present" } }
       att: Object.fromEntries(Object.entries(a).filter(([k]) => /^attendance_\d{4}$/.test(k)).map(([k, v]) => [k.slice(11), v || {}])),
     });

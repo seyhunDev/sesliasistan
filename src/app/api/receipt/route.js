@@ -3,6 +3,7 @@ import { z } from "zod";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { CATS, calcTotals } from "@/lib/receipts";
 
 export const runtime = "nodejs";
@@ -139,6 +140,8 @@ const bad = (error, status = 400, detail = "") => NextResponse.json({ error, ...
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  const noLeft = await overQuota(au, "receipt"); // kişilerde günlük hak
+  if (noLeft) return noLeft;
 
   let body;
   try {
@@ -173,7 +176,7 @@ async function handle(request) {
     const ms = Date.now() - t0;
     console.log(`[receipt:${provider}] ${ms} ms, kalem=${o.items.length}, fiş=${o.isReceipt}`);
     if (!o.isReceipt) return bad("Bu fotoğrafta fiş veya fatura göremedim. Tekrar çek veya elle gir.", 422);
-    return NextResponse.json({ draft: toDraft(o), provider, ms });
+    return withQuota(NextResponse.json({ draft: toDraft(o), provider, ms }), await spend(au, "receipt"));
   } catch (e) {
     console.error(`[receipt:${provider}]`, e.message);
     if (e.status === 429) return bad("Yapay zekanın kotası şu an dolu. Biraz sonra tekrar dene ya da elle gir.", 429, e.message);

@@ -10,13 +10,14 @@ import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { PayBox } from "@/features/receipts/Payment";
 import { DOC, TLk, catOf, mismatch, totalOf } from "@/lib/receipts";
 import { fdate, rel } from "@/lib/utils/format";
+import { Loading } from "@/components/ui/Loader";
 
 const btn = "inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-card px-3 text-sm font-semibold transition active:scale-95";
 
 function Sec({ title, children }) {
   return (
     <>
-      <h4 className="mb-2 mt-6 px-1 text-[13px] font-medium text-mut">{title}</h4>
+      <h4 className="mb-2 mt-6 px-1 text-[0.8125rem] font-medium text-mut">{title}</h4>
       <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">{children}</div>
     </>
   );
@@ -24,10 +25,10 @@ function Sec({ title, children }) {
 function Kv({ k, v, sub, strong }) {
   if (v === "" || v == null) return null;
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-2.5 text-[15px]">
+    <div className="flex items-start justify-between gap-4 px-4 py-2.5 text-[0.9375rem]">
       <span className="min-w-0 text-mut">
         {k}
-        {sub && <small className="block text-[13px]">{sub}</small>}
+        {sub && <small className="block text-[0.8125rem]">{sub}</small>}
       </span>
       <b className={`text-right tabular-nums ${strong ? "text-base font-bold text-fg" : "font-semibold"}`}>{v}</b>
     </div>
@@ -50,9 +51,9 @@ export default function ReceiptDetailPage() {
 
   if (!r) {
     return (
-      <main className="mx-auto max-w-[480px] px-5 pt-4">
-        <Link href="/receipts" className={btn}><Icon name="back" className="size-[18px]" /> Fişler</Link>
-        <p className="mt-12 text-center text-mut">{loading ? "Yükleniyor…" : "Fiş bulunamadı."}</p>
+      <main className="mx-auto max-w-[30rem] px-5 pt-4">
+        <Link href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</Link>
+        {loading ? <Loading /> : <p className="mt-12 text-center text-mut">Fiş bulunamadı.</p>}
       </main>
     );
   }
@@ -64,29 +65,29 @@ export default function ReceiptDetailPage() {
   const conf = r.conf;
 
   return (
-    <main className="mx-auto max-w-[480px] px-5 pb-[calc(40px+env(safe-area-inset-bottom))] pt-[calc(12px+env(safe-area-inset-top))]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       <div className="flex items-center justify-between py-1.5">
-        <Link href="/receipts" className={btn}><Icon name="back" className="size-[18px]" /> Fişler</Link>
-        <button onClick={() => openReceipt({ edit: r.id })} className={btn}><Icon name="edit" className="size-[18px]" /> Düzenle</button>
+        <Link href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</Link>
+        <button onClick={() => openReceipt({ edit: r.id })} className={btn}><Icon name="edit" className="size-[1.125rem]" /> Düzenle</button>
       </div>
 
       {/* Başlık kartı */}
       <div className="mt-3 rounded-2xl border border-line bg-card p-4">
         <div className="flex items-center gap-3">
           <Tile icon={c.icon} />
-          <b className="min-w-0 flex-1 truncate text-[17px] font-semibold">{r.merchant || "İsimsiz"}</b>
+          <b className="min-w-0 flex-1 truncate text-[1.0625rem] font-semibold">{r.merchant || "İsimsiz"}</b>
           {img && (
             <button onClick={() => setZoom(true)} aria-label="Fotoğrafı büyüt" className="shrink-0">
               <img src={img} alt="Fiş" className="size-12 rounded-lg object-cover ring-1 ring-line" />
             </button>
           )}
         </div>
-        <div className="mt-2 text-[28px] font-bold tracking-tight tabular-nums">{TLk(total)}</div>
-        <p className="text-[14px] text-mut">
+        <div className="mt-2 text-[1.75rem] font-bold tracking-tight tabular-nums">{TLk(total)}</div>
+        <p className="text-[0.875rem] text-mut">
           {[rel(r.date), r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
         </p>
         {bad && (
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[14px] font-semibold text-amber-800">
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[0.875rem] font-semibold text-amber-800">
             <Icon name="alert" className="size-4" /> Kalemler {TLk(t.gross)}, fişte {TLk(r.declared)}
           </div>
         )}

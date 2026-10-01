@@ -4,8 +4,8 @@ import { Icon } from "@/components/ui/Icon";
 // tone parametresi geriye dönük uyumluluk için duruyor; sade tasarımda tüm ikonlar nötr
 export function Tile({ icon }) {
   return (
-    <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-bg text-fg">
-      <Icon name={icon} className="size-[18px]" />
+    <span className="grid size-9 shrink-0 place-items-center rounded-[0.625rem] bg-bg text-fg">
+      <Icon name={icon} className="size-[1.125rem]" />
     </span>
   );
 }
@@ -16,14 +16,14 @@ export function Row({ icon, title, sub, right, badge, onClick, href }) {
     <>
       <Tile icon={icon} />
       <span className="min-w-0 flex-1">
-        <b className="block truncate text-[15px] font-medium">{title}</b>
-        {sub && <small className="mt-0.5 block truncate text-[13px] text-mut">{sub}</small>}
+        <b className="block truncate text-[0.9375rem] font-medium">{title}</b>
+        {sub && <small className="mt-0.5 block truncate text-[0.8125rem] text-mut">{sub}</small>}
       </span>
-      {badge && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[12px] font-semibold text-amber-800">{badge}</span>}
+      {badge && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.75rem] font-semibold text-amber-800">{badge}</span>}
       {right ? (
-        <span className="shrink-0 text-[15px] font-semibold tabular-nums">{right}</span>
+        <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{right}</span>
       ) : (
-        <Icon name="chev" className="size-[18px] shrink-0 text-mut" />
+        <Icon name="chev" className="size-[1.125rem] shrink-0 text-mut" />
       )}
     </>
   );

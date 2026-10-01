@@ -1,0 +1,406 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { Icon } from "@/components/ui/Icon";
+import { Loading } from "@/components/ui/Loader";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { db } from "@/lib/firebase/clientApp";
+import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
+import { accountsOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
+import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
+import { dayLabel, todayIn } from "@/lib/notifyText";
+
+const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
+const hm = (iso) => new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+const when = (iso, today) => `${dayLabel(localDate(iso), today)} ${hm(iso)}`;
+const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const cash = (n, cur) => `${money(n)}${cur ? ` ${cur}` : ""}`;
+const signed = (n, cur) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${cash(Math.abs(n), cur)}`;
+const PAGE = 40;
+const MOVES = 6; // kapalıyken gösterilen hareket sayısı
+const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
+const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
+
+// Mailler (yalnızca ana hesap), banka uygulaması düzeninde:
+//   bugünün özeti › hesaplar (son bakiye, önceki özete göre değişim, toplam) › son hareketler (bütün özetlerden) › gelen kutusu › durum
+// Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
+// okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
+export default function MailPage() {
+  const { profile } = useAuth();
+  const router = useRouter();
+  const owner = profile?.role === "owner";
+  const [mails, setMails] = useState(null);
+  const [max, setMax] = useState(PAGE);
+  const [now] = useState(() => Date.now());
+  const [acct, setAcct] = useState(""); // hareketleri tek hesaba süz
+  const [allMoves, setAllMoves] = useState(false);
+  const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
+
+  useEffect(() => {
+    if (profile && !owner) router.replace("/");
+  }, [profile, owner, router]);
+  useEffect(() => {
+    if (!owner) return;
+    return onSnapshot(
+      query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(max)),
+      (s) => setMails(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setMails([]),
+    );
+  }, [owner, profile?.uid, max]);
+
+  // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
+  const pending = (mails || []).filter((m) => m.raw?.length && !m.sheets).map((m) => m.id).join(",");
+  useEffect(() => {
+    if (!owner || !pending) return;
+    let live = true;
+    import("xlsx").then((mod) => {
+      const XLSX = xlsxOf(mod);
+      for (const m of mails.filter((x) => pending.split(",").includes(x.id))) {
+        if (!live) return;
+        const sheets = sheetsFromRaw(m.raw, XLSX);
+        updateDoc(doc(db, "orgs", profile.uid, "mails", m.id), { sheets }).catch((e) => console.warn("[mail] tablo kaydedilemedi", e?.code));
+      }
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, pending]);
+  if (!owner) return null;
+
+  const today = todayIn();
+  const list = mails || [];
+  const rules = sendersOf(profile.mailFrom); // İş Bankası sabit + eklenenler
+  const ready = !!profile.mailSeen; // betik en az bir kez bağlandı
+  const seen = profile.mailSeen;
+  const live = seen && now - Date.parse(seen) < 20 * 60e3;
+  const lastMail = list.map((m) => m.receivedAt || m.at).sort().at(-1) || "";
+
+  const accounts = accountsOf(list);
+  const totals = totalsOf(accounts);
+  const moves = movementsOf(list);
+  const todayMails = list.filter((m) => localDate(m.at) === today);
+  const todayMoves = moves.filter((x) => localDate(new Date(x.ts).toISOString()) === today);
+  const picked = accounts.find((a) => a.key === acct);
+  const shownMoves = (picked ? moves.filter((x) => x.account === acct) : moves).slice(0, allMoves ? 200 : MOVES);
+  const moveTotal = picked ? moves.filter((x) => x.account === acct).length : moves.length;
+  const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
+
+  return (
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+      <PageHeader title="Mailler" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
+        <Link href="/mail/setup" aria-label="Mail ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
+          <Icon name="wrench" className="size-5" />
+        </Link>
+      </PageHeader>
+
+      {!mails ? (
+        <Loading />
+      ) : (
+        <>
+          {/* Bugün: gelen mail, hesap hareketi, Gmail'in son kontrolü */}
+          <section className="mt-2 grid grid-cols-3 gap-2" aria-label="Bugünün özeti">
+            <Stat label="Bugün gelen" value={todayMails.length} unit="mail" />
+            <Stat label="Bugün hareket" value={todayMoves.length} unit="işlem" />
+            <Stat label="Gmail kontrol" value={seen ? hm(seen) : "—"} unit={seen ? dayLabel(localDate(seen), today) : "bağlı değil"} bad={ready && !live} />
+          </section>
+
+          {/* Hesaplar: toplam bakiye ve her hesabın son bakiyesi */}
+          {accounts.length > 0 && (
+            <section className="mt-5">
+              <h2 className={title}>Hesaplar</h2>
+              <div className={card}>
+                <div className="bg-acc px-4 py-4 text-white">
+                  <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">TOPLAM BAKİYE</p>
+                  {totals.map((t, i) => (
+                    <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.75rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
+                      {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
+                    </p>
+                  ))}
+                  <p className="mt-1.5 text-[0.75rem] text-white/75">
+                    {accounts.length} hesap · son özet {when(accounts.map((a) => a.at).sort().at(-1), today)}
+                  </p>
+                </div>
+                <ul className="divide-y divide-line">
+                  {accounts.map((a) => (
+                    <li key={a.key}>
+                      <button type="button" onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setAllMoves(false))} aria-pressed={acct === a.key} className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${acct === a.key ? "bg-acc/5" : ""}`}>
+                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.75rem] font-bold text-acc">{a.currency || "₺"}</span>
+                        <span className="min-w-0 flex-1">
+                          <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                          <small className="block truncate text-[0.75rem] text-mut">
+                            {[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}
+                          </small>
+                        </span>
+                        <span className="shrink-0 text-right">
+                          <b className="block text-[0.9375rem] font-semibold tabular-nums">{cash(a.balance, a.currency)}</b>
+                          {a.change !== null && a.change !== 0 && <small className={`block text-[0.75rem] font-semibold tabular-nums ${a.change > 0 ? "text-ok" : "text-rec"}`}>{signed(a.change, "")}</small>}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
+
+          {/* Son hareketler: bütün hesap özetlerinden, günlere göre */}
+          {moves.length > 0 && (
+            <section className="mt-5">
+              <div className="flex items-center gap-2 px-1 pb-2">
+                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{picked ? `Hareketler · ${picked.label}` : "Son hareketler"}</h2>
+                {picked && (
+                  <button type="button" onClick={() => setAcct("")} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc">
+                    Tümü <Icon name="x" className="size-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className={card}>
+                <Moves list={shownMoves} today={today} />
+                {moveTotal > MOVES && (
+                  <button type="button" onClick={() => setAllMoves((v) => !v)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
+                    {allMoves ? "Daha az göster" : `Tümünü gör (${moveTotal})`}
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Gelen kutusu: gönderene göre süz; dokununca mail açılır */}
+          <section className="mt-5">
+            <h2 className={title}>Gelen kutusu</h2>
+            <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none]">
+              <Chip on={!from} onClick={() => setFrom("")} label="Tümü" n={list.length} />
+              {rules.map((r) => (
+                <Chip key={r.from} on={from === r.from} onClick={() => setFrom(r.from)} label={r.name} n={list.filter((m) => ruleFor(m.from, [r])).length} />
+              ))}
+            </div>
+            {inbox.length ? (
+              <div className={card}>
+                <ul className="divide-y divide-line">
+                  {inbox.map((m, i) => (
+                    <MailRow key={m.id} m={m} today={today} head={i === 0 || localDate(inbox[i - 1].at) !== localDate(m.at)} />
+                  ))}
+                </ul>
+                {list.length >= max && (
+                  <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
+                    Daha eski mailler
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className={`${card} px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
+                {!ready ? "Gmail'ini bağlayınca bankadan gelen hesap özetleri burada görünür." : from ? "Bu gönderenden mail yok." : "Henüz mail gelmedi. Seçtiğin gönderenlerden mail gelince burada görünür ve telefonuna bildirim gelir."}
+              </p>
+            )}
+          </section>
+
+          {/* Durum ve ayarlar */}
+          <div className="mt-4 flex items-center gap-3 px-1">
+            <p className={`min-w-0 flex-1 text-[0.75rem] leading-snug ${ready && !live ? "text-rec" : "text-mut"}`}>
+              {!ready
+                ? "Gmail bağlı değil. Kurulumu bir kez yapman yeterli."
+                : live
+                  ? `Son mail ${lastMail ? when(lastMail, today) : "yok"} · Gmail 5 dakikada bir kendiliğinden kontrol edilir.`
+                  : "Gmail bir süredir kontrol edilmedi. Apps Script'te kur'u yeniden çalıştır."}
+            </p>
+            <Link href="/mail/setup" className="flex h-9 shrink-0 items-center rounded-xl bg-card px-3.5 text-[0.8125rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98]">
+              {ready ? "Gönderenler" : "Kurulumu yap"}
+            </Link>
+          </div>
+        </>
+      )}
+    </main>
+  );
+}
+
+// Küçük özet kutusu: etiket, büyük değer, birim (tek satır, kaymaz)
+function Stat({ label, value, unit, bad }) {
+  return (
+    <div className="min-w-0 rounded-2xl bg-card px-3 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <p className="truncate text-[0.6875rem] font-semibold text-mut">{label}</p>
+      <p className={`truncate text-[1.25rem] font-bold leading-tight tabular-nums tracking-tight ${bad ? "text-rec" : ""}`}>{value}</p>
+      <p className="truncate text-[0.6875rem] text-mut">{unit}</p>
+    </div>
+  );
+}
+
+function Chip({ on, onClick, label, n }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on} className={`flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-fg text-card" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}>
+      {label}
+      <span className={`tabular-nums ${on ? "text-card/70" : "text-mut"}`}>{n}</span>
+    </button>
+  );
+}
+
+// Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
+function Moves({ list, today }) {
+  const dayOf = (x) => localDate(new Date(x.ts).toISOString());
+  return (
+    <ul>
+      {list.map((x, i) => {
+        const d = dayOf(x);
+        const head = i === 0 || dayOf(list[i - 1]) !== d;
+        const t = /\d{1,2}:\d{2}/.exec(x.date)?.[0] || "";
+        return (
+          <li key={x.id}>
+            {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
+            <div className="flex h-14 items-center gap-3 px-4">
+              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
+                <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[0.9375rem] font-medium">{x.desc}</b>
+                <small className="block truncate text-[0.75rem] text-mut">{[t, x.kind, x.accountLabel].filter(Boolean).join(" · ")}</small>
+              </span>
+              <span className="shrink-0 text-right">
+                <b className={`block text-[0.9375rem] font-semibold tabular-nums ${x.amount > 0 ? "text-ok" : ""}`}>{signed(x.amount, x.currency)}</b>
+                {x.balance !== null && <small className="block text-[0.6875rem] tabular-nums text-mut">{cash(x.balance, "")}</small>}
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// Gelen kutusu satırı: gönderen, saat, konu, tek satır önizleme; dokununca açılır (hesap özeti ya da metin, ekler)
+function MailRow({ m, today, head }) {
+  const [open, setOpen] = useState(false);
+  const sheets = m.sheets || [];
+  const who = m.rule || m.fromName || m.from;
+  const d = localDate(m.at);
+  return (
+    <li>
+      {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-start gap-3 px-4 py-3 text-left active:bg-bg">
+        <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${sheets.length ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
+          <Icon name={sheets.length ? "wallet" : "mail"} className="size-[1.125rem]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline gap-2">
+            <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{who}</b>
+            <time className="shrink-0 text-[0.75rem] tabular-nums text-mut">{hm(m.at)}</time>
+          </span>
+          <span className="block truncate text-[0.875rem]">{m.subject || "(Konu yok)"}</span>
+          <span className="flex items-center gap-1.5 text-[0.8125rem] text-mut">
+            <span className="min-w-0 flex-1 truncate">{previewOf(m, money) || "İçerik yok"}</span>
+            {m.files?.length > 0 && <span className="shrink-0 rounded bg-bg px-1.5 text-[0.6875rem] font-semibold">Ek {m.files.length}</span>}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="fade-in pb-1">
+          {sheets.length ? (
+            sheets.map((s, i) => <Statement key={i} s={s} m={m} />)
+          ) : (
+            <p className="mx-4 mb-3 whitespace-pre-wrap rounded-xl bg-bg px-3.5 py-3 text-[0.875rem] leading-snug text-fg/85">{m.text || "İçerik yok"}</p>
+          )}
+          {m.raw?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-3">
+              {m.raw.map((f) => (
+                <button
+                  key={f.name}
+                  type="button"
+                  onClick={() => download(f.name, Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0)), "application/vnd.ms-excel")}
+                  className="flex h-8 max-w-full items-center gap-1.5 rounded-full bg-bg px-3 text-[0.75rem] font-semibold text-mut active:scale-95"
+                >
+                  <Icon name="up" className="size-3.5 shrink-0 rotate-180" /> <span className="truncate">{f.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// Dosya adı: Türkçe harfler sade Latin harfe (bazı tarayıcılar ASCII dışı adı yok sayıp "download" der)
+const TR = { ç: "c", ğ: "g", ı: "i", İ: "I", ö: "o", ş: "s", ü: "u", Ç: "C", Ğ: "G", Ö: "O", Ş: "S", Ü: "U" };
+const fileName = (s) => s.replace(/[çğıİöşüÇĞÖŞÜ]/g, (c) => TR[c]).replace(/[^\w.-]+/g, "-");
+
+// CSV dosyası indir (Excel açar)
+function download(name, text, type = "text/csv;charset=utf-8") {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: fileName(name) });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// Hesap özeti: bakiye, hareket sayısı, giren/çıkan; dokununca hareketler ve hesap bilgileri
+function Statement({ s, m }) {
+  const [open, setOpen] = useState(false);
+  const { sum = {}, columns = [], rows = [], meta = {} } = s;
+  const col = (re) => columns.findIndex((c) => re.test(c));
+  const c = { date: col(/tarih|date/i), desc: col(/açıklama|aciklama|description/i), amount: col(/tutar|amount/i), bal: col(/bakiye|balance/i), type: col(/[iİ]şlem tipi|^[iİ]şlem$/i) };
+  const cur = sum.currency || "";
+  return (
+    <div className="px-4 pb-3">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="block w-full rounded-xl bg-bg px-3.5 py-3 text-left active:scale-[.99]" aria-expanded={open}>
+        <span className="flex items-center justify-between gap-2 text-[0.75rem] text-mut">
+          <span className="truncate">{[sum.product || "Hesap", sum.last4 && `·${sum.last4}`].filter(Boolean).join(" ")}</span>
+          <Icon name="chev" className={`size-4 shrink-0 transition ${open ? "rotate-90" : ""}`} />
+        </span>
+        <b className="mt-0.5 block text-[1.375rem] font-bold tracking-tight">
+          {sum.balance === null || sum.balance === undefined ? "—" : money(sum.balance)} <span className="text-[0.875rem] font-semibold text-mut">{cur}</span>
+        </b>
+        <span className="mt-1.5 flex flex-wrap gap-1.5 text-[0.75rem] font-semibold">
+          <span className="rounded-full bg-card px-2 py-0.5 text-mut">{sum.count ? `${sum.count} hareket` : "Hareket yok"}</span>
+          {sum.inSum > 0 && <span className="rounded-full bg-ok/10 px-2 py-0.5 text-ok">+{money(sum.inSum)}</span>}
+          {sum.outSum < 0 && <span className="rounded-full bg-rec/10 px-2 py-0.5 text-rec">−{money(-sum.outSum)}</span>}
+        </span>
+      </button>
+      {open && (
+        <div className="fade-in mt-2">
+          {rows.length > 0 && (
+            <ul className="divide-y divide-line">
+              {rows.map(({ v }, i) => {
+                const amt = typeof v[c.amount] === "number" ? v[c.amount] : null;
+                return (
+                  <li key={i} className="flex items-start gap-3 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <b className="block text-[0.875rem] font-medium leading-snug">{(c.desc >= 0 && v[c.desc]) || (c.type >= 0 && v[c.type]) || "İşlem"}</b>
+                      <small className="block text-[0.75rem] text-mut">{[c.date >= 0 && v[c.date], c.type >= 0 && c.desc >= 0 && v[c.type]].filter(Boolean).join(" · ")}</small>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <b className={`block text-[0.875rem] font-semibold tabular-nums ${amt > 0 ? "text-ok" : amt < 0 ? "text-rec" : ""}`}>
+                        {amt === null ? String(v[c.amount] ?? "") : `${amt > 0 ? "+" : "−"}${money(Math.abs(amt))}`}
+                      </b>
+                      {c.bal >= 0 && <small className="block text-[0.75rem] tabular-nums text-mut">{typeof v[c.bal] === "number" ? money(v[c.bal]) : v[c.bal]}</small>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {Object.keys(meta).length > 0 && (
+            <dl className="mt-2 space-y-1 rounded-xl bg-bg px-3.5 py-2.5 text-[0.75rem]">
+              {Object.entries(meta).map(([k, val]) => (
+                <div key={k} className="flex gap-2">
+                  <dt className="w-[42%] shrink-0 text-mut">{k}</dt>
+                  <dd className="min-w-0 break-words">{val}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <button
+            type="button"
+            onClick={() => download(`${(m.rule || "hesap").replace(/\s+/g, "-")}_${sum.currency || ""}_${localDate(m.at)}.csv`, statementCsv(s, m.subject))}
+            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]"
+          >
+            <Icon name="up" className="size-4 rotate-180" /> Excel olarak indir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

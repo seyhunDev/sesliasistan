@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v5";
+const VERSION = "sa-v8";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
@@ -96,11 +96,16 @@ self.addEventListener("push", (e) => {
     Promise.all([
       self.registration.showNotification(d.title || "Sesli Asistan", {
         body: d.body || "",
-        tag: d.tag, // aynı kayıt için tek bildirim
+        tag: d.tag, // aynı kayıt için tek bildirim (yenisi öncekinin yerine geçer, yığılmaz)
+        renotify: !!d.tag, // yerine geçerken de sesle/titreşimle haber ver
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         data: { url: d.url || "/" },
       }),
+      // Uygulama simgesindeki sayı (iPhone'da ana ekrana eklenmiş uygulama, iOS 16.4+)
+      typeof d.badge === "number" && self.navigator.setAppBadge
+        ? (d.badge > 0 ? self.navigator.setAppBadge(d.badge) : self.navigator.clearAppBadge()).catch(() => {})
+        : null,
       // Atama bildirimi: telefona ulaştı ("iletildi") onayı
       d.ack
         ? fetch("/api/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d.ack) }).catch(() => {})

@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { message, updateAthlete } from "./data";
 
 const BLOOD = ["A Rh+", "A Rh-", "B Rh+", "B Rh-", "AB Rh+", "AB Rh-", "0 Rh+", "0 Rh-"];
-const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[15px] outline-none focus:bg-card focus:ring-1 focus:ring-acc";
+const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none focus:bg-card focus:ring-1 focus:ring-acc";
 
 // Düzenlenebilen alanlar (kulüp uygulamasındaki adlarıyla)
 const TEXT = [
@@ -57,7 +57,7 @@ function Form({ a, names, onClose, onSaved }) {
 
   const Sel = ({ k, label, children }) => (
     <label className="block">
-      <span className="mb-1 block text-[12px] text-mut">{label}</span>
+      <span className="mb-1 block text-[0.75rem] text-mut">{label}</span>
       <select value={f[k]} onChange={set(k)} className={field}>{children}</select>
     </label>
   );
@@ -69,7 +69,7 @@ function Form({ a, names, onClose, onSaved }) {
         {Sel({ k: "currentCoachId", label: "Antrenör", children: [<option key="" value="">Atanmamış</option>, ...names.coaches.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)] })}
         {Sel({ k: "status", label: "Durum", children: [<option key="a" value="active">Aktif</option>, <option key="p" value="passive">Pasif</option>] })}
         <label className="block">
-          <span className="mb-1 block text-[12px] text-mut">Doğum tarihi</span>
+          <span className="mb-1 block text-[0.75rem] text-mut">Doğum tarihi</span>
           <input type="date" value={f.studentBirthDate} onChange={set("studentBirthDate")} className={field} />
         </label>
         {Sel({ k: "studentGender", label: "Cinsiyet", children: [<option key="" value="">—</option>, <option key="e" value="Erkek">Erkek</option>, <option key="k" value="Kız">Kız</option>] })}
@@ -78,7 +78,7 @@ function Form({ a, names, onClose, onSaved }) {
 
       {TEXT.map(([title, fields]) => (
         <fieldset key={title} className="mt-4">
-          <legend className="mb-1.5 text-[12px] font-semibold uppercase tracking-wide text-mut">{title}</legend>
+          <legend className="mb-1.5 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{title}</legend>
           <div className="space-y-2">
             {fields.map(([k, ph, mode]) => (
               <input
@@ -97,8 +97,8 @@ function Form({ a, names, onClose, onSaved }) {
       ))}
 
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
-        <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[15px] font-semibold">Vazgeç</button>
-        <button onClick={save} disabled={busy} className="h-12 rounded-xl bg-acc text-[15px] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
+        <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Vazgeç</button>
+        <button onClick={save} disabled={busy} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
           {busy ? "Kaydediliyor…" : Object.keys(patch).length ? "Kaydet" : "Kapat"}
         </button>
       </div>

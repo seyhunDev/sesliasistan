@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, sailWindows, sky, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sailWindows, sky, windLevel, windName } from "./weather";
 import { Col, WindArrow } from "./parts";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
 
-// Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = hamle; 7/17/22 kn çizgileri yelken eşikleri.
+// Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = sağanak; 7/17/22 kn çizgileri yelken eşikleri.
 // Parmakla sürükleyince seçilen saatin değerleri üstte yazar.
 function WindChart({ rows, sel, onSel, nowIdx }) {
   const W = 340, H = 150, L = 22, R = 6, T = 8, B = 18;
@@ -83,17 +83,17 @@ export function DayDetail({ date, rows, info }) {
       <div className="flex items-center gap-3">
         <Icon name={sky(code).icon} className="size-8 shrink-0 text-acc" />
         <div className="min-w-0">
-          <p className="text-[20px] font-semibold leading-tight tabular-nums">{min}–{max}°</p>
-          <p className="text-[13px] text-mut">{sky(code).label}</p>
+          <p className="text-[1.25rem] font-semibold leading-tight tabular-nums">{min}–{max}°</p>
+          <p className="text-[0.8125rem] text-mut">{sky(code).label}</p>
         </div>
       </div>
-      <dl className="mt-3 grid gap-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[13px]">
+      <dl className="mt-3 grid gap-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.8125rem]">
         <div className="flex items-center justify-between gap-3">
           <dt className="text-mut">En sert</dt>
           <dd className={`flex items-center gap-1 font-semibold tabular-nums ${lvl.tone}`}>
             <WindArrow deg={peak.dir} />
             {windName(peak.dir)[0]} {peak.wind} kn
-            <span className="font-normal text-mut">· hamle {peak.gust} · {peak.hh}:00</span>
+            <span className="font-normal text-mut">· sağanak {peak.gust} · {peak.hh}:00</span>
           </dd>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -106,19 +106,19 @@ export function DayDetail({ date, rows, info }) {
 
       {/* Seçili saat */}
       <div className="mt-4">
-        <p className="text-[13px] tabular-nums">
+        <p className="text-[0.8125rem] tabular-nums">
           <span className="font-semibold">{s.hh}:00</span>
           <span className="text-mut"> · {windName(s.dir)[0]} </span>
           <span className={`font-semibold ${windLevel(s.wind).tone}`}>{s.wind} kn</span>
-          <span className="text-mut"> · hamle {s.gust} · {s.t}°</span>
+          <span className="text-mut"> · sağanak {s.gust} · {s.t}°</span>
         </p>
       </div>
       <div className="mt-1">
         <WindChart rows={rows} sel={sel} onSel={setSel} nowIdx={nowIdx} />
       </div>
-      <p className="flex items-center justify-end gap-2 text-[11px] text-mut">
+      <p className="flex items-center justify-end gap-2 text-[0.6875rem] text-mut">
         <span className="inline-block h-0.5 w-3 rounded bg-acc" /> rüzgâr
-        <span className="inline-block w-3 border-t border-dashed border-mut" /> hamle
+        <span className="inline-block w-3 border-t border-dashed border-mut" /> sağanak
         {nowIdx >= 0 && <><span className="inline-block h-2.5 w-px bg-rec/60" /> şimdi</>}
         <span>· parmağınla kaydır</span>
       </p>
@@ -129,9 +129,72 @@ export function DayDetail({ date, rows, info }) {
           <Col key={h.time} label={h.hh} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} dir={h.dir} />
         ))}
       </div>
-      <p className="mt-3 text-center text-[11px] text-mut">
-        {PLACE.name} · Open-Meteo · rüzgâr knot · yelken: 7–16 kn uygun, 17–21 sert, 22+ riskli
-      </p>
+      <p className="mt-3 text-center text-[0.6875rem] text-mut">rüzgâr knot · yelken: 7–16 kn uygun, 17–21 sert, 22+ riskli</p>
+    </div>
+  );
+}
+
+const SHORT = new Intl.DateTimeFormat("tr-TR", { weekday: "short", timeZone: PLACE.tz });
+const ago = (ms) => {
+  const m = Math.round((Date.now() - ms) / 60000);
+  return m < 2 ? "az önce" : m < 60 ? `${m} dk önce` : `${Math.round(m / 60)} sa önce`;
+};
+
+// Hava detayı: bugün + 5 gün seçici, seçilen günün saat saat ayrıntısı; altta kaynak ve karşılaştırma
+export function WeatherDetail({ w, refresh, busy }) {
+  const today = w.today?.date;
+  const days = [{ date: today, code: w.today.code, min: w.today.min, max: w.today.max, wind: w.today.wind }, ...(w.days || [])].filter((d) => d.date);
+  const [sel, setSel] = useState(today);
+  const rows = dayHours(w, sel) || [];
+  const info = days.find((d) => d.date === sel);
+  const place = getPlace();
+  const links = compareLinks(place);
+  return (
+    <div>
+      {/* Gün seçici: bugün + 5 gün */}
+      <div className="-mx-1 grid grid-cols-6 gap-1">
+        {days.map((d, i) => {
+          const on = d.date === sel;
+          return (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => setSel(d.date)}
+              aria-pressed={on}
+              className={`flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-center transition active:scale-95 ${on ? "bg-[#2c5163] text-white" : "bg-bg"}`}
+            >
+              <span className={`text-[0.6875rem] font-semibold ${on ? "text-white/80" : "text-mut"}`}>{i === 0 ? "Bugün" : SHORT.format(new Date(`${d.date}T12:00:00`))}</span>
+              <Icon name={sky(d.code).icon} className={`size-5 ${on ? "" : "text-acc"}`} />
+              <span className="text-[0.8125rem] font-semibold tabular-nums">{d.max}°</span>
+              <span className={`text-[0.6875rem] tabular-nums ${on ? "text-white/75" : "text-mut"}`}>{d.min}°</span>
+              <span className={`text-[0.6875rem] font-semibold tabular-nums ${on ? "text-white" : windLevel(d.wind).tone}`}>{d.wind} kn</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4">{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
+
+      {/* Kaynak ve doğrulama */}
+      <div className="mt-2 rounded-2xl bg-bg px-3.5 py-3 text-[0.75rem] leading-snug text-mut">
+        <p>
+          <b className="font-semibold text-fg">{placeLabel(place)}</b> · Kaynak: Open-Meteo (ECMWF, ICON, GFS gibi resmi meteoroloji modellerinin birleşimi) ·{" "}
+          {ago(w.at)} alındı
+          {w.model?.elevation != null ? ` · model noktası ${w.model.lat?.toFixed(2)}, ${w.model.lon?.toFixed(2)} (${Math.round(w.model.elevation)} m)` : ""}
+        </p>
+        <p className="mt-2 flex flex-wrap items-center gap-2">
+          <span>Karşılaştır:</span>
+          <a href={links.mgm} target="_blank" rel="noopener noreferrer" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
+            MGM
+          </a>
+          <a href={links.windy} target="_blank" rel="noopener noreferrer" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
+            Windy
+          </a>
+          <button type="button" onClick={() => refresh(true)} disabled={busy} className="ml-auto rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+            Yenile
+          </button>
+        </p>
+      </div>
     </div>
   );
 }

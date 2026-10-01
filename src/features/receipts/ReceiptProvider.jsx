@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 import { ReceiptSheet } from "./ReceiptSheet";
+import { useKind } from "@/features/auth/useKind";
+import { canReceipts } from "@/lib/kinds";
 
 const Ctx = createContext({ openReceipt: () => {} });
 
@@ -12,10 +14,16 @@ const Ctx = createContext({ openReceipt: () => {} });
 export function ReceiptProvider({ children }) {
   const [open, setOpen] = useState(false);
   const [seed, setSeed] = useState(null);
-  const openReceipt = useCallback((o = {}) => {
-    setSeed({ id: Date.now(), ...o });
-    setOpen(true);
-  }, []);
+  const kind = useKind();
+  const allowed = !kind || canReceipts(kind); // sporcu, öğrenci, veli fiş eklemez
+  const openReceipt = useCallback(
+    (o = {}) => {
+      if (!allowed) return;
+      setSeed({ id: Date.now(), ...o });
+      setOpen(true);
+    },
+    [allowed],
+  );
   const close = useCallback(() => setOpen(false), []);
 
   return (

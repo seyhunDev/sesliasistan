@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
+import { applySize } from "@/lib/textSize";
 import { doc, onSnapshot, setDoc as setDocument } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 
@@ -65,10 +66,35 @@ export function AuthProvider({ children }) {
             email: user.email,
             role: doc_?.role === "staff" ? "staff" : "owner",
             orgId: doc_?.orgId || user.uid,
+            kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
+            weatherPlace: doc_?.weatherPlace || null, // hava durumu konumu (Ayarlar; cihazlar arası)
             homeTools: Array.isArray(doc_?.homeTools) ? doc_.homeTools : null, // ana sayfada seçili ekstralar (null: seçim yapılmadı)
             athleteIndex: doc_?.athleteIndex || null, // sporcu "ses adları" dizini (yoklamada yapay zekaya gider)
+            aiPower: doc_?.aiPower === "strong" ? "strong" : "standard", // ayarlar: güçlü sürüm
+            summaryAt: doc_?.summaryAt || "", // ayarlar: sabah özeti saati ("HH:MM", boş = kapalı)
+            summaryTomorrow: !!doc_?.summaryTomorrow, // sabah özetine yarını da ekle
+            eveningAt: doc_?.eveningAt || "", // ayarlar: akşam (ertesi gün) özeti saati
+            summaryHidden: doc_?.summaryHidden || "", // ana ekranda kapatılan özet ("YYYY-MM-DD:morning|evening")
+            mailFrom: Array.isArray(doc_?.mailFrom) ? doc_.mailFrom : [], // mail: izlenen gönderenler [{ name, from }]
+            mailSeen: doc_?.mailSeen || "", // mail: Gmail betiğinin son kontrolü (ISO; betik yazar)
+            textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
+            introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
+            onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)
         }
         : null;
+
+    // Yazı boyutu başka cihazda değiştiyse burada da uygulansın (profilde yoksa cihazdaki seçim kalır)
+    const savedSize = doc_ && "textSize" in doc_ ? String(doc_.textSize) : null;
+    useEffect(() => {
+        if (savedSize !== null) applySize(savedSize);
+    }, [savedSize]);
+
+    // Güçlü sürüm seçimi cihazda da tutulur: her yapay zeka isteğine başlık olarak eklenir (authFetch)
+    useEffect(() => {
+        try {
+            localStorage.setItem("sa-ai-power", doc_?.aiPower === "strong" ? "strong" : "");
+        } catch {}
+    }, [doc_?.aiPower]);
 
     const value = {
         user,

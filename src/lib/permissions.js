@@ -7,7 +7,7 @@ const KEY = "sa-perms";
 export const PERM_NAMES = ["camera", "microphone"];
 export const PERM_LABEL = { camera: "Kamera", microphone: "Mikrofon" };
 
-// state: "granted" | "denied" | "prompt" | "missing" (cihaz yok) | "unsupported"
+// state: "granted" | "denied" | "prompt" | "ask" (iPhone: Safari her kullanımda sorar) | "missing" (cihaz yok) | "unsupported"
 export function loadSaved() {
   try {
     return JSON.parse(localStorage.getItem(KEY)) || {};
@@ -51,8 +51,9 @@ export async function queryPermission(name) {
   const saved = loadSaved()[name]?.state;
   try {
     const st = await navigator.permissions.query({ name });
-    // Safari izin verilmiş olsa da bazen "prompt" döner; bu cihazda verildiyse onu göster
-    const state = st.state === "prompt" && saved === "granted" && isIOS() ? "granted" : st.state;
+    // iPhone Safari'de site ayarı varsayılan "Sor"dur: izin verilmiş olsa da her açılışta yeniden sorar ve durum hep "prompt" döner.
+    // Bu cihazda bir kez verildiyse "verildi", hiç verilmediyse "kullanırken sorar" göster ("sorulmadı" yanıltıcı olur)
+    const state = st.state === "prompt" && isIOS() ? (saved === "granted" ? "granted" : "ask") : st.state;
     if (st.state !== "prompt") savePermission(name, st.state);
     return state;
   } catch {

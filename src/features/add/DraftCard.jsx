@@ -22,7 +22,7 @@ export function saturday() {
 }
 
 export const chip = (on) =>
-  `shrink-0 rounded-full px-3 py-1.5 text-[14px] font-medium transition-colors active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`;
+  `shrink-0 rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition-colors active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`;
 
 // Dokununca telefonun kendi tarih/saat seçicisini açan düğme (görünmez yerel input üstte)
 export function Picker({ type, value, onChange, children, className }) {
@@ -64,11 +64,11 @@ function DateRow({ value, onChange, optional, warn, label }) {
   return (
     <Row icon="cal" top>
       <div className="flex items-baseline justify-between gap-2">
-        <span className={`text-[15px] ${value ? "font-medium" : warn ? "font-medium text-amber-700" : "text-mut"}`}>
+        <span className={`text-[0.9375rem] ${value ? "font-medium" : warn ? "font-medium text-amber-700" : "text-mut"}`}>
           {value ? dayLabel(value) : label}
         </span>
         {optional && value && (
-          <button type="button" onClick={() => onChange("")} className="shrink-0 text-[13px] font-medium text-mut active:opacity-50">
+          <button type="button" onClick={() => onChange("")} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-50">
             Kaldır
           </button>
         )}
@@ -94,8 +94,8 @@ function AssignRow({ value, members, onChange }) {
   return (
     <Row icon="users" top>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[15px] font-medium">Sorumlu</span>
-        <span className="truncate text-[13px] text-mut">{known.length ? "Kayıt sorumlularda da görünür" : "Belirli bir kişi yok"}</span>
+        <span className="text-[0.9375rem] font-medium">Sorumlu</span>
+        <span className="truncate text-[0.8125rem] text-mut">{known.length ? "Kayıt sorumlularda da görünür" : "Birden fazla kişi seçebilirsin"}</span>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         <button type="button" onClick={() => onChange([])} className={chip(!known.length)}>
@@ -117,10 +117,10 @@ export function NoStaffRow({ onAdd, compact }) {
   return (
     <button type="button" onClick={onAdd} className={`flex w-full items-center gap-3 text-left active:bg-bg ${compact ? "px-3.5 pb-3 pt-0.5" : "px-4 py-3"}`}>
       <Icon name="users" className={`${compact ? "size-4" : "size-5"} shrink-0 text-mut`} />
-      <span className="min-w-0 flex-1 text-[14px] text-mut">
+      <span className="min-w-0 flex-1 text-[0.875rem] text-mut">
         Sorumlu seçmek için önce kişi ekle
       </span>
-      <span className="shrink-0 text-[14px] font-semibold text-acc">Kişi ekle</span>
+      <span className="shrink-0 text-[0.875rem] font-semibold text-acc">Kişi ekle</span>
     </button>
   );
 }
@@ -137,13 +137,13 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
     <div className={bare ? "" : "animate-pop mt-3"}>
       {!editing && (
         <div className="mb-3 flex items-center gap-2">
-          <div className="flex flex-1 rounded-xl bg-line/60 p-[3px]">
+          <div className="flex flex-1 rounded-xl bg-line/60 p-[0.1875rem]">
             {TYPES.map(([t, l, ic]) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => onType(index, t)}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[9px] py-2 text-[14px] font-medium transition ${d.type === t ? "bg-card text-fg shadow-sm" : "text-mut"}`}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[0.5625rem] py-2 text-[0.875rem] font-medium transition ${d.type === t ? "bg-card text-fg shadow-sm" : "text-mut"}`}
               >
                 <Icon name={ic} className="size-4" />
                 {l}
@@ -167,7 +167,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
             placeholder={TITLE_PH[d.type]}
             autoCapitalize="sentences"
             enterKeyHint="done"
-            className="w-full bg-transparent text-[18px] font-semibold tracking-tight text-fg outline-none placeholder:font-normal placeholder:text-mut/70"
+            className="w-full bg-transparent text-[1.125rem] font-semibold tracking-tight text-fg outline-none placeholder:font-normal placeholder:text-mut/70"
           />
           {d.type === "note" && (
             <textarea
@@ -176,7 +176,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
               placeholder="Not"
               autoCapitalize="sentences"
               rows={4}
-              className="mt-1.5 w-full resize-none bg-transparent text-[15px] leading-relaxed text-fg outline-none placeholder:text-mut/70"
+              className="mt-1.5 w-full resize-none bg-transparent text-[0.9375rem] leading-relaxed text-fg outline-none placeholder:text-mut/70"
             />
           )}
         </div>
@@ -188,10 +188,10 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
             {multi ? (
               <Row icon="flag">
                 <div className="flex items-center justify-between gap-2">
-                  <Picker type="date" value={d.endDate} onChange={(v) => put({ endDate: v })} className="text-[15px] font-medium">
+                  <Picker type="date" value={d.endDate} onChange={(v) => put({ endDate: v })} className="text-[0.9375rem] font-medium">
                     Bitiş: {dayLabel(d.endDate)}
                   </Picker>
-                  <button type="button" onClick={() => put({ endDate: "" })} className="shrink-0 text-[13px] font-medium text-mut active:opacity-50">
+                  <button type="button" onClick={() => put({ endDate: "" })} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-50">
                     Tek gün
                   </button>
                 </div>
@@ -199,18 +199,18 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
             ) : (
               <Row icon="clock" top>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-medium">{allDay ? "Tüm gün" : d.time}</span>
+                  <span className="text-[0.9375rem] font-medium">{allDay ? "Tüm gün" : d.time}</span>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={allDay}
                     aria-label="Tüm gün"
                     onClick={() => put(allDay ? { allDay: false, time: "09:00" } : { time: "", allDay: true })}
-                    className="flex items-center gap-2 text-[13px] text-mut"
+                    className="flex items-center gap-2 text-[0.8125rem] text-mut"
                   >
                     Tüm gün
                     <span className={`relative h-6 w-10 rounded-full transition ${allDay ? "bg-acc" : "bg-line"}`}>
-                      <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${allDay ? "left-[18px]" : "left-0.5"}`} />
+                      <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${allDay ? "left-[1.125rem]" : "left-0.5"}`} />
                     </span>
                   </button>
                 </div>
@@ -235,12 +235,12 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
                 onChange={set("place")}
                 placeholder="Yer (isteğe bağlı)"
                 autoCapitalize="words"
-                className="w-full bg-transparent text-[15px] text-fg outline-none placeholder:text-mut"
+                className="w-full bg-transparent text-[0.9375rem] text-fg outline-none placeholder:text-mut"
               />
             </Row>
 
             {!multi && d.date && (
-              <button type="button" onClick={() => put({ endDate: addDaysFrom(d.date, 1), time: "", allDay: true })} className="w-full px-4 py-3 text-left text-[14px] font-medium text-acc active:bg-bg">
+              <button type="button" onClick={() => put({ endDate: addDaysFrom(d.date, 1), time: "", allDay: true })} className="w-full px-4 py-3 text-left text-[0.875rem] font-medium text-acc active:bg-bg">
                 + Birden fazla gün sürecek
               </button>
             )}
@@ -257,7 +257,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
         <button
           type="button"
           onClick={() => onChange(index, { link: !d.link })}
-          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-medium transition active:scale-95 ${d.link ? "bg-acc text-white" : "bg-card ring-1 ring-line"}`}
+          className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[0.875rem] font-medium transition active:scale-95 ${d.link ? "bg-acc text-white" : "bg-card ring-1 ring-line"}`}
         >
           <Icon name="cal" className="size-4" />
           {d.link ? "Plana bağlı: " : "Plana bağla: "}

@@ -3,6 +3,7 @@ import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { overQuota, spend, withQuota } from "@/lib/server/quota";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,8 @@ function ask(provider, user) {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  const noLeft = await overQuota(au, "assistant"); // kişilerde günlük hak
+  if (noLeft) return noLeft;
 
   let body;
   try {
@@ -57,6 +60,8 @@ async function handle(request) {
   const name = String(body?.name ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30);
   // Ana hesabın çalışan adları: yeni kayıtlarda sorumlu atama için
   const people = [...new Set((Array.isArray(body?.people) ? body.people : []).slice(0, 20).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))];
+  // Mesaj alıcıları (sohbet rehberindeki kişiler; ana hesap "(ana hesap)" ekiyle)
+  const contacts = [...new Set((Array.isArray(body?.contacts) ? body.contacts : []).slice(0, 40).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'()-]/gu, "").trim().slice(0, 60)).filter(Boolean))];
   const history = (Array.isArray(body?.history) ? body.history : [])
     .slice(-6)
     .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
@@ -67,16 +72,17 @@ async function handle(request) {
     return bad("Yapay zeka anahtarı veya modeli tanımlı değil", 503, `provider=${provider || "yok"}, GEMINI_MODEL=${process.env.GEMINI_MODEL || "boş"}`);
   }
 
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""`;
+  const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""`;
 
   try {
     const t0 = Date.now();
     const raw = await ask(provider, user);
     const ms = Date.now() - t0;
-    const r = parseAssistant(raw, people);
-    console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}`);
+    const r = parseAssistant(raw, people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")));
+    console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
     if (!r.message && !r.items.length && !r.actions.length && !r.navigate) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
-    return NextResponse.json({ ...r, source: "ai", provider, ms });
+    return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));
   } catch (e) {
     console.error(`[assistant:${provider}]`, e.message);
     if (e.status === 429) {

@@ -29,7 +29,7 @@ export function OfflineBanner() {
   const online = useOnline();
   if (online) return null;
   return (
-    <div role="status" className="fade-in sticky top-0 z-30 bg-fg px-4 py-2 text-center text-[13px] font-medium text-bg">
+    <div role="status" className="fade-in sticky top-0 z-30 bg-fg px-4 py-2 text-center text-[0.8125rem] font-medium text-bg">
       Çevrimdışısın · değişikliklerin bağlantı gelince kaydedilir
     </div>
   );

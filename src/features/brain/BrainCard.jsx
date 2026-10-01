@@ -9,7 +9,7 @@ const kb = (b) => (b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`);
 const labelName = (l) => LABELS[l] || (l.startsWith("nav:") ? `Sayfa: ${l.slice(4)}` : l);
 
 // Hesap ekranında: öğrenme verisinin boyutu, Firebase okuma/yazma sayısı, model denemesi
-export function BrainCard() {
+export function BrainCard({ bare }) {
   const toast = useToast();
   const [s, setS] = useState(null);
   const [q, setQ] = useState("");
@@ -28,14 +28,14 @@ export function BrainCard() {
   }
 
   return (
-    <div className="mt-4 rounded-xl bg-bg p-3.5">
+    <div className={bare ? "px-4 pb-4 pl-[3.75rem]" : "mt-4 rounded-xl bg-bg p-3.5"}>
       <div className="flex items-center justify-between gap-3">
-        <b className="text-[15px] font-medium">Öğrenme verisi</b>
-        <button onClick={sync} className="rounded-full border border-line bg-card px-3 py-1.5 text-[13px] font-semibold active:scale-95">
+        <b className={`text-[0.9375rem] font-medium ${bare ? "text-mut" : ""}`}>{bare ? "Ayrıntılar" : "Öğrenme verisi"}</b>
+        <button onClick={sync} className="rounded-full border border-line bg-card px-3 py-1.5 text-[0.8125rem] font-semibold active:scale-95">
           Şimdi eşitle
         </button>
       </div>
-      <dl className="mt-2 grid grid-cols-2 gap-2 text-[13px]">
+      <dl className="mt-2 grid grid-cols-2 gap-2 text-[0.8125rem]">
         {[
           ["Örnek", s.team ? `${s.count} · ${s.team} ekipten` : s.count],
           ["Bekleyen", s.pending],
@@ -51,7 +51,7 @@ export function BrainCard() {
         ))}
       </dl>
       {s.byLabel.length > 0 && (
-        <p className="mt-2 text-[13px] leading-snug text-mut">{s.byLabel.slice(0, 6).map(([l, n]) => `${labelName(l)} ${n}`).join(" · ")}</p>
+        <p className="mt-2 text-[0.8125rem] leading-snug text-mut">{s.byLabel.slice(0, 6).map(([l, n]) => `${labelName(l)} ${n}`).join(" · ")}</p>
       )}
 
       {/* Modeli dene */}
@@ -59,10 +59,10 @@ export function BrainCard() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Modeli dene · örn. “cuma antrenman koy”"
-        className="mt-3 h-10 w-full rounded-lg border border-line bg-card px-3 text-[14px] outline-none focus:border-acc"
+        className="mt-3 h-10 w-full rounded-lg border border-line bg-card px-3 text-[0.875rem] outline-none focus:border-acc"
       />
       {q.trim() && (
-        <div className="mt-2 text-[13px]">
+        <div className="mt-2 text-[0.8125rem]">
           {g ? (
             <>
               <p>
