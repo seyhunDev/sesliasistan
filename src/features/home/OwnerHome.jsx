@@ -19,42 +19,23 @@ import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
+import { StageBrief } from "./StageBrief";
 
-// Ana sayfa ("akıllı akış"), yukarıdan aşağı:
-//   gün ve tarih · kişi › Dikili şimdi (rüzgâr göstergesi, gün şeridi) ›
-//   Senin için (karar, rüzgâr, mesaj, geciken, yeni, ödeme; önem sırasıyla) › Bugün › doğum günü satırı (bugün/yarın) ›
-//   Ekip (ana hesap) › para › sayfalar › alt çubuk (+ · Konuş · Yaz).
-// Sıradaki plan ve "Senin için"in ilk öğeleri alttaki asistan sahnesinde (StageBrief); sayfa kaydırılınca sahne küçülür.
-// Çalışanda Karar, Ekip ve Mailler yok; bugünkü kalan hak başlığın altında.
+// Ana sayfa: üstte gün ve tarih · kişi, altında yalnızca hava durumu (Dikili şimdi: rüzgâr göstergesi, gün şeridi).
+// Günün içeriği alttaki asistan sahnesinin içinde kaydırılır (HomeFeed, TabBar). Çalışanda bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
-  const { plans, tasks, notes, birthdays, lessons, myUid, members } = useData();
   const weather = useWeather();
   const now = useNow();
   const staff = profile?.role === "staff";
-  const kind = useKind();
   const qa = useQuota("assistant");
   const qr = useQuota("receipt");
 
   const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
   const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-  const open = tasks.filter((t) => !t.done && !t.doneBy?.[myUid]).length;
-
-  const links = [
-    ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
-    ["/tasks", "task", "Görevler", open],
-    ["/notes", "note", "Notlar", notes.length],
-    ["/birthdays", "cake", "Doğum günleri", birthdays.length],
-    listsFor(kind, members).length > 0 && ["/shopping", "cart", "Alışveriş"],
-    lessons.length > 0 && ["/schedule", "book", "Dersler"],
-    ["/archive", "archive", "Arşiv"],
-    !staff && ["/mail", "mail", "Mailler"],
-    staff && canSeeAthletes(profile?.email) && ["/athletes", "anchor", "Sporcular"], // ana hesapta Ekip kartında
-    isAthleteSide(kind) && ["/my-attendance", "check", kind === "parent" ? "Yoklama" : "Yoklamam"],
-  ].filter(Boolean);
 
   return (
-    <main className="relative mx-auto max-w-[30rem] px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
+    <main className="relative mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
       <header className="flex items-center gap-2 px-1">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[1.25rem] font-semibold leading-tight tracking-tight">
@@ -73,43 +54,60 @@ export function OwnerHome() {
 
       <PaidNotice />
 
-      <div className="mt-4">
+      {/* Asistan sahnesi bu kutunun altından başlar (TabBar ölçer) */}
+      <div id="home-top" className="mt-4">
         <HomeHero weather={weather} next={false} />
       </div>
+    </main>
+  );
+}
 
-      <div className="mt-5 empty:hidden">
+// Asistan sahnesinin içindeki ana sayfa akışı, yukarıdan aşağı:
+//   Sıradaki plan › Senin için (karar, mesaj, geciken, yeni, ödeme) › Bugün › doğum günü › Kişiler (ana hesap) › para › sayfalar.
+// Koyu zemin üstünde açık kartlar; kart dışındaki başlık renkleri .stage-feed ile açılır (globals.css).
+// Çalışanda Karar, Kişiler ve Mailler yok.
+export function HomeFeed() {
+  const { profile } = useAuth();
+  const { plans, tasks, notes, birthdays, lessons, myUid, members } = useData();
+  const now = useNow();
+  const staff = profile?.role === "staff";
+  const kind = useKind();
+  const open = tasks.filter((t) => !t.done && !t.doneBy?.[myUid]).length;
+
+  const links = [
+    ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
+    ["/tasks", "task", "Görevler", open],
+    ["/notes", "note", "Notlar", notes.length],
+    ["/birthdays", "cake", "Doğum günleri", birthdays.length],
+    listsFor(kind, members).length > 0 && ["/shopping", "cart", "Alışveriş"],
+    lessons.length > 0 && ["/schedule", "book", "Dersler"],
+    ["/archive", "archive", "Arşiv"],
+    !staff && ["/mail", "mail", "Mailler"],
+    staff && canSeeAthletes(profile?.email) && ["/athletes", "anchor", "Sporcular"], // ana hesapta Kişiler kartında
+    isAthleteSide(kind) && ["/my-attendance", "check", kind === "parent" ? "Yoklama" : "Yoklamam"],
+  ].filter(Boolean);
+
+  return (
+    <div className="stage-feed space-y-5">
+      <StageBrief />
+      <div className="empty:hidden">
         <ForYou />
       </div>
-
-      <div className="mt-5">
-        <TodayCard />
-      </div>
-
-      <div className="mt-3 empty:hidden">
+      <TodayCard />
+      <div className="-mt-2 empty:hidden">
         <BirthdayStrip />
       </div>
-
-      {!staff && (
-        <div className="mt-5">
-          <TeamStrip />
-        </div>
-      )}
-
-      {canReceipts(kind) && (
-        <div className="mt-5">
-          <MoneyRow />
-        </div>
-      )}
-
-      <nav aria-label="Sayfalar" className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+      {!staff && <TeamStrip />}
+      {canReceipts(kind) && <MoneyRow />}
+      <nav aria-label="Sayfalar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
         {links.map(([href, icon, label, n]) => (
-          <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.06)] active:scale-95">
+          <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold active:scale-95">
             <Icon name={icon} className="size-4 text-acc" />
             {label}
             {n > 0 && <span className="tabular-nums text-mut">{n}</span>}
           </Link>
         ))}
       </nav>
-    </main>
+    </div>
   );
 }

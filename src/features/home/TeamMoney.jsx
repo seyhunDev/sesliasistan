@@ -11,7 +11,7 @@ import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { isAthleteSide, kindOf } from "@/lib/kinds";
 import { money } from "@/lib/bankSheet";
 import { db } from "@/lib/firebase/clientApp";
-import { accountsOf } from "@/lib/mailBoard";
+import { accountsOf, balanceOf, totalsOf } from "@/lib/mailBoard";
 import { TLk, totalOf } from "@/lib/receipts";
 import { initials } from "@/lib/utils/format";
 
@@ -163,7 +163,9 @@ function Bars({ vals }) {
   );
 }
 
-// Para: banka (son hesap özetleri, ana hesap) ve fişler (son 5 ay)
+// Para: banka (hesap özetlerinden, ana hesap) ve fişler (son 5 ay).
+// Banka kartı Mailler sayfasıyla aynı hesabı gösterir: aynı mailler (son 40), aynı hesaplar (accountsOf), TL toplamı.
+// Bakiye eğrisi: son özetlerde bütün TL hesapların toplamı (eskiden yeniye).
 export function MoneyRow() {
   const { profile } = useAuth();
   const { receipts, isStaff } = useData();
@@ -172,24 +174,34 @@ export function MoneyRow() {
   useEffect(() => {
     if (!owner) return;
     return onSnapshot(
-      query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(30)),
+      query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(40)),
       (s) => setMails(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setMails([]),
     );
   }, [owner, profile?.uid]);
 
-  const acc = accountsOf(mails).find((a) => a.currency === "TL") || accountsOf(mails)[0];
-  // Aynı hesabın son özetlerindeki bakiyeler (eskiden yeniye)
-  const series = acc
-    ? mails
-        .flatMap((m) => (m.sheets || []).map((s) => s.sum))
-        .filter((s) => s && s.balance != null && s.currency === acc.currency && (s.last4 || "") === acc.last4)
-        .map((s) => s.balance)
-        .slice(0, 7)
-        .reverse()
-    : [];
-  const first = series[0];
-  const pct = acc && first ? ((acc.balance - first) / Math.abs(first)) * 100 : 0;
+  const accounts = accountsOf(mails);
+  const tot = totalsOf(accounts)[0];
+  const cur = tot?.currency || "";
+  // Her özette o para birimindeki hesapların son bilinen bakiyelerinin toplamı (en eski özetten başlayarak birikir)
+  const series = [];
+  if (tot) {
+    const last = new Map();
+    for (const m of [...mails].reverse()) {
+      let touched = false;
+      for (const sh of m.sheets || []) {
+        const b = balanceOf(sh);
+        if (b === null || (sh.sum?.currency || "") !== cur) continue;
+        last.set(`${sh.sum.last4 || ""}|${sh.sum.product || ""}`, b);
+        touched = true;
+      }
+      if (touched) series.push([...last.values()].reduce((a, b) => a + b, 0));
+    }
+  }
+  const spark = series.slice(-7);
+  const first = spark[0];
+  const pct = tot && first ? ((tot.total - first) / Math.abs(first)) * 100 : 0;
+  const acc = !!tot;
 
   const now = new Date();
   const months = [...Array(5)].map((_, i) => {
@@ -204,14 +216,14 @@ export function MoneyRow() {
       {owner && acc && (
         <Link href="/mail" className={`${card} flex min-w-0 flex-col gap-1.5 p-3.5`}>
           <span className="flex items-center gap-1.5 text-[0.75rem] text-mut">
-            <Icon name="wallet" className="size-4 text-acc" /> {acc.name}
+            <Icon name="wallet" className="size-4 text-acc" /> {tot.n > 1 ? `Toplam · ${tot.n} hesap` : accounts[0].name}
           </span>
           <b className="truncate text-[1.0625rem] font-bold tabular-nums">
-            {money(acc.balance)} {acc.currency}
+            {money(tot.total)} {cur}
           </b>
-          <Spark vals={series} tone={pct < 0 ? "var(--rec)" : "var(--ok)"} />
-          <span className={`text-[0.6875rem] font-semibold ${pct < 0 ? "text-rec" : "text-ok"}`}>
-            {series.length > 1 ? `son ${series.length} özette ${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%` : "son özet"}
+          <Spark vals={spark} tone={pct < 0 ? "var(--rec)" : "var(--ok)"} />
+          <span className={`text-[0.6875rem] font-semibold ${spark.length > 1 ? (pct < 0 ? "text-rec" : "text-ok") : "text-mut"}`}>
+            {spark.length > 1 ? `son ${spark.length} özette ${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%` : "son özet"}
           </span>
         </Link>
       )}

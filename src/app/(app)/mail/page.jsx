@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
-import { accountsOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
+import { accountsOf, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { dayLabel, todayIn } from "@/lib/notifyText";
 
@@ -351,7 +351,7 @@ function Statement({ s, m }) {
           <Icon name="chev" className={`size-4 shrink-0 transition ${open ? "rotate-90" : ""}`} />
         </span>
         <b className="mt-0.5 block text-[1.375rem] font-bold tracking-tight">
-          {sum.balance === null || sum.balance === undefined ? "—" : money(sum.balance)} <span className="text-[0.875rem] font-semibold text-mut">{cur}</span>
+          {balanceOf(s) === null ? "—" : money(balanceOf(s))} <span className="text-[0.875rem] font-semibold text-mut">{cur}</span>
         </b>
         <span className="mt-1.5 flex flex-wrap gap-1.5 text-[0.75rem] font-semibold">
           <span className="rounded-full bg-card px-2 py-0.5 text-mut">{sum.count ? `${sum.count} hareket` : "Hareket yok"}</span>
