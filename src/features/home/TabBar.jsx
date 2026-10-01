@@ -350,8 +350,7 @@ export function TabBar({ cfg }) {
     window.dispatchEvent(new Event("sa-assistant-open"));
     setTyping(true);
   };
-  const ask = (t) => (cfg.onSend ? cfg.onSend(t) : openAssistant({ text: t, dock: true, prefer: cfg.prefer, examples: cfg.ex }));
-  const chips = cfg.ex || ["Bugün neler var?", "Yarın 10'da antrenman ekle", "Ekibe yaz"];
+  // Hazır öneri düğmeleri yok: öneriler, hızlı öğrenme için toplanan kullanım verisi hazır olunca buraya gelecek
 
   return (
     <>
@@ -401,13 +400,6 @@ export function TabBar({ cfg }) {
                       <HomeFeed />
                     </div>
                   )}
-                  <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
-                    {chips.map((c) => (
-                      <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-medium ring-1 ring-line active:bg-line/60">
-                        {c}
-                      </button>
-                    ))}
-                  </div>
                   <div className="flex items-center justify-between pt-2">
                     <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
                       <Icon name="keyboard" className="size-[1.375rem]" />
