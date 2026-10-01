@@ -30,7 +30,7 @@ import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { PAGES, buildPatch, describeAction, isEnd, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
-import { brainCommand, localCommand, sureGuess } from "@/lib/commands";
+import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
@@ -107,8 +107,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
-  const [pre, setPre] = useState(null); // ön cevabın bildiği alanlar (yapay zeka cevabı gelene kadar taslak kart)
-  const [secs, setSecs] = useState(0);
   const [voice, setVoice] = useState(false);
   const [heard, setHeard] = useState("");
   const [cards, setCards] = useState(EMPTY);
@@ -247,7 +245,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, keepDock = false } = extra;
     if (!keepDock && (pending || show.length || att || String(message).length > 170)) undock();
     const awaiting = expect || !!pending;
-    setPre(null);
     setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
     setCards({ show, pending, nav, chat, att, engine, awaiting });
@@ -578,33 +575,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
     // Açık sohbette/kayıtta "… diye yaz", "cevap ver: …" yerel komutlara düşmez (plan sanılmasın); mesaj olarak hazırlanır
     const toFocus = !!focusRef.current && FOCUS_MSG.test(s);
-    const cmd = !toFocus && localCommand(s, { plans, tasks, notes });
+    const cmd = !toFocus && localCommand(s, { plans, tasks, notes }, undefined, { aiFirst: true });
     if (cmd) {
       record(s, labelFromCommand(cmd), "local");
       countHit("local");
       return runLocal(cmd, s, viaVoice);
     }
-    // Öğrenilenler: bu cümleye çok benzeyenler daha önce hep aynı işe gittiyse yapay zekaya sormadan hazırla
-    // (hızlı ve ücretsiz; sonuç yine taslak ya da onay kartıdır). Soru ve açık sohbet/kayıt cümleleri hariç.
-    const sure = !toFocus && !QUESTION.test(s) && sureGuess(s);
-    if (sure) {
-      if (sure.label === "send") {
-        const toTeam = TEAM_WORD.test(s);
-        const mi = messageIntent(toTeam ? s.replace(/^\S+(\s+grubuna)?\s+/i, "") : s, contacts);
-        const to = toTeam ? s.split(/\s+/)[0] : mi?.to;
-        if (to && String(mi?.send || "").trim() && resolveTo(to)) {
-          countHit("brain");
-          return prepareSend(to, mi.send, "", "brain", viaVoice);
-        }
-      } else {
-        const bc = brainCommand(s, undefined, sure);
-        if (bc) {
-          countHit("brain");
-          return runLocal(bc, s, viaVoice);
-        }
-      }
-    }
-
+    // Öğrenilenler (brain) artık yapay zekadan önce kayıt hazırlamaz: yalnızca yapay zekaya ulaşılamazsa yedek (aşağıda)
     const id = ++runId.current;
     ctrl.current?.abort();
     const c = new AbortController();
@@ -618,7 +595,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     setStreamText("");
     if (pc) {
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
-      setPre(pc.slots ? pc : null);
       enqueueSay(pc.line); // yanıtın okunması bunun ardından (kuyruk)
     }
     if (viaVoice) {
@@ -699,8 +675,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     } finally {
       if (id === runId.current) {
         setPhase("idle");
-        setPre(null);
-        setStreamText("");
+            setStreamText("");
       }
     }
   }
@@ -954,13 +929,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   }, [docked]);
 
   useEffect(() => {
-    if (phase !== "thinking") return;
-    setSecs(0);
-    const id = setInterval(() => setSecs((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  useEffect(() => {
     if (!booting) return;
     if (sp.status !== "idle") {
       setBooting(false);
@@ -1049,7 +1017,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     ]
       .filter(Boolean)
       .join(" · ");
-  const status = listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : voice ? "Sesli sohbet · konuşmak için mikrofona dokun" : focus?.title ? `${focus.title} · yaz ya da konuş` : "Yaz ya da konuş";
+  const orbState = listening ? "listening" : busy || transcribing ? "busy" : tts.speaking ? "speaking" : "idle";
 
   // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
   const convoView = (embedded) => (
@@ -1131,29 +1099,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
           </div>
         )}
 
-        {/* Ön cevabın hazırladığı kart: bilinen alanlar dolu, başlık ve kalanlar yapay zekayla dolar */}
-        {busy && pre?.slots && !drafts.length && (
-          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]" aria-label="Hazırlanıyor">
-            <div className="flex items-center gap-3 px-3.5 py-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc"><Icon name={KIND_ICON[pre.slots.type] || "cal"} className="size-[1.125rem]" /></span>
-              <span className="min-w-0 flex-1 space-y-1.5">
-                <span className="shimmer block h-3.5 w-1/2 rounded-full" />
-                <small className="block truncate text-[0.75rem] text-mut">
-                  {[{ plan: "Plan", task: "Görev", note: "Not" }[pre.slots.type], pre.slots.date && rel(pre.slots.date), pre.slots.time].filter(Boolean).join(" · ")}
-                </small>
-              </span>
-            </div>
-          </div>
-        )}
-
-        {(busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
+        {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
+        {!embedded && (busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
           <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
             <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
               <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />
               <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.15s]" />
               <i className="size-1.5 animate-bounce rounded-full bg-mut" />
             </span>
-            {transcribing ? "Yazıya çeviriyorum…" : secs > 3 ? `Düşünüyorum · ${secs} sn` : "Düşünüyorum…"}
             <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
               Vazgeç
             </button>
@@ -1286,7 +1239,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
             )}
           </span>
           <button type="button" onClick={() => setDock(false)} className="min-w-0 flex-1 text-left" aria-label="Asistanı büyüt">
-            <small className={`block text-[0.6875rem] font-bold uppercase tracking-[.08em] ${listening ? "text-rec" : "text-acc"}`}>{listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : "Asistan"}</small>
             <span className="line-clamp-2 text-[0.875rem] leading-snug">{listening ? heardLine || <span className="text-mut">Söyle, dinliyorum…</span> : busy ? heard : lastSaid}</span>
           </button>
           <button
@@ -1364,11 +1316,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
           <Icon name="chev" className="size-5 rotate-90" />
         </button>
         <span className="min-w-0 flex-1 text-center leading-tight">
-          <b className="flex items-center justify-center gap-1.5 text-[1.0625rem] font-semibold tracking-tight">
-            {listening && <span className="size-2 animate-pulse rounded-full bg-rec" />}
+          {/* Durum yazı değil küçük küreyle (dinliyor / düşünüyor / konuşuyor) */}
+          <b className="flex items-center justify-center gap-2 text-[1.0625rem] font-semibold tracking-tight">
+            <span data-state={orbState} className="ai-orb size-5" aria-hidden="true">
+              <span className="ai-halo" />
+              <span className="ai-core"><span className="ai-fill" /><span className="ai-shine" /></span>
+            </span>
             Asistan
           </b>
-          <small className="block truncate text-[0.75rem] text-mut">{status}</small>
+          {focus?.title && !listening && !busy && <small className="block truncate text-[0.75rem] text-mut">{focus.title}</small>}
         </span>
         {quota && quota.left <= 0 && <QuotaPill kind="assistant" />}
         <button
@@ -1441,7 +1397,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
                   <span className="text-mut">{sp.interim}</span>
                 </>
               ) : (
-                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : "Dinliyorum…"}</span>
+                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : ""}</span>
               )}
             </p>
             <button type="button" onClick={() => sp.cancel()} aria-label="Dinlemeyi durdur" className="grid size-12 shrink-0 place-items-center rounded-full bg-bg text-mut active:scale-90">

@@ -160,22 +160,22 @@ export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[3.75re
   );
 }
 
-// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade; henüz kesinleşmeyen kısım soluk). Gönderilince asıl
-// balon (AssistantSheet) yerini alır.
+// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade). Henüz kelime yokken hiçbir yazı yok: dinlediğini küre
+// anlatır. Gönderilince asıl balon (AssistantSheet) yerini alır.
 // solo: konuşmanın ilk sözü; alanın ortasında, büyük yazıyla (boş alan anlamlı dolsun)
 export function Hearing({ text, listening, solo }) {
   if (solo)
     return (
       <div className="fade-in flex min-h-[9rem] flex-1 items-center justify-center px-2 text-center" aria-live="polite">
         <p className={`text-[1.625rem] font-semibold leading-tight tracking-tight ${text ? "text-fg" : "text-mut"}`}>
-          {text || (listening ? "Seni dinliyorum…" : "Yazıya çeviriyorum…")}
+          {text}
         </p>
       </div>
     );
   return (
     <div className="fade-in mt-4 flex justify-end" aria-live="polite">
       <p className={`max-w-[85%] text-right text-[1.125rem] font-medium leading-snug tracking-tight ${text ? "text-fg" : "text-mut"}`}>
-        {text || (listening ? "Dinliyorum…" : "Yazıya çeviriyorum…")}
+        {text}
         {listening && <span className="ml-1 inline-block h-[1.1em] w-[2px] translate-y-[3px] animate-pulse rounded-full bg-acc" aria-hidden="true" />}
       </p>
     </div>
@@ -442,7 +442,7 @@ export function TabBar({ cfg }) {
                   >
                     <div className="flex min-h-full flex-col justify-end">
                       <div ref={setSlot} />
-                      {(state === "listening" || (live.transcribing && !live.busy)) && <Hearing text={live.heard} listening={state === "listening"} solo={!live.talked} />}
+                      {state === "listening" && live.heard && <Hearing text={live.heard} listening solo={!live.talked} />}
                     </div>
                   </div>
                   {typing ? (
