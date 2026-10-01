@@ -68,6 +68,9 @@ async function handle(request) {
     .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
     .join("\n");
 
+  // Ön cevap: telefon kullanıcıya hemen kısa bir giriş söyledi; yanıt onun devamı olmalı (tekrar etmemeli)
+  const precue = String(body?.precue ?? "").slice(0, 500);
+
   const provider = pickProvider();
   if (!hasKey(provider) || (provider === "gemini" && !process.env.GEMINI_MODEL)) {
     console.error(`[assistant] HATA · ANAHTAR YOK · provider=${provider || "yok"}`);
@@ -75,7 +78,7 @@ async function handle(request) {
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
   try {

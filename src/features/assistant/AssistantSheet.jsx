@@ -17,10 +17,11 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names";
 import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
-import { rel } from "@/lib/utils/format";
+import { rel, todayStr } from "@/lib/utils/format";
+import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
-import { cached as cachedWeather, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
+import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
 import { useNameIndex } from "@/features/athletes/names";
@@ -31,7 +32,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { PAGES, buildPatch, describeAction, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
 import { brainCommand, localCommand, sureGuess } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
-import { countHit, record } from "@/lib/brain/store";
+import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
 import { QuotaPill } from "@/components/ui/QuotaPill";
 import { parseBirthday } from "@/lib/birthdayParse";
@@ -106,6 +107,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
+  const [pre, setPre] = useState(null); // ön cevabın bildiği alanlar (yapay zeka cevabı gelene kadar taslak kart)
   const [secs, setSecs] = useState(0);
   const [voice, setVoice] = useState(false);
   const [heard, setHeard] = useState("");
@@ -211,6 +213,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, keepDock = false } = extra;
     if (!keepDock && (pending || show.length || att || String(message).length > 170)) undock();
     const awaiting = expect || !!pending;
+    setPre(null);
     setTurns((p) => [...p, { role: "assistant", text: message }]);
     setCards({ show, pending, nav, chat, att, engine, awaiting });
     scrollLater();
@@ -569,9 +572,20 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     const c = new AbortController();
     ctrl.current = c;
     setPhase("thinking");
+    // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
+    // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
+    const pc = precue(s, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
+    let ackDone = Promise.resolve();
+    if (pc) {
+      setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
+      setPre(pc.slots ? pc : null);
+      // Sesliyse okunur; yapay zekanın cevabı bu bitince okunur (üst üste binmesin, giriş yarıda kesilmesin)
+      if (viaVoice || convo.current) ackDone = new Promise((res) => (tts.speakThen(pc.line, res), setTimeout(res, 7000)));
+    }
     if (viaVoice) {
       inflight.current = s;
-      listenWhileThinking();
+      // Düşünürken açılan mikrofon giriş okunurken açılmaz (kendi sesini duymasın)
+      ackDone.then(() => id === runId.current && listenWhileThinking());
     }
     try {
       // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
@@ -580,13 +594,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
-      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames }, c.signal);
+      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "" }, c.signal);
+      if (id !== runId.current) return;
+      await ackDone;
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
       if (id !== runId.current) return;
       handle(r, s, viaVoice);
     } catch (e) {
+      if (id !== runId.current) return;
+      await ackDone; // yedek cevap da giriş bitince okunsun
       if (id !== runId.current) return;
       inflight.current = null;
       if (live.current.spStatus === "listening" && !live.current.heardNow) sp.cancel();
@@ -630,7 +648,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       if (lq) reply(lq.show.length ? lq.message : `Yapay zekaya şu an ulaşamadım. ${lq.message}`, { show: lq.show, engine: "rules" }, viaVoice);
       else setError(e.message || "Asistan şu an yanıt vermedi");
     } finally {
-      if (id === runId.current) setPhase("idle");
+      if (id === runId.current) {
+        setPhase("idle");
+        setPre(null);
+      }
     }
   }
 
@@ -1044,6 +1065,25 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
               <button type="button" onClick={() => (!embedded && park(), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
                 Yoklamayı aç
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Ön cevabın hazırladığı kart: bilinen alanlar dolu, başlık ve kalanlar yapay zekayla dolar */}
+        {busy && pre?.slots && !drafts.length && (
+          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30" aria-label="Hazırlanıyor">
+            <p className="flex items-center justify-between bg-acc/[.06] px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">
+              <span>Hazırlanıyor</span>
+              <span className="loader" style={{ "--d": "4px" }} aria-hidden="true"><i /><i /><i /></span>
+            </p>
+            <div className="flex items-center gap-2.5 px-3 py-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-acc/10 text-acc"><Icon name={KIND_ICON[pre.slots.type] || "cal"} className="size-4" /></span>
+              <span className="min-w-0 flex-1 space-y-1.5">
+                <span className="block h-3.5 w-2/5 animate-pulse rounded-full bg-line" />
+                <small className="block truncate text-[0.75rem] text-mut">
+                  {[{ plan: "Plan", task: "Görev", note: "Not" }[pre.slots.type], pre.slots.date && rel(pre.slots.date), pre.slots.time].filter(Boolean).join(" · ")}
+                </small>
+              </span>
             </div>
           </div>
         )}
