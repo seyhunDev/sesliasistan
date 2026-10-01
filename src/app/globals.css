@@ -193,21 +193,43 @@ body[data-dock][data-home] main { padding-bottom: 1rem; }
 @keyframes orbripple { from { transform: scale(1); opacity: .35; } to { transform: scale(1.32); opacity: 0; } }
 .orb-ripple { animation: orbripple 1.6s ease-out infinite; }
 
-/* ASİSTAN KÜRESİ (sade): yumuşak, mat bir ışık küresi; renkler yavaşça döner, çevresinde hafif hale. Simge yok.
-   data-state: idle (sakin) · listening (sesle büyür; boşluklu ince halka) · busy (hızlı döner) · speaking (nefes alır) */
-.ai-orb { position: relative; display: grid; place-items: center; border-radius: 9999px; isolation: isolate; --lvl: 0; transform: scale(calc(1 + var(--lvl) * .12)); transition: transform .14s ease-out, box-shadow .3s ease; }
-.ai-orb .ai-halo { position: absolute; inset: -30%; z-index: -1; border-radius: 9999px; background: radial-gradient(circle, rgba(90, 170, 200, .45), rgba(120, 130, 220, .15) 50%, transparent 70%); filter: blur(12px); opacity: .5; transition: opacity .4s ease; }
-.ai-orb .ai-core { position: absolute; inset: 0; overflow: hidden; border-radius: 9999px; box-shadow: 0 8px 22px -10px rgba(40, 95, 120, .55); }
+/* ASİSTAN KÜRESİ: canlı ışık küresi. Katmanlar: hale (dış ışık) · çekirdek (dönen renkler) · akışkan ışık (şekil
+   değiştirir) · parıltı · halka (düşünürken). Yazı yok; durumu renk, boy ve hareketle anlatır.
+   data-state: idle (nefes alır) · listening (sesle büyür, camgöbeğine döner; --lvl 0–1) · busy (mora kayar, hızlı
+   döner, çevresinde dönen halka) · speaking (nabız gibi atar) */
+.ai-orb { position: relative; display: grid; place-items: center; border-radius: 9999px; isolation: isolate; --lvl: 0; transform: scale(calc(1 + var(--lvl) * .16)); transition: transform .12s ease-out; }
+.ai-orb .ai-halo { position: absolute; inset: -32%; z-index: -1; border-radius: 9999px; background: radial-gradient(circle, rgba(90, 175, 205, .5), rgba(125, 135, 225, .18) 50%, transparent 70%); filter: blur(12px); opacity: .55; transition: opacity .4s ease, filter .4s ease; }
+.ai-orb .ai-core { position: absolute; inset: 0; overflow: hidden; border-radius: 9999px; box-shadow: 0 10px 26px -12px rgba(40, 95, 120, .6), inset 0 0 0 1px rgba(255, 255, 255, .18); animation: orbidle 5s ease-in-out infinite; transition: filter .5s ease; }
 .ai-orb .ai-fill { position: absolute; inset: -40%; background: conic-gradient(from 0deg, #3d7f96, #6fb6cc, #8d98e2, #4a95ad, #3d7f96); filter: blur(10px); animation: orbspin 10s linear infinite; }
-.ai-orb .ai-shine { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 36% 28%, rgba(255, 255, 255, .42), transparent 46%); }
-.ai-orb[data-state="listening"] { box-shadow: 0 0 0 4px var(--bg), 0 0 0 5.5px rgba(79, 160, 190, .6); }
-.ai-orb[data-state="listening"] .ai-halo { opacity: calc(.6 + var(--lvl) * .4); }
+.ai-orb .ai-blob { position: absolute; inset: 16%; border-radius: 42% 58% 55% 45% / 45% 45% 55% 55%; background: radial-gradient(circle at 40% 35%, rgba(255, 255, 255, .6), rgba(190, 230, 255, .18) 58%, transparent 74%); filter: blur(5px); mix-blend-mode: screen; animation: morph 7s ease-in-out infinite, orbspin 16s linear infinite reverse; }
+.ai-orb .ai-shine { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 34% 26%, rgba(255, 255, 255, .45), transparent 40%); }
+.ai-orb .ai-ring { position: absolute; inset: -7px; border-radius: 9999px; opacity: 0; transition: opacity .3s ease; background: conic-gradient(from 0deg, transparent 0 60%, rgba(141, 152, 226, .5) 80%, #8d98e2 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); animation: orbspin 1.1s linear infinite; }
+.ai-orb[data-state="listening"] .ai-core { filter: hue-rotate(-22deg) saturate(1.35) brightness(1.06); animation-duration: 2.4s; }
+.ai-orb[data-state="listening"] .ai-halo { opacity: calc(.65 + var(--lvl) * .35); filter: blur(12px) hue-rotate(-22deg); }
 .ai-orb[data-state="listening"] .ai-fill { animation-duration: 4s; }
-.ai-orb[data-state="busy"] .ai-fill { animation-duration: 1.5s; }
-.ai-orb[data-state="busy"] .ai-halo { opacity: .65; }
-.ai-orb[data-state="speaking"] { animation: orbbreath 1.6s ease-in-out infinite; }
-.ai-orb[data-state="speaking"] .ai-halo { opacity: .7; }
-@keyframes orbbreath { 50% { transform: scale(1.06); } }
+.ai-orb[data-state="busy"] .ai-core { filter: hue-rotate(28deg) saturate(1.2); }
+.ai-orb[data-state="busy"] .ai-fill { animation-duration: 1.4s; }
+.ai-orb[data-state="busy"] .ai-blob { animation-duration: 2.2s, 4s; }
+.ai-orb[data-state="busy"] .ai-ring { opacity: 1; }
+.ai-orb[data-state="busy"] .ai-halo { opacity: .7; filter: blur(12px) hue-rotate(28deg); }
+.ai-orb[data-state="speaking"] .ai-core { animation: orbbeat 1.3s ease-in-out infinite; filter: hue-rotate(8deg) brightness(1.05); }
+.ai-orb[data-state="speaking"] .ai-halo { opacity: .8; animation: halobeat 1.3s ease-in-out infinite; }
+@keyframes orbidle { 50% { transform: scale(1.035); } }
+@keyframes orbbeat { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.08); } 60% { transform: scale(.98); } }
+@keyframes halobeat { 30% { opacity: 1; } }
+
+/* ASİSTAN ÇALIŞIRKEN: sayfa buzlu cam gibi bulanıklaşır, üstüne küreden yayılan ışık (aurora). Işık kürenin
+   durumuyla renk değiştirir; dinlerken sesle güçlenir. */
+.aurora { pointer-events: none; --lvl: 0; background:
+  radial-gradient(70% 42% at 50% 100%, rgba(79, 160, 190, .5), transparent 70%),
+  radial-gradient(45% 32% at 14% 84%, rgba(127, 143, 224, .34), transparent 70%),
+  radial-gradient(45% 32% at 86% 88%, rgba(111, 182, 204, .36), transparent 70%);
+  transform-origin: 50% 100%; animation: auroradrift 9s ease-in-out infinite alternate; transition: filter .6s ease, opacity .6s ease; }
+.aurora[data-state="listening"] { filter: hue-rotate(-22deg) saturate(1.4); opacity: calc(.8 + var(--lvl) * .2); }
+.aurora[data-state="busy"] { filter: hue-rotate(28deg) saturate(1.2); animation-duration: 3s; }
+.aurora[data-state="speaking"] { filter: hue-rotate(8deg) saturate(1.2); animation: auroradrift 9s ease-in-out infinite alternate, aurorabeat 1.3s ease-in-out infinite; }
+@keyframes auroradrift { from { transform: scale(1) translateX(-2%); } to { transform: scale(1.12) translateX(2%); } }
+@keyframes aurorabeat { 30% { opacity: .75; } }
 /* Bekleyen alan: soldan sağa akan ince ışık (yükleniyor) */
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .shimmer { background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--acc) 22%, var(--line)) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
