@@ -1,10 +1,12 @@
 "use client";
 
+import { doneOf } from "@/lib/doneWords";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { repliesOf } from "@/lib/people";
 import { rel, when } from "@/lib/utils/format";
 import { stamp } from "./EditCard";
+import { ConvoComposer } from "@/features/assistant/ConvoComposer";
 
 const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 
@@ -30,19 +32,14 @@ const initialsOf = (n = "") =>
     .map((x) => x[0].toLocaleUpperCase("tr-TR"))
     .join("") || "?";
 
-// assistant (verildiyse): { onAsk(text), onMic(), busy, panel, hint, mode, setMode, text, setText } — yazma alanında iki mod:
-//   Mesaj: yazdığın aynen gider · Asistan (✨ ya da mikrofon): kaydı değiştirir ve/veya mesajı senin yerine hazırlar;
-//   hazırlanan mesaj panel içinde onayla (Gönder) gider.
+// assistant (verildiyse): { panel, text, setText } — kayıt içi asistanın yanıtı/taslağı ve yazı kutusu.
+// Kutu boşken sağdaki küre ana asistanı bu kaydın bilgisiyle açar (özetle, tamamla, "yaz" → bu kaydın konuşması).
 // docked: yazma alanı burada çizilmez, ekranın altına sabitlenir (ReplyComposer); mesajlar geldikçe liste alta kayar
-export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz…", assistant, docked = false }) {
+export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz…", assistant, docked = false, kind }) {
   // Yazı da üstten gelebilir (asistan taslağındaki "Düzenle" metni kutuya koyar)
   const [ownText, setOwnText] = useState("");
   const text = assistant?.setText ? assistant.text : ownText;
   const setText = assistant?.setText || setOwnText;
-  // Mod (msg | ai) verildiyse üstten gelir: asistan çalışırken bu bileşen ekrandan kalkıp geri geldiğinde seçim kaybolmasın
-  const [ownMode, setOwnMode] = useState("msg");
-  const mode = assistant?.mode || ownMode;
-  const setMode = assistant?.setMode || setOwnMode;
   const [all, setAll] = useState(false);
   // Açıldığı andaki "son baktığım" zaman: kayıt açılınca görüldü yazılır, ama çizgi bu açılışta yerinde kalsın
   const [seenAt] = useState(() => rec?.ack?.[myUid]?.n || "");
@@ -54,12 +51,10 @@ export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz�
   const others = [...new Set([rec?.createdByUid, ...(rec?.assignees || []), ...(rec?.people || [])])].filter((u) => u && u !== myUid);
   const lastMine = [...list].reverse().find((r) => r.uid === myUid);
   const seenBy = lastMine ? others.filter((u) => String(rec?.ack?.[u]?.n || "") >= String(lastMine.at)) : [];
-  const ai = !!assistant && mode === "ai";
   const send = () => {
     const t = text.trim();
     if (!t) return;
-    if (ai) assistant.onAsk(t);
-    else onSend(t);
+    onSend(t);
     setText("");
   };
 
@@ -141,74 +136,53 @@ export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz�
       {/* Asistanın yanıtı ve bekleyen mesaj taslağı (onay) */}
       {assistant?.panel}
 
-      {!docked && <Composer text={text} setText={setText} mode={mode} setMode={setMode} ai={ai} send={send} placeholder={placeholder} assistant={assistant} />}
+      {!docked && <Composer text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} />}
     </div>
   );
 }
 
-// Yazma alanı: Mesaj (aynen gider) ya da Asistan (anlar, değiştirir, mesajı hazırlar)
-function Composer({ text, setText, mode, setMode, ai, send, placeholder, assistant, bare = false }) {
+// Ana asistanın bu kayıt hakkındaki bilgisi: kayıt, kimliği ve konuşması. "Bunu tamamla", "özetle", "yaz" bu kayda gider.
+const PREFIX = { plan: "p", task: "t", note: "n" };
+export function recordFocus(kind, rec, nameOf, myUid) {
+  if (!rec || !PREFIX[kind]) return null;
+  const msgs = repliesOf(rec).slice(-15);
+  return {
+    title: `${KIND[kind]}: ${rec.title}`,
+    rec: { kind, id: rec.id },
+    text: [
+      `Açık kayıt: ${KIND[kind]} ${PREFIX[kind]}:${rec.id} | ${rec.title}${kind === "plan" && rec.date ? ` | ${when(rec)}` : ""}${kind === "task" && rec.due ? ` | son gün ${rec.due}` : ""}`,
+      kind === "note" && rec.body ? `Not metni: ${String(rec.body).slice(0, 400)}` : "",
+      "Varsayılan alıcı: Bu kaydın konuşması (kayıttaki kişiler görür)",
+      msgs.length ? "Kayıttaki mesajlar (eskiden yeniye):" : "Kayıtta henüz mesaj yok.",
+      ...msgs.map((r) => `${r.uid === myUid ? "Ben" : nameOf(r.uid) || "Kişi"}: ${String(r.text).slice(0, 300)}`),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+const examplesOf = (kind) => ["Bu konuşmayı özetle", kind === "task" ? "Bu görevi tamamla" : "Bundan görev çıkar", "Kayıttakilere yarın hazır olacak yaz"];
+
+// Yazma alanı: elle yaz ya da mikrofonla yazdır (aynen gider); kutu boşken ana asistan (bu kaydı bilir)
+function Composer({ text, setText, send, placeholder, focus, kind, bare = false }) {
   return (
     <div className={bare ? "" : "border-t border-line px-3 pb-2.5 pt-2"}>
-      {assistant && (
-        <div className="mb-2 flex items-center gap-1.5" role="tablist" aria-label="Yazma modu">
-          {[
-            ["msg", "Mesaj", "chat"],
-            ["ai", "Asistan", "spark"],
-          ].map(([k, label, icon]) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={mode === k}
-              onClick={() => setMode(k)}
-              className={`flex h-7 items-center gap-1 rounded-full px-2.5 text-[0.75rem] font-semibold transition active:scale-95 ${mode === k ? "bg-acc text-white" : "bg-bg text-mut"}`}
-            >
-              <Icon name={icon} className="size-3.5" /> {label}
-            </button>
-          ))}
-          <span className="min-w-0 flex-1 truncate text-right text-[0.6875rem] text-mut">{ai ? "Değiştir ya da mesajı yazdır" : "Yazdığın aynen gider"}</span>
-        </div>
-      )}
-      <div className="flex items-end gap-2">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={1}
-          placeholder={ai ? assistant.hint || "örn. saati 10 yap · Ali'ye kargoyu sor" : placeholder}
-          aria-label={ai ? "Asistana yaz" : "Mesaj"}
-          className={`max-h-32 min-h-10 flex-1 resize-none rounded-2xl ${bare ? "bg-card ring-1 ring-line" : "bg-bg"} px-3.5 py-2.5 text-[0.9375rem] outline-none [field-sizing:content] focus:bg-card focus:ring-1 focus:ring-acc ${ai ? "ring-1 ring-acc/40" : ""}`}
-        />
-        {assistant && (
-          <button type="button" onClick={assistant.onMic} disabled={assistant.busy} aria-label="Asistana sesle söyle" className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc active:scale-90 disabled:opacity-40">
-            <Icon name="mic" className="size-5" />
-          </button>
-        )}
-        <button type="button" onClick={send} disabled={!text.trim() || (ai && assistant.busy)} aria-label={ai ? "Asistana gönder" : "Mesajı gönder"} className={`grid size-10 shrink-0 place-items-center rounded-full text-white disabled:opacity-40 active:scale-90 ${ai ? "bg-fg" : "bg-acc"}`}>
-          <Icon name={ai ? "spark" : "up"} className="size-5" />
-        </button>
-      </div>
+      <ConvoComposer value={text} setValue={setText} onSend={send} placeholder={placeholder} focus={focus} examples={examplesOf(kind)} />
     </div>
   );
 }
 
-// Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte). Yazı ve mod asistan nesnesinden gelir (AddSheet'te tutulur).
-export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant }) {
+// Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte). Yazı asistan nesnesinden gelebilir (AddSheet'te tutulur).
+export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant, kind, rec, nameOf, myUid }) {
   const [ownText, setOwnText] = useState("");
-  const [ownMode, setOwnMode] = useState("msg");
   const text = assistant?.setText ? assistant.text : ownText;
   const setText = assistant?.setText || setOwnText;
-  const mode = assistant?.mode || ownMode;
-  const setMode = assistant?.setMode || setOwnMode;
-  const ai = !!assistant && mode === "ai";
   const send = () => {
     const t = text.trim();
     if (!t) return;
-    if (ai) assistant.onAsk(t);
-    else onSend(t);
+    onSend(t);
     setText("");
   };
-  return <Composer bare text={text} setText={setText} mode={mode} setMode={setMode} ai={ai} send={send} placeholder={placeholder} assistant={assistant} />;
+  return <Composer bare text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} />;
 }
 
 // Asistanın kayıt içindeki yanıtı + bekleyen mesaj taslağı (Gönder / Düzenle / Vazgeç). Mesaj onaysız gitmez.
@@ -230,7 +204,7 @@ export function AssistantPanel({ reply, out, saveToo, onConfirm, onCancel, onEdi
           {out.text && <p className="mt-1 whitespace-pre-wrap text-[0.9375rem] leading-snug">{out.text}</p>}
           {out.done && (
             <p className="mt-1.5 flex items-center gap-1.5 text-[0.8125rem] font-medium text-ok">
-              <Icon name="check" className="size-4" /> {KIND[kind] || "Kayıt"} tamamlandı olarak işaretlenecek
+              <Icon name="check" className="size-4" /> {doneOf(kind).toast.replace("işaretlendi", "işaretlenecek")}
             </p>
           )}
           <div className="mt-2.5 flex gap-2">
@@ -253,7 +227,7 @@ export function AssistantPanel({ reply, out, saveToo, onConfirm, onCancel, onEdi
   );
 }
 
-// Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için tamamladım der ve mesaj yazar
+// Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için "gerçekleşti / yaptım / okudum" der ve mesaj yazar
 export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, assistant, docked = false }) {
   const mine = rec.doneBy?.[myUid];
   const by = nameOf(rec.createdByUid) || "Ana hesap";
@@ -293,11 +267,11 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
         className={`mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold transition active:scale-[.98] ${mine ? "bg-ok/10 text-ok ring-1 ring-ok/30" : "bg-acc text-white"}`}
       >
         <Icon name="check" className="size-5 [stroke-width:2.5]" />
-        {mine ? `Tamamladın · ${stamp(mine)}` : "Tamamladım"}
+        {mine ? `${doneOf(kind).mine} · ${stamp(mine)}` : doneOf(kind).act}
       </button>
       {mine && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
 
-      <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" assistant={assistant} docked={docked} />
+      <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" assistant={assistant} docked={docked} />
     </div>
   );
 }

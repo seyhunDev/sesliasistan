@@ -524,3 +524,88 @@ export function DemoDataRow() {
     </Fold>
   );
 }
+
+// ---- Şifremi değiştir (herkes): mevcut şifreyle doğrular, yenisini kaydeder ----
+export function PasswordRow() {
+  const toast = useToast();
+  const [cur, setCur] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    if (next.length < 6) return toast("Yeni şifre en az 6 karakter olmalı");
+    setBusy(true);
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import("firebase/auth");
+      const { auth } = await import("@/lib/firebase/clientApp");
+      const u = auth.currentUser;
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, cur));
+      await updatePassword(u, next);
+      setCur("");
+      setNext("");
+      toast("Şifren değiştirildi");
+    } catch (err) {
+      toast(/wrong-password|invalid-credential/.test(err?.code || "") ? "Mevcut şifre yanlış" : "Şifre değiştirilemedi");
+    }
+    setBusy(false);
+  }
+  return (
+    <Fold icon="user" tone="slate" title="Şifremi değiştir" sub="Giriş şifreni yenile">
+      <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="space-y-2.5 px-4 pb-3.5">
+        <input type="password" autoComplete="current-password" placeholder="Mevcut şifre" value={cur} onChange={(e) => setCur(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
+        <input type="password" autoComplete="new-password" placeholder="Yeni şifre (en az 6 karakter)" value={next} onChange={(e) => setNext(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
+        <button type="submit" disabled={busy || !cur || next.length < 6} className="h-10 w-full rounded-xl bg-[#2c5163] text-[0.875rem] font-semibold text-white disabled:opacity-40">
+          {busy ? "Bekleyin…" : "Şifreyi değiştir"}
+        </button>
+      </form>
+    </Fold>
+  );
+}
+
+// Deneme için: tanıtım slaytları, sesli karşılama ve "Şimdi sen dene" baştan görünsün.
+// Ana hesap herkes için sıfırlar (kişiler uygulamayı açınca görür), diğer hesaplar yalnız kendisi için.
+export function TourResetRow() {
+  const toast = useToast();
+  const { profile } = useAuth();
+  const owner = profile?.role === "owner";
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function reset() {
+    setBusy(true);
+    try {
+      const res = await authFetch("/api/tour-reset", { method: "POST" });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(r.error || "Sıfırlanamadı");
+      toast(r.all ? `Sıfırlandı: ${r.count} hesap karşılamayı baştan görecek` : "Sıfırlandı: karşılama baştan başlıyor");
+      setAsk(false);
+    } catch (e) {
+      toast(e.message);
+    }
+    setBusy(false);
+  }
+  return (
+    <Fold icon="spark" tone="acc" title="Karşılamayı sıfırla" sub={owner ? "Herkes için: tanıtım ve sesli karşılama baştan" : "Tanıtım ve sesli karşılama baştan"}>
+      <div className="space-y-3 px-4 pb-3.5">
+        <p className="text-[0.8125rem] leading-snug text-mut">
+          {owner
+            ? "Deneme için. Senin ve kişilerinin tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” yönlendirmesi sıfırlanır; herkes uygulamayı açınca baştan görür."
+            : "Deneme için. Tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” yönlendirmesi baştan görünür."}
+        </p>
+        {ask ? (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setAsk(false)} className="h-10 flex-1 rounded-xl bg-card text-[0.875rem] font-semibold ring-1 ring-line">
+              Vazgeç
+            </button>
+            <button type="button" onClick={reset} disabled={busy} className="h-10 flex-[1.4] rounded-xl bg-acc text-[0.875rem] font-semibold text-white disabled:opacity-50">
+              {busy ? "Sıfırlanıyor…" : owner ? "Herkes için sıfırla" : "Sıfırla"}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAsk(true)} className="h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line">
+            Sıfırla
+          </button>
+        )}
+      </div>
+    </Fold>
+  );
+}

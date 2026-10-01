@@ -1,5 +1,6 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
+import { aiErrorText, logAiError } from "@/lib/ai/errors";
 import { NextResponse } from "next/server";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
@@ -266,8 +267,8 @@ async function handle(request) {
     if (extra.send && !/\?/.test(message)) message = `${message} Göndereyim mi?`.trim();
     return withQuota(NextResponse.json({ items, message, ...extra, source: "ai", provider, ms }), await spend(au, "assistant"));
   } catch (e) {
-    console.error(`[interpret:${provider}]`, e.message);
-    return fallback("AI yanıt vermedi, yedek kurallar kullanıldı");
+    const kind = logAiError("interpret", provider, e);
+    return fallback(`${aiErrorText(kind, e)} Basit kurallarla hazırlandı.`);
   }
 }
 

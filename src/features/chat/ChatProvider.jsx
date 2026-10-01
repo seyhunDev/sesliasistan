@@ -33,6 +33,14 @@ export const toMs = (v) => (!v ? 0 : typeof v === "number" ? v : typeof v.toMill
 export const dmId = (a, b) => `dm_${[a, b].sort().join("_")}`;
 export const unreadOf = (c, uid) => Math.max(0, (c?.seq || 0) - (c?.read?.[uid] || 0));
 
+// Son gönderim hatasının nedeni (ekranda "bağlantı" yerine gerçek sebep yazılsın)
+let lastErr = "";
+export function sendErrorText() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return "İnternet bağlantısı yok; bağlanınca tekrar dene.";
+  if (lastErr === "permission-denied") return "Bu sohbete yazma iznin görünmüyor. Ana hesap Firestore kurallarını yayınlamalı (firebase deploy --only firestore:rules).";
+  if (lastErr === "unavailable" || lastErr === "deadline-exceeded") return "Sunucuya ulaşılamadı; biraz sonra tekrar dene.";
+  return `Mesaj gönderilemedi${lastErr ? ` (${lastErr})` : ""}.`;
+}
 export function ChatProvider({ children }) {
   const { profile } = useAuth();
   const { myUid: uid, setExtraBadge, members } = useData();
@@ -163,7 +171,8 @@ export function ChatProvider({ children }) {
         authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "chat", chat: cid, mid: mref.id }) }).catch(() => {});
         return true;
       } catch (e) {
-        console.warn("[chat] gönderilemedi:", e.code || e.message);
+        lastErr = e.code || e.message || "";
+        console.warn("[chat] gönderilemedi:", lastErr);
         return false;
       }
     },

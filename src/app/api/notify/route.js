@@ -3,7 +3,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
-import { assignedText, deleteReqText, doneText, paidText, replyText } from "@/lib/notifyText";
+import { assignedText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 
@@ -75,6 +75,22 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent });
   }
 
+  // ---- Kayıt değişti / silindi: kayıttaki diğer kişilere (değiştiren hariç). Metin kayıttan okunur ----
+  if (COLS[body?.kind] && (body.event === "changed" || body.event === "deleted")) {
+    const kind = body.kind;
+    const ref = org.collection(COLS[kind]).doc(String(body.id || ""));
+    const r = (await ref.get()).data();
+    if (!r) return NextResponse.json({ ok: true, skipped: "kayıt yok" });
+    if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    if (body.event === "changed" && !(r.updatedAt && Date.now() - Date.parse(r.updatedAt) < 2 * 60e3)) return NextResponse.json({ ok: true, skipped: "değişiklik yok" });
+    const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
+    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
+    const msg = body.event === "changed" ? changedText(info) : deletedText(info);
+    let sent = 0;
+    for (const u of to) sent += await sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" });
+    return NextResponse.json({ ok: true, sent });
+  }
+
   if (COLS[body?.kind] && (body.event === "reply" || body.event === "done")) {
     const kind = body.kind;
     const ref = org.collection(COLS[kind]).doc(String(body.id || ""));
@@ -136,9 +152,17 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent });
   }
 
-  // ---- Fiş ödendi ----
   const id = String(body?.receiptId || "");
   if (!id) return NextResponse.json({ error: "Kayıt belirtilmedi" }, { status: 400 });
+  // ---- Çalışan/aile fiş ekledi: ödeme bekliyor (ana hesaba) ----
+  if (body.event === "new") {
+    const r = (await org.collection("receipts").doc(id).get()).data();
+    const fresh = r && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
+    if (!r || r.createdByUid !== au.uid || r.payStatus !== "pending" || !fresh || au.uid === me.orgId) return NextResponse.json({ ok: true, skipped: "bildirim gerekmiyor" });
+    const sent = await sendTo(me.orgId, { ...receiptNewText({ merchant: r.merchant, amount: TLk(totalOf(r)), from: me.name }), tag: `pay-${id}`, url: `/receipts/${id}` });
+    return NextResponse.json({ ok: true, sent });
+  }
+  // ---- Fiş ödendi ----
   if (me.role !== "owner") return NextResponse.json({ error: "Yalnızca ana hesap" }, { status: 403 });
   const r = (await org.collection("receipts").doc(id).get()).data();
   if (!r || r.payStatus !== "paid" || !r.createdByUid || r.createdByUid === au.uid) return NextResponse.json({ ok: false, skipped: "bildirim gerekmiyor" });

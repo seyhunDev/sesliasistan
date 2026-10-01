@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 export const LIMITS = {
   receipt: Number(process.env.STAFF_RECEIPT_DAY) || 5, // fiş okuma
   assistant: Number(process.env.STAFF_AI_DAY) || 10, // asistan isteği
+  reply: Number(process.env.STAFF_REPLY_DAY) || 40, // mesajlarda hazır yanıt önerisi
 };
 const TZ = "Europe/Istanbul";
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
@@ -64,7 +65,7 @@ export async function spend(au, kind) {
   return quotaOf(au, kind);
 }
 
-const LABEL = { receipt: "fiş ekleme", assistant: "asistan" };
+const LABEL = { receipt: "fiş ekleme", assistant: "asistan", reply: "yanıt önerisi" };
 // Hak bittiyse hazır 429 yanıtı; yoksa null
 export async function overQuota(au, kind) {
   const q = await quotaOf(au, kind);

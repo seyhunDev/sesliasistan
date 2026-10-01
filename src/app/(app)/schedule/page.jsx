@@ -7,7 +7,7 @@ import { Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
 import { useNow } from "@/hooks/useNow";
 import { Screen } from "@/components/ui/Screen";
 import { Sheet } from "@/components/ui/Sheet";
-import { BarButton, VoiceTextBar } from "@/components/ui/VoiceTextBar";
+import { useDock } from "@/features/home/TabBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useSpeech } from "@/hooks/useSpeech";
@@ -86,6 +86,14 @@ export default function SchedulePage() {
   const nxt = todays.find((l) => l.start > nowHM);
   const max = Math.max(1, ...counts);
   const live = (l) => day === today && l.start <= nowHM && (l.end || l.start) > nowHM;
+  useDock({
+    onSend: (t) => run({ text: t }, "text"),
+    onMic: listen,
+    create: [
+      ["plus", "Ders ekle", "Tek tek gir", newLesson],
+      ["camera", "Fotoğraftan", "Programın fotoğrafı", pickPhoto],
+    ],
+  });
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
@@ -173,17 +181,6 @@ export default function SchedulePage() {
 
       <ListeningOverlay sp={sp} hint="Dersleri, günleri ve saatleri söyle" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
 
-      <VoiceTextBar
-        placeholder="ör. salı 13:00 fizik B-204"
-        onMic={listen}
-        onSend={(t) => run({ text: t }, "text")}
-        leading={
-          <>
-            <BarButton icon="plus" label="Ders ekle" onClick={newLesson} />
-            <BarButton icon="camera" label="Fotoğraftan ekle" onClick={pickPhoto} />
-          </>
-        }
-      />
 
       {edit && (
         <LessonSheet

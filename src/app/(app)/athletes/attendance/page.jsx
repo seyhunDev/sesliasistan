@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
-import { VoiceTextBar } from "@/components/ui/VoiceTextBar";
+import { useDock } from "@/features/home/TabBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -150,6 +150,10 @@ function Roll() {
     run(say);
   });
 
+  // Alt çubuk: yazılan ve söylenen doğrudan yoklamaya gider
+  const ready = !!data && !err;
+  useDock({ onSend: ready ? run : null, onMic: ready ? () => sp.start({ autoStop: 6000 }) : null });
+
   const count = (s) => list.filter((a) => stateOf(a) === s).length;
 
   return (
@@ -267,7 +271,6 @@ function Roll() {
       )}
 
       <ListeningOverlay sp={sp} hint="Kim geldi, kim gelmedi? Ör. “Ali ve Zeynep geldi”" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
-      {data && !err && <VoiceTextBar placeholder="Ali ve Zeynep geldi…" micLabel="Yoklamayı söyle" onMic={() => sp.start({ autoStop: 6000 })} onSend={run} />}
 
       <NamesSheet open={names} onClose={() => setNames(false)} idx={idx} save={save} athletes={active} classes={classes} />
       <Preview p={preview} athletes={active} onClose={() => setPreview(null)} onSave={(p) => {

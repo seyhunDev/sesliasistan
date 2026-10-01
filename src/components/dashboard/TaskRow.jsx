@@ -11,7 +11,7 @@ export function TaskRow({ task, planTitle, who, pill, badge, onToggle, onOpen })
       <button
         type="button"
         onClick={onToggle}
-        aria-label={task.done ? "Yeniden aç" : "Tamamlandı olarak işaretle"}
+        aria-label={task.done ? "Yeniden aç" : "Yapıldı olarak işaretle"}
         className={`grid size-6 shrink-0 place-items-center rounded-full border-[0.1094rem] transition active:scale-90 ${task.done ? "border-ok bg-ok text-white" : "border-mut/60 text-transparent"}`}
       >
         <Icon name="check" className="size-3.5 [stroke-width:3]" />

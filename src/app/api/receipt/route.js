@@ -5,6 +5,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { CATS, calcTotals } from "@/lib/receipts";
+import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -178,7 +179,7 @@ async function handle(request) {
     if (!o.isReceipt) return bad("Bu fotoğrafta fiş veya fatura göremedim. Tekrar çek veya elle gir.", 422);
     return withQuota(NextResponse.json({ draft: toDraft(o), provider, ms }), await spend(au, "receipt"));
   } catch (e) {
-    console.error(`[receipt:${provider}]`, e.message);
+    logAiError("receipt", provider, e);
     if (e.status === 429) return bad("Yapay zekanın kotası şu an dolu. Biraz sonra tekrar dene ya da elle gir.", 429, e.message);
     if (e.status === 503) return bad("Yapay zeka şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da elle gir.", 503, e.message);
     return bad("Fiş okunamadı. Tekrar dene ya da elle gir.", 502, e.message);

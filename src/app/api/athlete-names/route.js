@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -73,7 +74,7 @@ async function handle(request) {
     console.log(`[athlete-names] ${Date.now() - t0} ms, sporcu=${items.length}/${need.length}`);
     return NextResponse.json({ items, notes });
   } catch (e) {
-    console.error("[athlete-names]", e.message);
+    logAiError("athlete-names", "gemini", e);
     if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
     return bad("Ses adları hazırlanamadı, tekrar dene.", 502);
   }

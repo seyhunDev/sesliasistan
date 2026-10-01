@@ -198,7 +198,7 @@ function Calendar({ initial }) {
             <li key={t.id} className="flex items-center gap-3 px-4 py-3">
               <button
                 onClick={() => toggleTask(t.id)}
-                aria-label={t.done ? "Yeniden aç" : "Tamamlandı olarak işaretle"}
+                aria-label={t.done ? "Yeniden aç" : "Yapıldı olarak işaretle"}
                 className={`grid size-6 shrink-0 place-items-center rounded-full border-[0.1094rem] transition active:scale-90 ${t.done ? "border-ok bg-ok text-white" : t.due < today ? "border-rec/70 text-transparent" : "border-mut/60 text-transparent"}`}
               >
                 <Icon name="check" className="size-3.5 [stroke-width:3]" />
@@ -207,7 +207,7 @@ function Calendar({ initial }) {
                 <span className="min-w-0 flex-1">
                   <b className={`block truncate text-[0.9375rem] font-medium ${t.done ? "text-mut line-through" : ""}`}>{t.title}</b>
                   <small className={`block text-[0.8125rem] ${!t.done && t.due < today ? "font-medium text-rec" : "text-mut"}`}>
-                    {t.done ? "Tamamlandı" : t.due < today ? "Gecikti" : "Görev · son gün"}
+                    {t.done ? "Yapıldı" : t.due < today ? "Gecikti" : "Görev · son gün"}
                   </small>
                 </span>
                 {pillOf(t)}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -96,7 +97,7 @@ async function handle(request) {
     console.log(`[attendance] ${Date.now() - t0} ms, işaret=${marks.length}, diğerleri=${others || "-"}`);
     return NextResponse.json({ date, marks, others, unknown, message: S(raw?.message, 200) });
   } catch (e) {
-    console.error("[attendance]", e.message);
+    logAiError("attendance", "gemini", e);
     if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene ya da dokunarak işaretle.", 429);
     return bad("Yoklama anlaşılamadı, tekrar dene.", 502);
   }

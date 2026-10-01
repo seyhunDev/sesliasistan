@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --no-warnings scripts/gonder.mjs --yalniz-test",
+    "gonder": "node --no-warnings scripts/gonder.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

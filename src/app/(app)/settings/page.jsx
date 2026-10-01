@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
 import { openOnboarding } from "@/features/onboarding/Onboarding";
-import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, useNotifications } from "@/features/settings/Groups";
+import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
@@ -51,11 +51,13 @@ export default function SettingsPage() {
         <PowerRow />
         <NotifyMoreRow n={n} />
         <PermissionsRow />
+        <PasswordRow />
         {owner && <DemoDataRow />}
         {owner && <Row icon="mail" tone="sky" title="Gmail bağlantısı" sub="Gönderenler ve kurulum" href="/mail/setup" />}
         <Row icon="spark" tone="acc" title="Tanıtımı yeniden göster" sub="Başlangıç slaytları" onClick={openOnboarding} chevron />
-        <Row icon="chart" tone="slate" title="Öğrenme verisi" sub="Asistanın düzeltmelerinden öğrendikleri" onClick={() => setBrain((v) => !v)} chevron>
-          {brain && <BrainCard bare />}
+        <TourResetRow />
+        <Row icon="chart" tone="slate" title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık · miktar, kapat, sıfırla"} onClick={() => setBrain((v) => !v)} chevron>
+          {brain && <BrainCard bare owner={owner} />}
         </Row>
       </Group>
 

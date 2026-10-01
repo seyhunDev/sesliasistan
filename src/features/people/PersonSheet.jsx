@@ -36,13 +36,13 @@ const randomPw = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n
 
 // Kişi ekle / düzenle (ana hesap): ad, tür, yakınlık/unvan, telefon, e-posta, doğum günü; hesap aç/kapat, şifre; sil.
 // person: düzenlenecek kişi (null = yeni). Doğum günü girilirse ana hesabın takvimine kişiye bağlı eklenir.
-export function PersonSheet({ open, onClose, person }) {
+export function PersonSheet({ open, onClose, person, defaultKind = "staff", initialStep = "edit" }) {
   const { birthdays, saveBirthday, deleteRecord, updateRecord, plans, tasks, notes, receipts, myUid } = useData();
   const toast = useToast();
   const isNew = !person;
   const [f, setF] = useState(() => ({
     name: person?.name || "",
-    kind: kindOf(person || { kind: "staff" }),
+    kind: kindOf(person || { kind: defaultKind }),
     relation: person?.relation || "",
     title: person?.title || "",
     phone: person?.phone || "",
@@ -50,8 +50,8 @@ export function PersonSheet({ open, onClose, person }) {
     birth: person?.birth || "",
   }));
   const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState("edit"); // edit | account | password | delete
-  const [acc, setAcc] = useState({ login: "", password: "" });
+  const [step, setStep] = useState(person && initialStep === "account" ? "account" : "edit"); // edit | account | password | delete
+  const [acc, setAcc] = useState(() => (person && initialStep === "account" ? { login: person.email || suggestUsername(person.name), password: randomPw() } : { login: "", password: "" }));
   const [made, setMade] = useState(null); // hesap açılınca: { login, password } (kişiye iletmek için)
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e?.target ? e.target.value : e }));
   const hasAccount = person && person.account !== false;

@@ -99,7 +99,7 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
           <button
             type="button"
             onClick={onToggleDone}
-            aria-label={done ? "Yeniden aç" : "Tamamlandı olarak işaretle"}
+            aria-label={done ? "Yeniden aç" : "Yapıldı olarak işaretle"}
             className={`mt-1 grid size-7 shrink-0 place-items-center rounded-full border-2 transition active:scale-90 ${done ? "border-ok bg-ok text-white" : "border-mut/50 text-transparent"}`}
           >
             <Icon name="check" className="size-4 [stroke-width:3]" />

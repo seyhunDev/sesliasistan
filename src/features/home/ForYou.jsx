@@ -142,7 +142,7 @@ export function ForYou() {
         trail: (
           <button
             type="button"
-            aria-label="Tamamlandı olarak işaretle"
+            aria-label="Yapıldı olarak işaretle"
             onClick={(e) => {
               e.stopPropagation();
               toggleTask(t.id);

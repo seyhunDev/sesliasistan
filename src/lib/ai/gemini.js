@@ -13,6 +13,9 @@ function toSchema(s) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Hız için düşünmeyi kapat/azalt: Gemini 3 ve sonrası thinkingBudget yerine thinkingLevel kullanır
+// (bütçe 0 yok sayılır ve model uzun düşünüp zaman aşımına düşebilir)
+const thinkOff = (m) => (/gemini-([3-9]|\d\d)/i.test(m) ? { thinkingLevel: "minimal" } : { thinkingBudget: 0 });
 const RETRYABLE = [500, 502, 503, 504]; // geçici sunucu sorunları (yoğunluk)
 const HOUR = 60 * 60 * 1000;
 
@@ -151,7 +154,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
   const responseSchema = toSchema(schema);
   const schemaText = JSON.stringify(schema);
 
-  const mkBody = (noThink, useSchema) =>
+  const mkBody = (noThink, useSchema, m) =>
     JSON.stringify({
       systemInstruction: {
         parts: [
@@ -168,7 +171,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
         ...(useSchema ? { responseSchema } : {}),
         temperature: 0.2,
         maxOutputTokens: maxTokens,
-        ...(noThink ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+        ...(noThink ? { thinkingConfig: thinkOff(m) } : {}),
       },
     });
 
@@ -188,7 +191,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
       if (left < 2000) break outer;
       try {
         const t0 = Date.now();
-        const { status, text } = await once(m, mkBody(noThink, useSchema), Math.min(left, Math.max(12000, timeoutMs - 8000)));
+        const { status, text } = await once(m, mkBody(noThink, useSchema, m), Math.min(left, Math.max(12000, timeoutMs - 8000)));
 
         if (status === 200) {
           const data = JSON.parse(text);

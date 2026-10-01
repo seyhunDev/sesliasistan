@@ -92,6 +92,9 @@ body {
 [data-bar] { transition: opacity .2s ease, transform .2s ease; }
 body[data-asst="open"] { overflow: hidden; }
 body[data-asst="open"] [data-bar] { opacity: 0; pointer-events: none; transform: translateY(1rem); }
+body[data-asst="dock"] [data-bar] { opacity: 0; pointer-events: none; transform: translateY(1rem); }
+/* Alt çubuk (yazma satırı + sekmeler) görünen sayfalarda içerik çubuğun altında kalmasın */
+body[data-dock] main { padding-bottom: calc(var(--stage-h, 20rem) + 1.25rem); }
 
 /* Mikrofon ve gönder düğmesi animasyonları */
 @keyframes animin { from { opacity: 0; transform: scale(.6); } }

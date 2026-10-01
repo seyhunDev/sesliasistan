@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useKind } from "@/features/auth/useKind";
 import { db } from "@/lib/firebase/clientApp";
+import { isAthleteSide } from "@/lib/kinds";
 
 const ST = {
   present: { label: "Geldi", dot: "bg-ok", text: "text-ok" },
@@ -66,10 +68,21 @@ function Card({ rec }) {
   );
 }
 
-// Yoklamam: sporcu kendi yoklamasını, veli bağlı olduğu sporcuların yoklamasını görür (salt okunur)
+// Yoklamam: sporcu kendi yoklamasını, veli bağlı olduğu sporcuların yoklamasını görür (salt okunur).
+// Yalnızca sporcu, öğrenci ve veli açar; diğerleri (ana hesap, çalışan, aile) ana sayfaya yönlenir.
 export default function MyAttendance() {
-  const { profile } = useAuth();
   const kind = useKind();
+  const router = useRouter();
+  const allowed = isAthleteSide(kind);
+  useEffect(() => {
+    if (kind && !allowed) router.replace("/");
+  }, [kind, allowed, router]);
+  if (!allowed) return null;
+  return <Attendance kind={kind} />;
+}
+
+function Attendance({ kind }) {
+  const { profile } = useAuth();
   const [recs, setRecs] = useState(null);
   const [err, setErr] = useState("");
   useEffect(() => {

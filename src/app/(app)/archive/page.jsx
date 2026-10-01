@@ -50,7 +50,7 @@ function Archive() {
       .filter((t) => t.done)
       .map((t) => {
         const doers = Object.keys(t.doneBy || {}).map(who).filter(Boolean);
-        return { kind: "task", r: t, date: t.doneAt || t.due || t.createdAt || "", when: fmt(t.doneAt || t.due), status: `Tamamlandı${doers.length ? ` · ${doers.join(", ")}` : ""}`, detail: t.due ? `Son gün ${fmt(t.due)}` : "" };
+        return { kind: "task", r: t, date: t.doneAt || t.due || t.createdAt || "", when: fmt(t.doneAt || t.due), status: `Yapıldı${doers.length ? ` · ${doers.join(", ")}` : ""}`, detail: t.due ? `Son gün ${fmt(t.due)}` : "" };
       }),
     ...notes
       .filter((n) => n.archived)

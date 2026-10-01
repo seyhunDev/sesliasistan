@@ -10,6 +10,11 @@ export async function askAssistant({ text, name = "", digest = "", history = [],
     signal,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Asistan yanıt vermedi");
+  if (!res.ok) {
+    console.warn(`[asistan] ${res.status} ${data.reason || ""}: ${data.error || "yanıt yok"}${data.detail ? ` · ${data.detail}` : ""}`);
+    const err = new Error(data.error || "Asistan yanıt vermedi");
+    err.reason = data.reason || "";
+    throw err;
+  }
   return data;
 }

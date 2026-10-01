@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -99,7 +100,7 @@ async function handle(request) {
     const message = S(raw?.message, 300) || (lessons.length ? `${lessons.length} ders çıkardım.` : "Ders programı bulamadım.");
     return NextResponse.json({ lessons, message });
   } catch (e) {
-    console.error("[schedule]", e.message);
+    logAiError("schedule", "gemini", e);
     if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene ya da dersleri tek tek ekle.", 429);
     return bad("Ders programı çıkarılamadı, tekrar dene.", 502);
   }

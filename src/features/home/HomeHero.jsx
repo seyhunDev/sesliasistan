@@ -129,8 +129,8 @@ export function HomeHero({ weather }) {
           onClick={() => openAdd({ edit: { kind: "plan", id: n.plan.id } })}
           className="relative mx-3 -mt-10 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-[1.25rem] bg-card px-4 py-3 text-left shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.35)] active:scale-[.99]"
         >
-          <span className="w-16 shrink-0 whitespace-nowrap text-center">
-            <b className="block text-[1.0625rem] font-bold tabular-nums">{n.plan.time || "Gün boyu"}</b>
+          <span className="w-16 shrink-0 text-center">
+            <b className={`block font-bold tabular-nums ${n.plan.time ? "whitespace-nowrap text-[1.0625rem]" : "text-[0.875rem] leading-tight"}`}>{n.plan.time || "Gün boyu"}</b>
             <small className="block truncate text-[0.6875rem] text-mut">
               {n.state === "now" ? "şu an" : n.plan.date === todayStr() && n.plan.time ? soonLabel(n.plan, now).replace(" sonra", "") : dayLabel(n.plan.date, todayStr())}
             </small>

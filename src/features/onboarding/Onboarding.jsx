@@ -6,6 +6,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTts } from "@/features/speech/TtsProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { dismissPrompt } from "@/lib/permissions";
 import { enableReminders, needsInstall, pushSupported } from "@/lib/push";
@@ -18,17 +19,28 @@ import { SIZES, applySize } from "@/lib/textSize";
 // Her slaytta "Geç" var; hiçbiri zorunlu değil. Yeni bir özellik slaytı eklerken v = INTRO_V + 1 yap ve INTRO_V'yi artır.
 export const openOnboarding = () => window.dispatchEvent(new Event("sa-onboarding"));
 
-export const INTRO_V = 4;
+export const INTRO_V = 5;
 const SLIDES = [
   { id: "hi", v: 1, icon: "spark", title: "Hoş geldin", text: "Planlarını, görevlerini ve notlarını konuşarak ya da yazarak ekle. Birkaç ayarla her şey daha kolay olur.", action: "Başla" },
+  { id: "voice", v: 5, icon: "mic", title: "Sesli asistanınla tanış", text: "Dinlemek için dokun. Mikrofon izni de isteyeceğim; konuşarak kullanmak için gerekli.", action: "Mikrofona izin ver ve dinle" },
   { id: "size", v: 3, icon: "search", title: "Yazı boyutu", text: "Yazılar, simgeler ve düğmeler rahat okunacak büyüklükte olsun. Dokununca hemen görürsün.", action: "Devam" },
-  { id: "mic", v: 1, icon: "mic", perm: "microphone", title: "Mikrofon", text: "Konuşarak kayıt eklemek ve asistana sormak için.", action: "Mikrofona izin ver" },
   { id: "push", v: 1, icon: "bell", perm: "push", title: "Bildirimler", text: "Uygulama kapalıyken de haberin olsun.", action: "Bildirimlere izin ver" },
   { id: "summary", v: 2, icon: "sun", title: "Günlük özetler", text: "Güne ve yarına hazırlıklı başla. Bildirim olarak gelir, ana ekranda da görünür.", action: "Kaydet ve devam" },
   { id: "mail", v: 4, owner: true, icon: "mail", title: "Banka mailleri", text: "Bankadan gelen hesap özetleri telefonuna bildirim olarak gelsin; Mailler sayfasında hareketleri tablo olarak gör, Excel'e indir.", action: "Kurulumu aç", href: "/mail/setup" },
   { id: "camera", v: 1, icon: "camera", perm: "camera", title: "Kamera", text: "Fişin fotoğrafını çekip tutarı otomatik okumak için.", action: "Kameraya izin ver" },
   { id: "done", v: 1, icon: "check", title: "Hazırsın", text: "Bunları istediğin zaman Ayarlar'dan değiştirebilirsin.", action: "Uygulamaya geç" },
 ];
+
+// Sesli karşılamada okunan metin ve ekranda görünen yetenekler
+const CAN = [
+  ["cal", "Söyle, ben hazırlayayım", "“Yarın saat 10'da antrenman ekle” dersen planı hazırlarım"],
+  ["task", "Görev ve not", "“Ali tekneleri yıkasın”, “not al malzeme odası dolu”"],
+  ["chat", "Mesaj gönderirim", "“Ekibe yaz yarın 9'da iskeledeyiz”; sen onaylayınca giderim"],
+  ["sun", "Sorularına cevap veririm", "“Bugün neler var?”, “geciken işler ne?”"],
+  ["arrow", "Sayfaları açarım", "“Yoklamayı aç”, “ekip grubunu aç”, “ana sayfaya dön”"],
+];
+export const WELCOME_SPEECH =
+  "Merhaba, ben sesli asistanın. Planlarını, görevlerini ve notlarını söylemen yeterli, ben hazırlarım. Ekibine ya da bir kişiye mesaj yazarım, sen onaylayınca gönderirim. Bugün neler var, geciken işler neler diye sorabilirsin. Yoklamayı aç ya da ekip grubunu aç dersen sayfayı açarım. Birazdan ana sayfada birlikte deneyeceğiz.";
 
 const pushGranted = () => typeof Notification !== "undefined" && Notification.permission === "granted";
 
@@ -43,6 +55,8 @@ export function Onboarding() {
   const [closed, setClosed] = useState(false);
   const [sum, setSum] = useState(null); // özet seçimi (dokunulana kadar profildeki)
   const [size, setSize] = useState(null);
+  const tts = useTts();
+  const [heard, setHeard] = useState(false); // karşılama bir kez dinlendi
 
   useEffect(() => {
     const on = () => {
@@ -92,6 +106,20 @@ export function Onboarding() {
       finish();
       return router.push(s.href);
     }
+    // Sesli karşılama: önce mikrofon izni, sonra (aynı dokunuşla, iPhone ses kilidi açılsın) okuma
+    if (s.id === "voice") {
+      if (heard) return next();
+      setBusy(true);
+      if (perms.microphone !== "granted") {
+        const st = Object.values(await request(["microphone"]))[0];
+        if (st && st !== "granted") setNote("Mikrofon izni verilmedi; yazarak kullanabilirsin. Sonra Ayarlar › İzinler'den açabilirsin.");
+      }
+      setBusy(false);
+      setHeard(true);
+      window.dispatchEvent(new Event("sa-tts-prime"));
+      tts.speak(WELCOME_SPEECH);
+      return;
+    }
     if (!s.perm || has) {
       if (s.id === "summary") updateDoc(doc(db, "users", profile.uid), summary).catch(() => {});
       return next();
@@ -127,7 +155,8 @@ export function Onboarding() {
   }
 
   const last = i >= list.length - 1;
-  const action = has ? "Devam" : onlyNew && last && !s.perm && !s.href ? "Tamam" : s.action;
+  const action =
+    s.id === "voice" ? (heard ? "Devam" : perms.microphone === "granted" ? "Dinle" : s.action) : has ? "Devam" : onlyNew && last && !s.perm && !s.href ? "Tamam" : s.action;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-bg pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-label={onlyNew ? "Yenilikler" : "Başlangıç"}>
@@ -170,6 +199,35 @@ export function Onboarding() {
                 <SizePick key={v || "n"} v={v} label={label} on={curSize === v} onClick={() => pickSize(v)} delay={120 + k * 100} />
               ))}
             </div>
+          )}
+          {s.id === "voice" && (
+            <ul className="mt-6 w-full max-w-[21.25rem] space-y-2 text-left">
+              {CAN.map(([ic, t, d], k) => (
+                <li key={t} className="step-in flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 ring-1 ring-line" style={{ animationDelay: `${120 + k * 110}ms` }}>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                    <Icon name={ic} className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <b className="block text-[0.9375rem] font-semibold">{t}</b>
+                    <small className="block text-[0.8125rem] leading-snug text-mut">{d}</small>
+                  </span>
+                </li>
+              ))}
+              {heard && (
+                <li className="fade-in flex items-center justify-center gap-3 pt-1">
+                  {tts.speaking ? (
+                    <>
+                      <span className="eq" aria-hidden="true"><i /><i /><i /><i /></span>
+                      <button type="button" onClick={() => tts.stop()} className="text-[0.875rem] font-semibold text-acc">Sustur</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => tts.speak(WELCOME_SPEECH)} className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-acc">
+                      <Icon name="volume" className="size-4" /> Tekrar dinle
+                    </button>
+                  )}
+                </li>
+              )}
+            </ul>
           )}
           {s.id === "push" && (
             <ul className="mt-6 w-full max-w-[21.25rem] space-y-2 text-left">

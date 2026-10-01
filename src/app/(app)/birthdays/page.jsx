@@ -3,8 +3,6 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
 import { Icon } from "@/components/ui/Icon";
-import { BarButton, VoiceTextBar } from "@/components/ui/VoiceTextBar";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useData } from "@/features/data/DataProvider";
 import { daysBetween, leftLabel, monthYear, nextBirthday, upcomingBirthdays } from "@/lib/agenda";
@@ -17,7 +15,6 @@ const longDay = (s) => new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { week
 export default function BirthdaysPage() {
   const { birthdays } = useData();
   const { openBirthday } = useBirthday();
-  const { openAssistant } = useAssistant();
   const today = todayStr();
   const all = birthdays.map((b) => ({ ...b, ...nextBirthday(b, today) })).sort((a, b) => a.date.localeCompare(b.date));
   const next = all[0];
@@ -85,12 +82,6 @@ export default function BirthdaysPage() {
         );
       })}
 
-      <VoiceTextBar
-        placeholder="ör. Ayşe'nin doğum günü 12 Mart"
-        onMic={() => openAssistant({ listen: true })}
-        onSend={(t) => openAssistant({ text: t })}
-        leading={<BarButton icon="plus" label="Doğum günü ekle" onClick={() => openBirthday()} />}
-      />
     </main>
   );
 }

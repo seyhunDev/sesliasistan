@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ArchiveLink, DelBadge, Empty, Hero, HeroLabel, Label, Stat, card } from "@/components/ui/Page";
+import { ArchiveLink, Chips, DelBadge, Empty, Hero, HeroLabel, Label, Stat, card } from "@/components/ui/Page";
+import { useToast } from "@/components/ui/ToastProvider";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { TaskRow } from "@/components/dashboard/TaskRow";
 import { useAdd } from "@/features/add/AddProvider";
-import { AddBar } from "@/features/add/AddBar";
 import { useData } from "@/features/data/DataProvider";
 import { addDate } from "@/lib/ai/digest";
 import { groupTasks } from "@/lib/agenda";
@@ -16,12 +16,17 @@ import { useWho } from "@/features/data/useWho";
 
 
 // Görevler: üstte durum (açık, geciken, bugün, bu hafta; dağılım çubuğu), ana hesapta kişiye göre süzme,
-// altında son tarihe göre gruplar. Tamamlananlar ayrı sekmede.
+// altında son tarihe göre gruplar (gecikenler en üstte). Tek dokunuşla "yapıldı", bildirimde Geri al. Yapılanlar arşivde.
 export default function TasksPage() {
   const { tasks, plans, toggleTask, removeWithUndo, myUid, nameOf, members, isStaff } = useData();
   const pillOf = useWho(); // ana hesapta görevli etiketi; çalışanda "Ana hesap ekledi" yazısı
   const { openAdd } = useAdd();
+  const toast = useToast();
   const [who, setWho] = useState("all"); // all | me | uid
+  const done = (t) => {
+    toggleTask(t.id);
+    toast(`Yapıldı · ${t.title}`, { action: { label: "Geri al", onClick: () => toggleTask(t.id) } });
+  };
   const today = todayStr();
   const weekAgo = addDate(today, -6);
 
@@ -36,7 +41,8 @@ export default function TasksPage() {
   const week = cnt("tomorrow") + cnt("week");
   const rest = open.length - late - dueToday - week;
   const planTitle = (id) => plans.find((p) => p.id === id)?.title;
-  const people = !isStaff && members.length > 0 ? [["all", "Herkes"], ["me", "Ana hesap"], ...members.map((m) => [m.uid, (m.name || "").split(" ")[0]])] : [];
+  const countFor = (k) => open.filter((t) => (k === "all" ? true : k === "me" ? !assigneesOf(t).length || assigneesOf(t).includes(myUid) : assigneesOf(t).includes(k))).length;
+  const people = !isStaff && members.length > 0 ? [["all", "Herkes"], ["me", "Benim"], ...members.map((m) => [m.uid, (m.name || "").split(" ")[0]])].map(([k, l]) => [k, l, countFor(k)]) : [];
 
   const list = (items) => (
     <div className={`${card} divide-y divide-line overflow-hidden`}>
@@ -48,7 +54,7 @@ export default function TasksPage() {
             pill={pillOf(t)}
             who={pillOf(t) ? "" : whoText(t, myUid, nameOf)}
             badge={t.deleteReq && <DelBadge rec={t} />}
-            onToggle={() => toggleTask(t.id)}
+            onToggle={() => done(t)}
             onOpen={() => openAdd({ edit: { kind: "task", id: t.id } })}
           />
         </SwipeRow>
@@ -65,7 +71,7 @@ export default function TasksPage() {
       <Hero className="mt-2">
         <div className="flex items-baseline justify-between gap-3">
           <HeroLabel>DURUM</HeroLabel>
-          <span className="text-[0.75rem] tabular-nums text-white/75">son 7 günde {doneWeek} tamamlandı</span>
+          <span className="text-[0.75rem] tabular-nums text-white/75">son 7 günde {doneWeek} yapıldı</span>
         </div>
         <div className="mt-2 flex items-end gap-2">
           <b className="text-[2.625rem] font-semibold leading-none tracking-tight tabular-nums">{open.length}</b>
@@ -89,24 +95,10 @@ export default function TasksPage() {
       </Hero>
 
 
-      {people.length > 0 && (
-        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
-          {people.map(([k, l]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setWho(k)}
-              aria-pressed={who === k}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-[0.8125rem] font-semibold transition active:scale-95 ${who === k ? "bg-acc text-white" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.06)]"}`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
+      {people.length > 0 && <Chips value={who} onChange={setWho} options={people} className="mt-3" />}
 
       {tasks.length === 0 && <Empty icon="task" title="Henüz görev yok" sub="Aşağıdan söyle, yaz ya da + ile ekle." />}
-      {tasks.length > 0 && groups.length === 0 && <Empty icon="check" title="Açık görev kalmadı" sub="Tamamlananlar arşivde." />}
+      {tasks.length > 0 && groups.length === 0 && <Empty icon="check" title="Açık görev kalmadı" sub="Yapılanlar arşivde." />}
       {groups.map((g) => (
         <section key={g.key}>
           <Label tone={g.key === "late" ? "rec" : ""} right={g.items.length}>
@@ -117,7 +109,6 @@ export default function TasksPage() {
       ))}
 
       {tasks.length > 0 && <p className="mt-8 text-center text-[0.75rem] text-mut">İpucu: silmek için satırı sola kaydır.</p>}
-      <AddBar type="task" />
     </main>
   );
 }

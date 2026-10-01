@@ -14,13 +14,14 @@ import { OpenFromUrl } from "@/features/add/OpenFromUrl";
 import { ReceiptProvider } from "@/features/receipts/ReceiptProvider";
 import { AssistantProvider } from "@/features/assistant/AssistantProvider";
 import { AssistantFab } from "@/features/assistant/AssistantFab";
-import { TabBarHost } from "@/features/home/TabBar";
+import { DockProvider, TabBarHost } from "@/features/home/TabBar";
 import { TtsProvider } from "@/features/speech/TtsProvider";
 import { BrainSync } from "@/features/brain/BrainSync";
 import { MeetingProvider } from "@/features/meeting/MeetingProvider";
 import { logout } from "@/lib/auth";
 import { OfflineBanner } from "@/features/pwa/Pwa";
 import { Onboarding } from "@/features/onboarding/Onboarding";
+import { TryAssistant } from "@/features/onboarding/TryAssistant";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
@@ -52,6 +53,7 @@ export default function AppLayout({ children }) {
              <BirthdayProvider>
               <MeetingProvider>
                 <AssistantProvider>
+                 <DockProvider>
                   <OfflineBanner />
                   {children}
                   <TabBarHost />
@@ -59,6 +61,8 @@ export default function AppLayout({ children }) {
                   <BrainSync />
                   <OpenFromUrl />
                   <Onboarding />
+                  <TryAssistant />
+                 </DockProvider>
                 </AssistantProvider>
               </MeetingProvider>
              </BirthdayProvider>

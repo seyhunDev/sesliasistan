@@ -1,5 +1,6 @@
 "use client";
 
+import { doneOf } from "@/lib/doneWords";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Screen } from "@/components/ui/Screen";
@@ -22,7 +23,8 @@ import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
 import { ActionDock, Composer } from "./Composer";
 import { DraftCard } from "./DraftCard";
-import { AssignedView, AssistantPanel, Replies, ReplyComposer } from "./Assigned";
+import { AssignedView, AssistantPanel, Replies, ReplyComposer, recordFocus } from "./Assigned";
+import { MiniOrb } from "@/features/assistant/ConvoComposer";
 import { confirmWord } from "@/lib/ai/messageRules";
 import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
@@ -81,7 +83,6 @@ export function AddSheet({ open, onClose, seed }) {
   const [aiMode, setAiMode] = useState("msg"); // kayıt içi yazma modu: msg (aynen gider) | ai (asistan)
   const [msgText, setMsgText] = useState(""); // kayıt içi mesaj kutusunun yazısı
   const [pickAssign, setPickAssign] = useState(null); // kaydetmeden önce sorumlu sorusu: null | seçilen uid'ler
-  const [aiOpen, setAiOpen] = useState(false); // düzenlemede "sesle ya da yazarak değiştir" alanı
   const orig = useRef(""); // düzenlemede açılıştaki hâl (değişiklik var mı?)
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
@@ -436,7 +437,6 @@ export function AddSheet({ open, onClose, seed }) {
     setAiMode("msg");
     setMsgText("");
     setPickAssign(null);
-    setAiOpen(false);
     setReply({ engine: "", message: "" });
     setVoice(!!seed?.voice);
     if (edit) {
@@ -549,7 +549,7 @@ export function AddSheet({ open, onClose, seed }) {
     setOutbox(null);
     setEditReply("");
     tts.maybeSpeak(o.text ? "Gönderdim." : "Tamamdır.");
-    toast(o.text && o.done ? "Mesaj gönderildi, tamamlandı" : o.text ? "Mesaj gönderildi" : "Tamamlandı olarak işaretlendi");
+    toast(o.text && o.done ? `Mesaj gönderildi · ${doneOf(edit.kind).state.toLocaleLowerCase("tr-TR")}` : o.text ? "Mesaj gönderildi" : doneOf(edit.kind).toast);
     if (!locked && dirty) saveEdit();
   }
   function cancelOutbox(spoken = false) {
@@ -687,7 +687,7 @@ export function AddSheet({ open, onClose, seed }) {
             nameOf={nameOf}
             onDone={(on) => {
               setMyDone(edit.kind, edit.id, on);
-              toast(on ? "Tamamlandı olarak işaretlendi" : "Yeniden açıldı");
+              toast(on ? doneOf(edit.kind).toast : "Geri alındı");
             }}
             onReply={(t) => {
               addReply(edit.kind, edit.id, t);
@@ -707,7 +707,7 @@ export function AddSheet({ open, onClose, seed }) {
                 done={!!rec?.done}
                 onToggleDone={() => {
                   toggleTask(edit.id);
-                  toast(rec?.done ? "Görev yeniden açıldı" : "Görev tamamlandı");
+                  toast(rec?.done ? "Görev yeniden açıldı" : "Görev yapıldı");
                 }}
                 assign={assign}
                 onAddStaff={addStaff}
@@ -724,19 +724,15 @@ export function AddSheet({ open, onClose, seed }) {
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" assistant={assistant} docked />}
             <div className="mt-3" />
-            {/* Konuşması olmayan kayıtta: yapay zekayla değiştirme (istenince açılır) */}
-            {hasThread ? null : aiOpen ? (
-              <div className="animate-pop">
-                {composer}
+            {/* Konuşması olmayan kayıtta: ana asistan bu kaydı bilerek açılır (değiştir, tamamla, sil, birine yaz) */}
+            {!hasThread && rec && (
+              <div className="flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+                <MiniOrb focus={recordFocus(edit.kind, rec, nameOf, myUid)} examples={[edit.kind === "task" ? "Bu görevi tamamla" : "Saatini değiştir", "Yarına ertele", "Ali'ye bununla ilgili yaz"]} />
+                <span className="min-w-0 text-[0.8125rem] leading-snug text-mut">
+                  <b className="block text-[0.875rem] font-semibold text-fg">Asistana söyle</b>
+                  Dokun konuş, basılı tut yaz: değiştir, ertele, birine yaz.
+                </span>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAiOpen(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-[0.875rem] font-medium text-mut transition active:bg-card"
-              >
-                <Icon name="spark" className="size-4 text-acc" /> Sesle ya da yazarak değiştir
-              </button>
             )}
             {!hasThread && outbox && <div className="mt-3 overflow-hidden rounded-2xl bg-card">{panel}</div>}
             {!hasThread && !outbox && editReply && (
@@ -835,6 +831,10 @@ export function AddSheet({ open, onClose, seed }) {
             }}
             placeholder={locked ? "Ana hesaba mesaj yaz…" : "Mesaj yaz…"}
             assistant={assistant}
+            kind={edit.kind}
+            rec={rec}
+            nameOf={nameOf}
+            myUid={myUid}
           />
         </footer>
       ) : !staged && !locked && !edit && chat && !manual && !pickAssign ? (

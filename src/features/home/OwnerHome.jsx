@@ -17,6 +17,7 @@ import { HomeHero } from "./HomeHero";
 import { MoneyRow, TeamStrip } from "./TeamMoney";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 
 // Ana sayfa ("akıllı akış"), yukarıdan aşağı:
@@ -26,7 +27,7 @@ import { TodayCard } from "./TodayCard";
 // Çalışanda Karar, Ekip ve Mailler yok; bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
-  const { plans, tasks, notes, birthdays, lessons, myUid } = useData();
+  const { plans, tasks, notes, birthdays, lessons, myUid, members } = useData();
   const weather = useWeather();
   const now = useNow();
   const staff = profile?.role === "staff";
@@ -43,6 +44,7 @@ export function OwnerHome() {
     ["/tasks", "task", "Görevler", open],
     ["/notes", "note", "Notlar", notes.length],
     ["/birthdays", "cake", "Doğum günleri", birthdays.length],
+    listsFor(kind, members).length > 0 && ["/shopping", "cart", "Alışveriş"],
     lessons.length > 0 && ["/schedule", "book", "Dersler"],
     ["/archive", "archive", "Arşiv"],
     !staff && ["/mail", "mail", "Mailler"],

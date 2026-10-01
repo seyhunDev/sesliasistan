@@ -80,6 +80,7 @@ export function AuthProvider({ children }) {
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
             onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)
+            tourDone: !!doc_?.tourDone, // "Şimdi sen dene" (asistan düğmesini gösteren yönlendirme) görüldü/denendi mi
         }
         : null;
 

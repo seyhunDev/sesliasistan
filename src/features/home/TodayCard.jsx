@@ -83,7 +83,7 @@ export function TodayCard() {
                   : late
                     ? `${Math.round((Date.parse(today) - Date.parse(r.due)) / 864e5)} gün gecikti`
                     : done
-                      ? "Tamamlandı"
+                      ? "Yapıldı"
                       : "Görev";
               return (
                 <li key={`${k}${r.id}${done ? "d" : ""}`} className={`flex items-center gap-3 px-3.5 py-3 ${past ? "opacity-50" : ""}`}>

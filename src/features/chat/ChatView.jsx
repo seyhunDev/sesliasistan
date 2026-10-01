@@ -8,11 +8,12 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useNow } from "@/hooks/useNow";
-import { useSpeech } from "@/hooks/useSpeech";
-import { toMs, useChat } from "./ChatProvider";
+import { ConvoComposer } from "@/features/assistant/ConvoComposer";
+import { sendErrorText, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
+import { authFetch } from "@/lib/authFetch";
 
 const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
@@ -20,6 +21,21 @@ const ACT = "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[0.9375re
 const TYPING_MS = 6000;
 const EMOJI = ["👍", "❤️", "😂", "😮", "🙏", "✅"];
 const NAME_TONES = ["text-[#2c5163]", "text-[#8a4f0c]", "text-[#2f6446]", "text-[#8e3a34]", "text-[#553f86]", "text-[#2c6262]"];
+// Hazır yanıt önerileri: son mesaj başkasındansa yapay zeka 3 kısa yanıt önerir (mesaj başına bir kez; oturum boyunca saklanır)
+const SUGG = new Map();
+async function fetchReplies(key, body) {
+  if (SUGG.has(key)) return SUGG.get(key);
+  SUGG.set(key, []); // aynı mesaj için ikinci istek gitmesin
+  try {
+    const res = await authFetch("/api/replies", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const list = res.ok ? ((await res.json()).replies || []).slice(0, 3) : [];
+    SUGG.set(key, list);
+    return list;
+  } catch {
+    return [];
+  }
+}
+
 const toneOf = (uid = "") => NAME_TONES[[...uid].reduce((a, c) => a + c.charCodeAt(0), 0) % NAME_TONES.length];
 
 // Tek sohbet: üstte kişi/grup ve durum (çevrimiçi, yazıyor…), ortada mesajlar, altta sabit yazma alanı.
@@ -142,8 +158,38 @@ export function ChatView({ cid }) {
     setNewBelow(0);
   };
 
-  const sp = useSpeech({ onFinal: (t) => setText((p) => (p ? `${p} ${t}` : t)), onFail: (m) => toast(m) });
-  const listening = sp.status === "listening";
+  // Ana asistan bu sohbeti bilir: özetler, mesajlardan kayıt çıkarır; alıcı söylenmezse buraya yazar
+  const focusTo = GROUPS[cid]?.name || (chat?.type === "dm" ? personName(chat.other) : "");
+  const focus = chat && {
+    title: chat.title,
+    to: focusTo,
+    text: [
+      `Sohbet: ${chat.title} (${chat.type === "dm" ? "birebir" : "grup"})`,
+      `Varsayılan alıcı: ${focusTo || "yok (bu gruba asistan yazamaz; kişiyi ya da grubu sor)"}`,
+      "Son mesajlar (eskiden yeniye):",
+      ...msgs.slice(-15).filter((m) => !m.deleted && m.text).map((m) => `${m.by === uid ? "Ben" : personName(m.by)}: ${String(m.text).slice(0, 300)}`),
+    ].join("\n"),
+  };
+
+  // Son mesaj başkasındansa hazır yanıtlar; dokununca kutuya yazılır, istersen düzeltip gönderirsin
+  const last = msgs.at(-1);
+  const suggKey = last && last.by !== uid && !last.deleted && last.text && !last.pending ? `${cid}/${last.id}` : "";
+  const [sugg, setSugg] = useState({ key: "", list: [] });
+  useEffect(() => {
+    if (!suggKey) return;
+    let live = true;
+    const body = {
+      messages: msgs.slice(-8).filter((m) => !m.deleted && m.text).map((m) => ({ me: m.by === uid, name: personName(m.by).split(" ")[0], text: m.text })),
+      name: personName(uid).split(" ")[0],
+      group: GROUPS[cid]?.name || (chat?.type === "dm" ? "" : chat?.name || "grup"),
+    };
+    fetchReplies(suggKey, body).then((list) => live && setSugg({ key: suggKey, list }));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggKey]);
+  const replies = sugg.key === suggKey && !text && !editing ? sugg.list : [];
 
   async function submit() {
     const t = text.trim();
@@ -168,7 +214,7 @@ export function ChatView({ cid }) {
     });
     if (!ok) {
       setText(t);
-      toast("Mesaj gönderilemedi, bağlantını kontrol et");
+      toast(sendErrorText());
     }
     input.current?.focus();
   }
@@ -376,51 +422,53 @@ export function ChatView({ cid }) {
               </button>
             </div>
           )}
-          {listening ? (
-            <div className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2 shadow-sm">
-              <span className="size-2.5 animate-pulse rounded-full bg-rec" />
-              <p className="min-w-0 flex-1 truncate text-[0.875rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
-              <button type="button" onClick={() => sp.stop("edit")} className="h-9 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white">
-                Bitti
-              </button>
+          {replies.length > 0 && (
+            <div className="fade-in -mx-2.5 mb-1.5 flex gap-1.5 overflow-x-auto px-2.5 py-1 [scrollbar-width:none]" aria-label="Hazır yanıtlar">
+              {replies.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => {
+                    setText(r);
+                    input.current?.focus();
+                  }}
+                  className="shrink-0 rounded-full bg-card px-3.5 py-2 text-[0.875rem] font-medium text-acc ring-1 ring-acc/25 transition active:scale-95"
+                >
+                  {r}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="flex items-end gap-2">
-              {!editing && (
+          )}
+          <ConvoComposer
+            value={text}
+            setValue={setText}
+            onSend={submit}
+            inputRef={input}
+            focus={focus}
+            examples={["Bu sohbeti özetle", "Bundan görev çıkar", "Yarın 9'da iskelede olalım yaz"]}
+            sendIcon={editing ? "check" : "up"}
+            sendLabel={editing ? "Düzenlemeyi kaydet" : "Gönder"}
+            leading={
+              !editing && (
                 <button type="button" onClick={() => setAttach(true)} aria-label="Ekle: fotoğraf, dosya, sesli mesaj" className="grid size-11 shrink-0 place-items-center rounded-full text-acc active:bg-card">
                   <Icon name="plus" className="size-6" />
                 </button>
-              )}
-              <textarea
-                ref={input}
-                value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  if (exists) setTyping(cid, !!e.target.value);
-                }}
-                onBlur={() => exists && setTyping(cid, false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(pointer: fine)").matches) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
-                rows={1}
-                placeholder="Mesaj"
-                aria-label="Mesaj"
-                className="max-h-36 min-h-11 flex-1 resize-none rounded-[1.375rem] bg-card px-4 py-[0.6875rem] text-base leading-snug outline-none ring-1 ring-line [field-sizing:content] placeholder:text-mut focus:ring-acc"
-              />
-              {text.trim() ? (
-                <button type="button" onClick={submit} aria-label={editing ? "Düzenlemeyi kaydet" : "Gönder"} className="grid size-11 shrink-0 place-items-center rounded-full bg-[#2c5163] text-white active:scale-90">
-                  <Icon name={editing ? "check" : "up"} className="size-5" />
-                </button>
-              ) : (
-                <button type="button" onClick={() => sp.start({ autoStop: 8000 })} aria-label="Sesle yaz" className="grid size-11 shrink-0 place-items-center rounded-full bg-[#2c5163] text-white active:scale-90">
-                  <Icon name="mic" className="size-5" />
-                </button>
-              )}
-            </div>
-          )}
+              )
+            }
+            inputProps={{
+              onChange: (e) => {
+                setText(e.target.value);
+                if (exists) setTyping(cid, !!e.target.value);
+              },
+              onBlur: () => exists && setTyping(cid, false),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia("(pointer: fine)").matches) {
+                  e.preventDefault();
+                  submit();
+                }
+              },
+            }}
+          />
         </footer>
       </div>
 

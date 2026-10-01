@@ -9,6 +9,10 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch } from "@/lib/receipts";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
+import { badgeCount } from "@/lib/badge";
+
+// Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
+const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body"];
 
 // Veri: orgs/{işletme}/plans | tasks | notes | receipts (+ receiptImages, members). İşletme = ana hesabın uid'si.
 // Her kayıtta createdByUid (ekleyen), assignees (sorumlu çalışanlar; boş = genel) ve people (görebilenler: ekleyen + sorumlular) bulunur.
@@ -321,6 +325,8 @@ export function DataProvider({ children }) {
       try {
         await updateDoc(doc(db, "orgs", getOrgId(), k, id), full);
         if (full.assignees?.length && ["plan", "task", "note"].includes(kind)) notifyAssign(kind, id); // yeni eklenen sorumlulara
+        // Zaman, yer, başlık ya da metin değiştiyse kayıttaki diğer kişilere "değişti" bildirimi (sunucu kayıttan okur)
+        if (["plan", "task", "note"].includes(kind) && Object.keys(rest).some((x) => CHANGE_KEYS.includes(x))) notifyEvent(kind, id, "changed");
       } catch (e) {
         fail(e, "Güncelleme");
       }
@@ -381,6 +387,10 @@ export function DataProvider({ children }) {
       });
       try {
         const ownerId = getOrgId();
+        // Kayıtta başka kişiler varsa önce "iptal/kaldırıldı" bildirimi (sunucu kaydı silinmeden okur)
+        const gone = ["plan", "task", "note"].includes(kind) && cur.current[k]?.find?.((x) => x.id === id);
+        const others = gone ? [...new Set([gone.createdByUid, ...(gone.people || []), ...(gone.assignees || [])])].filter((u) => u && u !== me.current.uid) : [];
+        if (others.length) await notifyEvent(kind, id, "deleted");
         const batch = writeBatch(db);
         batch.delete(doc(db, "orgs", ownerId, k, id));
         if (kind === "plan") {
@@ -452,11 +462,10 @@ export function DataProvider({ children }) {
   // henüz açılmamış yeni kayıtlar + başkalarının yazdığı görülmemiş notu olan kayıtlar (kayıt başına 1)
   useEffect(() => {
     if (!uid || !ready || typeof navigator === "undefined" || !navigator.setAppBadge) return;
-    let n = extraBadge; // okunmamış sohbetler (ChatProvider bildirir)
-    for (const k of ["plans", "tasks", "notes"])
-      for (const r of data[k]) if (!(k === "tasks" && r.done) && ((isNewFor(r, uid) && !r.doneBy?.[uid]) || unseenNotes(r, uid).length)) n++;
-    (n ? navigator.setAppBadge(Math.min(n, 99)) : navigator.clearAppBadge()).catch(() => {});
-  }, [data, uid, ready, extraBadge]);
+    // Sunucu da her bildirimle aynı kuralla sayar (lib/badge): telefondaki sayı ile "Senin için" tutarlı
+    const n = badgeCount({ uid, owner: !staff, plans: data.plans, tasks: data.tasks, notes: data.notes, receipts: data.receipts, unreadChats: extraBadge });
+    (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+  }, [data, uid, ready, extraBadge, staff]);
 
   // ---- Geri alınabilir silme ----
   // Kayıt hemen listeden kalkar, "Geri al" düğmeli bildirim çıkar. Süre dolunca gerçekten silinir.
@@ -622,7 +631,10 @@ export function DataProvider({ children }) {
       const payStatus = me.current.staff ? "pending" : null;
       batch.set(ref, { ...receiptBody(d), hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, payStatus });
       if (image) batch.set(doc(db, "orgs", ownerId, "receiptImages", ref.id), { data: image, createdAt: now, ...who });
-      batch.commit().catch((e) => fail(e, "Fiş kaydetme"));
+      batch
+        .commit()
+        .then(() => payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
+        .catch((e) => fail(e, "Fiş kaydetme"));
       return ref.id;
     },
     [getOrgId, fail],

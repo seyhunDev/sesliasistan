@@ -1,4 +1,4 @@
-import { arrayUnion, collection, doc, getDoc, getDocs, increment, query, setDoc, where } from "firebase/firestore";
+import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { predict, train } from "./model";
 
@@ -12,6 +12,9 @@ import { predict, train } from "./model";
 //     Her eşitleme = 1 yazma (aylık belgeye arrayUnion).
 //   - Okuma: yerel kopya RELOAD_DAYS'den eskiyse bu ay + geçen ay = 2 okuma.
 //   - Aylık belge DOC_LIMIT'e yaklaşınca yazma durur (Firestore belge sınırı 1 MB).
+// Kapatma ve sıfırlama (Ayarlar › Öğrenme): profildeki brainOff kapalıysa hiçbir şey kaydedilmez ve öğrenilenler kullanılmaz.
+//   Sıfırlama belgeleri boşaltır (resetAt yazar); öbür cihazlar profil (brainResetAt) ya da belgedeki resetAt ile yerel kopyayı siler.
+// Sayaçlar (hits): bu ay kaç isteğin yapay zekasız (kural / öğrenilen) çözüldüğü, kaçının yapay zekaya gittiği.
 const KEY = "sa-brain";
 const FLUSH_AT = 15;
 const MIN_GAP = 2 * 60 * 1000;
@@ -25,7 +28,8 @@ const prevYm = () => {
   return ym(new Date(d.getFullYear(), d.getMonth() - 1, 1));
 };
 const sizeOf = (x) => new Blob([JSON.stringify(x)]).size;
-const empty = () => ({ uid: "", org: "", role: "", items: [], team: 0, pending: [], loadedAt: 0, flushedAt: 0, month: ym(), reads: 0, writes: 0, docBytes: 0 });
+const noHits = () => ({ local: 0, brain: 0, ai: 0 });
+const empty = () => ({ uid: "", org: "", role: "", items: [], team: 0, pending: [], loadedAt: 0, flushedAt: 0, month: ym(), reads: 0, writes: 0, docBytes: 0, off: false, clearedAt: 0, hits: noHits() });
 const docId = (uid, m) => `${uid}_${m}`;
 
 let state = null;
@@ -39,7 +43,8 @@ function load() {
   } catch {
     state = empty();
   }
-  if (state.month !== ym()) Object.assign(state, { month: ym(), reads: 0, writes: 0, docBytes: 0 }); // aylık sayaçlar
+  if (state.month !== ym()) Object.assign(state, { month: ym(), reads: 0, writes: 0, docBytes: 0, hits: noHits() }); // aylık sayaçlar
+  state.hits ||= noHits();
   return state;
 }
 function save() {
@@ -52,13 +57,15 @@ function save() {
 const key = (e) => `${e.t}|${e.x}`;
 
 // Oturum açılınca: kullanıcı ya da işletme değiştiyse yerel veriyi sıfırla, gerekiyorsa Firebase'den yükle
-// profile: { uid, orgId, role: "owner" | "staff" }
+// profile: { uid, orgId, role: "owner" | "staff", brainOff, brainResetAt }
 export async function initBrain(profile) {
   const s = load();
-  const { uid, orgId, role } = profile || {};
+  const { uid, orgId, role, brainOff, brainResetAt } = profile || {};
   if (!uid || !orgId) return;
   if ((s.uid && s.uid !== uid) || (s.org && s.org !== orgId) || (s.role && s.role !== role)) Object.assign(s, empty());
-  Object.assign(s, { uid, org: orgId, role });
+  Object.assign(s, { uid, org: orgId, role, off: !!brainOff });
+  if (brainOff) s.pending = [];
+  if ((brainResetAt || 0) > s.clearedAt) clearLocal(s, brainResetAt); // başka cihazda sıfırlandı
   if (Date.now() - s.loadedAt < RELOAD_DAYS * 864e5 && s.items.length) return save();
   try {
     const months = [ym(), prevYm()];
@@ -78,6 +85,9 @@ export async function initBrain(profile) {
       team.forEach((sn) => docs.push({ id: sn.id, ...sn.data() }));
       legacy.forEach((sn) => sn.exists() && docs.push({ id: sn.id, ...sn.data(), uid, month: sn.id }));
     }
+    // Belgeler (ana hesap tarafından da) sıfırlandıysa yerel kopya da silinir
+    const resetAt = Math.max(0, ...docs.map((d) => d.resetAt || 0));
+    if (resetAt > s.clearedAt) clearLocal(s, resetAt);
     const seen = new Set(s.items.map(key));
     s.team = 0;
     docs.forEach((d) => {
@@ -99,11 +109,16 @@ export async function initBrain(profile) {
   save();
 }
 
+function clearLocal(s, at) {
+  Object.assign(s, { items: [], pending: [], team: 0, docBytes: 0, clearedAt: at });
+}
+
 // Bir komutu ve sonucunu kaydet. src: "local" | "ai" | "user"
 export function record(text, label, src) {
   const x = String(text || "").replace(/\s+/g, " ").trim().slice(0, 160);
   if (!x || !label) return;
   const s = load();
+  if (s.off) return;
   const e = { x, l: label, s: src, t: Math.floor(Date.now() / 1000) };
   s.items.push(e);
   s.pending.push(e);
@@ -116,7 +131,7 @@ export function record(text, label, src) {
 export async function flush(force = false) {
   const s = load();
   const uid = auth.currentUser?.uid;
-  if (!uid || uid !== s.uid || !s.org || !s.pending.length) return false;
+  if (!uid || uid !== s.uid || !s.org || !s.pending.length || s.off) return false;
   if (!force && Date.now() - s.flushedAt < MIN_GAP) return false;
   const batch = s.pending.slice(0, 200);
   const bytes = sizeOf(batch);
@@ -146,7 +161,7 @@ export async function flush(force = false) {
 // Tahmin: yeterli örnek yoksa null
 export function guess(text) {
   const s = load();
-  if (s.items.length < 5) return null;
+  if (s.off || s.items.length < 5) return null;
   if (!index) index = train(s.items);
   return predict(index, text);
 }
@@ -165,8 +180,59 @@ export function stats() {
     reads: s.reads,
     writes: s.writes,
     flushedAt: s.flushedAt,
+    off: !!s.off,
+    hits: { ...noHits(), ...s.hits },
     byLabel: Object.entries(by).sort((a, b) => b[1] - a[1]),
   };
+}
+
+// İsteğin nasıl çözüldüğünü say: "local" (kurallar), "brain" (öğrenilenler), "ai" (yapay zeka)
+export function countHit(kind) {
+  const s = load();
+  s.hits[kind] = (s.hits[kind] || 0) + 1;
+  save();
+}
+
+// Öğrenmeyi aç/kapat (profilde tutulur: tüm cihazlarda geçerli). Kapalıyken bekleyenler gönderilmez.
+export async function setBrainOff(off) {
+  const s = load();
+  s.off = !!off;
+  if (off) s.pending = [];
+  save();
+  const uid = auth.currentUser?.uid;
+  if (uid) await updateDoc(doc(db, "users", uid), { brainOff: !!off });
+}
+
+// Öğrenilenleri sil. Ana hesap: işletmedeki herkesinkini; çalışan: yalnız kendisininkini.
+// Belgeler boşaltılır (resetAt ile) ki öbür cihazlar da yerel kopyalarını silsin. Dönüş: silinen örnek sayısı.
+export async function resetBrain() {
+  const s = load();
+  const uid = auth.currentUser?.uid;
+  if (!uid || uid !== s.uid || !s.org) throw new Error("Oturum yok");
+  const at = Date.now();
+  const blank = (u, m) => ({ uid: u, month: m, items: [], n: 0, bytes: 0, v: 2, resetAt: at });
+  let n = 0;
+  if (s.role === "staff") {
+    for (const m of [ym(), prevYm()]) {
+      const ref = doc(db, "orgs", s.org, "learn", docId(uid, m));
+      const sn = await getDoc(ref);
+      n += sn.exists() ? (sn.data().items || []).length : 0;
+      await setDoc(ref, blank(uid, m));
+    }
+  } else {
+    const all = await getDocs(collection(db, "orgs", s.org, "learn"));
+    for (const d of all.docs) {
+      n += (d.data().items || []).length;
+      // Eski biçim (ay adlı belge) silinir; kişi belgeleri boşaltılır
+      if (!d.data().uid) await deleteDoc(d.ref);
+      else await setDoc(d.ref, blank(d.data().uid, d.data().month || ym()));
+    }
+  }
+  await updateDoc(doc(db, "users", uid), { brainResetAt: at }).catch(() => {});
+  clearLocal(s, at);
+  s.loadedAt = Date.now();
+  save();
+  return n;
 }
 
 export const subscribe = (f) => (listeners.add(f), () => listeners.delete(f));

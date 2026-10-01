@@ -59,3 +59,34 @@ export const suggestUsername = (name) =>
     .replace(/^\.+|\.+$/g, "")
     .slice(0, 30);
 export const validUsername = (u) => /^[a-z0-9][a-z0-9._-]{2,29}$/.test(u);
+
+// Kişiler sayfaları: Çalışanlar, Aile, Sporcular (sporcu, öğrenci, veli), Diğer
+export const PEOPLE_GROUPS = {
+  staff: { title: "Çalışanlar", icon: "users", kinds: ["staff"], add: "staff" },
+  family: { title: "Aile", icon: "home", kinds: ["family"], add: "family" },
+  athletes: { title: "Sporcular", icon: "anchor", kinds: ["athlete", "student", "parent"], add: "athlete" },
+  other: { title: "Diğer", icon: "user", kinds: ["other"], add: "other" },
+};
+export const groupOfKind = (k) => Object.keys(PEOPLE_GROUPS).find((g) => PEOPLE_GROUPS[g].kinds.includes(k)) || "other";
+
+// Türkiye cep numarası → WhatsApp biçimi (905321234567); geçersizse ""
+export function waPhone(raw) {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("0")) d = `90${d.slice(1)}`;
+  else if (d.length === 10 && d.startsWith("5")) d = `90${d}`;
+  return d.length >= 11 ? d : "";
+}
+
+// Giriş bilgisi mesajı (WhatsApp)
+export function loginMessage({ name, login, password, site, forName }) {
+  const first = String(name || "").split(" ")[0];
+  const who = forName ? `${String(forName).split(" ")[0]} için ` : "";
+  return [
+    `Merhaba ${first}, ${who}Sesli Asistan giriş bilgileri:`,
+    site,
+    `Kullanıcı adı: ${login}`,
+    `Şifre: ${password}`,
+    "Girdikten sonra şifreni Ayarlar'dan değiştirebilirsin.",
+  ].filter(Boolean).join("\n");
+}

@@ -3,6 +3,7 @@ import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { TOOL, toDrafts } from "@/lib/ai/schema";
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -77,7 +78,7 @@ async function handle(request) {
       source: "ai",
     });
   } catch (e) {
-    console.error(`[meeting:${provider}]`, e.message);
+    logAiError("meeting", provider, e);
     return NextResponse.json({ error: e.status === 429 ? "Yapay zeka kotası dolu" : "Yapay zeka yanıt vermedi" }, { status: 502 });
   }
 }

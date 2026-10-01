@@ -9,7 +9,7 @@ export const MODEL_V = 1;
 // Etiketler (label):
 //   create:plan | create:task | create:note | create:plan+note | create:multi
 //   nav:home | nav:plans | nav:tasks | nav:notes | nav:receipts
-//   receipt | complete | summary | query | action:delete | action:update | chat
+//   receipt | complete | summary | query | action:delete | action:update | chat | send
 export const LABELS = {
   "create:plan": "Plan ekleme",
   "create:task": "Görev ekleme",
@@ -24,6 +24,7 @@ export const LABELS = {
   "action:delete": "Silme",
   "action:update": "Değiştirme",
   chat: "Sohbet",
+  send: "Mesaj gönderme",
 };
 
 // Kaynağın güveni: kullanıcı kaydettiyse en yüksek
@@ -38,6 +39,7 @@ export function tokens(text) {
     .toLocaleLowerCase("tr-TR")
     .replace(/saat \d{1,2}:\d{2}/g, " #saat ")
     .replace(/\d+/g, " #sayı ")
+    .replace(/(^|\s)(pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|bugün|yarın|öbür gün|haftaya)\S*/gu, " #gün ")
     .replace(/[^\p{L}#\s]/gu, " ");
   const ws = t.split(/\s+/).filter((w) => w && !STOP.has(w)).map((w) => (w[0] === "#" ? w : stem(w)));
   const out = [...ws];
@@ -132,6 +134,7 @@ export function labelFromAI(r) {
   if (op === "delete") return "action:delete";
   if (op === "update") return "action:update";
   if (r.intent === "navigate" && r.navigate) return `nav:${r.navigate}`;
+  if (r.intent === "message" && (r.send?.text || r.send?.to)) return "send";
   if (r.intent === "query") return "query";
   if (r.intent === "chat") return "chat";
   return "";

@@ -95,7 +95,7 @@ export function TeamStrip() {
   const tiles = [
     <Tile
       key="staff"
-      href="/staff"
+      href="/people/staff"
       icon="users"
       title="Çalışanlar"
       count={staff.length}
@@ -108,7 +108,7 @@ export function TeamStrip() {
     family.length > 0 && (
       <Tile
         key="family"
-        href="/staff"
+        href="/people/family"
         icon="home"
         title="Aile"
         count={family.length}

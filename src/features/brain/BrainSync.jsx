@@ -11,12 +11,14 @@ export function BrainSync() {
   const uid = profile?.uid;
   const orgId = profile?.orgId;
   const role = profile?.role;
+  const brainOff = !!profile?.brainOff;
+  const brainResetAt = profile?.brainResetAt || 0;
   useEffect(() => {
     if (!uid || !orgId) return;
-    initBrain({ uid, orgId, role });
+    initBrain({ uid, orgId, role, brainOff, brainResetAt });
     const onHide = () => document.visibilityState === "hidden" && flush();
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
-  }, [uid, orgId, role]);
+  }, [uid, orgId, role, brainOff, brainResetAt]);
   return null;
 }

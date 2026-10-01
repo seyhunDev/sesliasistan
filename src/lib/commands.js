@@ -1,6 +1,7 @@
 import { interpretRules } from "@/lib/ai/rules";
 import { addDate, weekRange } from "@/lib/ai/digest";
-import { localNavigate, localReceipt } from "@/lib/assistantLocal";
+import { localReceipt } from "@/lib/assistantLocal";
+import { localNavigate } from "@/lib/nav";
 import { todayStr } from "@/lib/utils/format";
 import { spokenTime } from "@/lib/utils/speak";
 import { normalizeSpeech } from "@/lib/speech/normalize";
@@ -21,7 +22,7 @@ const QUESTION_W = /(^| )(mı|mi|mu|mü|neler|ne|kaç|hangi|nedir|nerede)( |$)/;
 // ---- Yardım ----
 const HELP = /^(yardım|komutlar|ne yapabilirsin|neler yapabilirsin|nasıl kullanırım|ne diyebilirim)( |$)/;
 const HELP_MSG =
-  "Şunları hemen yaparım: “fiş yükle” dersen kamerayı açarım. “Görevleri aç” gibi sayfa açarım. “Bugün neler var”, “bu hafta özeti”, “geciken görevler” diye sorabilirsin. “Yarın saat onda antrenman ekle”, “tekneleri hazırla görevi ekle”, “not al malzeme odası dolu” diye kayıt eklerim. “Tekneleri hazırla görevini tamamla” dersen tamamlarım. Daha karmaşık isteklerde yapay zekaya sorarım.";
+  "Şunları hemen yaparım: “fiş yükle” dersen kamerayı açarım. “Yoklamayı aç”, “ana sayfaya dön”, “ekip grubunu aç” gibi sayfa ve sohbet açarım. “Bugün neler var”, “bu hafta özeti”, “geciken görevler” diye sorabilirsin. “Yarın saat onda antrenman ekle”, “tekneleri hazırla görevi ekle”, “not al malzeme odası dolu” diye kayıt eklerim. “Tekneleri hazırla görevini tamamla” dersen tamamlarım. Daha karmaşık isteklerde yapay zekaya sorarım.";
 
 // ---- Özet ----
 const RANGES = [
@@ -179,9 +180,18 @@ export function localCreate(raw, today = todayStr()) {
 // Yapay zekaya ulaşılamadığında: öğrenilmiş örneklerden en yakın niyeti tahmin et, komuta çevir.
 // Güven düşükse null (uydurma yapmaz). Dönüşte brain: { label, score } bilgisi de var.
 const MIN_SCORE = 0.55;
-export function brainCommand(raw, today = todayStr()) {
+// Yapay zekadan ÖNCE kullanılacak kadar emin olmak için (hızlı ve ücretsiz): yüksek güven, çok benzer örnek,
+// aynı etiketli en az iki örnek (ya da neredeyse aynı cümle). Sonuç yine taslak/onay kartı olarak gelir.
+const FIRST = { score: 0.8, sim: 0.5, agree: 2, same: 0.9 };
+export function sureGuess(raw) {
+  const g = guess(normalizeSpeech(raw));
+  if (!g || g.score < FIRST.score || g.sim < FIRST.sim) return null;
+  if (g.sim >= FIRST.same) return g;
+  return g.near.filter((n) => n.l === g.label && n.sim >= FIRST.sim * 0.8).length >= FIRST.agree ? g : null;
+}
+export function brainCommand(raw, today = todayStr(), sure = null) {
   const text = normalizeSpeech(raw);
-  const g = guess(text);
+  const g = sure || guess(text);
   if (!g || g.score < MIN_SCORE) return null;
   const brain = { label: g.label, score: +g.score.toFixed(2) };
   if (g.label === "receipt") return { type: "receipt", brain };
@@ -208,7 +218,7 @@ export function localCommand(raw, data, today = todayStr()) {
   if (!t) return null;
   if (HELP.test(t)) return { type: "reply", message: HELP_MSG, show: [] };
   if (localReceipt(text)) return { type: "receipt" };
-  if (isMeeting(text)) return { type: "meeting" };
+  if (isMeeting(raw) || isMeeting(text)) return { type: "meeting" }; // ses düzeltmesi "kaydet"i "ekle"ye çevirir; ham cümleye de bak
   const done = complete(t, data);
   if (done) return done;
   const created = localCreate(text, today);
@@ -217,7 +227,7 @@ export function localCommand(raw, data, today = todayStr()) {
   if (tl) return tl;
   const sum = summary(t, data, today);
   if (sum) return sum;
-  const page = localNavigate(text);
-  if (page) return { type: "navigate", page };
+  const nav = localNavigate(text);
+  if (nav?.page) return { type: "navigate", page: nav.page };
   return null;
 }

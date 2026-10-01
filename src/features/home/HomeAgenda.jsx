@@ -142,7 +142,7 @@ export function HomeAgenda() {
       <li key={x.id} className="flex items-center gap-3 py-1.5">
         <button
           onClick={() => toggleTask(x.id)}
-          aria-label="Tamamlandı olarak işaretle"
+          aria-label="Yapıldı olarak işaretle"
           className="grid size-5 shrink-0 place-items-center rounded-full border-[0.0938rem] border-mut/60 text-transparent transition active:scale-90 active:border-emerald-500 active:bg-emerald-500 active:text-white"
         >
           <Icon name="check" className="size-3 [stroke-width:3]" />

@@ -1,0 +1,129 @@
+// Sesli/yazılı sayfa geçişi: "yoklamayı aç", "planlara git", "ana sayfaya dön", "ekip ile mesaj sayfamı aç".
+// Yapay zekaya gitmeden çözülür (anında). Emin olunamayan cümlelerde null döner; o zaman yapay zekaya sorulur.
+// Dönüş: { page } | { chat: "team" | "family" | "athletes" } | { chatWith: "<kişi adı>" } | null
+
+// need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · owner: ana hesap · receipts: fiş ekleyebilen
+export const PAGES = {
+  home: { path: "/", label: "Ana sayfa" },
+  calendar: { path: "/calendar", label: "Takvim" },
+  messages: { path: "/messages", label: "Mesajlar" },
+  plans: { path: "/plans", label: "Planlar" },
+  tasks: { path: "/tasks", label: "Görevler" },
+  notes: { path: "/notes", label: "Notlar" },
+  receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
+  attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
+  athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
+  myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
+  shopping: { path: "/shopping", label: "Alışveriş listesi" },
+  birthdays: { path: "/birthdays", label: "Doğum günleri" },
+  schedule: { path: "/schedule", label: "Ders programı" },
+  archive: { path: "/archive", label: "Arşiv" },
+  settings: { path: "/settings", label: "Ayarlar" },
+  people: { path: "/staff", label: "Kişiler", need: "owner" },
+  peopleStaff: { path: "/people/staff", label: "Çalışanlar", need: "owner" },
+  peopleFamily: { path: "/people/family", label: "Aile kişileri", need: "owner" },
+  peopleAthletes: { path: "/people/athletes", label: "Sporcu kişileri", need: "owner" },
+};
+export const PAGE_KEYS = Object.keys(PAGES);
+
+const lower = (s) => String(s || "").toLocaleLowerCase("tr-TR");
+const clean = (s) => lower(s).replace(/[.,!?;:"“”()]/g, " ").replace(/['’]/g, "'").replace(/\s+/g, " ").trim();
+
+// Gitme/açma fiilleri (kibar ve konuşma biçimleriyle). "açık" (açık görevler) fiil değildir.
+const VERB =
+  /(^|\s)(aç|açar|açsana|açalım|açın|açabilir\S*|açıver|açar mısın|açarmısın|göster|gösterir|göstersene|gösterebilir\S*|git|gidelim|gidebilir\S*|gidiver|geç|geçelim|geçebilir\S*|götür|götürür\S*|gir|girelim|girebilir\S*|bak|bakalım|bakayım|bakmak|dön|dönelim|getir|görmek|görelim|görüntüle|aç bakalım)(?=\s|$)/;
+const PAGE_W = /(^|\s)(sayfa\S*|ekran\S*|bölüm\S*|kısm\S*|menü\S*)(?=\s|$)/;
+// Bunlar varsa sayfa açma değil: soru, zaman, başka iş
+const QUESTION = /(^|\s)(neler|ne var|kaç|hangi|var mı|nedir|ne zaman|nerede|kim|kimler|mı|mi|mu|mü)(?=\s|$)|\?/;
+const POLITE_Q = /(aç|göster|götür|geç|gir|bak)\S* m[ıiuü]s[ıiuü]n/; // "açar mısın" soru değil, ricadır
+const TIME_W = /(^|\s)(bugün\S*|yarın\S*|dün|haftaya|bu hafta\S*|geçen|gelecek|önümüzdeki|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|saat \d|\d{1,2}[:.]\d{2})(?=\s|$)/;
+const OTHER_JOB = /(^|\s)(ekle\S*|oluştur\S*|kaydet\S*|sil\S*|yaz(?!ış)\S*|gönder\S*|söyle\S*|ilet\S*|tamamla\S*|hatırlat\S*|geldi\S*|gelmedi\S*|izinli|çek\S*|yükle\S*|not al\S*|haber\S*|de ki|sor\S*)(?=\s|$)/;
+
+const CHAT_W = /(^|\s)(mesaj\S*|sohbet\S*|konuşma\S*|yazışma\S*|grub\S*|grup\S*|chat)(?=\s|$)/;
+const PEOPLE_W = /(^|\s)(kişi\S*|rehber\S*|liste\S*|bilgi\S*|hesap\S*|üye\S*)(?=\s|$)/;
+const GROUP = [
+  ["team", /(^|\s)(ekip\S*|ekib\S*|takım\S*)(?=\s|$)/],
+  ["family", /(^|\s)(aile\S*)(?=\s|$)/],
+  ["athletes", /(^|\s)(sporcu\S*)(?=\s|$)/],
+];
+
+// Sıra önemli: özel olan önce ("yoklamam" > "yoklama", "doğum günü" > "gün")
+const TARGETS = [
+  ["myAttendance", /(^|\s)(yoklamam\S*|yoklama geçmişim\S*|devamsızlığım\S*)(?=\s|$)/],
+  ["attendance", /(^|\s)yoklama\S*/],
+  ["birthdays", /(^|\s)doğum ?gün\S*/],
+  ["schedule", /(^|\s)(ders\S*|okul programı\S*)/],
+  ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
+  ["archive", /(^|\s)arşiv\S*/],
+  ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
+  ["receipts", /(^|\s)(fiş\S*|fatura\S*|harcama\S*|masraf\S*)/],
+  ["tasks", /(^|\s)(görev\S*|yapılacak\S*|işler\S*|işlerim\S*)/],
+  ["notes", /(^|\s)not(lar\S*|ları\S*|larım\S*|um\S*|u|a)?(?=\s|$)/],
+  ["calendar", /(^|\s)takvim\S*/],
+  ["plans", /(^|\s)(plan\S*|etkinlik\S*|program\S*)/],
+  ["peopleStaff", /(^|\s)(çalışan\S*|personel\S*)/],
+  ["people", /(^|\s)(kişi\S*|rehber\S*)/],
+  ["messages", /(^|\s)(mesaj\S*|sohbet\S*|konuşma\S*|yazışma\S*)/],
+  ["home", /(ana ?sayfa\S*|ana ekran\S*|başa dön\S*|başlangıç\S*|eve dön\S*|en başa\S*)/],
+];
+
+// Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası")
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|mesajlar|planlar|görevler|notlar|takvim|fişler|arşiv|kişiler|yoklama|yoklamam|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+
+// Kişi adı geçiyor mu ("Ali ile mesajlaşmayı aç", "Sanver'in sohbeti"): adın ilk kelimesi ya da tam adı, ekli hâliyle
+function personIn(t, names) {
+  const toks = t.split(" ");
+  const fold = (s) => lower(s).replace(/'.*$/, "");
+  let best = null;
+  for (const n of names || []) {
+    const full = lower(n).trim();
+    if (!full) continue;
+    const first = full.split(" ")[0];
+    if (first.length < 2) continue;
+    const hitFull = t.includes(full);
+    const hitFirst = toks.some((w) => {
+      const f = fold(w);
+      return f === first || (f.startsWith(first) && f.length - first.length <= 4); // Ali'ye, Aliyle, Sanver'le
+    });
+    if (hitFull || hitFirst) {
+      if (best && !hitFull) return { ambiguous: true };
+      best = n;
+      if (hitFull) break;
+    }
+  }
+  return best ? { name: best } : null;
+}
+
+export function localNavigate(text, { names = [] } = {}) {
+  const t = clean(text);
+  if (!t || t.split(" ").length > 9) return null;
+  const polite = POLITE_Q.test(t);
+  if ((QUESTION.test(t) && !polite) || TIME_W.test(t) || OTHER_JOB.test(t)) return null;
+  const verb = VERB.test(t) || polite;
+  const chatWords = CHAT_W.test(t);
+  const peopleWords = PEOPLE_W.test(t);
+  const group = GROUP.find(([, re]) => re.test(t))?.[0];
+  const bareChat = chatWords && group && t.split(" ").length <= 3; // "aile sohbeti", "ekip grubu"
+  if (!verb && !PAGE_W.test(t) && !BARE.test(t) && !bareChat) return null;
+
+  // Kişi listesi sayfaları ("aile kişilerini aç", "sporcu listesini göster", "çalışanları aç")
+  if (peopleWords && !chatWords) {
+    if (group === "family") return { page: "peopleFamily" };
+    if (group === "athletes") return { page: /liste/.test(t) ? "athletes" : "peopleAthletes" };
+    if (group === "team" || /çalışan|personel/.test(t)) return { page: "peopleStaff" };
+  }
+  // Sohbet: grup ya da kişi ("ekip ile mesaj sayfamı aç", "aile grubunu aç", "Ali ile mesajlaşmayı aç")
+  if (chatWords || (group && group !== "athletes" && !peopleWords)) {
+    if (group) return { chat: group };
+    const p = personIn(t, names);
+    if (p?.ambiguous) return null; // iki kişi uyuyor: yapay zeka sorsun
+    if (p) return { chatWith: p.name };
+  }
+  if (group === "athletes" && !chatWords) return { page: "athletes" };
+  if (group === "team" && /çalışan/.test(t)) return { page: "peopleStaff" };
+
+  const hit = TARGETS.find(([, re]) => re.test(t));
+  if (hit) return { page: hit[0] };
+  // Fiil var ama hedef tanınmadı: kişi adı geçiyorsa onunla sohbet ("Ali'yi aç" değil; "Ali ile konuşmamı göster" yukarıda)
+  return null;
+}

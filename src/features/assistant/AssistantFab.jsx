@@ -6,11 +6,11 @@ import { useAssistant } from "./AssistantProvider";
 
 // Kendi alt çubuğu olmayan sayfalarda (ör. fiş ayrıntısı) sağ altta asistan düğmesi.
 // Ana sayfa ve tür sayfalarında alttaki çubuk zaten yaz/söyle sunar.
-const HAS_BAR = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/birthdays", "/messages", "/athletes/attendance", "/settings", "/mail/setup", "/staff"];
+const HAS_BAR = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/birthdays", "/messages", "/athletes/attendance", "/settings", "/mail/setup", "/staff", "/shopping", "/my-attendance"];
 export function AssistantFab() {
   const path = usePathname();
   const { openAssistant, open } = useAssistant();
-  if (HAS_BAR.includes(path) || open) return null;
+  if (HAS_BAR.includes(path) || path.startsWith("/people/") || open) return null;
   return (
     <button
       type="button"

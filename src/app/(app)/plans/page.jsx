@@ -1,26 +1,39 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ArchiveLink, DelBadge, Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
+import { ArchiveLink, Chips, DelBadge, Empty, Hero, HeroLabel, Label, card, catStyle } from "@/components/ui/Page";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { useAdd } from "@/features/add/AddProvider";
-import { AddBar } from "@/features/add/AddBar";
 import { useData } from "@/features/data/DataProvider";
 import { useNow } from "@/hooks/useNow";
 import { addDate } from "@/lib/ai/digest";
 import { dayLabel, groupByDay, leftLabel, nextPlan, planState, remainLabel, soonLabel, weekdayLong, weekdayShort } from "@/lib/agenda";
 import { short, todayStr } from "@/lib/utils/format";
-import { whoText } from "@/lib/people";
+import { assigneesOf, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
 
 const spanDays = (p) => Math.round((new Date(`${p.endDate}T00:00`) - new Date(`${p.date}T00:00`)) / 864e5) + 1;
 const inDay = (p, d) => p.date <= d && (p.endDate || p.date) >= d;
+const mins = (t) => (t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null);
+// Aynı gün saatleri çakışan planlar (süre yoksa 60 dk sayılır)
+function conflicts(items) {
+  const timed = items.filter((p) => p.time && !(p.endDate && p.endDate !== p.date)).map((p) => [p.id, mins(p.time), mins(p.time) + (p.durationMin || 60)]);
+  const out = new Set();
+  timed.forEach(([a, s1, e1], i) => timed.slice(i + 1).forEach(([b, s2, e2]) => s1 < e2 && s2 < e1 && (out.add(a), out.add(b))));
+  return out;
+}
 
-// Planlar: üstte önümüzdeki 7 gün (plan sayısı), altında gün gün liste.
+// Planlar: üstte önümüzdeki 7 gün ve sıradaki plan; ana hesapta kişiye göre süzme; gün gün liste
+// (saat, kategori rengi, yer, kimler; çakışan saatler uyarılır). Geçmiş planlar arşivde.
 export default function PlansPage() {
-  const { plans, removeWithUndo, myUid, nameOf } = useData();
+  const { plans: allPlans, removeWithUndo, myUid, nameOf, members, isStaff } = useData();
+  const [who, setWho] = useState("all"); // all | me | uid
+  const mine = (p) => (who === "all" ? true : who === "me" ? !assigneesOf(p).length || assigneesOf(p).includes(myUid) : assigneesOf(p).includes(who));
+  const plans = allPlans.filter(mine);
+  const people = !isStaff && members.length > 0 ? [["all", "Herkes"], ["me", "Benim"], ...members.map((m) => [m.uid, (m.name || "").split(" ")[0]])] : [];
   const pillOf = useWho();
   const { openAdd } = useAdd();
   const tab = "up"; // geçmiş planlar arşivde (/archive)
@@ -92,6 +105,8 @@ export default function PlansPage() {
       </Hero>
 
 
+      {people.length > 0 && <Chips value={who} onChange={setWho} options={people} className="mt-3" />}
+
       {days.length === 0 && (
         <Empty icon="cal" title="Yaklaşan plan yok" sub="Aşağıdan söyle, yaz ya da + ile ekle. Geçmiş planlar arşivde." />
       )}
@@ -108,7 +123,9 @@ export default function PlansPage() {
               </span>
             </Label>
             <div className={`${card} divide-y divide-line overflow-hidden`}>
-              {items.map((p) => {
+              {items.map((p, _i, arr) => {
+                const clash = conflicts(arr).has(p.id);
+                const cs = catStyle(p.cat);
                 const multi = p.endDate && p.endDate !== p.date;
                 const st = planState(p, now);
                 const pill = pillOf(p, "ml-auto");
@@ -117,10 +134,13 @@ export default function PlansPage() {
                   <SwipeRow key={p.id} actions={[{ label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("plan", p.id) }]}>
                     <button
                       onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })}
-                      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition active:bg-bg ${tab === "up" && st === "past" ? "opacity-45" : ""}`}
+                      className={`relative flex w-full items-center gap-3 py-3 pl-4 pr-4 text-left transition active:bg-bg ${tab === "up" && st === "past" ? "opacity-45" : ""}`}
                     >
-                      <span className="w-14 shrink-0 whitespace-nowrap">
-                        <b className={`block text-[0.9375rem] font-bold tabular-nums ${tab === "past" ? "text-mut" : ""}`}>{multi ? `${spanDays(p)} gün` : p.time || "Gün boyu"}</b>
+                      <span className={`absolute inset-y-2.5 left-0 w-1 rounded-r-full ${cs.bar}`} aria-hidden="true" />
+                      <span className="w-[3.75rem] shrink-0">
+                        <b className={`block font-bold tabular-nums ${p.time || multi ? "whitespace-nowrap text-[0.9375rem]" : "text-[0.8125rem] leading-tight"} ${st === "now" ? "text-acc" : ""}`}>
+                          {multi ? `${spanDays(p)} gün` : p.time || "Gün boyu"}
+                        </b>
                         <small className="block text-[0.6875rem] text-mut">
                           {tab === "up" && st === "now" ? <span className="font-semibold text-acc">şu an</span> : multi ? "etkinlik" : p.time ? `${p.durationMin || 60} dk` : ""}
                         </small>
@@ -128,9 +148,15 @@ export default function PlansPage() {
                       <span className="h-8 w-px shrink-0 bg-line" />
                       <span className="min-w-0 flex-1">
                         <b className={`block truncate text-[0.9375rem] font-semibold ${tab === "past" ? "text-mut" : ""}`}>{p.title}</b>
-                        {(multi || p.place || who || pill) && (
+                        {clash && (
+                          <span className="mt-0.5 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-amber-700">
+                            <Icon name="alert" className="size-3" /> Aynı saatte başka plan var
+                          </span>
+                        )}
+                        {(multi || p.place || who || pill || (p.cat && p.cat !== "Genel")) && (
                           <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[0.75rem] text-mut">
                             <span className="min-w-0 truncate">
+                              {p.cat && p.cat !== "Genel" && <span className={`font-semibold ${cs.chip.split(" ")[1]}`}>{p.cat}{multi || p.place ? " · " : ""}</span>}
                               {[multi && `${short(p.date)} – ${short(p.endDate)}`, multi && tab === "up" && st === "now" && remainLabel(p, today), p.place].filter(Boolean).join(" · ")}
                               {who && <span className="text-acc">{multi || p.place ? " · " : ""}{who}</span>}
                             </span>
@@ -152,7 +178,6 @@ export default function PlansPage() {
           </section>
         );
       })}
-      <AddBar type="plan" />
     </main>
   );
 }

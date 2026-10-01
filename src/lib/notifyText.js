@@ -48,8 +48,9 @@ export function replyText({ kind, title, from, text, n = 1 }) {
   return { title: cut(`${who(from) || "Biri"} · ${t}`, 44), body: cut(n > 1 ? `${n} mesaj · ${msg}` : msg, 120) };
 }
 // Atanan kişi işi bitirdi: "Ali Kaya tamamladı" / "Görev · Motor yağı"
+const DONE_PAST = { plan: "gerçekleşti dedi", task: "yaptı", note: "okudu" };
 export const doneText = ({ kind, title, from }) => ({
-  title: cut(`${who(from) || "Biri"} tamamladı`, 44),
+  title: cut(`${who(from) || "Biri"} ${DONE_PAST[kind] || "tamamladı"}`, 44),
   body: cut(`${KIND_TR[kind] || "Kayıt"} · ${String(title || "").trim()}`, 120),
 });
 
@@ -64,3 +65,19 @@ export const paidText = ({ merchant, amount }) => ({ title: head("Fiş ödendi",
 
 // Deneme
 export const testText = () => ({ title: "Bildirimler açık", body: "Hatırlatmalar ve atamalar bu cihaza gelecek" });
+
+// Kayıt değişti (zaman, yer, başlık): "Plan değişti: Antrenman" / "Yarın 11:00 · Kulüp iskelesi · Seyhun değiştirdi"
+export function changedText({ kind, title, date, time, due, place, from }, today = todayIn()) {
+  const t = String(title || KIND_TR[kind] || "Kayıt").trim();
+  const ev = { plan: "Plan değişti", task: "Görev değişti", note: "Not değişti" }[kind] || "Kayıt değişti";
+  const when = kind === "plan" ? [dayLabel(date, today), time].filter(Boolean).join(" ") : kind === "task" && due ? `Son gün ${dayLabel(due, today).toLocaleLowerCase("tr-TR")}` : "";
+  return { title: head(ev, t), body: line(when, kind === "plan" ? place : "", from && `${who(from)} değiştirdi`) };
+}
+// Kayıt silindi / plan iptal: "Plan iptal: Antrenman" / "Yarın 10:00 · Seyhun sildi"
+export function deletedText({ kind, title, date, time, from }, today = todayIn()) {
+  const t = String(title || KIND_TR[kind] || "Kayıt").trim();
+  const ev = { plan: "Plan iptal", task: "Görev kaldırıldı", note: "Not kaldırıldı" }[kind] || "Kayıt kaldırıldı";
+  return { title: head(ev, t), body: line(kind === "plan" ? [dayLabel(date, today), time].filter(Boolean).join(" ") : "", from && `${who(from)} sildi`) };
+}
+// Çalışan/aile fiş ekledi, ödeme bekliyor (ana hesaba): "Ödeme bekliyor: Marin Yedek Parça" / "₺1.460 · Elif ekledi"
+export const receiptNewText = ({ merchant, amount, from }) => ({ title: head("Ödeme bekliyor", merchant || "Fiş"), body: line(amount, from && `${who(from)} ekledi`) });

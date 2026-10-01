@@ -4,6 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
+import { aiErrorText, logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
@@ -69,32 +70,26 @@ async function handle(request) {
 
   const provider = pickProvider();
   if (!hasKey(provider) || (provider === "gemini" && !process.env.GEMINI_MODEL)) {
+    console.error(`[assistant] HATA · ANAHTAR YOK · provider=${provider || "yok"}`);
     return bad("Yapay zeka anahtarı veya modeli tanımlı değil", 503, `provider=${provider || "yok"}, GEMINI_MODEL=${process.env.GEMINI_MODEL || "boş"}`);
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
   const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""`;
 
+  const started = Date.now();
   try {
     const t0 = Date.now();
     const raw = await ask(provider, user);
     const ms = Date.now() - t0;
     const r = parseAssistant(raw, people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")));
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
-    if (!r.message && !r.items.length && !r.actions.length && !r.navigate) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
+    if (!r.message && !r.items.length && !r.actions.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
     return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));
   } catch (e) {
-    console.error(`[assistant:${provider}]`, e.message);
-    if (e.status === 429) {
-      const msg = e.daily
-        ? "Yapay zekanın günlük ücretsiz kotası doldu (sabah 10 civarı yenilenir). Bu arada bugün, yarın ve bu hafta sorularına kayıtlardan cevap veriyorum."
-        : `Yapay zekanın ücretsiz kotası şu an dolu. ${e.retryAfter} saniye sonra tekrar dene.`;
-      return bad(msg, 429, e.message, { retryAfter: e.retryAfter });
-    }
-    if (e.status === 503) {
-      return bad("Yapay zeka şu an çok yoğun. Birkaç dakika sonra tekrar dene; bu arada bugün, yarın ve bu hafta sorularına kayıtlardan cevap veriyorum.", 503, e.message, { retryAfter: e.retryAfter });
-    }
-    return bad("Asistan şu an yanıt vermedi", 502, e.message);
+    const kind = logAiError("assistant", provider, e, Date.now() - started);
+    const status = kind === "quota" ? 429 : kind === "busy" ? 503 : kind === "timeout" ? 504 : 502;
+    return bad(aiErrorText(kind, e), status, e.message, { reason: kind, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) });
   }
 }
 

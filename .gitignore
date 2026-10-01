@@ -23,7 +23,6 @@
 # misc
 .DS_Store
 *.pem
-.tools/
 
 # debug
 npm-debug.log*
@@ -42,6 +41,14 @@ yarn-error.log*
 next-env.d.ts
 !.env.example
 
-# Local Netlify folder
-.netlify
-.next*/
+# gizli ya da kişisel dosyalar (GitHub'a gitmesin)
+*service-account*.json
+*firebase-adminsdk*.json
+*.xls
+*.xlsx
+.netlify/
+
+# Finder kopyaları ("klasör 2", ".next 2")
+/.next*/
+* 2
+* 2.*

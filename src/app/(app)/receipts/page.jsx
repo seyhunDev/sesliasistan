@@ -12,6 +12,7 @@ import { whoText } from "@/lib/people";
 import { CAT, CATS, DOC, PAYS, TLk, catOf, parseTL, totalOf } from "@/lib/receipts";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
+import { useDock } from "@/features/home/TabBar";
 
 const inp = "h-11 w-full min-w-0 rounded-xl border border-line bg-card px-3 text-base text-fg outline-none transition focus:border-acc";
 const shiftMonth = (m, n) => {
@@ -103,6 +104,13 @@ export default function ReceiptsPage() {
     w.document.write(html);
     w.document.close();
   }
+
+  useDock({
+    create: [
+      ["camera", "Fiş fotoğrafı", "Çek ya da seç", () => openReceipt()],
+      ["edit", "Elle ekle", "Tutarı yaz", () => openReceipt({ manual: true })],
+    ],
+  });
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
@@ -282,17 +290,6 @@ export default function ReceiptsPage() {
         </section>
       )}
 
-      {/* Ekleme: aynı sayfada fotoğraf çek ya da elle gir */}
-      <div data-bar="" className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-6">
-        <div className="mx-auto flex max-w-[28rem] gap-2">
-          <button onClick={() => openReceipt({ manual: true })} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_6px_24px_-8px_rgba(38,40,44,.18)] ring-1 ring-line transition active:scale-[.98]">
-            <Icon name="edit" className="size-[1.125rem]" /> Elle ekle
-          </button>
-          <button onClick={() => openReceipt()} className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-acc text-[0.9375rem] font-semibold text-white shadow-[0_6px_24px_-8px_rgba(38,40,44,.3)] transition active:scale-[.98]">
-            <Icon name="camera" className="size-5" /> Fiş fotoğrafı
-          </button>
-        </div>
-      </div>
     </main>
   );
 }

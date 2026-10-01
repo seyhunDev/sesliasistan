@@ -91,3 +91,34 @@ export function ArchiveLink({ type = "" }) {
     </Link>
   );
 }
+
+// Plan/görev/not kategorileri: renk ve simge (listede bir bakışta ayırt etmek için)
+export const CAT_STYLE = {
+  Antrenman: { bar: "bg-sky-500", chip: "bg-sky-500/10 text-sky-700", icon: "anchor" },
+  Yarış: { bar: "bg-rose-500", chip: "bg-rose-500/10 text-rose-700", icon: "flag" },
+  Kamp: { bar: "bg-amber-500", chip: "bg-amber-500/10 text-amber-700", icon: "pin" },
+  Toplantı: { bar: "bg-violet-500", chip: "bg-violet-500/10 text-violet-700", icon: "users" },
+  Ekipman: { bar: "bg-slate-500", chip: "bg-slate-500/10 text-slate-700", icon: "wrench" },
+  Genel: { bar: "bg-acc", chip: "bg-acc/10 text-acc", icon: "cal" },
+};
+export const catStyle = (c) => CAT_STYLE[c] || CAT_STYLE.Genel;
+
+// Kişi süzgeci (ana hesap): Herkes · Benim · kişiler. options: [[anahtar, etiket, sayı]]
+export function Chips({ value, onChange, options, className = "" }) {
+  return (
+    <div className={`-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none] ${className}`}>
+      {options.map(([k, l, n]) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => onChange(k)}
+          aria-pressed={value === k}
+          className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${value === k ? "bg-[#2c5163] text-white" : "bg-card text-fg ring-1 ring-line"}`}
+        >
+          {l}
+          {n != null && <span className={`tabular-nums ${value === k ? "text-white/75" : "text-mut"}`}>{n}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}

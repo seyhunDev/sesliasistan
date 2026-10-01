@@ -23,19 +23,25 @@ import { cached as cachedWeather, loadWeather, wantsWeather, weatherDigest } fro
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
 import { useNameIndex } from "@/features/athletes/names";
+import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
+import { useKind } from "@/features/auth/useKind";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase/clientApp";
 import { PAGES, buildPatch, describeAction, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
-import { brainCommand, localCommand } from "@/lib/commands";
+import { brainCommand, localCommand, sureGuess } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
-import { record } from "@/lib/brain/store";
+import { countHit, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
 import { QuotaPill } from "@/components/ui/QuotaPill";
 import { parseBirthday } from "@/lib/birthdayParse";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
-import { dmId, useChat } from "@/features/chat/ChatProvider";
+import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, messageIntent } from "@/lib/ai/messageRules";
 import { matchPerson } from "@/lib/names";
-import { GROUPS } from "@/lib/kinds";
+import { GROUPS, canReceipts, isAthleteSide } from "@/lib/kinds";
+import { localNavigate } from "@/lib/nav";
+import { fromMessage } from "@/lib/ai/assistant";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -43,9 +49,29 @@ const ENDPOINT = 1300;
 const BEAT = 350;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const EXAMPLES = ["Bu hafta neler var?", "Fiş yükle", "Yarın saat 10'da antrenman ekle", "Not al malzeme odası dolu", "Tekneleri hazırla görevini tamamla", "Yardım"];
+const RECORD_TO = "Bu kaydın konuşması";
+// Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
+const ASKED = /\?|\s(m[ıiuü])(\s|$)|gönderdin mi|gitti mi/i;
+const SENT_CLAIM = /(^|\s)(gönderdim|ilettim|yolladım|haber verdim|mesaj(ı|ınız)? gönderildi)/i;
+// Açık konuşmaya mesaj isteği: "yarın geliyorum diye yaz", "yaz: tamam", "cevap ver …", "haber ver …"
+const FOCUS_MSG = /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i;
+// Yapay zeka yokken mesaj metni: komut sözcükleri atılır, baş harf büyür
+const focusBody = (s) => {
+  const t = s
+    .replace(/^\s*(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)\s*[:,]?\s*/i, "")
+    .replace(/\s*(diye|şeklinde)?\s*(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)[.!]?\s*$/i, "")
+    .trim();
+  return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
+}; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
 const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
-const PAST = [[/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
+const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
+// Alışveriş listesi komutları: "listeye süt ve ekmek ekle", "süt alışveriş listesine ekle", "listede ne var"
+const SHOP_ADD = [
+  /^(?:alışveriş\s+)?(?:listeye|listesine|alınacaklara)\s+(.+?)\s+(?:ekle|yaz|koy)\.?$/i,
+  /^(.+?)\s+(?:alışveriş\s+)?(?:listeye|listesine|alınacaklara)\s+(?:ekle|yaz|koy)\.?$/i,
+];
+const SHOP_READ = /(alışveriş listesi|listede ne var|listede neler|ne alacağız|ne alınacak|markette ne)/i;
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
 const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
@@ -63,13 +89,13 @@ const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
 const QUESTION = /\?\s*$|\b(neler var|ne var|kaç|hangi|ne zaman|göster|listele|özetle)\b/i;
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
-export function AssistantSheet({ open, onClose, seed }) {
+export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) {
   const router = useRouter();
   const toast = useToast();
   const tts = useTts();
   const { profile } = useAuth();
   const { openBirthday } = useBirthday();
-  const { plans, tasks, notes, receipts, toggleTask, updateRecord, deleteRecord, members, isStaff, saveDrafts, saveBirthday } = useData();
+  const { plans, tasks, notes, receipts, toggleTask, updateRecord, deleteRecord, members, isStaff, saveDrafts, saveBirthday, addReply } = useData();
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
@@ -86,16 +112,26 @@ export function AssistantSheet({ open, onClose, seed }) {
   const [error, setError] = useState("");
   // Uzun işlemlerde yapılan adımlar panelde görünür: [{ label, st: "run" | "done" | "fail" }]
   const [steps, setSteps] = useState([]);
-  const stepTo = (label) => setSteps((p) => [...p.map((x) => (x.st === "run" ? { ...x, st: "done" } : x)), ...(label ? [{ label, st: "run" }] : [])]);
+  const stepTo = (label) => (setDock(false), setSteps((p) => [...p.map((x) => (x.st === "run" ? { ...x, st: "done" } : x)), ...(label ? [{ label, st: "run" }] : [])]));
   const stepsEnd = (ok = true) => setSteps((p) => p.map((x) => (x.st === "run" ? { ...x, st: ok ? "done" : "fail" } : x)));
   const { idx: nameIdx } = useNameIndex();
   const [booting, setBooting] = useState(false); // mikrofonla açıldı, dinleme başlıyor
   const [min, setMin] = useState(false); // küçültüldü: sol kenarda baloncuk, sohbet sürer
+  // Canlı alt panel: sayfa/sohbet açınca asistan kapanmaz, ekranın altında küçük durur ve dinlemeye devam eder.
+  // Kart, taslak, onay ya da uzun cevap gelince kendiliğinden tam açılır.
+  const [dock, setDock] = useState(false);
   const [menu, setMenu] = useState(false); // üstteki ⋯ menüsü: sesli yanıt, küçült, bugünkü hak
   const quota = useQuota("assistant");
   // Tür sayfasından açıldıysa ("plan" | "task" | "note"): ilk cümle o türde kayda çevrilir
   const preferRef = useRef("");
   const [prefer, setPrefer] = useState("");
+  const [examples, setExamples] = useState(null); // bulunduğu sayfaya göre örnekler (alt çubuktan gelir)
+  // Açık ekran (sohbet ya da kayıt konuşması): { title, to, rec: { kind, id }, text } — asistan bu konuşmayı bilir,
+  // alıcı söylenmeden "yaz/cevap ver" denirse mesaj buraya gider
+  const focusRef = useRef(null);
+  const sentOk = useRef(false); // bu konuşmada gerçekten mesaj gönderildi mi ("gönderdin mi?" sorusuna doğru cevap için)
+  const askTo = useRef(null); // "Ekibe ne yazayım?" sorulduysa alıcı: sonraki cümle mesaj olur
+  const [focus, setFocus] = useState(null);
   const [drafts, setDrafts] = useState([]); // panelde hazırlanan yeni kayıtlar ("kaydet" deyince kaydedilir)
   const convo = useRef(false); // sesli sohbet: her cevaptan sonra mikrofon kendiliğinden açılır
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
@@ -109,8 +145,9 @@ export function AssistantSheet({ open, onClose, seed }) {
   // Mesaj alıcıları: sohbet rehberindeki kişiler (ana hesap "ana hesap" adıyla da bulunur)
   const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [] } = useChat() || {};
   const contacts = chatPeople.map((p) => ({ name: p.name || "", aliases: p.role === "owner" ? ["ana hesap", "patron"] : [], p })).filter((c) => c.name);
-  const contactNames = [...groupIds.map((g) => `${GROUPS[g].name} (grup)`), ...contacts.map((c) => (c.p.role === "owner" ? `${c.name} (ana hesap)` : c.name))];
+  const contactNames = [...(focus?.rec ? [`${RECORD_TO} (kayıt)`] : []), ...groupIds.map((g) => `${GROUPS[g].name} (grup)`), ...contacts.map((c) => (c.p.role === "owner" ? `${c.name} (ana hesap)` : c.name))];
 
+  const myKind = useKind();
   const firstName = (profile?.name || "").split(" ")[0];
   const by = { name: profile?.name ?? "Kullanıcı" };
   const find = (kind, id) => ({ plan: plans, task: tasks, note: notes }[kind] || []).find((x) => x.id === id);
@@ -165,7 +202,8 @@ export function AssistantSheet({ open, onClose, seed }) {
     if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false } = extra;
+    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, keepDock = false } = extra;
+    if (!keepDock && (pending || show.length || att || String(message).length > 170)) setDock(false);
     const awaiting = expect || !!pending;
     setTurns((p) => [...p, { role: "assistant", text: message }]);
     setCards({ show, pending, nav, chat, att, engine, awaiting });
@@ -200,6 +238,7 @@ export function AssistantSheet({ open, onClose, seed }) {
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     setDrafts(next);
+    setDock(false);
     reply(draftSay(msg, next), { engine }, viaVoice);
   }
   async function refineDrafts(s, viaVoice) {
@@ -288,11 +327,40 @@ export function AssistantSheet({ open, onClose, seed }) {
 
   // Sayfayı aç: panel açık kalır, sohbet sürer
   // Sayfa açılınca panel küçülür (tam ekran panelin arkasında kalmasın); sohbet sürer
+  // Sayfayı bu hesap açabilir mi (yoklama: sporcu yetkisi, kişiler: ana hesap, fiş: fiş ekleyebilen, yoklamam: sporcu/veli)
+  const canOpen = (page) => {
+    const need = PAGES[page]?.need;
+    if (need === "athletes") return canSeeAthletes(profile?.email);
+    if (need === "athleteSide") return isAthleteSide(myKind);
+    if (need === "owner") return !isStaff;
+    if (need === "receipts") return canReceipts(myKind);
+    return !!PAGES[page];
+  };
+  // Yerel ya da yapay zekadan gelen gezinme: sayfa, grup sohbeti ya da kişiyle sohbet
+  function openNav(nav, viaVoice) {
+    if (nav.page) return go(nav.page, "", viaVoice);
+    if (nav.chat) {
+      if (!groupIds.includes(nav.chat)) return reply(`${GROUPS[nav.chat]?.name || "Bu"} grubunda değilsin.`, { engine: "local" }, viaVoice);
+      return openChatAt(nav.chat, `${GROUPS[nav.chat].name} grubunu açtım.`, viaVoice);
+    }
+    const dest = resolveTo(nav.chatWith);
+    if (!dest?.cid) return reply(`${nav.chatWith} ile mesajlaşamıyorsun ya da kişiyi bulamadım.`, { engine: "local" }, viaVoice);
+    return openChatAt(dest.cid, `${dest.label} ile sohbeti açtım.`, viaVoice);
+  }
+  function openChatAt(cid, message, viaVoice) {
+    navigator.vibrate?.(8);
+    router.push(`/messages?c=${encodeURIComponent(cid)}`);
+    setDock(true);
+    reply(message, { engine: "local", keepDock: true }, viaVoice);
+  }
+
   function go(page, message, viaVoice = false) {
+    if (!PAGES[page]) return reply("O sayfayı bulamadım.", { engine: "local", keepDock: true }, viaVoice);
+    if (!canOpen(page)) return reply(`${PAGES[page].label} sayfası senin hesabında açık değil.`, { engine: "local", keepDock: true }, viaVoice);
     navigator.vibrate?.(8);
     router.push(PAGES[page].path);
-    park();
-    reply(message || `${PAGES[page].label} sayfasını açtım.`, { engine: "local" }, viaVoice);
+    setDock(true);
+    reply(message || `${PAGES[page].label} sayfasını açtım.`, { engine: "local", keepDock: true }, viaVoice);
   }
 
   function handle(r, s, viaVoice) {
@@ -305,6 +373,16 @@ export function AssistantSheet({ open, onClose, seed }) {
 
     // Mesaj: alıcı ve düzenlenmiş metin kartta gösterilir; onaylanınca gönderilir
     if (r.intent === "message" && r.send?.text) return prepareSend(r.send.to, r.send.text, msg, r.source, viaVoice);
+    // Yapay zeka mesajı yalnızca cevabına yazdıysa ("Ekibe şunu göndereyim mi: …") kart yine hazırlanır
+    const sendRec = r.intent === "message" && !r.send?.text ? fromMessage(msg) : null;
+    if (sendRec?.text) return prepareSend(sendRec.to, sendRec.text, msg, r.source, viaVoice);
+    // Gönderim yalnızca kartta onayla olur: yapay zeka "gönderdim" dese de gerçekte gönderilmediyse bunu söyleme
+    // ("gönderdin mi?" sorusuna, gerçekten gönderildiyse "gönderdim" demesi doğrudur)
+    if (r.intent === "message" || (SENT_CLAIM.test(msg) && !(sentOk.current && ASKED.test(s)))) {
+      const to = r.send?.to || "";
+      if (to && resolveTo(to)) askTo.current = to;
+      return reply(SENT_CLAIM.test(msg) || !msg ? `Mesajı henüz göndermedim. ${to ? "Ne yazayım?" : "Kime ve ne yazayım?"}` : msg, { engine: r.source, expect: true }, viaVoice);
+    }
 
     // Yeni kayıt: panelde taslak olarak hazırlanır, "kaydet" deyince kaydedilir (eksik bilgi sohbetle tamamlanır)
     if (r.intent === "create" && r.items?.length) {
@@ -344,6 +422,11 @@ export function AssistantSheet({ open, onClose, seed }) {
       park();
       openAdd({ edit: { kind: opened.kind, id: opened.id } });
       return;
+    }
+    // Yapay zeka sohbet açmayı seçtiyse ("Sanver'le yazışmamı aç" gibi belirsiz söyleyişler)
+    if (r.openChat && r.intent === "navigate") {
+      const g = groupOf(r.openChat, groupIds);
+      return openNav(TEAM_WORD.test(r.openChat) && g ? { chat: g } : { chatWith: r.openChat }, viaVoice);
     }
     if (r.navigate && !pending.length && (r.intent === "navigate" || !r.show?.length)) {
       go(r.navigate, msg, viaVoice);
@@ -392,6 +475,13 @@ export function AssistantSheet({ open, onClose, seed }) {
       if (cw === "no" || isNo(s)) return cancelPending(true);
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
     }
+    // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
+    const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
+    if (nav) {
+      record(s, `nav:${nav.page || "messages"}`, "local");
+      countHit("local");
+      return openNav(nav, viaVoice);
+    }
     // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
     const bday = !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
     if (bday) {
@@ -406,6 +496,21 @@ export function AssistantSheet({ open, onClose, seed }) {
       openBirthday({ prefill: bday });
       return;
     }
+    // Alışveriş listesi: ekle / oku (yapay zekaya gitmeden)
+    const shopLists = listsFor(myKind, members);
+    if (shopLists.length) {
+      const m = SHOP_ADD.map((re) => re.exec(s)).find(Boolean);
+      const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];
+      if (m) return runShopAdd(m[1].replace(/^(alışveriş|ekip|aile)\s+/i, ""), list, viaVoice);
+      if (SHOP_READ.test(s)) return runShopRead(list, viaVoice);
+    }
+    // Önceki turda "Ekibe ne yazayım?" diye sorulduysa bu cümle mesajın kendisidir
+    if (askTo.current && !QUESTION.test(s)) {
+      const to = askTo.current;
+      askTo.current = null;
+      return prepareSend(to, focusBody(s), "", "local", viaVoice);
+    }
+    askTo.current = null;
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir
     if (canSeeAthletes(profile?.email) && wantsAttendance(s)) return runAttendance(s, viaVoice);
     // Tür sayfasından gelen ilk cümle (soru değilse): o türde taslak
@@ -416,10 +521,33 @@ export function AssistantSheet({ open, onClose, seed }) {
       return createAs(s, kind, viaVoice);
     }
     // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
-    const cmd = localCommand(s, { plans, tasks, notes });
+    // Açık sohbette/kayıtta "… diye yaz", "cevap ver: …" yerel komutlara düşmez (plan sanılmasın); mesaj olarak hazırlanır
+    const toFocus = !!focusRef.current && FOCUS_MSG.test(s);
+    const cmd = !toFocus && localCommand(s, { plans, tasks, notes });
     if (cmd) {
       record(s, labelFromCommand(cmd), "local");
+      countHit("local");
       return runLocal(cmd, s, viaVoice);
+    }
+    // Öğrenilenler: bu cümleye çok benzeyenler daha önce hep aynı işe gittiyse yapay zekaya sormadan hazırla
+    // (hızlı ve ücretsiz; sonuç yine taslak ya da onay kartıdır). Soru ve açık sohbet/kayıt cümleleri hariç.
+    const sure = !toFocus && !QUESTION.test(s) && sureGuess(s);
+    if (sure) {
+      if (sure.label === "send") {
+        const toTeam = TEAM_WORD.test(s);
+        const mi = messageIntent(toTeam ? s.replace(/^\S+(\s+grubuna)?\s+/i, "") : s, contacts);
+        const to = toTeam ? s.split(/\s+/)[0] : mi?.to;
+        if (to && String(mi?.send || "").trim() && resolveTo(to)) {
+          countHit("brain");
+          return prepareSend(to, mi.send, "", "brain", viaVoice);
+        }
+      } else {
+        const bc = brainCommand(s, undefined, sure);
+        if (bc) {
+          countHit("brain");
+          return runLocal(bc, s, viaVoice);
+        }
+      }
     }
 
     const id = ++runId.current;
@@ -435,8 +563,9 @@ export function AssistantSheet({ open, onClose, seed }) {
       // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
       const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
       const weather = wx ? weatherDigest(await loadWeather().catch(() => cachedWeather())) : "";
-      const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather].filter(Boolean).join("\n\n");
+      const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
+      countHit("ai");
       const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
@@ -456,6 +585,19 @@ export function AssistantSheet({ open, onClose, seed }) {
       // Mesaj isteği ("Ali'ye yaz: …", "ekibe söyle …"): basit kurallarla taslak (düzenleme yapılmaz, olduğu gibi)
       const toTeam = TEAM_WORD.test(s);
       const mi = messageIntent(toTeam ? s.replace(/^\S+(\s+grubuna)?\s+/i, "") : s, contacts);
+      if (toFocus && !mi?.to && !toTeam) {
+        toast("Yapay zekaya ulaşamadım, mesajı olduğu gibi hazırladım. Kontrol et.");
+        return prepareSend("", focusBody(s), "", "rules", viaVoice);
+      }
+      // Alıcı belli ama ne yazılacağı söylenmedi ("ekip grubuna mesaj gönder"): sor, sonraki cümle mesaj olur
+      if ((toTeam || mi?.to) && !String(mi?.send || "").trim().replace(/^(bir\s+)?mesaj\s*(gönder|at|yaz)?$/i, "")) {
+        const to = toTeam ? s.split(/\s+/)[0] : mi.to;
+        const dest = resolveTo(to);
+        if (dest) {
+          askTo.current = to;
+          return reply(`${dest.team ? `${dest.label} grubuna` : dest.label === "kaydın konuşması" ? "Kayda" : `${dest.label} için`} ne yazayım?`, { engine: "rules", expect: true }, viaVoice);
+        }
+      }
       if (mi?.send && (toTeam || mi.to || mi.unknown)) {
         toast("Yapay zekaya ulaşamadım, mesajı olduğu gibi hazırladım. Kontrol et.");
         return prepareSend(toTeam ? s.split(/\s+/)[0] : mi.to || mi.unknown, mi.send, "", "rules", viaVoice);
@@ -499,8 +641,10 @@ export function AssistantSheet({ open, onClose, seed }) {
 
   // Alıcıyı sohbete çevirir: "Ekip" → ekip sohbeti; kişi → birebir sohbet (ilk mesajda oluşturulur)
   function resolveTo(to) {
-    const t = String(to || "").trim();
+    const f = focusRef.current;
+    const t = String(to || f?.to || "").trim() || (f?.rec ? RECORD_TO : "");
     if (!t) return null;
+    if (f?.rec && (t === RECORD_TO || /^bu kayd|^kayıt/i.test(t))) return { rec: f.rec, label: "kaydın konuşması" };
     if (TEAM_WORD.test(t)) {
       const g = groupOf(t, groupIds);
       return g ? { cid: g, label: GROUPS[g].name, team: true, icon: GROUPS[g].icon, create: { type: "team" } } : null;
@@ -537,16 +681,25 @@ export function AssistantSheet({ open, onClose, seed }) {
       return;
     }
     if (pend.send) {
-      const { cid, text: body, create, label, team } = pend.send;
+      const { cid, text: body, create, label, team, rec } = pend.send;
       if (!body.trim()) return reply("Mesaj boş; ne yazayım?", { engine: "local", expect: true }, fromText && convo.current);
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
       setSteps([]);
+      if (rec) {
+        stepTo("Mesaj kaydın konuşmasına gönderiliyor");
+        const ok = await Promise.resolve(addReply?.(rec.kind, rec.id, body)).then(() => true, () => false);
+        if (ok) sentOk.current = true;
+        stepsEnd(ok);
+        toast(ok ? "Mesaj gönderildi" : sendErrorText());
+        return reply(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
+      }
       stepTo(`Mesaj ${team ? `${label} grubuna` : label} gönderiliyor`);
       const ok = await chatSend?.(cid, body, { create });
+      if (ok) sentOk.current = true;
       stepsEnd(!!ok);
       toast(ok ? "Mesaj gönderildi" : "Mesaj gönderilemedi");
       navigator.vibrate?.([10, 40, 10]);
-      return reply(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : "Mesajı gönderemedim; bağlantını kontrol edip tekrar dene.", { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
+      return reply(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
     }
     let n = 0;
     for (const a of pend.actions) {
@@ -572,6 +725,32 @@ export function AssistantSheet({ open, onClose, seed }) {
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
     reply(cards.pending?.send ? "Tamam, göndermedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+  }
+
+  // ---- Alışveriş listesi (asistandan) ----
+  async function runShopAdd(what, list, viaVoice) {
+    const items = splitItems(what);
+    if (!items.length) return reply("Neyi ekleyeyim?", { engine: "local", expect: true }, viaVoice);
+    setSteps([]);
+    stepTo(`${LISTS[list].name} listesine ekleniyor`);
+    try {
+      await addItems(profile.orgId, list, profile.uid, items);
+      stepsEnd();
+      navigator.vibrate?.(8);
+      reply(`Ekledim: ${items.join(", ")}.`, { engine: "local", nav: "shopping" }, viaVoice);
+    } catch {
+      stepsEnd(false);
+      reply("Listeye ekleyemedim.", { engine: "local" }, viaVoice);
+    }
+  }
+  async function runShopRead(list, viaVoice) {
+    try {
+      const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
+      const open = snap.docs.map((d) => d.data()).filter((x) => !x.done).map((x) => x.text);
+      reply(open.length ? `${LISTS[list].name} listesinde ${open.length} şey var: ${open.slice(0, 12).join(", ")}${open.length > 12 ? " ve diğerleri" : ""}.` : `${LISTS[list].name} listesi boş.`, { engine: "local", nav: "shopping" }, viaVoice);
+    } catch {
+      reply("Listeyi okuyamadım.", { engine: "local" }, viaVoice);
+    }
   }
 
   // ---- Yoklama (asistandan) ----
@@ -639,12 +818,13 @@ export function AssistantSheet({ open, onClose, seed }) {
     if (!keepSpeech) tts.stop();
     convo.current = false;
     setMin(false);
+    setDock(false);
     onClose();
   }
   const shut = () => finish(false);
 
   // Panel açıkken sayfanın alttaki çubuğu (Konuş · Yaz) gizlenir; paneldeki yazma alanı ve mikrofon yeter (globals.css: [data-bar])
-  const panelUp = open && !min;
+  const panelUp = open && !min && !dock;
   const [drag, setDrag] = useState(0); // tutamaçtan aşağı çekme (px)
   const dragFrom = useRef(null);
   useEffect(() => {
@@ -652,6 +832,28 @@ export function AssistantSheet({ open, onClose, seed }) {
     document.body.dataset.asst = "open";
     return () => delete document.body.dataset.asst;
   }, [panelUp]);
+  // Canlı alt panelde sayfa kayar ve görünür; yalnızca alttaki çubuk gizlenir (panel onun yerinde)
+  const docked = open && !min && dock;
+  // Sahneye canlı durum: dinliyor mu, ne duyuldu, son cevap, düşünüyor mu
+  const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
+  const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+  useEffect(() => {
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, lastReply, tts.speaking, booting]);
+  // Sahnenin düğmeleri buradaki işleri çağırır
+  const stageListen = () => {
+    convo.current = true;
+    tts.stop();
+    sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
+  };
+  useEffect(() => {
+    onAct?.({ listen: stageListen, stop: () => sp.stop("send"), cancel: () => sp.cancel(), expand: () => setDock(false), close: () => finish(false) });
+  });
+  useEffect(() => {
+    if (!docked) return;
+    document.body.dataset.asst = "dock";
+    return () => delete document.body.dataset.asst;
+  }, [docked]);
 
   useEffect(() => {
     if (phase !== "thinking") return;
@@ -694,8 +896,14 @@ export function AssistantSheet({ open, onClose, seed }) {
     setMin(false);
     preferRef.current = seed?.prefer || "";
     setPrefer(seed?.prefer || "");
+    setExamples(seed?.examples || null);
+    focusRef.current = seed?.focus || null;
+    askTo.current = null;
+    sentOk.current = false;
+    setFocus(seed?.focus || null);
     // Panel zaten açıktı (alttaki "Konuş"/"Yaz"): sohbet sıfırlanmaz, kaldığı yerden devam
     if (cont) {
+      if (seed?.dock === false) setDock(false);
       if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         convo.current = true;
@@ -704,6 +912,7 @@ export function AssistantSheet({ open, onClose, seed }) {
       return;
     }
     convo.current = !!(seed?.listen || seed?.voice);
+    setDock(!!seed?.dock); // alttaki sahneden açıldıysa sahnede kalır (sayfa soluklaşır), gerekirse tam açılır
     setDrafts([]);
     setText("");
     setTurns([]);
@@ -743,7 +952,54 @@ export function AssistantSheet({ open, onClose, seed }) {
     ]
       .filter(Boolean)
       .join(" · ");
-  const status = listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : voice ? "Sesli sohbet · konuşmak için mikrofona dokun" : "Yaz ya da konuş";
+  const status = listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : voice ? "Sesli sohbet · konuşmak için mikrofona dokun" : focus?.title ? `${focus.title} · yaz ya da konuş` : "Yaz ya da konuş";
+
+  // Sahne görünen sayfalarda canlı durum sahnede çizilir (Stage.jsx); burada yalnız sahnesiz sayfalar için küçük panel
+  if (docked && stageOn) return null;
+  // Canlı alt panel: son cevap ya da duyulan, dinleme durumu; dokununca tam açılır, mikrofonla devam edilir
+  if (docked) {
+    const lastSaid = [...turns].reverse().find((x) => x.role === "assistant")?.text || "Buradayım, söyle.";
+    const heardLine = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+    return (
+      <div data-voice="" role="region" aria-label="Asistan" className="fade-in fixed inset-x-0 bottom-0 z-[55] mx-auto max-w-[30rem] px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-2.5 rounded-[1.5rem] bg-card p-2 pl-2.5 shadow-[0_-6px_30px_-10px_rgba(38,40,44,.45)] ring-1 ring-line">
+          <span className={`grid size-11 shrink-0 place-items-center rounded-full ${listening ? "bg-rec/10" : "bg-[#2c5163]"}`} aria-hidden="true">
+            {listening || tts.speaking ? (
+              <span className="eq"><i /><i /><i /><i /></span>
+            ) : busy || transcribing ? (
+              <span className="size-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : (
+              <span className="flex h-4 items-end gap-[2.5px]">
+                {[6, 11, 16, 10, 5].map((h, i) => (
+                  <i key={i} className="w-[2.5px] rounded-full bg-white" style={{ height: h }} />
+                ))}
+              </span>
+            )}
+          </span>
+          <button type="button" onClick={() => setDock(false)} className="min-w-0 flex-1 text-left" aria-label="Asistanı büyüt">
+            <small className={`block text-[0.6875rem] font-bold uppercase tracking-[.08em] ${listening ? "text-rec" : "text-acc"}`}>{listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : "Asistan"}</small>
+            <span className="line-clamp-2 text-[0.875rem] leading-snug">{listening ? heardLine || <span className="text-mut">Söyle, dinliyorum…</span> : busy ? heard : lastSaid}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (listening) return sp.stop("send");
+              convo.current = true;
+              tts.stop();
+              sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
+            }}
+            aria-label={listening ? "Bitti, gönder" : "Konuş"}
+            className={`grid size-11 shrink-0 place-items-center rounded-full text-white active:scale-90 ${listening ? "bg-acc" : "bg-[#2c5163]"}`}
+          >
+            <Icon name={listening ? "check" : "mic"} className="size-5" />
+          </button>
+          <button type="button" onClick={shut} aria-label="Asistanı kapat" className="grid size-9 shrink-0 place-items-center rounded-full text-mut active:bg-bg">
+            <Icon name="x" className="size-[1.125rem]" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Küçültülmüş: sol kenarda baloncuk (sohbet sürer; dokununca açılır)
   if (open && min)
@@ -768,7 +1024,7 @@ export function AssistantSheet({ open, onClose, seed }) {
       data-voice=""
       inert={!open}
       style={drag > 0 ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}
-      className={`fixed inset-x-0 top-0 z-50 mx-auto flex h-dvh w-full max-w-[30rem] flex-col overflow-hidden bg-card shadow-[0_-12px_40px_-16px_rgba(38,40,44,.45)] transition-transform duration-300 ease-out sm:top-3 sm:h-[calc(100dvh-0.75rem)] sm:rounded-t-[1.75rem] sm:ring-1 sm:ring-line ${
+      className={`fixed inset-x-0 top-0 z-[55] mx-auto flex h-dvh w-full max-w-[30rem] flex-col overflow-hidden bg-card shadow-[0_-12px_40px_-16px_rgba(38,40,44,.45)] transition-transform duration-300 ease-out sm:top-3 sm:h-[calc(100dvh-0.75rem)] sm:rounded-t-[1.75rem] sm:ring-1 sm:ring-line ${
         open ? "translate-y-0" : "pointer-events-none translate-y-full"
       }`}
     >
@@ -858,22 +1114,20 @@ export function AssistantSheet({ open, onClose, seed }) {
       {/* Sohbet (kayar) */}
       <div ref={scrollRef} onPointerDown={() => menu && setMenu(false)} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-line px-4 pb-4 pt-2 text-[1rem]">
         {turns.length === 0 && !listening && !busy && !transcribing && (
-          prefer ? (
-            <p className="pt-3 text-[0.875rem] text-mut">
-              Yeni {{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de.
-            </p>
-          ) : (
           <div className="pt-3">
-            <p className="text-[0.8125rem] text-mut">Arka arkaya isteyebilirsin; bitince “bitir” de. Örnekler:</p>
+            <p className="text-[0.8125rem] text-mut">
+              {prefer
+                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin:`
+                : "Arka arkaya isteyebilirsin; bitince “bitir” de. Örnekler:"}
+            </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {EXAMPLES.map((ex) => (
+              {(examples || EXAMPLES).map((ex) => (
                 <button key={ex} type="button" onClick={() => run(ex, false, true)} className="rounded-full bg-bg px-3 py-1.5 text-left text-[0.8125rem] transition active:scale-95">
                   {ex}
                 </button>
               ))}
             </div>
           </div>
-          )
         )}
 
         <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />

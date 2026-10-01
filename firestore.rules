@@ -182,6 +182,18 @@ service cloud.firestore {
         allow read: if isStaff(orgId) && (request.auth.uid == mid || request.auth.uid in resource.data.get("parents", []));
       }
 
+      // Alışveriş listesi: "family" listesini aile bireyleri, "team" listesini çalışanlar kullanır (ana hesap hepsini, yukarıdaki kural)
+      match /shop/{id} {
+        function shopOk(l) { return (l == "family" && myKind() == "family") || (l == "team" && myKind() == "staff"); }
+        allow read, delete: if isStaff(orgId) && shopOk(resource.data.list);
+        allow create: if isStaff(orgId) && shopOk(request.resource.data.list)
+                      && request.resource.data.keys().hasOnly(["text", "list", "done", "by", "at", "doneBy", "doneAt"])
+                      && request.resource.data.by == request.auth.uid
+                      && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 80;
+        allow update: if isStaff(orgId) && shopOk(resource.data.list)
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["done", "doneBy", "doneAt"]);
+      }
+
       // Çalışan: kendi üye kaydında yalnızca "son görülme" zamanını günceller (ana hesap listede görür)
       match /members/{mid} {
         allow update: if isStaff(orgId) && request.auth.uid == mid

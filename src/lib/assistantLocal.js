@@ -1,34 +1,11 @@
 import { addDate, weekRange } from "@/lib/ai/digest";
 import { short, todayStr } from "@/lib/utils/format";
 
-export const PAGES = {
-  home: { path: "/", label: "Ana sayfa" },
-  receipts: { path: "/receipts", label: "Fişler" },
-  plans: { path: "/plans", label: "Planlar" },
-  notes: { path: "/notes", label: "Notlar" },
-  tasks: { path: "/tasks", label: "Görevler" },
-  attendance: { path: "/athletes/attendance", label: "Yoklama" },
-};
+export { PAGES } from "./nav";
 export const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 
-// Yalnızca "görevleri aç" gibi kısa gezinme komutları yapay zekayı beklemeden anında çalışır
-const VERB = /(^|\s)(aç|göster|git|gel|geç|götür|gidelim|açsana)(?=$|[\s.,!?])/;
-const TIME_W = /(bugün|yarın|hafta|(^|\s)ay(\s|$)|yıl|geçen|gelecek|önümüzdeki|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar)/;
 const QUESTION = /(neler|ne var|kaç|hangi|var mı|nedir|ne zaman|nerede|kim)/;
-const TARGETS = [
-  ["receipts", /(^|\s)(fiş|fatura|harcama)/],
-  ["tasks", /(^|\s)görev/],
-  ["plans", /(^|\s)(plan|takvim|etkinlik)/],
-  ["notes", /(^|\s)not/],
-  ["home", /(ana sayfa|anasayfa|ana ekran|başa dön)/],
-];
-export function localNavigate(text) {
-  const t = lower(text).trim();
-  if (t.split(/\s+/).length > 6 || !VERB.test(t) || TIME_W.test(t) || QUESTION.test(t)) return null;
-  const hit = TARGETS.find(([, re]) => re.test(t));
-  return hit ? hit[0] : null;
-}
 
 // "fiş aç", "fiş yükle", "faturayı çek", "yeni fiş" gibi istekler yapay zekaya gitmeden fiş kamerasını açar.
 // "fişleri aç/göster" (çoğul) sayfaya gider, soru cümleleri yapay zekaya kalır.
