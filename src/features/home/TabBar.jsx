@@ -185,15 +185,18 @@ export function Hearing({ text, listening, solo }) {
   );
 }
 
-// ASİSTAN ÇALIŞIRKEN (Orbit): beyaz panel yok. Sayfa buzlu cam gibi bulanıklaşır, üstüne küreden yayılan ışık
-// (aurora) gelir; küre büyüyerek alttan yükselir, konuşma bulanık sayfanın üstünde süzülür. Hep çizilidir, açılıp
-// kapanması saydamlık ve kürenin büyümesiyle yumuşak (ilk açılışta kurulum gecikmesi olmaz). Yükseklik görünen alan
-// kadar: yazarken klavyenin üstüne sığar.
+// ASİSTAN ÇALIŞIRKEN (Orbit): beyaz panel yok. Alttan, konuşmanın kapladığı kadar buzlu cam yükselir (üstü yumuşakça
+// kaybolur, sayfanın üstü net kalır); camın içinde küreden yayılan ışık (aurora). Küre büyüyerek alttan yükselir,
+// konuşma camın üstünde süzülür. Hep çizilidir (ilk açılışta kurulum gecikmesi olmaz). Yükseklik görünen alan kadar:
+// yazarken klavyenin üstüne sığar.
 const noop = () => () => {};
+const FADE = 96; // camın üst kenarındaki yumuşak geçiş (px)
 export function Orbit({ on, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, setSlot }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const shell = useRef(null);
   const pane = useRef(null);
+  const stack = useRef(null); // konuşma + düğmeler (camın yüksekliği buna göre)
+  const glassRef = useRef(null);
   const userUp = useRef(false);
   // Görünen alan (klavye) — React'e uğramadan
   useEffect(() => {
@@ -227,41 +230,53 @@ export function Orbit({ on, state, live, talk, typeNow, typing, onTypingDone, cf
       el.removeEventListener("scroll", onScroll);
     };
   }, [on, client]);
+  // Buzlu cam, konuşmanın ve düğmelerin kapladığı yükseklik kadar alttan yükselir (üst kenarı yumuşakça kaybolur);
+  // konuşma uzadıkça cam da büyür. Yükseklik React'e uğramadan yazılır. Kapalıyken 0: açılınca alttan yükselir.
+  useEffect(() => {
+    const st = stack.current;
+    const gl = glassRef.current;
+    if (!client || !st || !gl || typeof ResizeObserver === "undefined") return;
+    const set = () => (gl.style.height = on ? `${Math.round(st.offsetHeight + FADE + 28)}px` : "0px");
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(st);
+    return () => ro.disconnect();
+  }, [on, client]);
   if (!client) return null;
-  const glass = "grid size-12 place-items-center rounded-full bg-white/45 text-fg shadow-[0_4px_16px_-8px_rgba(38,40,44,.35)] ring-1 ring-white/70 backdrop-blur-md transition active:scale-90";
+  const glass = "grid size-12 place-items-center rounded-full bg-white/55 text-fg shadow-[0_4px_16px_-8px_rgba(38,40,44,.3)] ring-1 ring-white/80 backdrop-blur-md transition active:scale-90";
+  // Not: saydamlık animasyonu yok (saydamlık değişirken tarayıcı arkadaki bulanıklığı çizemez, cam bir an kaybolur)
   return createPortal(
-    <div
-      ref={shell}
-      inert={!on}
-      aria-hidden={!on}
-      className={`fixed inset-x-0 top-0 z-[38] h-dvh transition-[opacity,visibility] duration-300 ease-out ${on ? "visible opacity-100" : "invisible opacity-0"}`}
-    >
-      <div aria-hidden="true" className="absolute inset-0 bg-bg/30 backdrop-blur-2xl backdrop-saturate-150" />
-      <div aria-hidden="true" className="aurora absolute inset-0" data-state={state} style={{ "--lvl": live.level || 0 }} />
-      <div className="relative mx-auto flex h-full w-full max-w-[30rem] flex-col px-5 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-[env(safe-area-inset-top)]">
-        <div ref={pane} className="min-h-0 flex-1 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_64px)] [scrollbar-width:none]">
-          <div className="flex min-h-full flex-col justify-end pb-6 pt-16">
-            <div ref={setSlot} />
-            {state === "listening" && live.heard && <Hearing text={live.heard} listening solo={!live.talked} />}
+    <div ref={shell} inert={!on} aria-hidden={!on} className={`pointer-events-none fixed inset-x-0 top-0 z-[38] h-dvh ${on ? "visible" : "invisible [transition:visibility_0s_.5s]"}`}>
+      <div ref={glassRef} aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0 transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)]">
+        <div className="absolute inset-0 bg-bg/45 backdrop-blur-2xl backdrop-saturate-150 [mask-image:linear-gradient(to_top,#000_calc(100%-96px),transparent)]" />
+        <div className="aurora absolute inset-0 [mask-image:linear-gradient(to_top,#000_40%,transparent)]" data-state={state} style={{ "--lvl": live.level || 0 }} />
+      </div>
+      <div className="relative mx-auto flex h-full w-full max-w-[30rem] flex-col justify-end px-5 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-[calc(env(safe-area-inset-top)+3rem)]">
+        <div ref={stack} className={`pointer-events-auto flex min-h-0 flex-col transition duration-300 ${on ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
+          <div ref={pane} className="max-h-[66dvh] min-h-0 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_40px)] [scrollbar-width:none]">
+            <div className="pb-5 pt-3">
+              <div ref={setSlot} />
+              {state === "listening" && live.heard && <Hearing text={live.heard} listening solo={!live.talked} />}
+            </div>
           </div>
+          {typing ? (
+            <div className="stage-in pb-1">
+              <Composer cfg={cfg} onDone={onTypingDone} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-3">
+              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={glass}>
+                <Icon name="keyboard" className="size-[1.375rem]" />
+              </button>
+              <span className={`transition-transform duration-500 ease-[cubic-bezier(.2,.9,.3,1.2)] ${on ? "translate-y-0 scale-100" : "translate-y-16 scale-50"}`}>
+                <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[7.5rem]" />
+              </span>
+              <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={glass}>
+                <Icon name="x" className="size-[1.375rem]" />
+              </button>
+            </div>
+          )}
         </div>
-        {typing ? (
-          <div className="stage-in pb-1">
-            <Composer cfg={cfg} onDone={onTypingDone} />
-          </div>
-        ) : (
-          <div className="flex items-center justify-between px-3">
-            <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={glass}>
-              <Icon name="keyboard" className="size-[1.375rem]" />
-            </button>
-            <span className={`transition-transform duration-500 ease-[cubic-bezier(.2,.9,.3,1.2)] ${on ? "translate-y-0 scale-100" : "translate-y-16 scale-50"}`}>
-              <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[7.5rem]" />
-            </span>
-            <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={glass}>
-              <Icon name="x" className="size-[1.375rem]" />
-            </button>
-          </div>
-        )}
       </div>
     </div>,
     document.body,
