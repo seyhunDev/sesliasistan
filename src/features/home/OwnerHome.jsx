@@ -56,7 +56,7 @@ export function OwnerHome() {
 
       {/* Asistan sahnesi bu kutunun altından başlar (TabBar ölçer) */}
       <div id="home-top" className="mt-4">
-        <HomeHero weather={weather} next={false} />
+        <HomeHero weather={weather} />
       </div>
     </main>
   );
