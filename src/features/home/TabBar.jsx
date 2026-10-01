@@ -16,7 +16,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
-import { todayStr } from "@/lib/utils/format";
+import { HomeFeed } from "./OwnerHome";
+import { briefLine } from "./AssistantBrief";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -88,7 +89,7 @@ function Composer({ cfg, onDone }) {
   };
 
   return (
-    <div className="flex h-12 items-center gap-1 rounded-2xl bg-bg pl-4 pr-1.5 ring-1 ring-line focus-within:ring-acc/40">
+    <div className="flex h-12 items-center gap-1 rounded-2xl bg-card pl-4 pr-1.5 ring-1 ring-line focus-within:ring-acc/40">
       {listening ? (
         <p className="min-w-0 flex-1 truncate text-[0.9375rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
       ) : (
@@ -105,7 +106,7 @@ function Composer({ cfg, onDone }) {
           className="min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-[0.9375rem] placeholder:text-mut"
         />
       )}
-      <button type="button" onPointerDown={keep} onClick={() => (listening ? sp.stop("edit") : sp.start({ autoStop: 8000 }))} aria-label={listening ? "Bitti" : "Sesle yaz"} className="grid size-9 shrink-0 place-items-center rounded-full text-acc active:bg-bg">
+      <button type="button" onPointerDown={keep} onClick={() => (listening ? sp.stop("edit") : sp.start({ autoStop: 8000 }))} aria-label={listening ? "Bitti" : "Sesle yaz"} className="grid size-9 shrink-0 place-items-center rounded-full text-acc active:bg-line/50">
         <Icon name={listening ? "check" : "mic"} className="size-[1.375rem]" />
       </button>
       <button type="button" onPointerDown={keep} onClick={send} disabled={!text.trim()} aria-label="Gönder" className="grid size-9 shrink-0 place-items-center rounded-full bg-acc text-white transition active:scale-90 disabled:opacity-35">
@@ -182,9 +183,10 @@ const hello = () => {
   return h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
 };
 
-// ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler.
-// Ana sayfada selam ve özet sayfanın üstünde (AssistantBrief); sahne orada ince çubuk olarak başlar, büyütülünce
-// yalnızca öneriler ve küre görünür. Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
+// ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta öneriler, büyük küre ve sekmeler.
+// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır: selam ve gün özeti
+// (yalnız ana sayfada), altında günün içeriği (HomeFeed) sahnenin içinde kayar. Ana sayfada sahne kendiliğinden
+// küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
 // kart/taslak/onay gerekince asistan tam açılır.
 // Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
 // tutamağa dokununca büyür. Boyut değişimi yükseklik geçişiyle yumuşak; geçiş sırasında gelen kaydırma olayları
@@ -198,24 +200,27 @@ export function TabBar({ cfg }) {
   const { openReceipt } = useReceipt();
   const { openBirthday } = useBirthday();
   const { unreadTotal } = useChat();
-  const { plans, tasks } = useData();
+  const { plans, tasks, myUid } = useData();
   const { profile } = useAuth();
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [small, setSmall] = useState(path === "/");
+  const [small, setSmall] = useState(false);
   const [atPath, setAtPath] = useState(path);
   const [h, setH] = useState(null); // içeriğin ölçülen yüksekliği (geçiş için)
   const kind = useKind();
   const box = useRef(null);
   const inner = useRef(null);
+  const wrap = useRef(null);
+  const feed = useRef(null);
+  const [feedMax, setFeedMax] = useState(null); // ana sayfa akışının en çok yüksekliği (sahne ekrana sığsın)
   const home = path === "/";
   const homeRef = useRef(home);
   const quietUntil = useRef(0); // bu ana kadar kaydırma olayları sahnenin boyunu değiştirmez
 
-  // Yeni sayfaya geçince sahne büyük başlar (ana sayfada ince: özet sayfanın üstünde)
+  // Yeni sayfaya geçince sahne büyük başlar
   if (atPath !== path) {
     setAtPath(path);
-    setSmall(path === "/");
+    setSmall(false);
   }
 
   const active = !!(live.open && live.docked);
@@ -226,6 +231,29 @@ export function TabBar({ cfg }) {
     homeRef.current = home;
   }, [home]);
 
+  // Ana sayfa: akış, hava kartının altıyla sahnenin sabit parçaları (selam, öneriler, küre, sekmeler) arasındaki yere sığar
+  useLayoutEffect(() => {
+    if (!home || mode !== "big") return;
+    const fit = () => {
+      const f = feed.current;
+      const b = box.current;
+      const w = wrap.current;
+      const i = inner.current;
+      if (!f || !b || !w || !i) return;
+      const top = document.getElementById("home-top")?.getBoundingClientRect().bottom ?? window.innerHeight * 0.4;
+      const fixedParts = b.offsetHeight - w.offsetHeight + (i.offsetHeight - f.offsetHeight);
+      setFeedMax(Math.max(140, Math.round(window.innerHeight - Math.max(top, 0) - 12 - fixedParts)));
+    };
+    fit();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    const hero = document.getElementById("home-top");
+    if (ro && hero) ro.observe(hero);
+    window.addEventListener("resize", fit);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [home, mode]);
 
   // İçerik değişince yükseklik eski değerden yenisine kayar (height geçişi; içerik yumuşakça belirir)
   useLayoutEffect(() => {
@@ -238,8 +266,14 @@ export function TabBar({ cfg }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Geçiş bitince bir kez yazılır:
-  // her karede yazılırsa sayfa her karede yeniden dizilir (iPhone'da takılma).
+  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Aynı sayfada yalnızca büyür:
+  // sahne küçülünce boşluk da küçülseydi sayfa kısalır, kaydırma geri çekilir ve içerik kayardı (takvimde güne
+  // dokununca). Sayfa değişince sıfırlanır. Geçiş bitince bir kez yazılır (her karede yazılırsa iPhone'da takılır).
+  const peak = useRef(0);
+  useEffect(() => {
+    peak.current = box.current?.offsetHeight || 0;
+    if (peak.current) document.documentElement.style.setProperty("--stage-h", `${peak.current}px`);
+  }, [path]);
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -247,6 +281,8 @@ export function TabBar({ cfg }) {
     const ro = new ResizeObserver(() => {
       clearTimeout(t);
       t = setTimeout(() => {
+        if (el.offsetHeight <= peak.current) return;
+        peak.current = el.offsetHeight;
         quietUntil.current = Math.max(quietUntil.current, Date.now() + 300);
         document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`);
       }, 320);
@@ -264,11 +300,11 @@ export function TabBar({ cfg }) {
       const y = window.scrollY;
       const d = y - last;
       last = y;
-      if (Date.now() < quietUntil.current) return;
+      if (Date.now() < quietUntil.current || homeRef.current) return; // ana sayfa kaymaz; içerik sahnenin içinde
       if (d > 0 && y > 40) setSmall(true);
-      else if (d < 0 && y <= 8 && !homeRef.current) setSmall(false); // ana sayfada en üstte özet zaten var: kendiliğinden büyümez
+      else if (d < 0 && y <= 8) setSmall(false);
     };
-    const onDown = (e) => !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
+    const onDown = (e) => !homeRef.current && !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointerdown", onDown);
     return () => {
@@ -325,10 +361,7 @@ export function TabBar({ cfg }) {
     setTyping(true);
   };
   const ask = (t) => (cfg.onSend ? cfg.onSend(t) : openAssistant({ text: t, dock: true, prefer: cfg.prefer, examples: cfg.ex }));
-  const today = todayStr();
-  const todays = plans.filter((p) => p.date <= today && (p.endDate || p.date) >= today).length;
-  const late = tasks.filter((t) => !t.done && t.due && t.due < today).length;
-  const summary = [todays ? `Bugün ${todays} plan var` : "Bugün plan yok", late ? `${late} görev gecikmiş` : ""].filter(Boolean).join(", ") + ".";
+  const summary = briefLine({ plans, tasks, uid: myUid, unread: unreadTotal });
   const chips = cfg.ex || ["Bugün neler var?", "Yarın 10'da antrenman ekle", "Ekibe yaz"];
   const first = (profile?.name || "").split(" ")[0];
 
@@ -337,13 +370,13 @@ export function TabBar({ cfg }) {
       {/* Asistan çalışırken sayfa soluklaşır (dokunuşları engellemez) */}
       <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-[19] bg-bg transition-opacity duration-300 ${active && state !== "idle" ? "opacity-60" : "opacity-0"}`} />
       <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
-        <div className="mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-card px-5 pt-2.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
+        <div className="mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
           <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-1 block h-5 w-16">
             <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
           </button>
 
           {/* Yükseklik geçişi: dış kutu ölçülen yüksekliğe kayar, içerik kendi boyunda kalır (kırpılır) */}
-          <div style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
+          <div ref={wrap} style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
             <div ref={inner}>
               {mode === "active" ? (
                 /* Asistan konuşuyor: duyulan ya da son cevap büyük yazıyla; kontrol düğmeleri */
@@ -355,11 +388,11 @@ export function TabBar({ cfg }) {
                     {state === "listening" ? live.heard || <span className="text-mut">Söyle, dinliyorum…</span> : state === "busy" ? live.heard || "…" : live.lastReply || "Buradayım, söyle."}
                   </p>
                   <div className="flex items-center justify-between pt-1">
-                    <button type="button" onClick={() => act.current.close?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-bg">
+                    <button type="button" onClick={() => act.current.close?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-line/50">
                       <Icon name="x" className="size-[1.125rem]" /> Kapat
                     </button>
                     <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-16" ring="shadow-[0_0_0_8px_rgba(62,110,132,.12)]" />
-                    <button type="button" onClick={() => act.current.expand?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-bg">
+                    <button type="button" onClick={() => act.current.expand?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-line/50">
                       Ayrıntı <Icon name="chev" className="size-4 -rotate-90" />
                     </button>
                   </div>
@@ -371,28 +404,37 @@ export function TabBar({ cfg }) {
               ) : mode === "big" ? (
                 /* Boşta: selam, günün özeti, (ana sayfada) sıradaki ve senin için, öneriler, küre */
                 <div key="big" className="stage-in space-y-3.5 pb-4">
-                  {!home && (
+                  {home && (
                   <div>
                     <p className="text-[0.6875rem] font-bold uppercase tracking-[.12em] text-acc">Asistan</p>
                     <p className="mt-1 text-[1.25rem] font-semibold leading-snug tracking-tight">
                       {hello()}
-                      {first ? ` ${first}` : ""}. <span className="font-medium text-mut">{summary}</span>
+                      {first ? `, ${first}` : ""}. <span className="font-medium text-mut">{summary}</span>
                     </p>
                   </div>
                   )}
+                  {home && (
+                    <div
+                      ref={feed}
+                      style={feedMax ? { maxHeight: feedMax } : undefined}
+                      className="-mx-5 overflow-y-auto overscroll-contain px-5 pb-3 pt-1 [mask-image:linear-gradient(to_bottom,transparent,#000_10px,#000_calc(100%-18px),transparent)] [scrollbar-width:none]"
+                    >
+                      <HomeFeed />
+                    </div>
+                  )}
                   <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
                     {chips.map((c) => (
-                      <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-bg px-3.5 py-2 text-[0.8125rem] font-medium ring-1 ring-line active:bg-line/60">
+                      <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-medium ring-1 ring-line active:bg-line/60">
                         {c}
                       </button>
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-2">
-                    <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-bg text-fg active:bg-line/60">
+                    <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
                       <Icon name="keyboard" className="size-[1.375rem]" />
                     </button>
                     <StageOrb state={state} onTap={talk} onHold={typeNow} />
-                    <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-bg text-fg active:bg-line/60">
+                    <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
                       <Icon name="plus" className="size-6" />
                     </button>
                   </div>
@@ -404,7 +446,7 @@ export function TabBar({ cfg }) {
                   <button type="button" onClick={() => setSmall(false)} className="min-w-0 flex-1 truncate text-left text-[0.9375rem] text-mut">
                     {cfg.ph}
                   </button>
-                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-11 place-items-center rounded-full bg-bg text-fg active:bg-line/60">
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-11 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
                     <Icon name="keyboard" className="size-5" />
                   </button>
                 </div>
@@ -456,8 +498,12 @@ function Host() {
     setStageOn(show);
     if (!show) return;
     document.body.dataset.dock = "1";
-    return () => delete document.body.dataset.dock;
-  }, [show, setStageOn]);
+    if (path === "/") document.body.dataset.home = "1";
+    return () => {
+      delete document.body.dataset.dock;
+      delete document.body.dataset.home;
+    };
+  }, [show, setStageOn, path]);
   if (!show) return null;
   const cfg = { ...PAGES[path], ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
   return <TabBar cfg={cfg} />;

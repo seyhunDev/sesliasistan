@@ -185,3 +185,6 @@ select {
 .page-in { animation: pagein .2s ease-out backwards; }
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
+
+/* Ana sayfa: sayfada yalnız hava durumu; içerik asistan sahnesinde kayar, sayfanın alt boşluğu gerekmez */
+body[data-dock][data-home] main { padding-bottom: 1rem; }
