@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
+import { Loader } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -36,6 +37,33 @@ async function fetchReplies(key, body) {
   }
 }
 
+// Son açılan sohbetlerin mesajları bellekte: aynı sohbete dönünce mesajlar beklemeden görünür, yenileri arkadan gelir.
+// prefetchChat: listede sohbete parmak değince (ya da okunmamışlar için arka planda) mesajlar önceden okunur.
+const MSGS = new Map();
+const MAX_CACHED = 30;
+const toList = (s) => s.docs.map((d) => ({ ...d.data({ serverTimestamps: "estimate" }), id: d.id, pending: d.metadata.hasPendingWrites })).reverse();
+const keep = (cid, list) => {
+  MSGS.delete(cid);
+  MSGS.set(cid, list);
+  if (MSGS.size > MAX_CACHED) MSGS.delete(MSGS.keys().next().value);
+};
+const lastQ = (cref, n = PAGE) => query(collection(cref, "messages"), orderBy("at", "desc"), limit(n));
+const busy = new Set();
+export async function prefetchChat(cref, cid) {
+  if (!cref || MSGS.has(cid) || busy.has(cid)) return;
+  busy.add(cid);
+  try {
+    const c = await getDocsFromCache(lastQ(cref)).catch(() => null);
+    if (c && !c.empty && !MSGS.has(cid)) keep(cid, toList(c));
+    const s = await getDocs(lastQ(cref));
+    keep(cid, toList(s));
+  } catch {
+    /* çevrimdışı ya da izin yok: sohbet açılınca kendisi okur */
+  } finally {
+    busy.delete(cid);
+  }
+}
+
 const toneOf = (uid = "") => NAME_TONES[[...uid].reduce((a, c) => a + c.charCodeAt(0), 0) % NAME_TONES.length];
 
 // Tek sohbet: üstte kişi/grup ve durum (çevrimiçi, yazıyor…), ortada mesajlar, altta sabit yazma alanı.
@@ -43,7 +71,7 @@ const toneOf = (uid = "") => NAME_TONES[[...uid].reduce((a, c) => a + c.charCode
 export function ChatView({ cid }) {
   const router = useRouter();
   const toast = useToast();
-  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, edit, pin } = useChat();
+  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, edit, pin, ready } = useChat();
   const { setViewing } = useData();
   const now = useNow(2000);
 
@@ -61,7 +89,9 @@ export function ChatView({ cid }) {
   const others = members.filter((m) => m !== uid);
   const otherP = chat?.type === "dm" ? allPeople.find((p) => p.uid === chat.other) : null;
 
-  const [msgs, setMsgs] = useState([]);
+  const [raw, setRaw] = useState(() => MSGS.get(cid) || null); // null: henüz okunmadı (boş sohbetle karışmasın)
+  const msgs = raw || [];
+  const [cached] = useState(() => MSGS.has(cid)); // bellekten geldiyse belirme animasyonu yok
   const [lim, setLim] = useState(PAGE);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
@@ -82,11 +112,14 @@ export function ChatView({ cid }) {
   useEffect(() => {
     if (!exists || !orgId) return;
     return onSnapshot(
-      query(collection(chatRef(cid), "messages"), orderBy("at", "desc"), limit(lim)),
+      lastQ(chatRef(cid), lim),
       { includeMetadataChanges: true },
       (s) => {
-        const list = s.docs.map((d) => ({ ...d.data({ serverTimestamps: "estimate" }), id: d.id, pending: d.metadata.hasPendingWrites })).reverse();
-        setMsgs(list);
+        const list = toList(s);
+        // Önbellekte hiç yoksa sunucuyu bekle (önce boş, sonra dolu görünmesin)
+        if (s.empty && s.metadata.fromCache && !MSGS.has(cid)) return;
+        keep(cid, list);
+        setRaw(list);
         setDivider((v) => (v !== null ? v : list.find((m) => m.by !== uid && (m.n || 0) > (readAt.current ?? Infinity))?.id || ""));
       },
       (e) => console.warn("[chat] mesajlar okunamadı:", e.code),
@@ -118,15 +151,17 @@ export function ChatView({ cid }) {
   // Alta kaydırma: açılışta en alt; yeni mesajda kullanıcı alttaysa ya da mesaj benimse kayar, değilse "↓ yeni" düğmesi
   const count = useRef(-1);
   const lastBy = msgs.at(-1)?.by;
-  useEffect(() => {
+  // İlk konumlama ekrana çizilmeden önce yapılır (useLayoutEffect): sayfa önce üstte görünüp alta zıplamaz.
+  useLayoutEffect(() => {
     const el = document.scrollingElement;
     if (!el || !msgs.length) return;
     const first = count.current < 0;
     const grew = msgs.length > count.current && !first;
     count.current = msgs.length;
     const near = el.scrollHeight - window.scrollY - window.innerHeight < 200;
+    if (first) window.scrollTo(0, el.scrollHeight);
     if (first || (grew && (near || lastBy === uid))) {
-      requestAnimationFrame(() => window.scrollTo({ top: el.scrollHeight, behavior: first ? "auto" : "smooth" }));
+      if (!first) requestAnimationFrame(() => window.scrollTo({ top: el.scrollHeight, behavior: "smooth" }));
       setNewBelow(0);
     } else if (grew) setNewBelow((n) => n + 1);
   }, [msgs.length, lastBy, uid]);
@@ -234,6 +269,13 @@ export function ChatView({ cid }) {
   const readAll = (m) => others.length > 0 && others.every((o) => (chat?.read?.[o] || 0) >= (m.n || 0));
   const firstUnread = divider ? msgs.findIndex((m) => m.id === divider) : -1;
 
+  // Sohbet listesi henüz gelmediyse "bulunamadı" değil, yükleniyor
+  if (!chat && !ready)
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-[30rem] place-items-center">
+        <Loader className="text-mut" />
+      </main>
+    );
   if (!chat)
     return (
       <main className="mx-auto grid min-h-dvh max-w-[30rem] place-items-center px-6 text-center">
@@ -288,13 +330,14 @@ export function ChatView({ cid }) {
         )}
 
         {/* Mesajlar */}
-        <div ref={box} className="relative flex-1 px-3.5 pb-4 pt-2">
+        <div ref={box} className={`relative flex-1 px-3.5 pb-4 pt-2 ${raw && !cached ? "msgs-in" : ""}`}>
           {msgs.length >= lim && (
             <button type="button" onClick={() => setLim((n) => n + PAGE)} className="mx-auto mb-2 block rounded-full bg-card px-3 py-1.5 text-[0.75rem] font-semibold text-acc shadow-sm">
               Önceki mesajlar
             </button>
           )}
-          {!msgs.length && (
+          {exists && !raw && <MsgSkeleton />}
+          {(!exists || raw) && !msgs.length && (
             <div className="mx-auto mt-10 max-w-[18rem] rounded-2xl bg-card px-4 py-3 text-center text-[0.8125rem] leading-snug text-mut shadow-sm">
               <Icon name="chat" className="mx-auto mb-1.5 size-5 text-acc" />
               {chat.type === "dm" ? `${chat.title} ile mesajlaşmaya başla.` : GROUPS[cid] ? `${GROUPS[cid].name} grubu: yazdığını gruptaki herkes görür.` : "Grup sohbeti: yazdığını gruptaki herkes görür."}
@@ -570,5 +613,18 @@ export function ChatView({ cid }) {
 
       <ChatInfoSheet open={info} onClose={() => setInfo(false)} chat={chat} members={members} people={people} exists={exists} />
     </main>
+  );
+}
+
+// Mesajlar okunurken: gelen/giden balon iskeletleri (boş sohbet kartı yanlışlıkla görünmesin)
+function MsgSkeleton() {
+  return (
+    <div className="soft-in mt-auto space-y-2.5 pt-6" aria-hidden="true">
+      {[["w-3/5", 0], ["w-2/5", 0], ["w-1/2", 1], ["w-2/3", 0], ["w-1/3", 1]].map(([w, mine], i) => (
+        <div key={i} className={`flex ${mine ? "justify-end" : ""}`}>
+          <span className={`block h-9 ${w} animate-pulse rounded-2xl ${mine ? "bg-acc/15" : "bg-card"}`} />
+        </div>
+      ))}
+    </div>
   );
 }

@@ -179,3 +179,9 @@ select {
 /* Asistan sahnesi: içerik değişince yalnızca saydamlık (yükseklik ayrıca kayar); hafif gecikme, kutu açılırken belirir */
 @keyframes stagein { from { opacity: 0; } }
 .stage-in { animation: stagein .26s ease-out .06s both; }
+
+/* Sayfa geçişi (app/(app)/template.jsx): yalnız saydamlık, bitince iz bırakmaz (backwards) */
+@keyframes pagein { from { opacity: 0; } }
+.page-in { animation: pagein .2s ease-out backwards; }
+/* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
+.msgs-in { animation: pagein .22s ease-out backwards; }

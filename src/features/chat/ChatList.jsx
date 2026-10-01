@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { dmId, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, isOnline, listTime } from "./bits";
 import { NewChatSheet } from "./NewChatSheet";
+import { prefetchChat } from "./ChatView";
 import { GROUPS } from "@/lib/kinds";
 
 const TYPING_MS = 6000;
@@ -17,12 +18,27 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 // son mesaja göre sıralı; okunmamışlar kalın ve sayılı. Üstte kişiler (çevrimiçi noktasıyla): dokununca birebir sohbet.
 export function ChatList() {
   const router = useRouter();
-  const { chats, people, personName, uid, denied, orgId, ready, groupIds } = useChat();
+  const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef } = useChat();
   const [filter, setFilter] = useState("all"); // all | unread | groups
   const [q, setQ] = useState("");
   const [newOpen, setNewOpen] = useState(false);
 
   const now = useNow(3000).getTime();
+  // Önceden okuma: parmak sohbete değince başlar (dokunuşla açılış arasında kazanılan süre); okunmamış ve en son
+  // sohbetler liste açılınca arka planda hazırlanır. Böylece sohbet açılınca mesajlar beklemeden görünür.
+  const warm = (cid) => prefetchChat(chatRef(cid), cid);
+  const warmKey = chats
+    .filter((c) => c.last)
+    .slice()
+    .sort((a, b) => (b.unread > 0) - (a.unread > 0) || toMs(b.last?.at) - toMs(a.last?.at))
+    .slice(0, 5)
+    .map((c) => c.id)
+    .join(",");
+  useEffect(() => {
+    if (!ready || !warmKey) return;
+    const t = setTimeout(() => warmKey.split(",").forEach((cid) => prefetchChat(chatRef(cid), cid)), 400);
+    return () => clearTimeout(t);
+  }, [ready, warmKey, chatRef]);
   const chatRows = chats.map((c) => {
     const typers = Object.entries(c.typing || {})
       .filter(([u, t]) => u !== uid && now - toMs(t) < TYPING_MS)
@@ -125,7 +141,7 @@ export function ChatList() {
           {groupIds.map((g) => {
             const c = chats.find((x) => x.id === g);
             return (
-              <button key={g} type="button" onClick={() => router.push(`/messages?c=${g}`)} className="relative flex w-[3.75rem] shrink-0 flex-col items-center gap-1.5 active:scale-95">
+              <button key={g} type="button" onPointerDown={() => warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex w-[3.75rem] shrink-0 flex-col items-center gap-1.5 active:scale-95">
                 <Avatar icon={GROUPS[g].icon} size="size-[3.75rem]" tone="bg-[#2c5163] text-white" />
                 {c?.unread > 0 && !c.mutedByMe && (
                   <span className="absolute -right-1 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">{c.unread > 99 ? "99+" : c.unread}</span>
@@ -147,7 +163,7 @@ export function ChatList() {
         <ul className="mt-1">
           {rows.map((x) => (
             <li key={x.key}>
-              <button type="button" onClick={x.open} className="flex w-full items-center gap-3.5 px-5 text-left transition active:bg-line/40">
+              <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} className="flex w-full items-center gap-3.5 px-5 text-left transition active:bg-line/40">
                 <span className="py-2.5">{x.avatar}</span>
                 <span className="min-w-0 flex-1 self-stretch border-b border-line/80 py-3">
                   <span className="flex items-baseline gap-2">
