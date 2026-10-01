@@ -188,3 +188,7 @@ select {
 
 /* Ana sayfa: sayfada yalnız hava durumu; içerik asistan sahnesinde kayar, sayfanın alt boşluğu gerekmez */
 body[data-dock][data-home] main { padding-bottom: 1rem; }
+
+/* Asistan düğmesi dinlerken: dışa doğru yumuşak dalga (sahnenin kenarında kırpılmayacak kadar küçük) */
+@keyframes orbripple { from { transform: scale(1); opacity: .35; } to { transform: scale(1.32); opacity: 0; } }
+.orb-ripple { animation: orbripple 1.6s ease-out infinite; }

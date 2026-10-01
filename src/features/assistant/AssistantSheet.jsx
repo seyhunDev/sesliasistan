@@ -845,7 +845,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
   };
   useEffect(() => {
-    onAct?.({ listen: stageListen, stop: () => sp.stop("send"), cancel: () => sp.cancel(), expand: () => setDock(false), close: () => finish(false) });
+    onAct?.({
+      listen: stageListen,
+      stop: () => sp.stop("send"),
+      cancel: () => sp.cancel(),
+      abort: () => {
+        sp.cancel();
+        cancelRun();
+      },
+      expand: () => setDock(false),
+      close: () => finish(false),
+    });
   });
   useEffect(() => {
     if (!docked) return;
