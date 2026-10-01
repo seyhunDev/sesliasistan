@@ -49,6 +49,7 @@ const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 const ENDPOINT = 1300;
 const BEAT = 350;
+const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
@@ -204,6 +205,40 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
 
   // Yanıtı akışa ekler, kartları günceller, sesli okur. Sesli sohbetteyse okuma bitince mikrofon yeniden açılır
   // (kullanıcı "bitir" diyene ya da kapatana kadar sohbet sürer).
+  // Konuşma kuyruğu: ön cevap, akışta tamamlanan cümleler ve yanıtın kalanı sırayla okunur (biri ötekini kesmez).
+  // Sesli yanıt kapalıysa tts.speakThen hemen döner, kuyruk anında boşalır. Dışarıdan susturulursa (mikrofon açıldı)
+  // takılı kalmaz: bir süredir konuşma yoksa kuyruk sıfırlanır.
+  const sayQ = useRef({ busy: false, items: [], gen: 0, since: 0 });
+  const speakingRef = useRef(false);
+  useEffect(() => {
+    speakingRef.current = tts.speaking;
+  }, [tts.speaking]);
+  const pumpSay = () => {
+    const q = sayQ.current;
+    const it = q.items.shift();
+    if (!it) {
+      q.busy = false;
+      return;
+    }
+    q.busy = true;
+    q.since = clock();
+    const g = q.gen;
+    tts.speakThen(it.text, () => {
+      if (g !== sayQ.current.gen) return;
+      it.after?.();
+      pumpSay();
+    });
+  };
+  const enqueueSay = (text, after) => {
+    const q = sayQ.current;
+    if (q.busy && !speakingRef.current && clock() - q.since > 1500) q.busy = false; // susturuldu: takılmasın
+    q.items.push({ text, after });
+    if (!q.busy) pumpSay();
+  };
+  const clearSay = () => (sayQ.current = { busy: false, items: [], gen: sayQ.current.gen + 1, since: 0 });
+  const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
+  const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
+
   function reply(message, extra = {}, viaVoice = false) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
     // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
@@ -214,12 +249,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     if (!keepDock && (pending || show.length || att || String(message).length > 170)) undock();
     const awaiting = expect || !!pending;
     setPre(null);
+    setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
     setCards({ show, pending, nav, chat, att, engine, awaiting });
     scrollLater();
     navigator.vibrate?.([8, 30, 8]);
-    if (viaVoice || convo.current) tts.speakThen(message, startAuto);
-    else tts.maybeSpeak(message);
+    // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
+    const said = streamSaid.current;
+    streamSaid.current = "";
+    const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
+    enqueueSay(rest, viaVoice || convo.current ? startAuto : undefined);
   }
 
   // Başka bir tam ekran açılırken (fiş kamerası, kayıt, toplantı…) panel baloncuğa döner; sohbet kaybolmaz
@@ -575,18 +614,31 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
     // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
     // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
     const pc = precue(s, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
-    let ackDone = Promise.resolve();
+    clearSay();
+    streamSaid.current = "";
+    setStreamText("");
     if (pc) {
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
       setPre(pc.slots ? pc : null);
-      // Sesliyse okunur; yapay zekanın cevabı bu bitince okunur (üst üste binmesin, giriş yarıda kesilmesin)
-      if (viaVoice || convo.current) ackDone = new Promise((res) => (tts.speakThen(pc.line, res), setTimeout(res, 7000)));
+      enqueueSay(pc.line); // yanıtın okunması bunun ardından (kuyruk)
     }
     if (viaVoice) {
       inflight.current = s;
-      // Düşünürken açılan mikrofon giriş okunurken açılmaz (kendi sesini duymasın)
-      ackDone.then(() => id === runId.current && listenWhileThinking());
+      // Ön cevap ve akış okunurken mikrofon açılmaz (kendi sesini duymasın); ön cevap yoksa eskisi gibi
+      if (!pc) listenWhileThinking();
     }
+    // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
+    const onText = (m) => {
+      if (id !== runId.current) return;
+      setStreamText(m);
+      const end = Math.max(...[". ", "? ", "! ", "… ", ".\n", "?\n", "!\n"].map((p) => m.lastIndexOf(p)));
+      if (end < 0) return;
+      const upto = m.slice(0, end + 1);
+      if (upto.length > streamSaid.current.length && upto.startsWith(streamSaid.current)) {
+        enqueueSay(upto.slice(streamSaid.current.length).trim());
+        streamSaid.current = upto;
+      }
+    };
     try {
       // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
       const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
@@ -594,9 +646,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
-      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "" }, c.signal);
-      if (id !== runId.current) return;
-      await ackDone;
+      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
@@ -604,8 +654,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       handle(r, s, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
-      await ackDone; // yedek cevap da giriş bitince okunsun
-      if (id !== runId.current) return;
+      setStreamText("");
+      streamSaid.current = "";
       inflight.current = null;
       if (live.current.spStatus === "listening" && !live.current.heardNow) sp.cancel();
       // Yapay zeka yok: önce öğrenilmiş örneklerden tahmin (kendi küçük modelimiz)
@@ -651,6 +701,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
       if (id === runId.current) {
         setPhase("idle");
         setPre(null);
+        setStreamText("");
       }
     }
   }
@@ -850,6 +901,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   function finish(keepSpeech = false) {
     sp.cancel();
     cancelRun();
+    if (!keepSpeech) clearSay();
     if (!keepSpeech) tts.stop();
     convo.current = false;
     setMin(false);
@@ -879,6 +931,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
+    clearSay();
     tts.stop();
     sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
   };
@@ -1015,6 +1068,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
 
         <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />
 
+        {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
+        {busy && streamText && (
+          <div className="mt-3.5 flex items-start gap-2" aria-live="polite">
+            <Icon name="spark" className="mt-1 size-3.5 shrink-0 text-acc" />
+            <p className="min-w-0 text-[1rem] leading-snug">
+              {streamText}
+              <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-acc" aria-hidden="true" />
+            </p>
+          </div>
+        )}
+
         {/* Yapılan işlem adım adım (yoklama, mesaj gönderme…) */}
         {steps.length > 0 && (
           <ol className="fade-in mt-2 space-y-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.875rem]" aria-live="polite">
@@ -1088,7 +1152,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
           </div>
         )}
 
-        {(busy || transcribing) && steps.every((x) => x.st !== "run") && (
+        {(busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
           <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
             <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
               <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />

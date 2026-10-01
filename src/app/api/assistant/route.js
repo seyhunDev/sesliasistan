@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callClaude } from "@/lib/ai/anthropic";
-import { callGemini, withAiCool } from "@/lib/ai/gemini";
+import { callGemini, partialMessage, streamGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
@@ -81,11 +81,60 @@ async function handle(request) {
   const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
+  const forPeople = contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, ""));
+
+  // Akış (stream: true, Gemini): okunacak metin geldikçe satır satır gönderilir ({t:"m"}), sonunda tüm yanıt ({t:"done"}).
+  // Akış başlamadan hata olursa normal çağrıya (yedek modeller, tekrar denemeler) düşer. Biçim: NDJSON.
+  if (body?.stream && provider === "gemini") {
+    const enc = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(ctl) {
+        const send = (o) => ctl.enqueue(enc.encode(`${JSON.stringify(o)}\n`));
+        let lastM = "";
+        try {
+          let raw;
+          const t0 = Date.now();
+          try {
+            raw = await streamGemini({
+              model: process.env.GEMINI_MODEL,
+              system: ASSISTANT_SYSTEM,
+              user,
+              schema: ASSISTANT_TOOL.input_schema,
+              maxTokens: 8192,
+              timeoutMs: 20000,
+              onText: (acc) => {
+                const m = partialMessage(acc);
+                if (m && m !== lastM) {
+                  lastM = m;
+                  send({ t: "m", m });
+                }
+              },
+            });
+          } catch (e) {
+            if (e.started) throw e;
+            raw = await ask(provider, user);
+          }
+          const ms = Date.now() - t0;
+          const r = parseAssistant(raw, people, forPeople);
+          console.log(`[assistant:${provider}] akış ${ms} ms, intent=${r.intent}, items=${r.items.length}`);
+          if (!r.message && !r.items.length && !r.actions.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
+          const q = await spend(au, "assistant");
+          send({ t: "done", ...r, source: "ai", provider, ms, ...(q && !q.unlimited ? { quota: q } : {}) });
+        } catch (e) {
+          const kind = logAiError("assistant", provider, e, Date.now() - started);
+          send({ t: "err", error: aiErrorText(kind, e), reason: kind, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) });
+        }
+        ctl.close();
+      },
+    });
+    return new Response(stream, { headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store, no-transform", "x-accel-buffering": "no" } });
+  }
+
   try {
     const t0 = Date.now();
     const raw = await ask(provider, user);
     const ms = Date.now() - t0;
-    const r = parseAssistant(raw, people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")));
+    const r = parseAssistant(raw, people, forPeople);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
     if (!r.message && !r.items.length && !r.actions.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
     return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));
