@@ -15,7 +15,6 @@ import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useKind } from "@/features/auth/useKind";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
-import { HomeFeed } from "./OwnerHome";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -305,15 +304,9 @@ function NavTab({ href, icon, label, active, badge, onClick }) {
   );
 }
 
-// ASİSTAN SAHNESİ: tüm uygulamada altta, açık (kâğıt tonu) alan. Boşta öneriler, büyük küre ve sekmeler.
-// Ana sayfada sayfada yalnız hava durumu var; sahne hava kartının altından ekranın altına uzanır ve günün içeriği
-// (HomeFeed) sahnenin içinde kayar. Ana sayfada sahne kendiliğinden
-// küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
-// kart/taslak/onay gerekince asistan tam açılır.
-// Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
-// tutamağa dokununca büyür. Boyut değişimi yükseklik geçişiyle yumuşak; geçiş sırasında gelen kaydırma olayları
-// (sayfa kısalınca tarayıcının kaydırmayı geri çekmesi) yok sayılır, yoksa kısa sayfalarda (takvim) sahne
-// küçülüp büyüyerek titrer.
+// ASİSTAN ÇUBUĞU: her sayfada aynı, sabit boyda (sayfa geçişlerinde kıpırdamaz). Altta sekmeler, üstünde yüzen cam
+// bar: yazarak sor · yukarı taşan büyük küre · oluştur. Sayfa içeriği cam barın altından kayar. Asistan çalışınca
+// konuşma Orbit'te (alttan yükselen buzlu cam); yazarken cam barın yerine yazma satırı gelir (klavyenin üstünde).
 export function TabBar({ cfg }) {
   const path = usePathname();
   const router = useRouter();
@@ -324,125 +317,21 @@ export function TabBar({ cfg }) {
   const { unreadTotal } = useChat();
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [small, setSmall] = useState(false);
-  const [atPath, setAtPath] = useState(path);
-  const [h, setH] = useState(null); // içeriğin ölçülen yüksekliği (geçiş için)
   const kind = useKind();
   const box = useRef(null);
-  const inner = useRef(null);
-  const wrap = useRef(null);
-  const pane = useRef(null); // ana sayfada akış, konuşurken sohbet: sahnenin kayan orta alanı
-  const [paneH, setPaneH] = useState(null); // ana sayfada orta alanın yüksekliği (sahne üst çubuğa kadar uzanır)
-  const home = path === "/";
-  const homeRef = useRef(home);
-  const quietUntil = useRef(0); // bu ana kadar kaydırma olayları sahnenin boyunu değiştirmez
-
-  // Yeni sayfaya geçince sahne büyük başlar
-  if (atPath !== path) {
-    setAtPath(path);
-    setSmall(false);
-  }
 
   const active = !!(live.open && live.docked);
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
-  const big = typing || !small || home; // ana sayfada sahne küçülmez (sayfanın kendisi o)
-  // Asistan çalışırken sahne olduğu gibi kalır (arkada bulanık görünür); konuşma Orbit'te
-  const mode = typing && !active ? "typing" : big ? "big" : "small";
-  useEffect(() => {
-    homeRef.current = home;
-  }, [home]);
 
-  // Ana sayfa: orta alan (akış ya da sohbet) üst çubuğun altıyla sahnenin sabit parçaları (düğmeler, sekmeler) arasını
-  // tam doldurur; akıştan sohbete geçişte sahnenin boyu değişmez (zıplama olmaz)
-  useLayoutEffect(() => {
-    if (!home || mode !== "big") return;
-    const fit = () => {
-      const f = pane.current;
-      const b = box.current;
-      const w = wrap.current;
-      const i = inner.current;
-      if (!f || !b || !w || !i) return;
-      const top = document.getElementById("home-top")?.getBoundingClientRect().bottom ?? window.innerHeight * 0.4;
-      const fixedParts = b.offsetHeight - w.offsetHeight + (i.offsetHeight - f.offsetHeight);
-      setPaneH(Math.max(140, Math.round(window.innerHeight - Math.max(top, 0) - 10 - fixedParts)));
-    };
-    fit();
-    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
-    const hero = document.getElementById("home-top");
-    if (ro && hero) ro.observe(hero);
-    window.addEventListener("resize", fit);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", fit);
-    };
-  }, [home, mode, typing]);
-
-  // İçerik değişince yükseklik eski değerden yenisine kayar (height geçişi; içerik yumuşakça belirir)
-  useLayoutEffect(() => {
-    const el = inner.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      quietUntil.current = Date.now() + 450;
-      setH(el.offsetHeight);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Aynı sayfada yalnızca büyür:
-  // sahne küçülünce boşluk da küçülseydi sayfa kısalır, kaydırma geri çekilir ve içerik kayardı (takvimde güne
-  // dokununca). Sayfa değişince sıfırlanır. Geçiş bitince bir kez yazılır (her karede yazılırsa iPhone'da takılır).
-  const peak = useRef(0);
-  useEffect(() => {
-    peak.current = box.current?.offsetHeight || 0;
-    if (peak.current) document.documentElement.style.setProperty("--stage-h", `${peak.current}px`);
-  }, [path]);
+  // Sayfanın alt boşluğu çubuğun yüksekliği kadar (içerik çubuğun altında kalmasın)
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    let t;
-    const ro = new ResizeObserver(() => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        if (el.offsetHeight <= peak.current) return;
-        peak.current = el.offsetHeight;
-        quietUntil.current = Math.max(quietUntil.current, Date.now() + 300);
-        document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`);
-      }, 320);
-    });
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`));
     ro.observe(el);
-    return () => {
-      clearTimeout(t);
-      ro.disconnect();
-    };
+    return () => ro.disconnect();
   }, []);
-  // Elle kullanım: aşağı kaydırınca ya da sayfaya dokununca küçül; en üste geri kaydırınca büyü
-  useEffect(() => {
-    let last = window.scrollY;
-    const onScroll = () => {
-      const y = window.scrollY;
-      const d = y - last;
-      last = y;
-      if (Date.now() < quietUntil.current || homeRef.current) return; // ana sayfa kaymaz; içerik sahnenin içinde
-      if (d > 0 && y > 40) setSmall(true);
-      else if (d < 0 && y <= 8) setSmall(false);
-    };
-    // Sayfaya dokununca küçülme tıklama bittikten SONRA olur: dokunuş başlarken (pointerdown) ekran değişirse
-    // iPhone Safari bunu "üzerine gelme" sayar ve tıklamayı yutar (ilk dokunuş boşa gider, ikinci kez dokunmak gerekir).
-    let t = 0;
-    const onClick = (e) => {
-      if (homeRef.current || box.current?.contains(e.target) || e.target.closest?.("[role=dialog]")) return;
-      clearTimeout(t);
-      t = setTimeout(() => setSmall(true), 0);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("click", onClick);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("click", onClick);
-    };
-  }, []);
-  // iPhone: klavye açılınca sabit alt alan klavyenin arkasında kalır; yazarken sahne klavyenin üstüne taşınır
+  // iPhone: klavye açılınca sabit alt çubuk klavyenin arkasında kalır; yazarken çubuk klavyenin üstüne taşınır
   useEffect(() => {
     const vv = window.visualViewport;
     const el = box.current;
@@ -481,7 +370,6 @@ export function TabBar({ cfg }) {
 
   // Tek düğmenin işi duruma göre (StageOrb'daki tablo)
   const talk = () => {
-    setSmall(false);
     if (active) {
       if (state === "listening") return act.current.stop?.();
       if (state === "busy") return act.current.abort?.();
@@ -490,12 +378,12 @@ export function TabBar({ cfg }) {
     if (cfg.onMic) return cfg.onMic();
     openAssistant({ listen: true, dock: true, prefer: cfg.prefer, examples: cfg.ex });
   };
-  // Yazarak sor: sahnede yazı alanı açılır ("Şimdi sen dene" yönlendirmesi de kapanır)
+  // Yazarak sor ("Şimdi sen dene" yönlendirmesi de kapanır)
   const typeNow = () => {
     window.dispatchEvent(new Event("sa-assistant-open"));
     setTyping(true);
   };
-  // Hazır öneri düğmeleri yok: öneriler, hızlı öğrenme için toplanan kullanım verisi hazır olunca buraya gelecek
+  const ghost = "grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg";
 
   return (
     <>
@@ -511,69 +399,29 @@ export function TabBar({ cfg }) {
         onClose={() => act.current.close?.()}
         setSlot={setSlot}
       />
-      <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
-        <div className="relative mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
-          {/* Üst kenarda ince ışık çizgisi (asistan alanının sınırı) */}
-          <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#4fa0be]/60 to-transparent" />
-          {home ? (
-            <span className="block h-2" aria-hidden="true" />
+      {/* Üstü saydam (içerik altından kayar, dokunuşlar geçer); cam bar ve sekmeler dokunulur */}
+      <nav ref={box} aria-label="Asistan ve menü" className="pointer-events-none fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
+        <div className="mx-auto max-w-[30rem] bg-gradient-to-t from-bg from-55% to-bg/0 px-5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] pt-12">
+          {typing && !active ? (
+            <div className="stage-in pointer-events-auto pb-2">
+              <Composer cfg={cfg} onDone={() => setTyping(false)} />
+            </div>
           ) : (
-            <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-1 block h-5 w-16">
-              <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
-            </button>
+            <div className="pointer-events-auto relative flex h-16 items-center justify-between rounded-full bg-card/80 px-2 shadow-[0_1px_2px_rgba(38,40,44,.05),0_12px_30px_-14px_rgba(38,40,44,.35)] ring-1 ring-line/70 backdrop-blur-xl">
+              <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#9fcbd8]/70 to-transparent" />
+              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
+                <Icon name="keyboard" className="size-[1.375rem]" />
+              </button>
+              <span className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[42%] transition-opacity duration-300 ${active ? "opacity-0" : "opacity-100"}`}>
+                <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[5.25rem]" />
+              </span>
+              <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className={ghost}>
+                <Icon name="plus" className="size-6" />
+              </button>
+            </div>
           )}
 
-          {/* Yükseklik geçişi: dış kutu ölçülen yüksekliğe kayar, içerik kendi boyunda kalır (kırpılır) */}
-          <div ref={wrap} style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
-            <div ref={inner}>
-              {mode === "typing" ? (
-                <div key="typing" className="stage-in pb-2">
-                  <Composer cfg={cfg} onDone={() => setTyping(false)} />
-                </div>
-              ) : mode === "big" ? (
-                /* Boşta: selam, günün özeti, (ana sayfada) sıradaki ve senin için, öneriler, küre */
-                <div key="big" className="stage-in space-y-3.5 pb-4">
-                  {home && (
-                    <div
-                      ref={pane}
-                      style={paneH ? { height: paneH } : undefined}
-                      className="-mx-5 overflow-y-auto overscroll-contain px-5 pb-3 pt-1 [mask-image:linear-gradient(to_bottom,transparent,#000_10px,#000_calc(100%-18px),transparent)] [scrollbar-width:none]"
-                    >
-                      <HomeFeed />
-                    </div>
-                  )}
-                  {/* Cam bar: yazarak sor · (yukarı taşan büyük küre) · oluştur */}
-                  <div className="pt-11">
-                    <div className="relative flex h-16 items-center justify-between rounded-full bg-card/80 px-2 shadow-[0_1px_2px_rgba(38,40,44,.05),0_12px_30px_-14px_rgba(38,40,44,.35)] ring-1 ring-line/70 backdrop-blur-xl">
-                      <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#6fb6cc]/60 to-transparent" />
-                      <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg">
-                        <Icon name="keyboard" className="size-[1.375rem]" />
-                      </button>
-                      <span className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[42%] transition-opacity duration-300 ${active ? "opacity-0" : "opacity-100"}`}>
-                        <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[5.25rem]" />
-                      </span>
-                      <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg">
-                        <Icon name="plus" className="size-6" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Küçük: tek satır, küre ve kısa ipucu */
-                <div key="small" className="stage-in flex items-center gap-3 pb-2">
-                  <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-12" />
-                  <button type="button" onClick={() => setSmall(false)} className="min-w-0 flex-1 truncate text-left text-[0.9375rem] text-mut">
-                    {cfg.ph}
-                  </button>
-                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-11 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                    <Icon name="keyboard" className="size-5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-1 flex items-start justify-around border-t border-line pt-2">
+          <div className="pointer-events-auto mt-2 flex items-start justify-around bg-bg pt-1.5">
             <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
             <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
             <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unreadTotal} />
@@ -617,12 +465,8 @@ function Host() {
     setStageOn(show);
     if (!show) return;
     document.body.dataset.dock = "1";
-    if (path === "/") document.body.dataset.home = "1";
-    return () => {
-      delete document.body.dataset.dock;
-      delete document.body.dataset.home;
-    };
-  }, [show, setStageOn, path]);
+    return () => delete document.body.dataset.dock;
+  }, [show, setStageOn]);
   if (!show) return null;
   const cfg = { ...PAGES[path], ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
   return <TabBar cfg={cfg} />;

@@ -21,8 +21,8 @@ import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { StageBrief } from "./StageBrief";
 
-// Ana sayfa: yalnızca üst çubuk (gün ve tarih · kişi). Asistan sahnesi hemen altından ekranın altına uzanır;
-// hava durumu ve günün içeriği sahnenin içinde kayar (HomeFeed, TabBar). Çalışanda bugünkü kalan hak başlığın altında.
+// Ana sayfa: üst çubuk (gün ve tarih · kişi) ve günün akışı (HomeFeed: hava, sıradaki, senin için, bugün…).
+// Alttaki asistan çubuğu her sayfada aynı (TabBar); akış onun altından kayar. Çalışanda bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
   const now = useNow();
@@ -55,11 +55,15 @@ export function OwnerHome() {
 
       <PaidNotice />
       </div>
+
+      <div className="mt-4">
+        <HomeFeed />
+      </div>
     </main>
   );
 }
 
-// Asistan sahnesinin içindeki günün akışı, yukarıdan aşağı:
+// Ana sayfadaki günün akışı, yukarıdan aşağı:
 //   hava durumu › Sıradaki plan › Senin için (karar, mesaj, geciken, yeni, ödeme) › Bugün › doğum günü › Kişiler (ana hesap) › para › sayfalar.
 // Çalışanda Karar, Kişiler ve Mailler yok.
 export function HomeFeed() {
@@ -97,7 +101,7 @@ export function HomeFeed() {
       </div>
       {!staff && <TeamStrip />}
       {canReceipts(kind) && <MoneyRow />}
-      <nav aria-label="Sayfalar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+      <nav aria-label="Sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {links.map(([href, icon, label, n]) => (
           <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
             <Icon name={icon} className="size-4 text-acc" />
