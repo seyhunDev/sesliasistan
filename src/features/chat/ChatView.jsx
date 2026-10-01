@@ -105,25 +105,43 @@ export function ChatView({ cid }) {
   const readAt = useRef(null); // açılıştaki "okuduğum son mesaj" numarası
   const [divider, setDivider] = useState(null); // "Okunmamış mesajlar" çizgisinin üstünde durduğu mesaj (açılışta bir kez)
 
-  // Sohbet ekranı sabit bir kutu (mesajlaşma uygulamaları gibi): yüksekliği görünen alan (visualViewport) kadar.
-  // iPhone'da klavye açılınca kutu klavyenin üstüne sığar; sayfa kaymaz, başlık yerinde kalır, yazma alanı klavyeye yapışır.
-  const [vv, setVv] = useState(() => (typeof window !== "undefined" && window.visualViewport ? { h: window.visualViewport.height, top: window.visualViewport.offsetTop } : null));
-  useEffect(() => {
+  // Sohbet ekranı sabit bir kutu (mesajlaşma uygulamaları gibi). Yüksekliği görünen alan (visualViewport) kadar:
+  // klavye açılınca kutu kısalır, yazma alanı klavyenin üstünde kalır. iPhone sayfayı kaydırmaya kalkarsa hemen başa
+  // alınır: kutu hiçbir zaman taşınmaz (taşınırsa Safari'de dokunulan yer ile görünen yer kayar).
+  // Yükseklik React'e uğramadan doğrudan yazılır (klavye açılırken her karede yeniden çizim olmasın).
+  const shell = useRef(null);
+  useLayoutEffect(() => {
+    const el = shell.current;
+    if (!el) return;
     const v = window.visualViewport;
     const html = document.documentElement;
     const prev = [html.style.overflow, document.body.style.overflow];
     html.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
-    const on = () => v && setVv({ h: v.height, top: Math.max(0, v.offsetTop) });
-    v?.addEventListener("resize", on);
-    v?.addEventListener("scroll", on);
+    let raf = 0;
+    const fit = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = Math.round(v ? v.height : window.innerHeight);
+        el.style.height = `${h}px`;
+        // Klavye açıkken ev çizgisi payı gerekmez (yazma alanı klavyeye yapışık)
+        el.style.setProperty("--kb-pad", window.innerHeight - h > 120 ? "0.5rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
+        if (window.scrollY || (v && v.offsetTop)) window.scrollTo(0, 0);
+      });
+    };
+    fit();
+    v?.addEventListener("resize", fit);
+    v?.addEventListener("scroll", fit);
+    window.addEventListener("scroll", fit, { passive: true });
     return () => {
-      v?.removeEventListener("resize", on);
-      v?.removeEventListener("scroll", on);
+      cancelAnimationFrame(raf);
+      v?.removeEventListener("resize", fit);
+      v?.removeEventListener("scroll", fit);
+      window.removeEventListener("scroll", fit);
       [html.style.overflow, document.body.style.overflow] = prev;
       window.scrollTo(0, 0);
     };
-  }, []);
+  }, [!!chat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mesajlar (son 50; yukarı kaydırıp "Önceki mesajlar" ile daha fazlası)
   useEffect(() => {
@@ -338,7 +356,6 @@ export function ChatView({ cid }) {
     if (readers.length) return `${readers.length} kişi okudu`;
     return gotAll(m) ? "İletildi" : "Gönderildi";
   };
-  const kbOpen = !!vv && typeof window !== "undefined" && window.innerHeight - vv.h > 120; // klavye açık: alt çizgi payı gerekmez
   const firstUnread = divider ? msgs.findIndex((m) => m.id === divider) : -1;
 
   // Sohbet listesi henüz gelmediyse "bulunamadı" değil, yükleniyor
@@ -361,9 +378,8 @@ export function ChatView({ cid }) {
     );
 
   return (
-    // Sabit kutu: başlık üstte, mesajlar ortada kendi içinde kayar, yazma alanı altta. Yükseklik görünen alan kadar
-    // (klavye açıkken klavyenin üstü); iPhone görünen alanı kaydırırsa kutu da onunla gelir.
-    <main className="fixed inset-x-0 top-0 z-30 flex flex-col bg-bg" style={vv ? { height: vv.h, transform: `translate3d(0,${vv.top}px,0)` } : { height: "100dvh" }}>
+    // Sabit kutu: başlık üstte, mesajlar ortada kendi içinde kayar, yazma alanı altta (yükseklik: yukarıdaki fit)
+    <main ref={shell} className="fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg">
       <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
         <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
@@ -531,7 +547,7 @@ export function ChatView({ cid }) {
 
         {/* Yazma alanı (altta sabit) */}
         {/* Alt boşluk: adres çubuğu yokken (ana ekrandan açılan uygulama, çentikli iPhone) ev çizgisi payı kadar; fazlası alanı yukarı iter */}
-        <footer ref={composerBox} className={`z-10 shrink-0 border-t border-line bg-bg px-2.5 pt-2 ${kbOpen ? "pb-2" : "pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.5rem))]"}`}>
+        <footer ref={composerBox} className="z-10 shrink-0 border-t border-line bg-bg px-2.5 pt-2 pb-[var(--kb-pad,max(0.5rem,calc(env(safe-area-inset-bottom)-0.5rem)))]">
           {editing && (
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-card px-3 py-2 shadow-sm">
               <Icon name="edit" className="size-4 shrink-0 text-acc" />
