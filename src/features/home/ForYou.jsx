@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { SwipeRow } from "@/components/ui/SwipeRow";
@@ -58,17 +58,21 @@ function Pill({ children, onClick, tone = "light", label }) {
   );
 }
 
-// "Senin için": bildirim merkezi gibi sade liste. Her öğe: solda simge/kişi, tek satır başlık, tek satır açıklama,
-// sağda zaman ya da tek eylem. Dokun → ilgili kayıt/sohbet açılır. Sola kaydır → bugünlük gizle.
-// Sıra: Karar › Mesaj › Rüzgâr › Geciken › Yeni › Ödeme. Hiç öneri yoksa bölüm görünmez.
-export function ForYou() {
+// "Senin için" öğeleri (ana sayfadaki liste ve asistan sahnesindeki kısa özet aynı listeyi kullanır).
+// Sıra: Karar › Mesaj › Rüzgâr › Geciken › Yeni › Ödeme. Gizlenenler çıkarılmış hâliyle döner.
+export function useForYou() {
   const router = useRouter();
   const { plans, tasks, notes, receipts, myUid, nameOf, isStaff, markSeen, deleteRecord, rejectDelete, toggleTask, markPaid } = useData();
   const { chats, personName } = useChat();
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const [hidden, setHidden] = useState(() => (typeof window === "undefined" ? new Set() : readHidden()));
-  const [all, setAll] = useState(false);
+  // Sayfadaki listede gizlenen, sahnedeki özetten de kalkar (ikisi ayrı kopya)
+  useEffect(() => {
+    const on = () => setHidden(readHidden());
+    window.addEventListener("sa-foryou-hide", on);
+    return () => window.removeEventListener("sa-foryou-hide", on);
+  }, []);
   const today = todayStr();
   const open = (kind, id) => openAdd({ edit: { kind, id } });
   const recs = [...plans.map((r) => ["plan", r]), ...tasks.map((r) => ["task", r]), ...notes.map((r) => ["note", r])];
@@ -187,19 +191,28 @@ export function ForYou() {
         });
 
   const list = items.filter((x) => !hidden.has(x.id));
-  if (!list.length) return null;
-  const shown = all ? list : list.slice(0, SHOW);
   const hide = (id) =>
     setHidden((h) => {
       const next = new Set(h).add(id);
       try {
         localStorage.setItem(hideKey(), JSON.stringify([...next]));
       } catch {}
+      setTimeout(() => window.dispatchEvent(new Event("sa-foryou-hide")));
       return next;
     });
+  return { list, hide };
+}
+
+// "Senin için": bildirim merkezi gibi sade liste. Her öğe: solda simge/kişi, tek satır başlık, tek satır açıklama,
+// sağda zaman ya da tek eylem. Dokun → ilgili kayıt/sohbet açılır. Sola kaydır → bugünlük gizle. Hiç öneri yoksa bölüm görünmez.
+export function ForYou() {
+  const { list, hide } = useForYou();
+  const [all, setAll] = useState(false);
+  if (!list.length) return null;
+  const shown = all ? list : list.slice(0, SHOW);
 
   return (
-    <section aria-label="Senin için">
+    <section id="foryou" aria-label="Senin için" className="scroll-mt-4">
       <div className="mb-2.5 flex items-baseline justify-between px-1">
         <span className="text-[0.75rem] font-bold tracking-[.08em] text-mut">SENİN İÇİN</span>
         {list.length > SHOW && (

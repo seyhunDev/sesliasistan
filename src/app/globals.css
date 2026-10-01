@@ -175,3 +175,7 @@ select {
   background-size: 1rem;
   padding-right: 2.25rem !important;
 }
+
+/* Asistan sahnesi: içerik değişince yalnızca saydamlık (yükseklik ayrıca kayar); hafif gecikme, kutu açılırken belirir */
+@keyframes stagein { from { opacity: 0; } }
+.stage-in { animation: stagein .26s ease-out .06s both; }
