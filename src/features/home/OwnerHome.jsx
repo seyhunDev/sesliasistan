@@ -21,9 +21,10 @@ import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 
 // Ana sayfa ("akıllı akış"), yukarıdan aşağı:
-//   gün ve tarih · zil · kişi › Dikili şimdi (rüzgâr göstergesi, gün şeridi) + Sıradaki plan ›
+//   gün ve tarih · kişi › Dikili şimdi (rüzgâr göstergesi, gün şeridi) ›
 //   Senin için (karar, rüzgâr, mesaj, geciken, yeni, ödeme; önem sırasıyla) › Bugün › doğum günü satırı (bugün/yarın) ›
 //   Ekip (ana hesap) › para › sayfalar › alt çubuk (+ · Konuş · Yaz).
+// Sıradaki plan ve "Senin için"in ilk öğeleri alttaki asistan sahnesinde (StageBrief); sayfa kaydırılınca sahne küçülür.
 // Çalışanda Karar, Ekip ve Mailler yok; bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
@@ -73,7 +74,7 @@ export function OwnerHome() {
       <PaidNotice />
 
       <div className="mt-4">
-        <HomeHero weather={weather} />
+        <HomeHero weather={weather} next={false} />
       </div>
 
       <div className="mt-5 empty:hidden">

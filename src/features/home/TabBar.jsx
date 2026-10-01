@@ -16,6 +16,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
+import { todayStr } from "@/lib/utils/format";
+import { StageBrief } from "./StageBrief";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -115,7 +117,7 @@ function Composer({ cfg, onDone }) {
 }
 
 // Sahnedeki küre: dokun → konuş, basılı tut → yaz. Konuşurken ses dalgası, düşünürken döner.
-function StageOrb({ onTap, onHold, state, size = "size-[4.75rem]", ring = "shadow-[0_0_0_10px_rgba(156,195,211,.14),0_0_0_22px_rgba(156,195,211,.06)]" }) {
+function StageOrb({ onTap, onHold, state, size = "size-[4.75rem]", ring = "shadow-[0_0_0_9px_rgba(156,195,211,.14),0_0_0_18px_rgba(156,195,211,.06)]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -181,9 +183,13 @@ const hello = () => {
   return h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
 };
 
-// ASİSTAN SAHNESİ: tüm uygulamada altta geniş, koyu alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler.
-// Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır; kart/taslak/onay gerekince asistan tam açılır.
-// Sayfa kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); küreye ya da şeride dokununca büyür.
+// ASİSTAN SAHNESİ: tüm uygulamada altta geniş, koyu alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler;
+// ana sayfada ayrıca Sıradaki plan ve "Senin için" (StageBrief). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
+// kart/taslak/onay gerekince asistan tam açılır.
+// Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
+// tutamağa dokununca büyür. Boyut değişimi yükseklik geçişiyle yumuşak; geçiş sırasında gelen kaydırma olayları
+// (sayfa kısalınca tarayıcının kaydırmayı geri çekmesi) yok sayılır, yoksa kısa sayfalarda (takvim) sahne
+// küçülüp büyüyerek titrer.
 export function TabBar({ cfg }) {
   const path = usePathname();
   const router = useRouter();
@@ -197,24 +203,65 @@ export function TabBar({ cfg }) {
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
   const [small, setSmall] = useState(false);
+  const [atPath, setAtPath] = useState(path);
+  const [h, setH] = useState(null); // içeriğin ölçülen yüksekliği (geçiş için)
   const kind = useKind();
   const box = useRef(null);
+  const inner = useRef(null);
+  const quietUntil = useRef(0); // bu ana kadar kaydırma olayları sahnenin boyunu değiştirmez
+
+  // Yeni sayfaya geçince sahne büyük başlar
+  if (atPath !== path) {
+    setAtPath(path);
+    setSmall(false);
+  }
 
   const active = !!(live.open && live.docked);
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
   const big = active || typing || !small;
+  const mode = active ? "active" : typing ? "typing" : big ? "big" : "small";
 
-  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın)
-  useEffect(() => {
-    const el = box.current;
+  // İçerik değişince yükseklik eski değerden yenisine kayar (height geçişi; içerik yumuşakça belirir)
+  useLayoutEffect(() => {
+    const el = inner.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`));
+    const ro = new ResizeObserver(() => {
+      quietUntil.current = Date.now() + 450;
+      setH(el.offsetHeight);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // Elle kullanım: kaydırınca ya da sayfaya dokununca küçül; en üste dönünce büyü
+  // Sayfanın alt boşluğu sahnenin yüksekliği kadar (içerik sahnenin altında kalmasın). Geçiş bitince bir kez yazılır:
+  // her karede yazılırsa sayfa her karede yeniden dizilir (iPhone'da takılma).
   useEffect(() => {
-    const onScroll = () => setSmall(window.scrollY > 48);
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let t;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        quietUntil.current = Math.max(quietUntil.current, Date.now() + 300);
+        document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`);
+      }, 320);
+    });
+    ro.observe(el);
+    return () => {
+      clearTimeout(t);
+      ro.disconnect();
+    };
+  }, []);
+  // Elle kullanım: aşağı kaydırınca ya da sayfaya dokununca küçül; en üste geri kaydırınca büyü
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const d = y - last;
+      last = y;
+      if (Date.now() < quietUntil.current) return;
+      if (d > 0 && y > 40) setSmall(true);
+      else if (d < 0 && y <= 8) setSmall(false);
+    };
     const onDown = (e) => !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointerdown", onDown);
@@ -223,6 +270,24 @@ export function TabBar({ cfg }) {
       window.removeEventListener("pointerdown", onDown);
     };
   }, []);
+  // iPhone: klavye açılınca sabit alt alan klavyenin arkasında kalır; yazarken sahne klavyenin üstüne taşınır
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = box.current;
+    if (!typing || !vv || !el) return;
+    const fit = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      el.style.transform = kb > 40 ? `translate3d(0,${-kb}px,0)` : "";
+    };
+    fit();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    return () => {
+      vv.removeEventListener("resize", fit);
+      vv.removeEventListener("scroll", fit);
+      el.style.transform = "";
+    };
+  }, [typing]);
 
   const go = (fn) => () => {
     setMenu(false);
@@ -254,7 +319,7 @@ export function TabBar({ cfg }) {
     setTyping(true);
   };
   const ask = (t) => (cfg.onSend ? cfg.onSend(t) : openAssistant({ text: t, dock: true, prefer: cfg.prefer, examples: cfg.ex }));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const todays = plans.filter((p) => p.date <= today && (p.endDate || p.date) >= today).length;
   const late = tasks.filter((t) => !t.done && t.due && t.due < today).length;
   const summary = [todays ? `Bugün ${todays} plan var` : "Bugün plan yok", late ? `${late} görev gecikmiş` : ""].filter(Boolean).join(", ") + ".";
@@ -265,76 +330,82 @@ export function TabBar({ cfg }) {
     <>
       {/* Asistan çalışırken sayfa soluklaşır (dokunuşları engellemez) */}
       <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-[19] bg-bg transition-opacity duration-300 ${active && state !== "idle" ? "opacity-60" : "opacity-0"}`} />
-      <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20">
+      <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
         <div className="mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-[#1f3a47] px-5 pt-2.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-[#f4f3ef] shadow-[0_-20px_50px_-20px_rgba(20,30,36,.55)]">
-          <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-2 block h-4 w-14">
+          <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-1 block h-5 w-16">
             <span className="mx-auto block h-1 w-10 rounded-full bg-white/25" />
           </button>
 
-          {active ? (
-            /* Asistan konuşuyor: duyulan ya da son cevap büyük yazıyla; kontrol düğmeleri */
-            <div className="fade-in space-y-3 pb-1">
-              <p className={`text-[0.6875rem] font-bold uppercase tracking-[.12em] ${state === "listening" ? "text-[#f0a8a2]" : "text-[#9cc3d3]"}`}>
-                {state === "listening" ? "● Dinliyorum" : state === "busy" ? "Düşünüyorum" : "Asistan"}
-              </p>
-              <p className="line-clamp-4 text-[1.25rem] font-semibold leading-snug tracking-tight">
-                {state === "listening" ? live.heard || <span className="text-white/55">Söyle, dinliyorum…</span> : state === "busy" ? live.heard || "…" : live.lastReply || "Buradayım, söyle."}
-              </p>
-              <div className="flex items-center justify-between pt-1">
-                <button type="button" onClick={() => act.current.close?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-white/70 active:bg-white/10">
-                  <Icon name="x" className="size-[1.125rem]" /> Kapat
-                </button>
-                <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-16" ring="shadow-[0_0_0_8px_rgba(156,195,211,.14)]" />
-                <button type="button" onClick={() => act.current.expand?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-white/70 active:bg-white/10">
-                  Ayrıntı <Icon name="chev" className="size-4 -rotate-90" />
-                </button>
-              </div>
-            </div>
-          ) : typing ? (
-            <div className="fade-in pb-2">
-              <Composer cfg={cfg} onDone={() => setTyping(false)} />
-            </div>
-          ) : big ? (
-            /* Boşta: selam, günün özeti, öneriler, küre */
-            <div className="fade-in space-y-3.5 pb-1">
-              <div>
-                <p className="text-[0.6875rem] font-bold uppercase tracking-[.12em] text-[#9cc3d3]">Asistan</p>
-                <p className="mt-1 text-[1.25rem] font-semibold leading-snug tracking-tight">
-                  {hello()}
-                  {first ? ` ${first}` : ""}. <span className="font-medium text-white/65">{summary}</span>
-                </p>
-              </div>
-              <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
-                {chips.map((c) => (
-                  <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-white/10 px-3.5 py-2 text-[0.8125rem] ring-1 ring-white/15 active:bg-white/20">
-                    {c}
+          {/* Yükseklik geçişi: dış kutu ölçülen yüksekliğe kayar, içerik kendi boyunda kalır (kırpılır) */}
+          <div style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
+            <div ref={inner}>
+              {mode === "active" ? (
+                /* Asistan konuşuyor: duyulan ya da son cevap büyük yazıyla; kontrol düğmeleri */
+                <div key="active" className="stage-in space-y-3 pb-2">
+                  <p className={`text-[0.6875rem] font-bold uppercase tracking-[.12em] ${state === "listening" ? "text-[#f0a8a2]" : "text-[#9cc3d3]"}`}>
+                    {state === "listening" ? "● Dinliyorum" : state === "busy" ? "Düşünüyorum" : "Asistan"}
+                  </p>
+                  <p className="line-clamp-4 text-[1.25rem] font-semibold leading-snug tracking-tight">
+                    {state === "listening" ? live.heard || <span className="text-white/55">Söyle, dinliyorum…</span> : state === "busy" ? live.heard || "…" : live.lastReply || "Buradayım, söyle."}
+                  </p>
+                  <div className="flex items-center justify-between pt-1">
+                    <button type="button" onClick={() => act.current.close?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-white/70 active:bg-white/10">
+                      <Icon name="x" className="size-[1.125rem]" /> Kapat
+                    </button>
+                    <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-16" ring="shadow-[0_0_0_8px_rgba(156,195,211,.14)]" />
+                    <button type="button" onClick={() => act.current.expand?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-white/70 active:bg-white/10">
+                      Ayrıntı <Icon name="chev" className="size-4 -rotate-90" />
+                    </button>
+                  </div>
+                </div>
+              ) : mode === "typing" ? (
+                <div key="typing" className="stage-in pb-2">
+                  <Composer cfg={cfg} onDone={() => setTyping(false)} />
+                </div>
+              ) : mode === "big" ? (
+                /* Boşta: selam, günün özeti, (ana sayfada) sıradaki ve senin için, öneriler, küre */
+                <div key="big" className="stage-in space-y-3.5 pb-4">
+                  <div>
+                    <p className="text-[0.6875rem] font-bold uppercase tracking-[.12em] text-[#9cc3d3]">Asistan</p>
+                    <p className="mt-1 text-[1.25rem] font-semibold leading-snug tracking-tight">
+                      {hello()}
+                      {first ? ` ${first}` : ""}. <span className="font-medium text-white/65">{summary}</span>
+                    </p>
+                  </div>
+                  {path === "/" && <StageBrief />}
+                  <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
+                    {chips.map((c) => (
+                      <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-white/10 px-3.5 py-2 text-[0.8125rem] ring-1 ring-white/15 active:bg-white/20">
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-white/10 active:bg-white/20">
+                      <Icon name="keyboard" className="size-[1.375rem]" />
+                    </button>
+                    <StageOrb state={state} onTap={talk} onHold={typeNow} />
+                    <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-white/10 active:bg-white/20">
+                      <Icon name="plus" className="size-6" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Küçük: tek satır, küre ve kısa ipucu */
+                <div key="small" className="stage-in flex items-center gap-3 pb-2">
+                  <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-12" ring="shadow-[0_0_0_6px_rgba(156,195,211,.14)]" />
+                  <button type="button" onClick={() => setSmall(false)} className="min-w-0 flex-1 truncate text-left text-[0.9375rem] text-white/75">
+                    {cfg.ph}
                   </button>
-                ))}
-              </div>
-              <div className="flex items-center justify-between pt-3">
-                <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-white/10 active:bg-white/20">
-                  <Icon name="keyboard" className="size-[1.375rem]" />
-                </button>
-                <StageOrb state={state} onTap={talk} onHold={typeNow} />
-                <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-white/10 active:bg-white/20">
-                  <Icon name="plus" className="size-6" />
-                </button>
-              </div>
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-11 place-items-center rounded-full bg-white/10">
+                    <Icon name="keyboard" className="size-5" />
+                  </button>
+                </div>
+              )}
             </div>
-          ) : (
-            /* Küçük: tek satır, küre ve kısa ipucu */
-            <div className="fade-in flex items-center gap-3 pb-1">
-              <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-12" ring="shadow-[0_0_0_6px_rgba(156,195,211,.14)]" />
-              <button type="button" onClick={() => setSmall(false)} className="min-w-0 flex-1 truncate text-left text-[0.9375rem] text-white/75">
-                {cfg.ph}
-              </button>
-              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-11 place-items-center rounded-full bg-white/10">
-                <Icon name="keyboard" className="size-5" />
-              </button>
-            </div>
-          )}
+          </div>
 
-          <div className="mt-2 flex items-start justify-around border-t border-white/10 pt-2">
+          <div className="mt-1 flex items-start justify-around border-t border-white/10 pt-2">
             <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
             <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
             <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unreadTotal} />

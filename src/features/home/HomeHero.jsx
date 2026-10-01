@@ -74,15 +74,15 @@ function DayStrip({ rows, plans, now }) {
 }
 
 // Ana sayfanın üstü: seçili konumda şimdi (sıcaklık, rüzgâr göstergesi, gün şeridi) + üstüne binen "Sıradaki" plan.
-// Hava kısmına dokununca bugünün saat saat ayrıntısı açılır.
-export function HomeHero({ weather }) {
+// Hava kısmına dokununca bugünün saat saat ayrıntısı açılır. next=false: "Sıradaki" gösterilmez (ana sayfada asistan sahnesinde).
+export function HomeHero({ weather, next = true }) {
   const { w, err, refresh } = weather;
   const { plans } = useData();
   const { openAdd } = useAdd();
   const now = useNow();
   const [open, setOpen] = useState(false);
   const today = w?.today?.date || todayStr();
-  const n = nextPlan(plans, now);
+  const n = next ? nextPlan(plans, now) : null;
   const todays = plans.filter((p) => p.date <= today && (p.endDate || p.date) >= today);
   const rows = w ? dayHours(w, today) || [] : [];
   const s = w ? sky(w.now.code, w.now.day) : null;
