@@ -20,11 +20,9 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { StageBrief } from "./StageBrief";
-import { AssistantBrief } from "./AssistantBrief";
 
-// Ana sayfa (tek kaydırma, açık zemin), yukarıdan aşağı:
-//   gün ve tarih · kişi › asistan özeti (selam, tek cümle, öneriler) › hava durumu › günün akışı (HomeFeed).
-// Alttaki asistan sahnesi burada ince çubuk olarak başlar. Çalışanda bugünkü kalan hak başlığın altında.
+// Ana sayfa: üstte gün ve tarih · kişi, altında yalnızca hava durumu. Günün içeriği alttaki asistan sahnesinin
+// içinde, hava kartının altından ekranın altına kadar kayar (HomeFeed, TabBar). Çalışanda bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
   const weather = useWeather();
@@ -40,8 +38,8 @@ export function OwnerHome() {
     <main className="relative mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
       <header className="flex items-center gap-2 px-1">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.9375rem] font-medium text-mut">
-            <span className="capitalize">{day}</span> · {date}
+          <p className="truncate text-[1.25rem] font-semibold leading-tight tracking-tight">
+            <span className="capitalize">{day}</span> <span className="font-normal text-mut">{date}</span>
           </p>
           {staff && qa && qr && (
             <p className="mt-0.5 text-[0.75rem] tabular-nums text-mut">
@@ -56,22 +54,15 @@ export function OwnerHome() {
 
       <PaidNotice />
 
-      <div className="mt-4">
-        <AssistantBrief />
-      </div>
-
-      <div className="mt-6">
+      {/* Asistan sahnesi bu kutunun altından başlar (TabBar ölçer) */}
+      <div id="home-top" className="mt-4">
         <HomeHero weather={weather} next={false} />
-      </div>
-
-      <div className="mt-6">
-        <HomeFeed />
       </div>
     </main>
   );
 }
 
-// Günün akışı, yukarıdan aşağı:
+// Asistan sahnesinin içindeki günün akışı, yukarıdan aşağı:
 //   Sıradaki plan › Senin için (karar, mesaj, geciken, yeni, ödeme) › Bugün › doğum günü › Kişiler (ana hesap) › para › sayfalar.
 // Çalışanda Karar, Kişiler ve Mailler yok.
 export function HomeFeed() {
@@ -96,7 +87,7 @@ export function HomeFeed() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <StageBrief />
       <div className="empty:hidden">
         <ForYou />
@@ -107,7 +98,7 @@ export function HomeFeed() {
       </div>
       {!staff && <TeamStrip />}
       {canReceipts(kind) && <MoneyRow />}
-      <nav aria-label="Sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+      <nav aria-label="Sayfalar" className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
         {links.map(([href, icon, label, n]) => (
           <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
             <Icon name={icon} className="size-4 text-acc" />
