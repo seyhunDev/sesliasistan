@@ -21,11 +21,10 @@ import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { StageBrief } from "./StageBrief";
 
-// Ana sayfa: üstte gün ve tarih · kişi, altında yalnızca hava durumu. Günün içeriği alttaki asistan sahnesinin
-// içinde, hava kartının altından ekranın altına kadar kayar (HomeFeed, TabBar). Çalışanda bugünkü kalan hak başlığın altında.
+// Ana sayfa: yalnızca üst çubuk (gün ve tarih · kişi). Asistan sahnesi hemen altından ekranın altına uzanır;
+// hava durumu ve günün içeriği sahnenin içinde kayar (HomeFeed, TabBar). Çalışanda bugünkü kalan hak başlığın altında.
 export function OwnerHome() {
   const { profile } = useAuth();
-  const weather = useWeather();
   const now = useNow();
   const staff = profile?.role === "staff";
   const qa = useQuota("assistant");
@@ -36,6 +35,8 @@ export function OwnerHome() {
 
   return (
     <main className="relative mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+      {/* Asistan sahnesi bu kutunun altından başlar (TabBar ölçer) */}
+      <div id="home-top" className="pb-1">
       <header className="flex items-center gap-2 px-1">
         <div className="min-w-0 flex-1">
           <p className="truncate text-[1.25rem] font-semibold leading-tight tracking-tight">
@@ -53,17 +54,13 @@ export function OwnerHome() {
       </header>
 
       <PaidNotice />
-
-      {/* Asistan sahnesi bu kutunun altından başlar (TabBar ölçer) */}
-      <div id="home-top" className="mt-4">
-        <HomeHero weather={weather} />
       </div>
     </main>
   );
 }
 
 // Asistan sahnesinin içindeki günün akışı, yukarıdan aşağı:
-//   Sıradaki plan › Senin için (karar, mesaj, geciken, yeni, ödeme) › Bugün › doğum günü › Kişiler (ana hesap) › para › sayfalar.
+//   hava durumu › Sıradaki plan › Senin için (karar, mesaj, geciken, yeni, ödeme) › Bugün › doğum günü › Kişiler (ana hesap) › para › sayfalar.
 // Çalışanda Karar, Kişiler ve Mailler yok.
 export function HomeFeed() {
   const { profile } = useAuth();
@@ -71,6 +68,7 @@ export function HomeFeed() {
   const now = useNow();
   const staff = profile?.role === "staff";
   const kind = useKind();
+  const weather = useWeather();
   const open = tasks.filter((t) => !t.done && !t.doneBy?.[myUid]).length;
 
   const links = [
@@ -88,6 +86,7 @@ export function HomeFeed() {
 
   return (
     <div className="space-y-5">
+      <HomeHero weather={weather} />
       <StageBrief />
       <div className="empty:hidden">
         <ForYou />

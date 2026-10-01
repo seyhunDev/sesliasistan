@@ -21,7 +21,7 @@ import { GROUPS, GROUP_IDS, canTalk, inGroup, kindOf } from "@/lib/kinds";
 
 // Mesajlaşma: kişi kişiye (dm_<uid1>_<uid2>), gruplar ve türe göre sabit gruplar: Ekip (team), Aile (family), Sporcular (athletes).
 // Kim kiminle yazışır ve hangi sabit gruptadır: lib/kinds.js (kurallar da aynı).
-// Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, typing{uid:zaman}, muted{uid:true} }
+// Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, recv{uid:n}, typing{uid:zaman}, muted{uid:true} }
 //       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, replyTo{id,by,text}, reactions{uid:emoji}, deleted, editedAt }
 //       chats/{id}.pinned { id, text, by }: sabitlenen mesaj
 //       orgs/{işletme}/directory/{uid} { name, role, lastSeen } — sohbet listesindeki adlar ve "çevrimiçi"
@@ -151,6 +151,20 @@ export function ChatProvider({ children }) {
 
   // ---- İşlemler ----
   const chatRef = useCallback((cid) => doc(chatsCol, cid), [chatsCol]);
+
+  // İletildi: başkasının yeni mesajı bu cihaza ulaşınca sohbete recv.<ben> = seq yazılır (gönderende iki gri tik).
+  // Okundu (read) iletildiyi de kapsar; aynı sayı için ikinci kez yazılmaz.
+  const recvSent = useRef({});
+  useEffect(() => {
+    if (!uid || !chatsCol) return;
+    for (const c of chats) {
+      const seq = c.seq || 0;
+      if (!seq || c._ghost || c.last?.by === uid) continue;
+      if (Math.max(c.recv?.[uid] || 0, c.read?.[uid] || 0) >= seq || (recvSent.current[c.id] || 0) >= seq) continue;
+      recvSent.current[c.id] = seq;
+      updateDoc(chatRef(c.id), { [`recv.${uid}`]: seq }).catch(() => {});
+    }
+  }, [chats, uid, chatsCol, chatRef]);
 
   // Mesaj gönder: sohbet yoksa (ilk mesaj) oluşturulur; mesaj numarası (n) sayaçtan alınır, gönderen kendi mesajını okumuş sayılır
   const send = useCallback(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -16,10 +17,11 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names";
 import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
-import { rel } from "@/lib/utils/format";
+import { rel, todayStr } from "@/lib/utils/format";
+import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
-import { cached as cachedWeather, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
+import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
 import { useNameIndex } from "@/features/athletes/names";
@@ -27,10 +29,10 @@ import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { PAGES, buildPatch, describeAction, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
-import { brainCommand, localCommand, sureGuess } from "@/lib/commands";
+import { PAGES, buildPatch, describeAction, isEnd, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
-import { countHit, record } from "@/lib/brain/store";
+import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
 import { QuotaPill } from "@/components/ui/QuotaPill";
 import { parseBirthday } from "@/lib/birthdayParse";
@@ -47,6 +49,7 @@ const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 const ENDPOINT = 1300;
 const BEAT = 350;
+const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
@@ -80,15 +83,15 @@ const groupOf = (t, mine = []) => {
   return mine.includes(g) ? g : "";
 };
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
-const END = /^(?:tamam\s+)?(bitir|bitti|kapat|yeter|teşekkürler|teşekkür ederim|sağ ?ol|görüşürüz|şimdilik bu kadar|bu kadar|çıkış)(?=$|[\s.,!?])/i;
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
+const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
 const QUESTION = /\?\s*$|\b(neler var|ne var|kaç|hangi|ne zaman|göster|listele|özetle)\b/i;
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
-export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) {
+export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, slot }) {
   const router = useRouter();
   const toast = useToast();
   const tts = useTts();
@@ -104,14 +107,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
-  const [secs, setSecs] = useState(0);
   const [voice, setVoice] = useState(false);
   const [heard, setHeard] = useState("");
   const [cards, setCards] = useState(EMPTY);
   const [error, setError] = useState("");
   // Uzun işlemlerde yapılan adımlar panelde görünür: [{ label, st: "run" | "done" | "fail" }]
   const [steps, setSteps] = useState([]);
-  const stepTo = (label) => (setDock(false), setSteps((p) => [...p.map((x) => (x.st === "run" ? { ...x, st: "done" } : x)), ...(label ? [{ label, st: "run" }] : [])]));
+  // Sahne görünen sayfalarda sohbet hep sahnede kalır (büyük pencere kendiliğinden açılmaz); sahnesiz sayfalarda tam açılır
+  const stageRef = useRef(stageOn);
+  useEffect(() => {
+    stageRef.current = stageOn;
+  }, [stageOn]);
+  const undock = () => !stageRef.current && setDock(false);
+  const stepTo = (label) => (undock(), setSteps((p) => [...p.map((x) => (x.st === "run" ? { ...x, st: "done" } : x)), ...(label ? [{ label, st: "run" }] : [])]));
   const stepsEnd = (ok = true) => setSteps((p) => p.map((x) => (x.st === "run" ? { ...x, st: ok ? "done" : "fail" } : x)));
   const { idx: nameIdx } = useNameIndex();
   const [booting, setBooting] = useState(false); // mikrofonla açıldı, dinleme başlıyor
@@ -194,6 +202,40 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
 
   // Yanıtı akışa ekler, kartları günceller, sesli okur. Sesli sohbetteyse okuma bitince mikrofon yeniden açılır
   // (kullanıcı "bitir" diyene ya da kapatana kadar sohbet sürer).
+  // Konuşma kuyruğu: ön cevap, akışta tamamlanan cümleler ve yanıtın kalanı sırayla okunur (biri ötekini kesmez).
+  // Sesli yanıt kapalıysa tts.speakThen hemen döner, kuyruk anında boşalır. Dışarıdan susturulursa (mikrofon açıldı)
+  // takılı kalmaz: bir süredir konuşma yoksa kuyruk sıfırlanır.
+  const sayQ = useRef({ busy: false, items: [], gen: 0, since: 0 });
+  const speakingRef = useRef(false);
+  useEffect(() => {
+    speakingRef.current = tts.speaking;
+  }, [tts.speaking]);
+  const pumpSay = () => {
+    const q = sayQ.current;
+    const it = q.items.shift();
+    if (!it) {
+      q.busy = false;
+      return;
+    }
+    q.busy = true;
+    q.since = clock();
+    const g = q.gen;
+    tts.speakThen(it.text, () => {
+      if (g !== sayQ.current.gen) return;
+      it.after?.();
+      pumpSay();
+    });
+  };
+  const enqueueSay = (text, after) => {
+    const q = sayQ.current;
+    if (q.busy && !speakingRef.current && clock() - q.since > 1500) q.busy = false; // susturuldu: takılmasın
+    q.items.push({ text, after });
+    if (!q.busy) pumpSay();
+  };
+  const clearSay = () => (sayQ.current = { busy: false, items: [], gen: sayQ.current.gen + 1, since: 0 });
+  const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
+  const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
+
   function reply(message, extra = {}, viaVoice = false) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
     // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
@@ -201,14 +243,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
     const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, keepDock = false } = extra;
-    if (!keepDock && (pending || show.length || att || String(message).length > 170)) setDock(false);
+    if (!keepDock && (pending || show.length || att || String(message).length > 170)) undock();
     const awaiting = expect || !!pending;
+    setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
     setCards({ show, pending, nav, chat, att, engine, awaiting });
     scrollLater();
     navigator.vibrate?.([8, 30, 8]);
-    if (viaVoice || convo.current) tts.speakThen(message, startAuto);
-    else tts.maybeSpeak(message);
+    // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
+    const said = streamSaid.current;
+    streamSaid.current = "";
+    const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
+    enqueueSay(rest, viaVoice || convo.current ? startAuto : undefined);
   }
 
   // Başka bir tam ekran açılırken (fiş kamerası, kayıt, toplantı…) panel baloncuğa döner; sohbet kaybolmaz
@@ -236,7 +282,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     setDrafts(next);
-    setDock(false);
+    undock();
     reply(draftSay(msg, next), { engine }, viaVoice);
   }
   async function refineDrafts(s, viaVoice) {
@@ -299,8 +345,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
     }
     const list = drafts;
+    setPhase("thinking");
     const r = await saveDrafts(list.map(tidy), { source: viaVoice || convo.current ? "voice" : "manual", by });
-    if (!r || r.plans + r.tasks + r.notes === 0) return toast("Kayıt sırasında hata oluştu");
+    setPhase("idle");
+    // Kayıt veritabanına yazılamadıysa "kaydettim" denmez; taslak durur, yeniden "kaydet" denebilir
+    if (!r || r.error || r.plans + r.tasks + r.notes === 0)
+      return reply("Kaydedemedim, bir sorun çıktı. Taslak duruyor; tekrar “kaydet” diyebilirsin.", { engine: "local" }, viaVoice);
     const said = turns.find((t) => t.role === "user" && !t.chip)?.text;
     if (said) record(said, labelFromItems(list), "user");
     const parts = [r.plans && `${r.plans} plan`, r.tasks && `${r.tasks} görev`, r.notes && `${r.notes} not`].filter(Boolean);
@@ -308,7 +358,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     setDrafts([]);
     toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}`);
     navigator.vibrate?.([10, 40, 10]);
-    reply(`Kaydettim: ${parts.join(", ")}${who.length ? `, ${who.join(" ve ")} sorumlu` : ""}. Başka bir şey var mı?`, { engine: "local" }, viaVoice);
+    const what = `${parts.join(", ")}${who.length ? `, ${who.join(" ve ")} sorumlu` : ""}`;
+    reply(r.queued ? `Bağlantı zayıf: ${what} sıraya alındı, internet gelince kaydedilecek.` : `Kaydettim: ${what}. Başka bir şey var mı?`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
@@ -447,7 +498,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       convo.current = true; // sesle konuşuldu: sohbet sesli sürer
     }
     // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler")
-    if (END.test(s)) {
+    if (isEnd(s)) {
       tts.speak("Görüşürüz.");
       finish(true);
       return;
@@ -466,6 +517,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       if (DROP.test(s)) return dropDrafts(viaVoice);
       if (!QUESTION.test(s)) return refineDrafts(s, viaVoice);
     }
+    // Taslak yokken yalnızca "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
+    if (!drafts.length && !cards.pending && BARE_SAVE.test(s))
+      return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice);
     // Onay bekleyen işlem varsa "evet / hayır" yerelde çözülür
     if (!fresh && cards.pending) {
       const cw = cards.pending.send ? confirmWord(s) : "";
@@ -521,42 +575,45 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
     // Açık sohbette/kayıtta "… diye yaz", "cevap ver: …" yerel komutlara düşmez (plan sanılmasın); mesaj olarak hazırlanır
     const toFocus = !!focusRef.current && FOCUS_MSG.test(s);
-    const cmd = !toFocus && localCommand(s, { plans, tasks, notes });
+    const cmd = !toFocus && localCommand(s, { plans, tasks, notes }, undefined, { aiFirst: true });
     if (cmd) {
       record(s, labelFromCommand(cmd), "local");
       countHit("local");
       return runLocal(cmd, s, viaVoice);
     }
-    // Öğrenilenler: bu cümleye çok benzeyenler daha önce hep aynı işe gittiyse yapay zekaya sormadan hazırla
-    // (hızlı ve ücretsiz; sonuç yine taslak ya da onay kartıdır). Soru ve açık sohbet/kayıt cümleleri hariç.
-    const sure = !toFocus && !QUESTION.test(s) && sureGuess(s);
-    if (sure) {
-      if (sure.label === "send") {
-        const toTeam = TEAM_WORD.test(s);
-        const mi = messageIntent(toTeam ? s.replace(/^\S+(\s+grubuna)?\s+/i, "") : s, contacts);
-        const to = toTeam ? s.split(/\s+/)[0] : mi?.to;
-        if (to && String(mi?.send || "").trim() && resolveTo(to)) {
-          countHit("brain");
-          return prepareSend(to, mi.send, "", "brain", viaVoice);
-        }
-      } else {
-        const bc = brainCommand(s, undefined, sure);
-        if (bc) {
-          countHit("brain");
-          return runLocal(bc, s, viaVoice);
-        }
-      }
-    }
-
+    // Öğrenilenler (brain) artık yapay zekadan önce kayıt hazırlamaz: yalnızca yapay zekaya ulaşılamazsa yedek (aşağıda)
     const id = ++runId.current;
     ctrl.current?.abort();
     const c = new AbortController();
     ctrl.current = c;
     setPhase("thinking");
+    // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
+    // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
+    const pc = precue(s, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
+    clearSay();
+    streamSaid.current = "";
+    setStreamText("");
+    if (pc) {
+      setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
+      enqueueSay(pc.line); // yanıtın okunması bunun ardından (kuyruk)
+    }
     if (viaVoice) {
       inflight.current = s;
-      listenWhileThinking();
+      // Ön cevap ve akış okunurken mikrofon açılmaz (kendi sesini duymasın); ön cevap yoksa eskisi gibi
+      if (!pc) listenWhileThinking();
     }
+    // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
+    const onText = (m) => {
+      if (id !== runId.current) return;
+      setStreamText(m);
+      const end = Math.max(...[". ", "? ", "! ", "… ", ".\n", "?\n", "!\n"].map((p) => m.lastIndexOf(p)));
+      if (end < 0) return;
+      const upto = m.slice(0, end + 1);
+      if (upto.length > streamSaid.current.length && upto.startsWith(streamSaid.current)) {
+        enqueueSay(upto.slice(streamSaid.current.length).trim());
+        streamSaid.current = upto;
+      }
+    };
     try {
       // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
       const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
@@ -564,7 +621,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
-      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames }, c.signal);
+      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
@@ -572,6 +629,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       handle(r, s, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
+      setStreamText("");
+      streamSaid.current = "";
       inflight.current = null;
       if (live.current.spStatus === "listening" && !live.current.heardNow) sp.cancel();
       // Yapay zeka yok: önce öğrenilmiş örneklerden tahmin (kendi küçük modelimiz)
@@ -614,7 +673,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
       if (lq) reply(lq.show.length ? lq.message : `Yapay zekaya şu an ulaşamadım. ${lq.message}`, { show: lq.show, engine: "rules" }, viaVoice);
       else setError(e.message || "Asistan şu an yanıt vermedi");
     } finally {
-      if (id === runId.current) setPhase("idle");
+      if (id === runId.current) {
+        setPhase("idle");
+            setStreamText("");
+      }
     }
   }
 
@@ -813,6 +875,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
   function finish(keepSpeech = false) {
     sp.cancel();
     cancelRun();
+    if (!keepSpeech) clearSay();
     if (!keepSpeech) tts.stop();
     convo.current = false;
     setMin(false);
@@ -835,30 +898,35 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
   // Sahneye canlı durum: dinliyor mu, ne duyuldu, son cevap, düşünüyor mu
   const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+  const lvl = listening ? Math.round(Math.min(1, sp.level * 2.2) * 10) / 10 : 0; // sahnedeki ses dalgası (kaba adımlarla: az yeniden çizim)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, lastReply, tts.speaking, booting]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting, level: lvl, talked: turns.length > 0 });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, lastReply, tts.speaking, booting, lvl, turns.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
+    clearSay();
     tts.stop();
     sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
   };
   useEffect(() => {
-    onAct?.({ listen: stageListen, stop: () => sp.stop("send"), cancel: () => sp.cancel(), expand: () => setDock(false), close: () => finish(false) });
+    onAct?.({
+      listen: stageListen,
+      stop: () => sp.stop("send"),
+      cancel: () => sp.cancel(),
+      abort: () => {
+        sp.cancel();
+        cancelRun();
+      },
+      expand: () => setDock(false),
+      close: () => finish(false),
+    });
   });
   useEffect(() => {
     if (!docked) return;
     document.body.dataset.asst = "dock";
     return () => delete document.body.dataset.asst;
   }, [docked]);
-
-  useEffect(() => {
-    if (phase !== "thinking") return;
-    setSecs(0);
-    const id = setInterval(() => setSecs((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
 
   useEffect(() => {
     if (!booting) return;
@@ -949,10 +1017,207 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
     ]
       .filter(Boolean)
       .join(" · ");
-  const status = listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : voice ? "Sesli sohbet · konuşmak için mikrofona dokun" : focus?.title ? `${focus.title} · yaz ya da konuş` : "Yaz ya da konuş";
+  const orbState = listening ? "listening" : busy || transcribing ? "busy" : tts.speaking ? "speaking" : "idle";
 
-  // Sahne görünen sayfalarda canlı durum sahnede çizilir (Stage.jsx); burada yalnız sahnesiz sayfalar için küçük panel
-  if (docked && stageOn) return null;
+  // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
+  const convoView = (embedded) => (
+    <>
+        {!embedded && turns.length === 0 && !listening && !busy && !transcribing && (
+          <div className="pt-3">
+            {/* Hazır örnek düğmeleri yok: öneriler, hızlı öğrenme verisi hazır olunca gelecek */}
+            <p className="text-[0.8125rem] text-mut">
+              {prefer
+                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin.`
+                : "Arka arkaya isteyebilirsin; bitince “bitir” de."}
+            </p>
+          </div>
+        )}
+
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />
+
+        {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
+        {busy && streamText && (
+          <div className="mt-3.5" aria-live="polite">
+            <p className="min-w-0 pr-6 text-[1.0625rem] leading-relaxed tracking-[-.005em]">
+              {streamText}
+              <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-acc" aria-hidden="true" />
+            </p>
+          </div>
+        )}
+
+        {/* Yapılan işlem adım adım (yoklama, mesaj gönderme…) */}
+        {steps.length > 0 && (
+          <ol className="fade-in mt-2 space-y-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.875rem]" aria-live="polite">
+            {steps.map((x, i) => (
+              <li key={i} className="flex items-center gap-2.5">
+                {x.st === "run" ? (
+                  <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-acc/25 border-t-acc" />
+                ) : x.st === "done" ? (
+                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-ok text-white">
+                    <Icon name="check" className="size-3 [stroke-width:3]" />
+                  </span>
+                ) : (
+                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-rec text-white">
+                    <Icon name="x" className="size-3 [stroke-width:3]" />
+                  </span>
+                )}
+                <span className={x.st === "run" ? "font-semibold" : "text-mut"}>{x.st === "done" ? pastOf(x.label) : x.label}{x.st === "run" ? "…" : ""}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {/* Yoklama sonucu: kimler ne işaretlendi; kaydedildiyse Geri al */}
+        {cards.att && (
+          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
+            <p className="flex items-center justify-between bg-acc/[.06] px-3 py-2 text-[0.75rem] font-semibold uppercase tracking-wide text-acc">
+              <span>Yoklama · {new Date(`${cards.att.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "short" })}</span>
+              <span>{cards.att.saved ? "kaydedildi" : "onay bekliyor"}</span>
+            </p>
+            <ul className="max-h-56 divide-y divide-line overflow-y-auto">
+              {Object.entries(cards.att.changes).map(([id, v]) => (
+                <li key={id} className="flex items-center justify-between gap-2 px-3 py-2 text-[0.875rem]">
+                  <span className="truncate">{cards.att.names[id]}</span>
+                  <span className={`shrink-0 font-semibold ${v === "present" ? "text-ok" : v === "absent" ? "text-rec" : v === "excused" ? "text-amber-700" : "text-mut"}`}>{ATT_LABEL[v] || "temizlendi"}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-1.5 border-t border-line p-2">
+              {cards.att.saved ? (
+                <button type="button" onClick={() => undoAtt(cards.att)} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-rec active:scale-[.98]">
+                  Geri al
+                </button>
+              ) : (
+                <button type="button" onClick={() => confirmPending()} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+                  <Icon name="check" className="size-4" /> Kaydet
+                </button>
+              )}
+              <button type="button" onClick={() => (!embedded && park(), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
+                Yoklamayı aç
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
+        {!embedded && (busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
+          <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
+            <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
+              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />
+              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.15s]" />
+              <i className="size-1.5 animate-bounce rounded-full bg-mut" />
+            </span>
+            <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
+              Vazgeç
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
+            <p className="flex items-center gap-2 text-[0.875rem] font-semibold"><Icon name="alert" className="size-4" /> Şu an yanıt veremedim</p>
+            <p className="mt-0.5 text-[0.8125rem] opacity-90">{error}</p>
+            <button type="button" onClick={() => run(heard, voice, true)} className="mt-2 h-9 rounded-xl bg-amber-900 px-3 text-[0.8125rem] font-semibold text-white active:scale-95">Tekrar dene</button>
+          </div>
+        )}
+
+        {/* Panelde hazırlanan yeni kayıtlar */}
+        {drafts.length > 0 && (
+          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
+            <ul className="divide-y divide-line">
+              {drafts.map((d) => (
+                <li key={d._id} className="flex items-center gap-3 px-3.5 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc"><Icon name={KIND_ICON[d.type]} className="size-[1.125rem]" /></span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.875rem] font-semibold">{d.title || d.body || "Başlıksız"}</b>
+                    <small className="block truncate text-[0.75rem] text-mut">{draftMeta(d)}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-1.5 px-2.5 pb-2.5">
+              <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
+                <Icon name="check" className="size-[1.125rem]" /> Kaydet
+              </button>
+              <button type="button" onClick={editDraftsFull} className="h-11 rounded-full bg-bg px-4 text-[0.875rem] font-semibold transition active:scale-[.98]">Düzenle</button>
+              <button type="button" onClick={() => dropDrafts(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut transition active:bg-bg"><Icon name="x" className="size-[1.125rem]" /></button>
+            </div>
+          </div>
+        )}
+
+        {cards.pending?.send && (
+          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
+            <p className="flex items-center gap-2.5 bg-acc/[.06] px-3 py-2">
+              <Avatar name={cards.pending.send.label} icon={cards.pending.send.team ? cards.pending.send.icon : null} size="size-8" text="text-[0.75rem]" tone={cards.pending.send.team ? "bg-[#2c5163] text-white" : undefined} />
+              <span className="min-w-0 flex-1">
+                <small className="block text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">Mesaj · onayını bekliyor</small>
+                <b className="block truncate text-[0.9375rem] font-semibold">{cards.pending.send.label}</b>
+              </span>
+            </p>
+            <textarea
+              value={cards.pending.send.text}
+              onChange={(e) => setSendText(e.target.value)}
+              aria-label="Gönderilecek mesaj"
+              rows={2}
+              className="block max-h-48 w-full resize-none bg-card px-3.5 py-3 text-[1rem] leading-snug outline-none [field-sizing:content] focus:bg-bg"
+            />
+            <div className="flex gap-2 border-t border-line p-2">
+              <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
+                <Icon name="up" className="size-4" /> Gönder
+              </button>
+              <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
+                Vazgeç
+              </button>
+            </div>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.</p>
+          </div>
+        )}
+
+        {cards.pending?.actions && (
+          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
+            <p className="text-[0.8125rem] font-semibold">Onayına sunuyorum</p>
+            <ul className="mt-1 space-y-0.5 text-[0.8125rem]">
+              {cards.pending.actions.map((a, i) => <li key={i}>• {describeAction(a, find(a.kind, a.id))}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {shown.length > 0 && (
+          <RecordList
+            items={shown}
+            plans={plans}
+            onToggle={toggleTask}
+            onOpen={(kind, id) => {
+              if (!embedded) park();
+              openAdd({ edit: { kind, id } });
+            }}
+          />
+        )}
+
+        {cards.chat && (
+          <button
+            type="button"
+            onClick={() => {
+              const to = cards.chat;
+              finish(false);
+              router.push(`/messages?c=${to}`);
+            }}
+            className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]"
+          >
+            <Icon name="chat" className="size-4" /> Sohbeti aç
+          </button>
+        )}
+
+        {cards.nav && (
+          <button type="button" onClick={() => go(cards.nav, "")} className="fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
+            {PAGES[cards.nav].label} sayfasını aç
+          </button>
+        )}
+    </>
+  );
+
+  // Sahne görünen sayfalarda konuşma sahnenin içindeki yuvaya çizilir (TabBar); büyük pencere açılmaz
+  if (docked && stageOn) return slot ? createPortal(<div className="pb-1 text-[1rem]">{convoView(true)}</div>, slot) : null;
   // Canlı alt panel: son cevap ya da duyulan, dinleme durumu; dokununca tam açılır, mikrofonla devam edilir
   if (docked) {
     const lastSaid = [...turns].reverse().find((x) => x.role === "assistant")?.text || "Buradayım, söyle.";
@@ -974,7 +1239,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
             )}
           </span>
           <button type="button" onClick={() => setDock(false)} className="min-w-0 flex-1 text-left" aria-label="Asistanı büyüt">
-            <small className={`block text-[0.6875rem] font-bold uppercase tracking-[.08em] ${listening ? "text-rec" : "text-acc"}`}>{listening ? "Dinliyorum" : transcribing ? "Yazıya çeviriyorum" : busy ? "Düşünüyorum" : "Asistan"}</small>
             <span className="line-clamp-2 text-[0.875rem] leading-snug">{listening ? heardLine || <span className="text-mut">Söyle, dinliyorum…</span> : busy ? heard : lastSaid}</span>
           </button>
           <button
@@ -1052,11 +1316,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
           <Icon name="chev" className="size-5 rotate-90" />
         </button>
         <span className="min-w-0 flex-1 text-center leading-tight">
-          <b className="flex items-center justify-center gap-1.5 text-[1.0625rem] font-semibold tracking-tight">
-            {listening && <span className="size-2 animate-pulse rounded-full bg-rec" />}
+          {/* Durum yazı değil küçük küreyle (dinliyor / düşünüyor / konuşuyor) */}
+          <b className="flex items-center justify-center gap-2 text-[1.0625rem] font-semibold tracking-tight">
+            <span data-state={orbState} className="ai-orb size-5" aria-hidden="true">
+              <span className="ai-halo" />
+              <span className="ai-core"><span className="ai-fill" /><span className="ai-shine" /></span>
+            </span>
             Asistan
           </b>
-          <small className="block truncate text-[0.75rem] text-mut">{status}</small>
+          {focus?.title && !listening && !busy && <small className="block truncate text-[0.75rem] text-mut">{focus.title}</small>}
         </span>
         {quota && quota.left <= 0 && <QuotaPill kind="assistant" />}
         <button
@@ -1110,188 +1378,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
 
       {/* Sohbet (kayar) */}
       <div ref={scrollRef} onPointerDown={() => menu && setMenu(false)} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-line px-4 pb-4 pt-2 text-[1rem]">
-        {turns.length === 0 && !listening && !busy && !transcribing && (
-          <div className="pt-3">
-            {/* Hazır örnek düğmeleri yok: öneriler, hızlı öğrenme verisi hazır olunca gelecek */}
-            <p className="text-[0.8125rem] text-mut">
-              {prefer
-                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin.`
-                : "Arka arkaya isteyebilirsin; bitince “bitir” de."}
-            </p>
-          </div>
-        )}
-
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />
-
-        {/* Yapılan işlem adım adım (yoklama, mesaj gönderme…) */}
-        {steps.length > 0 && (
-          <ol className="fade-in mt-2 space-y-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.875rem]" aria-live="polite">
-            {steps.map((x, i) => (
-              <li key={i} className="flex items-center gap-2.5">
-                {x.st === "run" ? (
-                  <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-acc/25 border-t-acc" />
-                ) : x.st === "done" ? (
-                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-ok text-white">
-                    <Icon name="check" className="size-3 [stroke-width:3]" />
-                  </span>
-                ) : (
-                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-rec text-white">
-                    <Icon name="x" className="size-3 [stroke-width:3]" />
-                  </span>
-                )}
-                <span className={x.st === "run" ? "font-semibold" : "text-mut"}>{x.st === "done" ? pastOf(x.label) : x.label}{x.st === "run" ? "…" : ""}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {/* Yoklama sonucu: kimler ne işaretlendi; kaydedildiyse Geri al */}
-        {cards.att && (
-          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
-            <p className="flex items-center justify-between bg-acc/[.06] px-3 py-2 text-[0.75rem] font-semibold uppercase tracking-wide text-acc">
-              <span>Yoklama · {new Date(`${cards.att.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "short" })}</span>
-              <span>{cards.att.saved ? "kaydedildi" : "onay bekliyor"}</span>
-            </p>
-            <ul className="max-h-56 divide-y divide-line overflow-y-auto">
-              {Object.entries(cards.att.changes).map(([id, v]) => (
-                <li key={id} className="flex items-center justify-between gap-2 px-3 py-2 text-[0.875rem]">
-                  <span className="truncate">{cards.att.names[id]}</span>
-                  <span className={`shrink-0 font-semibold ${v === "present" ? "text-ok" : v === "absent" ? "text-rec" : v === "excused" ? "text-amber-700" : "text-mut"}`}>{ATT_LABEL[v] || "temizlendi"}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-1.5 border-t border-line p-2">
-              {cards.att.saved ? (
-                <button type="button" onClick={() => undoAtt(cards.att)} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-rec active:scale-[.98]">
-                  Geri al
-                </button>
-              ) : (
-                <button type="button" onClick={() => confirmPending()} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
-                  <Icon name="check" className="size-4" /> Kaydet
-                </button>
-              )}
-              <button type="button" onClick={() => (park(), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
-                Yoklamayı aç
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(busy || transcribing) && steps.every((x) => x.st !== "run") && (
-          <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
-            <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
-              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />
-              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.15s]" />
-              <i className="size-1.5 animate-bounce rounded-full bg-mut" />
-            </span>
-            {transcribing ? "Yazıya çeviriyorum…" : secs > 3 ? `Düşünüyorum · ${secs} sn` : "Düşünüyorum…"}
-            <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
-              Vazgeç
-            </button>
-          </div>
-        )}
-
-        {error && (
-          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
-            <p className="flex items-center gap-2 text-[0.875rem] font-semibold"><Icon name="alert" className="size-4" /> Şu an yanıt veremedim</p>
-            <p className="mt-0.5 text-[0.8125rem] opacity-90">{error}</p>
-            <button type="button" onClick={() => run(heard, voice, true)} className="mt-2 h-9 rounded-xl bg-amber-900 px-3 text-[0.8125rem] font-semibold text-white active:scale-95">Tekrar dene</button>
-          </div>
-        )}
-
-        {/* Panelde hazırlanan yeni kayıtlar */}
-        {drafts.length > 0 && (
-          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
-            <p className="bg-acc/[.06] px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">Kaydedilecek · {drafts.length}</p>
-            <ul className="divide-y divide-line">
-              {drafts.map((d) => (
-                <li key={d._id} className="flex items-center gap-2.5 px-3 py-2">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-acc/10 text-acc"><Icon name={KIND_ICON[d.type]} className="size-4" /></span>
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.875rem] font-semibold">{d.title || d.body || "Başlıksız"}</b>
-                    <small className="block truncate text-[0.75rem] text-mut">{draftMeta(d)}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-1.5 border-t border-line p-2">
-              <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
-                <Icon name="check" className="size-4" /> Kaydet
-              </button>
-              <button type="button" onClick={editDraftsFull} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold active:scale-[.98]">Düzenle</button>
-              <button type="button" onClick={() => dropDrafts(false)} className="h-9 rounded-xl px-2.5 text-[0.8125rem] font-semibold text-mut active:bg-bg">Vazgeç</button>
-            </div>
-          </div>
-        )}
-
-        {cards.pending?.send && (
-          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
-            <p className="flex items-center gap-2.5 bg-acc/[.06] px-3 py-2">
-              <Avatar name={cards.pending.send.label} icon={cards.pending.send.team ? cards.pending.send.icon : null} size="size-8" text="text-[0.75rem]" tone={cards.pending.send.team ? "bg-[#2c5163] text-white" : undefined} />
-              <span className="min-w-0 flex-1">
-                <small className="block text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">Mesaj · onayını bekliyor</small>
-                <b className="block truncate text-[0.9375rem] font-semibold">{cards.pending.send.label}</b>
-              </span>
-            </p>
-            <textarea
-              value={cards.pending.send.text}
-              onChange={(e) => setSendText(e.target.value)}
-              aria-label="Gönderilecek mesaj"
-              rows={2}
-              className="block max-h-48 w-full resize-none bg-card px-3.5 py-3 text-[1rem] leading-snug outline-none [field-sizing:content] focus:bg-bg"
-            />
-            <div className="flex gap-2 border-t border-line p-2">
-              <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
-                <Icon name="up" className="size-4" /> Gönder
-              </button>
-              <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
-                Vazgeç
-              </button>
-            </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.</p>
-          </div>
-        )}
-
-        {cards.pending?.actions && (
-          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
-            <p className="text-[0.8125rem] font-semibold">Onayına sunuyorum</p>
-            <ul className="mt-1 space-y-0.5 text-[0.8125rem]">
-              {cards.pending.actions.map((a, i) => <li key={i}>• {describeAction(a, find(a.kind, a.id))}</li>)}
-            </ul>
-          </div>
-        )}
-
-        {shown.length > 0 && (
-          <RecordList
-            items={shown}
-            plans={plans}
-            onToggle={toggleTask}
-            onOpen={(kind, id) => {
-              park();
-              openAdd({ edit: { kind, id } });
-            }}
-          />
-        )}
-
-        {cards.chat && (
-          <button
-            type="button"
-            onClick={() => {
-              const to = cards.chat;
-              finish(false);
-              router.push(`/messages?c=${to}`);
-            }}
-            className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]"
-          >
-            <Icon name="chat" className="size-4" /> Sohbeti aç
-          </button>
-        )}
-
-        {cards.nav && (
-          <button type="button" onClick={() => go(cards.nav, "")} className="fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
-            {PAGES[cards.nav].label} sayfasını aç
-          </button>
-        )}
+        {convoView(false)}
       </div>
 
       {/* Alt: dinlerken canlı yazı + dalga; değilse yazma alanı ve mikrofon */}
@@ -1310,7 +1397,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn }) 
                   <span className="text-mut">{sp.interim}</span>
                 </>
               ) : (
-                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : "Konuş; susunca kendiliğinden gönderilir"}</span>
+                <span className="text-mut">{busy ? "Devam edebilirsin, eklerim…" : ""}</span>
               )}
             </p>
             <button type="button" onClick={() => sp.cancel()} aria-label="Dinlemeyi durdur" className="grid size-12 shrink-0 place-items-center rounded-full bg-bg text-mut active:scale-90">

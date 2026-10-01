@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -113,8 +114,19 @@ function Composer({ cfg, onDone }) {
   );
 }
 
-// Sahnedeki küre: dokun → konuş, basılı tut → yaz. Konuşurken ses dalgası, düşünürken döner.
-function StageOrb({ onTap, onHold, state, size = "size-[4.75rem]", ring = "shadow-[0_0_0_9px_rgba(62,110,132,.12),0_0_0_18px_rgba(62,110,132,.05)]" }) {
+// ASİSTAN KÜRESİ (tek düğme, simgesiz): canlı ışık küresi; durumunu renk, boy ve hareketle anlatır (globals.css .ai-orb).
+//   boşta     nefes alır                                   dokun → dinlemeye başla
+//   dinliyor  sesinle büyür, camgöbeğine döner             dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   düşünüyor mora kayar, hızla döner, çevresinde halka    dokun → vazgeç
+//   konuşuyor nabız gibi atar                              dokun → sözünü kes, dinle
+// Basılı tut → yaz.
+const ORB_LABEL = {
+  idle: "Asistan: dokun konuş, basılı tut yaz",
+  listening: "Bitir ve gönder",
+  busy: "Vazgeç",
+  speaking: "Sözünü kes ve konuş",
+};
+export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[3.75rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -130,26 +142,144 @@ function StageOrb({ onTap, onHold, state, size = "size-[4.75rem]", ring = "shado
     <button
       type="button"
       data-orb=""
+      data-state={state}
       onPointerDown={down}
       onPointerUp={up}
       onPointerLeave={up}
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => !held.current && onTap()}
-      aria-label={state === "listening" ? "Bitti, gönder" : "Asistan: dokun konuş, basılı tut yaz"}
-      className={`relative grid ${size} shrink-0 select-none place-items-center rounded-full bg-acc text-white ${ring} transition active:scale-95 [-webkit-touch-callout:none]`}
+      aria-label={ORB_LABEL[state] || ORB_LABEL.idle}
+      style={{ "--lvl": state === "listening" ? level : 0 }}
+      className={`ai-orb ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
-      {state === "busy" ? (
-        <span className="size-7 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
-      ) : state === "listening" ? (
-        <Icon name="check" className="size-8 [stroke-width:2.6]" />
-      ) : (
-        <span className={`flex h-6 items-end gap-[3px] ${state === "speaking" ? "[&>i]:animate-[softpulse_1s_ease-in-out_infinite]" : ""}`} aria-hidden="true">
-          {[10, 17, 24, 15, 9].map((h, i) => (
-            <i key={i} className="w-[3.5px] rounded-full bg-white" style={{ height: h, animationDelay: `${i * 120}ms` }} />
-          ))}
-        </span>
-      )}
+      <span className="ai-halo" aria-hidden="true" />
+      <span className="ai-ring" aria-hidden="true" />
+      <span className="ai-core" aria-hidden="true">
+        <span className="ai-fill" />
+        <span className="ai-blob" />
+        <span className="ai-shine" />
+      </span>
     </button>
+  );
+}
+
+// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade). Henüz kelime yokken hiçbir yazı yok: dinlediğini küre
+// anlatır. Gönderilince asıl balon (AssistantSheet) yerini alır.
+// solo: konuşmanın ilk sözü; alanın ortasında, büyük yazıyla (boş alan anlamlı dolsun)
+export function Hearing({ text, listening, solo }) {
+  if (solo)
+    return (
+      <div className="fade-in flex min-h-[9rem] flex-1 items-center justify-center px-2 text-center" aria-live="polite">
+        <p className={`text-[1.625rem] font-semibold leading-tight tracking-tight ${text ? "text-fg" : "text-mut"}`}>
+          {text}
+        </p>
+      </div>
+    );
+  return (
+    <div className="fade-in mt-4 flex justify-end" aria-live="polite">
+      <p className={`max-w-[85%] text-right text-[1.125rem] font-medium leading-snug tracking-tight ${text ? "text-fg" : "text-mut"}`}>
+        {text}
+        {listening && <span className="ml-1 inline-block h-[1.1em] w-[2px] translate-y-[3px] animate-pulse rounded-full bg-acc" aria-hidden="true" />}
+      </p>
+    </div>
+  );
+}
+
+// ASİSTAN ÇALIŞIRKEN (Orbit): beyaz panel yok. Alttan, konuşmanın kapladığı kadar buzlu cam yükselir (üstü yumuşakça
+// kaybolur, sayfanın üstü net kalır); camın içinde küreden yayılan ışık (aurora). Küre büyüyerek alttan yükselir,
+// konuşma camın üstünde süzülür. Hep çizilidir (ilk açılışta kurulum gecikmesi olmaz). Yükseklik görünen alan kadar:
+// yazarken klavyenin üstüne sığar.
+const noop = () => () => {};
+const FADE = 96; // camın üst kenarındaki yumuşak geçiş (px)
+export function Orbit({ on, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, setSlot }) {
+  const client = useSyncExternalStore(noop, () => true, () => false);
+  const shell = useRef(null);
+  const pane = useRef(null);
+  const stack = useRef(null); // konuşma + düğmeler (camın yüksekliği buna göre)
+  const glassRef = useRef(null);
+  const userUp = useRef(false);
+  // Görünen alan (klavye) — React'e uğramadan
+  useEffect(() => {
+    const el = shell.current;
+    const v = window.visualViewport;
+    if (!on || !el || !v) return;
+    const fit = () => {
+      el.style.height = `${Math.round(v.height)}px`;
+      if (window.scrollY && v.height < window.innerHeight - 120) window.scrollTo(0, window.scrollY);
+    };
+    fit();
+    v.addEventListener("resize", fit);
+    return () => {
+      v.removeEventListener("resize", fit);
+      el.style.height = "";
+    };
+  }, [on, client]);
+  // Yeni balon, adım ya da kart gelince en alta kayar (kullanıcı yukarı kaydırmadıysa)
+  useEffect(() => {
+    const el = pane.current;
+    if (!on || !el || typeof MutationObserver === "undefined") return;
+    userUp.current = false;
+    const down = () => !userUp.current && el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    const mo = new MutationObserver(down);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    const onScroll = () => (userUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 60);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    down();
+    return () => {
+      mo.disconnect();
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, [on, client]);
+  // Buzlu cam, konuşmanın ve düğmelerin kapladığı yükseklik kadar alttan yükselir (üst kenarı yumuşakça kaybolur);
+  // konuşma uzadıkça cam da büyür. Yükseklik React'e uğramadan yazılır. Kapalıyken 0: açılınca alttan yükselir.
+  useEffect(() => {
+    const st = stack.current;
+    const gl = glassRef.current;
+    if (!client || !st || !gl || typeof ResizeObserver === "undefined") return;
+    const set = () => (gl.style.height = on ? `${Math.round(st.offsetHeight + FADE + 28)}px` : "0px");
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(st);
+    return () => ro.disconnect();
+  }, [on, client]);
+  if (!client) return null;
+  const glass = "grid size-12 place-items-center rounded-full bg-white/55 text-fg shadow-[0_4px_16px_-8px_rgba(38,40,44,.3)] ring-1 ring-white/80 backdrop-blur-md transition active:scale-90";
+  // Not: saydamlık animasyonu yok (saydamlık değişirken tarayıcı arkadaki bulanıklığı çizemez, cam bir an kaybolur)
+  return createPortal(
+    <div ref={shell} inert={!on} aria-hidden={!on} className={`pointer-events-none fixed inset-x-0 top-0 z-[38] h-dvh ${on ? "visible" : "invisible [transition:visibility_0s_.5s]"}`}>
+      <div ref={glassRef} aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0 transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)]">
+        <div className="absolute inset-0 bg-bg/45 backdrop-blur-2xl backdrop-saturate-150 [mask-image:linear-gradient(to_top,#000_calc(100%-96px),transparent)]" />
+        <div className="aurora absolute inset-0 [mask-image:linear-gradient(to_top,#000_40%,transparent)]" data-state={state} style={{ "--lvl": live.level || 0 }} />
+      </div>
+      <div className="relative mx-auto flex h-full w-full max-w-[30rem] flex-col justify-end px-5 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-[calc(env(safe-area-inset-top)+3rem)]">
+        <div ref={stack} className={`pointer-events-auto flex min-h-0 flex-col transition duration-300 ${on ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
+          <div ref={pane} className="max-h-[66dvh] min-h-0 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_40px)] [scrollbar-width:none]">
+            <div className="pb-5 pt-3">
+              <div ref={setSlot} />
+              {state === "listening" && live.heard && <Hearing text={live.heard} listening solo={!live.talked} />}
+            </div>
+          </div>
+          {typing ? (
+            <div className="stage-in pb-1">
+              <Composer cfg={cfg} onDone={onTypingDone} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-3">
+              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={glass}>
+                <Icon name="keyboard" className="size-[1.375rem]" />
+              </button>
+              <span className={`transition-transform duration-500 ease-[cubic-bezier(.2,.9,.3,1.2)] ${on ? "translate-y-0 scale-100" : "translate-y-16 scale-50"}`}>
+                <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[7.5rem]" />
+              </span>
+              <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={glass}>
+                <Icon name="x" className="size-[1.375rem]" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -187,7 +317,7 @@ function NavTab({ href, icon, label, active, badge, onClick }) {
 export function TabBar({ cfg }) {
   const path = usePathname();
   const router = useRouter();
-  const { openAssistant, live, act } = useAssistant();
+  const { openAssistant, live, act, setSlot } = useAssistant();
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openBirthday } = useBirthday();
@@ -201,8 +331,8 @@ export function TabBar({ cfg }) {
   const box = useRef(null);
   const inner = useRef(null);
   const wrap = useRef(null);
-  const feed = useRef(null);
-  const [feedMax, setFeedMax] = useState(null); // ana sayfa akışının en çok yüksekliği (sahne ekrana sığsın)
+  const pane = useRef(null); // ana sayfada akış, konuşurken sohbet: sahnenin kayan orta alanı
+  const [paneH, setPaneH] = useState(null); // ana sayfada orta alanın yüksekliği (sahne üst çubuğa kadar uzanır)
   const home = path === "/";
   const homeRef = useRef(home);
   const quietUntil = useRef(0); // bu ana kadar kaydırma olayları sahnenin boyunu değiştirmez
@@ -215,24 +345,26 @@ export function TabBar({ cfg }) {
 
   const active = !!(live.open && live.docked);
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
-  const big = active || typing || !small;
-  const mode = active ? "active" : typing ? "typing" : big ? "big" : "small";
+  const big = typing || !small || home; // ana sayfada sahne küçülmez (sayfanın kendisi o)
+  // Asistan çalışırken sahne olduğu gibi kalır (arkada bulanık görünür); konuşma Orbit'te
+  const mode = typing && !active ? "typing" : big ? "big" : "small";
   useEffect(() => {
     homeRef.current = home;
   }, [home]);
 
-  // Ana sayfa: akış, hava kartının altıyla sahnenin sabit parçaları (selam, öneriler, küre, sekmeler) arasındaki yere sığar
+  // Ana sayfa: orta alan (akış ya da sohbet) üst çubuğun altıyla sahnenin sabit parçaları (düğmeler, sekmeler) arasını
+  // tam doldurur; akıştan sohbete geçişte sahnenin boyu değişmez (zıplama olmaz)
   useLayoutEffect(() => {
     if (!home || mode !== "big") return;
     const fit = () => {
-      const f = feed.current;
+      const f = pane.current;
       const b = box.current;
       const w = wrap.current;
       const i = inner.current;
       if (!f || !b || !w || !i) return;
       const top = document.getElementById("home-top")?.getBoundingClientRect().bottom ?? window.innerHeight * 0.4;
       const fixedParts = b.offsetHeight - w.offsetHeight + (i.offsetHeight - f.offsetHeight);
-      setFeedMax(Math.max(140, Math.round(window.innerHeight - Math.max(top, 0) - 12 - fixedParts)));
+      setPaneH(Math.max(140, Math.round(window.innerHeight - Math.max(top, 0) - 10 - fixedParts)));
     };
     fit();
     const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
@@ -243,7 +375,7 @@ export function TabBar({ cfg }) {
       ro?.disconnect();
       window.removeEventListener("resize", fit);
     };
-  }, [home, mode]);
+  }, [home, mode, typing]);
 
   // İçerik değişince yükseklik eski değerden yenisine kayar (height geçişi; içerik yumuşakça belirir)
   useLayoutEffect(() => {
@@ -294,19 +426,27 @@ export function TabBar({ cfg }) {
       if (d > 0 && y > 40) setSmall(true);
       else if (d < 0 && y <= 8) setSmall(false);
     };
-    const onDown = (e) => !homeRef.current && !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
+    // Sayfaya dokununca küçülme tıklama bittikten SONRA olur: dokunuş başlarken (pointerdown) ekran değişirse
+    // iPhone Safari bunu "üzerine gelme" sayar ve tıklamayı yutar (ilk dokunuş boşa gider, ikinci kez dokunmak gerekir).
+    let t = 0;
+    const onClick = (e) => {
+      if (homeRef.current || box.current?.contains(e.target) || e.target.closest?.("[role=dialog]")) return;
+      clearTimeout(t);
+      t = setTimeout(() => setSmall(true), 0);
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("click", onClick);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("click", onClick);
     };
   }, []);
   // iPhone: klavye açılınca sabit alt alan klavyenin arkasında kalır; yazarken sahne klavyenin üstüne taşınır
   useEffect(() => {
     const vv = window.visualViewport;
     const el = box.current;
-    if (!typing || !vv || !el) return;
+    if (!typing || active || !vv || !el) return;
     const fit = () => {
       const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       el.style.transform = kb > 40 ? `translate3d(0,${-kb}px,0)` : "";
@@ -319,7 +459,7 @@ export function TabBar({ cfg }) {
       vv.removeEventListener("scroll", fit);
       el.style.transform = "";
     };
-  }, [typing]);
+  }, [typing, active]);
 
   const go = (fn) => () => {
     setMenu(false);
@@ -339,9 +479,14 @@ export function TabBar({ cfg }) {
   const top = [...own, ...(firstItem && !own.some((o) => o[1] === firstItem[1]) ? [firstItem] : [])];
   const items = [...top.map((x) => [...x, true]), ...base.filter((b) => !top.some((t) => t[1] === b[1]))];
 
+  // Tek düğmenin işi duruma göre (StageOrb'daki tablo)
   const talk = () => {
     setSmall(false);
-    if (active) return live.listening ? act.current.stop?.() : act.current.listen?.();
+    if (active) {
+      if (state === "listening") return act.current.stop?.();
+      if (state === "busy") return act.current.abort?.();
+      return act.current.listen?.(); // boşta ya da konuşurken: sözünü keser, dinler
+    }
     if (cfg.onMic) return cfg.onMic();
     openAssistant({ listen: true, dock: true, prefer: cfg.prefer, examples: cfg.ex });
   };
@@ -354,37 +499,34 @@ export function TabBar({ cfg }) {
 
   return (
     <>
-      {/* Asistan çalışırken sayfa soluklaşır (dokunuşları engellemez) */}
-      <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-[19] bg-bg transition-opacity duration-300 ${active && state !== "idle" ? "opacity-60" : "opacity-0"}`} />
+      <Orbit
+        on={active}
+        state={state}
+        live={live}
+        talk={talk}
+        typeNow={typeNow}
+        typing={typing}
+        onTypingDone={() => setTyping(false)}
+        cfg={cfg}
+        onClose={() => act.current.close?.()}
+        setSlot={setSlot}
+      />
       <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
-        <div className="mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
-          <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-1 block h-5 w-16">
-            <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
-          </button>
+        <div className="relative mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
+          {/* Üst kenarda ince ışık çizgisi (asistan alanının sınırı) */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#4fa0be]/60 to-transparent" />
+          {home ? (
+            <span className="block h-2" aria-hidden="true" />
+          ) : (
+            <button type="button" onClick={() => setSmall((v) => !v)} aria-label={big ? "Asistanı küçült" : "Asistanı büyüt"} className="mx-auto mb-1 block h-5 w-16">
+              <span className="mx-auto block h-1 w-10 rounded-full bg-line" />
+            </button>
+          )}
 
           {/* Yükseklik geçişi: dış kutu ölçülen yüksekliğe kayar, içerik kendi boyunda kalır (kırpılır) */}
           <div ref={wrap} style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
             <div ref={inner}>
-              {mode === "active" ? (
-                /* Asistan konuşuyor: duyulan ya da son cevap büyük yazıyla; kontrol düğmeleri */
-                <div key="active" className="stage-in space-y-3 pb-2">
-                  <p className={`text-[0.6875rem] font-bold uppercase tracking-[.12em] ${state === "listening" ? "text-rec" : "text-acc"}`}>
-                    {state === "listening" ? "● Dinliyorum" : state === "busy" ? "Düşünüyorum" : "Asistan"}
-                  </p>
-                  <p className="line-clamp-4 text-[1.25rem] font-semibold leading-snug tracking-tight">
-                    {state === "listening" ? live.heard || <span className="text-mut">Söyle, dinliyorum…</span> : state === "busy" ? live.heard || "…" : live.lastReply || "Buradayım, söyle."}
-                  </p>
-                  <div className="flex items-center justify-between pt-1">
-                    <button type="button" onClick={() => act.current.close?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-line/50">
-                      <Icon name="x" className="size-[1.125rem]" /> Kapat
-                    </button>
-                    <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-16" ring="shadow-[0_0_0_8px_rgba(62,110,132,.12)]" />
-                    <button type="button" onClick={() => act.current.expand?.()} className="flex h-11 items-center gap-1.5 rounded-full px-3 text-[0.875rem] font-medium text-mut active:bg-line/50">
-                      Ayrıntı <Icon name="chev" className="size-4 -rotate-90" />
-                    </button>
-                  </div>
-                </div>
-              ) : mode === "typing" ? (
+              {mode === "typing" ? (
                 <div key="typing" className="stage-in pb-2">
                   <Composer cfg={cfg} onDone={() => setTyping(false)} />
                 </div>
@@ -393,27 +535,33 @@ export function TabBar({ cfg }) {
                 <div key="big" className="stage-in space-y-3.5 pb-4">
                   {home && (
                     <div
-                      ref={feed}
-                      style={feedMax ? { maxHeight: feedMax } : undefined}
+                      ref={pane}
+                      style={paneH ? { height: paneH } : undefined}
                       className="-mx-5 overflow-y-auto overscroll-contain px-5 pb-3 pt-1 [mask-image:linear-gradient(to_bottom,transparent,#000_10px,#000_calc(100%-18px),transparent)] [scrollbar-width:none]"
                     >
                       <HomeFeed />
                     </div>
                   )}
-                  <div className="flex items-center justify-between pt-2">
-                    <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                      <Icon name="keyboard" className="size-[1.375rem]" />
-                    </button>
-                    <StageOrb state={state} onTap={talk} onHold={typeNow} />
-                    <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                      <Icon name="plus" className="size-6" />
-                    </button>
+                  {/* Cam bar: yazarak sor · (yukarı taşan büyük küre) · oluştur */}
+                  <div className="pt-11">
+                    <div className="relative flex h-16 items-center justify-between rounded-full bg-card/80 px-2 shadow-[0_1px_2px_rgba(38,40,44,.05),0_12px_30px_-14px_rgba(38,40,44,.35)] ring-1 ring-line/70 backdrop-blur-xl">
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#6fb6cc]/60 to-transparent" />
+                      <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg">
+                        <Icon name="keyboard" className="size-[1.375rem]" />
+                      </button>
+                      <span className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[42%] transition-opacity duration-300 ${active ? "opacity-0" : "opacity-100"}`}>
+                        <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[5.25rem]" />
+                      </span>
+                      <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg">
+                        <Icon name="plus" className="size-6" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
                 /* Küçük: tek satır, küre ve kısa ipucu */
                 <div key="small" className="stage-in flex items-center gap-3 pb-2">
-                  <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-12" ring="shadow-[0_0_0_6px_rgba(62,110,132,.12)]" />
+                  <StageOrb state={state} onTap={talk} onHold={typeNow} size="size-12" />
                   <button type="button" onClick={() => setSmall(false)} className="min-w-0 flex-1 truncate text-left text-[0.9375rem] text-mut">
                     {cfg.ph}
                   </button>

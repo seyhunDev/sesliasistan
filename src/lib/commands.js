@@ -211,14 +211,21 @@ export function brainCommand(raw, today = todayStr(), sure = null) {
 const MEETING = /(toplantı|görüşme) ?(modu|modunu|moduna|kaydı|kaydını|kaydına)|(toplantıyı|görüşmeyi) (kaydet|dinle|kayda al|başlat)|(^| )kayda (başla|al)|ses kaydı (başlat|al)/;
 export const isMeeting = (t) => MEETING.test(norm(t)) && !/(yarın|bugün|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|saat \d)/.test(norm(t));
 
-// Asistan için tüm hızlı komutlar (sıra önemli)
-export function localCommand(raw, data, today = todayStr()) {
+// Asistan için tüm hızlı komutlar (sıra önemli).
+// aiFirst: asistanda yapay zeka varken yalnızca kesin, basit komutlar yerelde çalışır (yardım, fiş kamerası, toplantı,
+// sayfa açma); kayıt ekleme, tamamlama, liste ve özet yapay zekaya gider (yerel kurallar başlığı/türü yanlış çıkarabiliyor).
+// Yapay zekaya ulaşılamazsa asistan bu işleri yine yerel kurallarla yapar (aiFirst olmadan).
+export function localCommand(raw, data, today = todayStr(), { aiFirst = false } = {}) {
   const text = normalizeSpeech(raw);
   const t = norm(text);
   if (!t) return null;
   if (HELP.test(t)) return { type: "reply", message: HELP_MSG, show: [] };
   if (localReceipt(text)) return { type: "receipt" };
   if (isMeeting(raw) || isMeeting(text)) return { type: "meeting" }; // ses düzeltmesi "kaydet"i "ekle"ye çevirir; ham cümleye de bak
+  if (aiFirst) {
+    const nav = localNavigate(text);
+    return nav?.page ? { type: "navigate", page: nav.page } : null;
+  }
   const done = complete(t, data);
   if (done) return done;
   const created = localCreate(text, today);

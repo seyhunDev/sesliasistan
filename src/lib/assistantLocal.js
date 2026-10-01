@@ -82,3 +82,14 @@ export function looksLikeCreate(text) {
   const t = text.toLocaleLowerCase("tr-TR");
   return CREATE_W.test(t) && !ASK_W.test(t);
 }
+
+// Konuşmayı bitirme sözü ("kapat", "teşekkürler", "asistanı kapat", "tamamdır sağ ol", "görüşürüz"…): asistan kapanır.
+// Kısa cümlelerde (en çok 5 kelime) aranır; bir şeyi kapatma isteği ("görevi kapat", "bildirimleri kapat") sayılmaz.
+const END_START = /^(?:tamam(?:dır)?\s+|peki\s+|çok\s+)?(bitir|bitti|kapat|yeter|teşekkürler|teşekkür ederim|sağ ?ol(?:un)?|eyvallah|görüşürüz|şimdilik bu kadar|bu kadar|çıkış|iyi (?:günler|akşamlar|geceler))(?=$|[\s.,!?])/;
+const END_ANY = /(^| )(asistan(ı)? kapat|kapatabilirsin|kapat(ır)? mısın|teşekkürler|teşekkür ederim|sağ ?ol(un)?|eyvallah|görüşürüz|iyi (günler|akşamlar|geceler)|konuşmayı (bitir|kapat)|bu kadar yeter)( |$)/;
+const END_NOT = /(görev|plan|not|bildirim|sohbet|mesaj|alarm|hatırlat|ışık|kapı|sayfa)\S*\s+kapat/;
+export function isEnd(text) {
+  const t = lower(String(text || "")).replace(/[.,!?…]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!t || t.split(" ").length > 5 || END_NOT.test(t)) return false;
+  return END_START.test(t) || END_ANY.test(t);
+}

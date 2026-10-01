@@ -1,7 +1,7 @@
 // Yerel (yapay zekasız) asistan kuralları: insanların söyleyebileceği farklı cümlelerle.
 // Yalnızca hesaplama yapar; veritabanına ve yapay zekaya dokunmaz.
 import { localCommand, isMeeting, localCreate } from "@/lib/commands";
-import { localReceipt, isYes, isNo, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { localReceipt, isYes, isNo, localQuery, looksLikeCreate, isEnd } from "@/lib/assistantLocal";
 import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
@@ -114,5 +114,31 @@ for (const [s, exp] of cases) {
   const got = localNavigate(s, { names: names2 });
   results.push({ group: "Sayfa/sohbet açma (söyleyişler)", say: s, ok: JSON.stringify(got) === JSON.stringify(exp), expect: JSON.stringify(exp), got: JSON.stringify(got), note: "" });
 }
+
+// Ön cevap (yapay zeka düşünürken hemen söylenen giriş): tür doğru, çelişmeyen, kısa; veriden bilgi
+const { precue } = await import("@/lib/precue");
+const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
+const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
+group("Ön cevap")([
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && /yarın saat 10:00/.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
+  ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
+  ["cumartesi yarış planla", PC("plan, gün adıyla", (r) => r?.kind === "plan" && /için bir plan hazırlıyorum/.test(r.line))],
+  ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
+  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, not alıyorum.")],
+  ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
+  ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
+  ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
+  ["bu konuda ne düşünüyorsun acaba söyle", PC("emin değil: genel giriş", (r) => r && !/plan|görev|not/.test(r.line))],
+]);
+
+// Sesle kapatma: konuşmayı bitiren sözler kapatır, bir şeyi kapatma isteği kapatmaz
+const END_T = (want) => ({ desc: want ? "konuşma kapanır" : "kapanmaz", fn: (s) => isEnd(s), ok: (r) => r === want });
+group("Sesle kapatma")([
+  ["kapat", END_T(true)], ["Teşekkürler.", END_T(true)], ["tamam teşekkür ederim", END_T(true)], ["tamamdır sağ ol", END_T(true)],
+  ["asistanı kapat", END_T(true)], ["kapatabilirsin", END_T(true)], ["kapatır mısın", END_T(true)], ["çok teşekkürler", END_T(true)],
+  ["eyvallah", END_T(true)], ["görüşürüz", END_T(true)], ["şimdilik bu kadar", END_T(true)], ["iyi akşamlar", END_T(true)], ["bitir", END_T(true)],
+  ["görevi kapat", END_T(false)], ["bildirimleri kapat", END_T(false)], ["yarın 10'da antrenman ekle", END_T(false)],
+  ["Ali'ye teşekkür mesajı gönder ve yarın gelmesini söyle", END_T(false)], ["sohbeti kapat", END_T(false)],
+]);
 
 export default results;

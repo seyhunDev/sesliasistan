@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { AssistantSheet } from "./AssistantSheet";
 
 // Sağlayıcının dışında kalan yerler (ör. kayıt ekranı: AddProvider asistandan önce kurulur) olayla açar
-const Ctx = createContext({ openAssistant: (o = {}) => window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: o })), open: false, live: {}, act: { current: {} }, stageOn: false, setStageOn() {} });
+const Ctx = createContext({ openAssistant: (o = {}) => window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: o })), open: false, live: {}, act: { current: {} }, stageOn: false, setStageOn() {}, setSlot() {} });
 
 // openAssistant({ text?, voice?, listen? }) uygulamanın her yerinden çağrılabilir.
 // Asistan yüzen bir paneldir: sayfalar arasında açık kalır, sohbet kullanıcı bitirene kadar sürer.
@@ -20,6 +20,7 @@ export function AssistantProvider({ children }) {
     act.current = o;
   }, []);
   const [stageOn, setStageOn] = useState(false); // sahne bu sayfada görünüyor mu (görünüyorsa asistanın küçük paneli çizilmez)
+  const [slot, setSlot] = useState(null); // sahnedeki konuşma yuvası: sohbet büyük pencere yerine buraya çizilir
   const openAssistant = useCallback((o = {}) => {
     window.dispatchEvent(new Event("sa-tts-prime")); // asistanı açan dokunuş: sesli yanıt açıksa ses açılsın (iOS)
     window.dispatchEvent(new Event("sa-assistant-open")); // "Şimdi sen dene" yönlendirmesi kapansın
@@ -38,9 +39,9 @@ export function AssistantProvider({ children }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ openAssistant, open, live, act, stageOn, setStageOn }}>
+    <Ctx.Provider value={{ openAssistant, open, live, act, stageOn, setStageOn, setSlot }}>
       {children}
-      <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} stageOn={stageOn} />
+      <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} stageOn={stageOn} slot={slot} />
     </Ctx.Provider>
   );
 }

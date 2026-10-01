@@ -121,8 +121,8 @@ service cloud.firestore {
         // Yalnızca kendi anahtarı değişen alanlar ve sohbet özeti; ad ve üyeler yalnızca grubu kuran (ya da kendi çıkışı)
         function chatUpdateOk() {
           let ch = request.resource.data.diff(resource.data).affectedKeys();
-          return ch.hasOnly(["last", "seq", "read", "typing", "muted", "name", "members", "updatedAt", "pinned"])
-              && ownKey("read") && ownKey("typing") && ownKey("muted")
+          return ch.hasOnly(["last", "seq", "read", "recv", "typing", "muted", "name", "members", "updatedAt", "pinned"])
+              && ownKey("read") && ownKey("recv") && ownKey("typing") && ownKey("muted")
               && (!ch.hasAny(["name", "members"])
                   || (resource.data.get("type", "") == "group"
                       && (resource.data.get("createdBy", "") == request.auth.uid

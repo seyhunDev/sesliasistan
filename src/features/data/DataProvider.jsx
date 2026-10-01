@@ -179,8 +179,10 @@ export function DataProvider({ children }) {
 
   // ---- Plan / görev / not ----
   // Taslak kartları gerçek kayıtlara çevirir. Sonucu hemen döndürür, yazma arka planda biter.
+  // Kaydet: yazmanın sunucuya ulaşması beklenir. Sonuç: { plans, tasks, notes } ve
+  //   error: yazılamadı (sayılar 0) · queued: bağlantı yok/yavaş, kayıt cihazda sırada (internet gelince gider)
   const saveDrafts = useCallback(
-    (drafts, { source, by }) => {
+    async (drafts, { source, by }) => {
       let ownerId;
       try {
         ownerId = getOrgId();
@@ -239,11 +241,20 @@ export function DataProvider({ children }) {
         }
       });
 
-      batch
+      const done = batch
         .commit()
-        .then(() => toNotify.forEach(([k, id]) => notifyAssign(k, id)))
-        .catch((e) => fail(e, "Kaydetme"));
-      return count;
+        .then(() => {
+          toNotify.forEach(([k, id]) => notifyAssign(k, id));
+          return "ok";
+        })
+        .catch((e) => {
+          fail(e, "Kaydetme");
+          return "err";
+        });
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+      const st = await Promise.race([done, new Promise((r) => setTimeout(() => r("slow"), offline ? 300 : 8000))]);
+      if (st === "err") return { plans: 0, tasks: 0, notes: 0, error: true };
+      return { ...count, queued: st === "slow" };
     },
     [getOrgId, fail],
   );

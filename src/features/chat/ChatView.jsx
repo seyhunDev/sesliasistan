@@ -105,8 +105,43 @@ export function ChatView({ cid }) {
   const readAt = useRef(null); // açılıştaki "okuduğum son mesaj" numarası
   const [divider, setDivider] = useState(null); // "Okunmamış mesajlar" çizgisinin üstünde durduğu mesaj (açılışta bir kez)
 
-  // iPhone: klavye kapansa da sayfa yukarı kaymış kalabilir; sohbetten çıkarken sıfırla (alt menü yerinde dursun)
-  useEffect(() => () => window.scrollTo(0, 0), []);
+  // Sohbet ekranı sabit bir kutu (mesajlaşma uygulamaları gibi). Yüksekliği görünen alan (visualViewport) kadar:
+  // klavye açılınca kutu kısalır, yazma alanı klavyenin üstünde kalır. iPhone sayfayı kaydırmaya kalkarsa hemen başa
+  // alınır: kutu hiçbir zaman taşınmaz (taşınırsa Safari'de dokunulan yer ile görünen yer kayar).
+  // Yükseklik React'e uğramadan doğrudan yazılır (klavye açılırken her karede yeniden çizim olmasın).
+  const shell = useRef(null);
+  useLayoutEffect(() => {
+    const el = shell.current;
+    if (!el) return;
+    const v = window.visualViewport;
+    const html = document.documentElement;
+    const prev = [html.style.overflow, document.body.style.overflow];
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    let raf = 0;
+    const fit = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = Math.round(v ? v.height : window.innerHeight);
+        el.style.height = `${h}px`;
+        // Klavye açıkken ev çizgisi payı gerekmez (yazma alanı klavyeye yapışık)
+        el.style.setProperty("--kb-pad", window.innerHeight - h > 120 ? "0.5rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
+        if (window.scrollY || (v && v.offsetTop)) window.scrollTo(0, 0);
+      });
+    };
+    fit();
+    v?.addEventListener("resize", fit);
+    v?.addEventListener("scroll", fit);
+    window.addEventListener("scroll", fit, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      v?.removeEventListener("resize", fit);
+      v?.removeEventListener("scroll", fit);
+      window.removeEventListener("scroll", fit);
+      [html.style.overflow, document.body.style.overflow] = prev;
+      window.scrollTo(0, 0);
+    };
+  }, [!!chat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mesajlar (son 50; yukarı kaydırıp "Önceki mesajlar" ile daha fazlası)
   useEffect(() => {
@@ -148,23 +183,64 @@ export function ChatView({ cid }) {
     };
   }, [cid, setViewing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Alta kaydırma: açılışta en alt; yeni mesajda kullanıcı alttaysa ya da mesaj benimse kayar, değilse "↓ yeni" düğmesi
-  const count = useRef(-1);
-  const lastBy = msgs.at(-1)?.by;
-  // İlk konumlama ekrana çizilmeden önce yapılır (useLayoutEffect): sayfa önce üstte görünüp alta zıplamaz.
+  // Kaydırma (mesajlar kendi kutusunda kayar):
+  //   açılışta en alt (çizilmeden önce, zıplamaz) · yeni mesaj: alttaysan ya da mesaj senin ise alta kayar, değilse "↓ yeni"
+  //   · yukarı yaklaşınca önceki mesajlar kendiliğinden yüklenir, okuduğun yer kaymaz · klavye/yanıt çubuğu açılınca alttaysan altta kalır
+  const scroller = useRef(null);
+  const composerBox = useRef(null);
+  const atBottom = useRef(true);
+  const prevH = useRef(0);
+  const ends = useRef({ first: null, last: null });
+  const older = useRef(false); // önceki mesajlar yükleniyor
   useLayoutEffect(() => {
-    const el = document.scrollingElement;
+    const el = scroller.current;
     if (!el || !msgs.length) return;
-    const first = count.current < 0;
-    const grew = msgs.length > count.current && !first;
-    count.current = msgs.length;
-    const near = el.scrollHeight - window.scrollY - window.innerHeight < 200;
-    if (first) window.scrollTo(0, el.scrollHeight);
-    if (first || (grew && (near || lastBy === uid))) {
-      if (!first) requestAnimationFrame(() => window.scrollTo({ top: el.scrollHeight, behavior: "smooth" }));
-      setNewBelow(0);
-    } else if (grew) setNewBelow((n) => n + 1);
-  }, [msgs.length, lastBy, uid]);
+    const f = msgs[0].id;
+    const l = msgs.at(-1).id;
+    const was = ends.current;
+    ends.current = { first: f, last: l };
+    if (!was.last) el.scrollTop = el.scrollHeight;
+    else if (l !== was.last) {
+      if (atBottom.current || msgs.at(-1).by === uid) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+        setNewBelow(0);
+      } else {
+        const i = msgs.findIndex((m) => m.id === was.last);
+        setNewBelow((n) => n + Math.max(1, i < 0 ? 1 : msgs.length - 1 - i));
+      }
+    } else if (f !== was.first && prevH.current) el.scrollTop += el.scrollHeight - prevH.current;
+    prevH.current = el.scrollHeight;
+    older.current = false;
+  }, [raw, uid]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (atBottom.current) el.scrollTop = el.scrollHeight;
+      prevH.current = el.scrollHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!chat]); // eslint-disable-line react-hooks/exhaustive-deps
+  // "↓ yeni" düğmesi yazma alanının hemen üstünde dursun (yanıt çubuğu açılınca da)
+  useEffect(() => {
+    const el = composerBox.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => el.parentElement?.style.setProperty("--composer-h", `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!chat]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onScroll = () => {
+    const el = scroller.current;
+    if (!el) return;
+    atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottom.current && newBelow) setNewBelow(0);
+    if (el.scrollTop < 240 && msgs.length >= lim && !older.current) {
+      older.current = true;
+      prevH.current = el.scrollHeight;
+      setLim((n) => n + PAGE);
+    }
+  };
   const startReply = (m) => {
     setEditing(null);
     setReplyTo(m);
@@ -189,7 +265,7 @@ export function ChatView({ cid }) {
     } else setLim((n) => n + PAGE);
   };
   const toBottom = () => {
-    window.scrollTo({ top: document.scrollingElement.scrollHeight, behavior: "smooth" });
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
     setNewBelow(0);
   };
 
@@ -266,7 +342,20 @@ export function ChatView({ cid }) {
       : GROUPS[cid]
         ? `${members.length} kişi`
         : members.map((m) => personName(m).split(" ")[0]).join(", ");
-  const readAll = (m) => others.length > 0 && others.every((o) => (chat?.read?.[o] || 0) >= (m.n || 0));
+  // Okundu / iletildi: herkes okuduysa mavi çift tik, herkese ulaştıysa gri çift tik (okumak iletilmeyi de kapsar)
+  const readBy = (o) => chat?.read?.[o] || 0;
+  const gotBy = (o) => Math.max(chat?.recv?.[o] || 0, readBy(o));
+  const readAll = (m) => others.length > 0 && others.every((o) => readBy(o) >= (m.n || 0));
+  const gotAll = (m) => others.length > 0 && others.every((o) => gotBy(o) >= (m.n || 0));
+  const lastMine = [...msgs].reverse().find((m) => m.by === uid && !m.deleted);
+  const statusLine = (m) => {
+    if (!m || m.pending || !m.n) return m?.pending ? "Gönderiliyor…" : "";
+    const readers = others.filter((o) => readBy(o) >= m.n);
+    if (chat?.type === "dm") return readers.length ? "Okundu" : gotAll(m) ? "İletildi" : "Gönderildi";
+    if (readAll(m)) return "Herkes okudu";
+    if (readers.length) return `${readers.length} kişi okudu`;
+    return gotAll(m) ? "İletildi" : "Gönderildi";
+  };
   const firstUnread = divider ? msgs.findIndex((m) => m.id === divider) : -1;
 
   // Sohbet listesi henüz gelmediyse "bulunamadı" değil, yükleniyor
@@ -289,12 +378,11 @@ export function ChatView({ cid }) {
     );
 
   return (
-    // Sayfanın kendisi kayar (iç kutu değil): iPhone Safari alt çubuğu küçültür, yazma alanı ekranın altına oturur.
-    // Başlık üstte, yazma alanı altta yapışık (sticky); sayfa en az ekran boyu.
-    <main className="bg-bg">
-      <div className="mx-auto flex min-h-lvh w-full max-w-[30rem] flex-col">
+    // Sabit kutu: başlık üstte, mesajlar ortada kendi içinde kayar, yazma alanı altta (yükseklik: yukarıdaki fit)
+    <main ref={shell} className="fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg">
+      <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
-        <header className="sticky top-0 z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
+        <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
           <button type="button" onClick={() => router.push("/messages")} aria-label="Mesajlar" className="grid size-10 shrink-0 place-items-center rounded-full active:bg-line">
             <Icon name="back" className="size-5" />
           </button>
@@ -305,7 +393,7 @@ export function ChatView({ cid }) {
                 <span className="truncate">{chat.title}</span>
                 {chat.mutedByMe && <Icon name="mute" className="size-3.5 shrink-0 text-mut" />}
               </b>
-              {typers.length > 0 && <small className="block truncate text-[0.75rem] font-medium leading-tight text-acc">{sub}</small>}
+              {sub && <small className={`block truncate text-[0.75rem] leading-tight ${typers.length || sub === "çevrimiçi" ? "font-medium text-acc" : "text-mut"}`}>{sub}</small>}
             </span>
           </button>
           <button type="button" onClick={() => setInfo(true)} aria-label="Sohbet ayarları" className="grid size-10 shrink-0 place-items-center rounded-full text-mut active:bg-line">
@@ -330,11 +418,18 @@ export function ChatView({ cid }) {
         )}
 
         {/* Mesajlar */}
-        <div ref={box} className={`relative flex-1 px-3.5 pb-4 pt-2 ${raw && !cached ? "msgs-in" : ""}`}>
+        {/* Mesajlara dokununca klavye kapanır (yazarken mesajlar tam görünsün) */}
+        <div
+          ref={scroller}
+          onScroll={onScroll}
+          onClick={() => document.activeElement === input.current && input.current?.blur()}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+        >
+        <div ref={box} className={`relative flex min-h-full flex-col justify-end px-3.5 pb-3 pt-2 ${raw && !cached ? "msgs-in" : ""}`}>
           {msgs.length >= lim && (
-            <button type="button" onClick={() => setLim((n) => n + PAGE)} className="mx-auto mb-2 block rounded-full bg-card px-3 py-1.5 text-[0.75rem] font-semibold text-acc shadow-sm">
-              Önceki mesajlar
-            </button>
+            <div className="flex justify-center py-2" aria-label="Önceki mesajlar yükleniyor">
+              <Loader size="sm" className="text-mut" />
+            </div>
           )}
           {exists && !raw && <MsgSkeleton />}
           {(!exists || raw) && !msgs.length && (
@@ -359,7 +454,7 @@ export function ChatView({ cid }) {
                 {m.editedAt && !m.deleted && <span className="mr-0.5 italic">düzenlendi</span>}
                 {chat.pinned?.id === m.id && <Icon name="pushpin" className="size-3" />}
                 {hm(m.at)}
-                {mine && !m.deleted && <Ticks read={readAll(m)} pending={m.pending} />}
+                {mine && !m.deleted && <Ticks read={readAll(m)} delivered={gotAll(m)} pending={m.pending} />}
               </>
             );
             return (
@@ -380,11 +475,16 @@ export function ChatView({ cid }) {
                       <Avatar name={personName(m.by)} size="size-8" text="text-[0.75rem]" />
                     </span>
                   )}
-                  <div className={`flex max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`}>
-                    <button
-                      type="button"
-                      onClick={() => !m.deleted && setAct(m)}
-                      className={`relative min-w-[4.5rem] px-3 pb-2 pt-1.5 text-left text-[1rem] leading-[1.35] shadow-[0_1px_1.5px_rgba(38,40,44,.08)] transition active:scale-[.99] ${
+                  <SwipeReply className={`flex max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`} onReply={() => !m.deleted && startReply(m)}>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!m.deleted) setAct(m);
+                      }}
+                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !m.deleted && (e.preventDefault(), setAct(m))}
+                      className={`relative cursor-pointer select-none [-webkit-touch-callout:none] min-w-[4.5rem] px-3 pb-2 pt-1.5 text-left text-[1rem] leading-[1.35] shadow-[0_1px_1.5px_rgba(38,40,44,.08)] transition active:scale-[.99] ${
                         mine ? `bg-[#2c5163] text-white ${tail ? "rounded-[1.25rem] rounded-br-md" : "rounded-[1.25rem]"}` : `bg-card text-fg ${tail ? "rounded-[1.25rem] rounded-bl-md" : "rounded-[1.25rem]"}`
                       }`}
                     >
@@ -400,7 +500,7 @@ export function ChatView({ cid }) {
                           <Icon name="x" className="size-3.5" /> Bu mesaj silindi
                         </span>
                       ) : (
-                        <span className="whitespace-pre-wrap break-words">{m.text}</span>
+                        <span className="whitespace-pre-wrap break-words">{linkify(m.text, mine)}</span>
                       )}
 {/* Saat sağ altta sabit; metnin son satırında onun kadar görünmez yer ayrılır (sığmazsa alt satıra geçer) */}
                       <span aria-hidden="true" className="invisible ml-2 inline-flex gap-1 text-[0.6875rem]">
@@ -409,7 +509,7 @@ export function ChatView({ cid }) {
                       <span className={`absolute bottom-[0.3125rem] right-3 flex items-center gap-1 whitespace-nowrap text-[0.6875rem] leading-none tabular-nums ${mine ? "text-white/70" : "text-mut"}`}>
                         {meta}
                       </span>
-                    </button>
+                    </div>
                     {Object.keys(reacts).length > 0 && (
                       <span className={`-mt-1.5 flex gap-1 ${mine ? "mr-2" : "ml-2"}`}>
                         {Object.entries(reacts).map(([e, us]) => (
@@ -426,22 +526,28 @@ export function ChatView({ cid }) {
                         ))}
                       </span>
                     )}
-                  </div>
+                    {/* Son mesajımın altında durum (iMessage gibi): Gönderildi · İletildi · Okundu */}
+                    {m.id === lastMine?.id && i >= msgs.length - 3 && statusLine(m) && (
+                      <span className="mr-1 mt-0.5 text-[0.6875rem] font-medium text-mut">{statusLine(m)}</span>
+                    )}
+                  </SwipeReply>
                 </div>
               </div>
             );
           })}
         </div>
+        </div>
 
         {newBelow > 0 && (
-          <button type="button" onClick={toBottom} className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-acc px-3.5 py-1.5 text-[0.75rem] font-semibold text-white shadow-lg">
-            <Icon name="chev" className="size-3.5 rotate-90" /> {newBelow} yeni mesaj
+          <button type="button" onClick={toBottom} aria-label={`${newBelow} yeni mesaj, en alta git`} className="pop-btn absolute bottom-[calc(var(--composer-h,4rem)+0.75rem)] right-3 z-20 grid size-11 place-items-center rounded-full bg-card text-acc shadow-[0_4px_14px_-4px_rgba(38,40,44,.35)] ring-1 ring-line">
+            <Icon name="chev" className="size-5 rotate-90" />
+            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acc px-1 text-[0.6875rem] font-bold tabular-nums text-white">{newBelow > 99 ? "99+" : newBelow}</span>
           </button>
         )}
 
         {/* Yazma alanı (altta sabit) */}
         {/* Alt boşluk: adres çubuğu yokken (ana ekrandan açılan uygulama, çentikli iPhone) ev çizgisi payı kadar; fazlası alanı yukarı iter */}
-        <footer className="sticky bottom-0 z-10 shrink-0 border-t border-line bg-bg px-2.5 pt-2 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
+        <footer ref={composerBox} className="z-10 shrink-0 border-t border-line bg-bg px-2.5 pt-2 pb-[var(--kb-pad,max(0.5rem,calc(env(safe-area-inset-bottom)-0.5rem)))]">
           {editing && (
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-card px-3 py-2 shadow-sm">
               <Icon name="edit" className="size-4 shrink-0 text-acc" />
@@ -499,6 +605,9 @@ export function ChatView({ cid }) {
               )
             }
             inputProps={{
+              autoCapitalize: "sentences",
+              autoCorrect: "on",
+              spellCheck: true,
               onChange: (e) => {
                 setText(e.target.value);
                 if (exists) setTyping(cid, !!e.target.value);
@@ -573,10 +682,20 @@ export function ChatView({ cid }) {
                 </li>
               )}
             </ul>
+            {/* Mesaj bilgisi (benim mesajım): kim okudu, kime iletildi */}
             {act.by === uid && (
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">
-                {others.length && readAll(act) ? "Görüldü" : "Henüz görülmedi"} · {hm(act.at)}
-              </p>
+              <div className="mt-3 space-y-1 px-1 text-[0.75rem] text-mut">
+                <p>Gönderildi · {hm(act.at)}</p>
+                {chat.type === "dm" ? (
+                  <p>{readAll(act) ? "Okundu" : gotAll(act) ? "İletildi, henüz okunmadı" : "Henüz iletilmedi"}</p>
+                ) : (
+                  <>
+                    {others.some((o) => readBy(o) >= act.n) && <p>Okudu: {others.filter((o) => readBy(o) >= act.n).map((o) => personName(o).split(" ")[0]).join(", ")}</p>}
+                    {others.some((o) => readBy(o) < act.n && gotBy(o) >= act.n) && <p>İletildi: {others.filter((o) => readBy(o) < act.n && gotBy(o) >= act.n).map((o) => personName(o).split(" ")[0]).join(", ")}</p>}
+                    {others.some((o) => gotBy(o) < act.n) && <p>Bekliyor: {others.filter((o) => gotBy(o) < act.n).map((o) => personName(o).split(" ")[0]).join(", ")}</p>}
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -627,4 +746,75 @@ function MsgSkeleton() {
       ))}
     </div>
   );
+}
+
+// Sağa kaydır → yanıtla (WhatsApp/iMessage gibi). Dikey kaydırma bozulmaz (yalnızca yatay sürükleme yakalanır);
+// eşik geçilince ok belirginleşir, bırakınca yanıt başlar. Kaydırma sonrası dokunma (işlem menüsü) açılmaz.
+function SwipeReply({ onReply, className, children }) {
+  const [dx, setDx] = useState(0);
+  const st = useRef(null);
+  const swiped = useRef(false);
+  const MAX = 72;
+  const AT = 52;
+  const end = () => {
+    const s = st.current;
+    st.current = null;
+    if (s?.lock === "x") {
+      swiped.current = true;
+      setTimeout(() => (swiped.current = false), 50);
+      if (s.d >= AT) onReply();
+    }
+    setDx(0);
+  };
+  return (
+    <div
+      className={`relative ${className}`}
+      style={{ transform: dx ? `translate3d(${dx}px,0,0)` : undefined, transition: dx ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)", touchAction: "pan-y" }}
+      onPointerDown={(e) => {
+        if (e.pointerType === "mouse") return;
+        st.current = { x: e.clientX, y: e.clientY, lock: null, d: 0 };
+      }}
+      onPointerMove={(e) => {
+        const s = st.current;
+        if (!s) return;
+        const mx = e.clientX - s.x;
+        const my = e.clientY - s.y;
+        if (s.lock === null && (Math.abs(mx) > 10 || Math.abs(my) > 10)) s.lock = Math.abs(mx) > Math.abs(my) * 1.4 && mx > 0 ? "x" : "y";
+        if (s.lock !== "x") return;
+        s.d = Math.min(MAX, Math.max(0, mx * 0.7));
+        setDx(s.d);
+      }}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onClickCapture={(e) => {
+        if (!swiped.current) return;
+        e.stopPropagation();
+        e.preventDefault();
+      }}
+    >
+      {dx > 0 && (
+        <span aria-hidden="true" className="absolute -left-9 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-card text-acc shadow-sm" style={{ opacity: Math.min(1, dx / AT), transform: `translateY(-50%) scale(${dx >= AT ? 1 : 0.8})` }}>
+          <Icon name="back" className="size-4 -scale-x-100" />
+        </span>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// Mesajdaki bağlantı, e-posta ve telefon numaraları dokunulabilir (dokununca işlem menüsü açılmaz)
+const LINK = /(https?:\/\/[^\s]+|www\.[^\s]+|[\w.+-]+@[\w-]+\.[\w.-]+|(?:\+90|0)?\s?5\d{2}\s?\d{3}\s?\d{2}\s?\d{2})/g;
+function linkify(text, mine) {
+  const parts = String(text || "").split(LINK);
+  if (parts.length === 1) return text;
+  const cls = `underline underline-offset-2 ${mine ? "text-white" : "text-acc"}`;
+  return parts.map((p, i) => {
+    if (i % 2 === 0) return p;
+    const href = /@/.test(p) && !/^https?:/.test(p) ? `mailto:${p}` : /^[\s+\d]/.test(p) ? `tel:${p.replace(/\s/g, "")}` : /^www\./.test(p) ? `https://${p}` : p;
+    return (
+      <a key={i} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" onClick={(e) => e.stopPropagation()} className={cls}>
+        {p}
+      </a>
+    );
+  });
 }

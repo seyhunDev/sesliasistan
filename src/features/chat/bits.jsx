@@ -62,8 +62,8 @@ export function Avatar({ name, icon, online, size = "size-12", tone, text = "tex
   );
 }
 
-// Gönderildi / okundu işareti (benim mesajım): tek tik gönderildi, çift mavi tik herkes okudu
-export function Ticks({ read, pending, readTone = "text-sky-300" }) {
+// Gönderildi / iletildi / okundu (benim mesajım): saat bekliyor, tek tik sunucuda, iki gri tik herkese ulaştı, iki mavi tik herkes okudu
+export function Ticks({ read, delivered, pending, readTone = "text-sky-300" }) {
   if (pending) return <Icon name="clock" className="size-3 opacity-70" />;
-  return <Icon name={read ? "checks" : "check"} className={`size-3.5 [stroke-width:2.5] ${read ? readTone : "opacity-70"}`} />;
+  return <Icon name={read || delivered ? "checks" : "check"} className={`size-3.5 [stroke-width:2.5] ${read ? readTone : "opacity-70"}`} />;
 }

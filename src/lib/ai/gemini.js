@@ -6,7 +6,10 @@ function toSchema(s) {
   const o = { type: String(s.type).toUpperCase() };
   if (s.description) o.description = s.description;
   if (s.enum) o.enum = s.enum;
-  if (s.properties) o.properties = Object.fromEntries(Object.entries(s.properties).map(([k, v]) => [k, toSchema(v)]));
+  if (s.properties) {
+    o.properties = Object.fromEntries(Object.entries(s.properties).map(([k, v]) => [k, toSchema(v)]));
+    o.propertyOrdering = Object.keys(s.properties); // alanlar şemadaki sırayla üretilir (asistanda okunacak metin erken gelsin)
+  }
   if (s.required) o.required = s.required;
   if (s.items) o.items = toSchema(s.items);
   return o;
@@ -287,4 +290,89 @@ export async function callGemini({ model, system, user, schema, images = [], max
   const quotaList = [...quotaHit, ...quotaSkipped];
   if (quotaList.length) throw quotaErr(last, quotaList);
   throw new Error(last);
+}
+
+// Akış halinde yanıt (asistan): tek deneme, ilk uygun model, şemalı ve düşünme kapalı. Gelen her parçada onText(o ana
+// kadarki metin) çağrılır; bitince tüm JSON döner. Akış başlamadan hata olursa err.started=false: çağıran normal
+// callGemini'ye (yedek modeller, tekrar denemeler) düşer. Akış yarıda kesilirse err.started=true.
+export async function streamGemini({ model, system, user, schema, maxTokens = 4096, timeoutMs = 22000, onText }) {
+  const now = Date.now();
+  const all = [...new Set([strongModel("gemini"), model].filter(Boolean))];
+  const m = all.find((x) => !(coolUntil(x) > now) && !G.schemaBad.has(x));
+  if (!m) throw Object.assign(new Error("Gemini akış: uygun model yok"), { started: false });
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: "user", parts: [{ text: user }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: toSchema(schema),
+      temperature: 0.2,
+      maxOutputTokens: maxTokens,
+      ...(G.thinkBad.has(m) ? {} : { thinkingConfig: thinkOff(m) }),
+    },
+  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const t0 = Date.now();
+  let started = false;
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+      body,
+      signal: ctrl.signal,
+    });
+    if (res.status !== 200 || !res.body) {
+      const text = await res.text().catch(() => "");
+      throw Object.assign(new Error(`Gemini akış ${res.status} (${m}) ${shortErr(text)}`), { status: res.status, started: false });
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    let out = "";
+    let first = 0;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line.startsWith("data:")) continue;
+        try {
+          const d = JSON.parse(line.slice(5));
+          const piece = (d.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+          if (!piece) continue;
+          started = true;
+          if (!first) first = Date.now() - t0;
+          out += piece;
+          onText?.(out);
+        } catch {
+          /* yarım satır: sonraki parçayla tamamlanır */
+        }
+      }
+    }
+    const json = JSON.parse(out.replace(/^```(?:json)?\s*|\s*```$/g, ""));
+    console.log(`[gemini] ${m} akış: ilk parça ${first} ms, toplam ${Date.now() - t0} ms`);
+    return json;
+  } catch (e) {
+    if (e.started === undefined) e.started = started;
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Akıştaki yarım JSON'dan "message" alanının o ana kadarki metni (kaçış karakterleri çözülmüş); yoksa ""
+export function partialMessage(acc) {
+  const m = /"message"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(acc || "");
+  if (!m) return "";
+  let raw = m[1];
+  if (/\\(u[0-9a-fA-F]{0,3})?$/.test(raw)) raw = raw.replace(/\\(u[0-9a-fA-F]{0,3})?$/, ""); // yarım kaçış
+  try {
+    return JSON.parse(`"${raw}"`);
+  } catch {
+    return "";
+  }
 }
