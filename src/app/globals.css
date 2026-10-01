@@ -192,3 +192,22 @@ body[data-dock][data-home] main { padding-bottom: 1rem; }
 /* Asistan düğmesi dinlerken: dışa doğru yumuşak dalga (sahnenin kenarında kırpılmayacak kadar küçük) */
 @keyframes orbripple { from { transform: scale(1); opacity: .35; } to { transform: scale(1.32); opacity: 0; } }
 .orb-ripple { animation: orbripple 1.6s ease-out infinite; }
+
+/* ASİSTAN KÜRESİ (fütüristik, sade): deniz tonlarında yavaşça dönen ışık, yumuşak hale.
+   data-state: idle (sakin) · listening (sesle büyür, hale parlar; --lvl 0–1) · busy (hızlı döner) · speaking (nefes alır) */
+.ai-orb { position: relative; display: grid; place-items: center; border-radius: 9999px; isolation: isolate; --lvl: 0; transform: scale(calc(1 + var(--lvl) * .14)); transition: transform .14s ease-out; }
+.ai-orb .ai-halo { position: absolute; inset: -38%; z-index: -1; border-radius: 9999px; background: radial-gradient(circle, rgba(79, 160, 190, .55), rgba(110, 124, 214, .22) 45%, transparent 70%); filter: blur(10px); opacity: .45; transition: opacity .4s ease; }
+.ai-orb .ai-core { position: absolute; inset: 0; overflow: hidden; border-radius: 9999px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25), inset 0 -10px 22px rgba(20, 40, 60, .35), 0 10px 24px -12px rgba(30, 60, 80, .7); }
+.ai-orb .ai-fill { position: absolute; inset: -35%; background: conic-gradient(from 0deg, #2f6a80, #4fa0be, #7f8fe0, #3c8aa3, #2f6a80); filter: blur(6px); animation: orbspin 9s linear infinite; }
+.ai-orb .ai-shine { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 32% 24%, rgba(255, 255, 255, .7), transparent 42%); }
+.ai-orb[data-state="listening"] .ai-halo { opacity: calc(.6 + var(--lvl) * .4); }
+.ai-orb[data-state="listening"] .ai-fill { animation-duration: 4s; }
+.ai-orb[data-state="busy"] .ai-fill { animation-duration: 1.4s; }
+.ai-orb[data-state="busy"] .ai-halo { opacity: .6; }
+.ai-orb[data-state="speaking"] { animation: orbbreath 1.6s ease-in-out infinite; }
+.ai-orb[data-state="speaking"] .ai-halo { opacity: .7; }
+@keyframes orbbreath { 50% { transform: scale(1.06); } }
+/* Bekleyen alan: soldan sağa akan ince ışık (yükleniyor) */
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.shimmer { background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--acc) 22%, var(--line)) 50%, var(--line) 75%); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+.ai-orb[data-state="listening"] .ai-core { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3), 0 0 0 3px rgba(79, 160, 190, .35), 0 10px 26px -10px rgba(40, 110, 140, .8); }

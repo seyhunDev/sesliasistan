@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 
 const ENGINE = { ai: "AI", local: "Hızlı komut", brain: "Öğrenilmiş", rules: "Yedek kurallar" };
 
-// Konuşma akışı (sade): senin mesajların sağda hafif balon, asistanın yanıtı solda düz metin.
+// Konuşma akışı (sade): senin mesajların sağda hafif deniz mavisi balon, asistanın yanıtı solda büyük düz metin.
 // ask: { chips: [{ label, onPick }], onMic, hint }  ->  son yanıtın altında hızlı cevap düğmeleri ve "Sesle cevapla"
 export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
   if (!turns.length) return null;
@@ -16,7 +16,7 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
       {turns.map((t, i) =>
         t.role === "user" ? (
           <div key={i} className="fade-in flex flex-col items-end">
-            <p className="max-w-[85%] rounded-2xl rounded-br-md bg-fg/[.06] px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
+            <p className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-acc/10 px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
             {canFix && i === lastUser && (
               <button onClick={onFix} className="mt-1 px-1 text-[0.75rem] font-medium text-mut transition active:opacity-50">
                 {t.chip ? "Geri al" : "Düzelt"}
@@ -25,13 +25,10 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
           </div>
         ) : (
           <div key={i} className="fade-in" {...(i === last ? { "data-last-reply": "1" } : {})}>
-            <div className="flex items-start gap-2">
-              <Icon name="spark" className="mt-1 size-3.5 shrink-0 text-acc" />
-              <p className="min-w-0 text-[1rem] leading-snug">{t.text}</p>
-            </div>
+            <p className="min-w-0 pr-6 text-[1.0625rem] leading-relaxed tracking-[-.005em]">{t.text}</p>
             {i === last && (
               <>
-                <div className="mt-1.5 flex items-center gap-3 pl-5.5 text-[0.75rem] text-mut">
+                <div className="mt-1.5 flex items-center gap-3 text-[0.75rem] text-mut">
                   {tts.supported && (
                     <button
                       type="button"
@@ -51,7 +48,7 @@ export function Thread({ turns, engine, tts, ask, canFix, onFix }) {
                 </div>
 
                 {ask && (
-                  <div className="fade-in mt-2.5 pl-5.5">
+                  <div className="fade-in mt-2.5">
                     <div className="flex flex-wrap gap-1.5">
                       {ask.chips.map((c) => (
                         <button

@@ -113,18 +113,19 @@ function Composer({ cfg, onDone }) {
   );
 }
 
-// ASİSTAN DÜĞMESİ (tek düğme, durumu rengi ve hareketiyle anlatır). Basılı tut → yaz.
-//   boşta     deniz mavisi, sabit çizgiler      dokun → dinlemeye başla
-//   dinliyor  kırmızı, çizgiler sesle oynar      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
-//   düşünüyor çevresinde dönen ince halka       dokun → vazgeç
-//   konuşuyor çizgiler nefes alır                dokun → sözünü kes, dinle
+// ASİSTAN KÜRESİ (tek düğme): deniz tonlarında ışıldayan küre; durumunu hareketiyle anlatır (globals.css .ai-orb).
+//   boşta     yavaşça döner                     dokun → dinlemeye başla
+//   dinliyor  sesinle büyür, halesi parlar      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   düşünüyor hızlı döner                       dokun → vazgeç
+//   konuşuyor nefes alır                        dokun → sözünü kes, dinle
+// Basılı tut → yaz.
 const ORB_LABEL = {
   idle: "Asistan: dokun konuş, basılı tut yaz",
   listening: "Bitir ve gönder",
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
-function StageOrb({ onTap, onHold, state, size = "size-[4.5rem]" }) {
+export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[4.25rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -136,46 +137,50 @@ function StageOrb({ onTap, onHold, state, size = "size-[4.5rem]" }) {
     }, HOLD_MS);
   };
   const up = () => clearTimeout(t.current);
-  const rec = state === "listening";
   return (
     <button
       type="button"
       data-orb=""
+      data-state={state}
       onPointerDown={down}
       onPointerUp={up}
       onPointerLeave={up}
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => !held.current && onTap()}
       aria-label={ORB_LABEL[state] || ORB_LABEL.idle}
-      className={`relative grid ${size} shrink-0 select-none place-items-center rounded-full text-white shadow-[0_8px_20px_-10px_rgba(38,40,44,.45)] transition-[background-color,transform] duration-300 active:scale-95 [-webkit-touch-callout:none] ${rec ? "bg-rec" : "bg-acc"}`}
+      style={{ "--lvl": state === "listening" ? level : 0 }}
+      className={`ai-orb ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
-      {rec && <span aria-hidden="true" className="orb-ripple absolute inset-0 rounded-full bg-rec" />}
-      {state === "busy" && <span aria-hidden="true" className="halo absolute -inset-[5px] rounded-full" />}
-      <span className={`relative flex h-6 items-center gap-[3px] ${state === "busy" ? "opacity-50" : ""}`} aria-hidden="true">
-        {[10, 17, 24, 15, 9].map((h, i) => (
-          <i
-            key={i}
-            className={`w-[3.5px] rounded-full bg-white ${rec ? "wave-bar" : state === "speaking" ? "animate-[softpulse_1s_ease-in-out_infinite]" : ""}`}
-            style={{ height: h, animationDelay: `${i * 120}ms` }}
-          />
-        ))}
+      <span className="ai-halo" aria-hidden="true" />
+      <span className="ai-core" aria-hidden="true">
+        <span className="ai-fill" />
+        <span className="ai-shine" />
       </span>
+      {state === "idle" && <Icon name="mic" className="relative size-6 text-white/90 drop-shadow-[0_1px_2px_rgba(20,40,60,.4)]" />}
     </button>
   );
 }
 
-// Dinlerken söylediğin, sohbette senin balonun olarak canlı belirir; yanında sesine göre oynayan dalga.
-// Gönderilince asıl balon (AssistantSheet) yerini alır.
-function Hearing({ text, level = 0, listening }) {
+// Kürenin altındaki tek satırlık durum (sade; ne olduğunu ve ne yapılabileceğini söyler)
+const STATUS = { idle: "Dokun ve konuş", listening: "Dinliyorum…", busy: "Düşünüyorum…", speaking: "Konuşuyor · dokun, sözünü kes" };
+
+// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade; henüz kesinleşmeyen kısım soluk). Gönderilince asıl
+// balon (AssistantSheet) yerini alır.
+// solo: konuşmanın ilk sözü; alanın ortasında, büyük yazıyla (boş alan anlamlı dolsun)
+export function Hearing({ text, listening, solo }) {
+  if (solo)
+    return (
+      <div className="fade-in flex min-h-[9rem] flex-1 items-center justify-center px-2 text-center" aria-live="polite">
+        <p className={`text-[1.625rem] font-semibold leading-tight tracking-tight ${text ? "text-fg" : "text-mut"}`}>
+          {text || (listening ? "Seni dinliyorum…" : "Yazıya çeviriyorum…")}
+        </p>
+      </div>
+    );
   return (
-    <div className="fade-in mt-3.5 flex items-end justify-end gap-2" aria-live="polite">
-      <span className="mb-2.5 flex h-5 items-center gap-[3px]" aria-hidden="true">
-        {[0.5, 0.85, 1, 0.7, 0.45].map((m, i) => (
-          <i key={i} className="w-[3px] rounded-full bg-rec transition-[height] duration-150 ease-out" style={{ height: `${4 + (listening ? level : 0.15) * m * 16}px` }} />
-        ))}
-      </span>
-      <p className={`max-w-[80%] rounded-2xl rounded-br-md px-3.5 py-2 text-[0.9375rem] leading-snug ring-1 ${text ? "bg-card ring-rec/30" : "bg-card/60 ring-line"}`}>
-        {text || <span className="text-mut">{listening ? "Dinliyorum…" : "Yazıya çeviriyorum…"}</span>}
+    <div className="fade-in mt-4 flex justify-end" aria-live="polite">
+      <p className={`max-w-[85%] text-right text-[1.125rem] font-medium leading-snug tracking-tight ${text ? "text-fg" : "text-mut"}`}>
+        {text || (listening ? "Dinliyorum…" : "Yazıya çeviriyorum…")}
+        {listening && <span className="ml-1 inline-block h-[1.1em] w-[2px] translate-y-[3px] animate-pulse rounded-full bg-acc" aria-hidden="true" />}
       </p>
     </div>
   );
@@ -416,7 +421,9 @@ export function TabBar({ cfg }) {
       {/* Asistan çalışırken sayfa soluklaşır (dokunuşları engellemez) */}
       <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-[19] bg-bg transition-opacity duration-300 ${active && state !== "idle" ? "opacity-60" : "opacity-0"}`} />
       <nav ref={box} aria-label="Asistan ve menü" className="fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
-        <div className="mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
+        <div className="relative mx-auto max-w-[30rem] rounded-t-[1.75rem] bg-bg px-5 pt-2.5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] text-fg shadow-[0_-1px_0_rgba(38,40,44,.06),0_-12px_32px_-18px_rgba(38,40,44,.22)]">
+          {/* Üst kenarda ince ışık çizgisi (asistan alanının sınırı) */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#4fa0be]/60 to-transparent" />
           {home ? (
             <span className="block h-2" aria-hidden="true" />
           ) : (
@@ -439,7 +446,7 @@ export function TabBar({ cfg }) {
                   >
                     <div className="flex min-h-full flex-col justify-end">
                       <div ref={setSlot} />
-                      {(state === "listening" || (live.transcribing && !live.busy)) && <Hearing text={live.heard} level={live.level} listening={state === "listening"} />}
+                      {(state === "listening" || (live.transcribing && !live.busy)) && <Hearing text={live.heard} listening={state === "listening"} solo={!live.talked} />}
                     </div>
                   </div>
                   {typing ? (
@@ -447,14 +454,17 @@ export function TabBar({ cfg }) {
                       <Composer cfg={cfg} onDone={() => setTyping(false)} />
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between pt-2">
-                      <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                        <Icon name="keyboard" className="size-[1.375rem]" />
-                      </button>
-                      <StageOrb state={state} onTap={talk} onHold={typeNow} />
-                      <button type="button" onClick={() => act.current.close?.()} aria-label="Konuşmayı bitir" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                        <Icon name="x" className="size-[1.375rem]" />
-                      </button>
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between">
+                        <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full text-mut transition active:bg-line/60 active:text-fg">
+                          <Icon name="keyboard" className="size-[1.375rem]" />
+                        </button>
+                        <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} />
+                        <button type="button" onClick={() => act.current.close?.()} aria-label="Konuşmayı bitir" className="grid size-12 place-items-center rounded-full text-mut transition active:bg-line/60 active:text-fg">
+                          <Icon name="x" className="size-[1.375rem]" />
+                        </button>
+                      </div>
+                      <p key={state} className="fade-in mt-2.5 text-center text-[0.75rem] font-medium text-mut" aria-live="polite">{STATUS[state]}</p>
                     </div>
                   )}
                 </div>
@@ -474,14 +484,17 @@ export function TabBar({ cfg }) {
                       <HomeFeed />
                     </div>
                   )}
-                  <div className="flex items-center justify-between pt-2">
-                    <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                      <Icon name="keyboard" className="size-[1.375rem]" />
-                    </button>
-                    <StageOrb state={state} onTap={talk} onHold={typeNow} />
-                    <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full bg-card text-fg ring-1 ring-line active:bg-line/60">
-                      <Icon name="plus" className="size-6" />
-                    </button>
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between">
+                      <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="grid size-12 place-items-center rounded-full text-mut transition active:bg-line/60 active:text-fg">
+                        <Icon name="keyboard" className="size-[1.375rem]" />
+                      </button>
+                      <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} />
+                      <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className="grid size-12 place-items-center rounded-full text-mut transition active:bg-line/60 active:text-fg">
+                        <Icon name="plus" className="size-6" />
+                      </button>
+                    </div>
+                    <p className="mt-2.5 text-center text-[0.75rem] font-medium text-mut">{STATUS.idle}</p>
                   </div>
                 </div>
               ) : (

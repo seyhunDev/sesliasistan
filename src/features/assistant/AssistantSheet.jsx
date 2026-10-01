@@ -926,8 +926,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
   const lvl = listening ? Math.round(Math.min(1, sp.level * 2.2) * 10) / 10 : 0; // sahnedeki ses dalgası (kaba adımlarla: az yeniden çizim)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting, level: lvl });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, lastReply, tts.speaking, booting, lvl]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting, level: lvl, talked: turns.length > 0 });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, lastReply, tts.speaking, booting, lvl, turns.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
@@ -1070,9 +1070,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
 
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (
-          <div className="mt-3.5 flex items-start gap-2" aria-live="polite">
-            <Icon name="spark" className="mt-1 size-3.5 shrink-0 text-acc" />
-            <p className="min-w-0 text-[1rem] leading-snug">
+          <div className="mt-3.5" aria-live="polite">
+            <p className="min-w-0 pr-6 text-[1.0625rem] leading-relaxed tracking-[-.005em]">
               {streamText}
               <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-[3px] animate-pulse bg-acc" aria-hidden="true" />
             </p>
@@ -1135,15 +1134,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
 
         {/* Ön cevabın hazırladığı kart: bilinen alanlar dolu, başlık ve kalanlar yapay zekayla dolar */}
         {busy && pre?.slots && !drafts.length && (
-          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30" aria-label="Hazırlanıyor">
-            <p className="flex items-center justify-between bg-acc/[.06] px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">
-              <span>Hazırlanıyor</span>
-              <span className="loader" style={{ "--d": "4px" }} aria-hidden="true"><i /><i /><i /></span>
-            </p>
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-acc/10 text-acc"><Icon name={KIND_ICON[pre.slots.type] || "cal"} className="size-4" /></span>
+          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]" aria-label="Hazırlanıyor">
+            <div className="flex items-center gap-3 px-3.5 py-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc"><Icon name={KIND_ICON[pre.slots.type] || "cal"} className="size-[1.125rem]" /></span>
               <span className="min-w-0 flex-1 space-y-1.5">
-                <span className="block h-3.5 w-2/5 animate-pulse rounded-full bg-line" />
+                <span className="shimmer block h-3.5 w-1/2 rounded-full" />
                 <small className="block truncate text-[0.75rem] text-mut">
                   {[{ plan: "Plan", task: "Görev", note: "Not" }[pre.slots.type], pre.slots.date && rel(pre.slots.date), pre.slots.time].filter(Boolean).join(" · ")}
                 </small>
@@ -1176,12 +1171,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
 
         {/* Panelde hazırlanan yeni kayıtlar */}
         {drafts.length > 0 && (
-          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
-            <p className="bg-acc/[.06] px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">Kaydedilecek · {drafts.length}</p>
+          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
             <ul className="divide-y divide-line">
               {drafts.map((d) => (
-                <li key={d._id} className="flex items-center gap-2.5 px-3 py-2">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-acc/10 text-acc"><Icon name={KIND_ICON[d.type]} className="size-4" /></span>
+                <li key={d._id} className="flex items-center gap-3 px-3.5 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc"><Icon name={KIND_ICON[d.type]} className="size-[1.125rem]" /></span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.875rem] font-semibold">{d.title || d.body || "Başlıksız"}</b>
                     <small className="block truncate text-[0.75rem] text-mut">{draftMeta(d)}</small>
@@ -1189,12 +1183,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, stageOn, sl
                 </li>
               ))}
             </ul>
-            <div className="flex gap-1.5 border-t border-line p-2">
-              <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
-                <Icon name="check" className="size-4" /> Kaydet
+            <div className="flex gap-1.5 px-2.5 pb-2.5">
+              <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
+                <Icon name="check" className="size-[1.125rem]" /> Kaydet
               </button>
-              <button type="button" onClick={editDraftsFull} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold active:scale-[.98]">Düzenle</button>
-              <button type="button" onClick={() => dropDrafts(false)} className="h-9 rounded-xl px-2.5 text-[0.8125rem] font-semibold text-mut active:bg-bg">Vazgeç</button>
+              <button type="button" onClick={editDraftsFull} className="h-11 rounded-full bg-bg px-4 text-[0.875rem] font-semibold transition active:scale-[.98]">Düzenle</button>
+              <button type="button" onClick={() => dropDrafts(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut transition active:bg-bg"><Icon name="x" className="size-[1.125rem]" /></button>
             </div>
           </div>
         )}
