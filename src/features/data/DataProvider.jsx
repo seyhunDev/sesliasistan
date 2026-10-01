@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { collection, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { Splash } from "@/components/ui/Splash";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -727,7 +728,8 @@ export function DataProvider({ children }) {
         saveBirthday, saveLessons, updateLesson, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
       }}
     >
-      {ready ? children : null}
+      {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}
+      {ready ? children : <Splash />}
     </Ctx.Provider>
   );
 }
