@@ -17,7 +17,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
 import { todayStr } from "@/lib/utils/format";
-import { StageBrief } from "./StageBrief";
+import { HomeFeed } from "./OwnerHome";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -183,8 +183,9 @@ const hello = () => {
   return h < 5 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
 };
 
-// ASİSTAN SAHNESİ: tüm uygulamada altta geniş, koyu alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler;
-// ana sayfada ayrıca Sıradaki plan ve "Senin için" (StageBrief). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
+// ASİSTAN SAHNESİ: tüm uygulamada altta geniş, koyu alan. Boşta selam, günün özeti, öneriler, büyük küre ve sekmeler.
+// Ana sayfada sahne hava kartının altından ekranın altına kadar uzanır; günün içeriği (HomeFeed) selamla öneriler
+// arasında, sahnenin içinde kayar. Ana sayfada sahne kendiliğinden küçülmez (tutamakla küçülür). Konuşurken dinleme ve cevap burada akar, sayfa soluklaşır;
 // kart/taslak/onay gerekince asistan tam açılır.
 // Sayfa aşağı kaydırılınca ya da sayfaya dokununca sahne küçülür (elle kullanım); en üste geri kaydırınca, küreye ya da
 // tutamağa dokununca büyür. Boyut değişimi yükseklik geçişiyle yumuşak; geçiş sırasında gelen kaydırma olayları
@@ -208,6 +209,11 @@ export function TabBar({ cfg }) {
   const kind = useKind();
   const box = useRef(null);
   const inner = useRef(null);
+  const wrap = useRef(null);
+  const feed = useRef(null);
+  const [feedMax, setFeedMax] = useState(null); // ana sayfa akışının en çok yüksekliği (sahne ekrana sığsın)
+  const home = path === "/";
+  const homeRef = useRef(home);
   const quietUntil = useRef(0); // bu ana kadar kaydırma olayları sahnenin boyunu değiştirmez
 
   // Yeni sayfaya geçince sahne büyük başlar
@@ -220,6 +226,33 @@ export function TabBar({ cfg }) {
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
   const big = active || typing || !small;
   const mode = active ? "active" : typing ? "typing" : big ? "big" : "small";
+  useEffect(() => {
+    homeRef.current = home;
+  }, [home]);
+
+  // Ana sayfa: akış, hava kartının altıyla sahnenin sabit parçaları (selam, öneriler, küre, sekmeler) arasında kalan yere sığar
+  useLayoutEffect(() => {
+    if (!home || mode !== "big") return;
+    const fit = () => {
+      const f = feed.current;
+      const b = box.current;
+      const w = wrap.current;
+      const i = inner.current;
+      if (!f || !b || !w || !i) return;
+      const top = document.getElementById("home-top")?.getBoundingClientRect().bottom ?? window.innerHeight * 0.4;
+      const fixedParts = b.offsetHeight - w.offsetHeight + (i.offsetHeight - f.offsetHeight);
+      setFeedMax(Math.max(140, Math.round(window.innerHeight - Math.max(top, 0) - 14 - fixedParts)));
+    };
+    fit();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    const hero = document.getElementById("home-top");
+    if (ro && hero) ro.observe(hero);
+    window.addEventListener("resize", fit);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [home, mode]);
 
   // İçerik değişince yükseklik eski değerden yenisine kayar (height geçişi; içerik yumuşakça belirir)
   useLayoutEffect(() => {
@@ -258,11 +291,11 @@ export function TabBar({ cfg }) {
       const y = window.scrollY;
       const d = y - last;
       last = y;
-      if (Date.now() < quietUntil.current) return;
+      if (Date.now() < quietUntil.current || homeRef.current) return;
       if (d > 0 && y > 40) setSmall(true);
       else if (d < 0 && y <= 8) setSmall(false);
     };
-    const onDown = (e) => !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
+    const onDown = (e) => !homeRef.current && !box.current?.contains(e.target) && !e.target.closest?.("[role=dialog]") && setSmall(true);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointerdown", onDown);
     return () => {
@@ -337,7 +370,7 @@ export function TabBar({ cfg }) {
           </button>
 
           {/* Yükseklik geçişi: dış kutu ölçülen yüksekliğe kayar, içerik kendi boyunda kalır (kırpılır) */}
-          <div style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
+          <div ref={wrap} style={h == null ? undefined : { height: h }} className="-mx-5 overflow-hidden px-5 transition-[height] duration-300 ease-[cubic-bezier(.22,.8,.24,1)] motion-reduce:transition-none">
             <div ref={inner}>
               {mode === "active" ? (
                 /* Asistan konuşuyor: duyulan ya da son cevap büyük yazıyla; kontrol düğmeleri */
@@ -372,7 +405,15 @@ export function TabBar({ cfg }) {
                       {first ? ` ${first}` : ""}. <span className="font-medium text-white/65">{summary}</span>
                     </p>
                   </div>
-                  {path === "/" && <StageBrief />}
+                  {home && (
+                    <div
+                      ref={feed}
+                      style={feedMax ? { maxHeight: feedMax } : undefined}
+                      className="-mx-5 overflow-y-auto overscroll-contain px-5 pb-3 pt-1 [mask-image:linear-gradient(to_bottom,transparent,#000_10px,#000_calc(100%-18px),transparent)] [scrollbar-width:none]"
+                    >
+                      <HomeFeed />
+                    </div>
+                  )}
                   <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
                     {chips.map((c) => (
                       <button key={c} type="button" onClick={() => ask(c)} className="shrink-0 rounded-full bg-white/10 px-3.5 py-2 text-[0.8125rem] ring-1 ring-white/15 active:bg-white/20">
@@ -449,8 +490,12 @@ function Host() {
     setStageOn(show);
     if (!show) return;
     document.body.dataset.dock = "1";
-    return () => delete document.body.dataset.dock;
-  }, [show, setStageOn]);
+    if (path === "/") document.body.dataset.home = "1";
+    return () => {
+      delete document.body.dataset.dock;
+      delete document.body.dataset.home;
+    };
+  }, [show, setStageOn, path]);
   if (!show) return null;
   const cfg = { ...PAGES[path], ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
   return <TabBar cfg={cfg} />;

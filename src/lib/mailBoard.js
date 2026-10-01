@@ -12,6 +12,29 @@ export function parseTrDate(s) {
   return Number.isFinite(t) ? t : null;
 }
 
+// Hesabın bakiyesi: özetin bilgi alanındaki bakiye; o 0 ya da boşsa (bazı özetlerde "Bakiye" alanı 0 gelir)
+// hareket tablosundaki bakiye sütunundan en yeni hareketin bakiyesi.
+export function balanceOf(sheet) {
+  const b = sheet?.sum?.balance;
+  if (b !== null && b !== undefined && b !== 0) return b;
+  const cols = sheet?.columns || [];
+  const bi = cols.findIndex((c) => /bakiye|balance/i.test(c));
+  if (bi < 0) return b ?? null;
+  const di = cols.findIndex((c) => /tarih|date/i.test(c));
+  let best = null;
+  let bt = -Infinity;
+  (sheet.rows || []).forEach(({ v = [] } = {}, i) => {
+    const n = num(v[bi]);
+    if (n === null) return;
+    const t = (di >= 0 ? parseTrDate(v[di]) : null) ?? i;
+    if (t >= bt) {
+      bt = t;
+      best = n;
+    }
+  });
+  return best ?? b ?? null;
+}
+
 const keyOf = (s) => [s.currency || "", s.last4 || "", s.product || ""].join("|");
 
 // Hesaplar: her hesabın en son özetteki bakiyesi ve bir önceki özete göre değişimi
@@ -20,11 +43,12 @@ export function accountsOf(mails = []) {
   for (const m of mails) {
     for (const s of m.sheets || []) {
       const sum = s.sum;
-      if (!sum || sum.balance === null || sum.balance === undefined) continue;
+      const balance = balanceOf(s);
+      if (!sum || balance === null || balance === undefined) continue;
       const key = keyOf(sum);
       const a = map.get(key);
-      if (!a) map.set(key, { key, name: sum.product || accountLabel(sum), label: accountLabel(sum), currency: sum.currency || "", last4: sum.last4 || "", balance: sum.balance, prev: null, at: m.at, count: sum.count || 0 });
-      else if (a.prev === null) a.prev = sum.balance;
+      if (!a) map.set(key, { key, name: sum.product || accountLabel(sum), label: accountLabel(sum), currency: sum.currency || "", last4: sum.last4 || "", balance, prev: null, at: m.at, count: sum.count || 0 });
+      else if (a.prev === null) a.prev = balance;
     }
   }
   const rank = (a) => (a.currency === "TL" ? 0 : 1);

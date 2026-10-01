@@ -185,3 +185,10 @@ select {
 .page-in { animation: pagein .2s ease-out backwards; }
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
+
+/* Ana sayfa: sayfada yalnız hava durumu; içerik asistan sahnesinde kayar, sayfanın alt boşluğu gerekmez */
+body[data-dock][data-home] main { padding-bottom: 1rem; }
+/* Asistan sahnesindeki ana sayfa akışı: koyu zeminde açık kartlar. Kart dışındaki başlık/ikincil yazılar açık renk,
+   kartların içi her zamanki renklerde (değişkenler kartta geri alınır) */
+.stage-feed { --fg: #f4f3ef; --mut: rgba(244, 243, 239, .62); --acc: #9cc3d3; --line: rgba(255, 255, 255, .16); color: var(--fg); }
+.stage-feed .bg-card { --fg: #26282c; --mut: #74777d; --acc: #3e6e84; --line: #e7e5df; color: var(--fg); }
