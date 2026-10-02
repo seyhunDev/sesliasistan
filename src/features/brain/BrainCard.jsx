@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Switch } from "@/features/settings/ui";
 import { LABELS } from "@/lib/brain/model";
-import { flush, guess, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
+import { flush, guess, missedLocal, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
 
 const kb = (b) => (b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`);
 const labelName = (l) => LABELS[l] || (l.startsWith("nav:") ? `Sayfa: ${l.slice(4)}` : l);
@@ -23,6 +23,7 @@ export function BrainCard({ bare, owner }) {
   }, []);
   if (!s) return null;
   const g = q.trim() ? guess(q) : null;
+  const missed = missedLocal();
   const pct = Math.min(100, Math.round((s.docBytes / s.docLimit) * 100));
 
   const h = s.hits;
@@ -102,6 +103,30 @@ export function BrainCard({ bare, owner }) {
       </dl>
       {s.byLabel.length > 0 && (
         <p className="mt-2 text-[0.8125rem] leading-snug text-mut">{s.byLabel.slice(0, 6).map(([l, n]) => `${labelName(l)} ${n}`).join(" · ")}</p>
+      )}
+
+      {/* Yerelde kaçan komutlar: yapay zekaya gidip sayfa açan cümleler; kopyalanıp kurallara eklenmek üzere */}
+      {missed.length > 0 && (
+        <div className="mt-2 rounded-lg bg-card px-2.5 py-2 text-[0.8125rem] ring-1 ring-line">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-mut">Yerelde kaçan komutlar · {missed.length}</p>
+            <button
+              onClick={() =>
+                navigator.clipboard
+                  ?.writeText(missed.map((m) => `${m.x} → ${m.l.slice(4)}`).join("\n"))
+                  .then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))
+              }
+              className="font-semibold text-acc"
+            >
+              Kopyala
+            </button>
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {missed.slice(0, 5).map((m) => (
+              <li key={m.x} className="truncate">“{m.x}” → {labelName(m.l)}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Sıfırla */}

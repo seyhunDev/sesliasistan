@@ -2,23 +2,30 @@
 import { authFetch } from "@/lib/authFetch";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { bestVoice, rankVoices, speechChunks, speechText } from "@/lib/speech/speakText";
 
 // Yanıtları sesli okur. Önce sunucudan doğal ses (Gemini) ister, olmazsa cihazın kendi sesine düşer.
 // speak(text, onDone): okuma bitince onDone çağrılır (durdurulursa veya yeni bir okuma başlarsa çağrılmaz).
+// Cihaz sesi: en doğal Türkçe ses (Premium > Gelişmiş > Kompakt) seçilir, metin Türkçe okunuşa çevrilir
+// (saat, para, birim, emoji; lib/speech/speakText.js) ve kısa parçalar halinde aralıksız okunur.
+// Ses ve hız bu cihazda saklanır (Ayarlar › Sesli yanıt).
 const KEY = "sa_tts_on";
-const NOOP = { supported: false, enabled: false, speaking: false, hasTr: true, toggle() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
+const VOICE_KEY = "sa_tts_voice";
+const RATE_KEY = "sa_tts_rate";
+export const RATES = [["0.9", "Yavaş"], ["1", "Normal"], ["1.1", "Hızlı"]];
+export const SAMPLE = "Merhaba, ben asistanın. Yarın saat 10:30'da antrenman var, rüzgar 12 knot.";
+const NOOP = { supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
 const Ctx = createContext(NOOP);
 
 const canDevice = () => typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance !== "undefined";
-const plain = (t) => String(t).replace(/[*_`#>~]/g, "").replace(/\s+/g, " ").trim();
+const plain = (t) => String(t).replace(/[*_`#>~]/g, "").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim(); // satır sonları kalır (okunuşta cümle arası olur)
 
-function pickVoice() {
-  const list = window.speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang && v.lang.toLowerCase().replace("_", "-").startsWith("tr"));
-  if (!list.length) return null;
-  return list.find((v) => /premium|enhanced|yelda|google/i.test(v.name)) || list[0];
-}
+const read = (k) => {
+  try { return localStorage.getItem(k) || ""; } catch { return ""; }
+};
+const write = (k, v) => {
+  try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { }
+};
 
 // iOS'ta sesi "açmak" için sessiz bir ses dosyası
 function silentWav() {
@@ -37,8 +44,13 @@ export function TtsProvider({ children }) {
   const [enabled, setEnabled] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [hasTr, setHasTr] = useState(true);
+  const [voices, setVoices] = useState([]); // Türkçe sesler, en iyisi başta
+  const [voiceUri, setVoiceUri] = useState(""); // kullanıcının seçtiği ses ("" = otomatik)
+  const [rate, setRateState] = useState("1");
   const voice = useRef(null);
-  const cur = useRef(null); // cihaz sesi ifadesi (tarayıcı çöp toplamasın)
+  const rateRef = useRef(1);
+  const cur = useRef(null); // cihaz sesi: okunan parçalar (tarayıcı çöp toplamasın)
+  const cancelAt = useRef(0);
   const audio = useRef(null); // kalıcı ses öğesi
   const cache = useRef(new Map()); // aynı metin tekrar istenmesin
   const serverOk = useRef(false); // Gemini TTS çok yavaş olduğu için varsayılan olarak cihaz sesi kullanıyoruz
@@ -50,7 +62,14 @@ export function TtsProvider({ children }) {
   const stop = useCallback(() => {
     rid.current += 1; // bekleyen isteklerin ve bitiş bildirimlerinin sonucunu geçersiz kılar
     try { audio.current?.pause(); } catch { }
-    if (canDevice()) window.speechSynthesis.cancel();
+    if (canDevice()) {
+      const s = window.speechSynthesis;
+      // Yalnız konuşuyorsa sustur: iOS'ta cancel'dan hemen sonraki konuşma düşebiliyor, boşuna bekletmeyelim
+      if (s.speaking || s.pending || cur.current) {
+        s.cancel();
+        cancelAt.current = Date.now();
+      }
+    }
     cur.current = null;
     setSpeaking(false);
   }, []);
@@ -59,15 +78,23 @@ export function TtsProvider({ children }) {
     const dev = canDevice();
     setSupported(dev || typeof Audio !== "undefined");
     try { setEnabled(localStorage.getItem(KEY) === "1"); } catch { }
+    const r0 = read(RATE_KEY) || "1";
+    setRateState(r0);
+    rateRef.current = Number(r0) || 1;
+    setVoiceUri(read(VOICE_KEY));
     audio.current = new Audio();
     audio.current.preload = "auto";
 
+    // iPhone'da ses listesi geç gelir ve voiceschanged her zaman tetiklenmez: birkaç kez yeniden bakılır
     const load = () => {
       if (!dev) return;
-      voice.current = pickVoice();
+      const all = window.speechSynthesis.getVoices();
+      voice.current = bestVoice(all, read(VOICE_KEY));
+      setVoices(rankVoices(all));
       setHasTr(!!voice.current);
     };
     load();
+    const tries = [300, 1000, 2500].map((ms) => setTimeout(load, ms));
     if (dev) window.speechSynthesis.addEventListener?.("voiceschanged", load);
 
     // iOS: otomatik okumanın çalışması için sesin bir dokunuşla "açılması" gerekir (sessiz ses çalınır).
@@ -98,6 +125,7 @@ export function TtsProvider({ children }) {
     window.addEventListener("sa-tts-prime", unlock);
 
     return () => {
+      tries.forEach(clearTimeout);
       if (dev) window.speechSynthesis.removeEventListener?.("voiceschanged", load);
       evs.forEach((e) => window.removeEventListener(e, onTap, { capture: true }));
       window.removeEventListener("sa-stop-tts", onMic);
@@ -114,21 +142,41 @@ export function TtsProvider({ children }) {
       return;
     }
     const synth = window.speechSynthesis;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "tr-TR";
-    if (voice.current) u.voice = voice.current;
+    const parts = speechChunks(speechText(text));
+    if (!parts.length) {
+      setSpeaking(false);
+      onDone?.();
+      return;
+    }
+    // Parçalar tarayıcının kuyruğuna birlikte verilir: aralarında bekleme olmaz, bitiş son parçada
+    const list = parts.map((p) => {
+      const u = new SpeechSynthesisUtterance(p);
+      u.lang = voice.current?.lang || "tr-TR";
+      if (voice.current) u.voice = voice.current;
+      u.rate = rateRef.current;
+      return u;
+    });
     const end = () => {
-      if (cur.current !== u) return;
+      if (cur.current !== list) return;
       cur.current = null;
       setSpeaking(false);
       onDone?.();
     };
-    u.onstart = () => cur.current === u && setSpeaking(true);
-    u.onend = end;
-    u.onerror = end;
-    cur.current = u;
-    setTimeout(() => synth.speak(u), 60); // cancel'dan hemen sonra konuşma bazı tarayıcılarda düşüyor
+    list[0].onstart = () => cur.current === list && setSpeaking(true);
+    list.forEach((u, i) => {
+      u.onerror = end;
+      if (i === list.length - 1) u.onend = end;
+    });
+    cur.current = list;
+    const go = () => {
+      if (id !== rid.current) return;
+      if (synth.paused) synth.resume(); // iOS: bir kesintiden (arama, başka ses) sonra duraklamış kalabiliyor
+      list.forEach((u) => synth.speak(u));
+    };
+    // cancel'dan hemen sonra konuşma bazı tarayıcılarda (iOS) düşüyor; yalnız o zaman kısa bekle
+    const wait = 80 - (Date.now() - cancelAt.current);
+    if (wait > 0) setTimeout(go, wait);
+    else go();
   }, []);
 
   const speak = useCallback(
@@ -191,6 +239,18 @@ export function TtsProvider({ children }) {
     else cb?.();
   }, [speak]);
 
+  const setVoice = useCallback((uri) => {
+    write(VOICE_KEY, uri);
+    setVoiceUri(uri || "");
+    if (canDevice()) voice.current = bestVoice(window.speechSynthesis.getVoices(), uri);
+  }, []);
+
+  const setRate = useCallback((r) => {
+    write(RATE_KEY, r === "1" ? "" : r);
+    setRateState(r);
+    rateRef.current = Number(r) || 1;
+  }, []);
+
   const toggle = useCallback(() => {
     const next = !enabled;
     setEnabled(next);
@@ -199,7 +259,7 @@ export function TtsProvider({ children }) {
     else stop();
   }, [enabled, speak, stop]);
 
-  return <Ctx.Provider value={{ supported, enabled, speaking, hasTr, toggle, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
 }
 
 export const useTts = () => useContext(Ctx);

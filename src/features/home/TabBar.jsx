@@ -82,7 +82,7 @@ function Composer({ cfg, onDone }) {
     input.current?.blur();
     onDone();
     if (cfg.onSend) cfg.onSend(t);
-    else openAssistant({ text: t, prefer: cfg.prefer, examples: cfg.ex, dock: true });
+    else openAssistant({ text: t, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus, dock: true });
   };
 
   return (
@@ -206,16 +206,17 @@ function NavTab({ href, icon, label, active, badge }) {
 // KUBBE: tek asistan görünümü. Boştayken altta sabit (iki kenara uzanır, alt güvenli alanı da kaplar): üstte
 // yaz · ses ışığı · oluştur, altta sekmeler. Asistan çalışınca sekmeler çekilir, konuşma kubbenin içinde akar ve kubbe
 // içerik kadar yükselir (yay hep üstte). Yazarken kubbe klavyenin üstüne taşınır. Çubuksuz sayfalarda (ayarlar,
-// sohbet ekranı…) yalnız asistan çalışırken görünür.
+// sohbet ekranı…) yalnız asistan çalışırken görünür. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde
+// sekmesiz ve Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
 const ghost = "grid size-11 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-90 active:bg-white/20";
-function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
+function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
   const pane = useRef(null);
   const userUp = useRef(false);
-  const shown = bar || active || typing;
+  const shown = bar || rec || active || typing;
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
   useLayoutEffect(() => {
@@ -225,14 +226,15 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
     const set = () => {
       const h = shown ? i.offsetHeight : 0;
       o.style.height = `${h}px`;
-      if (bar && !active && !typing) document.documentElement.style.setProperty("--stage-h", `${h}px`);
+      if (bar && !rec && !active && !typing) document.documentElement.style.setProperty("--stage-h", `${h}px`);
+      if (rec && !active && !typing) document.documentElement.style.setProperty("--rec-h", `${h}px`);
     };
     set();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(set);
     ro.observe(i);
     return () => ro.disconnect();
-  }, [shown, bar, active, typing, client]);
+  }, [shown, bar, rec, active, typing, client]);
 
   // Klavye: kubbe görünen alanın altına oturur; konuşma alanı kalan yüksekliğe sığar
   useEffect(() => {
@@ -294,7 +296,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
       role="region"
       aria-label="Asistan"
       style={{ "--lvl": active ? live.level || 0 : 0 }}
-      className={`dome dome-rise fixed inset-x-0 bottom-0 z-[38] h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
+      className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
     >
       <span className="dome-glow" aria-hidden="true" />
       <svg className="dome-rim" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
@@ -330,6 +332,8 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
                 <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
                   <Icon name="x" className="size-[1.375rem]" />
                 </button>
+              ) : rec ? (
+                <span className="size-11" aria-hidden="true" />
               ) : (
                 <button type="button" onClick={onMenu} aria-label="Oluştur" className={ghost}>
                   <Icon name="plus" className="size-6" />
@@ -337,7 +341,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
               )}
             </div>
           )}
-          {bar && !active && !typing && (
+          {bar && !rec && !active && !typing && (
             <nav aria-label="Sekmeler" className="fade-in mt-1 flex items-start">
               <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
               <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
@@ -352,7 +356,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
 }
 
 // Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
-export function TabBar({ cfg, bar }) {
+export function TabBar({ cfg, bar, rec = false }) {
   const path = usePathname();
   const router = useRouter();
   const { openAssistant, live, act, setSlot } = useAssistant();
@@ -393,7 +397,7 @@ export function TabBar({ cfg, bar }) {
       return act.current.listen?.(); // boşta ya da konuşurken: sözünü keser, dinler
     }
     if (cfg.onMic) return cfg.onMic();
-    openAssistant({ listen: true, dock: true, prefer: cfg.prefer, examples: cfg.ex });
+    openAssistant({ listen: true, dock: true, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus });
   };
   // Yazarak sor ("Şimdi sen dene" yönlendirmesi de kapanır)
   const typeNow = () => {
@@ -405,6 +409,7 @@ export function TabBar({ cfg, bar }) {
     <>
       <Dome
         bar={bar}
+        rec={rec}
         active={active}
         state={state}
         live={live}
@@ -452,14 +457,23 @@ function Host() {
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
   const bar = SHOWN.includes(path) && !(path === "/messages" && chat);
+  // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
+  const [rec, setRec] = useState(null);
   useEffect(() => {
-    setStageOn(bar);
+    const on = (e) => setRec(e.detail || null);
+    window.addEventListener("sa-record-focus", on);
+    return () => window.removeEventListener("sa-record-focus", on);
+  }, []);
+  useEffect(() => setStageOn(bar || !!rec), [bar, rec, setStageOn]);
+  useEffect(() => {
     if (!bar) return;
     document.body.dataset.dock = "1";
     return () => delete document.body.dataset.dock;
-  }, [bar, setStageOn]);
-  const cfg = { ...(PAGES[path] || PAGES["/"]), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} />;
+  }, [bar]);
+  const cfg = rec
+    ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
+    : { ...(PAGES[path] || PAGES["/"]), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
+  return <TabBar cfg={cfg} bar={bar} rec={!!rec} />;
 }
 export function TabBarHost() {
   return (
