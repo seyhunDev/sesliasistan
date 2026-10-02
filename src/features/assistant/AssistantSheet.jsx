@@ -23,6 +23,7 @@ import { buildDigest } from "@/lib/ai/digest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
+import { runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
@@ -547,6 +548,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     askTo.current = null;
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir
     if (canSeeAthletes(profile?.email) && wantsAttendance(s)) return runAttendance(s, viaVoice);
+    // Yarış ekleme / yarışa sporcu ya da not ekleme: yarış evrakı sayfasındaki kayda yazılır, yeni yarış planlara da düşer
+    if (canSeeAthletes(profile?.email) && wantsRace(s)) return runRace(s, viaVoice);
     // Tür sayfasından gelen ilk cümle (soru değilse): o türde taslak
     if (preferRef.current && !drafts.length && !QUESTION.test(s)) {
       const kind = preferRef.current;
@@ -819,6 +822,29 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(false);
       const denied = e.code === "permission-denied";
       reply(denied ? "Kulüp hesabına bağlı değilsin. Yoklama sayfasından bir kez bağlanman gerekiyor." : e.message || "Yoklama yapılamadı.", { engine: "local", nav: "attendance" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  async function runRace(s, viaVoice) {
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    try {
+      const orgId = profile?.orgId || myUid;
+      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by }, stepTo);
+      if (id !== runId.current) return;
+      stepsEnd(!r.expect);
+      if (!r.expect) {
+        navigator.vibrate?.([10, 40, 10]);
+        toast("Yarış kaydedildi");
+      }
+      reply(r.said, { engine: "ai", nav: "races", expect: !!r.expect }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      const denied = e.code === "permission-denied";
+      reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { engine: "local", nav: "races" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }

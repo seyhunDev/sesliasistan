@@ -13,6 +13,7 @@ export const PAGES = {
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
+  races: { path: "/athletes/races", label: "Yarış evrakı", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },
@@ -51,6 +52,7 @@ const GROUP = [
 const TARGETS = [
   ["myAttendance", /(^|\s)(yoklamam\S*|yoklama geçmişim\S*|devamsızlığım\S*)(?=\s|$)/],
   ["attendance", /(^|\s)yoklama\S*/],
+  ["races", /(^|\s)(yarış evrak\S*|yarışlar\S*|yarış sayfa\S*|evrak\S*)/],
   ["birthdays", /(^|\s)doğum ?gün\S*/],
   ["schedule", /(^|\s)(ders\S*|okul programı\S*)/],
   ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
@@ -68,7 +70,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|mesajlar|planlar|görevler|notlar|takvim|fişler|arşiv|kişiler|yoklama|yoklamam|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|mesajlar|planlar|görevler|notlar|takvim|fişler|arşiv|kişiler|yoklama|yoklamam|yarışlar|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
 
 // Kişi adı geçiyor mu ("Ali ile mesajlaşmayı aç", "Sanver'in sohbeti"): adın ilk kelimesi ya da tam adı, ekli hâliyle
 function personIn(t, names) {

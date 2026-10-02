@@ -13,7 +13,8 @@ import { isActive, loadAthletes, message, updateAthlete, useDikili } from "@/fea
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { DOC_TEXT } from "@/features/athletes/EditAthlete";
 import { DOCS, buildRaceDocs, loadFonts, missing, rangeText } from "@/features/athletes/raceDocs";
-import { deleteRace, loadRaces, saveRace, shiftDay } from "@/features/athletes/races";
+import { STEPS, addRacePlan, deleteRace, doneCount, freshRace, loadRaces, saveRace, shiftDay } from "@/features/athletes/races";
+import { useData } from "@/features/data/DataProvider";
 import { todayStr } from "@/lib/utils/format";
 
 const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none focus:bg-card focus:ring-1 focus:ring-acc";
@@ -38,24 +39,28 @@ function Races({ orgId, uid }) {
   const toast = useToast();
   const [races, setRaces] = useState(null);
   const [edit, setEdit] = useState(null);
+  // Asistandan gelince (?id=…) o yarış ilk yüklemede doğrudan açılır
+  const opened = useRef(false);
   const refresh = useCallback(
-    () => loadRaces(orgId).then(setRaces, (e) => (setRaces([]), toast(e?.message || "Yarışlar alınamadı."))),
+    () =>
+      loadRaces(orgId).then(
+        (list) => {
+          setRaces(list);
+          if (opened.current) return;
+          opened.current = true;
+          const id = new URLSearchParams(window.location.search).get("id");
+          const r = id && list.find((x) => x.id === id);
+          if (r) setEdit(r);
+        },
+        (e) => (setRaces([]), toast(e?.message || "Yarışlar alınamadı.")),
+      ),
     [orgId, toast],
   );
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Yeni yarış: yetkili, il, federasyon gibi bilgiler son yarıştan gelir
-  const fresh = () => {
-    const last = races?.[0] || {};
-    return {
-      name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
-      startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: todayStr(),
-      signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
-      travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
-    };
-  };
+  const fresh = () => freshRace(races?.[0], todayStr());
 
   if (edit)
     return (
@@ -107,6 +112,10 @@ function Races({ orgId, uid }) {
                   <span className="block truncate text-[0.8125rem] text-mut">
                     {[rangeText(r.startDate, r.endDate), r.district, `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}
                   </span>
+                  <span className={`block text-[0.75rem] font-medium ${doneCount(r) === STEPS.length ? "text-ok" : "text-amber-600"}`}>
+                    {doneCount(r) === STEPS.length ? "Yapılacaklar tamam" : `Yapılacak: ${STEPS.filter(([k]) => !r.checks?.[k]).map(([, l]) => l.split(" ")[0]).join(", ")}`}
+                    {r.note ? " · not var" : ""}
+                  </span>
                 </span>
                 <Icon name="chev" className="size-4 shrink-0 text-mut" />
               </button>
@@ -141,7 +150,18 @@ function Section({ title, children, right }) {
 
 function Editor({ start, orgId, uid, athletes, athletesErr, reloadAthletes, onDone }) {
   const toast = useToast();
+  const { profile } = useAuth();
+  const { saveDrafts } = useData();
   const [r, setR] = useState(start);
+  // Belgeyi etkilemeyen alanlar (not, yapılacaklar, plan)
+  const put = (k, v) => setR((p) => ({ ...p, [k]: v }));
+  const toPlan = async () => {
+    if (!r.name.trim() || !r.startDate) return toast("Önce yarış adı ve başlangıç tarihi");
+    if (await addRacePlan(saveDrafts, r, { name: profile?.name ?? "Kullanıcı" })) {
+      put("planAdded", true);
+      toast("Planlara eklendi");
+    }
+  };
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
   const [docs, setDocs] = useState(DOCS.map(([k]) => k));
@@ -193,6 +213,7 @@ function Editor({ start, orgId, uid, athletes, athletesErr, reloadAthletes, onDo
       const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, await loadFonts(), docs);
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-evrak.pdf`;
       setFile(new File([bytes], name, { type: "application/pdf" }));
+      if (docs.length === DOCS.length && !r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
       toast(e?.message || "Belgeler hazırlanamadı");
     }
@@ -258,6 +279,43 @@ function Editor({ start, orgId, uid, athletes, athletesErr, reloadAthletes, onDo
           </div>
           <Input label="Yazı tarihi" type="date" value={r.letterDate} onChange={set("letterDate")} />
         </div>
+      </Section>
+
+      <button
+        onClick={toPlan}
+        disabled={r.planAdded}
+        className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line active:scale-[.98] disabled:text-ok disabled:ring-0"
+      >
+        <Icon name={r.planAdded ? "check" : "cal"} className="size-[1.125rem]" />
+        {r.planAdded ? "Planlarda var" : "Planlara ekle"}
+      </button>
+
+      <Section title={`Yapılacaklar · ${doneCount(r)}/${STEPS.length}`}>
+        <ul className={`${card} divide-y divide-line overflow-hidden`}>
+          {STEPS.map(([k, label]) => {
+            const on = !!r.checks?.[k];
+            return (
+              <li key={k}>
+                <button onClick={() => put("checks", { ...r.checks, [k]: !on })} aria-pressed={on} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>
+                    {on && <Icon name="check" className="size-4 [stroke-width:3]" />}
+                  </span>
+                  <span className={`text-[0.9375rem] ${on ? "text-mut line-through" : ""}`}>{label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Section>
+
+      <Section title="Not">
+        <textarea
+          value={r.note}
+          onChange={(e) => put("note", e.target.value)}
+          placeholder="Konaklama, ulaşım, kayıt ücreti…"
+          rows={3}
+          className="w-full rounded-xl bg-card px-3.5 py-3 text-[0.9375rem] shadow-[0_1px_3px_rgba(38,40,44,.05)] outline-none focus:ring-1 focus:ring-acc"
+        />
       </Section>
 
       <Section title="Kulüp yetkilisi ve seyahat">
