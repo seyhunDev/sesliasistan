@@ -90,6 +90,9 @@ function AthleteList() {
   return (
     <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
       <PageHeader title="Sporcular" sub={err ? "Kulüp verisi" : data ? `${activeCount} aktif${all.length > activeCount ? ` · ${all.length - activeCount} pasif` : ""}` : "Yükleniyor…"}>
+        <Link href="/athletes/races" aria-label="Yarış evrakı" title="Yarış evrakı" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
+          <Icon name="flag" className="size-5" />
+        </Link>
         <Link href="/athletes/attendance" className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
           <Icon name="check" className="size-[1.125rem]" />
           Yoklama

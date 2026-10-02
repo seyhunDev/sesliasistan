@@ -14,6 +14,9 @@ function plain(v) {
   return v;
 }
 
+// Yarış evrakında kullanılan ek alanlar (sporcu kartında saklanır, bir kez girilir)
+export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation"];
+
 // Sınıf ve antrenör adları
 async function names(db) {
   const [cls, coa] = await Promise.all([getDocs(collection(db, "sailing_classes")), getDocs(collection(db, "coaches"))]);
@@ -34,6 +37,8 @@ export async function loadAthletes() {
       id: d.id, studentName: a.studentName || "", studentTc: a.studentTc || "", status: a.status || "",
       currentClassId: a.currentClassId || "", currentCoachId: a.currentCoachId || "",
       parentName: a.parentName || "", parentPhone: a.parentPhone || "", parentEmail: a.parentEmail || "", studentBirthDate: a.studentBirthDate || null,
+      // Yarış evrakı için (raceDocs.js)
+      ...Object.fromEntries(DOC_FIELDS.map((k) => [k, a[k] || ""])),
       // Yoklama: { 2026: { "09-29": "present" } }
       att: Object.fromEntries(Object.entries(a).filter(([k]) => /^attendance_\d{4}$/.test(k)).map(([k, v]) => [k.slice(11), v || {}])),
     });

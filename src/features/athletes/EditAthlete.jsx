@@ -8,12 +8,26 @@ import { message, updateAthlete } from "./data";
 const BLOOD = ["A Rh+", "A Rh-", "B Rh+", "B Rh-", "AB Rh+", "AB Rh-", "0 Rh+", "0 Rh-"];
 const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none focus:bg-card focus:ring-1 focus:ring-acc";
 
+// Yarış evrakı için gereken ek bilgiler (yarış evrakı sayfası da bunu kullanır)
+export const DOC_TEXT = [
+  ["licenseNo", "Lisans no (35-4403-…)"],
+  ["studentSchool", "Okul adı (belgede yazacak)"],
+  ["studentSchoolPlace", "Okulun ilçe-ili (DİKİLİ-İZMİR)"],
+  ["studentBirthPlace", "Doğum yeri"],
+  ["studentPhone", "Sporcu telefonu", "tel"],
+  ["fatherName", "Baba adı"],
+  ["motherName", "Anne adı"],
+  ["parentTc", "Veli T.C. kimlik no", "numeric"],
+  ["parentRelation", "Velinin yakınlığı (ANNE / BABA)"],
+];
+
 // Düzenlenebilen alanlar (kulüp uygulamasındaki adlarıyla)
 const TEXT = [
   ["Sporcu", [["studentName", "Ad soyad"], ["studentTc", "T.C. kimlik no", "numeric"], ["studentHealthNotes", "Sağlık notu (alerji, astım…)"]]],
   ["Veli ve iletişim", [["parentName", "Veli ad soyad"], ["parentPhone", "Veli telefonu", "tel"], ["parentEmail", "Veli e-postası", "email"], ["parentAddress", "Adres"]]],
   ["Acil durum", [["emergencyContactName", "Aranacak kişi"], ["emergencyContactPhone", "Telefon", "tel"]]],
   ["Eğitim ve spor", [["studentSchoolAndClass", "Okul / sınıf"], ["otherLicensedSports", "Diğer lisanslı sporlar"], ["swimmingSkill", "Yüzme becerisi"], ["seaFear", "Deniz korkusu"]]],
+  ["Yarış evrakı", DOC_TEXT],
 ];
 const ALL = ["studentGender", "studentBloodType", "currentClassId", "currentCoachId", "status", "studentBirthDate", ...TEXT.flatMap(([, f]) => f.map(([k]) => k))];
 
@@ -43,6 +57,7 @@ function Form({ a, names, onClose, onSaved }) {
   const save = async () => {
     if (!f.studentName.trim()) return toast("Ad soyad boş olamaz");
     if (f.studentTc && !/^\d{11}$/.test(f.studentTc.trim())) return toast("T.C. kimlik no 11 haneli olmalı");
+    if (f.parentTc && !/^\d{11}$/.test(f.parentTc.trim())) return toast("Veli T.C. kimlik no 11 haneli olmalı");
     if (!Object.keys(patch).length) return onClose();
     setBusy(true);
     try {
@@ -88,7 +103,7 @@ function Form({ a, names, onClose, onSaved }) {
                 placeholder={ph}
                 aria-label={ph}
                 inputMode={mode === "numeric" ? "numeric" : mode === "tel" ? "tel" : mode === "email" ? "email" : undefined}
-                maxLength={k === "studentTc" ? 11 : 200}
+                maxLength={k === "studentTc" || k === "parentTc" ? 11 : 200}
                 className={field}
               />
             ))}
