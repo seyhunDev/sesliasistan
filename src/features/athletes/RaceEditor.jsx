@@ -53,7 +53,7 @@ function Check({ on, tone = "ok" }) {
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete }) {
+export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -136,12 +136,35 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, await loadFonts(), docs);
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-evrak.pdf`;
       setFile(new File([bytes], name, { type: "application/pdf" }));
+      setMailText(
+        [
+          `${r.name.trim()} · ${rangeText(r.startDate, r.endDate || r.startDate)}${placeText(r) ? ` · ${placeText(r)}` : ""}`,
+          "",
+          `Belgeler: ${DOCS.filter(([k]) => docs.includes(k)).map(([, t]) => t).join(", ")}`,
+          `Sporcular (${chosen.length}): ${chosen.map((a) => a.studentName).join(", ")}`,
+          "",
+          "Sesli Asistan ile hazırlandı.",
+        ].join("\n"),
+      );
       setTab("docs");
       if (docs.length === DOCS.length && !r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
       toast(e?.message || "Belgeler hazırlanamadı");
     }
     setBusy(false);
+  };
+  // Kendine mail (Gmail betiği birkaç dakika içinde gönderir)
+  const [mailText, setMailText] = useState("");
+  const [mailing, setMailing] = useState(false);
+  const mail = async () => {
+    setMailing(true);
+    try {
+      const ready = await onMail({ subject: `${r.name.trim()} evrakı`, text: mailText, file });
+      toast(ready ? "Mail sıraya alındı, birkaç dakika içinde gelir" : "Sıraya alındı. Gelmesi için Mail ayarlarından betiği bir kez yeniden kopyala");
+    } catch (e) {
+      toast(e?.message || "Mail sıraya alınamadı");
+    }
+    setMailing(false);
   };
   const share = async () => {
     if (navigator.canShare?.({ files: [file] })) {
@@ -522,6 +545,12 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                 <Icon name="print" className="size-5" />
                 Aç
               </button>
+              {onMail && (
+                <button type="button" onClick={mail} disabled={mailing} aria-label="Kendime mail at" className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+                  <Icon name="mail" className="size-5" />
+                  {mailing ? "…" : "Mail"}
+                </button>
+              )}
               <button type="button" onClick={share} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
                 <Icon name="up" className="size-5" />
                 Paylaş / Yazdır

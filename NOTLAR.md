@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Yarış evrakını kendine mail: belgeler hazırlanınca alt çubukta "Mail" (yalnız Gmail betiği kurulu ana hesapta). Uygulama PDF'i `orgs/{uid}/outbox`'a bırakır (`src/features/mail/outbox.js`, 700 KB'lık parçalar), Gmail betiği 5 dakikada bir `gonder()` ile betiğin Gmail adresine ekli gönderir ve siler. Betik değişti (yeni izin: userinfo.email): Mail ayarlarından kod ve appsscript.json bir kez yeniden kopyalanıp `kur` çalıştırılmalı; yeni betik `mailOutbox: true` yazar. Canlıda denenmedi.
 - Son işler: ders programı düzenleme (çalışan/öğrenci dersini silebilir, tüm programı sil), asistan çubuğu açılıştan sonra alttan yükselir, ana ekran uygulamasında alt boşluk kısaldı.
 - Yarış evrakı (Sporcular › bayrak düğmesi, `/athletes/races`): yarış + seçilen sporcular → okul izni yazısı, EK-2 Kafile Onayı, seyahat dilekçesi, sporcu başına EK-3/D Veli İzin Belgesi tek PDF (paylaş/yazdır). Telefonda gerçek sporcularla denenmedi.
 - Yarışa not, yapılacaklar listesi (evrak, veli imzası, okullar, GSİM, kayıt formu) ve "Planlara ekle" eklendi. Asistan: "Yarış ekle: …, Çeşme, 7-11 Ekim, Ali ve Ayşe katılacak", "… yarışına Mehmet'i de ekle", "… için not al: …" (`src/features/athletes/assistRace.js`, `/api/race`).
@@ -17,6 +18,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Gmail betiğini Mail ayarlarından yeniden kopyala (kod + appsscript.json), `kur`'u çalıştır, yarış evrakını "Mail" ile kendine gönderip dene.
 1. Asistan Sahnesi 2. adım: sayfada arka plan vurgusu / hayalet taslak.
 2. Asistan Sahnesi 3. adım: mesajda hayalet balon.
 3. Örnek talimatı (TYF Yelken Ligi ILCA 1. Ayak, Foça) yükleyip okunanları kontrol et; eksik/yanlış alan olursa `/api/race-notice` istemini düzelt.
