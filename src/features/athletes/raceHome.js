@@ -8,10 +8,9 @@ import { canSeeAthletes } from "./access";
 import { isPast } from "./RaceList";
 import { loadRaces } from "./races";
 
-// Ana sayfadaki Yarışlar düğmesi. Tercih hesapta: users/{uid}.races = "on" | "off" (yoksa karar verilmemiş).
-// Karar yoksa kulüpte yarış varsa düğme kendiliğinden görünür; yarış da yoksa bir kerelik tanıtım kartı çıkar.
+// Ana sayfadaki Yarışlar düğmesi: kişi Ayarlar'dan açınca görünür (users/{uid}.races = "on").
 // Yalnız sporcu yetkisi olanlar (yarışlar kulübün sporcu verisine bağlı).
-// Sayı oturumda 5 dakika saklanır; yarış yoksa saklanmaz (ilk yarış eklenince tanıtım hemen kalksın)
+// Yaklaşan yarış sayısı oturumda 5 dakika saklanır; yarış yoksa saklanmaz (ilk yarış eklenince sayı hemen gelsin)
 let cache = null; // { orgId, at, p }
 
 function countRaces(orgId) {
@@ -31,11 +30,11 @@ function countRaces(orgId) {
 export function useRaceHome() {
   const { profile } = useAuth();
   const allowed = canSeeAthletes(profile?.email) && !!profile?.orgId;
-  const pref = profile?.races === "on" || profile?.races === "off" ? profile.races : "";
+  const on = allowed && profile?.races === "on";
   const [n, setN] = useState(null);
 
   useEffect(() => {
-    if (!allowed || pref === "off") return;
+    if (!on) return;
     let live = true;
     countRaces(profile.orgId).then((c) => {
       if (live && c) setN(c);
@@ -43,14 +42,12 @@ export function useRaceHome() {
     return () => {
       live = false;
     };
-  }, [allowed, pref, profile?.orgId]);
+  }, [on, profile?.orgId]);
 
-  const has = (n?.all || 0) > 0;
   return {
     allowed,
-    on: allowed && (pref === "on" || (!pref && has)),
-    intro: allowed && !pref && n !== null && !has,
-    up: n?.up || 0,
+    on,
+    up: on ? n?.up || 0 : 0,
     set: (on) => updateDoc(doc(db, "users", profile.uid), { races: on ? "on" : "off" }),
   };
 }
