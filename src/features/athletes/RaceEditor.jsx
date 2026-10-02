@@ -10,7 +10,7 @@ import { DOC_TEXT } from "./EditAthlete";
 import { isActive } from "./data";
 import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
-import { applyNotice, readNotice } from "./raceNotice";
+import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { STEPS, doneCount, shiftDay } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
@@ -168,10 +168,11 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   };
   // Yarış talimatı: okunur, yarışa uygulanır (yeni yarışta ad, tarih, yer de talimattan gelir)
   const [reading, setReading] = useState(false);
+  // f: dosya ya da yapıştırılan metin
   const loadNotice = async (f) => {
     setReading(true);
     try {
-      const n = await readNotice(f);
+      const n = await (typeof f === "string" ? readNoticeText(f) : readNotice(f));
       setFile(null);
       setR((p) => applyNotice(p, n));
       setTab("sum");
@@ -273,11 +274,11 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
           </div>
 
           {r.notice ? (
-            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} />
+            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} />
           ) : (
             <>
               <Label>TALİMAT</Label>
-              <NoticeUpload busy={reading} onFile={loadNotice} />
+              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} />
             </>
           )}
         </>
@@ -329,7 +330,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         <>
           {!r.notice && (
             <div className="mt-4">
-              <NoticeUpload busy={reading} onFile={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} />
+              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} />
             </div>
           )}
           <Label>YARIŞ</Label>

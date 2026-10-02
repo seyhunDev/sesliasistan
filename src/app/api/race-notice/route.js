@@ -6,7 +6,7 @@ import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 
-// Yarış talimatı (ilan, NoR) PDF ya da fotoğrafı → yarış bilgisi, program, son tarihler, ücretler, oteller, iletişim.
+// Yarış talimatı (ilan, NoR) PDF, fotoğraf ya da yapıştırılan metin → yarış bilgisi, program, son tarihler, ücretler, oteller, iletişim.
 // Kaydetmez; telefon yarışa yazar. Belge saklanmaz, yalnızca okunur.
 const SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden asistansın. Sana bir yelken yarışının talimatı (yarış ilanı, Notice of Race, organizasyon duyurusu) verilir; Türkçe ya da İngilizce olabilir.
 Belgeden yarışı kurmak ve planlamak için gerekenleri çıkar. Yalnızca belgede yazanı yaz, uydurma; bulamadığın alan boş kalsın.
@@ -65,10 +65,14 @@ async function handle(request) {
   } catch {
     return bad("Dosya çok büyük ya da bozuk. 4 MB'tan küçük PDF ya da fotoğraf yükle.", 413);
   }
+  // Dosya (PDF/fotoğraf) ya da yapıştırılan metin
+  const text = String(body?.text || "").trim().slice(0, 60000);
   const mimeType = String(body?.mimeType || "");
   const data = String(body?.data || "");
-  if (!TYPES.includes(mimeType)) return bad("PDF ya da fotoğraf yükle.");
-  if (!data || data.length > (MAX * 4) / 3 + 8) return bad("Dosya 4 MB'tan büyük olmasın.", 413);
+  if (!text) {
+    if (!TYPES.includes(mimeType)) return bad("PDF ya da fotoğraf yükle.");
+    if (!data || data.length > (MAX * 4) / 3 + 8) return bad("Dosya 4 MB'tan büyük olmasın.", 413);
+  } else if (text.length < 40) return bad("Talimat metni çok kısa.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   const today = DATE.test(body?.today || "") ? body.today : new Date().toISOString().slice(0, 10);
 
@@ -77,9 +81,9 @@ async function handle(request) {
     const raw = await callGemini({
       model: process.env.GEMINI_MODEL,
       system: SYSTEM,
-      user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. Bu yarış talimatını oku.`,
+      user: `Bugün: ${today}. Yıl yazmayan tarihlerde yarışın yılını kullan. ${text ? `Bu yarış talimatı metnini oku (kopyalanmış, tablo düzeni bozuk olabilir):\n"""\n${text}\n"""` : "Bu yarış talimatını oku."}`,
       schema: SCHEMA,
-      images: [{ mimeType, data }],
+      images: text ? [] : [{ mimeType, data }],
       maxTokens: 8000,
       timeoutMs: 50000,
     });
