@@ -4,7 +4,9 @@
 // Google hesabının Firebase projesinde yetkisi olmalı (projeyi açan hesap zaten sahibidir).
 //   - 5 dakikada bir: takip edilen gönderenlerden (İş Bankası sabit + uygulamada eklenenler) son 2 günün yeni mailleri
 //   - Her mail: orgs/{uid}/mails/{gmail id} (aynı mail iki kez yazılmaz); Excel ekleri base64 olarak (uygulama okur)
-//   - users/{uid}: mailSeen (son kontrol), mailPending/mailLastAt (toplu bildirim için)
+//   - users/{uid}: mailSeen (son kontrol), mailPending/mailLastAt (toplu bildirim için), mailOutbox (bu sürüm gönderebilir)
+//   - Kendine mail: uygulamanın orgs/{uid}/outbox'a bıraktığı dosyalar (ör. yarış evrakı) bu Gmail hesabına ekli
+//     mail olarak gönderilir, kayıt silinir (outbox.js)
 //   - Yeni mail varsa hemen sitenin /api/mail/push adresine haber verir → telefona bildirim (aynı Google anahtarıyla;
 //     sunucunun hizmet hesabı anahtarı gerekmez). Ulaşılamazsa 5 dakikalık zamanlanmış görev yedek olarak bildirir.
 // Uygulama Gmail'e hiç istek atmaz: betik 5 dakikada bir kendisi bakar, uygulama veritabanını canlı dinler.
@@ -77,18 +79,50 @@ function kontrol() {
       });
     });
     ozellik.setProperty("gorulen", JSON.stringify(gorulen.slice(-300)));
+    var giden = 0;
+    try { giden = gonder(); } catch (e) { console.log("Giden mailler: " + e.message); }
 
     var simdi = new Date().toISOString();
-    var durum = { mailSeen: simdi };
+    var durum = { mailSeen: simdi, mailOutbox: true };
     if (yeni) { durum.mailPending = true; durum.mailLastAt = simdi; }
     var maske = Object.keys(durum).map(function (k) { return "updateMask.fieldPaths=" + k; }).join("&");
     istek("patch", "users/" + KULLANICI + "?" + maske, { fields: alanlar(durum) });
     if (yeni) bildir();
-    console.log("Kontrol bitti. Yeni mail: " + yeni);
+    console.log("Kontrol bitti. Yeni mail: " + yeni + (giden ? ", gönderilen: " + giden : ""));
     return yeni;
   } finally {
     kilit.releaseLock();
   }
+}
+
+// Kendine mail: uygulamanın bıraktığı dosyaları bu Gmail hesabına gönderir (parçalar birleştirilir), kaydı siler.
+// Gönderilemeyen kayıt 3 denemeden sonra bırakılır (uygulamadan yeniden gönderilebilir).
+function gonder() {
+  var liste = istek("get", "orgs/" + KULLANICI + "/outbox?pageSize=10");
+  if (liste.kod !== 200) return 0;
+  var kime = Session.getEffectiveUser().getEmail();
+  var sayi = 0;
+  (liste.veri.documents || []).forEach(function (d) {
+    var yol = d.name.split("/documents/")[1];
+    var k = {};
+    Object.keys(d.fields || {}).forEach(function (a) { k[a] = oku(d.fields[a]); });
+    if ((k.tries || 0) >= 3) return;
+    var p = istek("get", yol + "/parts?pageSize=100");
+    var parcalar = (p.veri.documents || []).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+    try {
+      if (p.kod !== 200 || parcalar.length !== k.parts) throw new Error("dosya eksik (" + parcalar.length + "/" + k.parts + ")");
+      var veri = parcalar.map(function (x) { return oku((x.fields || {}).data) || ""; }).join("");
+      var ek = Utilities.newBlob(Utilities.base64Decode(veri), k.mimeType || "application/pdf", k.fileName || "belge.pdf");
+      GmailApp.sendEmail(kime, k.subject || "Sesli Asistan", k.text || "", { attachments: [ek], name: "Sesli Asistan" });
+      parcalar.forEach(function (x) { istek("delete", x.name.split("/documents/")[1]); });
+      istek("delete", yol);
+      sayi++;
+    } catch (e) {
+      console.log("Mail gönderilemedi (" + (k.fileName || "") + "): " + e.message);
+      istek("patch", yol + "?updateMask.fieldPaths=tries&updateMask.fieldPaths=error", { fields: alanlar({ tries: (k.tries || 0) + 1, error: String(e.message).slice(0, 200) }) });
+    }
+  });
+  return sayi;
 }
 
 // Telefona bildirim: uygulama yeni mailleri tek bildirimde gönderir
@@ -164,7 +198,7 @@ function oku(v) {
 }
 `;
 
-// appsscript.json: betiğin istediği izinler (Gmail okuma, veritabanına yazma, dış istek, zamanlayıcı)
+// appsscript.json: betiğin istediği izinler (Gmail okuma/gönderme, kendi adresi, veritabanına yazma, dış istek, zamanlayıcı)
 export const MANIFEST = JSON.stringify(
   {
     timeZone: "Europe/Istanbul",
@@ -172,6 +206,7 @@ export const MANIFEST = JSON.stringify(
     exceptionLogging: "STACKDRIVER",
     oauthScopes: [
       "https://mail.google.com/",
+      "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/datastore",
       "https://www.googleapis.com/auth/script.external_request",
       "https://www.googleapis.com/auth/script.scriptapp",

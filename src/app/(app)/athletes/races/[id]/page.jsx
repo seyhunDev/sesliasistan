@@ -15,6 +15,7 @@ import { leftText } from "@/features/athletes/RaceList";
 import { rangeText } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
+import { mailToMe } from "@/features/mail/outbox";
 import { todayStr } from "@/lib/utils/format";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
@@ -26,10 +27,12 @@ export default function RacePage() {
     if (profile && !allowed) router.replace("/");
   }, [profile, allowed, router]);
   if (!allowed || !profile?.orgId || !user) return null;
-  return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} />;
+  // Kendine mail: yalnız Gmail betiğini kurmuş ana hesapta (betik orgs/{uid}/outbox'tan gönderir)
+  const mail = profile.mailSeen && profile.orgId === user.uid ? { ready: profile.mailOutbox } : null;
+  return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} />;
 }
 
-function Race({ orgId, uid, by }) {
+function Race({ orgId, uid, by, mail }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
@@ -95,6 +98,7 @@ function Race({ orgId, uid, by }) {
           onPlan={(r) => addRacePlan(saveDrafts, r, by)}
           onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
           onSaveAthlete={onSaveAthlete}
+          onMail={mail ? async (m) => (await mailToMe(uid, m), mail.ready) : null}
         />
       )}
     </main>
