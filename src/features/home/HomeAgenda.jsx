@@ -326,7 +326,7 @@ export function NewItems() {
   };
 
   return (
-    <section className="fade-in overflow-hidden rounded-2xl bg-card shadow-[0_8px_24px_-12px_rgba(62,110,132,.45)] ring-1 ring-acc/20" aria-label="Yenilikler">
+    <section className="fade-in overflow-hidden rounded-2xl bg-card shadow-[0_8px_24px_-12px_rgba(47,125,107,.45)] ring-1 ring-acc/20" aria-label="Yenilikler">
       {/* Başlık bandı: toplam sayı, ne olduğu, hepsini kapat */}
       <div className="flex items-center gap-3 bg-acc px-4 py-3 text-white">
         <span className="relative grid size-9 shrink-0 place-items-center rounded-full bg-white/15">

@@ -9,7 +9,7 @@ function Act({ label, onClick, big, children }) {
     <button type="button" onClick={onClick} aria-label={label} className="group flex w-16 flex-col items-center gap-1.5">
       <span
         className={`grid place-items-center rounded-full transition duration-200 group-active:scale-90 ${
-          big ? "size-[4.25rem] bg-acc text-white shadow-[0_10px_28px_-10px_rgba(62,110,132,.7)]" : "size-12 bg-card text-fg ring-1 ring-line"
+          big ? "size-[4.25rem] bg-acc text-white shadow-[0_10px_28px_-10px_rgba(47,125,107,.7)]" : "size-12 bg-card text-fg ring-1 ring-line"
         }`}
       >
         {children}
@@ -145,7 +145,7 @@ export function ProcessingStage({ step, voice, heard, secs, onCancel }) {
         <div className="relative grid size-32 place-items-center" aria-hidden="true">
           <span className="halo absolute inset-0 rounded-full" />
           <span className="absolute inset-3 rounded-full bg-acc/10" />
-          <span key={icon} className="anim-in relative grid size-20 place-items-center rounded-[1.625rem] bg-acc text-white shadow-[0_12px_30px_-12px_rgba(62,110,132,.8)]">
+          <span key={icon} className="anim-in relative grid size-20 place-items-center rounded-[1.625rem] bg-acc text-white shadow-[0_12px_30px_-12px_rgba(47,125,107,.8)]">
             <Icon name={icon} className="size-9" />
           </span>
         </div>

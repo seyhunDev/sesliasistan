@@ -60,7 +60,7 @@ export function SendLogin({ person, onClose }) {
               <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05xx xxx xx xx" className="mt-1 h-11 w-full rounded-xl bg-card px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
             </label>
             <p className="text-[0.8125rem] leading-snug text-mut">Güvenlik için şifreler saklanmaz; gönderirken yeni bir şifre oluşturulur ve eskisi geçersiz olur.</p>
-            <button type="button" onClick={make} disabled={busy || !to} className="h-12 w-full rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white disabled:opacity-40">
+            <button type="button" onClick={make} disabled={busy || !to} className="h-12 w-full rounded-xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-40">
               {busy ? "Hazırlanıyor…" : "Yeni şifre oluştur"}
             </button>
           </>

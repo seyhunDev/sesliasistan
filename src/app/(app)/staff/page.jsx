@@ -39,7 +39,7 @@ export default function PeopleHub() {
               href={`/people/${g}`}
               className="flex items-center gap-3.5 rounded-[1.25rem] bg-card p-4 shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)] transition active:scale-[.99]"
             >
-              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#2c5163] text-white">
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-deep text-white">
                 <Icon name={def.icon} className="size-6" />
               </span>
               <span className="min-w-0 flex-1">
@@ -74,7 +74,7 @@ export default function PeopleHub() {
         <button
           type="button"
           onClick={() => setAdd(true)}
-          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(44,81,99,.8)] active:scale-[.98]"
+          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(31,90,75,.8)] active:scale-[.98]"
         >
           <Icon name="plus" className="size-5" /> Kişi ekle
         </button>

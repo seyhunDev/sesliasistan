@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
-import { Icon } from "@/components/ui/Icon";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 export default function AuthLayout({ children }) {
   const { user, loading } = useAuth();
@@ -19,9 +19,7 @@ export default function AuthLayout({ children }) {
     <div className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
       {/* Uygulama kimliği */}
       <div className="mb-7 flex flex-col items-center text-center">
-        <span className="grid size-14 place-items-center rounded-2xl bg-acc text-white shadow-[0_8px_24px_-10px_rgba(62,110,132,.7)]">
-          <Icon name="anchor" className="size-7" />
-        </span>
+        <AppLogo size={60} className="shadow-[0_12px_28px_-12px_rgba(31,90,75,.7)]" />
         <p className="mt-3 text-[1.25rem] font-semibold tracking-tight">Sesli Asistan</p>
         <p className="mt-0.5 text-[0.875rem] text-mut">Planlar, görevler ve notlar; konuşarak</p>
       </div>

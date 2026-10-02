@@ -21,7 +21,7 @@ const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da ayn�
 const ACT = "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[0.9375rem] font-medium active:bg-card";
 const TYPING_MS = 6000;
 const EMOJI = ["👍", "❤️", "😂", "😮", "🙏", "✅"];
-const NAME_TONES = ["text-[#2c5163]", "text-[#8a4f0c]", "text-[#2f6446]", "text-[#8e3a34]", "text-[#553f86]", "text-[#2c6262]"];
+const NAME_TONES = ["text-deep", "text-[#8a4f0c]", "text-[#2f6446]", "text-[#8e3a34]", "text-[#553f86]", "text-[#2c6262]"];
 // Hazır yanıt önerileri: son mesaj başkasındansa yapay zeka 3 kısa yanıt önerir (mesaj başına bir kez; oturum boyunca saklanır)
 const SUGG = new Map();
 async function fetchReplies(key, body) {
@@ -387,7 +387,7 @@ export function ChatView({ cid }) {
             <Icon name="back" className="size-5" />
           </button>
           <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-            <Avatar name={chat.title} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-[#2c5163] text-white" : undefined} />
+            <Avatar name={chat.title} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
             <span className="min-w-0">
               <b className="flex items-center gap-1.5 truncate text-[1rem] font-semibold leading-tight">
                 <span className="truncate">{chat.title}</span>
@@ -485,7 +485,7 @@ export function ChatView({ cid }) {
                       }}
                       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !m.deleted && (e.preventDefault(), setAct(m))}
                       className={`relative cursor-pointer select-none [-webkit-touch-callout:none] min-w-[4.5rem] px-3 pb-2 pt-1.5 text-left text-[1rem] leading-[1.35] shadow-[0_1px_1.5px_rgba(38,40,44,.08)] transition active:scale-[.99] ${
-                        mine ? `bg-[#2c5163] text-white ${tail ? "rounded-[1.25rem] rounded-br-md" : "rounded-[1.25rem]"}` : `bg-card text-fg ${tail ? "rounded-[1.25rem] rounded-bl-md" : "rounded-[1.25rem]"}`
+                        mine ? `bg-deep text-white ${tail ? "rounded-[1.25rem] rounded-br-md" : "rounded-[1.25rem]"}` : `bg-card text-fg ${tail ? "rounded-[1.25rem] rounded-bl-md" : "rounded-[1.25rem]"}`
                       }`}
                     >
                       {showName && <span className={`mb-0.5 block text-[0.8125rem] font-semibold ${toneOf(m.by)}`}>{personName(m.by)}</span>}

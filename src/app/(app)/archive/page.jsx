@@ -101,7 +101,7 @@ function Archive() {
             type="button"
             onClick={() => setType(k)}
             aria-pressed={type === k}
-            className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold active:scale-95 ${type === k ? "bg-[#2c5163] text-white" : "bg-card text-fg ring-1 ring-line"}`}
+            className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold active:scale-95 ${type === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`}
           >
             {label} <span className={`tabular-nums ${type === k ? "text-white/75" : "text-mut"}`}>{n}</span>
           </button>

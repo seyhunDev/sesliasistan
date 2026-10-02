@@ -23,7 +23,7 @@ async function call(method, body) {
 }
 
 const chip = (on) =>
-  `h-9 rounded-full px-3.5 text-[0.875rem] font-semibold transition active:scale-95 ${on ? "bg-[#2c5163] text-white" : "bg-bg text-fg ring-1 ring-line"}`;
+  `h-9 rounded-full px-3.5 text-[0.875rem] font-semibold transition active:scale-95 ${on ? "bg-deep text-white" : "bg-bg text-fg ring-1 ring-line"}`;
 const section = "rounded-2xl bg-bg p-3.5";
 const birthParts = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
@@ -342,7 +342,7 @@ function DeleteStep({ person, linkedBday, data, myUid, onBack, onDone, deps }) {
       )}
       {linkedBday && (
         <label className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-line">
-          <input type="checkbox" checked={dropBday} onChange={(e) => setDropBday(e.target.checked)} className="size-5 accent-[#2c5163]" />
+          <input type="checkbox" checked={dropBday} onChange={(e) => setDropBday(e.target.checked)} className="size-5 accent-deep" />
           <span className="text-[0.9375rem]">Doğum günü takvimden silinsin</span>
         </label>
       )}

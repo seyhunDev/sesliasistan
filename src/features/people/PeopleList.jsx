@@ -86,7 +86,7 @@ export function PeopleList({ group }) {
         <button
           type="button"
           onClick={() => setEdit({ person: null })}
-          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(44,81,99,.8)] active:scale-[.98]"
+          className="mx-auto flex h-12 w-full max-w-[26rem] items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(31,90,75,.8)] active:scale-[.98]"
         >
           <Icon name="plus" className="size-5" /> {group === "family" ? "Aile bireyi ekle" : group === "athletes" ? "Sporcu ekle" : group === "staff" ? "Çalışan ekle" : "Kişi ekle"}
         </button>

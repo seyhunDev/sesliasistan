@@ -77,7 +77,7 @@ export default function ShoppingPage() {
               type="button"
               onClick={() => setPick(l)}
               aria-pressed={list === l}
-              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold active:scale-95 ${list === l ? "bg-[#2c5163] text-white" : "bg-card ring-1 ring-line"}`}
+              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold active:scale-95 ${list === l ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}
             >
               <Icon name={LISTS[l].icon} className="size-4" /> {LISTS[l].name}
             </button>
@@ -93,7 +93,7 @@ export default function ShoppingPage() {
           enterKeyHint="done"
           className="h-12 min-w-0 flex-1 rounded-xl bg-card px-4 text-base outline-none ring-1 ring-line focus:ring-acc"
         />
-        <button type="submit" disabled={!text.trim()} aria-label="Ekle" className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#2c5163] text-white disabled:opacity-40 active:scale-95">
+        <button type="submit" disabled={!text.trim()} aria-label="Ekle" className="grid size-12 shrink-0 place-items-center rounded-xl bg-deep text-white disabled:opacity-40 active:scale-95">
           <Icon name="plus" className="size-6" />
         </button>
       </form>

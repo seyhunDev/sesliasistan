@@ -7,7 +7,7 @@ export const card = "rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.
 
 // Koyu üst kart: sayfanın özeti (sayılar, küçük grafik)
 export function Hero({ children, className = "" }) {
-  return <section className={`rounded-[1.625rem] bg-[#2c5163] px-[1.125rem] py-4 text-white ${className}`}>{children}</section>;
+  return <section className={`rounded-[1.625rem] bg-deep px-[1.125rem] py-4 text-white ${className}`}>{children}</section>;
 }
 
 // Koyu kart içindeki küçük başlık
@@ -113,7 +113,7 @@ export function Chips({ value, onChange, options, className = "" }) {
           type="button"
           onClick={() => onChange(k)}
           aria-pressed={value === k}
-          className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${value === k ? "bg-[#2c5163] text-white" : "bg-card text-fg ring-1 ring-line"}`}
+          className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${value === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`}
         >
           {l}
           {n != null && <span className={`tabular-nums ${value === k ? "text-white/75" : "text-mut"}`}>{n}</span>}

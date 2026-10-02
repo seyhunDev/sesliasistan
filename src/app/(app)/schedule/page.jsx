@@ -124,13 +124,13 @@ export default function SchedulePage() {
                 onClick={() => setDay(i + 1)}
                 aria-pressed={on}
                 aria-label={`${DAYS[i]}: ${counts[i]} ders`}
-                className={`flex flex-col items-center rounded-2xl pb-2 pt-1.5 transition active:scale-95 ${on ? "bg-white text-[#2c5163]" : "bg-white/10"}`}
+                className={`flex flex-col items-center rounded-2xl pb-2 pt-1.5 transition active:scale-95 ${on ? "bg-white text-deep" : "bg-white/10"}`}
               >
                 <span className="flex h-7 items-end">
-                  <i className={`block w-2 rounded-full ${on ? "bg-[#2c5163]" : "bg-white/70"}`} style={{ height: `${counts[i] ? Math.max(5, (counts[i] / max) * 28) : 3}px` }} />
+                  <i className={`block w-2 rounded-full ${on ? "bg-deep" : "bg-white/70"}`} style={{ height: `${counts[i] ? Math.max(5, (counts[i] / max) * 28) : 3}px` }} />
                 </span>
                 <span className={`mt-1 text-[0.75rem] font-semibold ${on ? "" : i + 1 === today ? "text-white" : "text-white/75"}`}>{s}</span>
-                <span className={`text-[0.625rem] tabular-nums ${on ? "text-[#2c5163]/70" : "text-white/60"}`}>{counts[i] || "–"}</span>
+                <span className={`text-[0.625rem] tabular-nums ${on ? "text-deep/70" : "text-white/60"}`}>{counts[i] || "–"}</span>
               </button>
             );
           })}

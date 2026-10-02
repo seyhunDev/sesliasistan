@@ -161,7 +161,7 @@ export function WeatherDetail({ w, refresh, busy }) {
               type="button"
               onClick={() => setSel(d.date)}
               aria-pressed={on}
-              className={`flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-center transition active:scale-95 ${on ? "bg-[#2c5163] text-white" : "bg-bg"}`}
+              className={`flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-center transition active:scale-95 ${on ? "bg-deep text-white" : "bg-bg"}`}
             >
               <span className={`text-[0.6875rem] font-semibold ${on ? "text-white/80" : "text-mut"}`}>{i === 0 ? "Bugün" : SHORT.format(new Date(`${d.date}T12:00:00`))}</span>
               <Icon name={sky(d.code).icon} className={`size-5 ${on ? "" : "text-acc"}`} />
