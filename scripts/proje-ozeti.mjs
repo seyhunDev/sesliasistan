@@ -1,8 +1,11 @@
-// Projenin tek dosyalık dökümünü çıkarır: yeni bir sohbette paylaşmak için (yapay zeka projeye hemen hâkim olsun).
+// Projenin tek dosyalık özetini çıkarır: repoya erişimi olmayan bir sohbette paylaşmak için.
+// Varsayılan kısa özettir (notlar, git, dosya ağacı; ~10 KB). Dosya içerikleri yalnız --tam ile yazılır (~1,5 MB,
+// yüz binlerce token): Claude Code ve GitHub'lı proje sohbetleri kodu zaten kendisi okur, onlara gerekmez.
 // Gizli bilgi içermez: .env dosyalarının yalnızca değişken ADLARI yazılır (değerler yok), özel anahtarlar ve
 // hizmet hesabı dosyaları atlanır, anahtara benzeyen metinler gizlenir.
 //
-//   node scripts/proje-ozeti.mjs            -> ~/Downloads/sesliasistan-ozet-<tarih>.md
+//   node scripts/proje-ozeti.mjs            -> kısa özet, ~/Downloads/sesliasistan-ozet-<tarih>.md
+//   node scripts/proje-ozeti.mjs --tam      -> tam döküm (tüm dosya içerikleri)
 //   node scripts/proje-ozeti.mjs cikti.md   -> verilen dosyaya
 //
 // Proje kökünde NOTLAR.md varsa (senin notların) o da en başa eklenir.
@@ -13,12 +16,14 @@ import { extname, join, relative } from "node:path";
 
 const ROOT = process.cwd();
 if (!existsSync(join(ROOT, "package.json"))) {
-  console.error("Proje klasöründe çalıştır: cd ~/Desktop/sesliasistan");
+  console.error("Proje klasöründe çalıştır: cd ~/Projeler/sesliasistan");
   process.exit(1);
 }
 
 const stamp = new Date().toLocaleString("sv-SE", { timeZone: "Europe/Istanbul" }).slice(0, 16).replace(/[ :]/g, "-");
-const OUT = process.argv[2] || join(homedir(), "Downloads", `sesliasistan-ozet-${stamp}.md`);
+const args = process.argv.slice(2);
+const FULL = args.includes("--tam");
+const OUT = args.find((a) => !a.startsWith("--")) || join(homedir(), "Downloads", `sesliasistan-ozet-${stamp}${FULL ? "-tam" : ""}.md`);
 
 // İçeriği yazılacak yerler ve uzantılar
 const DIRS = ["src", "scripts", "netlify", "public"];
@@ -60,14 +65,15 @@ const skipped = [];
 const parts = [];
 
 // 1. Başlık ve senin notların
-parts.push(`# sesliasistan — proje dökümü\n\nOluşturma: ${stamp.replace(/-(\d\d)-(\d\d)$/, " $1:$2")} (İstanbul)\nKlasör: ${ROOT}\n`);
+parts.push(`# sesliasistan — proje ${FULL ? "dökümü" : "özeti"}\n\nOluşturma: ${stamp.replace(/-(\d\d)-(\d\d)$/, " $1:$2")} (İstanbul)\nKlasör: ${ROOT}\n`);
 if (existsSync(join(ROOT, "NOTLAR.md"))) parts.push(`## Notlar (NOTLAR.md)\n\n${redact(readFileSync(join(ROOT, "NOTLAR.md"), "utf8"))}\n`);
+if (!FULL && existsSync(join(ROOT, "CLAUDE.md"))) parts.push(`## Çalışma kuralları (CLAUDE.md)\n\n${redact(readFileSync(join(ROOT, "CLAUDE.md"), "utf8"))}\n`);
 
 // 2. Git durumu
 const branch = sh("git rev-parse --abbrev-ref HEAD");
 if (branch) {
   parts.push(
-    `## Git\n\nDal: ${branch}\nUzak: ${sh("git remote get-url origin") || "-"}\n\nSon commit'ler:\n\`\`\`\n${sh("git log --oneline -40")}\n\`\`\`\n\nCommit edilmemiş değişiklikler:\n\`\`\`\n${sh("git status --short") || "(yok)"}\n\`\`\`\n`,
+    `## Git\n\nDal: ${branch}\nUzak: ${sh("git remote get-url origin") || "-"}\n\nSon commit'ler:\n\`\`\`\n${sh(`git log --oneline -${FULL ? 40 : 15}`)}\n\`\`\`\n\nCommit edilmemiş değişiklikler:\n\`\`\`\n${sh("git status --short") || "(yok)"}\n\`\`\`\n`,
   );
 }
 
@@ -89,9 +95,9 @@ if (dupes.length) parts.push(`## Uyarı: iCloud kopyaları (" 2") — silinmeli\
 // 5. Dosya ağacı
 parts.push(`## Dosyalar\n\n\`\`\`\n${files.map((p) => `${relative(ROOT, p)}  (${(statSync(p).size / 1024).toFixed(1)} KB)`).join("\n")}\n\`\`\`\n`);
 
-// 6. İçerikler
-parts.push("## Dosya içerikleri\n");
-for (const p of files) {
+// 6. İçerikler (yalnız --tam)
+if (FULL) parts.push("## Dosya içerikleri\n");
+for (const p of FULL ? files : []) {
   const rel = relative(ROOT, p);
   const text = readFileSync(p, "utf8");
   if (/"private_key"\s*:/.test(text)) {
@@ -107,4 +113,4 @@ if (skipped.length) parts.push(`## Atlananlar (gizli bilgi içeriyor)\n\n${skipp
 const body = parts.join("\n");
 writeFileSync(OUT, body);
 console.log(`Tamam: ${OUT}`);
-console.log(`${files.length - skipped.length} dosya, ${(body.length / 1024).toFixed(0)} KB${dupes.length ? ` · UYARI: ${dupes.length} iCloud kopyası var (dökümde listelendi)` : ""}`);
+console.log(`${FULL ? "Tam döküm" : "Kısa özet (tam döküm: --tam)"} · ${files.length - skipped.length} dosya, ${(body.length / 1024).toFixed(0)} KB${dupes.length ? ` · UYARI: ${dupes.length} iCloud kopyası var (dökümde listelendi)` : ""}`);
