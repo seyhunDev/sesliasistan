@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { todayStr } from "@/lib/utils/format";
 import { Hero, Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Loading } from "@/components/ui/Loader";
@@ -12,9 +13,11 @@ import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } 
 import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
-import { STEPS, doneCount, shiftDay } from "./races";
+import { doneCount, shiftDay, stepsOf } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
+const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 
@@ -199,6 +202,38 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   };
 
   const n = doneCount(r);
+  const steps = stepsOf(r);
+  const fromNotice = steps.some((x) => x.group === "notice");
+  const inGroup = (group) => steps.filter((x) => (group === "docs" ? x.group === "docs" : x.group !== "docs"));
+  const count = (group) => `${inGroup(group).filter((x) => r.checks?.[x.key]).length}/${inGroup(group).length}`;
+  const stepList = (group) => (
+    <ul className={`${card} divide-y divide-line overflow-hidden`}>
+      {inGroup(group).map(({ key, label, date, detail }) => {
+        const on = !!r.checks?.[key];
+        const left = date ? daysTo(date) : null;
+        return (
+          <li key={key}>
+            <button type="button" onClick={() => put("checks", { ...r.checks, [key]: !on })} aria-pressed={on} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+              <Check on={on} />
+              <span className="min-w-0 flex-1">
+                <span className={`block text-[0.9375rem] ${on ? "text-mut line-through decoration-mut/50" : "font-medium"}`}>{label}</span>
+                {(date || detail) && (
+                  <span className="block text-[0.8125rem] text-mut">
+                    {[date && shortDay(date), detail].filter(Boolean).join(" · ")}
+                  </span>
+                )}
+              </span>
+              {left !== null && !on && (
+                <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+                  {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
+                </span>
+              )}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
   return (
     <>
       {/* Özet kart */}
@@ -209,9 +244,9 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
             <b className="block truncate text-[1.0625rem] font-semibold leading-tight">{placeText(r) || "Yer girilmedi"}</b>
             <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">{[leftText(r), `${chosen.length} sporcu`, r.planAdded && "planda"].filter(Boolean).join(" · ")}</span>
             <span className="mt-2.5 flex items-center gap-2">
-              <Progress n={n} of={STEPS.length} light className="flex-1" />
+              <Progress n={n} of={steps.length} light className="flex-1" />
               <span className="text-[0.75rem] font-semibold tabular-nums text-white/85">
-                {n}/{STEPS.length} iş
+                {n}/{steps.length} iş
               </span>
             </span>
           </div>
@@ -227,22 +262,12 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
 
       {tab === "sum" && (
         <>
-          <Label right={`${n}/${STEPS.length}`}>YAPILACAKLAR</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {STEPS.map(([k, label]) => {
-              const on = !!r.checks?.[k];
-              return (
-                <li key={k}>
-                  <button type="button" onClick={() => put("checks", { ...r.checks, [k]: !on })} aria-pressed={on} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-bg">
-                    <Check on={on} />
-                    <span className={`flex-1 text-[0.9375rem] ${on ? "text-mut line-through decoration-mut/50" : "font-medium"}`}>{label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <Label right={`${fromNotice ? "talimata göre · " : ""}${count("prep")}`}>KAYIT VE HAZIRLIK</Label>
+          {stepList("prep")}
+          {!fromNotice && !r.notice && <p className="mt-2 px-1 text-[0.75rem] text-mut">Talimatı yüklersen bu liste talimattaki işlere ve son tarihlere göre kurulur.</p>}
 
-          <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
+          <Label right={count("docs")}>EVRAK</Label>
+          {stepList("docs")}
 
           <Label>NOT</Label>
           <div className={`${card} px-4 py-3`}>
@@ -272,6 +297,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
               </button>
             )}
           </div>
+
+          <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
 
           {r.notice ? (
             <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} />

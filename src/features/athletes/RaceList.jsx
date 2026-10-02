@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Empty, Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { todayStr } from "@/lib/utils/format";
 import { rangeText } from "./raceDocs";
-import { STEPS, doneCount } from "./races";
+import { doneCount, stepsOf } from "./races";
 
 const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
 const day = (s) => new Date(`${s}T12:00:00`);
@@ -66,7 +66,7 @@ export function Faces({ ids, names, max = 3 }) {
   );
 }
 
-const nextStep = (r) => STEPS.find(([k]) => !r.checks?.[k])?.[1];
+const nextStep = (r) => stepsOf(r).find((s) => !r.checks?.[s.key])?.label;
 // Talimattaki en yakın son tarih
 const nextDeadline = (r) => (r.notice?.deadlines || []).find((d) => diff(d.date) >= 0);
 
@@ -91,7 +91,7 @@ export function RaceList({ races, names = {}, onOpen }) {
             <span className="mt-0.5 block text-[0.8125rem] text-white/75">{[rangeText(next.startDate, next.endDate), placeText(next)].filter(Boolean).join(" · ")}</span>
             <div className="mt-3 flex gap-2">
               <Stat n={next.athleteIds.length} label="Sporcu" />
-              <Stat n={`${doneCount(next)}/${STEPS.length}`} label="İş tamam" />
+              <Stat n={`${doneCount(next)}/${stepsOf(next).length}`} label="İş tamam" />
               <Stat n={Math.max(0, diff(next.startDate))} label="Gün kaldı" />
             </div>
             {nextDeadline(next) && (
@@ -126,6 +126,7 @@ export function RaceList({ races, names = {}, onOpen }) {
           <ul className="space-y-2.5">
             {list.map((r) => {
               const n = doneCount(r);
+              const of = stepsOf(r).length;
               return (
                 <li key={r.id}>
                   <button type="button" onClick={() => onOpen(r)} className={`${card} flex w-full gap-3 p-3.5 text-left transition active:scale-[.99] ${tab === "past" ? "opacity-75" : ""}`}>
@@ -137,9 +138,9 @@ export function RaceList({ races, names = {}, onOpen }) {
                       </span>
                       <span className="block truncate text-[0.8125rem] text-mut">{[placeText(r), leftText(r)].filter(Boolean).join(" · ")}</span>
                       <span className="mt-2.5 flex items-center gap-2">
-                        <Progress n={n} of={STEPS.length} className="flex-1" />
-                        <span className={`text-[0.75rem] font-semibold tabular-nums ${n === STEPS.length ? "text-ok" : "text-mut"}`}>
-                          {n}/{STEPS.length}
+                        <Progress n={n} of={of} className="flex-1" />
+                        <span className={`text-[0.75rem] font-semibold tabular-nums ${n === of ? "text-ok" : "text-mut"}`}>
+                          {n}/{of}
                         </span>
                       </span>
                       <span className="mt-2.5 flex items-center justify-between gap-2">

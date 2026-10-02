@@ -20,6 +20,7 @@ Belgeden yarışı kurmak ve planlamak için gerekenleri çıkar. Yalnızca belg
 - classes: yarışan sınıflar/kategoriler ("Optimist", "ILCA 4", "Optimist Gelişim").
 - schedule: program; her satır { date YYYY-MM-DD, time HH:MM ya da boş, title kısa Türkçe ("Kayıt ve ölçüm", "Kaptanlar toplantısı", "İlk start", "Ödül töreni") }. En fazla 30 satır, tarihe göre sıralı.
 - deadlines: antrenörün kaçırmaması gereken son tarihler; { date, time, title kısa Türkçe ("Online kayıt son gün", "Kayıt ücreti son ödeme", "Geç kayıt son gün", "İl dışı çıkış oluru yükleme", "Kesin kayıt teslimi", "Otel rezervasyonu son gün"), detail kısa (nerede/nasıl, ceza ya da ücret farkı) }. Kaydın başlama tarihi son tarih değildir. Tarihe göre sıralı.
+- tasks: bu talimata göre antrenörün yarıştan önce yapması gereken işler, yapılacak sırayla, en fazla 10; { title kısa ve fiille ("Online kaydı yap", "Kayıt ücretini öde (1.250 TL/sporcu)", "İl dışı çıkış olurunu sisteme yükle", "Antrenör kaydını yap", "Otel rezervasyonu yap", "Tekne taşımayı ayarla", "Kesin kayıt formunu yarış ofisine teslim et"), date son tarih YYYY-MM-DD ya da boş, detail kısa (nerede/nasıl) }. Talimatta konaklama varsa otel işi, ücret varsa ödeme işi mutlaka olsun. Okul izni, veli imzası gibi kulüp içi evrak işlerini yazma (onlar ayrıca takip ediliyor).
 - fees: ücretler; { title ("Kayıt ücreti (sporcu başı)", "Geç kayıt", "Antrenör"), amount metin olarak para birimiyle ("1.250 TL", "€80", "%50 cezalı", "Ücretsiz"), note kısa (nereye/nasıl ödenir, IBAN varsa açıklamasıyla) }.
 - hotels: önerilen oteller/konaklama; { name, phone, note (oda fiyatları kısaca "Tek kişilik 5.700 TL, iki kişilikte kişi başı 3.500 TL", indirim kodu, zorunlu olup olmadığı) }.
 - contacts: iletişim kişileri; { name, role, phone, email }.
@@ -36,6 +37,7 @@ const SCHEMA = {
     classes: { type: "array", items: s },
     schedule: row(["date", "time", "title"], ["date", "title"]),
     deadlines: row(["date", "time", "title", "detail"], ["date", "title"]),
+    tasks: row(["title", "date", "detail"], ["title"]),
     fees: row(["title", "amount", "note"], ["title"]),
     hotels: row(["name", "phone", "note"], ["name"]),
     contacts: row(["name", "role", "phone", "email"], ["name"]),
@@ -102,6 +104,7 @@ async function handle(request) {
       classes: list(raw?.classes, 12, (c) => S(c, 40)),
       schedule: list(raw?.schedule, 30, (x) => day(x?.date) && S(x?.title, 120) && { date: x.date, time: TIME.test(x?.time || "") ? x.time : "", title: S(x.title, 120) }).sort(byDate),
       deadlines: list(raw?.deadlines, 12, (x) => day(x?.date) && S(x?.title, 120) && { date: x.date, time: TIME.test(x?.time || "") ? x.time : "", title: S(x.title, 120), detail: S(x?.detail, 240) }).sort(byDate),
+      tasks: list(raw?.tasks, 10, (x) => S(x?.title, 100) && { title: S(x.title, 100), date: day(x?.date), detail: S(x?.detail, 200) }),
       fees: list(raw?.fees, 12, (x) => S(x?.title, 80) && { title: S(x.title, 80), amount: S(x?.amount, 40), note: S(x?.note, 240) }),
       hotels: list(raw?.hotels, 10, (x) => S(x?.name, 100) && { name: S(x.name, 100), phone: S(x?.phone, 40), note: S(x?.note, 240) }),
       contacts: list(raw?.contacts, 10, (x) => S(x?.name, 100) && { name: S(x.name, 100), role: S(x?.role, 80), phone: S(x?.phone, 40), email: S(x?.email, 100) }),
