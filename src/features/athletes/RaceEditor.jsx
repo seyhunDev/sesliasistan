@@ -707,7 +707,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       )}
 
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div className={`${tab === "budget" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${tab === "budget" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>

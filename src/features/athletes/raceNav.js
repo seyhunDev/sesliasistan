@@ -125,6 +125,7 @@ export function rankRaces(text, races, today = "") {
 export const sure = (ranked) => !!ranked[0] && ranked[0].score >= 0.8 && (!ranked[1] || ranked[0].score - ranked[1].score >= 0.3);
 
 // Seçenekler arasından seçim: "ikincisi", "sonuncu", "Foça olan" → yarış ya da null
+const YES_W = new Set(["evet", "tamam", "olur", "tabi", "tabii", "onu", "ona", "bunu", "buna", "o", "bu", "dogru", "hadi", "evt", "aynen", "simdi", "hemen"]);
 const ORD = [/(^|\s)(birinci\S*|ilk\S*|1\.?)(\s|$)/, /(^|\s)(ikinci\S*|2\.?)(\s|$)/, /(^|\s)(üçüncü\S*|3\.?)(\s|$)/];
 export function pickChoice(text, choices, today = "") {
   const t = low(text).trim();
@@ -132,6 +133,8 @@ export function pickChoice(text, choices, today = "") {
   const i = ORD.findIndex((re) => re.test(t));
   if (i >= 0 && choices[i]) return choices[i];
   if (/(^|\s)son(uncu\S*)?(\s|$)/.test(t)) return choices[choices.length - 1];
+  // Yalnız onay ya da gitme sözü ("git", "evet aç", "tamam onu aç"): ilk (en olası) seçenek
+  if (!raceWords(t).filter((w) => !YES_W.has(w)).length) return choices[0];
   const r = rankRaces(t, choices, today);
   return r[0] && r[0].score >= 0.6 && (!r[1] || r[0].score - r[1].score >= 0.2) ? r[0].race : null;
 }

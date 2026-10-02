@@ -70,7 +70,7 @@ export default function PeopleHub() {
         Her sayfada kişinin giriş bilgisi ve yanında <b className="font-semibold">Gönder</b> var: yeni şifre oluşturup giriş bilgilerini WhatsApp ile iletir.
       </p>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
+      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-10 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
         <button
           type="button"
           onClick={() => setAdd(true)}
