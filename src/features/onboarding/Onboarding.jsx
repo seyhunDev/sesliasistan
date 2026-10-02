@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTts } from "@/features/speech/TtsProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { db } from "@/lib/firebase/clientApp";
 import { dismissPrompt } from "@/lib/permissions";
 import { enableReminders, needsInstall, pushSupported } from "@/lib/push";
@@ -19,7 +20,7 @@ import { SIZES, applySize } from "@/lib/textSize";
 // Her slaytta "Geç" var; hiçbiri zorunlu değil. Yeni bir özellik slaytı eklerken v = INTRO_V + 1 yap ve INTRO_V'yi artır.
 export const openOnboarding = () => window.dispatchEvent(new Event("sa-onboarding"));
 
-export const INTRO_V = 5;
+export const INTRO_V = 6;
 const SLIDES = [
   { id: "hi", v: 1, icon: "spark", title: "Hoş geldin", text: "Planlarını, görevlerini ve notlarını konuşarak ya da yazarak ekle. Birkaç ayarla her şey daha kolay olur.", action: "Başla" },
   { id: "voice", v: 5, icon: "mic", title: "Sesli asistanınla tanış", text: "Dinlemek için dokun. Mikrofon izni de isteyeceğim; konuşarak kullanmak için gerekli.", action: "Mikrofona izin ver ve dinle" },
@@ -27,8 +28,18 @@ const SLIDES = [
   { id: "push", v: 1, icon: "bell", perm: "push", title: "Bildirimler", text: "Uygulama kapalıyken de haberin olsun.", action: "Bildirimlere izin ver" },
   { id: "summary", v: 2, icon: "sun", title: "Günlük özetler", text: "Güne ve yarına hazırlıklı başla. Bildirim olarak gelir, ana ekranda da görünür.", action: "Kaydet ve devam" },
   { id: "mail", v: 4, owner: true, icon: "mail", title: "Banka mailleri", text: "Bankadan gelen hesap özetleri telefonuna bildirim olarak gelsin; Mailler sayfasında hareketleri tablo olarak gör, Excel'e indir.", action: "Kurulumu aç", href: "/mail/setup" },
+  { id: "races", v: 6, athletes: true, icon: "flag", title: "Yarışlar", text: "Yelken antrenörü ya da kulüp yöneticisiysen sporcularını götürdüğün yarışları tek yerden yönet. Ana sayfana Yarışlar düğmesi eklensin mi?", action: "Ana sayfaya ekle" },
   { id: "camera", v: 1, icon: "camera", perm: "camera", title: "Kamera", text: "Fişin fotoğrafını çekip tutarı otomatik okumak için.", action: "Kameraya izin ver" },
   { id: "done", v: 1, icon: "check", title: "Hazırsın", text: "Bunları istediğin zaman Ayarlar'dan değiştirebilirsin.", action: "Uygulamaya geç" },
+];
+
+// Yarışlar slaytında yapılabilecekler
+const RACE_CAN = [
+  ["print", "Yarış evrakı", "Okul izni, kafile onayı, veli izni ve kulüp yazısı tek dokunuşla PDF"],
+  ["clip", "Talimattan oku", "Yarış talimatını yükle; tarih, ücret, otel ve son tarihler kendiliğinden gelsin"],
+  ["wallet", "Bütçe", "Otel, yol, kayıt ücreti; sporcu başı ödeme ve kulüp payı hesaplanır"],
+  ["checks", "Yapılacaklar", "Kayıt, veli imzası, okullar, GSİM; planlara ekle"],
+  ["mic", "Sesle", "“Foça yarışına Mehmet'i de ekle”, “D'Azur yarışını aç”"],
 ];
 
 // Sesli karşılamada okunan metin ve ekranda görünen yetenekler
@@ -41,6 +52,9 @@ const CAN = [
 ];
 export const WELCOME_SPEECH =
   "Merhaba, ben sesli asistanın. Planlarını, görevlerini ve notlarını söylemen yeterli, ben hazırlarım. Ekibine ya da bir kişiye mesaj yazarım, sen onaylayınca gönderirim. Bugün neler var, geciken işler neler diye sorabilirsin. Yoklamayı aç ya da ekip grubunu aç dersen sayfayı açarım. Birazdan ana sayfada birlikte deneyeceğiz.";
+
+// Bazı slaytlar yalnızca ana hesapta ya da sporcu yetkisi olanlarda (yarışlar)
+const fits = (x, p) => (!x.owner || p.role === "owner") && (!x.athletes || canSeeAthletes(p.email));
 
 const pushGranted = () => typeof Notification !== "undefined" && Notification.permission === "granted";
 
@@ -69,12 +83,19 @@ export function Onboarding() {
     return () => window.removeEventListener("sa-onboarding", on);
   }, []);
 
+  // Görülmemiş slaytların hiçbiri bu kişiye uymuyorsa (ör. yarış slaytı, sporcu yetkisi yok) sürüm sessizce ilerler;
+  // yoksa "Şimdi sen dene" (TryAssistant, introV >= INTRO_V ister) hiç çıkmaz.
+  const skip = !!profile?.onboarded && profile.introV < INTRO_V && !SLIDES.some((x) => x.v > profile.introV && fits(x, profile));
+  useEffect(() => {
+    if (skip) updateDoc(doc(db, "users", profile.uid), { introV: INTRO_V }).catch(() => {});
+  }, [skip, profile?.uid]);
+
   if (!profile || closed) return null;
   const fresh = profile.onboarded === false;
   const granted = (x) => (x.perm === "push" ? pushGranted() : x.perm ? perms[x.perm] === "granted" : false);
   // Yeni özellikler: görülmemiş slaytlar; izni zaten verilmiş olanlar atlanır
   const news = !manual && !fresh && profile.onboarded && profile.introV < INTRO_V ? SLIDES.filter((x) => x.v > profile.introV && !granted(x)) : [];
-  const mine = (x) => !x.owner || profile.role === "owner"; // bazı slaytlar yalnızca ana hesapta
+  const mine = (x) => fits(x, profile);
   const list = (manual || fresh ? SLIDES : news).filter(mine);
   if (!list.length) return null;
   const onlyNew = !manual && !fresh;
@@ -120,6 +141,11 @@ export function Onboarding() {
       tts.speak(WELCOME_SPEECH);
       return;
     }
+    // Yarışlar: ana sayfa düğmesini aç (Ayarlar › Yarışlar ana sayfada ile aynı)
+    if (s.id === "races") {
+      if (profile.races !== "on") updateDoc(doc(db, "users", profile.uid), { races: "on" }).catch(() => {});
+      return next();
+    }
     if (!s.perm || has) {
       if (s.id === "summary") updateDoc(doc(db, "users", profile.uid), summary).catch(() => {});
       return next();
@@ -156,7 +182,7 @@ export function Onboarding() {
 
   const last = i >= list.length - 1;
   const action =
-    s.id === "voice" ? (heard ? "Devam" : perms.microphone === "granted" ? "Dinle" : s.action) : has ? "Devam" : onlyNew && last && !s.perm && !s.href ? "Tamam" : s.action;
+    s.id === "races" && profile.races === "on" ? "Devam" : s.id === "voice" ? (heard ? "Devam" : perms.microphone === "granted" ? "Dinle" : s.action) : has ? "Devam" : onlyNew && last && !s.perm && !s.href && s.id !== "races" ? "Tamam" : s.action;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-bg pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-label={onlyNew ? "Yenilikler" : "Başlangıç"}>
@@ -229,6 +255,22 @@ export function Onboarding() {
               )}
             </ul>
           )}
+          {s.id === "races" && (
+            <ul className="mt-6 w-full max-w-[21.25rem] space-y-2 text-left">
+              {RACE_CAN.map(([ic, t, d], k) => (
+                <li key={t} className="step-in flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 ring-1 ring-line" style={{ animationDelay: `${120 + k * 110}ms` }}>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                    <Icon name={ic} className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <b className="block text-[0.9375rem] font-semibold">{t}</b>
+                    <small className="block text-[0.8125rem] leading-snug text-mut">{d}</small>
+                  </span>
+                </li>
+              ))}
+              <li className="px-1 pt-1 text-[0.75rem] text-mut">Sonra Ayarlar › Yarışlar ana sayfada&apos;dan açıp kapatabilirsin.</li>
+            </ul>
+          )}
           {s.id === "push" && (
             <ul className="mt-6 w-full max-w-[21.25rem] space-y-2 text-left">
               {[
@@ -283,7 +325,7 @@ export function Onboarding() {
         <button onClick={act} disabled={busy} className="mt-3 h-14 w-full shrink-0 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white transition active:scale-[.98] disabled:opacity-60">
           {busy ? "Bekleniyor…" : action}
         </button>
-        {((s.perm && !has) || s.href) && (
+        {((s.perm && !has) || s.href || (s.id === "races" && profile.races !== "on")) && (
           <button onClick={next} className="mt-2 h-11 w-full shrink-0 text-[0.9375rem] font-medium text-mut">
             Şimdi değil
           </button>
