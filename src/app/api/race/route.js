@@ -47,6 +47,18 @@ const SCHEMA = {
   required: ["op", "athleteIds", "message"],
 };
 
+// Açılacak yarışı bulma: ses tanıma yabancı adları bozar; söylenen ada en çok benzeyen kayıtlı yarış seçilir
+const FIND = `Antrenör kayıtlı yarışlardan birinin sayfasını açmak istiyor. Söylediği ses tanıma metnidir: yabancı adlar bozulur ("dazur", "daz ur", "dö azur" = D'Azur; "halkidi" = Halkidiki), kelimeler ayrılır ya da birleşir, ilçe/şehir ya da ay söylenebilir ("Foça'daki", "ekimdeki yarış").
+Kayıtlı yarışlar (id | ad | ilçe | başlangıç) ve bugünün tarihi verilir.
+- raceId: söylenene açıkça uyan tek yarış varsa onun id'si, yoksa boş.
+- candidates: emin değilsen en olası en çok 3 yarışın id'si (olasılık sırasıyla); söylenen hiçbir yarışa benzemiyorsa boş.
+- message: 1 kısa Türkçe cümle.`;
+const FIND_SCHEMA = {
+  type: "object",
+  properties: { raceId: { type: "string" }, candidates: { type: "array", items: { type: "string" } }, message: { type: "string" } },
+  required: ["raceId", "candidates", "message"],
+};
+
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -73,13 +85,30 @@ async function handle(request) {
     .filter((a) => ID.test(a.id) && a.name)
     .slice(0, 300);
   const races = (Array.isArray(body?.races) ? body.races : [])
-    .map((r) => ({ id: S(r?.id, 64), name: S(r?.name, 80), startDate: DATE.test(r?.startDate || "") ? r.startDate : "" }))
+    .map((r) => ({ id: S(r?.id, 64), name: S(r?.name, 80), district: S(r?.district, 40), startDate: DATE.test(r?.startDate || "") ? r.startDate : "" }))
     .filter((r) => ID.test(r.id) && r.name)
     .slice(0, 40);
   const current = races.some((r) => r.id === body?.current) ? body.current : "";
   const known = [...new Set((Array.isArray(body?.known) ? body.known : []).map((n) => S(n, 80)).filter(Boolean))].slice(0, 40);
   if (!text) return bad("Yarışı söyle ya da yaz.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Yarışı Sporcular › Yarış evrakı sayfasından ekleyebilirsin.", 503);
+
+  if (body?.mode === "find") {
+    if (!races.length) return NextResponse.json({ raceId: "", candidates: [], message: "Kayıtlı yarış yok." });
+    const user = `Bugün: ${today}\n\nKayıtlı yarışlar:\n${races.map((r) => `${r.id} | ${r.name} | ${r.district || "-"} | ${r.startDate || "-"}`).join("\n")}\n\nAntrenörün söylediği:\n"""\n${text}\n"""`;
+    try {
+      const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: FIND, user, schema: FIND_SCHEMA, maxTokens: 800, timeoutMs: 12000 });
+      const ok = (id) => races.some((r) => r.id === id);
+      return NextResponse.json({
+        raceId: ok(raw?.raceId) ? raw.raceId : "",
+        candidates: [...new Set((Array.isArray(raw?.candidates) ? raw.candidates : []).map(String).filter(ok))].slice(0, 3),
+        message: S(raw?.message, 200),
+      });
+    } catch (e) {
+      logAiError("race-find", "gemini", e);
+      return bad("Yarış bulunamadı.", e.status === 429 ? 429 : 502);
+    }
+  }
 
   const wd = DAYS[new Date(`${today}T12:00:00`).getDay()];
   const notes = (Array.isArray(body?.notes) ? body.notes : []).map((n) => S(n, 200)).filter(Boolean).slice(0, 20);

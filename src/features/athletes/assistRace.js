@@ -131,3 +131,15 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
   ].filter(Boolean);
   return { said: `Kaydettim. ${old.name}: ${parts.join(", ") || "yer güncellendi"}.${missed}`, id: old.id };
 }
+
+// Açılacak yarışı yapay zekayla bul (yerel eşleştirme emin olamadığında): { raceId, candidates, message }
+export async function findRaceAi(text, races) {
+  const res = await authFetch("/api/race", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode: "find", text, today: todayStr(), races: races.slice(0, 40).map((r) => ({ id: r.id, name: r.name, district: r.district, startDate: r.startDate })) }),
+  });
+  const p = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(p.error || "Yarış bulunamadı");
+  return p;
+}
