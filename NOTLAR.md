@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Hazırlanan yarış evrakı bu cihazda saklanır (IndexedDB `sa-race-docs`, `raceFiles.js`); sayfaya dönünce Hazır kartı ve Aç/Mail/Paylaş gelir, "Yenile" ile yeniden hazırlanır. Belgeyi değiştiren bilgi değişince kopya silinir. Firebase'e yazılmaz (PDF'te T.C./veli bilgisi var). Başka cihazda yeniden hazırlanır.
 - Yarış evrakını mail: belgeler hazırlanınca alt çubukta "Mail" → "Kime gönderilsin?" (Kendime + kayıtlı adresler, `users/{uid}.mailTo`, yeni adres eklenir/silinir; `src/features/mail/MailTo.jsx`). Yalnız Gmail betiği kurulu ana hesapta. Uygulama PDF'i `orgs/{uid}/outbox`'a bırakır (`outbox.js`, 700 KB'lık parçalar, `to`, `self`), Gmail betiği 5 dakikada bir `gonder()` ile gönderir ve siler. Betik sürümü `mailOutbox` (1 kendine, 2 başka adreslere de); 2'den eskiyse Mail ayarlarından kod + appsscript.json yeniden kopyalanıp `kur` çalıştırılır. Kendine gönderim canlıda çalıştı (2026-10-02).
 - Son işler: ders programı düzenleme (çalışan/öğrenci dersini silebilir, tüm programı sil), asistan çubuğu açılıştan sonra alttan yükselir, ana ekran uygulamasında alt boşluk kısaldı.
 - Yarış evrakı (Sporcular › bayrak düğmesi, `/athletes/races`): yarış + seçilen sporcular → okul izni yazısı, EK-2 Kafile Onayı, seyahat dilekçesi, sporcu başına EK-3/D Veli İzin Belgesi tek PDF (paylaş/yazdır). Telefonda gerçek sporcularla denenmedi.

@@ -14,11 +14,13 @@ import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
+import { dropRaceFile, getRaceFile, saveRaceFile } from "./raceFiles";
 import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
+const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 
@@ -63,11 +65,30 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const [docs, setDocs] = useState(DOCS.map(([k]) => k));
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState(null); // hazırlanan PDF
+  const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
+  const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
+  // Hazır PDF bu cihazda saklıdır; sayfaya dönünce yeniden hazırlamak gerekmez
+  useEffect(() => {
+    let live = true;
+    getRaceFile(start.id).then((f) => {
+      if (!live || !f?.blob) return;
+      setFile(new File([f.blob], f.name, { type: "application/pdf" }));
+      if (Array.isArray(f.docs) && f.docs.length) setDocs(f.docs);
+      setMailText(f.mailText || "");
+      setMade({ at: f.at, pages: f.pages });
+    });
+    return () => void (live = false);
+  }, [start.id]);
   const [known] = useState(raceNames); // daha önce yazılmış yarış adları (öneri)
 
-  // Belgeyi değiştiren alanlar hazır PDF'i geçersiz kılar
-  const set = (k) => (v) => {
+  // Belgeyi değiştiren alanlar hazır PDF'i geçersiz kılar (cihazdaki kopya da silinir)
+  const dropFile = () => {
     setFile(null);
+    setMade(null);
+    dropRaceFile(id.current);
+  };
+  const set = (k) => (v) => {
+    dropFile();
     setR((p) => {
       const n = { ...p, [k]: v };
       // İzin aralığı varsayılan olarak yarıştan bir gün önce başlar, bir gün sonra biter
@@ -136,17 +157,20 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       await save();
       const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, await loadFonts(), docs);
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-evrak.pdf`;
+      const text = [
+        `${r.name.trim()} · ${rangeText(r.startDate, r.endDate || r.startDate)}${placeText(r) ? ` · ${placeText(r)}` : ""}`,
+        "",
+        `Belgeler: ${DOCS.filter(([k]) => docs.includes(k)).map(([, t]) => t).join(", ")}`,
+        `Sporcular (${chosen.length}): ${chosen.map((a) => a.studentName).join(", ")}`,
+        "",
+        "Sesli Asistan ile hazırlandı.",
+      ].join("\n");
+      const at = new Date().toISOString();
       setFile(new File([bytes], name, { type: "application/pdf" }));
-      setMailText(
-        [
-          `${r.name.trim()} · ${rangeText(r.startDate, r.endDate || r.startDate)}${placeText(r) ? ` · ${placeText(r)}` : ""}`,
-          "",
-          `Belgeler: ${DOCS.filter(([k]) => docs.includes(k)).map(([, t]) => t).join(", ")}`,
-          `Sporcular (${chosen.length}): ${chosen.map((a) => a.studentName).join(", ")}`,
-          "",
-          "Sesli Asistan ile hazırlandı.",
-        ].join("\n"),
-      );
+      setMailText(text);
+      setMade({ at, pages });
+      await queue.current.catch(() => {});
+      if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text });
       setTab("docs");
       if (docs.length === DOCS.length && !r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
@@ -155,7 +179,6 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     setBusy(false);
   };
   // Mail: kendine ve/veya kayıtlı adreslere (Gmail betiği birkaç dakika içinde gönderir)
-  const [mailText, setMailText] = useState("");
   const [mailing, setMailing] = useState(false);
   const [mailPick, setMailPick] = useState(false);
   const mail = async ({ self, to }) => {
@@ -202,7 +225,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     setReading(true);
     try {
       const n = await (typeof f === "string" ? readNoticeText(f) : readNotice(f));
-      setFile(null);
+      dropFile();
       setR((p) => applyNotice(p, n));
       setTab("sum");
       toast(n.name ? "Talimat okundu" : "Talimat okundu, yarış adını yaz");
@@ -224,6 +247,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     if (!id.current || !confirm(`"${r.name}" silinsin mi? Sporcu kartları etkilenmez.`)) return;
     dirty.current = false;
     await queue.current.catch(() => {});
+    dropRaceFile(id.current);
     await onDelete(id.current);
   };
 
@@ -496,7 +520,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                 <li key={k}>
                   <button
                     type="button"
-                    onClick={() => (setFile(null), setDocs((d) => (on ? d.filter((x) => x !== k) : DOCS.map(([x]) => x).filter((x) => x === k || d.includes(x)))))}
+                    onClick={() => (dropFile(), setDocs((d) => (on ? d.filter((x) => x !== k) : DOCS.map(([x]) => x).filter((x) => x === k || d.includes(x)))))}
                     aria-pressed={on}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg"
                   >
@@ -544,7 +568,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
               {(r.clubFrom || r.clubTo || r.clubEvent || r.clubPlace) && (
                 <button
                   type="button"
-                  onClick={() => (setFile(null), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
+                  onClick={() => (dropFile(), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
                   className="mt-1 px-1 text-[0.8125rem] font-semibold text-acc"
                 >
                   Yarışın tarih, ad ve yerine dön
@@ -573,9 +597,15 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.6875rem] font-bold text-rec">PDF</span>
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[0.9375rem] font-semibold">{file.name}</b>
-                  <span className="block text-[0.8125rem] text-mut">{pages} sayfa · yazdır, imzala, gönder</span>
+                  <span className="block text-[0.8125rem] text-mut">
+                    {[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
+                <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+                  {busy ? "…" : "Yenile"}
+                </button>
               </div>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen Yenile ile yeniden hazırla.</p>
             </>
           )}
         </>
@@ -621,7 +651,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
             onClose={() => setFix(null)}
             onSaved={() => {
               setFix(null);
-              setFile(null);
+              dropFile();
             }}
           />
         )}
