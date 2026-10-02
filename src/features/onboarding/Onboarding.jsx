@@ -6,7 +6,6 @@ import { doc, updateDoc } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useTts } from "@/features/speech/TtsProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { db } from "@/lib/firebase/clientApp";
 import { dismissPrompt } from "@/lib/permissions";
@@ -23,7 +22,7 @@ export const openOnboarding = () => window.dispatchEvent(new Event("sa-onboardin
 export const INTRO_V = 6;
 const SLIDES = [
   { id: "hi", v: 1, icon: "spark", title: "Hoş geldin", text: "Planlarını, görevlerini ve notlarını konuşarak ya da yazarak ekle. Birkaç ayarla her şey daha kolay olur.", action: "Başla" },
-  { id: "voice", v: 5, icon: "mic", title: "Sesli asistanınla tanış", text: "Dinlemek için dokun. Mikrofon izni de isteyeceğim; konuşarak kullanmak için gerekli.", action: "Mikrofona izin ver ve dinle" },
+  { id: "voice", v: 5, icon: "mic", title: "Sesli asistanınla tanış", text: "Konuşarak kullanmak için mikrofon izni gerekli. İstemezsen yazarak da kullanabilirsin.", action: "Mikrofona izin ver" },
   { id: "size", v: 3, icon: "search", title: "Yazı boyutu", text: "Yazılar, simgeler ve düğmeler rahat okunacak büyüklükte olsun. Dokununca hemen görürsün.", action: "Devam" },
   { id: "push", v: 1, icon: "bell", perm: "push", title: "Bildirimler", text: "Uygulama kapalıyken de haberin olsun.", action: "Bildirimlere izin ver" },
   { id: "summary", v: 2, icon: "sun", title: "Günlük özetler", text: "Güne ve yarına hazırlıklı başla. Bildirim olarak gelir, ana ekranda da görünür.", action: "Kaydet ve devam" },
@@ -50,9 +49,6 @@ const CAN = [
   ["sun", "Sorularına cevap veririm", "“Bugün neler var?”, “geciken işler ne?”"],
   ["arrow", "Sayfaları açarım", "“Yoklamayı aç”, “ekip grubunu aç”, “ana sayfaya dön”"],
 ];
-export const WELCOME_SPEECH =
-  "Merhaba, ben sesli asistanın. Planlarını, görevlerini ve notlarını söylemen yeterli, ben hazırlarım. Ekibine ya da bir kişiye mesaj yazarım, sen onaylayınca gönderirim. Bugün neler var, geciken işler neler diye sorabilirsin. Yoklamayı aç ya da ekip grubunu aç dersen sayfayı açarım. Birazdan ana sayfada birlikte deneyeceğiz.";
-
 // Bazı slaytlar yalnızca ana hesapta ya da sporcu yetkisi olanlarda (yarışlar)
 const fits = (x, p) => (!x.owner || p.role === "owner") && (!x.athletes || canSeeAthletes(p.email));
 
@@ -69,8 +65,6 @@ export function Onboarding() {
   const [closed, setClosed] = useState(false);
   const [sum, setSum] = useState(null); // özet seçimi (dokunulana kadar profildeki)
   const [size, setSize] = useState(null);
-  const tts = useTts();
-  const [heard, setHeard] = useState(false); // karşılama bir kez dinlendi
 
   useEffect(() => {
     const on = () => {
@@ -127,19 +121,15 @@ export function Onboarding() {
       finish();
       return router.push(s.href);
     }
-    // Sesli karşılama: önce mikrofon izni, sonra (aynı dokunuşla, iPhone ses kilidi açılsın) okuma
+    // Sesli asistan: mikrofon izni (sesli karşılama yok). Dokunuş iPhone ses kilidini de açar ("Şimdi sen dene" konuşabilsin).
     if (s.id === "voice") {
-      if (heard) return next();
-      setBusy(true);
-      if (perms.microphone !== "granted") {
-        const st = Object.values(await request(["microphone"]))[0];
-        if (st && st !== "granted") setNote("Mikrofon izni verilmedi; yazarak kullanabilirsin. Sonra Ayarlar › İzinler'den açabilirsin.");
-      }
-      setBusy(false);
-      setHeard(true);
       window.dispatchEvent(new Event("sa-tts-prime"));
-      tts.speak(WELCOME_SPEECH);
-      return;
+      if (perms.microphone === "granted") return next();
+      setBusy(true);
+      const st = Object.values(await request(["microphone"]))[0];
+      setBusy(false);
+      if (st && st !== "granted") return setNote("Mikrofon izni verilmedi; yazarak kullanabilirsin. Sonra Ayarlar › İzinler'den açabilirsin.");
+      return next();
     }
     // Yarışlar: ana sayfa düğmesini aç (Ayarlar › Yarışlar ana sayfada ile aynı)
     if (s.id === "races") {
@@ -182,7 +172,7 @@ export function Onboarding() {
 
   const last = i >= list.length - 1;
   const action =
-    s.id === "races" && profile.races === "on" ? "Devam" : s.id === "voice" ? (heard ? "Devam" : perms.microphone === "granted" ? "Dinle" : s.action) : has ? "Devam" : onlyNew && last && !s.perm && !s.href && s.id !== "races" ? "Tamam" : s.action;
+    s.id === "races" && profile.races === "on" ? "Devam" : s.id === "voice" && perms.microphone === "granted" ? "Devam" : has ? "Devam" : onlyNew && last && !s.perm && !s.href && s.id !== "races" ? "Tamam" : s.action;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-bg pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-label={onlyNew ? "Yenilikler" : "Başlangıç"}>
@@ -239,20 +229,6 @@ export function Onboarding() {
                   </span>
                 </li>
               ))}
-              {heard && (
-                <li className="fade-in flex items-center justify-center gap-3 pt-1">
-                  {tts.speaking ? (
-                    <>
-                      <span className="eq" aria-hidden="true"><i /><i /><i /><i /></span>
-                      <button type="button" onClick={() => tts.stop()} className="text-[0.875rem] font-semibold text-acc">Sustur</button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => tts.speak(WELCOME_SPEECH)} className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-acc">
-                      <Icon name="volume" className="size-4" /> Tekrar dinle
-                    </button>
-                  )}
-                </li>
-              )}
             </ul>
           )}
           {s.id === "races" && (
