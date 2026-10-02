@@ -9,6 +9,8 @@ import { byId, isActive, loadAthletes } from "./data";
 import { aliasesOf } from "./names";
 import { rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
+import { tl, totals } from "./budget";
+import { askBudget, mergeBudget } from "./raceBudgetAi";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
 
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
@@ -27,7 +29,7 @@ const knownIn = (t, known) => {
 export const wantsRace = (text, known = raceNames()) => {
   const t = low(text).trim();
   if (!(/yarış|regat/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
-  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu)/.test(t);
+  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);
 };
 
 // onStep(label): panelde görünen adım
@@ -75,6 +77,22 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
     return {
       said: `Kaydettim: ${r.name}, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${p.note ? " Notunu yazdım." : ""}${missed}`,
       id,
+    };
+  }
+
+  // budget: kalemleri ayrı istekle çıkar, bütçeye ekle
+  if (p.op === "budget") {
+    const race = races.find((r) => r.id === p.raceId);
+    onStep("Bütçe hazırlanıyor");
+    const b = await askBudget(race, race.athleteIds.length, text);
+    if (!b.items?.length && b.staff == null && b.nights == null) return { said: b.message || `${race.name} bütçesine eklenecek bir tutar anlayamadım.`, id: race.id, expect: true };
+    const budget = mergeBudget(race, b);
+    onStep("Bütçe kaydediliyor");
+    await saveRace(orgId, uid, { ...race, budget });
+    const t = totals(budget, race.athleteIds.length);
+    return {
+      said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, sporcu başı ${tl(t.perAthlete)}` : ""}.`,
+      id: race.id,
     };
   }
 
