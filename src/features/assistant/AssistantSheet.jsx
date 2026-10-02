@@ -28,11 +28,12 @@ import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
 import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
-import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
+import { LISTS, addItems, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
+import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { PAGES, buildPatch, describeAction, isEnd, isNo, isYes, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
+import { KIND, PAGES, buildPatch, describeAction, isEnd, isNo, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
 import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
@@ -70,12 +71,6 @@ const focusBody = (s) => {
 const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [] };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
-// Alışveriş listesi komutları: "listeye süt ve ekmek ekle", "süt alışveriş listesine ekle", "listede ne var"
-const SHOP_ADD = [
-  /^(?:alışveriş\s+)?(?:listeye|listesine|alınacaklara)\s+(.+?)\s+(?:ekle|yaz|koy)\.?$/i,
-  /^(.+?)\s+(?:alışveriş\s+)?(?:listeye|listesine|alınacaklara)\s+(?:ekle|yaz|koy)\.?$/i,
-];
-const SHOP_READ = /(alışveriş listesi|listede ne var|listede neler|ne alacağız|ne alınacak|markette ne)/i;
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
 const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
@@ -611,13 +606,28 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       openBirthday({ prefill: bday });
       return;
     }
-    // Alışveriş listesi: ekle / oku (yapay zekaya gitmeden)
+    // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir (yapay zekaya gitmeden)
+    const undo = !drafts.length && undoLast(s);
+    if (undo) {
+      const last = lastCreated({ plans, tasks, notes }, profile?.uid, undo.kind);
+      if (!last) return reply(`Silinecek ${undo.kind ? KIND[undo.kind].toLocaleLowerCase("tr-TR") : "kayıt"} bulamadım; senin eklediğin bir kayıt görünmüyor.`, { engine: "local" }, viaVoice);
+      const when = rel(String(last.rec.createdAt).slice(0, 10)).toLocaleLowerCase("tr-TR");
+      return reply(`En son eklediğin ${KIND[last.kind].toLocaleLowerCase("tr-TR")}: “${last.rec.title}” (${when} eklendi). Silmemi onaylıyor musun?`, {
+        show: [{ kind: last.kind, id: last.rec.id }],
+        pending: { actions: [{ op: "delete", kind: last.kind, id: last.rec.id }] },
+        engine: "local",
+        expect: true,
+      }, viaVoice);
+    }
+    // Alışveriş listesi: ekle / aldım / sil / oku (yapay zekaya gitmeden; shopWords.js)
     const shopLists = listsFor(myKind, members);
-    if (shopLists.length) {
-      const m = SHOP_ADD.map((re) => re.exec(s)).find(Boolean);
+    const sc = shopLists.length ? shopCommand(s) : null;
+    if (sc) {
       const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];
-      if (m) return runShopAdd(m[1].replace(/^(alışveriş|ekip|aile)\s+/i, ""), list, viaVoice);
-      if (SHOP_READ.test(s)) return runShopRead(list, viaVoice);
+      if (sc.op === "add") return runShopAdd(sc.what, list, viaVoice);
+      if (sc.op === "read") return runShopRead(list, viaVoice);
+      // "ekmek aldım": listede eşleşen yoksa alışveriş değildir, aşağıya (yapay zekaya) devam eder
+      if (await runShopMark(sc, list, viaVoice)) return;
     }
     // Önceki turda "Ekibe ne yazayım?" diye sorulduysa bu cümle mesajın kendisidir
     if (askTo.current && !QUESTION.test(s)) {
@@ -869,6 +879,35 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(false);
       reply("Listeye ekleyemedim.", { engine: "local" }, viaVoice);
     }
+  }
+  // "ekmek alındı" → işaretle, "listeden sütü sil" → sil. Bir şey yapıldıysa (ya da silme istendiyse) true döner.
+  async function runShopMark({ op, what }, list, viaVoice) {
+    let open;
+    try {
+      const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
+      open = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((x) => op === "remove" || !x.done);
+    } catch {
+      if (op !== "remove") return false;
+      reply("Listeye ulaşamadım.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    const { hits, missed } = matchShop(what, open);
+    if (!hits.length) {
+      if (op !== "remove") return false;
+      reply(`${LISTS[list].name} listesinde ${what} bulamadım.`, { engine: "local", nav: "shopping" }, viaVoice);
+      return true;
+    }
+    try {
+      await Promise.all(hits.map((it) => (op === "remove" ? removeItem(profile.orgId, it) : toggleItem(profile.orgId, it, profile.uid))));
+    } catch {
+      reply("Listeyi güncelleyemedim.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    navigator.vibrate?.(8);
+    const names = hits.map((x) => x.text).join(", ");
+    const left = missed.length ? ` ${missed.join(", ")} listede yok.` : "";
+    reply(`${op === "remove" ? `Listeden çıkardım: ${names}.` : `Alındı olarak işaretledim: ${names}.`}${left}`, { engine: "local", nav: "shopping" }, viaVoice);
+    return true;
   }
   async function runShopRead(list, viaVoice) {
     try {

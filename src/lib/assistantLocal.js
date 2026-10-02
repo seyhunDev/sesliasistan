@@ -93,3 +93,27 @@ export function isEnd(text) {
   if (!t || t.split(" ").length > 5 || END_NOT.test(t)) return false;
   return END_START.test(t) || END_ANY.test(t);
 }
+
+// "Son kaydı geri al", "az önce eklediğim görevi sil", "geri al": en son eklenen kaydı (onayla) silme isteği.
+// Dönüş: { kind: "plan" | "task" | "note" | "" } (boş: tür fark etmez) ya da null
+const UNDO_WHEN = "(?:son|sonuncu|en son|az önce\\S*|demin\\S*|biraz önce\\S*|şimdi)";
+const UNDO_WHAT = "(?:(?:eklediğim|kaydettiğim|eklenen|oluşturduğum|yazdığım)\\s+)?(kayd\\S*|plan\\S*|görev\\S*|not\\S*|şey\\S*|ekle\\S*)";
+const UNDO_DO = "(?:geri al\\S*|sil\\S*|iptal et\\S*|kaldır\\S*)";
+const UNDO = new RegExp(`^(?:${UNDO_WHEN}\\s+${UNDO_WHAT}\\s+${UNDO_DO}|${UNDO_WHAT}\\s+geri al\\S*|geri al|son\\S* işlemi geri al\\S*)$`);
+export function undoLast(text) {
+  const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  const m = UNDO.exec(t);
+  if (!m) return null;
+  const w = m[1] || m[2] || "";
+  return { kind: /^plan/.test(w) ? "plan" : /^görev/.test(w) ? "task" : /^not/.test(w) ? "note" : "" };
+}
+
+// Kişinin en son eklediği kayıt (plan, görev, not): { kind, rec } ya da null
+export function lastCreated({ plans = [], tasks = [], notes = [] }, uid, kind = "") {
+  const all = [
+    ...plans.map((rec) => ({ kind: "plan", rec })),
+    ...tasks.map((rec) => ({ kind: "task", rec })),
+    ...notes.map((rec) => ({ kind: "note", rec })),
+  ].filter((x) => (!kind || x.kind === kind) && x.rec.createdByUid === uid && x.rec.createdAt);
+  return all.sort((a, b) => String(b.rec.createdAt).localeCompare(String(a.rec.createdAt)))[0] || null;
+}
