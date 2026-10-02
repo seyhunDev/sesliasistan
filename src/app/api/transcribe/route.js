@@ -14,16 +14,18 @@ const WHISPER = {
 };
 
 // Kişi adları (çalışanlar): ses tanıma bunları doğru yazsın diye ipucuna eklenir
-const namesHint = (names) => (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "");
+// Özel adlar (yarış adları): aynı yazımla yazılsın
+const namesHint = (names, terms = []) =>
+  (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "") + (terms.length ? ` Yarış adları (bu yazımla): ${terms.join(", ")}.` : "");
 
-async function viaWhisper(name, file, names) {
+async function viaWhisper(name, file, names, terms) {
   const s = WHISPER[name];
   const send = (model) => {
     const fd = new FormData();
     fd.append("file", file, file.name || "kayit.webm");
     fd.append("model", model);
     fd.append("language", "tr");
-    fd.append("prompt", HINT + namesHint(names));
+    fd.append("prompt", HINT + namesHint(names, terms));
     return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(20000) });
   };
   let res = await send(s.model());
@@ -41,12 +43,12 @@ async function viaWhisper(name, file, names) {
 
 // Gemini: ses dosyası doğrudan modele verilir
 const GSCHEMA = { type: "object", properties: { text: { type: "string", description: "Konuşmanın aynen yazıya dökülmüş hali" } }, required: ["text"] };
-async function viaGemini(file, names) {
+async function viaGemini(file, names, terms) {
   const data = Buffer.from(await file.arrayBuffer()).toString("base64");
   const mimeType = (file.type || "audio/webm").split(";")[0];
   const out = await callGemini({
     model: process.env.GEMINI_STT_MODEL || process.env.GEMINI_MODEL,
-    system: `Konuşma dili TÜRKÇE. Ses kaydını Türkçe olarak AYNEN yazıya dök; başka bir dile benzese de Türkçe kelimelerle yaz, İngilizceye ya da başka dile ÇEVİRME. Türkçe karakterleri (ç, ğ, ı, İ, ö, ş, ü) doğru kullan. Yorum yapma, özetleme, cevap verme; yalnızca söyleneni yaz. Konuşma yoksa text boş olsun. Sık geçen kelimeler: ${HINT}${namesHint(names)}`,
+    system: `Konuşma dili TÜRKÇE. Ses kaydını Türkçe olarak AYNEN yazıya dök; başka bir dile benzese de Türkçe kelimelerle yaz, İngilizceye ya da başka dile ÇEVİRME. Türkçe karakterleri (ç, ğ, ı, İ, ö, ş, ü) doğru kullan. Yorum yapma, özetleme, cevap verme; yalnızca söyleneni yaz. Konuşma yoksa text boş olsun. Sık geçen kelimeler: ${HINT}${namesHint(names, terms)}`,
     user: "Bu Türkçe kaydı yazıya dök.",
     schema: GSCHEMA,
     images: [{ mimeType, data }],
@@ -84,6 +86,7 @@ async function handle(request) {
   if (!file || typeof file === "string") return NextResponse.json({ error: "Ses dosyası yok" }, { status: 400 });
   if (file.size > 12 * 1024 * 1024) return NextResponse.json({ error: "Kayıt çok uzun" }, { status: 413 });
   const names = [...new Set(String(form.get("names") || "").split(",").map((n) => n.replace(/[^\p{L} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))].slice(0, 60); // sporcu yoklamasında liste uzun olabilir
+  const terms = [...new Set(String(form.get("terms") || "").split("|").map((n) => n.replace(/[^\p{L}\p{N} .'’&-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 50)).filter(Boolean))].slice(0, 12);
 
   const tried = [];
   let quota = false;
@@ -95,7 +98,7 @@ async function handle(request) {
     }
     try {
       const t0 = Date.now();
-      const text = p === "gemini" ? await viaGemini(file, names) : await viaWhisper(p, file, names);
+      const text = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
       console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
       return NextResponse.json({ text, provider: p });
     } catch (e) {

@@ -24,6 +24,8 @@ import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDi
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
 import { runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
+import { raceNames } from "@/features/athletes/raceNames";
+import { loadRaces } from "@/features/athletes/races";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
@@ -46,7 +48,7 @@ import { fromMessage } from "@/lib/ai/assistant";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
-const ENDPOINT = 1300;
+const ENDPOINT = 2000;
 const BEAT = 350;
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -100,6 +102,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
+  // Yarış adları (zor yazılanlar): ses çevirisine ipucu. Hafıza bir kez kayıtlı yarışlardan doldurulur.
+  const racer = canSeeAthletes(profile?.email);
+  const raceOrg = racer ? profile?.orgId : "";
+  useEffect(() => {
+    if (raceOrg) loadRaces(raceOrg).catch(() => {});
+  }, [raceOrg]);
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -147,6 +155,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   const sp = useSpeech({
     names: staffNames,
+    terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
       const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx));

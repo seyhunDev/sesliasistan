@@ -1,6 +1,7 @@
 // Yarış evrakı: kulübün GSİM'e verdiği 4 belgeyi seçilen sporculara göre PDF olarak üretir.
 // Düzen, kulübün kullandığı örneklerle aynıdır (A4, Times/Arial ölçülü Liberation yazı tipleri).
 // 1) Okul izni yazısı  2) EK-2 Kafile Onayı  3) Seyahat dilekçesi  4) EK-3/D Veli İzin Belgesi (sporcu başına)
+// 5) Kulüp izin yazısı: kulüpten sporcunun okuluna, sporcu başına bir sayfa (antetli düzen, tarihleri ayrı)
 // pdf-lib yalnızca belge hazırlanırken yüklenir (sayfa açılışını ağırlaştırmasın)
 
 export const DOCS = [
@@ -8,7 +9,17 @@ export const DOCS = [
   ["kafile", "EK-2 Kafile Onayı"],
   ["travel", "Seyahat dilekçesi"],
   ["parent", "EK-3/D Veli İzin Belgesi"],
+  ["club", "Kulüp izin yazısı"],
 ];
+
+// Kulübün antet bilgileri (kulüp izin yazısının üst ve alt bilgisi)
+export const CLUB = {
+  name: "DİKİLİ YELKEN SPOR KULÜBÜ",
+  web: "www.dikiliyelken.com",
+  mail: "bilgi@dikiliyelken.com",
+  phone: "(533) 470 78 73",
+  address: "Cumhuriyet Mahallesi, Bankacılar Sitesi, 370 SK. No: 28  Dikili / İZMİR",
+};
 
 export const FONT_FILES = {
   serif: "LiberationSerif-Regular.ttf",
@@ -21,6 +32,9 @@ export const FONT_FILES = {
 const W = 595.28;
 const H = 841.89;
 let INK;
+let NAVY;
+let GRAY;
+let LIGHT;
 const MONTHS = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
 
 export const up = (s) => String(s || "").trim().toLocaleUpperCase("tr-TR");
@@ -41,6 +55,14 @@ export function rangeText(a, b) {
   if (x.getMonth() !== y.getMonth()) return `${dd(x)} ${MONTHS[x.getMonth()]}-${dd(y)} ${MONTHS[y.getMonth()]} ${y.getFullYear()}`;
   if (x.getDate() === y.getDate()) return `${dd(x)} ${MONTHS[x.getMonth()]} ${x.getFullYear()}`;
   return `${dd(x)}-${dd(y)} ${MONTHS[y.getMonth()]} ${y.getFullYear()}`;
+}
+// "07-11 Ekim 2026" (yazı içinde)
+export const rangeTitle = (a, b) => rangeText(a, b).toLocaleLowerCase("tr-TR").replace(/(^|\s|-)(\p{L})/gu, (m, p, c) => p + c.toLocaleUpperCase("tr-TR"));
+// "GID-2026-14" + 2 → "GID-2026-16" (sondaki sayı artar, baştaki sıfırlar korunur)
+export function nextNo(no, n = 1) {
+  const m = String(no || "").match(/^(.*?)(\d+)$/);
+  if (!m) return no || "";
+  return m[1] + String(Number(m[2]) + n).padStart(m[2].length, "0");
 }
 // Bulunma eki: İZMİR → İZMİR’de, ANTALYA → ANTALYA’da, BODRUM → BODRUM’da, MUĞLA → MUĞLA’da
 export function locative(word) {
@@ -67,8 +89,18 @@ export function athleteInfo(a) {
     parentTc: a.parentTc || "",
     parentPhone: a.parentPhone || "",
     relation: up(a.parentRelation),
+    // Kulüp izin yazısı (yazı içinde adın kendi yazımı)
+    plainName: String(a.studentName || "").trim().replace(/\s+/g, " "),
+    schoolNo: String(a.studentNo || "").trim(),
+    letterSchool: up(a.studentSchool || String(a.studentSchoolAndClass || "").replace(CLASS, "")),
+    cls: String(a.studentClass || "").trim() || classOf(a.studentSchoolAndClass),
+    schoolDistrict: up(String(a.studentSchoolPlace || "").split(/[-/,]/)[0]),
   };
 }
+
+// "Gelişim Lisesi 9/B" → "9/B"
+const CLASS = /\s*\b(\d{1,2}\s*[/-]?\s*[A-ZÇĞİÖŞÜ])\b.*$/u;
+const classOf = (s) => String(s || "").match(CLASS)?.[1].replace(/\s+/g, "").replace("-", "/") || "";
 
 // Belgede boş kalacak alanlar (uyarı için)
 export const NEEDS = [
@@ -84,8 +116,11 @@ export const NEEDS = [
   ["parentTc", "veli T.C."],
   ["parentPhone", "veli telefonu"],
   ["parentRelation", "yakınlık"],
+  ["studentNo", "okul no"],
+  ["studentClass", "sınıf"],
 ];
-export const missing = (a) => NEEDS.filter(([k]) => (k === "school" ? !(a.studentSchool || a.studentSchoolAndClass) : !a[k])).map(([, l]) => l);
+export const missing = (a) =>
+  NEEDS.filter(([k]) => (k === "school" ? !(a.studentSchool || a.studentSchoolAndClass) : k === "studentClass" ? !(a.studentClass || classOf(a.studentSchoolAndClass)) : !a[k])).map(([, l]) => l);
 
 // ---- Çizim yardımcıları (y değerleri sayfanın üstünden ölçülür) ----
 function painter(page) {
@@ -417,11 +452,82 @@ function parentForm(pdf, f, r, a) {
   p.text("1", W / 2, 818, f.serif, 11, "center");
 }
 
+// ---- 5) Kulüp izin yazısı (sporcu başına; kulüp antetli) ----
+// c: { no, date, from, to, event, place, signer, title } yarıştan hazırlanır (buildRaceDocs)
+function clubLetter(pdf, f, c, a, no) {
+  const page = pdf.addPage([W, H]);
+  const p = painter(page);
+  const L = 70;
+  const R = W - 70;
+  const navy = NAVY;
+  const tx = (s, x, top, font, size, align, color = navy) => {
+    const w = p.width(s, font, size);
+    const left = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+    page.drawText(s, { x: left, y: H - top, font, size, color });
+    return w;
+  };
+
+  // Antet: yelken işareti + kulüp adı, altında çift çizgi
+  page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
+  tx(CLUB.name, L + 48, 66, f.serifB, 19, "left");
+  tx("Dikili / İZMİR", L + 48, 82, f.serif, 10.5, "left", GRAY);
+  page.drawRectangle({ x: L, y: H - 98, width: R - L, height: 1.6, color: navy });
+  page.drawRectangle({ x: L, y: H - 101.5, width: R - L, height: 0.5, color: navy });
+
+  // Sayı, konu, tarih
+  const kv = (k, v, top) => {
+    p.text(k, L, top, f.serif, 11);
+    p.text(":", L + 40, top, f.serif, 11);
+    p.text(v, L + 48, top, f.serif, 11);
+  };
+  if (no) kv("Sayı", no, 132);
+  kv("Konu", "Öğrenci izni", no ? 148 : 132);
+  p.text(dmy(c.date), R, 132, f.serif, 11, "right");
+
+  // Muhatap
+  p.text(`${a.letterSchool || "……………………………………"} MÜDÜRLÜĞÜNE`, W / 2, 206, f.serifB, 12, "center");
+  if (a.schoolDistrict) p.text(a.schoolDistrict, W / 2, 222, f.serifB, 12, "center");
+
+  // Metin
+  const lead = 21;
+  const cls = a.cls ? `${a.cls} sınıfı ` : "";
+  const num = a.schoolNo ? `${a.schoolNo} numaralı ` : "";
+  let top = p.para(
+    `Okulunuz ${num}${cls}öğrenciniz ${a.plainName}, ${rangeTitle(c.from, c.to)} tarihleri arasında ${c.place}${placeSuffix(c.place)} düzenlenecek olan ${c.event} organizasyonuna kulübümüz sporcusu olarak katılacaktır.`,
+    L, 272, R - L, f.serif, 12, lead, { indent: 36 },
+  );
+  top = p.para("Söz konusu tarihlerde sporcumuzun izinli sayılması hususunda gereğini rica ederiz.", L, top + 8, R - L, f.serif, 12, lead, { indent: 36 });
+  p.text("Saygılarımızla,", L + 36, top + 8, f.serif, 12);
+
+  // İmza
+  const sx = R - 95;
+  const st = Math.max(top + 70, 470);
+  p.text("Dikili Yelken Spor Kulübü", sx, st, f.serif, 12, "center");
+  if (c.title) p.text(c.title, sx, st + 16, f.serif, 12, "center");
+  p.text(c.signer || "", sx, st + 66, f.serifB, 12, "center");
+  page.drawLine({ start: { x: sx - 70, y: H - (st + 52) }, end: { x: sx + 70, y: H - (st + 52) }, thickness: 0.4, color: LIGHT, dashArray: [1.5, 2] });
+
+  // Alt bilgi
+  page.drawRectangle({ x: L, y: H - 770, width: R - L, height: 0.5, color: navy });
+  page.drawRectangle({ x: L, y: H - 773.5, width: R - L, height: 1.6, color: navy });
+  tx(CLUB.name, W / 2, 790, f.sansB, 9, "center");
+  tx(`${CLUB.web}   ·   ${CLUB.mail}   ·   ${CLUB.phone}`, W / 2, 803, f.sans, 8.5, "center", GRAY);
+  tx(CLUB.address, W / 2, 815, f.sans, 8.5, "center", GRAY);
+}
+// "Çeşme-İzmir" → "’de" (son kelimeye göre)
+const placeSuffix = (s) => {
+  const last = String(s || "").trim().split(/[\s-]+/).pop();
+  return last ? locative(last).slice(up(last).length) : "";
+};
+
 // r: yarış bilgisi, athletes: sporcu kartları (sırasıyla), fonts: { ad: Uint8Array }
 // only: üretilecek belgeler (DOCS anahtarları)
 export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) => k)) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   INK = rgb(0, 0, 0);
+  NAVY = rgb(0.06, 0.2, 0.38);
+  GRAY = rgb(0.32, 0.36, 0.42);
+  LIGHT = rgb(0.6, 0.63, 0.68);
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   pdf.setTitle(`${r.name} evrakı`);
@@ -435,7 +541,26 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   if (only.includes("kafile")) kafile(pdf, f, race, list);
   if (only.includes("travel")) travel(pdf, f, race, list);
   if (only.includes("parent")) list.forEach((a) => parentForm(pdf, f, race, a));
+  if (only.includes("club")) {
+    const c = clubInfo(r);
+    list.forEach((a, i) => clubLetter(pdf, f, c, a, c.no ? nextNo(c.no, i) : ""));
+  }
   return pdf.save();
+}
+
+// Kulüp izin yazısının bilgileri: boş bırakılanlar yarıştan gelir
+export function clubInfo(r) {
+  const place = [r.district, r.city].map((x) => String(x || "").trim()).filter(Boolean).join("-");
+  return {
+    no: String(r.clubNo || "").trim(),
+    date: r.clubDate || r.letterDate,
+    from: r.clubFrom || r.startDate,
+    to: r.clubTo || r.clubFrom || r.endDate || r.startDate,
+    event: String(r.clubEvent || "").trim() || String(r.name || "").trim(),
+    place: String(r.clubPlace || "").trim() || place,
+    signer: String(r.clubSigner || "").trim(),
+    title: String(r.clubTitle || "").trim(),
+  };
 }
 
 // Tarayıcıda yazı tiplerini getirir (bir kez)

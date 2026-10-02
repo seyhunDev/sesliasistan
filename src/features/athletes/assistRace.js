@@ -8,15 +8,26 @@ import { todayStr } from "@/lib/utils/format";
 import { byId, isActive, loadAthletes } from "./data";
 import { aliasesOf } from "./names";
 import { rangeText } from "./raceDocs";
+import { raceNames } from "./raceNames";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
 
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 
-// Yarış kaydı isteği mi? (soru değil; "yarış" + ekleme/katılma/not fiili)
-export const wantsRace = (text) => {
+// Yarış kaydı isteği mi? (soru değil; "yarış" + ekleme/katılma/not fiili ya da katılımcı listesi)
+// Bilinen yarış adı da yeter: "D'Azur katılımcıları Ali ve Ayşe" (adın ilk anlamlı kelimesi, harf dışı atılarak)
+const bare = (s) => low(s).replace(/[^\p{L}\p{N}]+/gu, "");
+const COMMON = new Set(["optimist", "laser", "ilca", "yelken", "regatta", "regata", "kupa", "kupası", "trofesi", "open", "cup", "trophy", "türkiye", "şampiyonası", "yarışı"]);
+const knownIn = (t, known) => {
+  const flat = bare(t);
+  return known.some((n) => {
+    const w = low(n).split(/\s+/).map(bare).find((x) => x.length >= 4 && !COMMON.has(x));
+    return w && flat.includes(w);
+  });
+};
+export const wantsRace = (text, known = raceNames()) => {
   const t = low(text).trim();
-  if (!/yarış|regat/.test(t) || /\?$/.test(t)) return false;
-  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|gid\S*cek|gidiyor|not al|not ekle|not düş|notu)/.test(t);
+  if (!(/yarış|regat/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
+  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu)/.test(t);
 };
 
 // onStep(label): panelde görünen adım
@@ -34,6 +45,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
       today: todayStr(),
       athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
       races: races.map((r) => ({ id: r.id, name: r.name, startDate: r.startDate })),
+      known: raceNames(),
       notes: idx?.notes || [],
     }),
   });
