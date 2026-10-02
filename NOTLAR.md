@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Altı yeni özellik (telefonda denenmedi): (1) doğum günü, (2) rüzgâr uyarısı, (3) pazartesi haftalık özet bildirimleri Ayarlar › Günlük özetler'den açılır (`users.birthdayAt / windAt / weeklyAt`, saat; `windKn` eşik, varsayılan 20 kn; mantık `src/lib/notifyExtra.js`, gönderim `plan-reminders.mjs` `sendExtras`). Rüzgâr: bugünkü Antrenman/Yarış planının saatinde (1 saat önce–3 saat sonra; saatsizse 08–19) rüzgâr eşiği ya da sağanak eşik+10 geçerse; konum `users.weatherPlace`, yoksa Dikili. (4) Alışveriş sesle: "listeye süt ekle", "ekmek alındı", "listeden sütü sil" (`shopWords.js`; "aldım" yalnız listede eşleşen varsa, yoksa yapay zekaya gider). (5) "Son kaydı geri al" / "az önce eklediğim görevi sil": kişinin en son eklediği kayıt onayla silinir (`undoLast`, `lastCreated`, assistantLocal.js). (6) Yoklama › grafik düğmesi: aylık rapor, devam % (izinli sayılmaz), Excel'e aktar (`attendanceReport.js`, `/athletes/attendance/report`).
 - Ana sayfada Yarışlar düğmesi (sayfa düğmelerinin başında, yaklaşan yarış sayısıyla): yalnız sporcu yetkisi olanlarda ve yalnız Ayarlar › "Yarışlar ana sayfada" açılınca (`users/{uid}.races` "on"/"off"; `raceHome.js`, `RacesRow`). Kendiliğinden görünmez, ana sayfada kart yok (Seyhun'un seçimi). Tanıtım slaytlarına "Yarışlar" eklendi (v6, `INTRO_V` 6, yalnız sporcu yetkisi olanlara): ne yapılabildiğini anlatır, "Ana sayfaya ekle" düğmeyi açar; eski kullanıcılara bir kez "YENİ" olarak çıkar. Slaytı görmeyecek kişilerde `introV` sessizce 6 olur. Telefonda denenmedi.
 - Yarış puanlamasında tekne sınıfı (Optimist, ILCA, Laser) ve ayak numarası sayılır; ses tanıma bozukları eşlenir ("optimus" → optimist, "ilka" → ilca; `ALIAS`, raceNav.js). "Yarış aranıyor" adımı arama bitince kaybolur (hata işareti çıkmaz).
 - Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
@@ -26,6 +27,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Yeni bildirimleri (doğum günü, rüzgâr, haftalık) Ayarlar › Günlük özetler'den aç, ertesi sabah geldiğini kontrol et; alışveriş ve "son kaydı geri al" komutlarını sesle, yoklama raporunu ve Excel dosyasını telefonda dene.
 0. Tanıtımdaki Yarışlar slaytını (Ayarlar › Tanıtımı yeniden göster) ve Ayarlar › "Yarışlar ana sayfada"yı açıp ana sayfadaki Yarışlar düğmesini telefonda dene.
 0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.

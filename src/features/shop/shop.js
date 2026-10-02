@@ -34,15 +34,7 @@ export function useShop(orgId, list) {
   return items;
 }
 
-// "süt, ekmek ve 2 kg domates" → ["Süt", "Ekmek", "2 kg domates"]
-export function splitItems(text) {
-  return String(text || "")
-    .split(/\s*(?:,|;|\n|\s+ve\s+|\s+ile\s+)\s*/i)
-    .map((s) => s.replace(/^(bir de|bi de|ayrıca)\s+/i, "").trim().replace(/[.!]+$/, ""))
-    .filter((s) => s.length > 0 && s.length <= 80)
-    .map((s) => s[0].toLocaleUpperCase("tr-TR") + s.slice(1))
-    .slice(0, 30);
-}
+export { splitItems } from "./shopWords";
 
 export async function addItems(orgId, list, uid, texts) {
   const at = new Date().toISOString();

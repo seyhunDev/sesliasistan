@@ -7,6 +7,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { dueReminders, localNow, reminderText, remindKey } from "../../src/lib/reminders.js";
 import { due, eveningText, morningText } from "../../src/lib/summary.js";
+import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
 import { mailDigestText } from "../../src/lib/bankSheet.js";
 import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
@@ -67,8 +68,9 @@ async function sendDueReminders() {
   }
   const summaries = await sendSummaries(db).catch((e) => (console.error("[summary]", e.message), 0));
   const mails = await sendMailDigests(db).catch((e) => (console.error("[mail]", e.message), 0));
-  console.log(`[reminders] ${users.size} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail`);
-  return new Response(`ok ${sent} ${summaries} ${mails}`);
+  const extras = await sendExtras(db).catch((e) => (console.error("[extras]", e.message), 0));
+  console.log(`[reminders] ${users.size} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek`);
+  return new Response(`ok ${sent} ${summaries} ${mails} ${extras}`);
 }
 
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
@@ -114,6 +116,78 @@ async function sendSummaries(db) {
     if (evening) {
       await send(eveningText(data), `evening-${today}`);
       await u.ref.update({ eveningSent: today });
+    }
+  }
+  return n;
+}
+
+// Ek bildirimler (Ayarlar › Günlük özetler): doğum günü, rüzgâr uyarısı, pazartesi haftalık özet; her biri günde bir kez
+const DIKILI = { lat: 39.0717, lon: 26.8886 };
+async function sendExtras(db) {
+  const snaps = await Promise.all(["birthdayAt", "windAt", "weeklyAt"].map((k) => db.collection("users").where(k, ">", "").get()));
+  const users = new Map(snaps.flatMap((s) => s.docs).map((d) => [d.id, d]));
+  const winds = new Map(); // konum -> bugünün saatleri (her çalışmada bir kez indirilir)
+  let n = 0;
+  for (const u of users.values()) {
+    const d = u.data();
+    const subs = Object.entries(d.push || {});
+    if (!subs.length) continue;
+    const tz = d.reminders?.tz || "Europe/Istanbul";
+    const today = localNow(tz).date;
+    const nowHM = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+    const bday = due(d.birthdayAt, d.birthdaySent, today, nowHM);
+    const wind = due(d.windAt, d.windSent, today, nowHM);
+    const weekly = isMonday(today) && due(d.weeklyAt, d.weeklySent, today, nowHM);
+    if (!bday && !wind && !weekly) continue;
+    const orgId = d.orgId || u.id;
+    const org = db.collection("orgs").doc(orgId);
+    const staff = d.role === "staff";
+    const mine = (x) => !staff || (x.people || []).includes(u.id);
+    const send = async (msg, tag, url = "/") => {
+      const payload = JSON.stringify({ ...msg, tag, url });
+      await Promise.all(
+        subs.map(async ([key, sub]) => {
+          try {
+            await webpush.sendNotification(sub, payload, { TTL: 3 * 3600 });
+            n++;
+          } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+          }
+        }),
+      );
+    };
+    if (bday) {
+      // Doğum günleri kişiye özel: yalnız kişinin kendi eklediği kayıtlar
+      const s = await org.collection("birthdays").where("createdByUid", "==", u.id).get();
+      const msg = birthdayText(s.docs.map((x) => x.data()), today);
+      if (msg) await send(msg, `birthday-${today}`, "/birthdays");
+      await u.ref.update({ birthdaySent: today });
+    }
+    if (wind || weekly) {
+      const [p, t] = await Promise.all([
+        org.collection("plans").where("date", ">=", addDays(today, -14)).get(),
+        weekly ? org.collection("tasks").where("done", "==", false).get() : null,
+      ]);
+      const plans = p.docs.map((x) => x.data()).filter(mine);
+      if (wind) {
+        const place = d.weatherPlace && Number.isFinite(+d.weatherPlace.lat) ? d.weatherPlace : DIKILI;
+        const key = `${(+place.lat).toFixed(2)},${(+place.lon).toFixed(2)}`;
+        if (!winds.has(key)) {
+          const res = await fetch(windUrl(place), { signal: AbortSignal.timeout(10000) }).catch(() => null);
+          winds.set(key, res?.ok ? windRows(await res.json(), today) : null);
+        }
+        const rows = winds.get(key);
+        if (rows) {
+          const msg = windAlert({ rows, plans, today, kn: Number(d.windKn) || WIND_KN });
+          if (msg) await send(msg, `wind-${today}`, "/");
+          await u.ref.update({ windSent: today });
+        }
+      }
+      if (weekly) {
+        const tasks = t.docs.map((x) => x.data()).filter(mine);
+        await send(weeklyText({ plans, tasks, today, uid: u.id, name: d.name }), `weekly-${today}`, "/calendar");
+        await u.ref.update({ weeklySent: today });
+      }
     }
   }
   return n;

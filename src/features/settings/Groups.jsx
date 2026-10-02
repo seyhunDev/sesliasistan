@@ -13,6 +13,7 @@ import { authFetch } from "@/lib/authFetch";
 import { PERM_LABEL, PERM_NAMES, appAllowed, permissionHelp, setAppAllowed } from "@/lib/permissions";
 import { disableReminders, enableReminders, loadReminders, needsInstall, pushConfigured, pushSupported, setLead, testPush } from "@/lib/push";
 import { LEADS } from "@/lib/reminders";
+import { WIND_KN, WIND_KNS } from "@/lib/notifyExtra";
 import { SIZES, applySize } from "@/lib/textSize";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
 import { Badge, Chips, Row, Switch } from "./ui";
@@ -227,7 +228,15 @@ function SummaryItem({ icon, tint, title, desc, at, times, onAt, children }) {
 export function SummaryRow() {
   const { profile } = useAuth();
   const toast = useToast();
-  const [sum, setSum] = useState({ summaryAt: profile?.summaryAt || "", summaryTomorrow: !!profile?.summaryTomorrow, eveningAt: profile?.eveningAt || "" });
+  const [sum, setSum] = useState({
+    summaryAt: profile?.summaryAt || "",
+    summaryTomorrow: !!profile?.summaryTomorrow,
+    eveningAt: profile?.eveningAt || "",
+    weeklyAt: profile?.weeklyAt || "",
+    birthdayAt: profile?.birthdayAt || "",
+    windAt: profile?.windAt || "",
+    windKn: profile?.windKn || WIND_KN,
+  });
   const put = (patch) => {
     const prev = sum;
     setSum((x) => ({ ...x, ...patch }));
@@ -236,7 +245,10 @@ export function SummaryRow() {
       toast("Kaydedilemedi, tekrar dene");
     });
   };
-  const status = [sum.summaryAt && `Sabah ${sum.summaryAt}`, sum.eveningAt && `Akşam ${sum.eveningAt}`].filter(Boolean).join(" · ") || "Kapalı";
+  const status =
+    [sum.summaryAt && `Sabah ${sum.summaryAt}`, sum.eveningAt && `Akşam ${sum.eveningAt}`, sum.weeklyAt && "Haftalık", sum.birthdayAt && "Doğum günü", sum.windAt && "Rüzgâr"]
+      .filter(Boolean)
+      .join(" · ") || "Kapalı";
   return (
     <Fold icon="sun" tone="amber" title="Günlük özetler" sub={status}>
       <div className="mx-4 mb-3.5 divide-y divide-line rounded-xl ring-1 ring-line">
@@ -260,8 +272,43 @@ export function SummaryRow() {
           times={{ list: EVENING, default: "20:00" }}
           onAt={(v) => put({ eveningAt: v })}
         />
+        <SummaryItem
+          icon="cal"
+          tint="bg-sky-500/15 text-sky-600"
+          title="Haftalık özet"
+          desc="Pazartesi: haftanın planları ve görevleri"
+          at={sum.weeklyAt}
+          times={{ list: MORNING, default: "08:00" }}
+          onAt={(v) => put({ weeklyAt: v })}
+        />
+        <SummaryItem
+          icon="cake"
+          tint="bg-rose-500/15 text-rose-600"
+          title="Doğum günleri"
+          desc="O gün doğum günü olanlar"
+          at={sum.birthdayAt}
+          times={{ list: MORNING, default: "08:30" }}
+          onAt={(v) => put({ birthdayAt: v })}
+        />
+        <SummaryItem
+          icon="wind"
+          tint="bg-teal-500/15 text-teal-600"
+          title="Rüzgâr uyarısı"
+          desc="Antrenman ya da yarış saatinde eşik aşılırsa"
+          at={sum.windAt}
+          times={{ list: MORNING, default: "07:30" }}
+          onAt={(v) => put({ windAt: v })}
+        >
+          <select value={sum.windKn} onChange={(e) => put({ windKn: Number(e.target.value) })} aria-label="Rüzgâr eşiği" className="h-9 shrink-0 rounded-lg bg-bg px-2.5 text-[0.9375rem] font-semibold tabular-nums">
+            {WIND_KNS.map((k) => (
+              <option key={k} value={k}>
+                {k} kn
+              </option>
+            ))}
+          </select>
+        </SummaryItem>
       </div>
-      <p className="-mt-1.5 px-4 pb-3.5 text-[0.75rem] leading-snug text-mut">Seçtiğin saatte bildirim olarak gelir, ana ekranda kart olarak görünür.</p>
+      <p className="-mt-1.5 px-4 pb-3.5 text-[0.75rem] leading-snug text-mut">Seçtiğin saatte bildirim olarak gelir; sabah ve akşam özeti ana ekranda kart olarak da görünür.</p>
     </Fold>
   );
 }
