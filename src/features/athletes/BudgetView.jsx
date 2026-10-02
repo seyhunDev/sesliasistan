@@ -59,6 +59,9 @@ export function BudgetView({ r, athletes, onChange }) {
       else {
         onChange(mergeBudget({ ...r, budget: b }, p));
         toast(p.message || `${p.items.length} kalem eklendi`);
+        // Tutarı boş ya da tahmini gelen tek kalem: kontrol için hemen açılır
+        const check = p.items.filter((x) => !x.amount || x.est);
+        if (check.length === 1) setEdit(check[0]);
         setAi(false);
         setAiText("");
       }
@@ -117,6 +120,11 @@ export function BudgetView({ r, athletes, onChange }) {
                 <b className="block truncate text-[0.9375rem] font-semibold">
                   {l.title}
                   {l.club && <span className="ml-1.5 rounded-md bg-ok/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ok">kulüp</span>}
+                  {!l.amount ? (
+                    <span className="ml-1.5 rounded-md bg-rec/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-rec">tutar gir</span>
+                  ) : (
+                    l.est && <span className="ml-1.5 rounded-md bg-acc/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-acc">tahmini</span>
+                  )}
                 </b>
                 <span className="block truncate text-[0.8125rem] text-mut">{howText(l, t)}</span>
               </span>
@@ -202,7 +210,7 @@ export function BudgetView({ r, athletes, onChange }) {
 }
 
 function ItemForm({ item, nights, onSave, onRemove }) {
-  const [x, setX] = useState({ ...item, id: item.id || newId(), amount: item.amount === "" ? "" : String(item.amount).replace(".", ",") });
+  const [x, setX] = useState({ ...item, id: item.id || newId(), amount: item.amount === "" || item.amount === 0 ? "" : String(item.amount).replace(".", ",") });
   const put = (k) => (v) => setX((p) => ({ ...p, [k]: v }));
   const amount = Number(String(x.amount).replace(/\./g, "").replace(",", ".")) || 0;
   const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none placeholder:text-mut/70";
@@ -244,7 +252,7 @@ function ItemForm({ item, nights, onSave, onRemove }) {
             Sil
           </button>
         )}
-        <button type="button" disabled={!amount} onClick={() => onSave({ ...x, amount })} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+        <button type="button" disabled={!amount} onClick={() => onSave({ ...x, amount, est: false })} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
           Kaydet
         </button>
       </div>

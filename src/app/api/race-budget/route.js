@@ -11,7 +11,8 @@ export const runtime = "nodejs";
 // Kaydetmez; telefon kalemleri bütçeye ekler. Sporcu adı gitmez, yalnız sayılar.
 const SYSTEM = `Sen bir yelken kulübünde antrenörün bütçe asistanısın. Antrenör bir yarış için masrafları Türkçe anlatır (ses tanıma metni olabilir, yazım hataları olabilir).
 Sana yarış bilgisi, sporcu sayısı, antrenör/refakatçi sayısı, gece sayısı, varsa yarış talimatındaki ücretler/oteller ve bütçedeki mevcut kalemler verilir.
-Anlatılanlardan bütçe kalemleri çıkar. Yalnızca antrenörün söylediği ya da açıkça istediği kalemleri yaz; tutarı söylenmemiş kalemi talimattan al, orada da yoksa yazma.
+Anlatılanlardan bütçe kalemleri çıkar. Yalnızca antrenörün söylediği ya da açıkça istediği kalemleri yaz; antrenörün eklemek istediği kalemi tutarı olmasa da mutlaka yaz.
+Tutarı söylenmemiş kalemin tutarını talimattan al. Orada da yoksa Türkiye'deki güncel fiyatlara göre makul bir tahmin yaz ve est: true yap (ör. "Dikili'den Foça'ya teknelerin ulaşımı" → Tekne/Ekipman, shared, römorklu araç yakıt + şoför tahmini). Tahmin edemiyorsan amount 0 yaz; antrenör tutarı sonra girer.
 Antrenör "talimattaki ücretleri ekle" derse talimattaki ücret ve otelleri kalem yap.
 
 Her kalem:
@@ -21,8 +22,9 @@ Her kalem:
 - unit: athlete (her sporcu için: kayıt ücreti, lisans), person (antrenör dahil herkes için: otel, yemek), shared (toplam tutar, ortak: minibüs, yakıt, tekne taşıma). "Kişi başı" denirse person; "sporcu başı" denirse athlete; toplam bir tutar söylenirse shared.
 - qty: adet ya da gece; otel gecelik söylendiyse gece sayısı (söylenmediyse verilen gece sayısı). Diğerlerinde 1.
 - club: kulüp karşılayacaksa true ("kulüp ödüyor", "kulüpten").
+- est: tutarı sen tahmin ettiysen true; antrenör söylediyse ya da talimattan aldıysan false.
 Antrenör antrenör/refakatçi sayısını ya da gece sayısını söylerse staff / nights alanına yaz, yoksa -1.
-message: 1 kısa Türkçe cümle; ne eklediğini söyle.`;
+message: 1 kısa Türkçe cümle; ne eklediğini söyle, tahmini ya da boş tutar varsa kontrol etmesini/girmesini iste.`;
 
 const SCHEMA = {
   type: "object",
@@ -31,7 +33,7 @@ const SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared"] }, qty: { type: "number" }, club: { type: "boolean" } },
+        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared"] }, qty: { type: "number" }, club: { type: "boolean" }, est: { type: "boolean" } },
         required: ["cat", "title", "amount", "unit"],
       },
     },
@@ -68,7 +70,7 @@ async function handle(request) {
     `Sporcu: ${N(body?.athletes, 300)}, antrenör/refakatçi: ${N(body?.staff, 50)}, gece: ${N(body?.nights, 60)}`,
     fees.length ? `Talimattaki ücretler:\n${fees.join("\n")}` : "",
     hotels.length ? `Talimattaki oteller:\n${hotels.join("\n")}` : "",
-    items.length ? `Bütçedeki kalemler (tekrar ekleme):\n${items.join("\n")}` : "",
+    items.length ? `Bütçede zaten olan kalemler (bunları yeniden yazma, yalnız yeni istenenleri yaz):\n${items.join("\n")}` : "",
     `Antrenörün söylediği:\n"""\n${text}\n"""`,
   ].filter(Boolean).join("\n\n");
 
@@ -76,7 +78,7 @@ async function handle(request) {
     const t0 = Date.now();
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 3000, timeoutMs: 25000 });
     const out = {
-      items: (Array.isArray(raw?.items) ? raw.items : []).map(cleanItem).filter((x) => x.amount > 0).slice(0, 30),
+      items: (Array.isArray(raw?.items) ? raw.items : []).filter((x) => S(x?.title, 80)).map(cleanItem).slice(0, 30),
       staff: Number(raw?.staff) >= 0 ? N(raw.staff, 50) : null,
       nights: Number(raw?.nights) >= 0 ? N(raw.nights, 60) : null,
       message: S(raw?.message, 300),

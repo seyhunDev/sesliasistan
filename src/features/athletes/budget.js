@@ -1,11 +1,12 @@
 // Yarış bütçesi: kalemler, kişi sayıları ve hesap. Yarış kaydının "budget" alanında durur (kişisel bilgi yok).
 // Hem telefon hem sunucu (yapay zeka cevabını temizlemek için) kullanır; "use client" yok.
 //
-// budget = { staff, nights, items: [{ id, cat, title, amount, unit, qty, club }], paid: { <sporcu id>: true } }
+// budget = { staff, nights, items: [{ id, cat, title, amount, unit, qty, club, est? }], paid: { <sporcu id>: true } }
 //   unit "athlete": sporcu başına (kayıt ücreti) → tutar × adet × sporcu
 //   unit "person":  kişi başına, antrenör/refakatçi dahil (otel, yemek) → tutar × adet × (sporcu + antrenör)
 //   unit "shared":  ortak (minibüs, tekne taşıma) → tutar × adet; sporculara bölünür
 //   qty: adet ya da gece (otelde gece sayısı); club: kulüp karşılar (sporcu payına girmez)
+//   est: tutar yapay zekanın tahmini (kullanıcı kalemi kaydedince kalkar); amount 0 = tutar henüz girilmedi
 // Sporcu payı: sporcu başı kalemler + kişi başı kalemlerin tamamı (antrenör payı sporculara bölünür) + ortaklar / sporcu.
 
 export const CATS = ["Kayıt", "Konaklama", "Ulaşım", "Yemek", "Tekne/Ekipman", "Diğer"];
@@ -34,6 +35,7 @@ export function cleanItem(x) {
     unit: UNIT_KEYS.includes(x?.unit) ? x.unit : "athlete",
     qty: Math.max(1, int(x?.qty ?? 1, 365)),
     club: !!x?.club,
+    ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
   };
 }
 

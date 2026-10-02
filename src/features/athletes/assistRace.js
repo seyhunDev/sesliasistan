@@ -97,8 +97,11 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     await saveRace(orgId, uid, { ...race, budget });
     told({ ...race, budget });
     const t = totals(budget, race.athleteIds.length);
+    const open = b.items.filter((x) => !x.amount).map((x) => x.title);
+    const est = b.items.filter((x) => x.amount && x.est).map((x) => `${x.title} ${tl(x.amount)}`);
+    const note = (open.length ? ` ${open.join(", ")} için tutar söylemedin; Bütçe sekmesinden girebilirsin.` : "") + (est.length ? ` Tahmini tutar yazdım: ${est.join(", ")}; kontrol et.` : "");
     return {
-      said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, sporcu başı ${tl(t.perAthlete)}` : ""}.`,
+      said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, sporcu başı ${tl(t.perAthlete)}` : ""}.${note}`,
       id: race.id,
     };
   }
