@@ -14,13 +14,35 @@ import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
-import { dropRaceFile, getRaceFile, saveRaceFile } from "./raceFiles";
+import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+const partName = (all, title) => `${all.replace(/-evrak\.pdf$/, "")}-${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.pdf`;
+const asFile = (x) => new File([x.blob], x.name, { type: x.type });
+// Paylaş (telefonda paylaşım menüsü; olmazsa indir) ve aç (yeni sekme ya da indir)
+function openFile(f, download) {
+  const url = URL.createObjectURL(f);
+  const link = document.createElement("a");
+  link.href = url;
+  if (download) link.download = f.name;
+  else link.target = "_blank";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+async function shareFile(f) {
+  if (navigator.canShare?.({ files: [f] })) {
+    try {
+      await navigator.share({ files: [f], title: f.name });
+    } catch {}
+    return;
+  }
+  openFile(f, true);
+}
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 
@@ -32,6 +54,29 @@ const DOC_INFO = {
   parent: ["users", "Her sporcu için bir sayfa, veli imzalar"],
   club: ["note", "Kulüpten okula, her sporcuya ayrı; tarihleri ayrı"],
 };
+
+// Dosya satırı: tür etiketi, ad, alt bilgi; aç, paylaş, (varsa) sil
+function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
+  return (
+    <li className="flex items-center gap-1 pl-4 pr-1.5">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">{tag}</span>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
+          <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
+        </span>
+      </button>
+      <button type="button" onClick={onShare} aria-label={`${title} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+        <Icon name="up" className="size-5" />
+      </button>
+      {onRemove && (
+        <button type="button" onClick={onRemove} aria-label={`${title} sil`} className="grid size-10 shrink-0 place-items-center text-mut">
+          <Icon name="x" className="size-4" />
+        </button>
+      )}
+    </li>
+  );
+}
 
 // Etiketli satır (gruplu kart içinde)
 function Row({ label, children, className = "" }) {
@@ -67,6 +112,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const [file, setFile] = useState(null); // hazırlanan PDF
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
   const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
+  const [parts, setParts] = useState([]); // her belge ayrı PDF: [{ key, title, file, pages }]
+  const [extras, setExtras] = useState([]); // elle eklenen evrak: [{ id, name, type, blob, at }]
   // Hazır PDF bu cihazda saklıdır; sayfaya dönünce yeniden hazırlamak gerekmez
   useEffect(() => {
     let live = true;
@@ -76,7 +123,9 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       if (Array.isArray(f.docs) && f.docs.length) setDocs(f.docs);
       setMailText(f.mailText || "");
       setMade({ at: f.at, pages: f.pages });
+      setParts((f.parts || []).map((x) => ({ ...x, file: new File([x.blob], partName(f.name, x.title), { type: "application/pdf" }) })));
     });
+    getExtras(start.id).then((l) => live && setExtras(l));
     return () => void (live = false);
   }, [start.id]);
   const [known] = useState(raceNames); // daha önce yazılmış yarış adları (öneri)
@@ -85,6 +134,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const dropFile = () => {
     setFile(null);
     setMade(null);
+    setParts([]);
     dropRaceFile(id.current);
   };
   const set = (k) => (v) => {
@@ -165,12 +215,20 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         "",
         "Sesli Asistan ile hazırlandı.",
       ].join("\n");
+      // Her belge ayrıca tek başına (listede ayrı açılır, paylaşılır)
+      const fonts = await loadFonts();
+      const each = [];
+      for (const [k, title] of DOCS.filter(([k]) => docs.includes(k))) {
+        const b = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, fonts, [k]);
+        each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : 1 });
+      }
       const at = new Date().toISOString();
       setFile(new File([bytes], name, { type: "application/pdf" }));
       setMailText(text);
       setMade({ at, pages });
+      setParts(each.map((x) => ({ ...x, file: new File([x.blob], partName(name, x.title), { type: "application/pdf" }) })));
       await queue.current.catch(() => {});
-      if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text });
+      if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
       setTab("docs");
       if (docs.length === DOCS.length && !r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
@@ -192,24 +250,26 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     }
     setMailing(false);
   };
-  const share = async () => {
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: file.name });
-      } catch {}
-      return;
-    }
-    openPdf(true);
+  const share = (f = file) => shareFile(f);
+  const openPdf = (download, f = file) => openFile(f, download);
+  // Elle evrak ekleme (PDF, fotoğraf…): bu cihazda yarışa bağlı saklanır
+  const pickExtra = useRef(null);
+  const addExtras = async (list) => {
+    await queue.current.catch(() => {});
+    if (!id.current) return toast("Önce yarış adını yaz");
+    const add = [...list].filter((f) => f.size <= 25 * 1024 * 1024).map((f) => ({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: f.name || "evrak", type: f.type || "application/octet-stream", blob: f, at: new Date().toISOString() }));
+    if (add.length < list.length) toast("25 MB'tan büyük dosya eklenmedi");
+    if (!add.length) return;
+    const next = [...extras, ...add];
+    setExtras(next);
+    await saveExtras(id.current, next);
+    toast(add.length > 1 ? `${add.length} evrak eklendi` : "Evrak eklendi");
   };
-  // Yeni sekmede aç (yazdırmak için) ya da indir
-  const openPdf = (download) => {
-    const url = URL.createObjectURL(file);
-    const link = document.createElement("a");
-    link.href = url;
-    if (download) link.download = file.name;
-    else link.target = "_blank";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const removeExtra = async (x) => {
+    if (!confirm(`"${x.name}" silinsin mi?`)) return;
+    const next = extras.filter((e) => e.id !== x.id);
+    setExtras(next);
+    await saveExtras(id.current, next);
   };
   const toPlan = async () => {
     if (!r.name.trim() || !r.startDate) return toast("Önce yarış adı ve başlangıç tarihi");
@@ -248,6 +308,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     dirty.current = false;
     await queue.current.catch(() => {});
     dropRaceFile(id.current);
+    dropExtras(id.current);
     await onDelete(id.current);
   };
 
@@ -511,7 +572,61 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
 
       {tab === "docs" && (
         <>
-          <Label right={`${docs.length}/${DOCS.length} seçili`}>BELGELER</Label>
+          {file && (
+            <>
+              <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIRLANAN EVRAK</Label>
+              <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf(false)} onShare={() => share()} />
+                {parts.map((x) => (
+                  <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(false, x.file)} onShare={() => share(x.file)} />
+                ))}
+              </ul>
+              <div className="mt-2 flex items-start gap-3 px-1">
+                <p className="flex-1 text-[0.75rem] text-mut">Bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen yeniden hazırla.</p>
+                <button type="button" onClick={make} disabled={busy} className="h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+                  {busy ? "Hazırlanıyor…" : "Yenile"}
+                </button>
+              </div>
+            </>
+          )}
+
+          <Label right={extras.length ? `${extras.length}` : ""}>EKLENEN EVRAK</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {extras.map((x) => (
+              <FileRow
+                key={x.id}
+                tag={/pdf/.test(x.type) ? "PDF" : /image/.test(x.type) ? "FOTO" : "DOSYA"}
+                title={x.name}
+                sub={`${sizeText(x.blob.size)} · ${madeText(x.at)}`}
+                onOpen={() => openFile(asFile(x), false)}
+                onShare={() => shareFile(asFile(x))}
+                onRemove={() => removeExtra(x)}
+              />
+            ))}
+            <li>
+              <button type="button" onClick={() => pickExtra.current?.click()} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                  <Icon name="plus" className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[0.9375rem] font-semibold text-acc">Evrak ekle</b>
+                  <span className="block text-[0.8125rem] text-mut">Kayıt formu, sağlık raporu, dekont… (PDF ya da fotoğraf)</span>
+                </span>
+              </button>
+              <input
+                ref={pickExtra}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  addExtras([...(e.target.files || [])]);
+                  e.target.value = "";
+                }}
+              />
+            </li>
+          </ul>
+
+          <Label right={`${docs.length}/${DOCS.length} seçili`}>{file ? "BELGELERİ DEĞİŞTİR" : "BELGELER"}</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {DOCS.map(([k, label]) => {
               const on = docs.includes(k);
@@ -590,24 +705,6 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
             ))}
           </ul>
 
-          {file && (
-            <>
-              <Label>HAZIR</Label>
-              <div className={`${card} flex items-center gap-3 px-4 py-3`}>
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.6875rem] font-bold text-rec">PDF</span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{file.name}</b>
-                  <span className="block text-[0.8125rem] text-mut">
-                    {[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-                <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
-                  {busy ? "…" : "Yenile"}
-                </button>
-              </div>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen Yenile ile yeniden hazırla.</p>
-            </>
-          )}
         </>
       )}
 
@@ -626,7 +723,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                   {mailing ? "…" : "Mail"}
                 </button>
               )}
-              <button type="button" onClick={share} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
+              <button type="button" onClick={() => share()} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
                 <Icon name="up" className="size-5" />
                 Paylaş / Yazdır
               </button>
