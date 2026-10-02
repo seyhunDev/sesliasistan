@@ -17,17 +17,43 @@ const toBase64 = (file) =>
     fr.readAsDataURL(file);
   });
 
+// Dosya türü uzantıya ya da telefonun bildirdiğine değil içeriğe bakılarak bulunur
+// (WhatsApp/Dosyalar'dan gelen talimatlar çoğu zaman uzantısız ve türsüz gelir)
+async function kindOf(file) {
+  const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const sig = String.fromCharCode(...head);
+  if (sig.startsWith("%PDF")) return "pdf";
+  if (file.type.startsWith("image/") || (head[0] === 0xff && head[1] === 0xd8) || sig.startsWith("\x89PNG")) return "image";
+  if (sig.startsWith("PK")) return "docx";
+  if (file.type.startsWith("text/") || /\.txt$/i.test(file.name)) return "text";
+  return "";
+}
+
 export async function readNotice(file) {
-  const pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-  if (!pdf && !file.type.startsWith("image/")) throw new Error("PDF ya da fotoğraf seç");
+  const kind = await kindOf(file);
   let body;
-  if (pdf) {
-    if (file.size > MAX) throw new Error("PDF 4 MB'tan büyük. Yalnız ilk sayfaların fotoğrafını yükleyebilirsin.");
+  if (kind === "pdf") {
+    if (file.size > MAX) throw new Error("PDF 4 MB'tan büyük. Talimatın metnini kopyalayıp “Metin yapıştır” ile ekleyebilirsin.");
     body = { mimeType: "application/pdf", data: await toBase64(file) };
-  } else {
+  } else if (kind === "image") {
     const img = await compressImage(file, 2200, 0.8);
     body = { mimeType: img.mimeType, data: img.base64 };
-  }
+  } else if (kind === "text") {
+    body = { text: await file.text() };
+  } else if (kind === "docx") {
+    throw new Error("Word dosyası okunamıyor. PDF olarak kaydet ya da metni kopyalayıp “Metin yapıştır” ile ekle.");
+  } else throw new Error("PDF, fotoğraf ya da metin seç");
+  return send(body);
+}
+
+// Kopyalanan talimat metni
+export function readNoticeText(text) {
+  const t = String(text || "").trim();
+  if (t.length < 40) throw new Error("Talimat metni çok kısa");
+  return send({ text: t.slice(0, 60000) });
+}
+
+async function send(body) {
   const res = await authFetch("/api/race-notice", {
     method: "POST",
     headers: { "content-type": "application/json" },

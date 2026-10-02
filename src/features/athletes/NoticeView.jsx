@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
+import { Sheet } from "@/components/ui/Sheet";
 import { todayStr } from "@/lib/utils/format";
 
 const day = (s) => new Date(`${s}T12:00:00`);
@@ -10,12 +11,15 @@ const short = (s) => day(s).toLocaleDateString("tr-TR", { day: "numeric", month:
 const left = (s) => Math.round((day(s) - day(todayStr())) / 864e5);
 const tel = (p) => `tel:${String(p).replace(/[^\d+]/g, "")}`;
 
-// Talimat yükleme kartı (PDF ya da fotoğraf)
-export function NoticeUpload({ busy, onFile, title = "Yarış talimatını yükle", sub = "PDF ya da fotoğraf. Ad, tarih, yer, program, son tarihler, ücret ve oteller kendiliğinden dolar." }) {
+// Talimat yükleme kartı: dosya (PDF, fotoğraf; uzantısız olsa da) ya da kopyalanan metin
+export function NoticeUpload({ busy, onFile, onText, title = "Yarış talimatını yükle", sub = "PDF, fotoğraf ya da metin. Ad, tarih, yer, program, son tarihler, ücret ve oteller kendiliğinden dolar." }) {
   const input = useRef(null);
+  const [paste, setPaste] = useState(false);
+  const [text, setText] = useState("");
+  const btn = "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-[0.875rem] font-semibold disabled:opacity-50";
   return (
-    <>
-      <button type="button" disabled={busy} onClick={() => input.current?.click()} className={`${card} flex w-full items-center gap-3 px-4 py-3.5 text-left active:scale-[.99] disabled:opacity-70`}>
+    <div className={`${card} px-4 py-3.5`}>
+      <div className="flex items-center gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
           <Icon name={busy ? "load" : "paperclip"} className={`size-5 ${busy ? "animate-spin" : ""}`} />
         </span>
@@ -23,11 +27,21 @@ export function NoticeUpload({ busy, onFile, title = "Yarış talimatını yükl
           <b className="block text-[0.9375rem] font-semibold">{busy ? "Talimat okunuyor…" : title}</b>
           <span className="block text-[0.8125rem] leading-snug text-mut">{busy ? "Biraz sürebilir, sayfadan çıkma." : sub}</span>
         </span>
-      </button>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button type="button" disabled={busy} onClick={() => input.current?.click()} className={`${btn} bg-acc text-white`}>
+          <Icon name="paperclip" className="size-[1.125rem]" />
+          Dosya seç
+        </button>
+        <button type="button" disabled={busy} onClick={() => setPaste(true)} className={`${btn} bg-bg text-acc`}>
+          <Icon name="note" className="size-[1.125rem]" />
+          Metin yapıştır
+        </button>
+      </div>
+      {/* accept yok: iPhone uzantısız dosyaları (WhatsApp'tan gelen talimat) soluk gösterip seçtirmiyor; tür içerikten anlaşılır */}
       <input
         ref={input}
         type="file"
-        accept="application/pdf,image/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -35,7 +49,28 @@ export function NoticeUpload({ busy, onFile, title = "Yarış talimatını yükl
           if (f) onFile(f);
         }}
       />
-    </>
+      <Sheet open={paste} onClose={() => setPaste(false)} title="Talimat metni">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Talimatın tamamını ya da önemli bölümlerini (tarihler, kayıt, ücret, program, konaklama) buraya yapıştır"
+          rows={12}
+          className="block w-full resize-none rounded-2xl bg-bg px-4 py-3 text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/70"
+        />
+        <button
+          type="button"
+          disabled={text.trim().length < 40}
+          onClick={() => {
+            setPaste(false);
+            onText(text);
+            setText("");
+          }}
+          className="sticky bottom-0 mt-3 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50"
+        >
+          Talimatı oku
+        </button>
+      </Sheet>
+    </div>
   );
 }
 
@@ -86,7 +121,7 @@ export function NoticeDeadlines({ n, planned, onPlan }) {
 }
 
 // Talimatın geri kalanı: program, ücretler, konaklama, iletişim, önemli notlar
-export function NoticeDetails({ n, busy, onFile }) {
+export function NoticeDetails({ n, busy, onFile, onText }) {
   if (!n) return null;
   const days = [];
   for (const s of n.schedule || []) {
@@ -207,7 +242,7 @@ export function NoticeDetails({ n, busy, onFile }) {
       )}
 
       <div className="mt-4">
-        <NoticeUpload busy={busy} onFile={onFile} title="Talimatı yeniden yükle" sub="Güncel talimat gelince yükle; program ve son tarihler yenilenir, girdiğin bilgiler korunur." />
+        <NoticeUpload busy={busy} onFile={onFile} onText={onText} title="Talimatı yeniden yükle" sub="Güncel talimat gelince yükle; program ve son tarihler yenilenir, girdiğin bilgiler korunur." />
       </div>
     </>
   );
