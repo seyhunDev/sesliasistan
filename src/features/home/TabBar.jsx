@@ -294,7 +294,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
       role="region"
       aria-label="Asistan"
       style={{ "--lvl": active ? live.level || 0 : 0 }}
-      className={`dome fixed inset-x-0 bottom-0 z-[38] h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
+      className={`dome dome-rise fixed inset-x-0 bottom-0 z-[38] h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
     >
       <span className="dome-glow" aria-hidden="true" />
       <svg className="dome-rim" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
@@ -302,7 +302,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
       <div ref={inner} className="absolute inset-x-0 bottom-0">
-        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-1.25rem))] pt-3">
           {active && (
             <div
               ref={pane}

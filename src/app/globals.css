@@ -181,11 +181,17 @@ select {
   color: var(--fg);
   border-radius: 50% 50% 0 0 / var(--arc) var(--arc) 0 0;
   background: linear-gradient(180deg, #33876f 0%, #2a7461 40%, #1f5a4b 100%);
-  box-shadow: 0 -10px 34px -18px rgba(20, 70, 56, .55);
+  /* İkinci gölge: kubbenin hemen altına aynı renkte dolgu. Normalde ekran dışında kalır; iPhone ana ekran uygulamasında
+     sabit çubuk yukarı itilirse (iOS hatası) altta krem şerit görünmesin. */
+  box-shadow: 0 -10px 34px -18px rgba(20, 70, 56, .55), 0 6rem 0 #1f5a4b;
   transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease;
   -webkit-backface-visibility: hidden;
 }
-.dome[data-on] { box-shadow: 0 -18px 50px -16px rgba(20, 70, 56, .55); }
+/* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
+   klavye için verilen transform'u ezmesin) */
+@keyframes domerise { from { transform: translateY(100%); } }
+.dome-rise { animation: domerise .6s cubic-bezier(.22, .8, .24, 1) backwards; }
+.dome[data-on] { box-shadow: 0 -18px 50px -16px rgba(20, 70, 56, .55), 0 6rem 0 #1f5a4b; }
 /* Koyu zeminde dolgu düğmeler beyaz, yazısı koyu yeşil */
 .dome .bg-acc { background-color: #fff; color: var(--deep); }
 .dome ::placeholder { color: rgba(255, 255, 255, .55); }
