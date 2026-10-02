@@ -1,6 +1,6 @@
 // Sesli/yazılı sayfa geçişi: "yoklamayı aç", "planlara git", "ana sayfaya dön", "ekip ile mesaj sayfamı aç".
 // Yapay zekaya gitmeden çözülür (anında). Emin olunamayan cümlelerde null döner; o zaman yapay zekaya sorulur.
-// Dönüş: { page } | { chat: "team" | "family" | "athletes" } | { chatWith: "<kişi adı>" } | null
+// Dönüş: { page } | { back: true } | { chat: "team" | "family" | "athletes" } | { chatWith: "<kişi adı>" } | null
 
 // need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · owner: ana hesap · receipts: fiş ekleyebilen
 export const PAGES = {
@@ -69,8 +69,37 @@ const TARGETS = [
   ["home", /(ana ?sayfa\S*|ana ekran\S*|başa dön\S*|başlangıç\S*|eve dön\S*|en başa\S*)/],
 ];
 
-// Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|mesajlar|planlar|görevler|notlar|takvim|fişler|arşiv|kişiler|yoklama|yoklamam|yarışlar|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+// Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim)(ım|im)?|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+
+// Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
+const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;
+
+// Ses tanımanın böldüğü ya da tek harf kaçırdığı sayfa adlarını onarır: "yok lamayı" → "yoklamayı", "takvi mi" → "takvimi",
+// "yoklamyı" → "yoklamayı". Yalnızca sayfa adı kökleri için; fiil olan benzerleri ("planla", "ayarla") karışmasın diye listede yok.
+const GLUE = ["yoklama", "takvim", "görev", "planlar", "notlar", "fişler", "ayarlar", "arşiv", "mesajlar", "yarışlar", "sporcular", "alışveriş", "çalışan", "doğum"];
+const TYPO = ["yoklama", "takvim", "alışveriş", "sporcular", "çalışanlar"];
+function near1(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  return a.slice(i + 1) === b.slice(i + 1) || a.slice(i + 1) === b.slice(i) || a.slice(i) === b.slice(i + 1);
+}
+export function repairWords(t) {
+  const w = t.split(" ");
+  for (let i = 0; i < w.length - 1; i++) {
+    const j = w[i] + w[i + 1];
+    if (GLUE.some((g) => w[i].length < g.length && j.startsWith(g))) w.splice(i, 2, j);
+  }
+  return w
+    .map((x) => {
+      if (TYPO.some((g) => x.startsWith(g))) return x;
+      for (const g of TYPO)
+        for (const n of [g.length - 1, g.length, g.length + 1]) if (n <= x.length && near1(x.slice(0, n), g)) return g + x.slice(n);
+      return x;
+    })
+    .join(" ");
+}
 
 // Kişi adı geçiyor mu ("Ali ile mesajlaşmayı aç", "Sanver'in sohbeti"): adın ilk kelimesi ya da tam adı, ekli hâliyle
 function personIn(t, names) {
@@ -97,8 +126,9 @@ function personIn(t, names) {
 }
 
 export function localNavigate(text, { names = [] } = {}) {
-  const t = clean(text);
+  const t = repairWords(clean(text));
   if (!t || t.split(" ").length > 9) return null;
+  if (BACK.test(t)) return { back: true };
   const polite = POLITE_Q.test(t);
   if ((QUESTION.test(t) && !polite) || TIME_W.test(t) || OTHER_JOB.test(t)) return null;
   const verb = VERB.test(t) || polite;

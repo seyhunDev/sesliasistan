@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Sesli komut güvenilirliği: Whisper'ın sessizlikte uydurduğu cümleler ("Altyazı M.K.", "İzlediğiniz için teşekkür ederim") sunucuda ayıklanır (`src/lib/speech/hallucination.js`, Groq'ta sessiz parçalar `no_speech_prob` ile atılır); kendiliğinden açılan dinlemede hiç ses yoksa kayıt gönderilmez (useSpeech). Ses ipucuna sayfa adları ve tekne sınıfları eklendi (Optimist, ILCA…). Sayfa adı bölünse/harf kaçsa da tanınır ("yok lamayı aç", `repairWords`, nav.js); "geri dön", "Planlarım", "Fişlerim" eklendi. Ayarlar › Öğrenme'de "Yerelde kaçan komutlar" (yapay zekanın sayfa açtığı cümleler) listelenir ve kopyalanır; bunlar kurallara ve teste eklenir. Telefonda denenmedi.
 - Ana sayfada Yarışlar düğmesi (sayfa düğmelerinin başında, yaklaşan yarış sayısıyla): yalnız sporcu yetkisi olanlarda ve yalnız Ayarlar › "Yarışlar ana sayfada" açılınca (`users/{uid}.races` "on"/"off"; `raceHome.js`, `RacesRow`). Kendiliğinden görünmez, ana sayfada kart yok (Seyhun'un seçimi). Tanıtım slaytlarına "Yarışlar" eklendi (v6, `INTRO_V` 6, yalnız sporcu yetkisi olanlara): ne yapılabildiğini anlatır, "Ana sayfaya ekle" düğmeyi açar; eski kullanıcılara bir kez "YENİ" olarak çıkar. Slaytı görmeyecek kişilerde `introV` sessizce 6 olur. Telefonda denenmedi.
 - Yarış puanlamasında tekne sınıfı (Optimist, ILCA, Laser) ve ayak numarası sayılır; ses tanıma bozukları eşlenir ("optimus" → optimist, "ilka" → ilca; `ALIAS`, raceNav.js). "Yarış aranıyor" adımı arama bitince kaybolur (hata işareti çıkmaz).
 - Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
@@ -26,6 +27,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Sesli komutları telefonda dene (sessiz bekleyince asistan kendiliğinden kapanmamalı; "geri dön"); birkaç gün sonra Ayarlar › Öğrenme › "Yerelde kaçan komutlar"ı kopyalayıp yeni threade ver, kurallara eklensin.
 0. Tanıtımdaki Yarışlar slaytını (Ayarlar › Tanıtımı yeniden göster) ve Ayarlar › "Yarışlar ana sayfada"yı açıp ana sayfadaki Yarışlar düğmesini telefonda dene.
 0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.

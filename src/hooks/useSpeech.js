@@ -96,6 +96,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
           sum += v * v;
         }
         raw = Math.min(1, Math.sqrt(sum / s.buf.length) * 4); // gerçek ses seviyesi (kayıt yolu)
+        if (raw > 0.001) s.meterLive = true; // ölçer çalışıyor (askıdaki ses motorunda hep 0 gelir)
         // Ortam gürültüsünü öğren: en düşük seviye, yavaşça yükselerek
         s.floor = s.floor == null ? raw : Math.min(raw, s.floor + 0.0004);
         // Konuşma başladıktan sonra eşik biraz düşer: kısık söylenen hece ve cümle sonları sessizlik sayılmasın
@@ -277,6 +278,13 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
       const mode = s.mode || "send";
       releaseAudio();
       const blob = new Blob(chunks, { type });
+      // Kendiliğinden açılan dinlemede hiç konuşulmadıysa (ölçer çalışıyor ve ses yok) kayıt gönderilmez:
+      // Whisper sessizlikte "İzlediğiniz için teşekkür ederim" gibi cümle uydurur, asistan bunu komut sanır
+      if (s.auto && s.meterLive && !s.voiceSeen) {
+        finish();
+        fail(NO_SPEECH);
+        return;
+      }
       if (blob.size < 1500) {
         finish();
         fail("Ses alınamadı, tekrar dene.");
@@ -345,7 +353,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
     const sid = s.sid;
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, floor: null,
-      stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
+      meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0,
     });
     setFinalText("");
