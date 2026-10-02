@@ -10,14 +10,17 @@ import { useNow } from "@/hooks/useNow";
 import { planState } from "@/lib/agenda";
 import { db } from "@/lib/firebase/clientApp";
 import { activeSummary, addDay, dayItems } from "@/lib/summary";
+import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
+import { dayHours } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 
 const hmOf = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
 // Bugün (ya da sabah/akşam özeti saati geldiyse "Günün özeti" / "Yarının özeti"; ✕ ile o gün kapanır, "Bugün"e döner).
-// Üstte ilerleme çubuğu; satırlar: geciken görevler, planlar (saat, yer, o saatteki rüzgâr), görevler, bugün bitenler.
+// Üstte ilerleme çubuğu; satırlar: geciken görevler, planlar (saat, yer; antrenman/yarışta o saatlerin en sert rüzgârı,
+// eşik geçilirse kırmızı), görevler, bugün bitenler. weather: useWeather() sonucu (OwnerHome).
 // Görev satırındaki daireye dokunmak tamamlar; satırın kendisi kaydı açar.
-export function TodayCard() {
+export function TodayCard({ weather }) {
   const { profile } = useAuth();
   const { plans, tasks, myUid, toggleTask } = useData();
   const { openAdd } = useAdd();
@@ -42,6 +45,9 @@ export function TodayCard() {
   const finished = doneToday.length + pastPlans.length;
   const total = rows.length + finished;
   const next = !evening ? dayItems({ plans, tasks, date: tomorrow, uid: myUid }) : null;
+  const hours = dayHours(weather?.w, day)?.map(({ hh, wind, gust }) => ({ hh, wind, gust })) || [];
+  const windOf = (p) => (WIND_CATS.includes(p.cat || p.category) ? planWind(hours, p) : null);
+  const lim = profile.windKn || WIND_KN;
   const hide = () => updateDoc(doc(db, "users", profile.uid), { summaryHidden: `${today}:${kind}` }).catch(() => {});
 
   return (
@@ -77,9 +83,11 @@ export function TodayCard() {
         ) : (
           <ul className="divide-y divide-line">
             {rows.map(({ kind: k, r, late, done, past }) => {
+              const wx = k === "plan" ? windOf(r) : null;
+              const windy = overWind(wx, lim);
               const sub =
                 k === "plan"
-                  ? [r.time || "Gün boyu", r.place].filter(Boolean).join(" · ")
+                  ? [r.time || "Gün boyu", r.place, wx && !windy && `rüzgâr ${wx.wind} kn`].filter(Boolean).join(" · ")
                   : late
                     ? `${Math.round((Date.parse(today) - Date.parse(r.due)) / 864e5)} gün gecikti`
                     : done
@@ -104,7 +112,10 @@ export function TodayCard() {
                   <button type="button" onClick={() => openAdd({ edit: { kind: k, id: r.id } })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <span className="min-w-0 flex-1">
                       <b className={`block truncate text-[0.9375rem] font-semibold ${done ? "text-mut line-through" : ""}`}>{r.title}</b>
-                      <small className={`block truncate text-[0.75rem] ${late ? "font-medium text-rec" : done ? "text-ok" : "text-mut"}`}>{sub}</small>
+                      <small className={`block truncate text-[0.75rem] ${late ? "font-medium text-rec" : done ? "text-ok" : "text-mut"}`}>
+                        {sub}
+                        {windy && <span className="font-semibold text-rec"> · rüzgâr {wx.wind} kn, sağanak {wx.gust} kn</span>}
+                      </small>
                     </span>
                   </button>
                 </li>
