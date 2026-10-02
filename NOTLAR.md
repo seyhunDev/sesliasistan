@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Doğal seslendirme (cihazda, sunucusuz): okuma iPhone'un kendi sesiyle; en iyi Türkçe ses kendiliğinden seçilir (Premium > Gelişmiş > Kompakt, voiceURI'den; Eddy/Flo gibi eğlence sesleri seçilmez). Metin okunmadan Türkçe okunuşa çevrilir (14:30 → "on dört otuz", ₺/TL → lira, 7-11 Ekim → "7 ile 11 Ekim", kt → knot, °C → derece, emoji/işaret silinir) ve kısa parçalar halinde aralıksız okunur (`src/lib/speech/speakText.js`, `TtsProvider.jsx`). Ayarlar › Sesli yanıt açıkken: ses seçimi, hız (Yavaş/Normal/Hızlı), "Dene"; ses Premium değilse indirme yolu yazar. Ses ve hız cihazda saklanır (`sa_tts_voice`, `sa_tts_rate`). Telefonda denenmedi.
 - Ana sayfada Yarışlar düğmesi (sayfa düğmelerinin başında, yaklaşan yarış sayısıyla): yalnız sporcu yetkisi olanlarda ve yalnız Ayarlar › "Yarışlar ana sayfada" açılınca (`users/{uid}.races` "on"/"off"; `raceHome.js`, `RacesRow`). Kendiliğinden görünmez, ana sayfada kart yok (Seyhun'un seçimi). Tanıtım slaytlarına "Yarışlar" eklendi (v6, `INTRO_V` 6, yalnız sporcu yetkisi olanlara): ne yapılabildiğini anlatır, "Ana sayfaya ekle" düğmeyi açar; eski kullanıcılara bir kez "YENİ" olarak çıkar. Slaytı görmeyecek kişilerde `introV` sessizce 6 olur. Telefonda denenmedi.
 - Yarış puanlamasında tekne sınıfı (Optimist, ILCA, Laser) ve ayak numarası sayılır; ses tanıma bozukları eşlenir ("optimus" → optimist, "ilka" → ilca; `ALIAS`, raceNav.js). "Yarış aranıyor" adımı arama bitince kaybolur (hata işareti çıkmaz).
 - Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
@@ -26,6 +27,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. iPhone'da Yelda Premium'u indir (Ayarlar › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe › Yelda), uygulamayı kapatıp aç; Ayarlar › Sesli yanıt'ta "Yelda · Premium" görünüyor mu ve "Dene" doğal mı bak. Görünmüyorsa Safari bu sesi web'e açmıyordur; Gelişmiş'i dene. Yanlış okunan kelime olursa `speechText` (speakText.js) kuralına eklenir.
 0. Tanıtımdaki Yarışlar slaytını (Ayarlar › Tanıtımı yeniden göster) ve Ayarlar › "Yarışlar ana sayfada"yı açıp ana sayfadaki Yarışlar düğmesini telefonda dene.
 0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.
@@ -48,6 +50,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 - Yapay zeka öncelikli. Kullanıcı susunca `src/lib/precue.js` anında kısa ön cevap ve taslak verir; yapay zeka cevabı akış halinde gelir ve ön cevabı tekrar etmez.
 - Yerel kurallar: `src/lib/assistantLocal.js`, `src/lib/ai/rules.js` (testleri `npm test`).
 - "Kaydettim" yalnız yazma onaylandıktan sonra söylenir.
+- Seslendirme cihazda (Web Speech). Gemini sunucu sesi (`/api/tts`) yavaş olduğu için kapalı (`serverOk` false). Siri sesleri web'e açık değil; en iyisi indirilen Yelda Premium. Okunuş kuralları ve ses sıralaması `src/lib/speech/speakText.js` (testleri `npm test`, "Sesli okunuş", "Ses seçimi").
 
 ## Yarış evrakı
 
