@@ -32,8 +32,11 @@ export const wantsRace = (text, known = raceNames()) => {
   return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);
 };
 
-// onStep(label): panelde görünen adım
-export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, onStep = () => {}) {
+// Asistanın değiştirdiği yarış açık sayfadaysa sayfa da güncellensin (RaceEditor dinler)
+const told = (r) => window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: r }));
+
+// onStep(label): panelde görünen adım. current: açık yarış sayfasının kimliği (ad söylenmezse o yarış)
+export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "" }, onStep = () => {}) {
   onStep("Sporcular ve yarışlar yükleniyor");
   const [data, races] = await Promise.all([loadAthletes(), loadRaces(orgId)]);
   const classes = byId(data.classes);
@@ -47,6 +50,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
       today: todayStr(),
       athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
       races: races.map((r) => ({ id: r.id, name: r.name, startDate: r.startDate })),
+      current: races.some((r) => r.id === current) ? current : "",
       known: raceNames(),
       notes: idx?.notes || [],
     }),
@@ -57,6 +61,8 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
   const first = (ids) => ids.map((id) => names[id]?.split(" ")[0] || "?").join(", ");
   const missed = p.unknown?.length ? ` ${p.unknown.join(", ")} adını sporcularda bulamadım.` : "";
 
+  // Yarış sayfasında söylenen ama yarışla ilgisi olmayan cümle: asistan her zamanki yoldan cevaplar
+  if (p.op === "none" && current) return { none: true };
   if (p.op === "none") return { said: p.message || "Hangi yarış olduğunu anlayamadım. Yarışın adını ve tarihini söyler misin?", expect: true };
 
   if (p.op === "create") {
@@ -89,6 +95,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
     const budget = mergeBudget(race, b);
     onStep("Bütçe kaydediliyor");
     await saveRace(orgId, uid, { ...race, budget });
+    told({ ...race, budget });
     const t = totals(budget, race.athleteIds.length);
     return {
       said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, sporcu başı ${tl(t.perAthlete)}` : ""}.`,
@@ -116,6 +123,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by }, 
   if (!changed) return { said: `${old.name} yarışında değişecek bir şey bulamadım.${missed}`, id: old.id, expect: !!missed };
   onStep("Yarış güncelleniyor");
   await saveRace(orgId, uid, r);
+  told(r);
   const parts = [
     added.length && `${first(added)} eklendi`,
     p.note && "not yazıldı",
