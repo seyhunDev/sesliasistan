@@ -152,6 +152,18 @@ function Detail() {
         </Card>
       )}
 
+      {/* Yarış evrakında kullanılan bilgiler */}
+      {(a.licenseNo || a.studentBirthPlace || a.parentTc || a.studentSchoolPlace) && (
+        <Card title="Yarış evrakı" icon="flag">
+          <Row label="Lisans no" value={a.licenseNo} mono />
+          <Row label="Okul (belgede)" value={[a.studentSchool, a.studentSchoolPlace].filter(Boolean).join(" · ")} />
+          <Row label="Doğum yeri" value={a.studentBirthPlace} />
+          <Row label="Sporcu telefonu" value={a.studentPhone} href={tel(a.studentPhone)} mono />
+          <Row label="Veli T.C." value={a.parentTc} mono />
+          <Row label="Yakınlık" value={a.parentRelation} />
+        </Card>
+      )}
+
       <Attendance a={a} />
       <History items={data.history} />
     </main>
