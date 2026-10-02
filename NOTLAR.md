@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Plan/görev/not ekranındaki ayrı "Asistana söyle" kartı kaldırıldı. Kayıt ekranı açıkken ana asistan kubbesi (yaz · küre) ekranın altında görünür, sekmesiz ve Oluştur'suz; asistan o kaydı bilir (değiştir, ertele, tamamla, sil, kayıttakilere ya da birine yaz). AddSheet açık kaydı `sa-record-focus` olayıyla TabBar'a bildirir; ekranın alt boşluğu `--rec-h`. Mesajlı kayıtta yazma alanındaki küçük küre de kalktı (kubbe hemen altında). Asistan kaydı değiştirince ekran kendiliğinden güncellenir (elle değişiklik yoksa), silince kapanır. Telefonda denenmedi.
 - Ana sayfada Yarışlar düğmesi (sayfa düğmelerinin başında, yaklaşan yarış sayısıyla): yalnız sporcu yetkisi olanlarda ve yalnız Ayarlar › "Yarışlar ana sayfada" açılınca (`users/{uid}.races` "on"/"off"; `raceHome.js`, `RacesRow`). Kendiliğinden görünmez, ana sayfada kart yok (Seyhun'un seçimi). Tanıtım slaytlarına "Yarışlar" eklendi (v6, `INTRO_V` 6, yalnız sporcu yetkisi olanlara): ne yapılabildiğini anlatır, "Ana sayfaya ekle" düğmeyi açar; eski kullanıcılara bir kez "YENİ" olarak çıkar. Slaytı görmeyecek kişilerde `introV` sessizce 6 olur. Telefonda denenmedi.
 - Yarış puanlamasında tekne sınıfı (Optimist, ILCA, Laser) ve ayak numarası sayılır; ses tanıma bozukları eşlenir ("optimus" → optimist, "ilka" → ilca; `ALIAS`, raceNav.js). "Yarış aranıyor" adımı arama bitince kaybolur (hata işareti çıkmaz).
 - Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
@@ -26,6 +27,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Plan/görev/not ekranında alttaki asistanı telefonda dene: "saatini 10 yap", "yarına ertele", "Ali'ye bununla ilgili yaz", mesajlı kayıtta yazma alanı + kubbe yerleşimi.
 0. Tanıtımdaki Yarışlar slaytını (Ayarlar › Tanıtımı yeniden göster) ve Ayarlar › "Yarışlar ana sayfada"yı açıp ana sayfadaki Yarışlar düğmesini telefonda dene.
 0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.

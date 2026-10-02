@@ -163,16 +163,16 @@ export function recordFocus(kind, rec, nameOf, myUid) {
 const examplesOf = (kind) => ["Bu konuşmayı özetle", kind === "task" ? "Bu görevi tamamla" : "Bundan görev çıkar", "Kayıttakilere yarın hazır olacak yaz"];
 
 // Yazma alanı: elle yaz ya da mikrofonla yazdır (aynen gider); kutu boşken ana asistan (bu kaydı bilir)
-function Composer({ text, setText, send, placeholder, focus, kind, bare = false }) {
+function Composer({ text, setText, send, placeholder, focus, kind, bare = false, orb = true }) {
   return (
     <div className={bare ? "" : "border-t border-line px-3 pb-2.5 pt-2"}>
-      <ConvoComposer value={text} setValue={setText} onSend={send} placeholder={placeholder} focus={focus} examples={examplesOf(kind)} />
+      <ConvoComposer value={text} setValue={setText} onSend={send} placeholder={placeholder} focus={focus} examples={examplesOf(kind)} orb={orb} />
     </div>
   );
 }
 
 // Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte). Yazı asistan nesnesinden gelebilir (AddSheet'te tutulur).
-export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant, kind, rec, nameOf, myUid }) {
+export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant, kind, rec, nameOf, myUid, orb = true }) {
   const [ownText, setOwnText] = useState("");
   const text = assistant?.setText ? assistant.text : ownText;
   const setText = assistant?.setText || setOwnText;
@@ -182,7 +182,7 @@ export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant,
     onSend(t);
     setText("");
   };
-  return <Composer bare text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} />;
+  return <Composer bare text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} orb={orb} />;
 }
 
 // Asistanın kayıt içindeki yanıtı + bekleyen mesaj taslağı (Gönder / Düzenle / Vazgeç). Mesaj onaysız gitmez.

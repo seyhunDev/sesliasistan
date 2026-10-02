@@ -46,7 +46,8 @@ export function MiniOrb({ focus, examples, className = "" }) {
 // Kutu boşken sağda asistan küresi durur; yazınca gönder düğmesine döner.
 // value/setValue: useState çifti (setValue fonksiyonla da çağrılır). leading: soldaki ek düğme (ör. ek menüsü).
 // inputProps: textarea'ya ek özellikler (yazıyor bilgisi, Enter ile gönderme). sendIcon: düzenlemede "check".
-export function ConvoComposer({ value, setValue, onSend, placeholder = "Mesaj", focus, examples, leading, inputRef, inputProps = {}, sendIcon = "up", sendLabel = "Gönder" }) {
+// orb={false}: ana asistan kubbesi zaten altta görünüyorsa (kayıt ekranı) küre çizilmez, gönder düğmesi pasif durur.
+export function ConvoComposer({ value, setValue, onSend, placeholder = "Mesaj", focus, examples, leading, inputRef, inputProps = {}, sendIcon = "up", sendLabel = "Gönder", orb = true }) {
   const toast = useToast();
   const own = useRef(null);
   const input = inputRef || own;
@@ -81,8 +82,8 @@ export function ConvoComposer({ value, setValue, onSend, placeholder = "Mesaj", 
           <Icon name="mic" className="size-[1.25rem]" />
         </button>
       </div>
-      {value.trim() ? (
-        <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={onSend} aria-label={sendLabel} className="grid size-11 shrink-0 place-items-center rounded-full bg-acc text-white active:scale-90">
+      {value.trim() || !orb ? (
+        <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={onSend} disabled={!value.trim()} aria-label={sendLabel} className="grid size-11 shrink-0 place-items-center rounded-full bg-acc text-white active:scale-90 disabled:opacity-40">
           <Icon name={sendIcon} className="size-5" />
         </button>
       ) : (
