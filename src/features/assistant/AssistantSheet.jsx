@@ -44,9 +44,12 @@ import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, messageIntent } from "@/lib/ai/messageRules";
 import { matchPerson } from "@/lib/names";
-import { GROUPS, canReceipts, isAthleteSide } from "@/lib/kinds";
+import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
+import { applyAnswer, changes, findDuplicates, formatPhone, nextQuestion, summarySay, wantsPerson } from "@/features/people/assistPerson";
+import { askOpen, createPerson, readPerson, removePerson } from "@/features/people/personActions";
+import { PersonCard } from "@/features/people/PersonCard";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -68,7 +71,7 @@ const focusBody = (s) => {
     .trim();
   return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
-const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [] };
+const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [], person: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
@@ -95,7 +98,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const tts = useTts();
   const { profile } = useAuth();
   const { openBirthday } = useBirthday();
-  const { plans, tasks, notes, receipts, toggleTask, updateRecord, deleteRecord, members, isStaff, saveDrafts, saveBirthday, addReply } = useData();
+  const { plans, tasks, notes, receipts, birthdays, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply } = useData();
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
@@ -140,6 +143,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
   const inflight = useRef(null);
   const runId = useRef(0);
+  // Asistanla kişi ekleme (yalnız ana hesap): { draft, step: "ask" | "confirm" | "saved" | "undo", ask, dups, uid }
+  const personFlow = useRef(null);
   const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
   const skipRace = useRef(false); // yarış sayfasında yarışla ilgisiz çıkan cümle bir kez yarışa gitmeden sorulur
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
@@ -239,11 +244,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [] } = extra;
+    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null } = extra;
     const awaiting = expect || !!pending;
+    if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
     setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, att, engine, awaiting, races });
+    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -556,6 +562,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSteps([]);
     tts.stop();
 
+    // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
+    if (personFlow.current && !fresh && personFlow.current.step !== "saving" && (await continuePerson(s, viaVoice))) return;
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -585,6 +593,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       record(s, "nav:race", "local");
       return openRace(s, viaVoice);
     }
+    // Kişi ekleme ("Kişi ekle: Ayşe Yılmaz, eşim, 0532…", "Annem Fatma'yı aileye ekle"): yalnız ana hesap, onayla
+    if (wantsPerson(s)) return startPerson(s, viaVoice);
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
     const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
     if (nav) {
@@ -862,6 +872,148 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
     reply(cards.pending?.send ? "Tamam, göndermedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+  }
+
+  // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
+  // Hesap açılmaz; kaydedince "Hesap da açalım mı?" sorulur ve kişi kartı hesap ekranında açılır (kullanıcı adı/şifreyi kişi görür).
+  const personCard = (f) => ({ draft: f.draft, step: f.step, dups: f.dups || [], uid: f.uid || "" });
+  async function startPerson(s, viaVoice) {
+    if (isStaff) return reply("Kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
+    const id = ++runId.current;
+    setPhase("thinking");
+    let r;
+    try {
+      r = await readPerson(s);
+    } catch (e) {
+      if (id === runId.current) setPhase("idle");
+      return reply(e.message || "Kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
+    }
+    if (id !== runId.current) return;
+    setPhase("idle");
+    // Öğrenme kaydına yazılmaz (cümlede telefon/e-posta olabilir)
+    stepPerson(r.draft, viaVoice, r.engine === "ai" ? "ai" : "local");
+  }
+  // Sıradaki adım: eksik/hatalı alan varsa tek soru; yoksa mükerrer kontrolü ve özet + onay
+  function stepPerson(draft, viaVoice, engine = "local", lead = "") {
+    const q = nextQuestion(draft);
+    if (q) {
+      personFlow.current = { draft, step: "ask", ask: q.field };
+      return reply(`${lead}${q.ask}`, { person: personCard(personFlow.current), engine, expect: true }, viaVoice);
+    }
+    const dups = findDuplicates(draft, allMembers || members);
+    personFlow.current = { draft, step: "confirm", ask: "", dups };
+    const warn = dups.length
+      ? ` Dikkat, listede benzer kişi var: ${dups.map((d) => `${d.person.name} (${d.why}${d.left ? ", silinmiş" : ""})`).join("; ")}. Yine de eklemek için “yine de ekle” de.`
+      : " Kaydedeyim mi?";
+    reply(`${lead}${summarySay(draft)}${warn}`, { person: personCard(personFlow.current), engine, expect: true }, viaVoice);
+  }
+  // Kişi ekleme sürerken gelen cümle. İşlendiyse true; başka bir istekse false (akış biter, cümle her zamanki yoldan gider).
+  async function continuePerson(s, viaVoice) {
+    const f = personFlow.current;
+    const t = s.toLocaleLowerCase("tr-TR").trim();
+    const no = isNo(s) || /^(vazgeç|iptal|ekleme|kaydetme)/.test(t);
+    const yes = (isYes(s) && !/^sil/.test(t)) || /^(kaydet|ekle|aç|hesap aç)\S*[\s.!]*$/.test(t);
+    if (f.step === "saved") {
+      if (undoLast(s) || /^(geri al|sil|kaldır)/.test(t)) return personUndoAsk(viaVoice), true;
+      if (yes) return personAccount(viaVoice), true;
+      if (no) return reply("Tamam, hesap açmadım. İstediğinde Kişiler sayfasından açabilirsin.", { person: personCard(f), engine: "local" }, viaVoice), true;
+      personFlow.current = null;
+      return false;
+    }
+    if (f.step === "undo") {
+      if (yes || /^sil/.test(t)) return personUndo(viaVoice), true;
+      personFlow.current = { ...f, step: "saved" };
+      return reply("Tamam, silmedim.", { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice), true;
+    }
+    if (no) return personCancel(true, viaVoice), true;
+    if (wantsPerson(s)) return startPerson(s, viaVoice), true; // baştan yeni kişi
+    if (f.step === "confirm") {
+      const anyway = /yine de (ekle|kaydet)/.test(t);
+      if (yes || anyway) {
+        if (f.dups.length && !anyway)
+          return reply("Listede benzer kişi olduğu için emin olmak istiyorum: eklemek için “yine de ekle”, eklememek için “vazgeç” de.", { person: personCard(f), engine: "local", expect: true }, viaVoice), true;
+        return personSave(viaVoice), true;
+      }
+    }
+    const next = applyAnswer(f.draft, s, f.ask);
+    if (!changes(f.draft, next)) {
+      if (f.step === "ask" && !QUESTION.test(s) && s.split(/\s+/).length <= 6) return stepPerson(f.draft, viaVoice, "local", "Anlayamadım. "), true;
+      personFlow.current = null; // başka bir istek
+      return false;
+    }
+    stepPerson(next, viaVoice);
+    return true;
+  }
+  async function personSave(viaVoice) {
+    const f = personFlow.current;
+    if (!f || f.step !== "confirm" || isStaff) return;
+    const { draft } = f;
+    personFlow.current = { ...f, step: "saving" };
+    setSteps([]);
+    stepTo("Kişi kaydediliyor");
+    try {
+      const uid = await createPerson(profile.uid, draft);
+      if (draft.birth) {
+        stepTo("Doğum günü takvime ekleniyor");
+        saveBirthday({ name: draft.name, month: draft.birth.month, day: draft.birth.day, year: draft.birth.year, phone: draft.phone ? formatPhone(draft.phone) : "", memberUid: uid, note: KIND_LABEL[draft.kind] });
+      }
+      stepsEnd();
+      navigator.vibrate?.([10, 40, 10]);
+      toast(`${draft.name} eklendi`);
+      personFlow.current = { draft, step: "saved", uid };
+      reply(`Kaydettim, ${draft.name} kişilere eklendi. Uygulamaya girebilmesi için hesap da açalım mı?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
+    } catch {
+      stepsEnd(false);
+      personFlow.current = f;
+      reply("Kaydedemedim; bağlantını kontrol edip tekrar dene.", { person: personCard(f), engine: "local", expect: true }, viaVoice);
+    }
+  }
+  function personCancel(fromText = false, viaVoice = false) {
+    if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+    personFlow.current = null;
+    reply("Tamam, kişiyi eklemedim.", { engine: "local" }, viaVoice);
+  }
+  // Hesap açma ayrı onay: asistan açmaz, kişi kartı hesap ekranında açılır (giriş adı ve şifre orada görülüp onaylanır)
+  function personAccount(viaVoice = false) {
+    const f = personFlow.current;
+    if (!f?.uid) return;
+    askOpen({ uid: f.uid, step: "account" });
+    park();
+    router.push(`/people/${groupOfKind(f.draft.kind)}`);
+    reply(`${f.draft.name} için hesap ekranını açtım. Kullanıcı adı ve şifreyi kontrol edip “Hesabı aç”a bas.`, { engine: "local" }, viaVoice);
+  }
+  // Düzenle: kaydedilmemiş bilgiler kişi formunda dolu açılır; kaydedildiyse kişinin kartı açılır
+  function personEdit() {
+    const f = personFlow.current;
+    if (!f) return;
+    askOpen(f.uid ? { uid: f.uid } : { prefill: f.draft });
+    park();
+    router.push(`/people/${groupOfKind(f.draft.kind || "other")}`);
+    reply(f.uid ? `${f.draft.name} kişi kartını açtım.` : "Kişi formunu doldurup açtım; kontrol edip “Ekle”ye bas.", { engine: "local" });
+  }
+  function personUndoAsk(viaVoice = false) {
+    const f = personFlow.current;
+    if (!f?.uid) return;
+    const m = (allMembers || []).find((x) => x.uid === f.uid);
+    if (m && m.account !== false) return reply(`${f.draft.name} için hesap açıldığından buradan silmiyorum; Kişiler sayfasından silebilirsin.`, { engine: "local" }, viaVoice);
+    personFlow.current = { ...f, step: "undo" };
+    reply(`Az önce eklediğim ${f.draft.name} silinsin mi?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
+  }
+  async function personUndo(viaVoice = false) {
+    const f = personFlow.current;
+    if (!f?.uid) return;
+    const m = (allMembers || []).find((x) => x.uid === f.uid);
+    if (m && m.account !== false) return reply(`${f.draft.name} için hesap açıldığından buradan silmiyorum; Kişiler sayfasından silebilirsin.`, { engine: "local" }, viaVoice);
+    try {
+      await removePerson(profile.uid, f.uid);
+      const b = birthdays.find((x) => x.memberUid === f.uid);
+      if (b) deleteRecord("birthday", b.id);
+      toast(`${f.draft.name} silindi`);
+      personFlow.current = null;
+      reply(`Geri aldım, ${f.draft.name} silindi.`, { engine: "local" }, viaVoice);
+    } catch {
+      reply("Silemedim; Kişiler sayfasından silebilirsin.", { engine: "local" }, viaVoice);
+    }
   }
 
   // ---- Alışveriş listesi (asistandan) ----
@@ -1216,6 +1368,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Asistanla kişi ekleme: bilgiler, mükerrer uyarısı, onay; kaydedildiyse hesap aç / geri al */}
+        {cards.person && (
+          <PersonCard
+            p={cards.person}
+            onSave={() => (setTurns((p) => [...p, { role: "user", text: "Kaydet", chip: true }]), personSave())}
+            onEdit={personEdit}
+            onCancel={() => (cards.person.step === "undo" ? continuePerson("vazgeç") : personCancel())}
+            onAccount={() => personAccount()}
+            onUndo={() => (cards.person.step === "undo" ? personUndo() : personUndoAsk())}
+          />
         )}
 
         {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
