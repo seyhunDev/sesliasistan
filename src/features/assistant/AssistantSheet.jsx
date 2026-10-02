@@ -23,10 +23,10 @@ import { buildDigest } from "@/lib/ai/digest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
-import { runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
+import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
-import { findRace, raceJobHere, wantsRaceOpen } from "@/features/athletes/raceNav";
+import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
@@ -67,7 +67,7 @@ const focusBody = (s) => {
     .trim();
   return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
-const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false };
+const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [] };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 // Alışveriş listesi komutları: "listeye süt ve ekmek ekle", "süt alışveriş listesine ekle", "listede ne var"
@@ -145,6 +145,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
   const inflight = useRef(null);
   const runId = useRef(0);
+  const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
   const skipRace = useRef(false); // yarış sayfasında yarışla ilgisiz çıkan cümle bir kez yarışa gitmeden sorulur
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
   const ctrl = useRef(null);
@@ -243,11 +244,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false } = extra;
+    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [] } = extra;
     const awaiting = expect || !!pending;
     setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, att, engine, awaiting });
+    setCards({ show, pending, nav, chat, att, engine, awaiting, races });
+    raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
     const said = streamSaid.current;
@@ -403,6 +405,42 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     reply(message, { engine: "local" }, viaVoice);
   }
 
+  // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
+  async function openRace(s, viaVoice) {
+    const list = races.current;
+    const today = todayStr();
+    if (!list.length) return reply("Kayıtlı yarış bulamadım. Yarışlar sayfasından ekleyebilirsin.", { engine: "local", nav: "races" }, viaVoice);
+    const exact = findRace(s, list, today);
+    if (exact) return goRace(exact, viaVoice);
+    const ranked = rankRaces(s, list, today);
+    if (sure(ranked)) return goRace(ranked[0].race, viaVoice);
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    stepTo("Yarış aranıyor");
+    let ai = null;
+    try {
+      ai = await findRaceAi(s, list);
+    } catch {}
+    if (id !== runId.current) return;
+    setPhase("idle");
+    const byId = (x) => list.find((r) => r.id === x);
+    if (ai?.raceId && byId(ai.raceId)) {
+      stepsEnd();
+      return goRace(byId(ai.raceId), viaVoice);
+    }
+    stepsEnd(false);
+    // Seçenekler: yapay zekanın adayları, yoksa puanı olanlar, o da yoksa tarihi bugüne en yakın 3 yarış
+    const fromAi = (ai?.candidates || []).map(byId).filter(Boolean);
+    const scored = ranked.map((x) => x.race);
+    const opts = [...fromAi, ...scored].filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i).slice(0, 3);
+    const guess = opts.length ? opts : nearest(list, today, 3);
+    if (guess.length === 1 && opts.length) return goRace(guess[0], viaVoice);
+    const names = guess.map((r) => r.name);
+    const said = opts.length ? `Tam emin olamadım. ${names.join(", ")} olabilir. Hangisini açayım?` : `Bu adda bir yarış bulamadım. Tarihi en yakın yarışlar: ${names.join(", ")}. Hangisini açayım?`;
+    return reply(said, { engine: ai ? "ai" : "local", races: guess, expect: true }, viaVoice);
+  }
+
   function goRace(r, viaVoice) {
     navigator.vibrate?.(8);
     if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
@@ -533,13 +571,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
     }
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): adı kayıtlı yarışlarla eşleşirse o yarışın sayfası
-    // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
-    if (racer && raceOrg && !races.current.length && wantsRaceOpen(s) && /yarış|regat/i.test(s)) races.current = await loadRaces(raceOrg).catch(() => []);
-    const race = racer && wantsRaceOpen(s) ? findRace(s, races.current, todayStr()) : null;
-    if (race) {
+    // Önceki turda sorulan yarış seçenekleri: "ikincisi", "sonuncu", "Foça olan"
+    const choices = raceChoices.current;
+    raceChoices.current = [];
+    const picked = choices.length ? pickChoice(s, choices, todayStr()) : null;
+    if (picked) return goRace(picked, viaVoice);
+    // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
+    if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races.current, todayStr())))) {
+      // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
+      if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
       record(s, "nav:race", "local");
-      countHit("local");
-      return goRace(race, viaVoice);
+      return openRace(s, viaVoice);
     }
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
     const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
@@ -1237,6 +1279,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           >
             <Icon name="chat" className="size-4" /> Sohbeti aç
           </button>
+        )}
+
+        {cards.races?.length > 0 && (
+          <div className="fade-in mt-3 grid gap-2">
+            {cards.races.map((r) => (
+              <button key={r.id} type="button" onClick={() => goRace(r)} className="flex h-11 items-center gap-2 rounded-xl bg-bg px-3 text-left text-[0.875rem] font-semibold active:scale-[.98]">
+                <Icon name="flag" className="size-4 shrink-0 text-acc" />
+                <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                <small className="shrink-0 text-[0.75rem] font-normal text-mut">{r.startDate ? rel(r.startDate) : ""}</small>
+              </button>
+            ))}
+          </div>
         )}
 
         {cards.nav && (
