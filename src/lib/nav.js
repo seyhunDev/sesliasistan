@@ -13,7 +13,7 @@ export const PAGES = {
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
-  races: { path: "/athletes/races", label: "Yarış evrakı", need: "athletes" },
+  races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },

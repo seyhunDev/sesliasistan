@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Asistan sayfa açınca ("yarışlar sayfasına git") artık kapanmaz: "Yarışlar sayfasını açtım." der, gösterir ve kullanıcı kapatana kadar açık kalır; her sayfada geçerli (`leave`, AssistantSheet.jsx). Sayfa adı "Yarış evrakı" yerine "Yarışlar" (nav.js). Telefonda denenmedi.
 - Yarış bütçesi (yarışta "Bütçe" sekmesi, `BudgetView.jsx`, hesap `budget.js`): kalemler kategori, tutar, birim (sporcu başı / kişi başı antrenör dahil / ortak), adet-gece, "kulüp karşılar". Toplam, sporcu başı ödeme, kulüp payı otomatik; sporcu ödemeleri Ödendi/Bekliyor. Yarışın `budget` alanında kaydedilir. Yapay zekayla doldurma (`/api/race-budget`), talimattaki ücret/otelleri ekleme, sesli "… bütçesine otel kişi başı 3500 4 gece ekle" (`/api/race` op budget). PDF çıktı `budgetDoc.js`. Canlıda denenmedi.
 - Hazırlanan yarış evrakı bu cihazda saklanır (IndexedDB `sa-race-docs`, `raceFiles.js`); sayfaya dönünce Hazır kartı ve Aç/Mail/Paylaş gelir, "Yenile" ile yeniden hazırlanır. Belgeyi değiştiren bilgi değişince kopya silinir. Firebase'e yazılmaz (PDF'te T.C./veli bilgisi var). Başka cihazda yeniden hazırlanır. Evrak sekmesi: "Hazırlanan evrak" (tümü + her belge ayrı; aç/paylaş) ve "Eklenen evrak" (elle eklenen PDF/fotoğraf, yine cihazda `<yarış>:extra`, bilgi değişince silinmez). Eklenen evrak maile girmiyor (sonraki iş olabilir).
 - Yarış evrakını mail: belgeler hazırlanınca alt çubukta "Mail" → "Kime gönderilsin?" (Kendime + kayıtlı adresler, `users/{uid}.mailTo`, yeni adres eklenir/silinir; `src/features/mail/MailTo.jsx`). Yalnız Gmail betiği kurulu ana hesapta. Uygulama PDF'i `orgs/{uid}/outbox`'a bırakır (`outbox.js`, 700 KB'lık parçalar, `to`, `self`), Gmail betiği 5 dakikada bir `gonder()` ile gönderir ve siler. Betik sürümü `mailOutbox` (1 kendine, 2 başka adreslere de); 2'den eskiyse Mail ayarlarından kod + appsscript.json yeniden kopyalanıp `kur` çalıştırılır. Kendine gönderim canlıda çalıştı (2026-10-02).
@@ -37,6 +38,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Asistan
 
+- Sayfa ya da sohbet açma asistanı kapatmaz; asistan yalnız kullanıcı kapatınca (ya da "bitir/kapat" deyince) kapanır.
 - Yapay zeka öncelikli. Kullanıcı susunca `src/lib/precue.js` anında kısa ön cevap ve taslak verir; yapay zeka cevabı akış halinde gelir ve ön cevabı tekrar etmez.
 - Yerel kurallar: `src/lib/assistantLocal.js`, `src/lib/ai/rules.js` (testleri `npm test`).
 - "Kaydettim" yalnız yazma onaylandıktan sonra söylenir.
