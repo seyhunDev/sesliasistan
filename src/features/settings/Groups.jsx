@@ -6,7 +6,8 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { MicTest } from "@/features/permissions/PermissionsCard";
-import { useTts } from "@/features/speech/TtsProvider";
+import { RATES, SAMPLE, useTts } from "@/features/speech/TtsProvider";
+import { voiceHelp, voiceLabel, voiceQuality } from "@/lib/speech/speakText";
 import { usePermissions } from "@/hooks/usePermissions";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -56,10 +57,57 @@ export function SizeRow() {
 }
 
 // ---- Sesli yanıt ----
+// Açıkken altında ses, hız ve "Dene" çıkar. En doğal ses iPhone'da indirilen Premium/Gelişmiş Türkçe sestir.
 export function VoiceRow() {
   const tts = useTts();
   if (!tts.supported) return null;
-  return <Row icon="volume" tone="sky" title="Sesli yanıt" sub="Asistanın yanıtları sesli okunur" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />} />;
+  const best = tts.voices.find((v) => voiceQuality(v) > 0);
+  const using = tts.voices.find((v) => v.voiceURI === tts.voiceUri) || best;
+  return (
+    <Row icon="volume" tone="sky" title="Sesli yanıt" sub="Asistanın yanıtları sesli okunur" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />}>
+      {tts.enabled && (
+        <div className="fade-in space-y-2.5 px-4 pb-3.5 pl-[3.75rem]">
+          {tts.voices.length > 0 && (
+            <label className="flex items-center gap-2 text-[0.8125rem] text-mut">
+              Ses
+              <select
+                value={tts.voiceUri}
+                onChange={(e) => tts.setVoice(e.target.value)}
+                className="min-w-0 flex-1 rounded-full bg-bg px-3 py-1.5 text-[0.8125rem] font-medium text-fg"
+              >
+                <option value="">Otomatik{best ? ` (${voiceLabel(best)})` : ""}</option>
+                {tts.voices.map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>{voiceLabel(v)}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {RATES.map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => tts.setRate(v)}
+                className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${tts.rate === v ? "bg-acc text-white" : "bg-bg text-fg"}`}
+              >
+                {label}
+              </button>
+            ))}
+            <button type="button" onClick={() => tts.speak(SAMPLE)} className="ml-auto flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[0.8125rem] font-semibold text-acc transition active:scale-95">
+              <Icon name="volume" className="size-4" />
+              Dene
+            </button>
+          </div>
+          {(!using || voiceQuality(using) < 3 || using.localService === false) && (
+            <p className="text-[0.75rem] leading-snug text-mut">
+              {!tts.voices.length ? "Bu cihazda Türkçe ses bulunamadı. " : ""}
+              Daha doğal ses için {typeof navigator !== "undefined" && voiceHelp(navigator.userAgent, navigator.maxTouchPoints)}
+            </p>
+          )}
+        </div>
+      )}
+    </Row>
+  );
 }
 
 // ---- Güçlü sürüm ----
