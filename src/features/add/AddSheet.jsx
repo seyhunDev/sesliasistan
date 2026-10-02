@@ -24,7 +24,6 @@ import { spokenDay, spokenTime } from "@/lib/utils/speak";
 import { ActionDock, Composer } from "./Composer";
 import { DraftCard } from "./DraftCard";
 import { AssignedView, AssistantPanel, Replies, ReplyComposer, recordFocus } from "./Assigned";
-import { MiniOrb } from "@/features/assistant/ConvoComposer";
 import { confirmWord } from "@/lib/ai/messageRules";
 import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
@@ -574,6 +573,39 @@ export function AddSheet({ open, onClose, seed }) {
   }
 
   const staged = listening || transcribing || busy;
+
+  // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
+  // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
+  const recDock = open && !!edit && !!rec && !staged;
+  const recFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
+  const focusKey = recFocus ? JSON.stringify([recFocus, edit.kind, locked]) : "";
+  useEffect(() => {
+    if (!focusKey) return;
+    const [focus, kind, ro] = JSON.parse(focusKey);
+    const examples = ro
+      ? ["Bunu tamamladım", "Bu konuşmayı özetle", "Ana hesaba hazır olduğunu yaz"]
+      : [kind === "task" ? "Bu görevi tamamla" : kind === "plan" ? "Saatini 10 yap" : "Bundan görev çıkar", "Yarına ertele", "Ali'ye bununla ilgili yaz"];
+    const say = (detail) => window.dispatchEvent(new CustomEvent("sa-record-focus", { detail }));
+    say({ focus, examples });
+    return () => say(null);
+  }, [focusKey]);
+
+  // Kayıt başka yerden (ana asistan, başka cihaz) değişince elle değişiklik yoksa ekrandaki bilgiler güncellenir; silinirse ekran kapanır
+  const recKey = edit && rec ? editKey(fromRecord(edit.kind, rec)) : "";
+  const seenFor = useRef(null);
+  useEffect(() => {
+    if (!open || !edit) return;
+    if (!rec) {
+      if (seenFor.current === seed?.id) onClose();
+      return;
+    }
+    seenFor.current = seed?.id;
+    if (recKey === orig.current || dirty) return;
+    orig.current = recKey;
+    setDrafts([fromRecord(edit.kind, rec)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, seed?.id, recKey]);
+  const padB = recDock ? "pb-3" : "pb-[calc(0.75rem+env(safe-area-inset-bottom))]";
   const send = () => (edit ? runEdit(text, false) : run(text, false));
   const composer = <Composer value={text} onChange={setText} onSend={send} onMic={() => sp.start({ autoStop: SILENCE_MS })} busy={busy} placeholder={placeholder} />;
   // Kayıt içi asistan (mesaj kutusunda): değiştir ya da mesajı yazdır; taslak onayla gider
@@ -724,16 +756,6 @@ export function AddSheet({ open, onClose, seed }) {
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" assistant={assistant} docked />}
             <div className="mt-3" />
-            {/* Konuşması olmayan kayıtta: ana asistan bu kaydı bilerek açılır (değiştir, tamamla, sil, birine yaz) */}
-            {!hasThread && rec && (
-              <div className="flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-                <MiniOrb focus={recordFocus(edit.kind, rec, nameOf, myUid)} examples={[edit.kind === "task" ? "Bu görevi tamamla" : "Saatini değiştir", "Yarına ertele", "Ali'ye bununla ilgili yaz"]} />
-                <span className="min-w-0 text-[0.8125rem] leading-snug text-mut">
-                  <b className="block text-[0.875rem] font-semibold text-fg">Asistana söyle</b>
-                  Dokun konuş, basılı tut yaz: değiştir, ertele, birine yaz.
-                </span>
-              </div>
-            )}
             {!hasThread && outbox && <div className="mt-3 overflow-hidden rounded-2xl bg-card">{panel}</div>}
             {!hasThread && !outbox && editReply && (
               <div className="fade-in mt-3 flex items-start gap-2.5">
@@ -818,7 +840,7 @@ export function AddSheet({ open, onClose, seed }) {
           Konuşma sırasında (yeni kayıt): yazı alanı + Konuş + tek ana düğme (yazı varsa Gönder, yoksa Kaydet) bir arada. */}
       {!staged && edit && rec && (locked || hasThread) ? (
         /* Mesajlaşma: yazma alanı altta sabit (WhatsApp gibi); değişiklik varsa üstünde Kaydet */
-        <footer className="shrink-0 border-t border-line bg-bg px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
+        <footer data-pagebar className={`shrink-0 border-t border-line bg-bg px-4 pt-2.5 ${recDock ? "pb-2.5" : "pb-[calc(0.625rem+env(safe-area-inset-bottom))]"}`}>
           {!locked && dirty && (
             <button onClick={saveEdit} className="mb-2.5 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
               Değişikliği kaydet
@@ -835,6 +857,7 @@ export function AddSheet({ open, onClose, seed }) {
             rec={rec}
             nameOf={nameOf}
             myUid={myUid}
+            orb={false}
           />
         </footer>
       ) : !staged && !locked && !edit && chat && !manual && !pickAssign ? (
@@ -850,7 +873,7 @@ export function AddSheet({ open, onClose, seed }) {
           />
         </footer>
       ) : !staged && !locked && (edit || drafts.length > 0) && (
-        <footer className="flex shrink-0 gap-2.5 bg-bg px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
           {edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>
               {dirty ? "Kaydet" : "Değişiklik yok"}
@@ -872,6 +895,7 @@ export function AddSheet({ open, onClose, seed }) {
           )}
         </footer>
       )}
+      {recDock && <div aria-hidden="true" className="shrink-0" style={{ height: "var(--rec-h, 0px)" }} />}
     </Screen>
   );
 }
