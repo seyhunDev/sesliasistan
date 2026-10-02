@@ -15,7 +15,7 @@ function plain(v) {
 }
 
 // Yarış evrakında kullanılan ek alanlar (sporcu kartında saklanır, bir kez girilir)
-export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation"];
+export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "studentNo", "studentClass", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation"];
 
 // Sınıf ve antrenör adları
 async function names(db) {

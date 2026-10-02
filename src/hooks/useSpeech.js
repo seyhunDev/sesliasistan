@@ -19,7 +19,9 @@ const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
 const VOICE_LVL = 0.035; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir)
-const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms)
+const END_SILENCE = 2300; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms)
+const END_SILENCE_SHORT = 3000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
+const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
 
 // status: "idle" | "listening" | "transcribing"
 // onFinal(text, mode): mode "send" (hemen gönder) | "edit" (metin kutuda kalsın)
@@ -30,7 +32,8 @@ const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar se
 //   (yalnızca yanıt okunduktan sonra yeniden dinlemede; kullanıcı düğmeye bastıysa hata hep görünür).
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
 // names: kişi adları (çalışanlar); ses çevirisine ipucu olarak gider ki doğru yazılsın
-export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
+// terms: özel adlar (yarış adları gibi); aynı şekilde ipucu olur
+export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -41,7 +44,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail, names };
+  cb.current = { onFinal, onFail, names, terms };
   const fail = (m) => {
     if (!R.current.silent) cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
   };
@@ -95,7 +98,10 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
         raw = Math.min(1, Math.sqrt(sum / s.buf.length) * 4); // gerçek ses seviyesi (kayıt yolu)
         // Ortam gürültüsünü öğren: en düşük seviye, yavaşça yükselerek
         s.floor = s.floor == null ? raw : Math.min(raw, s.floor + 0.0004);
-        if (raw > Math.max(VOICE_LVL, s.floor * 3)) {
+        // Konuşma başladıktan sonra eşik biraz düşer: kısık söylenen hece ve cümle sonları sessizlik sayılmasın
+        const gate = s.voiceSeen ? Math.max(VOICE_LVL * 0.7, s.floor * 2.2) : Math.max(VOICE_LVL, s.floor * 3);
+        if (raw > gate) {
+          if (!s.voiceSeen) s.voiceFrom = now;
           s.voiceSeen = true;
           s.lastSpeech = now;
         }
@@ -112,7 +118,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
         return;
       }
       // Kayıt yolu: konuşuldu ve sustu, kendiliğinden gönder (canlı yazı olmadığı için bekletmeyelim)
-      if (s.kind === "server" && s.voiceSeen && now - s.lastSpeech >= END_SILENCE) {
+      if (s.kind === "server" && s.voiceSeen && now - s.lastSpeech >= (s.lastSpeech - s.voiceFrom < SHORT_TALK ? END_SILENCE_SHORT : END_SILENCE)) {
         stopRef.current?.("send");
         return;
       }
@@ -288,6 +294,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
         const fd = new FormData();
         fd.append("audio", upload, name);
         if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
+        if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
         const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
         const data = await res.json().catch(() => ({}));
         if (!alive()) return;
@@ -337,7 +344,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names } = {}) {
     s.sid += 1;
     const sid = s.sid;
     Object.assign(s, {
-      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, analyser: null, emptyEnds: 0, floor: null,
+      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, floor: null,
       stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0,
     });

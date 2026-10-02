@@ -13,6 +13,8 @@ export const DOC_TEXT = [
   ["licenseNo", "Lisans no (35-4403-…)"],
   ["studentSchool", "Okul adı (belgede yazacak)"],
   ["studentSchoolPlace", "Okulun ilçe-ili (DİKİLİ-İZMİR)"],
+  ["studentNo", "Okul numarası", "numeric"],
+  ["studentClass", "Sınıf / şube (9/B)"],
   ["studentBirthPlace", "Doğum yeri"],
   ["studentPhone", "Sporcu telefonu", "tel"],
   ["fatherName", "Baba adı"],

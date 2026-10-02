@@ -2,12 +2,16 @@
 
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { nextNo } from "./raceDocs";
+import { rememberRaceNames } from "./raceNames";
 
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
 // T.C., veli gibi kişisel bilgiler kopyalanmaz, belge üretilirken sporcu kartından okunur.
 export const RACE_FIELDS = [
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
+  // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
+  "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
 ];
 
 // Yarış öncesi yapılacaklar (her yarışta aynı liste; işaretlenenler checks içinde)
@@ -35,13 +39,16 @@ const clean = (r) =>
     ]),
   );
 
-// Yeni yarışın boş hali: yetkili, il, federasyon gibi bilgiler son yarıştan gelir
+// Yeni yarışın boş hali: yetkili, il, federasyon gibi bilgiler son yarıştan gelir.
+// Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
 export function freshRace(last = {}, today = "") {
   return {
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
     startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: today,
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
+    clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör",
   };
 }
 
@@ -56,12 +63,15 @@ export async function addRacePlan(saveDrafts, r, by) {
 
 export async function loadRaces(orgId) {
   const snap = await getDocs(col(orgId));
-  return snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  const list = snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  rememberRaceNames(list.map((r) => r.name));
+  return list;
 }
 
 // Yeni yarışı ekler ya da var olanı günceller; kimliği döndürür
 export async function saveRace(orgId, uid, r) {
   const data = { ...clean(r), updatedAt: serverTimestamp() };
+  rememberRaceNames([data.name]);
   if (r.id) {
     await updateDoc(doc(col(orgId), r.id), data);
     return r.id;

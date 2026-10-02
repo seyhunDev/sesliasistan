@@ -10,20 +10,20 @@ export const runtime = "nodejs";
 // "D'Azur yarışına Mehmet'i de ekle, not: konaklama otelde" -> yarış bilgisi + sporcu kimlikleri.
 // Kaydetmez; telefon yazar. Yapay zekaya yalnızca sporcu adı, sınıfı ve kimliği gider.
 const SYSTEM = `Sen bir yelken kulübünde antrenörün yarış asistanısın. Antrenör Türkçe konuşur (ses tanıma metni, yazım hataları olabilir) ya da yazar.
-Sana bugünün tarihi, kayıtlı yarışlar (id | ad | başlangıç) ve sporcu listesi (id | ad soyad | sınıf) verilir.
+Sana bugünün tarihi, kayıtlı yarışlar (id | ad | başlangıç), bilinen yarış adları ve sporcu listesi (id | ad soyad | sınıf) verilir.
 
 op:
 - create: yeni bir yarış ekleniyor ("yarış ekle", "yeni yarış", "… yarışına gideceğiz").
-- update: kayıtlı bir yarışa sporcu, not ya da tarih ekleniyor ("D'Azur yarışına Mehmet'i de ekle", "regatta için not al: …"). raceId kayıtlı listeden. Ad tam söylenmeyebilir, en yakın yarışı seç; emin değilsen ve tek bir gelecek yarış varsa onu seç.
+- update: kayıtlı bir yarışa sporcu, not ya da tarih ekleniyor ("D'Azur yarışına Mehmet'i de ekle", "regatta için not al: …", "D'Azur yarışının katılımcıları Ali, Ayşe"). raceId kayıtlı listeden. Ad tam söylenmeyebilir, en yakın yarışı seç; emin değilsen ve tek bir gelecek yarış varsa onu seç.
 - none: yarışla ilgili bir kayıt isteği değil.
 
 Alanlar:
-- name: yarışın adı, söylendiği gibi ama düzgün yazımla ("D'Azur Optimist Regatta"). update'te boş bırakabilirsin.
+- name: yarışın adı, söylendiği gibi ama düzgün yazımla ("D'Azur Optimist Regatta"). Ses tanıma yabancı adları bozar ("dazur", "d azur", "daz ur optimist regata"): söylenen ad bilinen yarış adlarından birine benziyorsa O YAZIMI aynen kullan. update'te boş bırakabilirsin.
 - city / district: il ve ilçe. "Çeşme" -> il İzmir, ilçe Çeşme; "Bodrum" -> Muğla, Bodrum. Yalnızca il söylendiyse district boş.
 - startDate / endDate: YYYY-MM-DD. "7-11 Ekim" -> başlangıç 7 Ekim, bitiş 11 Ekim. Yıl söylenmediyse bugünden sonraki ilk o tarih. Tek gün ise endDate = startDate. Söylenmediyse boş.
-- athleteIds: katılacak sporcular. Adı listedeki bir sporcuyla eşleştir (yalnızca ad, soyad, lakap ya da ses tanıma hatası olabilir). Her sporcunun "söylenişler" listesi önceden hazırlanmış eşleştirme dizinidir, önce ona bak. Tek başına söylenen ad önce ADI o olan sporcuya aittir. Aynı ada birden çok sporcu uyuyorsa işaretleme, unknown'a "Ali (2 kişi)" yaz. "Optimist grubu" gibi sınıf adı geçerse o sınıftaki herkes.
+- athleteIds: katılacak sporcular ("katılımcılar", "katılımcıları", "kafile", "gidecekler", "sporcular: …" hep bu alandır). Adı listedeki bir sporcuyla eşleştir (yalnızca ad, soyad, lakap ya da ses tanıma hatası olabilir). Her sporcunun "söylenişler" listesi önceden hazırlanmış eşleştirme dizinidir, önce ona bak. Tek başına söylenen ad önce ADI o olan sporcuya aittir. Aynı ada birden çok sporcu uyuyorsa işaretleme, unknown'a "Ali (2 kişi)" yaz. "Optimist grubu" gibi sınıf adı geçerse o sınıftaki herkes.
 - unknown: listede bulunamayan adlar.
-- note: yalnızca kullanıcının not olarak kaydedilmesini istediği bilgi (konaklama, ulaşım, ücret…). Yoksa boş.
+- note: yalnızca kullanıcının açıkça not olarak kaydedilmesini istediği bilgi (konaklama, ulaşım, ücret…). Yoksa boş. Katılımcı/sporcu adları, "yarış katılımcıları" gibi başlıklar ve bulunamayan adlar ASLA nota yazılmaz.
 - message: 1 kısa Türkçe cümle; ne anladığını söyle. Eksik bilgi varsa (create'te ad ya da tarih yoksa) onu sor.`;
 
 const SCHEMA = {
@@ -73,6 +73,7 @@ async function handle(request) {
     .map((r) => ({ id: S(r?.id, 64), name: S(r?.name, 80), startDate: DATE.test(r?.startDate || "") ? r.startDate : "" }))
     .filter((r) => ID.test(r.id) && r.name)
     .slice(0, 40);
+  const known = [...new Set((Array.isArray(body?.known) ? body.known : []).map((n) => S(n, 80)).filter(Boolean))].slice(0, 40);
   if (!text) return bad("Yarışı söyle ya da yaz.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Yarışı Sporcular › Yarış evrakı sayfasından ekleyebilirsin.", 503);
 
@@ -82,6 +83,7 @@ async function handle(request) {
   const user = [
     `Bugün: ${today} (${wd})`,
     races.length ? `Kayıtlı yarışlar:\n${races.map((r) => `${r.id} | ${r.name} | ${r.startDate || "-"}`).join("\n")}` : "Kayıtlı yarış yok.",
+    known.length ? `Bilinen yarış adları (yazımı buradan al):\n${known.map((n) => `- ${n}`).join("\n")}` : "",
     `Sporcular:\n${list.map(line).join("\n") || "-"}`,
     notes.length ? `Karışabilecek adlar:\n${notes.map((n) => `- ${n}`).join("\n")}` : "",
     `Antrenörün söylediği:\n"""\n${text}\n"""`,

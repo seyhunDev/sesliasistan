@@ -8,7 +8,8 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { isActive } from "./data";
-import { DOCS, buildRaceDocs, loadFonts, missing, rangeText } from "./raceDocs";
+import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { raceNames } from "./raceNames";
 import { STEPS, doneCount, shiftDay } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
@@ -21,6 +22,7 @@ const DOC_INFO = {
   kafile: ["flag", "Valilik onayı: kafile ve lisans numaraları"],
   travel: ["mail", "GSİM Spor Faaliyetleri Birimine dilekçe"],
   parent: ["users", "Her sporcu için bir sayfa, veli imzalar"],
+  club: ["note", "Kulüpten okula, her sporcuya ayrı; tarihleri ayrı"],
 };
 
 // Etiketli satır (gruplu kart içinde)
@@ -54,6 +56,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const [docs, setDocs] = useState(DOCS.map(([k]) => k));
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState(null); // hazırlanan PDF
+  const [known] = useState(raceNames); // daha önce yazılmış yarış adları (öneri)
 
   // Belgeyi değiştiren alanlar hazır PDF'i geçersiz kılar
   const set = (k) => (v) => {
@@ -68,6 +71,9 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   };
   const put = (k, v) => setR((p) => ({ ...p, [k]: v }));
   const field = (k, ph, type = "text") => <input type={type} value={r[k]} onChange={(e) => set(k)(e.target.value)} placeholder={ph} className={input} />;
+  // Kulüp yazısı alanı: boşsa yarıştaki değer görünür (tarihlerde değer olarak)
+  const club = clubInfo(r);
+  const clubDate = (k, v) => <input type="date" value={r[k] || v || ""} onChange={(e) => set(k)(e.target.value)} className={input} />;
 
   const byId = new Map(athletes.map((a) => [a.id, a]));
   const chosen = r.athleteIds.map((id) => byId.get(id)).filter(Boolean);
@@ -102,7 +108,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   }, [r, save, toast]);
   useEffect(() => () => void (dirty.current && save().catch(() => {})), [save]);
 
-  const pages = (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0);
+  const pages =
+    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0);
   const ready = [
     ["Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
@@ -284,7 +291,14 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         <>
           <Label>YARIŞ</Label>
           <Group>
-            <Row label="Yarış adı">{field("name", "D’Azur Optimist Regatta")}</Row>
+            <Row label="Yarış adı">
+              <input value={r.name} onChange={(e) => set("name")(e.target.value)} placeholder="D’Azur Optimist Regatta" list="race-names" autoComplete="off" className={input} />
+              <datalist id="race-names">
+                {known.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </Row>
             <Row label="Federasyon">{field("federation", "Yelken")}</Row>
             <Pair>
               <Row label="İl">{field("city", "İzmir")}</Row>
@@ -352,7 +366,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : sub}</span>
+                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : sub}</span>
                     </span>
                     <Check on={on} tone="acc" />
                   </button>
@@ -360,6 +374,45 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
               );
             })}
           </ul>
+
+          {docs.includes("club") && (
+            <>
+              <Label>KULÜP İZİN YAZISI</Label>
+              <Group>
+                <Pair>
+                  <Row label="Sayı (ilk sporcu)">{field("clubNo", "GID-2026-14")}</Row>
+                  <Row label="Yazı tarihi">{clubDate("clubDate", r.letterDate)}</Row>
+                </Pair>
+                <Pair>
+                  <Row label="İzin başlangıcı">{clubDate("clubFrom", r.startDate)}</Row>
+                  <Row label="İzin bitişi">{clubDate("clubTo", r.endDate || r.startDate)}</Row>
+                </Pair>
+                <Row label="Etkinlik adı">{field("clubEvent", r.name || "Optimist Gelişim Kampı")}</Row>
+                <Row label="Yeri">{field("clubPlace", club.place || "Çeşme-İzmir")}</Row>
+                <Pair>
+                  <Row label="İmzalayan">{field("clubSigner", "Ad SOYAD")}</Row>
+                  <Row label="Görevi">{field("clubTitle", "Antrenör")}</Row>
+                </Pair>
+              </Group>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">
+                {[
+                  club.no && chosen.length > 1 && `Sayı sporcu başına artar: ${club.no} … ${nextNo(club.no, chosen.length - 1)}.`,
+                  "Boş bırakılanlar yarış bilgisinden gelir; kamp gibi farklı tarih ve ad için burayı değiştir.",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              </p>
+              {(r.clubFrom || r.clubTo || r.clubEvent || r.clubPlace) && (
+                <button
+                  type="button"
+                  onClick={() => (setFile(null), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
+                  className="mt-1 px-1 text-[0.8125rem] font-semibold text-acc"
+                >
+                  Yarışın tarih, ad ve yerine dön
+                </button>
+              )}
+            </>
+          )}
 
           <Label>HAZIRLIK</Label>
           <ul className={`${card} space-y-2.5 px-4 py-3.5`}>
