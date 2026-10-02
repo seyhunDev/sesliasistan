@@ -1,6 +1,6 @@
 @AGENTS.md
 
-Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırlat: `npm run gonder -- "kısa açıklama"` (testler + derleme geçerse kaydeder ve gönderir; gizli dosya varsa durur). Ardından Netlify'a yayınlama komutunu her seferinde ayrı bir blok olarak yaz: `npm run build && netlify deploy --prod`. Sonra proje dökümünü yenilemesini hatırlat: `node scripts/proje-ozeti.mjs` (çıktı ~/Downloads/sesliasistan-ozet-<tarih>.md; yeni sohbette paylaşılır).
+Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırlat: `npm run gonder -- "kısa açıklama"` (testler + derleme geçerse kaydeder ve gönderir; gizli dosya varsa durur). Ardından Netlify'a yayınlama komutunu her seferinde ayrı bir blok olarak yaz: `npm run build && netlify deploy --prod`. Son olarak NOTLAR.md'deki "Nerede kaldım" ve "Sıradaki işler"i güncelle.
 
 ## Çalışma kuralları (her sohbette geçerli)
 
@@ -10,7 +10,21 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - firestore.rules değişirse kullanıcı Firebase konsolundan yayınlar (Firebase CLI yok): `pbcopy < firestore.rules`, sonra Firestore › Kurallar › Yayınla. Bunu her seferinde hatırlat.
 - Sporcu verisine ve ana hesap (seyhunyildiz) hesabına dokunma.
 - Kullanıcıya verilen terminal komut bloklarında `#` yorum satırı olmasın.
-- Değişiklikler GitHub'a gönderilebiliyorsa doğrudan gönder; gönderilemiyorsa tar.gz + .sha1 paketi ver (kullanıcı `tar xzf` ile açar, sonra `npm run build && netlify deploy --prod`).
+- Değişiklikler GitHub'a gönderilir (bulut oturumunda dal + PR).
 - Testler: `npm test` (asistan yerel kuralları + derleme), canlı: `node --no-warnings scripts/uygulama-test/calistir.mjs` (hesap sorar), yapay zeka: `node scripts/asistan-test/calistir.mjs --yz`. Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
 - Yapay zeka: Gemini 3.x için `thinkingLevel: "minimal"`, eskiler için `thinkingBudget: 0` (lib/ai/gemini.js). Hata türleri lib/ai/errors.js.
-- Sıradaki işler: Asistan Sahnesi 2. adım (sayfada arka plan vurgusu / hayalet taslak), 3. adım (mesajda hayalet balon).
+- Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (aşağıda otomatik yüklenir); kalıcı kararları oraya yaz.
+- Token: tüm dosyaları tarama, haritadan ilgili dosyaya git.
+
+## Harita
+
+- Sayfalar: `src/app/(app)/<sayfa>/page.jsx`; giriş `src/app/(auth)`; API: `src/app/api/<ad>/route.js`.
+- Asistan arayüzü: `src/features/assistant` (AssistantSheet, AssistantProvider, AssistantFab); sunucu: `src/app/api/assistant`, `src/services/assistantService.js`.
+- Yapay zeka: `src/lib/ai` (gemini, anthropic, assistant, rules, schema, errors); ön cevap `src/lib/precue.js`; yerel kurallar `src/lib/assistantLocal.js`.
+- Ses: `src/hooks/useSpeech.js`, `src/features/speech`, `src/app/api/transcribe`, `src/app/api/tts`.
+- Ana sayfa ve alt çubuk: `src/features/home` (TabBar, HomeHero, StageBrief…); ekleme/taslak: `src/features/add`.
+- Veri: `src/features/data/DataProvider.jsx`, Firebase `src/lib/firebase`, sunucu yönetici `src/lib/server`; kurallar `firestore.rules`.
+- Diğer özellikler `src/features/<ad>` (athletes, chat, mail, receipts, meeting, weather, staff…); ortak arayüz `src/components/ui`.
+- Bildirim zamanlayıcı: `netlify/functions/plan-reminders.mjs`; betikler: `scripts/`.
+
+@NOTLAR.md
