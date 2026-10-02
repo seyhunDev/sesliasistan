@@ -10,6 +10,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 - Yarışa not, yapılacaklar listesi (evrak, veli imzası, okullar, GSİM, kayıt formu) ve "Planlara ekle" eklendi. Asistan: "Yarış ekle: …, Çeşme, 7-11 Ekim, Ali ve Ayşe katılacak", "… yarışına Mehmet'i de ekle", "… için not al: …" (`src/features/athletes/assistRace.js`, `/api/race`).
 - Kulüp izin yazısı eklendi (Evrak sekmesi, 5. belge): kulüpten sporcunun okuluna, sporcu başına bir sayfa, antetli. Sayı, tarih, izin aralığı, etkinlik adı, yer, imzalayan ayrı düzenlenir; boşsa yarıştan gelir. Sporcu kartına okul no ve sınıf alanı eklendi.
 - Yarış talimatı: yarışta "Talimattan oluştur / Talimatı yükle" (PDF, fotoğraf ya da yapıştırılan metin; PDF en çok 4 MB; dosya türü içerikten anlaşılır, uzantısız dosya da seçilir) → `/api/race-notice` (Gemini) ad, tarih, yer, program, son tarihler, ücretler, konaklama, iletişim çıkarır; yarışın `notice` alanında durur, belge saklanmaz. Özet sekmesinde son tarihler (planlara ekle) ve talimat ayrıntıları. Gerçek talimatla canlıda denenmedi.
+- Yapılacaklar iki bölüm: "Kayıt ve hazırlık" talimat varsa talimattaki işlerden (son tarihli), yoksa standart liste (online kayıt, ücret, konaklama, ulaşım/tekne, kesin kayıt); "Evrak" her yarışta aynı (evrak, veli, okullar, GSİM).
 - Kulüp izin yazısında kulüp logosu (`public/club-logo.png`).
 - Asistan: yarış adları hafızası (`raceNames.js`, kayıtlı yarışlardan) ses tanımaya ipucu ve yarış adı kutusunda öneri; "katılımcıları" sporcu olarak eklenir, nota yazılmaz; konuşma sonu beklemesi uzadı (kayıt yolu 2,3 sn, kısa cümlede 3 sn; canlı yazı 2 sn).
 - Yarışlar sayfası yeniden tasarlandı: liste `RaceList.jsx` (sıradaki yarış kartı, yaklaşan/geçmiş), tek yarış `/athletes/races/[id]` + `RaceEditor.jsx` (Özet / Sporcular / Bilgiler / Evrak sekmeleri). Yeni yarış: `/athletes/races/new`.
@@ -38,7 +39,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 ## Yarış evrakı
 
 - Belgeler `src/features/athletes/raceDocs.js` (pdf-lib, düzen kulübün örnek evraklarıyla birebir; yazı tipi `public/fonts` Liberation = Times/Arial ölçülü). Yarışlar `orgs/{orgId}/races`'te yalnız yarış bilgisi + sporcu kimlikleri; kişisel bilgiler sporcu kartından (kulüp projesi) okunur, kopyalanmaz.
-- Yarış kaydı alanları: note, checks {docs, parents, schools, gsim, entry}, planAdded. Yarış tarihi sonradan değişirse plan kendiliğinden güncellenmez.
+- Yarış kaydı alanları: note, checks {docs, parents, schools, gsim, entry, fee, hotel, travel, final, "t:<iş adı>"}, planAdded, notice {…, tasks}. İş listesi `stepsOf(r)` (races.js). Yarış tarihi sonradan değişirse plan kendiliğinden güncellenmez.
 - Kulüp izin yazısı alanları yarışta: clubNo (sporcu başına artar), clubDate, clubFrom, clubTo, clubEvent, clubPlace, clubSigner, clubTitle. Antet bilgisi `CLUB` (raceDocs.js).
 - Sporcu kartındaki ek alanlar: studentNo, studentClass, licenseNo, studentSchool, studentSchoolPlace, studentBirthPlace, studentPhone, motherName, fatherName, parentTc, parentRelation (`DOC_FIELDS`, data.js).
 

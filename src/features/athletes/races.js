@@ -16,7 +16,7 @@ export const RACE_FIELDS = [
   "notice",
 ];
 
-const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
+const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
 
 // Talimat bilgisi: kayıtta yalnız bilinen alanlar kalır
 export function cleanNotice(n) {
@@ -31,15 +31,46 @@ export function cleanNotice(n) {
   return out;
 }
 
-// Yarış öncesi yapılacaklar (her yarışta aynı liste; işaretlenenler checks içinde)
-export const STEPS = [
+// Yarış öncesi yapılacaklar. Her iş: { key, label, date?, detail?, group }; işaretlenenler checks[key].
+// Evrak işleri (kulüp tarafı) her yarışta aynı. Talimat yüklendiyse kayıt/ödeme/konaklama işleri talimattan gelir,
+// yoksa çoğu talimatta olan standart liste kullanılır.
+export const DOC_STEPS = [
   ["docs", "Evraklar hazırlandı"],
   ["parents", "Veliler imzaladı"],
   ["schools", "Okullara verildi"],
-  ["gsim", "GSİM'e verildi"],
-  ["entry", "Yarış kayıt formu yapıldı"],
+  ["gsim", "GSİM'e verildi (il dışı çıkış oluru)"],
 ];
-export const doneCount = (r) => STEPS.filter(([k]) => r.checks?.[k]).length;
+export const PREP_STEPS = [
+  ["entry", "Online kayıt yapıldı"],
+  ["fee", "Kayıt ücreti ödendi"],
+  ["hotel", "Konaklama ayarlandı"],
+  ["travel", "Ulaşım ve tekne taşıma ayarlandı"],
+  ["final", "Kesin kayıt yapıldı (yarış ofisi)"],
+];
+const slug = (s) =>
+  "t:" + String(s || "").toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40);
+
+// Talimattaki işler; eski talimatlarda (tasks yoksa) son tarihlerden, ücretten ve otelden çıkarılır
+export function noticeTasks(n) {
+  if (!n) return [];
+  let list = (n.tasks || []).filter((t) => t?.title);
+  if (!list.length) {
+    list = (n.deadlines || []).map((d) => ({ title: d.title, date: d.date, detail: d.detail }));
+    if (n.fees?.length && !list.some((t) => /ücret|ödeme/i.test(t.title))) list.push({ title: "Kayıt ücretini öde", detail: n.fees[0].amount });
+    if (n.hotels?.length) list.push({ title: "Konaklamayı ayarla", detail: n.hotels[0].name });
+  }
+  const seen = new Set();
+  return list
+    .map((t) => ({ key: slug(t.title), label: t.title, date: t.date || "", detail: t.detail || "", group: "notice" }))
+    .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
+}
+
+export function stepsOf(r) {
+  const tasks = noticeTasks(r?.notice);
+  const prep = tasks.length ? tasks : PREP_STEPS.map(([key, label]) => ({ key, label, group: "prep" }));
+  return [...prep, ...DOC_STEPS.map(([key, label]) => ({ key, label, group: "docs" }))];
+}
+export const doneCount = (r) => stepsOf(r).filter((s) => r.checks?.[s.key]).length;
 
 const col = (orgId) => collection(db, "orgs", orgId, "races");
 const clean = (r) =>
@@ -49,7 +80,7 @@ const clean = (r) =>
       k === "athleteIds"
         ? r[k] || []
         : k === "checks"
-          ? Object.fromEntries(STEPS.map(([s]) => [s, !!r.checks?.[s]]))
+          ? Object.fromEntries(Object.entries(r.checks || {}).filter(([c, v]) => typeof v === "boolean" && /^[\p{L}\p{N}:-]{1,48}$/u.test(c)).slice(0, 60))
           : k === "planAdded"
             ? !!r[k]
             : k === "notice"
