@@ -20,6 +20,8 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { StageBrief } from "./StageBrief";
+import { RaceIntro } from "./RaceIntro";
+import { useRaceHome } from "@/features/athletes/raceHome";
 
 // Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › doğum günü ›
 // para › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
@@ -72,8 +74,10 @@ export function HomeFeed() {
   const staff = profile?.role === "staff";
   const kind = useKind();
   const athletes = canSeeAthletes(profile?.email);
+  const race = useRaceHome();
 
   const links = [
+    race.on && ["/athletes/races", "flag", "Yarışlar", race.up],
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
@@ -97,6 +101,7 @@ export function HomeFeed() {
         <BirthdayStrip />
       </div>
       {canReceipts(kind) && <MoneyRow />}
+      <RaceIntro race={race} />
       <nav aria-label="Diğer sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {links.map(([href, icon, label, n]) => (
           <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">

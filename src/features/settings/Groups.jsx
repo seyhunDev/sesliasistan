@@ -16,6 +16,7 @@ import { LEADS } from "@/lib/reminders";
 import { SIZES, applySize } from "@/lib/textSize";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
 import { Badge, Chips, Row, Switch } from "./ui";
+import { useRaceHome } from "@/features/athletes/raceHome";
 
 // Ayarlar sayfasının satırları. Sayfa bunları "Sık kullanılanlar" ve "Diğer ayarlar" olarak dizer;
 // seyrek ayarlar (izinler, hatırlatma süresi…) dokununca açılan satırlarda durur.
@@ -607,5 +608,30 @@ export function TourResetRow() {
         )}
       </div>
     </Fold>
+  );
+}
+
+// ---- Yarışlar ana sayfada: yalnız sporcu yetkisi olanlarda (bkz. raceHome.js) ----
+export function RacesRow() {
+  const race = useRaceHome();
+  const toast = useToast();
+  const [on, setOn] = useState(null);
+  if (!race.allowed) return null;
+  const cur = on ?? race.on;
+  const flip = (v) => {
+    setOn(v);
+    race.set(v).catch(() => {
+      setOn(!v);
+      toast("Kaydedilemedi, tekrar dene");
+    });
+  };
+  return (
+    <Row
+      icon="flag"
+      tone="acc"
+      title="Yarışlar ana sayfada"
+      sub={cur ? "Açık: ana sayfada Yarışlar düğmesi" : "Kapalı: Sporcular sayfasından girilir"}
+      right={<Switch on={cur} onChange={flip} label="Yarışlar ana sayfada" />}
+    />
   );
 }
