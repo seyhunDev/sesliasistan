@@ -217,6 +217,8 @@ group("Ses seçimi")([
   ["yalnız eğlence + kompakt: kompakt", BV(VOICES.slice(0, 2), "", "com.apple.voice.compact.tr-TR.Yelda")],
   ["kullanıcının seçtiği", BV(VOICES, "com.apple.voice.compact.tr-TR.Yelda", "com.apple.voice.compact.tr-TR.Yelda")],
   ["Türkçe ses yok", BV(VOICES.slice(3), "", null)],
+  ["Chrome: Google (internet) yerine cihazdaki Yelda", BV([{ name: "Google Türkçe", lang: "tr-TR", voiceURI: "Google Türkçe", localService: false }, { name: "Yelda", lang: "tr-TR", voiceURI: "Yelda", localService: true }], "", "Yelda")],
+  ["Mac Chrome: Gelişmiş ad ile", BV([{ name: "Yelda", lang: "tr-TR", voiceURI: "Yelda", localService: true }, { name: "Yelda (Gelişmiş)", lang: "tr-TR", voiceURI: "Yelda (Gelişmiş)", localService: true }], "", "Yelda (Gelişmiş)")],
 ]);
 
 export default results;

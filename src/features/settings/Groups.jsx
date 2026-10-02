@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { MicTest } from "@/features/permissions/PermissionsCard";
 import { RATES, SAMPLE, useTts } from "@/features/speech/TtsProvider";
-import { voiceLabel, voiceQuality } from "@/lib/speech/speakText";
+import { voiceHelp, voiceLabel, voiceQuality } from "@/lib/speech/speakText";
 import { usePermissions } from "@/hooks/usePermissions";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -98,10 +98,10 @@ export function VoiceRow() {
               Dene
             </button>
           </div>
-          {(!using || voiceQuality(using) < 3) && (
+          {(!using || voiceQuality(using) < 3 || using.localService === false) && (
             <p className="text-[0.75rem] leading-snug text-mut">
               {!tts.voices.length ? "Bu cihazda Türkçe ses bulunamadı. " : ""}
-              Daha doğal ses için iPhone Ayarlar › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe › Yelda › Premium&apos;u indir, sonra uygulamayı tamamen kapatıp yeniden aç.
+              Daha doğal ses için {typeof navigator !== "undefined" && voiceHelp(navigator.userAgent, navigator.maxTouchPoints)}
             </p>
           )}
         </div>

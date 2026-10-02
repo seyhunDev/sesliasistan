@@ -8,14 +8,18 @@ const FUNNY = /eloquence|speech\.synthesis\.voice|\b(eddy|flo|grandma|grandpa|re
 
 export const isTr = (v) => !!v?.lang && v.lang.toLowerCase().replace("_", "-").startsWith("tr");
 
-// 3 Premium, 2 Gelişmiş (ya da Google gibi bulut kalitesinde), 1 Kompakt/standart, 0 eğlence sesi
+// 3 Premium, 2 Gelişmiş, 1 Kompakt/standart, 0 eğlence sesi.
+// İnternetten okuyan sesler (Chrome'daki "Google Türkçe", localService false) cihazdakilerin ardından gelir:
+// okuma cihazda kalsın, istenirse Ayarlar'dan elle seçilir.
 export function voiceQuality(v) {
   const id = `${v?.voiceURI || ""} ${v?.name || ""}`;
   if (FUNNY.test(id)) return 0;
   if (/premium/i.test(id)) return 3;
-  if (/enhanced|gelişmiş|geliştirilmiş|siri|neural|natural|google/i.test(id)) return 2;
+  if (/enhanced|gelişmiş|geliştirilmiş|siri|neural|natural/i.test(id)) return 2;
   return 1;
 }
+
+const isRemote = (v) => v?.localService === false;
 
 export const QUALITY_LABEL = { 3: "Premium", 2: "Gelişmiş", 1: "Kompakt", 0: "Eğlence" };
 
@@ -25,11 +29,11 @@ export function rankVoices(voices) {
   return (voices || [])
     .filter((v) => isTr(v) && !seen.has(v.voiceURI) && seen.add(v.voiceURI))
     .map((v) => ({ v, q: voiceQuality(v) }))
-    .sort((a, b) => b.q - a.q || Number(b.v.localService) - Number(a.v.localService) || Number(b.v.default) - Number(a.v.default))
+    .sort((a, b) => isRemote(a.v) - isRemote(b.v) || b.q - a.q || Number(!!b.v.default) - Number(!!a.v.default))
     .map(({ v }) => v);
 }
 
-// Kayıtlı seçim varsa o, yoksa en iyi (eğlence sesi değil) ses
+// Kayıtlı seçim varsa o, yoksa en iyi cihaz sesi (eğlence sesi değil)
 export function bestVoice(voices, uri) {
   const list = rankVoices(voices);
   return (uri && list.find((v) => v.voiceURI === uri)) || list.find((v) => voiceQuality(v) > 0) || null;
@@ -37,7 +41,15 @@ export function bestVoice(voices, uri) {
 
 export function voiceLabel(v) {
   const name = String(v?.name || "").replace(/\s*\((premium|enhanced|gelişmiş|compact|kompakt)\)\s*/i, "").trim() || "Ses";
-  return `${name} · ${QUALITY_LABEL[voiceQuality(v)]}`;
+  return `${name} · ${isRemote(v) ? "İnternetten" : QUALITY_LABEL[voiceQuality(v)]}`;
+}
+
+// Daha doğal sesi indirme yolu (Mac ya da iPhone/iPad)
+export function voiceHelp(ua = "", touch = 0) {
+  const mac = /Macintosh/.test(ua) && !touch;
+  return mac
+    ? "Mac'te Sistem Ayarları › Erişilebilirlik › Seslendirilen İçerik › Sistem sesi › Sesleri Yönet › Türkçe › Yelda (Premium)'u indir, sonra tarayıcıyı kapatıp yeniden aç."
+    : "iPhone'da Ayarlar › Erişilebilirlik › Seslendirilen İçerik › Sesler › Türkçe › Yelda › Premium'u indir, sonra uygulamayı tamamen kapatıp yeniden aç.";
 }
 
 // ---- Okunuş ----
