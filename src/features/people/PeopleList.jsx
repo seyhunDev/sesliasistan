@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,6 +9,10 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { useData } from "@/features/data/DataProvider";
 import { PersonSheet } from "@/features/people/PersonSheet";
 import { SendLogin } from "@/features/people/SendLogin";
+import { memberData } from "@/features/people/assistPerson";
+import { OPEN_KEY, takeOpen } from "@/features/people/personActions";
+
+const pick = ({ name, kind, relation, title, phone, email, birth }) => ({ name, kind, relation, title, phone, email, birth });
 import { seenText } from "@/features/staff/StaffCard";
 import { KIND_LABEL, PEOPLE_GROUPS, kindOf, missingOf, shownLogin } from "@/lib/kinds";
 import { initials } from "@/lib/utils/format";
@@ -22,6 +26,21 @@ export function PeopleList({ group }) {
   const [send, setSend] = useState(null);
   const list = members.filter((m) => g.kinds.includes(kindOf(m))).sort((a, b) => (a.name || "").localeCompare(b.name || "", "tr"));
   const accounts = list.filter((m) => m.account !== false).length;
+  // Asistandan açılış: { uid, step } (kişi kartı / hesap ekranı) ya da { prefill } (yeni kişi formu dolu)
+  const [want, setWant] = useState(null);
+  useEffect(() => {
+    const take = () => {
+      const o = takeOpen();
+      if (o) setWant(o);
+    };
+    take();
+    window.addEventListener(OPEN_KEY, take);
+    return () => window.removeEventListener(OPEN_KEY, take);
+  }, []);
+  // İstenen kişi listede görünene kadar (yükleniyor) beklenir
+  const wanted = !want ? null : want.prefill ? { person: null, prefill: pick(memberData({ ...want.prefill, name: want.prefill.name || "" })) } : members.find((x) => x.uid === want.uid) ? { person: members.find((x) => x.uid === want.uid), step: want.step } : null;
+  const shown = edit || wanted;
+  const close = () => (setEdit(null), setWant(null));
   const childNames = (m) => (m.children || []).map((c) => members.find((x) => x.uid === c)?.name?.split(" ")[0]).filter(Boolean).join(", ");
 
   return (
@@ -92,7 +111,7 @@ export function PeopleList({ group }) {
         </button>
       </div>
 
-      {edit && <PersonSheet key={`${edit.person?.uid || "new"}-${edit.step || ""}`} open onClose={() => setEdit(null)} person={edit.person} defaultKind={g.add} initialStep={edit.step} />}
+      {shown && <PersonSheet key={`${shown.person?.uid || "new"}-${shown.step || ""}`} open onClose={close} person={shown.person} defaultKind={g.add} initialStep={shown.step} prefill={shown.prefill} />}
       {send && <SendLogin key={send.uid} person={send} onClose={() => setSend(null)} />}
     </main>
   );
