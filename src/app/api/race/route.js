@@ -50,6 +50,7 @@ const SCHEMA = {
 // Açılacak yarışı bulma: ses tanıma yabancı adları bozar; söylenen ada en çok benzeyen kayıtlı yarış seçilir
 const FIND = `Antrenör kayıtlı yarışlardan birinin sayfasını açmak istiyor. Söylediği ses tanıma metnidir: yabancı adlar bozulur ("dazur", "daz ur", "dö azur" = D'Azur; "halkidi" = Halkidiki), kelimeler ayrılır ya da birleşir, ilçe/şehir ya da ay söylenebilir ("Foça'daki", "ekimdeki yarış").
 Kayıtlı yarışlar (id | ad | ilçe | başlangıç) ve bugünün tarihi verilir.
+Tekne sınıfı (Optimist, ILCA, Laser, 420…) ve ayak/etap numarası aynı adlı yarışları ayırır; ses tanıma sınıf adını da bozar ("optimus", "optimis" = Optimist; "ilka" = ILCA). Sınıf ya da numara söylendiyse ona uyan yarışı seç.
 - raceId: söylenene açıkça uyan tek yarış varsa onun id'si, yoksa boş.
 - candidates: emin değilsen en olası en çok 3 yarışın id'si (olasılık sırasıyla); söylenen hiçbir yarışa benzemiyorsa boş.
 - message: 1 kısa Türkçe cümle.`;

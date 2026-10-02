@@ -100,16 +100,25 @@ const days = (a, b) => (a && b ? Math.abs(new Date(`${a}T12:00:00`) - new Date(`
 export const nearest = (races, today, n = 3) =>
   [...races].sort((a, b) => days(a.startDate, today) - days(b.startDate, today) || (b.startDate || "").localeCompare(a.startDate || "")).slice(0, n);
 
-const COMMON_F = new Set([...COMMON].map(fold));
+// Tekne sınıfları yarışları birbirinden ayırır ("1. Ayak OPTIMIST" / "1. Ayak ILCA"): puanlamada ortak kelime sayılmaz
+const CLASSES = new Set(["optimist", "laser", "ilca", "yelken"].map((w) => w));
+// "1. Ayak" ile "2. Ayak" de ayırır: ayak ve sıra numarası puanlamada sayılır
+const COMMON_F = new Set([...COMMON].filter((w) => (!CLASSES.has(w) || w === "yelken") && !/^aya/.test(w)).map(fold));
+// Ses tanımanın sık bozduğu sınıf adları
+const ALIAS = { optimus: "optimist", optimis: "optimist", optimst: "optimist", optimizt: "optimist", ilka: "ilca", ilsa: "ilca", ilce: "ilca", leizir: "laser", lazer: "laser", leiser: "laser" };
+const alias = (w) => ALIAS[w] || ALIAS[w.replace(/(nin|nun|in|un|a|e|i|u|ya|ye)$/, "")] || w;
 
 // [{ race, score }] puana göre: ad kelimeleri + ilçe + birleşik yazım ("daz ur" → "dazur"); tarih yakınlığı en çok 0,1
 export function rankRaces(text, races, today = "") {
-  const words = raceWords(text).filter((w) => !COMMON_F.has(w) && !COMMON_F.has(w.replace(/(ni|n[iı]n|na|ne|a|e|i|u|da|de)$/, "")) && w.length >= 3);
-  const joined = raceWords(text).join("");
+  const words = raceWords(text).map(alias).filter((w) => !COMMON_F.has(w) && !COMMON_F.has(w.replace(/(ni|n[iı]n|na|ne|a|e|i|u|da|de)$/, "")) && w.length >= 3 && !/^\d+$/.test(w));
+  const joined = raceWords(text).map(alias).join("");
   return (races || [])
     .map((race) => {
-      const ks = [...low(race.name).split(/\s+/), low(race.district)].map(fold).filter((k) => k.length >= 3 && !COMMON_F.has(k) && !/^\d+$/.test(k));
+      const parts = [...low(race.name).split(/\s+/), low(race.district)].map(fold);
+      const ks = parts.filter((k) => k.length >= 3 && !COMMON_F.has(k) && !/^\d+$/.test(k));
       let score = 0;
+      // Sıra numarası ("1. Ayak") yalnız aynen söylenirse sayılır
+      for (const n of parts.filter((k) => /^\d+$/.test(k))) if (low(text).split(/\s+/).map(fold).includes(n)) score += 0.5;
       for (const k of ks) {
         const best = Math.max(0, ...words.map((w) => sim(w, k)), joined.includes(k) ? 1 : 0);
         if (best >= 0.6) score += best;
