@@ -14,7 +14,7 @@ import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
-import { doneCount, shiftDay, stepsOf } from "./races";
+import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -232,14 +232,30 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const fromNotice = steps.some((x) => x.group === "notice");
   const inGroup = (group) => steps.filter((x) => (group === "docs" ? x.group === "docs" : x.group !== "docs"));
   const count = (group) => `${inGroup(group).filter((x) => r.checks?.[x.key]).length}/${inGroup(group).length}`;
+  // Elle iş ekleme/silme (her yarışa ayrı)
+  const [todo, setTodo] = useState("");
+  const [todoDate, setTodoDate] = useState("");
+  const addTodo = () => {
+    const title = todo.trim();
+    if (!title) return;
+    if (steps.some((x) => x.label.toLocaleLowerCase("tr-TR") === title.toLocaleLowerCase("tr-TR"))) return toast("Bu iş listede var");
+    put("todos", cleanTodos([...(r.todos || []), { title, date: todoDate }]));
+    setTodo("");
+    setTodoDate("");
+  };
+  const removeTodo = (key) => {
+    const checks = { ...r.checks };
+    delete checks[key];
+    setR((p) => ({ ...p, todos: (p.todos || []).filter((t) => todoKey(t.title) !== key), checks }));
+  };
   const stepList = (group) => (
     <ul className={`${card} divide-y divide-line overflow-hidden`}>
-      {inGroup(group).map(({ key, label, date, detail }) => {
+      {inGroup(group).map(({ key, label, date, detail, group: g }) => {
         const on = !!r.checks?.[key];
         const left = date ? daysTo(date) : null;
         return (
-          <li key={key}>
-            <button type="button" onClick={() => put("checks", { ...r.checks, [key]: !on })} aria-pressed={on} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+          <li key={key} className="flex items-center">
+            <button type="button" onClick={() => put("checks", { ...r.checks, [key]: !on })} aria-pressed={on} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left active:bg-bg">
               <Check on={on} />
               <span className="min-w-0 flex-1">
                 <span className={`block text-[0.9375rem] ${on ? "text-mut line-through decoration-mut/50" : "font-medium"}`}>{label}</span>
@@ -255,9 +271,35 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                 </span>
               )}
             </button>
+            {g === "own" && (
+              <button type="button" onClick={() => removeTodo(key)} aria-label={`${label} işini sil`} className="-ml-2 grid size-11 shrink-0 place-items-center text-mut">
+                <Icon name="x" className="size-4" />
+              </button>
+            )}
           </li>
         );
       })}
+      {group === "prep" && (
+        <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
+          <Icon name="plus" className="size-5 shrink-0 text-acc" />
+          <input
+            value={todo}
+            onChange={(e) => setTodo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addTodo()}
+            placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
+            className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
+          />
+          {todo.trim() && (
+            <span className="flex w-full items-center gap-2 pb-1 pl-7">
+              <span className="text-[0.8125rem] text-mut">Son tarih</span>
+              <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
+              <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+                Ekle
+              </button>
+            </span>
+          )}
+        </li>
+      )}
     </ul>
   );
   return (
@@ -290,7 +332,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         <>
           <Label right={`${fromNotice ? "talimata göre · " : ""}${count("prep")}`}>KAYIT VE HAZIRLIK</Label>
           {stepList("prep")}
-          {!fromNotice && !r.notice && <p className="mt-2 px-1 text-[0.75rem] text-mut">Talimatı yüklersen bu liste talimattaki işlere ve son tarihlere göre kurulur.</p>}
+          {!fromNotice && <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.notice ? "Talimatta iş bulunamadı; işleri elle ekleyebilirsin." : "Talimatı yüklersen kayıt, ödeme, konaklama gibi işler son tarihleriyle buraya gelir. İstediğin işi elle de ekleyebilirsin."}</p>}
 
           <Label right={count("docs")}>EVRAK</Label>
           {stepList("docs")}
