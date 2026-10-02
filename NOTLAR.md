@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Yarış bütçesi (yarışta "Bütçe" sekmesi, `BudgetView.jsx`, hesap `budget.js`): kalemler kategori, tutar, birim (sporcu başı / kişi başı antrenör dahil / ortak), adet-gece, "kulüp karşılar". Toplam, sporcu başı ödeme, kulüp payı otomatik; sporcu ödemeleri Ödendi/Bekliyor. Yarışın `budget` alanında kaydedilir. Yapay zekayla doldurma (`/api/race-budget`), talimattaki ücret/otelleri ekleme, sesli "… bütçesine otel kişi başı 3500 4 gece ekle" (`/api/race` op budget). PDF çıktı `budgetDoc.js`. Canlıda denenmedi.
 - Hazırlanan yarış evrakı bu cihazda saklanır (IndexedDB `sa-race-docs`, `raceFiles.js`); sayfaya dönünce Hazır kartı ve Aç/Mail/Paylaş gelir, "Yenile" ile yeniden hazırlanır. Belgeyi değiştiren bilgi değişince kopya silinir. Firebase'e yazılmaz (PDF'te T.C./veli bilgisi var). Başka cihazda yeniden hazırlanır. Evrak sekmesi: "Hazırlanan evrak" (tümü + her belge ayrı; aç/paylaş) ve "Eklenen evrak" (elle eklenen PDF/fotoğraf, yine cihazda `<yarış>:extra`, bilgi değişince silinmez). Eklenen evrak maile girmiyor (sonraki iş olabilir).
 - Yarış evrakını mail: belgeler hazırlanınca alt çubukta "Mail" → "Kime gönderilsin?" (Kendime + kayıtlı adresler, `users/{uid}.mailTo`, yeni adres eklenir/silinir; `src/features/mail/MailTo.jsx`). Yalnız Gmail betiği kurulu ana hesapta. Uygulama PDF'i `orgs/{uid}/outbox`'a bırakır (`outbox.js`, 700 KB'lık parçalar, `to`, `self`), Gmail betiği 5 dakikada bir `gonder()` ile gönderir ve siler. Betik sürümü `mailOutbox` (1 kendine, 2 başka adreslere de); 2'den eskiyse Mail ayarlarından kod + appsscript.json yeniden kopyalanıp `kur` çalıştırılır. Kendine gönderim canlıda çalıştı (2026-10-02).
 - Son işler: ders programı düzenleme (çalışan/öğrenci dersini silebilir, tüm programı sil), asistan çubuğu açılıştan sonra alttan yükselir, ana ekran uygulamasında alt boşluk kısaldı.
@@ -19,6 +20,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.
 1. Asistan Sahnesi 2. adım: sayfada arka plan vurgusu / hayalet taslak.
 2. Asistan Sahnesi 3. adım: mesajda hayalet balon.
@@ -42,7 +44,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 ## Yarış evrakı
 
 - Belgeler `src/features/athletes/raceDocs.js` (pdf-lib, düzen kulübün örnek evraklarıyla birebir; yazı tipi `public/fonts` Liberation = Times/Arial ölçülü). Yarışlar `orgs/{orgId}/races`'te yalnız yarış bilgisi + sporcu kimlikleri; kişisel bilgiler sporcu kartından (kulüp projesi) okunur, kopyalanmaz.
-- Yarış kaydı alanları: note, checks {docs, parents, schools, gsim, "t:<talimat işi>", "m:<elle iş>"}, planAdded, notice {…, tasks}, todos [{title, date}]. İş listesi `stepsOf(r)` (races.js). Yarış tarihi sonradan değişirse plan kendiliğinden güncellenmez.
+- Yarış kaydı alanları: budget {staff, nights, items [{id, cat, title, amount, unit athlete|person|shared, qty, club}], paid {sporcuId: true}}, note, checks {docs, parents, schools, gsim, "t:<talimat işi>", "m:<elle iş>"}, planAdded, notice {…, tasks}, todos [{title, date}]. İş listesi `stepsOf(r)` (races.js). Yarış tarihi sonradan değişirse plan kendiliğinden güncellenmez.
 - Kulüp izin yazısı alanları yarışta: clubNo (sporcu başına artar), clubDate, clubFrom, clubTo, clubEvent, clubPlace, clubSigner, clubTitle. Antet bilgisi `CLUB` (raceDocs.js).
 - Sporcu kartındaki ek alanlar: studentNo, studentClass, licenseNo, studentSchool, studentSchoolPlace, studentBirthPlace, studentPhone, motherName, fatherName, parentTc, parentRelation (`DOC_FIELDS`, data.js).
 

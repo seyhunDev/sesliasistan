@@ -15,6 +15,7 @@ Sana bugünün tarihi, kayıtlı yarışlar (id | ad | başlangıç), bilinen ya
 op:
 - create: yeni bir yarış ekleniyor ("yarış ekle", "yeni yarış", "… yarışına gideceğiz").
 - update: kayıtlı bir yarışa sporcu, not ya da tarih ekleniyor ("D'Azur yarışına Mehmet'i de ekle", "regatta için not al: …", "D'Azur yarışının katılımcıları Ali, Ayşe"). raceId kayıtlı listeden. Ad tam söylenmeyebilir, en yakın yarışı seç; emin değilsen ve tek bir gelecek yarış varsa onu seç.
+- budget: kayıtlı bir yarışın bütçesine masraf ekleniyor ("Ege Kupası bütçesine otel kişi başı 3500 TL 4 gece ekle", "D'Azur için kayıt ücreti sporcu başı 1250"). raceId kayıtlı listeden; kalemleri ayrı bir adım çıkarır, sen yalnız yarışı bul.
 - none: yarışla ilgili bir kayıt isteği değil.
 
 Alanlar:
@@ -29,7 +30,7 @@ Alanlar:
 const SCHEMA = {
   type: "object",
   properties: {
-    op: { type: "string", enum: ["create", "update", "none"] },
+    op: { type: "string", enum: ["create", "update", "budget", "none"] },
     raceId: { type: "string" },
     name: { type: "string" },
     city: { type: "string" },
@@ -94,9 +95,9 @@ async function handle(request) {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 3000, timeoutMs: 20000 });
     const ids = new Set(list.map((a) => a.id));
     const athleteIds = [...new Set((Array.isArray(raw?.athleteIds) ? raw.athleteIds : []).map(String).filter((x) => ids.has(x)))];
-    let op = ["create", "update", "none"].includes(raw?.op) ? raw.op : "none";
+    let op = ["create", "update", "budget", "none"].includes(raw?.op) ? raw.op : "none";
     const raceId = races.some((r) => r.id === raw?.raceId) ? raw.raceId : "";
-    if (op === "update" && !raceId) op = "none";
+    if ((op === "update" || op === "budget") && !raceId) op = "none";
     const startDate = DATE.test(raw?.startDate || "") ? raw.startDate : "";
     const endDate = DATE.test(raw?.endDate || "") && raw.endDate >= startDate ? raw.endDate : startDate;
     const out = {

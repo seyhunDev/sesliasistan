@@ -3,6 +3,7 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { nextNo } from "./raceDocs";
+import { cleanBudget } from "./budget";
 import { rememberRaceNames } from "./raceNames";
 
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
@@ -16,6 +17,8 @@ export const RACE_FIELDS = [
   "notice",
   // Elle eklenen işler [{ title, date }]
   "todos",
+  // Bütçe (budget.js)
+  "budget",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -92,6 +95,8 @@ const clean = (r) =>
               ? cleanNotice(r[k])
             : k === "todos"
               ? cleanTodos(r[k])
+            : k === "budget"
+              ? cleanBudget(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -105,7 +110,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null, todos: [],
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null, todos: [], budget: null,
   };
 }
 

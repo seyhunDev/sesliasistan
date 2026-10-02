@@ -14,6 +14,8 @@ import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
+import { openFile, shareFile } from "./fileActions";
+import { BudgetView } from "./BudgetView";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
@@ -24,25 +26,6 @@ const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric"
 const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const partName = (all, title) => `${all.replace(/-evrak\.pdf$/, "")}-${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.pdf`;
 const asFile = (x) => new File([x.blob], x.name, { type: x.type });
-// Paylaş (telefonda paylaşım menüsü; olmazsa indir) ve aç (yeni sekme ya da indir)
-function openFile(f, download) {
-  const url = URL.createObjectURL(f);
-  const link = document.createElement("a");
-  link.href = url;
-  if (download) link.download = f.name;
-  else link.target = "_blank";
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
-async function shareFile(f) {
-  if (navigator.canShare?.({ files: [f] })) {
-    try {
-      await navigator.share({ files: [f], title: f.name });
-    } catch {}
-    return;
-  }
-  openFile(f, true);
-}
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 
@@ -409,7 +392,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       <Seg
         value={tab}
         onChange={setTab}
-        options={[["sum", "Özet"], ["people", "Sporcular", chosen.length], ["info", "Bilgiler"], ["docs", "Evrak"]]}
+        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["info", "Bilgi"], ["budget", "Bütçe"], ["docs", "Evrak"]]}
         className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-3"
       />
 
@@ -570,6 +553,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         </>
       )}
 
+      {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
+
       {tab === "docs" && (
         <>
           {file && (
@@ -709,7 +694,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       )}
 
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
+      <div className={`${tab === "budget" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
