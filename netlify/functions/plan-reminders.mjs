@@ -4,7 +4,7 @@
 // NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 import webpush from "web-push";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore } from "firebase-admin/firestore";
+import { FieldValue, Filter, getFirestore } from "firebase-admin/firestore";
 import { dueReminders, localNow, reminderText, remindKey } from "../../src/lib/reminders.js";
 import { due, eveningText, morningText } from "../../src/lib/summary.js";
 import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
@@ -13,6 +13,33 @@ import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 
 export const config = { schedule: "*/5 * * * *" };
+
+// Okuma tasarrufu: bildirimle ilgili kullanıcılar her çalışmada tek sorguyla bir kez okunur (önceden 7 ayrı sorgu,
+// aynı kişi her birinde yeniden okunuyordu). Kulübün plan/görev sorguları da çalışma boyunca paylaşılır.
+const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt"];
+const hasAt = (d, k) => typeof d[k] === "string" && d[k] > "";
+async function notifyUsers(db) {
+  const users = db.collection("users");
+  try {
+    const s = await users
+      .where(Filter.or(Filter.where("reminders.on", "==", true), Filter.where("mailPending", "==", true), ...NOTIFY_FIELDS.map((k) => Filter.where(k, ">", ""))))
+      .get();
+    return s.docs;
+  } catch (e) {
+    // VEYA sorgusu reddedilirse eski yol: alan başına ayrı sorgu
+    console.warn("[reminders] tek sorgu olmadı:", e.message);
+    const snaps = await Promise.all([users.where("reminders.on", "==", true), users.where("mailPending", "==", true), ...NOTIFY_FIELDS.map((k) => users.where(k, ">", ""))].map((q) => q.get()));
+    return [...new Map(snaps.flatMap((x) => x.docs).map((d) => [d.id, d])).values()];
+  }
+}
+// Aynı sorgu bir çalışmada bir kez: anahtar -> Promise<QuerySnapshot>
+function shared() {
+  const m = new Map();
+  return (key, q) => {
+    if (!m.has(key)) m.set(key, q.get());
+    return m.get(key);
+  };
+}
 
 const addDays = (date, n) => {
   const d = new Date(`${date}T12:00:00Z`);
@@ -36,9 +63,10 @@ async function sendDueReminders() {
   const db = getFirestore();
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
 
-  const users = await db.collection("users").where("reminders.on", "==", true).get();
+  const all = await notifyUsers(db);
+  const q = shared();
   let sent = 0;
-  for (const u of users.docs) {
+  for (const u of all.filter((x) => x.data().reminders?.on === true)) {
     const { reminders = {}, push = {}, role, orgId } = u.data();
     const subs = Object.entries(push);
     if (!subs.length) continue;
@@ -47,7 +75,8 @@ async function sendDueReminders() {
     const today = localNow(tz).date;
     // Bugünden 2 gün sonrasına kadar olan planlar ("1 gün önce" hatırlatması için yarın ve öbür gün).
     // Çalışan yalnızca kendisini ilgilendiren (people listesinde olduğu) planlar için bildirim alır.
-    const snap = await db.collection("orgs").doc(orgId || u.id).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)).get();
+    const oid = orgId || u.id;
+    const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
     const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => role !== "staff" || (p.people || []).includes(u.id));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
       const payload = JSON.stringify(reminderText(p, lead));
@@ -66,19 +95,17 @@ async function sendDueReminders() {
       await snap.docs.find((d) => d.id === p.id).ref.update({ [`reminded.${u.id}`]: remindKey(p, lead) });
     }
   }
-  const summaries = await sendSummaries(db).catch((e) => (console.error("[summary]", e.message), 0));
-  const mails = await sendMailDigests(db).catch((e) => (console.error("[mail]", e.message), 0));
-  const extras = await sendExtras(db).catch((e) => (console.error("[extras]", e.message), 0));
-  console.log(`[reminders] ${users.size} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek`);
+  const summaries = await sendSummaries(db, all, q).catch((e) => (console.error("[summary]", e.message), 0));
+  const mails = await sendMailDigests(db, all).catch((e) => (console.error("[mail]", e.message), 0));
+  const extras = await sendExtras(db, all, q).catch((e) => (console.error("[extras]", e.message), 0));
+  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek`);
   return new Response(`ok ${sent} ${summaries} ${mails} ${extras}`);
 }
 
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
-async function sendSummaries(db) {
-  const [m, e] = await Promise.all([db.collection("users").where("summaryAt", ">", "").get(), db.collection("users").where("eveningAt", ">", "").get()]);
-  const users = new Map([...m.docs, ...e.docs].map((d) => [d.id, d]));
+async function sendSummaries(db, all, q) {
   let n = 0;
-  for (const u of users.values()) {
+  for (const u of all.filter((x) => hasAt(x.data(), "summaryAt") || hasAt(x.data(), "eveningAt"))) {
     const d = u.data();
     const subs = Object.entries(d.push || {});
     if (!subs.length) continue;
@@ -88,12 +115,13 @@ async function sendSummaries(db) {
     const morning = due(d.summaryAt, d.summarySent, today, nowHM);
     const evening = due(d.eveningAt, d.eveningSent, today, nowHM);
     if (!morning && !evening) continue;
-    const org = db.collection("orgs").doc(d.orgId || u.id);
+    const oid = d.orgId || u.id;
+    const org = db.collection("orgs").doc(oid);
     const staff = d.role === "staff";
     const mine = (x) => !staff || (x.people || []).includes(u.id);
     const [p, t] = await Promise.all([
-      org.collection("plans").where("date", ">=", addDays(today, -14)).get(),
-      org.collection("tasks").where("done", "==", false).get(),
+      q(`plans:${oid}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14))),
+      q(`tasks:${oid}`, org.collection("tasks").where("done", "==", false)),
     ]);
     const data = { plans: p.docs.map((x) => x.data()).filter(mine), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
     const send = async (msg, tag) => {
@@ -123,12 +151,11 @@ async function sendSummaries(db) {
 
 // Ek bildirimler (Ayarlar › Günlük özetler): doğum günü, rüzgâr uyarısı, pazartesi haftalık özet; her biri günde bir kez
 const DIKILI = { lat: 39.0717, lon: 26.8886 };
-async function sendExtras(db) {
-  const snaps = await Promise.all(["birthdayAt", "windAt", "weeklyAt"].map((k) => db.collection("users").where(k, ">", "").get()));
-  const users = new Map(snaps.flatMap((s) => s.docs).map((d) => [d.id, d]));
+async function sendExtras(db, all, q) {
+  const users = all.filter((x) => ["birthdayAt", "windAt", "weeklyAt"].some((k) => hasAt(x.data(), k)));
   const winds = new Map(); // konum -> bugünün saatleri (her çalışmada bir kez indirilir)
   let n = 0;
-  for (const u of users.values()) {
+  for (const u of users) {
     const d = u.data();
     const subs = Object.entries(d.push || {});
     if (!subs.length) continue;
@@ -165,8 +192,8 @@ async function sendExtras(db) {
     }
     if (wind || weekly) {
       const [p, t] = await Promise.all([
-        org.collection("plans").where("date", ">=", addDays(today, -14)).get(),
-        weekly ? org.collection("tasks").where("done", "==", false).get() : null,
+        q(`plans:${orgId}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14))),
+        weekly ? q(`tasks:${orgId}`, org.collection("tasks").where("done", "==", false)) : null,
       ]);
       const plans = p.docs.map((x) => x.data()).filter(mine);
       if (wind) {
@@ -196,10 +223,9 @@ async function sendExtras(db) {
 // Gelen banka mailleri (Gmail betiği doğrudan veritabanına yazar, users.mailPending'i işaretler): son mailden 8 dakika sonra hepsi tek bildirimde (sabah 11'deki 3 hesap özeti gibi).
 // Betik Gmail'e 5 dakikada bir baktığı için bekleme bundan uzun: aynı anda gelenler ayrı bildirime bölünmez.
 const MAIL_QUIET = 8 * 60e3;
-async function sendMailDigests(db) {
-  const users = await db.collection("users").where("mailPending", "==", true).get();
+async function sendMailDigests(db, all) {
   let n = 0;
-  for (const u of users.docs) {
+  for (const u of all.filter((x) => x.data().mailPending === true)) {
     const d = u.data();
     if (Date.now() - Date.parse(d.mailLastAt || 0) < MAIL_QUIET) continue;
     const snap = await db.collection("orgs").doc(u.id).collection("mails").where("notified", "==", false).get();

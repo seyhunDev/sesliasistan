@@ -104,6 +104,8 @@ export async function POST(request) {
       const last = (r.replies?.[au.uid] || []).at(-1);
       if (!fresh(last?.at)) return NextResponse.json({ ok: true, skipped: "yeni not yok" });
       msg = replyText({ kind, title: r.title, from: me.name, text: last.text });
+      // Rozet hesabı (pushSend unreadCount) eski kayıtlarda da yeni notu bulsun diye son not zamanı
+      await ref.update({ replyAt: last.at }).catch(() => {});
     } else {
       if (!fresh(r.doneBy?.[au.uid])) return NextResponse.json({ ok: true, skipped: "tamamlama yok" });
       msg = doneText({ kind, title: r.title, from: me.name });
