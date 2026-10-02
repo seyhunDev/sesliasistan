@@ -4,20 +4,17 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { useTts } from "@/features/speech/TtsProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { INTRO_V } from "./Onboarding";
 
 export const TRY_SENTENCE = "Yarın saat 10'da antrenman ekle";
-const TRY_SPEECH = "Şimdi sen dene. Aşağıdaki beyaz ışığa dokun ve şunu söyle: yarın saat onda antrenman ekle.";
 
 // "Şimdi sen dene": tanıtım bittikten sonra ana sayfada bir kez. Ekran kararır, alttaki asistan düğmesi aydınlık kalır,
-// üstünde örnek cümle ve aşağıyı gösteren ok. Düğmeye dokununca (asistan açılınca) kapanır ve bir daha çıkmaz.
+// üstünde örnek cümle ve aşağıyı gösteren ok (sesli okunmaz). Düğmeye dokununca (asistan açılınca) kapanır ve bir daha çıkmaz.
 // "Sonra" ile de kapanır. Ayarlar › Tanıtımı sıfırla ile yeniden görünür.
 export function TryAssistant() {
   const { profile } = useAuth();
   const path = usePathname();
-  const tts = useTts();
   const [gone, setGone] = useState(false);
   const [pos, setPos] = useState(null); // asistan küresinin ve sahnenin ekrandaki yeri
   const show = !!profile && profile.onboarded === true && profile.introV >= INTRO_V && !profile.tourDone && !gone && path === "/";
@@ -30,7 +27,6 @@ export function TryAssistant() {
     if (!show) return;
     const on = () => done();
     window.addEventListener("sa-assistant-open", on);
-    const t = setTimeout(() => tts.speak(TRY_SPEECH), 700); // tanıtımdaki dokunuşla ses açıldı; açılmadıysa sessiz geçer
     // Ses ışığını bul (sahne çizilip yerleşince)
     const find = () => {
       const orb = [...document.querySelectorAll("[data-orb]")].find((e) => e.offsetParent);
@@ -44,7 +40,6 @@ export function TryAssistant() {
     return () => {
       window.removeEventListener("sa-assistant-open", on);
       window.removeEventListener("resize", find);
-      clearTimeout(t);
       clearTimeout(f);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

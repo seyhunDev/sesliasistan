@@ -121,7 +121,7 @@ export function Onboarding() {
       finish();
       return router.push(s.href);
     }
-    // Sesli asistan: mikrofon izni (sesli karşılama yok). Dokunuş iPhone ses kilidini de açar ("Şimdi sen dene" konuşabilsin).
+    // Sesli asistan: mikrofon izni (sesli karşılama yok). Dokunuş iPhone ses kilidini de açar (asistanın ilk cevabı okunabilsin).
     if (s.id === "voice") {
       window.dispatchEvent(new Event("sa-tts-prime"));
       if (perms.microphone === "granted") return next();
