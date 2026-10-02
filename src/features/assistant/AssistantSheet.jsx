@@ -410,10 +410,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const list = races.current;
     const today = todayStr();
     if (!list.length) return reply("Kayıtlı yarış bulamadım. Yarışlar sayfasından ekleyebilirsin.", { engine: "local", nav: "races" }, viaVoice);
-    const exact = findRace(s, list, today);
-    if (exact) return goRace(exact, viaVoice);
+    // Puanlama tekne sınıfını ve ayak numarasını da sayar; kesinse o, değilse ad kelimesiyle tam eşleşen
     const ranked = rankRaces(s, list, today);
     if (sure(ranked)) return goRace(ranked[0].race, viaVoice);
+    const exact = findRace(s, list, today);
+    if (exact && (!ranked[1] || ranked[0]?.race.id === exact.id)) return goRace(exact, viaVoice);
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
@@ -424,12 +425,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch {}
     if (id !== runId.current) return;
     setPhase("idle");
+    setSteps([]); // arama adımı iş bitince kalmasın (seçenek sormak hata değil)
     const byId = (x) => list.find((r) => r.id === x);
-    if (ai?.raceId && byId(ai.raceId)) {
-      stepsEnd();
-      return goRace(byId(ai.raceId), viaVoice);
-    }
-    stepsEnd(false);
+    if (ai?.raceId && byId(ai.raceId)) return goRace(byId(ai.raceId), viaVoice);
     // Seçenekler: yapay zekanın adayları, yoksa puanı olanlar, o da yoksa tarihi bugüne en yakın 3 yarış
     const fromAi = (ai?.candidates || []).map(byId).filter(Boolean);
     // Yapay zekanın ilk adayı yerel puanlamanın da birincisiyse sormadan açılır
