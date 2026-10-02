@@ -79,6 +79,7 @@ export function AuthProvider({ children }) {
             mailSeen: doc_?.mailSeen || "", // mail: Gmail betiğinin son kontrolü (ISO; betik yazar)
             mailOutbox: doc_?.mailOutbox === true ? 1 : Number(doc_?.mailOutbox) || 0, // mail: betik sürümü (1: kendine mail, 2: başka adreslere de)
             mailTo: Array.isArray(doc_?.mailTo) ? doc_.mailTo : [], // mail: kayıtlı alıcı adresleri
+            races: doc_?.races === "on" || doc_?.races === "off" ? doc_.races : "", // ayarlar: ana sayfada Yarışlar düğmesi (raceHome.js)
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
             onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)
