@@ -233,12 +233,22 @@ function schoolLetter(pdf, f, r, list) {
 }
 
 // Sığmazsa yazıyı küçült, yine sığmazsa iki satıra böl
+// Yazıyı hücreye sığdırır: önce tek satırda küçülterek, olmazsa satırlara bölerek (yükseklik de hesaba katılır).
+// En küçük boyutta da sığmazsa satırlar yine bölünür; yazı kesilmez.
+function fitLines(p, s, font, size, w, h, min = 6) {
+  const room = w - 8;
+  for (let sz = size; sz >= min; sz -= 0.25) {
+    if (p.width(s, font, sz) <= room) return { lines: [s], sz };
+    const lines = p.wrap(s, font, sz, room).map((ws) => ws.join(" "));
+    if (lines.length * sz * 1.15 <= h - 1 && lines.every((l) => p.width(l, font, sz) <= room)) return { lines, sz };
+  }
+  return { lines: p.wrap(s, font, min, room).map((ws) => ws.join(" ")), sz: min };
+}
 function fitCell(p, s, x, top, w, h, font, size, opt) {
-  let sz = size;
-  while (sz > 8 && p.width(s, font, sz) > w - 8) sz -= 0.5;
-  if (p.width(s, font, sz) <= w - 8) return p.cell(s, x, top, w, h, font, sz, opt);
-  const lines = p.wrap(s, font, sz, w - 8).map((ws) => ws.join(" "));
-  p.cell(lines.slice(0, 2), x, top, w, h, font, sz, opt);
+  s = String(s ?? "").trim();
+  if (!s) return;
+  const { lines, sz } = fitLines(p, s, font, size, w, h);
+  p.cell(lines, x, top, w, h, font, sz, opt);
 }
 
 // ---- 2) EK-2 Kafile Onayı ----
@@ -258,7 +268,8 @@ function kafile(pdf, f, r, list) {
 
   // Faaliyet tablosu
   const c1 = [72, 272, 527];
-  const hs = [14, 14, 14, 23, 23, 15];
+  // Faaliyet adı uzunsa satırı yükselir (iki satıra sığsın)
+  const hs = [14, p.width(up(r.name), f.serif, 10) > 247 ? 26 : 14, 14, 23, 23, 15];
   const r1 = [223];
   hs.forEach((h) => r1.push(r1.at(-1) + h));
   grid(p, c1, r1);
