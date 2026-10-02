@@ -52,7 +52,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 - Asistan çubuğu her sayfada aynı; küre iPhone'da yuvarlak kalmalı. Durumlar yazıyla değil küre animasyonuyla gösterilir.
 - Sade: hazır öneri/kısayol düğmeleri, selam ve gün özeti asistan sahnesinden kaldırıldı; geri eklenmez.
 - iPhone PWA'da güvenli alan (alt pay) ve klavye davranışı hassas; değişiklikten sonra telefonda dene.
-- Render sırasında tarih/saat, localStorage, window okuma yok sayılır: sunucu yalnız Splash çizdiği için (app) ve (auth) düzenlerinde hydration uyuşmazlığı çıkmaz. Konsolda #418 görülürse önce gizli pencerede dene (eklenti).
+- Sunucu (app) ve (auth) düzenlerinde yalnız açılış ekranını (Splash) çizer; sayfalarda render sırasında tarih/saat ya da localStorage okumak hydration hatası yapmaz. Konsolda #418 görülürse önce gizli pencerede dene (eklenti).
 
 ## Asistan
 
