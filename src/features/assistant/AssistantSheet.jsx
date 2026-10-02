@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -26,6 +26,7 @@ import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/featu
 import { runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
+import { findRace, raceJobHere, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, splitItems } from "@/features/shop/shop";
 import { useKind } from "@/features/auth/useKind";
@@ -94,6 +95,7 @@ const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const router = useRouter();
+  const path = usePathname();
   const toast = useToast();
   const tts = useTts();
   const { profile } = useAuth();
@@ -105,9 +107,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Yarış adları (zor yazılanlar): ses çevirisine ipucu. Hafıza bir kez kayıtlı yarışlardan doldurulur.
   const racer = canSeeAthletes(profile?.email);
   const raceOrg = racer ? profile?.orgId : "";
+  // Kayıtlı yarışlar: "D'Azur yarışına git" doğru yarışı açsın diye (asistan her açıldığında tazelenir)
+  const races = useRef([]);
   useEffect(() => {
-    if (raceOrg) loadRaces(raceOrg).catch(() => {});
-  }, [raceOrg]);
+    if (raceOrg && open) loadRaces(raceOrg).then((l) => (races.current = l), () => {});
+  }, [raceOrg, open]);
+  // Açık yarış sayfası (/athletes/races/<id>): yarış adı söylenmeden yapılan işler bu yarışa yazılır
+  const hereRace = /^\/athletes\/races\/([\w-]+)$/.exec(path || "")?.[1];
+  const curRace = hereRace && hereRace !== "new" ? hereRace : "";
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -138,6 +145,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
   const inflight = useRef(null);
   const runId = useRef(0);
+  const skipRace = useRef(false); // yarış sayfasında yarışla ilgisiz çıkan cümle bir kez yarışa gitmeden sorulur
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
   const ctrl = useRef(null);
   const live = useRef({});
@@ -395,6 +403,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     reply(message, { engine: "local" }, viaVoice);
   }
 
+  function goRace(r, viaVoice) {
+    navigator.vibrate?.(8);
+    if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
+    leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
+  }
+
   function go(page, message, viaVoice = false) {
     if (!PAGES[page]) return reply("O sayfayı bulamadım.", { engine: "local" }, viaVoice);
     if (!canOpen(page)) return reply(`${PAGES[page].label} sayfası senin hesabında açık değil.`, { engine: "local" }, viaVoice);
@@ -518,6 +532,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (cw === "no" || isNo(s)) return cancelPending(true);
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
     }
+    // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): adı kayıtlı yarışlarla eşleşirse o yarışın sayfası
+    // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
+    if (racer && raceOrg && !races.current.length && wantsRaceOpen(s) && /yarış|regat/i.test(s)) races.current = await loadRaces(raceOrg).catch(() => []);
+    const race = racer && wantsRaceOpen(s) ? findRace(s, races.current, todayStr()) : null;
+    if (race) {
+      record(s, "nav:race", "local");
+      countHit("local");
+      return goRace(race, viaVoice);
+    }
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
     const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
     if (nav) {
@@ -557,7 +580,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir
     if (canSeeAthletes(profile?.email) && wantsAttendance(s)) return runAttendance(s, viaVoice);
     // Yarış ekleme / yarışa sporcu ya da not ekleme: yarış evrakı sayfasındaki kayda yazılır, yeni yarış planlara da düşer
-    if (canSeeAthletes(profile?.email) && wantsRace(s)) return runRace(s, viaVoice);
+    // Yarış sayfasındayken yarış adı gerekmez: "Mehmet'i de ekle", "not al: …" o yarışa yazılır
+    if (racer && !skipRace.current && (wantsRace(s) || (curRace && raceJobHere(s)))) return runRace(s, viaVoice);
+    skipRace.current = false;
     // Tür sayfasından gelen ilk cümle (soru değilse): o türde taslak
     if (preferRef.current && !drafts.length && !QUESTION.test(s)) {
       const kind = preferRef.current;
@@ -840,14 +865,22 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSteps([]);
     try {
       const orgId = profile?.orgId || myUid;
-      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by }, stepTo);
+      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: curRace }, stepTo);
       if (id !== runId.current) return;
+      // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
+      if (r.none) {
+        setPhase("idle");
+        setSteps([]);
+        setTurns((p) => p.slice(0, -1));
+        skipRace.current = true;
+        return run(s, viaVoice);
+      }
       stepsEnd(!r.expect);
       if (!r.expect) {
         navigator.vibrate?.([10, 40, 10]);
         toast("Yarış kaydedildi");
       }
-      reply(r.said, { engine: "ai", nav: "races", expect: !!r.expect }, viaVoice);
+      reply(r.said, { engine: "ai", nav: curRace ? "" : "races", expect: !!r.expect }, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);

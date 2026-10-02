@@ -18,6 +18,8 @@ op:
 - budget: kayıtlı bir yarışın bütçesine masraf ekleniyor ("Ege Kupası bütçesine otel kişi başı 3500 TL 4 gece ekle", "D'Azur için kayıt ücreti sporcu başı 1250"). raceId kayıtlı listeden; kalemleri ayrı bir adım çıkarır, sen yalnız yarışı bul.
 - none: yarışla ilgili bir kayıt isteği değil.
 
+"Açık yarış" verildiyse antrenör o yarışın sayfasındadır: başka bir yarışın adı söylenmedikçe update/budget o yarışa yapılır (raceId = açık yarış). Yarış adı geçmeyen "Mehmet'i de ekle", "not al: …", "bütçeye otel ekle" gibi cümleler de açık yarış içindir. Yarışla ilgisi olmayan cümle (plan, görev, mesaj, soru…) none.
+
 Alanlar:
 - name: yarışın adı, söylendiği gibi ama düzgün yazımla ("D'Azur Optimist Regatta"). Ses tanıma yabancı adları bozar ("dazur", "d azur", "daz ur optimist regata"): söylenen ad bilinen yarış adlarından birine benziyorsa O YAZIMI aynen kullan. update'te boş bırakabilirsin.
 - city / district: il ve ilçe. "Çeşme" -> il İzmir, ilçe Çeşme; "Bodrum" -> Muğla, Bodrum. Yalnızca il söylendiyse district boş.
@@ -74,6 +76,7 @@ async function handle(request) {
     .map((r) => ({ id: S(r?.id, 64), name: S(r?.name, 80), startDate: DATE.test(r?.startDate || "") ? r.startDate : "" }))
     .filter((r) => ID.test(r.id) && r.name)
     .slice(0, 40);
+  const current = races.some((r) => r.id === body?.current) ? body.current : "";
   const known = [...new Set((Array.isArray(body?.known) ? body.known : []).map((n) => S(n, 80)).filter(Boolean))].slice(0, 40);
   if (!text) return bad("Yarışı söyle ya da yaz.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Yarışı Sporcular › Yarış evrakı sayfasından ekleyebilirsin.", 503);
@@ -84,6 +87,7 @@ async function handle(request) {
   const user = [
     `Bugün: ${today} (${wd})`,
     races.length ? `Kayıtlı yarışlar:\n${races.map((r) => `${r.id} | ${r.name} | ${r.startDate || "-"}`).join("\n")}` : "Kayıtlı yarış yok.",
+    current ? `Açık yarış: ${current} | ${races.find((r) => r.id === current).name}` : "",
     known.length ? `Bilinen yarış adları (yazımı buradan al):\n${known.map((n) => `- ${n}`).join("\n")}` : "",
     `Sporcular:\n${list.map(line).join("\n") || "-"}`,
     notes.length ? `Karışabilecek adlar:\n${notes.map((n) => `- ${n}`).join("\n")}` : "",
@@ -96,7 +100,7 @@ async function handle(request) {
     const ids = new Set(list.map((a) => a.id));
     const athleteIds = [...new Set((Array.isArray(raw?.athleteIds) ? raw.athleteIds : []).map(String).filter((x) => ids.has(x)))];
     let op = ["create", "update", "budget", "none"].includes(raw?.op) ? raw.op : "none";
-    const raceId = races.some((r) => r.id === raw?.raceId) ? raw.raceId : "";
+    const raceId = races.some((r) => r.id === raw?.raceId) ? raw.raceId : (op === "update" || op === "budget") && current ? current : "";
     if ((op === "update" || op === "budget") && !raceId) op = "none";
     const startDate = DATE.test(raw?.startDate || "") ? raw.startDate : "";
     const endDate = DATE.test(raw?.endDate || "") && raw.endDate >= startDate ? raw.endDate : startDate;

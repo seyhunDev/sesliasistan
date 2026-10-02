@@ -168,6 +168,19 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     return () => clearTimeout(t);
   }, [r, save, toast]);
   useEffect(() => () => void (dirty.current && save().catch(() => {})), [save]);
+  // Asistan bu yarışı değiştirdiyse (sporcu, not, tarih, bütçe) sayfa yeniden kaydetmeden güncellenir
+  useEffect(() => {
+    const on = (e) => {
+      const n = e.detail;
+      if (!n?.id || n.id !== id.current) return;
+      const p = latest.current;
+      if (n.startDate !== p.startDate || n.endDate !== p.endDate || n.athleteIds.join() !== p.athleteIds.join()) dropFile();
+      first.current = !dirty.current; // asistanın değişikliği kaydedildi; sayfada bekleyen değişiklik varsa birlikte yazılır
+      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget });
+    };
+    window.addEventListener("sa-race-saved", on);
+    return () => window.removeEventListener("sa-race-saved", on);
+  });
 
   const pages =
     (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0);
