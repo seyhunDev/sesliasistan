@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Ana sayfada Yarışlar düğmesi (sayfa düğmelerinin başında, yaklaşan yarış sayısıyla): yalnız sporcu yetkisi olanlarda ve yalnız Ayarlar › "Yarışlar ana sayfada" açılınca (`users/{uid}.races` "on"/"off"; `raceHome.js`, `RacesRow`). Kendiliğinden görünmez, tanıtım kartı yok (Seyhun'un seçimi). Telefonda denenmedi.
 - Yarış puanlamasında tekne sınıfı (Optimist, ILCA, Laser) ve ayak numarası sayılır; ses tanıma bozukları eşlenir ("optimus" → optimist, "ilka" → ilca; `ALIAS`, raceNav.js). "Yarış aranıyor" adımı arama bitince kaybolur (hata işareti çıkmaz).
 - Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
 - Yarış bulma sırası (`openRace`, AssistantSheet): kesin ad eşleşmesi → bulanık puanlama (`rankRaces`, yabancı/bozuk adlar: "daz ur", "halkidi") → yapay zeka (`/api/race` mode find) → seçenek kartları (adaylar, hiç anlaşılmazsa tarihi en yakın 3 yarış). Sonraki cümle "ikincisi", "sonuncu", "Foça olan" seçer (`pickChoice`). Telefonda denenmedi.
@@ -25,6 +26,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+0. Ayarlar › "Yarışlar ana sayfada"yı açıp ana sayfadaki Yarışlar düğmesini telefonda dene.
 0. Yarış bütçesini telefonda dene: elle kalem, yapay zekayla, sesle; PDF çıktısını kontrol et. İstenirse: sporcuya özel fark (ör. kendi gelen), bütçeyi mailleme.
 0. Gmail betiğini Mail ayarlarından yeniden kopyala (alıcı ekleme için), `kur`'u çalıştır, evrakı eklenen bir adrese gönderip dene.
 1. Asistan Sahnesi 2. adım: sayfada arka plan vurgusu / hayalet taslak.

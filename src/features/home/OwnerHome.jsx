@@ -20,6 +20,7 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { StageBrief } from "./StageBrief";
+import { useRaceHome } from "@/features/athletes/raceHome";
 
 // Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › doğum günü ›
 // para › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
@@ -72,8 +73,10 @@ export function HomeFeed() {
   const staff = profile?.role === "staff";
   const kind = useKind();
   const athletes = canSeeAthletes(profile?.email);
+  const race = useRaceHome();
 
   const links = [
+    race.on && ["/athletes/races", "flag", "Yarışlar", race.up],
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],

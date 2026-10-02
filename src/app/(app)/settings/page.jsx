@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
 import { openOnboarding } from "@/features/onboarding/Onboarding";
-import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow } from "@/features/settings/Groups";
+import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow, RacesRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
@@ -42,6 +42,7 @@ export default function SettingsPage() {
         <SummaryRow />
         <VoiceRow />
         <WeatherPlaceRow />
+        <RacesRow />
         {owner && <Row icon="wallet" tone="ok" title="Mailler" sub={sendersOf(profile.mailFrom).map((r) => r.name).join(", ")} href="/mail" />}
         {owner && <Row icon="users" tone="ok" title="Kişiler" sub={members.length ? `${members.length} kişi · ekle, gör, kaldır` : "Ekip ya da aile ekle"} href="/staff" />}
       </Group>
