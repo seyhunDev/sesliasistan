@@ -31,7 +31,7 @@ export function MiniOrb({ focus, examples, className = "" }) {
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => !held.current && openAssistant({ listen: true, focus, examples })}
       aria-label="Asistan: dokun konuş, basılı tut yaz"
-      className={`grid size-11 shrink-0 select-none place-items-center rounded-full bg-[#2c5163] shadow-[0_6px_16px_-8px_rgba(44,81,99,.8),inset_0_0_0_2px_rgba(255,255,255,.14)] transition active:scale-90 [-webkit-touch-callout:none] ${className}`}
+      className={`grid size-11 shrink-0 select-none place-items-center rounded-full bg-deep shadow-[0_6px_16px_-8px_rgba(31,90,75,.8),inset_0_0_0_2px_rgba(255,255,255,.14)] transition active:scale-90 [-webkit-touch-callout:none] ${className}`}
     >
       <span className="flex h-4 items-end gap-[2.5px]" aria-hidden="true">
         {[6, 11, 16, 10, 5].map((h, i) => (

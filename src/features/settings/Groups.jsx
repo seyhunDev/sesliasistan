@@ -499,10 +499,10 @@ export function DemoDataRow() {
             Örnek: Sanver İmamoğulları, Ali Kök ve 3 örnek çalışan; aileden Pınar Ezgi Yıldız. Planlar, görevler, notlar, fişler (ödeme bekleyenler dahil), doğum günleri, dersler ve sohbetler.
           </p>
           <label className="mt-2 flex items-center gap-2 text-[0.8125rem]">
-            <input type="checkbox" checked={accounts} onChange={(e) => setAccounts(e.target.checked)} className="size-4 accent-[#2c5163]" />
+            <input type="checkbox" checked={accounts} onChange={(e) => setAccounts(e.target.checked)} className="size-4 accent-deep" />
             Kişilere uygulama hesabı aç (kullanıcı adıyla)
           </label>
-          <button type="button" onClick={seed} disabled={busy} className="mt-2.5 h-10 w-full rounded-xl bg-[#2c5163] text-[0.875rem] font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={seed} disabled={busy} className="mt-2.5 h-10 w-full rounded-xl bg-deep text-[0.875rem] font-semibold text-white disabled:opacity-50">
             {busy ? "Bekleyin…" : "Örnek veri oluştur"}
           </button>
         </div>
@@ -554,7 +554,7 @@ export function PasswordRow() {
       <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="space-y-2.5 px-4 pb-3.5">
         <input type="password" autoComplete="current-password" placeholder="Mevcut şifre" value={cur} onChange={(e) => setCur(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
         <input type="password" autoComplete="new-password" placeholder="Yeni şifre (en az 6 karakter)" value={next} onChange={(e) => setNext(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
-        <button type="submit" disabled={busy || !cur || next.length < 6} className="h-10 w-full rounded-xl bg-[#2c5163] text-[0.875rem] font-semibold text-white disabled:opacity-40">
+        <button type="submit" disabled={busy || !cur || next.length < 6} className="h-10 w-full rounded-xl bg-deep text-[0.875rem] font-semibold text-white disabled:opacity-40">
           {busy ? "Bekleyin…" : "Şifreyi değiştir"}
         </button>
       </form>

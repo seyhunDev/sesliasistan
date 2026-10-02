@@ -41,7 +41,7 @@ export function AssistantProvider({ children }) {
   return (
     <Ctx.Provider value={{ openAssistant, open, live, act, stageOn, setStageOn, setSlot }}>
       {children}
-      <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} stageOn={stageOn} slot={slot} />
+      <AssistantSheet open={open} onClose={close} seed={seed} onLive={setLive} onAct={setAct} slot={slot} />
     </Ctx.Provider>
   );
 }

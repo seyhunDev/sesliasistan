@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v8";
+const VERSION = "sa-v9";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];

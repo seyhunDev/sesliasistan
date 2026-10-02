@@ -106,7 +106,7 @@ export function useForYou() {
     if (c.unread > 0 && !c.mutedByMe && c.last && c.last.by !== myUid)
       items.push({
         id: `chat:${c.id}:${c.seq}`,
-        lead: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} size="size-11" tone={GROUPS[c.id] ? "bg-[#2c5163] text-white" : undefined} />,
+        lead: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} size="size-11" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
         title: c.title,
         sub: `${c.type === "dm" ? "" : `${first(personName(c.last.by))}: `}${c.last.text}`,
         time: listTime(c.last.at),

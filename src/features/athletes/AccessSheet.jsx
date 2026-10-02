@@ -119,7 +119,7 @@ export function AccessSheet({ open, onClose, athletes }) {
           >
             <Icon name="clip" className="size-5" /> Giriş bilgilerini kopyala
           </button>
-          <button type="button" onClick={() => onClose(true)} className="h-11 w-full rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white">
+          <button type="button" onClick={() => onClose(true)} className="h-11 w-full rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
             Tamam
           </button>
         </div>
@@ -130,12 +130,12 @@ export function AccessSheet({ open, onClose, athletes }) {
             Kullanıcı adı addan oluşur (ör. {suggestUsername(athletes[0]?.studentName || "Ege Demir")}).
           </p>
           <label className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-line">
-            <input type="checkbox" checked={withParent} onChange={(e) => setWithParent(e.target.checked)} className="size-5 accent-[#2c5163]" />
+            <input type="checkbox" checked={withParent} onChange={(e) => setWithParent(e.target.checked)} className="size-5 accent-deep" />
             <span className="text-[0.9375rem]">Velisini de kişi olarak ekle (bağla)</span>
           </label>
           {withParent && (
             <label className="flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 ring-1 ring-line">
-              <input type="checkbox" checked={parentAccount} onChange={(e) => setParentAccount(e.target.checked)} className="size-5 accent-[#2c5163]" />
+              <input type="checkbox" checked={parentAccount} onChange={(e) => setParentAccount(e.target.checked)} className="size-5 accent-deep" />
               <span className="text-[0.9375rem]">Veliye de hesap aç (çocuğunun yoklamasını görür)</span>
             </label>
           )}
@@ -143,7 +143,7 @@ export function AccessSheet({ open, onClose, athletes }) {
             <span className="text-[0.8125rem] font-medium text-mut">Ortak ilk şifre (sonra kişi bazında değiştirilebilir)</span>
             <input value={password} onChange={(e) => setPassword(e.target.value.trim())} className="mt-1 h-11 w-full rounded-xl bg-bg px-3 text-base tabular-nums outline-none ring-1 ring-line focus:ring-acc" />
           </label>
-          <button type="button" onClick={go} disabled={busy} className="h-12 w-full rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={go} disabled={busy} className="h-12 w-full rounded-xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-50">
             {busy ? "Hesaplar açılıyor…" : one ? "Hesap aç" : `${athletes.length} hesap aç`}
           </button>
         </div>

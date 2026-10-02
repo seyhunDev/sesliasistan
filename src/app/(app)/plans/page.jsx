@@ -76,13 +76,13 @@ export default function PlansPage() {
                 type="button"
                 onClick={() => goDay(d)}
                 aria-label={`${dayLabel(d, today)}: ${cnt} plan`}
-                className={`flex flex-col items-center rounded-2xl py-2 transition active:scale-95 ${i === 0 ? "bg-white text-[#2c5163]" : "bg-white/10"}`}
+                className={`flex flex-col items-center rounded-2xl py-2 transition active:scale-95 ${i === 0 ? "bg-white text-deep" : "bg-white/10"}`}
               >
                 <span className={`text-[0.625rem] font-semibold uppercase ${i === 0 ? "" : "text-white/70"}`}>{weekdayShort(d)}</span>
                 <b className="text-[1.0625rem] font-semibold leading-tight tabular-nums">{+d.slice(8, 10)}</b>
                 <span className="mt-1 flex h-1.5 gap-0.5">
                   {[...Array(Math.min(cnt, 3))].map((_, k) => (
-                    <i key={k} className={`size-1.5 rounded-full ${i === 0 ? "bg-[#2c5163]" : "bg-white"}`} />
+                    <i key={k} className={`size-1.5 rounded-full ${i === 0 ? "bg-deep" : "bg-white"}`} />
                   ))}
                 </span>
               </button>

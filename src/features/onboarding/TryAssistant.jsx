@@ -9,7 +9,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { INTRO_V } from "./Onboarding";
 
 export const TRY_SENTENCE = "Yarın saat 10'da antrenman ekle";
-const TRY_SPEECH = "Şimdi sen dene. Aşağıdaki asistan düğmesine dokun ve şunu söyle: yarın saat onda antrenman ekle.";
+const TRY_SPEECH = "Şimdi sen dene. Aşağıdaki beyaz ışığa dokun ve şunu söyle: yarın saat onda antrenman ekle.";
 
 // "Şimdi sen dene": tanıtım bittikten sonra ana sayfada bir kez. Ekran kararır, alttaki asistan düğmesi aydınlık kalır,
 // üstünde örnek cümle ve aşağıyı gösteren ok. Düğmeye dokununca (asistan açılınca) kapanır ve bir daha çıkmaz.
@@ -31,10 +31,10 @@ export function TryAssistant() {
     const on = () => done();
     window.addEventListener("sa-assistant-open", on);
     const t = setTimeout(() => tts.speak(TRY_SPEECH), 700); // tanıtımdaki dokunuşla ses açıldı; açılmadıysa sessiz geçer
-    // Küreyi bul (sahne çizilip yerleşince)
+    // Ses ışığını bul (sahne çizilip yerleşince)
     const find = () => {
       const orb = [...document.querySelectorAll("[data-orb]")].find((e) => e.offsetParent);
-      const stage = orb?.closest("nav");
+      const stage = orb?.closest("[data-dome]");
       if (!orb) return;
       const r = orb.getBoundingClientRect();
       setPos({ x: r.left + r.width / 2, y: r.top + r.height / 2, rad: r.width / 2 + 16, top: stage ? stage.getBoundingClientRect().top : r.top });
@@ -59,10 +59,10 @@ export function TryAssistant() {
         <div className="pointer-events-auto fade-in rounded-[1.375rem] bg-card p-4 shadow-[0_18px_40px_-16px_rgba(0,0,0,.6)]">
           <p className="text-[0.75rem] font-bold uppercase tracking-[.08em] text-acc">Şimdi sen dene</p>
           <p className="mt-1 text-[1rem] leading-snug">
-            Aşağıdaki <b className="font-semibold">Asistan</b> düğmesine dokun ve şunu söyle:
+            Aşağıdaki yeşil alandaki <b className="font-semibold">beyaz ışığa</b> dokun ve şunu söyle:
           </p>
-          <p className="mt-2.5 rounded-2xl bg-acc/10 px-3.5 py-3 text-[1.125rem] font-semibold text-[#2c5163]">“{TRY_SENTENCE}”</p>
-          <p className="mt-2 text-[0.8125rem] leading-snug text-mut">Konuşmak istemezsen düğmeyi basılı tut, yazarak söyle.</p>
+          <p className="mt-2.5 rounded-2xl bg-acc/10 px-3.5 py-3 text-[1.125rem] font-semibold text-deep">“{TRY_SENTENCE}”</p>
+          <p className="mt-2 text-[0.8125rem] leading-snug text-mut">Konuşmak istemezsen ışığı basılı tut, yazarak söyle.</p>
           <div className="mt-3 flex justify-end">
             <button type="button" onClick={done} className="rounded-full px-3 py-1.5 text-[0.875rem] font-medium text-mut active:bg-bg">
               Sonra

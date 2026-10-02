@@ -43,7 +43,7 @@ export const initialsOf = (n = "") =>
 
 // Kişiye göre sabit renk (aynı kişi hep aynı renk; yazı ile zemin arası yeterli kontrast)
 const TONES = [
-  "bg-[#dde8ee] text-[#2c5163]",
+  "bg-[#dcefe7] text-deep",
   "bg-[#f3e3cf] text-[#8a4f0c]",
   "bg-[#dcebe0] text-[#2f6446]",
   "bg-[#f1dcdc] text-[#8e3a34]",

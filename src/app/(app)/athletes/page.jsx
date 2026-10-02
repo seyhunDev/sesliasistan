@@ -157,7 +157,7 @@ function AthleteList() {
             <button
               type="button"
               onClick={() => setSel((s) => (s ? null : new Set()))}
-              className={`h-8 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${sel ? "bg-[#2c5163] text-white" : "bg-card text-acc ring-1 ring-line"}`}
+              className={`h-8 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${sel ? "bg-deep text-white" : "bg-card text-acc ring-1 ring-line"}`}
             >
               {sel ? "Seçimi bitir" : "Uygulamaya ekle"}
             </button>
@@ -236,7 +236,7 @@ function AthleteList() {
                   type="button"
                   disabled={!sel.size}
                   onClick={() => setAccess(all.filter((a) => sel.has(a.id)))}
-                  className="h-12 flex-1 rounded-xl bg-[#2c5163] text-[0.9375rem] font-semibold text-white disabled:opacity-40"
+                  className="h-12 flex-1 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-40"
                 >
                   {sel.size ? `${sel.size} sporcuya hesap aç` : "Sporcu seç"}
                 </button>

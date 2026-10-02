@@ -53,7 +53,7 @@ export function ChatList() {
       unread: c.unread,
       group: c.type !== "dm",
       open: () => router.push(`/messages?c=${c.id}`),
-      avatar: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-[3.25rem]" tone={GROUPS[c.id] ? "bg-[#2c5163] text-white" : undefined} />,
+      avatar: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-[3.25rem]" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
       preview: typers.length ? (
         <span className="font-medium text-acc">{c.type === "dm" ? "yazıyor…" : `${typers.join(", ")} yazıyor…`}</span>
       ) : c.last ? (
@@ -94,7 +94,7 @@ export function ChatList() {
             type="button"
             onClick={() => setNewOpen(true)}
             aria-label="Yeni sohbet"
-            className="grid size-10 place-items-center rounded-full bg-[#2c5163] text-white shadow-[0_6px_16px_-8px_rgba(44,81,99,.8)] active:scale-90"
+            className="grid size-10 place-items-center rounded-full bg-deep text-white shadow-[0_6px_16px_-8px_rgba(31,90,75,.8)] active:scale-90"
           >
             <Icon name="edit" className="size-5" />
           </button>
@@ -115,7 +115,7 @@ export function ChatList() {
               onClick={() => setFilter(k)}
               aria-pressed={filter === k}
               className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold transition active:scale-95 ${
-                filter === k ? "bg-[#2c5163] text-white" : "bg-card text-fg ring-1 ring-line"
+                filter === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"
               }`}
             >
               {label}
@@ -142,7 +142,7 @@ export function ChatList() {
             const c = chats.find((x) => x.id === g);
             return (
               <button key={g} type="button" onPointerDown={() => warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex w-[3.75rem] shrink-0 flex-col items-center gap-1.5 active:scale-95">
-                <Avatar icon={GROUPS[g].icon} size="size-[3.75rem]" tone="bg-[#2c5163] text-white" />
+                <Avatar icon={GROUPS[g].icon} size="size-[3.75rem]" tone="bg-deep text-white" />
                 {c?.unread > 0 && !c.mutedByMe && (
                   <span className="absolute -right-1 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">{c.unread > 99 ? "99+" : c.unread}</span>
                 )}

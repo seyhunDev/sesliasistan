@@ -113,56 +113,7 @@ function Composer({ cfg, onDone }) {
   );
 }
 
-// ASİSTAN KÜRESİ (tek düğme, simgesiz): canlı ışık küresi; durumunu renk, boy ve hareketle anlatır (globals.css .ai-orb).
-//   boşta     nefes alır                                   dokun → dinlemeye başla
-//   dinliyor  sesinle büyür, camgöbeğine döner             dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
-//   düşünüyor mora kayar, hızla döner, çevresinde halka    dokun → vazgeç
-//   konuşuyor nabız gibi atar                              dokun → sözünü kes, dinle
-// Basılı tut → yaz.
-const ORB_LABEL = {
-  idle: "Asistan: dokun konuş, basılı tut yaz",
-  listening: "Bitir ve gönder",
-  busy: "Vazgeç",
-  speaking: "Sözünü kes ve konuş",
-};
-export function StageOrb({ onTap, onHold, state, level = 0, size = "size-[3.75rem]" }) {
-  const t = useRef(null);
-  const held = useRef(false);
-  const down = () => {
-    held.current = false;
-    t.current = setTimeout(() => {
-      held.current = true;
-      navigator.vibrate?.(12);
-      onHold();
-    }, HOLD_MS);
-  };
-  const up = () => clearTimeout(t.current);
-  return (
-    <button
-      type="button"
-      data-orb=""
-      data-state={state}
-      onPointerDown={down}
-      onPointerUp={up}
-      onPointerLeave={up}
-      onContextMenu={(e) => e.preventDefault()}
-      onClick={() => !held.current && onTap()}
-      aria-label={ORB_LABEL[state] || ORB_LABEL.idle}
-      style={{ "--lvl": state === "listening" ? level : 0 }}
-      className={`ai-orb ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
-    >
-      <span className="ai-halo" aria-hidden="true" />
-      <span className="ai-ring" aria-hidden="true" />
-      <span className="ai-core" aria-hidden="true">
-        <span className="ai-fill" />
-        <span className="ai-blob" />
-        <span className="ai-shine" />
-      </span>
-    </button>
-  );
-}
-
-// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade). Henüz kelime yokken hiçbir yazı yok: dinlediğini küre
+// Dinlerken söylediğin canlı belirir (sağda, büyük ve sade). Henüz kelime yokken hiçbir yazı yok: dinlediğini ses ışığı
 // anlatır. Gönderilince asıl balon (AssistantSheet) yerini alır.
 // solo: konuşmanın ilk sözü; alanın ortasında, büyük yazıyla (boş alan anlamlı dolsun)
 export function Hearing({ text, listening, solo }) {
@@ -184,161 +135,114 @@ export function Hearing({ text, listening, solo }) {
   );
 }
 
-// ASİSTAN ÇALIŞIRKEN (Orbit): beyaz panel yok. Alttan, konuşmanın kapladığı kadar buzlu cam yükselir (üstü yumuşakça
-// kaybolur, sayfanın üstü net kalır); camın içinde küreden yayılan ışık (aurora). Küre büyüyerek alttan yükselir,
-// konuşma camın üstünde süzülür. Hep çizilidir (ilk açılışta kurulum gecikmesi olmaz). Yükseklik görünen alan kadar:
-// yazarken klavyenin üstüne sığar.
-const noop = () => () => {};
-const FADE = 96; // camın üst kenarındaki yumuşak geçiş (px)
-export function Orbit({ on, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, setSlot }) {
-  const client = useSyncExternalStore(noop, () => true, () => false);
-  const shell = useRef(null);
-  const pane = useRef(null);
-  const stack = useRef(null); // konuşma + düğmeler (camın yüksekliği buna göre)
-  const glassRef = useRef(null);
-  const userUp = useRef(false);
-  // Görünen alan (klavye) — React'e uğramadan
-  useEffect(() => {
-    const el = shell.current;
-    const v = window.visualViewport;
-    if (!on || !el || !v) return;
-    const fit = () => {
-      el.style.height = `${Math.round(v.height)}px`;
-      if (window.scrollY && v.height < window.innerHeight - 120) window.scrollTo(0, window.scrollY);
-    };
-    fit();
-    v.addEventListener("resize", fit);
-    return () => {
-      v.removeEventListener("resize", fit);
-      el.style.height = "";
-    };
-  }, [on, client]);
-  // Yeni balon, adım ya da kart gelince en alta kayar (kullanıcı yukarı kaydırmadıysa)
-  useEffect(() => {
-    const el = pane.current;
-    if (!on || !el || typeof MutationObserver === "undefined") return;
-    userUp.current = false;
-    const down = () => !userUp.current && el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    const mo = new MutationObserver(down);
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    const onScroll = () => (userUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 60);
-    el.addEventListener("scroll", onScroll, { passive: true });
-    down();
-    return () => {
-      mo.disconnect();
-      el.removeEventListener("scroll", onScroll);
-    };
-  }, [on, client]);
-  // Buzlu cam, konuşmanın ve düğmelerin kapladığı yükseklik kadar alttan yükselir (üst kenarı yumuşakça kaybolur);
-  // konuşma uzadıkça cam da büyür. Yükseklik React'e uğramadan yazılır. Kapalıyken 0: açılınca alttan yükselir.
-  useEffect(() => {
-    const st = stack.current;
-    const gl = glassRef.current;
-    if (!client || !st || !gl || typeof ResizeObserver === "undefined") return;
-    const set = () => (gl.style.height = on ? `${Math.round(st.offsetHeight + FADE + 28)}px` : "0px");
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(st);
-    return () => ro.disconnect();
-  }, [on, client]);
-  if (!client) return null;
-  const glass = "grid size-12 place-items-center rounded-full bg-white/55 text-fg shadow-[0_4px_16px_-8px_rgba(38,40,44,.3)] ring-1 ring-white/80 backdrop-blur-md transition active:scale-90";
-  // Not: saydamlık animasyonu yok (saydamlık değişirken tarayıcı arkadaki bulanıklığı çizemez, cam bir an kaybolur)
-  return createPortal(
-    <div ref={shell} inert={!on} aria-hidden={!on} className={`pointer-events-none fixed inset-x-0 top-0 z-[38] h-dvh ${on ? "visible" : "invisible [transition:visibility_0s_.5s]"}`}>
-      <div ref={glassRef} aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0 transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)]">
-        <div className="absolute inset-0 bg-bg/45 backdrop-blur-2xl backdrop-saturate-150 [mask-image:linear-gradient(to_top,#000_calc(100%-96px),transparent)]" />
-        <div className="aurora absolute inset-0 [mask-image:linear-gradient(to_top,#000_40%,transparent)]" data-state={state} style={{ "--lvl": live.level || 0 }} />
-      </div>
-      <div className="relative mx-auto flex h-full w-full max-w-[30rem] flex-col justify-end px-5 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-[calc(env(safe-area-inset-top)+3rem)]">
-        <div ref={stack} className={`pointer-events-auto flex min-h-0 flex-col transition duration-300 ${on ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
-          <div ref={pane} className="max-h-[66dvh] min-h-0 overflow-y-auto overscroll-contain [mask-image:linear-gradient(to_bottom,transparent,#000_40px)] [scrollbar-width:none]">
-            <div className="pb-5 pt-3">
-              <div ref={setSlot} />
-              {state === "listening" && live.heard && <Hearing text={live.heard} listening solo={!live.talked} />}
-            </div>
-          </div>
-          {typing ? (
-            <div className="stage-in pb-1">
-              <Composer cfg={cfg} onDone={onTypingDone} />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-3">
-              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={glass}>
-                <Icon name="keyboard" className="size-[1.375rem]" />
-              </button>
-              <span className={`transition-transform duration-500 ease-[cubic-bezier(.2,.9,.3,1.2)] ${on ? "translate-y-0 scale-100" : "translate-y-16 scale-50"}`}>
-                <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[7.5rem]" />
-              </span>
-              <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={glass}>
-                <Icon name="x" className="size-[1.375rem]" />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-function NavTab({ href, icon, label, active, badge, onClick }) {
-  const cls = `relative flex min-w-14 flex-col items-center gap-1 rounded-xl px-2 py-1 transition active:scale-95 ${active ? "text-acc" : "text-mut"}`;
-  const inner = (
-    <>
-      <span className="relative flex">
-        <Icon name={icon} className="size-[1.375rem]" />
-        {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white">{badge > 99 ? "99+" : badge}</span>}
+// SES IŞIĞI (kubbenin tepesindeki tek düğme, simgesiz): beyaz disk, içinde ses dalgası (globals.css .vlight).
+//   boşta     dalga yavaşça nefes alır                  dokun → dinlemeye başla
+//   dinliyor  dalga sesinle yükselir, ışık güçlenir      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   düşünüyor çevresinde ışık döner, yayda ışık akar     dokun → vazgeç
+//   konuşuyor dalga atar                                 dokun → sözünü kes, dinle
+// Basılı tut → yaz.
+const LIGHT_LABEL = {
+  idle: "Asistan: dokun konuş, basılı tut yaz",
+  listening: "Bitir ve gönder",
+  busy: "Vazgeç",
+  speaking: "Sözünü kes ve konuş",
+};
+export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[3.75rem]" }) {
+  const t = useRef(null);
+  const held = useRef(false);
+  const down = () => {
+    held.current = false;
+    t.current = setTimeout(() => {
+      held.current = true;
+      navigator.vibrate?.(12);
+      onHold();
+    }, HOLD_MS);
+  };
+  const up = () => clearTimeout(t.current);
+  return (
+    <button
+      type="button"
+      data-orb=""
+      data-state={state}
+      onPointerDown={down}
+      onPointerUp={up}
+      onPointerLeave={up}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => !held.current && onTap()}
+      aria-label={LIGHT_LABEL[state] || LIGHT_LABEL.idle}
+      style={{ "--lvl": state === "listening" ? level : 0 }}
+      className={`vlight ${size} shrink-0 select-none transition-[width,height] duration-500 active:scale-95 [-webkit-touch-callout:none]`}
+    >
+      <span className="vl-halo" aria-hidden="true" />
+      <span className="vl-ring" aria-hidden="true" />
+      <span className="vl-disc" aria-hidden="true" />
+      <span className="vl-wave" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+        <i />
+        <i />
       </span>
-      <span className={`text-[0.6875rem] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
-    </>
-  );
-  return href ? (
-    <Link href={href} aria-current={active ? "page" : undefined} className={cls}>
-      {inner}
-    </Link>
-  ) : (
-    <button type="button" onClick={onClick} className={cls}>
-      {inner}
     </button>
   );
 }
 
-// ASİSTAN ÇUBUĞU: her sayfada aynı, sabit boyda (sayfa geçişlerinde kıpırdamaz). Altta sekmeler, üstünde yüzen cam
-// bar: yazarak sor · yukarı taşan büyük küre · oluştur. Sayfa içeriği cam barın altından kayar. Asistan çalışınca
-// konuşma Orbit'te (alttan yükselen buzlu cam); yazarken cam barın yerine yazma satırı gelir (klavyenin üstünde).
-export function TabBar({ cfg }) {
-  const path = usePathname();
-  const router = useRouter();
-  const { openAssistant, live, act, setSlot } = useAssistant();
-  const { openAdd } = useAdd();
-  const { openReceipt } = useReceipt();
-  const { openBirthday } = useBirthday();
-  const { unreadTotal } = useChat();
-  const [menu, setMenu] = useState(false);
-  const [typing, setTyping] = useState(false);
-  const kind = useKind();
+function NavTab({ href, icon, label, active, badge }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-1 transition active:scale-95 ${active ? "text-white" : "text-white/60"}`}
+    >
+      <span className="relative flex">
+        <Icon name={icon} className="size-[1.375rem]" />
+        {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white ring-2 ring-[#25685a]">{badge > 99 ? "99+" : badge}</span>}
+      </span>
+      <span className={`text-[0.6875rem] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
+    </Link>
+  );
+}
+
+// KUBBE: tek asistan görünümü. Boştayken altta sabit (iki kenara uzanır, alt güvenli alanı da kaplar): üstte
+// yaz · ses ışığı · oluştur, altta sekmeler. Asistan çalışınca sekmeler çekilir, konuşma kubbenin içinde akar ve kubbe
+// içerik kadar yükselir (yay hep üstte). Yazarken kubbe klavyenin üstüne taşınır. Çubuksuz sayfalarda (ayarlar,
+// sohbet ekranı…) yalnız asistan çalışırken görünür.
+const noop = () => () => {};
+const ghost = "grid size-11 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-90 active:bg-white/20";
+function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
+  const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
+  const inner = useRef(null);
+  const pane = useRef(null);
+  const userUp = useRef(false);
+  const shown = bar || active || typing;
 
-  const active = !!(live.open && live.docked);
-  const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
-
-  // Sayfanın alt boşluğu çubuğun yüksekliği kadar (içerik çubuğun altında kalmasın)
-  useEffect(() => {
-    const el = box.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--stage-h", `${el.offsetHeight}px`));
-    ro.observe(el);
+  // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
+  useLayoutEffect(() => {
+    const o = box.current;
+    const i = inner.current;
+    if (!o || !i) return;
+    const set = () => {
+      const h = shown ? i.offsetHeight : 0;
+      o.style.height = `${h}px`;
+      if (bar && !active && !typing) document.documentElement.style.setProperty("--stage-h", `${h}px`);
+    };
+    set();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(set);
+    ro.observe(i);
     return () => ro.disconnect();
-  }, []);
-  // iPhone: klavye açılınca sabit alt çubuk klavyenin arkasında kalır; yazarken çubuk klavyenin üstüne taşınır
+  }, [shown, bar, active, typing, client]);
+
+  // Klavye: kubbe görünen alanın altına oturur; konuşma alanı kalan yüksekliğe sığar
   useEffect(() => {
     const vv = window.visualViewport;
     const el = box.current;
-    if (!typing || active || !vv || !el) return;
+    if (!vv || !el || !(typing || active)) return;
     const fit = () => {
       const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       el.style.transform = kb > 40 ? `translate3d(0,${-kb}px,0)` : "";
+      el.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
     };
     fit();
     vv.addEventListener("resize", fit);
@@ -349,6 +253,119 @@ export function TabBar({ cfg }) {
       el.style.transform = "";
     };
   }, [typing, active]);
+
+  // Yeni balon ya da kart gelince aşağı kayar; uzun yanıtta yanıtın başı görünür kalır. Kullanıcı yukarı kaydırdıysa dokunmaz.
+  useEffect(() => {
+    const el = pane.current;
+    if (!active || !el || typeof MutationObserver === "undefined") return;
+    userUp.current = false;
+    let lastR = null;
+    const down = () => {
+      const r = el.querySelector("[data-last-reply]");
+      if (r !== lastR) {
+        lastR = r;
+        userUp.current = false; // yeni yanıt: yeniden takip et
+      }
+      if (userUp.current) return;
+      const bottom = el.scrollHeight - el.clientHeight;
+      const start = r ? r.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16 : bottom;
+      el.scrollTo({ top: Math.max(0, Math.min(bottom, start)), behavior: "smooth" });
+    };
+    const mo = new MutationObserver(down);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    const onUser = () => (userUp.current = true); // yalnız parmakla/tekerlekle kaydırma
+    el.addEventListener("touchmove", onUser, { passive: true });
+    el.addEventListener("wheel", onUser, { passive: true });
+    down();
+    return () => {
+      mo.disconnect();
+      el.removeEventListener("touchmove", onUser);
+      el.removeEventListener("wheel", onUser);
+    };
+  }, [active, client]);
+
+  const heard = active && state === "listening" && live.heard;
+  return (
+    <div
+      ref={box}
+      data-dome=""
+      data-state={active ? state : "idle"}
+      data-on={active ? "" : undefined}
+      role="region"
+      aria-label="Asistan"
+      style={{ "--lvl": active ? live.level || 0 : 0 }}
+      className={`dome fixed inset-x-0 bottom-0 z-[38] h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
+    >
+      <span className="dome-glow" aria-hidden="true" />
+      <svg className="dome-rim" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+        <path className="rim" d="M0 10 A50 10 0 0 1 100 10" />
+        <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
+      </svg>
+      <div ref={inner} className="absolute inset-x-0 bottom-0">
+        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-3">
+          {active && (
+            <div
+              ref={pane}
+              className="max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-10.5rem)] overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+            >
+              <div className="pb-3">
+                <div ref={setSlot} />
+                {heard && <Hearing text={live.heard} listening solo={!live.talked} />}
+              </div>
+            </div>
+          )}
+          {typing ? (
+            <div className="stage-in pb-2 pt-1">
+              <Composer cfg={cfg} onDone={onTypingDone} />
+            </div>
+          ) : (
+            <div className={`relative flex h-[4.25rem] items-center justify-between px-1 transition-[margin] duration-300 ${active && state === "listening" ? "mt-2" : ""}`}>
+              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
+                <Icon name="keyboard" className="size-[1.375rem]" />
+              </button>
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-16" : "size-[3.75rem]"} />
+              </span>
+              {active ? (
+                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
+                  <Icon name="x" className="size-[1.375rem]" />
+                </button>
+              ) : (
+                <button type="button" onClick={onMenu} aria-label="Oluştur" className={ghost}>
+                  <Icon name="plus" className="size-6" />
+                </button>
+              )}
+            </div>
+          )}
+          {bar && !active && !typing && (
+            <nav aria-label="Sekmeler" className="fade-in mt-1 flex items-start">
+              <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
+              <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
+              <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
+              <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+            </nav>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
+export function TabBar({ cfg, bar }) {
+  const path = usePathname();
+  const router = useRouter();
+  const { openAssistant, live, act, setSlot } = useAssistant();
+  const { openAdd } = useAdd();
+  const { openReceipt } = useReceipt();
+  const { openBirthday } = useBirthday();
+  const { unreadTotal } = useChat();
+  const [menu, setMenu] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const kind = useKind();
+
+  const active = !!live.open;
+  const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
 
   const go = (fn) => () => {
     setMenu(false);
@@ -368,7 +385,7 @@ export function TabBar({ cfg }) {
   const top = [...own, ...(firstItem && !own.some((o) => o[1] === firstItem[1]) ? [firstItem] : [])];
   const items = [...top.map((x) => [...x, true]), ...base.filter((b) => !top.some((t) => t[1] === b[1]))];
 
-  // Tek düğmenin işi duruma göre (StageOrb'daki tablo)
+  // Tek düğmenin işi duruma göre (VoiceLight'taki tablo)
   const talk = () => {
     if (active) {
       if (state === "listening") return act.current.stop?.();
@@ -383,12 +400,12 @@ export function TabBar({ cfg }) {
     window.dispatchEvent(new Event("sa-assistant-open"));
     setTyping(true);
   };
-  const ghost = "grid size-12 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line/60 active:text-fg";
 
   return (
     <>
-      <Orbit
-        on={active}
+      <Dome
+        bar={bar}
+        active={active}
         state={state}
         live={live}
         talk={talk}
@@ -397,38 +414,11 @@ export function TabBar({ cfg }) {
         onTypingDone={() => setTyping(false)}
         cfg={cfg}
         onClose={() => act.current.close?.()}
+        onMenu={() => setMenu(true)}
         setSlot={setSlot}
+        path={path}
+        unread={unreadTotal}
       />
-      {/* Üstü saydam (içerik altından kayar, dokunuşlar geçer); cam bar ve sekmeler dokunulur */}
-      <nav ref={box} aria-label="Asistan ve menü" className="pointer-events-none fixed inset-x-0 bottom-0 z-20 [-webkit-backface-visibility:hidden]">
-        <div className="mx-auto max-w-[30rem] bg-gradient-to-t from-bg from-55% to-bg/0 px-5 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] pt-12">
-          {typing && !active ? (
-            <div className="stage-in pointer-events-auto pb-2">
-              <Composer cfg={cfg} onDone={() => setTyping(false)} />
-            </div>
-          ) : (
-            <div className="pointer-events-auto relative flex h-16 items-center justify-between rounded-full bg-card/80 px-2 shadow-[0_1px_2px_rgba(38,40,44,.05),0_12px_30px_-14px_rgba(38,40,44,.35)] ring-1 ring-line/70 backdrop-blur-xl">
-              <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#9fcbd8]/70 to-transparent" />
-              <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
-                <Icon name="keyboard" className="size-[1.375rem]" />
-              </button>
-              <span className={`absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[42%] transition-opacity duration-300 ${active ? "opacity-0" : "opacity-100"}`}>
-                <StageOrb state={state} level={live.level} onTap={talk} onHold={typeNow} size="size-[5.25rem]" />
-              </span>
-              <button type="button" onClick={() => setMenu(true)} aria-label="Oluştur" className={ghost}>
-                <Icon name="plus" className="size-6" />
-              </button>
-            </div>
-          )}
-
-          <div className="pointer-events-auto mt-2 flex items-start justify-around bg-bg pt-1.5">
-            <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
-            <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-            <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unreadTotal} />
-            <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
-          </div>
-        </div>
-      </nav>
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
         <div className="grid grid-cols-2 gap-2.5">
           {items.map(([icon, label, desc, onClick, hi]) => (
@@ -438,7 +428,7 @@ export function TabBar({ cfg }) {
               onClick={go(onClick)}
               className={`flex items-center gap-2.5 rounded-2xl px-3 py-3 text-left transition active:scale-[.98] ${hi ? "bg-acc/10 ring-1 ring-acc/30" : "bg-bg"}`}
             >
-              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${hi ? "bg-[#2c5163] text-white" : "bg-card text-acc"}`}>
+              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${hi ? "bg-deep text-white" : "bg-card text-acc"}`}>
                 <Icon name={icon} className="size-5" />
               </span>
               <span className="min-w-0">
@@ -454,22 +444,22 @@ export function TabBar({ cfg }) {
 }
 
 // Uygulama yerleşiminde tek kez çizilir: sayfa değişince yeniden kurulmaz (geçişte titreme/zıplama olmaz).
-// PAGES'teki sayfalarda görünür; sohbet ekranında gizlenir. Görünürken sayfaların alt boşluğu çubuğa göre büyür (globals.css).
+// PAGES'teki sayfalarda sekmelerle görünür; diğerlerinde (sohbet ekranı dahil) yalnız asistan çalışırken.
+// Sekmeler görünürken sayfaların alt boşluğu kubbeye göre büyür (globals.css).
 function Host() {
   const path = usePathname();
   const chat = useSearchParams().get("c");
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
-  const show = SHOWN.includes(path) && !(path === "/messages" && chat);
+  const bar = SHOWN.includes(path) && !(path === "/messages" && chat);
   useEffect(() => {
-    setStageOn(show);
-    if (!show) return;
+    setStageOn(bar);
+    if (!bar) return;
     document.body.dataset.dock = "1";
     return () => delete document.body.dataset.dock;
-  }, [show, setStageOn]);
-  if (!show) return null;
-  const cfg = { ...PAGES[path], ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} />;
+  }, [bar, setStageOn]);
+  const cfg = { ...(PAGES[path] || PAGES["/"]), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
+  return <TabBar cfg={cfg} bar={bar} />;
 }
 export function TabBarHost() {
   return (

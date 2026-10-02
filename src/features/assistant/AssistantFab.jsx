@@ -1,24 +1,26 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Icon } from "@/components/ui/Icon";
 import { useAssistant } from "./AssistantProvider";
 
-// Kendi alt çubuğu olmayan sayfalarda (ör. fiş ayrıntısı) sağ altta asistan düğmesi.
-// Ana sayfa ve tür sayfalarında alttaki çubuk zaten yaz/söyle sunar.
-const HAS_BAR = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/birthdays", "/messages", "/athletes/attendance", "/settings", "/mail/setup", "/staff", "/shopping", "/my-attendance"];
+// Alt kubbesi (sekmeler) olmayan sayfalarda (ayarlar, kişi, fiş ayrıntısı…) sağ altta küçük asistan düğmesi.
+// Dokununca kubbe alttan yükselir ve dinlemeye başlar. Sohbet ekranında yok (yazma satırı orada).
 export function AssistantFab() {
   const path = usePathname();
-  const { openAssistant, open } = useAssistant();
-  if (HAS_BAR.includes(path) || path.startsWith("/people/") || open) return null;
+  const { openAssistant, open, stageOn } = useAssistant();
+  if (stageOn || open || path.startsWith("/messages")) return null;
   return (
     <button
       type="button"
       onClick={() => openAssistant({ listen: true })}
       aria-label="Asistana sor"
-      className="fade-in fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-30 grid size-14 place-items-center rounded-full bg-acc text-white shadow-lg transition active:scale-90"
+      className="fade-in fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-30 grid size-14 place-items-center rounded-full bg-deep shadow-[0_12px_28px_-12px_rgba(20,70,56,.7)] transition active:scale-90"
     >
-      <Icon name="mic" className="size-6" />
+      <span className="flex h-5 items-center gap-[3px]" aria-hidden="true">
+        {[8, 14, 20, 14, 8].map((h, i) => (
+          <i key={i} className="w-[3px] rounded-full bg-white" style={{ height: h }} />
+        ))}
+      </span>
     </button>
   );
 }
