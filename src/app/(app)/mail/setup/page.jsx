@@ -105,7 +105,7 @@ export default function MailSetupPage() {
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Mail ayarları" back="/mail" />
 
-      <Group title="Durum" footer={seen && !profile.mailOutbox ? "Yeni: uygulamada hazırlanan belgeleri (yarış evrakı) kendine mail atabilirsin. Bunun için aşağıdaki kodu ve appsscript.json'u bir kez yeniden kopyala, kur'u çalıştırıp yeni izni onayla." : seen ? "Yarış evrakını Mail düğmesiyle bu Gmail adresine gönderebilirsin." : undefined}>
+      <Group title="Durum" footer={seen && profile.mailOutbox < 2 ? "Yeni: yarış evrakını Mail düğmesiyle kendine ve eklediğin adreslere gönderebilirsin. Bunun için aşağıdaki kodu ve appsscript.json'u yeniden kopyala, kur'u çalıştır." : seen ? "Yarış evrakını Mail düğmesiyle kendine ve eklediğin adreslere gönderebilirsin." : undefined}>
         <Row
           icon="mail"
           tone={live ? "ok" : "slate"}

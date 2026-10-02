@@ -13,6 +13,7 @@ import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } 
 import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
+import { MailTo } from "@/features/mail/MailTo";
 import { doneCount, shiftDay, stepsOf } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
@@ -53,7 +54,7 @@ function Check({ on, tone = "ok" }) {
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail }) {
+export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -153,14 +154,16 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     }
     setBusy(false);
   };
-  // Kendine mail (Gmail betiği birkaç dakika içinde gönderir)
+  // Mail: kendine ve/veya kayıtlı adreslere (Gmail betiği birkaç dakika içinde gönderir)
   const [mailText, setMailText] = useState("");
   const [mailing, setMailing] = useState(false);
-  const mail = async () => {
+  const [mailPick, setMailPick] = useState(false);
+  const mail = async ({ self, to }) => {
+    setMailPick(false);
     setMailing(true);
     try {
-      const ready = await onMail({ subject: `${r.name.trim()} evrakı`, text: mailText, file });
-      toast(ready ? "Mail sıraya alındı, birkaç dakika içinde gelir" : "Sıraya alındı. Gelmesi için Mail ayarlarından betiği bir kez yeniden kopyala");
+      const ready = await onMail({ subject: `${r.name.trim()} evrakı`, text: mailText, file, self, to });
+      toast(ready ? "Mail sıraya alındı, birkaç dakika içinde gider" : "Sıraya alındı. Gitmesi için Mail ayarlarından betiği bir kez yeniden kopyala");
     } catch (e) {
       toast(e?.message || "Mail sıraya alınamadı");
     }
@@ -546,7 +549,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                 Aç
               </button>
               {onMail && (
-                <button type="button" onClick={mail} disabled={mailing} aria-label="Kendime mail at" className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+                <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
                   <Icon name="mail" className="size-5" />
                   {mailing ? "…" : "Mail"}
                 </button>
@@ -565,6 +568,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
         </div>
       </div>
 
+      {onMail && <MailTo open={mailPick} onClose={() => setMailPick(false)} saved={mailTo} onSaved={onMailTo} onSend={mail} />}
       <Pick open={pick} athletes={athletes} value={r.athleteIds} onClose={() => setPick(false)} onChange={(ids) => set("athleteIds")(ids)} />
       <Sheet open={!!fix} onClose={() => setFix(null)} title={fix ? fix.studentName : ""}>
         {fix && (

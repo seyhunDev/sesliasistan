@@ -4,9 +4,9 @@
 // Google hesabının Firebase projesinde yetkisi olmalı (projeyi açan hesap zaten sahibidir).
 //   - 5 dakikada bir: takip edilen gönderenlerden (İş Bankası sabit + uygulamada eklenenler) son 2 günün yeni mailleri
 //   - Her mail: orgs/{uid}/mails/{gmail id} (aynı mail iki kez yazılmaz); Excel ekleri base64 olarak (uygulama okur)
-//   - users/{uid}: mailSeen (son kontrol), mailPending/mailLastAt (toplu bildirim için), mailOutbox (bu sürüm gönderebilir)
-//   - Kendine mail: uygulamanın orgs/{uid}/outbox'a bıraktığı dosyalar (ör. yarış evrakı) bu Gmail hesabına ekli
-//     mail olarak gönderilir, kayıt silinir (outbox.js)
+//   - users/{uid}: mailSeen (son kontrol), mailPending/mailLastAt (toplu bildirim için), mailOutbox (1: kendine, 2: seçilen adreslere de gönderebilir)
+//   - Kendine mail: uygulamanın orgs/{uid}/outbox'a bıraktığı dosyalar (ör. yarış evrakı) bu Gmail hesabına ve
+//     seçilen adreslere ekli mail olarak gönderilir, kayıt silinir (outbox.js)
 //   - Yeni mail varsa hemen sitenin /api/mail/push adresine haber verir → telefona bildirim (aynı Google anahtarıyla;
 //     sunucunun hizmet hesabı anahtarı gerekmez). Ulaşılamazsa 5 dakikalık zamanlanmış görev yedek olarak bildirir.
 // Uygulama Gmail'e hiç istek atmaz: betik 5 dakikada bir kendisi bakar, uygulama veritabanını canlı dinler.
@@ -83,7 +83,7 @@ function kontrol() {
     try { giden = gonder(); } catch (e) { console.log("Giden mailler: " + e.message); }
 
     var simdi = new Date().toISOString();
-    var durum = { mailSeen: simdi, mailOutbox: true };
+    var durum = { mailSeen: simdi, mailOutbox: 2 }; // 2: başka adreslere de gönderebilir
     if (yeni) { durum.mailPending = true; durum.mailLastAt = simdi; }
     var maske = Object.keys(durum).map(function (k) { return "updateMask.fieldPaths=" + k; }).join("&");
     istek("patch", "users/" + KULLANICI + "?" + maske, { fields: alanlar(durum) });
@@ -113,7 +113,9 @@ function gonder() {
       if (p.kod !== 200 || parcalar.length !== k.parts) throw new Error("dosya eksik (" + parcalar.length + "/" + k.parts + ")");
       var veri = parcalar.map(function (x) { return oku((x.fields || {}).data) || ""; }).join("");
       var ek = Utilities.newBlob(Utilities.base64Decode(veri), k.mimeType || "application/pdf", k.fileName || "belge.pdf");
-      GmailApp.sendEmail(kime, k.subject || "Sesli Asistan", k.text || "", { attachments: [ek], name: "Sesli Asistan" });
+      var ekler = (k.to || []).filter(function (a) { return /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(a); }).slice(0, 10);
+      var alici = (k.self === false && ekler.length ? ekler : [kime].concat(ekler)).join(",");
+      GmailApp.sendEmail(alici, k.subject || "Sesli Asistan", k.text || "", { attachments: [ek], name: "Sesli Asistan" });
       parcalar.forEach(function (x) { istek("delete", x.name.split("/documents/")[1]); });
       istek("delete", yol);
       sayi++;
