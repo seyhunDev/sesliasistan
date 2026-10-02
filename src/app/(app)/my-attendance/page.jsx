@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
-import { useAuth } from "@/features/auth/AuthProvider";
 import { useKind } from "@/features/auth/useKind";
-import { db } from "@/lib/firebase/clientApp";
+import { useMyAttendance } from "@/features/athletes/myAttendance";
 import { isAthleteSide } from "@/lib/kinds";
 
 const ST = {
@@ -82,21 +80,7 @@ export default function MyAttendance() {
 }
 
 function Attendance({ kind }) {
-  const { profile } = useAuth();
-  const [recs, setRecs] = useState(null);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    if (!profile?.uid || !profile.orgId) return;
-    const col = collection(db, "orgs", profile.orgId, "athleteAtt");
-    const job =
-      kind === "parent"
-        ? getDocs(query(col, where("parents", "array-contains", profile.uid))).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
-        : getDoc(doc(col, profile.uid)).then((d) => (d.exists() ? [{ id: d.id, ...d.data() }] : []));
-    job.then(setRecs).catch((e) => {
-      setErr(e.code === "permission-denied" ? "Yoklama bilgisine erişim yok." : "Yoklama yüklenemedi.");
-      setRecs([]);
-    });
-  }, [profile?.uid, profile?.orgId, kind]);
+  const { recs, err } = useMyAttendance(kind);
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">

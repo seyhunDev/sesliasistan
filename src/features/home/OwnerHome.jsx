@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -19,11 +20,12 @@ import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
+import { MyAttendanceCard } from "./MyAttendanceCard";
 import { StageBrief } from "./StageBrief";
 import { useRaceHome } from "@/features/athletes/raceHome";
 
-// Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › doğum günü ›
-// para › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
+// Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › (sporcu/veli: yoklama) ›
+// doğum günü › para › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
 export function OwnerHome() {
   const { profile } = useAuth();
   const now = useNow();
@@ -59,14 +61,31 @@ export function OwnerHome() {
       <PaidNotice />
 
       <div className="mt-5">
-        <HomeFeed />
+        <HomeFeed weather={weather} />
       </div>
     </main>
   );
 }
 
+// Sayfa düğmelerine dokunma sayıları (bu cihaz, sa-home-links). Sıra sayfa açılışında hesaplanır, dokununca hemen kaymaz.
+const USE_KEY = "sa-home-links";
+function readUse() {
+  try {
+    return JSON.parse(localStorage.getItem(USE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function saveUse(href) {
+  const u = readUse();
+  u[href] = (u[href] || 0) + 1;
+  try {
+    localStorage.setItem(USE_KEY, JSON.stringify(u));
+  } catch {}
+}
+
 // Günün akışı. Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
-export function HomeFeed() {
+export function HomeFeed({ weather }) {
   const { profile } = useAuth();
   const { plans, tasks, notes, birthdays, lessons, myUid, members } = useData();
   const now = useNow();
@@ -74,9 +93,10 @@ export function HomeFeed() {
   const kind = useKind();
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
+  const [used] = useState(readUse);
 
   const links = [
-    race.on && ["/athletes/races", "flag", "Yarışlar", race.up],
+    race.on && ["/athletes/races", "flag", "Yarışlar", race.next ? 0 : race.up, race.next],
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
@@ -88,6 +108,8 @@ export function HomeFeed() {
     isAthleteSide(kind) && ["/my-attendance", "check", kind === "parent" ? "Yoklama" : "Yoklamam"],
     ["/archive", "archive", "Arşiv"],
   ].filter(Boolean);
+  // Sık açılan sayfa öne gelir (bu cihazdaki dokunma sayısı; eşitse yukarıdaki sıra)
+  const order = links.map((l, i) => [l, i]).sort((a, b) => (used[b[0][0]] || 0) - (used[a[0][0]] || 0) || a[1] - b[1]).map(([l]) => l);
 
   return (
     <div className="space-y-5">
@@ -95,17 +117,24 @@ export function HomeFeed() {
       <div className="empty:hidden">
         <ForYou />
       </div>
-      <TodayCard />
+      <TodayCard weather={weather} />
+      {isAthleteSide(kind) && <MyAttendanceCard kind={kind} />}
       <div className="-mt-2 empty:hidden">
         <BirthdayStrip />
       </div>
       {canReceipts(kind) && <MoneyRow />}
       <nav aria-label="Diğer sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-        {links.map(([href, icon, label, n]) => (
-          <Link key={href} href={href} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
+        {order.map(([href, icon, label, n, next]) => (
+          <Link key={href} href={href} onClick={() => saveUse(href)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
             <Icon name={icon} className="size-4 text-acc" />
             {label}
             {n > 0 && <span className="tabular-nums text-mut">{n}</span>}
+            {next && (
+              <span className="font-medium tabular-nums text-mut">
+                {next.name} · {next.when}
+                {next.left > 0 && <span className="text-amber-700"> · {next.left} iş</span>}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

@@ -39,20 +39,27 @@ const GUST_EXTRA = 10; // sağanak, eşiğin bu kadar üstündeyse de uyarır
 // Bugünkü antrenman ve yarış planları (çok günlü yarışlar dahil)
 export const windPlans = (plans, today) => dayItems({ plans, date: today }).plans.filter((p) => WIND_CATS.includes(p.cat || p.category));
 
-// rows: bugünün saatleri [{ hh: "07", wind, gust }]. Saatli planda planın 1 saat öncesinden 3 saat sonrasına,
-// saatsiz planda 08:00–19:00 arasına bakılır. Eşik geçilmezse null.
+// Bir planın saatlerindeki en sert rüzgâr ve sağanak (rows: o günün saatleri [{ hh: "07", wind, gust }]).
+// Saatli planda planın 1 saat öncesinden 3 saat sonrasına, saatsiz planda 08:00–19:00 arasına bakılır. Saat yoksa null.
+export function planWind(rows = [], p) {
+  const h0 = p.time ? Number(p.time.slice(0, 2)) : 8;
+  const from = p.time ? h0 - 1 : 8;
+  const to = p.time ? h0 + 3 : 19;
+  const win = rows.filter((r) => Number(r.hh) >= from && Number(r.hh) <= to);
+  if (!win.length) return null;
+  return { wind: Math.max(...win.map((r) => r.wind)), gust: Math.max(...win.map((r) => r.gust)) };
+}
+
+// Eşik geçildi mi: rüzgâr eşiği ya da sağanak eşik+10
+export const overWind = (x, kn = WIND_KN) => !!x && (x.wind >= (Number(kn) || WIND_KN) || x.gust >= (Number(kn) || WIND_KN) + GUST_EXTRA);
+
+// Bugünkü antrenman/yarış planlarında eşik geçilirse uyarı metni; geçilmezse null.
 export function windAlert({ rows = [], plans = [], today, kn = WIND_KN }) {
   const lim = Number(kn) || WIND_KN;
   const hits = [];
   for (const p of windPlans(plans, today)) {
-    const h0 = p.time ? Number(p.time.slice(0, 2)) : 8;
-    const from = p.time ? h0 - 1 : 8;
-    const to = p.time ? h0 + 3 : 19;
-    const win = rows.filter((r) => Number(r.hh) >= from && Number(r.hh) <= to);
-    if (!win.length) continue;
-    const wind = Math.max(...win.map((r) => r.wind));
-    const gust = Math.max(...win.map((r) => r.gust));
-    if (wind >= lim || gust >= lim + GUST_EXTRA) hits.push({ p, wind, gust });
+    const x = planWind(rows, p);
+    if (overWind(x, lim)) hits.push({ p, ...x });
   }
   if (!hits.length) return null;
   const line = ({ p, wind, gust }) => `${p.time ? `${p.time} ` : ""}${p.title}: rüzgâr ${wind} kn, sağanak ${gust} kn`;
