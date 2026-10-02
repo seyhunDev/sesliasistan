@@ -372,4 +372,13 @@ group("Kişi ekleme (özet)")([
   ["kayıt alanları", { desc: "hesapsız, biçimli telefon, ISO doğum", fn: () => PA.memberData({ name: "Ali Kaya", kind: "family", relation: "Eş", phone: "5321234567", birth: { day: 2, month: 3, year: 1990 } }, "t"), ok: (r) => r.account === false && r.status === "active" && r.phone === "0532 123 45 67" && r.birth === "1990-03-02" && r.relation === "Eş" && r.title === "" }],
 ]);
 
+group("Kişi ekleme (hesap)")([
+  ["e-postası olan", { desc: "e-posta giriş olur", fn: () => PA.suggestLogin({ name: "Ali Kaya", email: "Ali@x.com" }), ok: (r) => r === "ali@x.com" }],
+  ["Türkçe ad", { desc: "şükrü.öztürk → sukru.ozturk", fn: () => PA.suggestLogin({ name: "Şükrü Öztürk" }), ok: (r) => r === "sukru.ozturk" }],
+  ["alınmış", { desc: "ege.demir2", fn: () => PA.suggestLogin({ name: "Ege Demir" }, [{ loginName: "ege.demir" }]), ok: (r) => r === "ege.demir2" }],
+  ["kullanıcı adı ege.d olsun", { desc: "ege.d", fn: (s) => PA.loginIn(s), ok: (r) => r === "ege.d" }],
+  ["giriş ege@x.com olsun", { desc: "ege@x.com", fn: (s) => PA.loginIn(s), ok: (r) => r === "ege@x.com" }],
+  ["evet aç", { desc: "giriş değişmez", fn: (s) => PA.loginIn(s), ok: (r) => r === "" }],
+]);
+
 export default results;

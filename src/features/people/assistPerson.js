@@ -321,3 +321,20 @@ export function memberData(d, now = new Date().toISOString()) {
     addedBy: "assistant",
   };
 }
+
+// Hesap için önerilen giriş: e-postası varsa o, yoksa kullanıcı adı ("Ege Demir" → "ege.demir"); alınmışsa sonuna sayı
+export function suggestLogin(d, members = []) {
+  if (d.email && validEmail(d.email)) return lower(d.email);
+  const base = fold(d.name).replace(/ /g, ".").slice(0, 26) || "kisi";
+  const taken = new Set(members.map((m) => lower(m.loginName || "")));
+  let u = base.length >= 3 ? base : `${base}.kisi`;
+  for (let i = 2; taken.has(u) && i < 99; i++) u = `${base}${i}`;
+  return u;
+}
+// "kullanıcı adı ege.demir olsun" / "giriş ege@x.com olsun" → yeni giriş; yoksa ""
+export function loginIn(text) {
+  const m = /(?:kullanıcı adı|giriş|login)\S*\s+(?:da\s+|de\s+)?([^\s,]+)/iu.exec(String(text || ""));
+  if (!m) return "";
+  const v = lower(m[1]).replace(/[.!]+$/, "");
+  return /^(olsun|yap|değiştir)$/.test(v) ? "" : v;
+}

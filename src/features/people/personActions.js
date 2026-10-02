@@ -48,3 +48,14 @@ export function takeOpen() {
     return null;
   }
 }
+
+// Önerilen şifre (Kişiler › Hesap aç ile aynı biçim)
+export const newPassword = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join("").slice(0, 8);
+
+// Giriş hesabı aç (ana hesap, ayrı onaydan sonra): var olan kişi kaydına; hata metni sunucudan
+export async function openAccount({ uid, name, kind, login, password }) {
+  const res = await authFetch("/api/staff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ memberId: uid, name, kind, login, password }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Hesap açılamadı.");
+  return data;
+}

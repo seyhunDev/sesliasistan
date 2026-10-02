@@ -44,11 +44,11 @@ import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, messageIntent } from "@/lib/ai/messageRules";
 import { matchPerson } from "@/lib/names";
-import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide } from "@/lib/kinds";
+import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
-import { applyAnswer, changes, findDuplicates, formatPhone, nextQuestion, summarySay, wantsPerson } from "@/features/people/assistPerson";
-import { askOpen, createPerson, readPerson, removePerson } from "@/features/people/personActions";
+import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
+import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
@@ -563,7 +563,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     tts.stop();
 
     // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
-    if (personFlow.current && !fresh && personFlow.current.step !== "saving" && (await continuePerson(s, viaVoice))) return;
+    if (personFlow.current && !fresh && !["saving", "opening"].includes(personFlow.current.step) && (await continuePerson(s, viaVoice))) return;
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -876,7 +876,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
   // Hesap açılmaz; kaydedince "Hesap da açalım mı?" sorulur ve kişi kartı hesap ekranında açılır (kullanıcı adı/şifreyi kişi görür).
-  const personCard = (f) => ({ draft: f.draft, step: f.step, dups: f.dups || [], uid: f.uid || "" });
+  const personCard = (f) => ({ draft: f.draft, step: f.step, dups: f.dups || [], uid: f.uid || "", acc: f.acc || null });
   async function startPerson(s, viaVoice) {
     if (isStaff) return reply("Kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
     const id = ++runId.current;
@@ -917,6 +917,22 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (undoLast(s) || /^(geri al|sil|kaldır)/.test(t)) return personUndoAsk(viaVoice), true;
       if (yes) return personAccount(viaVoice), true;
       if (no) return reply("Tamam, hesap açmadım. İstediğinde Kişiler sayfasından açabilirsin.", { person: personCard(f), engine: "local" }, viaVoice), true;
+      personFlow.current = null;
+      return false;
+    }
+    if (f.step === "account") {
+      const login = loginIn(s);
+      if (login) {
+        if (!login.includes("@") && !validUsername(login)) return reply("Kullanıcı adı en az 3 karakter olmalı; harf, rakam ve nokta kullan.", { person: personCard(f), engine: "local", expect: true }, viaVoice), true;
+        personFlow.current = { ...f, acc: { ...f.acc, login } };
+        return reply(`Giriş ${login} olacak. Hesabı açayım mı?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice), true;
+      }
+      if (yes || /hesabı aç/.test(t)) return personOpenAccount(viaVoice), true;
+      personFlow.current = { ...f, step: "saved", acc: null };
+      if (no) return reply("Tamam, hesap açmadım.", { person: personCard(personFlow.current), engine: "local" }, viaVoice), true;
+      return false;
+    }
+    if (f.step === "opened") {
       personFlow.current = null;
       return false;
     }
@@ -973,14 +989,32 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     personFlow.current = null;
     reply("Tamam, kişiyi eklemedim.", { engine: "local" }, viaVoice);
   }
-  // Hesap açma ayrı onay: asistan açmaz, kişi kartı hesap ekranında açılır (giriş adı ve şifre orada görülüp onaylanır)
+  // Hesap açma ayrı onay: önce önerilen giriş ve şifre kartta gösterilir ("kullanıcı adı … olsun" ile değişir), ikinci onayla açılır
   function personAccount(viaVoice = false) {
     const f = personFlow.current;
-    if (!f?.uid) return;
-    askOpen({ uid: f.uid, step: "account" });
-    park();
-    router.push(`/people/${groupOfKind(f.draft.kind)}`);
-    reply(`${f.draft.name} için hesap ekranını açtım. Kullanıcı adı ve şifreyi kontrol edip “Hesabı aç”a bas.`, { engine: "local" }, viaVoice);
+    if (!f?.uid || isStaff) return;
+    const acc = { login: suggestLogin(f.draft, allMembers || members), password: newPassword() };
+    personFlow.current = { ...f, step: "account", acc };
+    reply(`${f.draft.name} için giriş ${acc.login} olacak, şifre ekranda. Hesabı açayım mı? Kullanıcı adını değiştirmek için “kullanıcı adı … olsun” de.`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
+  }
+  async function personOpenAccount(viaVoice = false) {
+    const f = personFlow.current;
+    if (!f?.uid || f.step !== "account" || isStaff) return;
+    personFlow.current = { ...f, step: "opening" };
+    setSteps([]);
+    stepTo("Hesap açılıyor");
+    try {
+      await openAccount({ uid: f.uid, name: f.draft.name, kind: f.draft.kind, login: f.acc.login, password: f.acc.password });
+      stepsEnd();
+      navigator.vibrate?.([10, 40, 10]);
+      toast("Hesap açıldı");
+      personFlow.current = { ...f, step: "opened" };
+      reply(`Hesabı açtım. Giriş bilgileri ekranda; ${f.draft.phone ? "WhatsApp ile gönderebilirsin" : "kişiye ilet"}.`, { person: personCard(personFlow.current), engine: "local" }, viaVoice);
+    } catch (e) {
+      stepsEnd(false);
+      personFlow.current = f;
+      reply(`${e.message} Başka bir kullanıcı adı söyleyebilir ya da vazgeçebilirsin.`, { person: personCard(f), engine: "local", expect: true }, viaVoice);
+    }
   }
   // Düzenle: kaydedilmemiş bilgiler kişi formunda dolu açılır; kaydedildiyse kişinin kartı açılır
   function personEdit() {
@@ -1376,8 +1410,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             p={cards.person}
             onSave={() => (setTurns((p) => [...p, { role: "user", text: "Kaydet", chip: true }]), personSave())}
             onEdit={personEdit}
-            onCancel={() => (cards.person.step === "undo" ? continuePerson("vazgeç") : personCancel())}
-            onAccount={() => personAccount()}
+            onCancel={() => (["undo", "account"].includes(cards.person.step) ? continuePerson("vazgeç") : personCancel())}
+            onAccount={() => (cards.person.step === "account" ? personOpenAccount() : personAccount())}
             onUndo={() => (cards.person.step === "undo" ? personUndo() : personUndoAsk())}
           />
         )}

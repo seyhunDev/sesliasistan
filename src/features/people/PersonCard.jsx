@@ -1,14 +1,17 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
+import { loginMessage, waPhone } from "@/lib/kinds";
 import { summaryRows } from "./assistPerson";
 
 // Asistanda yeni kişi kartı: bilgiler, mükerrer uyarısı ve onay düğmeleri.
-// p: { draft, step: "ask" | "confirm" | "saved" | "undo", dups?, uid? }
+// p: { draft, step: "ask" | "confirm" | "saved" | "undo" | "account" | "opening" | "opened", dups?, uid?, acc?: { login, password } }
 export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
   const { draft, step, dups = [] } = p;
-  const saved = step === "saved" || step === "undo";
-  const head = step === "ask" ? "bilgi bekleniyor" : step === "confirm" ? "onay bekliyor" : step === "undo" ? "silme onayı" : "kaydedildi";
+  const saved = !["ask", "confirm"].includes(step);
+  const head = { ask: "bilgi bekleniyor", confirm: "onay bekliyor", undo: "silme onayı", account: "hesap onayı", opening: "hesap açılıyor", opened: "hesap açıldı" }[step] || "kaydedildi";
+  const acc = p.acc;
+  const wa = acc && waPhone(draft.phone);
   return (
     <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
       <p className="flex items-center justify-between bg-acc/[.06] px-3 py-2 text-[0.75rem] font-semibold uppercase tracking-wide text-acc">
@@ -25,6 +28,17 @@ export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
           </div>
         ))}
       </dl>
+      {acc && (step === "account" || step === "opening" || step === "opened") && (
+        <div className="border-t border-line bg-bg px-3 py-2.5 text-[0.9375rem]">
+          <p className="text-[0.75rem] text-mut">{step === "opened" ? "Giriş bilgileri — kişiye ilet:" : "Açılacak hesap:"}</p>
+          <p className="mt-0.5">
+            Giriş: <b className="font-semibold">{acc.login}</b>
+          </p>
+          <p>
+            Şifre: <b className="font-semibold tabular-nums">{acc.password}</b>
+          </p>
+        </div>
+      )}
       {dups.length > 0 && !saved && (
         <div className="border-t border-line bg-amber-50 px-3 py-2.5 text-[0.8125rem] leading-snug text-amber-900">
           <b className="flex items-center gap-1.5 font-semibold">
@@ -40,7 +54,7 @@ export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
           </ul>
         </div>
       )}
-      {step !== "ask" && (
+      {step !== "ask" && step !== "opening" && (
         <div className="flex flex-wrap gap-1.5 border-t border-line p-2">
           {step === "confirm" && (
             <>
@@ -65,6 +79,31 @@ export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
               </button>
               <button type="button" onClick={onUndo} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-rec active:bg-bg">
                 Geri al
+              </button>
+            </>
+          )}
+          {step === "account" && (
+            <>
+              <button type="button" onClick={onAccount} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+                <Icon name="check" className="size-4" /> Hesabı aç
+              </button>
+              <button type="button" onClick={onCancel} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-mut active:bg-bg">
+                Vazgeç
+              </button>
+            </>
+          )}
+          {step === "opened" && (
+            <>
+              <a
+                href={`https://wa.me/${wa}?text=${encodeURIComponent(loginMessage({ name: draft.name, login: acc.login, password: acc.password, site: typeof location !== "undefined" ? location.origin : "" }))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25d366] text-[0.8125rem] font-semibold text-white active:scale-[.98]"
+              >
+                <Icon name="whatsapp" className="size-4" /> WhatsApp ile gönder
+              </a>
+              <button type="button" onClick={onEdit} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-[.98]">
+                Kişiyi aç
               </button>
             </>
           )}
