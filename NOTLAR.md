@@ -9,6 +9,8 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 - Yarış evrakı (Sporcular › bayrak düğmesi, `/athletes/races`): yarış + seçilen sporcular → okul izni yazısı, EK-2 Kafile Onayı, seyahat dilekçesi, sporcu başına EK-3/D Veli İzin Belgesi tek PDF (paylaş/yazdır). Telefonda gerçek sporcularla denenmedi.
 - Yarışa not, yapılacaklar listesi (evrak, veli imzası, okullar, GSİM, kayıt formu) ve "Planlara ekle" eklendi. Asistan: "Yarış ekle: …, Çeşme, 7-11 Ekim, Ali ve Ayşe katılacak", "… yarışına Mehmet'i de ekle", "… için not al: …" (`src/features/athletes/assistRace.js`, `/api/race`).
 - Kulüp izin yazısı eklendi (Evrak sekmesi, 5. belge): kulüpten sporcunun okuluna, sporcu başına bir sayfa, antetli. Sayı, tarih, izin aralığı, etkinlik adı, yer, imzalayan ayrı düzenlenir; boşsa yarıştan gelir. Sporcu kartına okul no ve sınıf alanı eklendi.
+- Yarış talimatı: yarışta "Talimattan oluştur / Talimatı yükle" (PDF ya da fotoğraf, en çok 4 MB) → `/api/race-notice` (Gemini) ad, tarih, yer, program, son tarihler, ücretler, konaklama, iletişim çıkarır; yarışın `notice` alanında durur, belge saklanmaz. Özet sekmesinde son tarihler (planlara ekle) ve talimat ayrıntıları. Gerçek talimatla canlıda denenmedi.
+- Kulüp izin yazısında kulüp logosu (`public/club-logo.png`).
 - Asistan: yarış adları hafızası (`raceNames.js`, kayıtlı yarışlardan) ses tanımaya ipucu ve yarış adı kutusunda öneri; "katılımcıları" sporcu olarak eklenir, nota yazılmaz; konuşma sonu beklemesi uzadı (kayıt yolu 2,3 sn, kısa cümlede 3 sn; canlı yazı 2 sn).
 - Yarışlar sayfası yeniden tasarlandı: liste `RaceList.jsx` (sıradaki yarış kartı, yaklaşan/geçmiş), tek yarış `/athletes/races/[id]` + `RaceEditor.jsx` (Özet / Sporcular / Bilgiler / Evrak sekmeleri). Yeni yarış: `/athletes/races/new`.
 
@@ -16,8 +18,9 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 1. Asistan Sahnesi 2. adım: sayfada arka plan vurgusu / hayalet taslak.
 2. Asistan Sahnesi 3. adım: mesajda hayalet balon.
-3. Kulüp izin yazısını ve asistanın yeni bekleme süresini telefonda dene; susma hâlâ erkense `END_SILENCE` (useSpeech.js) artırılır.
-4. Yarış evrakını telefonda dene; sporcu kartlarında lisans no, veli T.C., doğum yeri, anne-baba adı, yakınlık, okul ilçe-ili alanlarını doldur. Kafileye antrenör/idareci eklemek istenirse sonraki iş.
+3. Örnek talimatı (TYF Yelken Ligi ILCA 1. Ayak, Foça) yükleyip okunanları kontrol et; eksik/yanlış alan olursa `/api/race-notice` istemini düzelt.
+4. Kulüp izin yazısını ve asistanın yeni bekleme süresini telefonda dene; susma hâlâ erkense `END_SILENCE` (useSpeech.js) artırılır.
+5. Yarış evrakını telefonda dene; sporcu kartlarında lisans no, veli T.C., doğum yeri, anne-baba adı, yakınlık, okul ilçe-ili alanlarını doldur. Kafileye antrenör/idareci eklemek istenirse sonraki iş.
 
 ## Tasarım
 

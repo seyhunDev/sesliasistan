@@ -10,6 +10,8 @@ import { DOC_TEXT } from "./EditAthlete";
 import { isActive } from "./data";
 import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
+import { applyNotice, readNotice } from "./raceNotice";
+import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { STEPS, doneCount, shiftDay } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
@@ -46,8 +48,9 @@ function Check({ on, tone = "ok" }) {
 }
 
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
-// Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool, onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onSaveAthlete }) {
+// Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
+// onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
+export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -163,6 +166,30 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       toast("Planlara eklendi");
     }
   };
+  // Yarış talimatı: okunur, yarışa uygulanır (yeni yarışta ad, tarih, yer de talimattan gelir)
+  const [reading, setReading] = useState(false);
+  const loadNotice = async (f) => {
+    setReading(true);
+    try {
+      const n = await readNotice(f);
+      setFile(null);
+      setR((p) => applyNotice(p, n));
+      setTab("sum");
+      toast(n.name ? "Talimat okundu" : "Talimat okundu, yarış adını yaz");
+    } catch (e) {
+      toast(e?.message || "Talimat okunamadı");
+    }
+    setReading(false);
+  };
+  const noticePlan = async () => {
+    if (!r.name.trim()) return toast("Önce yarış adı");
+    const n = await onNoticePlan(r);
+    if (n > 0) {
+      put("notice", { ...r.notice, planned: true });
+      toast(`${n} son tarih planlara eklendi`);
+    } else toast("Planlara eklenemedi");
+  };
+
   const remove = async () => {
     if (!id.current || !confirm(`"${r.name}" silinsin mi? Sporcu kartları etkilenmez.`)) return;
     dirty.current = false;
@@ -214,6 +241,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
             })}
           </ul>
 
+          <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
+
           <Label>NOT</Label>
           <div className={`${card} px-4 py-3`}>
             <textarea
@@ -242,6 +271,15 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
               </button>
             )}
           </div>
+
+          {r.notice ? (
+            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} />
+          ) : (
+            <>
+              <Label>TALİMAT</Label>
+              <NoticeUpload busy={reading} onFile={loadNotice} />
+            </>
+          )}
         </>
       )}
 
@@ -289,6 +327,11 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
 
       {tab === "info" && (
         <>
+          {!r.notice && (
+            <div className="mt-4">
+              <NoticeUpload busy={reading} onFile={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} />
+            </div>
+          )}
           <Label>YARIŞ</Label>
           <Group>
             <Row label="Yarış adı">

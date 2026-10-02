@@ -14,6 +14,7 @@ import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { leftText } from "@/features/athletes/RaceList";
 import { rangeText } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
+import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { todayStr } from "@/lib/utils/format";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
@@ -92,6 +93,7 @@ function Race({ orgId, uid, by }) {
           onSave={onSave}
           onDelete={onDelete}
           onPlan={(r) => addRacePlan(saveDrafts, r, by)}
+          onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
           onSaveAthlete={onSaveAthlete}
         />
       )}

@@ -12,7 +12,24 @@ export const RACE_FIELDS = [
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
+  // Yarış talimatından okunanlar (program, son tarihler, ücretler, oteller, iletişim; raceNotice.js)
+  "notice",
 ];
+
+const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
+
+// Talimat bilgisi: kayıtta yalnız bilinen alanlar kalır
+export function cleanNotice(n) {
+  if (!n || typeof n !== "object") return null;
+  const out = {};
+  for (const k of NOTICE_KEYS) {
+    const v = n[k];
+    if (Array.isArray(v)) out[k] = v.filter((x) => (x && typeof x === "object") || typeof x === "string").slice(0, 40);
+    else if (typeof v === "boolean") out[k] = v;
+    else out[k] = String(v ?? "");
+  }
+  return out;
+}
 
 // Yarış öncesi yapılacaklar (her yarışta aynı liste; işaretlenenler checks içinde)
 export const STEPS = [
@@ -35,6 +52,8 @@ const clean = (r) =>
           ? Object.fromEntries(STEPS.map(([s]) => [s, !!r.checks?.[s]]))
           : k === "planAdded"
             ? !!r[k]
+            : k === "notice"
+              ? cleanNotice(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -48,7 +67,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör",
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null,
   };
 }
 

@@ -467,12 +467,14 @@ function clubLetter(pdf, f, c, a, no) {
     return w;
   };
 
-  // Antet: yelken işareti + kulüp adı, altında çift çizgi
-  page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
-  tx(CLUB.name, L + 48, 66, f.serifB, 19, "left");
-  tx("Dikili / İZMİR", L + 48, 82, f.serif, 10.5, "left", GRAY);
-  page.drawRectangle({ x: L, y: H - 98, width: R - L, height: 1.6, color: navy });
-  page.drawRectangle({ x: L, y: H - 101.5, width: R - L, height: 0.5, color: navy });
+  // Antet: kulüp logosu + kulüp adı, altında çift çizgi
+  if (f.logo) page.drawImage(f.logo, { x: L, y: H - 92, width: 58, height: 58 });
+  else page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
+  const nx = L + (f.logo ? 70 : 48);
+  tx(CLUB.name, nx, 64, f.serifB, 19, "left");
+  tx("Dikili / İZMİR", nx, 80, f.serif, 10.5, "left", GRAY);
+  page.drawRectangle({ x: L, y: H - 102, width: R - L, height: 1.6, color: navy });
+  page.drawRectangle({ x: L, y: H - 105.5, width: R - L, height: 0.5, color: navy });
 
   // Sayı, konu, tarih
   const kv = (k, v, top) => {
@@ -520,7 +522,7 @@ const placeSuffix = (s) => {
   return last ? locative(last).slice(up(last).length) : "";
 };
 
-// r: yarış bilgisi, athletes: sporcu kartları (sırasıyla), fonts: { ad: Uint8Array }
+// r: yarış bilgisi, athletes: sporcu kartları (sırasıyla), fonts: { ad: Uint8Array, logo?: PNG baytları (kulüp logosu) }
 // only: üretilecek belgeler (DOCS anahtarları)
 export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) => k)) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
@@ -533,7 +535,11 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   pdf.setTitle(`${r.name} evrakı`);
   pdf.setCreator("Sesli Asistan");
   const f = {};
-  for (const [k, bytes] of Object.entries(fonts)) f[k] = await pdf.embedFont(bytes, { subset: true });
+  for (const [k, bytes] of Object.entries(fonts)) {
+    if (k === "logo") {
+      if (only.includes("club")) f.logo = await pdf.embedPng(bytes);
+    } else f[k] = await pdf.embedFont(bytes, { subset: true });
+  }
   const year = (toDate(r.startDate) || new Date()).getFullYear();
   const race = { ...r, year, place: `${up(r.district)}-${up(r.city)}` };
   const list = athletes.map(athleteInfo);
@@ -563,13 +569,14 @@ export function clubInfo(r) {
   };
 }
 
-// Tarayıcıda yazı tiplerini getirir (bir kez)
+// Tarayıcıda yazı tiplerini ve kulüp logosunu getirir (bir kez)
+export const LOGO = "/club-logo.png";
 let fontCache = null;
 export function loadFonts() {
   fontCache ||= Promise.all(
-    Object.entries(FONT_FILES).map(async ([k, file]) => {
-      const res = await fetch(`/fonts/${file}`);
-      if (!res.ok) throw new Error("Yazı tipi alınamadı.");
+    [...Object.entries(FONT_FILES).map(([k, file]) => [k, `/fonts/${file}`]), ["logo", LOGO]].map(async ([k, url]) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Belge dosyaları alınamadı.");
       return [k, new Uint8Array(await res.arrayBuffer())];
     }),
   ).then(Object.fromEntries, (e) => {

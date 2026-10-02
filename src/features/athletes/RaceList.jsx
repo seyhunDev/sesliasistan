@@ -67,6 +67,8 @@ export function Faces({ ids, names, max = 3 }) {
 }
 
 const nextStep = (r) => STEPS.find(([k]) => !r.checks?.[k])?.[1];
+// Talimattaki en yakın son tarih
+const nextDeadline = (r) => (r.notice?.deadlines || []).find((d) => diff(d.date) >= 0);
 
 // Yarış listesi: üstte sıradaki yarış, altta yaklaşan/geçmiş yarış kartları
 export function RaceList({ races, names = {}, onOpen }) {
@@ -92,6 +94,13 @@ export function RaceList({ races, names = {}, onOpen }) {
               <Stat n={`${doneCount(next)}/${STEPS.length}`} label="İş tamam" />
               <Stat n={Math.max(0, diff(next.startDate))} label="Gün kaldı" />
             </div>
+            {nextDeadline(next) && (
+              <span className="mt-3 flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2.5">
+                <span className="text-[0.6875rem] font-bold tracking-[.08em] text-white/70">SON TARİH</span>
+                <b className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold">{nextDeadline(next).title}</b>
+                <span className="shrink-0 text-[0.8125rem] tabular-nums text-white/85">{diff(nextDeadline(next).date) ? `${diff(nextDeadline(next).date)} gün` : "Bugün"}</span>
+              </span>
+            )}
             {nextStep(next) && (
               <span className="mt-3 flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2.5">
                 <span className="text-[0.6875rem] font-bold tracking-[.08em] text-white/70">SIRADAKİ İŞ</span>
@@ -108,7 +117,7 @@ export function RaceList({ races, names = {}, onOpen }) {
       )}
 
       {races.length === 0 ? (
-        <Empty icon="flag" title="Henüz yarış yok" sub="Yarışı ekle, sporcuları seç; okul ve valilik izin yazıları ile veli izin belgeleri hazır olsun. Asistana “yarış ekle” de diyebilirsin." />
+        <Empty icon="flag" title="Henüz yarış yok" sub="Yarışı ekle ya da yarış talimatını yükle; sporcuları seç, izin yazıları ve veli belgeleri hazır olsun. Asistana “yarış ekle” de diyebilirsin." />
       ) : list.length === 0 ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">{tab === "up" ? "Yaklaşan yarış yok" : "Geçmiş yarış yok"}</p>
       ) : (
@@ -124,7 +133,7 @@ export function RaceList({ races, names = {}, onOpen }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start gap-2">
                         <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{r.name || "Adsız yarış"}</b>
-                        {r.note && <Icon name="note" className="mt-0.5 size-4 shrink-0 text-mut" />}
+                        {(r.note || r.notice) && <Icon name={r.notice ? "paperclip" : "note"} className="mt-0.5 size-4 shrink-0 text-mut" />}
                       </span>
                       <span className="block truncate text-[0.8125rem] text-mut">{[placeText(r), leftText(r)].filter(Boolean).join(" · ")}</span>
                       <span className="mt-2.5 flex items-center gap-2">
