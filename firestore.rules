@@ -87,8 +87,8 @@ service cloud.firestore {
         allow update: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine() && lockedSame()
                       && (resource.data.get("createdByUid", null) == request.auth.uid || assignedOnly());
         // Çalışan silemez: kendi eklediği kayda silme isteği (deleteReq) yazar, ana hesap onaylarsa ana hesap siler.
-        // İstisna: doğum günleri kişiye özel; çalışan kendi eklediğini kendisi siler.
-        allow delete: if col == "birthdays" && isStaff(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
+        // İstisna: doğum günleri ve ders programı kişiye özel; çalışan kendi eklediğini kendisi siler.
+        allow delete: if col in ["birthdays", "lessons"] && isStaff(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
       }
 
       // ---- Mesajlaşma ----

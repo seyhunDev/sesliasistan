@@ -33,12 +33,13 @@ async function askAI(payload) {
 
 // Ders programı: haftalık tekrarlanan dersler. Ekleme: tek tek, yazarak/konuşarak ya da fotoğrafla (yapay zeka önizler, sen kaydedersin).
 export default function SchedulePage() {
-  const { lessons, saveLessons, updateLesson, removeWithUndo, myUid } = useData();
+  const { lessons, saveLessons, updateLesson, clearLessons, removeWithUndo, myUid } = useData();
   const toast = useToast();
   const [day, setDay] = useState(() => weekdayOf(todayStr()));
   const [edit, setEdit] = useState(null); // { id? , ...ders } | null
   const [preview, setPreview] = useState(null); // { lessons, message } | null
   const [busy, setBusy] = useState(""); // "photo" | "text" | ""
+  const [askClear, setAskClear] = useState(false); // "Tüm programı sil" onayı
   const fileRef = useRef(null);
   const now = useNow();
   const mine = lessons.filter((l) => l.createdByUid === myUid);
@@ -92,6 +93,7 @@ export default function SchedulePage() {
     create: [
       ["plus", "Ders ekle", "Tek tek gir", newLesson],
       ["camera", "Fotoğraftan", "Programın fotoğrafı", pickPhoto],
+      ...(mine.length ? [["trash", "Tüm programı sil", "Bütün dersleri kaldır", () => setAskClear(true)]] : []),
     ],
   });
 
@@ -179,6 +181,13 @@ export default function SchedulePage() {
         </div>
       )}
 
+      {mine.length > 0 && !busy && (
+        <button type="button" onClick={() => setAskClear(true)} className="mx-auto mt-6 flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.8125rem] font-medium text-rec active:bg-rec/10">
+          <Icon name="trash" className="size-4" />
+          Tüm programı sil
+        </button>
+      )}
+
       <ListeningOverlay sp={sp} hint="Dersleri, günleri ve saatleri söyle" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
 
 
@@ -202,6 +211,25 @@ export default function SchedulePage() {
           }
         />
       )}
+
+      <Sheet open={askClear} onClose={() => setAskClear(false)} title="Tüm programı sil">
+        <p className="text-[0.9375rem] text-mut">Haftalık programındaki {mine.length} dersin hepsi silinecek. Hemen ardından “Geri al” diyebilirsin.</p>
+        <div className="flex gap-2.5 pb-2 pt-4">
+          <button type="button" onClick={() => setAskClear(false)} className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold active:scale-[.98]">
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              clearLessons();
+              setAskClear(false);
+            }}
+            className="h-12 flex-1 rounded-xl bg-rec text-[0.9375rem] font-semibold text-white active:scale-[.98]"
+          >
+            Hepsini sil
+          </button>
+        </div>
+      </Sheet>
 
       <Screen open={!!preview} onClose={() => setPreview(null)} title="Ders programı önizleme">
         {preview && (

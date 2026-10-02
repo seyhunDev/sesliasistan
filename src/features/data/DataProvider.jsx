@@ -22,6 +22,8 @@ const KEYS = { plan: "plans", task: "tasks", note: "notes", receipt: "receipts",
 const COLS = Object.values(KEYS);
 const EMPTY = { plans: [], tasks: [], notes: [], receipts: [], birthdays: [], lessons: [] };
 const NAMES = { plan: "Plan", task: "Görev", note: "Not", receipt: "Fiş", birthday: "Doğum günü", lesson: "Ders" };
+// Kişiye özel kayıtlar: çalışan da kendi eklediğini onaysız siler (Firestore kuralları da izin verir)
+const PERSONAL = ["birthday", "lesson"];
 const UNDO_MS = 5000; // silme bu süre boyunca geri alınabilir
 const SEEN_MS = 4 * 60e3; // çalışanın "son görülme" bilgisi bu aralıkla güncellenir
 const Ctx = createContext(null);
@@ -128,7 +130,7 @@ export function DataProvider({ children }) {
       onSnapshot(
         staff
           ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid))
-          : k === "birthdays" // doğum günleri kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
+          : k === "birthdays" || k === "lessons" // doğum günleri ve ders programı kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
             ? query(collection(db, "orgs", orgId, k), where("createdByUid", "==", uid))
             : collection(db, "orgs", orgId, k),
         (snap) => {
@@ -386,7 +388,7 @@ export function DataProvider({ children }) {
 
   const deleteRecord = useCallback(
     async (kind, id) => {
-      if (me.current.staff && kind !== "birthday") return requestDelete(kind, id, false); // çalışan: ana hesabın onayına (doğum günü kişiye özel, kendisi siler)
+      if (me.current.staff && !PERSONAL.includes(kind)) return requestDelete(kind, id, false); // çalışan: ana hesabın onayına (doğum günü ve ders kişiye özel, kendisi siler)
       const k = KEYS[kind];
       const { tasks, notes } = cur.current; // silmeden önceki bağlı kayıtlar
       setData((p) => {
@@ -494,7 +496,7 @@ export function DataProvider({ children }) {
   const removeWithUndo = useCallback(
     (kind, id) => {
       if (isLocked(kind, id)) return lockedMsg();
-      if (me.current.staff && kind !== "birthday") return requestDelete(kind, id); // çalışan: silme isteği (ana hesap onaylar); doğum günü kişiye özel, kendisi siler
+      if (me.current.staff && !PERSONAL.includes(kind)) return requestDelete(kind, id); // çalışan: silme isteği (ana hesap onaylar); doğum günü ve ders kişiye özel, kendisi siler
       const key = `${kind}:${id}`;
       if (pending.current.has(key)) return;
       const commit = () => {
@@ -623,6 +625,50 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
+  // Tüm programı sil: bu kişinin bütün dersleri. Hemen ekrandan kalkar, "Geri al" süresi dolunca silinir.
+  const clearLessons = useCallback(() => {
+    const ids = cur.current.lessons.filter((l) => l.createdByUid === me.current.uid).map((l) => l.id);
+    if (!ids.length) return 0;
+    const keys = ids.map((id) => `lesson:${id}`);
+    const unhideAll = () =>
+      setHidden((h) => {
+        const n = new Set(h);
+        keys.forEach((k) => n.delete(k));
+        return n;
+      });
+    const commit = async () => {
+      pending.current.delete("lessons:all");
+      setData((p) => ({ ...p, lessons: p.lessons.filter((l) => !ids.includes(l.id)) }));
+      unhideAll();
+      try {
+        const ownerId = getOrgId();
+        for (let i = 0; i < ids.length; i += 400) {
+          const batch = writeBatch(db);
+          ids.slice(i, i + 400).forEach((id) => batch.delete(doc(db, "orgs", ownerId, "lessons", id)));
+          await batch.commit();
+        }
+      } catch (e) {
+        fail(e, "Silme");
+      }
+    };
+    const timer = setTimeout(commit, UNDO_MS + 500);
+    pending.current.set("lessons:all", { timer, commit });
+    setHidden((h) => new Set([...h, ...keys]));
+    navigator.vibrate?.(10);
+    toast(`Program silindi (${ids.length} ders)`, {
+      duration: UNDO_MS,
+      action: {
+        label: "Geri al",
+        onClick: () => {
+          clearTimeout(timer);
+          pending.current.delete("lessons:all");
+          unhideAll();
+        },
+      },
+    });
+    return ids.length;
+  }, [getOrgId, fail, toast]);
+
   // ---- Fişler ----
   // Fotoğraf ayrı belgede tutulur (orgs/{uid}/receiptImages/{id}); liste hafif kalır.
   // image: dataURL | undefined (değişmedi) | null (kaldır)
@@ -736,7 +782,7 @@ export function DataProvider({ children }) {
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
         saveDrafts, toggleTask, updateRecord, deleteRecord, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
+        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
       }}
     >
       {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}
