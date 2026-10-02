@@ -1,6 +1,6 @@
 "use client";
 
-// Kendine mail: uygulama dosyayı orgs/{uid}/outbox'a bırakır, Gmail betiği (script.js › gonder) 5 dakikada bir
+// Kendine (ve seçilen adreslere) mail: uygulama dosyayı orgs/{uid}/outbox'a bırakır, Gmail betiği (script.js › gonder) 5 dakikada bir
 // alır, betiğin çalıştığı Gmail hesabına ekli mail olarak gönderir ve kaydı siler. Sunucu ve gizli anahtar yok.
 // Belge 1 MB sınırına takılmasın diye dosya parçalara bölünür (outbox/{id}/parts/{0..n}); ana kayıt en son yazılır,
 // betik yarım kaydı görmez.
@@ -18,8 +18,12 @@ const toBase64 = (blob) =>
     fr.readAsDataURL(blob);
   });
 
-// file: File (PDF). Gönderim betiğe kalır; dönen değer kayıt kimliği.
-export async function mailToMe(uid, { subject, text, file }) {
+export const isEmail = (a) => /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(String(a || ""));
+// Kayıtlı/seçilen adresler: geçerli, küçük harf, tekrarsız, en çok 10
+export const cleanTo = (list) => [...new Set((Array.isArray(list) ? list : []).map((a) => String(a).trim().toLowerCase()).filter(isEmail))].slice(0, 10);
+
+// file: File (PDF). to: ek alıcılar; self: betiğin kendi adresine de. Gönderim betiğe kalır; dönen değer kayıt kimliği.
+export async function mailToMe(uid, { subject, text, file, to = [], self = true }) {
   if (file.size > MAX) throw new Error("Dosya çok büyük, Paylaş ile gönder");
   const data = await toBase64(file);
   const ref = doc(collection(db, "orgs", uid, "outbox"));
@@ -37,6 +41,8 @@ export async function mailToMe(uid, { subject, text, file }) {
     fileName: file.name,
     mimeType: file.type || "application/pdf",
     parts: parts.length,
+    to: cleanTo(to),
+    self: !!self || !cleanTo(to).length,
     createdAt: serverTimestamp(),
   });
   return ref.id;

@@ -16,6 +16,8 @@ import { rangeText } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { mailToMe } from "@/features/mail/outbox";
+import { db } from "@/lib/firebase/clientApp";
+import { doc, updateDoc } from "firebase/firestore";
 import { todayStr } from "@/lib/utils/format";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
@@ -28,7 +30,8 @@ export default function RacePage() {
   }, [profile, allowed, router]);
   if (!allowed || !profile?.orgId || !user) return null;
   // Kendine mail: yalnız Gmail betiğini kurmuş ana hesapta (betik orgs/{uid}/outbox'tan gönderir)
-  const mail = profile.mailSeen && profile.orgId === user.uid ? { ready: profile.mailOutbox } : null;
+  // version: betik sürümü (1 yalnız kendine, 2 seçilen adreslere de gönderir); saved: kayıtlı alıcılar
+  const mail = profile.mailSeen && profile.orgId === user.uid ? { version: profile.mailOutbox, saved: profile.mailTo } : null;
   return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} />;
 }
 
@@ -98,7 +101,9 @@ function Race({ orgId, uid, by, mail }) {
           onPlan={(r) => addRacePlan(saveDrafts, r, by)}
           onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
           onSaveAthlete={onSaveAthlete}
-          onMail={mail ? async (m) => (await mailToMe(uid, m), mail.ready) : null}
+          onMail={mail ? async (m) => (await mailToMe(uid, m), mail.version >= (m.to.length ? 2 : 1)) : null}
+          mailTo={mail?.saved}
+          onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
         />
       )}
     </main>
