@@ -14,6 +14,8 @@ export const RACE_FIELDS = [
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
   // Yarış talimatından okunanlar (program, son tarihler, ücretler, oteller, iletişim; raceNotice.js)
   "notice",
+  // Elle eklenen işler [{ title, date }]
+  "todos",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -32,23 +34,16 @@ export function cleanNotice(n) {
 }
 
 // Yarış öncesi yapılacaklar. Her iş: { key, label, date?, detail?, group }; işaretlenenler checks[key].
-// Evrak işleri (kulüp tarafı) her yarışta aynı. Talimat yüklendiyse kayıt/ödeme/konaklama işleri talimattan gelir,
-// yoksa çoğu talimatta olan standart liste kullanılır.
+// Evrak işleri (kulüp tarafı) her yarışta aynı. Kayıt/ödeme/konaklama işleri talimattan gelir (talimat yüklenince);
+// her yarışa elle iş de eklenir (todos). Hazır standart liste yok.
 export const DOC_STEPS = [
   ["docs", "Evraklar hazırlandı"],
   ["parents", "Veliler imzaladı"],
   ["schools", "Okullara verildi"],
   ["gsim", "GSİM'e verildi (il dışı çıkış oluru)"],
 ];
-export const PREP_STEPS = [
-  ["entry", "Online kayıt yapıldı"],
-  ["fee", "Kayıt ücreti ödendi"],
-  ["hotel", "Konaklama ayarlandı"],
-  ["travel", "Ulaşım ve tekne taşıma ayarlandı"],
-  ["final", "Kesin kayıt yapıldı (yarış ofisi)"],
-];
-const slug = (s) =>
-  "t:" + String(s || "").toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40);
+const slug = (s, p = "t:") =>
+  p + String(s || "").toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40);
 
 // Talimattaki işler; eski talimatlarda (tasks yoksa) son tarihlerden, ücretten ve otelden çıkarılır
 export function noticeTasks(n) {
@@ -65,10 +60,20 @@ export function noticeTasks(n) {
     .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
 }
 
+// Elle eklenen işler
+export const cleanTodos = (a) =>
+  (Array.isArray(a) ? a : [])
+    .map((t) => ({ title: String(t?.title || "").replace(/\s+/g, " ").trim().slice(0, 100), date: /^\d{4}-\d{2}-\d{2}$/.test(t?.date || "") ? t.date : "" }))
+    .filter((t) => t.title)
+    .slice(0, 30);
+export const todoKey = (title) => slug(title, "m:");
+
 export function stepsOf(r) {
-  const tasks = noticeTasks(r?.notice);
-  const prep = tasks.length ? tasks : PREP_STEPS.map(([key, label]) => ({ key, label, group: "prep" }));
-  return [...prep, ...DOC_STEPS.map(([key, label]) => ({ key, label, group: "docs" }))];
+  const seen = new Set();
+  const own = cleanTodos(r?.todos)
+    .map((t) => ({ key: todoKey(t.title), label: t.title, date: t.date, detail: "", group: "own" }))
+    .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
+  return [...noticeTasks(r?.notice), ...own, ...DOC_STEPS.map(([key, label]) => ({ key, label, group: "docs" }))];
 }
 export const doneCount = (r) => stepsOf(r).filter((s) => r.checks?.[s.key]).length;
 
@@ -85,6 +90,8 @@ const clean = (r) =>
             ? !!r[k]
             : k === "notice"
               ? cleanNotice(r[k])
+            : k === "todos"
+              ? cleanTodos(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -98,7 +105,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null, todos: [],
   };
 }
 
