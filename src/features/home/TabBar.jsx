@@ -302,7 +302,7 @@ function Dome({ bar, active, state, live, talk, typeNow, typing, onTypingDone, c
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
       <div ref={inner} className="absolute inset-x-0 bottom-0">
-        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.375rem,calc(env(safe-area-inset-bottom)-0.875rem))] pt-3">
           {active && (
             <div
               ref={pane}
