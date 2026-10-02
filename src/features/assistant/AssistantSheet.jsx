@@ -387,6 +387,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Yerel ya da yapay zekadan gelen gezinme: sayfa, grup sohbeti ya da kişiyle sohbet
   function openNav(nav, viaVoice) {
     if (nav.page) return go(nav.page, "", viaVoice);
+    // "geri dön": önceki sayfa (uygulama yeni açıldıysa geçmiş yok, ana sayfa)
+    if (nav.back) {
+      navigator.vibrate?.(8);
+      if (window.history.length > 1) router.back();
+      else router.push(PAGES.home.path);
+      return leave("Önceki sayfaya döndüm.", viaVoice);
+    }
     if (nav.chat) {
       if (!groupIds.includes(nav.chat)) return reply(`${GROUPS[nav.chat]?.name || "Bu"} grubunda değilsin.`, { engine: "local" }, viaVoice);
       return openChatAt(nav.chat, `${GROUPS[nav.chat].name} grubunu açtım.`, viaVoice);
@@ -586,7 +593,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
     const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
     if (nav) {
-      record(s, `nav:${nav.page || "messages"}`, "local");
+      record(s, `nav:${nav.page || (nav.back ? "back" : "messages")}`, "local");
       countHit("local");
       return openNav(nav, viaVoice);
     }

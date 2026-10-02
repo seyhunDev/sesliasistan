@@ -186,6 +186,18 @@ export function stats() {
   };
 }
 
+// Yerelde kaçan komutlar: yapay zekanın sayfa açtığı cümleler (kurallar tanıyabilmeliydi). Yeni kurala ve teste
+// eklensin diye Ayarlar › Öğrenme'de listelenir, kopyalanır. Son 30 farklı cümle, yeniden eskiye.
+export function missedLocal() {
+  const seen = new Set();
+  return load()
+    .items.filter((e) => e.s === "ai" && e.l.startsWith("nav:"))
+    .reverse()
+    .filter((e) => !seen.has(e.x) && seen.add(e.x))
+    .slice(0, 30)
+    .map((e) => ({ x: e.x, l: e.l }));
+}
+
 // İsteğin nasıl çözüldüğünü say: "local" (kurallar), "brain" (öğrenilenler), "ai" (yapay zeka)
 export function countHit(kind) {
   const s = load();

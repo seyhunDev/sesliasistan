@@ -1,10 +1,14 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { NextResponse } from "next/server";
 import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
+import { dropHallucination } from "@/lib/speech/hallucination";
 
 export const runtime = "nodejs";
 
-const HINT = "Spor kulübü, yelken, antrenman, Optimist, Laser, ıskota, fiş, fatura, KDV, plan, görev, not.";
+// Sık kelimeler: kulüp işleri, tekne sınıfları ve asistanın sayfa adları (komutlar doğru yazılsın: "Optimus" değil "Optimist")
+const HINT =
+  "Spor kulübü, yelken, antrenman, yarış, regat, ayak, Optimist, ILCA, Laser, 420, 470, Techno 293, iQFoil, Finn, Nacra, ıskota, fiş, fatura, KDV, " +
+  "plan, görev, not, yoklama, takvim, planlar, görevler, notlar, fişler, yarışlar, sporcular, mesajlar, ayarlar, ana sayfa, aç, git, göster.";
 const MIN = 60 * 1000;
 
 // OpenAI uyumlu ses çeviri servisleri (aynı istek biçimi)
@@ -18,6 +22,17 @@ const WHISPER = {
 const namesHint = (names, terms = []) =>
   (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "") + (terms.length ? ` Yarış adları (bu yazımla): ${terms.join(", ")}.` : "");
 
+// Sessiz parçaları at: konuşma yok olasılığı yüksek ve model kendinden emin değilse (Whisper burada uydurur)
+function spoken(data) {
+  const segs = Array.isArray(data?.segments) ? data.segments : null;
+  if (!segs?.length) return String(data?.text || "").trim();
+  return segs
+    .filter((g) => !(g.no_speech_prob > 0.6 && g.avg_logprob < -0.7))
+    .map((g) => String(g.text || "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
 async function viaWhisper(name, file, names, terms) {
   const s = WHISPER[name];
   const send = (model) => {
@@ -26,12 +41,14 @@ async function viaWhisper(name, file, names, terms) {
     fd.append("model", model);
     fd.append("language", "tr");
     fd.append("prompt", HINT + namesHint(names, terms));
+    // Groq: parça başına "konuşma yok" olasılığı gelir; sessiz parçalar (uydurma metin) atılır
+    if (name === "groq") fd.append("response_format", "verbose_json");
     return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(20000) });
   };
   let res = await send(s.model());
   // OpenAI'da model adı hesapta yoksa eski, yaygın modele düş
   if (name === "openai" && !res.ok && [400, 404].includes(res.status) && s.model() !== "whisper-1") res = await send("whisper-1");
-  if (res.ok) return String((await res.json()).text || "").trim();
+  if (res.ok) return spoken(await res.json());
   const body = (await res.text()).slice(0, 300);
   const err = new Error(`${name} ${res.status}: ${body}`);
   // Kota/bakiye yok ya da anahtar geçersiz: bir süre bu servisi hiç deneme
@@ -98,7 +115,9 @@ async function handle(request) {
     }
     try {
       const t0 = Date.now();
-      const text = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
+      const raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
+      const text = dropHallucination(raw, HINT);
+      if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);
       console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
       return NextResponse.json({ text, provider: p });
     } catch (e) {
