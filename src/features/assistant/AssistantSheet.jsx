@@ -390,10 +390,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     router.push(`/messages?c=${encodeURIComponent(cid)}`);
     leave(message, viaVoice);
   }
-  // Başka sayfaya geçince konuşma kapanır (söylenen cümle sesli okunur); yeni komutla yeniden açılır
+  // Başka sayfaya geçince asistan açık kalır: ne yapıldığı söylenir ve gösterilir, sohbet kullanıcı kapatana kadar sürer
   function leave(message, viaVoice) {
     reply(message, { engine: "local" }, viaVoice);
-    finish(true);
   }
 
   function go(page, message, viaVoice = false) {
