@@ -239,3 +239,8 @@ select {
 /* Açılış ekranı: logo yumuşakça belirir, altında ufuk çizgisi doluyor */
 @keyframes horizon { 0% { transform: scaleX(0); opacity: .2; } 60% { opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
 .splash-line { transform-origin: center; animation: horizon 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+
+/* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
+body[data-asst] [data-pagebar] {
+  display: none;
+}

@@ -168,7 +168,7 @@ export function BudgetView({ r, athletes, onChange }) {
       )}
 
       {/* Alt çubuk: bütçe çıktısı */}
-      <div className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
+      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
         <div className="mx-auto flex max-w-[26rem] gap-2">
           <button type="button" disabled={pdfBusy || !b.items.length} onClick={() => pdf(false)} className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
             <Icon name="print" className="size-5" />

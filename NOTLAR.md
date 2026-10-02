@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Asistan açıkken sayfaların alttaki düğme çubuğu (`data-pagebar`: yarış evrak çubuğu, bütçe, sporcular, kişiler) gizlenir; asistan arkasında kalmaz (globals.css). Yarış seçenekleri sorulduğunda "git", "evet aç", "tamam" ilk seçeneği açar; yapay zekanın ilk adayı yerel puanın da birincisiyse sormadan açılır.
 - Yarış bulma sırası (`openRace`, AssistantSheet): kesin ad eşleşmesi → bulanık puanlama (`rankRaces`, yabancı/bozuk adlar: "daz ur", "halkidi") → yapay zeka (`/api/race` mode find) → seçenek kartları (adaylar, hiç anlaşılmazsa tarihi en yakın 3 yarış). Sonraki cümle "ikincisi", "sonuncu", "Foça olan" seçer (`pickChoice`). Telefonda denenmedi.
 - Asistan tek yarışı açar: "D'Azur yarışına git", "Foça yarışını aç", "sıradaki yarışı göster" adı/ilçeyi kayıtlı yarışlarla eşleştirir, birden çok uyarsa en yakın tarihliyi açar (`raceNav.js`). Yarış sayfasındayken ad söylemeden "Mehmet'i de ekle", "not al: …", "bütçeye otel … ekle" o yarışa yazılır (`current`, `/api/race`), sayfa kendiliğinden güncellenir (`sa-race-saved` olayı, RaceEditor). Yarışla ilgisiz cümle her zamanki yoldan sorulur. Telefonda denenmedi.
 - Asistan sayfa açınca ("yarışlar sayfasına git") artık kapanmaz: "Yarışlar sayfasını açtım." der, gösterir ve kullanıcı kapatana kadar açık kalır; her sayfada geçerli (`leave`, AssistantSheet.jsx). Sayfa adı "Yarış evrakı" yerine "Yarışlar" (nav.js). Telefonda denenmedi.

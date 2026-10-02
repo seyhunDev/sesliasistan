@@ -432,6 +432,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     stepsEnd(false);
     // Seçenekler: yapay zekanın adayları, yoksa puanı olanlar, o da yoksa tarihi bugüne en yakın 3 yarış
     const fromAi = (ai?.candidates || []).map(byId).filter(Boolean);
+    // Yapay zekanın ilk adayı yerel puanlamanın da birincisiyse sormadan açılır
+    if (fromAi[0] && ranked[0]?.race.id === fromAi[0].id) return goRace(fromAi[0], viaVoice);
     const scored = ranked.map((x) => x.race);
     const opts = [...fromAi, ...scored].filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i).slice(0, 3);
     const guess = opts.length ? opts : nearest(list, today, 3);
