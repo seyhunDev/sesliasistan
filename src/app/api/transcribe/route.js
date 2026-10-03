@@ -1,4 +1,5 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { countAi } from "@/lib/server/aiUsage";
 import { NextResponse } from "next/server";
 import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
 import { dropHallucination } from "@/lib/speech/hallucination";
@@ -89,6 +90,7 @@ function providers() {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "transcribe");
   const list = providers();
   if (!list.length) {
     return NextResponse.json({ error: "Ses çevirisi için sunucuda GROQ_API_KEY, OPENAI_API_KEY ya da GEMINI_API_KEY gerekli." }, { status: 501 });

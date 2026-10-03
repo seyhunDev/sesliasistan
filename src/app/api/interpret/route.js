@@ -1,4 +1,5 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { countAi } from "@/lib/server/aiUsage";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
 import { NextResponse } from "next/server";
@@ -159,6 +160,7 @@ function rulesMessage(items, name) {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "interpret");
   let body;
   try {
     body = await request.json();

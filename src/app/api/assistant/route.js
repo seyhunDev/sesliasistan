@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, partialMessage, streamGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
@@ -45,6 +46,7 @@ function ask(provider, user) {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "assistant");
   const noLeft = await overQuota(au, "assistant"); // kişilerde günlük hak
   if (noLeft) return noLeft;
 

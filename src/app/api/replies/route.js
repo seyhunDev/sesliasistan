@@ -1,4 +1,5 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { countAi } from "@/lib/server/aiUsage";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { logAiError } from "@/lib/ai/errors";
 import { NextResponse } from "next/server";
@@ -40,6 +41,7 @@ const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "replies");
   let body;
   try {
     body = await request.json();

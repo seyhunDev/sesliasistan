@@ -180,3 +180,11 @@ group("Veri yedeği")([
   })],
   ["dosya adı", F("sesli-asistan-yedek-2026-10-05.xlsx", () => BK.backupName("2026-10-05", "xlsx") === "sesli-asistan-yedek-2026-10-05.xlsx")],
 ]);
+
+// Kullanım ekranı (aiUsage.js)
+const AU = await import("@/lib/aiUsage");
+group("Kullanım ekranı")([
+  ["satırlar", F("çoktan aza, bilinmeyen ve by atılır", () => { const u = AU.usageRows({ month: "2026-10", org: "o", by: { u: 9 }, receipt: 2, assistant: 7, xyz: 5 }); return u.total === 9 && u.rows[0][0] === "Asistan" && u.rows[1][0] === "Fiş okuma"; })],
+  ["boş ay", F("0 istek", () => AU.usageRows(undefined).total === 0)],
+  ["para", F("$0,55", () => AU.usd(0.546) === "$0,55")],
+]);
