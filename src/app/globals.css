@@ -92,6 +92,9 @@ body {
 
 /* Alt çubuk (yazma satırı + sekmeler) görünen sayfalarda içerik çubuğun altında kalmasın */
 body[data-dock] main { padding-bottom: calc(var(--stage-h, 20rem) + 1.25rem); }
+/* Kubbeli sayfada sayfanın kendi alt düğme çubuğu (yarış: evrak, bütçe) kubbenin hemen üstüne oturur */
+body[data-dock] .fixed[data-pagebar] { bottom: var(--stage-h, 7rem); padding-bottom: 0.5rem; }
+body[data-dock] main:has(.fixed[data-pagebar]:not(.hidden)) { padding-bottom: calc(var(--stage-h, 7rem) + 6rem); }
 
 /* Mikrofon ve gönder düğmesi animasyonları */
 @keyframes animin { from { opacity: 0; transform: scale(.6); } }
@@ -241,6 +244,7 @@ select {
 .splash-line { transform-origin: center; animation: horizon 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
 
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
-body[data-asst] [data-pagebar] {
+body[data-asst] [data-pagebar],
+body[data-typing] [data-pagebar] {
   display: none;
 }
