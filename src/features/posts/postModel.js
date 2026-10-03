@@ -5,13 +5,18 @@
 //   kind (KINDS), topic (kullanıcının anlattığı), race { name, place, dates, count, classes, athletes [{ name, cls }] } | null,
 //   headline (görseldeki başlık), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
+//   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), meta (görselde yarış yeri, tarihi ve sınıfları), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
 //   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
 // }
 
+import { withResults } from "@/lib/raceResults";
+
 // Yarış sayfasındaki "Gönderi hazırla" yarışı buraya bırakır (sessionStorage; ek Firestore okuması olmasın diye)
 export const RACE_KEY = "sa-post-race";
+// Asistana söylenen cümle ("Foça yarışı için gönderi hazırla"): gönderi ekranı açılınca yapay zekaya konu olarak gider
+export const POST_ASK_KEY = "sa-post-ask";
 
 export const KINDS = [
   ["duyuru", "Yarış duyurusu", "flag", "YARIŞ"],
@@ -39,6 +44,14 @@ export const THEMES = [
   ["kum", "Kum", "#f4ead8", "#d9c6a2", "#1f5a4b"],
 ];
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
+
+// Yazı yerleşimi: Klasik (yazı fotoğrafın üstünde), Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
+export const STYLES = [
+  ["klasik", "Klasik"],
+  ["kart", "Kart"],
+  ["bant", "Bant"],
+];
+export const styleOf = (s) => STYLES.find(([x]) => x === s) || STYLES[0];
 
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
@@ -102,6 +115,9 @@ export function cleanPost(p = {}) {
     headline: L(p.headline, 90),
     sub: S(p.sub, 200),
     people: cleanPeople(p.people),
+    wish: S(p.wish, 60),
+    meta: p.meta !== false,
+    style: styleOf(p.style)[0],
     tag: S(p.tag, 18),
     caption: L(p.caption, 2200),
     hashtags: cleanTags(p.hashtags),
@@ -166,9 +182,66 @@ export function raceSub(race, kind = "duyuru") {
 // Ad zaten alt satırda geçiyorsa (1-2 sporcu) ayrı sporcu satırı yazılmaz
 export const racePeople = (race) => ((race?.athletes?.length || 0) > 2 ? peopleLines(race.athletes) : "");
 
+// Başarı satırı: duyuruda "Sporcumuza / Sporcularımıza başarılar!", sonuçta tebrik
+export function raceWish(race, kind = "duyuru") {
+  if (!race) return "";
+  const one = (race.athletes?.length || race.count || 0) === 1;
+  if (kind === "sonuc") return one ? "Sporcumuzu tebrik ederiz!" : "Sporcularımızı tebrik ederiz!";
+  return one ? "Sporcumuza başarılar!" : "Sporcularımıza başarılar!";
+}
+
+// Görseldeki sınıf etiketleri: talimattaki sınıflar, yoksa sporcuların sınıfları (en çok 4, tekrarsız)
+export function raceClasses(race) {
+  if (!race) return [];
+  const from = race.classes ? race.classes.split(",") : (race.athletes || []).map((a) => a.cls);
+  const out = [];
+  for (const c of from.map((x) => S(x, 24)).filter(Boolean)) if (!out.some((o) => o.toLocaleLowerCase("tr-TR") === c.toLocaleLowerCase("tr-TR"))) out.push(c);
+  return out.slice(0, 4);
+}
+// Görseldeki yer · tarih satırı: "Foça · 7-11 Ekim 2026"
+export const raceMeta = (race) => (race ? [String(race.place || "").split(",")[0].trim(), race.dates].filter(Boolean).join(" · ") : "");
+
+// Yarış ve türden kendiliğinden gelen yazılar
+export const autoOf = (p) => ({
+  headline: p.race?.name || "",
+  sub: raceSub(p.race, p.kind),
+  people: racePeople(p.race),
+  wish: raceWish(p.race, p.kind),
+  tag: kindOf(p.kind)[3],
+});
+// Yarış, tür ya da sporcular değişince: elle değiştirilmemiş (boş ya da kendiliğinden gelmiş) yazılar yenilenir
+export function reauto(prev, next) {
+  const a = autoOf(prev);
+  const b = autoOf(next);
+  const out = { ...next };
+  for (const k of Object.keys(b)) if (!prev[k] || prev[k] === a[k]) out[k] = b[k];
+  return out;
+}
+
 // Yarıştan gönderinin ilk hali: yarış bitmediyse duyuru, bittiyse sonuç
 export function postFromRace(r, today) {
   const kind = r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
   const race = raceBrief(r, r?.athletes);
-  return cleanPost({ kind, tag: kindOf(kind)[3], race, people: racePeople(race), headline: race?.name || "", sub: raceSub(race, kind) });
+  return cleanPost({ kind, race, ...autoOf({ kind, race }) });
 }
+
+// Yarış kaydı + sporcu listesi (kulüp projesi) → gönderiye giden yarış: seçili sporcuların yalnız adı, sınıfı ve sonucu
+// data: { athletes: [{ id, studentName, currentClassId }], classes: [{ id, name }] }
+export function raceWithAthletes(r, data) {
+  const cls = Object.fromEntries((data?.classes || []).map((c) => [c.id, c.name]));
+  const byId = new Map((data?.athletes || []).map((a) => [a.id, a]));
+  const ids = (r?.athleteIds || []).filter((id) => byId.has(id));
+  const list = ids.map((id) => ({ name: byId.get(id).studentName || "", cls: cls[byId.get(id).currentClassId] || "" }));
+  return { ...r, athletes: withResults(list, ids, r?.results) };
+}
+
+// Ana asistan: "Foça yarışı için Instagram gönderisi hazırla" (her sayfada; sayfa açma değil, gönderi hazırlama)
+export const wantsPost = (s) => {
+  const t = String(s || "").toLocaleLowerCase("tr-TR");
+  return /(instagram|insta\b|gönderi(?!l)|gönderisi|paylaşım|\bpost)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|yaz\b|yazalım|çıkar|tasarla)/.test(t) && !/mesaj/.test(t);
+};
+// Gönderi ekranında görsel isteği: "gün batımında teknelerle görsel üret", "başka resim yap"
+export const wantsPostImage = (s) => {
+  const t = String(s || "").toLocaleLowerCase("tr-TR");
+  return /(görsel|resim|fotoğraf|foto\b|arka ?plan)/.test(t) && /(üret|çiz|oluştur|yap|değiştir|yenile|hazırla|başka|koy)/.test(t);
+};

@@ -31,12 +31,16 @@ const PAGES = {
   "/receipts": { ph: "Fişlerle ilgili sor…", first: "Fiş" },
   "/schedule": { ph: "ör. salı 13:00 fizik B-204", first: "Dersler" },
   "/athletes/attendance": { ph: "Ali ve Zeynep geldi…" },
+  "/posts": { ph: "Ne paylaşalım? ör. Foça yarışı için gönderi hazırla", ex: ["Foça yarışı için Instagram gönderisi hazırla", "Yelken okulu kayıtları için gönderi hazırla", "Sıradaki yarış için gönderi hazırla"] },
   "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };
 const SHOWN = Object.keys(PAGES);
 // Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
+// Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
+const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
+const isPost = (path) => path.startsWith("/posts/");
 
 // Sayfanın kendi ayarı (ör. yoklama: yazılan doğrudan yoklamaya gider). Fonksiyonlar her çağrıda güncel hâliyle çalışır.
 // cfg: { ph, prefer, onSend(text), onMic(), create: [[icon, label, desc, onClick]] } — create öğeleri Oluştur'da en üstte
@@ -467,7 +471,7 @@ function Host() {
   const chat = useSearchParams().get("c");
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
-  const race = isRace(path);
+  const race = isRace(path) || isPost(path);
   const bar = (SHOWN.includes(path) || race) && !(path === "/messages" && chat);
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
@@ -484,7 +488,7 @@ function Host() {
   }, [bar]);
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
-    : { ...(PAGES[path] || (race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
+    : { ...(PAGES[path] || (isPost(path) ? POST : race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
   return <TabBar cfg={cfg} bar={bar} tabs={!race} rec={!!rec} />;
 }
 export function TabBarHost() {

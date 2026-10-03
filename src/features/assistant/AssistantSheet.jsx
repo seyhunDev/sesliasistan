@@ -28,6 +28,9 @@ import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/featu
 import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
+import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
+import { postHandler } from "@/features/posts/posts";
 import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
@@ -707,6 +710,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     raceChoices.current = [];
     const picked = choices.length ? pickChoice(s, choices, todayStr()) : null;
     if (picked) return goRace(picked, viaVoice);
+    // Instagram gönderisi ("Foça yarışı için Instagram gönderisi hazırla"): yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
+    const onPost = !isStaff && path.startsWith("/posts/") && postHandler();
+    if (!isStaff && !onPost && wantsPost(s)) return startPost(s, viaVoice);
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
     if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races.current, todayStr())))) {
       // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
@@ -723,6 +729,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       countHit("local");
       return openNav(nav, viaVoice);
     }
+    // Açık gönderi ekranında söylenen gönderiyi değiştirir: "daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında görsel üret"
+    if (onPost) return runPost(s, viaVoice);
     // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
     const bday = !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
     if (bday) {
@@ -1293,6 +1301,56 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(false);
       const denied = e.code === "permission-denied";
       reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { engine: "local", nav: "races" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  // Instagram gönderisi: söylenen yarış bulunursa sporcularıyla bağlanır; gönderi ekranı açılınca yapay zeka yazar (POST_ASK_KEY)
+  async function startPost(s, viaVoice) {
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    let r = null;
+    try {
+      if (racer) {
+        stepTo("Yarış aranıyor");
+        if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
+        r = findRace(s, races.current, todayStr());
+        if (r) {
+          stepTo("Sporcular alınıyor");
+          const data = await loadAthletes().catch(() => null);
+          if (data) r = raceWithAthletes(r, data);
+        }
+      }
+      if (id !== runId.current) return;
+      stepsEnd();
+      try {
+        if (r) sessionStorage.setItem(RACE_KEY, JSON.stringify(r));
+        sessionStorage.setItem(POST_ASK_KEY, s);
+      } catch {}
+      record(s, "nav:posts", "local");
+      router.push("/posts/new");
+      leave(r ? `${r.name} için gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.` : "Gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.", viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  // Açık gönderi ekranındaki değişiklik (PostEditor setPostHandler)
+  async function runPost(s, viaVoice) {
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    const h = postHandler();
+    stepTo(wantsPostImage(s) ? "Görsel çiziliyor" : "Gönderi yazılıyor");
+    try {
+      const r = await h.ask(s);
+      if (id !== runId.current) return;
+      stepsEnd();
+      reply(r.say, { engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(e?.message || "Gönderiyi değiştiremedim.", { engine: "local" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }

@@ -48,12 +48,14 @@ export async function deletePost(orgId, post) {
   if (post.hasPhoto) await deleteDoc(photoDoc(orgId, post.id)).catch(() => {});
 }
 
-// Yapay zekayla görsel yazıları + açıklama + etiketler. Yalnız konu, tür ve yarış bilgisi gider (fotoğraf gitmez).
-export async function askCaption(post) {
+// Yapay zekayla görsel yazıları + açıklama + etiketler. Yalnız konu, tür, yarış bilgisi ve mevcut yazılar gider (fotoğraf gitmez).
+// ask: ana asistana söylenen değişiklik ("daha kısa yaz", "Mete 2. oldu diye ekle")
+export async function askCaption(post, ask = "") {
+  const current = { headline: post.headline, sub: post.sub, people: post.people, wish: post.wish, tag: post.tag };
   const res = await authFetch("/api/post-caption", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: post.kind, topic: post.topic, race: post.race, today: todayStr(), caption: post.caption }),
+    body: JSON.stringify({ kind: post.kind, topic: post.topic, race: post.race, today: todayStr(), caption: post.caption, ask, current }),
   });
   const p = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(p.error || "Açıklama yazılamadı");
@@ -81,3 +83,9 @@ export async function imageUsage() {
   const res = await authFetch("/api/post-image");
   return res.ok ? res.json() : null;
 }
+
+// Açık gönderi ekranı ana asistana kendini bildirir: asistan /posts sayfasında söyleneni buraya verir.
+// handler.ask(metin) → { say } (yazıları ya da görseli değiştirir)
+let handler = null;
+export const setPostHandler = (h) => (handler = h);
+export const postHandler = () => handler;
