@@ -12,11 +12,12 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
-import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, uploadStatement } from "@/features/dues/duesData";
+import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
 import { feeOf, gridOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
+import { rosterOf } from "@/lib/duesAuto";
 
 // Aidatlar (ana hesap + sporcu yetkisi). Tek bakışta tablo: sporcular × son 6 ay (✓ ödedi, ½ eksik, boş bekliyor).
 // Hücreye dokun: o ayın ödemeleri (tarih, açıklama), nakit ekle. Ay başlığına dokun: ayın ödemeler listesi + Excel.
@@ -54,6 +55,13 @@ function Dues({ uid }) {
   const [q, setQ] = useState("");
   const [onlyDue, setOnlyDue] = useState(false);
 
+  // Mail gelince sunucu aidatı kendiliğinden yazabilir: uygulamaya dönünce tablo yeniden okunur (eski kayıtla üstüne yazılmasın)
+  const [fresh, setFresh] = useState(0);
+  useEffect(() => {
+    const on = () => document.visibilityState === "visible" && setFresh((n) => n + 1);
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, []);
   useEffect(() => {
     let live = true;
     loadDuesRange(uid, yms).then(
@@ -63,7 +71,7 @@ function Dues({ uid }) {
     return () => {
       live = false;
     };
-  }, [uid, yms]);
+  }, [uid, yms, fresh]);
   useEffect(() => {
     let live = true;
     loadMovementsRange(uid, yms[0], yms.at(-1)).then(
@@ -74,6 +82,15 @@ function Dues({ uid }) {
       live = false;
     };
   }, [uid, yms, tick]);
+
+  // Sunucunun eşleştirme listesi (yalnız adlar): sporcular değişince yazılır
+  useEffect(() => {
+    if (!data?.athletes || !d || d.error) return;
+    const roster = rosterOf(data.athletes.filter(isActive));
+    if (roster.length && JSON.stringify(roster) !== JSON.stringify(d.cfg.roster || [])) {
+      saveRoster(uid, roster).then(() => setD((p) => ({ ...p, cfg: { ...p.cfg, roster } })), () => {});
+    }
+  }, [data, d, uid]);
 
   // Ana sayfadaki Aidatlar kartı için bu ayın özeti bu cihazda saklanır (ek okuma yok)
   useEffect(() => {
@@ -319,7 +336,7 @@ function CellView({ c, cfg, onCash, onRemove, onFee }) {
             <li key={i} className="flex items-start gap-2 py-2">
               <span className="min-w-0 flex-1">
                 <b className="font-semibold tabular-nums">{TL(p.amt)}</b>
-                <span className="text-mut"> · {p.via === "cash" ? "Nakit" : "EFT"} · {day(p.date)}</span>
+                <span className="text-mut"> · {p.via === "cash" ? "Nakit" : p.by === "auto" ? "EFT · otomatik" : "EFT"} · {day(p.date)}</span>
                 {p.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{p.desc}</small>}
               </span>
               <button type="button" onClick={() => onRemove(i)} aria-label="Sil" className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:scale-95">

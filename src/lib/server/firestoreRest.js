@@ -53,6 +53,11 @@ export function restDb(token) {
       const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
       return (await call("PATCH", `${path}?${mask}&currentDocument.exists=true`, { fields: toFields(fields) })).status;
     },
+    // Yalnızca verilen alanları yazar; belge yoksa oluşturur
+    async upsert(path, fields) {
+      const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
+      return (await call("PATCH", `${path}?${mask}`, { fields: toFields(fields) })).status;
+    },
     // Tek alan eşitliğiyle alt koleksiyon sorgusu
     async where(parent, collectionId, field, value, limit = 30) {
       const r = await call("POST", `${parent}:runQuery`, {

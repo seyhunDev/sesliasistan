@@ -3,12 +3,14 @@ import webpush from "web-push";
 import { mailDigestText } from "@/lib/bankSheet";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { restDb } from "@/lib/server/firestoreRest";
+import { duesText, runAutoDues } from "@/lib/duesAuto";
 
 export const runtime = "nodejs";
 
 // Gmail betiği yeni mail kaydedince hemen buraya haber verir → telefona tek bildirim (o turda gelen bütün mailler).
 // Kimlik: betiğin Google erişim anahtarı (Firebase projesinde yetkili hesap). Sunucu veritabanını bu anahtarla okur/yazar;
 // hizmet hesabı anahtarı (FIREBASE_PRIVATE_KEY) gerekmez. Yalnızca VAPID anahtarları gerekir.
+// Hesap özetindeki sporcu ödemeleri aidata yazılır, bildirim "Aidat geldi: …" olur (duesAuto.js).
 // Bildirilen mailler notified:true olur; 5 dakikalık zamanlanmış görev aynı maili bir daha bildirmez.
 export async function POST(request) {
   const h = request.headers.get("authorization") || "";
@@ -38,12 +40,25 @@ export async function POST(request) {
     mails.push(m);
   }
 
+  // Sporcu aidatı geldiyse kendiliğinden yazılır; bildirim mail özeti yerine aidatı söyler (duesAuto.js)
+  const io = {
+    get: async (path) => {
+      const r = await db.get(path);
+      return r.status === 200 ? r.data : null;
+    },
+    set: async (path, fields) => {
+      const st = await db.upsert(path, fields);
+      if (st !== 200) throw new Error(`yazılamadı ${st}`);
+    },
+  };
+  const dues = duesText(await runAutoDues(io, uid, mails).catch((e) => (console.error("[aidat]", e.message), null)));
+
   const subs = Object.values(user.data.push || {}).filter((s) => s?.endpoint);
   let sent = 0;
   const errors = [];
   if (subs.length) {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
-    const payload = JSON.stringify({ ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" });
+    const payload = JSON.stringify(dues ? { ...dues, tag: `dues-${list[0].id}`, url: "/dues" } : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" });
     await Promise.all(
       subs.map((s) =>
         webpush.sendNotification(s, payload, { TTL: 6 * 3600 }).then(

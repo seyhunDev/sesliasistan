@@ -10,6 +10,7 @@ import { due, eveningText, morningText } from "../../src/lib/summary.js";
 import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
 import { mailDigestText } from "../../src/lib/bankSheet.js";
 import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
+import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 
 export const config = { schedule: "*/5 * * * *" };
@@ -240,7 +241,13 @@ async function sendMailDigests(db, all) {
           return { ...m, sheets };
         }),
       );
-      const payload = JSON.stringify({ ...mailDigestText(mails), tag: `mail-${snap.docs[0].id}`, url: "/mail" });
+      // Sporcu aidatı geldiyse kendiliğinden yazılır; bildirim aidatı söyler (duesAuto.js)
+      const io = {
+        get: async (path) => (await db.doc(path).get()).data() || null,
+        set: (path, fields) => db.doc(path).set(fields, { merge: true }),
+      };
+      const dues = duesText(await runAutoDues(io, u.id, mails).catch((e) => (console.error("[aidat]", e.message), null)));
+      const payload = JSON.stringify(dues ? { ...dues, tag: `dues-${snap.docs[0].id}`, url: "/dues" } : { ...mailDigestText(mails), tag: `mail-${snap.docs[0].id}`, url: "/mail" });
       await Promise.all(
         Object.entries(d.push || {}).map(async ([key, sub]) => {
           try {
