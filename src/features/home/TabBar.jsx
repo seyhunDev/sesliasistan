@@ -33,6 +33,9 @@ const PAGES = {
   "/athletes/attendance": { ph: "Ali ve Zeynep geldi…" },
 };
 const SHOWN = Object.keys(PAGES);
+// Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
+const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
+const isRace = (path) => path.startsWith("/athletes/races/");
 
 // Sayfanın kendi ayarı (ör. yoklama: yazılan doğrudan yoklamaya gider). Fonksiyonlar her çağrıda güncel hâliyle çalışır.
 // cfg: { ph, prefer, onSend(text), onMic(), create: [[icon, label, desc, onClick]] } — create öğeleri Oluştur'da en üstte
@@ -210,7 +213,7 @@ function NavTab({ href, icon, label, active, badge }) {
 // sekmesiz ve Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
 const ghost = "grid size-11 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-90 active:bg-white/20";
-function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
+function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -341,7 +344,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
               )}
             </div>
           )}
-          {bar && !rec && !active && !typing && (
+          {bar && tabs && !rec && !active && !typing && (
             <nav aria-label="Sekmeler" className="fade-in mt-1 flex items-start">
               <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
               <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
@@ -356,7 +359,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
 }
 
 // Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
-export function TabBar({ cfg, bar, rec = false }) {
+export function TabBar({ cfg, bar, tabs = true, rec = false }) {
   const path = usePathname();
   const router = useRouter();
   const { openAssistant, live, act, setSlot } = useAssistant();
@@ -366,6 +369,12 @@ export function TabBar({ cfg, bar, rec = false }) {
   const { unreadTotal } = useChat();
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
+  // Yazarken de sayfanın alt düğme çubuğu gizlenir (globals.css)
+  useEffect(() => {
+    if (!typing) return;
+    document.body.dataset.typing = "1";
+    return () => delete document.body.dataset.typing;
+  }, [typing]);
   const kind = useKind();
 
   const active = !!live.open;
@@ -409,6 +418,7 @@ export function TabBar({ cfg, bar, rec = false }) {
     <>
       <Dome
         bar={bar}
+        tabs={tabs}
         rec={rec}
         active={active}
         state={state}
@@ -456,7 +466,8 @@ function Host() {
   const chat = useSearchParams().get("c");
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
-  const bar = SHOWN.includes(path) && !(path === "/messages" && chat);
+  const race = isRace(path);
+  const bar = (SHOWN.includes(path) || race) && !(path === "/messages" && chat);
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
   useEffect(() => {
@@ -472,8 +483,8 @@ function Host() {
   }, [bar]);
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
-    : { ...(PAGES[path] || PAGES["/"]), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} rec={!!rec} />;
+    : { ...(PAGES[path] || (race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
+  return <TabBar cfg={cfg} bar={bar} tabs={!race} rec={!!rec} />;
 }
 export function TabBarHost() {
   return (
