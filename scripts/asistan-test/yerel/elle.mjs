@@ -188,3 +188,26 @@ group("Kullanım ekranı")([
   ["boş ay", F("0 istek", () => AU.usageRows(undefined).total === 0)],
   ["para", F("$0,55", () => AU.usd(0.546) === "$0,55")],
 ]);
+
+// iPhone takvimi (ics.js)
+const IC = await import("@/lib/ics");
+const ICS = IC.icsOf(
+  [
+    { id: "a", title: "Optimist antrenmanı", date: "2026-10-06", time: "16:00", place: "Dikili, iskele", cat: "Antrenman" },
+    { id: "b", title: "Foça yarışı", date: "2026-10-07", endDate: "2026-10-11" },
+    { id: "c", title: "Toplantı", date: "2026-10-08", time: "10:00", status: "cancelled" },
+    { id: "d", title: "Tarihsiz" },
+  ],
+  { now: new Date("2026-10-03T09:00:00Z") },
+);
+group("iPhone takvimi")([
+  ["saat UTC'ye", F("16:00 İstanbul → 13:00Z", () => IC.utcStamp("2026-10-06", "16:00") === "20261006T130000Z" && IC.utcStamp("2026-10-06", "02:00") === "20261005T230000Z")],
+  ["saatli plan", F("başlangıç, 60 dk bitiş, yer kaçışlı", () => /DTSTART:20261006T130000Z\r\nDTEND:20261006T140000Z/.test(ICS) && ICS.includes("LOCATION:Dikili\\, iskele"))],
+  ["çok günlü", F("tüm gün, bitiş ertesi gün", () => ICS.includes("DTSTART;VALUE=DATE:20261007\r\nDTEND;VALUE=DATE:20261012"))],
+  ["iptal", F("İPTAL: başlık ve STATUS", () => ICS.includes("SUMMARY:İPTAL: Toplantı") && ICS.includes("STATUS:CANCELLED"))],
+  ["tarihsiz atlanır", F("3 etkinlik", () => ICS.split("BEGIN:VEVENT").length === 4 && !ICS.includes("Tarihsiz"))],
+  ["biçim", F("VCALENDAR, CRLF, uzun satır katlanır", () => {
+    const long = IC.icsOf([{ id: "x", title: "Ş".repeat(120), date: "2026-10-06" }]);
+    return ICS.startsWith("BEGIN:VCALENDAR\r\n") && ICS.trimEnd().endsWith("END:VCALENDAR") && long.split("\r\n").every((l) => Buffer.byteLength(l) <= 75) && long.includes("ŞŞ");
+  })],
+]);

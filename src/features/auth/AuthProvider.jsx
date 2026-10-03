@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
             role: doc_?.role === "staff" ? "staff" : "owner",
             orgId: doc_?.orgId || user.uid,
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
+            icsToken: doc_?.icsToken || "", // takvim aboneliği gizli bağlantısı (Ayarlar › iPhone takvimi; sunucu yazar)
             weatherPlace: doc_?.weatherPlace || null, // hava durumu konumu (Ayarlar; cihazlar arası)
             homeTools: Array.isArray(doc_?.homeTools) ? doc_.homeTools : null, // ana sayfada seçili ekstralar (null: seçim yapılmadı)
             athleteIndex: doc_?.athleteIndex || null, // sporcu "ses adları" dizini (yoklamada yapay zekaya gider)

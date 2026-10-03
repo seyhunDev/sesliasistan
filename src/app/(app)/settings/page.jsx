@@ -10,6 +10,7 @@ import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { UsageRow } from "@/features/settings/Usage";
+import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
 import { initials } from "@/lib/utils/format";
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         <NotifyMoreRow n={n} />
         <PermissionsRow />
         <PasswordRow />
+        <CalendarFeedRow />
         {owner && <UsageRow />}
         {owner && <BackupRow />}
         {owner && <DemoDataRow />}
