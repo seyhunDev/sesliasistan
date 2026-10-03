@@ -279,3 +279,31 @@ group("Aidat ödemeleri listesi")([
     return l.length === 3 && l[0].state === "guess" && l[0].names[0] === "Kaan Öztürk" && l[1].state === "ok" && l[1].names[0] === "Deniz Şahin" && l[2].state === "cash";
   })],
 ]);
+
+// Banka Excel'i yükleme (örnek veri uydurmadır)
+const XL = await import("xlsx").then((m) => (m.read ? m : m.default));
+const MP = await import("@/lib/mailParse");
+const MB = await import("@/lib/mailBoard");
+const fakeXls = () => {
+  const aoa = [["Hesap Hareketleri"], ["IBAN:", "TR00 0000 0000 0000 0000 0012 34"], [], ["Tarih", "Açıklama", "Tutar", "Bakiye"]];
+  for (let i = 0; i < 700; i++) aoa.push([`${String((i % 28) + 1).padStart(2, "0")}.0${7 + (i % 3)}.2026`, i % 2 ? "FAST AYSE SAHIN AIDAT" : "KART HARCAMA", i % 2 ? 1500 : -120, 10000]);
+  const wb = XL.utils.book_new();
+  XL.utils.book_append_sheet(wb, XL.utils.aoa_to_sheet(aoa), "Hareketler");
+  return XL.write(wb, { type: "base64", bookType: "xlsx" });
+};
+group("Banka Excel'i yükleme")([
+  ["700 satır okunur", F("500 sınırı yüklemede yok, yalnız gelenler saklanır", () => {
+    const sh = MP.sheetsFromRaw([{ name: "hareketler.xlsx", data: fakeXls() }], XL, 5000);
+    const all = MB.movementsOf([{ at: "2026-10-03T00:00:00Z", sheets: sh }]);
+    const kept = DU.filedMoves(all);
+    return sh[0].rows.length === 700 && kept.length > 0 && kept.every((m) => m.amount > 0);
+  })],
+  ["tarih aralığı", F("en eski – en yeni gün", () => { const r = DU.rangeOf([{ ts: Date.UTC(2026, 6, 2, 9) }, { ts: Date.UTC(2026, 8, 30, 9) }]); return r.from === "2026-07-02" && r.to === "2026-09-30"; })],
+  ["mail ile dosya aynı hareket", F("saatli/saatsiz tarih bir kez sayılır", () => {
+    const a = { date: "05.10.2026 10:12", amount: 1500, desc: "FAST AYSE SAHIN AIDAT", ts: 2 };
+    const b = { date: "05.10.2026", amount: 1500, desc: "FAST AYSE SAHIN AIDAT", ts: 1 };
+    const c = { date: "06.10.2026", amount: 1500, desc: "FAST AYSE SAHIN AIDAT", ts: 3 };
+    const m = DU.mergeMoves([a], [b, c]);
+    return m.length === 2 && m.includes(a) && m.includes(c);
+  })],
+]);
