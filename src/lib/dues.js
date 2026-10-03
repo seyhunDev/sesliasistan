@@ -109,3 +109,32 @@ export function splitAmount(amount, picks, cfg = {}) {
   if (!total) return picks.map((a) => [a, Math.round((amount / picks.length) * 100) / 100]);
   return picks.map((a, i) => [a, Math.round(((amount * fees[i]) / total) * 100) / 100]);
 }
+
+// Ayın ödemeleri tek listede (en yeni önce): bankadan gelen ve sporcuya yazılan ya da sporcuyla eşleşen EFT'ler + nakitler.
+// state: "ok" (onaylı), "guess" (öneri, onay bekliyor), "cash" (nakit). Aidat değil denenler ve sporcuyla ilgisiz paralar girmez.
+export function paymentsOf(movements, month = {}, athletes = [], cfg = {}, ym) {
+  const byId = new Map(athletes.map((a) => [a.id, a]));
+  const confirmed = new Map(); // hareket anahtarı -> [sporcu adı]
+  const out = [];
+  for (const [id, list] of Object.entries(month.paid || {})) {
+    for (const p of list) {
+      const name = byId.get(id)?.studentName || "Sporcu";
+      if (p.via === "cash") out.push({ key: `c${id}${p.at}`, state: "cash", date: p.date || "", ts: Date.parse(p.at) || 0, amount: p.amt, names: [name], desc: "Nakit" });
+      else if (p.mov) confirmed.set(p.mov, [...(confirmed.get(p.mov) || []), name]);
+    }
+  }
+  const ignored = month.ignored || [];
+  for (const m of movements) {
+    if (!(m.amount > 0) || monthOf(m) !== ym) continue;
+    const k = movKey(m);
+    if (ignored.includes(k)) continue;
+    const base = { key: k, date: m.date, ts: m.ts ?? parseTrDate(m.date) ?? 0, amount: m.amount, desc: m.desc };
+    if (confirmed.has(k)) out.push({ ...base, state: "ok", names: confirmed.get(k) });
+    else {
+      const r = matchMovement(m, athletes, cfg);
+      const names = (r.picks.length ? r.picks : r.list.slice(0, 3).map((x) => x.a)).map((a) => a.studentName);
+      if (names.length) out.push({ ...base, state: "guess", names, why: r.why || "aynı soyadlı" });
+    }
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}

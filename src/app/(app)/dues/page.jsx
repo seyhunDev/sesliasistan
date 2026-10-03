@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Seg } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -12,7 +13,7 @@ import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
 import { loadDues, loadMovements, saveCfg, saveMonth } from "@/features/dues/duesData";
-import { feeOf, incomingOf, matchMovement, monthRows, movKey, payerOf, splitAmount, usedKeys, words } from "@/lib/dues";
+import { feeOf, incomingOf, matchMovement, monthRows, movKey, payerOf, paymentsOf, splitAmount, usedKeys, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 
@@ -45,6 +46,7 @@ function Dues({ uid }) {
   const [pick, setPick] = useState(""); // elle sporcu seçilen hareket
   const [q, setQ] = useState("");
   const [feeIn, setFeeIn] = useState("");
+  const [view, setView] = useState("athletes"); // athletes | pay (ödemeler listesi)
 
   useEffect(() => {
     let live = true;
@@ -172,6 +174,11 @@ function Dues({ uid }) {
         </div>
       )}
 
+      <Seg value={view} onChange={setView} options={[["athletes", "Sporcular"], ["pay", "Ödemeler"]]} className="mt-3" />
+      {view === "pay" ? (
+        <Payments list={mv?.ym === ym ? paymentsOf(mv.movements, month, active, cfg, ym) : null} ym={ym} error={mv?.ym === ym && mv.error} />
+      ) : (
+      <>
       {/* Bankadan gelenler */}
       <section className="mt-4">
         <div className="flex items-center justify-between px-1">
@@ -265,7 +272,54 @@ function Dues({ uid }) {
           </button>
         )}
       </section>
+      </>
+      )}
     </Shell>
+  );
+}
+
+// Ödemeler: ayın bankadan gelen (sporcuyla eşleşen) ve nakit ödemeleri; tarih, tutar, sporcu, açıklama. Excel'e aktarılır.
+const PAY_STATE = { ok: ["Onaylı", "text-ok"], guess: ["Öneri", "text-amber-700"], cash: ["Nakit", "text-acc"] };
+function Payments({ list, ym, error }) {
+  const toast = useToast();
+  if (error) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-rec ${card}`}>Mailler okunamadı. Gmail bağlantısı kurulu mu?</p>;
+  if (!list) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-mut ${card}`}>Hesap özetleri okunuyor…</p>;
+  if (!list.length) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-mut ${card}`}>Bu ay sporculardan gelen ödeme yok.</p>;
+  const total = list.reduce((s, p) => s + p.amount, 0);
+  async function excel() {
+    try {
+      const XLSX = await import("xlsx");
+      const rows = [["Tarih", "Tutar (TL)", "Sporcu", "Durum", "Açıklama"], ...list.map((p) => [p.date, p.amount, p.names.join(", "), PAY_STATE[p.state][0], p.desc])];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Ödemeler");
+      XLSX.writeFile(wb, `aidat-odemeleri-${ym}.xlsx`);
+    } catch {
+      toast("Excel dosyası hazırlanamadı");
+    }
+  }
+  return (
+    <section className="mt-3">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[0.8125rem] font-semibold text-mut">{list.length} ÖDEME · {TL(total)}</p>
+        <button type="button" onClick={excel} className="text-[0.8125rem] font-semibold text-acc">Excel’e aktar</button>
+      </div>
+      <ul className={`mt-2 divide-y divide-line ${card}`}>
+        {list.map((p) => (
+          <li key={p.key} className="px-4 py-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{p.names.join(" + ")}</b>
+              <b className="shrink-0 tabular-nums text-ok">+{TL(p.amount)}</b>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[0.75rem]">
+              <span className="text-mut">{String(p.date).slice(0, 16)}</span>
+              <span className={`font-semibold ${PAY_STATE[p.state][1]}`}>{PAY_STATE[p.state][0]}{p.state === "guess" ? ` · ${p.why}` : ""}</span>
+            </div>
+            {p.state !== "cash" && <p className="mt-1 break-words text-[0.8125rem] leading-snug text-mut">{p.desc}</p>}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">“Öneri” olanları Sporcular sekmesindeki Bankadan gelenler bölümünden onayla.</p>
+    </section>
   );
 }
 

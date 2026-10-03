@@ -269,3 +269,13 @@ group("Instagram hikâye")([
   ["hikâye boyutu", F("1080×1920, oran 9/16", () => { const f = PMs.formatOf("story"); return f[2] === 1080 && f[3] === 1920 && PMs.aspectOf("story") === "9 / 16"; })],
   ["kayıtta korunur", F("cleanPost story kalır, bilinmeyen kare olur", () => PMs.cleanPost({ format: "story" }).format === "story" && PMs.cleanPost({ format: "x" }).format === "square")],
 ]);
+
+// Aidat ödemeleri listesi (paymentsOf)
+group("Aidat ödemeleri listesi")([
+  ["onaylı, öneri, nakit", F("3 satır, aidat değil ve ilgisiz para yok, en yeni önce", () => {
+    const mv = [mvt("FAST AYSE SAHIN", 1500, "03.10.2026 09:00"), mvt("EFT ELIF OZTURK", 1500, "06.10.2026 11:00"), mvt("KIRA", 9000, "07.10.2026 10:00"), mvt("HAVALE MEHMET YILMAZ", 800, "08.10.2026 10:00")];
+    const month = { paid: { a1: [{ amt: 1500, via: "eft", mov: DU.movKey(mv[0]) }], a2: [{ amt: 1500, via: "cash", date: "2026-10-02", at: "2026-10-02T10:00:00Z" }] }, ignored: [DU.movKey(mv[3])] };
+    const l = DU.paymentsOf(mv, month, DA, DCFG, "2026-10");
+    return l.length === 3 && l[0].state === "guess" && l[0].names[0] === "Kaan Öztürk" && l[1].state === "ok" && l[1].names[0] === "Deniz Şahin" && l[2].state === "cash";
+  })],
+]);
