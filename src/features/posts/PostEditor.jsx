@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { FORMATS, KINDS, THEMES, cleanPost, cleanTags, fullCaption, kindOf, raceBrief } from "./postModel";
 import { drawPost, loadImg, postFile, thumbOf } from "./postImage";
-import { askCaption } from "./posts";
+import { askCaption, askImage, imageUsage } from "./posts";
 
 const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
@@ -64,6 +64,8 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [races, setRaces] = useState(null);
+  const [wish, setWish] = useState("");
+  const [usage, setUsage] = useState(null);
   const canvas = useRef(null);
   const file = useRef(null);
   const fileInput = useRef(null);
@@ -81,6 +83,15 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
       live = false;
     };
   }, [photo]);
+
+  // Yapay zeka görsel sayacı (bugün / bu ay, sınır, yaklaşık maliyet): sayfa açılınca bir kez
+  useEffect(() => {
+    let live = true;
+    imageUsage().then((u) => live && u && setUsage(u), () => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
   const look = JSON.stringify([post.format, post.theme, post.pos, post.focus, post.headline, post.sub, post.tag]);
@@ -162,6 +173,25 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
       if (r.hashtags?.length) setTags(r.hashtags.join(" "));
     } catch (e) {
       setErr(e?.message || "Açıklama yazılamadı");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  // Gemini ile görsel: yazısız fotoğraf gelir, başlık ve logo üstüne çizilir
+  const genImage = async () => {
+    setErr("");
+    setBusy("img");
+    try {
+      const r = await askImage(post, wish.trim());
+      const dataUrl = await thumbFromDataUrl(r.image, 1440, 0.85);
+      setPhoto(dataUrl);
+      setPhotoDirty(true);
+      put("focus", 50);
+      if (r.usage) setUsage(r.usage);
+    } catch (x) {
+      setErr(x?.message || "Görsel üretilemedi");
+      if (x?.usage) setUsage(x.usage);
     } finally {
       setBusy("");
     }
@@ -299,11 +329,39 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
 
       <Label>GÖRSEL</Label>
       <div className="space-y-3.5">
+        <div className={`${card} p-4`}>
+          <b className="flex items-center gap-2 text-[0.9375rem] font-semibold">
+            <Icon name="spark" className="size-5 text-acc" />
+            Yapay zekayla görsel
+          </b>
+          <textarea
+            value={wish}
+            onChange={(e) => setWish(e.target.value)}
+            maxLength={600}
+            rows={2}
+            className={area}
+            placeholder="İsteğe bağlı: gün batımında Optimist tekneleri, Dikili koyu"
+          />
+          <Button onClick={genImage} loading={busy === "img"} disabled={!!busy || usage?.left === 0} className="mt-2.5">
+            <Icon name="image" className="size-5" />
+            {photo ? "Yeni görsel üret" : "Görsel üret"}
+          </Button>
+          {busy === "img" && <p className="mt-1.5 text-center text-[0.75rem] text-mut">Gemini görseli çiziyor, 10-20 saniye sürebilir…</p>}
+          {usage && (
+            <p className={`mt-2 text-center text-[0.75rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
+              Bugün {usage.today}/{usage.limit} görsel · bu ay {usage.month} görsel (≈ ${usage.cost.toFixed(2)}){" · "}
+              <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer" className="font-semibold text-acc underline">
+                Google kotası
+              </a>
+            </p>
+          )}
+          <p className="mt-1 text-center text-[0.6875rem] leading-snug text-mut">Görselde yazı olmaz; başlık ve logo üstüne eklenir. Görsel başı yaklaşık {usage ? `$${usage.price}` : "4 sent"}.</p>
+        </div>
         <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
         <div className="flex gap-2">
           <button type="button" onClick={() => fileInput.current?.click()} disabled={busy === "photo"} className={small}>
             <Icon name="image" className="size-[1.125rem]" />
-            {busy === "photo" ? "Hazırlanıyor…" : photo ? "Fotoğrafı değiştir" : "Fotoğraf seç"}
+            {busy === "photo" ? "Hazırlanıyor…" : photo ? "Kendi fotoğrafım" : "Fotoğraf seç"}
           </button>
           {photo && (
             <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} className={small}>
