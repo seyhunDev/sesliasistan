@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Hero, Label, Seg, card } from "@/components/ui/Page";
@@ -17,6 +18,7 @@ import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { AroundView } from "./AroundView";
+import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
@@ -272,6 +274,12 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     setExtras(next);
     await saveExtras(id.current, next);
   };
+  // Instagram gönderisi: yarış bilgisi gönderi sayfasına cihaz içinde geçer (ek okuma yok; sporcu adı gitmez)
+  const toPost = () => {
+    try {
+      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, notice: { classes: r.notice?.classes || [] } }));
+    } catch {}
+  };
   const toPlan = async () => {
     if (!r.name.trim() || !r.startDate) return toast("Önce yarış adı ve başlangıç tarihi");
     if (await onPlan(r)) {
@@ -451,6 +459,22 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
               </button>
             )}
           </div>
+
+          {start.id && (
+            <>
+              <Label>INSTAGRAM</Label>
+              <Link href="/posts/new" onClick={toPost} className={`${card} flex items-center gap-3 px-4 py-3 active:scale-[.99]`}>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                  <Icon name="camera" className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[0.9375rem] font-semibold">Gönderi hazırla</b>
+                  <span className="block truncate text-[0.8125rem] text-mut">Duyuru ya da sonuç: görsel ve açıklama</span>
+                </span>
+                <Icon name="chev" className="size-4 text-mut" />
+              </Link>
+            </>
+          )}
 
           <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
 

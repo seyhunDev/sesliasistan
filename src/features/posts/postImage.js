@@ -1,0 +1,232 @@
+"use client";
+
+import { formatOf, themeOf } from "./postModel";
+
+// Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
+// Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
+const FONT = `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const CLUB = "DİKİLİ YELKEN SPOR KULÜBÜ";
+const PAD = 84;
+
+export const loadImg = (src) =>
+  new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error("Görsel açılamadı"));
+    i.src = src;
+  });
+
+let logoP;
+const loadLogo = () => (logoP ||= loadImg("/club-logo.png").catch(() => null));
+
+function wrap(ctx, text, maxW) {
+  const lines = [];
+  for (const para of String(text || "").split("\n")) {
+    let line = "";
+    for (const w of para.split(" ").filter(Boolean)) {
+      const t = line ? `${line} ${w}` : w;
+      if (!line || ctx.measureText(t).width <= maxW) line = t;
+      else {
+        lines.push(line);
+        line = w;
+      }
+    }
+    if (line) lines.push(line);
+  }
+  return lines;
+}
+
+// Yazıyı en büyük boyutta sığdırır (satır sayısı ve genişlik); sığmazsa en küçük boyutta keser
+function fit(ctx, text, maxW, maxLines, big, small, weight) {
+  for (let s = big; s >= small; s -= 4) {
+    ctx.font = `${weight} ${s}px ${FONT}`;
+    const lines = wrap(ctx, text, maxW);
+    if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxW)) return { size: s, lines };
+  }
+  ctx.font = `${weight} ${small}px ${FONT}`;
+  return { size: small, lines: wrap(ctx, text, maxW).slice(0, maxLines) };
+}
+
+// Yelkenli ve dalga süsü (fotoğraf yokken), yazının karşı yarısında
+function decor(ctx, W, H, top, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  const y0 = top ? H * 0.5 : H * 0.1;
+  const y1 = top ? H * 0.84 : H * 0.46;
+  const mx = W * 0.74;
+  const h = y1 - y0;
+  ctx.beginPath();
+  ctx.moveTo(mx, y0);
+  ctx.quadraticCurveTo(mx - h * 0.5, y0 + h * 0.55, mx - h * 0.62, y1);
+  ctx.lineTo(mx, y1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(mx + 18, y0 + h * 0.16);
+  ctx.lineTo(mx + 18, y1);
+  ctx.lineTo(mx + h * 0.42, y1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(mx - h * 0.66, y1 + 26);
+  ctx.lineTo(mx + h * 0.48, y1 + 26);
+  ctx.quadraticCurveTo(mx + h * 0.4, y1 + 74, mx + h * 0.28, y1 + 78);
+  ctx.lineTo(mx - h * 0.5, y1 + 78);
+  ctx.closePath();
+  ctx.fill();
+  ctx.lineWidth = 4;
+  for (let i = 0; i < 6; i++) {
+    const y = y1 + 120 + i * 36;
+    ctx.beginPath();
+    for (let x = -40; x <= W + 40; x += 40) {
+      const yy = y + Math.sin((x + i * 60) / 70) * 9;
+      if (x === -40) ctx.moveTo(x, yy);
+      else ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function pill(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// post: cleanPost; photo: yüklenmiş Image ya da null
+export async function drawPost(canvas, post, photo) {
+  const [, , W, H] = formatOf(post.format);
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const [, , c1, c2, accent] = themeOf(post.theme);
+  const light = !photo && post.theme === "kum";
+  const ink = light ? "#123c33" : "#ffffff";
+  const top = post.pos === "top";
+
+  if (photo) {
+    const s = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
+    const w = photo.naturalWidth * s;
+    const h = photo.naturalHeight * s;
+    const f = post.focus / 100;
+    ctx.drawImage(photo, (W - w) * f, (H - h) * f, w, h);
+    const g = top ? ctx.createLinearGradient(0, 0, 0, H * 0.66) : ctx.createLinearGradient(0, H, 0, H * 0.34);
+    g.addColorStop(0, "rgba(6,22,18,.84)");
+    g.addColorStop(0.55, "rgba(6,22,18,.45)");
+    g.addColorStop(1, "rgba(6,22,18,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    const g2 = top ? ctx.createLinearGradient(0, H, 0, H - 280) : ctx.createLinearGradient(0, 0, 0, 280);
+    g2.addColorStop(0, "rgba(0,0,0,.38)");
+    g2.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, W * 0.45, H);
+    g.addColorStop(0, c1);
+    g.addColorStop(1, c2);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    decor(ctx, W, H, top, light ? "rgba(31,90,75,.13)" : "rgba(255,255,255,.1)");
+  }
+
+  if (photo) {
+    ctx.shadowColor = "rgba(0,0,0,.35)";
+    ctx.shadowBlur = 14;
+  }
+
+  // Logo + kulüp adı (yazının karşı köşesinde)
+  const logo = await loadLogo();
+  const ly = top ? H - PAD - 104 : PAD - 20;
+  const R = 52;
+  ctx.save();
+  ctx.shadowColor = "transparent";
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(PAD + R, ly + R, R, 0, Math.PI * 2);
+  ctx.fill();
+  if (logo) {
+    ctx.clip();
+    ctx.drawImage(logo, PAD + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+  }
+  ctx.restore();
+  ctx.fillStyle = ink;
+  ctx.textBaseline = "middle";
+  ctx.font = `700 30px ${FONT}`;
+  ctx.fillText(CLUB, PAD + R * 2 + 24, ly + R);
+
+  // Yazı bloğu: etiket, başlık, alt satır
+  const maxW = W - PAD * 2;
+  const head = fit(ctx, post.headline || " ", maxW, post.format === "portrait" ? 5 : 4, 116, 60, 800);
+  const lh = Math.round(head.size * 1.08);
+  ctx.font = `500 40px ${FONT}`;
+  const subLines = post.sub ? wrap(ctx, post.sub, maxW).slice(0, 2) : [];
+  const tagH = post.tag ? 58 : 12;
+  const block = tagH + 30 + head.lines.length * lh + (subLines.length ? 26 + subLines.length * 52 : 0);
+  let y = top ? PAD + 10 : H - PAD - block;
+
+  ctx.textBaseline = "top";
+  if (post.tag) {
+    ctx.save();
+    ctx.shadowColor = "transparent";
+    ctx.font = `800 28px ${FONT}`;
+    const t = post.tag.toLocaleUpperCase("tr-TR");
+    const tw = ctx.measureText(t).width + 48;
+    ctx.fillStyle = light ? "#1f5a4b" : accent;
+    pill(ctx, PAD, y, tw, tagH, tagH / 2);
+    ctx.fill();
+    ctx.fillStyle = light ? "#ffffff" : "#10231e";
+    ctx.textBaseline = "middle";
+    ctx.fillText(t, PAD + 24, y + tagH / 2 + 1);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = light ? "#1f5a4b" : accent;
+    pill(ctx, PAD, y, 120, tagH, tagH / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  y += tagH + 30;
+
+  ctx.fillStyle = ink;
+  ctx.font = `800 ${head.size}px ${FONT}`;
+  for (const l of head.lines) {
+    ctx.fillText(l, PAD - 3, y);
+    y += lh;
+  }
+  if (subLines.length) {
+    y += 26;
+    ctx.globalAlpha = 0.9;
+    ctx.font = `500 40px ${FONT}`;
+    for (const l of subLines) {
+      ctx.fillText(l, PAD, y);
+      y += 52;
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.shadowColor = "transparent";
+  return canvas;
+}
+
+// Instagram'a gidecek dosya (JPEG)
+export function postFile(canvas, name = "gonderi") {
+  return new Promise((res, rej) =>
+    canvas.toBlob((b) => (b ? res(new File([b], `${name}.jpg`, { type: "image/jpeg" })) : rej(new Error("Görsel hazırlanamadı"))), "image/jpeg", 0.92),
+  );
+}
+
+// Listede görünen küçük kopya (~15 KB, gönderi belgesinde durur)
+export function thumbOf(canvas, w = 240) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = Math.round((canvas.height / canvas.width) * w);
+  c.getContext("2d").drawImage(canvas, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.7);
+}
