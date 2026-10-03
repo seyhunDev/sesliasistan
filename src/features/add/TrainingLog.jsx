@@ -5,17 +5,24 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
-import { DIRS, RATINGS, TOPICS, canLog, cleanLog, logLine } from "@/lib/trainingLog";
+import { DIRS, RATINGS, TOPICS, attLine, canLog, cleanLog, logLine } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 import { Missing } from "@/features/training/LogDetails";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { presentNames, syncAttendance } from "@/features/training/logAi";
 
 // Antrenman planının ekranında: "Antrenman günlüğü" (rüzgâr, yön, çalışılan konular, süre, nasıl geçti, not).
 // Plan kaydının log alanına yazılır; kişilere bildirim gitmez. Ay özeti Sporcular › Antrenman günlüğü.
-// "Anlat, doldursun": yapay zeka anlatılanı alanlara dağıtır (formdakilerle birleşir, kaydetmeden önce görülür).
+// Sesle/yazıyla doldurmak için ayrı kutu yok: ana asistan (alttaki kubbe) bu plana yazar ("günlüğe yaz: …").
+// Katılanlar yoklamayla eşleşir (sporcu yetkisi olanda): form açılınca o günün yoklamasında gelenler gelir,
+// kaydedince yazılan katılanlar yoklamada "geldi" olur.
 // Ayrıntılar (katılanlar, deniz, sonraki antrenman, diğer) de buradan düzenlenir; boş temel alanlar "Eksik" görünür.
 const asText = (v) => (Array.isArray(v) ? v.join(", ") : v || "");
 export function TrainingLog({ rec, by }) {
-  const { updateRecord } = useData();
+  const { updateRecord, members } = useData();
+  const { profile } = useAuth();
+  const racer = canSeeAthletes(profile?.email);
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(() => ({ wind: "", dir: "", topics: [], min: rec.durationMin || "", rating: null, note: "", ...(rec.log || {}) }));
@@ -24,16 +31,29 @@ export function TrainingLog({ rec, by }) {
   const toggle = (t) => set("topics", f.topics.includes(t) ? f.topics.filter((x) => x !== t) : [...f.topics, t]);
 
 
+  async function openForm() {
+    setOpen(true);
+    if (!racer || (Array.isArray(f.athletes) ? f.athletes.length : f.athletes)) return;
+    const names = await presentNames(rec.date);
+    if (names.length) setF((p) => (p.athletes?.length ? p : { ...p, athletes: names }));
+  }
+
   async function save() {
-    const log = cleanLog(f);
+    let log = cleanLog(f);
+    let said = "";
+    if (log && racer) {
+      const j = await syncAttendance(log, rec.date, { orgId: profile?.orgId || profile?.uid, members });
+      log = j.log;
+      said = attLine({ marked: j.marked, unknown: j.unknown });
+    }
     await updateRecord("plan", rec.id, { log }, by);
     setOpen(false);
-    toast(log ? "Günlük kaydedildi" : "Günlük silindi");
+    toast(log ? `Günlük kaydedildi${said ? `. ${said}` : ""}` : "Günlük silindi");
   }
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.99]">
+      <button type="button" onClick={openForm} className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.99]">
         <Icon name="book" className={`size-5 shrink-0 ${rec.log ? "text-acc" : "text-mut"}`} />
         <span className="min-w-0 flex-1">
           <b className="block text-[0.9375rem] font-medium">Antrenman günlüğü</b>

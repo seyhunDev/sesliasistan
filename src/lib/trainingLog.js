@@ -179,3 +179,68 @@ export function isLogAnswer(text) {
   if (FUTURE.test(t) || /(mesaj|görev|hatırlat|not al|sayfa|aç$|göster)/.test(t)) return false;
   return INFO.test(t);
 }
+
+// ---- Yoklamayla eşleştirme: günlükte söylenen katılanlar ↔ o günün yoklaması ----
+// athletes: kulüp sporcuları { id, studentName, status, att: { 2026: { "10-03": "present" } } }
+const plainName = (s) =>
+  String(s || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[çğıöşüâî]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i" })[c])
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+const stateOn = (a, date) => a?.att?.[date.slice(0, 4)]?.[date.slice(5, 10)] || "";
+
+// O gün yoklamada "geldi" olanların adları
+export const presentOn = (athletes, date) => (athletes || []).filter((a) => stateOn(a, date) === "present").map((a) => a.studentName).filter(Boolean);
+
+// Söylenen adları etkin sporculara eşler: tam ad, ya da her sözcük sporcunun adında sözcük başı olarak geçiyorsa ve tek sporcu uyuyorsa
+// ("Ali" → Ali Kaya, iki Ali varsa bulunamadı sayılır). Sonuç { ids, names (tam adlar), unknown }
+export function matchNames(names, athletes) {
+  const list = (athletes || []).filter((a) => a.status === "active" && a.studentName);
+  const ids = [];
+  const unknown = [];
+  for (const raw of names || []) {
+    const q = plainName(raw).split(" ").filter(Boolean);
+    if (!q.length) continue;
+    const full = list.filter((a) => plainName(a.studentName) === q.join(" "));
+    const hits = full.length
+      ? full
+      : list.filter((a) => {
+          const parts = plainName(a.studentName).split(" ");
+          return q.every((w) => parts.some((p) => p === w || (w.length >= 3 && p.startsWith(w))));
+        });
+    if (hits.length === 1) !ids.includes(hits[0].id) && ids.push(hits[0].id);
+    else unknown.push(String(raw));
+  }
+  return { ids, names: ids.map((id) => list.find((a) => a.id === id).studentName), unknown };
+}
+
+// Günlük ↔ yoklama: söylenen katılanlar yoklamada "geldi" olur (gelmedi/izinli de olsa söylenen geçerli); günlükteki katılanlar
+// yoklamada gelenlerle birleşir (yoklama alındıysa sorulmaz). Sonuç { log, changes { sporcuId: "present" }, marked [ad], unknown [ad] }
+export function joinAttendance(log, date, athletes) {
+  const m = matchNames(log?.athletes || [], athletes);
+  const changes = {};
+  const marked = [];
+  for (const id of m.ids) {
+    const a = athletes.find((x) => x.id === id);
+    if (stateOn(a, date) !== "present") {
+      changes[id] = "present";
+      marked.push(a.studentName);
+    }
+  }
+  const present = presentOn(athletes, date);
+  const all = [...new Set([...present, ...m.names, ...m.unknown])];
+  return { log: all.length ? { ...(log || {}), athletes: all } : log, changes, marked, unknown: m.unknown, fromAtt: !m.ids.length && !m.unknown.length ? present : [] };
+}
+
+// Asistan cevabına ek: "Yoklamada geldi olarak işaretledim: Ali Kaya, Ayşe Şahin. Bulamadım: Mehmet."
+// ya da (katılan söylenmediyse) "Katılanları yoklamadan aldım: 6 sporcu."
+const few = (arr) => (arr.length > 4 ? `${arr.length} sporcu` : arr.join(", "));
+export function attLine({ marked = [], unknown = [], fromAtt = [] } = {}) {
+  return [
+    marked.length ? `Yoklamada geldi olarak işaretledim: ${few(marked)}.` : "",
+    unknown.length ? `Sporcularda bulamadım: ${unknown.join(", ")}.` : "",
+    fromAtt.length ? `Katılanları yoklamadan aldım: ${few(fromAtt)}.` : "",
+  ].filter(Boolean).join(" ");
+}

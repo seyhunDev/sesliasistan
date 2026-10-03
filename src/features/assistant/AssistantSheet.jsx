@@ -54,8 +54,8 @@ import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestio
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { bareLog, canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
-import { askLog, saveLog } from "@/features/training/logAi";
+import { attLine, bareLog, canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
+import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
@@ -1318,6 +1318,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         logFlow.current = { ask: true, text };
         return;
       }
+      // Katılanlar ↔ yoklama: söylenenler o gün "geldi" olur, yoklamada gelenler günlüğe girer (sporcu yetkisi olanda)
+      let att = null;
+      if (racer && myUid) {
+        stepTo("Yoklamayla eşleştiriliyor");
+        att = await syncAttendance(r.log, r.date, { orgId: myUid, members });
+        if (id !== runId.current) return;
+        r.log = att.log;
+      }
       stepTo("Günlüğe yazılıyor");
       const sv = await saveLog({ plans, updateRecord, saveDrafts, isLocked }, { ...r, time: r.time || time, planId: r.date === date ? planId : "" }, by, viaVoice || convo.current ? "voice" : "manual");
       if (id !== runId.current) return;
@@ -1329,7 +1337,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       navigator.vibrate?.([10, 40, 10]);
       toast("Günlük kaydedildi");
       const more = missingOf(sv.log).length > 0;
-      reply(logReply(sv.log, r.date, todayStr(), sv.fresh), { show: sv.id ? [{ kind: "plan", id: sv.id }] : [], nav: "training", engine: "ai", expect: more }, viaVoice);
+      const attSay = att ? attLine(att) : "";
+      reply(`${logReply(sv.log, r.date, todayStr(), sv.fresh)}${attSay ? ` ${attSay}` : ""}`, { show: sv.id ? [{ kind: "plan", id: sv.id }] : [], nav: "training", engine: "ai", expect: more }, viaVoice);
       if (more) logFlow.current = { date: r.date, time: r.time || time, planId: sv.id };
     } catch (e) {
       if (id !== runId.current) return;
