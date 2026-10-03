@@ -27,7 +27,20 @@ async function names(db) {
 // Kayıtlı oturum geri yüklenmeden sorgu atılırsa kurallar reddeder; önce onu bekle
 const ready = () => dikiliAuth().authStateReady();
 
-export async function loadAthletes() {
+// Sayfalar arası geçişte ve sesli komutlarda liste her seferinde yeniden indirilmesin (okuma tasarrufu): birkaç dakika bellekte.
+// Yazınca (forget) silinir; Yenile düğmesi de taze okur.
+const LIST_MS = 3 * 60e3;
+let listMemo = null; // { at, p: Promise }
+
+export function loadAthletes({ fresh = false } = {}) {
+  if (!fresh && listMemo && Date.now() - listMemo.at < LIST_MS) return listMemo.p;
+  const p = fetchAthletes();
+  listMemo = { at: Date.now(), p };
+  p.catch(() => listMemo?.p === p && (listMemo = null));
+  return p;
+}
+
+async function fetchAthletes() {
   await ready();
   const db = dikiliDb();
   const [snap, n] = await Promise.all([getDocs(query(collection(db, "athletes"), orderBy("createdAt", "desc"))), names(db)]);
@@ -110,7 +123,10 @@ export async function loadAthlete(id) {
 // Veri yalnızca bellekte tutulur (kişisel/sağlık bilgisi; cihaza kaydedilmez).
 // Liste sayfasına geri dönünce yeniden indirilmesin diye oturum boyunca saklanır.
 const memo = new Map(); // anahtar -> veri
-export const forget = () => memo.clear();
+export const forget = () => {
+  memo.clear();
+  listMemo = null;
+};
 
 export const message = (e) =>
   e?.code === "permission-denied"
@@ -135,6 +151,7 @@ export function useDikili(key, fn) {
     [key, fn],
   );
   const reload = useCallback(() => {
+    listMemo = null; // Yenile: önbelleği atla
     setErr(null);
     run().then(({ d, e }) => (e ? setErr(e) : setData(d)));
   }, [run]);
