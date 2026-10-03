@@ -19,9 +19,10 @@ export async function askLog({ text, date = "" }) {
 
 // Günlüğü günün antrenman planına yazar (var olan günlükle birleşir); o gün antrenman yoksa yeni Antrenman planı açılır.
 // data: useData() (plans, updateRecord, saveDrafts, isLocked). Sonuç: { id, log, fresh } ya da { error }
-export async function saveLog(data, { date, time, log }, by, source = "manual") {
+// planId: açık plan ekranından söylendiyse o plana yazılır.
+export async function saveLog(data, { date, time, log, planId = "" }, by, source = "manual") {
   const { plans, updateRecord, saveDrafts, isLocked } = data;
-  const plan = pickPlan(plans, date, time);
+  const plan = (planId && plans.find((p) => p.id === planId)) || pickPlan(plans, date, time);
   if (plan) {
     if (isLocked?.("plan", plan.id)) return { error: "Bu antrenmanı başkası eklemiş; günlüğünü o ya da ana hesap yazabilir." };
     const merged = mergeLog(plan.log, log);

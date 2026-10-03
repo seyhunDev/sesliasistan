@@ -32,6 +32,7 @@ import { ListeningStage, ProcessingStage } from "./Stage";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { CancelPlan } from "./CancelPlan";
 import { TrainingLog } from "./TrainingLog";
+import { canLog } from "@/lib/trainingLog";
 import { blank, carry, check, firstNeed, fresh, isBlank, nid, pub, tidy, toPatch } from "./drafts";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
@@ -581,14 +582,18 @@ export function AddSheet({ open, onClose, seed }) {
   // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
   // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
   const recDock = open && !!edit && !!rec && !staged;
-  const recFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
+  const baseFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
+  // Günlüğü yazılabilen antrenman planı: kubbedeki örnekler günlük üzerine (asistan bu plana yazar)
+  const recFocus = baseFocus && edit.kind === "plan" && canLog(rec, todayStr()) ? { ...baseFocus, log: true } : baseFocus;
   const focusKey = recFocus ? JSON.stringify([recFocus, edit.kind, locked]) : "";
   useEffect(() => {
     if (!focusKey) return;
     const [focus, kind, ro] = JSON.parse(focusKey);
     const examples = ro
       ? ["Bunu tamamladım", "Bu konuşmayı özetle", "Ana hesaba hazır olduğunu yaz"]
-      : [kind === "task" ? "Bu görevi tamamla" : kind === "plan" ? "Saatini 10 yap" : "Bundan görev çıkar", "Yarına ertele", "Ali'ye bununla ilgili yaz"];
+      : focus.log
+        ? ["Günlüğe yaz: 12 knot poyraz, start çalıştık", "Çok iyi geçti, 90 dakika sürdü", "Saatini 10 yap"]
+        : [kind === "task" ? "Bu görevi tamamla" : kind === "plan" ? "Saatini 10 yap" : "Bundan görev çıkar", "Yarına ertele", "Ali'ye bununla ilgili yaz"];
     const say = (detail) => window.dispatchEvent(new CustomEvent("sa-record-focus", { detail }));
     say({ focus, examples });
     return () => say(null);

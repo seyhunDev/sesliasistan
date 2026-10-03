@@ -5,9 +5,8 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
-import { DIRS, RATINGS, TOPICS, canLog, cleanLog, logLine, mergeLog } from "@/lib/trainingLog";
+import { DIRS, RATINGS, TOPICS, canLog, cleanLog, logLine } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
-import { askLog } from "@/features/training/logAi";
 import { Missing } from "@/features/training/LogDetails";
 
 // Antrenman planının ekranında: "Antrenman günlüğü" (rüzgâr, yön, çalışılan konular, süre, nasıl geçti, not).
@@ -20,28 +19,10 @@ export function TrainingLog({ rec, by }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(() => ({ wind: "", dir: "", topics: [], min: rec.durationMin || "", rating: null, note: "", ...(rec.log || {}) }));
-  const [say, setSay] = useState("");
-  const [busy, setBusy] = useState(false);
   if (!canLog(rec, todayStr())) return null;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggle = (t) => set("topics", f.topics.includes(t) ? f.topics.filter((x) => x !== t) : [...f.topics, t]);
 
-  async function fill() {
-    if (!say.trim() || busy) return;
-    setBusy(true);
-    try {
-      const r = await askLog({ text: say, date: rec.date });
-      if (!r.log) return toast("Anlatılanda günlüğe yazılacak bilgi bulamadım");
-      const m = mergeLog(cleanLog(f), r.log);
-      setF((p) => ({ ...p, ...m, wind: m.wind ?? "", min: m.min ?? "", topics: m.topics || [] }));
-      setSay("");
-      toast("Dolduruldu, bakıp kaydet");
-    } catch (e) {
-      toast(e.message || "Günlük çıkarılamadı");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function save() {
     const log = cleanLog(f);
@@ -72,12 +53,6 @@ export function TrainingLog({ rec, by }) {
         <Link href="/training" className="text-[0.8125rem] font-semibold text-acc">Tümü</Link>
       </div>
       <div className="mt-3 flex gap-2">
-        <input value={say} onChange={(e) => setSay(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fill()} placeholder="Anlat, yapay zeka doldursun…" className="h-10 min-w-0 flex-1 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
-        <button type="button" onClick={fill} disabled={busy || !say.trim()} aria-label="Yapay zekayla doldur" className="grid size-10 shrink-0 place-items-center rounded-full bg-acc text-white active:scale-95 disabled:opacity-40">
-          <Icon name="spark" className={`size-4 ${busy ? "animate-pulse" : ""}`} />
-        </button>
-      </div>
-      <div className="mt-2 flex gap-2">
         <label className="flex flex-1 items-center gap-2 rounded-xl bg-bg px-3">
           <Icon name="wind" className="size-4 text-mut" />
           <input inputMode="numeric" value={f.wind ?? ""} onChange={(e) => set("wind", e.target.value)} placeholder="Rüzgâr" className="h-10 w-full bg-transparent text-[0.9375rem] outline-none" />
