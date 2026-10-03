@@ -9,9 +9,9 @@ import { isPast } from "./RaceList";
 import { doneCount, loadRaces, stepsOf } from "./races";
 import { todayStr } from "@/lib/utils/format";
 
-// Ana sayfadaki Yarışlar düğmesi: kişi Ayarlar'dan açınca görünür (users/{uid}.races = "on").
+// Ana sayfadaki Yarışlar kartı: sporcu yetkisi olanlarda kendiliğinden görünür, Ayarlar'dan kapatılır (users/{uid}.races = "off").
 // Yalnız sporcu yetkisi olanlar (yarışlar kulübün sporcu verisine bağlı).
-// Düğmede sıradaki yarışın kısa bilgisi de görünür: "Foça · 5 gün · 2 iş" (nextInfo).
+// Kartta sıradaki yarışın kısa bilgisi de görünür: "Foça · 5 gün · 2 iş" (nextInfo).
 // Yaklaşan yarış sayısı oturumda 5 dakika saklanır; yarış yoksa saklanmaz (ilk yarış eklenince sayı hemen gelsin)
 let cache = null; // { orgId, at, p }
 
@@ -43,7 +43,7 @@ function countRaces(orgId) {
 export function useRaceHome() {
   const { profile } = useAuth();
   const allowed = canSeeAthletes(profile?.email) && !!profile?.orgId;
-  const on = allowed && profile?.races === "on";
+  const on = allowed && profile?.races !== "off";
   const [n, setN] = useState(null);
 
   useEffect(() => {
