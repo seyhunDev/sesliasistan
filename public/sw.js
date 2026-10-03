@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v9";
+const VERSION = "sa-v10";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
@@ -85,33 +85,62 @@ self.addEventListener("fetch", (e) => {
 });
 
 // ---- Bildirimler ----
-self.addEventListener("push", (e) => {
-  let d = {};
+// iPhone, push geldiğinde bildirim gösterilmezse (işleyici hata verirse ya da çok uzun sürerse) kendi İngilizce
+// standart metnini yazar ("This website has been updated in the background"). Bu yüzden: önce bildirim gösterilir,
+// hiçbir adım hata fırlatmaz, yan işler (simge sayısı, "iletildi" onayı) kısa süreyle sınırlıdır.
+const FALLBACK = { body: "Yeni bildirimin var" };
+const within = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(r, ms))]).catch(() => {});
+
+function readPush(e) {
   try {
-    d = e.data ? e.data.json() : {};
+    const d = e.data ? e.data.json() : null;
+    if (d && typeof d === "object") return d;
+  } catch {}
+  try {
+    const t = e.data?.text();
+    if (t) return { body: t };
+  } catch {}
+  return {};
+}
+
+async function onPush(e) {
+  const d = readPush(e);
+  // Tek satır: başlık ve ayrıntı birleşir ("Yeni görev: Motor yağı · Son gün yarın · Ali verdi",
+  // "Ali Kaya · Motor yağı: Yağ bitmiş"). Telefon üstte yalnız uygulama adını ekler.
+  const flat = (x) => String(x || "").replace(/\s*\n+\s*/g, " · ").replace(/\s+/g, " ").trim();
+  const head = flat(d.title);
+  const rest = flat(d.body);
+  const title = head && rest ? `${head}${head.includes(":") || rest.includes(":") ? " · " : ": "}${rest}` : head || rest || FALLBACK.body;
+  const opts = {
+    body: "",
+    lang: "tr",
+    tag: d.tag || undefined, // aynı kayıt için tek bildirim (yenisi öncekinin yerine geçer, yığılmaz)
+    renotify: !!d.tag, // yerine geçerken de sesle/titreşimle haber ver
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { url: d.url || "/" },
+  };
+  try {
+    await self.registration.showNotification(title, opts);
   } catch {
-    d = { body: e.data?.text() };
+    // Seçeneklerden biri bu cihazda desteklenmiyorsa en sade hâliyle yine göster
+    await self.registration.showNotification(title, { data: opts.data }).catch(() => {});
   }
-  e.waitUntil(
-    Promise.all([
-      self.registration.showNotification(d.title || "Sesli Asistan", {
-        body: d.body || "",
-        tag: d.tag, // aynı kayıt için tek bildirim (yenisi öncekinin yerine geçer, yığılmaz)
-        renotify: !!d.tag, // yerine geçerken de sesle/titreşimle haber ver
-        icon: "/icons/icon-192.png",
-        badge: "/icons/icon-192.png",
-        data: { url: d.url || "/" },
-      }),
-      // Uygulama simgesindeki sayı (iPhone'da ana ekrana eklenmiş uygulama, iOS 16.4+)
-      typeof d.badge === "number" && self.navigator.setAppBadge
-        ? (d.badge > 0 ? self.navigator.setAppBadge(d.badge) : self.navigator.clearAppBadge()).catch(() => {})
-        : null,
-      // Atama bildirimi: telefona ulaştı ("iletildi") onayı
-      d.ack
-        ? fetch("/api/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d.ack) }).catch(() => {})
-        : null,
-    ]),
-  );
+  // Uygulama simgesindeki sayı (iPhone'da ana ekrana eklenmiş uygulama, iOS 16.4+)
+  try {
+    if (typeof d.badge === "number" && self.navigator.setAppBadge)
+      await within(d.badge > 0 ? self.navigator.setAppBadge(d.badge) : self.navigator.clearAppBadge(), 1500);
+  } catch {}
+  // Atama bildirimi: telefona ulaştı ("iletildi") onayı
+  if (d.ack) {
+    try {
+      await within(fetch("/api/ack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(d.ack) }), 4000);
+    } catch {}
+  }
+}
+
+self.addEventListener("push", (e) => {
+  e.waitUntil(onPush(e).catch(() => self.registration.showNotification(FALLBACK.body).catch(() => {})));
 });
 
 // Bildirime dokununca: açık uygulama varsa ona geç, yoksa aç
