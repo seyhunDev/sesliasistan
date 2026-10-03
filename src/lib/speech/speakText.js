@@ -108,7 +108,7 @@ export function speechText(text) {
     .replace(/(\d)\s?°/g, "$1 derece")
     .replace(R(`(\\d[\\d.,]*)\\s?km\\s?/\\s?sa?(?![${L}])`), "saatte $1 kilometre")
     .replace(R(`(\\d[\\d.,]*)\\s?m\\s?/\\s?sn?(?![${L}])`), "saniyede $1 metre")
-    .replace(R(`(\\d)\\s?(?:kt|kts|knot)(?![${L}])`), "$1 knot")
+    .replace(R(`(\\d)\\s?(?:kt|kts|kn|knot)(?![${L}])`), "$1 knot")
     .replace(R(`(\\d)\\s?km(?![${L}])`), "$1 kilometre")
     .replace(R(`(\\d)\\s?mm(?![${L}])`), "$1 milimetre")
     .replace(R(`(\\d)\\s?kg(?![${L}])`), "$1 kilo");

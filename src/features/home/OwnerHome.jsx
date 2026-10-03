@@ -24,6 +24,7 @@ import { MyAttendanceCard } from "./MyAttendanceCard";
 import { StageBrief } from "./StageBrief";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { ClubTiles } from "./ClubTiles";
+import { useMeeting } from "@/features/meeting/MeetingProvider";
 
 // Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › (sporcu/veli: yoklama) ›
 // doğum günü › para › büyük kartlar (Aidatlar, Yarışlar, Instagram, Antrenman; ClubTiles) › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
@@ -95,6 +96,7 @@ export function HomeFeed({ weather }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const [used] = useState(readUse);
+  const { openMeeting } = useMeeting();
 
   const links = [
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
@@ -132,6 +134,18 @@ export function HomeFeed({ weather }) {
         plans={plans}
         onOpen={saveUse}
       />
+      {!isAthleteSide(kind) && (
+        <button onClick={openMeeting} className="flex w-full items-center gap-3 rounded-2xl bg-card p-3.5 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line active:scale-[.98]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc text-white">
+            <Icon name="mic" className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[0.9375rem] font-semibold">Toplantı modu</b>
+            <small className="block truncate text-[0.8125rem] text-mut">Dinlerim; görevleri, mesajları ve özeti çıkarırım</small>
+          </span>
+          <Icon name="chev" className="size-4 shrink-0 text-mut" />
+        </button>
+      )}
       <nav aria-label="Diğer sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {order.map(([href, icon, label, n]) => (
           <Link key={href} href={href} onClick={() => saveUse(href)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">

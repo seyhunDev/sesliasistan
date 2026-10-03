@@ -397,3 +397,50 @@ group("Aidat otomatik")([
     return r.paid.length === 1 && store["orgs/u1/dues/2026-10"]?.paid?.a1?.length === 1 && store["orgs/u1/dues/settings"].payers.a1[0] === "AYSE SAHIN";
   })],
 ]);
+
+// Toplantı modu (lib/meeting/result.js): yapay zeka çıktısını temizleme, başlıklı özet, mesaj alıcısı
+const MR = await import("@/lib/meeting/result");
+const MPEOPLE = ["Ali Kaya", "Sanver Demir"];
+const MCONTACTS = [{ name: "Gökhan Yılmaz", uid: "g1" }, { name: "Ali Kaya", uid: "a1" }];
+const MRAW = {
+  title: "Ekim hazırlığı",
+  sections: [{ heading: "Tekne bakımı", points: ["Motorlar kontrol edilecek", ""] }, { heading: "", points: [] }],
+  decisions: ["Cumartesi antrenman var"],
+  items: [
+    { type: "task", title: "Motorları kontrol et", assignTo: ["Sanver'e"], date: "2026-10-08" },
+    { type: "plan", title: "Antrenman", date: "2026-10-10", time: "10:00", assignTo: [] },
+    { type: "task", title: "Boya al", assignTo: ["Mehmet"] },
+    { type: "bad", title: "x" },
+  ],
+  messages: [{ to: "gökhan", text: "Cumartesi 10'da kulüpte ol." }, { to: "velilere", text: "Cumartesi antrenman var." }, { to: "Ali", text: "" }],
+  message: "2 görev, 1 plan, 2 mesaj çıkardım.",
+};
+group("Toplantı modu")([
+  ["sorumlulu görev", F("Sanver'e → Sanver Demir, listede olmayan kişi atılır", () => {
+    const r = MR.cleanMeeting(MRAW, { people: MPEOPLE, names: ["Gökhan Yılmaz", "Ali Kaya", "Ekip"] });
+    return r.items.length === 3 && r.items[0].assignTo.join() === "Sanver Demir" && r.items[0].date === "2026-10-08" && r.items[2].assignTo.length === 0 && r.items[1].time === "10:00";
+  })],
+  ["mesajlar", F("boş mesaj atılır, ad listedeki yazıma çevrilir", () => {
+    const r = MR.cleanMeeting(MRAW, { people: MPEOPLE, names: ["Gökhan Yılmaz", "Ali Kaya"] });
+    return r.messages.length === 2 && r.messages[0].to === "Gökhan Yılmaz" && r.messages[1].to === "velilere";
+  })],
+  ["başlıklı özet", F("boş bölüm ve madde atılır", () => {
+    const r = MR.cleanMeeting(MRAW);
+    return r.sections.length === 1 && r.sections[0].heading === "Tekne bakımı" && r.sections[0].points.length === 1;
+  })],
+  ["yalnız konuşma", F("iş ve mesaj yoksa onlyTalk", () => {
+    const r = MR.cleanMeeting({ title: "Sohbet", sections: [{ heading: "Hava", points: ["Rüzgâr konuşuldu"] }], decisions: [], items: [], messages: [] });
+    return MR.onlyTalk(r) && !MR.onlyTalk(MR.cleanMeeting(MRAW));
+  })],
+  ["eski biçim özet", F("'- madde' satırları başlıksız bölüm olur", () => {
+    const r = MR.cleanMeeting({ summary: "- Bir\n- İki" });
+    return r.title === "Toplantı" && r.sections[0].heading === "" && r.sections[0].points.join("|") === "Bir|İki";
+  })],
+  ["not metni", F("başlıklar, maddeler, kararlar", () => MR.summaryText(MR.cleanMeeting(MRAW)) === "Tekne bakımı\n- Motorlar kontrol edilecek\n\nKararlar\n- Cumartesi antrenman var")],
+  ["alıcı: kişi", F("gökhan → g1, olmayan kişi null", () => MR.recipientOf("gökhan", MCONTACTS, {})?.uid === "g1" && MR.recipientOf("Mehmet", MCONTACTS, {}) === null)],
+  ["alıcı: grup", F("velilere → Sporcular, ekibe → Ekip, üyesi olunmayan grup yok", () => {
+    const g = { team: "Ekip", athletes: "Sporcular" };
+    return MR.recipientOf("velilere", MCONTACTS, g)?.group === "athletes" && MR.recipientOf("Ekip", MCONTACTS, g)?.group === "team" && MR.recipientOf("aileye", MCONTACTS, g) === null;
+  })],
+  ["süre", F("65 sn 01:05, 1 saat 2 dk 5 sn 1:02:05", () => MR.clock(65000) === "01:05" && MR.clock(3725000) === "1:02:05")],
+]);

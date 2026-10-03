@@ -1,27 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
+import { LogDetails, Missing } from "@/features/training/LogDetails";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
-import { RATINGS, logLine, monthLog } from "@/lib/trainingLog";
+import { RATINGS, isTraining, logLine, monthLog, presentOn } from "@/lib/trainingLog";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { loadAthletes } from "@/features/athletes/data";
 import { todayStr } from "@/lib/utils/format";
 
 // Antrenman günlüğü: ay ay antrenman sayısı, günlüğü yazılanlar, toplam süre, ortalama rüzgâr, en çok çalışılan konular.
 // Kayıtlar antrenman planlarının log alanından (cihazdaki planlar; ek okuma yok). Satıra dokununca plan açılır.
+// Günlük ana asistanla da yazılır (bu sayfada alttaki kubbe: antrenmanı anlat); eksik alanlar satırda "Eksik: …" görünür.
 const dayText = (p) => new Date(`${p.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 export default function TrainingPage() {
   const { plans } = useData();
   const { openAdd } = useAdd();
+  const { profile } = useAuth();
+  // Katılanlar yoklamadan (sporcu yetkisi olanda; liste bellekteki kopyadan, ek okuma 3 dakikada en çok bir kez)
+  const racer = canSeeAthletes(profile?.email);
+  const [athletes, setAthletes] = useState([]);
+  useEffect(() => {
+    if (!racer) return;
+    let live = true;
+    loadAthletes()
+      .then((d) => live && setAthletes(d.athletes || []))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [racer]);
   const today = todayStr();
   const [ym, setYm] = useState(today.slice(0, 7));
   const m = monthLog(plans, ym);
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
   const missing = plans
-    .filter((p) => (p.cat || p.category) === "Antrenman" && p.status !== "cancelled" && !p.log && (p.date || "").startsWith(ym) && p.date <= today)
+    .filter((p) => isTraining(p) && p.status !== "cancelled" && !p.log && (p.date || "").startsWith(ym) && p.date <= today)
     .sort((a, b) => b.date.localeCompare(a.date));
   const top = m.topics[0]?.[1] || 1;
 
@@ -91,7 +110,7 @@ export default function TrainingPage() {
         <p className="px-1 text-[0.8125rem] font-semibold text-mut">GÜNLÜK</p>
         {m.logged.length === 0 ? (
           <p className="mt-2 rounded-2xl bg-card px-4 py-4 text-[0.875rem] text-mut shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-            Bu ay yazılmış günlük yok. Antrenman planını aç (kategori Antrenman), alttaki “Antrenman günlüğü”ne rüzgârı ve çalışılanları yaz.
+            Bu ay yazılmış günlük yok. Asistana antrenmanı anlat (“dünkü antrenmanda 12 knot poyraz vardı, start çalıştık”) ya da antrenman planını açıp alttaki “Antrenman günlüğü”nü doldur.
           </p>
         ) : (
           <ul className="mt-2 divide-y divide-line rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
@@ -105,6 +124,11 @@ export default function TrainingPage() {
                   {logLine(p.log) && <small className="block text-[0.8125rem] text-mut">{logLine(p.log)}</small>}
                   {p.log.rating && <small className="block text-[0.75rem] font-medium text-acc">{RATINGS.find(([k]) => k === p.log.rating)?.[1]}</small>}
                   {p.log.note && <p className="mt-1 line-clamp-3 text-[0.875rem] leading-snug">{p.log.note}</p>}
+                  <LogDetails log={p.log} className="mt-1" />
+                  {!p.log.athletes?.length && presentOn(athletes, p.date).length > 0 && (
+                    <small className="mt-0.5 block text-[0.8125rem]"><span className="text-mut">Katılanlar (yoklama):</span> {presentOn(athletes, p.date).join(", ")}</small>
+                  )}
+                  <Missing log={p.log} className="mt-1" />
                 </button>
               </li>
             ))}

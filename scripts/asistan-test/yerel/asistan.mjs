@@ -266,3 +266,77 @@ group("Sıralı işler (yapay zeka yanıtı)")([
   ["sıra: mesaj önce", { desc: "mesaj önce", fn: () => ST.orderSteps(gokhan, parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].send && r[1].items.length === 2 }],
   ["sıra: kayıt önce", { desc: "kayıt önce", fn: () => ST.orderSteps("takvime yarın 10'da tekne bakımı ekle, sonra Gökhan'a yaz", parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].items && !!r[1].send }],
 ]);
+
+// ---- Antrenman günlüğü yapay zekayla (trainingLog.js): tanıma, eksik bilgi, birleştirme, plan seçimi ----
+const TL = await import("@/lib/trainingLog");
+const WL = (want) => ({ desc: want ? "günlük isteği" : "günlük isteği değil", fn: (s) => TL.wantsLog(s), ok: (r) => r === want });
+group("Antrenman günlüğü (tanıma)")([
+  ["dünkü antrenmanda 12 knot poyraz vardı, start ve tramola çalıştık", WL(true)],
+  ["bugünkü antrenman çok iyi geçti", WL(true)],
+  ["antrenman günlüğüne yaz: 2 saat sürdü, Ali ve Ayşe geldi", WL(true)],
+  ["günlüğe ekle hafif rüzgârda rota çalıştık", WL(true)],
+  ["salı günkü idmanda deniz dalgalıydı, şamandıra dönüşü yaptık", WL(true)],
+  ["antrenman günlüğünü aç", WL(false)], ["günlüğü göster", WL(false)], ["yarın 10'da antrenman ekle", WL(false)],
+  ["haftaya salı antrenman planla", WL(false)], ["antrenman ne zaman", WL(false)], ["yarın antrenman var mı", WL(false)],
+  ["Antreman günlüğüne yaz bugün 15 not rüzgar vardı", WL(true), "ses tanıma yazımı"], ["Bugünkü antrenmanı kaydet 12 knot poyraz start", WL(true)],
+  ["Bugünkü antrenman notu: start ve tramola, 2 saat", WL(true)], ["antrenman günlüğü oluştur", WL(true)], ["yarın antrenmanı kaydet", WL(false)],
+  ["antrenman günlüğü oluştur", { desc: "anlatımsız: önce anlatması istenir", fn: (s) => TL.bareLog(s), ok: (r) => r === true }],
+  ["antrenman günlüğü: 12 knot poyraz, start çalıştık", { desc: "anlatımlı: doğrudan yazılır", fn: (s) => TL.bareLog(s), ok: (r) => r === false }],
+  ["başlığı antrenman olan Genel plan", { desc: "antrenman sayılır", fn: () => TL.isTraining({ title: "Optimist antrenmanı", cat: "Genel" }), ok: (r) => r === true }],
+  ["Ali dünkü antrenmana geldi mi", WL(false)], ["Ali bugünkü antrenmana gelmedi", WL(false), "yoklama"], ["bugünkü antrenman nasıl geçti?", WL(false)],
+  ["antrenman günlüğünü aç", { desc: "localCommand yine sayfa açar", fn: cmd, ok: (r) => r?.type === "navigate" && r.page === "training" }],
+]);
+const AI_LOG = { wind: "14", dir: "poyraz", topics: ["start", "tramola çalışması", "Kürek"], min: 120, rating: 0, note: "Ali starta geç kaldı", athletes: "Ali, Ayşe", sea: "Hafif dalgalı", details: [{ k: "Antrenör", v: "Gökhan" }], src: "ai" };
+const F = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
+group("Antrenman günlüğü (alanlar)")([
+  ["temizle", F("yön, konular, kişiler düzgün", () => {
+    const l = TL.cleanLog(AI_LOG);
+    return l.wind === 14 && l.dir === "Poyraz" && l.topics.join() === "Start,Tramola,Kürek" && l.athletes.join() === "Ali,Ayşe" && l.sea === "Hafif dalgalı" && l.details[0].v === "Gökhan" && l.rating === null;
+  })],
+  ["eksik", F("yalnız 'nasıl geçti' eksik", () => TL.missingOf(TL.cleanLog(AI_LOG)).join() === "nasıl geçti")],
+  ["eksik (yalnız not)", F("beş alan eksik", () => TL.missingOf(TL.cleanLog({ note: "x" })).length === 5)],
+  ["yalnız ayrıntı", F("katılanlar tek başına da günlük", () => TL.cleanLog({ athletes: ["Ali"] })?.athletes?.[0] === "Ali")],
+  ["boş", F("boş anlatım günlük değil", () => TL.cleanLog({ topics: [], athletes: "", details: [] }) === null)],
+  ["birleştir", F("eskiler kalır, yeni eklenir", () => {
+    const m = TL.mergeLog(TL.cleanLog(AI_LOG), TL.cleanLog({ rating: 3, topics: ["Rota"], athletes: ["Ali", "Mehmet"], note: "Sonda yarış provası" }));
+    return m.rating === 3 && m.wind === 14 && m.topics.length === 4 && m.athletes.join() === "Ali,Ayşe,Mehmet" && /geç kaldı\nSonda/.test(m.note) && TL.missingOf(m).length === 0;
+  })],
+  ["ayrıntı güncelle", F("aynı başlık yenilenir", () => TL.mergeLog({ details: [{ k: "Antrenör", v: "Gökhan" }] }, { details: [{ k: "antrenör", v: "Ali" }] }).details.length === 1)],
+  ["plan seç", F("saate en yakın antrenman", () => {
+    const P = [{ id: "a", cat: "Antrenman", date: today, time: "10:00" }, { id: "b", cat: "Antrenman", date: today, time: "17:00" }, { id: "c", cat: "Antrenman", date: today, time: "16:00", status: "cancelled" }, { id: "d", cat: "Genel", date: today }];
+    return TL.pickPlan(P, today, "16:30")?.id === "b" && TL.pickPlan(P, today)?.id === "a" && TL.pickPlan(P, tom) === null;
+  })],
+  ["cevap", F("eksik söylenince", () => TL.logReply(TL.cleanLog(AI_LOG), today, today).startsWith("Bugünkü antrenmanın günlüğünü yazdım: 14 kn Poyraz") && /Eksik: nasıl geçti/.test(TL.logReply(TL.cleanLog(AI_LOG), today, today)))],
+  ["cevap (yeni plan)", F("plan açıldığını söyler", () => /takvimde antrenman yoktu/.test(TL.logReply({ wind: 10 }, today, today, true)))],
+]);
+const LA = (want) => ({ desc: want ? "günlüğe ek bilgi" : "ek bilgi değil", fn: (s) => TL.isLogAnswer(s), ok: (r) => r === want });
+group("Antrenman günlüğü (eksik tamamlama)")([
+  ["çok iyi geçti", LA(true)], ["90 dakika sürdü", LA(true)], ["rüzgâr lodostu", LA(true)], ["Mehmet de geldi", LA(true)],
+  ["yarın 10'da antrenman ekle", LA(false)], ["Ali'ye mesaj at", LA(false)], ["planları aç", LA(false)],
+  ["14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", LA(true), "günlük sayfasında / açık antrenman planında anlatım"],
+  ["saatini 10 yap", LA(false), "açık planda kayıt değişikliği"], ["yarına ertele", LA(false)],
+]);
+
+// ---- Günlük ↔ yoklama: söylenen katılanlar "geldi" olur, yoklamada gelenler günlüğe girer ----
+const ATH = [
+  { id: "a1", studentName: "Ali Kaya", status: "active", att: { [today.slice(0, 4)]: { [today.slice(5)]: "present" } } },
+  { id: "a2", studentName: "Ayşe Şahin", status: "active", att: {} },
+  { id: "a3", studentName: "Ali Yılmaz", status: "active", att: {} },
+  { id: "a4", studentName: "Mehmet Demir", status: "active", att: { [today.slice(0, 4)]: { [today.slice(5)]: "absent" } } },
+  { id: "a5", studentName: "Deniz Eski", status: "passive", att: {} },
+];
+group("Antrenman günlüğü (yoklama)")([
+  ["eşleştir", F("tam ad, tek ad, Türkçe harfsiz; iki Ali belirsiz", () => {
+    const m = TL.matchNames(["Ayse", "Mehmet", "Ali", "Ali Kaya", "Deniz"], ATH);
+    return m.ids.join() === "a2,a4,a1" && m.unknown.join() === "Ali,Deniz";
+  })],
+  ["yoklamadaki gelenler", F("günlükte katılan yoksa yoklamadan", () => {
+    const j = TL.joinAttendance({ wind: 12 }, today, ATH);
+    return j.log.athletes.join() === "Ali Kaya" && j.fromAtt.join() === "Ali Kaya" && !Object.keys(j.changes).length;
+  })],
+  ["söylenenler geldi", F("yoklamada geldi olur (gelmedi olan da), gelen zaten işaretli kalır", () => {
+    const j = TL.joinAttendance({ athletes: ["Ayşe", "Mehmet", "Ali Kaya", "Zeynep"] }, today, ATH);
+    return j.changes.a2 === "present" && j.changes.a4 === "present" && !("a1" in j.changes) && j.marked.join() === "Ayşe Şahin,Mehmet Demir" && j.unknown.join() === "Zeynep" && j.log.athletes.length === 4;
+  })],
+  ["cevap", F("işaretlenenler ve bulunamayanlar söylenir", () => TL.attLine({ marked: ["Ayşe Şahin"], unknown: ["Zeynep"] }) === "Yoklamada geldi olarak işaretledim: Ayşe Şahin. Sporcularda bulamadım: Zeynep.")],
+]);
