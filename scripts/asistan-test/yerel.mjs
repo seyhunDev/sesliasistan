@@ -86,7 +86,7 @@ const P = (page) => ({ page }), C = (chat) => ({ chat }), W = (chatWith) => ({ c
 const cases = [
   // sayfalar — farklı söyleyişler
   ["yoklamayı aç", P("attendance")], ["yoklama sayfasını açar mısın", P("attendance")], ["yoklamaya git", P("attendance")], ["Yoklama ekranını göster", P("attendance")],
-  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("events")], ["etkinlikler sayfasına git", P("events")], ["etkinliklerim", P("events")],
+  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("events")], ["etkinlikler sayfasına git", P("events")], ["etkinliklerim", P("events")], ["instagram sayfasını aç", P("posts")], ["gönderileri aç", P("posts")], ["instagram", P("posts")], ["gönderilerim", P("posts")],
   ["ana sayfaya git", P("home")], ["anasayfaya dön", P("home")], ["ana sayfa", P("home")], ["başa dön", P("home")], ["ana ekrana geç", P("home")],
   ["görevleri aç", P("tasks")], ["görevlerime bakalım", P("tasks")], ["yapılacakları göster", P("tasks")], ["işlerimi aç", P("tasks")],
   ["notları aç", P("notes")], ["notlarıma git", P("notes")], ["notlar", P("notes")],
@@ -107,7 +107,7 @@ const cases = [
   ["Ali ile mesajlaşmayı aç", W("Ali Kök")], ["Sanver'in sohbetini aç", W("Sanver İmamoğulları")], ["Pınar ile konuşmamı göster", W("Pınar Ezgi Yıldız")], ["Ali'yle mesajlarımı aç", W("Ali Kök")], ["Elif Şahin ile sohbeti aç", W("Elif Şahin")],
   // sayfa açma DEĞİL (yapay zekaya ya da başka kurala kalmalı)
   ["bugün neler var", null], ["bu haftanın planlarını göster", null], ["yarın planlarım ne", null], ["yoklama al Ali geldi", null], ["Ali ve Zeynep geldi", null],
-  ["ekibe yaz yarın antrenman yok", null], ["Ali'ye mesaj gönder", null], ["plan ekle yarın 10'da toplantı", null], ["not al malzeme odası dolu", null],
+  ["ekibe yaz yarın antrenman yok", null], ["Ali'ye mesaj gönder", null], ["instagram gönderisi hazırla", null], ["ekibe gönderir misin", null], ["plan ekle yarın 10'da toplantı", null], ["not al malzeme odası dolu", null],
   ["kaç görevim var", null], ["açık görevler neler", null], ["fiş yükle", null], ["tekneleri hazırla görevini tamamla", null], ["aileye haber ver akşam geç geleceğim", null],
   ["planlar kaç tane", null], ["sporcular bugün geldi mi", null], ["ayarlar nerede", null],
 ];

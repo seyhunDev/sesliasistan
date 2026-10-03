@@ -9,6 +9,7 @@ export const PAGES = {
   messages: { path: "/messages", label: "Mesajlar" },
   plans: { path: "/plans", label: "Planlar" },
   events: { path: "/events", label: "Etkinlikler", need: "owner" },
+  posts: { path: "/posts", label: "Instagram gönderileri", need: "owner" },
   tasks: { path: "/tasks", label: "Görevler" },
   notes: { path: "/notes", label: "Notlar" },
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
@@ -39,7 +40,7 @@ const PAGE_W = /(^|\s)(sayfa\S*|ekran\S*|bölüm\S*|kısm\S*|menü\S*)(?=\s|$)/;
 const QUESTION = /(^|\s)(neler|ne var|kaç|hangi|var mı|nedir|ne zaman|nerede|kim|kimler|mı|mi|mu|mü)(?=\s|$)|\?/;
 const POLITE_Q = /(aç|göster|götür|geç|gir|bak)\S* m[ıiuü]s[ıiuü]n/; // "açar mısın" soru değil, ricadır
 const TIME_W = /(^|\s)(bugün\S*|yarın\S*|dün|haftaya|bu hafta\S*|geçen|gelecek|önümüzdeki|pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|saat \d|\d{1,2}[:.]\d{2})(?=\s|$)/;
-const OTHER_JOB = /(^|\s)(ekle\S*|oluştur\S*|kaydet\S*|sil\S*|yaz(?!ış)\S*|gönder\S*|söyle\S*|ilet\S*|tamamla\S*|hatırlat\S*|geldi\S*|gelmedi\S*|izinli|çek\S*|yükle\S*|not al\S*|haber\S*|de ki|sor\S*)(?=\s|$)/;
+const OTHER_JOB = /(^|\s)(ekle\S*|oluştur\S*|kaydet\S*|sil\S*|yaz(?!ış)\S*|gönder(?!iler)\S*|söyle\S*|ilet\S*|tamamla\S*|hatırlat\S*|geldi\S*|gelmedi\S*|izinli|çek\S*|yükle\S*|not al\S*|haber\S*|de ki|sor\S*)(?=\s|$)/;
 
 const CHAT_W = /(^|\s)(mesaj\S*|sohbet\S*|konuşma\S*|yazışma\S*|grub\S*|grup\S*|chat)(?=\s|$)/;
 const PEOPLE_W = /(^|\s)(kişi\S*|rehber\S*|liste\S*|bilgi\S*|hesap\S*|üye\S*)(?=\s|$)/;
@@ -64,6 +65,7 @@ const TARGETS = [
   ["notes", /(^|\s)not(lar\S*|ları\S*|larım\S*|um\S*|u|a)?(?=\s|$)/],
   ["calendar", /(^|\s)takvim\S*/],
   ["events", /(^|\s)(etkinlikler\S*|organizasyon\S*|kamp planlar\S*|geziler\S*)/],
+  ["posts", /(^|\s)(instagram\S*|gönderiler\S*|paylaşımlar\S*)/],
   ["plans", /(^|\s)(plan\S*|etkinlik\S*|program\S*)/],
   ["peopleStaff", /(^|\s)(çalışan\S*|personel\S*)/],
   ["people", /(^|\s)(kişi\S*|rehber\S*)/],
@@ -72,7 +74,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim|etkinlikler)(ım|im)?|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|instagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;
