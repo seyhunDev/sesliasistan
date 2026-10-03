@@ -16,6 +16,7 @@ import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, sav
 import { feeOf, gridOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
+import { saveSum } from "@/lib/homeTiles";
 
 // Aidatlar (ana hesap + sporcu yetkisi). Tek bakışta tablo: sporcular × son 6 ay (✓ ödedi, ½ eksik, boş bekliyor).
 // Hücreye dokun: o ayın ödemeleri (tarih, açıklama), nakit ekle. Ay başlığına dokun: ayın ödemeler listesi + Excel.
@@ -73,6 +74,15 @@ function Dues({ uid }) {
       live = false;
     };
   }, [uid, yms, tick]);
+
+  // Ana sayfadaki Aidatlar kartı için bu ayın özeti bu cihazda saklanır (ek okuma yok)
+  useEffect(() => {
+    if (!data || !d || d.error || !mv) return;
+    const active = (data.athletes || []).filter(isActive);
+    const t = gridOf(active, d.months, d.cfg, yms).totals[thisMonth];
+    const pending = mv.error ? 0 : pendingOf(mv.movements, d.months, active, d.cfg, yms).length;
+    saveSum("dues", { ym: thisMonth, paidCount: t.paidCount, count: t.count, pending });
+  }, [data, d, mv, yms, thisMonth]);
 
   if (err?.code === "permission-denied") return <Shell><DikiliLogin denied={!!user} onDone={reload} /></Shell>;
   if (err)

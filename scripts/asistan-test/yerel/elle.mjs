@@ -323,3 +323,33 @@ group("Aidat tablosu")([
     return p.length === 2 && p[0].ym === "2026-10" && p[0].r.picks[0].id === "a4" && p2.length === 1;
   })],
 ]);
+
+// Ana sayfadaki büyük kartlar (Aidatlar, Yarışlar, Instagram, Antrenman günlüğü)
+const HT = await import("@/lib/homeTiles");
+group("Ana sayfa kartları")([
+  ["aidat", F("12/30, bekleyen banka ödemesi uyarı; eski ay özeti gösterilmez", () => {
+    const a = HT.duesTile({ ym: "2026-10", paidCount: 12, count: 30, pending: 3 }, "2026-10");
+    const b = HT.duesTile({ ym: "2026-10", paidCount: 30, count: 30, pending: 0 }, "2026-10");
+    const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
+    return a.big === "12/30" && a.warn && a.sub.includes("3 banka") && b.sub.includes("hepsi ödedi") && !b.warn && c.big === "Ekim";
+  })],
+  ["yarış", F("Foça · 5 gün · 2 iş", () => {
+    const a = HT.raceTile({ name: "Foça", when: "5 gün", left: 2 }, 1);
+    return a.big === "Foça" && a.sub === "5 gün · 2 iş" && a.warn && HT.raceTile(null, 0).big === "Yarış yok";
+  })],
+  ["instagram", F("sayı ve son gönderi", () => {
+    const now = Date.parse("2026-10-03T12:00:00");
+    const a = HT.postsTile({ count: 4, last: { title: "Foça'da", at: Date.parse("2026-10-01T09:00:00") } }, now);
+    return a.big === "4 gönderi" && a.sub === "Son: 2 gün önce · Foça'da" && HT.postsTile(null).sub === "Yeni gönderi hazırla";
+  })],
+  ["antrenman", F("bu ay sayısı, yazılmayan günlük uyarı", () => {
+    const plans = [
+      { cat: "Antrenman", date: "2026-10-01", log: { wind: 12 } },
+      { cat: "Antrenman", date: "2026-10-02" },
+      { cat: "Antrenman", date: "2026-10-09" },
+      { cat: "Antrenman", date: "2026-10-02", status: "cancelled" },
+    ];
+    const t = HT.trainingTile(plans, "2026-10-03");
+    return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
+  })],
+]);

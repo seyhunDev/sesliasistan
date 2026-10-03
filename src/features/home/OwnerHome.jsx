@@ -23,9 +23,10 @@ import { TodayCard } from "./TodayCard";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { StageBrief } from "./StageBrief";
 import { useRaceHome } from "@/features/athletes/raceHome";
+import { ClubTiles } from "./ClubTiles";
 
 // Ana sayfa (sade): gün ve tarih, altında tek satır hava · kişi. Akış: Sıradaki › Senin için › Bugün › (sporcu/veli: yoklama) ›
-// doğum günü › para › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
+// doğum günü › para › büyük kartlar (Aidatlar, Yarışlar, Instagram, Antrenman; ClubTiles) › diğer sayfalar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
 export function OwnerHome() {
   const { profile } = useAuth();
   const now = useNow();
@@ -96,15 +97,11 @@ export function HomeFeed({ weather }) {
   const [used] = useState(readUse);
 
   const links = [
-    race.on && ["/athletes/races", "flag", "Yarışlar", race.next ? 0 : race.up, race.next],
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
     !staff && ["/events", "tent", "Etkinlikler"],
-    !staff && ["/posts", "camera", "Instagram"],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
     athletes && ["/athletes", "anchor", "Sporcular"],
-    athletes && ["/dues", "wallet", "Aidatlar"],
-    plans.some((p) => (p.cat || p.category) === "Antrenman") && ["/training", "trend", "Antrenman günlüğü"],
     ["/birthdays", "cake", "Doğum günleri", birthdays.length],
     listsFor(kind, members).length > 0 && ["/shopping", "cart", "Alışveriş"],
     lessons.length > 0 && ["/schedule", "book", "Dersler"],
@@ -127,18 +124,20 @@ export function HomeFeed({ weather }) {
         <BirthdayStrip />
       </div>
       {canReceipts(kind) && <MoneyRow />}
+      <ClubTiles
+        race={race.on && race}
+        dues={athletes && profile?.role === "owner"}
+        posts={!staff}
+        training={plans.some((p) => (p.cat || p.category) === "Antrenman")}
+        plans={plans}
+        onOpen={saveUse}
+      />
       <nav aria-label="Diğer sayfalar" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
-        {order.map(([href, icon, label, n, next]) => (
+        {order.map(([href, icon, label, n]) => (
           <Link key={href} href={href} onClick={() => saveUse(href)} className="flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
             <Icon name={icon} className="size-4 text-acc" />
             {label}
             {n > 0 && <span className="tabular-nums text-mut">{n}</span>}
-            {next && (
-              <span className="font-medium tabular-nums text-mut">
-                {next.name} · {next.when}
-                {next.left > 0 && <span className="text-amber-700"> · {next.left} iş</span>}
-              </span>
-            )}
           </Link>
         ))}
       </nav>

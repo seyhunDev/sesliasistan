@@ -725,7 +725,7 @@ export function RacesRow() {
       icon="flag"
       tone="acc"
       title="Yarışlar ana sayfada"
-      sub={cur ? "Açık: ana sayfada Yarışlar düğmesi" : "Kapalı: Sporcular sayfasından girilir"}
+      sub={cur ? "Açık: ana sayfada Yarışlar kartı" : "Kapalı: Sporcular sayfasından girilir"}
       right={<Switch on={cur} onChange={flip} label="Yarışlar ana sayfada" />}
     />
   );

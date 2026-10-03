@@ -9,6 +9,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { PostList } from "@/features/posts/PostList";
 import { loadPosts } from "@/features/posts/posts";
+import { saveSum } from "@/lib/homeTiles";
 
 // Instagram gönderileri: görsel + açıklama hazırla, kaydet, paylaş (yalnız ana hesap)
 export default function PostsPage() {
@@ -27,7 +28,14 @@ function Posts({ orgId }) {
   const [posts, setPosts] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
-    loadPosts(orgId).then(setPosts, (e) => (setPosts([]), setError(e?.message || "Gönderiler alınamadı.")));
+    loadPosts(orgId).then(
+      (list) => {
+        setPosts(list);
+        // Ana sayfadaki Instagram kartı için kısa özet bu cihazda (ek okuma yok)
+        saveSum("posts", { count: list.length, last: list[0] ? { title: list[0].headline || list[0].topic.slice(0, 40), at: list[0].at } : null });
+      },
+      (e) => (setPosts([]), setError(e?.message || "Gönderiler alınamadı.")),
+    );
   }, [orgId]);
 
   return (
