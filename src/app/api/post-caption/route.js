@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanRace, cleanTags } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, cleanRace, cleanTags } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,7 @@ Türler: duyuru (yaklaşan yarış), sonuc (yarış sonucu, başarı), antrenman
 Yaz:
 - headline: görselin üstündeki büyük yazı, 2-6 kelime, çarpıcı ve kısa ("Foça'da Yelken Ligi", "Kürsüdeyiz!", "Rüzgâr Bizden Yana"). Emoji yok.
 - sub: görseldeki alt satır, en çok 50 karakter: yer · tarih ya da kısa bilgi ("Foça · 7-11 Ekim", "ILCA 4 · 2. ayak"). Bilgi yoksa boş.
+- people: görselde başlığın altında çıkacak katılan sporcu satırları (yarışta sporcu verildiyse ya da kullanıcı sporcu andıysa; yoksa boş). Her sporcu bir satır: "Ad Soyad · sınıf · kısa açıklama", en çok 45 karakter; kısa açıklama yalnız anlatılandan (ör. "2. oldu", "ilk yarışı", "kaptan"), bilgi yoksa yalnız ad ve sınıf. En çok 4 satır; 4'ten çok sporcu varsa ilk satır "8 sporcumuz yarışta", ikinci satır adlar virgülle (yalnız ilk adlar).
 - tag: görseldeki küçük etiket, 1-2 kelime büyük harf (YARIŞ, SONUÇ, ANTRENMAN, KAYITLAR AÇIK, DUYURU).
 - caption: Instagram açıklaması, sıcak ve samimi kulüp dili, 2-4 kısa paragraf, toplam 350-700 karakter; 2-5 uygun emoji (⛵🌊🏆💪). Gerçek olmayan bilgi, sıralama, puan, isim UYDURMA; yalnız anlatılanı ve verileni kullan. Sporcu adı verilmişse kullan, verilmemişse "sporcularımız" de. Gerekirse sonda kısa bir çağrı (takipte kalın, tebrikler, destek için teşekkürler). Hashtag'leri caption'a yazma.
 - hashtags: 8-12 Türkçe/İngilizce etiket, # olmadan: dikiliyelken, dikili, yelken, sailing ve konuya uygun olanlar (optimist, ilca, foça, izmir, yelkenligi gibi).
@@ -25,6 +26,7 @@ const SCHEMA = {
   properties: {
     headline: { type: "string" },
     sub: { type: "string" },
+    people: { type: "string", description: "Satırlar \\n ile ayrılır" },
     tag: { type: "string" },
     caption: { type: "string" },
     hashtags: { type: "array", items: { type: "string" } },
@@ -56,7 +58,7 @@ async function handle(request) {
     `Bugün: ${S(body?.today, 10) || new Date().toISOString().slice(0, 10)}`,
     `Tür: ${kind}`,
     race &&
-      `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`].filter(Boolean).join("\n")}`,
+      `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`, race.athletes?.length > 0 && `Katılan sporcular: ${race.athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" (") + (a.cls ? ")" : "")).join(", ")}`].filter(Boolean).join("\n")}`,
     topic && `Kullanıcının anlattığı:\n"""\n${topic}\n"""`,
     old && `Mevcut açıklama (istenirse buna göre yeniden yaz):\n"""\n${old}\n"""`,
   ].filter(Boolean).join("\n\n");
@@ -67,6 +69,7 @@ async function handle(request) {
     const out = {
       headline: L(raw?.headline, 90),
       sub: S(raw?.sub, 90),
+      people: cleanPeople(raw?.people),
       tag: S(raw?.tag, 18),
       caption: L(raw?.caption, 2200),
       hashtags: cleanTags(raw?.hashtags),

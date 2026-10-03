@@ -2,8 +2,9 @@
 // Hem telefon hem sunucu (yapay zeka cevabını temizlemek için) kullanır; "use client" yok, Firebase yok.
 //
 // post = {
-//   kind (KINDS), topic (kullanıcının anlattığı), race { name, place, dates, count, classes } | null,
-//   headline (görseldeki büyük yazı), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
+//   kind (KINDS), topic (kullanıcının anlattığı), race { name, place, dates, count, classes, athletes [{ name, cls }] } | null,
+//   headline (görseldeki başlık), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
+//   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
 //   caption (açıklama), hashtags [#etiket],
 //   format "square" 1080x1080 | "portrait" 1080x1350, theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
@@ -53,9 +54,40 @@ export function cleanTags(v) {
   return out;
 }
 
+const cleanAthletes = (a) =>
+  (Array.isArray(a) ? a : [])
+    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30) }))
+    .filter((x) => x.name)
+    .slice(0, 20);
+
 export function cleanRace(r) {
   if (!r || typeof r !== "object" || !S(r.name, 100)) return null;
-  return { name: S(r.name, 100), place: S(r.place, 80), dates: S(r.dates, 60), count: Math.max(0, Math.min(200, Math.round(Number(r.count) || 0))), classes: S(r.classes, 80) };
+  const athletes = cleanAthletes(r.athletes);
+  return {
+    name: S(r.name, 100),
+    place: S(r.place, 80),
+    dates: S(r.dates, 60),
+    count: Math.max(athletes.length, Math.min(200, Math.round(Number(r.count) || 0))),
+    classes: S(r.classes, 80),
+    ...(athletes.length ? { athletes } : {}),
+  };
+}
+
+// Görseldeki sporcu satırları: en çok 4 satır, her biri 60 karakter
+export const cleanPeople = (v) =>
+  String(v ?? "")
+    .split("\n")
+    .map((l) => S(l, 60))
+    .filter(Boolean)
+    .slice(0, 4)
+    .join("\n");
+
+// Yarışın sporcularından görsel satırları: az kişiyse "Ad · sınıf", kalabalıksa adlar yan yana
+export function peopleLines(athletes = []) {
+  if (!athletes.length) return "";
+  if (athletes.length <= 4) return athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" · ")).join("\n");
+  const first = (n) => n.split(" ")[0];
+  return cleanPeople(`${athletes.length} sporcumuz yarışta\n${athletes.map((a) => first(a.name)).join(", ")}`);
 }
 
 export function cleanPost(p = {}) {
@@ -66,6 +98,7 @@ export function cleanPost(p = {}) {
     race: cleanRace(p.race),
     headline: L(p.headline, 90),
     sub: S(p.sub, 90),
+    people: cleanPeople(p.people),
     tag: S(p.tag, 18),
     caption: L(p.caption, 2200),
     hashtags: cleanTags(p.hashtags),
@@ -97,8 +130,10 @@ export function dateRange(a, b) {
 }
 
 // Yarış kaydından gönderiye giden kısa bilgi (sporcu adı ya da kişisel bilgi yok; yalnız sayı)
-export const raceBrief = (r) =>
+// athletes: [{ name, cls }] (yarış sayfasındaki seçili sporcular; yalnız ad ve sınıf)
+export const raceBrief = (r, athletes) =>
   cleanRace({
+    athletes,
     name: r?.name,
     place: [r?.district, r?.city].filter(Boolean).join(", "),
     dates: dateRange(r?.startDate, r?.endDate),
@@ -109,6 +144,6 @@ export const raceBrief = (r) =>
 // Yarıştan gönderinin ilk hali: yarış bitmediyse duyuru, bittiyse sonuç
 export function postFromRace(r, today) {
   const kind = r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
-  const race = raceBrief(r);
-  return cleanPost({ kind, tag: kindOf(kind)[3], race, headline: race?.name || "", sub: [r?.district, race?.dates.replace(/ \d{4}$/, "")].filter(Boolean).join(" · ") });
+  const race = raceBrief(r, r?.athletes);
+  return cleanPost({ kind, tag: kindOf(kind)[3], race, people: peopleLines(race?.athletes), headline: race?.name || "", sub: [r?.district, race?.dates.replace(/ \d{4}$/, "")].filter(Boolean).join(" · ") });
 }

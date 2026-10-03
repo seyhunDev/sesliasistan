@@ -161,21 +161,25 @@ export async function drawPost(canvas, post, photo) {
   ctx.font = `700 30px ${FONT}`;
   ctx.fillText(CLUB, PAD + R * 2 + 24, ly + R);
 
-  // Yazı bloğu: etiket, başlık, alt satır
+  // Yazı bloğu: etiket, başlık, alt satır, sporcular
   const maxW = W - PAD * 2;
-  const head = fit(ctx, post.headline || " ", maxW, post.format === "portrait" ? 5 : 4, 116, 60, 800);
-  const lh = Math.round(head.size * 1.08);
-  ctx.font = `500 40px ${FONT}`;
+  const people = post.people ? post.people.split("\n").slice(0, 4) : [];
+  const head = fit(ctx, post.headline || " ", maxW, post.format === "portrait" ? 4 : 3, people.length ? 76 : 88, 50, 800);
+  const lh = Math.round(head.size * 1.1);
+  ctx.font = `500 38px ${FONT}`;
   const subLines = post.sub ? wrap(ctx, post.sub, maxW).slice(0, 2) : [];
-  const tagH = post.tag ? 58 : 12;
-  const block = tagH + 30 + head.lines.length * lh + (subLines.length ? 26 + subLines.length * 52 : 0);
+  const pp = fit(ctx, people.join("\n") || " ", maxW - 34, people.length, 36, 26, 600);
+  const pLines = people.length ? pp.lines : [];
+  const ph = Math.round(pp.size * 1.42);
+  const tagH = post.tag ? 54 : 12;
+  const block = tagH + 28 + head.lines.length * lh + (subLines.length ? 22 + subLines.length * 50 : 0) + (pLines.length ? 34 + pLines.length * ph : 0);
   let y = top ? PAD + 10 : H - PAD - block;
 
   ctx.textBaseline = "top";
   if (post.tag) {
     ctx.save();
     ctx.shadowColor = "transparent";
-    ctx.font = `800 28px ${FONT}`;
+    ctx.font = `800 26px ${FONT}`;
     const t = post.tag.toLocaleUpperCase("tr-TR");
     const tw = ctx.measureText(t).width + 48;
     ctx.fillStyle = light ? "#1f5a4b" : accent;
@@ -193,7 +197,7 @@ export async function drawPost(canvas, post, photo) {
     ctx.fill();
     ctx.restore();
   }
-  y += tagH + 30;
+  y += tagH + 28;
 
   ctx.fillStyle = ink;
   ctx.font = `800 ${head.size}px ${FONT}`;
@@ -202,14 +206,37 @@ export async function drawPost(canvas, post, photo) {
     y += lh;
   }
   if (subLines.length) {
-    y += 26;
+    y += 22;
     ctx.globalAlpha = 0.9;
-    ctx.font = `500 40px ${FONT}`;
+    ctx.font = `500 38px ${FONT}`;
     for (const l of subLines) {
       ctx.fillText(l, PAD, y);
-      y += 52;
+      y += 50;
     }
     ctx.globalAlpha = 1;
+  }
+  // Sporcular: ince çizgi + her satırın başında renkli nokta
+  if (pLines.length) {
+    y += 14;
+    ctx.save();
+    ctx.shadowColor = "transparent";
+    ctx.fillStyle = light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)";
+    ctx.fillRect(PAD, y, 160, 3);
+    ctx.restore();
+    y += 20;
+    ctx.font = `600 ${pp.size}px ${FONT}`;
+    for (const l of pLines) {
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = light ? "#1f5a4b" : accent;
+      ctx.beginPath();
+      ctx.arc(PAD + 9, y + ph / 2 - 3, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = ink;
+      ctx.fillText(l, PAD + 34, y + (ph - pp.size) / 2 - 2);
+      y += ph;
+    }
   }
   ctx.shadowColor = "transparent";
   return canvas;

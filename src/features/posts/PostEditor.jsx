@@ -94,7 +94,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
-  const look = JSON.stringify([post.format, post.theme, post.pos, post.focus, post.headline, post.sub, post.tag]);
+  const look = JSON.stringify([post.format, post.theme, post.pos, post.focus, post.headline, post.sub, post.people, post.tag]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -169,7 +169,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
     setBusy("ai");
     try {
       const r = await askCaption(post);
-      setP((x) => ({ ...x, headline: r.headline || x.headline, sub: r.sub || x.sub, tag: r.tag || x.tag, caption: r.caption || x.caption }));
+      setP((x) => ({ ...x, headline: r.headline || x.headline, sub: r.sub || x.sub, people: r.people || x.people, tag: r.tag || x.tag, caption: r.caption || x.caption }));
       if (r.hashtags?.length) setTags(r.hashtags.join(" "));
     } catch (e) {
       setErr(e?.message || "Açıklama yazılamadı");
@@ -394,6 +394,16 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
           <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Foça'da Yelken Ligi" />
         </label>
         <Field label="Alt satır" value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={90} placeholder="Foça · 7-11 Ekim" />
+        <label className="block">
+          <span className="text-[0.8125rem] font-medium text-mut">Görselde sporcular (her satır bir sporcu, en çok 4)</span>
+          <textarea
+            value={p.people}
+            onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))}
+            rows={3}
+            className={area}
+            placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"}
+          />
+        </label>
         <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
       </div>
 
