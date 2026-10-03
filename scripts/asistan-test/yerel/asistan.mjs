@@ -221,3 +221,40 @@ group("Etkinlik planı (cevap)")([
   ["Ayvalık'ta, gelecek ay", { desc: "cevap (vazgeç değil)", fn: (s) => EW.isDrop(s), ok: (r) => r === false }],
   ["Ege'de balık tutacağız", { desc: "tür balık", fn: (s) => EW.kindFromText(s), ok: (r) => r === "balik" }],
 ]);
+
+// ---- Tek mesajda sıralı işler (mesaj + takvim + not): hiçbiri atlanmaz, söylenen sırayla ----
+const ST = await import("@/lib/steps");
+const { parseAssistant } = await import("@/lib/ai/assistant");
+const SJ = (desc, exp) => ({ desc, fn: (s) => ST.jobsIn(s).join(","), ok: (r) => r === exp });
+const SM = (desc, exp) => ({ desc, fn: (s) => ST.isMulti(s), ok: (r) => r === exp });
+const gokhan = "Gökhan'a mesaj at, aynı konuyu takvime ekle ve notlara Gökhan için malzeme listesi hazırla";
+group("Sıralı işler (tanıma)")([
+  [gokhan, SJ("mesaj, takvim, not sırasıyla", "send,plan,note")],
+  [gokhan, SM("birden çok iş", true)],
+  ["mesaja mesaj at ve ayni konyu takvime ekle ve notlara malzeme listesi hazirla gokhan icin", SM("ses tanıma bozuk yazımı da", true)],
+  ["takvime yarın 10'da bakım ekle, sonra Ali'ye yaz", SJ("önce takvim sonra mesaj", "plan,send")],
+  ["Ali'ye yaz yarın 9'da gelsin", SM("tek iş (yalnız mesaj)", false)],
+  ["yarın saat 10'da antrenman ekle", SM("tek iş (yalnız plan)", false)],
+  ["not al malzeme odası dolu", SM("tek iş (yalnız not)", false)],
+]);
+group("Sıralı işler (ön cevap)")([
+  [gokhan, PC("tek tür demez, sırayı söyler", (r) => r?.kind === "multi" && /sırayla/.test(r.line) && /mesaj, takvim ve not/.test(r.line) && !r.slots)],
+  ["Ali'ye yaz yarın 9'da gelsin", PC("yalnız mesaj: eskisi gibi", (r) => r?.kind === "send")],
+]);
+const aiMulti = {
+  intent: "message",
+  message: "Gökhan'a şunu göndereyim mi: Gökhan, yarın saat 10'da tekne bakımı var. Ardından takvime ve notlara ekleyeceğim.",
+  send: { to: "Gökhan Demir", text: "Gökhan, yarın saat 10'da tekne bakımı var." },
+  items: [
+    { type: "plan", title: "Tekne bakımı", date: tom, time: "10:00" },
+    { type: "note", title: "Gökhan için malzeme listesi", body: "- Zımpara\n- Vernik" },
+  ],
+};
+const PA = (desc, raw, ok) => [desc, { desc, fn: () => parseAssistant(raw, [], ["Gökhan Demir", "Ali Kök"]), ok }];
+group("Sıralı işler (yapay zeka yanıtı)")([
+  PA("mesaj + kayıtlar birlikte korunur", aiMulti, (r) => r.send?.to === "Gökhan Demir" && r.items.length === 2 && r.items[1].body.includes("Vernik")),
+  PA("intent create olsa da mesaj atılmaz", { ...aiMulti, intent: "create" }, (r) => !!r.send?.text && r.items.length === 2),
+  PA("alıcısız send (create) mesaj sayılmaz", { ...aiMulti, intent: "create", send: { to: "", text: "x" } }, (r) => r.send === null && r.items.length === 2),
+  ["sıra: mesaj önce", { desc: "mesaj önce", fn: () => ST.orderSteps(gokhan, parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].send && r[1].items.length === 2 }],
+  ["sıra: kayıt önce", { desc: "kayıt önce", fn: () => ST.orderSteps("takvime yarın 10'da tekne bakımı ekle, sonra Gökhan'a yaz", parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].items && !!r[1].send }],
+]);
