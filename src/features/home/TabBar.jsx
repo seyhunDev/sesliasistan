@@ -147,7 +147,7 @@ const LIGHT_LABEL = {
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
-export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[3.75rem]" }) {
+export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.875rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -308,7 +308,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
           {active && (
             <div
               ref={pane}
-              className="max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-10.5rem)] overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+              className="max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem)] overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
             >
               <div className="pb-3">
                 <div ref={setSlot} />
@@ -321,12 +321,12 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
           ) : (
-            <div className={`relative flex h-[4.25rem] items-center justify-between px-1 transition-[margin] duration-300 ${active && state === "listening" ? "mt-2" : ""}`}>
+            <div className={`relative flex h-[5.25rem] items-center justify-between px-1 transition-[margin] duration-300 ${active && state === "listening" ? "mt-2" : ""}`}>
               <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
                 <Icon name="keyboard" className="size-[1.375rem]" />
               </button>
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-16" : "size-[3.75rem]"} />
+                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : "size-[4.875rem]"} />
               </span>
               {active ? (
                 <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
