@@ -49,6 +49,7 @@ import { matchPerson } from "@/lib/names";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
+import { isMulti, jobsIn, jobsText, orderSteps } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -143,6 +144,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const focusRef = useRef(null);
   const sentOk = useRef(false); // bu konuşmada gerçekten mesaj gönderildi mi ("gönderdin mi?" sorusuna doğru cevap için)
   const askTo = useRef(null); // "Ekibe ne yazayım?" sorulduysa alıcı: sonraki cümle mesaj olur
+  // Tek mesajda sıralı işler ("Gökhan'a yaz, takvime ekle, notlara liste hazırla"): sıradaki adımlar.
+  // Bir adım bitince (mesaj gönderildi/vazgeçildi, kayıt eklendi/vazgeçildi) sıradaki başlar.
+  const queue = useRef([]);
+  const heldQ = useRef(null); // mesaj taslağı değiştirilirken sıradaki adımlar burada bekler
+  const askAll = useRef(""); // sıralı işte mesajın içeriği soruldu: cevap tüm istekle yeniden sorulur
   const [focus, setFocus] = useState(null);
   const [drafts, setDrafts] = useState([]); // panelde hazırlanan yeni kayıtlar (bilgi tamamsa hemen kaydedilir)
   const [saved, setSaved] = useState([]); // az önce kaydedilenler: [{ kind, id, title, meta }] (kartta yalnız Düzenle)
@@ -287,6 +293,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const need = firstNeed(list);
     // "Kontrol edip kaydedebilirsin" yerine sesli sohbete uygun tek soru: "Kaydedeyim mi?"
     const base = (msg || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?/gi, "").trim() || `${list.length} kayıt hazırladım.`;
+    if (need && !/\?/.test(base)) return `${base} ${need.kind === "date" ? "Hangi gün olsun?" : "Saat kaçta olsun?"}`;
     return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
   }
   function startDrafts(items, s, msg, engine, viaVoice) {
@@ -383,10 +390,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
     const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
     const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
+    if (queue.current.length) return nextStep(viaVoice, r.queued ? `${what} sıraya alındı, internet gelince kaydedilecek. ` : `Ekledim: ${what}${whoTxt}. `);
     reply(r.queued ? `Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${extra(pre)}Ekledim: ${what}${whoTxt}. Değiştirmek istersen söyle.`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
+    if (queue.current.length) return nextStep(viaVoice, "Kaydetmedim. ");
     reply("Tamam, kaydetmedim.", { engine: "local" }, viaVoice);
   }
   // Tam ekranda düzenle: taslaklar yeni kayıt penceresine taşınır
@@ -479,6 +488,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
   }
 
+  // Sıralı işlerin bir adımı: mesaj kartı (onayla gönderilir) ya da kayıtlar (bilgisi tamamsa hemen kaydedilir)
+  // lead: önceki adımın sonucu ("Gönderdim. "); msg: yapay zekanın ilk adım için yazdığı cümle (akışta okunmuş olabilir)
+  function runStep(st, viaVoice, lead = "", msg = "") {
+    if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead);
+    return startDrafts(st.items, st.s, msg || lead, st.engine, viaVoice);
+  }
+  function nextStep(viaVoice, lead) {
+    const st = queue.current.shift();
+    if (!st) return false;
+    runStep(st, viaVoice, lead);
+    return true;
+  }
+
   function go(page, message, viaVoice = false) {
     if (!PAGES[page]) return reply("O sayfayı bulamadım.", { engine: "local" }, viaVoice);
     if (!canOpen(page)) return reply(`${PAGES[page].label} sayfası senin hesabında açık değil.`, { engine: "local" }, viaVoice);
@@ -495,6 +517,33 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const msg = (r.message || "").trim();
     record(s, labelFromAI(r), "ai"); // öğrenme verisi
 
+    // Sıralı işler: mesaj ve yeni kayıtlar söylenen sırayla (biri bitince diğeri); tamamlanan görevler hemen
+    const held = heldQ.current;
+    heldQ.current = null;
+    if (r.send?.text) {
+      let ticked = 0;
+      for (const a of r.actions || []) {
+        const rec = a.kind === "task" && find("task", a.id);
+        if (rec && ((a.op === "complete_task" && !rec.done) || (a.op === "reopen_task" && rec.done))) {
+          toggleTask(a.id);
+          ticked++;
+        }
+      }
+      if (ticked) toast(`${ticked} görev güncellendi`);
+      const steps = orderSteps(s, { send: r.send, items: ["create", "message"].includes(r.intent) ? r.items || [] : [] }).map((st) => ({ ...st, s, engine: r.source }));
+      if (steps.length > 1) {
+        queue.current = steps.slice(1);
+        const lead = `${ticked ? "Görevi tamamladım. " : ""}Sırayla yapıyorum: ${jobsText(jobsIn(s).length > 1 ? jobsIn(s) : ["send", ...r.items.map((d) => d.type)])}. `;
+        // Mesaj ilk adımsa yapay zekanın cümlesi (mesajı okur, akışta okunmuş olabilir) kullanılır; değilse kendi cümlemiz
+        // tamamı okunur (akışta okunan yapay zeka cümlesinin devamı sayılmaz)
+        const useMsg = !!steps[0].send && !!msg && !ticked;
+        if (!useMsg) streamSaid.current = "";
+        return runStep(steps[0], viaVoice, lead, useMsg ? msg : "");
+      }
+      // Bekleyen mesaj taslağı değişti ("daha kısa yaz"): sıradaki işler sürer
+      if (held?.length && !r.items?.length) queue.current = held;
+    }
+
     // Mesaj: alıcı ve düzenlenmiş metin kartta gösterilir; onaylanınca gönderilir
     if (r.intent === "message" && r.send?.text) return prepareSend(r.send.to, r.send.text, msg, r.source, viaVoice);
     // Yapay zeka mesajı yalnızca cevabına yazdıysa ("Ekibe şunu göndereyim mi: …") kart yine hazırlanır
@@ -505,6 +554,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (r.intent === "message" || (SENT_CLAIM.test(msg) && !(sentOk.current && ASKED.test(s)))) {
       const to = r.send?.to || "";
       if (to && resolveTo(to)) askTo.current = to;
+      if (r.intent === "message" && isMulti(s)) askAll.current = s; // sıralı iş: cevapla birlikte hepsi yeniden
       return reply(SENT_CLAIM.test(msg) || !msg ? `Mesajı henüz göndermedim. ${to ? "Ne yazayım?" : "Kime ve ne yazayım?"}` : msg, { engine: r.source, expect: true }, viaVoice);
     }
 
@@ -557,6 +607,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return;
     }
 
+    // Sıralı işte mesajın içeriği soruldu ("Gökhan'a ne yazayım?"): cevap gelince tüm istek yeniden sorulur
+    if (!r.send?.text && !r.items?.length && r.expectReply && isMulti(s) && jobsIn(s).includes("send")) askAll.current = s;
     let said = msg || (done ? "Tamamdır." : "");
     if (!said) said = missing ? "Bunu kayıtlarda bulamadım." : "Bunu tam anlayamadım, bir daha söyler misin?";
     if (missing && !done && !pending.length && !/bulam/.test(said)) said += " Bir kaydı da bulamadım.";
@@ -579,6 +631,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return;
     }
     const history = fresh ? [] : turns.slice(-6).map((x) => ({ role: x.role, text: x.text }));
+    // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
+    if (fresh || !(drafts.length || cards.pending?.send)) queue.current = [];
+    const all = !fresh ? askAll.current : "";
+    askAll.current = "";
     setTurns((p) => [...p, { role: "user", text: s }]);
     setText("");
     setHeard(s);
@@ -614,7 +670,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (cw === "yes" || isYes(s)) return confirmPending(true);
       if (cw === "no" || isNo(s)) return cancelPending(true);
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
+      // Mesaj taslağına değişiklik: sıradaki işler yapay zekanın yeni taslağına kadar bekler
+      heldQ.current = queue.current;
+      queue.current = [];
     }
+    // Sıralı işte mesajın içeriği soruldu: cevap, tüm istekle birlikte doğrudan yapay zekaya (yerel kurallar onu plan sanmasın)
+    if (all && !DROP.test(s) && !QUESTION.test(s)) return askAI(s, `${all}\nMesajın içeriği: ${s}`, viaVoice, history, false);
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): adı kayıtlı yarışlarla eşleşirse o yarışın sayfası
     // Önceki turda sorulan yarış seçenekleri: "ikincisi", "sonuncu", "Foça olan"
     const choices = raceChoices.current;
@@ -703,6 +764,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       countHit("local");
       return runLocal(cmd, s, viaVoice);
     }
+    return askAI(s, s, viaVoice, history, toFocus);
+  }
+
+  // Yapay zekaya sorar. s: kullanıcının bu cümlesi, ask: yapay zekaya giden istek (sıralı işte önceki istekle birleşik)
+  async function askAI(s, ask, viaVoice, history, toFocus) {
     // Öğrenilenler (brain) artık yapay zekadan önce kayıt hazırlamaz: yalnızca yapay zekaya ulaşılamazsa yedek (aşağıda)
     const id = ++runId.current;
     ctrl.current?.abort();
@@ -711,7 +777,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setPhase("thinking");
     // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
     // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
-    const pc = precue(s, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
+    const pc = precue(ask, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
     clearSay();
     streamSaid.current = "";
     setStreamText("");
@@ -743,12 +809,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
-      const r = await askAssistant({ text: s, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
+      const r = await askAssistant({ text: ask, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
       await sleep(BEAT);
       if (id !== runId.current) return;
-      handle(r, s, viaVoice);
+      handle(r, ask, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
       setStreamText("");
@@ -761,6 +827,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         toast("Yapay zekaya ulaşamadım, öğrendiklerime göre hazırladım. Kontrol et.");
         return runLocal(guessed, s, viaVoice);
       }
+      // Sıralı birden çok iş kurallarla ayrılamaz (mesaj metni "takvime ekle…" olurdu): tek tek söylenmesi istenir
+      if (isMulti(ask)) return reply("Yapay zekaya şu an ulaşamadım; birden çok işi sırayla yapamıyorum. Tek tek söyler misin?", { engine: "rules", expect: true }, viaVoice);
       // Mesaj isteği ("Ali'ye yaz: …", "ekibe söyle …"): basit kurallarla taslak (düzenleme yapılmaz, olduğu gibi)
       const toTeam = TEAM_WORD.test(s);
       const mi = messageIntent(toTeam ? s.replace(/^\S+(\s+grubuna)?\s+/i, "") : s, contacts);
@@ -836,13 +904,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!c || !myUid) return null;
     return { cid: dmId(myUid, c.p.uid), label: c.name, create: { type: "dm", members: [myUid, c.p.uid].sort() } };
   }
-  function prepareSend(to, text, msg, engine, viaVoice) {
+  function prepareSend(to, text, msg, engine, viaVoice, lead = "") {
     const dest = resolveTo(to);
     if (!dest) {
       const who = String(to || "").trim();
-      return reply(`${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
+      queue.current = []; // alıcı yoksa sıralı işler de durur (kullanıcı yeniden söyler)
+      return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
     }
-    const said = msg || `${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır: “${text}” Göndereyim mi?`;
+    const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır: “${text}” Göndereyim mi?`;
     reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text } }, engine, expect: true }, viaVoice);
   }
   const setSendText = (t) => setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
@@ -873,6 +942,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         if (ok) sentOk.current = true;
         stepsEnd(ok);
         toast(ok ? "Mesaj gönderildi" : sendErrorText());
+        if (nextStep(fromText && convo.current, ok ? "Gönderdim. " : "Mesajı gönderemedim. ")) return;
         return reply(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
       }
       stepTo(`Mesaj ${team ? `${label} grubuna` : label} gönderiliyor`);
@@ -881,6 +951,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(!!ok);
       toast(ok ? "Mesaj gönderildi" : "Mesaj gönderilemedi");
       navigator.vibrate?.([10, 40, 10]);
+      if (nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
       return reply(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
     }
     let n = 0;
@@ -906,6 +977,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+    if (cards.pending?.send && nextStep(fromText && convo.current, "Tamam, göndermedim. ")) return;
+    queue.current = [];
     reply(cards.pending?.send ? "Tamam, göndermedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
   }
 
@@ -1297,6 +1370,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!keepSpeech) clearSay();
     if (!keepSpeech) tts.stop();
     convo.current = false;
+    queue.current = [];
+    askAll.current = "";
     onClose();
   }
 
