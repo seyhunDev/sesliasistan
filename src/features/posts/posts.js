@@ -59,3 +59,25 @@ export async function askCaption(post) {
   if (!res.ok) throw new Error(p.error || "Açıklama yazılamadı");
   return p;
 }
+
+// Yapay zekayla görsel (Gemini). Görselde yazı olmaz; yazılar telefonda üstüne çizilir. { image: dataURL, usage }
+export async function askImage(post, wish) {
+  const res = await authFetch("/api/post-image", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind: post.kind, topic: post.topic, race: post.race, wish, format: post.format, pos: post.pos }),
+  });
+  const p = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const e = new Error(p.error || "Görsel üretilemedi");
+    e.usage = p.usage;
+    throw e;
+  }
+  return p;
+}
+
+// Görsel sayacı: { model, today, limit, left, month, cost, price, resetAt }
+export async function imageUsage() {
+  const res = await authFetch("/api/post-image");
+  return res.ok ? res.json() : null;
+}
