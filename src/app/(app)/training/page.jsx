@@ -7,7 +7,7 @@ import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
 import { LogDetails, Missing } from "@/features/training/LogDetails";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
-import { RATINGS, logLine, monthLog } from "@/lib/trainingLog";
+import { RATINGS, isTraining, logLine, monthLog } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 
 // Antrenman günlüğü: ay ay antrenman sayısı, günlüğü yazılanlar, toplam süre, ortalama rüzgâr, en çok çalışılan konular.
@@ -23,7 +23,7 @@ export default function TrainingPage() {
   const m = monthLog(plans, ym);
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
   const missing = plans
-    .filter((p) => (p.cat || p.category) === "Antrenman" && p.status !== "cancelled" && !p.log && (p.date || "").startsWith(ym) && p.date <= today)
+    .filter((p) => isTraining(p) && p.status !== "cancelled" && !p.log && (p.date || "").startsWith(ym) && p.date <= today)
     .sort((a, b) => b.date.localeCompare(a.date));
   const top = m.topics[0]?.[1] || 1;
 

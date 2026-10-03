@@ -54,7 +54,7 @@ import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestio
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
+import { bareLog, canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
 import { askLog, saveLog } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
@@ -660,6 +660,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     logFlow.current = null;
     if (lf) {
       if (isDrop(s)) return reply("Tamam, günlüğü bıraktım.", { engine: "local" }, viaVoice);
+      // "Antrenman günlüğü oluştur" denmişti, şimdi anlatılıyor: ikisi birlikte günlüğe
+      if (lf.collect && !wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runLog(`${lf.text}\n${s}`, viaVoice, lf);
       if (lf.ask && !wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runLog(`${lf.text}\nGün: ${s}`, viaVoice, { retry: true });
       if (lf.date && isLogAnswer(s)) return runLog(s, viaVoice, lf);
     }
@@ -668,8 +670,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Açık antrenman planı ekranında ya da Antrenman günlüğü sayfasında antrenman anlatımı ("14 knot poyraz, start çalıştık") da günlüktür
     const fp = focusRef.current?.rec?.kind === "plan" ? plans.find((p) => p.id === focusRef.current.rec.id) : null;
     const logPlan = fp && canLog(fp, todayStr()) ? fp : null;
-    if (!isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s))))
-      return runLog(s, viaVoice, logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {});
+    const at = logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {};
+    if (!isAthleteSide(myKind) && wantsLog(s) && bareLog(s)) {
+      reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
+      logFlow.current = { collect: true, text: s, ...at };
+      return;
+    }
+    if (!isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s)))) return runLog(s, viaVoice, at);
     // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
     // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
     if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
@@ -1301,12 +1308,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       if (!r.log) {
         setSteps([]);
-        return reply("Günlüğe yazılacak bilgi duymadım. Rüzgârı, çalışılanları ya da nasıl geçtiğini söyler misin?", { engine: "ai" }, viaVoice);
+        reply("Günlüğe yazılacak bilgi duymadım. Rüzgârı, çalışılanları ya da nasıl geçtiğini söyler misin?", { engine: "ai", expect: true }, viaVoice);
+        logFlow.current = { collect: true, text, date, time, planId };
+        return;
       }
       if (!r.date) {
         setSteps([]);
-        if (retry) return reply("Günü anlayamadım. Antrenman günlüğü sayfasından günü seçerek yazabilirsin.", { engine: "ai", nav: "training" }, viaVoice);
-        reply("Hangi günün antrenmanı? Bugün, dün ya da gün adını söyle.", { engine: "ai", expect: true }, viaVoice);
+        reply(retry ? "Günü anlayamadım. “Bugün”, “dün” ya da “3 Ekim” gibi söyler misin?" : "Hangi günün antrenmanı? Bugün, dün ya da gün adını söyle.", { engine: "ai", expect: true }, viaVoice);
         logFlow.current = { ask: true, text };
         return;
       }

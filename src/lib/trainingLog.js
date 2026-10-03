@@ -11,7 +11,8 @@ export const RATINGS = [
   [3, "Çok iyi"],
 ];
 
-export const isTraining = (p) => (p?.cat || p?.category) === "Antrenman";
+// Kategorisi Antrenman ya da başlığında antrenman/idman geçen plan (elle "Genel" kategoride açılmış antrenmanlar da)
+export const isTraining = (p) => (p?.cat || p?.category) === "Antrenman" || /antre?nman|idman/i.test(p?.title || "");
 // Günlük, antrenmanın günü ya da sonrasında yazılır (iptal edilen hariç)
 export const canLog = (p, today) => isTraining(p) && p.status !== "cancelled" && !!p.date && p.date <= today;
 
@@ -106,11 +107,16 @@ export function pickPlan(plans, date, time = "") {
 // "dünkü antrenmanda start çalıştık". Sayfa açma ("antrenman günlüğünü aç") ve yeni plan ("yarın 10'da antrenman") değil.
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.,!?;:"“”()]/g, " ").replace(/\s+/g, " ").trim();
 const LOG_W = /(^|\s)(günlü(k|ğ)\S*)(?=\s|$)/;
-const TRAIN_W = /(^|\s)antrenman\S*|(^|\s)idman\S*/;
+const TRAIN_W = /(^|\s)antre?nman\S*|(^|\s)idman\S*/; // ses tanıma "antreman" da yazar
 // geldi/gelmedi tek başına yoklamadır ("Ali antrenmana gelmedi"); günlük sözcüğüyle birlikteyse günlüğe yazılır
 const PAST = /(geçti|çalıştık|çalıştı|yaptık|vardı|esti|çıktık|bitti|sürdü|tamamladık|zorlandı|zorlandık|döndük)(?=\s|$)/;
 const OPEN_ONLY = /^(antrenman )?günlü\S* (sayfa\S* )?(aç|göster|getir|gir|git|bak)\S*$/;
 const FUTURE = /(ekle|planla|oluştur|kur|hatırlat)\S*$|(^|\s)(yarın|haftaya|gelecek)(?=\s|$)/;
+// Günlük yazıldıktan sonra gelen ek bilgi mi ("çok iyi geçti", "90 dakika sürdü", "Ali de vardı", "rüzgâr 12 knot")?
+// Yeni kayıt, mesaj ya da sayfa isteği değilse ve günlük sözcükleri geçiyorsa aynı günlüğe eklenir.
+const INFO = new RegExp(
+  `(knot|\\d+ ?(not|nat|kt)|(^|\\s)kn(?=\\s|$)|rüzg|sağanak|dakika|saat sürdü|sürdü|geçti|çalıştık|deniz|dalga|katıldı|geldi|vardı|gelmedi|iyi|zor|kötü|harika|süper|${[...DIRS, ...TOPICS].map((x) => x.toLocaleLowerCase("tr-TR").split(/[ /]/)[0]).join("|")})`,
+);
 export function wantsLog(text) {
   const t = low(text);
   if (!t || t.split(" ").length > 120 || OPEN_ONLY.test(t)) return false;
@@ -118,8 +124,14 @@ export function wantsLog(text) {
   if (/\?\s*$/.test(String(text).trim()) || (/(^|\s)(m[ıiuü]|m[ıiuü]s[ıiuü]n|ne zaman|nasıl|kaç)(\s|$)/.test(t) && !LOG_W.test(t))) return false;
   if (LOG_W.test(t) && TRAIN_W.test(t)) return t.split(" ").length >= 3;
   if (LOG_W.test(t) && /(yaz|ekle|kaydet|işle|gir)/.test(t) && t.split(" ").length >= 4) return true;
-  return TRAIN_W.test(t) && PAST.test(t) && !FUTURE.test(t);
+  if (FUTURE.test(t)) return false;
+  // "bugünkü antrenmanı kaydet 12 knot poyraz", "antrenman notu: start ve tramola"
+  if (TRAIN_W.test(t) && /(kaydet|kayd[ıi]|notu(?=\s|$))/.test(t) && INFO.test(t)) return true;
+  return TRAIN_W.test(t) && PAST.test(t);
 }
+
+// Yalnız "günlük oluştur / antrenman günlüğü ekle" (anlatım yok): asistan anlatmasını ister, sonraki cümle günlüğe gider
+export const bareLog = (text) => low(text).split(" ").length <= 6 && !INFO.test(low(text));
 
 const dayName = (d, today) => {
   if (d === today) return "Bugünkü";
@@ -161,11 +173,6 @@ export function monthLog(plans, month) {
   };
 }
 
-// Günlük yazıldıktan sonra gelen ek bilgi mi ("çok iyi geçti", "90 dakika sürdü", "Ali de vardı", "rüzgâr 12 knot")?
-// Yeni kayıt, mesaj ya da sayfa isteği değilse ve günlük sözcükleri geçiyorsa aynı günlüğe eklenir.
-const INFO = new RegExp(
-  `(knot|(^|\\s)kn(?=\\s|$)|rüzg|sağanak|dakika|saat sürdü|sürdü|geçti|çalıştık|deniz|dalga|katıldı|geldi|vardı|gelmedi|iyi|zor|kötü|harika|süper|${[...DIRS, ...TOPICS].map((x) => x.toLocaleLowerCase("tr-TR").split(/[ /]/)[0]).join("|")})`,
-);
 export function isLogAnswer(text) {
   const t = low(text);
   if (!t || t.split(" ").length > 60) return false;
