@@ -109,3 +109,61 @@ export function splitAmount(amount, picks, cfg = {}) {
   if (!total) return picks.map((a) => [a, Math.round((amount / picks.length) * 100) / 100]);
   return picks.map((a, i) => [a, Math.round(((amount * fees[i]) / total) * 100) / 100]);
 }
+
+// Ayın ödemeleri tek listede (en yeni önce): bankadan gelen ve sporcuya yazılan ya da sporcuyla eşleşen EFT'ler + nakitler.
+// state: "ok" (onaylı), "guess" (öneri, onay bekliyor), "cash" (nakit). Aidat değil denenler ve sporcuyla ilgisiz paralar girmez.
+export function paymentsOf(movements, month = {}, athletes = [], cfg = {}, ym) {
+  const byId = new Map(athletes.map((a) => [a.id, a]));
+  const confirmed = new Map(); // hareket anahtarı -> [sporcu adı]
+  const out = [];
+  for (const [id, list] of Object.entries(month.paid || {})) {
+    for (const p of list) {
+      const name = byId.get(id)?.studentName || "Sporcu";
+      if (p.via === "cash") out.push({ key: `c${id}${p.at}`, state: "cash", date: p.date || "", ts: Date.parse(p.at) || 0, amount: p.amt, names: [name], desc: "Nakit" });
+      else if (p.mov) confirmed.set(p.mov, [...(confirmed.get(p.mov) || []), name]);
+    }
+  }
+  const ignored = month.ignored || [];
+  for (const m of movements) {
+    if (!(m.amount > 0) || monthOf(m) !== ym) continue;
+    const k = movKey(m);
+    if (ignored.includes(k)) continue;
+    const base = { key: k, date: m.date, ts: m.ts ?? parseTrDate(m.date) ?? 0, amount: m.amount, desc: m.desc };
+    if (confirmed.has(k)) out.push({ ...base, state: "ok", names: confirmed.get(k) });
+    else {
+      const r = matchMovement(m, athletes, cfg);
+      const names = (r.picks.length ? r.picks : r.list.slice(0, 3).map((x) => x.a)).map((a) => a.studentName);
+      if (names.length) out.push({ ...base, state: "guess", names, why: r.why || "aynı soyadlı" });
+    }
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}
+
+// Elle yüklenen banka Excel'i (ör. 3 aylık hesap hareketleri) ile maillerdeki özetler aynı hareketi farklı yazabilir
+// (saatli/saatsiz tarih). Gevşek anahtar: gün + tutar + açıklamanın ilk kelimeleri.
+const dayOf = (d) => (String(d || "").match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/) || []).slice(1).map((x) => x.padStart(2, "0")).join(".");
+export const looseKey = (m) => [dayOf(m.date), Math.round(m.amount * 100), words(m.desc).slice(0, 6).join(" ")].join("|");
+
+// Yüklenen dosyadan saklanacak hareketler: yalnız gelen TL paralar, kısa alanlar
+export function filedMoves(movements) {
+  return movements
+    .filter((m) => m.amount > 0 && (!m.currency || m.currency === "TL"))
+    .map((m) => ({ date: m.date, ts: m.ts, desc: String(m.desc || "").slice(0, 300), amount: m.amount, currency: m.currency || "TL", account: m.account || "", accountLabel: m.accountLabel || "" }));
+}
+// Dosyanın tarih aralığı (YYYY-MM-DD): ay sorgusunda hangi dosyaların okunacağı
+export function rangeOf(moves) {
+  const days = moves.map((m) => m.ts).filter(Number.isFinite).map((t) => new Date(t + 3 * 3600e3).toISOString().slice(0, 10)).sort();
+  return { from: days[0] || "", to: days.at(-1) || "" };
+}
+// Mail hareketleri önce; dosyadakilerden aynısı olanlar atlanır
+export function mergeMoves(mailMoves, fileMoves) {
+  const seen = new Set(mailMoves.map(looseKey));
+  const out = [...mailMoves];
+  for (const m of fileMoves) {
+    const k = looseKey(m);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(m);
+  }
+  return out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+}

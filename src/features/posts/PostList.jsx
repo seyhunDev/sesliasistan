@@ -23,7 +23,7 @@ export function PostList({ posts, onOpen }) {
           <button type="button" onClick={() => onOpen(p)} className={`${card} block w-full overflow-hidden text-left transition active:scale-[.98]`}>
             {p.thumb ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.thumb} alt="" className={`block w-full object-cover ${p.format === "portrait" ? "aspect-[4/5]" : "aspect-square"}`} />
+              <img src={p.thumb} alt="" className={`block w-full object-cover ${p.format === "portrait" ? "aspect-[4/5]" : p.format === "story" ? "aspect-[9/16]" : "aspect-square"}`} />
             ) : (
               <span className="grid aspect-square w-full place-items-center bg-acc/10 text-acc">
                 <Icon name="image" className="size-8" />

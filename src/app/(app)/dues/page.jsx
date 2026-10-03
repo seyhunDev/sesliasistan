@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Seg } from "@/components/ui/Page";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -11,8 +12,8 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
-import { loadDues, loadMovements, saveCfg, saveMonth } from "@/features/dues/duesData";
-import { feeOf, incomingOf, matchMovement, monthRows, movKey, payerOf, splitAmount, usedKeys, words } from "@/lib/dues";
+import { deleteStatement, loadDues, loadMovements, loadStatements, saveCfg, saveMonth, uploadStatement } from "@/features/dues/duesData";
+import { feeOf, incomingOf, matchMovement, monthRows, movKey, payerOf, paymentsOf, splitAmount, usedKeys, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 
@@ -45,6 +46,8 @@ function Dues({ uid }) {
   const [pick, setPick] = useState(""); // elle sporcu seçilen hareket
   const [q, setQ] = useState("");
   const [feeIn, setFeeIn] = useState("");
+  const [view, setView] = useState("athletes"); // athletes | pay (ödemeler listesi)
+  const [tick, setTick] = useState(0); // banka Excel'i yüklenince/silinince hareketler yeniden okunur
 
   useEffect(() => {
     let live = true;
@@ -52,14 +55,20 @@ function Dues({ uid }) {
       (x) => live && setD({ ym, ...x }),
       () => live && setD({ ym, cfg: {}, month: {}, error: true }),
     );
-    loadMovements(uid, ym).then(
-      (x) => live && setMv({ ym, ...x }),
-      () => live && setMv({ ym, movements: [], error: true }),
-    );
     return () => {
       live = false;
     };
   }, [uid, ym]);
+  useEffect(() => {
+    let live = true;
+    loadMovements(uid, ym).then(
+      (x) => live && setMv({ ym, tick, ...x }),
+      () => live && setMv({ ym, tick, movements: [], error: true }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [uid, ym, tick]);
 
   const ready = d?.ym === ym;
   const cfg = ready ? d.cfg : {};
@@ -172,6 +181,12 @@ function Dues({ uid }) {
         </div>
       )}
 
+      <BankFiles uid={uid} onChange={() => setTick((t) => t + 1)} />
+      <Seg value={view} onChange={setView} options={[["athletes", "Sporcular"], ["pay", "Ödemeler"]]} className="mt-3" />
+      {view === "pay" ? (
+        <Payments list={mv?.ym === ym ? paymentsOf(mv.movements, month, active, cfg, ym) : null} ym={ym} error={mv?.ym === ym && mv.error} />
+      ) : (
+      <>
       {/* Bankadan gelenler */}
       <section className="mt-4">
         <div className="flex items-center justify-between px-1">
@@ -186,7 +201,7 @@ function Dues({ uid }) {
           <p className={`mt-2 px-4 py-3 text-[0.875rem] text-rec ${card}`}>Mailler okunamadı. Gmail bağlantısı kurulu mu? (Ayarlar › Gmail bağlantısı)</p>
         ) : !incoming.length ? (
           <p className={`mt-2 px-4 py-3 text-[0.875rem] text-mut ${card}`}>
-            {mv.mails ? "Bu ay eşleştirilecek gelen para yok." : "Bu ay hesap özeti maili gelmemiş. İş Bankası günlük hesap özeti maili gelince EFT'ler burada çıkar."}
+            {mv.mails ? "Bu ay eşleştirilecek gelen para yok." : "Bu ay için hesap özeti yok. İş Bankası maili gelince ya da üstten banka Excel’i yüklenince EFT’ler burada çıkar."}
           </p>
         ) : (
           <ul className={`mt-2 divide-y divide-line ${card}`}>
@@ -265,7 +280,122 @@ function Dues({ uid }) {
           </button>
         )}
       </section>
+      </>
+      )}
     </Shell>
+  );
+}
+
+// Banka Excel'i yükle: bankadan indirilen hesap hareketleri (ör. son 3 ay). Gelen paralar saklanır, geçmiş aylarda da görünür.
+function BankFiles({ uid, onChange }) {
+  const toast = useToast();
+  const input = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [list, setList] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = () => loadStatements(uid).then(setList, () => setList([]));
+  async function pick(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setBusy(true);
+    try {
+      const r = await uploadStatement(uid, f);
+      toast(`${r.count} gelen para eklendi (${r.from.split("-").reverse().join(".")} – ${r.to.split("-").reverse().join(".")})`);
+      onChange();
+      if (open) refresh();
+    } catch (x) {
+      toast(x?.message || "Dosya okunamadı");
+    }
+    setBusy(false);
+  }
+  async function del(f) {
+    if (!confirm(`${f.name} silinsin mi? Onayladığın ödemeler kalır.`)) return;
+    await deleteStatement(uid, f.id).catch(() => toast("Silinemedi"));
+    refresh();
+    onChange();
+  }
+  const day = (s) => String(s || "").split("-").reverse().join(".");
+  return (
+    <div className={`mt-3 ${card}`}>
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <Icon name="download" className="size-5 shrink-0 text-mut" />
+        <button type="button" onClick={() => (setOpen((o) => !o), !open && !list && refresh())} className="min-w-0 flex-1 text-left">
+          <b className="block text-[0.9375rem] font-medium">Banka Excel’i</b>
+          <small className="block text-[0.75rem] text-mut">Geçmiş aylar için bankadan indirdiğin hesap hareketleri</small>
+        </button>
+        <input ref={input} type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" className="hidden" onChange={pick} />
+        <button type="button" disabled={busy} onClick={() => input.current?.click()} className="h-9 shrink-0 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-50">
+          {busy ? "Okunuyor…" : "Yükle"}
+        </button>
+      </div>
+      {open && (
+        <ul className="divide-y divide-line border-t border-line px-4">
+          {!list ? (
+            <li className="py-2 text-[0.8125rem] text-mut">Yükleniyor…</li>
+          ) : !list.length ? (
+            <li className="py-2 text-[0.8125rem] text-mut">Henüz dosya yüklenmedi.</li>
+          ) : (
+            list.map((f) => (
+              <li key={f.id} className="flex items-center gap-2 py-2">
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.875rem] font-medium">{f.name}</b>
+                  <small className="text-[0.75rem] text-mut">{day(f.from)} – {day(f.to)} · {f.count} gelen para</small>
+                </span>
+                <button type="button" onClick={() => del(f)} aria-label="Sil" className="grid size-8 place-items-center rounded-full text-mut active:scale-95">
+                  <Icon name="trash" className="size-4" />
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Ödemeler: ayın bankadan gelen (sporcuyla eşleşen) ve nakit ödemeleri; tarih, tutar, sporcu, açıklama. Excel'e aktarılır.
+const PAY_STATE = { ok: ["Onaylı", "text-ok"], guess: ["Öneri", "text-amber-700"], cash: ["Nakit", "text-acc"] };
+function Payments({ list, ym, error }) {
+  const toast = useToast();
+  if (error) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-rec ${card}`}>Mailler okunamadı. Gmail bağlantısı kurulu mu?</p>;
+  if (!list) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-mut ${card}`}>Hesap özetleri okunuyor…</p>;
+  if (!list.length) return <p className={`mt-3 px-4 py-3 text-[0.875rem] text-mut ${card}`}>Bu ay sporculardan gelen ödeme yok.</p>;
+  const total = list.reduce((s, p) => s + p.amount, 0);
+  async function excel() {
+    try {
+      const XLSX = await import("xlsx");
+      const rows = [["Tarih", "Tutar (TL)", "Sporcu", "Durum", "Açıklama"], ...list.map((p) => [p.date, p.amount, p.names.join(", "), PAY_STATE[p.state][0], p.desc])];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Ödemeler");
+      XLSX.writeFile(wb, `aidat-odemeleri-${ym}.xlsx`);
+    } catch {
+      toast("Excel dosyası hazırlanamadı");
+    }
+  }
+  return (
+    <section className="mt-3">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[0.8125rem] font-semibold text-mut">{list.length} ÖDEME · {TL(total)}</p>
+        <button type="button" onClick={excel} className="text-[0.8125rem] font-semibold text-acc">Excel’e aktar</button>
+      </div>
+      <ul className={`mt-2 divide-y divide-line ${card}`}>
+        {list.map((p) => (
+          <li key={p.key} className="px-4 py-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{p.names.join(" + ")}</b>
+              <b className="shrink-0 tabular-nums text-ok">+{TL(p.amount)}</b>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[0.75rem]">
+              <span className="text-mut">{String(p.date).slice(0, 16)}</span>
+              <span className={`font-semibold ${PAY_STATE[p.state][1]}`}>{PAY_STATE[p.state][0]}{p.state === "guess" ? ` · ${p.why}` : ""}</span>
+            </div>
+            {p.state !== "cash" && <p className="mt-1 break-words text-[0.8125rem] leading-snug text-mut">{p.desc}</p>}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">“Öneri” olanları Sporcular sekmesindeki Bankadan gelenler bölümünden onayla.</p>
+    </section>
   );
 }
 

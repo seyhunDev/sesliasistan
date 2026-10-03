@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, THEMES, cleanPost, cleanTags, fullCaption, kindOf, raceBrief } from "./postModel";
-import { drawPost, loadImg, postFile, thumbOf } from "./postImage";
+import { FORMATS, KINDS, THEMES, aspectOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief } from "./postModel";
+import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage } from "./posts";
 
 const area =
@@ -69,6 +69,9 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   const canvas = useRef(null);
   const file = useRef(null);
   const fileInput = useRef(null);
+  const moreInput = useRef(null);
+  // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
+  const [extras, setExtras] = useState([]); // [{ id, src, i }]
   const [pid, setPid] = useState(start.id || null);
 
   const shown = img?.src === photo ? img.i : null; // yüklenmiş fotoğraf (kaldırılınca null)
@@ -131,14 +134,44 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   };
 
   const getFile = async () => file.current || (canvas.current && (await postFile(canvas.current, slug(p.headline))));
+  // Kapak + ek fotoğraflar (aynı boyutta, sırayla)
+  const getFiles = async () => {
+    const f = await getFile();
+    if (!f || !extras.length) return f ? [f] : [];
+    const c = document.createElement("canvas");
+    const out = [f];
+    for (const [k, x] of extras.entries()) {
+      await drawSlide(c, post.format, x.i);
+      out.push(await postFile(c, `${slug(p.headline)}-${k + 2}`));
+    }
+    return out;
+  };
+  const addExtras = async (e) => {
+    const list = [...(e.target.files || [])].slice(0, 9 - extras.length);
+    e.target.value = "";
+    if (!list.length) return;
+    setBusy("photo");
+    try {
+      const add = [];
+      for (const f of list) {
+        const { dataUrl } = await compressImage(f, 1440, 0.82);
+        add.push({ id: `${Date.now()}-${add.length}`, src: dataUrl, i: await loadImg(dataUrl) });
+      }
+      setExtras((x) => [...x, ...add].slice(0, 9));
+    } catch (x) {
+      setErr(x?.message || "Fotoğraf açılamadı");
+    } finally {
+      setBusy("");
+    }
+  };
 
   // Paylaş: açıklama panoya, görsel paylaşım menüsüne (Instagram açıklamayı almaz; yapıştırılır). Kayıt arkada.
   const share = async () => {
     const text = fullCaption(post);
     const copied = text ? copyText(text) : Promise.resolve(false);
-    const f = file.current || (await getFile());
-    if (f && navigator.canShare?.({ files: [f] })) {
-      const sharing = navigator.share({ files: [f] }).catch((e) => e?.name === "NotAllowedError" && download());
+    const files = extras.length ? await getFiles() : [file.current || (await getFile())].filter(Boolean);
+    if (files.length && navigator.canShare?.({ files })) {
+      const sharing = navigator.share({ files }).catch((e) => e?.name === "NotAllowedError" && download());
       if (dirty) save(true);
       if (await copied) toast("Açıklama kopyalandı · Instagram'da yapıştır");
       await sharing;
@@ -149,14 +182,14 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
     if (dirty) save(true);
   };
   const download = async () => {
-    const f = await getFile();
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = f.name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    for (const f of await getFiles()) {
+      const url = URL.createObjectURL(f);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   };
   const copy = async () => {
     const text = fullCaption(post);
@@ -245,7 +278,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   return (
     <div className="mt-2 pb-6">
       <div className={`${card} overflow-hidden`}>
-        <canvas ref={canvas} className="block h-auto w-full bg-deep" style={{ aspectRatio: post.format === "portrait" ? "4 / 5" : "1 / 1" }} />
+        <canvas ref={canvas} className="block h-auto w-full bg-deep" style={{ aspectRatio: aspectOf(post.format) }} />
       </div>
       <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l])} className="mt-3" />
 
@@ -369,6 +402,29 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
               Fotoğrafı kaldır
             </button>
           )}
+        </div>
+        <input ref={moreInput} type="file" accept="image/*" multiple className="hidden" onChange={addExtras} />
+        <div>
+          <span className="text-[0.8125rem] font-medium text-mut">
+            Kaydırmalı gönderi {extras.length ? `· ${extras.length + 1} sayfa` : "(ek fotoğraflar)"}
+          </span>
+          <div className="-mx-5 mt-1.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+            {extras.map((x, k) => (
+              <span key={x.id} className="relative shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={x.src} alt={`${k + 2}. sayfa`} className="h-20 w-16 rounded-lg object-cover" />
+                <button type="button" aria-label="Kaldır" onClick={() => setExtras((l) => l.filter((y) => y.id !== x.id))} className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-fg text-white">
+                  <Icon name="x" className="size-3.5" />
+                </button>
+              </span>
+            ))}
+            {extras.length < 9 && (
+              <button type="button" onClick={() => moreInput.current?.click()} disabled={busy === "photo"} className="grid h-20 w-16 shrink-0 place-items-center rounded-lg bg-bg text-mut ring-1 ring-line active:scale-95">
+                <Icon name="plus" className="size-5" />
+              </button>
+            )}
+          </div>
+          {extras.length > 0 && <p className="mt-1 text-[0.6875rem] leading-snug text-mut">Paylaş hepsini sırayla gönderir; ek fotoğraflar kaydedilmez, bu ekranda kalır.</p>}
         </div>
         {photo ? (
           <label className="block">
