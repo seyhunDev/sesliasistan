@@ -86,7 +86,7 @@ const P = (page) => ({ page }), C = (chat) => ({ chat }), W = (chatWith) => ({ c
 const cases = [
   // sayfalar — farklı söyleyişler
   ["yoklamayı aç", P("attendance")], ["yoklama sayfasını açar mısın", P("attendance")], ["yoklamaya git", P("attendance")], ["Yoklama ekranını göster", P("attendance")],
-  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("plans")],
+  ["planları aç", P("plans")], ["planlara git", P("plans")], ["planlar sayfası", P("plans")], ["planlarımı göster", P("plans")], ["etkinlikleri aç", P("events")], ["etkinlikler sayfasına git", P("events")], ["etkinliklerim", P("events")],
   ["ana sayfaya git", P("home")], ["anasayfaya dön", P("home")], ["ana sayfa", P("home")], ["başa dön", P("home")], ["ana ekrana geç", P("home")],
   ["görevleri aç", P("tasks")], ["görevlerime bakalım", P("tasks")], ["yapılacakları göster", P("tasks")], ["işlerimi aç", P("tasks")],
   ["notları aç", P("notes")], ["notlarıma git", P("notes")], ["notlar", P("notes")],
@@ -379,6 +379,29 @@ group("Kişi ekleme (hesap)")([
   ["kullanıcı adı ege.d olsun", { desc: "ege.d", fn: (s) => PA.loginIn(s), ok: (r) => r === "ege.d" }],
   ["giriş ege@x.com olsun", { desc: "ege@x.com", fn: (s) => PA.loginIn(s), ok: (r) => r === "ege@x.com" }],
   ["evet aç", { desc: "giriş değişmez", fn: (s) => PA.loginIn(s), ok: (r) => r === "" }],
+]);
+
+// Etkinlik planlama (eventWords.js, eventModel.js): kamp, balık, gezi, konser…
+const EW = await import("@/features/events/eventWords");
+const EM = await import("@/features/events/eventModel");
+const WE = (want) => ({ desc: want ? "etkinlik planı" : "etkinlik planı değil", fn: (s) => EW.wantsEvent(s), ok: (r) => r === want });
+group("Etkinlik planı (tanıma)")([
+  ["kamp planı yapmak istiyorum bana uygun tavsiyeler ver", WE(true)], ["İç Anadolu gezisi planla", WE(true)], ["hafta sonu balık tutmaya gideceğiz ne lazım", WE(true)],
+  ["konsere gitmek istiyorum bütçe çıkar", WE(true)], ["etkinlik planla", WE(true)], ["yaz tatili için plan hazırla", WE(true)], ["piknik organize et", WE(true)],
+  ["Kapadokya'ya gitmeyi düşünüyoruz, gezi planı yapar mısın", WE(true)],
+  ["haftaya salı kamp planla", WE(false)], ["yarın kamp planla", WE(false)], ["cumartesi saat 10'da piknik planla", WE(false)],
+  ["yarın 9'da kamp toplantısı", WE(false)], ["yarış ekle Foça 7-11 Ekim", WE(false)], ["etkinlikleri aç", WE(false)], ["antrenman kampı planla", WE(false)],
+]);
+group("Etkinlik planı (cevap)")([
+  ["vazgeç", { desc: "vazgeç", fn: (s) => EW.isDrop(s), ok: (r) => r === true }],
+  ["Ayvalık'ta, gelecek ay", { desc: "cevap (vazgeç değil)", fn: (s) => EW.isDrop(s), ok: (r) => r === false }],
+  ["Ege'de balık tutacağız", { desc: "tür balık", fn: (s) => EW.kindFromText(s), ok: (r) => r === "balik" }],
+]);
+group("Etkinlik planı (bütçe ve temizlik)")([
+  ["kişi başı ve ortak", { desc: "4 kişi: 4×500×2 + 1200 = 5200, kişi başı 1300", fn: () => EM.totals(EM.cleanEvent({ people: 4, budget: [{ title: "Yemek", amount: 500, unit: "person", qty: 2 }, { title: "Yakıt", amount: 1200, unit: "shared" }] })), ok: (r) => r.total === 5200 && r.perPerson === 1300 }],
+  ["kişi yok", { desc: "1 kişi sayılır", fn: () => EM.totals(EM.cleanEvent({ budget: [{ title: "Bilet", amount: 900, unit: "person" }] })), ok: (r) => r.total === 900 && r.people === 1 }],
+  ["bozuk veri", { desc: "tür, tarih, boş kalemler süzülür", fn: () => EM.cleanEvent({ kind: "xx", startDate: "7 Ekim", endDate: "2020-01-01", needs: [{ title: "" }, { title: "Çadır", cat: "Barınma" }], todos: [{ title: "Yer ayırt", date: "yarın" }] }), ok: (r) => r.kind === "diger" && r.startDate === "" && r.endDate === "" && r.needs.length === 1 && r.todos[0].date === "" }],
+  ["özet cümlesi", { desc: "ihtiyaç, tahmini bütçe, kişi başı", fn: () => EM.countsText(EM.cleanEvent({ people: 2, needs: [{ title: "Çadır" }], budget: [{ title: "Yakıt", amount: 1000, unit: "shared", est: true }] })), ok: (r) => /1 ihtiyaç/.test(r) && /tahmini bütçe 1\.000\s₺/.test(r) && /kişi başı 500\s₺/.test(r) }],
 ]);
 
 export default results;

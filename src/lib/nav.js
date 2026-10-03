@@ -8,6 +8,7 @@ export const PAGES = {
   calendar: { path: "/calendar", label: "Takvim" },
   messages: { path: "/messages", label: "Mesajlar" },
   plans: { path: "/plans", label: "Planlar" },
+  events: { path: "/events", label: "Etkinlikler", need: "owner" },
   tasks: { path: "/tasks", label: "Görevler" },
   notes: { path: "/notes", label: "Notlar" },
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
@@ -62,6 +63,7 @@ const TARGETS = [
   ["tasks", /(^|\s)(görev\S*|yapılacak\S*|işler\S*|işlerim\S*)/],
   ["notes", /(^|\s)not(lar\S*|ları\S*|larım\S*|um\S*|u|a)?(?=\s|$)/],
   ["calendar", /(^|\s)takvim\S*/],
+  ["events", /(^|\s)(etkinlikler\S*|organizasyon\S*|kamp planlar\S*|geziler\S*)/],
   ["plans", /(^|\s)(plan\S*|etkinlik\S*|program\S*)/],
   ["peopleStaff", /(^|\s)(çalışan\S*|personel\S*)/],
   ["people", /(^|\s)(kişi\S*|rehber\S*)/],
@@ -70,7 +72,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim)(ım|im)?|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim|etkinlikler)(ım|im)?|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;
