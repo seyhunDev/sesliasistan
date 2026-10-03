@@ -100,7 +100,7 @@ export function cleanPost(p = {}) {
     topic: L(p.topic, 1500),
     race: cleanRace(p.race),
     headline: L(p.headline, 90),
-    sub: S(p.sub, 90),
+    sub: S(p.sub, 200),
     people: cleanPeople(p.people),
     tag: S(p.tag, 18),
     caption: L(p.caption, 2200),
@@ -144,9 +144,31 @@ export const raceBrief = (r, athletes) =>
     classes: (r?.notice?.classes || []).filter((c) => typeof c === "string").join(", "),
   });
 
+// Türkçe ilgi eki (ünlü uyumu): Foça → Foça'nın, Çeşme → Çeşme'nin, Bodrum → Bodrum'un, Göcek → Göcek'in
+export function genitive(word) {
+  const w = String(word || "").trim();
+  const v = w.toLocaleLowerCase("tr-TR").match(/[aıoueiöü](?=[^aıoueiöü]*$)/)?.[0];
+  if (!v) return w;
+  const suf = { a: "ın", ı: "ın", e: "in", i: "in", o: "un", u: "un", ö: "ün", ü: "ün" }[v];
+  return `${w}'${/[aıoueiöü]$/i.test(w.toLocaleLowerCase("tr-TR")) ? "n" : ""}${suf}`;
+}
+
+// Yarış bağlıysa görseldeki alt satır: 1 sporcu "Sporcumuz Mete Ok", 2 sporcu "Sporcularımız A ve B",
+// 3 ve fazlası yalnız "Sporcularımız" (ad ve sayı yok). Yer yarışın ilçesi (yoksa ili).
+export function raceSub(race, kind = "duyuru") {
+  if (!race) return "";
+  const a = race.athletes || [];
+  const who = a.length === 1 ? `Sporcumuz ${a[0].name}` : a.length === 2 ? `Sporcularımız ${a[0].name} ve ${a[1].name}` : "Sporcularımız";
+  const town = String(race.place || "").split(",")[0].trim();
+  const where = town ? `${genitive(town)} rüzgarlı sularında` : "yarışta";
+  return kind === "sonuc" ? `${who}, ${where} kulübümüzü başarıyla temsil etti.` : `${who}, ${where} kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı.`;
+}
+// Ad zaten alt satırda geçiyorsa (1-2 sporcu) ayrı sporcu satırı yazılmaz
+export const racePeople = (race) => ((race?.athletes?.length || 0) > 2 ? peopleLines(race.athletes) : "");
+
 // Yarıştan gönderinin ilk hali: yarış bitmediyse duyuru, bittiyse sonuç
 export function postFromRace(r, today) {
   const kind = r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
   const race = raceBrief(r, r?.athletes);
-  return cleanPost({ kind, tag: kindOf(kind)[3], race, people: peopleLines(race?.athletes), headline: race?.name || "", sub: [r?.district, race?.dates.replace(/ \d{4}$/, "")].filter(Boolean).join(" · ") });
+  return cleanPost({ kind, tag: kindOf(kind)[3], race, people: racePeople(race), headline: race?.name || "", sub: raceSub(race, kind) });
 }

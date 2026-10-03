@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, THEMES, aspectOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief } from "./postModel";
+import { FORMATS, KINDS, THEMES, aspectOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief, raceSub } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage } from "./posts";
 
@@ -261,7 +261,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   const setRace = (r) => {
     const race = raceBrief(r);
     setRaces(null);
-    setP((x) => ({ ...x, race, headline: x.headline || race?.name || "", sub: x.sub || [r.district, race?.dates.replace(/ \d{4}$/, "")].filter(Boolean).join(" · ") }));
+    setP((x) => ({ ...x, race, headline: x.headline || race?.name || "", sub: x.sub || raceSub(race, x.kind) }));
   };
 
   const del = async () => {
@@ -303,7 +303,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
       <Label>NE PAYLAŞACAKSIN</Label>
       <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
         {KINDS.map(([k, label, icon, tag]) => (
-          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setP((x) => ({ ...x, kind: k, tag: !x.tag || KINDS.some((q) => q[3] === x.tag) ? tag : x.tag }))}>
+          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setP((x) => ({ ...x, kind: k, tag: !x.tag || KINDS.some((q) => q[3] === x.tag) ? tag : x.tag, sub: x.race && x.sub === raceSub(x.race, x.kind) ? raceSub(x.race, k) : x.sub }))}>
             <Icon name={icon} className="size-4" />
             {label}
           </button>
@@ -449,7 +449,10 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
           <span className="text-[0.8125rem] font-medium text-mut">Başlık</span>
           <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Foça'da Yelken Ligi" />
         </label>
-        <Field label="Alt satır" value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={90} placeholder="Foça · 7-11 Ekim" />
+        <label className="block">
+          <span className="text-[0.8125rem] font-medium text-mut">Alt satır</span>
+          <textarea value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={200} rows={3} className={area} placeholder="Sporcumuz Mete Ok, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." />
+        </label>
         <label className="block">
           <span className="text-[0.8125rem] font-medium text-mut">Görselde sporcular (her satır bir sporcu, en çok 4)</span>
           <textarea
