@@ -54,7 +54,7 @@ import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestio
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
+import { canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
 import { askLog, saveLog } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
@@ -665,7 +665,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     // Antrenman günlüğü ("dünkü antrenmanda 12 knot poyraz vardı, start çalıştık", "antrenman günlüğüne yaz: …"):
     // yapay zeka alanlara ayırır, günün antrenman planına yazılır (yoksa plan açılır). Tarih yoksa sorulur, diğer eksikler söylenir.
-    if (!isAthleteSide(myKind) && wantsLog(s)) return runLog(s, viaVoice);
+    // Açık antrenman planı ekranında ya da Antrenman günlüğü sayfasında antrenman anlatımı ("14 knot poyraz, start çalıştık") da günlüktür
+    const fp = focusRef.current?.rec?.kind === "plan" ? plans.find((p) => p.id === focusRef.current.rec.id) : null;
+    const logPlan = fp && canLog(fp, todayStr()) ? fp : null;
+    if (!isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s))))
+      return runLog(s, viaVoice, logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {});
     // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
     // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
     if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
@@ -1287,7 +1291,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
   }
   // Antrenman günlüğü: anlatılan → alanlar; tarih yoksa sorulur (bir kez), varsa günün antrenmanına yazılır
-  async function runLog(text, viaVoice, { date = "", time = "", retry = false } = {}) {
+  async function runLog(text, viaVoice, { date = "", time = "", planId = "", retry = false } = {}) {
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
@@ -1307,7 +1311,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         return;
       }
       stepTo("Günlüğe yazılıyor");
-      const sv = await saveLog({ plans, updateRecord, saveDrafts, isLocked }, { ...r, time: r.time || time }, by, viaVoice || convo.current ? "voice" : "manual");
+      const sv = await saveLog({ plans, updateRecord, saveDrafts, isLocked }, { ...r, time: r.time || time, planId: r.date === date ? planId : "" }, by, viaVoice || convo.current ? "voice" : "manual");
       if (id !== runId.current) return;
       if (sv.error) {
         stepsEnd(false);
@@ -1318,7 +1322,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       toast("Günlük kaydedildi");
       const more = missingOf(sv.log).length > 0;
       reply(logReply(sv.log, r.date, todayStr(), sv.fresh), { show: sv.id ? [{ kind: "plan", id: sv.id }] : [], nav: "training", engine: "ai", expect: more }, viaVoice);
-      if (more) logFlow.current = { date: r.date, time: r.time || time };
+      if (more) logFlow.current = { date: r.date, time: r.time || time, planId: sv.id };
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);

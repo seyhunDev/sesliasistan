@@ -4,9 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAdd } from "@/features/add/AddProvider";
-import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { LogComposer } from "@/features/training/LogComposer";
 import { LogDetails, Missing } from "@/features/training/LogDetails";
 import { monthLabel, shiftMonth } from "@/features/athletes/attendanceReport";
 import { RATINGS, logLine, monthLog } from "@/lib/trainingLog";
@@ -14,13 +12,12 @@ import { todayStr } from "@/lib/utils/format";
 
 // Antrenman günlüğü: ay ay antrenman sayısı, günlüğü yazılanlar, toplam süre, ortalama rüzgâr, en çok çalışılan konular.
 // Kayıtlar antrenman planlarının log alanından (cihazdaki planlar; ek okuma yok). Satıra dokununca plan açılır.
-// Üstte "Yapay zekayla yaz": anlatılandan günlük (LogComposer); eksik alanlar satırda "Eksik: …" olarak görünür.
+// Günlük ana asistanla da yazılır (bu sayfada alttaki kubbe: antrenmanı anlat); eksik alanlar satırda "Eksik: …" görünür.
 const dayText = (p) => new Date(`${p.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 export default function TrainingPage() {
   const { plans } = useData();
   const { openAdd } = useAdd();
-  const { profile } = useAuth();
   const today = todayStr();
   const [ym, setYm] = useState(today.slice(0, 7));
   const m = monthLog(plans, ym);
@@ -42,8 +39,6 @@ export default function TrainingPage() {
           <Icon name="chev" className="size-5" />
         </button>
       </div>
-
-      <LogComposer by={{ name: profile?.name ?? "Kullanıcı" }} onOpen={(id) => openAdd({ edit: { kind: "plan", id } })} />
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
         {[
@@ -98,7 +93,7 @@ export default function TrainingPage() {
         <p className="px-1 text-[0.8125rem] font-semibold text-mut">GÜNLÜK</p>
         {m.logged.length === 0 ? (
           <p className="mt-2 rounded-2xl bg-card px-4 py-4 text-[0.875rem] text-mut shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-            Bu ay yazılmış günlük yok. Yukarıya antrenmanı anlat ya da antrenman planını açıp alttaki “Antrenman günlüğü”nü doldur. Asistana da söyleyebilirsin: “dünkü antrenmanda 12 knot poyraz vardı, start çalıştık”.
+            Bu ay yazılmış günlük yok. Asistana antrenmanı anlat (“dünkü antrenmanda 12 knot poyraz vardı, start çalıştık”) ya da antrenman planını açıp alttaki “Antrenman günlüğü”nü doldur.
           </p>
         ) : (
           <ul className="mt-2 divide-y divide-line rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">

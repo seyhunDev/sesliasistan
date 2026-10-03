@@ -31,6 +31,7 @@ const PAGES = {
   "/receipts": { ph: "Fişlerle ilgili sor…", first: "Fiş" },
   "/schedule": { ph: "ör. salı 13:00 fizik B-204", first: "Dersler" },
   "/athletes/attendance": { ph: "Ali ve Zeynep geldi…" },
+  "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };
 const SHOWN = Object.keys(PAGES);
 // Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
