@@ -15,6 +15,8 @@ export async function loadDues(orgId, ym) {
   return { cfg: c.data() || {}, month: m.data() || {} };
 }
 export const saveCfg = (orgId, cfg) => setDoc(dues(orgId, "settings"), clean(cfg));
+// Sunucunun maildeki ödemeleri eşleştirebilmesi için etkin sporcuların adları (duesAuto.js); diğer ayarlara dokunmaz
+export const saveRoster = (orgId, roster) => setDoc(dues(orgId, "settings"), { roster: clean(roster) }, { merge: true });
 export const saveMonth = (orgId, ym, month) => setDoc(dues(orgId, ym), clean(month));
 
 // Ayın banka hareketleri: o ay ve sonraki ayın ilk 5 günü gelen hesap özeti mailleri (ayın son günleri sonraki özette olabilir)

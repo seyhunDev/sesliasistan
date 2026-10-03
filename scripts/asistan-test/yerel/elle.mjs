@@ -353,3 +353,42 @@ group("Ana sayfa kartları")([
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
   })],
 ]);
+
+// Günlük banka mailinden aidatın kendiliğinden yazılması ve bildirimi
+const DAU = await import("@/lib/duesAuto");
+group("Aidat otomatik")([
+  ["emin ve tutar tutuyor", F("AYSE SAHIN 1500 → Deniz'e yazılır, gönderen öğrenilir", () => {
+    const r = DAU.autoDues([mvt("FAST AYSE SAHIN EKIM AIDAT")], { ...DCFG, roster: DA }, {});
+    const p = r.months["2026-10"]?.paid?.a1?.[0];
+    return r.paid.length === 1 && p?.amt === 1500 && p.by === "auto" && r.payers?.a1?.[0] === "AYSE SAHIN" && r.open === 0;
+  })],
+  ["tutar tutmuyor ya da emin değil", F("onaya kalır, open sayılır", () => {
+    const r = DAU.autoDues([mvt("FAST AYSE SAHIN", 900), mvt("HAVALE MEHMET YILMAZ"), mvt("EFT BILINMEYEN KISI")], { ...DCFG, roster: DA }, {});
+    return r.paid.length === 0 && r.open === 2 && !Object.keys(r.months).length;
+  })],
+  ["kardeşler toplamı", F("2500 → Ege 1500 + Ada 1000", () => {
+    const r = DAU.autoDues([mvt("HAVALE MEHMET YILMAZ", 2500)], { ...DCFG, roster: DA }, {});
+    const m = r.months["2026-10"]?.paid || {};
+    return m.a2?.[0].amt === 1500 && m.a3?.[0].amt === 1000 && r.paid[0].names.length === 2;
+  })],
+  ["aynı hareket iki kez yazılmaz", F("zaten yazılmış ya da aidat değil", () => {
+    const m = mvt("FAST AYSE SAHIN");
+    const a = DAU.autoDues([m], { ...DCFG, roster: DA }, { "2026-10": { paid: { a1: [{ amt: 1500, mov: DU.movKey(m) }] } } });
+    const b = DAU.autoDues([m], { ...DCFG, roster: DA }, { "2026-10": { ignored: [DU.movKey(m)] } });
+    return !a.paid.length && !b.paid.length && !b.open;
+  })],
+  ["liste yoksa hiçbir şey", F("Aidatlar sayfası açılmamış", () => DAU.autoDues([mvt("FAST AYSE SAHIN")], DCFG, {}).paid.length === 0 && DAU.duesText(DAU.autoDues([], DCFG)) === null)],
+  ["bildirim metni", F("Aidat geldi: Deniz Şahin / 2 sporcu · onay bekliyor", () => {
+    const a = DAU.duesText({ paid: [{ names: ["Deniz Şahin"], amount: 1500 }], open: 0 });
+    const b = DAU.duesText({ paid: [{ names: ["Ege Yılmaz", "Ada Yılmaz"], amount: 2500 }], open: 1 });
+    const c = DAU.duesText({ paid: [], open: 2 });
+    return a.title === "Aidat geldi: Deniz Şahin" && a.body === "Deniz Şahin 1.500 TL" && b.title === "Aidat geldi: 2 sporcu" && b.body === "Ege Yılmaz ve Ada Yılmaz 2.500 TL · 1 ödeme onay bekliyor" && c.title === "Aidat: 2 ödeme onay bekliyor";
+  })],
+  ["maildeki hesap özetinden yazma", F("runAutoDues ayar + ay okur, ayı ve gönderenleri yazar", async () => {
+    const store = { "orgs/u1/dues/settings": { ...DCFG, roster: DAU.rosterOf(DA) } };
+    const io = { get: async (p) => store[p] || null, set: async (p, f) => void (store[p] = { ...(store[p] || {}), ...f }) };
+    const mail = { at: "2026-10-05T07:00:00Z", sheets: [{ columns: ["Tarih", "Açıklama", "Tutar", "Bakiye"], rows: [{ v: ["05.10.2026 10:12", "FAST AYSE SAHIN", 1500, 9000] }, { v: ["05.10.2026 11:00", "KIRA", -3000, 6000] }], sum: { currency: "TL" } }] };
+    const r = await DAU.runAutoDues(io, "u1", [mail]);
+    return r.paid.length === 1 && store["orgs/u1/dues/2026-10"]?.paid?.a1?.length === 1 && store["orgs/u1/dues/settings"].payers.a1[0] === "AYSE SAHIN";
+  })],
+]);
