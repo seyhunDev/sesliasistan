@@ -307,3 +307,19 @@ group("Banka Excel'i yükleme")([
     return m.length === 2 && m.includes(a) && m.includes(c);
   })],
 ]);
+
+// Aidat tablosu (sporcu × ay)
+group("Aidat tablosu")([
+  ["son 6 ay", F("2026-05 … 2026-10, yıl geçişi", () => { const m = DU.lastMonths("2026-10"); const y = DU.lastMonths("2026-02", 3); return m.length === 6 && m[0] === "2026-05" && m[5] === "2026-10" && y.join() === "2025-12,2026-01,2026-02"; })],
+  ["hücreler ve toplam", F("adına göre sıralı, ay başına ödeyen", () => {
+    const g = DU.gridOf(DA.slice(0, 3), { "2026-09": { paid: { a1: [{ amt: 1500 }] } }, "2026-10": { paid: { a1: [{ amt: 1500 }], a3: [{ amt: 400 }] } } }, DCFG, ["2026-09", "2026-10"]);
+    return g.rows[0].a.id === "a3" && g.rows[0].cells["2026-10"].state === "part" && g.rows[1].cells["2026-09"].state === "paid" && g.totals["2026-10"].paidCount === 1 && g.totals["2026-09"].count === 3;
+  })],
+  ["bekleyenler", F("ay ay, en yeni ay önce, onaylı olan çıkmaz", () => {
+    const a = mvt("FAST AYSE SAHIN", 1500, "03.09.2026 09:00");
+    const b = mvt("EFT ELIF OZTURK", 1500, "06.10.2026 11:00");
+    const p = DU.pendingOf([a, b], { "2026-09": {}, "2026-10": {} }, DA, DCFG, ["2026-09", "2026-10"]);
+    const p2 = DU.pendingOf([a, b], { "2026-09": { paid: { a1: [{ amt: 1500, mov: DU.movKey(a) }] } } }, DA, DCFG, ["2026-09", "2026-10"]);
+    return p.length === 2 && p[0].ym === "2026-10" && p[0].r.picks[0].id === "a4" && p2.length === 1;
+  })],
+]);
