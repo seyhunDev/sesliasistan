@@ -138,7 +138,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const sentOk = useRef(false); // bu konuşmada gerçekten mesaj gönderildi mi ("gönderdin mi?" sorusuna doğru cevap için)
   const askTo = useRef(null); // "Ekibe ne yazayım?" sorulduysa alıcı: sonraki cümle mesaj olur
   const [focus, setFocus] = useState(null);
-  const [drafts, setDrafts] = useState([]); // panelde hazırlanan yeni kayıtlar ("kaydet" deyince kaydedilir)
+  const [drafts, setDrafts] = useState([]); // panelde hazırlanan yeni kayıtlar (bilgi tamamsa hemen kaydedilir)
+  const [saved, setSaved] = useState([]); // az önce kaydedilenler: [{ kind, id, title, meta }] (kartta yalnız Düzenle)
   const convo = useRef(false); // sesli sohbet: her cevaptan sonra mikrofon kendiliğinden açılır
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
   const inflight = useRef(null);
@@ -282,6 +283,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     let next = items.map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
+    if (ready(next)) return saveDraftsNow(viaVoice, next, msg);
     setDrafts(next);
     reply(draftSay(msg, next), { engine }, viaVoice);
   }
@@ -305,6 +307,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       let next = items.length ? carry(known, items) : drafts;
       const need = firstNeed(next);
       if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
+      if (ready(next)) return saveDraftsNow(viaVoice, next, r.message);
       setDrafts(next);
       reply(draftSay(r.message, next), { engine: r.source }, viaVoice);
     } catch (e) {
@@ -339,27 +342,38 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id === runId.current) setPhase("idle");
     }
   }
-  async function saveDraftsNow(viaVoice) {
-    for (const d of drafts) {
+  // Bilgisi tamam taslak (eksik soru yok, başlık/tarih var) sormadan kaydedilir; kartta yalnız Düzenle kalır
+  const extra = (m) => {
+    const t = (m || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?|\s*kaydedeyim mi\?/gi, "").trim();
+    return t && !/(ekledim|kaydettim|hazırladım|oluşturdum)/i.test(t) ? `${t} ` : "";
+  };
+  const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
+  // pre: yapay zekanın ek sözü (çakışma, rüzgâr…); varsa "Ekledim" cümlesinden önce gelir (akışta okunduysa tekrar okunmaz)
+  async function saveDraftsNow(viaVoice, list = drafts, pre = "") {
+    for (const d of list) {
       const e = check(d);
       if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
     }
-    const list = drafts;
     setPhase("thinking");
     const r = await saveDrafts(list.map(tidy), { source: viaVoice || convo.current ? "voice" : "manual", by });
     setPhase("idle");
     // Kayıt veritabanına yazılamadıysa "kaydettim" denmez; taslak durur, yeniden "kaydet" denebilir
-    if (!r || r.error || r.plans + r.tasks + r.notes === 0)
+    if (!r || r.error || r.plans + r.tasks + r.notes === 0) {
+      setDrafts(list);
       return reply("Kaydedemedim, bir sorun çıktı. Taslak duruyor; tekrar “kaydet” diyebilirsin.", { engine: "local" }, viaVoice);
+    }
     const said = turns.find((t) => t.role === "user" && !t.chip)?.text;
     if (said) record(said, labelFromItems(list), "user");
     const parts = [r.plans && `${r.plans} plan`, r.tasks && `${r.tasks} görev`, r.notes && `${r.notes} not`].filter(Boolean);
     const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
     setDrafts([]);
+    setSaved((r.ids || []).map(([kind, id], i) => list[i] && { kind, id, title: list[i].title || list[i].body || "Başlıksız", meta: draftMeta(list[i]), type: list[i].type }).filter(Boolean));
     toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}`);
     navigator.vibrate?.([10, 40, 10]);
-    const what = `${parts.join(", ")}${who.length ? `, ${who.join(" ve ")} sorumlu` : ""}`;
-    reply(r.queued ? `Bağlantı zayıf: ${what} sıraya alındı, internet gelince kaydedilecek.` : `Kaydettim: ${what}. Başka bir şey var mı?`, { engine: "local" }, viaVoice);
+    // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
+    const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
+    const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
+    reply(r.queued ? `Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${extra(pre)}Ekledim: ${what}${whoTxt}. Değiştirmek istersen söyle.`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
@@ -560,6 +574,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setHeard(s);
     setError("");
     setSteps([]);
+    setSaved([]);
     tts.stop();
 
     // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
@@ -1257,6 +1272,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const t = setTimeout(() => {
         setTurns([]);
         setDrafts([]);
+        setSaved([]);
         setCards(EMPTY);
         setText("");
         setHeard("");
@@ -1285,6 +1301,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     convo.current = !!(seed?.listen || seed?.voice);
     setDrafts([]);
+    setSaved([]);
     setText("");
     setTurns([]);
     setCards(EMPTY);
@@ -1459,6 +1476,27 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               <button type="button" onClick={editDraftsFull} className="h-11 rounded-full bg-bg px-4 text-[0.875rem] font-semibold transition active:scale-[.98]">Düzenle</button>
               <button type="button" onClick={() => dropDrafts(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut transition active:bg-bg"><Icon name="x" className="size-[1.125rem]" /></button>
             </div>
+          </div>
+        )}
+
+        {/* Az önce kaydedilenler: yalnız Düzenle (değişiklik sesle de söylenebilir) */}
+        {saved.length > 0 && !drafts.length && (
+          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
+            <ul className="divide-y divide-line">
+              {saved.map((x) => (
+                <li key={x.id} className="flex items-center gap-3 px-3.5 py-3">
+                  <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                    <Icon name={KIND_ICON[x.type]} className="size-[1.125rem]" />
+                    <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-ok text-white ring-2 ring-card"><Icon name="check" className="size-2.5 [stroke-width:3]" /></span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.875rem] font-semibold">{x.title}</b>
+                    <small className="block truncate text-[0.75rem] text-mut">{x.meta}</small>
+                  </span>
+                  <button type="button" onClick={() => { park(); openAdd({ edit: { kind: x.kind, id: x.id } }); }} className="h-9 shrink-0 rounded-full bg-bg px-3.5 text-[0.8125rem] font-semibold transition active:scale-[.98]">Düzenle</button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

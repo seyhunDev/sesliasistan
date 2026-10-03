@@ -264,6 +264,7 @@ export function DataProvider({ children }) {
       const pid = firstPlanIdx >= 0 ? planIds[firstPlanIdx] : null;
       const count = { plans: 0, tasks: 0, notes: 0 };
       const toNotify = []; // [tür, kimlik]: sorumlusu olan kayıtlar
+      const ids = []; // [tür, kimlik]: taslak sırasıyla (asistan kartındaki Düzenle için)
 
       drafts.forEach((d, i) => {
         const base = { ownerId, cat: d.cat || "Genel", src: source, createdBy: by, createdAt: now, ...owners(d.assignees) };
@@ -283,6 +284,7 @@ export function DataProvider({ children }) {
             place: (d.place || "").trim(),
             status: "planned",
           });
+          ids.push(["plan", planIds[i]]);
           count.plans++;
         } else {
           const planId = d.link && pid ? pid : null;
@@ -290,6 +292,7 @@ export function DataProvider({ children }) {
             const tid = newId("tasks");
             if (base.assignees.length && !me.current.staff) toNotify.push(["task", tid]);
             batch.set(doc(db, "orgs", ownerId, "tasks", tid), { ...base, title: d.title.trim(), due: d.date || null, done: false, doneAt: null, planId });
+            ids.push(["task", tid]);
             count.tasks++;
           } else {
             const nid = newId("notes");
@@ -301,6 +304,7 @@ export function DataProvider({ children }) {
               tags: [],
               planId,
             });
+            ids.push(["note", nid]);
             count.notes++;
           }
         }
@@ -319,7 +323,7 @@ export function DataProvider({ children }) {
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       const st = await Promise.race([done, new Promise((r) => setTimeout(() => r("slow"), offline ? 300 : 8000))]);
       if (st === "err") return { plans: 0, tasks: 0, notes: 0, error: true };
-      return { ...count, queued: st === "slow" };
+      return { ...count, ids, queued: st === "slow" };
     },
     [getOrgId, fail],
   );
