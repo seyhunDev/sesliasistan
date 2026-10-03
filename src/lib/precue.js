@@ -7,6 +7,7 @@
 import { interpretRules } from "@/lib/ai/rules";
 import { dayLabel } from "@/lib/agenda";
 import { normalizeSpeech } from "@/lib/speech/normalize";
+import { isMulti, jobsIn, jobsText } from "@/lib/steps";
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|ne zaman|nerede|kim|nasıl|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
@@ -44,6 +45,13 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
       line = n ? `Bakıyorum, ${day} ${n} plan görüyorum.` : `Bakıyorum, ${day} için takvim boş görünüyor.`;
     }
     return { kind: "query", line, hint: hintOf(line, { kind: "soru" }) };
+  }
+
+  // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle
+  if (isMulti(text)) {
+    const jobs = jobsText(jobsIn(text));
+    const line = `Tamam, sırayla yapıyorum: ${jobs}.`;
+    return { kind: "multi", line, hint: hintOf(line, { kind: `birden çok iş (sırayla: ${jobs})` }) };
   }
 
   // Mesaj: kime ve ne yazılacağını yapay zeka çıkarır
