@@ -54,6 +54,8 @@ import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestio
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
+import { isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
+import { askLog, saveLog } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
@@ -105,7 +107,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const tts = useTts();
   const { profile } = useAuth();
   const { openBirthday } = useBirthday();
-  const { plans, tasks, notes, receipts, birthdays, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply } = useData();
+  const { plans, tasks, notes, receipts, birthdays, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply, isLocked } = useData();
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
@@ -160,6 +162,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const personFlow = useRef(null);
   // Asistanla etkinlik planı: yer/zaman sorulduysa { text, turns } (sonraki cümle cevap; sessiz kalınırsa genel plan)
   const eventFlow = useRef(null);
+  const logFlow = useRef(null); // antrenman günlüğü: { ask, text } tarih soruldu · { date, time } az önce yazıldı, eksikler söylenebilir
   const turnCount = useRef(0);
   const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
   const skipRace = useRef(false); // yarış sayfasında yarışla ilgisiz çıkan cümle bir kez yarışa gitmeden sorulur
@@ -652,6 +655,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (isDrop(s)) return reply("Tamam, etkinlik planını bıraktım.", { engine: "local" }, viaVoice);
       if (!wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runEvent(`${f.text}\nCevap: ${s}`, viaVoice, true);
     }
+    // Antrenman günlüğü sürüyor: tarih soruldu (cevap gün) ya da günlük az önce yazıldı (eksik bilgi: "çok iyi geçti", "90 dakika")
+    const lf = !fresh ? logFlow.current : null;
+    logFlow.current = null;
+    if (lf) {
+      if (isDrop(s)) return reply("Tamam, günlüğü bıraktım.", { engine: "local" }, viaVoice);
+      if (lf.ask && !wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runLog(`${lf.text}\nGün: ${s}`, viaVoice, { retry: true });
+      if (lf.date && isLogAnswer(s)) return runLog(s, viaVoice, lf);
+    }
+    // Antrenman günlüğü ("dünkü antrenmanda 12 knot poyraz vardı, start çalıştık", "antrenman günlüğüne yaz: …"):
+    // yapay zeka alanlara ayırır, günün antrenman planına yazılır (yoksa plan açılır). Tarih yoksa sorulur, diğer eksikler söylenir.
+    if (!isAthleteSide(myKind) && wantsLog(s)) return runLog(s, viaVoice);
     // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
     // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
     if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
@@ -1268,6 +1282,47 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(false);
       const denied = e.code === "permission-denied";
       reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { engine: "local", nav: "races" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  // Antrenman günlüğü: anlatılan → alanlar; tarih yoksa sorulur (bir kez), varsa günün antrenmanına yazılır
+  async function runLog(text, viaVoice, { date = "", time = "", retry = false } = {}) {
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    stepTo("Günlük hazırlanıyor");
+    try {
+      const r = await askLog({ text, date });
+      if (id !== runId.current) return;
+      if (!r.log) {
+        setSteps([]);
+        return reply("Günlüğe yazılacak bilgi duymadım. Rüzgârı, çalışılanları ya da nasıl geçtiğini söyler misin?", { engine: "ai" }, viaVoice);
+      }
+      if (!r.date) {
+        setSteps([]);
+        if (retry) return reply("Günü anlayamadım. Antrenman günlüğü sayfasından günü seçerek yazabilirsin.", { engine: "ai", nav: "training" }, viaVoice);
+        reply("Hangi günün antrenmanı? Bugün, dün ya da gün adını söyle.", { engine: "ai", expect: true }, viaVoice);
+        logFlow.current = { ask: true, text };
+        return;
+      }
+      stepTo("Günlüğe yazılıyor");
+      const sv = await saveLog({ plans, updateRecord, saveDrafts, isLocked }, { ...r, time: r.time || time }, by, viaVoice || convo.current ? "voice" : "manual");
+      if (id !== runId.current) return;
+      if (sv.error) {
+        stepsEnd(false);
+        return reply(sv.error, { engine: "local" }, viaVoice);
+      }
+      stepsEnd();
+      navigator.vibrate?.([10, 40, 10]);
+      toast("Günlük kaydedildi");
+      const more = missingOf(sv.log).length > 0;
+      reply(logReply(sv.log, r.date, todayStr(), sv.fresh), { show: sv.id ? [{ kind: "plan", id: sv.id }] : [], nav: "training", engine: "ai", expect: more }, viaVoice);
+      if (more) logFlow.current = { date: r.date, time: r.time || time };
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(`${e.message || "Günlük yazılamadı."} Antrenman günlüğü sayfasından elle de yazabilirsin.`, { engine: "local", nav: "training" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }

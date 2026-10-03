@@ -284,6 +284,7 @@ export function DataProvider({ children }) {
             timeSource: timed ? "user" : "none",
             place: (d.place || "").trim(),
             status: "planned",
+            ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
           };
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
