@@ -18,6 +18,7 @@ import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
 import { applyRepeat, seriesDates } from "@/lib/repeat";
+import { waLink } from "@/lib/cancelPlan";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
@@ -80,11 +81,11 @@ const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
-const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara)/i;
+const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara|veli|veliler|velilere)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
 const groupOf = (t, mine = []) => {
   const s = String(t || "").toLocaleLowerCase("tr-TR");
-  const g = /^aile/.test(s) ? "family" : /^sporcu/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
+  const g = /^aile/.test(s) ? "family" : /^(sporcu|veli)/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
   return mine.includes(g) ? g : "";
 };
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
@@ -1616,11 +1617,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
                 <Icon name="up" className="size-4" /> Gönder
               </button>
+              {cards.pending.send.team && (
+                <a href={waLink(cards.pending.send.text)} target="_blank" rel="noreferrer" aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
+                  <Icon name="whatsapp" className="size-5" />
+                </a>
+              )}
               <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.team ? " Uygulamada olmayan veliler için WhatsApp düğmesiyle aynı metni gruba paylaş." : ""}</p>
           </div>
         )}
 

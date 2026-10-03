@@ -221,3 +221,12 @@ group("Etkinlik planı (cevap)")([
   ["Ayvalık'ta, gelecek ay", { desc: "cevap (vazgeç değil)", fn: (s) => EW.isDrop(s), ok: (r) => r === false }],
   ["Ege'de balık tutacağız", { desc: "tür balık", fn: (s) => EW.kindFromText(s), ok: (r) => r === "balik" }],
 ]);
+
+// Velilere duyuru ve iptal (yapay zeka çıktısının doğrulanması)
+const AIA = await import("@/lib/ai/assistant");
+const Fa = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
+group("Velilere duyuru ve iptal")([
+  ["velilere yaz", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Göndereyim mi?", send: { to: "velilere", text: "Cumartesi kamp 9'da." } }).send?.to === "Sporcular")],
+  ["iptal işlemi", Fa("op cancel geçerli", () => AIA.parseAssistant({ intent: "action", message: "Açtım", actions: [{ op: "cancel", kind: "plan", id: "p1" }] }).actions[0]?.op === "cancel")],
+  ["haftalık plan", Fa("weekly → repeat week", () => AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00", weekly: true }] }).items[0]?.repeat === "week")],
+]);
