@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, THEMES, aspectOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief, raceSub } from "./postModel";
+import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief, raceClasses, raceMeta, raceWithAthletes, reauto, wantsPostImage } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
-import { askCaption, askImage, imageUsage } from "./posts";
+import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
 const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
@@ -51,9 +51,11 @@ function legacyCopy(t) {
   return ok;
 }
 
-// Gönderi: önizleme (canvas), paylaş/indir/kopyala, içerik (tür, yarış, konu → yapay zeka), görsel ayarları, açıklama.
+// Gönderi ekranı: önizleme + tasarım (biçim, şablon, renk) + paylaş; yarış (sporcular, sınıflar), tür, görsel, görseldeki yazılar, açıklama.
+// Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
+// ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }) {
+export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, onAthletes }) {
   const toast = useToast();
   const [p, setP] = useState(start);
   const [tags, setTags] = useState(start.hashtags.join(" "));
@@ -62,14 +64,17 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   const [photoDirty, setPhotoDirty] = useState(false);
   const [saved, setSaved] = useState(() => sig(start));
   const [busy, setBusy] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [aiErr, setAiErr] = useState("");
   const [races, setRaces] = useState(null);
-  const [wish, setWish] = useState("");
   const [usage, setUsage] = useState(null);
+  const [texts, setTexts] = useState(false);
   const canvas = useRef(null);
   const file = useRef(null);
   const fileInput = useRef(null);
   const moreInput = useRef(null);
+  const latest = useRef(null);
   // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
   const [extras, setExtras] = useState([]); // [{ id, src, i }]
   const [pid, setPid] = useState(start.id || null);
@@ -97,7 +102,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
   }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
-  const look = JSON.stringify([post.format, post.theme, post.pos, post.focus, post.headline, post.sub, post.people, post.tag]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.headline, post.sub, post.people, post.wish, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -113,6 +118,91 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [look, shown]);
+
+  // Yapay zekanın yazdıkları: ilk yazımda elle değiştirilmiş görsel yazılarına dokunulmaz; asistana söylenen değişiklikte hepsi
+  const apply = (r, all) =>
+    setP((x) => {
+      const auto = autoOf(x);
+      const keep = (k) => !all && x[k] && x[k] !== auto[k];
+      const out = { ...x, caption: r.caption || x.caption };
+      for (const k of ["headline", "sub", "people", "wish", "tag"]) if (r[k] != null && (r[k] || all) && !keep(k)) out[k] = r[k];
+      return out;
+    });
+
+  // Açıklama + görsel yazıları (yapay zeka). ask: ana asistana söylenen değişiklik; yoksa ilk yazım.
+  const write = async (base, ask = "") => {
+    setAiErr("");
+    setAiBusy(true);
+    try {
+      const r = await askCaption(base, ask);
+      apply(r, !!ask);
+      if (r.hashtags?.length) setTags(r.hashtags.join(" "));
+      return r;
+    } catch (e) {
+      setAiErr(e?.message || "Açıklama yazılamadı");
+      throw e;
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  // Gemini ile görsel: yazısız fotoğraf gelir, başlık ve logo üstüne çizilir
+  const makeImage = async (wish = "") => {
+    setErr("");
+    setBusy("img");
+    try {
+      const r = await askImage(post, wish.trim());
+      const dataUrl = await thumbFromDataUrl(r.image, 1440, 0.85);
+      setPhoto(dataUrl);
+      setPhotoDirty(true);
+      put("focus", 50);
+      if (r.usage) setUsage(r.usage);
+      return r.usage || null;
+    } catch (x) {
+      if (x?.usage) setUsage(x.usage);
+      throw x;
+    } finally {
+      setBusy("");
+    }
+  };
+  const genImage = () => makeImage().catch((x) => setErr(x?.message || "Görsel üretilemedi"));
+
+  // Ana asistan bu ekrana söyleneni buraya verir (yalnız ekran açıkken)
+  useEffect(() => {
+    latest.current = { post, write, makeImage };
+  });
+  useEffect(() => {
+    const ask = async (text) => {
+      const { post: now, write: w, makeImage: mk } = latest.current;
+      if (wantsPostImage(text)) {
+        const u = await mk(text);
+        return { say: `Yeni görseli ekledim, başlık ve logo üstünde.${u ? ` Bugün ${u.today}/${u.limit} görsel.` : ""}` };
+      }
+      // Boş gönderide ilk cümle ne paylaşılacağıdır (konu); sonrakiler değişiklik
+      const first = !now.caption && !now.race && !now.topic.trim();
+      if (first) put("topic", text);
+      await w(first ? { ...now, topic: text } : now, first ? "" : text);
+      return { say: first ? "Gönderiyi hazırladım: başlık, açıklama ve etiketler hazır. Değiştirmek istediğini söyle." : "Gönderiyi güncelledim." };
+    };
+    setPostHandler({ ask });
+    return () => setPostHandler(null);
+  }, []);
+
+  // Yarıştan ya da asistandan açıldıysa açıklama kendiliğinden yazılır (bir kez)
+  useEffect(() => {
+    let said = "";
+    try {
+      said = sessionStorage.getItem(POST_ASK_KEY) || "";
+      if (said) setTimeout(() => sessionStorage.removeItem(POST_ASK_KEY), 1500);
+    } catch {}
+    if (start.caption || (!start.race && !said)) return;
+    const t = setTimeout(() => {
+      if (said && !start.race) put("topic", said);
+      write({ ...start, topic: start.topic || said }).catch(() => {});
+    }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const save = async (quiet) => {
     if (!canvas.current) return;
@@ -197,39 +287,6 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
     toast((await copyText(text)) ? "Açıklama kopyalandı" : "Kopyalanamadı, elle seç");
   };
 
-  const ai = async () => {
-    setErr("");
-    setBusy("ai");
-    try {
-      const r = await askCaption(post);
-      setP((x) => ({ ...x, headline: r.headline || x.headline, sub: r.sub || x.sub, people: r.people || x.people, tag: r.tag || x.tag, caption: r.caption || x.caption }));
-      if (r.hashtags?.length) setTags(r.hashtags.join(" "));
-    } catch (e) {
-      setErr(e?.message || "Açıklama yazılamadı");
-    } finally {
-      setBusy("");
-    }
-  };
-
-  // Gemini ile görsel: yazısız fotoğraf gelir, başlık ve logo üstüne çizilir
-  const genImage = async () => {
-    setErr("");
-    setBusy("img");
-    try {
-      const r = await askImage(post, wish.trim());
-      const dataUrl = await thumbFromDataUrl(r.image, 1440, 0.85);
-      setPhoto(dataUrl);
-      setPhotoDirty(true);
-      put("focus", 50);
-      if (r.usage) setUsage(r.usage);
-    } catch (x) {
-      setErr(x?.message || "Görsel üretilemedi");
-      if (x?.usage) setUsage(x.usage);
-    } finally {
-      setBusy("");
-    }
-  };
-
   const pick = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -258,11 +315,25 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
       setBusy("");
     }
   };
-  const setRace = (r) => {
-    const race = raceBrief(r);
+  // Yarış seçilince sporcuların adı ve sınıfı kulüp listesinden gelir; yazılar yenilenir, açıklama boşsa yapay zeka yazar
+  const setRace = async (r) => {
+    setBusy("races");
+    const data = await onAthletes?.().catch(() => null);
+    setBusy("");
+    const race = raceBrief(data ? raceWithAthletes(r, data) : r, data ? raceWithAthletes(r, data).athletes : undefined);
     setRaces(null);
-    setP((x) => ({ ...x, race, headline: x.headline || race?.name || "", sub: x.sub || raceSub(race, x.kind) }));
+    const next = reauto(post, { ...post, race });
+    setP((x) => reauto(x, { ...x, race }));
+    if (!data && r.athleteIds?.length) toast("Sporcu adları alınamadı; yazıları elle düzenleyebilirsin");
+    if (!post.caption) write(next).catch(() => {});
   };
+  const dropRace = () => setP((x) => reauto(x, { ...x, race: null }));
+  const dropAthlete = (i) =>
+    setP((x) => {
+      const athletes = x.race.athletes.filter((_, k) => k !== i);
+      return reauto(x, { ...x, race: { ...x.race, athletes, count: athletes.length } });
+    });
+  const setKind = (k) => setP((x) => reauto(x, { ...x, kind: k }));
 
   const del = async () => {
     if (!confirm("Bu gönderi silinsin mi?")) return;
@@ -275,12 +346,41 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
     }
   };
 
+  const race = post.race;
+  const classes = raceClasses(race);
+  const empty = !race && !post.caption && !post.topic;
+
   return (
     <div className="mt-2 pb-6">
-      <div className={`${card} overflow-hidden`}>
+      <div className={`${card} relative overflow-hidden`}>
         <canvas ref={canvas} className="block h-auto w-full bg-deep" style={{ aspectRatio: aspectOf(post.format) }} />
+        {(aiBusy || busy === "img") && (
+          <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[0.75rem] font-semibold text-white backdrop-blur">
+            <Icon name="spark" className="size-4 animate-pulse" />
+            {busy === "img" ? "Görsel çiziliyor…" : "Yapay zeka yazıyor…"}
+          </span>
+        )}
       </div>
+
+      {/* Tasarım: biçim, şablon, renk, yazının yeri */}
       <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l])} className="mt-3" />
+      <div className="-mx-5 mt-2.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+        {STYLES.map(([k, label]) => (
+          <button key={k} type="button" aria-pressed={post.style === k} onClick={() => put("style", k)} className={chip(post.style === k)}>
+            {label}
+          </button>
+        ))}
+        <span className="mx-0.5 w-px shrink-0 self-stretch bg-line" />
+        {THEMES.map(([k, label, c1, c2]) => (
+          <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-bg" : "ring-1 ring-line"}`}>
+            <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+          </button>
+        ))}
+        <button type="button" onClick={() => put("pos", post.pos === "top" ? "bottom" : "top")} className={chip(false)}>
+          <Icon name="up" className={`size-4 transition ${post.pos === "top" ? "" : "rotate-180"}`} />
+          {post.pos === "top" ? "Yazı üstte" : "Yazı altta"}
+        </button>
+      </div>
 
       <div className="mt-3">
         <Button onClick={share} disabled={!!busy && busy !== "save"}>
@@ -300,32 +400,75 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
         <p className="mt-2 px-1 text-center text-[0.75rem] leading-snug text-mut">Paylaş&apos;a basınca açıklama kopyalanır; menüden Instagram&apos;ı seç, açıklama alanına yapıştır.</p>
       </div>
 
-      <Label>NE PAYLAŞACAKSIN</Label>
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-        {KINDS.map(([k, label, icon, tag]) => (
-          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setP((x) => ({ ...x, kind: k, tag: !x.tag || KINDS.some((q) => q[3] === x.tag) ? tag : x.tag, sub: x.race && x.sub === raceSub(x.race, x.kind) ? raceSub(x.race, k) : x.sub }))}>
-            <Icon name={icon} className="size-4" />
-            {label}
-          </button>
-        ))}
+      {/* Ana asistana ne söyleneceği (ayrı yapay zeka kutusu yok) */}
+      <div className={`mt-4 flex gap-3 rounded-2xl px-4 py-3 ${aiErr ? "bg-rec/10" : "bg-acc/10"}`}>
+        <Icon name={aiErr ? "alert" : "mic"} className={`mt-0.5 size-5 shrink-0 ${aiErr ? "text-rec" : "text-acc"}`} />
+        <p className="text-[0.8125rem] leading-snug">
+          {aiErr ? (
+            <>
+              {aiErr}{" "}
+              <button type="button" onClick={() => write(post).catch(() => {})} className="font-semibold text-acc underline">
+                Tekrar dene
+              </button>
+            </>
+          ) : empty ? (
+            <>Ne paylaşmak istediğini alttaki asistana anlat ya da bir yarış seç; başlık, açıklama ve etiketleri yapay zeka yazar.</>
+          ) : (
+            <>Değiştirmek için asistana söyle: &quot;daha kısa yaz&quot;, &quot;Mete ikinci oldu diye ekle&quot;, &quot;gün batımında teknelerle görsel üret&quot;.</>
+          )}
+        </p>
       </div>
 
-      <div className={`${card} mt-3 flex items-center gap-3 px-4 py-3`}>
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
-          <Icon name="flag" className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <b className="block truncate text-[0.9375rem] font-semibold">{post.race?.name || "Yarış bağlı değil"}</b>
-          <span className="block truncate text-[0.8125rem] text-mut">{post.race ? [post.race.place, post.race.dates].filter(Boolean).join(" · ") : "Yarış bilgisi açıklamaya eklenir"}</span>
-        </span>
-        {post.race ? (
-          <button type="button" onClick={() => put("race", null)} aria-label="Yarışı kaldır" className="grid size-9 place-items-center rounded-full text-mut active:bg-line">
-            <Icon name="x" className="size-[1.125rem]" />
-          </button>
-        ) : (
-          <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
-            {busy === "races" ? "…" : races ? "Kapat" : "Yarış seç"}
-          </button>
+      <Label>YARIŞ</Label>
+      <div className={`${card} px-4 py-3`}>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
+            <Icon name="flag" className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
+            <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
+          </span>
+          {race ? (
+            <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" className="grid size-9 place-items-center rounded-full text-mut active:bg-line">
+              <Icon name="x" className="size-[1.125rem]" />
+            </button>
+          ) : (
+            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
+              {busy === "races" ? "…" : races ? "Kapat" : "Yarış seç"}
+            </button>
+          )}
+        </div>
+        {race && (
+          <div className="mt-3 border-t border-line pt-3">
+            {classes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {classes.map((c) => (
+                  <span key={c} className="rounded-full bg-bg px-2.5 py-1 text-[0.75rem] font-semibold ring-1 ring-line">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
+            {race.athletes?.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {race.athletes.map((a, i) => (
+                  <span key={`${a.name}-${i}`} className="flex h-8 items-center gap-1 rounded-full bg-deep/10 pl-3 pr-1 text-[0.8125rem] font-semibold">
+                    {a.name}
+                    {a.cls && <small className="font-normal text-mut">· {a.cls}</small>}
+                    <button type="button" aria-label={`${a.name} çıkar`} onClick={() => dropAthlete(i)} className="grid size-6 place-items-center rounded-full text-mut active:bg-line">
+                      <Icon name="x" className="size-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-[0.8125rem]">Yer, tarih ve sınıflar görselde</span>
+              <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
+            </label>
+          </div>
         )}
       </div>
       {races && (
@@ -335,79 +478,59 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
             <li key={r.id}>
               <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-2.5 text-left active:bg-line/50">
                 <b className="block truncate text-[0.875rem] font-semibold">{r.name || "Adsız yarış"}</b>
-                <span className="block truncate text-[0.75rem] text-mut">{raceBrief(r)?.dates || "Tarih yok"}</span>
+                <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
               </button>
             </li>
           ))}
         </ul>
       )}
 
-      <label className="mt-3 block">
-        <span className="text-[0.8125rem] font-medium text-mut">Anlat (ne oldu, kimler, sonuç…)</span>
-        <textarea
-          value={p.topic}
-          onChange={(e) => put("topic", e.target.value)}
-          maxLength={1500}
-          rows={3}
-          className={area}
-          placeholder="Foça'daki ligde Optimist'te Ali 2. oldu, rüzgâr sertti, velilere teşekkür"
-        />
-      </label>
-      {err && <p className="mt-2 text-center text-[0.875rem] text-rec">{err}</p>}
-      <Button onClick={ai} loading={busy === "ai"} disabled={!!busy || (!p.topic.trim() && !post.race)} className="mt-3">
-        <Icon name="zap" className="size-5" />
-        {post.caption ? "Yapay zekayla yeniden yaz" : "Yapay zekayla yaz"}
-      </Button>
-      {post.caption && <p className="mt-1.5 px-1 text-center text-[0.75rem] text-mut">İstersen anlatıma &quot;daha kısa&quot;, &quot;emoji olmasın&quot; gibi ekle, yeniden yazdır.</p>}
+      <Label>NE PAYLAŞACAKSIN</Label>
+      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+        {KINDS.map(([k, label, icon]) => (
+          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setKind(k)}>
+            <Icon name={icon} className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
 
       <Label>GÖRSEL</Label>
-      <div className="space-y-3.5">
-        <div className={`${card} p-4`}>
-          <b className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-            <Icon name="spark" className="size-5 text-acc" />
-            Yapay zekayla görsel
-          </b>
-          <textarea
-            value={wish}
-            onChange={(e) => setWish(e.target.value)}
-            maxLength={600}
-            rows={2}
-            className={area}
-            placeholder="İsteğe bağlı: gün batımında Optimist tekneleri, Dikili koyu"
-          />
-          <Button onClick={genImage} loading={busy === "img"} disabled={!!busy || usage?.left === 0} className="mt-2.5">
-            <Icon name="image" className="size-5" />
-            {photo ? "Yeni görsel üret" : "Görsel üret"}
-          </Button>
-          {busy === "img" && <p className="mt-1.5 text-center text-[0.75rem] text-mut">Gemini görseli çiziyor, 10-20 saniye sürebilir…</p>}
-          {usage && (
-            <p className={`mt-2 text-center text-[0.75rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
-              Bugün {usage.today}/{usage.limit} görsel · bu ay {usage.month} görsel (≈ ${usage.cost.toFixed(2)}){" · "}
-              <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer" className="font-semibold text-acc underline">
-                Google kotası
-              </a>
-            </p>
-          )}
-          <p className="mt-1 text-center text-[0.6875rem] leading-snug text-mut">Görselde yazı olmaz; başlık ve logo üstüne eklenir. Görsel başı yaklaşık {usage ? `$${usage.price}` : "4 sent"}.</p>
-        </div>
+      <div className="space-y-3">
         <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
         <div className="flex gap-2">
           <button type="button" onClick={() => fileInput.current?.click()} disabled={busy === "photo"} className={small}>
-            <Icon name="image" className="size-[1.125rem]" />
-            {busy === "photo" ? "Hazırlanıyor…" : photo ? "Kendi fotoğrafım" : "Fotoğraf seç"}
+            <Icon name="camera" className="size-[1.125rem]" />
+            {busy === "photo" ? "Hazırlanıyor…" : photo ? "Fotoğrafı değiştir" : "Fotoğraf seç"}
           </button>
-          {photo && (
-            <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} className={small}>
-              <Icon name="trash" className="size-[1.125rem]" />
-              Fotoğrafı kaldır
-            </button>
-          )}
+          <button type="button" onClick={genImage} disabled={!!busy || usage?.left === 0} className={small}>
+            <Icon name="spark" className="size-[1.125rem] text-acc" />
+            {busy === "img" ? "Çiziliyor…" : "Yapay zeka görseli"}
+          </button>
         </div>
+        {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
+        {usage && (
+          <p className={`text-center text-[0.6875rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
+            Yapay zeka görseli: bugün {usage.today}/{usage.limit} · bu ay {usage.month} (≈ ${usage.cost.toFixed(2)}) · görsel başı ≈ ${usage.price}{" · "}
+            <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer" className="font-semibold text-acc underline">
+              Google kotası
+            </a>
+          </p>
+        )}
+        {photo && (
+          <div className="flex items-center gap-3">
+            <label className="min-w-0 flex-1">
+              <span className="text-[0.75rem] font-medium text-mut">Fotoğrafı kaydır</span>
+              <input type="range" min={0} max={100} value={post.focus} onChange={(e) => put("focus", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
+            </label>
+            <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-card text-rec active:scale-95">
+              <Icon name="trash" className="size-[1.125rem]" />
+            </button>
+          </div>
+        )}
         <input ref={moreInput} type="file" accept="image/*" multiple className="hidden" onChange={addExtras} />
         <div>
-          <span className="text-[0.8125rem] font-medium text-mut">
-            Kaydırmalı gönderi {extras.length ? `· ${extras.length + 1} sayfa` : "(ek fotoğraflar)"}
-          </span>
+          <span className="text-[0.75rem] font-medium text-mut">Kaydırmalı gönderi {extras.length ? `· ${extras.length + 1} sayfa` : "(ek fotoğraflar)"}</span>
           <div className="-mx-5 mt-1.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
             {extras.map((x, k) => (
               <span key={x.id} className="relative shrink-0">
@@ -426,48 +549,38 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces }
           </div>
           {extras.length > 0 && <p className="mt-1 text-[0.6875rem] leading-snug text-mut">Paylaş hepsini sırayla gönderir; ek fotoğraflar kaydedilmez, bu ekranda kalır.</p>}
         </div>
-        {photo ? (
-          <label className="block">
-            <span className="text-[0.8125rem] font-medium text-mut">Fotoğrafı kaydır</span>
-            <input type="range" min={0} max={100} value={post.focus} onChange={(e) => put("focus", Number(e.target.value))} className="mt-2 w-full accent-[var(--acc)]" />
-          </label>
-        ) : (
-          <div>
-            <span className="text-[0.8125rem] font-medium text-mut">Zemin (fotoğraf yokken)</span>
-            <div className="-mx-5 mt-1.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-              {THEMES.map(([k, label, c1, c2]) => (
-                <button key={k} type="button" aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={chip(post.theme === k)}>
-                  <span className="size-4 rounded-full ring-1 ring-white/40" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["bottom", "Yazı altta"], ["top", "Yazı üstte"]]} />
-        <label className="block">
-          <span className="text-[0.8125rem] font-medium text-mut">Başlık</span>
-          <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Foça'da Yelken Ligi" />
-        </label>
-        <label className="block">
-          <span className="text-[0.8125rem] font-medium text-mut">Alt satır</span>
-          <textarea value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={200} rows={3} className={area} placeholder="Sporcumuz Mete Ok, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." />
-        </label>
-        <label className="block">
-          <span className="text-[0.8125rem] font-medium text-mut">Görselde sporcular (her satır bir sporcu, en çok 4)</span>
-          <textarea
-            value={p.people}
-            onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))}
-            rows={3}
-            className={area}
-            placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"}
-          />
-        </label>
-        <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
       </div>
 
+      {/* Görseldeki yazılar: kendiliğinden dolar, istenirse elle düzenlenir */}
+      <button type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
+        <Icon name="edit" className="size-5 shrink-0 text-acc" />
+        <span className="min-w-0 flex-1">
+          <b className="block text-[0.9375rem] font-semibold">Görseldeki yazılar</b>
+          <span className="block truncate text-[0.75rem] text-mut">{[post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
+        </span>
+        <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
+      </button>
+      {texts && (
+        <div className="mt-3 space-y-3">
+          <label className="block">
+            <span className="text-[0.8125rem] font-medium text-mut">Başlık</span>
+            <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Foça'da Yelken Ligi" />
+          </label>
+          <label className="block">
+            <span className="text-[0.8125rem] font-medium text-mut">Alt satır</span>
+            <textarea value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={200} rows={3} className={area} placeholder="Sporcumuz Mete Ok, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." />
+          </label>
+          <label className="block">
+            <span className="text-[0.8125rem] font-medium text-mut">Sporcular (her satır bir sporcu, en çok 4)</span>
+            <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))} rows={3} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />
+          </label>
+          <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" />
+          <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
+        </div>
+      )}
+
       <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>AÇIKLAMA</Label>
-      <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder="Yapay zekayla yaz ya da kendin yaz" />
+      <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder={aiBusy ? "Yapay zeka yazıyor…" : "Yarış seçince ya da asistana anlatınca yapay zeka yazar; kendin de yazabilirsin"} />
       <label className="mt-3 block">
         <span className="text-[0.8125rem] font-medium text-mut">Etiketler (#)</span>
         <textarea value={tags} onChange={(e) => setTags(e.target.value)} onBlur={() => setTags(cleanTags(tags).join(" "))} rows={2} className={area} placeholder="#dikiliyelken #yelken #sailing" />

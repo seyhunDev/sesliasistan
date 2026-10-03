@@ -10,6 +10,7 @@ import { PostEditor } from "@/features/posts/PostEditor";
 import { RACE_KEY, freshPost, postFromRace } from "@/features/posts/postModel";
 import { deletePost, loadPhoto, loadPost, savePost } from "@/features/posts/posts";
 import { loadRaces } from "@/features/athletes/races";
+import { loadAthletes } from "@/features/athletes/data";
 import { todayStr } from "@/lib/utils/format";
 
 // Tek gönderi (yeni gönderi için /posts/new)
@@ -76,7 +77,7 @@ function Post({ orgId, uid }) {
       ) : !state ? (
         <Loading label="Gönderi yükleniyor" />
       ) : (
-        <PostEditor start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onRaces={() => loadRaces(orgId)} />
+        <PostEditor start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
       )}
     </main>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatOf, themeOf } from "./postModel";
+import { formatOf, raceClasses, raceMeta, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -99,6 +99,170 @@ function pill(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Küçük konum işareti (yer · tarih satırının başında)
+function pin(ctx, x, y, r, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, Math.PI, 0);
+  ctx.lineTo(x, y + r * 1.9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.42, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Beş köşeli yıldız (başarı satırının başında)
+function star(ctx, x, y, r, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// Yazı bloğunun parçaları ve yükseklikleri (k: küçültme katsayısı; sığmazsa küçülür)
+function measure(ctx, post, maxW, k) {
+  const z = (n) => Math.round(n * k);
+  const people = post.people ? post.people.split("\n").slice(0, 4) : [];
+  const meta = post.meta ? raceMeta(post.race) : "";
+  const classes = post.meta ? raceClasses(post.race) : [];
+  const busy = people.length + (post.wish ? 1 : 0) + (meta ? 1 : 0) + (classes.length ? 1 : 0);
+  const items = [];
+  const tagH = z(post.tag ? 54 : 12);
+  items.push({ t: "tag", h: tagH, gap: 0 });
+  const headLines = post.format === "story" ? 5 : post.format === "portrait" ? 4 : 3;
+  const head = fit(ctx, post.headline || " ", maxW, headLines, z(busy > 2 ? 72 : people.length ? 76 : 88), z(46), 800);
+  items.push({ t: "head", ...head, lh: Math.round(head.size * 1.1), h: head.lines.length * Math.round(head.size * 1.1), gap: z(26) });
+  if (meta) {
+    ctx.font = `600 ${z(32)}px ${FONT}`;
+    const m = fit(ctx, meta, maxW - z(40), 1, z(32), z(24), 600);
+    items.push({ t: "meta", ...m, h: Math.round(m.size * 1.3), gap: z(20) });
+  }
+  if (classes.length) {
+    ctx.font = `700 ${z(26)}px ${FONT}`;
+    // Sığmayan sınıf atlanır (tek satır)
+    const row = [];
+    let w = 0;
+    for (const c of classes) {
+      const cw = ctx.measureText(c.toLocaleUpperCase("tr-TR")).width + z(36);
+      if (w + cw > maxW) break;
+      row.push([c.toLocaleUpperCase("tr-TR"), cw]);
+      w += cw + z(12);
+    }
+    if (row.length) items.push({ t: "chips", row, size: z(26), h: z(48), gap: z(18) });
+  }
+  if (post.sub) {
+    const sub = fit(ctx, post.sub, maxW, 4, z(38), z(26), 500);
+    items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.32), h: sub.lines.length * Math.round(sub.size * 1.32), gap: z(22) });
+  }
+  if (people.length) {
+    const pp = fit(ctx, people.join("\n"), maxW - z(34), people.length, z(36), z(24), 600);
+    const ph = Math.round(pp.size * 1.42);
+    items.push({ t: "people", ...pp, ph, h: z(20) + pp.lines.length * ph, gap: z(18) });
+  }
+  if (post.wish) {
+    const w = fit(ctx, post.wish, maxW - z(52), 1, z(42), z(28), 800);
+    items.push({ t: "wish", ...w, h: Math.round(w.size * 1.3), gap: z(24) });
+  }
+  const h = items.reduce((a, x, i) => a + x.h + (i ? x.gap : 0), 0);
+  return { items, h, z };
+}
+
+function paint(ctx, { items, z }, x, y, c) {
+  ctx.textBaseline = "top";
+  for (const [i, it] of items.entries()) {
+    if (i) y += it.gap;
+    if (it.t === "tag") {
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = c.tagBg;
+      if (c.tag) {
+        ctx.font = `800 ${z(26)}px ${FONT}`;
+        const t = c.tag.toLocaleUpperCase("tr-TR");
+        pill(ctx, x, y, ctx.measureText(t).width + z(48), it.h, it.h / 2);
+        ctx.fill();
+        ctx.fillStyle = c.tagInk;
+        ctx.textBaseline = "middle";
+        ctx.fillText(t, x + z(24), y + it.h / 2 + 1);
+      } else {
+        pill(ctx, x, y, z(120), it.h, it.h / 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else if (it.t === "head") {
+      ctx.fillStyle = c.ink;
+      ctx.font = `800 ${it.size}px ${FONT}`;
+      for (const [j, l] of it.lines.entries()) ctx.fillText(l, x - 3, y + j * it.lh);
+    } else if (it.t === "meta") {
+      pin(ctx, x + z(12), y + it.h * 0.36, z(11), c.accent);
+      ctx.fillStyle = c.ink;
+      ctx.font = `600 ${it.size}px ${FONT}`;
+      ctx.fillText(it.lines[0] || "", x + z(38), y + (it.h - it.size) / 2);
+    } else if (it.t === "chips") {
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.font = `700 ${it.size}px ${FONT}`;
+      ctx.lineWidth = 3;
+      let cx = x;
+      for (const [t, cw] of it.row) {
+        ctx.strokeStyle = c.chipLine;
+        ctx.fillStyle = c.chipBg;
+        pill(ctx, cx + 1.5, y + 1.5, cw - 3, it.h - 3, (it.h - 3) / 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = c.ink;
+        ctx.textBaseline = "middle";
+        ctx.fillText(t, cx + z(18), y + it.h / 2 + 1);
+        cx += cw + z(12);
+      }
+      ctx.restore();
+    } else if (it.t === "sub") {
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = c.ink;
+      ctx.font = `500 ${it.size}px ${FONT}`;
+      for (const [j, l] of it.lines.entries()) ctx.fillText(l, x, y + j * it.lh);
+      ctx.restore();
+    } else if (it.t === "people") {
+      ctx.save();
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = c.rule;
+      ctx.fillRect(x, y, z(160), 3);
+      ctx.restore();
+      let py = y + z(20);
+      ctx.font = `600 ${it.size}px ${FONT}`;
+      for (const l of it.lines) {
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = c.accent;
+        ctx.beginPath();
+        ctx.arc(x + z(9), py + it.ph / 2 - 3, z(8), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = c.ink;
+        ctx.fillText(l, x + z(34), py + (it.ph - it.size) / 2 - 2);
+        py += it.ph;
+      }
+    } else if (it.t === "wish") {
+      star(ctx, x + z(18), y + it.h / 2, z(18), c.accent);
+      ctx.fillStyle = c.wish;
+      ctx.font = `800 ${it.size}px ${FONT}`;
+      ctx.fillText(it.lines[0] || "", x + z(50), y + (it.h - it.size) / 2);
+    }
+    y += it.h;
+  }
+}
+
 // post: cleanPost; photo: yüklenmiş Image ya da null
 export async function drawPost(canvas, post, photo) {
   const [, , W, H] = formatOf(post.format);
@@ -106,8 +270,9 @@ export async function drawPost(canvas, post, photo) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   const [, , c1, c2, accent] = themeOf(post.theme);
+  const style = post.style || "klasik";
   const light = !photo && post.theme === "kum";
-  const ink = light ? "#123c33" : "#ffffff";
+  const deep = post.theme === "kum" ? "#1f5a4b" : c2;
   const top = post.pos === "top";
   // Hikâyede Instagram'ın üstteki profil satırı ve alttaki yanıt kutusu yazının üstüne binmesin
   const story = post.format === "story";
@@ -120,12 +285,14 @@ export async function drawPost(canvas, post, photo) {
     const h = photo.naturalHeight * s;
     const f = post.focus / 100;
     ctx.drawImage(photo, (W - w) * f, (H - h) * f, w, h);
-    const g = top ? ctx.createLinearGradient(0, 0, 0, H * 0.66) : ctx.createLinearGradient(0, H, 0, H * 0.34);
-    g.addColorStop(0, "rgba(6,22,18,.84)");
-    g.addColorStop(0.55, "rgba(6,22,18,.45)");
-    g.addColorStop(1, "rgba(6,22,18,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    if (style === "klasik") {
+      const g = top ? ctx.createLinearGradient(0, 0, 0, H * 0.72) : ctx.createLinearGradient(0, H, 0, H * 0.28);
+      g.addColorStop(0, "rgba(6,22,18,.86)");
+      g.addColorStop(0.55, "rgba(6,22,18,.6)");
+      g.addColorStop(1, "rgba(6,22,18,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
     const g2 = top ? ctx.createLinearGradient(0, H, 0, H - 280) : ctx.createLinearGradient(0, 0, 0, 280);
     g2.addColorStop(0, "rgba(0,0,0,.38)");
     g2.addColorStop(1, "rgba(0,0,0,0)");
@@ -140,110 +307,95 @@ export async function drawPost(canvas, post, photo) {
     decor(ctx, W, H, top, light ? "rgba(31,90,75,.13)" : "rgba(255,255,255,.1)");
   }
 
-  if (photo) {
-    ctx.shadowColor = "rgba(0,0,0,.35)";
-    ctx.shadowBlur = 14;
-  }
-
   // Logo + kulüp adı (yazının karşı köşesinde)
   const logo = await loadLogo();
   const ly = top ? H - PAD - 104 - safeB : PAD - 20 + safeT;
   const R = 52;
   ctx.save();
-  ctx.shadowColor = "transparent";
+  if (photo) {
+    ctx.shadowColor = "rgba(0,0,0,.35)";
+    ctx.shadowBlur = 14;
+  }
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
   ctx.arc(PAD + R, ly + R, R, 0, Math.PI * 2);
   ctx.fill();
+  ctx.shadowColor = "transparent";
   if (logo) {
     ctx.clip();
     ctx.drawImage(logo, PAD + 6, ly + 6, R * 2 - 12, R * 2 - 12);
   }
   ctx.restore();
-  ctx.fillStyle = ink;
+  ctx.save();
+  if (photo) {
+    ctx.shadowColor = "rgba(0,0,0,.45)";
+    ctx.shadowBlur = 12;
+  }
+  ctx.fillStyle = light ? "#123c33" : "#ffffff";
   ctx.textBaseline = "middle";
   ctx.font = `700 30px ${FONT}`;
   ctx.fillText(CLUB, PAD + R * 2 + 24, ly + R);
+  ctx.restore();
 
-  // Yazı bloğu: etiket, başlık, alt satır, sporcular
-  const maxW = W - PAD * 2;
-  const people = post.people ? post.people.split("\n").slice(0, 4) : [];
-  const head = fit(ctx, post.headline || " ", maxW, story ? 5 : post.format === "portrait" ? 4 : 3, people.length ? 76 : 88, 50, 800);
-  const lh = Math.round(head.size * 1.1);
-  // Alt satır uzun olabilir (yarış cümlesi): en çok 4 satır, sığmazsa yazı küçülür
-  const sub = post.sub ? fit(ctx, post.sub, maxW, 4, 38, 28, 500) : { size: 38, lines: [] };
-  const subLines = sub.lines;
-  const sh = Math.round(sub.size * 1.32);
-  const pp = fit(ctx, people.join("\n") || " ", maxW - 34, people.length, 36, 26, 600);
-  const pLines = people.length ? pp.lines : [];
-  const ph = Math.round(pp.size * 1.42);
-  const tagH = post.tag ? 54 : 12;
-  const block = tagH + 28 + head.lines.length * lh + (subLines.length ? 22 + subLines.length * sh : 0) + (pLines.length ? 34 + pLines.length * ph : 0);
-  let y = top ? PAD + 10 + safeT : H - PAD - block - safeB;
+  // Yazı bloğu: Kart ve Bant'ta kutu/şerit içinde, Klasik'te doğrudan zeminde. Sığmazsa her şey birlikte küçülür.
+  const inset = style === "kart" ? 52 : 0;
+  const maxW = W - PAD * 2 - inset * 2;
+  const room = H - PAD * 2 - safeT - safeB - 150 - (style === "klasik" ? 0 : 90);
+  let m = measure(ctx, post, maxW, 1);
+  for (let k = 0.94; m.h > room && k >= 0.66; k -= 0.06) m = measure(ctx, post, maxW, k);
 
-  ctx.textBaseline = "top";
-  if (post.tag) {
+  const c = {
+    tag: post.tag,
+    ink: light ? "#123c33" : "#ffffff",
+    accent: light ? "#1f5a4b" : accent,
+    tagBg: light ? "#1f5a4b" : accent,
+    tagInk: light ? "#ffffff" : "#10231e",
+    wish: light ? "#1f5a4b" : accent,
+    rule: light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)",
+    chipBg: light ? "rgba(31,90,75,.08)" : "rgba(255,255,255,.12)",
+    chipLine: light ? "rgba(31,90,75,.4)" : "rgba(255,255,255,.55)",
+  };
+  let x = PAD;
+  let y;
+  if (style === "kart") {
+    // Açık renk yuvarlak kutu; içindeki yazı koyu
+    const bw = W - PAD * 2 + 24;
+    const bh = m.h + inset * 2;
+    const bx = PAD - 12;
+    const by = top ? PAD - 12 + safeT : H - PAD - bh - safeB + 12;
     ctx.save();
-    ctx.shadowColor = "transparent";
-    ctx.font = `800 26px ${FONT}`;
-    const t = post.tag.toLocaleUpperCase("tr-TR");
-    const tw = ctx.measureText(t).width + 48;
-    ctx.fillStyle = light ? "#1f5a4b" : accent;
-    pill(ctx, PAD, y, tw, tagH, tagH / 2);
-    ctx.fill();
-    ctx.fillStyle = light ? "#ffffff" : "#10231e";
-    ctx.textBaseline = "middle";
-    ctx.fillText(t, PAD + 24, y + tagH / 2 + 1);
-    ctx.restore();
-  } else {
-    ctx.save();
-    ctx.shadowColor = "transparent";
-    ctx.fillStyle = light ? "#1f5a4b" : accent;
-    pill(ctx, PAD, y, 120, tagH, tagH / 2);
+    ctx.shadowColor = "rgba(0,0,0,.22)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = "rgba(255,255,255,.95)";
+    pill(ctx, bx, by, bw, bh, 44);
     ctx.fill();
     ctx.restore();
-  }
-  y += tagH + 28;
-
-  ctx.fillStyle = ink;
-  ctx.font = `800 ${head.size}px ${FONT}`;
-  for (const l of head.lines) {
-    ctx.fillText(l, PAD - 3, y);
-    y += lh;
-  }
-  if (subLines.length) {
-    y += 22;
-    ctx.globalAlpha = 0.9;
-    ctx.font = `500 ${sub.size}px ${FONT}`;
-    for (const l of subLines) {
-      ctx.fillText(l, PAD, y);
-      y += sh;
-    }
+    Object.assign(c, { ink: "#10231e", accent: deep, tagBg: deep, tagInk: "#ffffff", wish: deep, rule: "rgba(16,35,30,.2)", chipBg: "rgba(16,35,30,.05)", chipLine: "rgba(16,35,30,.3)" });
+    x = bx + 12 + inset;
+    y = by + inset;
+  } else if (style === "bant") {
+    // Kenardan kenara koyu şerit + ince renkli çizgi
+    const bh = m.h + 140 + (top ? safeT : safeB);
+    const by = top ? 0 : H - bh;
+    ctx.save();
+    ctx.fillStyle = deep;
+    ctx.globalAlpha = 0.96;
+    ctx.fillRect(0, by, W, bh);
     ctx.globalAlpha = 1;
-  }
-  // Sporcular: ince çizgi + her satırın başında renkli nokta
-  if (pLines.length) {
-    y += 14;
-    ctx.save();
-    ctx.shadowColor = "transparent";
-    ctx.fillStyle = light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)";
-    ctx.fillRect(PAD, y, 160, 3);
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, top ? by + bh - 10 : by, W, 10);
     ctx.restore();
-    y += 20;
-    ctx.font = `600 ${pp.size}px ${FONT}`;
-    for (const l of pLines) {
-      ctx.save();
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = light ? "#1f5a4b" : accent;
-      ctx.beginPath();
-      ctx.arc(PAD + 9, y + ph / 2 - 3, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      ctx.fillStyle = ink;
-      ctx.fillText(l, PAD + 34, y + (ph - pp.size) / 2 - 2);
-      y += ph;
+    Object.assign(c, { ink: "#ffffff", accent, tagBg: accent, tagInk: "#10231e", wish: accent, rule: "rgba(255,255,255,.35)", chipBg: "rgba(255,255,255,.1)", chipLine: "rgba(255,255,255,.5)" });
+    y = top ? 70 + safeT : by + 76;
+  } else {
+    if (photo) {
+      ctx.shadowColor = "rgba(0,0,0,.35)";
+      ctx.shadowBlur = 14;
     }
+    y = top ? PAD + 10 + safeT : H - PAD - m.h - safeB;
   }
+  paint(ctx, m, x, y, c);
   ctx.shadowColor = "transparent";
   return canvas;
 }

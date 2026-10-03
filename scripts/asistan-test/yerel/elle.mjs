@@ -268,6 +268,34 @@ group("Aidat takibi")([
   })],
 ]);
 
+// Instagram yeni tasarım (postModel.js): başarı satırı, sınıflar, kendiliğinden yazılar, yarıştan sporcular, asistan cümleleri
+const ONE = { name: "TYF Ligi", place: "Foça, İzmir", dates: "7-11 Ekim 2026", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] };
+group("Instagram tasarım")([
+  ["başarı satırı", F("1 sporcu Sporcumuza, çok Sporcularımıza, sonuçta tebrik", () => PM.raceWish(ONE) === "Sporcumuza başarılar!" && PM.raceWish({ ...ONE, athletes: SIX }) === "Sporcularımıza başarılar!" && PM.raceWish(ONE, "sonuc") === "Sporcumuzu tebrik ederiz!" && PM.raceWish(null) === "")],
+  ["sınıflar", F("talimattaki sınıflar, yoksa sporcularınki; tekrarsız, en çok 4", () => PM.raceClasses({ classes: "ILCA 4, ILCA 6" }).join() === "ILCA 4,ILCA 6" && PM.raceClasses({ athletes: [...SIX, { name: "X", cls: "ILCA 4" }] }).join() === "Optimist,ILCA 4")],
+  ["yer · tarih", F("ilçe · tarih", () => PM.raceMeta(ONE) === "Foça · 7-11 Ekim 2026" && PM.raceMeta(null) === "")],
+  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ" && r.meta === true && r.style === "klasik"; })],
+  ["tür değişince", F("kendiliğinden yazılar yenilenir, elle yazılan başlık kalır", () => {
+    const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }), headline: "Benim başlığım" });
+    const b = PM.reauto(a, { ...a, kind: "sonuc" });
+    return b.headline === "Benim başlığım" && b.wish === "Sporcumuzu tebrik ederiz!" && b.tag === "SONUÇ" && b.sub.endsWith("başarıyla temsil etti.");
+  })],
+  ["sporcu çıkarılınca", F("2 → 1 sporcu: alt satır ve dilek tekile döner", () => {
+    const race = { ...ONE, athletes: SIX.slice(0, 2) };
+    const a = PM.cleanPost({ kind: "duyuru", race, ...PM.autoOf({ kind: "duyuru", race }) });
+    const b = PM.reauto(a, { ...a, race: { ...race, athletes: race.athletes.slice(0, 1), count: 1 } });
+    return b.sub.startsWith("Sporcumuz Ali Kaya,") && b.wish === "Sporcumuza başarılar!";
+  })],
+  ["yarış kaldırılınca", F("yarıştan gelen yazılar silinir", () => { const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }) }); const b = PM.reauto(a, { ...a, race: null }); return b.headline === "" && b.sub === "" && b.wish === ""; })],
+  ["yarışın sporcuları", F("kimliklerden ad ve sınıf, kişisel bilgi yok, dereceli önce", () => {
+    const r = PM.raceWithAthletes({ athleteIds: ["a", "b", "yok"], results: { rows: { b: { place: 2 } } } }, { athletes: [{ id: "a", studentName: "Ali Kaya", currentClassId: "o", studentTc: "12345678901" }, { id: "b", studentName: "Ece Su", currentClassId: "i" }], classes: [{ id: "o", name: "Optimist" }, { id: "i", name: "ILCA 4" }] });
+    return r.athletes.length === 2 && r.athletes[0].name === "Ece Su" && r.athletes[0].cls === "ILCA 4" && !/12345678901/.test(JSON.stringify(r.athletes));
+  })],
+  ["şablon kaydı", F("bilinmeyen şablon Klasik, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "klasik" && PM.cleanPost({ style: "bant" }).style === "bant" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
+  ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
+  ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],
+]);
+
 // Instagram hikâye boyutu (postModel.js)
 const PMs = await import("@/features/posts/postModel");
 group("Instagram hikâye")([
