@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { testText } from "@/lib/notifyText";
+import { pushError } from "@/lib/server/pushSend";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[push-test]", e.statusCode, e.body || e.message);
-    return NextResponse.json({ error: "Deneme bildirimi gönderilemedi" }, { status: 502 });
+    return NextResponse.json({ error: `Deneme bildirimi gönderilemedi. ${pushError(e)}`, code: e.statusCode || 0 }, { status: 502 });
   }
 }

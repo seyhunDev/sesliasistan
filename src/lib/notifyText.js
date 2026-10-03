@@ -31,6 +31,12 @@ export function assignedText({ kind, title, date, time, due, place, from }, toda
   return { title: head("Yeni not", t), body: line(from && `${who(from)} paylaştı`) };
 }
 
+// Kişi (çalışan, sporcu…) yeni kayıt ekledi: ana hesaba. "Yeni görev: Motor yağı" / "Son gün yarın · Ali Kaya ekledi"
+export function addedText(info, today = todayIn()) {
+  const m = assignedText({ ...info, from: "" }, today);
+  return { title: m.title, body: line(m.body, info.from && `${who(info.from)} ekledi`) };
+}
+
 // Plan hatırlatması: "1 saat sonra: Antrenman" / "10:00 · Yat limanı"
 export function reminderTextOf(plan, lead) {
   const t = String(plan.title || "Plan").trim();

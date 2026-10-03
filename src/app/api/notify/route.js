@@ -3,13 +3,19 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
-import { assignedText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
+import { addedText, assignedText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 
 export const runtime = "nodejs";
 
 const COLS = { plan: "plans", task: "tasks", note: "notes" };
+
+// Alıcılara aynı anda gönderir; birinin hatası diğerlerini durdurmaz. Gönderilen cihaz sayısını döndürür.
+async function sendAll(list, fn) {
+  const res = await Promise.all(list.map((u) => Promise.resolve().then(() => fn(u)).catch((e) => (console.error("[notify]", u, e?.message), 0))));
+  return res.reduce((a, n) => a + (Number(n) || 0), 0);
+}
 
 // Bildirim gönderir:
 //   { receiptId }            -> fiş ödendi: fişi ekleyen kişiye
@@ -51,13 +57,15 @@ export async function POST(request) {
     const from = me.name || (au.uid === me.orgId ? "Ana hesap" : "Kişi");
     const title = c.type === "dm" ? from : GROUPS[cid]?.name || c.name || "Grup";
     const text = String(m.text || "").replace(/\s+/g, " ").slice(0, 160);
-    let sent = 0;
-    for (const u of [...new Set(everyone)].filter((x) => x && x !== au.uid)) {
-      if (c.muted?.[u]) continue;
-      const v = (await db.collection("users").doc(u).get()).data()?.viewing;
-      if (v?.key === `chat-${cid}` && Date.now() - Date.parse(v.at || 0) < 75e3) continue;
-      sent += await sendTo(u, { title, body: c.type === "dm" ? text : `${from}: ${text}`, tag: `chat-${cid}`, url: `/messages?c=${cid}` });
-    }
+    // Herkese aynı anda: sırayla gönderilince kalabalık grupta süre doluyor, son kişilere bildirim gitmiyordu
+    const sent = await sendAll(
+      [...new Set(everyone)].filter((x) => x && x !== au.uid && !c.muted?.[x]),
+      async (u) => {
+        const v = (await db.collection("users").doc(u).get()).data()?.viewing;
+        if (v?.key === `chat-${cid}` && Date.now() - Date.parse(v.at || 0) < 75e3) return 0;
+        return sendTo(u, { title, body: c.type === "dm" ? text : `${from}: ${text}`, tag: `chat-${cid}`, url: `/messages?c=${cid}` });
+      },
+    );
     return NextResponse.json({ ok: true, sent });
   }
 
@@ -86,8 +94,7 @@ export async function POST(request) {
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
     const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
     const msg = body.event === "changed" ? changedText(info) : deletedText(info);
-    let sent = 0;
-    for (const u of to) sent += await sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" });
+    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" }));
     return NextResponse.json({ ok: true, sent });
   }
 
@@ -111,18 +118,17 @@ export async function POST(request) {
       msg = doneText({ kind, title: r.title, from: me.name });
     }
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
-    let sent = 0;
-    for (const u of to) {
+    const sent = await sendAll(to, async (u) => {
       // Alıcı şu an bu kaydın konuşmasındaysa (uygulama açık, ekranda) telefona bildirim gönderilmez: mesaj zaten önünde
       if (body.event === "reply") {
         const v = (await db.collection("users").doc(u).get()).data()?.viewing;
-        if (v?.key === `${kind}-${ref.id}` && Date.now() - Date.parse(v.at || 0) < 75e3) continue;
+        if (v?.key === `${kind}-${ref.id}` && Date.now() - Date.parse(v.at || 0) < 75e3) return 0;
       }
       // Not: alıcının henüz görmediği not sayısı başlığa yazılır; aynı etiket telefonda öncekinin yerine geçer (yığılmaz)
       const n = body.event === "reply" ? Math.max(1, unseenNotes(r, u).length) : 1;
       const m = n > 1 ? replyText({ kind, title: r.title, from: me.name, text: (r.replies?.[au.uid] || []).at(-1)?.text, n }) : msg;
-      sent += await sendTo(u, { ...m, tag: `${body.event}-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` });
-    }
+      return sendTo(u, { ...m, tag: `${body.event}-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` });
+    });
     return NextResponse.json({ ok: true, sent });
   }
 
@@ -134,22 +140,26 @@ export async function POST(request) {
     if (!r) return NextResponse.json({ error: "Kayıt yok" }, { status: 404 });
     if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
     const to = (r.assignees || []).filter((u) => u !== au.uid && !r.notified?.[u]);
+    // Kişinin (çalışan, sporcu…) az önce eklediği kayıt: ana hesaba "yeni kayıt" bildirimi (bir kez)
+    const byMember = au.uid !== me.orgId && r.createdByUid === au.uid && !r.notified?.[me.orgId] && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
+    if (byMember && !to.includes(me.orgId)) to.push(me.orgId);
     if (!to.length) return NextResponse.json({ ok: true, sent: 0 });
-    const msg = assignedText({ kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" });
+    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
+    const msg = assignedText(info);
     const now = new Date().toISOString();
     const patch = {};
-    let sent = 0;
-    for (const u of to) {
+    const assignee = (u) => (r.assignees || []).includes(u);
+    const sent = await sendAll(to, async (u) => {
       const n = await sendTo(u, {
-        ...msg,
+        ...(byMember && u === me.orgId ? addedText(info) : msg),
         tag: `${kind}-${ref.id}`,
         url: `/?open=${kind}:${ref.id}`,
-        ack: { o: me.orgId, c: COLS[kind], i: ref.id, u, s: ackSig(me.orgId, COLS[kind], ref.id, u) },
+        ...(assignee(u) && { ack: { o: me.orgId, c: COLS[kind], i: ref.id, u, s: ackSig(me.orgId, COLS[kind], ref.id, u) } }),
       });
       patch[`notified.${u}`] = now; // bir daha gönderilmesin
-      if (n) patch[`ack.${u}.s`] = now; // en az bir cihaza gönderildi
-      sent += n;
-    }
+      if (n && assignee(u)) patch[`ack.${u}.s`] = now; // en az bir cihaza gönderildi ("iletildi" yalnız sorumlular için)
+      return n;
+    });
     await ref.update(patch);
     return NextResponse.json({ ok: true, sent });
   }

@@ -263,14 +263,14 @@ export function DataProvider({ children }) {
       const planIds = drafts.map((d) => (d.type === "plan" ? newId("plans") : null));
       const pid = firstPlanIdx >= 0 ? planIds[firstPlanIdx] : null;
       const count = { plans: 0, tasks: 0, notes: 0 };
-      const toNotify = []; // [tür, kimlik]: sorumlusu olan kayıtlar
+      const toNotify = []; // [tür, kimlik]: sorumlusu olan kayıtlar; kişinin eklediği her kayıt (ana hesaba bildirim)
       const ids = []; // [tür, kimlik]: taslak sırasıyla (asistan kartındaki Düzenle için)
 
       drafts.forEach((d, i) => {
         const base = { ownerId, cat: d.cat || "Genel", src: source, createdBy: by, createdAt: now, ...owners(d.assignees) };
         if (d.type === "plan") {
           const timed = !!d.time;
-          if (base.assignees.length && !me.current.staff) toNotify.push(["plan", planIds[i]]);
+          if (base.assignees.length || me.current.staff) toNotify.push(["plan", planIds[i]]);
           batch.set(doc(db, "orgs", ownerId, "plans", planIds[i]), {
             ...base,
             title: d.title.trim(),
@@ -290,13 +290,13 @@ export function DataProvider({ children }) {
           const planId = d.link && pid ? pid : null;
           if (d.type === "task") {
             const tid = newId("tasks");
-            if (base.assignees.length && !me.current.staff) toNotify.push(["task", tid]);
+            if (base.assignees.length || me.current.staff) toNotify.push(["task", tid]);
             batch.set(doc(db, "orgs", ownerId, "tasks", tid), { ...base, title: d.title.trim(), due: d.date || null, done: false, doneAt: null, planId });
             ids.push(["task", tid]);
             count.tasks++;
           } else {
             const nid = newId("notes");
-            if (base.assignees.length && !me.current.staff) toNotify.push(["note", nid]);
+            if (base.assignees.length || me.current.staff) toNotify.push(["note", nid]);
             batch.set(doc(db, "orgs", ownerId, "notes", nid), {
               ...base,
               title: (d.title || d.body).trim(),

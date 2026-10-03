@@ -53,6 +53,40 @@ export async function loadReminders(uid) {
 const ids = (p) => ({ role: p.role || "owner", orgId: p.orgId || p.uid });
 
 // Bildirimleri aç: izin ister, bu cihazı abone yapar, ayarı kaydeder. p: profil { uid, role, orgId }
+// Bu cihazda kullanıcı bildirimleri kapattı mı (izin açık kalsa da yeniden abone yapılmaz)
+const OFF = "sa_push_off";
+const offHere = () => {
+  try {
+    return localStorage.getItem(OFF) === "1";
+  } catch {
+    return false;
+  }
+};
+const setOffHere = (v) => {
+  try {
+    if (v) localStorage.setItem(OFF, "1");
+    else localStorage.removeItem(OFF);
+  } catch {}
+};
+
+const subEntry = (j) => ({ endpoint: j.endpoint, keys: j.keys, at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
+
+// Uygulama her açılışta: izin verilmişse bu cihazın aboneliğini kontrol eder; yoksa oluşturur, kayıtta yoksa ya da
+// değiştiyse yeniden yazar. Ana ekrana yeniden ekleme ya da iPhone'un aboneliği yenilemesi bildirimleri sessizce
+// kesiyordu (eski abonelik silinir, yenisi kaydedilmezdi). Sonuç: "ok" | "saved" | "skip"
+export async function syncPush(p) {
+  if (!p?.uid || !KEY || !pushSupported() || Notification.permission !== "granted" || offHere()) return "skip";
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(KEY) }));
+  const j = sub.toJSON();
+  const key = deviceKey(j.endpoint);
+  const data = (await getDoc(doc(db, "users", p.uid))).data() || {};
+  const saved = data.push?.[key];
+  if (saved && saved.keys?.p256dh === j.keys?.p256dh && saved.keys?.auth === j.keys?.auth && data.reminders?.on) return "ok";
+  await setDoc(doc(db, "users", p.uid), { ...ids(p), reminders: { on: true, tz: tz() }, push: { [key]: subEntry(j) } }, { merge: true });
+  return "saved";
+}
+
 export async function enableReminders(p, lead) {
   const uid = p.uid;
   if (!pushSupported()) throw Object.assign(new Error("Bu tarayıcı bildirimleri desteklemiyor."), { code: "unsupported" });
@@ -62,12 +96,13 @@ export async function enableReminders(p, lead) {
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(KEY) }));
   const j = sub.toJSON();
+  setOffHere(false);
   await setDoc(
     doc(db, "users", uid),
     {
       ...ids(p),
       reminders: { on: true, lead, tz: tz() },
-      push: { [deviceKey(j.endpoint)]: { endpoint: j.endpoint, keys: j.keys, at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) } },
+      push: { [deviceKey(j.endpoint)]: subEntry(j) },
     },
     { merge: true },
   );
@@ -81,6 +116,7 @@ export async function setLead(p, lead) {
 export async function disableReminders(p) {
   const sub = pushSupported() ? await currentSub().catch(() => null) : null;
   const ref = doc(db, "users", p.uid);
+  setOffHere(true);
   if (sub) {
     await updateDoc(ref, { [`push.${deviceKey(sub.endpoint)}`]: deleteField() }).catch(() => {});
     await sub.unsubscribe().catch(() => {});
