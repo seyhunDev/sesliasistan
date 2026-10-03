@@ -24,10 +24,8 @@ export function birthdayText(list, date) {
     const age = Number(b.year) > 1900 && Number(b.year) < y ? y - Number(b.year) : 0;
     return `${String(b.name).trim()}${age ? ` (${age} yaşında)` : ""}`;
   };
-  return {
-    title: hits.length === 1 ? `Bugün doğum günü: ${first(hits[0].name)}` : `Bugün ${hits.length} doğum günü var`,
-    body: `${hits.map(one).join(", ")}. Kutlamayı unutma.`,
-  };
+  // Tek satır: "Bugün doğum günü: Ayşe Yılmaz (40 yaşında)" / "Bugün 2 doğum günü: Ayşe Yılmaz, Ali Kaya"
+  return hits.length === 1 ? { title: `Bugün doğum günü: ${one(hits[0])}`, body: "" } : { title: `Bugün ${hits.length} doğum günü`, body: hits.map(one).join(", ") };
 }
 
 // ---- Rüzgâr uyarısı ----

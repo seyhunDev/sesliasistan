@@ -2,7 +2,8 @@
 //   Başlık: "<Olay>: <Konu>"  — en fazla ~44 karakter, uzunsa "…" ile kısalır
 //   Gövde : tek satır, en fazla 3 parça, " · " ile ayrılır (zaman · yer · kimden). Emoji ve nokta yok.
 //   Mesaj ve tamamlama kişiden gelir: başlıkta kişi ("Ali Kaya · Motor yağı", "Ali Kaya tamamladı"), gövdede içerik.
-//   Telefonun eklediği "from …" / uygulama adı satırı işletim sisteminindir, buradan değişmez.
+//   Telefonda tek satır görünür: service worker (public/sw.js) başlık ile gövdeyi birleştirir
+//   ("Yeni görev: Motor yağı · Son gün yarın · Ali verdi"). Üstteki uygulama adı işletim sisteminindir.
 const TZ = "Europe/Istanbul";
 const MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
