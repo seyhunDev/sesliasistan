@@ -37,7 +37,7 @@ async function ask(q, raw = false) {
 
 // ---- 1) Testler ----
 if (!flag("--test-yok")) {
-  run("Asistan yerel kuralları (yapay zekasız)", "node --no-warnings scripts/asistan-test/calistir.mjs");
+  run("Yerel testler: asistan, ses, elle işlemler, yarış (yapay zekasız)", "node --no-warnings scripts/asistan-test/calistir.mjs");
   if (flag("--canli")) run("Canlı uygulama testi", "node --no-warnings scripts/uygulama-test/calistir.mjs");
   run("Derleme (npm run build)", "npm run build");
   console.log("\n✓ Testler ve derleme geçti");

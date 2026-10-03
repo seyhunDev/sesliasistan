@@ -1,7 +1,12 @@
-// Asistan testleri (yerelde çalışır): node scripts/asistan-test/calistir.mjs
-//   Yerel kurallar: yapay zekasız çalışan her şey (sayfa açma, kayıt ekleme, özet, tamamlama, doğum günü, onaylar…)
-//   --yz ile: gerçek yapay zekaya da sorar (anahtar .env.local'dan; ~20 istek kotadan düşer)
-// Sonuç ekrana ve ~/Downloads/asistan-test-<tarih>.txt dosyasına yazılır (bu dosyayı sohbete yükleyebilirsin).
+// Uygulama testleri (yerelde çalışır): node scripts/asistan-test/calistir.mjs [alan…] [--yz] [--ayrinti]
+//   Alanlar (yerel/ klasörü, yapay zekasız; hepsi için alan yazma):
+//     asistan  söylenen cümlenin anlaşılması: sayfa açma, kayıt ekleme, özet, onay, yarış açma, alışveriş, kişi ekleme…  (npm run test:asistan)
+//     ses      uydurma metin ayıklama, Türkçe okunuş, ses seçimi                                                   (npm run test:ses)
+//     elle     sayfalardaki işlemlerin hesabı: bildirimler, yoklama raporu, etkinlik, Instagram gönderisi, ana sayfa  (npm run test:elle)
+//     yaris    yarış bütçesi, iş listesi, evrak PDF'i, çevre, hava                                                  (npm run test:yaris)
+//   --yz ile: gerçek yapay zekaya da sorar (anahtar .env.local'dan; ~20 istek kotadan düşer)                         (npm run test:yz)
+//   --ayrinti: geçen testleri de tek tek yazar
+// Sonuç ekrana ve ~/Downloads/yerel-test-<tarih>.txt dosyasına yazılır (bu dosyayı sohbete yükleyebilirsin).
 // Veritabanına dokunmaz, kayıt oluşturmaz, mesaj göndermez.
 import { register } from "node:module";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
@@ -28,13 +33,33 @@ const stamp = new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" }
 log(`Sesli Asistan testleri · ${stamp}`);
 log("");
 
-const { default: local } = await import("./yerel.mjs");
-const groups = [...new Set(local.map((r) => r.group))];
-log(`YEREL KURALLAR (yapay zekasız): ${local.filter((r) => r.ok).length}/${local.length} geçti`);
-for (const g of groups) {
-  const rs = local.filter((r) => r.group === g);
-  log(`  ${rs.every((r) => r.ok) ? "✓" : "✗"} ${g}: ${rs.filter((r) => r.ok).length}/${rs.length}`);
-  for (const r of rs.filter((x) => !x.ok)) log(`      ✗ “${r.say}” → ${r.got} (beklenen: ${r.expect})`);
+const AREAS = {
+  asistan: { title: "ASİSTAN (cümleyi anlama)", files: ["asistan", "kisi"] },
+  ses: { title: "SES (tanıma ve okuma)", files: ["ses"] },
+  elle: { title: "ELLE İŞLEMLER (sayfa hesapları)", files: ["elle"] },
+  yaris: { title: "YARIŞ (bütçe, iş, evrak, çevre, hava)", files: ["yaris"] },
+};
+const asked = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const bad = asked.filter((a) => !AREAS[a]);
+if (bad.length) {
+  console.log(`Bilinmeyen alan: ${bad.join(", ")}. Alanlar: ${Object.keys(AREAS).join(", ")}`);
+  process.exit(1);
+}
+const areas = asked.length ? asked : Object.keys(AREAS);
+const detail = process.argv.includes("--ayrinti");
+for (const a of areas) for (const f of AREAS[a].files) await import(`./yerel/${f}.mjs`);
+const { results: local, settle } = await import("./yerel/ortak.mjs");
+await settle();
+log(`YEREL TESTLER (yapay zekasız): ${local.filter((r) => r.ok).length}/${local.length} geçti`);
+for (const a of areas) {
+  const inArea = local.filter((r) => r.area === a);
+  log("");
+  log(`${AREAS[a].title}: ${inArea.filter((r) => r.ok).length}/${inArea.length}`);
+  for (const g of [...new Set(inArea.map((r) => r.group))]) {
+    const rs = inArea.filter((r) => r.group === g);
+    log(`  ${rs.every((r) => r.ok) ? "✓" : "✗"} ${g}: ${rs.filter((r) => r.ok).length}/${rs.length}`);
+    for (const r of rs.filter((x) => detail || !x.ok)) log(`      ${r.ok ? "✓" : "✗"} “${r.say}” → ${r.got} (beklenen: ${r.expect})`);
+  }
 }
 
 let ai = [];
@@ -55,7 +80,7 @@ if (process.argv.includes("--yz")) {
 
 const dir = join(homedir(), "Downloads");
 if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-const file = join(dir, `asistan-test-${new Date().toISOString().slice(0, 10)}.txt`);
+const file = join(dir, `yerel-test-${new Date().toISOString().slice(0, 10)}.txt`);
 writeFileSync(file, lines.join("\n") + "\n");
 console.log(`\nSonuç dosyası: ${file}`);
 // Yerel kurallardan biri bile geçmezse hata koduyla çık (scripts/gonder.mjs göndermeyi durdurur)

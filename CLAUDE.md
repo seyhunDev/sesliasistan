@@ -11,7 +11,7 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Sporcu verisine ve ana hesap (seyhunyildiz) hesabına dokunma.
 - Kullanıcıya verilen terminal komut bloklarında `#` yorum satırı olmasın.
 - Değişiklikler GitHub'a gönderilir (bulut oturumunda dal + PR).
-- Testler: `npm test` (asistan yerel kuralları + derleme), canlı: `node --no-warnings scripts/uygulama-test/calistir.mjs` (hesap sorar), yapay zeka: `node scripts/asistan-test/calistir.mjs --yz`. Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
+- Testler: `npm test` (tüm yerel testler + derleme); derlemesiz hepsi `npm run test:hizli`; alan alan `npm run test:asistan` / `test:ses` / `test:elle` / `test:yaris` (dosyalar `scripts/asistan-test/yerel/<alan>.mjs`, yeni özelliğin testi kendi alanına eklenir); yapay zeka `npm run test:yz`; canlı `npm run test:canli` (hesap sorar). Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
 - Yapay zeka: Gemini 3.x için `thinkingLevel: "minimal"`, eskiler için `thinkingBudget: 0` (lib/ai/gemini.js). Hata türleri lib/ai/errors.js.
 - Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (aşağıda otomatik yüklenir); kalıcı kararları oraya yaz.
 - Token: tüm dosyaları tarama, haritadan ilgili dosyaya git.
