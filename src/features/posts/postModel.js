@@ -56,7 +56,7 @@ export function cleanTags(v) {
 
 const cleanAthletes = (a) =>
   (Array.isArray(a) ? a : [])
-    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30) }))
+    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30), ...(S(x?.res, 30) ? { res: S(x.res, 30) } : {}) }))
     .filter((x) => x.name)
     .slice(0, 20);
 
@@ -85,7 +85,7 @@ export const cleanPeople = (v) =>
 // Yarışın sporcularından görsel satırları: az kişiyse "Ad · sınıf", kalabalıksa adlar yan yana
 export function peopleLines(athletes = []) {
   if (!athletes.length) return "";
-  if (athletes.length <= 4) return athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" · ")).join("\n");
+  if (athletes.length <= 4) return athletes.map((a) => [a.name, a.cls, a.res].filter(Boolean).join(" · ")).join("\n");
   const first = (n) => n.split(" ")[0];
   return cleanPeople(`${athletes.length} sporcumuz yarışta\n${athletes.map((a) => first(a.name)).join(", ")}`);
 }

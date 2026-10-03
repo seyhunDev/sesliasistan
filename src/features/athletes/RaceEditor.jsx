@@ -10,6 +10,8 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { EXPIRY, raceExpired } from "@/lib/expiry";
+import { resultsOpen, withResults } from "@/lib/raceResults";
+import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
 import { DOCS, buildRaceDocs, clubInfo, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
@@ -280,7 +282,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
   // Instagram gönderisi: yarış bilgisi ve seçili sporcuların yalnız adı ve sınıfı gönderi sayfasına cihaz içinde geçer (ek okuma yok)
   const toPost = () => {
     const cls = Object.fromEntries(classes.map((c) => [c.id, c.name]));
-    const list = chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" }));
+    const list = withResults(chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" })), chosen.map((a) => a.id), r.results);
     try {
       sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [] } }));
     } catch {}
@@ -535,6 +537,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
           {chosen.length > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">Sporcuya dokunup eksik bilgileri gir; sporcu kartına kaydolur, sonraki yarışlarda hazır gelir.</p>}
+          {chosen.length > 0 && resultsOpen(r, todayStr()) && <RaceResults results={r.results} athletes={chosen} onChange={(v) => put("results", v)} />}
         </>
       )}
 
