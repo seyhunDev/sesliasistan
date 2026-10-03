@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FieldPath, Timestamp, addDoc, collection, deleteField, doc, getDoc, getDocs, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
 import { dikiliAuth, dikiliDb } from "./dikili";
+import { EXPIRY_KEYS } from "@/lib/expiry";
 
 // Firestore değerlerini düz hale getirir (Timestamp -> ISO tarih)
 function plain(v) {
@@ -52,6 +53,8 @@ async function fetchAthletes() {
       parentName: a.parentName || "", parentPhone: a.parentPhone || "", parentEmail: a.parentEmail || "", studentBirthDate: a.studentBirthDate || null,
       // Yarış evrakı için (raceDocs.js)
       ...Object.fromEntries(DOC_FIELDS.map((k) => [k, a[k] || ""])),
+      // Lisans vizesi, sağlık raporu, sigorta bitiş tarihleri (YYYY-MM-DD)
+      ...Object.fromEntries(EXPIRY_KEYS.map((k) => [k, typeof a[k] === "string" ? a[k] : ""])),
       // Yoklama: { 2026: { "09-29": "present" } }
       att: Object.fromEntries(Object.entries(a).filter(([k]) => /^attendance_\d{4}$/.test(k)).map(([k, v]) => [k.slice(11), v || {}])),
     });

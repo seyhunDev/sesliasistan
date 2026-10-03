@@ -103,3 +103,24 @@ group("Yarış evrakı")([
   ["kalabalık otel izni", { desc: "25 sporcu yine tek sayfa", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, Array.from({ length: 25 }, (_, i) => ({ id: `s${i}`, studentName: `Sporcu ${i + 1}` })), FONTS, ["hotel"])), ok: (r) => r === 1 }],
   ["bütçe PDF", { desc: "bütçe çıktısı açılır", fn: async () => pages(await BD.buildBudgetPdf(DOC_RACE, DOC_ATH, FONTS)), ok: (r) => r >= 1 }],
 ]);
+
+// Yarış sonuçları (raceResults.js)
+const RR = await import("@/lib/raceResults");
+const RF = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
+group("Yarış sonuçları")([
+  ["temizlik", RF("sıra sayı, boşlar atılır", () => { const c = RR.cleanResults({ fleet: "24", rows: { a1: { place: "3", note: " ILCA 4 " }, a2: { place: "", note: "" }, "x/y": { place: 1 } } }); return c.fleet === 24 && c.rows.a1.place === 3 && c.rows.a1.note === "ILCA 4" && !c.rows.a2 && !c.rows["x/y"]; })],
+  ["metin", RF("3. / 24 · ILCA 4", () => RR.placeText({ fleet: 24, rows: { a1: { place: 3, note: "ILCA 4" } } }, "a1") === "3. / 24 · ILCA 4")],
+  ["başladı mı", RF("başlangıç bugün/önce", () => RR.resultsOpen({ startDate: "2026-10-05" }, "2026-10-05") && !RR.resultsOpen({ startDate: "2026-10-06" }, "2026-10-05"))],
+  ["sporcu geçmişi", RF("yeniden eskiye, yalnız katıldıkları", () => { const h = RR.historyOf([{ id: "r1", name: "A", startDate: "2026-05-01", athleteIds: ["a1"], results: { fleet: 10, rows: { a1: { place: 2 } } } }, { id: "r2", name: "B", startDate: "2026-09-01", athleteIds: ["a1"] }, { id: "r3", name: "C", startDate: "2026-10-01", athleteIds: ["a2"] }], "a1"); return h.map((x) => x.id).join() === "r2,r1" && h[1].text === "2. / 10"; })],
+  ["Instagram sırası", RF("dereceli önce, sonuç satırda", () => { const l = RR.withResults([{ name: "Ali" }, { name: "Ece" }], ["a1", "a2"], { fleet: 0, rows: { a2: { place: 1 } } }); return l[0].name === "Ece" && l[0].res === "1." && !l[1].res; })],
+]);
+
+// Bütçe: gerçekleşen harcama (bağlı fişler)
+const BG = await import("@/features/athletes/budget");
+const RC = await import("@/lib/receipts");
+const RCP = [{ id: "f1", date: "2026-10-20", declared: 150000 }, { id: "f2", date: "2026-10-28", declared: 250050 }, { id: "f3", date: "2026-09-01", declared: 10000 }];
+group("Bütçe: harcanan")([
+  ["yakın fişler", RF("7 gün önce–3 gün sonra, bağlı olan her zaman", () => BG.nearReceipts(RCP, { startDate: "2026-10-26", endDate: "2026-10-31" }, ["f3"]).map((x) => x.id).join() === "f2,f1,f3")],
+  ["toplam", RF("1500 + 2500,50", () => BG.spentTotal(RCP, ["f1", "f2"], RC.totalTL) === 4000.5)],
+  ["temizlik", RF("geçersiz kimlik atılır, tekrar yok", () => BG.cleanBudget({ items: [], spent: ["f1", "f1", "x/y", 5] }).spent.join() === "f1")],
+]);

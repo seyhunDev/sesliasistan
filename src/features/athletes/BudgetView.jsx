@@ -7,7 +7,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, cleanBudget, cleanItem, emptyBudget, howText, newId, tl, totals } from "./budget";
+import { CATS, UNITS, cleanBudget, cleanItem, emptyBudget, howText, nearReceipts, newId, spentTotal, tl, totals } from "./budget";
+import { useData } from "@/features/data/DataProvider";
+import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
 import { openFile, shareFile } from "./fileActions";
 import { loadFonts } from "./raceDocs";
@@ -40,6 +42,11 @@ export function BudgetView({ r, athletes, onChange }) {
   const [aiText, setAiText] = useState("");
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [link, setLink] = useState(false); // fiş bağlama
+  const { receipts = [] } = useData();
+  const spent = b.spent || [];
+  const used = spentTotal(receipts, spent, totalTL);
+  const near = nearReceipts(receipts, r, spent);
 
   const saveItem = (it) => {
     const x = cleanItem(it);
@@ -96,6 +103,45 @@ export function BudgetView({ r, athletes, onChange }) {
           <Stat n={tl(t.club)} label="Kulüp karşılar" />
         </div>
       </Hero>
+
+      <Label right={spent.length ? `${spent.length} fiş` : ""}>HARCANAN</Label>
+      <div className={`${card} px-4 py-3`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <b className="text-[1.125rem] font-semibold tabular-nums">{tl(used)}</b>
+          <span className={`text-[0.8125rem] tabular-nums ${t.total && used > t.total ? "font-semibold text-rec" : "text-mut"}`}>
+            {t.total ? `planlanan ${tl(t.total)}${used > t.total ? ` · ${tl(used - t.total)} aştı` : ` · ${tl(t.total - used)} kaldı`}` : "plan yok"}
+          </span>
+        </div>
+        {t.total > 0 && (
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
+            <div className={`h-full rounded-full ${used > t.total ? "bg-rec" : "bg-acc"}`} style={{ width: `${Math.min(100, Math.round((used / t.total) * 100))}%` }} />
+          </div>
+        )}
+        <button type="button" onClick={() => setLink(true)} className="mt-2 text-[0.8125rem] font-semibold text-acc active:opacity-60">
+          {near.length ? "Fiş bağla" : "Yarış tarihlerine yakın fiş yok"}
+        </button>
+      </div>
+      <Sheet open={link} onClose={() => setLink(false)} title="Bu yarışın fişleri">
+        <p className="mb-2 text-[0.8125rem] text-mut">Yarıştan 7 gün önce ile 3 gün sonrası arasındaki fişler. Seçtiklerin harcanan tutara girer.</p>
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-bg">
+          {near.map((x) => {
+            const on = spent.includes(x.id);
+            return (
+              <li key={x.id}>
+                <button type="button" onClick={() => set({ spent: on ? spent.filter((y) => y !== x.id) : [...spent, x.id] })} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-acc text-white ring-acc" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-medium">{x.merchant || "Fiş"}</b>
+                    <small className="block text-[0.75rem] text-mut">{[x.date, x.cat].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  <b className="shrink-0 tabular-nums">{tl(totalTL(x))}</b>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {!near.length && <p className="py-6 text-center text-[0.875rem] text-mut">Bağlanacak fiş yok. Fişler sayfasından fiş ekle.</p>}
+      </Sheet>
 
       <Label>KİŞİLER</Label>
       <div className={`${card} divide-y divide-line overflow-hidden`}>

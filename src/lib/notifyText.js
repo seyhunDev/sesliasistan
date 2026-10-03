@@ -86,5 +86,10 @@ export function deletedText({ kind, title, date, time, from }, today = todayIn()
   const ev = { plan: "Plan iptal", task: "Görev kaldırıldı", note: "Not kaldırıldı" }[kind] || "Kayıt kaldırıldı";
   return { title: head(ev, t), body: line(kind === "plan" ? [dayLabel(date, today), time].filter(Boolean).join(" ") : "", from && `${who(from)} sildi`) };
 }
+// Plan iptal edildi (kayıt durur, status "cancelled"): "Plan iptal: Antrenman" / "Bugün 16:00 · rüzgâr · Seyhun iptal etti"
+export function cancelledText({ title, date, time, reason, from }, today = todayIn()) {
+  const t = String(title || "Plan").trim();
+  return { title: head("Plan iptal", t), body: line([dayLabel(date, today), time].filter(Boolean).join(" "), reason || "", from && `${who(from)} iptal etti`) };
+}
 // Çalışan/aile fiş ekledi, ödeme bekliyor (ana hesaba): "Ödeme bekliyor: Marin Yedek Parça" / "₺1.460 · Elif ekledi"
 export const receiptNewText = ({ merchant, amount, from }) => ({ title: head("Ödeme bekliyor", merchant || "Fiş"), body: line(amount, from && `${who(from)} ekledi`) });

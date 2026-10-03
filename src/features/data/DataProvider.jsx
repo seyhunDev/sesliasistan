@@ -11,9 +11,10 @@ import { calcTotals, mismatch } from "@/lib/receipts";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { badgeCount } from "@/lib/badge";
+import { seriesDates } from "@/lib/repeat";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
-const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body"];
+const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
 
 // Veri: orgs/{işletme}/plans | tasks | notes | receipts (+ receiptImages, members). İşletme = ana hesabın uid'si.
 // Her kayıtta createdByUid (ekleyen), assignees (sorumlu çalışanlar; boş = genel) ve people (görebilenler: ekleyen + sorumlular) bulunur.
@@ -271,7 +272,7 @@ export function DataProvider({ children }) {
         if (d.type === "plan") {
           const timed = !!d.time;
           if (base.assignees.length || me.current.staff) toNotify.push(["plan", planIds[i]]);
-          batch.set(doc(db, "orgs", ownerId, "plans", planIds[i]), {
+          const rec = {
             ...base,
             title: d.title.trim(),
             date: d.date,
@@ -283,8 +284,18 @@ export function DataProvider({ children }) {
             timeSource: timed ? "user" : "none",
             place: (d.place || "").trim(),
             status: "planned",
-          });
+          };
           ids.push(["plan", planIds[i]]);
+          // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
+          const dates = d.repeat === "week" && !rec.endDate ? seriesDates(d.date, d.repeatUntil) : [];
+          if (dates.length > 1) {
+            const repeat = { every: "week", until: dates.at(-1) };
+            dates.forEach((date, k) => {
+              const id = k ? newId("plans") : planIds[i];
+              batch.set(doc(db, "orgs", ownerId, "plans", id), { ...rec, date, seriesId: planIds[i], repeat });
+            });
+            count.weeks = dates.length;
+          } else batch.set(doc(db, "orgs", ownerId, "plans", planIds[i]), rec);
           count.plans++;
         } else {
           const planId = d.link && pid ? pid : null;
@@ -451,6 +462,35 @@ export function DataProvider({ children }) {
       }
     },
     [getOrgId, fail, toast],
+  );
+
+  // Tekrarlayan planın bu ve sonraki haftaları (yalnız ana hesap). Bağlı görev/notların bağı kopar.
+  const deleteSeries = useCallback(
+    async (seriesId, from) => {
+      if (!seriesId || me.current.staff) return 0;
+      const { plans: all, tasks, notes } = cur.current;
+      const ids = all.filter((p) => p.seriesId === seriesId && (p.date || "") >= (from || "")).map((p) => p.id);
+      if (!ids.length) return 0;
+      setData((p) => ({
+        ...p,
+        plans: p.plans.filter((x) => !ids.includes(x.id)),
+        tasks: p.tasks.map((t) => (ids.includes(t.planId) ? { ...t, planId: null } : t)),
+        notes: p.notes.map((n) => (ids.includes(n.planId) ? { ...n, planId: null } : n)),
+      }));
+      try {
+        const ownerId = getOrgId();
+        const batch = writeBatch(db);
+        ids.forEach((id) => batch.delete(doc(db, "orgs", ownerId, "plans", id)));
+        tasks.filter((t) => ids.includes(t.planId)).forEach((t) => batch.update(doc(db, "orgs", ownerId, "tasks", t.id), { planId: null }));
+        notes.filter((n) => ids.includes(n.planId)).forEach((n) => batch.update(doc(db, "orgs", ownerId, "notes", n.id), { planId: null }));
+        await batch.commit();
+        return ids.length;
+      } catch (e) {
+        fail(e, "Silme");
+        return 0;
+      }
+    },
+    [getOrgId, fail],
   );
 
   const deleteRecord = useCallback(
@@ -848,7 +888,7 @@ export function DataProvider({ children }) {
     <Ctx.Provider
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
-        saveDrafts, toggleTask, updateRecord, deleteRecord, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
+        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
         saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
       }}
     >

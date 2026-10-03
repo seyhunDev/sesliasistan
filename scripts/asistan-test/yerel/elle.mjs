@@ -114,3 +114,151 @@ group("Instagram gönderisi")([
   ["paylaşım metni", { desc: "açıklama + boş satır + etiketler", fn: () => PM.fullCaption(PM.cleanPost({ caption: "Harika gün ⛵", hashtags: ["yelken", "dikili"] })), ok: (r) => r === "Harika gün ⛵\n\n#yelken #dikili" }],
   ["tarih aralığı", { desc: "7-11 Ekim 2026 · 28 Eylül-2 Ekim 2026", fn: () => [PM.dateRange("2026-10-07", "2026-10-11"), PM.dateRange("2026-09-28", "2026-10-02"), PM.dateRange("", "")], ok: ([a, b, c]) => a === "7-11 Ekim 2026" && b === "28 Eylül-2 Ekim 2026" && c === "" }],
 ]);
+
+// Tekrarlayan plan (repeat.js): "her salı 16:00 antrenman" → haftalık kopyalar
+const RPT = await import("@/lib/repeat");
+group("Tekrarlayan plan")([
+  ["her salı antrenman", F("salı bulunur", () => JSON.stringify(RPT.repeatOf("her salı 16:00 antrenman")?.days) === "[2]")],
+  ["her salı ve perşembe", F("iki gün", () => JSON.stringify(RPT.repeatOf("her salı ve perşembe saat 5'te antrenman")?.days) === "[2,4]")],
+  ["cumartesileri", F("cumartesi", () => JSON.stringify(RPT.repeatOf("cumartesileri yarış antrenmanı")?.days) === "[6]")],
+  ["her hafta toplantı", F("gün yok, haftalık", () => JSON.stringify(RPT.repeatOf("her hafta toplantı yapalım")?.days) === "[]")],
+  ["tek seferlik", F("tekrar yok", () => RPT.repeatOf("salı 16:00 antrenman") === null && RPT.repeatOf("herkese haber ver") === null)],
+  ["varsayılan bitiş", F("12 hafta", () => RPT.seriesDates("2026-10-06").length === 12)],
+  ["bitiş tarihi", F("6 Eki → 27 Eki: 4 hafta", () => RPT.seriesDates("2026-10-06", "2026-10-27").join() === "2026-10-06,2026-10-13,2026-10-20,2026-10-27")],
+  ["en çok yarım yıl", F("26 hafta", () => RPT.seriesDates("2026-10-06", "2027-12-31").length === 26)],
+  ["yapay zeka kaçırdı", F("pazartesi bugünken salıya kayar, haftalık olur", () => {
+    const r = RPT.applyRepeat([{ type: "plan", title: "Antrenman", date: "", time: "16:00" }], "her salı 16:00 antrenman", "2026-10-05");
+    return r.length === 1 && r[0].repeat === "week" && r[0].date === "2026-10-06";
+  })],
+  ["iki gün iki seri", F("salı ve perşembe ayrı", () => {
+    const r = RPT.applyRepeat([{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "17:00" }], "her salı ve perşembe 17:00 antrenman", "2026-10-05");
+    return r.map((x) => x.date).join() === "2026-10-06,2026-10-08" && r.every((x) => x.repeat === "week");
+  })],
+  ["yapay zeka zaten işaretledi", F("dokunulmaz", () => RPT.applyRepeat([{ type: "plan", title: "A", date: "2026-10-06", repeat: "week" }], "her salı A", "2026-10-05")[0].date === "2026-10-06")],
+  ["görev etkilenmez", F("görev tekrar etmez", () => !RPT.applyRepeat([{ type: "task", title: "Tekneleri yıka", date: "" }], "her salı tekneleri yıka", "2026-10-05")[0].repeat)],
+  ["etiket", F("Ekim'e kadar", () => RPT.repeatLabel("2026-10-27") === "Her hafta · 27 Ekim'e kadar" && RPT.repeatLabel("2026-12-29") === "Her hafta · 29 Aralık'a kadar")],
+]);
+
+// Plan iptali (cancelPlan.js) ve gelmeyenin velisine haber (absent.js)
+const CP = await import("@/lib/cancelPlan");
+const AB = await import("@/lib/absent");
+const REM = await import("@/lib/reminders");
+group("İptal ve veliye haber")([
+  ["rüzgâr iptal metni", F("Bugün 16:00 … rüzgâr nedeniyle iptal edildi.", () => CP.cancelText({ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00" }, "wind", "2026-10-05") === "Bugün 16:00 Optimist antrenmanı rüzgâr nedeniyle iptal edildi.")],
+  ["yarın, nedensiz", F("Yarın … iptal edildi.", () => CP.cancelText({ title: "Antrenman", date: "2026-10-06" }, "other", "2026-10-05") === "Yarın Antrenman iptal edildi.")],
+  ["iptal edilebilir mi", F("geçmiş ve iptal olmuş hayır", () => CP.canCancel({ date: "2026-10-05" }, "2026-10-05") && !CP.canCancel({ date: "2026-10-04" }, "2026-10-05") && !CP.canCancel({ date: "2026-10-06", status: "cancelled" }, "2026-10-05"))],
+  ["iptalde hatırlatma yok", F("dueReminders iptali atlar", () => REM.dueReminders([{ id: "a", date: "2026-10-05", time: "16:00", status: "cancelled" }], { lead: 60, now: new Date("2026-10-05T12:05:00Z"), windowMin: 15 }).length === 0)],
+  ["iptalde rüzgâr uyarısı yok", F("windAlert boş", () => NX.windAlert({ rows: WROWS, plans: [{ ...WPLANS[0], status: "cancelled" }], today: "2026-10-05", kn: 20 }) === null)],
+  ["uyarıdan plana", F("tek planda bağlantı plana gider", () => NX.windAlert({ rows: WROWS, plans: [{ ...WPLANS[0], id: "x1" }], today: "2026-10-05", kn: 20 })?.url === "/?open=plan:x1")],
+  ["telefon biçimi", F("0532… → 90532…", () => AB.waPhone("0532 123 45 67") === "905321234567" && AB.waPhone("+90 (532) 123-4567") === "905321234567" && AB.waPhone("5321234567") === "905321234567" && AB.waPhone("123") === "")],
+  ["veli metni", F("Ali bugünkü antrenmana gelmedi", () => /^Merhaba, Ali bugünkü antrenmana gelmedi\./.test(AB.absentText("Ali Kaya", "2026-10-05", "2026-10-05")))],
+  ["geçmiş gün", F("4 Ekim günkü", () => /Ali 4 Ekim günkü antrenmana/.test(AB.absentText("Ali Kaya", "2026-10-04", "2026-10-05")))],
+  ["veli bildirimi", F("Devamsızlık: Ali", () => AB.absentPush("Ali Kaya", "2026-10-05", "2026-10-05").title === "Devamsızlık: Ali")],
+]);
+
+// Belge bitiş takibi (expiry.js): lisans vizesi, sağlık raporu, sigorta
+const EX = await import("@/lib/expiry");
+const EXA = { id: "1", studentName: "Ali", licenseUntil: "2026-09-30", healthUntil: "2026-10-20", insuranceUntil: "2027-05-01" };
+group("Belge bitiş takibi")([
+  ["durumlar", F("bitti, yakında, tamam", () => EX.expiryOf(EXA, "2026-10-05").map((x) => x.state).join() === "expired,soon,ok")],
+  ["tarih yok", F("uyarı yok", () => EX.alertsOf({ id: "2" }, "2026-10-05").length === 0)],
+  ["metin", F("bitti / 15 gün sonra", () => { const [a, b] = EX.alertsOf(EXA, "2026-10-05"); return EX.alertText(a) === "Lisans vizesi bitti (30 Eyl 2026)" && EX.alertText(b) === "Sağlık raporu 15 gün sonra bitiyor"; })],
+  ["liste sırası", F("önce biten", () => { const l = EX.expiryList([{ id: "2", healthUntil: "2026-10-25" }, EXA, { id: "3" }], "2026-10-05"); return l.length === 2 && l[0].a.id === "1"; })],
+  ["yarışta geçersiz", F("yarış sonu 31 Eki: sağlık raporu da biter", () => EX.raceExpired(EXA, { startDate: "2026-10-26", endDate: "2026-10-31" }).map((x) => x.key).join() === "licenseUntil,healthUntil")],
+]);
+
+// Veri yedeği (backup.js)
+const BK = await import("@/lib/backup");
+group("Veri yedeği")([
+  ["sayfalar", F("7 sayfa, planlar sıralı, iptal yazılı", () => {
+    const s = BK.backupSheets({ plans: [{ date: "2026-10-09", title: "B" }, { date: "2026-10-05", title: "A", status: "cancelled", assignees: ["u1"] }], receipts: [{ date: "2026-10-01", merchant: "Migros", declared: 64290, payStatus: "paid" }] }, (u) => (u === "u1" ? "Ali Kaya" : ""));
+    return Object.keys(s).length === 7 && s.Planlar[1][3] === "A" && s.Planlar[1][6] === "İptal" && s.Planlar[1][7] === "Ali Kaya" && s.Fişler[1][2] === 642.9 && s.Fişler[1][3] === "Ödendi";
+  })],
+  ["gizli alanlar atılır", F("push, thumb, reminded yok; zaman damgası ISO", () => {
+    const c = BK.clean({ name: "Ali", push: { x: 1 }, thumb: "data:…", at: { toDate: () => new Date("2026-10-05T10:00:00Z") }, list: [{ reminded: { u: 1 }, t: 1 }] });
+    return !c.push && !c.thumb && c.at === "2026-10-05T10:00:00.000Z" && !c.list[0].reminded && c.list[0].t === 1;
+  })],
+  ["dosya adı", F("sesli-asistan-yedek-2026-10-05.xlsx", () => BK.backupName("2026-10-05", "xlsx") === "sesli-asistan-yedek-2026-10-05.xlsx")],
+]);
+
+// Kullanım ekranı (aiUsage.js)
+const AU = await import("@/lib/aiUsage");
+group("Kullanım ekranı")([
+  ["satırlar", F("çoktan aza, bilinmeyen ve by atılır", () => { const u = AU.usageRows({ month: "2026-10", org: "o", by: { u: 9 }, receipt: 2, assistant: 7, xyz: 5 }); return u.total === 9 && u.rows[0][0] === "Asistan" && u.rows[1][0] === "Fiş okuma"; })],
+  ["boş ay", F("0 istek", () => AU.usageRows(undefined).total === 0)],
+  ["para", F("$0,55", () => AU.usd(0.546) === "$0,55")],
+]);
+
+// iPhone takvimi (ics.js)
+const IC = await import("@/lib/ics");
+const ICS = IC.icsOf(
+  [
+    { id: "a", title: "Optimist antrenmanı", date: "2026-10-06", time: "16:00", place: "Dikili, iskele", cat: "Antrenman" },
+    { id: "b", title: "Foça yarışı", date: "2026-10-07", endDate: "2026-10-11" },
+    { id: "c", title: "Toplantı", date: "2026-10-08", time: "10:00", status: "cancelled" },
+    { id: "d", title: "Tarihsiz" },
+  ],
+  { now: new Date("2026-10-03T09:00:00Z") },
+);
+group("iPhone takvimi")([
+  ["saat UTC'ye", F("16:00 İstanbul → 13:00Z", () => IC.utcStamp("2026-10-06", "16:00") === "20261006T130000Z" && IC.utcStamp("2026-10-06", "02:00") === "20261005T230000Z")],
+  ["saatli plan", F("başlangıç, 60 dk bitiş, yer kaçışlı", () => /DTSTART:20261006T130000Z\r\nDTEND:20261006T140000Z/.test(ICS) && ICS.includes("LOCATION:Dikili\\, iskele"))],
+  ["çok günlü", F("tüm gün, bitiş ertesi gün", () => ICS.includes("DTSTART;VALUE=DATE:20261007\r\nDTEND;VALUE=DATE:20261012"))],
+  ["iptal", F("İPTAL: başlık ve STATUS", () => ICS.includes("SUMMARY:İPTAL: Toplantı") && ICS.includes("STATUS:CANCELLED"))],
+  ["tarihsiz atlanır", F("3 etkinlik", () => ICS.split("BEGIN:VEVENT").length === 4 && !ICS.includes("Tarihsiz"))],
+  ["biçim", F("VCALENDAR, CRLF, uzun satır katlanır", () => {
+    const long = IC.icsOf([{ id: "x", title: "Ş".repeat(120), date: "2026-10-06" }]);
+    return ICS.startsWith("BEGIN:VCALENDAR\r\n") && ICS.trimEnd().endsWith("END:VCALENDAR") && long.split("\r\n").every((l) => Buffer.byteLength(l) <= 75) && long.includes("ŞŞ");
+  })],
+]);
+
+// Antrenman günlüğü (trainingLog.js)
+const TL = await import("@/lib/trainingLog");
+const TPL = [
+  { id: "1", title: "Optimist", cat: "Antrenman", date: "2026-10-01", time: "16:00", log: { wind: 12, dir: "Poyraz", topics: ["Start", "Rota"], min: 90 } },
+  { id: "2", title: "ILCA", cat: "Antrenman", date: "2026-10-02", log: { wind: 18, topics: ["Start"], min: 60 } },
+  { id: "3", title: "Optimist", cat: "Antrenman", date: "2026-10-03" },
+  { id: "4", title: "İptal", cat: "Antrenman", date: "2026-10-04", status: "cancelled" },
+  { id: "5", title: "Toplantı", cat: "Toplantı", date: "2026-10-02" },
+];
+group("Antrenman günlüğü")([
+  ["temizle", F("sayılar, yön, tekrar eden konu", () => { const l = TL.cleanLog({ wind: "14,4", dir: "Lodos", topics: ["Start", "Start", " "], min: "abc", rating: "3", note: " iyi " }); return l.wind === 14 && l.dir === "Lodos" && l.topics.length === 1 && l.min === null && l.rating === 3 && l.note === "iyi" && !!l.at; })],
+  ["boş günlük", F("null (silinir)", () => TL.cleanLog({ wind: "", topics: [], note: " " }) === null)],
+  ["satır", F("12 kn Poyraz · Start, Rota · 90 dk", () => TL.logLine(TPL[0].log) === "12 kn Poyraz · Start, Rota · 90 dk")],
+  ["kim yazabilir", F("geçmiş antrenman evet, gelecek/iptal/toplantı hayır", () => TL.canLog(TPL[2], "2026-10-03") && !TL.canLog(TPL[2], "2026-10-02") && !TL.canLog(TPL[3], "2026-10-05") && !TL.canLog(TPL[4], "2026-10-05"))],
+  ["ay özeti", F("2/3, 150 dk, 15 kn, Start 2", () => { const m = TL.monthLog(TPL, "2026-10"); return m.total === 3 && m.logged.length === 2 && m.minutes === 150 && m.avgWind === 15 && m.topics[0][0] === "Start" && m.topics[0][1] === 2 && m.logged[0].id === "2"; })],
+]);
+
+// Aidat takibi (dues.js): EFT açıklamasından sporcu eşleştirme (örnek adlar uydurmadır)
+const DU = await import("@/lib/dues");
+const DA = [
+  { id: "a1", studentName: "Deniz Şahin", parentName: "Ayşe Şahin" },
+  { id: "a2", studentName: "Ege Yılmaz", parentName: "Mehmet Yılmaz" },
+  { id: "a3", studentName: "Ada Yılmaz", parentName: "Mehmet Yılmaz" },
+  { id: "a4", studentName: "Kaan Öztürk", motherName: "Elif", fatherName: "Can" },
+  { id: "a5", studentName: "Mert Öztürk", parentName: "Selin Öztürk" },
+];
+const DCFG = { fee: 1500, fees: { a3: 1000 } };
+const mvt = (desc, amount = 1500, date = "05.10.2026 10:12") => ({ desc, amount, date, currency: "TL", account: "TL|1234|" });
+group("Aidat takibi")([
+  ["Türkçe harfsiz banka yazısı", F("AYSE SAHIN → Deniz Şahin, emin", () => { const r = DU.matchMovement(mvt("FAST GELEN AYSE SAHIN EKIM AIDAT"), DA, DCFG); return r.sure && r.picks.length === 1 && r.picks[0].id === "a1"; })],
+  ["anne adı kartta ayrı alanda", F("ELIF OZTURK → Kaan (Mert değil)", () => { const r = DU.matchMovement(mvt("EFT ELIF OZTURK"), DA, DCFG); return r.sure && r.picks[0].id === "a4"; })],
+  ["kardeşler, tutar tutuyor", F("2500 TL → Ege + Ada", () => { const r = DU.matchMovement(mvt("HAVALE MEHMET YILMAZ", 2500), DA, DCFG); return r.picks.length === 2 && r.sure && /kardeş/.test(r.why); })],
+  ["kardeş, tutar tek aidat", F("1500 TL → Ege önerilir, emin değil", () => { const r = DU.matchMovement(mvt("HAVALE MEHMET YILMAZ"), DA, DCFG); return !r.sure && r.picks[0]?.id === "a2" && r.list.length === 2; })],
+  ["kardeş, tutar ikisine de uymuyor", F("800 TL: seçtirir", () => { const r = DU.matchMovement(mvt("HAVALE MEHMET YILMAZ", 800), DA, DCFG); return !r.sure && r.picks.length === 0; })],
+  ["sporcu adı açıklamada", F("ADA YILMAZ AIDAT → Ada", () => { const r = DU.matchMovement(mvt("FATMA KAYA ADA YILMAZ AIDAT", 1000), DA, DCFG); return r.picks[0]?.id === "a3"; })],
+  ["öğrenilmiş gönderen", F("başka soyadlı dede → Deniz", () => { const r = DU.matchMovement(mvt("EFT HASAN KARA"), DA, { ...DCFG, payers: { a1: ["HASAN KARA"] } }); return r.sure && r.picks[0].id === "a1"; })],
+  ["eşleşme yok", F("boş", () => DU.matchMovement(mvt("KIRA ODEMESI"), DA, DCFG).picks.length === 0)],
+  ["gönderen adı öğrenme", F("AYSE SAHIN", () => DU.payerOf("FAST GELEN AYSE SAHIN EKIM", DA[0]) === "AYSE SAHIN")],
+  ["kardeşe bölme", F("2500 → 1500 + 1000", () => { const s = DU.splitAmount(2500, [DA[1], DA[2]], DCFG); return s[0][1] === 1500 && s[1][1] === 1000; })],
+  ["ayın gelenleri", F("giden, başka ay, kullanılmış ve 'aidat değil' çıkar", () => {
+    const list = [mvt("A", 1500), mvt("B", -200), mvt("C", 1500, "28.09.2026 09:00"), mvt("D", 1000), mvt("E", 700)];
+    const used = new Set([DU.movKey(list[3])]);
+    const r = DU.incomingOf(list, "2026-10", used, [DU.movKey(list[4])]);
+    return r.length === 1 && r[0].desc === "A";
+  })],
+  ["ay tablosu", F("ödedi / eksik / bekliyor, toplamlar", () => {
+    const t = DU.monthRows(DA.slice(0, 3), { paid: { a1: [{ amt: 1500, via: "eft" }], a3: [{ amt: 500, via: "cash" }] } }, DCFG);
+    return t.paidCount === 1 && t.rows[0].a.id === "a2" && t.rows[1].state === "part" && t.paid === 2000 && t.expected === 4000 && t.eft === 1;
+  })],
+]);

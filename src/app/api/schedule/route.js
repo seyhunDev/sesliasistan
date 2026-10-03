@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
@@ -62,6 +63,7 @@ function clean(list) {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "schedule");
   let body;
   try {
     body = await request.json();

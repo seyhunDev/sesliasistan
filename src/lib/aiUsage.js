@@ -1,0 +1,32 @@
+// Ayarlar › Kullanım: sunucudaki sayaçların okunur hali (saf fonksiyonlar, test edilir)
+export const AI_LABELS = {
+  assistant: "Asistan",
+  interpret: "Kayıt anlama",
+  transcribe: "Ses tanıma",
+  receipt: "Fiş okuma",
+  replies: "Hazır yanıt",
+  meeting: "Toplantı özeti",
+  schedule: "Ders programı",
+  attendance: "Sesli yoklama",
+  race: "Yarış (asistan)",
+  "race-notice": "Yarış talimatı",
+  "race-budget": "Yarış bütçesi",
+  "race-around": "Yarış çevresi",
+  "event-plan": "Etkinlik planı",
+  "post-caption": "Instagram yazısı",
+  person: "Kişi ekleme",
+  "athlete-names": "Ses adları",
+};
+
+// { month, org, by, <iş>: n } → { rows: [[ad, n]], total }
+export function usageRows(doc) {
+  const rows = Object.entries(doc || {})
+    .filter(([k, v]) => AI_LABELS[k] && Number(v) > 0)
+    .map(([k, v]) => [AI_LABELS[k], Number(v)])
+    .sort((a, b) => b[1] - a[1]);
+  return { rows, total: rows.reduce((n, [, v]) => n + v, 0) };
+}
+
+// Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller
+export const usd = (n) => `$${(Math.round(n * 100) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const monthName = (ym) => (ym ? new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) : "");

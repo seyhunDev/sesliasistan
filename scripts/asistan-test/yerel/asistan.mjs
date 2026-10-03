@@ -35,7 +35,7 @@ group("Yeni kayıt (yerel)")([
 group("Görev listesi")([["geciken görevler", isType("reply", (r) => /geciken/.test(r.message) && /Motor/.test(r.message))], ["açık görevlerim neler", isType("reply", (r) => /açık görev/.test(r.message))], ["yapılacaklar ne", isType("reply")], ["görevler", T("tek kelime → görevler sayfası", (r) => r?.type === "navigate" && r.page === "tasks")]]);
 group("Özet")([["bugün neler var", isType("reply", (r) => /Bugün/.test(r.message) && /antrenman/i.test(r.message))], ["yarın ne var", isType("reply", (r) => /Yönetim/.test(r.message))],
   ["bu hafta programım", isType("reply")], ["haftaya neler var", isType("reply")], ["bu ay özet", isType("reply")], ["bugün kaç antrenman var", toAI, "sayma sorusu → yapay zeka"]]);
-group("Sayfa açma (localCommand)")([["planları aç", isType("navigate", (r) => r.page === "plans")], ["şey ya bi yoklamayı açar mısın", isType("navigate", (r) => r.page === "attendance")], ["ayarlar", isType("navigate", (r) => r.page === "settings")], ["takvime geç lütfen", isType("navigate", (r) => r.page === "calendar")]]);
+group("Sayfa açma (localCommand)")([["planları aç", isType("navigate", (r) => r.page === "plans")], ["şey ya bi yoklamayı açar mısın", isType("navigate", (r) => r.page === "attendance")], ["ayarlar", isType("navigate", (r) => r.page === "settings")], ["takvime geç lütfen", isType("navigate", (r) => r.page === "calendar")], ["antrenman günlüğünü aç", isType("navigate", (r) => r.page === "training")], ["aidatları göster", isType("navigate", (r) => r.page === "dues")]]);
 
 const navNames = ["Ali Kök", "Ali Yılmaz", "Sanver İmamoğulları"];
 const N = (desc, ok) => ({ desc, fn: (s) => localNavigate(s, { names: navNames }), ok });
@@ -222,6 +222,14 @@ group("Etkinlik planı (cevap)")([
   ["Ege'de balık tutacağız", { desc: "tür balık", fn: (s) => EW.kindFromText(s), ok: (r) => r === "balik" }],
 ]);
 
+// Velilere duyuru ve iptal (yapay zeka çıktısının doğrulanması)
+const AIA = await import("@/lib/ai/assistant");
+const Fa = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
+group("Velilere duyuru ve iptal")([
+  ["velilere yaz", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Göndereyim mi?", send: { to: "velilere", text: "Cumartesi kamp 9'da." } }).send?.to === "Sporcular")],
+  ["iptal işlemi", Fa("op cancel geçerli", () => AIA.parseAssistant({ intent: "action", message: "Açtım", actions: [{ op: "cancel", kind: "plan", id: "p1" }] }).actions[0]?.op === "cancel")],
+  ["haftalık plan", Fa("weekly → repeat week", () => AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00", weekly: true }] }).items[0]?.repeat === "week")],
+]);
 // ---- Tek mesajda sıralı işler (mesaj + takvim + not): hiçbiri atlanmaz, söylenen sırayla ----
 const ST = await import("@/lib/steps");
 const { parseAssistant } = await import("@/lib/ai/assistant");

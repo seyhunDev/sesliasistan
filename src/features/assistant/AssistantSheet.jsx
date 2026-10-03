@@ -17,6 +17,8 @@ import { assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names
 import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
+import { applyRepeat, seriesDates } from "@/lib/repeat";
+import { waLink } from "@/lib/cancelPlan";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
@@ -80,11 +82,11 @@ const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
-const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara)/i;
+const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara|veli|veliler|velilere)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
 const groupOf = (t, mine = []) => {
   const s = String(t || "").toLocaleLowerCase("tr-TR");
-  const g = /^aile/.test(s) ? "family" : /^sporcu/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
+  const g = /^aile/.test(s) ? "family" : /^(sporcu|veli)/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
   return mine.includes(g) ? g : "";
 };
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
@@ -295,7 +297,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
   }
   function startDrafts(items, s, msg, engine, viaVoice) {
-    let next = items.map((x) => withAssignees(x, s)).map(fresh);
+    let next = applyRepeat(items, s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     if (ready(next)) return saveDraftsNow(viaVoice, next, msg);
@@ -318,7 +320,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       const r = await interpretText(s, firstName, c.signal, { mode: "create", drafts: known.map((d) => pub(d, staff)), last, history }, staffNames);
       if (id !== runId.current) return;
-      const items = r.items.map((x) => withAssignees(x, s));
+      const items = applyRepeat(r.items, s, todayStr()).map((x) => withAssignees(x, s));
       let next = items.length ? carry(known, items) : drafts;
       const need = firstNeed(next);
       if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -586,13 +588,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       } else if (a.op === "delete") pending.push(a);
       else if (a.op === "update") {
         if (Object.keys(buildPatch(a.kind, a.patch, rec)).length) pending.push(a);
-      } else if (a.op === "open" && !opened) opened = a;
+      } else if ((a.op === "open" || (a.op === "cancel" && a.kind === "plan")) && !opened) opened = a;
     }
 
     if (opened) {
       if (msg) tts.maybeSpeak(msg);
       park();
-      openAdd({ edit: { kind: opened.kind, id: opened.id } });
+      openAdd({ edit: { kind: opened.kind, id: opened.id, ...(opened.op === "cancel" ? { cancel: true } : {}) } });
       return;
     }
     // Yapay zeka sohbet açmayı seçtiyse ("Sanver'le yazışmamı aç" gibi belirsiz söyleyişler)
@@ -1489,6 +1491,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       d.type === "plan" ? "Plan" : d.type === "task" ? "Görev" : "Not",
       d.date && rel(d.date),
       d.type === "plan" && (d.time || (d.allDay ? "tüm gün" : "")),
+      d.type === "plan" && d.repeat === "week" && !d.endDate && `her hafta (${seriesDates(d.date, d.repeatUntil).length} hafta)`,
       d.place,
       d.assignees?.length && `→ ${uidsToNames(d.assignees, members).map((n) => n.split(" ")[0]).join(", ")}`,
     ]
@@ -1689,11 +1692,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
                 <Icon name="up" className="size-4" /> Gönder
               </button>
+              {cards.pending.send.team && (
+                <a href={waLink(cards.pending.send.text)} target="_blank" rel="noreferrer" aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
+                  <Icon name="whatsapp" className="size-5" />
+                </a>
+              )}
               <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.team ? " Uygulamada olmayan veliler için WhatsApp düğmesiyle aynı metni gruba paylaş." : ""}</p>
           </div>
         )}
 

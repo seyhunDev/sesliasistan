@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { mirrorChanges } from "@/features/athletes/mirror";
+import { AbsentNotice } from "@/features/athletes/AbsentNotice";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, message, saveAttendance, useDikili } from "@/features/athletes/data";
@@ -239,6 +240,8 @@ function Roll() {
               Kalanlar gelmedi
             </button>
           </div>
+
+          <AbsentNotice key={date} absent={list.filter((a) => stateOf(a) === "absent")} date={date} today={today} members={members} />
 
           {busy && (
             <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-4 text-[0.875rem] text-mut">

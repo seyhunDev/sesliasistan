@@ -182,7 +182,7 @@ function Calendar({ initial }) {
                 <button onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
                   <span className="w-16 shrink-0 whitespace-nowrap text-[0.8125rem] font-semibold tabular-nums text-acc">{multi ? "Tüm gün" : p.time || "Tüm gün"}</span>
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-medium">{p.title}</b>
+                    <b className={`block truncate text-[0.9375rem] font-medium ${p.status === "cancelled" ? "text-mut line-through" : ""}`}>{p.title}</b>
                     {(p.place || multi) && (
                       <small className="block truncate text-[0.8125rem] text-mut">
                         {[multi && `${longDay(p.date).split(" ").slice(0, 2).join(" ")} – ${longDay(p.endDate).split(" ").slice(0, 2).join(" ")}`, p.place].filter(Boolean).join(" · ")}

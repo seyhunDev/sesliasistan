@@ -40,7 +40,7 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
   };
   const inR = (p, a, b) => p.date <= b && (p.endDate || p.date) >= a;
   const byP = (x, y) => `${x.date}${x.time || ""}`.localeCompare(`${y.date}${y.time || ""}`);
-  const pl = (p) => `p:${p.id} | ${p.date} ${dn(p.date)}${p.endDate && p.endDate !== p.date ? ` → ${p.endDate} ${dn(p.endDate)}` : ""} | ${p.time || "tüm gün"} | ${p.title} | ${p.place || "-"} | ${p.cat || "Genel"}${who(p)}`;
+  const pl = (p) => `p:${p.id} | ${p.date} ${dn(p.date)}${p.endDate && p.endDate !== p.date ? ` → ${p.endDate} ${dn(p.endDate)}` : ""} | ${p.time || "tüm gün"} | ${p.title}${p.status === "cancelled" ? " (İPTAL)" : ""} | ${p.place || "-"} | ${p.cat || "Genel"}${who(p)}`;
   const tl = (t) => `t:${t.id} | son:${t.due ? `${t.due} ${dn(t.due)}` : "-"} | ${t.done ? "tamam" : "açık"} | ${t.title} | plan:${t.planId ? pTitle(t.planId) : "-"}${who(t)}`;
   const nl = (n) => `n:${n.id} | ${(n.createdAt || "").slice(0, 10)} | ${n.title} | ${(n.body || "").replace(/\s+/g, " ").slice(0, 80)}`;
   const block = (title, lines, max = 40) =>

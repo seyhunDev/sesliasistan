@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { ExpiryCard } from "@/features/athletes/ExpiryCard";
+import { alertsOf } from "@/lib/expiry";
+import { todayStr } from "@/lib/utils/format";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -153,6 +156,7 @@ function AthleteList() {
 
       {data && !err && (
         <>
+          <ExpiryCard athletes={all.filter(isActive)} />
           <div className="mt-3 flex items-center justify-between px-1">
             <p className="text-[0.8125rem] text-mut">
               {list.length} sporcu{linked.size ? ` · ${[...linked.values()].filter((m) => m.account !== false).length} uygulamada` : ""}
@@ -206,6 +210,9 @@ function AthleteList() {
                         {[classes[a.currentClassId], coaches[a.currentCoachId], !isActive(a) && "Pasif"].filter(Boolean).join(" · ") || "Sınıf atanmamış"}
                       </span>
                       {inApp && <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-px text-[0.6875rem] font-semibold text-ok">Uygulamada</span>}
+                      {isActive(a) && alertsOf(a, todayStr()).some((x) => x.state === "expired") && (
+                        <span className="ml-1 mt-0.5 inline-flex items-center gap-1 rounded-full bg-rec/10 px-2 py-px text-[0.6875rem] font-semibold text-rec">Belge bitti</span>
+                      )}
                     </span>
                     {!canAdd && <Icon name="chev" className="size-4 shrink-0 text-mut" />}
                   </Link>

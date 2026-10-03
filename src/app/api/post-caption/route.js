@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
@@ -41,6 +42,7 @@ const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "post-caption");
   if (au.staff) return bad("Gönderi hazırlamayı yalnız ana hesap yapabilir.", 403);
   let body;
   try {

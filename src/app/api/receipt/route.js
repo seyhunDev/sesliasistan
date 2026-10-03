@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { z } from "zod";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
@@ -141,6 +142,7 @@ const bad = (error, status = 400, detail = "") => NextResponse.json({ error, ...
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "receipt");
   const noLeft = await overQuota(au, "receipt"); // kişilerde günlük hak
   if (noLeft) return noLeft;
 

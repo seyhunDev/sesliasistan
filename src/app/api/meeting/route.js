@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { TOOL, toDrafts } from "@/lib/ai/schema";
@@ -40,6 +41,7 @@ function pickProvider() {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "meeting");
   let body;
   try {
     body = await request.json();

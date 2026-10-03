@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -51,6 +52,7 @@ const N = (v, max) => Math.min(Math.max(0, Math.round(Number(v) || 0)), max);
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "race-budget");
   if (!canSeeAthletes(au.email)) return bad("Sporcu yetkin yok.", 403);
   let body;
   try {

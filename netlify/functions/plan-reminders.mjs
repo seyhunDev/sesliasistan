@@ -77,7 +77,7 @@ async function sendDueReminders() {
     // Çalışan yalnızca kendisini ilgilendiren (people listesinde olduğu) planlar için bildirim alır.
     const oid = orgId || u.id;
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
-    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => role !== "staff" || (p.people || []).includes(u.id));
+    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && (role !== "staff" || (p.people || []).includes(u.id)));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
       const payload = JSON.stringify(reminderText(p, lead));
       await Promise.all(
@@ -123,7 +123,7 @@ async function sendSummaries(db, all, q) {
       q(`plans:${oid}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14))),
       q(`tasks:${oid}`, org.collection("tasks").where("done", "==", false)),
     ]);
-    const data = { plans: p.docs.map((x) => x.data()).filter(mine), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
+    const data = { plans: p.docs.map((x) => x.data()).filter((x) => mine(x) && x.status !== "cancelled"), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
     const send = async (msg, tag) => {
       const payload = JSON.stringify({ ...msg, tag, url: "/" });
       await Promise.all(
@@ -195,7 +195,7 @@ async function sendExtras(db, all, q) {
         q(`plans:${orgId}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14))),
         weekly ? q(`tasks:${orgId}`, org.collection("tasks").where("done", "==", false)) : null,
       ]);
-      const plans = p.docs.map((x) => x.data()).filter(mine);
+      const plans = p.docs.map((x) => ({ ...x.data(), id: x.id })).filter((x) => mine(x) && x.status !== "cancelled");
       if (wind) {
         const place = d.weatherPlace && Number.isFinite(+d.weatherPlace.lat) ? d.weatherPlace : DIKILI;
         const key = `${(+place.lat).toFixed(2)},${(+place.lon).toFixed(2)}`;
@@ -206,7 +206,7 @@ async function sendExtras(db, all, q) {
         const rows = winds.get(key);
         if (rows) {
           const msg = windAlert({ rows, plans, today, kn: Number(d.windKn) || WIND_KN });
-          if (msg) await send(msg, `wind-${today}`, "/");
+          if (msg) await send(msg, `wind-${today}`, msg.url || "/");
           await u.ref.update({ windSent: today });
         }
       }

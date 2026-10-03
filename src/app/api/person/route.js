@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminReady, profileOf } from "@/lib/server/admin";
@@ -43,6 +44,7 @@ const N = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : 0);
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "person");
   if (adminReady()) {
     const me = await profileOf(au.uid);
     if (me.role !== "owner") return bad("Kişi eklemeyi yalnız ana hesap yapabilir.", 403);

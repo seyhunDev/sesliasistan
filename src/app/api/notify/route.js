@@ -3,13 +3,15 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
-import { addedText, assignedText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
+import { addedText, assignedText, cancelledText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
+import { absentPush } from "@/lib/absent";
 
 export const runtime = "nodejs";
 
 const COLS = { plan: "plans", task: "tasks", note: "notes" };
+const CANCEL_WHY = { wind: "rüzgâr", weather: "hava", other: "" };
 
 // Alıcılara aynı anda gönderir; birinin hatası diğerlerini durdurmaz. Gönderilen cihaz sayısını döndürür.
 async function sendAll(list, fn) {
@@ -69,6 +71,29 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent });
   }
 
+  // ---- Yoklama: gelmeyen sporcuların uygulamadaki velilerine (yalnız ana hesap; kayıt yoklama kopyasından okunur) ----
+  if (body?.event === "absent") {
+    if (me.role !== "owner") return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    const date = String(body.date || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: "Geçersiz tarih" }, { status: 400 });
+    const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter((x) => /^[\w-]{1,128}$/.test(x)).slice(0, 60);
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+    let sent = 0;
+    let parents = 0;
+    for (const mid of ids) {
+      const ref = org.collection("athleteAtt").doc(mid);
+      const r = (await ref.get()).data();
+      if (!r || r.att?.[date] !== "absent" || r.absentSent?.[date]) continue; // bir gün için bir kez
+      const to = (r.parents || []).filter(Boolean);
+      if (!to.length) continue;
+      parents += to.length;
+      const msg = absentPush(r.name, date, today);
+      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `absent-${mid}-${date}`, url: "/my-attendance" }));
+      await ref.update({ [`absentSent.${date}`]: new Date().toISOString() });
+    }
+    return NextResponse.json({ ok: true, sent, parents });
+  }
+
   // ---- Not eklendi / tamamlandı ----
   // ---- Silme isteği (çalışan kendi kaydı için): yalnızca ana hesaba ----
   const DEL_COLS = { ...COLS, receipt: "receipts", birthday: "birthdays", lesson: "lessons" };
@@ -93,7 +118,7 @@ export async function POST(request) {
     if (body.event === "changed" && !(r.updatedAt && Date.now() - Date.parse(r.updatedAt) < 2 * 60e3)) return NextResponse.json({ ok: true, skipped: "değişiklik yok" });
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
     const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
-    const msg = body.event === "changed" ? changedText(info) : deletedText(info);
+    const msg = body.event === "deleted" ? deletedText(info) : kind === "plan" && r.status === "cancelled" ? cancelledText({ ...info, reason: CANCEL_WHY[r.cancelReason] || "" }) : changedText(info);
     const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" }));
     return NextResponse.json({ ok: true, sent });
   }

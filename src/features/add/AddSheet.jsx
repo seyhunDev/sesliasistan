@@ -29,6 +29,9 @@ import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
 import { ListeningStage, ProcessingStage } from "./Stage";
+import { applyRepeat, repeatLabel } from "@/lib/repeat";
+import { CancelPlan } from "./CancelPlan";
+import { TrainingLog } from "./TrainingLog";
 import { blank, carry, check, firstNeed, fresh, isBlank, nid, pub, tidy, toPatch } from "./drafts";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
@@ -64,7 +67,7 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { plans, tasks, notes, saveDrafts, updateRecord, removeWithUndo, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
+  const { plans, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
   const { openReceipt } = useReceipt();
   const router = useRouter();
   const [text, setText] = useState("");
@@ -108,6 +111,7 @@ export function AddSheet({ open, onClose, seed }) {
   const edit = seed?.edit;
   const by = { name: profile?.name ?? "Kullanıcı" };
   const firstName = (profile?.name || "").split(" ")[0];
+  const [seriesAsk, setSeriesAsk] = useState(null); // tekrarlayan planı silme: ikinci dokunuşta onay (kayıt kimliği)
   const rec = edit ? ({ plan: plans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
@@ -210,7 +214,7 @@ export function AddSheet({ open, onClose, seed }) {
       await sleep(BEAT);
       if (id !== runId.current) return;
 
-      const items = r.items.map((x) => withAssignees(x, s));
+      const items = applyRepeat(r.items, s, todayStr()).map((x) => withAssignees(x, s));
       askWhich(s, items);
       let next = !items.length ? drafts : ctx ? carry(known, items) : [...drafts, ...items.map(fresh)];
       const need = firstNeed(next);
@@ -363,7 +367,7 @@ export function AddSheet({ open, onClose, seed }) {
   }
 
   function startPrefill(pf) {
-    let next = pf.items.map((x) => withAssignees(x, pf.text)).map(fresh);
+    let next = applyRepeat(pf.items, pf.text || "", todayStr()).map((x) => withAssignees(x, pf.text)).map(fresh);
     askWhich(pf.text, next);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -523,7 +527,7 @@ export function AddSheet({ open, onClose, seed }) {
     const said = turns.find((t) => t.role === "user" && !t.chip)?.text || heard;
     if (said) record(said, labelFromItems(list), "user");
     const parts = [];
-    if (r.plans) parts.push(`${r.plans} plan`);
+    if (r.plans) parts.push(`${r.plans} plan${r.weeks ? ` (${r.weeks} hafta)` : ""}`);
     if (r.tasks) parts.push(`${r.tasks} görev`);
     if (r.notes) parts.push(`${r.notes} not`);
     const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
@@ -754,6 +758,34 @@ export function AddSheet({ open, onClose, seed }) {
               />
             )}
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
+            {edit.kind === "plan" && rec && !locked && <CancelPlan key={rec.id} rec={rec} by={by} start={!!edit.cancel} />}
+            {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
+            {edit.kind === "plan" && rec?.seriesId && (
+              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+                <Icon name="repeat" className="size-5 shrink-0 text-mut" />
+                <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
+                  <b className="block font-semibold">{repeatLabel(rec.repeat?.until)}</b>
+                  <span className="text-mut">Değişiklik yalnız bu haftaya uygulanır.</span>
+                </span>
+                {!isStaff && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (seriesAsk !== rec.id) return setSeriesAsk(rec.id);
+                      const n = await deleteSeries(rec.seriesId, rec.date);
+                      setSeriesAsk(null);
+                      if (n) {
+                        toast(`${n} haftalık plan silindi`);
+                        onClose();
+                      }
+                    }}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold transition active:scale-95 ${seriesAsk === rec.id ? "bg-rec text-white" : "text-rec ring-1 ring-rec/30"}`}
+                  >
+                    {seriesAsk === rec.id ? "Emin misin? Sil" : "Bu ve sonrakileri sil"}
+                  </button>
+                )}
+              </div>
+            )}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" assistant={assistant} docked />}
             <div className="mt-3" />
             {!hasThread && outbox && <div className="mt-3 overflow-hidden rounded-2xl bg-card">{panel}</div>}

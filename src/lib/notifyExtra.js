@@ -35,7 +35,7 @@ export const WIND_CATS = ["Antrenman", "Yarış"];
 const GUST_EXTRA = 10; // sağanak, eşiğin bu kadar üstündeyse de uyarır
 
 // Bugünkü antrenman ve yarış planları (çok günlü yarışlar dahil)
-export const windPlans = (plans, today) => dayItems({ plans, date: today }).plans.filter((p) => WIND_CATS.includes(p.cat || p.category));
+export const windPlans = (plans, today) => dayItems({ plans, date: today }).plans.filter((p) => WIND_CATS.includes(p.cat || p.category) && p.status !== "cancelled");
 
 // Bir planın saatlerindeki en sert rüzgâr ve sağanak (rows: o günün saatleri [{ hh: "07", wind, gust }]).
 // Saatli planda planın 1 saat öncesinden 3 saat sonrasına, saatsiz planda 08:00–19:00 arasına bakılır. Saat yoksa null.
@@ -61,7 +61,13 @@ export function windAlert({ rows = [], plans = [], today, kn = WIND_KN }) {
   }
   if (!hits.length) return null;
   const line = ({ p, wind, gust }) => `${p.time ? `${p.time} ` : ""}${p.title}: rüzgâr ${wind} kn, sağanak ${gust} kn`;
-  return { title: "Rüzgâr uyarısı", body: `${hits.map(line).join("\n")}\nEşik ${lim} kn. Denize çıkmadan kontrol et.` };
+  // Tek plan varsa bildirime dokununca o plan açılır (İptal et ve haber ver oradan)
+  const one = hits.length === 1 && hits[0].p.id;
+  return {
+    title: "Rüzgâr uyarısı",
+    body: `${hits.map(line).join("\n")}\nEşik ${lim} kn. Denize çıkmadan kontrol et.${one ? " İptal edeceksen dokun." : ""}`,
+    ...(one ? { url: `/?open=plan:${hits[0].p.id}` } : {}),
+  };
 }
 
 // ---- Haftalık özet ----

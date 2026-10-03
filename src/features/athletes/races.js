@@ -1,5 +1,6 @@
 "use client";
 
+import { cleanResults } from "@/lib/raceResults";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { nextNo } from "./raceDocs";
@@ -27,6 +28,8 @@ export const RACE_FIELDS = [
   "around",
   // Yarış günlerinin hava tahmini, rüzgâr önde (raceWeather.js)
   "weather",
+  // Sonuçlar { fleet, rows: { sporcuId: { place, note } } } (raceResults.js)
+  "results",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -109,6 +112,8 @@ const clean = (r) =>
               ? cleanAround(r[k])
             : k === "weather"
               ? cleanWeather(r[k])
+            : k === "results"
+              ? cleanResults(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -122,7 +127,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", notice: null, todos: [], budget: null, around: null, weather: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", notice: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 

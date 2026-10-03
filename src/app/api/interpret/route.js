@@ -1,4 +1,5 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
+import { countAi } from "@/lib/server/aiUsage";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
 import { NextResponse } from "next/server";
@@ -25,6 +26,7 @@ Kurallar:
 - Konuşma metni ses tanımadan geldiği için küçük yazım/sesteş hataları olabilir; anlamı koru, ama söylenmeyen bilgiyi ekleme.
 - Kişiler listesi verildiyse: ses tanıma adları bölebilir ya da yanlış yazabilir ("san ver" = Sanver). Listedeki bir kişiyi kastediyorsa başlıkta, notta ve message'da listedeki yazımı kullan.
 - Sorumlu (assignTo): kullanıcı işi birine VERİYORSA (ör. "Sanver tekneleri yıkasın", "Ali'ye söyle motoru kontrol etsin", "Ali'nin benzin alma görevi var", "bunu Ali ile Sanver halletsin", "sorumlusu Ali") o kişiyi listedeki adıyla assignTo'ya yaz ve adı başlıktan çıkar ("Tekneleri yıka"). Kişiyle yapılan etkinlikte ya da kişiden söz edilen notta (ör. "Sanver ile toplantı", "Ali bugün gelmedi") atama yapma, adı başlıkta bırak. Listede olmayan kişiyi assignTo'ya yazma. assignTo'ya listedeki TAM adı yaz; soyad söylenmesi gerekmez, ekli ad ("Sanver'e") ya da ses tanımanın yanlış yazdığı ad ("san ver", "Sanvar") listedeki en yakın kişidir; tek başına ad önce ADI o olan kişiye aittir; aynı ada sahip birden fazla kişi varsa ve soyad söylenmediyse tahmin etme, assignTo'yu boş bırak (uygulama soracak). message'da birine verdiğini söylüyorsan o kişi assignTo'da MUTLAKA olsun. Mevcut taslakta assignTo varsa kullanıcı değiştirmedikçe aynen koru. message'da atadığın kişiyi söyle ("görevi Sanver'e verdim").
+- Haftalık tekrar ("her salı 16:00 antrenman", "cumartesileri", "her hafta"): tek plan yaz, weekly true, date ilk günün tarihi (bugün ya da sonrası); bitiş söylendiyse repeatUntil, yoksa boş. Birden çok gün söylenirse her gün için ayrı plan. message'da "her hafta" de.
 - Saat: tek günlük bir planın günü belli ama saati söylenmemişse saati BİR KEZ kısa bir soruyla sor ("Saat kaçta olsun?") ve time'ı boş bırak. Kullanıcı "tüm gün", "fark etmez", "saat yok" derse allDay true yap, time'ı boş bırak ve tekrar sorma. Çok günlü planlarda saati sorma. Aynı anda birden fazla soru sorma.
 - message: SESLİ OKUNACAK yanıt. Günlük konuşma diliyle, samimi, 1-2 kısa cümle yaz ve kullanıcıya verilen adıyla hitap et (ör. "Tamamdır Seyhun, yarın sabah dokuzda antrenmanı ve tekneleri hazırlama görevini hazırladım, kaydedebilirsin."). Resmi dil kullanma, sen diye hitap et. Emoji, madde işareti, parantez ve "09:00" gibi rakamlı saat yazma; saati "sabah dokuz", "akşam altı buçuk" gibi, günü "yarın", "cuma", "üç Ekim" gibi söyle. Bir planın tarihi belli değilse tarihi sor. Ad verilmediyse adsız, yine samimi yaz.`;
 
@@ -158,6 +160,7 @@ function rulesMessage(items, name) {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "interpret");
   let body;
   try {
     body = await request.json();

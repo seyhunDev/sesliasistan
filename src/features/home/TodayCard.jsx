@@ -83,11 +83,12 @@ export function TodayCard({ weather }) {
         ) : (
           <ul className="divide-y divide-line">
             {rows.map(({ kind: k, r, late, done, past }) => {
-              const wx = k === "plan" ? windOf(r) : null;
+              const off = k === "plan" && r.status === "cancelled";
+              const wx = k === "plan" && !off ? windOf(r) : null;
               const windy = overWind(wx, lim);
               const sub =
                 k === "plan"
-                  ? [r.time || "Gün boyu", r.place, wx && !windy && `rüzgâr ${wx.wind} kn`].filter(Boolean).join(" · ")
+                  ? [r.time || "Gün boyu", off ? "İptal edildi" : r.place, wx && !windy && `rüzgâr ${wx.wind} kn`].filter(Boolean).join(" · ")
                   : late
                     ? `${Math.round((Date.parse(today) - Date.parse(r.due)) / 864e5)} gün gecikti`
                     : done
@@ -111,13 +112,18 @@ export function TodayCard({ weather }) {
                   )}
                   <button type="button" onClick={() => openAdd({ edit: { kind: k, id: r.id } })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <span className="min-w-0 flex-1">
-                      <b className={`block truncate text-[0.9375rem] font-semibold ${done ? "text-mut line-through" : ""}`}>{r.title}</b>
+                      <b className={`block truncate text-[0.9375rem] font-semibold ${done || off ? "text-mut line-through" : ""}`}>{r.title}</b>
                       <small className={`block truncate text-[0.75rem] ${late ? "font-medium text-rec" : done ? "text-ok" : "text-mut"}`}>
                         {sub}
                         {windy && <span className="font-semibold text-rec"> · rüzgâr {wx.wind} kn, sağanak {wx.gust} kn</span>}
                       </small>
                     </span>
                   </button>
+                  {windy && !past && (
+                    <button type="button" onClick={() => openAdd({ edit: { kind: "plan", id: r.id, cancel: true } })} className="shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold text-rec ring-1 ring-rec/30 active:scale-95">
+                      İptal?
+                    </button>
+                  )}
                 </li>
               );
             })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -9,6 +10,10 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { age, byId, fmtDate, isActive, loadAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { EditAthlete } from "@/features/athletes/EditAthlete";
+import { alertText, expiryOf } from "@/lib/expiry";
+import { todayStr } from "@/lib/utils/format";
+import { loadRaces } from "@/features/athletes/races";
+import { historyOf } from "@/lib/raceResults";
 import { Loading } from "@/components/ui/Loader";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -54,6 +59,34 @@ function Row({ label, value, href, mono }) {
       <span className="shrink-0 text-[0.8125rem] text-mut">{label}</span>
       {href ? <a href={href} className="min-w-0 break-words text-right">{v}</a> : v}
     </div>
+  );
+}
+
+// Katıldığı yarışlar ve sırası (yarışlar yalnız ana hesaba açık; diğerlerinde kart görünmez)
+function RaceHistory({ athleteId }) {
+  const { profile } = useAuth();
+  const [rows, setRows] = useState(null);
+  const owner = profile?.role === "owner";
+  useEffect(() => {
+    if (!owner) return;
+    let on = true;
+    loadRaces(profile.orgId || profile.uid)
+      .then((list) => on && setRows(historyOf(list, athleteId)))
+      .catch(() => on && setRows([]));
+    return () => void (on = false);
+  }, [owner, profile?.orgId, profile?.uid, athleteId]);
+  if (!owner || !rows?.length) return null;
+  return (
+    <Card title="Yarışlar" icon="flag">
+      {rows.map((x) => (
+        <Link key={x.id} href={`/athletes/races/${x.id}`} className="flex items-baseline justify-between gap-4 py-1.5 active:opacity-60">
+          <span className="min-w-0 truncate text-[0.875rem]">
+            {x.name} <small className="text-mut">{x.date ? fmtDate(x.date) : ""}</small>
+          </span>
+          <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.place && x.place <= 3 ? "font-semibold text-acc" : "text-mut"}`}>{x.text || "—"}</span>
+        </Link>
+      ))}
+    </Card>
   );
 }
 
@@ -152,6 +185,20 @@ function Detail() {
         </Card>
       )}
 
+      {/* Lisans vizesi, sağlık raporu, sigorta bitişi */}
+      {expiryOf(a, todayStr()).some((x) => x.date) && (
+        <Card title="Belgeler" icon="clip">
+          {expiryOf(a, todayStr()).filter((x) => x.date).map((x) => (
+            <div key={x.key} className="flex items-baseline justify-between gap-4 py-1.5">
+              <span className="shrink-0 text-[0.8125rem] text-mut">{x.label}</span>
+              <span className={`min-w-0 text-right text-[0.875rem] tabular-nums ${x.state === "expired" ? "font-semibold text-rec" : x.state === "soon" ? "font-medium text-amber-700" : ""}`}>
+                {x.state === "ok" ? new Date(`${x.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : alertText(x).replace(`${x.label} `, "")}
+              </span>
+            </div>
+          ))}
+        </Card>
+      )}
+
       {/* Yarış evrakında kullanılan bilgiler */}
       {(a.licenseNo || a.studentBirthPlace || a.parentTc || a.studentSchoolPlace || a.studentNo) && (
         <Card title="Yarış evrakı" icon="flag">
@@ -165,6 +212,7 @@ function Detail() {
         </Card>
       )}
 
+      <RaceHistory athleteId={a.id} />
       <Attendance a={a} />
       <History items={data.history} />
     </main>

@@ -4,7 +4,7 @@ import { matchPerson } from "../names.js";
 const KIND = ["plan", "task", "note"];
 import { PAGE_KEYS as PAGES } from "../nav.js";
 const INTENTS = ["create", "query", "navigate", "action", "message", "chat"];
-const OPS = ["complete_task", "reopen_task", "delete", "update", "open"];
+const OPS = ["complete_task", "reopen_task", "delete", "update", "open", "cancel"];
 
 export const ASSISTANT_SYSTEM = `Sen "Sesli Asistan" uygulamasının akıllı asistanısın. Bir spor kulübünün (yelken) yöneticisine ve ekibine günlük işlerinde yardım edersin: plan/etkinlik, görev, not ve fişleri takip etmek. Kullanıcı seninle konuşur (ses tanıma metni) veya yazar. Yanıtın sesli okunacak; bu yüzden doğal, kısa ve konuşma diliyle olmalı.
 
@@ -13,7 +13,7 @@ export const ASSISTANT_SYSTEM = `Sen "Sesli Asistan" uygulamasının akıllı as
 
 ## Elindeki veri
 Her istekte "VERİ ÖZETİ" bloğu gelir. Bu, kullanıcının kendi kayıtlarının o andaki durumudur ve TEK doğruluk kaynağındır. Satır biçimleri:
-- Plan:  p:<id> | <başlangıç tarihi> <gün> [→ <bitiş> <gün>] | <saat ya da "tüm gün"> | <başlık> | <yer> | <kategori> [| sorumlu:<kişi adları ya da ->]
+- Plan:  p:<id> | <başlangıç tarihi> <gün> [→ <bitiş> <gün>] | <saat ya da "tüm gün"> | <başlık> | <yer> | <kategori> [| sorumlu:<kişi adları ya da ->]. Başlıkta "(İPTAL)" varsa plan iptal edilmiştir: yapılacaklar arasında sayma, sorulursa iptal olduğunu söyle.
 - Görev: t:<id> | son:<tarih ya da -> | <açık|tamam> | <başlık> | plan:<bağlı plan ya da -> [| sorumlu:<kişi adları ya da ->]
 - Not:   n:<id> | <oluşturma tarihi> | <başlık> | <metnin başı>
 Özet günlere, haftalara, aya ve yıla göre ZATEN bölünmüştür; tarih hesabı yapmadan doğru bölümden oku. Kimlikler (p:, t:, n: sonrası) yalnızca işlem ve gösterim içindir; kullanıcıya ASLA kimlik okuma.
@@ -48,12 +48,13 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 ## İşlem (action)
 - id yalnızca özetteki gerçek kimlikler olabilir. Kullanıcının tarif ettiği kaydı başlığa ve tarihe göre eşleştir. Birden fazla olası eşleşme varsa İŞLEM YAPMA; hangisini kastettiğini tek kısa soruyla sor (expectReply true). Bulamazsan bulamadığını söyle.
 - op: complete_task ve reopen_task (onaysız uygulanır), delete ve update (uygulama onay ister), open (kaydı düzenleme ekranında açar).
+- Plan "iptal et", "iptal oldu", "yapılmayacak" denirse (silmek istenmedikçe) op cancel: uygulama planı iptal ekranıyla açar, kullanıcı nedeni ve haber metnini görüp onaylar (plan silinmez, kişilere ve istenirse Sporcular grubuna haber gider). message kısa olsun ("Antrenmanı iptal ekranında açtım, haber metnine bakıp onayla.").
 - delete ve update için message'ı onay sorusu yaz ("Antrenmanı silmemi onaylıyor musun?") ve expectReply true yap. Diğerlerinde message'ı yapılmış gibi kısa yaz ("Tamam, tekneleri hazırlama görevini tamamladım").
 - update için patch'e yalnızca DEĞİŞEN alanları yaz. "Ertele", "öne al" gibi göreli ifadelerde yeni tarihi ŞİMDİ bilgisine göre hesapla. Saati kaldırmak için allDay true.
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
 
 ## Mesaj gönderme (message)
-- Alıcılar yalnızca "MESAJ ALICILARI" bölümündekilerdir. send.to: listedeki TAM kişi adı ya da "(grup)" yazan grubun adı (Ekip, Aile, Sporcular; "ekibe", "aileye", "sporculara" denirse o grup; "herkese/gruba" denirse listedeki ilk grup). Parantez içini yazma. "Ana hesaba" denirse listede "(ana hesap)" yazan kişi.
+- Alıcılar yalnızca "MESAJ ALICILARI" bölümündekilerdir. send.to: listedeki TAM kişi adı ya da "(grup)" yazan grubun adı (Ekip, Aile, Sporcular; "ekibe", "aileye", "sporculara" denirse o grup; "velilere" denirse Sporcular (veliler o gruptadır); "herkese/gruba" denirse listedeki ilk grup). Parantez içini yazma. "Ana hesaba" denirse listede "(ana hesap)" yazan kişi.
 - Ad listede yoksa ya da aynı ada birden fazla kişi uyuyorsa göndermeye hazırlama: kime olduğunu kısa bir soruyla sor (intent chat, expectReply true).
 - send.text: kullanıcının söylediğini alıcıya giden düzgün bir mesaja çevir. Kullanıcının ağzından, birinci tekil kişiyle, kısa ve kibar yaz; imla ve noktalamayı düzelt. Anlamı DEĞİŞTİRME, bilgi EKLEME, tarih ve saati söylendiği gibi koru. Dolaylı anlatımı doğrudan mesaja çevir ("Ali'ye yarın gelmesini söyle" → "Yarın gelir misin?", "yarın 9'da gelsin" → "Yarın saat 9'da gelebilir misin?"). Alıcının adını mesajın başına koyabilirsin ("Ali, …"). Emoji ekleme.
 - send alanını HER ZAMAN doldur (to ve text); mesajı yalnızca message içinde yazmak yetmez, uygulama send'i gönderir.
@@ -77,6 +78,7 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 - Tek cümleden birden çok kayıt çıkabilir (bir plan ve o plana bağlı görev); bağlı olanlara linkToPlan true ver. Bağlı görevin tarihi yoksa planın tarihini kullan.
 - Plan başlığına yer, saat veya "oluştur" gibi komut kelimesi ekleme; yer place'e gider. category: Antrenman, Toplantı, Kamp, Yarış, Ekipman veya Genel.
 - Bilgisi tamam kayıt (planın günü ve saati belli, görev/notun başlığı var) uygulamada SORMADAN hemen kaydedilir ve uygulama ne eklediğini kendisi söyler. Bu durumda message'da kaydı yeniden anlatma, "ekledim/kaydettim/kaydedeyim mi" deme; yalnız ek bilgi varsa kısaca yaz (çakışan plan, rüzgâr, sorumlu), yoksa message boş kalabilir.
+- Haftalık tekrar ("her salı 16:00 antrenman", "cumartesileri yarış antrenmanı", "her hafta pazartesi toplantı"): TEK plan yaz, weekly true, date ilk günün tarihi (bugün ya da sonrası). Bitiş söylenirse repeatUntil'e yaz; söylenmezse boş bırak (uygulama 3 ay oluşturur). Birden çok gün söylenirse ("her salı ve perşembe") her gün için ayrı plan yaz. message'da "her hafta" olduğunu söyle.
 - Tek günlük bir planın günü belli ama saati yoksa saati kısa bir soruyla sor ("Saat kaçta olsun?"), time boş kalsın. Kullanıcı "tüm gün" veya "fark etmez" derse allDay true. Günü yoksa günü sor. Soru sorduysan expectReply true.
 - Özette aynı gün ve aynı başlıkta kayıt zaten varsa yeni oluşturmak yerine bunu söyle ve sor.
 - KİŞİLER bölümü varsa: kullanıcı işi birine VERİYORSA ("Sanver tekneleri yıkasın", "Ali'nin benzin alma görevi var") o kişiyi listedeki TAM adıyla (ör. "Sanver Kaya") assignTo'ya yaz ve adı başlıktan çıkar. Kişiyle yapılan etkinlikte ("Sanver ile toplantı") atama yapma. Listede olmayan kişiyi yazma.
@@ -185,7 +187,7 @@ function cleanPatch(p) {
 }
 
 const TEAM = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu)/i;
-const GROUP_NAME = (t) => (/^aile/i.test(t) ? "Aile" : /^sporcu/i.test(t) ? "Sporcular" : TEAM.test(t) ? "Ekip" : "");
+const GROUP_NAME = (t) => (/^aile/i.test(t) ? "Aile" : /^(sporcu|veli)/i.test(t) ? "Sporcular" : TEAM.test(t) ? "Ekip" : "");
 // Model bazen send alanını boş bırakıp mesajı yalnızca yanıtına yazar ("Ali'ye şunu göndereyim mi: Ali, yarın gelir misin?").
 // O durumda metin iki noktadan sonrası, alıcı da baştaki "Ali'ye / Ekibe / Sanver İmamoğulları'na" kısmıdır.
 const ASK_SEND = /^(.*?)\s*(?:şunu|şöyle|bunu)?\s*(?:göndereyim mi|yazayım mı|ileteyim mi|söyleyeyim mi)\s*\??\s*:\s*(.+)$/is;

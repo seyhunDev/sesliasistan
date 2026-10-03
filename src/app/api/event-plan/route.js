@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
@@ -61,6 +62,7 @@ const N = (v, max) => Math.min(Math.max(0, Math.round(Number(v) || 0)), max);
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
+  countAi(au, "event-plan");
   if (au.staff) return bad("Etkinlik planlamayı yalnız ana hesap yapabilir.", 403);
   let body;
   try {

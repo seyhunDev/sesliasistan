@@ -47,6 +47,8 @@ export function cleanBudget(b) {
     nights: int(b.nights, 60),
     items: (Array.isArray(b.items) ? b.items : []).map(cleanItem).slice(0, 60),
     paid,
+    // Gerçekleşen harcama: bu yarışa bağlanan fişlerin kimlikleri (fişler ayrı koleksiyonda)
+    spent: [...new Set((Array.isArray(b.spent) ? b.spent : []).filter((x) => typeof x === "string" && /^[\w-]{1,64}$/.test(x)))].slice(0, 100),
   };
 }
 
@@ -58,7 +60,22 @@ export function nightsOf(r) {
   return Math.max(0, Math.round((b - a) / 864e5));
 }
 
-export const emptyBudget = (r) => ({ staff: 1, nights: nightsOf(r), items: [], paid: {} });
+export const emptyBudget = (r) => ({ staff: 1, nights: nightsOf(r), items: [], paid: {}, spent: [] });
+
+// Yarışa bağlanabilecek fişler: yarıştan 7 gün önce ile 3 gün sonrası arası (bağlı olanlar her zaman)
+const shift = (d, n) => {
+  const x = new Date(`${d}T12:00:00Z`);
+  x.setUTCDate(x.getUTCDate() + n);
+  return x.toISOString().slice(0, 10);
+};
+export function nearReceipts(receipts, r, spent = []) {
+  if (!r?.startDate) return receipts.filter((x) => spent.includes(x.id));
+  const from = shift(r.startDate, -7);
+  const to = shift(r.endDate || r.startDate, 3);
+  return receipts.filter((x) => spent.includes(x.id) || ((x.date || "") >= from && (x.date || "") <= to)).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+}
+// Bağlı fişlerin toplamı (TL); totalTL: fiş tutarı kuruştan TL'ye
+export const spentTotal = (receipts, spent = [], totalTL) => receipts.filter((x) => spent.includes(x.id)).reduce((n, x) => n + (totalTL(x) || 0), 0);
 
 // Hesap: athletes = sporcu sayısı
 export function totals(b, athletes) {
