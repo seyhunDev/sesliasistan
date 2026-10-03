@@ -50,6 +50,10 @@ import { fromMessage } from "@/lib/ai/assistant";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
+import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
+import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
+import { countsText } from "@/features/events/eventModel";
+import { EventCard } from "@/features/events/EventCard";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -71,9 +75,9 @@ const focusBody = (s) => {
     .trim();
   return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
-const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [], person: null };
+const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
-const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
+const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
 const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
@@ -146,6 +150,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const runId = useRef(0);
   // Asistanla kişi ekleme (yalnız ana hesap): { draft, step: "ask" | "confirm" | "saved" | "undo", ask, dups, uid }
   const personFlow = useRef(null);
+  // Asistanla etkinlik planı: yer/zaman sorulduysa { text, turns } (sonraki cümle cevap; sessiz kalınırsa genel plan)
+  const eventFlow = useRef(null);
+  const turnCount = useRef(0);
   const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
   const skipRace = useRef(false); // yarış sayfasında yarışla ilgisiz çıkan cümle bir kez yarışa gitmeden sorulur
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
@@ -245,12 +252,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null } = extra;
+    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null } = extra;
     const awaiting = expect || !!pending;
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
+    if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
     setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person });
+    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person, event });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -579,6 +587,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
     // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
     if (personFlow.current && !fresh && !["saving", "opening"].includes(personFlow.current.step) && (await continuePerson(s, viaVoice))) return;
+    // Etkinlik için yer/zaman soruldu: bu cümle cevaptır (vazgeç, sayfa açma ya da kişi ekleme değilse); plan hazırlanır
+    if (eventFlow.current && !fresh) {
+      const f = eventFlow.current;
+      eventFlow.current = null;
+      if (isDrop(s)) return reply("Tamam, etkinlik planını bıraktım.", { engine: "local" }, viaVoice);
+      if (!wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runEvent(`${f.text}\nCevap: ${s}`, viaVoice, true);
+    }
+    // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
+    // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
+    if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -1179,6 +1197,67 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id === runId.current) setPhase("idle");
     }
   }
+  // Etkinlik planı: yapay zeka yer/zaman eksikse soru döner (general false), yoksa plan; plan Etkinlikler'e kaydedilir
+  async function runEvent(text, viaVoice, general, lead = "") {
+    const id = ++runId.current;
+    setPhase("thinking");
+    setSteps([]);
+    stepTo(general ? "Plan hazırlanıyor" : "Etkinlik inceleniyor");
+    try {
+      const p = await askPlan({ text, general });
+      if (id !== runId.current) return;
+      if (p.ask?.length) {
+        setSteps([]);
+        eventFlow.current = { text, turns: null };
+        return reply(`${p.question} Bilmiyorsan “genel plan yap” de.`, { event: { asking: true, kind: p.event?.kind || kindFromText(text), text }, engine: "ai", expect: true }, viaVoice);
+      }
+      stepTo("Etkinliklere kaydediliyor");
+      const ev = p.event;
+      const nid = await saveEvent(profile?.orgId || myUid, profile?.uid || myUid, ev);
+      stepsEnd();
+      navigator.vibrate?.([10, 40, 10]);
+      toast("Etkinlik kaydedildi");
+      const counts = countsText(ev);
+      const first = (ev.summary.match(/^[^.!?]+[.!?]/) || [""])[0];
+      reply(`${lead}${ev.title} planını hazırladım ve Etkinlikler'e kaydettim${counts ? `: ${counts}` : ""}. ${first}`.trim(), { event: { ...ev, id: nid, saved: true }, engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(`${e.message || "Plan hazırlanamadı."} Etkinlikler sayfasından elle de ekleyebilirsin.`, { engine: "local", nav: "events" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  async function eventDelete(e) {
+    try {
+      await deleteEvent(profile?.orgId || myUid, e.id);
+      toast("Etkinlik silindi");
+      reply(`Sildim, “${e.title}” artık Etkinlikler'de yok.`, { event: { ...e, deleted: true }, engine: "local" });
+    } catch {
+      toast("Silinemedi");
+    }
+  }
+  // Soru sorulduktan sonra mikrofon açılıp hiç konuşulmadan kapandıysa: genel plan
+  useEffect(() => {
+    turnCount.current = turns.length;
+  }, [turns.length]);
+  useEffect(() => {
+    const f = eventFlow.current;
+    if (!f || !open) return;
+    if (listening) {
+      if (f.turns == null) f.turns = turnCount.current;
+      return;
+    }
+    if (f.turns == null || transcribing || busy) return;
+    const t = setTimeout(() => {
+      if (eventFlow.current !== f || live.current.spStatus !== "idle" || turnCount.current !== f.turns) return;
+      eventFlow.current = null;
+      runEvent(f.text, true, true, "Cevap gelmedi, genel bir plan yaptım. ");
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listening, transcribing, busy, open]);
+
   async function saveAtt(r, viaVoice) {
     stepTo("Yoklama kaydediliyor");
     await applyAttendance(myUid, members, r.date, r.changes);
@@ -1430,6 +1509,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             onCancel={() => (["undo", "account"].includes(cards.person.step) ? continuePerson("vazgeç") : personCancel())}
             onAccount={() => (cards.person.step === "account" ? personOpenAccount() : personAccount())}
             onUndo={() => (cards.person.step === "undo" ? personUndo() : personUndoAsk())}
+          />
+        )}
+
+        {/* Asistanla etkinlik planı: soru sorulurken "Genel plan yap"; kaydedilince Aç / Sil */}
+        {cards.event && (
+          <EventCard
+            e={cards.event}
+            onGeneral={() => {
+              const text = cards.event.text;
+              eventFlow.current = null;
+              setTurns((p) => [...p, { role: "user", text: "Genel plan yap", chip: true }]);
+              runEvent(text, false, true);
+            }}
+            onOpen={() => (!embedded && park(), router.push(`/events/${cards.event.id}`))}
+            onDelete={() => eventDelete(cards.event)}
           />
         )}
 

@@ -98,6 +98,7 @@ export function HomeFeed({ weather }) {
   const links = [
     race.on && ["/athletes/races", "flag", "Yarışlar", race.next ? 0 : race.up, race.next],
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
+    !staff && ["/events", "tent", "Etkinlikler"],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
     athletes && ["/athletes", "anchor", "Sporcular"],
