@@ -427,4 +427,20 @@ group("Yarış çevresi")([
   ["mesafe yazısı", { desc: "m ve km", fn: () => [RA.distText(240), RA.distText(4230)], ok: ([a, b]) => a === "240 m" && b === "4,2 km" }],
 ]);
 
+// Yarış havası (raceWeather.js): yarış günleri, gündüz rüzgârı, kayıt temizliği, 16 günlük ufuk
+const RW = await import("@/features/athletes/raceWeather");
+const HRS = Array.from({ length: 48 }, (_, i) => `2026-10-0${7 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`);
+const WJ = {
+  hourly: { time: HRS, temperature_2m: HRS.map(() => 20), weather_code: HRS.map(() => 1), is_day: HRS.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 19 ? 1 : 0)),
+    wind_speed_10m: HRS.map((t) => (+t.slice(11, 13) >= 11 && +t.slice(11, 13) <= 16 ? 12 : 5)), wind_gusts_10m: HRS.map(() => 18), wind_direction_10m: HRS.map(() => 315) },
+  daily: { time: ["2026-10-07", "2026-10-08"], weather_code: [1, 1], temperature_2m_max: [24, 23], temperature_2m_min: [15, 14] },
+};
+group("Yarış havası")([
+  ["yarış günleri", { desc: "7-9 Ekim → 3 gün", fn: () => RW.raceDays({ startDate: "2026-10-07", endDate: "2026-10-09" }), ok: (r) => r.join() === "2026-10-07,2026-10-08,2026-10-09" }],
+  ["gündüz rüzgârı", { desc: "5–12 kn, sağanak 18, karayel, yelkene uygun 11–17", fn: () => RW.shapeDays(WJ, ["2026-10-07", "2026-10-09"]), ok: (r) => r.length === 1 && r[0].lo === 5 && r[0].hi === 12 && r[0].gust === 18 && r[0].dir === 315 && r[0].hours.length === 6 && r[0].sail[0] === "11–17" && r[0].max === 24 }],
+  ["kayıt temizliği", { desc: "konumsuz tahmin atılır, bozuk gün süzülür", fn: () => [RW.cleanWeather({ place: {}, days: [] }), RW.cleanWeather({ place: { name: "Foça", lat: 38.67, lon: 26.75 }, days: [{ date: "x" }, { date: "2026-10-07", lo: 5, hi: 12, gust: 18, dir: 315, hours: [{ hh: "10", wind: 8 }] }] })], ok: ([a, b]) => a === null && b.days.length === 1 && b.days[0].hours[0].gust === null }],
+  ["16 günlük ufuk", { desc: "3 Ekim'de tahmin 18 Ekim'e kadar; 20 Ekim yarışı 5 Ekim'den sonra", fn: () => [RW.lastForecastDay("2026-10-03"), RW.forecastFrom("2026-10-20")], ok: ([a, b]) => a === "2026-10-18" && b === "2026-10-05" }],
+  ["rüzgâr cümlesi", { desc: "yön ve kn", fn: () => RW.windLine({ dir: 315, lo: 5, hi: 12, gust: 18 }), ok: (r) => r === "Karayel (KB) 5–12 kn, sağanak 18 kn" }],
+]);
+
 export default results;

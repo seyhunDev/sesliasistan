@@ -7,6 +7,7 @@ import { Loader } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { AroundMap } from "./AroundMap";
+import { RaceWeather } from "./RaceWeather";
 import { KINDS, cleanAround, distText, gatherAround, isApple, minText, placeLink, routeLink } from "./raceAround";
 
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
@@ -33,7 +34,7 @@ async function askAi(r, data) {
 
 // Yarış › Çevre: yarış alanı ve otel çevresi (ulaşım, market, eczane, restoran, gezilecek yerler, harita).
 // Yalnız "Getir"e basınca istenir; sonuç yarışın `around` alanına kaydedilir, istenen yer silinir.
-export function AroundView({ r, onChange }) {
+export function AroundView({ r, onChange, onWeather }) {
   const toast = useToast();
   const a = cleanAround(r.around);
   const [venueName, setVenueName] = useState(a?.venue.q || r.notice?.venue || "");
@@ -78,6 +79,8 @@ export function AroundView({ r, onChange }) {
 
   return (
     <>
+      <RaceWeather r={r} onChange={onWeather} />
+
       <Label>YARIŞ ALANI VE OTEL</Label>
       <div className={`${card} divide-y divide-line overflow-hidden`}>
         <label className="block px-4 py-2.5">

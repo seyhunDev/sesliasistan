@@ -573,7 +573,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
 
       {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
 
-      {tab === "around" && <AroundView r={r} onChange={(a) => put("around", a)} />}
+      {tab === "around" && <AroundView r={r} onChange={(a) => put("around", a)} onWeather={(w) => put("weather", w)} />}
 
       {tab === "docs" && (
         <>
