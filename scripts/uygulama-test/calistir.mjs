@@ -85,8 +85,8 @@ log(`Bölümler: ${only || "hepsi"}${withAI ? " + yapay zeka" : ""} · site: ${S
 // 1) YEREL KURALLAR (yapay zekasız): sayfa açma, kayıt ekleme, özet, tamamlama, doğum günü, onaylar…
 // =====================================================================================
 if (part("yerel")) {
-  section("1) YEREL KURALLAR (asistanın yapay zekasız anladıkları)");
-  const { default: local } = await import("../asistan-test/yerel.mjs");
+  section("1) YEREL TESTLER (asistan, ses, elle işlemler, yarış; yapay zekasız)");
+  const { default: local } = await import("../asistan-test/yerel/hepsi.mjs");
   for (const g of [...new Set(local.map((r) => r.group))]) {
     const rs = local.filter((r) => r.group === g);
     const okN = rs.filter((r) => r.ok).length;

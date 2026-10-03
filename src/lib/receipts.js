@@ -15,7 +15,7 @@ export const DOC = { fis: "Fiş", fatura: "Fatura" };
 export const VATS = [0, 1, 10, 20];
 export const catOf = (c) => CAT[c] || CAT["Diğer"];
 
-// "1.234,56" | "1234.56" | "1234,5" | 12.5 -> kuruş (tamsayı). Geçersizse NaN.
+// "1.234,56" | "1234.56" | "1234,5" | "3.500" (binlik nokta) | 12.5 -> kuruş (tamsayı). Geçersizse NaN.
 export function parseTL(v) {
   if (typeof v === "number") return Number.isFinite(v) ? Math.round(v * 100) : NaN;
   let s = String(v ?? "").replace(/[₺\s]/g, "").replace(/TL/gi, "");
@@ -23,6 +23,7 @@ export function parseTL(v) {
   if (s.includes(",") && s.includes(".")) {
     s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
   } else if (s.includes(",")) s = s.replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, ""); // "3.500" = üç bin beş yüz
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n * 100) : NaN;
 }

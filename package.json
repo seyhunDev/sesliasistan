@@ -8,7 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --no-warnings scripts/gonder.mjs --yalniz-test",
-    "gonder": "node --no-warnings scripts/gonder.mjs"
+    "gonder": "node --no-warnings scripts/gonder.mjs",
+    "test:hizli": "node --no-warnings scripts/asistan-test/calistir.mjs",
+    "test:asistan": "node --no-warnings scripts/asistan-test/calistir.mjs asistan",
+    "test:ses": "node --no-warnings scripts/asistan-test/calistir.mjs ses",
+    "test:elle": "node --no-warnings scripts/asistan-test/calistir.mjs elle",
+    "test:yaris": "node --no-warnings scripts/asistan-test/calistir.mjs yaris",
+    "test:yz": "node --no-warnings scripts/asistan-test/calistir.mjs asistan --yz",
+    "test:canli": "node --no-warnings scripts/uygulama-test/calistir.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
