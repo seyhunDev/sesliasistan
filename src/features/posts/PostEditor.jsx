@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, raceBrief, raceClasses, raceMeta, raceWithAthletes, reauto, wantsPostImage } from "./postModel";
+import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, classList, raceBrief, raceMeta, raceWithAthletes, reauto, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
@@ -55,8 +55,9 @@ function legacyCopy(t) {
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, onAthletes }) {
+export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onRaces, onAthletes }) {
   const toast = useToast();
+  const [start] = useState(() => withInfo(given));
   const [p, setP] = useState(start);
   const [tags, setTags] = useState(start.hashtags.join(" "));
   const [photo, setPhoto] = useState(startPhoto);
@@ -69,7 +70,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, 
   const [aiErr, setAiErr] = useState("");
   const [races, setRaces] = useState(null);
   const [usage, setUsage] = useState(null);
-  const [texts, setTexts] = useState(false);
+  const [texts, setTexts] = useState(true);
   const canvas = useRef(null);
   const file = useRef(null);
   const fileInput = useRef(null);
@@ -102,7 +103,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, 
   }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.headline, post.sub, post.people, post.wish, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -125,7 +126,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, 
       const auto = autoOf(x);
       const keep = (k) => !all && x[k] && x[k] !== auto[k];
       const out = { ...x, caption: r.caption || x.caption };
-      for (const k of ["headline", "sub", "people", "wish", "tag"]) if (r[k] != null && (r[k] || all) && !keep(k)) out[k] = r[k];
+      for (const k of ["headline", "sub", "people", "wish", "tag", "info", "classes"]) if (r[k] != null && (r[k] || all) && !keep(k)) out[k] = r[k];
       return out;
     });
 
@@ -347,7 +348,7 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, 
   };
 
   const race = post.race;
-  const classes = raceClasses(race);
+  const classes = classList(post.classes);
   const empty = !race && !post.caption && !post.topic;
 
   return (
@@ -574,7 +575,13 @@ export function PostEditor({ start, startPhoto = "", onSave, onDelete, onRaces, 
             <span className="text-[0.8125rem] font-medium text-mut">Sporcular (her satır bir sporcu, en çok 4)</span>
             <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))} rows={3} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />
           </label>
-          <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" />
+          <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" hint="Boş bırakılırsa görselde çıkmaz." />
+          {post.meta && (
+            <>
+              <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />
+              <Field label="Sınıflar (virgülle, en çok 4)" value={p.classes} onChange={(e) => put("classes", e.target.value)} maxLength={100} placeholder="Optimist, ILCA 4" />
+            </>
+          )}
           <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
         </div>
       )}

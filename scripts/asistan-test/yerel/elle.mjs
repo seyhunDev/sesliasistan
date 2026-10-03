@@ -292,6 +292,11 @@ group("Instagram tasarım")([
     return r.athletes.length === 2 && r.athletes[0].name === "Ece Su" && r.athletes[0].cls === "ILCA 4" && !/12345678901/.test(JSON.stringify(r.athletes));
   })],
   ["şablon kaydı", F("bilinmeyen şablon Klasik, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "klasik" && PM.cleanPost({ style: "bant" }).style === "bant" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
+  ["yer ve sınıf düzenlenir", F("yarıştan dolar, alan olarak kaydedilir, eski kayıt doldurulur", () => {
+    const a = PM.cleanPost({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" }, ...PM.autoOf({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" } }) });
+    const old = PM.withInfo(PM.cleanPost({ race: ONE }));
+    return a.info === "Foça · 7-11 Ekim 2026" && a.classes === "ILCA 4, ILCA 6" && PM.classList("Optimist, ILCA 4,, Laser, 420, 29er").join() === "Optimist,ILCA 4,Laser,420" && old.classes === "ILCA 4" && old.info === "Foça · 7-11 Ekim 2026";
+  })],
   ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],
 ]);
