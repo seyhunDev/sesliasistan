@@ -2,6 +2,7 @@
 // Düzen, kulübün kullandığı örneklerle aynıdır (A4, Times/Arial ölçülü Liberation yazı tipleri).
 // 1) Okul izni yazısı  2) EK-2 Kafile Onayı  3) Seyahat dilekçesi  4) EK-3/D Veli İzin Belgesi (sporcu başına)
 // 5) Kulüp izin yazısı: kulüpten sporcunun okuluna, sporcu başına bir sayfa (antetli düzen, tarihleri ayrı)
+// 6) Otel konaklama izni: tüm sporcuların velileri tek sayfada imzalar (otel adı yoksa elle yazılacak boşluk)
 // pdf-lib yalnızca belge hazırlanırken yüklenir (sayfa açılışını ağırlaştırmasın)
 
 export const DOCS = [
@@ -10,6 +11,7 @@ export const DOCS = [
   ["travel", "Seyahat dilekçesi"],
   ["parent", "EK-3/D Veli İzin Belgesi"],
   ["club", "Kulüp izin yazısı"],
+  ["hotel", "Otel konaklama izni"],
 ];
 
 // Kulübün antet bilgileri (kulüp izin yazısının üst ve alt bilgisi)
@@ -470,22 +472,7 @@ function clubLetter(pdf, f, c, a, no) {
   const p = painter(page);
   const L = 70;
   const R = W - 70;
-  const navy = NAVY;
-  const tx = (s, x, top, font, size, align, color = navy) => {
-    const w = p.width(s, font, size);
-    const left = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
-    page.drawText(s, { x: left, y: H - top, font, size, color });
-    return w;
-  };
-
-  // Antet: kulüp logosu + kulüp adı, altında çift çizgi
-  if (f.logo) page.drawImage(f.logo, { x: L, y: H - 92, width: 58, height: 58 });
-  else page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
-  const nx = L + (f.logo ? 70 : 48);
-  tx(CLUB.name, nx, 64, f.serifB, 19, "left");
-  tx("Dikili / İZMİR", nx, 80, f.serif, 10.5, "left", GRAY);
-  page.drawRectangle({ x: L, y: H - 102, width: R - L, height: 1.6, color: navy });
-  page.drawRectangle({ x: L, y: H - 105.5, width: R - L, height: 0.5, color: navy });
+  letterhead(page, p, f, L, R);
 
   // Sayı, konu, tarih
   const kv = (k, v, top) => {
@@ -520,12 +507,105 @@ function clubLetter(pdf, f, c, a, no) {
   p.text(c.signer || "", sx, st + 66, f.serifB, 12, "center");
   page.drawLine({ start: { x: sx - 70, y: H - (st + 52) }, end: { x: sx + 70, y: H - (st + 52) }, thickness: 0.4, color: LIGHT, dashArray: [1.5, 2] });
 
+}
+
+// Kulüp anteti (üstte logo + ad, altta iletişim); kulüp izin yazısı ve otel izni ortak kullanır
+function letterhead(page, p, f, L, R) {
+  const navy = NAVY;
+  const tx = (s, x, top, font, size, align, color = navy) => {
+    const w = p.width(s, font, size);
+    const left = align === "center" ? x - w / 2 : align === "right" ? x - w : x;
+    page.drawText(s, { x: left, y: H - top, font, size, color });
+  };
+  // Antet: kulüp logosu + kulüp adı, altında çift çizgi
+  if (f.logo) page.drawImage(f.logo, { x: L, y: H - 92, width: 58, height: 58 });
+  else page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
+  const nx = L + (f.logo ? 70 : 48);
+  tx(CLUB.name, nx, 64, f.serifB, 19, "left");
+  tx("Dikili / İZMİR", nx, 80, f.serif, 10.5, "left", GRAY);
+  page.drawRectangle({ x: L, y: H - 102, width: R - L, height: 1.6, color: navy });
+  page.drawRectangle({ x: L, y: H - 105.5, width: R - L, height: 0.5, color: navy });
   // Alt bilgi
   page.drawRectangle({ x: L, y: H - 770, width: R - L, height: 0.5, color: navy });
   page.drawRectangle({ x: L, y: H - 773.5, width: R - L, height: 1.6, color: navy });
   tx(CLUB.name, W / 2, 790, f.sansB, 9, "center");
   tx(`${CLUB.web}   ·   ${CLUB.mail}   ·   ${CLUB.phone}`, W / 2, 803, f.sans, 8.5, "center", GRAY);
   tx(CLUB.address, W / 2, 815, f.sans, 8.5, "center", GRAY);
+}
+
+// ---- 6) Otel konaklama izni (tek sayfa; tüm sporcuların velileri imzalar) ----
+// h: { hotel, from, to, event, place, date, signer, title } (hotelInfo). Otel adı yoksa elle yazılacak boşluk kalır.
+function hotelForm(pdf, f, h, list) {
+  const page = pdf.addPage([W, H]);
+  const p = painter(page);
+  const L = 60;
+  const R = W - 60;
+  letterhead(page, p, f, L, R);
+  p.text(dmy(h.date), R, 128, f.serif, 11, "right");
+  p.text("OTEL KONAKLAMA VELİ İZİN BELGESİ", W / 2, 152, f.serifB, 13, "center");
+
+  const lead = 17;
+  const dates = rangeTitle(h.from, h.to);
+  let top = p.para(
+    `Aşağıda imzası bulunan veliler olarak, velisi olduğumuz sporcuların ${dates || "……/……/…………  –  ……/……/…………"} tarihleri arasında ${h.place ? `${h.place}${placeSuffix(h.place)}` : "……………………’da"} düzenlenecek olan ${h.event || "……………………………………"} organizasyonu süresince kulüp kafilesiyle birlikte, antrenörlerin gözetiminde aşağıda belirtilen otelde konaklamasına izin veriyoruz.`,
+    L, 182, R - L, f.serif, 11.5, lead, { indent: 30 },
+  );
+  // Otel adı ve tarihler (yoksa elle yazılacak çizgi)
+  const kv = (k, v, t) => {
+    const kw = p.text(`${k}:`, L, t, f.serifB, 11.5);
+    if (v) p.text(v, L + kw + 6, t, f.serif, 11.5);
+    else page.drawLine({ start: { x: L + kw + 6, y: H - (t + 2) }, end: { x: R, y: H - (t + 2) }, thickness: 0.4, color: LIGHT, dashArray: [1.5, 2] });
+  };
+  top += 14;
+  kv("Konaklanacak otel", h.hotel, top);
+  kv("Konaklama tarihleri", dates, top + 22);
+
+  // Veli tablosu: sporcu, veli, telefon, imza (kartta veli bilgisi yoksa elle doldurulur)
+  const cols = [L, L + 26, L + 152, L + 288, L + 378, R];
+  const t0 = top + 46;
+  const hh = 26;
+  const n = Math.max(5, list.length);
+  const bottom = 680;
+  const rh = Math.min(30, (bottom - t0 - hh) / n);
+  const fs = Math.min(10.5, rh - 4);
+  const rows = [t0, t0 + hh];
+  for (let i = 0; i < n; i++) rows.push(rows.at(-1) + rh);
+  grid(p, cols, rows);
+  ["NO", "SPORCUNUN ADI SOYADI", "VELİSİNİN ADI SOYADI", "VELİ TELEFONU", "VELİ İMZASI"].forEach((s, i) =>
+    fitCell(p, s, cols[i], rows[0], cols[i + 1] - cols[i], hh, f.serifB, 9, { align: "center" }),
+  );
+  for (let i = 0; i < n; i++) {
+    const a = list[i];
+    const t = rows[i + 1];
+    p.cell(String(i + 1), cols[0], t, cols[1] - cols[0], rh, f.serifB, fs, { align: "center" });
+    if (!a) continue;
+    fitCell(p, a.name, cols[1], t, cols[2] - cols[1], rh, f.serif, fs);
+    fitCell(p, a.parentName, cols[2], t, cols[3] - cols[2], rh, f.serif, fs);
+    fitCell(p, a.parentPhone, cols[3], t, cols[4] - cols[3], rh, f.serif, fs, { align: "center" });
+  }
+
+  // Kulüp yetkilisi
+  const sx = R - 90;
+  const st = Math.min(rows.at(-1) + 26, 712);
+  p.text("Kulüp Yetkilisi", sx, st, f.serif, 11, "center");
+  if (h.title) p.text(h.title, sx, st + 14, f.serif, 10.5, "center");
+  p.text(h.signer || "", sx, st + 44, f.serifB, 11, "center");
+}
+
+// Otel konaklama izninin bilgileri: otel adı yalnız yazıldıysa (talimattaki oteller öneri olarak seçilir);
+// tarih, ad, yer ve imzalayan kulüp izin yazısıyla aynı yerden gelir
+export function hotelInfo(r) {
+  const c = clubInfo(r);
+  return {
+    hotel: String(r.hotelName || "").trim(),
+    from: r.hotelFrom || r.startDate,
+    to: r.hotelTo || r.hotelFrom || r.endDate || r.startDate,
+    event: c.event,
+    place: c.place,
+    date: c.date,
+    signer: c.signer || String(r.signer || "").trim(),
+    title: c.signer ? c.title : up(r.signerTitle),
+  };
 }
 // "Çeşme-İzmir" → "’de" (son kelimeye göre)
 const placeSuffix = (s) => {
@@ -548,7 +628,7 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   const f = {};
   for (const [k, bytes] of Object.entries(fonts)) {
     if (k === "logo") {
-      if (only.includes("club")) f.logo = await pdf.embedPng(bytes);
+      if (only.includes("club") || only.includes("hotel")) f.logo = await pdf.embedPng(bytes);
     } else f[k] = await pdf.embedFont(bytes, { subset: true });
   }
   const year = (toDate(r.startDate) || new Date()).getFullYear();
@@ -562,6 +642,7 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
     const c = clubInfo(r);
     list.forEach((a, i) => clubLetter(pdf, f, c, a, c.no ? nextNo(c.no, i) : ""));
   }
+  if (only.includes("hotel")) hotelForm(pdf, f, hotelInfo(r), list);
   return pdf.save();
 }
 

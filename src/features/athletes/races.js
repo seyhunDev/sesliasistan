@@ -13,6 +13,8 @@ export const RACE_FIELDS = [
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
+  // Otel konaklama izni (otel adı boşsa belgede elle yazılacak yer kalır)
+  "hotelName", "hotelFrom", "hotelTo",
   // Yarış talimatından okunanlar (program, son tarihler, ücretler, oteller, iletişim; raceNotice.js)
   "notice",
   // Elle eklenen işler [{ title, date }]
@@ -110,7 +112,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", notice: null, todos: [], budget: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", notice: null, todos: [], budget: null,
   };
 }
 

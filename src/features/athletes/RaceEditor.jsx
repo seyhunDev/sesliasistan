@@ -9,7 +9,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { isActive } from "./data";
-import { DOCS, buildRaceDocs, clubInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { DOCS, buildRaceDocs, clubInfo, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
@@ -36,6 +36,7 @@ const DOC_INFO = {
   travel: ["mail", "GSİM Spor Faaliyetleri Birimine dilekçe"],
   parent: ["users", "Her sporcu için bir sayfa, veli imzalar"],
   club: ["note", "Kulüpten okula, her sporcuya ayrı; tarihleri ayrı"],
+  hotel: ["home", "Tek sayfa: tüm velilerin otel konaklama imzası"],
 };
 
 // Dosya satırı: tür etiketi, ad, alt bilgi; aç, paylaş, (varsa) sil
@@ -134,6 +135,9 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   const field = (k, ph, type = "text") => <input type={type} value={r[k]} onChange={(e) => set(k)(e.target.value)} placeholder={ph} className={input} />;
   // Kulüp yazısı alanı: boşsa yarıştaki değer görünür (tarihlerde değer olarak)
   const club = clubInfo(r);
+  const hotel = hotelInfo(r);
+  // Talimattaki oteller öneri olarak çıkar (dokununca otel adı olur)
+  const hotels = [...new Set((r.notice?.hotels || []).map((h) => String(h?.name || "").trim()).filter(Boolean))].slice(0, 4);
   const clubDate = (k, v) => <input type="date" value={r[k] || v || ""} onChange={(e) => set(k)(e.target.value)} className={input} />;
 
   const byId = new Map(athletes.map((a) => [a.id, a]));
@@ -183,7 +187,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
   });
 
   const pages =
-    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0);
+    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0);
   const ready = [
     ["Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
@@ -642,7 +646,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : sub}</span>
+                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : sub}</span>
                     </span>
                     <Check on={on} tone="acc" />
                   </button>
@@ -687,6 +691,29 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
                   Yarışın tarih, ad ve yerine dön
                 </button>
               )}
+            </>
+          )}
+
+          {docs.includes("hotel") && (
+            <>
+              <Label>OTEL KONAKLAMA İZNİ</Label>
+              <Group>
+                <Row label="Otel adı">{field("hotelName", "Boş kalırsa elle yazılır")}</Row>
+                <Pair>
+                  <Row label="Giriş">{clubDate("hotelFrom", hotel.from)}</Row>
+                  <Row label="Çıkış">{clubDate("hotelTo", hotel.to)}</Row>
+                </Pair>
+              </Group>
+              {!r.hotelName.trim() && hotels.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5 px-1">
+                  {hotels.map((n) => (
+                    <button key={n} type="button" onClick={() => set("hotelName")(n)} className="rounded-full bg-acc/10 px-3 py-1 text-[0.8125rem] font-semibold text-acc">
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Veli adı ve telefonu sporcu kartından gelir; eksikse tabloda boş kalır. Etkinlik adı, yer ve imzalayan kulüp izin yazısıyla aynı.</p>
             </>
           )}
 
