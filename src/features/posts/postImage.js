@@ -170,13 +170,15 @@ export async function drawPost(canvas, post, photo) {
   const people = post.people ? post.people.split("\n").slice(0, 4) : [];
   const head = fit(ctx, post.headline || " ", maxW, story ? 5 : post.format === "portrait" ? 4 : 3, people.length ? 76 : 88, 50, 800);
   const lh = Math.round(head.size * 1.1);
-  ctx.font = `500 38px ${FONT}`;
-  const subLines = post.sub ? wrap(ctx, post.sub, maxW).slice(0, 2) : [];
+  // Alt satır uzun olabilir (yarış cümlesi): en çok 4 satır, sığmazsa yazı küçülür
+  const sub = post.sub ? fit(ctx, post.sub, maxW, 4, 38, 28, 500) : { size: 38, lines: [] };
+  const subLines = sub.lines;
+  const sh = Math.round(sub.size * 1.32);
   const pp = fit(ctx, people.join("\n") || " ", maxW - 34, people.length, 36, 26, 600);
   const pLines = people.length ? pp.lines : [];
   const ph = Math.round(pp.size * 1.42);
   const tagH = post.tag ? 54 : 12;
-  const block = tagH + 28 + head.lines.length * lh + (subLines.length ? 22 + subLines.length * 50 : 0) + (pLines.length ? 34 + pLines.length * ph : 0);
+  const block = tagH + 28 + head.lines.length * lh + (subLines.length ? 22 + subLines.length * sh : 0) + (pLines.length ? 34 + pLines.length * ph : 0);
   let y = top ? PAD + 10 + safeT : H - PAD - block - safeB;
 
   ctx.textBaseline = "top";
@@ -212,10 +214,10 @@ export async function drawPost(canvas, post, photo) {
   if (subLines.length) {
     y += 22;
     ctx.globalAlpha = 0.9;
-    ctx.font = `500 38px ${FONT}`;
+    ctx.font = `500 ${sub.size}px ${FONT}`;
     for (const l of subLines) {
       ctx.fillText(l, PAD, y);
-      y += 50;
+      y += sh;
     }
     ctx.globalAlpha = 1;
   }

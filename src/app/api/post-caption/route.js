@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanPeople, cleanRace, cleanTags } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, cleanRace, cleanTags, racePeople, raceSub } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -70,8 +70,9 @@ async function handle(request) {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 2500, timeoutMs: 22000 });
     const out = {
       headline: L(raw?.headline, 90),
-      sub: S(raw?.sub, 90),
-      people: cleanPeople(raw?.people),
+      // Yarış bağlıysa alt satır kalıp cümle (sporcumuz/sporcularımız + yer); 1-2 sporcunun adı orada geçtiği için ayrı satır yok
+      sub: race ? raceSub(race, kind) : S(raw?.sub, 200),
+      people: race?.athletes?.length ? (race.athletes.length > 2 ? cleanPeople(raw?.people) || racePeople(race) : "") : cleanPeople(raw?.people),
       tag: S(raw?.tag, 18),
       caption: L(raw?.caption, 2200),
       hashtags: cleanTags(raw?.hashtags),
