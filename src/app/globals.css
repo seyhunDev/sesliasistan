@@ -43,6 +43,9 @@ html[data-size="l"] { font-size: 112.5%; }
 html[data-size="xl"] { font-size: 125%; }
 body {
   min-height: 100%;
+  /* Sayfa kısa olsa da en az ekran boyu (Mesajlar listesindeki gibi). Ana ekrana eklenen uygulamada iPhone, sayfa ekrandan
+     kısaysa alttaki sabit kubbeyi (asistan + sekmeler) yukarıda bırakıp altta boşluk açıyordu. */
+  min-height: 100lvh;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
