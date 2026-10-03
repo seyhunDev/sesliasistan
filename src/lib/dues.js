@@ -167,3 +167,32 @@ export function mergeMoves(mailMoves, fileMoves) {
   }
   return out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 }
+
+// Son n ay (en eskiden yeniye): ["2026-05", …, "2026-10"]
+export function lastMonths(ym, n = 6) {
+  const [y, m] = ym.split("-").map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - 1 - (n - 1 - i), 15));
+    return d.toISOString().slice(0, 7);
+  });
+}
+
+// Tablo: sporcu × ay. months: { ym: ay kaydı }. Her hücre { state paid|part|due, paid, fee, list }.
+export function gridOf(athletes, months, cfg, yms) {
+  const per = Object.fromEntries(yms.map((ym) => [ym, monthRows(athletes, months[ym] || {}, cfg)]));
+  const rows = [...athletes]
+    .sort((a, b) => a.studentName.localeCompare(b.studentName, "tr"))
+    .map((a) => ({ a, cells: Object.fromEntries(yms.map((ym) => [ym, per[ym].rows.find((r) => r.a.id === a.id)])) }));
+  const totals = Object.fromEntries(yms.map((ym) => [ym, { paidCount: per[ym].paidCount, paid: per[ym].paid, expected: per[ym].expected, count: athletes.length }]));
+  return { rows, totals };
+}
+
+// Eşleşme bekleyen gelen paralar (aylara göre, en yeni ay önce): [{ ym, m, r }]
+export function pendingOf(movements, months, athletes, cfg, yms) {
+  const out = [];
+  for (const ym of [...yms].reverse()) {
+    const month = months[ym] || {};
+    for (const m of incomingOf(movements, ym, usedKeys(month), month.ignored || [])) out.push({ ym, m, r: matchMovement(m, athletes, cfg) });
+  }
+  return out;
+}

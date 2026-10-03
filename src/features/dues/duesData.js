@@ -59,3 +59,27 @@ export async function loadStatements(uid) {
   return snap.docs.map((d) => { const x = d.data(); return { id: d.id, name: x.name, from: x.from, to: x.to, count: x.count, at: x.at }; });
 }
 export const deleteStatement = (uid, id) => deleteDoc(doc(db, "orgs", uid, "bankFiles", id));
+
+// Birden çok ay (tablo): ayar + her ayın kaydı tek seferde
+export async function loadDuesRange(orgId, yms) {
+  const [c, ...ms] = await Promise.all([getDoc(dues(orgId, "settings")), ...yms.map((ym) => getDoc(dues(orgId, ym)))]);
+  return { cfg: c.data() || {}, months: Object.fromEntries(yms.map((ym, i) => [ym, ms[i].data() || {}])) };
+}
+// Aralığın banka hareketleri (ilk ayın başı … son ayın sonu + 5 gün): mailler + yüklenen Excel'ler
+export async function loadMovementsRange(uid, fromYm, toYm) {
+  const [y1, m1] = fromYm.split("-").map(Number);
+  const [y2, m2] = toYm.split("-").map(Number);
+  const from = new Date(Date.UTC(y1, m1 - 1, 1) - 3 * 3600e3).toISOString();
+  const to = new Date(Date.UTC(y2, m2, 6)).toISOString();
+  const [snap, files] = await Promise.all([
+    getDocs(query(collection(db, "orgs", uid, "mails"), where("at", ">=", from), where("at", "<", to), orderBy("at", "desc"), limit(250))),
+    getDocs(query(collection(db, "orgs", uid, "bankFiles"), where("to", ">=", `${fromYm}-01`))).catch(() => null),
+  ]);
+  const mails = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (mails.some((m) => m.raw?.length && !m.sheets)) {
+    const XLSX = xlsxOf(await import("xlsx"));
+    for (const m of mails) if (m.raw?.length && !m.sheets) m.sheets = sheetsFromRaw(m.raw, XLSX);
+  }
+  const fileList = (files?.docs || []).map((d) => d.data()).filter((f) => (f.from || "") <= `${toYm}-31`);
+  return { movements: mergeMoves(movementsOf(mails), fileList.flatMap((f) => f.moves || [])), sources: mails.length + fileList.length };
+}
