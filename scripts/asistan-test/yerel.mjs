@@ -404,4 +404,27 @@ group("Etkinlik planı (bütçe ve temizlik)")([
   ["özet cümlesi", { desc: "ihtiyaç, tahmini bütçe, kişi başı", fn: () => EM.countsText(EM.cleanEvent({ people: 2, needs: [{ title: "Çadır" }], budget: [{ title: "Yakıt", amount: 1000, unit: "shared", est: true }] })), ok: (r) => /1 ihtiyaç/.test(r) && /tahmini bütçe 1\.000\s₺/.test(r) && /kişi başı 500\s₺/.test(r) }],
 ]);
 
+// Yarışın çevresi (raceAround.js): OpenStreetMap sonuçlarından en yakın yerler, kayıt temizliği, harita bağlantıları
+const RA = await import("@/features/athletes/raceAround");
+const VEN = { lat: 38.6667, lon: 26.7611 };
+const HOT = { lat: 38.6800, lon: 26.7700 };
+const EL = [
+  { type: "node", id: 1, lat: 38.6670, lon: 26.7615, tags: { shop: "supermarket", name: "Migros" } },
+  { type: "node", id: 2, lat: 38.6801, lon: 26.7702, tags: { shop: "convenience", name: "Bakkal Ali" } },
+  { type: "way", id: 3, center: { lat: 38.6668, lon: 26.7612 }, tags: { amenity: "pharmacy" } },
+  { type: "node", id: 4, lat: 38.6669, lon: 26.7613, tags: { amenity: "restaurant" } },
+  { type: "node", id: 5, lat: 38.9, lon: 26.9, tags: { shop: "supermarket", name: "Uzak Market" } },
+  { type: "node", id: 6, lat: 38.67, lon: 26.762, tags: { tourism: "museum", name: "Foça Müzesi" } },
+];
+group("Yarış çevresi")([
+  ["yakın yerler", { desc: "uzak ve adsız restoran atılır; eczane adsızsa 'Eczane'; otel yakını ayrı", fn: () => RA.pickPlaces(EL, { venue: VEN, hotel: HOT }), ok: (r) => r.length === 3 && r.find((p) => p.name === "Bakkal Ali")?.near === "hotel" && r.find((p) => p.kind === "pharmacy")?.name === "Eczane" && !r.some((p) => p.name === "Uzak Market") }],
+  ["gezilecek aday", { desc: "yalnız müze/plaj/kale gibi yerler", fn: () => RA.pickSights(EL, VEN), ok: (r) => r.length === 1 && r[0].name === "Foça Müzesi" && r[0].sub === "Müze" }],
+  ["kayıt temizliği", { desc: "bozuk konum ve tür atılır, çizgi düz dizi olur (Firestore)", fn: () => RA.cleanAround({ venue: { q: "Foça", lat: 38.66, lon: 26.76 }, hotel: { q: "x", lat: "a" }, route: { km: 4.24, min: 8.4, line: [[38.6, 26.7], [38.7, 26.8]] }, places: [{ id: "n/1", kind: "market", name: "A", lat: 38.6, lon: 26.7, m: 10 }, { id: "n/2", kind: "otel", name: "B", lat: 38.6, lon: 26.7 }, { id: "n/1", kind: "market", name: "A", lat: 38.6, lon: 26.7 }] }), ok: (r) => r.hotel === null && r.route.km === 4.2 && r.route.min === 8 && r.route.line.length === 4 && r.places.length === 1 }],
+  ["konumsuz yarış alanı", { desc: "kayıt yok", fn: () => RA.cleanAround({ venue: { q: "x" } }), ok: (r) => r === null }],
+  ["arama metinleri", { desc: "ad + ilçe + il, sonra sadeleşir", fn: () => RA.searchTexts("Foça Yelken Kulübü", { district: "Foça", city: "İzmir" }), ok: (r) => r[0] === "Foça Yelken Kulübü, İzmir" && r[1] === "Foça Yelken Kulübü" }],
+  ["yol tarifi", { desc: "Apple ve Google bağlantıları", fn: () => [RA.routeLink(HOT, VEN, true), RA.routeLink(HOT, VEN, false)], ok: ([a, g]) => a.startsWith("https://maps.apple.com/?saddr=38.68,26.77&daddr=38.6667,26.7611") && g.includes("origin=38.68,26.77&destination=38.6667,26.7611") }],
+  ["ulaşım cümlesi", { desc: "yapay zeka yoksa km, dakika, yürüme", fn: () => RA.localTransport({ km: 2.3, min: 6 }, HOT), ok: (r) => /2,3 km/.test(r) && /6 dk/.test(r) && /yürüyerek/.test(r) }],
+  ["mesafe yazısı", { desc: "m ve km", fn: () => [RA.distText(240), RA.distText(4230)], ok: ([a, b]) => a === "240 m" && b === "4,2 km" }],
+]);
+
 export default results;

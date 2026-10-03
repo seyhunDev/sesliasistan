@@ -16,6 +16,7 @@ import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
+import { AroundView } from "./AroundView";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
@@ -409,7 +410,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       <Seg
         value={tab}
         onChange={setTab}
-        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["info", "Bilgi"], ["budget", "Bütçe"], ["docs", "Evrak"]]}
+        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["info", "Bilgi"], ["budget", "Bütçe"], ["docs", "Evrak"], ["around", "Çevre"]]}
         className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-3"
       />
 
@@ -571,6 +572,8 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       )}
 
       {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
+
+      {tab === "around" && <AroundView r={r} onChange={(a) => put("around", a)} />}
 
       {tab === "docs" && (
         <>
@@ -734,7 +737,7 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
       )}
 
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${tab === "budget" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${tab === "budget" || tab === "around" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
