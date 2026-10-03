@@ -114,3 +114,13 @@ group("Yarış sonuçları")([
   ["sporcu geçmişi", RF("yeniden eskiye, yalnız katıldıkları", () => { const h = RR.historyOf([{ id: "r1", name: "A", startDate: "2026-05-01", athleteIds: ["a1"], results: { fleet: 10, rows: { a1: { place: 2 } } } }, { id: "r2", name: "B", startDate: "2026-09-01", athleteIds: ["a1"] }, { id: "r3", name: "C", startDate: "2026-10-01", athleteIds: ["a2"] }], "a1"); return h.map((x) => x.id).join() === "r2,r1" && h[1].text === "2. / 10"; })],
   ["Instagram sırası", RF("dereceli önce, sonuç satırda", () => { const l = RR.withResults([{ name: "Ali" }, { name: "Ece" }], ["a1", "a2"], { fleet: 0, rows: { a2: { place: 1 } } }); return l[0].name === "Ece" && l[0].res === "1." && !l[1].res; })],
 ]);
+
+// Bütçe: gerçekleşen harcama (bağlı fişler)
+const BG = await import("@/features/athletes/budget");
+const RC = await import("@/lib/receipts");
+const RCP = [{ id: "f1", date: "2026-10-20", declared: 150000 }, { id: "f2", date: "2026-10-28", declared: 250050 }, { id: "f3", date: "2026-09-01", declared: 10000 }];
+group("Bütçe: harcanan")([
+  ["yakın fişler", RF("7 gün önce–3 gün sonra, bağlı olan her zaman", () => BG.nearReceipts(RCP, { startDate: "2026-10-26", endDate: "2026-10-31" }, ["f3"]).map((x) => x.id).join() === "f2,f1,f3")],
+  ["toplam", RF("1500 + 2500,50", () => BG.spentTotal(RCP, ["f1", "f2"], RC.totalTL) === 4000.5)],
+  ["temizlik", RF("geçersiz kimlik atılır, tekrar yok", () => BG.cleanBudget({ items: [], spent: ["f1", "f1", "x/y", 5] }).spent.join() === "f1")],
+]);
