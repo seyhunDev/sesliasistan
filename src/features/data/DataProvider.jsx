@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { collection, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Splash } from "@/components/ui/Splash";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -25,7 +25,24 @@ const NAMES = { plan: "Plan", task: "Görev", note: "Not", receipt: "Fiş", birt
 // Kişiye özel kayıtlar: çalışan da kendi eklediğini onaysız siler (Firestore kuralları da izin verir)
 const PERSONAL = ["birthday", "lesson"];
 const UNDO_MS = 5000; // silme bu süre boyunca geri alınabilir
-const SEEN_MS = 4 * 60e3; // çalışanın "son görülme" bilgisi bu aralıkla güncellenir
+const SEEN_MS = 4 * 60e3;
+// Okuma tasarrufu (ana hesap): 90 günden eski planlar canlı dinlenmez; günde bir kez sunucudan okunur, arada cihazdaki
+// önbellekten gösterilir (yerel değişiklikler de görünür). Uygulama her açılışta tüm planları yeniden saymaz.
+const OLD_DAYS = 90;
+const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const oldKey = (orgId) => `sa-old-plans:${orgId}`;
+function oldFresh(orgId) {
+  try {
+    return localStorage.getItem(oldKey(orgId)) === ymdLocal(new Date());
+  } catch {
+    return false;
+  }
+}
+function oldFetched(orgId) {
+  try {
+    localStorage.setItem(oldKey(orgId), ymdLocal(new Date()));
+  } catch {}
+} // çalışanın "son görülme" bilgisi bu aralıkla güncellenir
 const Ctx = createContext(null);
 
 const tzName = () => {
@@ -126,22 +143,68 @@ export function DataProvider({ children }) {
       loaded.add(k);
       if (loaded.size === COLS.length) setReady(true);
     };
+    const put = (k) => (snap) => {
+      setData((p) => ({ ...p, [k]: snap.docs.map((d) => ({ ...d.data(), id: d.id })) }));
+      done(k);
+    };
+    const bad = (k) => (err) => {
+      console.error(`[DataProvider] ${k} okunamadı:`, err.code, err.message);
+      if (err.code === "permission-denied") toast("Verilerine şu an ulaşılamıyor. Çıkış yapıp tekrar giriş yapmayı dene.");
+      done(k);
+    };
+    // Ana hesabın planları üç parça: son 90 gün ve sonrası (canlı), tarihsiz (canlı), daha eskiler (günde bir kez)
+    const ownerPlans = () => {
+      const col = collection(db, "orgs", orgId, "plans");
+      const parts = { live: [], none: [], old: [] };
+      const show = () => setData((p) => ({ ...p, plans: [...new Map([...parts.old, ...parts.none, ...parts.live].map((x) => [x.id, x])).values()] }));
+      const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const cutoff = ymdLocal(new Date(Date.now() - OLD_DAYS * 864e5));
+      const oldQ = query(col, where("date", ">", ""), where("date", "<", cutoff));
+      // Sunucudan tazele (günde bir kez ya da önbellek boşsa); sonuç önbelleğe yazılır, aşağıdaki dinleyici gösterir
+      // (Cihaz önbelleği kapalıysa, ör. gizli pencere, boş önbellek sunucudan gelen listeyi silmez.)
+      let fetched = false;
+      let alive = true;
+      const refresh = () => {
+        fetched = true;
+        getDocs(oldQ)
+          .then((snap) => {
+            oldFetched(orgId);
+            if (alive) (parts.old = rows(snap)), show();
+          })
+          .catch((e) => console.error("[DataProvider] eski planlar okunamadı:", e.code, e.message));
+      };
+      if (!oldFresh(orgId)) refresh();
+      const c = onSnapshot(
+        oldQ,
+        { source: "cache" },
+        (snap) => {
+          if (snap.empty && !fetched) return refresh();
+          if (snap.empty && parts.old.length) return;
+          parts.old = rows(snap);
+          show();
+        },
+        () => {},
+      );
+      const a = onSnapshot(query(col, where("date", ">=", cutoff)), (snap) => ((parts.live = rows(snap)), show(), done("plans")), bad("plans"));
+      const b = onSnapshot(query(col, where("date", "==", "")), (snap) => ((parts.none = rows(snap)), show()), () => {});
+      return () => {
+        alive = false;
+        a();
+        b();
+        c();
+      };
+    };
     const unsubs = COLS.map((k) =>
-      onSnapshot(
+      !staff && k === "plans"
+        ? ownerPlans()
+        : onSnapshot(
         staff
           ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid))
           : k === "birthdays" || k === "lessons" // doğum günleri ve ders programı kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
             ? query(collection(db, "orgs", orgId, k), where("createdByUid", "==", uid))
             : collection(db, "orgs", orgId, k),
-        (snap) => {
-          setData((p) => ({ ...p, [k]: snap.docs.map((d) => ({ ...d.data(), id: d.id })) }));
-          done(k);
-        },
-        (err) => {
-          console.error(`[DataProvider] ${k} okunamadı:`, err.code, err.message);
-          if (err.code === "permission-denied") toast("Verilerine şu an ulaşılamıyor. Çıkış yapıp tekrar giriş yapmayı dene.");
-          done(k);
-        },
+        put(k),
+        bad(k),
       ),
     );
     const t = setTimeout(() => setReady(true), 3000); // bağlantı yavaşsa ekranı bekletme

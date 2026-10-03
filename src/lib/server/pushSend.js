@@ -14,10 +14,16 @@ export async function unreadCount(orgId, uid) {
   if (!orgId || !uid) return 0;
   const owner = orgId === uid;
   const org = adminDb().collection("orgs").doc(orgId);
+  // Ana hesap bütün koleksiyonu okumaz (her bildirimde binlerce okuma olurdu): sayıya yalnız son 14 günde eklenen,
+  // son 14 günde not yazılan (replyAt, /api/notify yazar) ya da silme isteği bekleyen kayıtlar girebilir (lib/people, lib/badge).
+  const since = new Date(Date.now() - 14 * 864e5).toISOString();
+  const rows = (q) => q.get().then((s) => s.docs, () => []);
   const [plans, tasks, notes] = await Promise.all(
-    ["plans", "tasks", "notes"].map((k) => {
+    ["plans", "tasks", "notes"].map(async (k) => {
       const c = org.collection(k);
-      return (owner ? c : c.where("people", "array-contains", uid)).get().then((s) => s.docs.map((d) => d.data()), () => []);
+      if (!owner) return rows(c.where("people", "array-contains", uid)).then((ds) => ds.map((d) => d.data()));
+      const parts = await Promise.all([rows(c.where("createdAt", ">=", since)), rows(c.where("replyAt", ">=", since)), rows(c.where("deleteReq.by", ">", ""))]);
+      return [...new Map(parts.flat().map((d) => [d.id, d.data()])).values()];
     }),
   );
   const receipts = await (owner ? org.collection("receipts").where("payStatus", "==", "pending") : org.collection("receipts").where("createdByUid", "==", uid))
