@@ -278,6 +278,11 @@ group("Antrenman günlüğü (tanıma)")([
   ["salı günkü idmanda deniz dalgalıydı, şamandıra dönüşü yaptık", WL(true)],
   ["antrenman günlüğünü aç", WL(false)], ["günlüğü göster", WL(false)], ["yarın 10'da antrenman ekle", WL(false)],
   ["haftaya salı antrenman planla", WL(false)], ["antrenman ne zaman", WL(false)], ["yarın antrenman var mı", WL(false)],
+  ["Antreman günlüğüne yaz bugün 15 not rüzgar vardı", WL(true), "ses tanıma yazımı"], ["Bugünkü antrenmanı kaydet 12 knot poyraz start", WL(true)],
+  ["Bugünkü antrenman notu: start ve tramola, 2 saat", WL(true)], ["antrenman günlüğü oluştur", WL(true)], ["yarın antrenmanı kaydet", WL(false)],
+  ["antrenman günlüğü oluştur", { desc: "anlatımsız: önce anlatması istenir", fn: (s) => TL.bareLog(s), ok: (r) => r === true }],
+  ["antrenman günlüğü: 12 knot poyraz, start çalıştık", { desc: "anlatımlı: doğrudan yazılır", fn: (s) => TL.bareLog(s), ok: (r) => r === false }],
+  ["başlığı antrenman olan Genel plan", { desc: "antrenman sayılır", fn: () => TL.isTraining({ title: "Optimist antrenmanı", cat: "Genel" }), ok: (r) => r === true }],
   ["Ali dünkü antrenmana geldi mi", WL(false)], ["Ali bugünkü antrenmana gelmedi", WL(false), "yoklama"], ["bugünkü antrenman nasıl geçti?", WL(false)],
   ["antrenman günlüğünü aç", { desc: "localCommand yine sayfa açar", fn: cmd, ok: (r) => r?.type === "navigate" && r.page === "training" }],
 ]);
@@ -310,4 +315,28 @@ group("Antrenman günlüğü (eksik tamamlama)")([
   ["yarın 10'da antrenman ekle", LA(false)], ["Ali'ye mesaj at", LA(false)], ["planları aç", LA(false)],
   ["14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", LA(true), "günlük sayfasında / açık antrenman planında anlatım"],
   ["saatini 10 yap", LA(false), "açık planda kayıt değişikliği"], ["yarına ertele", LA(false)],
+]);
+
+// ---- Günlük ↔ yoklama: söylenen katılanlar "geldi" olur, yoklamada gelenler günlüğe girer ----
+const ATH = [
+  { id: "a1", studentName: "Ali Kaya", status: "active", att: { [today.slice(0, 4)]: { [today.slice(5)]: "present" } } },
+  { id: "a2", studentName: "Ayşe Şahin", status: "active", att: {} },
+  { id: "a3", studentName: "Ali Yılmaz", status: "active", att: {} },
+  { id: "a4", studentName: "Mehmet Demir", status: "active", att: { [today.slice(0, 4)]: { [today.slice(5)]: "absent" } } },
+  { id: "a5", studentName: "Deniz Eski", status: "passive", att: {} },
+];
+group("Antrenman günlüğü (yoklama)")([
+  ["eşleştir", F("tam ad, tek ad, Türkçe harfsiz; iki Ali belirsiz", () => {
+    const m = TL.matchNames(["Ayse", "Mehmet", "Ali", "Ali Kaya", "Deniz"], ATH);
+    return m.ids.join() === "a2,a4,a1" && m.unknown.join() === "Ali,Deniz";
+  })],
+  ["yoklamadaki gelenler", F("günlükte katılan yoksa yoklamadan", () => {
+    const j = TL.joinAttendance({ wind: 12 }, today, ATH);
+    return j.log.athletes.join() === "Ali Kaya" && j.fromAtt.join() === "Ali Kaya" && !Object.keys(j.changes).length;
+  })],
+  ["söylenenler geldi", F("yoklamada geldi olur (gelmedi olan da), gelen zaten işaretli kalır", () => {
+    const j = TL.joinAttendance({ athletes: ["Ayşe", "Mehmet", "Ali Kaya", "Zeynep"] }, today, ATH);
+    return j.changes.a2 === "present" && j.changes.a4 === "present" && !("a1" in j.changes) && j.marked.join() === "Ayşe Şahin,Mehmet Demir" && j.unknown.join() === "Zeynep" && j.log.athletes.length === 4;
+  })],
+  ["cevap", F("işaretlenenler ve bulunamayanlar söylenir", () => TL.attLine({ marked: ["Ayşe Şahin"], unknown: ["Zeynep"] }) === "Yoklamada geldi olarak işaretledim: Ayşe Şahin. Sporcularda bulamadım: Zeynep.")],
 ]);

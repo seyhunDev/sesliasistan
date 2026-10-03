@@ -2,7 +2,9 @@
 
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
-import { mergeLog, pickPlan } from "@/lib/trainingLog";
+import { joinAttendance, mergeLog, pickPlan, presentOn } from "@/lib/trainingLog";
+import { loadAthletes } from "@/features/athletes/data";
+import { applyAttendance } from "@/features/athletes/assistAttendance";
 
 // Yapay zekayla günlük: anlatılan → { date, time, log }. date boşsa tarih sorulur.
 // Yapay zekaya yalnız anlatılan metin ve bilinen tarih gider.
@@ -33,4 +35,28 @@ export async function saveLog(data, { date, time, log, planId = "" }, by, source
   const r = await saveDrafts([{ type: "plan", title: "Antrenman", cat: "Antrenman", date, time: time || "", place: merged?.place || "", assignees: [], log: merged }], { source, by });
   if (r.error) return { error: "Kaydedilemedi, tekrar dene." };
   return { id: r.ids?.[0]?.[1] || "", log: merged, fresh: true };
+}
+
+// Günlük ↔ yoklama (yalnız sporcu yetkisi olan): söylenen katılanlar o günün yoklamasında "geldi" olur, yoklamada
+// gelenler günlüğe katılan olarak eklenir. Sporcu listesi bellekteki kopyadan (loadAthletes, 3 dk); yazma yalnız değişen sporculara.
+// Sonuç { log, marked [ad], unknown [ad], fromAtt [ad] }; sporcular okunamazsa günlük olduğu gibi döner.
+export async function syncAttendance(log, date, { orgId, members = [] }) {
+  try {
+    const { athletes } = await loadAthletes();
+    const j = joinAttendance(log, date, athletes);
+    if (Object.keys(j.changes).length) await applyAttendance(orgId, members, date, j.changes);
+    return j;
+  } catch {
+    return { log, marked: [], unknown: [], fromAtt: [] };
+  }
+}
+
+// Ekranda: o günün yoklamasında gelenler (sporcu yetkisi yoksa boş)
+export async function presentNames(date) {
+  try {
+    const { athletes } = await loadAthletes();
+    return presentOn(athletes, date);
+  } catch {
+    return [];
+  }
 }
