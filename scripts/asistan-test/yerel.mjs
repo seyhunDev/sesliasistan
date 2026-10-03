@@ -404,4 +404,43 @@ group("Etkinlik planı (bütçe ve temizlik)")([
   ["özet cümlesi", { desc: "ihtiyaç, tahmini bütçe, kişi başı", fn: () => EM.countsText(EM.cleanEvent({ people: 2, needs: [{ title: "Çadır" }], budget: [{ title: "Yakıt", amount: 1000, unit: "shared", est: true }] })), ok: (r) => /1 ihtiyaç/.test(r) && /tahmini bütçe 1\.000\s₺/.test(r) && /kişi başı 500\s₺/.test(r) }],
 ]);
 
+// Yarışın çevresi (raceAround.js): OpenStreetMap sonuçlarından en yakın yerler, kayıt temizliği, harita bağlantıları
+const RA = await import("@/features/athletes/raceAround");
+const VEN = { lat: 38.6667, lon: 26.7611 };
+const HOT = { lat: 38.6800, lon: 26.7700 };
+const EL = [
+  { type: "node", id: 1, lat: 38.6670, lon: 26.7615, tags: { shop: "supermarket", name: "Migros" } },
+  { type: "node", id: 2, lat: 38.6801, lon: 26.7702, tags: { shop: "convenience", name: "Bakkal Ali" } },
+  { type: "way", id: 3, center: { lat: 38.6668, lon: 26.7612 }, tags: { amenity: "pharmacy" } },
+  { type: "node", id: 4, lat: 38.6669, lon: 26.7613, tags: { amenity: "restaurant" } },
+  { type: "node", id: 5, lat: 38.9, lon: 26.9, tags: { shop: "supermarket", name: "Uzak Market" } },
+  { type: "node", id: 6, lat: 38.67, lon: 26.762, tags: { tourism: "museum", name: "Foça Müzesi" } },
+];
+group("Yarış çevresi")([
+  ["yakın yerler", { desc: "uzak ve adsız restoran atılır; eczane adsızsa 'Eczane'; otel yakını ayrı", fn: () => RA.pickPlaces(EL, { venue: VEN, hotel: HOT }), ok: (r) => r.length === 3 && r.find((p) => p.name === "Bakkal Ali")?.near === "hotel" && r.find((p) => p.kind === "pharmacy")?.name === "Eczane" && !r.some((p) => p.name === "Uzak Market") }],
+  ["gezilecek aday", { desc: "yalnız müze/plaj/kale gibi yerler", fn: () => RA.pickSights(EL, VEN), ok: (r) => r.length === 1 && r[0].name === "Foça Müzesi" && r[0].sub === "Müze" }],
+  ["kayıt temizliği", { desc: "bozuk konum ve tür atılır, çizgi düz dizi olur (Firestore)", fn: () => RA.cleanAround({ venue: { q: "Foça", lat: 38.66, lon: 26.76 }, hotel: { q: "x", lat: "a" }, route: { km: 4.24, min: 8.4, line: [[38.6, 26.7], [38.7, 26.8]] }, places: [{ id: "n/1", kind: "market", name: "A", lat: 38.6, lon: 26.7, m: 10 }, { id: "n/2", kind: "otel", name: "B", lat: 38.6, lon: 26.7 }, { id: "n/1", kind: "market", name: "A", lat: 38.6, lon: 26.7 }] }), ok: (r) => r.hotel === null && r.route.km === 4.2 && r.route.min === 8 && r.route.line.length === 4 && r.places.length === 1 }],
+  ["konumsuz yarış alanı", { desc: "kayıt yok", fn: () => RA.cleanAround({ venue: { q: "x" } }), ok: (r) => r === null }],
+  ["arama metinleri", { desc: "ad + ilçe + il, sonra sadeleşir", fn: () => RA.searchTexts("Foça Yelken Kulübü", { district: "Foça", city: "İzmir" }), ok: (r) => r[0] === "Foça Yelken Kulübü, İzmir" && r[1] === "Foça Yelken Kulübü" }],
+  ["yol tarifi", { desc: "Apple ve Google bağlantıları", fn: () => [RA.routeLink(HOT, VEN, true), RA.routeLink(HOT, VEN, false)], ok: ([a, g]) => a.startsWith("https://maps.apple.com/?saddr=38.68,26.77&daddr=38.6667,26.7611") && g.includes("origin=38.68,26.77&destination=38.6667,26.7611") }],
+  ["ulaşım cümlesi", { desc: "yapay zeka yoksa km, dakika, yürüme", fn: () => RA.localTransport({ km: 2.3, min: 6 }, HOT), ok: (r) => /2,3 km/.test(r) && /6 dk/.test(r) && /yürüyerek/.test(r) }],
+  ["mesafe yazısı", { desc: "m ve km", fn: () => [RA.distText(240), RA.distText(4230)], ok: ([a, b]) => a === "240 m" && b === "4,2 km" }],
+]);
+
+// Yarış havası (raceWeather.js): yarış günleri, gündüz rüzgârı, kayıt temizliği, 16 günlük ufuk
+const RW = await import("@/features/athletes/raceWeather");
+const HRS = Array.from({ length: 48 }, (_, i) => `2026-10-0${7 + Math.floor(i / 24)}T${String(i % 24).padStart(2, "0")}:00`);
+const WJ = {
+  hourly: { time: HRS, temperature_2m: HRS.map(() => 20), weather_code: HRS.map(() => 1), is_day: HRS.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 19 ? 1 : 0)),
+    wind_speed_10m: HRS.map((t) => (+t.slice(11, 13) >= 11 && +t.slice(11, 13) <= 16 ? 12 : 5)), wind_gusts_10m: HRS.map(() => 18), wind_direction_10m: HRS.map(() => 315) },
+  daily: { time: ["2026-10-07", "2026-10-08"], weather_code: [1, 1], temperature_2m_max: [24, 23], temperature_2m_min: [15, 14] },
+};
+group("Yarış havası")([
+  ["yarış günleri", { desc: "7-9 Ekim → 3 gün", fn: () => RW.raceDays({ startDate: "2026-10-07", endDate: "2026-10-09" }), ok: (r) => r.join() === "2026-10-07,2026-10-08,2026-10-09" }],
+  ["gündüz rüzgârı", { desc: "5–12 kn, sağanak 18, karayel, yelkene uygun 11–17", fn: () => RW.shapeDays(WJ, ["2026-10-07", "2026-10-09"]), ok: (r) => r.length === 1 && r[0].lo === 5 && r[0].hi === 12 && r[0].gust === 18 && r[0].dir === 315 && r[0].hours.length === 6 && r[0].sail[0] === "11–17" && r[0].max === 24 }],
+  ["kayıt temizliği", { desc: "konumsuz tahmin atılır, bozuk gün süzülür", fn: () => [RW.cleanWeather({ place: {}, days: [] }), RW.cleanWeather({ place: { name: "Foça", lat: 38.67, lon: 26.75 }, days: [{ date: "x" }, { date: "2026-10-07", lo: 5, hi: 12, gust: 18, dir: 315, hours: [{ hh: "10", wind: 8 }] }] })], ok: ([a, b]) => a === null && b.days.length === 1 && b.days[0].hours[0].gust === null }],
+  ["16 günlük ufuk", { desc: "3 Ekim'de tahmin 18 Ekim'e kadar; 20 Ekim yarışı 5 Ekim'den sonra", fn: () => [RW.lastForecastDay("2026-10-03"), RW.forecastFrom("2026-10-20")], ok: ([a, b]) => a === "2026-10-18" && b === "2026-10-05" }],
+  ["rüzgâr cümlesi", { desc: "yön ve kn", fn: () => RW.windLine({ dir: 315, lo: 5, hi: 12, gust: 18 }), ok: (r) => r === "Karayel (KB) 5–12 kn, sağanak 18 kn" }],
+]);
+
 export default results;
