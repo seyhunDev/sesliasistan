@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { addDays, cap, todayStr } from "@/lib/utils/format";
+import { defaultUntil, repeatLabel, seriesDates } from "@/lib/repeat";
 
 const TYPES = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "Not", "note"]];
 export const TIMES = ["09:00", "10:00", "12:00", "14:00", "18:00"];
@@ -239,7 +240,33 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
               />
             </Row>
 
-            {!multi && d.date && (
+            {!editing && !multi && d.date && (
+              <Row icon="repeat">
+                <div className="flex items-center justify-between gap-3">
+                  {d.repeat === "week" ? (
+                    <Picker type="date" value={d.repeatUntil || defaultUntil(d.date)} onChange={(v) => v && put({ repeatUntil: v < d.date ? d.date : v })} className="text-[0.9375rem] font-medium">
+                      {repeatLabel(d.repeatUntil || defaultUntil(d.date))} ({seriesDates(d.date, d.repeatUntil).length} hafta)
+                    </Picker>
+                  ) : (
+                    <span className="text-[0.9375rem] font-medium">Her hafta tekrarla</span>
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={d.repeat === "week"}
+                    aria-label="Her hafta tekrarla"
+                    onClick={() => put(d.repeat === "week" ? { repeat: "", repeatUntil: "" } : { repeat: "week", repeatUntil: "" })}
+                    className="shrink-0"
+                  >
+                    <span className={`relative block h-6 w-10 rounded-full transition ${d.repeat === "week" ? "bg-acc" : "bg-line"}`}>
+                      <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${d.repeat === "week" ? "left-[1.125rem]" : "left-0.5"}`} />
+                    </span>
+                  </button>
+                </div>
+              </Row>
+            )}
+
+            {!multi && d.date && d.repeat !== "week" && (
               <button type="button" onClick={() => put({ endDate: addDaysFrom(d.date, 1), time: "", allDay: true })} className="w-full px-4 py-3 text-left text-[0.875rem] font-medium text-acc active:bg-bg">
                 + Birden fazla gün sürecek
               </button>

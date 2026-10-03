@@ -17,6 +17,7 @@ import { assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names
 import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
+import { applyRepeat, seriesDates } from "@/lib/repeat";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
@@ -288,7 +289,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
   }
   function startDrafts(items, s, msg, engine, viaVoice) {
-    let next = items.map((x) => withAssignees(x, s)).map(fresh);
+    let next = applyRepeat(items, s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     if (ready(next)) return saveDraftsNow(viaVoice, next, msg);
@@ -311,7 +312,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       const r = await interpretText(s, firstName, c.signal, { mode: "create", drafts: known.map((d) => pub(d, staff)), last, history }, staffNames);
       if (id !== runId.current) return;
-      const items = r.items.map((x) => withAssignees(x, s));
+      const items = applyRepeat(r.items, s, todayStr()).map((x) => withAssignees(x, s));
       let next = items.length ? carry(known, items) : drafts;
       const need = firstNeed(next);
       if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -1414,6 +1415,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       d.type === "plan" ? "Plan" : d.type === "task" ? "Görev" : "Not",
       d.date && rel(d.date),
       d.type === "plan" && (d.time || (d.allDay ? "tüm gün" : "")),
+      d.type === "plan" && d.repeat === "week" && !d.endDate && `her hafta (${seriesDates(d.date, d.repeatUntil).length} hafta)`,
       d.place,
       d.assignees?.length && `→ ${uidsToNames(d.assignees, members).map((n) => n.split(" ")[0]).join(", ")}`,
     ]
