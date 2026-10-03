@@ -94,6 +94,7 @@ function Race({ orgId, uid, by, mail }) {
         <RaceEditor
           start={race}
           athletes={data?.athletes || []}
+          classes={data?.classes || []}
           athletesErr={err}
           onRetryAthletes={reload}
           onSave={onSave}

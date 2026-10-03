@@ -88,7 +88,7 @@ function Check({ on, tone = "ok" }) {
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
+export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -274,10 +274,12 @@ export function RaceEditor({ start, athletes, athletesErr, onRetryAthletes, onSa
     setExtras(next);
     await saveExtras(id.current, next);
   };
-  // Instagram gönderisi: yarış bilgisi gönderi sayfasına cihaz içinde geçer (ek okuma yok; sporcu adı gitmez)
+  // Instagram gönderisi: yarış bilgisi ve seçili sporcuların yalnız adı ve sınıfı gönderi sayfasına cihaz içinde geçer (ek okuma yok)
   const toPost = () => {
+    const cls = Object.fromEntries(classes.map((c) => [c.id, c.name]));
+    const list = chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" }));
     try {
-      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, notice: { classes: r.notice?.classes || [] } }));
+      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [] } }));
     } catch {}
   };
   const toPlan = async () => {
