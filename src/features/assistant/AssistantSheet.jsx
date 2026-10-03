@@ -537,13 +537,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       } else if (a.op === "delete") pending.push(a);
       else if (a.op === "update") {
         if (Object.keys(buildPatch(a.kind, a.patch, rec)).length) pending.push(a);
-      } else if (a.op === "open" && !opened) opened = a;
+      } else if ((a.op === "open" || (a.op === "cancel" && a.kind === "plan")) && !opened) opened = a;
     }
 
     if (opened) {
       if (msg) tts.maybeSpeak(msg);
       park();
-      openAdd({ edit: { kind: opened.kind, id: opened.id } });
+      openAdd({ edit: { kind: opened.kind, id: opened.id, ...(opened.op === "cancel" ? { cancel: true } : {}) } });
       return;
     }
     // Yapay zeka sohbet açmayı seçtiyse ("Sanver'le yazışmamı aç" gibi belirsiz söyleyişler)

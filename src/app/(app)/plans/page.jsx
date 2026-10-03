@@ -147,7 +147,7 @@ export default function PlansPage() {
                       </span>
                       <span className="h-8 w-px shrink-0 bg-line" />
                       <span className="min-w-0 flex-1">
-                        <b className={`block truncate text-[0.9375rem] font-semibold ${tab === "past" ? "text-mut" : ""}`}>{p.title}</b>
+                        <b className={`block truncate text-[0.9375rem] font-semibold ${tab === "past" || p.status === "cancelled" ? "text-mut" : ""} ${p.status === "cancelled" ? "line-through" : ""}`}>{p.title}</b>
                         {clash && (
                           <span className="mt-0.5 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-amber-700">
                             <Icon name="alert" className="size-3" /> Aynı saatte başka plan var

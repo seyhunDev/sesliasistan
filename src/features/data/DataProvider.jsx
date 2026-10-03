@@ -14,7 +14,7 @@ import { badgeCount } from "@/lib/badge";
 import { seriesDates } from "@/lib/repeat";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
-const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body"];
+const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
 
 // Veri: orgs/{işletme}/plans | tasks | notes | receipts (+ receiptImages, members). İşletme = ana hesabın uid'si.
 // Her kayıtta createdByUid (ekleyen), assignees (sorumlu çalışanlar; boş = genel) ve people (görebilenler: ekleyen + sorumlular) bulunur.
