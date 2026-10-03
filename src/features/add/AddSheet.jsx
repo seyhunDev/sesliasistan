@@ -31,6 +31,7 @@ import { Thread } from "./Thread";
 import { ListeningStage, ProcessingStage } from "./Stage";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { CancelPlan } from "./CancelPlan";
+import { TrainingLog } from "./TrainingLog";
 import { blank, carry, check, firstNeed, fresh, isBlank, nid, pub, tidy, toPatch } from "./drafts";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
@@ -758,6 +759,7 @@ export function AddSheet({ open, onClose, seed }) {
             )}
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
             {edit.kind === "plan" && rec && !locked && <CancelPlan key={rec.id} rec={rec} by={by} start={!!edit.cancel} />}
+            {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
             {edit.kind === "plan" && rec?.seriesId && (
               <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
                 <Icon name="repeat" className="size-5 shrink-0 text-mut" />

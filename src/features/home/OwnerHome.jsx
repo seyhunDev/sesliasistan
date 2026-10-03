@@ -103,6 +103,8 @@ export function HomeFeed({ weather }) {
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
     athletes && ["/athletes", "anchor", "Sporcular"],
+    athletes && ["/dues", "wallet", "Aidatlar"],
+    plans.some((p) => (p.cat || p.category) === "Antrenman") && ["/training", "trend", "Antrenman günlüğü"],
     ["/birthdays", "cake", "Doğum günleri", birthdays.length],
     listsFor(kind, members).length > 0 && ["/shopping", "cart", "Alışveriş"],
     lessons.length > 0 && ["/schedule", "book", "Dersler"],
