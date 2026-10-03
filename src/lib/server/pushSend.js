@@ -42,6 +42,19 @@ export async function unreadCount(orgId, uid) {
   return badgeCount({ uid, owner, plans, tasks, notes, receipts, unreadChats });
 }
 
+// Gönderim hatasını kısa Türkçe açıklamaya çevirir (Ayarlar › Dene ve kayıt için)
+export function pushError(e) {
+  const c = e?.statusCode;
+  const b = String(e?.body || "");
+  if (c === 404 || c === 410) return "Bu cihazın aboneliği bitmiş; bildirimleri bu cihazda kapatıp yeniden aç.";
+  if (c === 403 || c === 401 || /vapid|jwt|BadJwtToken|VapidPkHashMismatch/i.test(b))
+    return "Bildirim anahtarı uyuşmuyor: Netlify'daki VAPID anahtarları ile uygulamanın derlendiği anahtar aynı olmalı.";
+  if (c === 413) return "Bildirim çok uzun.";
+  if (c === 429) return "Çok fazla bildirim gönderildi, biraz sonra dene.";
+  if (!c) return `Bildirim sunucusuna ulaşılamadı (${String(e?.message || "").slice(0, 80)}).`;
+  return `Bildirim gönderilemedi (kod ${c}).`;
+}
+
 export async function sendTo(uid, payload) {
   const ref = adminDb().collection("users").doc(uid);
   const user = (await ref.get()).data() || {};
@@ -60,9 +73,15 @@ export async function sendTo(uid, payload) {
     Object.entries(push).map(async ([key, sub]) => {
       try {
         await webpush.sendNotification(sub, body, { TTL: 86400 });
+        if (sub.err) await ref.update({ [`push.${key}.err`]: FieldValue.delete() }).catch(() => {});
         sent++;
       } catch (e) {
         if (e.statusCode === 404 || e.statusCode === 410) await ref.update({ [`push.${key}`]: FieldValue.delete() });
+        else {
+          // Sessizce yutulmasın: Netlify işlev günlüğünde görünür (403/400 çoğunlukla VAPID anahtarı uyuşmazlığı)
+          console.error("[push] gönderilemedi:", uid, key, e.statusCode, String(e.body || e.message).slice(0, 200));
+          await ref.update({ [`push.${key}.err`]: { code: e.statusCode || 0, msg: pushError(e), at: new Date().toISOString() } }).catch(() => {});
+        }
       }
     }),
   );

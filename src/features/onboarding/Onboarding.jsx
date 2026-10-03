@@ -9,7 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { db } from "@/lib/firebase/clientApp";
 import { dismissPrompt } from "@/lib/permissions";
-import { enableReminders, needsInstall, pushSupported } from "@/lib/push";
+import { enableReminders, needsInstall, pushSupported, syncPush } from "@/lib/push";
 import { SIZES, applySize } from "@/lib/textSize";
 
 // Tanıtım slaytları. Üç durumda açılır:
@@ -137,6 +137,8 @@ export function Onboarding() {
       return next();
     }
     if (!s.perm || has) {
+      // İzin önceden verilmiş: bu cihazın aboneliği yine de kaydedilsin (yoksa bildirim gelmez)
+      if (s.perm === "push") syncPush(profile).catch(() => {});
       if (s.id === "summary") updateDoc(doc(db, "users", profile.uid), summary).catch(() => {});
       return next();
     }

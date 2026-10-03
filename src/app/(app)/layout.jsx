@@ -19,7 +19,7 @@ import { TtsProvider } from "@/features/speech/TtsProvider";
 import { BrainSync } from "@/features/brain/BrainSync";
 import { MeetingProvider } from "@/features/meeting/MeetingProvider";
 import { logout } from "@/lib/auth";
-import { OfflineBanner } from "@/features/pwa/Pwa";
+import { OfflineBanner, PushSync } from "@/features/pwa/Pwa";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
 
@@ -55,6 +55,7 @@ export default function AppLayout({ children }) {
                 <AssistantProvider>
                  <DockProvider>
                   <OfflineBanner />
+                  <PushSync profile={profile} />
                   {children}
                   <TabBarHost />
                   <AssistantFab />
