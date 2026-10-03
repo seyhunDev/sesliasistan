@@ -9,6 +9,8 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { age, byId, fmtDate, isActive, loadAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { EditAthlete } from "@/features/athletes/EditAthlete";
+import { alertText, expiryOf } from "@/lib/expiry";
+import { todayStr } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -149,6 +151,20 @@ function Detail() {
           <Row label="Yüzme" value={a.swimmingSkill} />
           <Row label="Deniz korkusu" value={a.seaFear} />
           <Row label="Kayıt" value={a.source === "summer_school" ? "Yaz okulundan" : "Doğrudan kayıt"} />
+        </Card>
+      )}
+
+      {/* Lisans vizesi, sağlık raporu, sigorta bitişi */}
+      {expiryOf(a, todayStr()).some((x) => x.date) && (
+        <Card title="Belgeler" icon="clip">
+          {expiryOf(a, todayStr()).filter((x) => x.date).map((x) => (
+            <div key={x.key} className="flex items-baseline justify-between gap-4 py-1.5">
+              <span className="shrink-0 text-[0.8125rem] text-mut">{x.label}</span>
+              <span className={`min-w-0 text-right text-[0.875rem] tabular-nums ${x.state === "expired" ? "font-semibold text-rec" : x.state === "soon" ? "font-medium text-amber-700" : ""}`}>
+                {x.state === "ok" ? new Date(`${x.date}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : alertText(x).replace(`${x.label} `, "")}
+              </span>
+            </div>
+          ))}
         </Card>
       )}
 

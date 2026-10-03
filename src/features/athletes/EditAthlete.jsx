@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { message, updateAthlete } from "./data";
+import { EXPIRY, EXPIRY_KEYS } from "@/lib/expiry";
 
 const BLOOD = ["A Rh+", "A Rh-", "B Rh+", "B Rh-", "AB Rh+", "AB Rh-", "0 Rh+", "0 Rh-"];
 const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none focus:bg-card focus:ring-1 focus:ring-acc";
@@ -31,7 +32,7 @@ const TEXT = [
   ["Eğitim ve spor", [["studentSchoolAndClass", "Okul / sınıf"], ["otherLicensedSports", "Diğer lisanslı sporlar"], ["swimmingSkill", "Yüzme becerisi"], ["seaFear", "Deniz korkusu"]]],
   ["Yarış evrakı", DOC_TEXT],
 ];
-const ALL = ["studentGender", "studentBloodType", "currentClassId", "currentCoachId", "status", "studentBirthDate", ...TEXT.flatMap(([, f]) => f.map(([k]) => k))];
+const ALL = ["studentGender", "studentBloodType", "currentClassId", "currentCoachId", "status", "studentBirthDate", ...EXPIRY_KEYS, ...TEXT.flatMap(([, f]) => f.map(([k]) => k))];
 
 const initial = (a) => ({
   ...Object.fromEntries(ALL.map((k) => [k, a[k] ?? ""])),
@@ -112,6 +113,19 @@ function Form({ a, names, onClose, onSaved }) {
           </div>
         </fieldset>
       ))}
+
+      <fieldset className="mt-4">
+        <legend className="mb-1.5 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">Belge bitiş tarihleri</legend>
+        <div className="grid grid-cols-1 gap-2">
+          {EXPIRY.map(([k, label]) => (
+            <label key={k} className="block">
+              <span className="mb-1 block text-[0.75rem] text-mut">{label}</span>
+              <input type="date" value={f[k]} onChange={set(k)} className={field} />
+            </label>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[0.75rem] text-mut">Bitişe 30 gün kala Sporcular sayfasında ve yarış evrakında uyarı çıkar.</p>
+      </fieldset>
 
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
         <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Vazgeç</button>

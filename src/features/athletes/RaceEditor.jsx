@@ -9,6 +9,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
+import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { isActive } from "./data";
 import { DOCS, buildRaceDocs, clubInfo, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
@@ -147,6 +148,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
   const chosen = r.athleteIds.map((id) => byId.get(id)).filter(Boolean);
   const lost = r.athleteIds.length - chosen.length;
   const incomplete = chosen.filter((a) => missing(a).length);
+  const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
 
   // Değişiklikler kendiliğinden kaydedilir (yarış adı yazıldıktan sonra); kayıtlar sırayla gider, çift kayıt olmaz.
   // Sayfadan çıkarken bekleyen değişiklik de yazılır.
@@ -196,6 +198,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
     [chosen.length ? `${chosen.length} sporcu seçildi` : "Sporcu seçilmedi", chosen.length > 0, "people"],
     [incomplete.length ? `${incomplete.length} sporcunun bilgisi eksik (belgede boş kalır)` : "Sporcu bilgileri tamam", !incomplete.length, "people", true],
+    ...(expired.length ? [[`${expired.length} sporcunun lisans, sağlık raporu ya da sigortası yarışta geçersiz`, false, "people", true]] : []),
   ];
 
   const make = async () => {
@@ -511,6 +514,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
               </button>
               {chosen.map((a) => {
                 const miss = missing(a);
+                const gone = raceExpired(a, r);
                 return (
                   <button key={a.id} type="button" onClick={() => setFix(a)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
                     <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc">{initials(a.studentName)}</span>
@@ -519,6 +523,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
                       <span className={`block truncate text-[0.8125rem] ${miss.length ? "text-amber-700" : "text-mut"}`}>
                         {miss.length ? `${miss.length} bilgi eksik: ${miss.join(", ")}` : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ")}
                       </span>
+                      {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
                     </span>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${miss.length ? "bg-amber-500/15 text-amber-700" : "bg-ok/10 text-ok"}`}>
                       {miss.length ? "Eksik" : "Tamam"}
@@ -852,7 +857,7 @@ function DocFields({ a, onSave, onClose, onSaved }) {
   const toast = useToast();
   const fields = [...BASIC.slice(0, 1), ...DOC_TEXT, ...BASIC.slice(1)];
   const startDate = a.studentBirthDate ? a.studentBirthDate.slice(0, 10) : "";
-  const [f, setF] = useState(() => ({ ...Object.fromEntries(fields.map(([k]) => [k, a[k] || ""])), studentBirthDate: startDate }));
+  const [f, setF] = useState(() => ({ ...Object.fromEntries([...fields, ...EXPIRY].map(([k]) => [k, a[k] || ""])), studentBirthDate: startDate }));
   const [busy, setBusy] = useState(false);
   const patch = Object.fromEntries(
     Object.keys(f)
@@ -890,6 +895,11 @@ function DocFields({ a, onSave, onClose, onSaved }) {
         <Row label="Doğum tarihi" className={f.studentBirthDate ? "" : "bg-amber-500/5"}>
           <input type="date" value={f.studentBirthDate} onChange={(e) => setF((p) => ({ ...p, studentBirthDate: e.target.value }))} className={input} />
         </Row>
+        {EXPIRY.map(([k, label]) => (
+          <Row key={k} label={`${label} bitişi`}>
+            <input type="date" value={f[k]} onChange={(e) => setF((p) => ({ ...p, [k]: e.target.value }))} className={input} />
+          </Row>
+        ))}
       </div>
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
         <button type="button" onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">
