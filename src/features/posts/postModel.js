@@ -5,7 +5,7 @@
 //   kind (KINDS), topic (kullanıcının anlattığı), race { name, place, dates, count, classes, athletes [{ name, cls }] } | null,
 //   headline (görseldeki başlık), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
-//   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), meta (görselde yarış yeri, tarihi ve sınıfları), style (STYLES),
+//   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (görselde sınıflar, virgülle), meta (görselde yarış yeri, tarihi ve sınıfları), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
 //   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
@@ -116,6 +116,8 @@ export function cleanPost(p = {}) {
     sub: S(p.sub, 200),
     people: cleanPeople(p.people),
     wish: S(p.wish, 60),
+    info: S(p.info, 60),
+    classes: S(p.classes, 100),
     meta: p.meta !== false,
     style: styleOf(p.style)[0],
     tag: S(p.tag, 18),
@@ -207,8 +209,14 @@ export const autoOf = (p) => ({
   sub: raceSub(p.race, p.kind),
   people: racePeople(p.race),
   wish: raceWish(p.race, p.kind),
+  info: raceMeta(p.race),
+  classes: raceClasses(p.race).join(", "),
   tag: kindOf(p.kind)[3],
 });
+// Görseldeki sınıf etiketleri (düzenlenen alandan; en çok 4)
+export const classList = (v) => String(v || "").split(",").map((x) => S(x, 24)).filter(Boolean).slice(0, 4);
+// Eski kayıtta yer · tarih ve sınıf alanı yoktu: yarıştan doldurulur
+export const withInfo = (p) => (p.race && !p.info && !p.classes ? { ...p, info: raceMeta(p.race), classes: raceClasses(p.race).join(", ") } : p);
 // Yarış, tür ya da sporcular değişince: elle değiştirilmemiş (boş ya da kendiliğinden gelmiş) yazılar yenilenir
 export function reauto(prev, next) {
   const a = autoOf(prev);

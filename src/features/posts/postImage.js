@@ -1,6 +1,6 @@
 "use client";
 
-import { formatOf, raceClasses, raceMeta, themeOf } from "./postModel";
+import { classList, formatOf, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -45,6 +45,53 @@ function fit(ctx, text, maxW, maxLines, big, small, weight) {
   }
   ctx.font = `${weight} ${small}px ${FONT}`;
   return { size: small, lines: wrap(ctx, text, maxW).slice(0, maxLines) };
+}
+
+// Sporcu adları ayrı yazı tipinde (eğik, tırnaklı) ve renkte: kelime kelime ölçülür, satıra bölünür
+const NAME_FONT = `Georgia, "Times New Roman", serif`;
+const low = (w) => w.toLocaleLowerCase("tr-TR");
+const bareWord = (w) => low(w.replace(/['’].*$/, "").replace(/[^\p{L}\p{N}]/gu, ""));
+const fontOf = (name, size, weight) => (name ? `italic 700 ${Math.round(size * 1.06)}px ${NAME_FONT}` : `${weight} ${size}px ${FONT}`);
+
+function richWrap(ctx, text, names, maxW, size, weight) {
+  const lines = [];
+  ctx.font = `${weight} ${size}px ${FONT}`;
+  const space = ctx.measureText(" ").width;
+  for (const para of String(text || "").split("\n")) {
+    let line = [];
+    let w = 0;
+    for (const t of para.split(" ").filter(Boolean)) {
+      const n = names.has(bareWord(t));
+      ctx.font = fontOf(n, size, weight);
+      const tw = ctx.measureText(t).width;
+      if (line.length && w + space + tw > maxW) {
+        lines.push(line);
+        line = [];
+        w = 0;
+      }
+      w += (line.length ? space : 0) + tw;
+      line.push({ t, n, w: tw });
+    }
+    if (line.length) lines.push(line);
+  }
+  return { lines, space };
+}
+function fitRich(ctx, text, names, maxW, maxLines, big, small, weight) {
+  for (let s = big; s >= small; s -= 4) {
+    const r = richWrap(ctx, text, names, maxW, s, weight);
+    if (r.lines.length <= maxLines) return { size: s, ...r };
+  }
+  const r = richWrap(ctx, text, names, maxW, small, weight);
+  return { size: small, ...r, lines: r.lines.slice(0, maxLines) };
+}
+function drawRich(ctx, line, x, y, size, weight, space, ink, nameInk) {
+  let cx = x;
+  for (const wd of line) {
+    ctx.font = fontOf(wd.n, size, weight);
+    ctx.fillStyle = wd.n ? nameInk : ink;
+    ctx.fillText(wd.t, cx, y);
+    cx += wd.w + space;
+  }
 }
 
 // Yelkenli ve dalga süsü (fotoğraf yokken), yazının karşı yarısında
@@ -115,27 +162,19 @@ function pin(ctx, x, y, r, color) {
   ctx.restore();
 }
 
-// Beş köşeli yıldız (başarı satırının başında)
-function star(ctx, x, y, r, color) {
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const rr = i % 2 ? r * 0.45 : r;
-    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
 // Yazı bloğunun parçaları ve yükseklikleri (k: küçültme katsayısı; sığmazsa küçülür)
 function measure(ctx, post, maxW, k) {
   const z = (n) => Math.round(n * k);
   const people = post.people ? post.people.split("\n").slice(0, 4) : [];
-  const meta = post.meta ? raceMeta(post.race) : "";
-  const classes = post.meta ? raceClasses(post.race) : [];
+  // Görselde vurgulanacak adlar: yarışın sporcuları + sporcu satırlarının baştaki adı
+  const names = new Set(
+    [...(post.race?.athletes || []).map((a) => a.name), ...people.map((l) => l.split("·")[0])]
+      .flatMap((n) => String(n || "").split(/\s+/))
+      .map(bareWord)
+      .filter((w) => w.length > 1 && !/^\d/.test(w) && !/sporcu/.test(w)),
+  );
+  const meta = post.meta ? post.info : "";
+  const classes = post.meta ? classList(post.classes) : [];
   const busy = people.length + (post.wish ? 1 : 0) + (meta ? 1 : 0) + (classes.length ? 1 : 0);
   const items = [];
   const tagH = z(post.tag ? 54 : 12);
@@ -162,16 +201,16 @@ function measure(ctx, post, maxW, k) {
     if (row.length) items.push({ t: "chips", row, size: z(26), h: z(48), gap: z(18) });
   }
   if (post.sub) {
-    const sub = fit(ctx, post.sub, maxW, 4, z(38), z(26), 500);
+    const sub = fitRich(ctx, post.sub, names, maxW, 4, z(38), z(26), 500);
     items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.32), h: sub.lines.length * Math.round(sub.size * 1.32), gap: z(22) });
   }
   if (people.length) {
-    const pp = fit(ctx, people.join("\n"), maxW - z(34), people.length, z(36), z(24), 600);
+    const pp = fitRich(ctx, people.join("\n"), names, maxW - z(34), people.length, z(36), z(24), 600);
     const ph = Math.round(pp.size * 1.42);
     items.push({ t: "people", ...pp, ph, h: z(20) + pp.lines.length * ph, gap: z(18) });
   }
   if (post.wish) {
-    const w = fit(ctx, post.wish, maxW - z(52), 1, z(42), z(28), 800);
+    const w = fit(ctx, post.wish, maxW, 1, z(42), z(28), 800);
     items.push({ t: "wish", ...w, h: Math.round(w.size * 1.3), gap: z(24) });
   }
   const h = items.reduce((a, x, i) => a + x.h + (i ? x.gap : 0), 0);
@@ -227,12 +266,7 @@ function paint(ctx, { items, z }, x, y, c) {
       }
       ctx.restore();
     } else if (it.t === "sub") {
-      ctx.save();
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = c.ink;
-      ctx.font = `500 ${it.size}px ${FONT}`;
-      for (const [j, l] of it.lines.entries()) ctx.fillText(l, x, y + j * it.lh);
-      ctx.restore();
+      for (const [j, l] of it.lines.entries()) drawRich(ctx, l, x, y + j * it.lh, it.size, 500, it.space, c.sub, c.name);
     } else if (it.t === "people") {
       ctx.save();
       ctx.shadowColor = "transparent";
@@ -249,15 +283,13 @@ function paint(ctx, { items, z }, x, y, c) {
         ctx.arc(x + z(9), py + it.ph / 2 - 3, z(8), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-        ctx.fillStyle = c.ink;
-        ctx.fillText(l, x + z(34), py + (it.ph - it.size) / 2 - 2);
+        drawRich(ctx, l, x + z(34), py + (it.ph - it.size) / 2 - 2, it.size, 600, it.space, c.ink, c.name);
         py += it.ph;
       }
     } else if (it.t === "wish") {
-      star(ctx, x + z(18), y + it.h / 2, z(18), c.accent);
       ctx.fillStyle = c.wish;
       ctx.font = `800 ${it.size}px ${FONT}`;
-      ctx.fillText(it.lines[0] || "", x + z(50), y + (it.h - it.size) / 2);
+      ctx.fillText(it.lines[0] || "", x, y + (it.h - it.size) / 2);
     }
     y += it.h;
   }
@@ -395,6 +427,8 @@ export async function drawPost(canvas, post, photo) {
     }
     y = top ? PAD + 10 + safeT : H - PAD - m.h - safeB;
   }
+  c.sub = c.ink;
+  c.name = c.accent;
   paint(ctx, m, x, y, c);
   ctx.shadowColor = "transparent";
   return canvas;
