@@ -6,7 +6,7 @@
 //   headline (görseldeki başlık), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
 //   caption (açıklama), hashtags [#etiket],
-//   format "square" 1080x1080 | "portrait" 1080x1350, theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
+//   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
 // }
 
@@ -25,7 +25,10 @@ export const kindOf = (k) => KINDS.find(([x]) => x === k) || KINDS[KINDS.length 
 export const FORMATS = [
   ["square", "Kare 1:1", 1080, 1080],
   ["portrait", "Dikey 4:5", 1080, 1350],
+  ["story", "Hikâye 9:16", 1080, 1920],
 ];
+// CSS en-boy oranı (önizleme ve liste)
+export const aspectOf = (f) => ({ portrait: "4 / 5", story: "9 / 16" })[f] || "1 / 1";
 export const formatOf = (f) => FORMATS.find(([x]) => x === f) || FORMATS[0];
 
 // Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]

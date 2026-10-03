@@ -109,6 +109,10 @@ export async function drawPost(canvas, post, photo) {
   const light = !photo && post.theme === "kum";
   const ink = light ? "#123c33" : "#ffffff";
   const top = post.pos === "top";
+  // Hikâyede Instagram'ın üstteki profil satırı ve alttaki yanıt kutusu yazının üstüne binmesin
+  const story = post.format === "story";
+  const safeT = story ? 200 : 0;
+  const safeB = story ? 280 : 0;
 
   if (photo) {
     const s = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
@@ -143,7 +147,7 @@ export async function drawPost(canvas, post, photo) {
 
   // Logo + kulüp adı (yazının karşı köşesinde)
   const logo = await loadLogo();
-  const ly = top ? H - PAD - 104 : PAD - 20;
+  const ly = top ? H - PAD - 104 - safeB : PAD - 20 + safeT;
   const R = 52;
   ctx.save();
   ctx.shadowColor = "transparent";
@@ -164,7 +168,7 @@ export async function drawPost(canvas, post, photo) {
   // Yazı bloğu: etiket, başlık, alt satır, sporcular
   const maxW = W - PAD * 2;
   const people = post.people ? post.people.split("\n").slice(0, 4) : [];
-  const head = fit(ctx, post.headline || " ", maxW, post.format === "portrait" ? 4 : 3, people.length ? 76 : 88, 50, 800);
+  const head = fit(ctx, post.headline || " ", maxW, story ? 5 : post.format === "portrait" ? 4 : 3, people.length ? 76 : 88, 50, 800);
   const lh = Math.round(head.size * 1.1);
   ctx.font = `500 38px ${FONT}`;
   const subLines = post.sub ? wrap(ctx, post.sub, maxW).slice(0, 2) : [];
@@ -173,7 +177,7 @@ export async function drawPost(canvas, post, photo) {
   const ph = Math.round(pp.size * 1.42);
   const tagH = post.tag ? 54 : 12;
   const block = tagH + 28 + head.lines.length * lh + (subLines.length ? 22 + subLines.length * 50 : 0) + (pLines.length ? 34 + pLines.length * ph : 0);
-  let y = top ? PAD + 10 : H - PAD - block;
+  let y = top ? PAD + 10 + safeT : H - PAD - block - safeB;
 
   ctx.textBaseline = "top";
   if (post.tag) {
@@ -256,4 +260,31 @@ export function thumbOf(canvas, w = 240) {
   c.height = Math.round((canvas.height / canvas.width) * w);
   c.getContext("2d").drawImage(canvas, 0, 0, c.width, c.height);
   return c.toDataURL("image/jpeg", 0.7);
+}
+
+// Kaydırmalı gönderinin ek sayfası: yalnız fotoğraf (kırpılıp ortalanır) + köşede küçük logo
+export async function drawSlide(canvas, format, photo) {
+  const [, , W, H] = formatOf(format);
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const s = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
+  const w = photo.naturalWidth * s;
+  const h = photo.naturalHeight * s;
+  ctx.drawImage(photo, (W - w) / 2, (H - h) / 2, w, h);
+  const logo = await loadLogo();
+  if (logo) {
+    const R = 34;
+    const x = W - PAD - R * 2;
+    const y = H - PAD - R * 2 - (format === "story" ? 280 : 0);
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(x + R, y + R, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.clip();
+    ctx.drawImage(logo, x + 4, y + 4, R * 2 - 8, R * 2 - 8);
+    ctx.restore();
+  }
 }

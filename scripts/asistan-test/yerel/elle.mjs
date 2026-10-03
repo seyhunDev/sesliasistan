@@ -262,3 +262,10 @@ group("Aidat takibi")([
     return t.paidCount === 1 && t.rows[0].a.id === "a2" && t.rows[1].state === "part" && t.paid === 2000 && t.expected === 4000 && t.eft === 1;
   })],
 ]);
+
+// Instagram hikâye boyutu (postModel.js)
+const PMs = await import("@/features/posts/postModel");
+group("Instagram hikâye")([
+  ["hikâye boyutu", F("1080×1920, oran 9/16", () => { const f = PMs.formatOf("story"); return f[2] === 1080 && f[3] === 1920 && PMs.aspectOf("story") === "9 / 16"; })],
+  ["kayıtta korunur", F("cleanPost story kalır, bilinmeyen kare olur", () => PMs.cleanPost({ format: "story" }).format === "story" && PMs.cleanPost({ format: "x" }).format === "square")],
+]);
