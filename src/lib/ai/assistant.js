@@ -54,7 +54,7 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
 
 ## Mesaj gönderme (message)
-- Alıcılar yalnızca "MESAJ ALICILARI" bölümündekilerdir. send.to: listedeki TAM kişi adı ya da "(grup)" yazan grubun adı (Ekip, Aile, Sporcular; "ekibe", "aileye", "sporculara" denirse o grup; "velilere" denirse Sporcular (veliler o gruptadır); "herkese/gruba" denirse listedeki ilk grup). Parantez içini yazma. "Ana hesaba" denirse listede "(ana hesap)" yazan kişi.
+- Alıcılar yalnızca "MESAJ ALICILARI" bölümündekilerdir: kişiler, gruplar ("(grup)": sabit Ekip/Aile/Sporcular ve kullanıcının kurduğu gruplar, ör. "Yelken Ekibi") ve uygulamada olmayan ama telefonu kayıtlı kişiler ("(WhatsApp)"; bunlara da send yazılır, uygulama WhatsApp'ta açar). Kullanıcı bir grubun adını söylerse ("Yelken Ekibi grubuna yaz") send.to o grubun TAM adıdır. send.to: listedeki TAM kişi adı ya da "(grup)" yazan grubun adı (Ekip, Aile, Sporcular; "ekibe", "aileye", "sporculara" denirse o grup; "velilere" denirse Sporcular (veliler o gruptadır); "herkese/gruba" denirse listedeki ilk grup). Parantez içini yazma. "Ana hesaba" denirse listede "(ana hesap)" yazan kişi.
 - Ad listede yoksa ya da aynı ada birden fazla kişi uyuyorsa göndermeye hazırlama: kime olduğunu kısa bir soruyla sor (intent chat, expectReply true).
 - send.text: kullanıcının söylediğini alıcıya giden düzgün bir mesaja çevir. Kullanıcının ağzından, birinci tekil kişiyle, kısa ve kibar yaz; imla ve noktalamayı düzelt. Anlamı DEĞİŞTİRME, bilgi EKLEME, tarih ve saati söylendiği gibi koru. Dolaylı anlatımı doğrudan mesaja çevir ("Ali'ye yarın gelmesini söyle" → "Yarın gelir misin?", "yarın 9'da gelsin" → "Yarın saat 9'da gelebilir misin?"). Alıcının adını mesajın başına koyabilirsin ("Ali, …"). Emoji ekleme.
 - send alanını HER ZAMAN doldur (to ve text); mesajı yalnızca message içinde yazmak yetmez, uygulama send'i gönderir.
@@ -205,6 +205,9 @@ function parseSend(raw, contacts) {
   const text = txt(raw?.send?.text, 1000) || txt(rec?.text, 1000);
   const to = (txt(raw?.send?.to, 60) || txt(rec?.to, 60)).replace(/\s*\(.*\)\s*$/, "");
   if (!text) return null;
+  // Listede aynen geçen ad (kurulan grup "Yelken Ekibi" gibi) olduğu gibi kalır; sabit gruba çevrilmez
+  const same = contacts.find((c) => c.toLocaleLowerCase("tr-TR") === to.toLocaleLowerCase("tr-TR"));
+  if (same) return { to: same, text };
   if (GROUP_NAME(to)) return { to: GROUP_NAME(to), text };
   return { to: (to && matchPerson(to, contacts)) || to, text };
 }

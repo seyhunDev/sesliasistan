@@ -47,9 +47,9 @@ import { parseBirthday } from "@/lib/birthdayParse";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
-import { confirmWord, messageIntent } from "@/lib/ai/messageRules";
+import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { matchPerson } from "@/lib/names";
-import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername } from "@/lib/kinds";
+import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername, waPhone } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { isMulti, jobsIn, jobsText, keepNotes, orderSteps } from "@/lib/steps";
@@ -83,6 +83,8 @@ const focusBody = (s) => {
     .trim();
   return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
+// Belirli bir numaraya WhatsApp mesajı (uygulamada hesabı olmayan kişi)
+const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
@@ -174,9 +176,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const live = useRef({});
 
   // Mesaj alıcıları: sohbet rehberindeki kişiler (ana hesap "ana hesap" adıyla da bulunur)
-  const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [] } = useChat() || {};
+  const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [], chats = [] } = useChat() || {};
   const contacts = chatPeople.map((p) => ({ name: p.name || "", aliases: p.role === "owner" ? ["ana hesap", "patron"] : [], p })).filter((c) => c.name);
-  const contactNames = [...(focus?.rec ? [`${RECORD_TO} (kayıt)`] : []), ...groupIds.map((g) => `${GROUPS[g].name} (grup)`), ...contacts.map((c) => (c.p.role === "owner" ? `${c.name} (ana hesap)` : c.name))];
+  // Mesajlar'da kurulan gruplar (üyesi olduklarım) da alıcıdır
+  const myGroups = chats.filter((c) => c.type === "group" && c.name).map((c) => ({ id: c.id, name: c.name }));
+  // Kişilerde olup uygulamada hesabı olmayanlar (yalnız ana hesap): telefonu varsa mesaj WhatsApp'la gider
+  const waPeople = members.filter((m) => m.account === false && m.name && waPhone(m.phone) && !contacts.some((c) => c.name === m.name)).map((m) => ({ name: m.name, wa: waPhone(m.phone) }));
+  const contactNames = [
+    ...(focus?.rec ? [`${RECORD_TO} (kayıt)`] : []),
+    ...groupIds.map((g) => `${GROUPS[g].name} (grup)`),
+    ...myGroups.filter((g) => !groupIds.some((x) => GROUPS[x].name === g.name)).map((g) => `${g.name} (grup)`),
+    ...contacts.map((c) => (c.p.role === "owner" ? `${c.name} (ana hesap)` : c.name)),
+    ...waPeople.map((w) => `${w.name} (WhatsApp)`),
+  ];
 
   const myKind = useKind();
   const firstName = (profile?.name || "").split(" ")[0];
@@ -932,12 +944,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const t = String(to || f?.to || "").trim() || (f?.rec ? RECORD_TO : "");
     if (!t) return null;
     if (f?.rec && (t === RECORD_TO || /^bu kayd|^kayıt/i.test(t))) return { rec: f.rec, label: "kaydın konuşması" };
+    // Kurulan grup ("Yelken Ekibi grubuna"): sabit grup kelimeleriyle başlasa da önce adıyla aranır
+    const cg = matchGroup(t, myGroups);
+    if (cg) return { cid: cg.id, label: cg.name, team: true, icon: "users" };
     if (TEAM_WORD.test(t)) {
       const g = groupOf(t, groupIds);
       return g ? { cid: g, label: GROUPS[g].name, team: true, icon: GROUPS[g].icon, create: { type: "team" } } : null;
     }
-    const name = contacts.find((c) => c.name === t)?.name || matchPerson(t, contacts);
+    const everyone = [...contacts, ...waPeople];
+    const name = everyone.find((c) => c.name === t)?.name || matchPerson(t, everyone);
     const c = contacts.find((x) => x.name === name);
+    // Uygulamada hesabı yok ama kişilerde telefonu var: kartta WhatsApp'la gönderilir
+    const w = !c && waPeople.find((x) => x.name === name);
+    if (w) return { wa: w.wa, label: w.name };
     if (!c || !myUid) return null;
     return { cid: dmId(myUid, c.p.uid), label: c.name, create: { type: "dm", members: [myUid, c.p.uid].sort() } };
   }
@@ -946,9 +965,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!dest) {
       const who = String(to || "").trim();
       queue.current = []; // alıcı yoksa sıralı işler de durur (kullanıcı yeniden söyler)
-      return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
+      // Kişilerde var ama uygulamada hesabı da telefonu da yok: neden gönderilemediği söylenir
+      const known = who && matchPerson(who, members.filter((m) => m.name).map((m) => m.name));
+      if (known) return reply(`${lead}${known} uygulamada değil ve kişilerde telefonu yok; mesaj gönderemiyorum. Kişiler'den telefonunu eklersen WhatsApp'la gönderebilirim.`, { engine }, viaVoice);
+      return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
     }
-    const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır: “${text}” Göndereyim mi?`;
+    const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
     reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text } }, engine, expect: true }, viaVoice);
   }
   const setSendText = (t) => setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
@@ -969,8 +991,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return;
     }
     if (pend.send) {
-      const { cid, text: body, create, label, team, rec } = pend.send;
+      const { cid, text: body, create, label, team, rec, wa } = pend.send;
       if (!body.trim()) return reply("Mesaj boş; ne yazayım?", { engine: "local", expect: true }, fromText && convo.current);
+      // Uygulamada olmayan kişi: WhatsApp mesajı hazır açılır, gönder düğmesine kişi kendisi basar
+      if (wa) {
+        const opened = !!window.open(waTo(wa, body), "_blank");
+        if (!opened) return reply("WhatsApp'ı açamadım; karttaki WhatsApp düğmesine dokun.", { engine: "local" }, fromText && convo.current);
+        setCards((c) => ({ ...c, pending: null, awaiting: false }));
+        if (nextStep(fromText && convo.current, "WhatsApp'ta açtım. ")) return;
+        return reply(`WhatsApp'ta ${label} için açtım; orada gönder'e dokun.`, { engine: "local" }, fromText && convo.current);
+      }
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
       setSteps([]);
       if (rec) {
@@ -1827,9 +1857,25 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               className="block max-h-48 w-full resize-none bg-card px-3.5 py-3 text-[1rem] leading-snug outline-none [field-sizing:content] focus:bg-bg"
             />
             <div className="flex gap-2 border-t border-line p-2">
-              <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
-                <Icon name="up" className="size-4" /> Gönder
-              </button>
+              {cards.pending.send.wa ? (
+                <a
+                  href={waTo(cards.pending.send.wa, cards.pending.send.text)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => {
+                    setTurns((p) => [...p, { role: "user", text: "WhatsApp'ta gönder", chip: true }]);
+                    setCards((c) => ({ ...c, pending: null, awaiting: false }));
+                    if (!nextStep(false, "WhatsApp'ta açtım. ")) reply(`WhatsApp'ta ${cards.pending.send.label} için açtım; orada gönder'e dokun.`, { engine: "local" });
+                  }}
+                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]"
+                >
+                  <Icon name="whatsapp" className="size-4" /> {"WhatsApp'ta gönder"}
+                </a>
+              ) : (
+                <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
+                  <Icon name="up" className="size-4" /> Gönder
+                </button>
+              )}
               {cards.pending.send.team && (
                 <a href={waLink(cards.pending.send.text)} target="_blank" rel="noreferrer" aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
                   <Icon name="whatsapp" className="size-5" />
@@ -1839,7 +1885,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.team ? " Uygulamada olmayan veliler için WhatsApp düğmesiyle aynı metni gruba paylaş." : ""}</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team ? " Uygulamada olmayan veliler için WhatsApp düğmesiyle aynı metni gruba paylaş." : ""}</p>
           </div>
         )}
 
