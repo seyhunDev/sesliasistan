@@ -297,6 +297,21 @@ group("Instagram tasarım")([
     const old = PM.withInfo(PM.cleanPost({ race: ONE }));
     return a.info === "Foça · 7-11 Ekim 2026" && a.classes === "ILCA 4, ILCA 6" && PM.classList("Optimist, ILCA 4,, Laser, 420, 29er").join() === "Optimist,ILCA 4,Laser,420" && old.classes === "ILCA 4" && old.info === "Foça · 7-11 Ekim 2026";
   })],
+  ["başlıkta sınıf", F("yarışın sınıfı başa eklenir, ILCA 4/6 tek ILCA, yazılıysa eklenmez", () =>
+    PM.raceHeadline(ONE) === "ILCA TYF Ligi" &&
+    PM.raceHeadline({ ...ONE, classes: "ILCA 4, ILCA 6" }) === "ILCA TYF Ligi" &&
+    PM.raceHeadline({ ...ONE, classes: "Optimist, ILCA 4" }) === "Optimist ve ILCA TYF Ligi" &&
+    PM.raceHeadline({ ...ONE, name: "TYF Yelken Ligi ILCA 1. Ayak" }) === "TYF Yelken Ligi ILCA 1. Ayak" &&
+    PM.withClass("TYF Ligi'nde 1. Ayak Yarışları", { athletes: SIX }) === "Optimist TYF Ligi'nde 1. Ayak Yarışları" &&
+    PM.withClass("Kulüp Haberi", null) === "Kulüp Haberi" &&
+    PM.autoOf({ kind: "duyuru", race: ONE }).headline === "ILCA TYF Ligi")],
+  ["türe göre renk", F("her tür ayrı zemin; tür değişince renk değişir, elle seçilen kalır", () => {
+    const set = new Set(PM.KINDS.map(([k]) => PM.kindTheme(k)));
+    const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }) });
+    const b = PM.reauto(a, { ...a, kind: "sonuc" });
+    const c = PM.reauto({ ...a, theme: "kum" }, { ...a, theme: "kum", kind: "sonuc" });
+    return set.size === PM.KINDS.length && a.theme === "deniz" && b.theme === "gun" && c.theme === "kum" && PM.freshPost("antrenman").theme === "gece" && PM.postFromRace({ name: "X", startDate: "2026-09-01" }, "2026-10-03").theme === "gun";
+  })],
   ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],
 ]);

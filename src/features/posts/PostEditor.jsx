@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, classList, raceBrief, raceMeta, raceWithAthletes, reauto, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
@@ -15,6 +15,8 @@ const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
 const chip = (on) =>
   `flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${on ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`;
+const row = "flex items-center gap-3 py-2.5";
+const rowLabel = "w-14 shrink-0 text-[0.8125rem] font-medium text-mut";
 const small = "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50";
 
 const slug = (s) =>
@@ -363,24 +365,30 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         )}
       </div>
 
-      {/* Tasarım: biçim, şablon, renk, yazının yeri */}
-      <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l])} className="mt-3" />
-      <div className="-mx-5 mt-2.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-        {STYLES.map(([k, label]) => (
-          <button key={k} type="button" aria-pressed={post.style === k} onClick={() => put("style", k)} className={chip(post.style === k)}>
-            {label}
-          </button>
-        ))}
-        <span className="mx-0.5 w-px shrink-0 self-stretch bg-line" />
-        {THEMES.map(([k, label, c1, c2]) => (
-          <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-bg" : "ring-1 ring-line"}`}>
-            <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-          </button>
-        ))}
-        <button type="button" onClick={() => put("pos", post.pos === "top" ? "bottom" : "top")} className={chip(false)}>
-          <Icon name="up" className={`size-4 transition ${post.pos === "top" ? "" : "rotate-180"}`} />
-          {post.pos === "top" ? "Yazı üstte" : "Yazı altta"}
-        </button>
+      {/* Tasarım: biçim, şablon, renk, yazının yeri; her satırda solda ad, sağda seçim */}
+      <div className={`${card} mt-3 divide-y divide-line px-4`}>
+        <div className={row}>
+          <span className={rowLabel}>Boyut</span>
+          <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} className="flex-1" />
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Şablon</span>
+          <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} className="flex-1" />
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Renk</span>
+          <div className="flex flex-1 items-center justify-between">
+            {THEMES.map(([k, label, c1, c2]) => (
+              <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
+                <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Yazı</span>
+          <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Üstte"], ["bottom", "Altta"]]} className="flex-1" />
+        </div>
       </div>
 
       <div className="mt-3">
@@ -466,7 +474,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
               </div>
             )}
             <label className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem]">Yer, tarih ve sınıflar görselde</span>
+              <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
               <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
             </label>
           </div>
@@ -490,6 +498,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
         {KINDS.map(([k, label, icon]) => (
           <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setKind(k)}>
+            <span className="size-3.5 shrink-0 rounded-full ring-1 ring-white/60" style={{ background: `linear-gradient(135deg, ${themeOf(kindTheme(k))[2]}, ${themeOf(kindTheme(k))[3]})` }} />
             <Icon name={icon} className="size-4" />
             {label}
           </button>
@@ -565,7 +574,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         <div className="mt-3 space-y-3">
           <label className="block">
             <span className="text-[0.8125rem] font-medium text-mut">Başlık</span>
-            <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Foça'da Yelken Ligi" />
+            <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="ILCA TYF Ligi Başlıyor" />
           </label>
           <label className="block">
             <span className="text-[0.8125rem] font-medium text-mut">Alt satır</span>
@@ -576,12 +585,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))} rows={3} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />
           </label>
           <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" hint="Boş bırakılırsa görselde çıkmaz." />
-          {post.meta && (
-            <>
-              <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />
-              <Field label="Sınıflar (virgülle, en çok 4)" value={p.classes} onChange={(e) => put("classes", e.target.value)} maxLength={100} placeholder="Optimist, ILCA 4" />
-            </>
-          )}
+          {post.meta && <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />}
           <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
         </div>
       )}
