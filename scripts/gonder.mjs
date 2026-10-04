@@ -65,6 +65,12 @@ if (!ok("git config user.email")) {
 }
 
 // ---- 3) Değişiklikleri hazırla ve gizli dosya kontrolü ----
+// Thread'lerin notlar/yeni/ dosyaları NOTLAR.md'ye taşınır (NOTLAR.md yalnız burada yazılır, PR'lar çakışmaz)
+{
+  const { collect } = await import("./notlar-topla.mjs");
+  const moved = collect();
+  if (moved.length) console.log(`\n✓ Yeni notlar NOTLAR.md'ye taşındı: ${moved.join(", ")}`);
+}
 run("Değişiklikler hazırlanıyor", "git add -A");
 const files = sh("git diff --cached --name-only").split("\n").filter(Boolean);
 if (!files.length) {

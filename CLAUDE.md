@@ -1,6 +1,6 @@
 @AGENTS.md
 
-Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırlat: `npm run gonder -- "kısa açıklama"` (testler + derleme geçerse kaydeder ve gönderir; gizli dosya varsa durur). Ardından Netlify'a yayınlama komutunu her seferinde ayrı bir blok olarak yaz: `npm run build && netlify deploy --prod`. Son olarak NOTLAR.md'deki "Nerede kaldım" ve "Sıradaki işler"i güncelle.
+Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırlat: `npm run gonder -- "kısa açıklama"` (testler + derleme geçerse kaydeder ve gönderir; gizli dosya varsa durur). Ardından Netlify'a yayınlama komutunu her seferinde ayrı bir blok olarak yaz: `npm run build && netlify deploy --prod`. Son olarak notu yaz: NOTLAR.md'ye doğrudan YAZMA (paralel PR'lar orada çakışıyor); `notlar/yeni/YYYY-AA-GG-kisa-konu.md` adlı yeni bir dosyaya "## Nerede kaldım" ve "## Sıradaki işler" bölümlerini (kalıcı karar varsa "## Asistan" / "## Tasarım") yaz. Mac'te `npm run gonder` bunları NOTLAR.md'ye taşır (`scripts/notlar-topla.mjs`, biçim `notlar/yeni/README.md`).
 
 ## Çalışma kuralları (her sohbette geçerli)
 
@@ -13,7 +13,7 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Değişiklikler GitHub'a gönderilir (bulut oturumunda dal + PR).
 - Testler: `npm test` (tüm yerel testler + derleme); derlemesiz hepsi `npm run test:hizli`; alan alan `npm run test:asistan` / `test:ses` / `test:elle` / `test:yaris` (dosyalar `scripts/asistan-test/yerel/<alan>.mjs`, yeni özelliğin testi kendi alanına eklenir); yapay zeka `npm run test:yz`; canlı `npm run test:canli` (hesap sorar). Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
 - Yapay zeka: Gemini 3.x için `thinkingLevel: "minimal"`, eskiler için `thinkingBudget: 0` (lib/ai/gemini.js). Hata türleri lib/ai/errors.js.
-- Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (aşağıda otomatik yüklenir); kalıcı kararları oraya yaz.
+- Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (aşağıda otomatik yüklenir) ve henüz taşınmamış `notlar/yeni/*.md` dosyalarında (oturum başında bunlara da bak). Yeni not ve kalıcı karar `notlar/yeni/` altına yeni dosya olarak yazılır, NOTLAR.md elle değiştirilmez.
 - Token: tüm dosyaları tarama, haritadan ilgili dosyaya git.
 
 ## Harita

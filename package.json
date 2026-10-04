@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node --no-warnings scripts/gonder.mjs --yalniz-test",
     "gonder": "node --no-warnings scripts/gonder.mjs",
+    "notlar": "node --no-warnings scripts/notlar-topla.mjs",
     "test:hizli": "node --no-warnings scripts/asistan-test/calistir.mjs",
     "test:asistan": "node --no-warnings scripts/asistan-test/calistir.mjs asistan",
     "test:ses": "node --no-warnings scripts/asistan-test/calistir.mjs ses",
