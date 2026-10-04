@@ -107,7 +107,7 @@ group("Instagram gönderisi")([
   ["az sporcu", { desc: "Ad · sınıf satırları", fn: () => PM.peopleLines(SIX.slice(0, 2)), ok: (r) => r === "Ali Kaya · Optimist\nAyşe Su · Optimist" }],
   ["kalabalık", { desc: "6 sporcumuz yarışta + ilk adlar", fn: () => PM.peopleLines(SIX), ok: (r) => r.startsWith("6 sporcumuz yarışta\nAli, Ayşe, Can") }],
   ["görsel satırı en çok 4", { desc: "4 satır", fn: () => PM.cleanPeople("a\nb\nc\nd\ne\nf").split("\n").length, ok: (r) => r === 4 }],
-  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ" && r.headline === "Foça Kupası" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
+  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ DUYURUSU" && r.headline === "Foça Kupası" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
   ["yarış sonucu", { desc: "biten yarış → sonuç", fn: () => PM.postFromRace({ name: "Ege Kupası", startDate: "2026-09-01", endDate: "2026-09-02" }, "2026-10-03").kind, ok: (r) => r === "sonuc" }],
   ["kişisel bilgi gitmez", { desc: "yarıştan yalnız ad ve sınıf", fn: () => JSON.stringify(PM.raceBrief({ name: "X" }, [{ name: "Ali Kaya", cls: "ILCA", tc: "12345678901", parentPhone: "0532" }])), ok: (r) => !/12345678901|0532/.test(r) && /Ali Kaya/.test(r) }],
   ["bozuk kayıt", { desc: "tür, biçim, zemin, konum varsayılan; odak 0-100", fn: () => PM.cleanPost({ kind: "x", format: "y", theme: "z", pos: "orta", focus: 250, thumb: "http://kötü" }), ok: (r) => r.kind === "diger" && r.format === "square" && r.theme === "deniz" && r.pos === "bottom" && r.focus === 100 && r.thumb === "" }],
@@ -274,11 +274,11 @@ group("Instagram tasarım")([
   ["başarı satırı", F("1 sporcu Sporcumuza, çok Sporcularımıza, sonuçta tebrik", () => PM.raceWish(ONE) === "Sporcumuza başarılar!" && PM.raceWish({ ...ONE, athletes: SIX }) === "Sporcularımıza başarılar!" && PM.raceWish(ONE, "sonuc") === "Sporcumuzu tebrik ederiz!" && PM.raceWish(null) === "")],
   ["sınıflar", F("talimattaki sınıflar, yoksa sporcularınki; tekrarsız, en çok 4", () => PM.raceClasses({ classes: "ILCA 4, ILCA 6" }).join() === "ILCA 4,ILCA 6" && PM.raceClasses({ athletes: [...SIX, { name: "X", cls: "ILCA 4" }] }).join() === "Optimist,ILCA 4")],
   ["yer · tarih", F("ilçe · tarih", () => PM.raceMeta(ONE) === "Foça · 7-11 Ekim 2026" && PM.raceMeta(null) === "")],
-  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ" && r.meta === true && r.style === "klasik"; })],
+  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ DUYURUSU" && r.meta === true && r.style === "klasik"; })],
   ["tür değişince", F("kendiliğinden yazılar yenilenir, elle yazılan başlık kalır", () => {
     const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }), headline: "Benim başlığım" });
     const b = PM.reauto(a, { ...a, kind: "sonuc" });
-    return b.headline === "Benim başlığım" && b.wish === "Sporcumuzu tebrik ederiz!" && b.tag === "SONUÇ" && b.sub.endsWith("başarıyla temsil etti.");
+    return b.headline === "Benim başlığım" && b.wish === "Sporcumuzu tebrik ederiz!" && b.tag === "YARIŞ SONUCU" && b.sub.endsWith("başarıyla temsil etti.");
   })],
   ["sporcu çıkarılınca", F("2 → 1 sporcu: alt satır ve dilek tekile döner", () => {
     const race = { ...ONE, athletes: SIX.slice(0, 2) };
@@ -311,6 +311,15 @@ group("Instagram tasarım")([
     const b = PM.reauto(a, { ...a, kind: "sonuc" });
     const c = PM.reauto({ ...a, theme: "kum" }, { ...a, theme: "kum", kind: "sonuc" });
     return set.size === PM.KINDS.length && a.theme === "deniz" && b.theme === "gun" && c.theme === "kum" && PM.freshPost("antrenman").theme === "gece" && PM.postFromRace({ name: "X", startDate: "2026-09-01" }, "2026-10-03").theme === "gun";
+  })],
+  ["görselde en çok 2 sporcu", F("yarışta sporcu satırı yok, 3+ satır görselde yazılmaz", () =>
+    PM.racePeople({ ...ONE, athletes: SIX }) === "" &&
+    PM.autoOf({ kind: "duyuru", race: { ...ONE, athletes: SIX } }).people === "" &&
+    PM.imagePeople("Ali Kaya · Optimist\nEce Su · ILCA 4") === "Ali Kaya · Optimist\nEce Su · ILCA 4" &&
+    PM.imagePeople("A\nB\nC") === "")],
+  ["ayrıntılı türler", F("yarış duyurusu/sonucu etiketleri, her türün ayrı rengi", () => {
+    const tags = Object.fromEntries(PM.KINDS.map(([k, , , t]) => [k, t]));
+    return tags.duyuru === "YARIŞ DUYURUSU" && tags.sonuc === "YARIŞ SONUCU" && tags.kayit === "KAYITLAR AÇIK" && PM.KINDS.length >= 8 && PM.cleanPost({ kind: "kutlama" }).kind === "kutlama" && PM.freshPost("kutlama").theme === "bordo" && PM.RACE_KINDS.includes("sonuc");
   })],
   ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],

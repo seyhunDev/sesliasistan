@@ -18,13 +18,19 @@ export const RACE_KEY = "sa-post-race";
 // Asistana söylenen cümle ("Foça yarışı için gönderi hazırla"): gönderi ekranı açılınca yapay zekaya konu olarak gider
 export const POST_ASK_KEY = "sa-post-ask";
 
+// [anahtar, ad, ikon, görseldeki etiket]; ekrandaki sıra da bu (yarış türleri önde)
 export const KINDS = [
-  ["duyuru", "Yarış duyurusu", "flag", "YARIŞ"],
-  ["sonuc", "Yarış sonucu", "star", "SONUÇ"],
-  ["antrenman", "Antrenman", "anchor", "ANTRENMAN"],
-  ["kulup", "Kulüp haberi", "users", "KULÜP"],
+  ["duyuru", "Yarış duyurusu", "flag", "YARIŞ DUYURUSU"],
+  ["sonuc", "Yarış sonucu", "star", "YARIŞ SONUCU"],
+  ["antrenman", "Antrenman", "wind", "ANTRENMAN"],
+  ["genel", "Duyuru", "bell", "DUYURU"],
+  ["kayit", "Kayıt / yelken okulu", "users", "KAYITLAR AÇIK"],
+  ["kulup", "Kulüp haberi", "anchor", "KULÜP HABERİ"],
+  ["kutlama", "Kutlama / özel gün", "cake", "KUTLAMA"],
   ["diger", "Diğer", "tag", ""],
 ];
+// Yarışa bağlı türler (ekranda yarış adımı bunlarda öne çıkar)
+export const RACE_KINDS = ["duyuru", "sonuc"];
 export const kindOf = (k) => KINDS.find(([x]) => x === k) || KINDS[KINDS.length - 1];
 
 export const FORMATS = [
@@ -43,9 +49,12 @@ export const THEMES = [
   ["gun", "Gün batımı", "#e76f51", "#7a2e3b", "#ffe8a3"],
   ["kum", "Kum", "#f4ead8", "#d9c6a2", "#1f5a4b"],
   ["mor", "Mor", "#6b5a9e", "#2a2045", "#f6c6d8"],
+  ["turkuaz", "Turkuaz", "#1c8c93", "#0b3d47", "#ffd166"],
+  ["bordo", "Bordo", "#a8283d", "#4a0f1c", "#f4d58d"],
+  ["antrasit", "Antrasit", "#3d4753", "#161b22", "#f2c14e"],
 ];
 // Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
-export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", kulup: "kum", diger: "mor" };
+export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", diger: "antrasit" };
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
 
@@ -185,8 +194,13 @@ export function raceSub(race, kind = "duyuru") {
   const where = town ? `${genitive(town)} rüzgarlı sularında` : "yarışta";
   return kind === "sonuc" ? `${who}, ${where} kulübümüzü başarıyla temsil etti.` : `${who}, ${where} kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı.`;
 }
-// Ad zaten alt satırda geçiyorsa (1-2 sporcu) ayrı sporcu satırı yazılmaz
-export const racePeople = (race) => ((race?.athletes?.length || 0) > 2 ? peopleLines(race.athletes) : "");
+// Yarış bağlıyken görselde ayrı sporcu satırı yok: 1-2 sporcunun adı alt satırda geçer, 3 ve fazlasının adları yalnız açıklamada
+export const racePeople = () => "";
+// Görselde en çok 2 sporcu adı: daha çok satır varsa görselde ad yazılmaz (adlar açıklamaya gider)
+export const imagePeople = (v) => {
+  const l = cleanPeople(v);
+  return l.split("\n").filter(Boolean).length > 2 ? "" : l;
+};
 
 // Başarı satırı: duyuruda "Sporcumuza / Sporcularımıza başarılar!", sonuçta tebrik
 export function raceWish(race, kind = "duyuru") {

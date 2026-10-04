@@ -17,6 +17,9 @@ const SCENE = {
   duyuru: "an upcoming youth sailing regatta: small dinghies (Optimist, ILCA) with white sails racing on a bright Aegean sea, start line buoys",
   sonuc: "a joyful moment after a youth sailing regatta: sailing dinghies near the shore at golden hour, celebratory mood, trophies feel",
   antrenman: "a youth sailing training session: young sailors in small Optimist dinghies practicing with a coach boat nearby, calm Aegean bay",
+  genel: "a calm sailing club harbour on the Aegean coast in the morning, moored dinghies, clear sky, clean composition",
+  kayit: "children learning to sail in small Optimist dinghies with an instructor, bright and welcoming, Aegean bay",
+  kutlama: "festive sailing club harbour on the Aegean coast with nautical signal flags and Turkish flags waving, sunny day",
   kulup: "a friendly small-town sailing club on the Aegean coast: dinghies on the slipway, flags, sea and sky",
   diger: "sailing on the Aegean sea near Dikili, Turkey",
 };

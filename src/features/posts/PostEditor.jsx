@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, POST_ASK_KEY, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, POST_ASK_KEY, RACE_KINDS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
@@ -78,6 +78,8 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const fileInput = useRef(null);
   const moreInput = useRef(null);
   const latest = useRef(null);
+  // Yapay zekanın son yazdığı açıklama: elle değiştirilmediyse tür değişince yeni türe göre yeniden yazılır (kayıtlı gönderide elle sayılır)
+  const autoCap = useRef(start.id ? null : start.caption);
   // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
   const [extras, setExtras] = useState([]); // [{ id, src, i }]
   const [pid, setPid] = useState(start.id || null);
@@ -139,6 +141,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     try {
       const r = await askCaption(base, ask);
       apply(r, !!ask);
+      if (r.caption) autoCap.current = r.caption;
       if (r.hashtags?.length) setTags(r.hashtags.join(" "));
       return r;
     } catch (e) {
@@ -336,7 +339,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       const athletes = x.race.athletes.filter((_, k) => k !== i);
       return reauto(x, { ...x, race: { ...x.race, athletes, count: athletes.length } });
     });
-  const setKind = (k) => setP((x) => reauto(x, { ...x, kind: k }));
+  // Tür değişince yazılar, renk ve desen değişir; açıklama elle değiştirilmediyse yeni türe göre yeniden yazılır
+  const setKind = (k) => {
+    if (k === post.kind) return;
+    const next = reauto(post, { ...post, kind: k });
+    setP((x) => reauto(x, { ...x, kind: k }));
+    const mine = post.caption && post.caption !== autoCap.current;
+    if (!mine && (post.race || post.topic.trim())) write({ ...next, caption: "" }).catch(() => {});
+  };
 
   const del = async () => {
     if (!confirm("Bu gönderi silinsin mi?")) return;
@@ -365,50 +375,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         )}
       </div>
 
-      {/* Tasarım: biçim, şablon, renk, yazının yeri; her satırda solda ad, sağda seçim */}
-      <div className={`${card} mt-3 divide-y divide-line px-4`}>
-        <div className={row}>
-          <span className={rowLabel}>Boyut</span>
-          <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} className="flex-1" />
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Şablon</span>
-          <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} className="flex-1" />
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Renk</span>
-          <div className="flex flex-1 items-center justify-between">
-            {THEMES.map(([k, label, c1, c2]) => (
-              <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
-                <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Yazı</span>
-          <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Üstte"], ["bottom", "Altta"]]} className="flex-1" />
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <Button onClick={share} disabled={!!busy && busy !== "save"}>
-          <Icon name="share" className="size-5" />
-          Paylaş
-        </Button>
-        <div className="mt-2 flex gap-2">
-          <button type="button" onClick={download} className={small}>
-            <Icon name="download" className="size-[1.125rem]" />
-            Görseli indir
-          </button>
-          <button type="button" onClick={copy} className={small}>
-            <Icon name="copy" className="size-[1.125rem]" />
-            Açıklamayı kopyala
-          </button>
-        </div>
-        <p className="mt-2 px-1 text-center text-[0.75rem] leading-snug text-mut">Paylaş&apos;a basınca açıklama kopyalanır; menüden Instagram&apos;ı seç, açıklama alanına yapıştır.</p>
-      </div>
-
       {/* Ana asistana ne söyleneceği (ayrı yapay zeka kutusu yok) */}
       <div className={`mt-4 flex gap-3 rounded-2xl px-4 py-3 ${aiErr ? "bg-rec/10" : "bg-acc/10"}`}>
         <Icon name={aiErr ? "alert" : "mic"} className={`mt-0.5 size-5 shrink-0 ${aiErr ? "text-rec" : "text-acc"}`} />
@@ -428,7 +394,18 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </p>
       </div>
 
-      <Label>YARIŞ</Label>
+      <Label>1 · NE PAYLAŞACAKSIN</Label>
+      <div className="flex flex-wrap gap-2">
+        {KINDS.map(([k, label, icon]) => (
+          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setKind(k)}>
+            <span className="size-3.5 shrink-0 rounded-full ring-1 ring-white/60" style={{ background: `linear-gradient(135deg, ${themeOf(kindTheme(k))[2]}, ${themeOf(kindTheme(k))[3]})` }} />
+            <Icon name={icon} className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <Label right={RACE_KINDS.includes(post.kind) ? null : "isteğe bağlı"}>2 · YARIŞ</Label>
       <div className={`${card} px-4 py-3`}>
         <div className="flex items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
@@ -459,7 +436,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
                 ))}
               </div>
             )}
-            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
+            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length > 2 ? "Adları açıklamada geçer (görselde yalnız 1-2 sporcunun adı yazılır)" : race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
             {race.athletes?.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {race.athletes.map((a, i) => (
@@ -494,18 +471,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </ul>
       )}
 
-      <Label>NE PAYLAŞACAKSIN</Label>
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-        {KINDS.map(([k, label, icon]) => (
-          <button key={k} type="button" aria-pressed={post.kind === k} className={chip(post.kind === k)} onClick={() => setKind(k)}>
-            <span className="size-3.5 shrink-0 rounded-full ring-1 ring-white/60" style={{ background: `linear-gradient(135deg, ${themeOf(kindTheme(k))[2]}, ${themeOf(kindTheme(k))[3]})` }} />
-            <Icon name={icon} className="size-4" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <Label>GÖRSEL</Label>
+      <Label>3 · FOTOĞRAF</Label>
       <div className="space-y-3">
         <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
         <div className="flex gap-2">
@@ -561,11 +527,39 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       </div>
 
+
+      {/* Tasarım: biçim, şablon, renk, yazının yeri; her satırda solda ad, sağda seçim */}
+      <Label>4 · TASARIM</Label>
+      <div className={`${card} divide-y divide-line px-4`}>
+        <div className={row}>
+          <span className={rowLabel}>Boyut</span>
+          <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} className="flex-1" />
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Şablon</span>
+          <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} className="flex-1" />
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Renk</span>
+          <div className="flex flex-1 flex-wrap items-center gap-1.5">
+            {THEMES.map(([k, label, c1, c2]) => (
+              <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
+                <span className="size-6 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={row}>
+          <span className={rowLabel}>Yazı</span>
+          <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Üstte"], ["bottom", "Altta"]]} className="flex-1" />
+        </div>
+      </div>
+
       {/* Görseldeki yazılar: kendiliğinden dolar, istenirse elle düzenlenir */}
       <button type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
         <Icon name="edit" className="size-5 shrink-0 text-acc" />
         <span className="min-w-0 flex-1">
-          <b className="block text-[0.9375rem] font-semibold">Görseldeki yazılar</b>
+          <b className="block text-[0.9375rem] font-semibold">5 · Görseldeki yazılar</b>
           <span className="block truncate text-[0.75rem] text-mut">{[post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
         </span>
         <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
@@ -581,8 +575,8 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             <textarea value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={200} rows={3} className={area} placeholder="Sporcumuz Mete Ok, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." />
           </label>
           <label className="block">
-            <span className="text-[0.8125rem] font-medium text-mut">Sporcular (her satır bir sporcu, en çok 4)</span>
-            <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 4).join("\n"))} rows={3} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />
+            <span className="text-[0.8125rem] font-medium text-mut">Sporcular (en çok 2 satır; daha çok sporcu varsa adlar açıklamada)</span>
+            <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 2).join("\n"))} rows={3} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />
           </label>
           <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" hint="Boş bırakılırsa görselde çıkmaz." />
           {post.meta && <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />}
@@ -590,15 +584,34 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>AÇIKLAMA</Label>
+      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>6 · AÇIKLAMA</Label>
       <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder={aiBusy ? "Yapay zeka yazıyor…" : "Yarış seçince ya da asistana anlatınca yapay zeka yazar; kendin de yazabilirsin"} />
       <label className="mt-3 block">
         <span className="text-[0.8125rem] font-medium text-mut">Etiketler (#)</span>
         <textarea value={tags} onChange={(e) => setTags(e.target.value)} onBlur={() => setTags(cleanTags(tags).join(" "))} rows={2} className={area} placeholder="#dikiliyelken #yelken #sailing" />
       </label>
 
-      <div className="mt-6 space-y-2.5">
-        <Button onClick={() => save(false)} loading={busy === "save"} disabled={!!busy || (!dirty && !!pid)}>
+      <Label>7 · PAYLAŞ</Label>
+      <div>
+        <Button onClick={share} disabled={!!busy && busy !== "save"}>
+          <Icon name="share" className="size-5" />
+          Paylaş
+        </Button>
+        <div className="mt-2 flex gap-2">
+          <button type="button" onClick={download} className={small}>
+            <Icon name="download" className="size-[1.125rem]" />
+            Görseli indir
+          </button>
+          <button type="button" onClick={copy} className={small}>
+            <Icon name="copy" className="size-[1.125rem]" />
+            Açıklamayı kopyala
+          </button>
+        </div>
+        <p className="mt-2 px-1 text-center text-[0.75rem] leading-snug text-mut">Paylaş&apos;a basınca açıklama kopyalanır; menüden Instagram&apos;ı seç, açıklama alanına yapıştır.</p>
+      </div>
+
+      <div className="mt-3 space-y-2.5">
+        <Button variant="ghost" onClick={() => save(false)} loading={busy === "save"} disabled={!!busy || (!dirty && !!pid)}>
           <Icon name="check" className="size-5" />
           {!dirty && pid ? "Kaydedildi" : "Kaydet"}
         </Button>

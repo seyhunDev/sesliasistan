@@ -1,6 +1,6 @@
 "use client";
 
-import { formatOf, themeOf } from "./postModel";
+import { formatOf, imagePeople, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -150,58 +150,142 @@ function waves(ctx, W, y, n, gap = 36) {
   }
 }
 
-// Sonuç: kupa, arkasında ışınlar, etrafında yıldızlar
+// Sonuç: kupa silüeti ve arkasında ince halkalar (yıldız, ışın yok; sade)
 function trophyDecor(ctx, W, H, top, color) {
-  const s = Math.min(W, H) * 0.34;
+  const s = Math.min(W, H) * 0.32;
   const cx = W * 0.74;
   const cy = top ? H * 0.66 : H * 0.3;
   ctx.save();
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
-  // Işınlar (kupadan soluk)
-  ctx.globalAlpha = 0.5;
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
+  ctx.lineWidth = 3;
+  for (const r of [1.05, 1.3]) {
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, s * 1.1, a, a + Math.PI / 30);
-    ctx.closePath();
-    ctx.fill();
+    ctx.arc(cx, cy, s * r, 0, Math.PI * 2);
+    ctx.stroke();
   }
-  ctx.globalAlpha = 1;
-  // Kupa gövdesi
   ctx.beginPath();
   ctx.moveTo(cx - s * 0.42, cy - s * 0.5);
   ctx.lineTo(cx + s * 0.42, cy - s * 0.5);
   ctx.quadraticCurveTo(cx + s * 0.4, cy + s * 0.12, cx, cy + s * 0.2);
   ctx.quadraticCurveTo(cx - s * 0.4, cy + s * 0.12, cx - s * 0.42, cy - s * 0.5);
   ctx.fill();
-  // Kulplar
   ctx.lineWidth = s * 0.07;
   for (const d of [-1, 1]) {
     ctx.beginPath();
     ctx.arc(cx + d * s * 0.44, cy - s * 0.28, s * 0.16, d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
     ctx.stroke();
   }
-  // Ayak ve kaide
   ctx.fillRect(cx - s * 0.06, cy + s * 0.18, s * 0.12, s * 0.22);
   ctx.fillRect(cx - s * 0.26, cy + s * 0.4, s * 0.52, s * 0.1);
   ctx.fillRect(cx - s * 0.34, cy + s * 0.5, s * 0.68, s * 0.1);
-  // Yıldızlar
-  const star = (x, y, r) => {
+  ctx.restore();
+}
+
+// Duyuru: deniz feneri, ışık huzmesi ve dalgalar
+function lighthouseDecor(ctx, W, H, top, color) {
+  const s = Math.min(W, H) * 0.32;
+  const cx = W * 0.76;
+  const base = top ? H * 0.86 : H * 0.58;
+  const tip = base - s * 1.25;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  // Gövde (yukarı daralan) ve şeritler arası boşluk
+  ctx.beginPath();
+  ctx.moveTo(cx - s * 0.2, base);
+  ctx.lineTo(cx - s * 0.12, tip + s * 0.32);
+  ctx.lineTo(cx + s * 0.12, tip + s * 0.32);
+  ctx.lineTo(cx + s * 0.2, base);
+  ctx.closePath();
+  ctx.fill();
+  // Fener odası ve kubbe
+  ctx.fillRect(cx - s * 0.17, tip + s * 0.26, s * 0.34, s * 0.06);
+  ctx.fillRect(cx - s * 0.1, tip + s * 0.1, s * 0.2, s * 0.14);
+  ctx.beginPath();
+  ctx.arc(cx, tip + s * 0.1, s * 0.1, Math.PI, 0);
+  ctx.fill();
+  // Işık huzmeleri
+  ctx.globalAlpha = 0.6;
+  for (const d of [-1, 1]) {
     ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5;
-      const rr = i % 2 ? r * 0.45 : r;
-      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-    }
+    ctx.moveTo(cx, tip + s * 0.17);
+    ctx.lineTo(cx + d * s * 1.3, tip - s * 0.1);
+    ctx.lineTo(cx + d * s * 1.3, tip + s * 0.36);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  waves(ctx, W, base + 30, 3);
+  ctx.restore();
+}
+
+// Kayıt / yelken okulu: farklı boyda üç küçük yelkenli (filo)
+function fleetDecor(ctx, W, H, top, color) {
+  const y = top ? H * 0.8 : H * 0.44;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  const boat = (x, s) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y - s);
+    ctx.lineTo(x, y - s * 0.12);
+    ctx.lineTo(x - s * 0.62, y - s * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y - s * 0.86);
+    ctx.lineTo(x + 8, y - s * 0.12);
+    ctx.lineTo(x + s * 0.38, y - s * 0.12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - s * 0.62, y);
+    ctx.lineTo(x + s * 0.44, y);
+    ctx.lineTo(x + s * 0.32, y + s * 0.12);
+    ctx.lineTo(x - s * 0.5, y + s * 0.12);
     ctx.closePath();
     ctx.fill();
   };
-  star(cx - s * 0.95, cy - s * 0.7, s * 0.12);
-  star(cx + s * 0.9, cy - s * 0.85, s * 0.09);
-  star(cx - s * 1.2, cy + s * 0.25, s * 0.07);
-  star(cx + s * 0.75, cy + s * 0.55, s * 0.08);
+  boat(W * 0.86, H * 0.2);
+  boat(W * 0.66, H * 0.14);
+  boat(W * 0.5, H * 0.1);
+  waves(ctx, W, y + H * 0.06, 3);
+  ctx.restore();
+}
+
+// Kutlama: üstten sarkan işaret bayrakları (iki sıra) ve dalgalar
+function flagsDecor(ctx, W, H, top, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  const row = (y0, sag, n, off) => {
+    const pts = [];
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+      const x = -20 + ((W + 40) * i) / 40;
+      const y = y0 + Math.sin((i / 40) * Math.PI) * sag;
+      pts.push([x, y]);
+      if (i) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    for (let k = 0; k < n; k++) {
+      const [x, y] = pts[Math.round(((k + off) / n) * 40)] || pts[40];
+      const w = W / n / 1.7;
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2, y);
+      ctx.lineTo(x + w / 2, y);
+      ctx.lineTo(x, y + w * 1.15);
+      ctx.closePath();
+      ctx.fill();
+    }
+  };
+  const y = top ? H * 0.5 : H * 0.2;
+  row(y, H * 0.1, 9, 0.5);
+  row(y + H * 0.1, H * 0.12, 8, 0.5);
+  waves(ctx, W, top ? H * 0.9 : H * 0.48, 3);
   ctx.restore();
 }
 
@@ -324,8 +408,9 @@ function compassDecor(ctx, W, H, top, color) {
   ctx.restore();
 }
 
-// Fotoğraf yokken zemindeki çizim türe göre: duyuru yelkenli, sonuç kupa, antrenman parkur, kulüp çapa, diğer pusula
-const DECORS = { duyuru: sailDecor, sonuc: trophyDecor, antrenman: courseDecor, kulup: anchorDecor, diger: compassDecor };
+// Fotoğraf yokken zemindeki çizim türe göre: yarış duyurusu yelkenli, sonuç kupa, antrenman parkur, duyuru deniz feneri,
+// kayıt küçük yelkenliler, kulüp çapa, kutlama işaret bayrakları, diğer pusula
+const DECORS = { duyuru: sailDecor, sonuc: trophyDecor, antrenman: courseDecor, genel: lighthouseDecor, kayit: fleetDecor, kulup: anchorDecor, kutlama: flagsDecor, diger: compassDecor };
 function decor(ctx, W, H, top, color, kind) {
   (DECORS[kind] || sailDecor)(ctx, W, H, top, color);
 }
@@ -359,7 +444,8 @@ function pin(ctx, x, y, r, color) {
 // Yazı bloğunun parçaları ve yükseklikleri (k: küçültme katsayısı; sığmazsa küçülür)
 function measure(ctx, post, maxW, k) {
   const z = (n) => Math.round(n * k);
-  const people = post.people ? post.people.split("\n").slice(0, 4) : [];
+  // Görselde en çok 2 sporcu adı (daha çoksa adlar açıklamada)
+  const people = imagePeople(post.people) ? imagePeople(post.people).split("\n") : [];
   // Görselde vurgulanacak adlar: yarışın sporcuları + sporcu satırlarının baştaki adı
   const names = new Set(
     [...(post.race?.athletes || []).map((a) => a.name), ...people.map((l) => l.split("·")[0])]
