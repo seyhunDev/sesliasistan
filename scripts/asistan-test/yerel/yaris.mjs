@@ -78,6 +78,19 @@ group("Yarış iş listesi")([
   ["talimat temizliği", { desc: "bilinmeyen alan atılır", fn: () => RS.cleanNotice({ venue: "Foça", hack: "x", classes: ["ILCA", 5] }), ok: (r) => r.venue === "Foça" && !("hack" in r) && r.classes.join() === "ILCA" }],
 ]);
 
+// Talimat dosyası: yeniden yüklenen talimat kayıtlı bilgiyle karşılaştırılır (raceNotice.js), künye temizliği (races.js)
+const RN = await import("@/features/athletes/raceNotice");
+const OLD_N = { name: "Foça", startDate: "2026-10-07", endDate: "2026-10-11", notice: { deadlines: [{ date: "2026-10-01", title: "Kayıt son gün" }], schedule: [{ date: "2026-10-07", title: "Kayıt" }], fees: [{ title: "Kayıt", amount: "1.250 TL" }], classes: ["ILCA 4", "ILCA 6"] } };
+group("Talimat dosyası")([
+  ["aynı talimat", { desc: "başka kelimelerle okunsa da fark yok", fn: () => RN.noticeDiff(OLD_N, { name: "Foça Ligi", startDate: "2026-10-07", endDate: "2026-10-11", deadlines: [{ date: "2026-10-01", title: "Online kayıt bitişi" }], schedule: [{ date: "2026-10-07", title: "Kayıt ve ölçüm" }], fees: [{ title: "Kayıt ücreti", amount: "1250 TL" }], classes: ["ilca 4", "ILCA6"] }).length, ok: (r) => r === 0 }],
+  ["tarih farkı", { desc: "yarış tarihi ve yeni son tarih", fn: () => RN.noticeDiff(OLD_N, { startDate: "2026-10-08", endDate: "2026-10-12", deadlines: [{ date: "2026-10-03", title: "Kayıt son gün" }] }).join(" | "), ok: (r) => r.includes("Yarış tarihi: 7.10-11.10 → 8.10-12.10") && r.includes("Yeni son tarih: 3.10 Kayıt son gün") && r.includes("Artık yok: 1.10 Kayıt son gün") }],
+  ["ücret farkı", { desc: "1.250 TL → 1.500 TL", fn: () => RN.noticeDiff(OLD_N, { deadlines: OLD_N.notice.deadlines, fees: [{ amount: "1.500 TL" }] }).join(), ok: (r) => r === "Ücretler: 1.250 TL → 1.500 TL" }],
+  ["ilk talimat", { desc: "kayıtlı talimat yoksa fark aranmaz (eksik alan fark sayılmaz)", fn: () => RN.noticeDiff({ name: "A" }, { classes: ["Optimist"] }).length, ok: (r) => r === 0 }],
+  ["bilgileri güncelle", { desc: "tarih ve yer talimattan, ad kalır", fn: () => RN.applyNotice({ name: "Foça", city: "İzmir", district: "Foça", startDate: "2026-10-07", endDate: "2026-10-11" }, { name: "TYF Ligi", startDate: "2026-10-08", endDate: "2026-10-12", district: "Çeşme" }, true), ok: (r) => r.name === "Foça" && r.startDate === "2026-10-08" && r.district === "Çeşme" && r.city === "İzmir" }],
+  ["güncellemesiz", { desc: "dolu alanlara dokunulmaz", fn: () => RN.applyNotice({ name: "Foça", startDate: "2026-10-07", endDate: "2026-10-11", city: "", district: "" }, { startDate: "2026-10-08" }).startDate, ok: (r) => r === "2026-10-07" }],
+  ["künye", { desc: "bozuk kimlik atılır", fn: () => [RS.cleanNoticeFile({ id: "a/b" }), RS.cleanNoticeFile({ id: "Ab12", name: "x.pdf", size: "2000", parts: 0 })], ok: ([a, b]) => a === null && b.size === 2000 && b.parts === 1 }],
+]);
+
 // Yarış evrakı (raceDocs.js, budgetDoc.js): yazı yardımcıları ve gerçek PDF üretimi (yazı tipleri public/fonts)
 const RD = await import("@/features/athletes/raceDocs");
 const BD = await import("@/features/athletes/budgetDoc");

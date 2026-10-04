@@ -120,8 +120,30 @@ export function NoticeDeadlines({ n, planned, onPlan }) {
   );
 }
 
-// Talimatın geri kalanı: program, ücretler, konaklama, iletişim, önemli notlar
-export function NoticeDetails({ n, busy, onFile, onText }) {
+const sizeText = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+const dayText = (s) => (s ? day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "");
+
+// Talimat dosyası (PDF): aç, paylaş. Her cihazdan açılır (noticeFile.js)
+export function NoticeFile({ file, opening, onOpen, onShare }) {
+  return (
+    <div className={`${card} flex items-center gap-1 pl-4 pr-1.5`}>
+      <button type="button" onClick={onOpen} disabled={opening} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left disabled:opacity-60">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">{opening ? <Icon name="load" className="size-4 animate-spin" /> : "PDF"}</span>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-semibold">Talimatı aç</b>
+          <span className="block truncate text-[0.8125rem] text-mut">{[file.name, sizeText(file.size), dayText(file.at)].filter(Boolean).join(" · ")}</span>
+        </span>
+      </button>
+      <button type="button" onClick={onShare} disabled={opening} aria-label="Talimatı paylaş" className="grid size-10 shrink-0 place-items-center text-acc disabled:opacity-60">
+        <Icon name="up" className="size-5" />
+      </button>
+    </div>
+  );
+}
+
+// Talimatın geri kalanı: program, ücretler, konaklama, iletişim, önemli notlar.
+// file: saklanan talimat dosyası; yoksa (eski yarışlarda bilgiler okunmuş ama dosya saklanmamış) yükleme uyarısı çıkar
+export function NoticeDetails({ n, busy, onFile, onText, file, opening, onOpen, onShare }) {
   if (!n) return null;
   const days = [];
   for (const s of n.schedule || []) {
@@ -131,10 +153,21 @@ export function NoticeDetails({ n, busy, onFile, onText }) {
   }
   return (
     <>
+      <Label>TALİMAT</Label>
+      {file ? (
+        <NoticeFile file={file} opening={opening} onOpen={onOpen} onShare={onShare} />
+      ) : (
+        <NoticeUpload
+          busy={busy}
+          onFile={onFile}
+          onText={onText}
+          title="Talimat dosyası kayıtlı değil"
+          sub="Bilgiler daha önce okundu ama dosyanın kendisi saklanmamıştı. Aynı talimatı yükle; saklarım, okunanla karşılaştırırım, fark varsa söylerim."
+        />
+      )}
       {(n.summary || n.organizer || n.venue || n.classes?.length > 0) && (
         <>
-          <Label>TALİMAT</Label>
-          <div className={`${card} space-y-1.5 px-4 py-3 text-[0.875rem]`}>
+          <div className={`${card} mt-2.5 space-y-1.5 px-4 py-3 text-[0.875rem]`}>
             {n.summary && <p className="leading-relaxed">{n.summary}</p>}
             {[["Düzenleyen", n.organizer], ["Yer", n.venue], ["Sınıflar", n.classes?.join(", ")]].map(
               ([k, v]) =>
@@ -241,9 +274,9 @@ export function NoticeDetails({ n, busy, onFile, onText }) {
         </>
       )}
 
-      <div className="mt-4">
-        <NoticeUpload busy={busy} onFile={onFile} onText={onText} title="Talimatı yeniden yükle" sub="Güncel talimat gelince yükle; program ve son tarihler yenilenir, girdiğin bilgiler korunur." />
-      </div>
+      {file && <div className="mt-4">
+        <NoticeUpload busy={busy} onFile={onFile} onText={onText} title="Talimatı yeniden yükle" sub="Güncel talimat gelince yükle; program ve son tarihler yenilenir, girdiğin bilgiler korunur. Fark varsa önce gösteririm." />
+      </div>}
     </>
   );
 }
