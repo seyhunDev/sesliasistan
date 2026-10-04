@@ -1,2 +1,0 @@
-## Mac ↔ telefon
-- Notlar çakışmasın diye (Seyhun: "NOTLAR.md çakışması hatasını çok alıyorum, almayalım artık"): thread'ler NOTLAR.md'ye doğrudan yazmaz, her iş `notlar/yeni/YYYY-AA-GG-konu.md` dosyası ekler (biçim `notlar/yeni/README.md`). Mac'te `npm run gonder` (ya da `npm run notlar`) bu dosyaları NOTLAR.md'nin aynı adlı bölümlerinin en üstüne taşır ve siler (`scripts/notlar-topla.mjs`). Dosya adları farklı olduğu için paralel PR'lar artık çakışmaz. Kural CLAUDE.md'de.
