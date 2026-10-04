@@ -38,7 +38,7 @@ import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { KIND, PAGES, buildPatch, describeAction, isEnd, isNo, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
+import { KIND, PAGES, buildPatch, describeAction, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
 import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
@@ -95,6 +95,7 @@ const groupOf = (t, mine = []) => {
   const g = /^aile/.test(s) ? "family" : /^(sporcu|veli)/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
   return mine.includes(g) ? g : "";
 };
+const MORE = "Başka bir isteğin var mı?";
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
@@ -289,6 +290,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
   const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
 
+  // İşler bitince (son işten sonra) asistan "Başka bir isteğin var mı?" diye sorar; "yok/hayır" denirse kapanır
+  const askedMore = useRef(false);
+  function done(message, extra = {}, viaVoice = false) {
+    reply(`${message.trim()} ${MORE}`, extra, viaVoice);
+    askedMore.current = true;
+  }
+
   function reply(message, extra = {}, viaVoice = false) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
     // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
@@ -442,12 +450,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
     const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
     if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} sıraya alındı, internet gelince kaydedilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
-    reply(r.queued ? `${lead}Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
+    done(r.queued ? `${lead}Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
     if (queue.current.length) return nextStep(viaVoice, "Kaydetmedim. ");
-    reply("Tamam, kaydetmedim.", { engine: "local" }, viaVoice);
+    done("Tamam, kaydetmedim.", { engine: "local" }, viaVoice);
   }
   // Tam ekranda düzenle: taslaklar yeni kayıt penceresine taşınır
   function editDraftsFull() {
@@ -592,6 +600,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (items.length) return startDrafts(items, s, msg, r.source, viaVoice, lead);
       if (nextStep(viaVoice, lead, steps.length === 1 && steps[0].actions && /\?\s*$/.test(msg) && !lead ? msg : "")) return;
       const show = now.touched.filter((x) => find(x.kind, x.id));
+      if (now.done) return done(lead.trim() || "Tamamdır.", { show, engine: r.source }, viaVoice);
       return reply(lead.trim() || (now.missing ? "Bunu kayıtlarda bulamadım." : "Tamamdır."), { show, engine: r.source }, viaVoice);
     }
     // Gönderim yalnızca kartta onayla olur: yapay zeka "gönderdim" dese de gerçekte gönderilmediyse bunu söyleme
@@ -681,6 +690,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler")
     if (isEnd(s)) {
       tts.speak("Görüşürüz.");
+      finish(true);
+      return;
+    }
+    // "Başka bir isteğin var mı?" sorusuna "yok", "hayır" cevabı sohbeti bitirir
+    const more = askedMore.current;
+    askedMore.current = false;
+    if (more && isNoMore(s)) {
+      tts.speak("Tamam, görüşürüz.");
       finish(true);
       return;
     }
@@ -1040,7 +1057,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         if (!opened) return reply("WhatsApp'ı açamadım; karttaki WhatsApp düğmesine dokun.", { engine: "local" }, fromText && convo.current);
         setCards((c) => ({ ...c, pending: null, awaiting: false }));
         if (nextStep(fromText && convo.current, "WhatsApp'ta açtım. ")) return;
-        return reply(`WhatsApp'ta ${label} için açtım; orada gönder'e dokun.`, { engine: "local" }, fromText && convo.current);
+        return done(`WhatsApp'ta ${label} için açtım; orada gönder'e dokun.`, { engine: "local" }, fromText && convo.current);
       }
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
       setSteps([]);
@@ -1051,7 +1068,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         stepsEnd(ok);
         toast(ok ? "Mesaj gönderildi" : sendErrorText());
         if (nextStep(fromText && convo.current, ok ? "Gönderdim. " : "Mesajı gönderemedim. ")) return;
-        return reply(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
+        return (ok ? done : reply)(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
       }
       stepTo(`Mesaj ${team ? `${label} grubuna` : label} gönderiliyor`);
       const ok = await chatSend?.(cid, body, { create });
@@ -1060,7 +1077,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       toast(ok ? "Mesaj gönderildi" : "Mesaj gönderilemedi");
       navigator.vibrate?.([10, 40, 10]);
       if (nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
-      return reply(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
+      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
     }
     let n = 0;
     for (const a of pend.actions) {
@@ -1082,7 +1099,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     navigator.vibrate?.([10, 40, 10]);
     setCards((c) => ({ ...c, pending: null, awaiting: false }));
     if (nextStep(fromText && convo.current, n ? (del ? "Sildim. " : "Yaptım. ") : "O kayıtları bulamadım. ")) return;
-    reply(n ? (del ? "Sildim." : "Tamamdır, yaptım.") : "O kayıtları bulamadım.", { engine: "local" }, fromText && convo.current);
+    (n ? done : reply)(n ? (del ? "Sildim." : "Tamamdır, yaptım.") : "O kayıtları bulamadım.", { engine: "local" }, fromText && convo.current);
   }
 
   function cancelPending(fromText = false) {
@@ -1094,7 +1111,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
     queue.current = [];
-    reply(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => a.op === "delete") ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+    done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => a.op === "delete") ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
   }
 
   // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
@@ -1925,7 +1942,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                   onClick={() => {
                     setTurns((p) => [...p, { role: "user", text: "WhatsApp'ta gönder", chip: true }]);
                     setCards((c) => ({ ...c, pending: null, awaiting: false }));
-                    if (!nextStep(false, "WhatsApp'ta açtım. ")) reply(`WhatsApp'ta ${cards.pending.send.label} için açtım; orada gönder'e dokun.`, { engine: "local" });
+                    if (!nextStep(false, "WhatsApp'ta açtım. ")) done(`WhatsApp'ta ${cards.pending.send.label} için açtım; orada gönder'e dokun.`, { engine: "local" });
                   }}
                   className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]"
                 >
