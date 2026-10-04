@@ -202,31 +202,46 @@ select {
 .dome .bg-acc { background-color: #fff; color: var(--deep); }
 .dome ::placeholder { color: rgba(255, 255, 255, .55); }
 /* Tepedeki ışık: kubbenin içinden yayılan yumuşak parıltı */
-.dome-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 46% at 50% 0%, rgba(190, 245, 224, .38), transparent 70%); opacity: .7; animation: domebreath 5s ease-in-out infinite; transition: opacity .4s ease; }
+@property --tint { syntax: "<color>"; inherits: true; initial-value: rgba(190, 245, 224, .38); }
+.dome { --tint: rgba(190, 245, 224, .38); transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease, --tint .35s ease; }
+.dome[data-state="listening"] { --tint: rgba(255, 140, 120, .42); }
+.dome[data-state="busy"] { --tint: rgba(255, 210, 120, .4); }
+.dome[data-state="speaking"] { --tint: rgba(130, 200, 255, .42); }
+.dome-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 46% at 50% 0%, var(--tint), transparent 70%); opacity: .7; animation: domebreath 5s ease-in-out infinite; transition: opacity .4s ease; }
 .dome[data-state="listening"] .dome-glow { animation: none; opacity: calc(.75 + var(--lvl) * .25); transform: scale(calc(1 + var(--lvl) * .25)); transform-origin: 50% 0; transition: transform .12s ease-out; }
 .dome[data-state="busy"] .dome-glow { animation: domedrift 2.4s ease-in-out infinite alternate; }
 .dome[data-state="speaking"] .dome-glow { animation: domebeat 1.3s ease-in-out infinite; }
 /* Yay: üst kenar boyunca ince ışık çizgisi; düşünürken üzerinde ışık akar */
 .dome-rim { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: var(--arc); overflow: visible; pointer-events: none; }
 .dome-rim path { fill: none; vector-effect: non-scaling-stroke; }
-.dome-rim .rim { stroke: rgba(205, 248, 232, .85); stroke-width: 1.5; animation: domebreath 5s ease-in-out infinite; }
+.dome-rim .rim { stroke: rgba(205, 248, 232, .85); stroke-width: 1.5; transition: stroke .35s ease; animation: domebreath 5s ease-in-out infinite; }
 .dome-rim .flow { stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 72px 400vw; opacity: 0; filter: drop-shadow(0 0 3px rgba(205, 248, 232, .9)); }
-.dome[data-state="listening"] .dome-rim .rim { animation: none; opacity: 1; stroke-width: 2; }
-.dome[data-state="busy"] .dome-rim .flow { opacity: 1; animation: rimflow 1.5s linear infinite; }
-.dome[data-state="speaking"] .dome-rim .rim { animation: domebeat 1.3s ease-in-out infinite; }
+.dome[data-state="listening"] .dome-rim .rim { animation: none; opacity: 1; stroke-width: 2; stroke: #ffb3a8; }
+.dome[data-state="busy"] .dome-rim .flow { opacity: 1; animation: rimflow 1.5s linear infinite; stroke: #ffe2a3; filter: drop-shadow(0 0 3px rgba(255, 205, 110, .9)); }
+.dome[data-state="speaking"] .dome-rim .rim { animation: domebeat 1.3s ease-in-out infinite; stroke: #b5e0ff; }
 @keyframes domebreath { 0%, 100% { opacity: .5; } 50% { opacity: .9; } }
 @keyframes domebeat { 0%, 100% { opacity: .65; } 30% { opacity: 1; } }
 @keyframes domedrift { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
 @keyframes rimflow { from { stroke-dashoffset: 72px; } to { stroke-dashoffset: calc(-100vw - 8px); } }
 
-/* Ses ışığı (kubbenin tepesindeki tek düğme): beyaz disk, içinde ses dalgası. Simge yok; durumu dalga anlatır.
-   boşta dalga yavaşça nefes alır · dinlerken sesle yükselir · düşünürken çevresinde ışık döner · konuşurken dalga atar */
-.vlight { position: relative; display: grid; place-items: center; border-radius: 9999px; --lvl: 0; -webkit-tap-highlight-color: transparent; transition: transform .15s ease-out; transform: scale(calc(1 + var(--lvl) * .1)); }
-.vlight .vl-halo { position: absolute; inset: -30%; border-radius: 9999px; background: radial-gradient(circle, rgba(205, 248, 232, .45), transparent 66%); opacity: .6; transition: opacity .3s ease; }
-.vlight .vl-disc { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 50% 30%, #fff, #e9f7f1 80%); box-shadow: 0 10px 26px -10px rgba(8, 40, 32, .55), inset 0 -2px 6px rgba(31, 90, 75, .12); }
-.vlight .vl-ring { position: absolute; inset: -5px; border-radius: 9999px; opacity: 0; transition: opacity .3s ease; background: conic-gradient(from 0deg, transparent 0 55%, rgba(205, 248, 232, .5) 78%, #fff 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); animation: vlspin 1.1s linear infinite; }
+/* Ses ışığı (kubbenin tepesindeki tek düğme): disk, içinde ses dalgası. Simge ve yazı yok; durumu renk ve dalga anlatır.
+   boşta   beyaz disk, yeşil dalga, yavaşça nefes alır
+   dinliyor mercan kırmızısı disk (kayıt rengi), beyaz dalga sesle yükselir
+   çalışıyor (ses yükleniyor / yapay zekaya gidiyor / cevap bekleniyor) kehribar disk, çevresinde ışık döner
+   konuşuyor gök mavisi disk, beyaz dalga atar
+   Renkler değişkenle verilir (--vl-a üst, --vl-b alt, --vl-w dalga, --vl-h hale); geçiş yumuşak (@property). */
+@property --vl-a { syntax: "<color>"; inherits: true; initial-value: #fff; }
+@property --vl-b { syntax: "<color>"; inherits: true; initial-value: #e9f7f1; }
+@property --vl-h { syntax: "<color>"; inherits: true; initial-value: rgba(205, 248, 232, .45); }
+.vlight { --vl-a: #fff; --vl-b: #e9f7f1; --vl-w: var(--deep); --vl-h: rgba(205, 248, 232, .45); position: relative; display: grid; place-items: center; border-radius: 9999px; --lvl: 0; -webkit-tap-highlight-color: transparent; transition: transform .15s ease-out, --vl-a .35s ease, --vl-b .35s ease, --vl-h .35s ease; transform: scale(calc(1 + var(--lvl) * .1)); }
+.vlight[data-state="listening"] { --vl-a: #ff8a7a; --vl-b: #e0584b; --vl-w: #fff; --vl-h: rgba(255, 128, 110, .6); }
+.vlight[data-state="busy"] { --vl-a: #ffd987; --vl-b: #f0a93a; --vl-w: #6b4206; --vl-h: rgba(255, 205, 110, .55); }
+.vlight[data-state="speaking"] { --vl-a: #8fd3ff; --vl-b: #3d97e0; --vl-w: #fff; --vl-h: rgba(120, 195, 255, .55); }
+.vlight .vl-halo { position: absolute; inset: -30%; border-radius: 9999px; background: radial-gradient(circle, var(--vl-h), transparent 66%); opacity: .6; transition: opacity .3s ease; }
+.vlight .vl-disc { position: absolute; inset: 0; border-radius: 9999px; background: radial-gradient(circle at 50% 30%, var(--vl-a), var(--vl-b) 80%); box-shadow: 0 10px 26px -10px rgba(8, 40, 32, .55), inset 0 -2px 6px rgba(31, 90, 75, .12); }
+.vlight .vl-ring { position: absolute; inset: -5px; border-radius: 9999px; opacity: 0; transition: opacity .3s ease; background: conic-gradient(from 0deg, transparent 0 55%, rgba(255, 217, 135, .55) 78%, #fff 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); animation: vlspin 1.1s linear infinite; }
 .vlight .vl-wave { position: relative; display: flex; align-items: center; gap: 4px; height: 42%; }
-.vlight .vl-wave i { display: block; width: 4.5px; height: 100%; border-radius: 9999px; background: var(--deep); transform: scaleY(var(--s, .5)); transform-origin: center; animation: vlidle 2.2s ease-in-out infinite; }
+.vlight .vl-wave i { display: block; width: 4.5px; height: 100%; border-radius: 9999px; background: var(--vl-w); transition: background-color .35s ease; transform: scaleY(var(--s, .5)); transform-origin: center; animation: vlidle 2.2s ease-in-out infinite; }
 .vlight .vl-wave i:nth-child(1) { --m: .45; --s: .3; animation-delay: -.2s; }
 .vlight .vl-wave i:nth-child(2) { --m: .8; --s: .55; animation-delay: -.6s; }
 .vlight .vl-wave i:nth-child(3) { --m: 1; --s: .85; animation-delay: -1s; }
