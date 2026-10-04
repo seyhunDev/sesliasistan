@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanPeople, cleanRace, cleanTags, racePeople, raceSub, raceWish, withClass } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish, withClass } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -11,15 +11,23 @@ export const runtime = "nodejs";
 // Kaydetmez; telefon kaydeder. Görsel telefonda çizilir, buraya fotoğraf gelmez. Yalnız ana hesap.
 const SYSTEM = `Sen Dikili Yelken Spor Kulübü'nün (İzmir, Dikili) Instagram hesabını yöneten deneyimli bir sosyal medya editörüsün.
 Kullanıcı ne paylaşmak istediğini Türkçe anlatır (ses tanıma metni olabilir, yazım hataları olabilir). Gönderi türü ve varsa yarış bilgisi verilir.
-Türler: duyuru (yaklaşan yarış), sonuc (yarış sonucu, başarı), antrenman, kulup (kulüp haberi, kayıt, etkinlik), diger.
+Gönderi türü verilir; açıklama, başlık, etiket ve dilek HER ZAMAN bu türe göre yazılır (tür değişince yazılar da değişir):
+- duyuru (Yarış duyurusu): yaklaşan yarış; yarışın adı, yeri, tarihi, sınıflar, katılan sporcular; sonunda başarı dileği.
+- sonuc (Yarış sonucu): biten yarış; derece verildiyse onu öne çıkar (uydurma), tebrik ve teşekkür.
+- antrenman: antrenmanın konusu, hava/rüzgâr, çalışılanlar, emek; motive edici.
+- genel (Duyuru): kulübün genel duyurusu (toplantı, değişiklik, bilgilendirme); net ve resmi-samimi, ne/ne zaman/nerede.
+- kayit (Kayıt / yelken okulu): yeni sporcu kaydı, yelken okulu; kimler katılabilir, nasıl başvurulur, iletişim çağrısı.
+- kulup (Kulüp haberi): kulüpten haber, etkinlik, ziyaret, bağış, başarı dışı gelişmeler.
+- kutlama (Kutlama / özel gün): bayram, özel gün, doğum günü, yıl dönümü; kısa ve içten kutlama.
+- diger: anlatılana göre.
 
 Yaz:
 - headline: görselin üstündeki büyük yazı, 2-6 kelime, çarpıcı ve kısa ("Foça'da Yelken Ligi", "Kürsüdeyiz!", "Rüzgâr Bizden Yana"). Yarış verildiyse yarışın adından ve sınıfından kısa bir başlık; başlıkta HER ZAMAN yarışın sınıfı geçer (birden çok ILCA varsa yalnız "ILCA"): "ILCA TYF Ligi Başlıyor", "Optimist TYF Ligi'nde 1. Ayak Yarışları", "ILCA ve Optimist Foça'da". Emoji yok.
 - sub: görseldeki alt satır, en çok 50 karakter: yer · tarih ya da kısa bilgi ("Foça · 7-11 Ekim", "ILCA 4 · 2. ayak"). Bilgi yoksa boş.
-- people: görselde başlığın altında çıkacak katılan sporcu satırları (yarışta sporcu verildiyse ya da kullanıcı sporcu andıysa; yoksa boş). Her sporcu bir satır: "Ad Soyad · sınıf · kısa açıklama", en çok 45 karakter; kısa açıklama yalnız anlatılandan (ör. "2. oldu", "ilk yarışı", "kaptan"), bilgi yoksa yalnız ad ve sınıf. En çok 4 satır; 4'ten çok sporcu varsa ilk satır "8 sporcumuz yarışta", ikinci satır adlar virgülle (yalnız ilk adlar).
+- people: görselde sporcu satırları, YALNIZ 1 ya da 2 sporcu varsa (yarış verilmediyse ve kullanıcı sporcu andıysa): her sporcu bir satır "Ad Soyad · sınıf · kısa açıklama", en çok 45 karakter; kısa açıklama yalnız anlatılandan. 3 ve daha çok sporcu varsa people BOŞ, adlar görselde değil açıklamada geçer.
 - wish: görselin en altındaki kısa dilek/çağrı satırı, en çok 40 karakter, ünlemle biter ("Sporcularımıza başarılar!", "Tebrikler şampiyonlar!", "Kayıtlar başladı, bekleriz!"). Emoji yok.
-- tag: görseldeki küçük etiket, 1-2 kelime büyük harf (YARIŞ, SONUÇ, ANTRENMAN, KAYITLAR AÇIK, DUYURU).
-- caption: Instagram açıklaması, sıcak ve samimi kulüp dili, 2-4 kısa paragraf, toplam 350-700 karakter; 2-5 uygun emoji (⛵🌊🏆💪). Gerçek olmayan bilgi, sıralama, puan, isim UYDURMA; yalnız anlatılanı ve verileni kullan. Sporcu adı verilmişse kullan, verilmemişse "sporcularımız" de. Gerekirse sonda kısa bir çağrı (takipte kalın, tebrikler, destek için teşekkürler). Hashtag'leri caption'a yazma.
+- tag: görseldeki küçük etiket, 1-2 kelime büyük harf, türe uygun (YARIŞ DUYURUSU, YARIŞ SONUCU, ANTRENMAN, DUYURU, KAYITLAR AÇIK, KULÜP HABERİ, KUTLAMA).
+- caption: Instagram açıklaması, sıcak ve samimi kulüp dili, 2-4 kısa paragraf, toplam 350-700 karakter; 2-5 uygun emoji (⛵🌊🏆💪). Gerçek olmayan bilgi, sıralama, puan, isim UYDURMA; yalnız anlatılanı ve verileni kullan. Sporcu adı verilmişse kullan, verilmemişse "sporcularımız" de. 3 ve daha çok sporcu varsa açıklamada TÜM sporcuların adı (sınıfıyla) geçsin: ayrı bir paragrafta, her sporcu bir satırda "⛵ Ad Soyad (Sınıf)" ya da sonucu verildiyse "🏆 Ad Soyad (Sınıf) · 2." Gerekirse sonda kısa bir çağrı (takipte kalın, tebrikler, destek için teşekkürler). Hashtag'leri caption'a yazma.
 - hashtags: 8-12 Türkçe/İngilizce etiket, # olmadan: dikiliyelken, dikili, yelken, sailing ve konuya uygun olanlar (optimist, ilca, foça, izmir, yelkenligi gibi).
 - Yarış duyurusunda açıklamada yarışın adı, yeri, tarihi, katılan sınıflar ve sporcular geçsin, sonunda sporculara başarı dileği olsun ("Sporcularımıza başarılar dileriz! ⛵"). Sonuçta tebrik ve teşekkür.
 - "İstenen değişiklik" verilirse yalnız onu uygula, gerisini mevcut haliyle koru: "daha kısa", "emoji olmasın" açıklamayı; "başlığı … yap" başlığı; "Mete 2. oldu diye ekle" ilgili yazıları değiştirir. Değişiklikte verilen bilgi yeni gerçektir, kullan.`;
@@ -64,7 +72,7 @@ async function handle(request) {
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Yazıları elle yazabilirsin.", 503);
   const user = [
     `Bugün: ${S(body?.today, 10) || new Date().toISOString().slice(0, 10)}`,
-    `Tür: ${kind}`,
+    `Tür: ${kind} (${kindOf(kind)[1]})`,
     race &&
       `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`, race.athletes?.length > 0 && `Katılan sporcular: ${race.athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" (") + (a.cls ? ")" : "")).join(", ")}`].filter(Boolean).join("\n")}`,
     topic && `Kullanıcının anlattığı:\n"""\n${topic}\n"""`,
@@ -82,10 +90,12 @@ async function handle(request) {
       // Yarış bağlıysa alt satır kalıp cümle (sporcumuz/sporcularımız + yer); 1-2 sporcunun adı orada geçtiği için ayrı satır yok
       // Değişiklik isteğinde (yarış bağlıyken) alt satır ve dilek yalnız açıkça istenirse değişir
       sub: race && (!ask || !/alt ?(satır|yazı)|cümle/i.test(ask)) ? (ask && S(cur.sub, 200)) || raceSub(race, kind) : S(raw?.sub, 200),
-      people: race?.athletes?.length ? (race.athletes.length > 2 ? cleanPeople(raw?.people) || racePeople(race) : "") : cleanPeople(raw?.people),
+      // Yarış bağlıyken görselde sporcu satırı yok (adlar alt satırda ya da açıklamada); yarışsızda en çok 2 sporcu
+      people: race ? "" : imagePeople(raw?.people),
       // Yarış bağlıysa dilek kalıp (sporcumuza/sporcularımıza başarılar, sonuçta tebrik)
       wish: race && (!ask || !/dilek|başarı|tebrik|son satır/i.test(ask)) ? (ask && S(cur.wish, 60)) || raceWish(race, kind) : S(raw?.wish, 60),
-      tag: S(raw?.tag, 18),
+      // Etiket türün etiketi (YARIŞ DUYURUSU…); asistana "etiketi … yap" denirse yapay zekanınki
+      tag: (/etiket/i.test(ask) && S(raw?.tag, 18)) || kindOf(kind)[3] || S(raw?.tag, 18),
       caption: L(raw?.caption, 2200),
       hashtags: cleanTags(raw?.hashtags),
     };
