@@ -52,6 +52,7 @@ import { matchPerson } from "@/lib/names";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername, waPhone } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
+import { quickAnswer } from "@/lib/ai/rules";
 import { isMulti, jobsIn, keepNotes, taskList } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
@@ -268,6 +269,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!q.busy) pumpSay();
   };
   const clearSay = () => (sayQ.current = { busy: false, items: [], gen: sayQ.current.gen + 1, since: 0 });
+  const draftSrc = useRef(""); // taslakları doğuran cümle (öğrenme kaydı ve "Düzenle" için; sohbetin ilk cümlesi değil)
   const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
   const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
 
@@ -316,6 +318,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // lead: görev listesinde önceki işlerin sonucu ("Tamamladım: …"); cevabın başına gelir
   function startDrafts(items, s, msg, engine, viaVoice, lead = "") {
     // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
+    draftSrc.current = s;
     let next = applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -324,6 +327,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     reply(`${lead}${draftSay(/^tamam\.?$/i.test(msg) ? "" : msg, next)}`, { engine }, viaVoice);
   }
   async function refineDrafts(s, viaVoice) {
+    // "Saat kaçta olsun?" → "10'da": kısa cevap yerelde taslağa yazılır, yapay zekaya yeniden gidilmez
+    const quick = quickAnswer(s, drafts, todayStr(), firstNeed(drafts));
+    if (quick) {
+      ++runId.current;
+      ctrl.current?.abort();
+      countHit("local");
+      const need = firstNeed(quick);
+      const next = need ? quick.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d)) : quick;
+      if (ready(next)) return saveDraftsNow(viaVoice, next);
+      setDrafts(next);
+      return reply(draftSay("", next), { engine: "local" }, viaVoice);
+    }
     const id = ++runId.current;
     ctrl.current?.abort();
     const c = new AbortController();
@@ -398,7 +413,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setDrafts(list);
       return reply("Kaydedemedim, bir sorun çıktı. Taslak duruyor; tekrar “kaydet” diyebilirsin.", { engine: "local" }, viaVoice);
     }
-    const said = turns.find((t) => t.role === "user" && !t.chip)?.text;
+    // Öğrenme kaydı: taslağı doğuran cümle (önceden sohbetin İLK cümlesi alınıyordu; ikinci işte yanlış cümle öğreniliyordu)
+    const said = draftSrc.current || [...turns].reverse().find((t) => t.role === "user" && !t.chip)?.text;
     if (said) record(said, labelFromItems(list), "user");
     const parts = [r.plans && `${r.plans} plan`, r.tasks && `${r.tasks} görev`, r.notes && `${r.notes} not`].filter(Boolean);
     const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
@@ -419,7 +435,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
   // Tam ekranda düzenle: taslaklar yeni kayıt penceresine taşınır
   function editDraftsFull() {
-    const said = turns.find((t) => t.role === "user" && !t.chip)?.text || heard;
+    const said = draftSrc.current || heard;
     const last = [...turns].reverse().find((t) => t.role === "assistant")?.text || "";
     openAdd({ prefill: { text: said, items: drafts, message: last, engine: "local" } });
     setDrafts([]);
@@ -826,6 +842,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     ctrl.current?.abort();
     const c = new AbortController();
     ctrl.current = c;
+    // Bağlantı takılırsa (iPhone Wi-Fi ↔ hücresel geçişi) istek dakikalarca asılı kalmasın: 25 sn sonra vazgeçilir, yedek yola geçilir
+    let late = false;
+    const limit = setTimeout(() => {
+      late = true;
+      c.abort();
+    }, 25000);
     setPhase("thinking");
     // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
     // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
@@ -865,8 +887,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       setPhase("preparing");
       handle(r, ask, viaVoice); // bekleme yok: işler hemen yapılır
-    } catch (e) {
+    } catch (err) {
       if (id !== runId.current) return;
+      const e = late ? new Error("Yapay zeka çok geç kaldı, bağlantını kontrol edip tekrar dene.") : err;
       setStreamText("");
       streamSaid.current = "";
       inflight.current = null;
@@ -913,9 +936,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (lq) reply(lq.show.length ? lq.message : `Yapay zekaya şu an ulaşamadım. ${lq.message}`, { show: lq.show, engine: "rules" }, viaVoice);
       else setError(e.message || "Asistan şu an yanıt vermedi");
     } finally {
+      clearTimeout(limit);
       if (id === runId.current) {
         setPhase("idle");
-            setStreamText("");
+        setStreamText("");
       }
     }
   }

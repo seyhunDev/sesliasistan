@@ -337,3 +337,23 @@ export function refineRules(text, drafts, today, name = "", append = true) {
   if (!say.length) return nope;
   return { items, message: `Tamamdır${name ? " " + name : ""}, ${say.join(", ")}.` };
 }
+
+// Asistanın "Saat kaçta olsun?" / "Hangi gün olsun?" sorusuna kısa cevap ("10'da", "akşam 6", "yarın", "tüm gün"):
+// yapay zekaya yeniden gitmeden (2-3 sn kazanç) taslağa yazılır. Yalnız sorulan eksiği dolduran kısa cevaplar;
+// başka bir şey söylendiyse ya da saat belirsizse ("3'te": gece mi öğleden sonra mı) null döner, yapay zeka bakar.
+const PART_OF_DAY = /(sabah|gece|öğle|akşam|ikindi|öğleden sonra)/i;
+export function quickAnswer(text, drafts, today, need) {
+  const raw = normalizeSpeech(String(text || "")).trim();
+  if (!need || !raw || raw.split(/\s+/).length > 4 || /\?|(^| )(değil|yok|hayır|vazgeç|iptal|sil|ekle|yaz|gönder|mesaj|not)( |$)/i.test(raw)) return null;
+  const r = refineRules(raw, drafts.map((d) => ({ ...d })), today);
+  if (!r.message || r.items.length !== drafts.length) return null;
+  const d = r.items[need.idx];
+  if (!d) return null;
+  if (need.kind === "date" && !d.date) return null;
+  if (need.kind === "time" && !d.time && !d.allDay) return null;
+  // Saat 1-6 (sabah/gece denmedi) belirsiz: yapay zekaya bırak
+  if (need.kind === "time" && d.time && +d.time.slice(0, 2) < 7 && !PART_OF_DAY.test(raw)) return null;
+  // Yalnız sorulan kayıt değişmeli (başka kayda giden cevap yapay zekaya)
+  if (r.items.some((x, i) => i !== need.idx && JSON.stringify(x) !== JSON.stringify(drafts[i]))) return null;
+  return r.items;
+}

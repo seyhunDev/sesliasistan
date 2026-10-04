@@ -417,3 +417,18 @@ group("Yoklama sayfasında asistan")([
   ["Ali ve Zeynep geldi, Emre'nin velisine haber ver", JB("yoklamadan sonra mesaj da yapılır", true)],
   ["Ali ve Zeynep geldi, kalanlar gelmedi", JB("yalnız yoklama", false)],
 ]);
+
+// ---- Hızlı cevap: "Saat kaçta olsun?" sorusuna kısa cevap yapay zekaya gitmeden taslağa yazılır ----
+const { quickAnswer } = await import("@/lib/ai/rules");
+const qPlan = [{ type: "plan", title: "Antrenman", date: tom, time: "", endDate: "", allDay: false, place: "" }];
+const qNoDate = [{ ...qPlan[0], date: "" }];
+const QA = (desc, list, kind, ok) => ({ desc, fn: (s) => quickAnswer(s, list, today, { idx: 0, kind })?.[0] || null, ok });
+const QT = (time) => QA(`saat ${time}`, qPlan, "time", (r) => r?.time === time);
+const QN = (desc, list = qPlan, kind = "time") => QA(`${desc} → yapay zekaya`, list, kind, (r) => r === null);
+group("Hızlı cevap (saat/gün)")([
+  ["10'da", QT("10:00")], ["saat 10", QT("10:00")], ["akşam 6", QT("18:00")], ["10.30", QT("10:30")], ["on buçukta", QT("10:30")],
+  ["tüm gün", QA("tüm gün", qPlan, "time", (r) => r?.allDay === true && !r.time)],
+  ["yarın", QA("gün yarın", qNoDate, "date", (r) => r?.date === tom)],
+  ["Ali de gelsin", QN("saat değil")], ["10'da değil 11'de", QN("düzeltme")], ["saat 10 ve Ali'ye yaz", QN("başka iş de var")],
+  ["yarın", QN("gün söylendi ama saat soruldu")], ["bilmiyorum", QN("anlaşılmadı", qNoDate, "date")],
+]);
