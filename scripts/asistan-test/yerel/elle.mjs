@@ -325,6 +325,12 @@ group("Instagram tasarım")([
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],
 ]);
 
+// Afiş hazır arka planları (postScenes.js): her türün kendi sahnesi var
+const SC = await import("@/features/posts/postScenes");
+group("Instagram hazır arka planlar")([
+  ["her türe sahne", F("8 türün hepsinde sahne", () => PM.KINDS.every(([k]) => SC.SCENE_KINDS.includes(k)))],
+]);
+
 // Instagram hikâye boyutu (postModel.js)
 const PMs = await import("@/features/posts/postModel");
 group("Instagram hikâye")([

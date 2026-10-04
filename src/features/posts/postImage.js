@@ -1,6 +1,7 @@
 "use client";
 
 import { formatOf, imagePeople, safeOf, tallOf, themeOf } from "./postModel";
+import { drawScene } from "./postScenes";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -709,14 +710,16 @@ function fade(ctx, W, H, top, rgb, a, reach) {
   ctx.fillRect(0, 0, W, H);
 }
 
+const VIVID = { deniz: "#f6c945", gece: "#7fe0cf", gun: "#ffc76b", kum: "#f6c945", mor: "#f7b2cf", turkuaz: "#ffd166", bordo: "#ffb86b", antrasit: "#f2c94c" };
+
 async function drawAfis(ctx, post, photo, W, H) {
-  const [, , c1, c2, accent] = themeOf(post.theme);
+  const [, , , c2, accent] = themeOf(post.theme);
   const kum = post.theme === "kum";
   const base = kum ? "#1f5a4b" : c2;
-  const acc = kum ? "#e9c46a" : accent;
+  // Afiş'te canlı vurgu (örnekteki altın sarısı gibi); renk seçimi vurguyu değiştirir
+  const acc = VIVID[post.theme] || accent;
   const top = post.pos === "top";
   const { t: safeT, b: safeB, r: safeR } = safeOf(post.format);
-  const night = mix(base, "#08131c", 0.55);
 
   if (photo) {
     cover(ctx, photo, W, H, post.focus);
@@ -732,22 +735,15 @@ async function drawAfis(ctx, post, photo, W, H) {
     ctx.fillStyle = g2;
     ctx.fillRect(0, 0, W, 360 + safeT);
   } else {
-    // Gökyüzünden denize koyulaşan zemin, sağ üstte yumuşak ışık
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, mix(c1, base, 0.35));
-    g.addColorStop(0.55, base);
-    g.addColorStop(1, night);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    const r = ctx.createRadialGradient(W * 0.82, H * 0.16, 0, W * 0.82, H * 0.16, W * 0.9);
-    r.addColorStop(0, "rgba(255,255,255,.22)");
-    r.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = r;
-    ctx.fillRect(0, 0, W, H);
-    // Türün çizimi, yazının karşı tarafında
-    decor(ctx, W, H, top, "rgba(255,255,255,.1)", post.kind);
-    // Yazının olduğu taraf alttan yukarı yumuşakça koyulaşır
-    fade(ctx, W, H, top, night, 0.92, 0.7);
+    // Türe uygun hazır sahne (gökyüzü, deniz, yelkenliler…), yazının olduğu taraf alttan yukarı yumuşakça koyulaşır
+    drawScene(ctx, W, H, post.kind, top);
+    fade(ctx, W, H, top, "rgb(5,12,24)", 0.9, 0.62);
+    // Logo satırı okunsun diye üst kenar hafif koyu
+    const g2 = ctx.createLinearGradient(0, 0, 0, 300 + safeT);
+    g2.addColorStop(0, "rgba(5,12,24,.45)");
+    g2.addColorStop(1, "rgba(5,12,24,0)");
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, 300 + safeT);
   }
 
   // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf)
