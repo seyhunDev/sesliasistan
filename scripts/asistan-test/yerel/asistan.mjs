@@ -2,7 +2,7 @@
 // Sayfa/sohbet açma, kayıt ekleme, özet, tamamlama, onaylar, ön cevap, yarış açma, alışveriş, geri al.
 // Yalnızca hesaplama yapar; veritabanına ve yapay zekaya dokunmaz.
 import { localCommand } from "@/lib/commands";
-import { isYes, isNo, localQuery, looksLikeCreate, isEnd } from "@/lib/assistantLocal";
+import { isYes, isNo, localQuery, looksLikeCreate, isEnd, isNoMore } from "@/lib/assistantLocal";
 import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
@@ -434,6 +434,11 @@ group("Hızlı cevap (saat/gün)")([
 ]);
 
 // ---- Ön cevap kısa: sonucu uygulama söyler ("Ekledim: …"), aynı şey iki kez okunmaz ----
+const NM = (want) => Y(want ? "sohbet biter" : "yeni istek (bitmez)", isNoMore, want);
+group("Başka isteğin var mı (cevap)")([
+  ["yok", NM(true)], ["hayır", NM(true)], ["yok teşekkürler", NM(true)], ["başka yok", NM(true)], ["gerek yok", NM(true)], ["şimdilik yok", NM(true)], ["hayır sağ ol", NM(true)],
+  ["yok ama Ali'ye yaz", NM(false)], ["evet", NM(false)], ["yarın antrenman ekle", NM(false)], ["hayır yarın değil cuma ekle", NM(false)],
+]);
 group("Kısa ön cevap")([
   ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda yalnız Tamam", (r) => r?.line === "Tamam.")],
   ["tekneleri hazırla görevi ekle", PC("görevde yalnız Tamam", (r) => r?.line === "Tamam.")],
