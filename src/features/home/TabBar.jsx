@@ -13,6 +13,7 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useKind } from "@/features/auth/useKind";
+import { ListenWave } from "@/features/speech/ListenWave";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts } from "@/lib/kinds";
 
@@ -318,7 +319,7 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
           {active && (
             <div
               ref={pane}
-              className="max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem)] overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+              className={`${state === "listening" ? "max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.75rem)]" : "max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem)]"} overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]`}
             >
               <div className="pb-3">
                 <div ref={setSlot} />
@@ -349,6 +350,11 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
                   <Icon name="plus" className="size-6" />
                 </button>
               )}
+            </div>
+          )}
+          {active && state === "listening" && !typing && (
+            <div className="fade-in flex justify-center pb-1 pt-1.5">
+              <ListenWave />
             </div>
           )}
           {bar && tabs && !rec && !active && !typing && (
