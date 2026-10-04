@@ -143,11 +143,13 @@ export function Hearing({ text, listening, solo }) {
   );
 }
 
-// SES IŞIĞI (kubbenin tepesindeki tek düğme, simgesiz): beyaz disk, içinde ses dalgası (globals.css .vlight).
-//   boşta     dalga yavaşça nefes alır                  dokun → dinlemeye başla
-//   dinliyor  dalga sesinle yükselir, ışık güçlenir      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
-//   düşünüyor çevresinde ışık döner, yayda ışık akar     dokun → vazgeç
-//   konuşuyor dalga atar                                 dokun → sözünü kes, dinle
+// SES IŞIĞI (kubbenin tepesindeki tek düğme, simgesiz): disk, içinde ses dalgası (globals.css .vlight). Durum yazıyla
+// değil renkle anlaşılır (disk, hale, kubbenin parıltısı ve yayı aynı renge döner):
+//   boşta     beyaz, dalga yavaşça nefes alır                      dokun → dinlemeye başla
+//   dinliyor  kırmızı, dalga sesinle yükselir                      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   çalışıyor kehribar (ses yükleniyor, yapay zeka düşünüyor),
+//             çevresinde ışık döner, yayda ışık akar               dokun → vazgeç
+//   konuşuyor mavi, dalga atar                                     dokun → sözünü kes, dinle
 // Basılı tut → yaz.
 const LIGHT_LABEL = {
   idle: "Asistan: dokun konuş, basılı tut yaz",
