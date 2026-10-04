@@ -267,6 +267,31 @@ group("Sıralı işler (yapay zeka yanıtı)")([
   ["sıra: kayıt önce", { desc: "kayıt önce", fn: () => ST.orderSteps("takvime yarın 10'da tekne bakımı ekle, sonra Gökhan'a yaz", parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].items && !!r[1].send }],
 ]);
 
+// ---- Not yalnız açıkça istenince: ana işin (plan, görev, yoklama, günlük) yanına kendiliğinden not eklenmez ----
+const { interpretRules } = await import("@/lib/ai/rules");
+const WN = (want) => ({ desc: want ? "not isteği" : "not isteği değil", fn: (s) => ST.wantsNote(s), ok: (r) => r === want });
+const KN = (desc, said, items, keep, exp) => [said, { desc, fn: (s) => ST.keepNotes(items, s, keep).map((d) => d.type).join(","), ok: (r) => r === exp }];
+const RT = (desc, exp) => ({ desc, fn: (s) => interpretRules(s, today).map((d) => d.type).join(","), ok: (r) => r === exp });
+const pn = [{ type: "plan", title: "Antrenman" }, { type: "note", title: "Ali gelecek" }];
+group("Not yalnız istenince")([
+  ["not al malzeme odası dolu", WN(true)],
+  ["notlara Gökhan için malzeme listesi hazırla", WN(true)],
+  ["bunu not olarak kaydet", WN(true)],
+  ["Not: dümen gevşek", WN(true)],
+  ["yoklama oluştur", WN(false)],
+  ["dün 14 not poyrazda start çalıştık", WN(false), "ses tanımanın 'knot' yazışı not değil"],
+  ["yarın 10'da antrenman, Ali gelecek", { desc: "plan + tahmini not → yalnız plan", fn: (s) => ST.keepNotes(pn, s).map((d) => d.type).join(","), ok: (r) => r === "plan" }],
+  ["yarın 10'da antrenman, Ali gelecek, not al", { desc: "not istendi → plan ve not", fn: (s) => ST.keepNotes(pn, s).map((d) => d.type).join(","), ok: (r) => r === "plan,note" }],
+  KN("yoklama cümlesinden tek başına not çıkmaz", "yoklama oluştur", [{ type: "note", title: "Yoklama oluştur" }], 0, ""),
+  KN("tek başına bilgi notu kalır", "malzeme odası dolu", [{ type: "note", title: "Malzeme odası dolu" }], 0, "note"),
+  KN("taslakta önceden olan not korunur", "saat 10 olsun", [{ type: "plan" }, { type: "note" }, { type: "note" }], 1, "plan,note"),
+  ["yoklama oluştur", RT("kurallar yoklamadan not çıkarmaz", "")],
+  ["yarın 16:00 antrenman planla, Ali ve Ayşe gelecek", RT("kurallar planın yanına not eklemez", "task")],
+  ["malzeme odası dolu", RT("yalnız bilgi: not", "note")],
+  ["yoklama oluştur", PC("ön cevap 'not alıyorum' demez", (r) => !/not/.test(r?.line || "") && r?.kind !== "note")],
+  ["yarın 10'da antrenman planla, Ali gelecek", PC("öğrenilmiş plan+not tahmini notu seçtirmez", (r) => r?.kind !== "note")],
+]);
+
 // ---- Antrenman günlüğü yapay zekayla (trainingLog.js): tanıma, eksik bilgi, birleştirme, plan seçimi ----
 const TL = await import("@/lib/trainingLog");
 const WL = (want) => ({ desc: want ? "günlük isteği" : "günlük isteği değil", fn: (s) => TL.wantsLog(s), ok: (r) => r === want });

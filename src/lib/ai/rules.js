@@ -1,5 +1,6 @@
 // Yedek yorumlayıcı: AI anahtarı yokken veya AI hata verdiğinde çalışır.
 import { normalizeSpeech } from "@/lib/speech/normalize";
+import { keepNotes } from "@/lib/steps";
 
 const MONR = "ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık";
 const MONS = MONR.split("|");
@@ -228,12 +229,14 @@ export function interpretRules(text, today) {
     segs.push(...out);
   });
 
-  const merged = [];
+  let merged = [];
   segs.flatMap(expandDates).map((sg) => classify(sg, c)).forEach((d) => {
     const l = merged[merged.length - 1];
     if (l && l.type === "note" && d.type === "note") l.body += ". " + d.body;
     else merged.push(d);
   });
+  // Not açıkça istenmediyse plan/görevin yanındaki tahmini notlar atılır ("yarın 10'da antrenman, Ali de gelecek")
+  merged = keepNotes(merged, text);
 
   const plan = merged.find((d) => d.type === "plan");
   if (plan) {
@@ -306,7 +309,8 @@ export function refineRules(text, drafts, today, name = "", append = true) {
       }
       return nope;
     }
-    return { items: [...items, ...interpretRules(raw, today)], message: "" }; // yeni bir şey söylüyor: listeye ekle
+    // yeni bir şey söylüyor: listeye ekle (not açıkça istenmediyse taslağın yanına not eklenmez)
+    return { items: keepNotes([...items, ...interpretRules(raw, today)], raw, items.filter((d) => d.type === "note").length), message: "" };
   }
 
   const say = [];

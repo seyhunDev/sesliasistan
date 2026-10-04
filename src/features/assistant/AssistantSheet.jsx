@@ -52,7 +52,7 @@ import { matchPerson } from "@/lib/names";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
-import { isMulti, jobsIn, jobsText, orderSteps } from "@/lib/steps";
+import { isMulti, jobsIn, jobsText, keepNotes, orderSteps } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -303,7 +303,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
   }
   function startDrafts(items, s, msg, engine, viaVoice) {
-    let next = applyRepeat(items, s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
+    // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
+    let next = applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     if (ready(next)) return saveDraftsNow(viaVoice, next, msg);
@@ -326,7 +327,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       const r = await interpretText(s, firstName, c.signal, { mode: "create", drafts: known.map((d) => pub(d, staff)), last, history }, staffNames);
       if (id !== runId.current) return;
-      const items = applyRepeat(r.items, s, todayStr()).map((x) => withAssignees(x, s));
+      const items = applyRepeat(keepNotes(r.items, s, known.filter((d) => d.type === "note").length), s, todayStr()).map((x) => withAssignees(x, s));
       let next = items.length ? carry(known, items) : drafts;
       const need = firstNeed(next);
       if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
@@ -520,6 +521,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel();
+    // Not açıkça istenmediyse yapay zekanın başka işin yanına eklediği not atılır (öğrenme verisine de girmez)
+    if (r.items?.length) r = { ...r, items: keepNotes(r.items, s) };
     const msg = (r.message || "").trim();
     record(s, labelFromAI(r), "ai"); // öğrenme verisi
 
@@ -687,7 +690,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
       if (DROP.test(s)) return dropDrafts(viaVoice);
-      if (!QUESTION.test(s)) return refineDrafts(s, viaVoice);
+      // Yoklama cümlesi taslağa eklenmez (not olarak taslağa düşüyordu); aşağıda yoklama olarak yapılır
+      if (!QUESTION.test(s) && !(canSeeAthletes(profile?.email) && wantsAttendance(s))) return refineDrafts(s, viaVoice);
     }
     // Taslak yokken yalnızca "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
     if (!drafts.length && !cards.pending && BARE_SAVE.test(s))

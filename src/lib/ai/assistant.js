@@ -74,8 +74,9 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 
 ## Yeni kayıt (create)
 - plan: belirli bir zamanda olacak etkinlik. task: yapılacak iş, başlık emir kipinde ("Tekneleri hazırla"). note: bilgi veya gözlem.
+- NOT YALNIZ İSTENİRSE: kullanıcı "not al", "not düş", "nota/notlara ekle ya da yaz", "not olarak kaydet" demediyse note OLUŞTURMA; yalnız istenen ana işi yap (plan, görev, mesaj, yoklama, antrenman günlüğü). Ana işin ayrıntıları (katılanlar, çalışılacaklar, hava) ayrı bir nota yazılmaz. Tek istisna: cümle hiçbir iş istemeyip yalnız bir bilgi bildiriyorsa ("malzeme odası dolu") not olur. Not istendiyse hem ana iş hem not yazılır.
 - Tarihleri YYYY-MM-DD, saatleri 24 saatlik HH:MM yaz. Tarih ve SAAT UYDURMA, varsayılan saat ekleme; bilinmiyorsa boş bırak.
-- Tek cümleden birden çok kayıt çıkabilir (bir plan ve o plana bağlı görev); bağlı olanlara linkToPlan true ver. Bağlı görevin tarihi yoksa planın tarihini kullan.
+- Tek cümleden birden çok kayıt çıkabilir (bir plan ve o plana bağlı görev; not yalnız istenirse); bağlı olanlara linkToPlan true ver. Bağlı görevin tarihi yoksa planın tarihini kullan.
 - Plan başlığına yer, saat veya "oluştur" gibi komut kelimesi ekleme; yer place'e gider. category: Antrenman, Toplantı, Kamp, Yarış, Ekipman veya Genel.
 - Bilgisi tamam kayıt (planın günü ve saati belli, görev/notun başlığı var) uygulamada SORMADAN hemen kaydedilir ve uygulama ne eklediğini kendisi söyler. Bu durumda message'da kaydı yeniden anlatma, "ekledim/kaydettim/kaydedeyim mi" deme; yalnız ek bilgi varsa kısaca yaz (çakışan plan, rüzgâr, sorumlu), yoksa message boş kalabilir.
 - Haftalık tekrar ("her salı 16:00 antrenman", "cumartesileri yarış antrenmanı", "her hafta pazartesi toplantı"): TEK plan yaz, weekly true, date ilk günün tarihi (bugün ya da sonrası). Bitiş söylenirse repeatUntil'e yaz; söylenmezse boş bırak (uygulama 3 ay oluşturur). Birden çok gün söylenirse ("her salı ve perşembe") her gün için ayrı plan yaz. message'da "her hafta" olduğunu söyle.

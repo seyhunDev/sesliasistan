@@ -17,7 +17,8 @@ Kurallar:
 - plan: belirli bir zamanda olacak etkinlik (antrenman, toplantı, kamp, yarış...). Tarih ve saat belirtildiyse doldur.
 - task: yapılması gereken iş (hazırla, sipariş et, ara...). Başlığı kısa ve emir kipinde yaz ("Tekneleri hazırla"). Tarih belirtilmişse son tarih olarak date alanına yaz.
 - note: bilgi veya gözlem; yapılacak iş ya da zaman içermeyen şey. body alanına notun tam metnini yaz.
-- Tek cümleden birden fazla kayıt çıkabilir (ör. bir plan ve o plan için bir görev). Aynı ifadeden çıkan görev ve notlar için linkToPlan true olsun.
+- Not YALNIZ istenirse: kullanıcı "not al", "not düş", "nota/notlara ekle ya da yaz", "not olarak kaydet" demediyse plan ya da görevin yanına ayrıca not OLUŞTURMA; ayrıntılar (katılanlar, çalışılacaklar) ayrı nota yazılmaz. Cümle hiçbir iş istemeyip yalnız bilgi bildiriyorsa not olur.
+- Tek cümleden birden fazla kayıt çıkabilir (ör. bir plan ve o plan için bir görev; not yalnız istenirse). Aynı ifadeden çıkan görev ve notlar için linkToPlan true olsun.
 - Tarihleri YYYY-MM-DD, saatleri 24 saatlik HH:MM yaz. Bilinmiyorsa boş string bırak. Tarih uydurma, SAAT UYDURMA, varsayılan saat ekleme.
 - Göreli tarihleri (yarın, cuma, haftaya salı) verilen bugünün tarihine göre çöz. "Akşam altıda" gibi ifadeleri 24 saatlik biçime çevir.
 - Bağlı görevin tarihi belirtilmediyse planın tarihini kullan.

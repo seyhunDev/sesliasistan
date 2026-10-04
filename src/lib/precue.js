@@ -7,7 +7,7 @@
 import { interpretRules } from "@/lib/ai/rules";
 import { dayLabel } from "@/lib/agenda";
 import { normalizeSpeech } from "@/lib/speech/normalize";
-import { isMulti, jobsIn, jobsText } from "@/lib/steps";
+import { isMulti, jobsIn, jobsText, wantsNote } from "@/lib/steps";
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|ne zaman|nerede|kim|nasıl|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
@@ -63,7 +63,8 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Yeni kayıt: tür ve alanlar kurallarla
   const label = guess?.score >= 0.55 ? guess.label : "";
   const byWord = TYPE_W.find(([, re]) => re.test(t))?.[0] || "";
-  const byGuess = { "create:plan": "plan", "create:task": "task", "create:note": "note", "create:plan+note": "note" }[label] || "";
+  // Not yalnız açıkça istenince söylenir ("not alıyorum"); öğrenilmiş tahmin ya da kuralın varsayılanı notu seçtirmez
+  const byGuess = { "create:plan": "plan", "create:task": "task", "create:plan+note": "plan" }[label] || "";
   const hasTime = /saat \d|\d{1,2}[:.]\d{2}|\d{1,2}'?(de|da|te|ta)( |$)/.test(t);
   const wantsCreate = CREATE.test(t) || !!byWord || !!byGuess || (hasTime && !QUESTION.test(t));
   if (!wantsCreate) {
@@ -72,7 +73,7 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
     return { kind: "other", line, hint: hintOf(line, {}) };
   }
   const item = interpretRules(text, today)[0] || {};
-  const type = byWord || byGuess || item.type || "";
+  const type = byWord || byGuess || (item.type === "note" && !wantsNote(text) ? "" : item.type) || "";
   if (!type) {
     const line = "Tamam, hazırlıyorum.";
     return { kind: "create", line, hint: hintOf(line, { kind: "yeni kayıt" }) };
