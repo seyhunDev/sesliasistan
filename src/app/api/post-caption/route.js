@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanPeople, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish, withClass } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, dayOf, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish, withClass } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,8 @@ Gönderi türü verilir; açıklama, başlık, etiket ve dilek HER ZAMAN bu tür
 - genel (Duyuru): kulübün genel duyurusu (toplantı, değişiklik, bilgilendirme); net ve resmi-samimi, ne/ne zaman/nerede.
 - kayit (Kayıt / yelken okulu): yeni sporcu kaydı, yelken okulu; kimler katılabilir, nasıl başvurulur, iletişim çağrısı.
 - kulup (Kulüp haberi): kulüpten haber, etkinlik, ziyaret, bağış, başarı dışı gelişmeler.
-- kutlama (Kutlama / özel gün): bayram, özel gün, doğum günü, yıl dönümü; kısa ve içten kutlama.
+- ozel (Özel gün): milli bayram, anma günü, dini bayram ya da belirli gün (gün verilir). Bayramda gururlu ve içten kutlama; anma gününde (10 Kasım, 18 Mart, 15 Temmuz) "kutlu olsun" ve kutlama dili, kutlama emojisi YOK, saygı ve minnet dili, en çok bir sade emoji (🇹🇷 ya da 🖤). Yıl dönümü sayısı verilirse onu kullan, başka tarih/sayı uydurma. Kulübün denizle ve gençlerle bağını kısa bir cümleyle kur. Açıklama 250-500 karakter.
+- kutlama (Kutlama): kulüpte doğum günü, yıl dönümü, sevindirici gelişme; kısa ve içten kutlama.
 - diger: anlatılana göre.
 
 Yaz:
@@ -68,11 +69,15 @@ async function handle(request) {
   const ask = L(body?.ask, 600);
   const cur = body?.current && typeof body.current === "object" ? body.current : {};
   const now = [["Başlık", L(cur.headline, 90)], ["Alt satır", S(cur.sub, 200)], ["Sporcu satırları", cleanPeople(cur.people)], ["Dilek satırı", S(cur.wish, 60)], ["Etiket", S(cur.tag, 18)]].filter(([, v]) => v);
-  if (!topic && !race && !ask) return bad("Ne paylaşmak istediğini söyle.");
+  // Özel gün: hazır şablonun günü (yıl dönümü sayısı bu yıla göre)
+  const day = kind === "ozel" ? dayOf(body?.day) : null;
+  const year = Math.round(Number(body?.year)) || new Date().getFullYear();
+  if (!topic && !race && !ask && !day) return bad("Ne paylaşmak istediğini söyle.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Yazıları elle yazabilirsin.", 503);
   const user = [
     `Bugün: ${S(body?.today, 10) || new Date().toISOString().slice(0, 10)}`,
     `Tür: ${kind} (${kindOf(kind)[1]})`,
+    day && `Özel gün: ${day.name} (${year}), ${{ milli: "milli bayram", anma: "anma günü", dini: "dini bayram", deniz: "denizcilik bayramı", genel: "belirli gün" }[day.mood]}. Hazır görsel yazıları: başlık "${day.head(year)}"${day.sub(year) ? `, alt satır "${day.sub(year)}"` : ""}${day.wish(year) ? `, dilek "${day.wish(year)}"` : ""}.`,
     race &&
       `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`, race.athletes?.length > 0 && `Katılan sporcular: ${race.athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" (") + (a.cls ? ")" : "")).join(", ")}`].filter(Boolean).join("\n")}`,
     topic && `Kullanıcının anlattığı:\n"""\n${topic}\n"""`,
@@ -99,6 +104,15 @@ async function handle(request) {
       caption: L(raw?.caption, 2200),
       hashtags: cleanTags(raw?.hashtags),
     };
+    // Özel günde görsel yazıları hazır şablon (ya da mevcut hali); yalnız açıkça istenen değişir
+    if (day) {
+      const keep = (k, re, auto) => (ask && re.test(ask) ? out[k] : (ask && S(cur[k], 200)) || auto);
+      out.headline = keep("headline", /başlık/i, day.head(year));
+      out.sub = keep("sub", /alt ?(satır|yazı)|cümle/i, day.sub(year));
+      out.wish = keep("wish", /dilek|son satır/i, day.wish(year));
+      out.tag = (/etiket/i.test(ask) && S(raw?.tag, 18)) || (ask && S(cur.tag, 18)) || day.tag;
+      out.people = "";
+    }
     if (!out.caption) throw new Error("boş cevap");
     console.log(`[post-caption] ${Date.now() - t0} ms, tür=${kind}, ${out.caption.length} karakter, ${out.hashtags.length} etiket`);
     return NextResponse.json(out);
