@@ -94,6 +94,16 @@ export function isEnd(text) {
   return END_START.test(t) || END_ANY.test(t);
 }
 
+// "Başka bir isteğin var mı?" sorusuna olumsuz kısa cevap ("yok", "hayır", "başka yok", "gerek yok", "yok sağ ol"): asistan kapanır.
+// Yalnız bu soru sorulduysa bakılır; kısa cümle (en çok 4 kelime), içinde iş isteyen söz yoksa.
+const NO_MORE = /^(?:yok|hayır|başka (?:bir şey |bir isteğim )?yok|gerek yok|istemiyorum|olmaz|şimdilik yok|yok yok)(?=$|[\s.,!?])/;
+const NO_MORE_NOT = /(ekle|yaz|gönder|sil|kaydet|aç|planla|hatırlat|ama|fakat)/;
+export function isNoMore(text) {
+  const t = lower(String(text || "")).replace(/[.,!?…]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!t || t.split(" ").length > 4 || NO_MORE_NOT.test(t)) return false;
+  return NO_MORE.test(t) || isEnd(t);
+}
+
 // "Son kaydı geri al", "az önce eklediğim görevi sil", "geri al": en son eklenen kaydı (onayla) silme isteği.
 // Dönüş: { kind: "plan" | "task" | "note" | "" } (boş: tür fark etmez) ya da null
 const UNDO_WHEN = "(?:son|sonuncu|en son|az önce\\S*|demin\\S*|biraz önce\\S*|şimdi)";
