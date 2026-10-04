@@ -58,3 +58,22 @@ export function orderSteps(raw, { send = null, items = [] } = {}) {
   if (rec) steps.push(rec);
   return steps;
 }
+
+// Not yalnız açıkça istenince: "not al", "not düş", "nota ekle", "notlara yaz", "not olarak kaydet", "not: …".
+// Plan, görev, mesaj, yoklama ya da antrenman günlüğü isteğinin yanına kendiliğinden ayrıca not eklenmez (Seyhun'un kuralı).
+// "12 not poyraz" (ses tanımanın "knot" yazışı) not isteği sayılmaz.
+const NOTE_ASK = new RegExp(`${W}(?<!\\d\\s?)(not(?:lar\\p{L}*|la\\p{L}*|u\\p{L}*|a|ta|tan)?)(?![\\p{L}])`, "u");
+export const wantsNote = (raw) => NOTE_ASK.test(lower(String(raw || "")));
+// Ana iş yoklama ya da antrenman günlüğü ise not hiç oluşmaz (açıkça istenmedikçe)
+const MAIN_JOB = /(yoklama|günlü(k|ğ))/u;
+
+// Asistanın hazırladığı kayıtlar: not istenmediyse başka bir kaydın yanındaki notlar atılır (tek başına not, ana iş
+// olduğu için kalır; yoklama/günlük cümlesinden çıkan not da atılır). keep: önceden taslakta olan notlar (dokunulmaz).
+export function keepNotes(items, raw, keep = 0) {
+  const list = Array.isArray(items) ? items : [];
+  if (wantsNote(raw)) return list;
+  const others = list.some((d) => d?.type !== "note");
+  if (!others && !MAIN_JOB.test(lower(String(raw || "")))) return list;
+  let left = keep;
+  return list.filter((d) => d?.type !== "note" || left-- > 0);
+}
