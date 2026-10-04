@@ -95,7 +95,7 @@ function drawRich(ctx, line, x, y, size, weight, space, ink, nameInk) {
 }
 
 // Yelkenli ve dalga süsü (fotoğraf yokken), yazının karşı yarısında
-function decor(ctx, W, H, top, color) {
+function sailDecor(ctx, W, H, top, color) {
   ctx.save();
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
@@ -134,6 +134,200 @@ function decor(ctx, W, H, top, color) {
     ctx.stroke();
   }
   ctx.restore();
+}
+
+// Dalga çizgileri (y'den başlayarak n satır)
+function waves(ctx, W, y, n, gap = 36) {
+  ctx.lineWidth = 4;
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    for (let x = -40; x <= W + 40; x += 40) {
+      const yy = y + i * gap + Math.sin((x + i * 60) / 70) * 9;
+      if (x === -40) ctx.moveTo(x, yy);
+      else ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+}
+
+// Sonuç: kupa, arkasında ışınlar, etrafında yıldızlar
+function trophyDecor(ctx, W, H, top, color) {
+  const s = Math.min(W, H) * 0.34;
+  const cx = W * 0.74;
+  const cy = top ? H * 0.66 : H * 0.3;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  // Işınlar (kupadan soluk)
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, s * 1.1, a, a + Math.PI / 30);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // Kupa gövdesi
+  ctx.beginPath();
+  ctx.moveTo(cx - s * 0.42, cy - s * 0.5);
+  ctx.lineTo(cx + s * 0.42, cy - s * 0.5);
+  ctx.quadraticCurveTo(cx + s * 0.4, cy + s * 0.12, cx, cy + s * 0.2);
+  ctx.quadraticCurveTo(cx - s * 0.4, cy + s * 0.12, cx - s * 0.42, cy - s * 0.5);
+  ctx.fill();
+  // Kulplar
+  ctx.lineWidth = s * 0.07;
+  for (const d of [-1, 1]) {
+    ctx.beginPath();
+    ctx.arc(cx + d * s * 0.44, cy - s * 0.28, s * 0.16, d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
+    ctx.stroke();
+  }
+  // Ayak ve kaide
+  ctx.fillRect(cx - s * 0.06, cy + s * 0.18, s * 0.12, s * 0.22);
+  ctx.fillRect(cx - s * 0.26, cy + s * 0.4, s * 0.52, s * 0.1);
+  ctx.fillRect(cx - s * 0.34, cy + s * 0.5, s * 0.68, s * 0.1);
+  // Yıldızlar
+  const star = (x, y, r) => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 ? r * 0.45 : r;
+      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+  star(cx - s * 0.95, cy - s * 0.7, s * 0.12);
+  star(cx + s * 0.9, cy - s * 0.85, s * 0.09);
+  star(cx - s * 1.2, cy + s * 0.25, s * 0.07);
+  star(cx + s * 0.75, cy + s * 0.55, s * 0.08);
+  ctx.restore();
+}
+
+// Antrenman: üçgen parkur, şamandıralar, rüzgâr okları
+function courseDecor(ctx, W, H, top, color) {
+  const s = Math.min(W, H) * 0.3;
+  const cx = W * 0.64;
+  const cy = top ? H * 0.68 : H * 0.36;
+  const pts = [
+    [cx, cy - s * 0.7],
+    [cx + s * 0.75, cy + s * 0.45],
+    [cx - s * 0.75, cy + s * 0.45],
+  ];
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 6;
+  ctx.setLineDash([22, 18]);
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (const [x, y] of pts) {
+    ctx.beginPath();
+    ctx.arc(x, y, s * 0.11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(x - 3, y - s * 0.3, 6, s * 0.2);
+  }
+  // Rüzgâr okları (sol üstten)
+  ctx.lineWidth = 5;
+  for (let i = 0; i < 3; i++) {
+    const x0 = cx - s * 1.25;
+    const y0 = cy - s * 0.85 + i * s * 0.24;
+    const x1 = x0 + s * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y0);
+    ctx.moveTo(x1 - 18, y0 - 12);
+    ctx.lineTo(x1, y0);
+    ctx.lineTo(x1 - 18, y0 + 12);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Kulüp: çapa, halat halkası, alt tarafta dalgalar
+function anchorDecor(ctx, W, H, top, color) {
+  const s = Math.min(W, H) * 0.34;
+  const cx = W * 0.74;
+  const cy = top ? H * 0.64 : H * 0.28;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  // Halat halkası (noktalı daire)
+  ctx.lineWidth = 8;
+  ctx.setLineDash([4, 16]);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, s * 1.05, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Çapa
+  ctx.lineWidth = s * 0.09;
+  ctx.beginPath();
+  ctx.arc(cx, cy - s * 0.62, s * 0.13, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - s * 0.49);
+  ctx.lineTo(cx, cy + s * 0.62);
+  ctx.moveTo(cx - s * 0.32, cy - s * 0.28);
+  ctx.lineTo(cx + s * 0.32, cy - s * 0.28);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy + s * 0.05, s * 0.58, Math.PI * 0.12, Math.PI * 0.88);
+  ctx.stroke();
+  for (const d of [-1, 1]) {
+    const x = cx + d * s * 0.57;
+    const y = cy + s * 0.18;
+    ctx.beginPath();
+    ctx.moveTo(x - d * s * 0.02, y - s * 0.16);
+    ctx.lineTo(x + d * s * 0.12, y + s * 0.02);
+    ctx.lineTo(x - d * s * 0.14, y + s * 0.04);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.lineCap = "butt";
+  waves(ctx, W, top ? H * 0.94 : cy + s * 1.3, 3);
+  ctx.restore();
+}
+
+// Diğer: pusula gülü ve dalgalar
+function compassDecor(ctx, W, H, top, color) {
+  const s = Math.min(W, H) * 0.36;
+  const cx = W * 0.74;
+  const cy = top ? H * 0.66 : H * 0.3;
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, s, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, s * 0.82, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 - Math.PI / 2;
+    const r = i % 2 ? s * 0.5 : s * 0.95;
+    const w = i % 2 ? 0.16 : 0.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx.lineTo(cx + Math.cos(a + Math.PI / 2) * s * w, cy + Math.sin(a + Math.PI / 2) * s * w);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a - Math.PI / 2) * s * w, cy + Math.sin(a - Math.PI / 2) * s * w);
+    ctx.closePath();
+    ctx.fill();
+  }
+  waves(ctx, W, top ? H * 0.92 : cy + s * 1.35, 3);
+  ctx.restore();
+}
+
+// Fotoğraf yokken zemindeki çizim türe göre: duyuru yelkenli, sonuç kupa, antrenman parkur, kulüp çapa, diğer pusula
+const DECORS = { duyuru: sailDecor, sonuc: trophyDecor, antrenman: courseDecor, kulup: anchorDecor, diger: compassDecor };
+function decor(ctx, W, H, top, color, kind) {
+  (DECORS[kind] || sailDecor)(ctx, W, H, top, color);
 }
 
 function pill(ctx, x, y, w, h, r) {
@@ -273,6 +467,8 @@ export async function drawPost(canvas, post, photo) {
   const style = post.style || "klasik";
   const light = !photo && post.theme === "kum";
   const deep = post.theme === "kum" ? "#1f5a4b" : c2;
+  // Kum temasında vurgu koyu yeşil; koyu şeritte görünsün diye bantta kum sarısı
+  const bandAcc = post.theme === "kum" ? "#e9c46a" : accent;
   const top = post.pos === "top";
   // Hikâyede Instagram'ın üstteki profil satırı ve alttaki yanıt kutusu yazının üstüne binmesin
   const story = post.format === "story";
@@ -304,7 +500,7 @@ export async function drawPost(canvas, post, photo) {
     g.addColorStop(1, c2);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    decor(ctx, W, H, top, light ? "rgba(31,90,75,.13)" : "rgba(255,255,255,.1)");
+    decor(ctx, W, H, top, light ? "rgba(31,90,75,.13)" : "rgba(255,255,255,.1)", post.kind);
   }
 
   // Logo + kulüp adı (yazının karşı köşesinde)
@@ -381,10 +577,10 @@ export async function drawPost(canvas, post, photo) {
     ctx.globalAlpha = 0.96;
     ctx.fillRect(0, by, W, bh);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = accent;
+    ctx.fillStyle = bandAcc;
     ctx.fillRect(0, top ? by + bh - 10 : by, W, 10);
     ctx.restore();
-    Object.assign(c, { ink: "#ffffff", accent, tagBg: accent, tagInk: "#10231e", wish: accent, rule: "rgba(255,255,255,.35)" });
+    Object.assign(c, { ink: "#ffffff", accent: bandAcc, tagBg: bandAcc, tagInk: "#10231e", wish: bandAcc, rule: "rgba(255,255,255,.35)" });
     y = top ? 70 + safeT : by + 76;
   } else {
     if (photo) {
