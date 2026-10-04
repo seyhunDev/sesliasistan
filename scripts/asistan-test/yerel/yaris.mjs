@@ -96,7 +96,7 @@ const RD = await import("@/features/athletes/raceDocs");
 const BD = await import("@/features/athletes/budgetDoc");
 const { PDFDocument } = await import("pdf-lib");
 const pub = (f) => new Uint8Array(readFileSync(new URL(`../../../public/${f}`, import.meta.url)));
-const FONTS = { ...Object.fromEntries(Object.entries(RD.FONT_FILES).map(([k, f]) => [k, pub(`fonts/${f}`)])), logo: pub("club-logo.png") };
+const FONTS = { ...Object.fromEntries(Object.entries(RD.FONT_FILES).map(([k, f]) => [k, pub(`fonts/${f}`)])), logo: pub("club-logo.png"), tyf: pub("forms/tyf-logo.png"), gsb: pub("forms/gsb-logo.png") };
 const DOC_ATH = [
   { id: "a", studentName: "Ali Kaya", studentTc: "11111111110", studentSchoolAndClass: "Gelişim Lisesi 9/B", parentName: "Veli Kaya", fatherName: "Veli", motherName: "Ayşe" },
   { id: "b", studentName: "Zeynep Su" },

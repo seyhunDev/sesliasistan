@@ -641,9 +641,10 @@ function hotelForm(pdf, f, h, list) {
 // ---- 7-8) TYF formları (federasyon sistemindeki düzen: sade, açık gri çizgili tablolar) ----
 const stamp = (d = new Date()) => `${dmy(d, ".")} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 // Başlık satırları ortada; son satırın altına basım zamanı. Bir sonraki boş üst değeri döndürür.
-function tyfHead(p, f, lines, top = 62) {
-  lines.forEach((s, i) => p.text(s, W / 2, top + i * 15, f.sans, 12.5, "center"));
-  const t = top + lines.length * 15 + 4;
+function tyfHead(p, f, lines, top = 62, size = 12.5) {
+  const lead = size * 1.2;
+  lines.forEach((s, i) => p.text(s, W / 2, top + i * lead, f.sans, size, "center"));
+  const t = top + lines.length * lead + 4;
   p.text(`Belge Basım Zamanı: ${stamp()}`, W / 2, t, f.sans, 7.5, "center");
   return t + 22;
 }
@@ -659,6 +660,13 @@ function signBox(page, p, f, x, top, name = "") {
   p.text("Ad Soyad", x + 6, top + 11, f.sans, 6.5);
   p.text("İmza", x + 6, top + 20, f.sans, 6.5);
   if (name) p.text(name, x + 46, top + 11, f.sans, 7.5);
+}
+// Örnek formlar A3 ölçüsünde; logolar aynı yerde, A4'e oranla küçültülmüş (k = A4/A3).
+// tyfTop/gsbTop: logonun A3'teki üst değeri (antrenör formunda 36/41, katılım formunda 64/68)
+function tyfLogos(page, f, tyfTop, gsbTop) {
+  const k = W / 841.92;
+  if (f.tyf) page.drawImage(f.tyf, { x: 60 * k, y: H - (tyfTop + 85) * k, width: 60 * k, height: 85 * k });
+  if (f.gsb) page.drawImage(f.gsb, { x: 694 * k, y: H - (gsbTop + 86) * k, width: 86 * k, height: 86 * k });
 }
 const dotRange = (a, b) => [dmy(a, "."), dmy(b || a, ".")];
 
@@ -677,6 +685,7 @@ function coachForm(pdf, f, r, c, cls) {
   const p = painter(page);
   const L = 34;
   const R = W - 34;
+  tyfLogos(page, f, 36, 41);
   let top = tyfHead(p, f, ["TÜRKİYE YELKEN FEDERASYONU", "ANTRENÖR KAYIT FORMU"], 52) + 20;
   const [a, b] = dotRange(r.startDate, r.endDate);
   const rows = [
@@ -725,9 +734,10 @@ function entryForm(pdf, f, r, c, cls, list) {
   const L = 34;
   const R = W - 34;
   const name = up(r.name);
-  const titleLines = p.wrap(name, f.sans, 12.5, R - L - 40).map((ws) => ws.join(" "));
+  tyfLogos(page, f, 64, 68);
+  const titleLines = p.wrap(name, f.sans, 11.5, 400).map((ws) => ws.join(" "));
   const [a, b] = dotRange(r.startDate, r.endDate);
-  let top = tyfHead(p, f, [...titleLines, `/ ${up(r.district || r.city)}`, a ? `${a} - ${b}` : "", "KATILIM BİLDİRİM FORMU"].filter(Boolean), 48);
+  let top = tyfHead(p, f, [...titleLines, `/ ${up(r.district || r.city)}`, a ? `${a} - ${b}` : "", "KATILIM BİLDİRİM FORMU"].filter(Boolean), 48, 11.5);
   p.text("Yarış Sekreterliğine,", L + 32, top, f.sans, 8.5);
   top = p.para(
     `Aşağıda isimleri bulunan; Kulüp idarecisi, antrenör ve sporcuların '${name}' faaliyetine katılmak üzere, faaliyet alanına geldiğini, faaliyet ilanında belirtilen tüm kural ve prosedürlere uyacaklarını kabul ve taahhüt ederim.`,
@@ -833,6 +843,8 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   for (const [k, bytes] of Object.entries(fonts)) {
     if (k === "logo") {
       if (only.includes("club") || only.includes("hotel")) f.logo = await pdf.embedPng(bytes);
+    } else if (k === "tyf" || k === "gsb") {
+      if (only.includes("coach") || only.includes("entry")) f[k] = await pdf.embedPng(bytes);
     } else f[k] = await pdf.embedFont(bytes, { subset: true });
   }
   const year = (toDate(r.startDate) || new Date()).getFullYear();
@@ -873,10 +885,12 @@ export function clubInfo(r) {
 
 // Tarayıcıda yazı tiplerini ve kulüp logosunu getirir (bir kez)
 export const LOGO = "/club-logo.png";
+// TYF formlarındaki federasyon ve bakanlık logoları (örnek formlardan, saydam PNG)
+export const FORM_LOGOS = { tyf: "/forms/tyf-logo.png", gsb: "/forms/gsb-logo.png" };
 let fontCache = null;
 export function loadFonts() {
   fontCache ||= Promise.all(
-    [...Object.entries(FONT_FILES).map(([k, file]) => [k, `/fonts/${file}`]), ["logo", LOGO]].map(async ([k, url]) => {
+    [...Object.entries(FONT_FILES).map(([k, file]) => [k, `/fonts/${file}`]), ["logo", LOGO], ...Object.entries(FORM_LOGOS)].map(async ([k, url]) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("Belge dosyaları alınamadı.");
       return [k, new Uint8Array(await res.arrayBuffer())];
