@@ -17,17 +17,62 @@ export async function toWav16k(blob) {
     const off = new OAC(1, Math.max(1, Math.ceil(audio.duration * RATE)), RATE);
     const src = off.createBufferSource();
     src.buffer = audio;
-    src.connect(off.destination);
+    // Rüzgâr ve motor uğultusu (konuşmanın altındaki çok pes sesler) atılır
+    const hp = off.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 90;
+    src.connect(hp);
+    hp.connect(off.destination);
     src.start(0);
     const out = await new Promise((res, rej) => {
       off.oncomplete = (e) => res(e.renderedBuffer);
       const p = off.startRendering();
       if (p?.then) p.then(res, rej);
     });
-    return encode(out.getChannelData(0));
+    return encode(louder(trimQuiet(out.getChannelData(0))));
   } finally {
     try { ctx.close(); } catch {}
   }
+}
+
+const FRAME = RATE / 50; // 20 ms
+const frameLevels = (x) => {
+  const out = [];
+  for (let i = 0; i + FRAME <= x.length; i += FRAME) {
+    let sum = 0;
+    for (let k = i; k < i + FRAME; k++) sum += x[k] * x[k];
+    out.push(Math.sqrt(sum / FRAME));
+  }
+  return out;
+};
+
+// Baştaki ve sondaki sessizliği kırpar (0,4 sn pay bırakır): çeviri hızlanır, Whisper sessizlikte cümle uydurmaz.
+// Konuşma bulunamazsa kayıt olduğu gibi kalır (sunucu karar verir).
+export function trimQuiet(x) {
+  const lv = frameLevels(x);
+  if (lv.length < 10) return x;
+  const floor = [...lv].sort((a, b) => a - b)[Math.floor(lv.length * 0.1)];
+  const gate = Math.max(floor * 3, 0.01);
+  const first = lv.findIndex((v) => v > gate);
+  if (first < 0) return x;
+  let last = lv.length - 1;
+  while (last > first && lv[last] <= gate) last--;
+  const pad = Math.round(RATE * 0.4);
+  const a = Math.max(0, first * FRAME - pad);
+  const b = Math.min(x.length, (last + 1) * FRAME + pad);
+  return a === 0 && b === x.length ? x : x.slice(a, b);
+}
+
+// Kısık kaydı yükseltir (uzaktan ya da alçak sesle konuşma), en çok 6 kat; zaten yüksekse dokunmaz
+export function louder(x) {
+  let peak = 0;
+  for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+  if (!peak) return x;
+  const g = Math.min(6, 0.9 / peak);
+  if (g < 1.2) return x;
+  const y = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) y[i] = x[i] * g;
+  return y;
 }
 
 function encode(samples) {
