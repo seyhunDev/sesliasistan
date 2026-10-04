@@ -564,3 +564,18 @@ group("Toplantı modu")([
   })],
   ["süre", F("65 sn 01:05, 1 saat 2 dk 5 sn 1:02:05", () => MR.clock(65000) === "01:05" && MR.clock(3725000) === "1:02:05")],
 ]);
+
+// Ayarlar › Bu cihazdaki veriler (deviceData.js)
+const DD = await import("@/lib/deviceData");
+group("Cihazdaki veriler")([
+  ["boyut yazısı", F("0, 2 KB, 3,2 MB, 1,5 GB", () => [DD.sizeText(0), DD.sizeText(2048), DD.sizeText(3355443), DD.sizeText(1610612736)].join("|") === "0 KB|2 KB|3,2 MB|1,5 GB")],
+  ["kayıt boyutu", F("dosyalar ve yazılar toplanır", () => DD.bytesOf({ id: "a", blob: new Blob(["x".repeat(1000)]), parts: [{ blob: new Blob(["y".repeat(500)]) }] }) > 1500)],
+  ["evrak türleri", F("hazırlanan, eklenen, talimat ayrı; ad hazırlanan evraktan", () => {
+    const n = (id) => (id === "r1" ? "Foça yarışı" : "");
+    const a = DD.raceFileInfo({ id: "r1", name: "Foca-evrak.pdf", pages: 10 }, n);
+    const b = DD.raceFileInfo({ id: "r1:extra", files: [{}, {}] }, n);
+    const c = DD.raceFileInfo({ id: "notice:x", name: "talimat.pdf" }, n);
+    return a.kind === "docs" && a.title === "Foça yarışı" && /10 sayfa/.test(a.sub) && b.kind === "extra" && /2 dosya/.test(b.sub) && c.kind === "notice" && c.title === "talimat.pdf";
+  })],
+  ["ayar boyutu", F("anahtar + değer, 2 bayt/karakter", () => DD.storageBytes([["ab", "cd"], ["x", null]]) === 10)],
+]);

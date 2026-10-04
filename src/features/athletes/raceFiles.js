@@ -40,3 +40,6 @@ export async function getExtras(id) {
 }
 export const saveExtras = (id, files) => (id ? saveRaceFile({ id: extraKey(id), files }) : Promise.resolve());
 export const dropExtras = (id) => dropRaceFile(id && extraKey(id));
+
+// Ayarlar › Bu cihazdaki veriler: tüm kayıtlar (evrak, eklenen evrak, talimat kopyaları)
+export const listRaceFiles = () => quiet(tx("readonly", (s) => s.getAll())).then((l) => l || []);

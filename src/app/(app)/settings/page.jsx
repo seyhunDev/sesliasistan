@@ -9,6 +9,7 @@ import { openOnboarding } from "@/features/onboarding/Onboarding";
 import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow, RacesRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
+import { DeviceDataRow } from "@/features/settings/DeviceData";
 import { UsageRow } from "@/features/settings/Usage";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { logout } from "@/lib/auth";
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         <CalendarFeedRow />
         {owner && <UsageRow />}
         {owner && <BackupRow />}
+        <DeviceDataRow />
         {owner && <DemoDataRow />}
         {owner && <Row icon="mail" tone="sky" title="Gmail bağlantısı" sub="Gönderenler ve kurulum" href="/mail/setup" />}
         <Row icon="spark" tone="acc" title="Tanıtımı yeniden göster" sub="Başlangıç slaytları" onClick={openOnboarding} chevron />
