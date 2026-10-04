@@ -13,7 +13,7 @@ import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
-import { DOCS, buildRaceDocs, clubInfo, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { COACH_FIELDS, DOCS, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
@@ -44,6 +44,8 @@ const DOC_INFO = {
   parent: ["users", "Her sporcu için bir sayfa, veli imzalar"],
   club: ["note", "Kulüpten okula, her sporcuya ayrı; tarihleri ayrı"],
   hotel: ["home", "Tek sayfa: tüm velilerin otel konaklama imzası"],
+  coach: ["user", "TYF: antrenör ve destek botu bilgileri, beyan"],
+  entry: ["users", "TYF: kulüp, antrenör ve sporcular (sicil, yelken no)"],
 };
 
 // Dosya satırı: tür etiketi, ad, alt bilgi; aç, paylaş, (varsa) sil
@@ -92,7 +94,8 @@ function Check({ on, tone = "ok" }) {
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
+// coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
+export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -150,7 +153,33 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const byId = new Map(athletes.map((a) => [a.id, a]));
   const chosen = r.athleteIds.map((id) => byId.get(id)).filter(Boolean);
   const lost = r.athleteIds.length - chosen.length;
-  const incomplete = chosen.filter((a) => missing(a).length);
+  const incomplete = chosen.filter((a) => missing(a, docs).length);
+  // TYF formları: sporcunun tekne sınıfı (ILCA 4…) kulüp uygulamasındaki sınıfından; sınıf başına ayrı form
+  const className = Object.fromEntries(classes.map((c) => [c.id, c.name]));
+  const forDocs = chosen.map((a) => ({ ...a, boatClass: className[a.currentClassId] || "" }));
+  const autoClasses = [...new Set(forDocs.map((a) => a.boatClass).filter(Boolean))];
+  const groupCount = (r.entryClass || "").trim() ? 1 : Math.max(1, new Set(forDocs.map((a) => a.boatClass)).size);
+  // Antrenör bilgileri hesapta saklanır (her yarışta aynı); yazdıkça kısa süre sonra kaydedilir
+  const [coach, setCoach] = useState(() => cleanCoach(savedCoach));
+  const coachDirty = useRef(false);
+  const coachLast = useRef(coach);
+  const setCoachField = (k) => (v) => {
+    dropFile();
+    coachDirty.current = true;
+    setCoach((c) => ({ ...c, [k]: v }));
+  };
+  useEffect(() => {
+    coachLast.current = coach;
+    if (!coachDirty.current || !onCoach) return;
+    const t = setTimeout(() => {
+      coachDirty.current = false;
+      onCoach(cleanCoach(coach));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [coach, onCoach]);
+  useEffect(() => () => void (coachDirty.current && onCoach?.(cleanCoach(coachLast.current))), [onCoach]);
+  const tyf = docs.includes("coach") || docs.includes("entry");
+  const coachLack = tyf ? coachMissing(coach) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
 
   // Değişiklikler kendiliğinden kaydedilir (yarış adı yazıldıktan sonra); kayıtlar sırayla gider, çift kayıt olmaz.
@@ -195,13 +224,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   });
 
   const pages =
-    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0);
+    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0) + (docs.includes("coach") ? groupCount : 0) + (docs.includes("entry") ? groupCount : 0);
   const ready = [
     ["Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
     [chosen.length ? `${chosen.length} sporcu seçildi` : "Sporcu seçilmedi", chosen.length > 0, "people"],
     [incomplete.length ? `${incomplete.length} sporcunun bilgisi eksik (belgede boş kalır)` : "Sporcu bilgileri tamam", !incomplete.length, "people", true],
     ...(expired.length ? [[`${expired.length} sporcunun lisans, sağlık raporu ya da sigortası yarışta geçersiz`, false, "people", true]] : []),
+    ...(coachLack.length ? [[`Antrenör bilgisi eksik: ${coachLack.join(", ")} (formda boş kalır)`, false, "docs", true]] : []),
   ];
 
   const make = async () => {
@@ -214,7 +244,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setBusy(true);
     try {
       await save();
-      const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, await loadFonts(), docs);
+      const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, forDocs, await loadFonts(), docs, coach);
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-evrak.pdf`;
       const text = [
         `${r.name.trim()} · ${rangeText(r.startDate, r.endDate || r.startDate)}${placeText(r) ? ` · ${placeText(r)}` : ""}`,
@@ -228,8 +258,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       const fonts = await loadFonts();
       const each = [];
       for (const [k, title] of DOCS.filter(([k]) => docs.includes(k))) {
-        const b = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, chosen, fonts, [k]);
-        each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : 1 });
+        const b = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, forDocs, fonts, [k], coach);
+        each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : k === "coach" || k === "entry" ? groupCount : 1 });
       }
       const at = new Date().toISOString();
       setFile(new File([bytes], name, { type: "application/pdf" }));
@@ -561,7 +591,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 <b className="text-[0.9375rem] font-semibold">{chosen.length ? "Sporcu ekle ya da çıkar" : "Sporcu seç"}</b>
               </button>
               {chosen.map((a) => {
-                const miss = missing(a);
+                const miss = missing(a, docs);
                 const gone = raceExpired(a, r);
                 return (
                   <button key={a.id} type="button" onClick={() => setFix(a)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
@@ -732,7 +762,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : sub}</span>
+                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : (k === "coach" || k === "entry") && groupCount > 1 ? `${groupCount} form · her sınıfa ayrı` : sub}</span>
                     </span>
                     <Check on={on} tone="acc" />
                   </button>
@@ -800,6 +830,37 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 </div>
               )}
               <p className="mt-2 px-1 text-[0.75rem] text-mut">Veli adı ve telefonu sporcu kartından gelir; eksikse tabloda boş kalır. Etkinlik adı, yer ve imzalayan kulüp izin yazısıyla aynı.</p>
+            </>
+          )}
+
+          {tyf && (
+            <>
+              <Label>TYF FORMLARI</Label>
+              <Group>
+                <Row label="Sınıf (formda)">
+                  <input value={r.entryClass || ""} onChange={(e) => set("entryClass")(e.target.value)} placeholder={autoClasses.join(", ") || "ILCA 4"} className={input} />
+                </Row>
+              </Group>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">
+                {autoClasses.length > 1 && !(r.entryClass || "").trim()
+                  ? `Sporcular ${autoClasses.length} sınıfta; her sınıfa ayrı form hazırlanır. Tek form için sınıfı yaz.`
+                  : "Boşsa sporcuların sınıfı yazılır. Sicil no, yelken no ve cinsiyet sporcu kartından gelir."}
+              </p>
+              <Label right="hesabına kaydedilir">ANTRENÖR VE DESTEK BOTU</Label>
+              <Group>
+                {COACH_FIELDS.map(([k, label, mode]) => (
+                  <Row key={k} label={label} className={coach[k] || !["name", "tc", "sicil", "phone"].includes(k) ? "" : "bg-amber-500/5"}>
+                    <input
+                      value={coach[k]}
+                      onChange={(e) => setCoachField(k)(e.target.value)}
+                      inputMode={mode || undefined}
+                      maxLength={k === "tc" ? 11 : 120}
+                      className={input}
+                    />
+                  </Row>
+                ))}
+              </Group>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, sonraki yarışlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
             </>
           )}
 
@@ -935,7 +996,7 @@ function DocFields({ a, onSave, onClose, onSaved }) {
   const toast = useToast();
   const fields = [...BASIC.slice(0, 1), ...DOC_TEXT, ...BASIC.slice(1)];
   const startDate = a.studentBirthDate ? a.studentBirthDate.slice(0, 10) : "";
-  const [f, setF] = useState(() => ({ ...Object.fromEntries([...fields, ...EXPIRY].map(([k]) => [k, a[k] || ""])), studentBirthDate: startDate }));
+  const [f, setF] = useState(() => ({ ...Object.fromEntries([...fields, ...EXPIRY].map(([k]) => [k, a[k] || ""])), studentGender: a.studentGender || "", studentBirthDate: startDate }));
   const [busy, setBusy] = useState(false);
   const patch = Object.fromEntries(
     Object.keys(f)
@@ -970,6 +1031,13 @@ function DocFields({ a, onSave, onClose, onSaved }) {
             />
           </Row>
         ))}
+        <Row label="Cinsiyet" className={f.studentGender ? "" : "bg-amber-500/5"}>
+          <select value={f.studentGender} onChange={(e) => setF((p) => ({ ...p, studentGender: e.target.value }))} className={input}>
+            <option value="">—</option>
+            <option value="Erkek">Erkek</option>
+            <option value="Kız">Kız</option>
+          </select>
+        </Row>
         <Row label="Doğum tarihi" className={f.studentBirthDate ? "" : "bg-amber-500/5"}>
           <input type="date" value={f.studentBirthDate} onChange={(e) => setF((p) => ({ ...p, studentBirthDate: e.target.value }))} className={input} />
         </Row>

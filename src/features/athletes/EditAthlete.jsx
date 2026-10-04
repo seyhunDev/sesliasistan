@@ -22,6 +22,8 @@ export const DOC_TEXT = [
   ["motherName", "Anne adı"],
   ["parentTc", "Veli T.C. kimlik no", "numeric"],
   ["parentRelation", "Velinin yakınlığı (ANNE / BABA)"],
+  ["tyfNo", "TYF sicil no (katılım formu)", "numeric"],
+  ["sailNo", "Yelken no (216382)", "numeric"],
 ];
 
 // Düzenlenebilen alanlar (kulüp uygulamasındaki adlarıyla)

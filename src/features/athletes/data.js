@@ -16,7 +16,7 @@ function plain(v) {
 }
 
 // Yarış evrakında kullanılan ek alanlar (sporcu kartında saklanır, bir kez girilir)
-export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "studentNo", "studentClass", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation"];
+export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "studentNo", "studentClass", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation", "tyfNo", "sailNo"];
 
 // Sınıf ve antrenör adları
 async function names(db) {
@@ -50,7 +50,7 @@ async function fetchAthletes() {
     return plain({
       id: d.id, studentName: a.studentName || "", studentTc: a.studentTc || "", status: a.status || "",
       currentClassId: a.currentClassId || "", currentCoachId: a.currentCoachId || "",
-      parentName: a.parentName || "", parentPhone: a.parentPhone || "", parentEmail: a.parentEmail || "", studentBirthDate: a.studentBirthDate || null,
+      parentName: a.parentName || "", parentPhone: a.parentPhone || "", parentEmail: a.parentEmail || "", studentGender: a.studentGender || "", studentBirthDate: a.studentBirthDate || null,
       // Yarış evrakı için (raceDocs.js)
       ...Object.fromEntries(DOC_FIELDS.map((k) => [k, a[k] || ""])),
       // Lisans vizesi, sağlık raporu, sigorta bitiş tarihleri (YYYY-MM-DD)

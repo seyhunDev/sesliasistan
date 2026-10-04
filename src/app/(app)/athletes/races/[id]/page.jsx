@@ -12,7 +12,7 @@ import { loadAthletes, message, updateAthlete, useDikili } from "@/features/athl
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { leftText } from "@/features/athletes/RaceList";
-import { rangeText } from "@/features/athletes/raceDocs";
+import { coachStart, rangeText } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { mailToMe } from "@/features/mail/outbox";
@@ -32,10 +32,12 @@ export default function RacePage() {
   // Kendine mail: yalnız Gmail betiğini kurmuş ana hesapta (betik orgs/{uid}/outbox'tan gönderir)
   // version: betik sürümü (1 yalnız kendine, 2 seçilen adreslere de gönderir); saved: kayıtlı alıcılar
   const mail = profile.mailSeen && profile.orgId === user.uid ? { version: profile.mailOutbox, saved: profile.mailTo } : null;
-  return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} />;
+  // TYF formlarındaki antrenör bilgileri hesabın profilinde (users/{uid}.coach); yoksa ad ve e-posta hesaptan
+  const coach = profile.coach || coachStart({ name: profile.name, email: profile.email || user.email });
+  return <Race orgId={profile.orgId} uid={user.uid} by={{ name: profile?.name ?? "Kullanıcı" }} mail={mail} coach={coach} />;
 }
 
-function Race({ orgId, uid, by, mail }) {
+function Race({ orgId, uid, by, mail, coach }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
@@ -65,6 +67,7 @@ function Race({ orgId, uid, by, mail }) {
     },
     [orgId, uid],
   );
+  const onCoach = useCallback((c) => updateDoc(doc(db, "users", uid), { coach: c }).catch(() => toast("Antrenör bilgisi kaydedilemedi")), [uid, toast]);
   const onDelete = async (rid) => {
     try {
       await deleteRace(orgId, rid);
@@ -105,6 +108,8 @@ function Race({ orgId, uid, by, mail }) {
           onSaveAthlete={onSaveAthlete}
           onMail={mail ? async (m) => (await mailToMe(uid, m), mail.version >= (m.to.length ? 2 : 1)) : null}
           mailTo={mail?.saved}
+          coach={coach}
+          onCoach={onCoach}
           onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
         />
       )}

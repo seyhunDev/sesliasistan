@@ -3,6 +3,8 @@
 // 1) Okul izni yazısı  2) EK-2 Kafile Onayı  3) Seyahat dilekçesi  4) EK-3/D Veli İzin Belgesi (sporcu başına)
 // 5) Kulüp izin yazısı: kulüpten sporcunun okuluna, sporcu başına bir sayfa (antetli düzen, tarihleri ayrı)
 // 6) Otel konaklama izni: tüm sporcuların velileri tek sayfada imzalar (otel adı yoksa elle yazılacak boşluk)
+// 7) TYF Antrenör kayıt formu: antrenör bilgileri hesabın profilinden (users/{uid}.coach), sınıf başına bir sayfa
+// 8) TYF Katılım bildirim formu (sporcu kayıt): kulüp, destek botu, antrenör ve sporcular; sınıf başına bir form
 // pdf-lib yalnızca belge hazırlanırken yüklenir (sayfa açılışını ağırlaştırmasın)
 
 export const DOCS = [
@@ -12,6 +14,8 @@ export const DOCS = [
   ["parent", "EK-3/D Veli İzin Belgesi"],
   ["club", "Kulüp izin yazısı"],
   ["hotel", "Otel konaklama izni"],
+  ["coach", "Antrenör kayıt formu"],
+  ["entry", "Katılım bildirim formu"],
 ];
 
 // Kulübün antet bilgileri (kulüp izin yazısının üst ve alt bilgisi)
@@ -21,7 +25,36 @@ export const CLUB = {
   mail: "bilgi@dikiliyelken.com",
   phone: "(533) 470 78 73",
   address: "Cumhuriyet Mahallesi, Bankacılar Sitesi, 370 SK. No: 28  Dikili / İZMİR",
+  // TYF kayıtlarındaki adı (katılım bildirim formu)
+  tyfName: "DİKİLİ YELKEN VE KANO SPOR KULÜBÜ",
 };
+
+// Antrenör bilgileri (ana hesabın profilinde users/{uid}.coach; bir kez girilir, her yarışta hazır gelir)
+export const COACH_FIELDS = [
+  ["name", "Ad soyad"],
+  ["tc", "T.C. kimlik no", "numeric"],
+  ["sicil", "TYF sicil no", "numeric"],
+  ["level", "Kademesi (yılı)"],
+  ["club", "Kulübü (antrenör formunda)"],
+  ["city", "İli"],
+  ["phone", "Cep telefonu", "tel"],
+  ["email", "E-posta", "email"],
+  ["adb", "ADB numarası"],
+  ["team", "Kulüp (katılım formunda)"],
+  ["boatNo", "Destek botu no"],
+  ["boatLength", "Destek botu boyu"],
+  ["boatColor", "Destek botu rengi"],
+  ["boatPower", "Destek botu gücü"],
+  ["boatCount", "Destek tekne adedi", "numeric"],
+];
+// Henüz kaydedilmemişse başlangıç: ad ve e-posta hesaptan, kulüp ve destek botu kulübün TYF kaydındaki gibi
+export const coachStart = (profile = {}) => ({
+  name: profile.name || "", email: profile.email || "", club: "SERBEST", city: "İZMİR", level: "",
+  team: CLUB.tyfName, boatLength: "520", boatColor: "Gri", boatPower: "50", boatCount: "1",
+});
+export const cleanCoach = (c) => Object.fromEntries(COACH_FIELDS.map(([k]) => [k, String(c?.[k] ?? "").trim().slice(0, 120)]));
+// Formlarda boş kalacak önemli antrenör bilgileri
+export const coachMissing = (c) => [["name", "ad soyad"], ["tc", "T.C."], ["sicil", "sicil no"], ["phone", "telefon"]].filter(([k]) => !String(c?.[k] || "").trim()).map(([, l]) => l);
 
 export const FONT_FILES = {
   serif: "LiberationSerif-Regular.ttf",
@@ -97,6 +130,12 @@ export function athleteInfo(a) {
     letterSchool: up(a.studentSchool || String(a.studentSchoolAndClass || "").replace(CLASS, "")),
     cls: String(a.studentClass || "").trim() || classOf(a.studentSchoolAndClass),
     schoolDistrict: up(String(a.studentSchoolPlace || "").split(/[-/,]/)[0]),
+    // TYF katılım bildirim formu
+    tyfNo: String(a.tyfNo || "").trim(),
+    sailNo: String(a.sailNo || "").trim(),
+    gender: up(a.studentGender),
+    birthDot: b && !Number.isNaN(b.getTime()) ? dmy(a.studentBirthDate, ".") : "",
+    boat: up(a.boatClass),
   };
 }
 
@@ -120,9 +159,16 @@ export const NEEDS = [
   ["parentRelation", "yakınlık"],
   ["studentNo", "okul no"],
   ["studentClass", "sınıf"],
+  // Yalnız katılım bildirim formu seçiliyse aranır
+  ["tyfNo", "TYF sicil no", "entry"],
+  ["sailNo", "yelken no", "entry"],
+  ["studentGender", "cinsiyet", "entry"],
 ];
-export const missing = (a) =>
-  NEEDS.filter(([k]) => (k === "school" ? !(a.studentSchool || a.studentSchoolAndClass) : k === "studentClass" ? !(a.studentClass || classOf(a.studentSchoolAndClass)) : !a[k])).map(([, l]) => l);
+// docs: seçili belgeler (yalnız o belgelerin istediği alanlar sayılır)
+export const missing = (a, docs = DOCS.map(([k]) => k)) =>
+  NEEDS.filter(([k, , only]) => !only || docs.includes(only))
+    .filter(([k]) => (k === "school" ? !(a.studentSchool || a.studentSchoolAndClass) : k === "studentClass" ? !(a.studentClass || classOf(a.studentSchoolAndClass)) : !a[k]))
+    .map(([, l]) => l);
 
 // ---- Çizim yardımcıları (y değerleri sayfanın üstünden ölçülür) ----
 function painter(page) {
@@ -592,6 +638,163 @@ function hotelForm(pdf, f, h, list) {
   p.text(h.signer || "", sx, st + 44, f.serifB, 11, "center");
 }
 
+// ---- 7-8) TYF formları (federasyon sistemindeki düzen: sade, açık gri çizgili tablolar) ----
+const stamp = (d = new Date()) => `${dmy(d, ".")} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Başlık satırları ortada; son satırın altına basım zamanı. Bir sonraki boş üst değeri döndürür.
+function tyfHead(p, f, lines, top = 62) {
+  lines.forEach((s, i) => p.text(s, W / 2, top + i * 15, f.sans, 12.5, "center"));
+  const t = top + lines.length * 15 + 4;
+  p.text(`Belge Basım Zamanı: ${stamp()}`, W / 2, t, f.sans, 7.5, "center");
+  return t + 22;
+}
+// Açık gri çizgili tablo (satır sınırları rows, sütunlar cols)
+function softGrid(page, cols, rows) {
+  const c = { thickness: 0.5, color: LIGHT };
+  rows.forEach((t) => page.drawLine({ start: { x: cols[0], y: H - t }, end: { x: cols.at(-1), y: H - t }, ...c }));
+  cols.forEach((x) => page.drawLine({ start: { x, y: H - rows[0] }, end: { x, y: H - rows.at(-1) }, ...c }));
+}
+// "Ad Soyad / İmza" kutusu
+function signBox(page, p, f, x, top, name = "") {
+  page.drawRectangle({ x, y: H - (top + 34), width: 186, height: 34, borderWidth: 0.5, borderColor: LIGHT });
+  p.text("Ad Soyad", x + 6, top + 11, f.sans, 6.5);
+  p.text("İmza", x + 6, top + 20, f.sans, 6.5);
+  if (name) p.text(name, x + 46, top + 11, f.sans, 7.5);
+}
+const dotRange = (a, b) => [dmy(a, "."), dmy(b || a, ".")];
+
+// Sporcuları tekne sınıfına göre ayırır (sınıf başına bir form). Yarışta sınıf yazıldıysa hepsi o sınıfta.
+export function entryGroups(r, list) {
+  const fixed = up(r.entryClass);
+  if (fixed || !list.length) return [{ cls: fixed, list }];
+  const map = new Map();
+  for (const a of list) map.set(a.boat, [...(map.get(a.boat) || []), a]);
+  return [...map].map(([cls, l]) => ({ cls, list: l }));
+}
+
+// 7) Antrenör kayıt formu (sınıf başına bir sayfa)
+function coachForm(pdf, f, r, c, cls) {
+  const page = pdf.addPage([W, H]);
+  const p = painter(page);
+  const L = 34;
+  const R = W - 34;
+  let top = tyfHead(p, f, ["TÜRKİYE YELKEN FEDERASYONU", "ANTRENÖR KAYIT FORMU"], 52) + 20;
+  const [a, b] = dotRange(r.startDate, r.endDate);
+  const rows = [
+    ["Faaliyet Adı", up(r.name)],
+    ["Faaliyet Bölgesi", up(r.district || r.city)],
+    ["Faaliyet Tarihi", a ? `${a} / ${b}` : ""],
+    ["TC Kimlik No", c.tc],
+    ["Adı Soyadı", up(c.name)],
+    ["Kulübü / İli", [up(c.club), up(c.city)].filter(Boolean).join(" / ")],
+    ["Kademesi (Yılı)", up(c.level)],
+    ["Cep Telefonu", c.phone],
+    ["EPosta Adresi", c.email],
+    ["ADB Numarası", c.adb],
+    ["Destek Botu Boyu", c.boatLength],
+    ["Destek Botu Rengi", c.boatColor],
+    ["Destek Botu Gücü", c.boatPower],
+    ["Destek Tekne Adeti", c.boatCount],
+    ["Sınıf", cls],
+  ];
+  const rh = 15.5;
+  const cols = [L, L + 108, R];
+  const lines = rows.map((_, i) => top + i * rh);
+  lines.push(top + rows.length * rh);
+  softGrid(page, cols, lines);
+  rows.forEach(([k, v], i) => {
+    p.cell(k, cols[0], lines[i], cols[1] - cols[0], rh, f.sans, 8);
+    fitCell(p, v, cols[1], lines[i], cols[2] - cols[1], rh, f.sans, 8);
+  });
+  top = lines.at(-1) + 36;
+  p.text("BEYAN VE TAAHHÜT", W / 2, top, f.sans, 11.5, "center");
+  top += 34;
+  [
+    "1) Yarışla ilgili Yarış ilanı ve Yarış Talimatlarında, destek personeli ile ilgili hükümlere uyacağımı,",
+    "2) Yarışın başhakemi tarafından davet edilmedikçe (can kurtarma hali hariç) yarış parkuruna girmeyeceğimi,",
+    "3) Destek verdiğim sporculardan her konuda sorumlu olacağımı,",
+    "4) TYF Destek Botu Kullanma Talimatına harfiyen uyacağımı,",
+    "Beyan ve taahhüt ederim.",
+  ].forEach((s, i) => p.text(s, L + 32, top + i * 21, f.sans, 8.5));
+  signBox(page, p, f, L, top + 5 * 21 + 30, up(c.name));
+}
+
+// 8) Katılım bildirim formu: kulüp, destek botu, antrenör, sporcular (çok sporcuda sonraki sayfaya geçer)
+function entryForm(pdf, f, r, c, cls, list) {
+  let page = pdf.addPage([W, H]);
+  let p = painter(page);
+  const L = 34;
+  const R = W - 34;
+  const name = up(r.name);
+  const titleLines = p.wrap(name, f.sans, 12.5, R - L - 40).map((ws) => ws.join(" "));
+  const [a, b] = dotRange(r.startDate, r.endDate);
+  let top = tyfHead(p, f, [...titleLines, `/ ${up(r.district || r.city)}`, a ? `${a} - ${b}` : "", "KATILIM BİLDİRİM FORMU"].filter(Boolean), 48);
+  p.text("Yarış Sekreterliğine,", L + 32, top, f.sans, 8.5);
+  top = p.para(
+    `Aşağıda isimleri bulunan; Kulüp idarecisi, antrenör ve sporcuların '${name}' faaliyetine katılmak üzere, faaliyet alanına geldiğini, faaliyet ilanında belirtilen tüm kural ve prosedürlere uyacaklarını kabul ve taahhüt ederim.`,
+    L, top + 22, R - L, f.sans, 8.5, 14, { indent: 32 },
+  );
+  // Kulüp / yarış (solda), destek botu (sağda)
+  top += 22;
+  p.text("Kulüp", L + 52, top + 10, f.sansB, 8.5, "right");
+  fitCell(p, up(c.team) || CLUB.tyfName, L + 58, top, 250, 14, f.sans, 8.5);
+  p.text("Yarış", L + 52, top + 28, f.sansB, 8.5, "right");
+  p.text(cls, L + 62, top + 28, f.sans, 8.5);
+  const bx = [R - 260, R - 150, R];
+  const brows = [0, 1, 2, 3, 4].map((i) => top + i * 15.5);
+  softGrid(page, bx, brows);
+  [["Destek Botu No#", c.boatNo], ["Destek Botu Boyu", c.boatLength], ["Destek Botu Rengi", c.boatColor], ["Destek Botu Gücü", c.boatPower]].forEach(([k, v], i) => {
+    p.cell(k, bx[0], brows[i], bx[1] - bx[0], 15.5, f.sans, 8);
+    fitCell(p, v, bx[1], brows[i], bx[2] - bx[1], 15.5, f.sans, 8);
+  });
+  top = brows.at(-1) + 26;
+
+  // Başlık + tablo; sayfa dolarsa yeni sayfada başlık satırı tekrarlanır
+  const table = (title, heads, cols, aligns, data) => {
+    const hh = 22;
+    const rh = 22;
+    const header = () => {
+      p.text(title, L + 6, top, f.sans, 12);
+      top += 10;
+      const lines = [top, top + hh];
+      softGrid(page, cols, [top, top + hh]);
+      heads.forEach((s, i) => p.cell(s, cols[i], top, cols[i + 1] - cols[i], hh, f.sansB, 6.5, { align: aligns[i] === "center" ? "center" : "left", padX: 10 }));
+      top = lines[1];
+    };
+    header();
+    const rows = data.length ? data : [heads.map(() => "")];
+    for (const row of rows) {
+      if (top + rh > 770) {
+        page = pdf.addPage([W, H]);
+        p = painter(page);
+        top = 60;
+        header();
+      }
+      softGrid(page, cols, [top, top + rh]);
+      row.forEach((v, i) => fitCell(p, v, cols[i], top, cols[i + 1] - cols[i], rh, f.sans, 7.5, { align: aligns[i] === "center" ? "center" : "left", padX: 10 }));
+      top += rh;
+    }
+    top += 28;
+  };
+  table("Antrenörler", ["Sicil No", "Ad Soyad", "GSM Numarası", "EPosta Adresi", "İmza"], [L + 6, L + 62, L + 270, L + 350, L + 452, R], ["", "", "center", "center", "center"], c.name || c.sicil ? [[c.sicil, up(c.name), c.phone, c.email, ""]] : []);
+  table(
+    "Sporcular / Ekip",
+    ["Sicil No", "Ad Soyad", "Yelken No", "Cinsiyet", "Doğum T.", "İmza"],
+    [L + 6, L + 62, L + 264, L + 330, L + 400, L + 452, R],
+    ["", "", "", "center", "center", "center"],
+    list.map((x) => [x.tyfNo, x.name, x.sailNo, x.gender, x.birthDot, ""]),
+  );
+  if (top + 90 > 800) {
+    page = pdf.addPage([W, H]);
+    p = painter(page);
+    top = 70;
+  }
+  top = p.para(
+    "\u201CBu formdaki tüm bilgilerin doğru olduğunu, yarış süresince tekne ve ekiple ilgili tüm sorumluluğun tarafımıza ait olduğunu kabul, beyan ve taahhüt ederim.\u201D",
+    L + 6, top, R - L - 12, f.sansB, 8.5, 14, { indent: 32 },
+  );
+  signBox(page, p, f, L + 6, top + 6, up(c.name));
+}
+
 // Otel konaklama izninin bilgileri: otel adı yalnız yazıldıysa (talimattaki oteller öneri olarak seçilir);
 // tarih, ad, yer ve imzalayan kulüp izin yazısıyla aynı yerden gelir
 export function hotelInfo(r) {
@@ -615,7 +818,8 @@ const placeSuffix = (s) => {
 
 // r: yarış bilgisi, athletes: sporcu kartları (sırasıyla), fonts: { ad: Uint8Array, logo?: PNG baytları (kulüp logosu) }
 // only: üretilecek belgeler (DOCS anahtarları)
-export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) => k)) {
+// coach: antrenör bilgileri (users/{uid}.coach); sporcuda boatClass tekne sınıfı adı (ILCA 4) olabilir
+export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) => k), coach = {}) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   INK = rgb(0, 0, 0);
   NAVY = rgb(0.06, 0.2, 0.38);
@@ -643,6 +847,12 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
     list.forEach((a, i) => clubLetter(pdf, f, c, a, c.no ? nextNo(c.no, i) : ""));
   }
   if (only.includes("hotel")) hotelForm(pdf, f, hotelInfo(r), list);
+  if (only.includes("coach") || only.includes("entry")) {
+    const c = cleanCoach(coach);
+    const groups = entryGroups(r, list);
+    if (only.includes("coach")) groups.forEach((g) => coachForm(pdf, f, r, c, g.cls));
+    if (only.includes("entry")) groups.forEach((g) => entryForm(pdf, f, r, c, g.cls, g.list));
+  }
   return pdf.save();
 }
 
