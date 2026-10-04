@@ -43,6 +43,8 @@ function ask(provider, user) {
   });
 }
 
+const JOB_INTENT = /"intent"\s*:\s*"(create|action|message)"/;
+
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
@@ -105,6 +107,8 @@ async function handle(request) {
               maxTokens: 8192,
               timeoutMs: 20000,
               onText: (acc) => {
+                // İş yapılan yanıtlarda (kayıt, işlem, mesaj) sonucu uygulama gerçek duruma göre söyler: yapay zekanın cümlesi akışta okunmaz
+                if (JOB_INTENT.test(acc)) return;
                 const m = partialMessage(acc);
                 if (m && m !== lastM) {
                   lastM = m;
@@ -119,7 +123,7 @@ async function handle(request) {
           const ms = Date.now() - t0;
           const r = parseAssistant(raw, people, forPeople);
           console.log(`[assistant:${provider}] akış ${ms} ms, intent=${r.intent}, items=${r.items.length}`);
-          if (!r.message && !r.items.length && !r.actions.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
+          if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
           const q = await spend(au, "assistant");
           send({ t: "done", ...r, source: "ai", provider, ms, ...(q && !q.unlimited ? { quota: q } : {}) });
         } catch (e) {
@@ -138,7 +142,7 @@ async function handle(request) {
     const ms = Date.now() - t0;
     const r = parseAssistant(raw, people, forPeople);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
-    if (!r.message && !r.items.length && !r.actions.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
+    if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
     return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));
   } catch (e) {
     const kind = logAiError("assistant", provider, e, Date.now() - started);

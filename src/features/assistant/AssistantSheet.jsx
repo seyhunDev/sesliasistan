@@ -52,7 +52,7 @@ import { matchPerson } from "@/lib/names";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername, waPhone } from "@/lib/kinds";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
-import { isMulti, jobsIn, jobsText, keepNotes, orderSteps } from "@/lib/steps";
+import { isMulti, jobsIn, keepNotes, taskList } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -66,9 +66,7 @@ import { EventCard } from "@/features/events/EventCard";
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 const ENDPOINT = 2000;
-const BEAT = 350;
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
 const ASKED = /\?|\s(m[ıiuü])(\s|$)|gönderdin mi|gitti mi/i;
@@ -314,14 +312,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (need && !/\?/.test(base)) return `${base} ${need.kind === "date" ? "Hangi gün olsun?" : "Saat kaçta olsun?"}`;
     return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
   }
-  function startDrafts(items, s, msg, engine, viaVoice) {
+  // lead: görev listesinde önceki işlerin sonucu ("Tamamladım: …"); cevabın başına gelir
+  function startDrafts(items, s, msg, engine, viaVoice, lead = "") {
     // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
     let next = applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
     const need = firstNeed(next);
     if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-    if (ready(next)) return saveDraftsNow(viaVoice, next, msg);
+    if (ready(next)) return saveDraftsNow(viaVoice, next, msg, lead);
     setDrafts(next);
-    reply(draftSay(msg, next), { engine }, viaVoice);
+    reply(`${lead}${draftSay(/^tamam\.?$/i.test(msg) ? "" : msg, next)}`, { engine }, viaVoice);
   }
   async function refineDrafts(s, viaVoice) {
     const id = ++runId.current;
@@ -380,12 +379,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
   // Bilgisi tamam taslak (eksik soru yok, başlık/tarih var) sormadan kaydedilir; kartta yalnız Düzenle kalır
   const extra = (m) => {
-    const t = (m || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?|\s*kaydedeyim mi\?/gi, "").trim();
+    const t = (m || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?|\s*kaydedeyim mi\?/gi, "").replace(/^(tamam|tamamdır)[.!]?$/i, "").trim();
     return t && !/(ekledim|kaydettim|hazırladım|oluşturdum)/i.test(t) ? `${t} ` : "";
   };
   const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
   // pre: yapay zekanın ek sözü (çakışma, rüzgâr…); varsa "Ekledim" cümlesinden önce gelir (akışta okunduysa tekrar okunmaz)
-  async function saveDraftsNow(viaVoice, list = drafts, pre = "") {
+  async function saveDraftsNow(viaVoice, list = drafts, pre = "", lead = "") {
     for (const d of list) {
       const e = check(d);
       if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
@@ -409,8 +408,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
     const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
     const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
-    if (queue.current.length) return nextStep(viaVoice, r.queued ? `${what} sıraya alındı, internet gelince kaydedilecek. ` : `Ekledim: ${what}${whoTxt}. `);
-    reply(r.queued ? `Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${extra(pre)}Ekledim: ${what}${whoTxt}. Değiştirmek istersen söyle.`, { engine: "local" }, viaVoice);
+    if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} sıraya alındı, internet gelince kaydedilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
+    reply(r.queued ? `${lead}Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);
@@ -511,12 +510,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // lead: önceki adımın sonucu ("Gönderdim. "); msg: yapay zekanın ilk adım için yazdığı cümle (akışta okunmuş olabilir)
   function runStep(st, viaVoice, lead = "", msg = "") {
     if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead);
-    return startDrafts(st.items, st.s, msg || lead, st.engine, viaVoice);
+    if (st.actions) return askDelete(st.actions, viaVoice, lead, msg);
+    return startDrafts(st.items, st.s, msg, st.engine, viaVoice, lead);
   }
-  function nextStep(viaVoice, lead) {
+  function nextStep(viaVoice, lead, msg = "") {
     const st = queue.current.shift();
     if (!st) return false;
-    runStep(st, viaVoice, lead);
+    runStep(st, viaVoice, lead, msg);
     return true;
   }
 
@@ -537,105 +537,105 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (r.items?.length) r = { ...r, items: keepNotes(r.items, s) };
     const msg = (r.message || "").trim();
     record(s, labelFromAI(r), "ai"); // öğrenme verisi
-
-    // Sıralı işler: mesaj ve yeni kayıtlar söylenen sırayla (biri bitince diğeri); tamamlanan görevler hemen
     const held = heldQ.current;
     heldQ.current = null;
-    if (r.send?.text) {
-      let ticked = 0;
-      for (const a of r.actions || []) {
-        const rec = a.kind === "task" && find("task", a.id);
-        if (rec && ((a.op === "complete_task" && !rec.done) || (a.op === "reopen_task" && rec.done))) {
-          toggleTask(a.id);
-          ticked++;
-        }
-      }
-      if (ticked) toast(`${ticked} görev güncellendi`);
-      const steps = orderSteps(s, { send: r.send, items: ["create", "message"].includes(r.intent) ? r.items || [] : [] }).map((st) => ({ ...st, s, engine: r.source }));
-      if (steps.length > 1) {
-        queue.current = steps.slice(1);
-        const lead = `${ticked ? "Görevi tamamladım. " : ""}Sırayla yapıyorum: ${jobsText(jobsIn(s).length > 1 ? jobsIn(s) : ["send", ...r.items.map((d) => d.type)])}. `;
-        // Mesaj ilk adımsa yapay zekanın cümlesi (mesajı okur, akışta okunmuş olabilir) kullanılır; değilse kendi cümlemiz
-        // tamamı okunur (akışta okunan yapay zeka cümlesinin devamı sayılmaz)
-        const useMsg = !!steps[0].send && !!msg && !ticked;
-        if (!useMsg) streamSaid.current = "";
-        return runStep(steps[0], viaVoice, lead, useMsg ? msg : "");
-      }
-      // Bekleyen mesaj taslağı değişti ("daha kısa yaz"): sıradaki işler sürer
-      if (held?.length && !r.items?.length) queue.current = held;
-    }
 
-    // Mesaj: alıcı ve düzenlenmiş metin kartta gösterilir; onaylanınca gönderilir
-    if (r.intent === "message" && r.send?.text) return prepareSend(r.send.to, r.send.text, msg, r.source, viaVoice);
+    // Görev listesi: yapay zekanın çıkardığı işler. Onay gerekmeyenler (tamamla, değiştir, yeni kayıt) hemen yapılır,
+    // onay gerekenler (silme, mesaj) ardından tek tek sorulur. Ne yapıldığını yapay zeka değil uygulama söyler (gerçek sonuç).
     // Yapay zeka mesajı yalnızca cevabına yazdıysa ("Ekibe şunu göndereyim mi: …") kart yine hazırlanır
     const sendRec = r.intent === "message" && !r.send?.text ? fromMessage(msg) : null;
-    if (sendRec?.text) return prepareSend(sendRec.to, sendRec.text, msg, r.source, viaVoice);
+    const job = taskList(sendRec?.text ? { ...r, sends: [sendRec] } : r);
+    const { items, open: opened } = job;
+    if (job.confirm.length || items.length || job.now.length) {
+      const now = runNow([...job.now, ...(job.confirm[0]?.actions || [])]);
+      const sends = job.confirm.filter((st) => st.send);
+      const steps = [...(now.deletes.length ? [{ actions: now.deletes }] : []), ...sends, ...(sends.length && !items.length ? held || [] : [])].map((st) => ({ ...st, s, engine: r.source }));
+      let lead = now.said;
+      if (now.missing && !now.done && !now.deletes.length) lead += "Bir kaydı bulamadım. ";
+      if (opened && !items.length && !steps.length) return openRecord(opened, lead, viaVoice);
+      queue.current = steps;
+      streamSaid.current = "";
+      // Yeni kayıtlar: bilgisi tamamsa hemen kaydedilir, eksikse tek soru sorulur; ardından sıradaki onaylar
+      if (items.length) return startDrafts(items, s, msg, r.source, viaVoice, lead);
+      if (nextStep(viaVoice, lead, steps.length === 1 && steps[0].actions && /\?\s*$/.test(msg) && !lead ? msg : "")) return;
+      const show = now.touched.filter((x) => find(x.kind, x.id));
+      return reply(lead.trim() || (now.missing ? "Bunu kayıtlarda bulamadım." : "Tamamdır."), { show, engine: r.source }, viaVoice);
+    }
     // Gönderim yalnızca kartta onayla olur: yapay zeka "gönderdim" dese de gerçekte gönderilmediyse bunu söyleme
     // ("gönderdin mi?" sorusuna, gerçekten gönderildiyse "gönderdim" demesi doğrudur)
     if (r.intent === "message" || (SENT_CLAIM.test(msg) && !(sentOk.current && ASKED.test(s)))) {
       const to = r.send?.to || "";
       if (to && resolveTo(to)) askTo.current = to;
       if (r.intent === "message" && isMulti(s)) askAll.current = s; // sıralı iş: cevapla birlikte hepsi yeniden
-      return reply(SENT_CLAIM.test(msg) || !msg ? `Mesajı henüz göndermedim. ${to ? "Ne yazayım?" : "Kime ve ne yazayım?"}` : msg, { engine: r.source, expect: true }, viaVoice);
+      return reply(SENT_CLAIM.test(msg) || !msg || /^tamam\.?$/i.test(msg) ? `Mesajı henüz göndermedim. ${to ? "Ne yazayım?" : "Kime ve ne yazayım?"}` : msg, { engine: r.source, expect: true }, viaVoice);
     }
-
-    // Yeni kayıt: panelde taslak olarak hazırlanır, "kaydet" deyince kaydedilir (eksik bilgi sohbetle tamamlanır)
-    if (r.intent === "create" && r.items?.length) {
-      startDrafts(r.items, s, msg, r.source, viaVoice);
-      return;
-    }
-
-    // İşlemler: görev tamamlama hemen, silme ve güncelleme onayla
-    const pending = [];
-    let done = 0;
-    let missing = 0;
-    let opened = null;
-    for (const a of r.actions || []) {
-      const rec = find(a.kind, a.id);
-      if (!rec) {
-        missing++;
-        continue;
-      }
-      if (a.op === "complete_task" && a.kind === "task") {
-        if (!rec.done) {
-          toggleTask(a.id);
-          done++;
-        }
-      } else if (a.op === "reopen_task" && a.kind === "task") {
-        if (rec.done) {
-          toggleTask(a.id);
-          done++;
-        }
-      } else if (a.op === "delete") pending.push(a);
-      else if (a.op === "update") {
-        if (Object.keys(buildPatch(a.kind, a.patch, rec)).length) pending.push(a);
-      } else if ((a.op === "open" || (a.op === "cancel" && a.kind === "plan")) && !opened) opened = a;
-    }
-
-    if (opened) {
-      if (msg) tts.maybeSpeak(msg);
-      park();
-      openAdd({ edit: { kind: opened.kind, id: opened.id, ...(opened.op === "cancel" ? { cancel: true } : {}) } });
-      return;
-    }
+    if (opened) return openRecord(opened, msg, viaVoice);
     // Yapay zeka sohbet açmayı seçtiyse ("Sanver'le yazışmamı aç" gibi belirsiz söyleyişler)
     if (r.openChat && r.intent === "navigate") {
       const g = groupOf(r.openChat, groupIds);
       return openNav(TEAM_WORD.test(r.openChat) && g ? { chat: g } : { chatWith: r.openChat }, viaVoice);
     }
-    if (r.navigate && !pending.length && (r.intent === "navigate" || !r.show?.length)) {
+    if (r.navigate && (r.intent === "navigate" || !r.show?.length)) {
       go(r.navigate, msg, viaVoice);
       return;
     }
 
     // Sıralı işte mesajın içeriği soruldu ("Gökhan'a ne yazayım?"): cevap gelince tüm istek yeniden sorulur
-    if (!r.send?.text && !r.items?.length && r.expectReply && isMulti(s) && jobsIn(s).includes("send")) askAll.current = s;
-    let said = msg || (done ? "Tamamdır." : "");
-    if (!said) said = missing ? "Bunu kayıtlarda bulamadım." : "Bunu tam anlayamadım, bir daha söyler misin?";
-    if (missing && !done && !pending.length && !/bulam/.test(said)) said += " Bir kaydı da bulamadım.";
-    if (pending.length && !/\?\s*$/.test(said)) said += " Onaylıyor musun?";
-    if (done) toast(`${done} görev güncellendi`);
-    reply(said, { show: (r.show || []).filter((x) => find(x.kind, x.id)), pending: pending.length ? { actions: pending } : null, nav: r.navigate || "", engine: r.source, expect: !!r.expectReply }, viaVoice);
+    if (r.expectReply && isMulti(s) && jobsIn(s).includes("send")) askAll.current = s;
+    const said = msg || "Bunu tam anlayamadım, bir daha söyler misin?";
+    reply(said, { show: (r.show || []).filter((x) => find(x.kind, x.id)), nav: r.navigate || "", engine: r.source, expect: !!r.expectReply }, viaVoice);
+  }
+
+  // Görev listesinin onaysız işleri: görev tamamlama/yeniden açma ve güncelleme hemen uygulanır; silmeler onaya kalır.
+  // Dönüş: said ("Tamamladım: … Değiştirdim: … "), deletes, touched (gösterilecek kayıtlar), done, missing
+  function runNow(acts) {
+    const out = { said: "", deletes: [], touched: [], done: 0, missing: 0 };
+    const ticked = [];
+    const opened2 = [];
+    const changed = [];
+    for (const a of acts) {
+      const rec = find(a.kind, a.id);
+      if (!rec) {
+        out.missing++;
+        continue;
+      }
+      if (a.op === "delete") {
+        out.deletes.push(a);
+        continue;
+      }
+      if (a.kind === "task" && (a.op === "complete_task" || a.op === "reopen_task")) {
+        if (rec.done !== (a.op === "complete_task")) toggleTask(a.id);
+        (a.op === "complete_task" ? ticked : opened2).push(rec.title);
+      } else if (a.op === "update") {
+        const patch = buildPatch(a.kind, a.patch, rec);
+        if (!Object.keys(patch).length) continue;
+        updateRecord(a.kind, a.id, patch, by);
+        changed.push(describeAction(a, rec).replace(/^Güncelle: /, "").replace(" → ", ", "));
+      } else continue;
+      out.done++;
+      out.touched.push({ kind: a.kind, id: a.id });
+    }
+    const list = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} ve ${xs.at(-1)}` : xs[0]);
+    if (ticked.length) out.said += `Tamamladım: ${list(ticked)}. `;
+    if (opened2.length) out.said += `Yeniden açtım: ${list(opened2)}. `;
+    if (changed.length) out.said += `Değiştirdim: ${changed.join("; ")}. `;
+    if (out.done) {
+      toast(`${out.done} kayıt güncellendi`);
+      navigator.vibrate?.([10, 40, 10]);
+    }
+    return out;
+  }
+  // Silme onayı (görev listesinin onay adımı): kayıtlar kartta görünür, "evet / onayladım" ile silinir
+  function askDelete(actions, viaVoice, lead = "", msg = "") {
+    const names = actions.map((a) => find(a.kind, a.id)).filter(Boolean).map((x) => `“${x.title || "Başlıksız"}”`);
+    const said = msg || `${lead}${names.length > 1 ? `${names.slice(0, -1).join(", ")} ve ${names.at(-1)}` : names[0] || "Bu kayıt"} silinsin mi?`;
+    reply(said, { show: actions.map((a) => ({ kind: a.kind, id: a.id })), pending: { actions }, engine: "local", expect: true }, viaVoice);
+  }
+  // Kaydı düzenleme ekranında aç (iptal: iptal ekranıyla)
+  function openRecord(a, said, viaVoice) {
+    if (said) tts.maybeSpeak(said);
+    park();
+    openAdd({ edit: { kind: a.kind, id: a.id, ...(a.op === "cancel" ? { cancel: true } : {}) } });
   }
 
   async function run(t, viaVoice = false, fresh = false) {
@@ -653,7 +653,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     const history = fresh ? [] : turns.slice(-6).map((x) => ({ role: x.role, text: x.text }));
     // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
-    if (fresh || !(drafts.length || cards.pending?.send)) queue.current = [];
+    if (fresh || !(drafts.length || cards.pending)) queue.current = [];
     const all = !fresh ? askAll.current : "";
     askAll.current = "";
     setTurns((p) => [...p, { role: "user", text: s }]);
@@ -861,9 +861,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const r = await askAssistant({ text: ask, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       setPhase("preparing");
-      await sleep(BEAT);
-      if (id !== runId.current) return;
-      handle(r, ask, viaVoice);
+      handle(r, ask, viaVoice); // bekleme yok: işler hemen yapılır
     } catch (e) {
       if (id !== runId.current) return;
       setStreamText("");
@@ -1036,17 +1034,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         }
       }
     }
-    const said = n ? "Tamamdır, yaptım." : "O kayıtları bulamadım.";
-    toast(n ? "Yapıldı" : "Kayıt bulunamadı");
-    reply(said, { engine: "local" }, fromText && convo.current);
+    const del = pend.actions.every((a) => a.op === "delete");
+    toast(n ? (del ? "Silindi" : "Yapıldı") : "Kayıt bulunamadı");
     navigator.vibrate?.([10, 40, 10]);
+    setCards((c) => ({ ...c, pending: null, awaiting: false }));
+    if (nextStep(fromText && convo.current, n ? (del ? "Sildim. " : "Yaptım. ") : "O kayıtları bulamadım. ")) return;
+    reply(n ? (del ? "Sildim." : "Tamamdır, yaptım.") : "O kayıtları bulamadım.", { engine: "local" }, fromText && convo.current);
   }
 
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
-    if (cards.pending?.send && nextStep(fromText && convo.current, "Tamam, göndermedim. ")) return;
+    if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
     queue.current = [];
-    reply(cards.pending?.send ? "Tamam, göndermedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+    reply(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => a.op === "delete") ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
   }
 
   // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
