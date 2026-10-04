@@ -69,7 +69,8 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     if (!p.name || !p.startDate) return { said: p.message || "Yarışın adını ve tarihini söyler misin?", expect: true };
     const r = {
       ...freshRace(races[0], todayStr()),
-      name: p.name, city: p.city || races[0]?.city || "", district: p.district,
+      abroad: !!p.abroad,
+      name: p.name, city: p.city || (p.abroad ? "" : races[0]?.city || ""), district: p.district,
       startDate: p.startDate, endDate: p.endDate || p.startDate,
       leaveStart: shiftDay(p.startDate, -1), leaveEnd: shiftDay(p.endDate || p.startDate, 1),
       athleteIds: p.athleteIds, note: p.note,
@@ -81,7 +82,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     if (planned) await saveRace(orgId, uid, { ...r, id, planAdded: true });
     const who = p.athleteIds.length ? ` ${p.athleteIds.length} sporcu: ${first(p.athleteIds)}.` : " Sporcuları sayfadan seçebilirsin.";
     return {
-      said: `Kaydettim: ${r.name}, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${p.note ? " Notunu yazdım." : ""}${missed}`,
+      said: `Kaydettim: ${r.name}, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${r.abroad ? " Yurt dışı yarışı: Özet'te Türkiye'de yapılacaklar listesi hazır." : ""}${p.note ? " Notunu yazdım." : ""}${missed}`,
       id,
     };
   }

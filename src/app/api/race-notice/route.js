@@ -11,21 +11,23 @@ export const runtime = "nodejs";
 // Kaydetmez; telefon yarışa yazar. Belge saklanmaz, yalnızca okunur.
 const SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden asistansın. Sana bir yelken yarışının talimatı (yarış ilanı, Notice of Race, organizasyon duyurusu) verilir; Türkçe ya da İngilizce olabilir.
 Belgeden yarışı kurmak ve planlamak için gerekenleri çıkar. Yalnızca belgede yazanı yaz, uydurma; bulamadığın alan boş kalsın.
+Belge İngilizce (ya da başka dilde) olsa da tüm başlıkları, açıklamaları, notları ve özeti Türkçe yaz; yalnız özel adlar (yarış, kulüp, otel, kişi) özgün yazımıyla kalsın. Ücretleri belgedeki para birimiyle yaz ("€120", "£80").
 
 - isNotice: belge bir yarış/kamp/organizasyon talimatı ya da duyurusu değilse false.
 - name: yarışın adı, belgedeki yazımla ama düzgün büyük-küçük harfle ("D'Azur Optimist Regatta", "Türkiye Optimist Kış Trofesi"). Lig ayağı ve kupa adı birlikte geçiyorsa ikisini birleştir ("TYF Yelken Ligi ILCA 1. Ayak - MW Phokaia Beach Resort Kupası"). Yıl ya da sıra sayısı adın parçasıysa kalsın.
 - organizer: düzenleyen kulüp/kurum.
 - federation: hangi spor dalı federasyonu ("Yelken"). Yoksa "Yelken".
-- city / district: yarışın yapıldığı il ve ilçe, Türkçe ("Çeşme" → il İzmir, ilçe Çeşme; "Bodrum" → Muğla, Bodrum). venue: kulüp, marina ya da tesis adı.
+- abroad: yarış Türkiye dışındaysa true (ör. Fransa, Yunanistan, İtalya'daki yarış), Türkiye'deyse false.
+- city / district: Türkiye'de yarışın yapıldığı il ve ilçe, Türkçe ("Çeşme" → il İzmir, ilçe Çeşme; "Bodrum" → Muğla, Bodrum). Yurt dışında city = ülkenin Türkçe adı ("Fransa", "Yunanistan", "Hırvatistan"), district = şehir ya da kasaba ("Cannes", "Halkidiki"). venue: kulüp, marina ya da tesis adı.
 - startDate / endDate: YYYY-MM-DD. Yarış (ilk start günü değil, organizasyonun ilk günü: kayıt/ölçüm dahil) başlangıcı ve son günü.
 - classes: yarışan sınıflar/kategoriler ("Optimist", "ILCA 4", "Optimist Gelişim").
 - schedule: program; her satır { date YYYY-MM-DD, time HH:MM ya da boş, title kısa Türkçe ("Kayıt ve ölçüm", "Kaptanlar toplantısı", "İlk start", "Ödül töreni") }. En fazla 30 satır, tarihe göre sıralı.
 - deadlines: antrenörün kaçırmaması gereken son tarihler; { date, time, title kısa Türkçe ("Online kayıt son gün", "Kayıt ücreti son ödeme", "Geç kayıt son gün", "İl dışı çıkış oluru yükleme", "Kesin kayıt teslimi", "Otel rezervasyonu son gün"), detail kısa (nerede/nasıl, ceza ya da ücret farkı) }. Kaydın başlama tarihi son tarih değildir. Tarihe göre sıralı.
-- tasks: bu talimata göre antrenörün yarıştan önce yapması gereken işler, yapılacak sırayla, en fazla 10; { title kısa ve fiille ("Online kaydı yap", "Kayıt ücretini öde (1.250 TL/sporcu)", "İl dışı çıkış olurunu sisteme yükle", "Antrenör kaydını yap", "Otel rezervasyonu yap", "Tekne taşımayı ayarla", "Kesin kayıt formunu yarış ofisine teslim et"), date son tarih YYYY-MM-DD ya da boş, detail kısa (nerede/nasıl) }. Talimatta konaklama varsa otel işi, ücret varsa ödeme işi mutlaka olsun. Okul izni, veli imzası gibi kulüp içi evrak işlerini yazma (onlar ayrıca takip ediliyor).
+- tasks: bu talimata göre antrenörün yarıştan önce yapması gereken işler, yapılacak sırayla, en fazla 10; { title kısa ve fiille ("Online kaydı yap", "Kayıt ücretini öde (1.250 TL/sporcu)", "İl dışı çıkış olurunu sisteme yükle", "Antrenör kaydını yap", "Otel rezervasyonu yap", "Tekne taşımayı ayarla", "Kesin kayıt formunu yarış ofisine teslim et"), date son tarih YYYY-MM-DD ya da boş, detail kısa (nerede/nasıl) }. Talimatta konaklama varsa otel işi, ücret varsa ödeme işi mutlaka olsun. Okul izni, veli imzası gibi kulüp içi evrak işlerini yazma (onlar ayrıca takip ediliyor). Yurt dışı yarışta pasaport, vize, sigorta, uçuş gibi genel işler de ayrıca takip ediliyor; onları yalnız talimatta özel bir şart ya da son tarih varsa yaz (ör. "Ölçüm belgesini e-postayla gönder", "Kiralık tekne (charter) ayır").
 - fees: ücretler; { title ("Kayıt ücreti (sporcu başı)", "Geç kayıt", "Antrenör"), amount metin olarak para birimiyle ("1.250 TL", "€80", "%50 cezalı", "Ücretsiz"), note kısa (nereye/nasıl ödenir, IBAN varsa açıklamasıyla) }.
 - hotels: önerilen oteller/konaklama; { name, phone, note (oda fiyatları kısaca "Tek kişilik 5.700 TL, iki kişilikte kişi başı 3.500 TL", indirim kodu, zorunlu olup olmadığı) }.
 - contacts: iletişim kişileri; { name, role, phone, email }.
-- notes: listeye girmeyen ama antrenörün bilmesi gereken önemli maddeler, en fazla 8 kısa madde, her biri yeni satırda "- " ile (gerekli belgeler, lisans/sağlık şartı, tekne taşıma, yaş sınırı, kayıt bağlantısı).
+- notes: listeye girmeyen ama antrenörün bilmesi gereken önemli maddeler, en fazla 8 kısa madde, her biri yeni satırda "- " ile (gerekli belgeler, lisans/sağlık şartı, tekne taşıma, yaş sınırı, kayıt bağlantısı). Yurt dışı yarışta istenen belgeleri (World Sailing Sailor ID, milli federasyon onayı, sigorta, ölçüm belgesi, ulusal lisans, reklam izni) ve kiralık tekne bilgisini mutlaka yaz.
 - summary: 1-2 kısa Türkçe cümle; yarışı ve en yakın son tarihi söyle.`;
 
 const s = { type: "string" };
@@ -34,6 +36,7 @@ const SCHEMA = {
   type: "object",
   properties: {
     isNotice: { type: "boolean" },
+    abroad: { type: "boolean" },
     name: s, organizer: s, federation: s, city: s, district: s, venue: s, startDate: s, endDate: s,
     classes: { type: "array", items: s },
     schedule: row(["date", "time", "title"], ["date", "title"]),
@@ -98,6 +101,7 @@ async function handle(request) {
       name: S(raw?.name, 80),
       organizer: S(raw?.organizer, 120),
       federation: S(raw?.federation, 30) || "Yelken",
+      abroad: raw?.abroad === true,
       city: S(raw?.city, 40),
       district: S(raw?.district, 40),
       venue: S(raw?.venue, 120),
@@ -110,7 +114,7 @@ async function handle(request) {
       fees: list(raw?.fees, 12, (x) => S(x?.title, 80) && { title: S(x.title, 80), amount: S(x?.amount, 40), note: S(x?.note, 240) }),
       hotels: list(raw?.hotels, 10, (x) => S(x?.name, 100) && { name: S(x.name, 100), phone: S(x?.phone, 40), note: S(x?.note, 240) }),
       contacts: list(raw?.contacts, 10, (x) => S(x?.name, 100) && { name: S(x.name, 100), role: S(x?.role, 80), phone: S(x?.phone, 40), email: S(x?.email, 100) }),
-      notes: String(raw?.notes || "").trim().slice(0, 1500),
+      notes: String(raw?.notes || "").trim().slice(0, 2000),
       summary: S(raw?.summary, 400),
     };
     if (!out.name && !out.startDate) return bad("Talimattan yarış adı ve tarihi okunamadı.", 422);

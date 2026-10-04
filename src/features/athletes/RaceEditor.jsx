@@ -24,7 +24,7 @@ import { BudgetView } from "./BudgetView";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
+import { cleanSkips, cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
 
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -226,7 +226,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const pages =
     (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0) + (docs.includes("coach") ? groupCount : 0) + (docs.includes("entry") ? groupCount : 0);
   const ready = [
-    ["Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
+    [r.abroad ? "Yarış adı, ülke, şehir, başlangıç tarihi" : "Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
     [chosen.length ? `${chosen.length} sporcu seçildi` : "Sporcu seçilmedi", chosen.length > 0, "people"],
     [incomplete.length ? `${incomplete.length} sporcunun bilgisi eksik (belgede boş kalır)` : "Sporcu bilgileri tamam", !incomplete.length, "people", true],
@@ -416,7 +416,18 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const n = doneCount(r);
   const steps = stepsOf(r);
   const fromNotice = steps.some((x) => x.group === "notice");
-  const inGroup = (group) => steps.filter((x) => (group === "docs" ? x.group === "docs" : x.group !== "docs"));
+  const inGroup = (group) => steps.filter((x) => (group === "docs" || group === "abroad" ? x.group === group : x.group !== "docs" && x.group !== "abroad"));
+  // Yurt dışı: hazır listeden çıkarma / geri getirme
+  const skipped = r.abroad ? cleanSkips(r.skips).length : 0;
+  const skipStep = (key) =>
+    setR((p) => {
+      const checks = { ...p.checks };
+      delete checks[key];
+      return { ...p, skips: cleanSkips([...(p.skips || []), key]), checks };
+    });
+  // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
+  const setAbroad = (on) =>
+    setR((p) => (!!p.abroad === on ? p : { ...p, abroad: on, city: on && !p.district.trim() ? "" : !on && !p.city.trim() ? "İzmir" : p.city }));
   const count = (group) => `${inGroup(group).filter((x) => r.checks?.[x.key]).length}/${inGroup(group).length}`;
   // Elle iş ekleme/silme (her yarışa ayrı)
   const [todo, setTodo] = useState("");
@@ -457,8 +468,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 </span>
               )}
             </button>
-            {g === "own" && (
-              <button type="button" onClick={() => removeTodo(key)} aria-label={`${label} işini sil`} className="-ml-2 grid size-11 shrink-0 place-items-center text-mut">
+            {(g === "own" || g === "abroad") && (
+              <button type="button" onClick={() => (g === "own" ? removeTodo(key) : skipStep(key))} aria-label={`${label} işini sil`} className="-ml-2 grid size-11 shrink-0 place-items-center text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             )}
@@ -519,6 +530,24 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <Label right={`${fromNotice ? "talimata göre · " : ""}${count("prep")}`}>KAYIT VE HAZIRLIK</Label>
           {stepList("prep")}
           {!fromNotice && <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.notice ? "Talimatta iş bulunamadı; işleri elle ekleyebilirsin." : "Talimatı yüklersen kayıt, ödeme, konaklama gibi işler son tarihleriyle buraya gelir. İstediğin işi elle de ekleyebilirsin."}</p>}
+
+          {r.abroad && (
+            <>
+              <Label right={count("abroad")}>TÜRKİYE’DE YAPILACAKLAR · YURT DIŞI</Label>
+              {stepList("abroad")}
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">
+                Hazır liste; gerekmeyeni × ile çıkar, eksik olanı yukarıdan iş olarak ekle.
+                {skipped > 0 && (
+                  <>
+                    {" "}
+                    <button type="button" onClick={() => put("skips", [])} className="font-semibold text-acc">
+                      Çıkarılanları geri getir ({skipped})
+                    </button>
+                  </>
+                )}
+              </p>
+            </>
+          )}
 
           <Label right={count("docs")}>EVRAK</Label>
           {stepList("docs")}
@@ -633,6 +662,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} />
             </div>
           )}
+          <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
+          {r.abroad && <p className="mt-2 px-1 text-[0.75rem] text-mut">Özet’te Türkiye’de yapılacaklar listesi açılır (pasaport, vize, izinler, sigorta, nakliye…). İngilizce yarış ilanı da Türkçe okunur.</p>}
           <Label>YARIŞ</Label>
           <Group>
             <Row label="Yarış adı">
@@ -645,8 +676,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </Row>
             <Row label="Federasyon">{field("federation", "Yelken")}</Row>
             <Pair>
-              <Row label="İl">{field("city", "İzmir")}</Row>
-              <Row label="İlçe">{field("district", "Çeşme")}</Row>
+              <Row label={r.abroad ? "Ülke" : "İl"}>{field("city", r.abroad ? "Fransa" : "İzmir")}</Row>
+              <Row label={r.abroad ? "Şehir" : "İlçe"}>{field("district", r.abroad ? "Cannes" : "Çeşme")}</Row>
             </Pair>
           </Group>
 

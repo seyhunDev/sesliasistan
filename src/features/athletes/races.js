@@ -12,6 +12,8 @@ import { cleanWeather } from "./raceWeather";
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
 // T.C., veli gibi kişisel bilgiler kopyalanmaz, belge üretilirken sporcu kartından okunur.
 export const RACE_FIELDS = [
+  // abroad: yurt dışı yarışı (city = ülke, district = şehir; Türkiye'de yapılacaklar listesi açılır), skips: listeden çıkarılan hazır işler
+  "abroad", "skips",
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
@@ -65,6 +67,23 @@ export const DOC_STEPS = [
   ["schools", "Okullara verildi"],
   ["gsim", "GSİM'e verildi (il dışı çıkış oluru)"],
 ];
+// Yurt dışı yarışta Türkiye'de yapılacaklar (hazır liste; gerekmeyen × ile çıkarılır, skips). Talimattaki ve elle işler ayrıca eklenir.
+export const ABROAD_STEPS = [
+  ["a:pasaport", "Pasaportları kontrol et", "Dönüşten sonra en az 6 ay geçerli olmalı; yoksa erkenden randevu al"],
+  ["a:davet", "Davet ve kayıt onay mektubunu al", "Organizasyondan, sporcu ve antrenör adlarıyla (vize için)"],
+  ["a:vize", "Vize başvurusunu yap", "Gerekiyorsa; Schengen için en az 1-2 ay önce"],
+  ["a:federasyon", "Federasyondan yurt dışı yarış izni al", "TYF'ye kafile listesiyle başvur"],
+  ["a:gsim", "Gençlik ve Spor İl Müdürlüğünden yurt dışı görev oluru al", "Kafile onayı, yurt dışı çıkış"],
+  ["a:veli", "Velilerden noter onaylı yurt dışı çıkış izni al", "18 yaş altı, velisi yanında olmayan sporcular için"],
+  ["a:sigorta", "Seyahat sağlık sigortası yaptır", "Yarış süresini ve yolculuğu kapsasın"],
+  ["a:wsid", "World Sailing Sailor ID'leri hazırla", "Kayıtta istenir"],
+  ["a:nakliye", "Tekne ve ekipman nakliyesini ayarla", "Ya da yerinde kiralık tekne (charter) ayır; gümrük belgelerini sor"],
+  ["a:ucus", "Uçak biletlerini al", "Ekipman ve fazla bagaj hakkını kontrol et"],
+  ["a:konaklama", "Konaklamayı ayarla", ""],
+  ["a:ulasim", "Havalimanı ve yarış alanı ulaşımını ayarla", ""],
+  ["a:doviz", "Kayıt ücretini döviz olarak öde", "Kart ya da havale; dekontu sakla"],
+  ["a:harc", "Yurt dışı çıkış harcını kontrol et", "Antrenör ve 18 yaş üstü için; muafiyetlere bak"],
+];
 const slug = (s, p = "t:") =>
   p + String(s || "").toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40);
 
@@ -90,13 +109,17 @@ export const cleanTodos = (a) =>
     .filter((t) => t.title)
     .slice(0, 30);
 export const todoKey = (title) => slug(title, "m:");
+export const cleanSkips = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && /^a:[a-z]{1,20}$/.test(k)))].slice(0, 30);
 
 export function stepsOf(r) {
   const seen = new Set();
   const own = cleanTodos(r?.todos)
     .map((t) => ({ key: todoKey(t.title), label: t.title, date: t.date, detail: "", group: "own" }))
     .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
-  return [...noticeTasks(r?.notice), ...own, ...DOC_STEPS.map(([key, label]) => ({ key, label, group: "docs" }))];
+  const skip = new Set(cleanSkips(r?.skips));
+  const abroad = r?.abroad ? ABROAD_STEPS.filter(([key]) => !skip.has(key)).map(([key, label, detail]) => ({ key, label, detail, date: "", group: "abroad" })) : [];
+  const docs = DOC_STEPS.filter(([key]) => !(r?.abroad && key === "gsim")).map(([key, label]) => ({ key, label, group: "docs" }));
+  return [...noticeTasks(r?.notice), ...own, ...abroad, ...docs];
 }
 export const doneCount = (r) => stepsOf(r).filter((s) => r.checks?.[s.key]).length;
 
@@ -109,12 +132,14 @@ const clean = (r) =>
         ? r[k] || []
         : k === "checks"
           ? Object.fromEntries(Object.entries(r.checks || {}).filter(([c, v]) => typeof v === "boolean" && /^[\p{L}\p{N}:-]{1,48}$/u.test(c)).slice(0, 60))
-          : k === "planAdded"
+          : k === "planAdded" || k === "abroad"
             ? !!r[k]
             : k === "notice"
               ? cleanNotice(r[k])
             : k === "noticeFile"
               ? cleanNoticeFile(r[k])
+            : k === "skips"
+              ? cleanSkips(r[k])
             : k === "todos"
               ? cleanTodos(r[k])
             : k === "budget"
@@ -133,6 +158,7 @@ const clean = (r) =>
 // Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
 export function freshRace(last = {}, today = "") {
   return {
+    abroad: false, skips: [],
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
     startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
