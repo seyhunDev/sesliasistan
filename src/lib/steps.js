@@ -47,16 +47,21 @@ export function jobsText(kinds) {
   return l.length > 1 ? `${l.slice(0, -1).join(", ")} ve ${l.at(-1)}` : l[0] || "";
 }
 
-// Yapay zekanın kayıtları (plan/görev/not) ve mesajı: söylenen sırayla adımlar
-// Kayıtlar tek adımda birlikte kaydedilir; mesaj onay istediği için ayrı adımdır.
-export function orderSteps(raw, { send = null, items = [] } = {}) {
-  const steps = [];
-  const rec = items.length ? { items } : null;
-  const msg = send?.text ? { send } : null;
-  if (msg && rec) return sendFirst(raw) ? [msg, rec] : [rec, msg];
-  if (msg) steps.push(msg);
-  if (rec) steps.push(rec);
-  return steps;
+// Görev listesi: yapay zekanın yanıtındaki işler, onay gerekip gerekmediğine göre.
+// now: hemen yapılan işlemler (görev tamamlama/yeniden açma, güncelleme); items: yeni kayıtlar (bilgisi tamamsa hemen kaydedilir);
+// confirm: onay isteyen adımlar sırayla (önce silmeler tek kartta, sonra her mesaj ayrı kartta); open: düzenleme/iptal ekranı.
+const NOW_OPS = ["complete_task", "reopen_task", "update"];
+export function taskList(r = {}) {
+  const acts = Array.isArray(r.actions) ? r.actions : [];
+  const sends = r.sends?.length ? r.sends : r.send?.text ? [r.send] : [];
+  const items = ["create", "message", "action"].includes(r.intent) && Array.isArray(r.items) ? r.items : [];
+  const deletes = acts.filter((a) => a.op === "delete");
+  return {
+    now: acts.filter((a) => NOW_OPS.includes(a.op)),
+    items,
+    confirm: [...(deletes.length ? [{ actions: deletes }] : []), ...sends.filter((x) => x?.text).map((send) => ({ send }))],
+    open: acts.find((a) => a.op === "open" || (a.op === "cancel" && a.kind === "plan")) || null,
+  };
 }
 
 // Not yalnız açıkça istenince: "not al", "not düş", "nota ekle", "notlara yaz", "not olarak kaydet", "not: …".
