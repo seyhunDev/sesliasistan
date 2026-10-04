@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { toWav16k } from "@/lib/speech/wav";
+import { makeVad } from "@/lib/speech/vad";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -18,7 +19,7 @@ const FATAL = ["not-allowed", "service-not-allowed", "audio-capture", "language-
 const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
-const VOICE_LVL = 0.035; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir)
+const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir, vad.js)
 const END_SILENCE = 2300; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms)
 const END_SILENCE_SHORT = 3000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
 const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
@@ -95,16 +96,14 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
           const v = (s.buf[i] - 128) / 128;
           sum += v * v;
         }
-        raw = Math.min(1, Math.sqrt(sum / s.buf.length) * 4); // gerçek ses seviyesi (kayıt yolu)
+        raw = Math.min(1, Math.sqrt(sum / s.buf.length) * 4); // konuşma bandındaki ses seviyesi (kayıt yolu)
         if (raw > 0.001) s.meterLive = true; // ölçer çalışıyor (askıdaki ses motorunda hep 0 gelir)
-        // Ortam gürültüsünü öğren: en düşük seviye, yavaşça yükselerek
-        s.floor = s.floor == null ? raw : Math.min(raw, s.floor + 0.0004);
-        // Konuşma başladıktan sonra eşik biraz düşer: kısık söylenen hece ve cümle sonları sessizlik sayılmasın
-        const gate = s.voiceSeen ? Math.max(VOICE_LVL * 0.7, s.floor * 2.2) : Math.max(VOICE_LVL, s.floor * 3);
-        if (raw > gate) {
-          if (!s.voiceSeen) s.voiceFrom = now;
-          s.voiceSeen = true;
-          s.lastSpeech = now;
+        // Konuşuyor mu, sustu mu: gürültü tabanı ve kullanıcının ses düzeyine göre (vad.js)
+        if (s.meterLive) {
+          s.vad.step(raw, now);
+          s.voiceSeen = s.vad.voiceSeen;
+          s.voiceFrom = s.vad.voiceFrom;
+          if (s.vad.voiceSeen) s.lastSpeech = s.vad.lastSpeech;
         }
       } else {
         // Web Speech ses seviyesi vermez: yeni kelime geldiğinde dalga hareketlenir
@@ -240,7 +239,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
     const alive = () => s.sid === sid;
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
       savePermission("microphone", "granted");
     } catch (e) {
       const st = errorState(e);
@@ -260,8 +259,17 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
       const ctx = new AC();
       ctx.resume?.().catch(() => {}); // iPhone'da askıda başlayabilir: seviye ölçümü için uyandır
       const an = ctx.createAnalyser();
-      an.fftSize = 256;
-      ctx.createMediaStreamSource(stream).connect(an);
+      an.fftSize = 2048; // ~45 ms'lik pencere: tek bir an değil, hece boyu ölçülür
+      // Ölçüm yalnız konuşma bandında (170-4000 Hz): rüzgâr uğultusu, motor ve dalga sesi "konuşma" sayılmasın
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 170;
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 4000;
+      ctx.createMediaStreamSource(stream).connect(hp);
+      hp.connect(lp);
+      lp.connect(an);
       s.ctx = ctx;
       s.analyser = an;
       s.buf = new Uint8Array(an.fftSize);
@@ -352,7 +360,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
     s.sid += 1;
     const sid = s.sid;
     Object.assign(s, {
-      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, floor: null,
+      kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0,
     });

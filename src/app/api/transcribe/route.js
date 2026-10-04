@@ -12,9 +12,9 @@ const HINT =
   "plan, görev, not, yoklama, takvim, planlar, görevler, notlar, fişler, yarışlar, sporcular, mesajlar, ayarlar, ana sayfa, aç, git, göster.";
 const MIN = 60 * 1000;
 
-// OpenAI uyumlu ses çeviri servisleri (aynı istek biçimi)
+// OpenAI uyumlu ses çeviri servisleri (aynı istek biçimi). Groq: Türkçede tam model (whisper-large-v3) "turbo"dan daha doğru yazar
 const WHISPER = {
-  groq: { url: "https://api.groq.com/openai/v1/audio/transcriptions", key: () => process.env.GROQ_API_KEY, model: () => process.env.GROQ_STT_MODEL || "whisper-large-v3-turbo" },
+  groq: { url: "https://api.groq.com/openai/v1/audio/transcriptions", key: () => process.env.GROQ_API_KEY, model: () => process.env.GROQ_STT_MODEL || "whisper-large-v3" },
   openai: { url: "https://api.openai.com/v1/audio/transcriptions", key: () => process.env.OPENAI_API_KEY, model: () => process.env.STT_MODEL || "gpt-4o-mini-transcribe" },
 };
 

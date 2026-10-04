@@ -45,3 +45,40 @@ group("Ses seçimi")([
   ["Mac Chrome: Gelişmiş ad ile", BV([{ name: "Yelda", lang: "tr-TR", voiceURI: "Yelda", localService: true }, { name: "Yelda (Gelişmiş)", lang: "tr-TR", voiceURI: "Yelda (Gelişmiş)", localService: true }], "", "Yelda (Gelişmiş)")],
 ]);
 
+
+// Konuşma bitişi (kayıt yolu, iPhone): gürültüde de susunca dinleme biter (vad.js; useSpeech'teki 2,3 sn kuralıyla)
+const { makeVad } = await import("@/lib/speech/vad");
+const { trimQuiet, louder } = await import("@/lib/speech/wav");
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+// noise(t): gürültü seviyesi, talk: [başlangıç, bitiş] ms (konuşma heceli: 300 ms ses, 100 ms ara)
+const scene = ({ noise, talk = [1000, 4000], pause, voice = 0.3, total = 30000 }) => () => {
+  seed = 7;
+  const v = makeVad({ minLvl: 0.03 });
+  for (let t = 0; t <= total; t += 100) {
+    const n = noise(t) * (0.7 + rnd() * 0.6);
+    const speaking = talk && t >= talk[0] && t < talk[1] && t % 400 < 300 && !(pause && t >= pause[0] && t < pause[1]);
+    v.step(speaking ? Math.max(n, voice * (0.6 + rnd() * 0.5)) : n, t);
+    const wait = v.lastSpeech - v.voiceFrom < 1500 ? 3000 : 2300;
+    if (v.voiceSeen && t - v.lastSpeech >= wait) return { seen: true, end: t - (talk ? talk[1] : 0) };
+  }
+  return { seen: v.voiceSeen, end: null };
+};
+const ENDS = (max) => ({ desc: `konuşma bitince ${max / 1000} sn içinde biter`, ok: (r) => r.seen && r.end != null && r.end <= max });
+group("Konuşma bitişi (gürültü)")([
+  ["sessiz oda", { ...ENDS(3000), fn: scene({ noise: () => 0.01 }) }],
+  ["sürekli rüzgâr uğultusu", { ...ENDS(3500), fn: scene({ noise: () => 0.09 }) }],
+  ["konuşma bitince motor çalıştı", { ...ENDS(7000), fn: scene({ noise: (t) => (t > 4000 ? 0.12 : 0.01) }) }],
+  ["arkada uzaktan konuşanlar", { ...ENDS(4000), fn: scene({ noise: (t) => (Math.floor(t / 700) % 2 ? 0.05 : 0.015) }) }],
+  ["alçak sesle konuşma", { ...ENDS(3000), fn: scene({ noise: () => 0.004, voice: 0.06 }) }],
+  ["cümle ortasında 1,5 sn duraksama kesmez (rüzgârda)", { desc: "konuşmanın sonunda biter", fn: scene({ noise: () => 0.09, talk: [1000, 7000], pause: [3000, 4500] }), ok: (r) => r.seen && r.end > 0 && r.end <= 3500 }],
+  ["konuşmadan: tek çarpma konuşma sayılmaz", { desc: "konuşma yok", fn: () => { const v = makeVad(); [0.01, 0.01, 0.5, 0.01, 0.01].forEach((l, i) => v.step(l, i * 100)); return v.voiceSeen; }, ok: (r) => r === false }],
+]);
+const tone = (sec, amp) => Float32Array.from({ length: 16000 * sec }, (_, i) => amp * Math.sin(i / 3));
+const withTalk = () => { const x = new Float32Array(16000 * 6); x.set(tone(2, 0.3), 16000 * 2); return x; };
+group("Kayıt temizliği")([
+  ["baştaki ve sondaki sessizlik kırpılır", { desc: "~2,8 sn kalır", fn: () => trimQuiet(withTalk()).length / 16000, ok: (r) => r > 2.7 && r < 2.9 }],
+  ["konuşma yoksa kayıt aynen kalır", { desc: "6 sn", fn: () => trimQuiet(new Float32Array(16000 * 6)).length / 16000, ok: (r) => r === 6 }],
+  ["kısık kayıt yükseltilir (en çok 6 kat)", { desc: "tepe ~0,6", fn: () => Math.max(...louder(tone(1, 0.1))), ok: (r) => r > 0.55 && r < 0.65 }],
+  ["yüksek kayda dokunulmaz", { desc: "tepe ~0,8", fn: () => Math.max(...louder(tone(1, 0.8))), ok: (r) => r > 0.79 && r < 0.81 }],
+]);
