@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, formatOf, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
+import { todayStr } from "@/lib/utils/format";
 
 const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
@@ -218,9 +219,13 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       if (said) setTimeout(() => sessionStorage.removeItem(POST_ASK_KEY), 1500);
     } catch {}
     if (start.caption || (!start.race && !said)) return;
+    // "29 Ekim gönderisi hazırla": özel gün şablonu hazır gelir
+    const d = !start.race && said ? dayIn(said, todayStr()) : null;
+    const first = d ? reauto(start, { ...start, kind: "ozel", day: d.id, year: d.year }) : start;
     const t = setTimeout(() => {
+      if (d) setP((x) => reauto(x, { ...x, kind: "ozel", day: d.id, year: d.year }));
       if (said && !start.race) put("topic", said);
-      write({ ...start, topic: start.topic || said }).catch(() => {});
+      write({ ...first, topic: start.topic || said }).catch(() => {});
     }, 50);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -400,12 +405,23 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       return reauto(x, { ...x, race: { ...x.race, athletes, count: athletes.length } });
     });
   // Tür değişince yazılar, renk ve desen değişir; açıklama elle değiştirilmediyse yeni türe göre yeniden yazılır
+  // Özel günde gün seçilmediyse en yakın gün seçilir
   const setKind = (k) => {
     if (k === post.kind) return;
-    const next = reauto(post, { ...post, kind: k });
-    setP((x) => reauto(x, { ...x, kind: k }));
+    const near = k === "ozel" && !dayOf(post.day) ? nextDays(todayStr())[0] : null;
+    const day = near ? { day: near.id, year: near.year } : {};
+    const next = reauto(post, { ...post, kind: k, ...day });
+    setP((x) => reauto(x, { ...x, kind: k, ...day }));
     const mine = post.caption && post.caption !== autoCap.current;
-    if (!mine && (post.race || post.topic.trim())) write({ ...next, caption: "" }).catch(() => {});
+    if (!mine && (post.race || post.topic.trim() || k === "ozel")) write({ ...next, caption: "" }).catch(() => {});
+  };
+  // Özel gün seçilince hazır şablon (etiket, başlık, dilek, renk) gelir; açıklama elle değiştirilmediyse o güne göre yazılır
+  const setDay = (d) => {
+    if (d.id === post.day && d.year === post.year) return;
+    const next = reauto(post, { ...post, day: d.id, year: d.year });
+    setP((x) => reauto(x, { ...x, day: d.id, year: d.year }));
+    const mine = post.caption && post.caption !== autoCap.current;
+    if (!mine) write({ ...next, caption: "" }).catch(() => {});
   };
 
   const del = async () => {
@@ -502,6 +518,20 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           </button>
         ))}
       </div>
+      {post.kind === "ozel" && (
+        <div className={`${card} mt-2 px-4 py-3`}>
+          <p className="text-[0.8125rem] font-medium text-mut">Hangi gün? Yaklaşan önce; şablon hazır gelir, yazılar değiştirilebilir.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {nextDays(todayStr()).map((d) => (
+              <button key={d.id} type="button" aria-pressed={post.day === d.id} className={chip(post.day === d.id)} onClick={() => setDay(d)}>
+                <span className="size-3 shrink-0 rounded-full ring-1 ring-white/60" style={{ background: { milli: "#d0142c", anma: "#2a2b2f", dini: "#e3c06b", deniz: "#1d6a8f" }[d.mood] || "#f6c445" }} />
+                {d.name}
+                <span className={post.day === d.id ? "text-white/70" : "text-mut"}>{d.left === 0 ? "bugün" : `${d.left} gün`}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Label right={RACE_KINDS.includes(post.kind) ? null : "isteğe bağlı"}>2 · YARIŞ</Label>
       <div className={`${card} px-4 py-3`}>

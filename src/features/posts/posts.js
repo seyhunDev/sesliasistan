@@ -55,7 +55,7 @@ export async function askCaption(post, ask = "") {
   const res = await authFetch("/api/post-caption", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: post.kind, topic: post.topic, race: post.race, today: todayStr(), caption: post.caption, ask, current }),
+    body: JSON.stringify({ kind: post.kind, day: post.day, year: post.year, topic: post.topic, race: post.race, today: todayStr(), caption: post.caption, ask, current }),
   });
   const p = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(p.error || "Açıklama yazılamadı");
@@ -67,7 +67,7 @@ export async function askImage(post, wish) {
   const res = await authFetch("/api/post-image", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: post.kind, topic: post.topic, race: post.race, wish, format: post.format, pos: post.pos }),
+    body: JSON.stringify({ kind: post.kind, day: post.day, year: post.year, topic: post.topic, race: post.race, wish, format: post.format, pos: post.pos }),
   });
   const p = await res.json().catch(() => ({}));
   if (!res.ok) {

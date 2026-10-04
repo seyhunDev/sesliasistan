@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { IMAGE_MODEL, imageUsage, spendImage } from "@/lib/server/imageUsage";
-import { KINDS, cleanRace } from "@/features/posts/postModel";
+import { KINDS, cleanRace, dayOf } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -20,6 +20,7 @@ const SCENE = {
   genel: "a calm sailing club harbour on the Aegean coast in the morning, moored dinghies, clear sky, clean composition",
   kayit: "children learning to sail in small Optimist dinghies with an instructor, bright and welcoming, Aegean bay",
   kutlama: "festive sailing club harbour on the Aegean coast with nautical signal flags and Turkish flags waving, sunny day",
+  ozel: "sailing dinghies on a calm Aegean sea near Dikili with a large Turkish flag waving on the club mast, clear sky, dignified mood",
   kulup: "a friendly small-town sailing club on the Aegean coast: dinghies on the slipway, flags, sea and sky",
   diger: "sailing on the Aegean sea near Dikili, Turkey",
 };
@@ -53,6 +54,7 @@ export async function POST(request) {
   const prompt = [
     `Create a vivid, realistic, high quality photograph for an Instagram post of Dikili Yelken Spor Kulübü (a youth sailing club in Dikili, İzmir, Turkey).`,
     wish ? `What the image should show (Turkish, from the user): "${wish}"` : `Scene: ${SCENE[kind]}.`,
+    kind === "ozel" && dayOf(body?.day) ? `Occasion (Turkish national/special day): ${dayOf(body.day).name}. ${dayOf(body.day).mood === "anma" ? "Solemn remembrance mood, muted colors, no celebration." : ""}` : "",
     topic && !wish ? `Context (Turkish): "${topic}"` : "",
     race ? `Event context: ${[race.name, race.place, race.dates, race.classes].filter(Boolean).join(", ")}.` : "",
     `Style: natural light, sharp, vibrant but realistic colors, shot on a professional camera. Leave calm, uncluttered space in the ${body?.pos === "top" ? "upper" : "lower"} third for a headline overlay.`,

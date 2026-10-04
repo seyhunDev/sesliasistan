@@ -337,6 +337,33 @@ group("Instagram hikâye")([
   ["üç boyut", F("gönderi + hikâye + reels; gönderi seçili Kare/Dikey, yoksa Dikey", () => PMs.setOf("square").join() === "square,story,reels" && PMs.setOf("portrait").join() === "portrait,story,reels" && PMs.setOf("reels").join() === "portrait,story,reels")],
 ]);
 
+// Instagram özel gün şablonları (postModel.js DAYS)
+group("Instagram özel gün")([
+  ["yaklaşan günler", F("en yakın önce, bugün dahil, yıl dönerse gelecek yıl", () => {
+    const l = PMs.nextDays("2026-10-04");
+    const t = PMs.nextDays("2026-11-10");
+    return l[0].id === "29ekim" && l[0].left === 25 && l[1].id === "10kasim" && l.find((d) => d.id === "yilbasi").at === "2027-01-01" && t[0].id === "10kasim" && t[0].left === 0 && l.length === PMs.DAYS.length;
+  })],
+  ["yıl dönümü", F("29 Ekim 2026 → 103. yıl, 10 Kasım 2026 → 88. yıl, 30 Ağustos 2027 → 105. yıl", () => {
+    const a = PMs.autoOf({ kind: "ozel", day: "29ekim", year: 2026 });
+    const b = PMs.autoOf({ kind: "ozel", day: "10kasim", year: 2026 });
+    const c = PMs.autoOf({ kind: "ozel", day: "30agustos", year: 2027 });
+    return a.tag === "29 EKİM" && a.wish === "Cumhuriyetimizin 103. yılı kutlu olsun!" && a.theme === "al" && /88\. yılında/.test(b.sub) && b.wish === "" && !/kutlu/i.test(b.headline + b.sub) && b.theme === "antrasit" && /105\./.test(c.wish);
+  })],
+  ["hareketli günler", F("Anneler Günü mayısın 2. pazarı, Babalar Günü haziranın 3. pazarı, bayram tarihi listeden", () =>
+    PMs.dayDate(PMs.dayOf("anneler"), 2026) === "2026-05-10" && PMs.dayDate(PMs.dayOf("babalar"), 2026) === "2026-06-21" && PMs.dayDate(PMs.dayOf("ramazan"), 2026) === "2026-03-20" && PMs.dayDate(PMs.dayOf("ramazan"), 1990) === "")],
+  ["şablon sınırları", F("tüm günlerde etiket ≤18, dilek ≤60, başlık ≤90, alt satır ≤200", () =>
+    PMs.DAYS.every((d) => d.tag.length <= 18 && d.wish(2030).length <= 60 && d.head(2030).length <= 90 && d.sub(2030).length <= 200))],
+  ["kayıt ve gün değişimi", F("gün kayıtta kalır; gün değişince dokunulmamış yazılar yenilenir, elle yazılan kalır", () => {
+    const p = PMs.cleanPost({ kind: "ozel", day: "29ekim", year: 2026, ...PMs.autoOf({ kind: "ozel", day: "29ekim", year: 2026 }) });
+    const q = PMs.reauto(p, { ...p, day: "10kasim" });
+    const r = PMs.reauto({ ...p, headline: "Kendi başlığım" }, { ...p, headline: "Kendi başlığım", day: "10kasim" });
+    return p.day === "29ekim" && PMs.cleanPost({ day: "yok" }).day === "" && q.tag === "10 KASIM" && q.headline === "Saygı, Minnet ve Özlemle" && r.headline === "Kendi başlığım" && r.tag === "10 KASIM";
+  })],
+  ["asistan: gün tanınır", F("“29 Ekim gönderisi hazırla”, “Atatürk'ü anma postu”, “kabotaj bayramı”", () =>
+    PMs.dayIn("29 Ekim gönderisi hazırla", "2026-10-04")?.id === "29ekim" && PMs.dayIn("10 Kasım Atatürk'ü anma gönderisi", "2026-10-04")?.year === 2026 && PMs.dayIn("kabotaj bayramı için post yap", "2026-10-04")?.year === 2027 && PMs.dayIn("Foça yarışı için gönderi", "2026-10-04") === null)],
+]);
+
 // Aidat ödemeleri listesi (paymentsOf)
 group("Aidat ödemeleri listesi")([
   ["onaylı, öneri, nakit", F("3 satır, aidat değil ve ilgisiz para yok, en yeni önce", () => {

@@ -26,7 +26,8 @@ export const KINDS = [
   ["genel", "Duyuru", "bell", "DUYURU"],
   ["kayit", "Kayıt / yelken okulu", "users", "KAYITLAR AÇIK"],
   ["kulup", "Kulüp haberi", "anchor", "KULÜP HABERİ"],
-  ["kutlama", "Kutlama / özel gün", "cake", "KUTLAMA"],
+  ["ozel", "Özel gün", "cal", ""],
+  ["kutlama", "Kutlama", "cake", "KUTLAMA"],
   ["diger", "Diğer", "tag", ""],
 ];
 // Yarışa bağlı türler (ekranda yarış adımı bunlarda öne çıkar)
@@ -61,10 +62,70 @@ export const THEMES = [
   ["turkuaz", "Turkuaz", "#5ea6a2", "#285f66", "#fbecc4"],
   ["bordo", "Bordo", "#b07077", "#5a2b37", "#f6e2c6"],
   ["antrasit", "Antrasit", "#69727d", "#2a3038", "#ecd8ad"],
+  ["al", "Al", "#d0142c", "#7d0a17", "#ffffff"],
 ];
 // Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
-export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", diger: "antrasit" };
+export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", ozel: "al", diger: "antrasit" };
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
+
+// Özel günler: hazır şablon (etiket, başlık, alt satır, dilek) ve görselin havası (mood):
+// milli kırmızı-beyaz + ay yıldız, anma siyah-gri (kutlama dili yok), dini lacivert-altın, deniz lacivert + bayrak, genel lacivert-sarı.
+// date: "AA-GG" ya da yıla göre tarih (hareketli günler). n: yıl dönümü sayısı.
+const nthSunday = (y, m, n) => {
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  const first = 1 + ((7 - d.getUTCDay()) % 7);
+  return `${String(m).padStart(2, "0")}-${String(first + 7 * (n - 1)).padStart(2, "0")}`;
+};
+// Dini bayramların ilk günü (Diyanet takvimiyle karşılaştırılmalı; listede olmayan yılda gösterilmez)
+const RAMAZAN = { 2026: "03-20", 2027: "03-09", 2028: "02-26", 2029: "02-14", 2030: "02-04" };
+const KURBAN = { 2026: "05-27", 2027: "05-16", 2028: "05-05", 2029: "04-24", 2030: "04-13" };
+export const DAYS = [
+  { id: "yilbasi", name: "Yılbaşı", date: "01-01", mood: "genel", tag: "YENİ YIL", head: () => "Mutlu Yıllar", sub: (y) => `${y} yılında denizde bol rüzgâr, sağlık ve başarı dileriz.`, wish: () => "İyi yıllar!" },
+  { id: "canakkale", name: "18 Mart Çanakkale", date: "03-18", mood: "anma", tag: "18 MART", head: () => "Çanakkale Geçilmez", sub: (y) => `Çanakkale Zaferi'nin ${y - 1915}. yılında tüm şehitlerimizi rahmet ve minnetle anıyoruz.`, wish: () => "" },
+  { id: "ramazan", name: "Ramazan Bayramı", date: (y) => RAMAZAN[y], mood: "dini", tag: "RAMAZAN BAYRAMI", head: () => "Ramazan Bayramınız Mübarek Olsun", sub: () => "Bayramın sevdiklerinizle birlikte sağlık ve huzur getirmesini dileriz.", wish: () => "İyi bayramlar!" },
+  { id: "23nisan", name: "23 Nisan", date: "04-23", mood: "milli", tag: "23 NİSAN", head: () => "Ulusal Egemenlik ve Çocuk Bayramı", sub: () => "Tüm çocuklarımızın bayramı kutlu olsun.", wish: (y) => `TBMM'nin ${y - 1920}. yılı kutlu olsun!` },
+  { id: "anneler", name: "Anneler Günü", date: (y) => nthSunday(y, 5, 2), mood: "genel", tag: "ANNELER GÜNÜ", head: () => "Anneler Günü Kutlu Olsun", sub: () => "Sporcularımızın en büyük destekçisi tüm annelerimize sevgiyle.", wish: () => "" },
+  { id: "19mayis", name: "19 Mayıs", date: "05-19", mood: "milli", tag: "19 MAYIS", head: () => "Gençlik ve Spor Bayramımız Kutlu Olsun", sub: () => "Atatürk'ü saygı, minnet ve özlemle anıyoruz.", wish: (y) => `Samsun'a çıkışın ${y - 1919}. yılı kutlu olsun!` },
+  { id: "kurban", name: "Kurban Bayramı", date: (y) => KURBAN[y], mood: "dini", tag: "KURBAN BAYRAMI", head: () => "Kurban Bayramınız Mübarek Olsun", sub: () => "Bayramın sevdiklerinizle birlikte sağlık ve huzur getirmesini dileriz.", wish: () => "İyi bayramlar!" },
+  { id: "babalar", name: "Babalar Günü", date: (y) => nthSunday(y, 6, 3), mood: "genel", tag: "BABALAR GÜNÜ", head: () => "Babalar Günü Kutlu Olsun", sub: () => "Sporcularımızın yanında olan tüm babalarımıza sevgiyle.", wish: () => "" },
+  { id: "kabotaj", name: "1 Temmuz Kabotaj", date: "07-01", mood: "deniz", tag: "1 TEMMUZ", head: () => "Denizcilik ve Kabotaj Bayramı Kutlu Olsun", sub: (y) => `Kabotaj Kanunu'nun ${y - 1926}. yılında denizlerimiz özgür, rüzgârımız bol olsun.`, wish: () => "Bayramımız kutlu olsun!" },
+  { id: "15temmuz", name: "15 Temmuz", date: "07-15", mood: "anma", tag: "15 TEMMUZ", head: () => "Demokrasi ve Millî Birlik Günü", sub: () => "15 Temmuz şehitlerimizi rahmetle, gazilerimizi minnetle anıyoruz.", wish: () => "" },
+  { id: "30agustos", name: "30 Ağustos", date: "08-30", mood: "milli", tag: "30 AĞUSTOS", head: () => "Zafer Bayramımız Kutlu Olsun", sub: () => "Büyük Zafer'in kahramanlarını saygı ve minnetle anıyoruz.", wish: (y) => `Büyük Zafer'in ${y - 1922}. yılı kutlu olsun!` },
+  { id: "29ekim", name: "29 Ekim", date: "10-29", mood: "milli", tag: "29 EKİM", head: () => "Cumhuriyet Bayramımız Kutlu Olsun", sub: () => "", wish: (y) => `Cumhuriyetimizin ${y - 1923}. yılı kutlu olsun!` },
+  { id: "10kasim", name: "10 Kasım", date: "11-10", mood: "anma", tag: "10 KASIM", head: () => "Saygı, Minnet ve Özlemle", sub: (y) => `Ulu Önder Mustafa Kemal Atatürk'ü aramızdan ayrılışının ${y - 1938}. yılında saygıyla anıyoruz.`, wish: () => "" },
+  { id: "ogretmen", name: "Öğretmenler Günü", date: "11-24", mood: "genel", tag: "ÖĞRETMENLER GÜNÜ", head: () => "Öğretmenler Günü Kutlu Olsun", sub: () => "Bize denizi, rüzgârı ve yelkeni öğreten tüm öğretmen ve antrenörlerimize teşekkürler.", wish: () => "" },
+];
+export const dayOf = (id) => DAYS.find((d) => d.id === id) || null;
+// Bu yıldaki tarihi: "2026-10-29" (bilinmiyorsa "")
+export const dayDate = (d, y) => {
+  const md = typeof d?.date === "function" ? d.date(y) : d?.date;
+  return md ? `${y}-${md}` : "";
+};
+// Yaklaşan özel günler, en yakını önce: [{ ...gün, year, at: "2026-10-29", left: gün sayısı }]
+export function nextDays(today) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || "") ? today : new Date().toISOString().slice(0, 10);
+  const y = Number(t.slice(0, 4));
+  const ms = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const out = [];
+  for (const d of DAYS) {
+    const at = [dayDate(d, y), dayDate(d, y + 1)].find((x) => x && x >= t);
+    if (at) out.push({ ...d, year: Number(at.slice(0, 4)), at, left: Math.round((ms(at) - ms(t)) / 864e5) });
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+// Cümledeki özel gün ("29 Ekim gönderisi hazırla", "Atatürk'ü anma", "kabotaj bayramı"): en yakın tarihli o gün ya da null
+const DAY_WORDS = {
+  yilbasi: /yılbaşı|yeni yıl/, canakkale: /18 mart|çanakkale/, ramazan: /ramazan|şeker bayram/, "23nisan": /23 nisan|çocuk bayram/, anneler: /anneler günü/,
+  "19mayis": /19 mayıs|gençlik ve spor/, kurban: /kurban/, babalar: /babalar günü/, kabotaj: /1 temmuz|kabotaj|denizcilik/, "15temmuz": /15 temmuz|demokrasi/,
+  "30agustos": /30 ağustos|zafer bayram/, "29ekim": /29 ekim|cumhuriyet bayram/, "10kasim": /10 kasım|atatürk.{0,12}anma|anma.{0,12}atatürk/, ogretmen: /öğretmenler günü|24 kasım/,
+};
+export function dayIn(text, today) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  return nextDays(today).find((d) => DAY_WORDS[d.id]?.test(t)) || null;
+}
+// Görselin havası: özel günde günün havası, diğer türlerde genel
+export const moodOf = (p) => (p?.kind === "ozel" && dayOf(p.day)?.mood) || "genel";
+const MOOD_THEME = { milli: "al", anma: "antrasit", dini: "gece", deniz: "deniz", genel: "bordo" };
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
 
 // Yazı yerleşimi: Afiş (üstte logo + kulüp adı, büyük başlık, eğik etiket; varsayılan), Klasik (yazı fotoğrafın üstünde),
@@ -134,6 +195,8 @@ export function cleanPost(p = {}) {
   const thumb = typeof p.thumb === "string" && p.thumb.startsWith("data:image/") && p.thumb.length < 60_000 ? p.thumb : "";
   return {
     kind: KINDS.some(([k]) => k === p.kind) ? p.kind : "diger",
+    day: dayOf(p.day) ? p.day : "",
+    year: Math.max(2000, Math.min(2100, Math.round(Number(p.year)) || new Date().getFullYear())),
     topic: L(p.topic, 1500),
     race: cleanRace(p.race),
     headline: L(p.headline, 90),
@@ -255,17 +318,26 @@ export const raceHeadline = (race) => withClass(race?.name || "", race);
 // Görseldeki yer · tarih satırı: "Foça · 7-11 Ekim 2026"
 export const raceMeta = (race) => (race ? [String(race.place || "").split(",")[0].trim(), race.dates].filter(Boolean).join(" · ") : "");
 
+// Özel günün hazır yazıları (yıl dönümü sayısı günün yılına göre)
+const dayAuto = (p) => {
+  const d = dayOf(p.day);
+  if (!d) return { headline: "", sub: "", people: "", wish: "", info: "", classes: "", tag: "ÖZEL GÜN", theme: kindTheme("ozel") };
+  return { headline: d.head(p.year), sub: d.sub(p.year), people: "", wish: d.wish(p.year), info: "", classes: "", tag: d.tag, theme: MOOD_THEME[d.mood] };
+};
 // Yarış ve türden kendiliğinden gelen yazılar
-export const autoOf = (p) => ({
-  headline: raceHeadline(p.race),
-  sub: raceSub(p.race, p.kind),
-  people: racePeople(p.race),
-  wish: raceWish(p.race, p.kind),
-  info: raceMeta(p.race),
-  classes: raceClasses(p.race).join(", "),
-  tag: kindOf(p.kind)[3],
-  theme: kindTheme(p.kind),
-});
+export const autoOf = (p) =>
+  p.kind === "ozel"
+    ? dayAuto(p)
+    : {
+        headline: raceHeadline(p.race),
+        sub: raceSub(p.race, p.kind),
+        people: racePeople(p.race),
+        wish: raceWish(p.race, p.kind),
+        info: raceMeta(p.race),
+        classes: raceClasses(p.race).join(", "),
+        tag: kindOf(p.kind)[3],
+        theme: kindTheme(p.kind),
+      };
 // Görseldeki sınıf etiketleri (düzenlenen alandan; en çok 4)
 export const classList = (v) => String(v || "").split(",").map((x) => S(x, 24)).filter(Boolean).slice(0, 4);
 // Eski kayıtta yer · tarih ve sınıf alanı yoktu: yarıştan doldurulur

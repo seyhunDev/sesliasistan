@@ -1,6 +1,6 @@
 "use client";
 
-import { formatOf, imagePeople, safeOf, tallOf, themeOf } from "./postModel";
+import { formatOf, imagePeople, moodOf, safeOf, tallOf, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -585,6 +585,38 @@ function cover(ctx, photo, W, H, post) {
 // Fotoğraf yoksa sade koyu lacivert zemin.
 const YELLOW = "#f6c445";
 const NAVY = "rgb(7,21,44)";
+// Özel günlerin havası (moodOf): gölge rengi, fotoğrafa çalan renk, vurgu, etiket kutusu ve fotoğrafsız zemin.
+// milli kırmızı-beyaz + ay yıldız, anma siyah-gri (fotoğraf da griye döner), dini lacivert-altın, deniz lacivert + ay yıldız.
+const MOODS = {
+  genel: { dark: NAVY, tint: "rgb(190,205,232)", accent: YELLOW, tagBg: YELLOW, tagInk: "#0b1f3f" },
+  milli: { dark: "rgb(86,4,12)", tint: "rgb(246,196,196)", accent: "#ffffff", tagBg: "#ffffff", tagInk: "#c8102e", bg: ["#dc1f36", "#8a0c1a"], mark: "#ffffff", markA: 0.14, crisp: true },
+  anma: { dark: "rgb(8,8,10)", tint: "rgb(215,215,215)", accent: "#d8d8d8", tagBg: "#e9e9e9", tagInk: "#141414", bg: ["#3b3c40", "#0b0b0d"], gray: true },
+  dini: { dark: NAVY, tint: "rgb(190,205,232)", accent: "#e3c06b", tagBg: "#e3c06b", tagInk: "#0b1f3f", bg: ["#1a4170", "#06132a"], mark: "#e3c06b", markA: 0.2 },
+  deniz: { dark: "rgb(4,26,48)", tint: "rgb(185,212,232)", accent: YELLOW, tagBg: YELLOW, tagInk: "#0b1f3f", bg: ["#1d6a8f", "#062440"], mark: "#ffffff", markA: 0.16 },
+};
+// Türk bayrağındaki ay yıldız (bayrak ölçüleriyle; G bayrağın yüksekliği, (x, y) bayrağın sol üstü)
+function crescentStar(ctx, x, y, G, color, alpha) {
+  const u = G / 800;
+  const X = (v) => x + v * u;
+  const Y = (v) => y + v * u;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(X(425), Y(400), 200 * u, 0, Math.PI * 2);
+  ctx.save();
+  ctx.clip();
+  ctx.beginPath();
+  ctx.arc(X(425), Y(400), 200 * u, 0, Math.PI * 2);
+  ctx.arc(X(475), Y(400), 160 * u, 0, Math.PI * 2);
+  ctx.fill("evenodd");
+  ctx.restore();
+  ctx.beginPath();
+  for (const [i, [a, b]] of [[583.334, 400], [764.235, 458.779], [652.431, 304.894], [652.431, 495.106], [764.235, 341.221]].entries()) ctx[i ? "lineTo" : "moveTo"](X(a), Y(b));
+  ctx.closePath();
+  ctx.fill("nonzero");
+  ctx.restore();
+}
 function measureAfis(ctx, post, maxW, k) {
   const z = (n) => Math.round(n * k);
   const people = imagePeople(post.people) ? imagePeople(post.people).split("\n") : [];
@@ -642,7 +674,7 @@ function paintAfis(ctx, { items, z }, x, y, c) {
       const tw = ctx.measureText(label).width;
       const h = it.h;
       const sk = h * 0.34;
-      ctx.fillStyle = c.accent;
+      ctx.fillStyle = c.tagBg || c.accent;
       ctx.beginPath();
       ctx.moveTo(x + sk, y);
       ctx.lineTo(x + sk + z(11), y);
@@ -723,20 +755,60 @@ async function drawAfis(ctx, post, photo, W, H) {
   const base = post.theme === "kum" ? "#1f5a4b" : c2;
   const top = post.pos === "top";
   const { t: safeT, b: safeB, r: safeR } = safeOf(post.format);
-  const navy = (a) => NAVY.replace("rgb", "rgba").replace(")", `,${a.toFixed(3)})`);
+  const mood = MOODS[moodOf(post)] || MOODS.genel;
+  // Yerleşim: logo satırı ve yazı bloğu (ay yıldız ikisinin arasındaki boşluğa göre yerleşir)
+  const R = 66;
+  const lx = PAD;
+  const ly = PAD - 8 + safeT;
+  const maxW = W - PAD * 2 - safeR;
+  const headTop = ly + R * 2 + 70;
+  const room = top ? H - headTop - PAD - safeB : H - PAD - safeB - headTop - 40;
+  let m = measureAfis(ctx, post, maxW, 1);
+  for (let k = 0.94; m.h > room && k >= 0.6; k -= 0.06) m = measureAfis(ctx, post, maxW, k);
+  const navy = (a) => mood.dark.replace("rgb", "rgba").replace(")", `,${a.toFixed(3)})`);
 
   if (photo) {
     cover(ctx, photo, W, H, post);
-    // Hazır gölgelendirme: fotoğraf laciverte çalar, yazının olduğu taraf alttan yukarı koyu laciverte yumuşakça kararır
     const k = post.shade / 100;
     ctx.save();
+    // Anma günlerinde fotoğraf griye döner
+    if (mood.gray) {
+      ctx.globalCompositeOperation = "saturation";
+      ctx.fillStyle = "#808080";
+      ctx.fillRect(0, 0, W, H);
+    }
+    // Hazır gölgelendirme: fotoğraf günün rengine (çoğunlukla lacivert) çalar, yazının olduğu taraf alttan yukarı koyulaşır
     ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = "rgb(190,205,232)";
+    ctx.fillStyle = mood.tint;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
     ctx.fillStyle = navy(0.04 + k * 0.18);
     ctx.fillRect(0, 0, W, H);
-    fade(ctx, W, H, top, NAVY, 0.82 + k * 0.17, 0.6 + k * 0.18);
+    fade(ctx, W, H, top, mood.dark, 0.82 + k * 0.17, 0.6 + k * 0.18);
+  } else if (mood.bg) {
+    // Özel gün zemini: günün renginde geçiş, sağda ay yıldız (anmada yok)
+    const g = ctx.createLinearGradient(0, 0, W * 0.3, H);
+    g.addColorStop(0, mood.bg[0]);
+    g.addColorStop(1, mood.bg[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    const r = ctx.createRadialGradient(W * 0.75, H * 0.3, 0, W * 0.75, H * 0.3, W * 0.9);
+    r.addColorStop(0, "rgba(255,255,255,.14)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, W, H);
+    if (mood.mark) {
+      // Logo ile yazı arasında yer varsa bayraktaki gibi net beyaz ay yıldız; yoksa yazının arkasında silik büyük ay yıldız
+      const [b0, b1] = top ? [headTop + m.h + 40, H - safeB - PAD] : [ly + R * 2 + 40, H - PAD - safeB - m.h - 40];
+      const G = Math.min((b1 - b0) * 2, ((W - PAD * 2 - safeR) * 0.62) / 0.674);
+      const right = W - PAD - safeR;
+      if (mood.crisp && G >= W * 0.5) crescentStar(ctx, right - (764 / 800) * G, (b0 + b1) / 2 - G / 2, G, mood.mark, 0.96);
+      else {
+        const g2 = W * 0.9;
+        crescentStar(ctx, right + PAD * 0.4 - (764 / 800) * g2, (top ? H - safeB - H * 0.38 : safeT + H * 0.36) - g2 / 2, g2, mood.mark, mood.markA);
+      }
+    }
+    fade(ctx, W, H, top, mood.dark, 0.55, 0.55);
   } else {
     // Sade koyu lacivert zemin (fotoğraf eklenince yerini fotoğraf alır)
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -761,9 +833,6 @@ async function drawAfis(ctx, post, photo, W, H) {
 
   // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf)
   const logo = await loadLogo();
-  const R = 66;
-  const lx = PAD;
-  const ly = PAD - 8 + safeT;
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,.3)";
   ctx.shadowBlur = 18;
@@ -795,12 +864,7 @@ async function drawAfis(ctx, post, photo, W, H) {
   ctx.restore();
 
   // Yazı bloğu
-  const maxW = W - PAD * 2 - safeR;
-  const headTop = ly + R * 2 + 70;
-  const room = top ? H - headTop - PAD - safeB : H - PAD - safeB - headTop - 40;
-  let m = measureAfis(ctx, post, maxW, 1);
-  for (let k = 0.94; m.h > room && k >= 0.6; k -= 0.06) m = measureAfis(ctx, post, maxW, k);
-  const c = { tag: post.tag, ink: "#ffffff", accent: YELLOW, tagInk: "#0b1f3f" };
+  const c = { tag: post.tag, ink: "#ffffff", accent: mood.accent, tagBg: mood.tagBg, tagInk: mood.tagInk };
   if (photo) {
     ctx.shadowColor = "rgba(0,0,0,.35)";
     ctx.shadowBlur = 16;
