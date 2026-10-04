@@ -11,11 +11,16 @@ import { mirrorChanges } from "./mirror";
 
 export const ATT_LABEL = { present: "geldi", absent: "gelmedi", excused: "izinli" };
 
+// Yoklama sayfası açıkken ekrandaki gün ve sınıf: cümlede gün söylenmezse yoklama bu güne yazılır,
+// sınıf seçiliyse yalnız o sınıfın sporcuları ("kalanlar gelmedi" öbür sınıfları işaretlemesin)
+let screen = { day: "", cls: "" };
+export const setAttDay = (day, cls) => (screen = { day: day || "", cls: cls || "" });
+
 // onStep(label): her adım başlarken çağrılır (panelde "yapılıyor" olarak görünür)
 export async function parseAttendance(text, idx, onStep = () => {}) {
   onStep("Sporcular yükleniyor");
   const data = await loadAthletes();
-  const list = data.athletes.filter(isActive);
+  const list = data.athletes.filter((a) => isActive(a) && (!screen.cls || a.currentClassId === screen.cls));
   if (!list.length) throw Object.assign(new Error("Aktif sporcu yok."), { code: "empty" });
   const classes = byId(data.classes);
   onStep("Söylediklerin sporcularla eşleştiriliyor");
@@ -25,6 +30,7 @@ export async function parseAttendance(text, idx, onStep = () => {}) {
     body: JSON.stringify({
       text,
       today: todayStr(),
+      day: screen.day,
       athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
       notes: idx?.notes || [],
     }),
@@ -45,6 +51,7 @@ export async function parseAttendance(text, idx, onStep = () => {}) {
 export async function applyAttendance(orgId, members, date, changes) {
   await saveAttendance(date, changes);
   await mirrorChanges(orgId, members, date, changes);
+  window.dispatchEvent(new CustomEvent("sa-att-saved", { detail: { date, changes } })); // açık yoklama sayfası güncellensin
 }
 
 // "1 Ekim: Mustafa, Enes geldi; 12 kişi gelmedi"

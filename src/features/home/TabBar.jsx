@@ -19,7 +19,7 @@ import { canReceipts } from "@/lib/kinds";
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
 // Sayfaya göre yazma satırı: ipucu, asistanın varsayılan kayıt türü (prefer), Oluştur'da öne çıkan seçenek, paneldeki örnekler.
-// Kendi işi olan sayfalar (yoklama, dersler) useDock ile bunları değiştirir.
+// Kendi işi olan sayfalar (dersler, fişler) useDock ile bunları değiştirir.
 const PAGES = {
   "/": { ph: "Sor ya da ekle…", ex: ["Yarın saat 10'da antrenman ekle", "Bugün neler var?", "Yoklamayı aç"] },
   "/calendar": { ph: "Plan ekle ya da sor…", prefer: "plan", first: "Plan" },
@@ -30,7 +30,7 @@ const PAGES = {
   "/birthdays": { ph: "ör. Ayşe'nin doğum günü 12 Mart", first: "Doğum günü" },
   "/receipts": { ph: "Fişlerle ilgili sor…", first: "Fiş" },
   "/schedule": { ph: "ör. salı 13:00 fizik B-204", first: "Dersler" },
-  "/athletes/attendance": { ph: "Ali ve Zeynep geldi…" },
+  "/athletes/attendance": { ph: "Kim geldi? ör. Ali ve Zeynep geldi…", ex: ["Ali ve Zeynep geldi, Emre izinli, kalanlar gelmedi", "Emre gelmedi, velisine haber ver", "Yarın 16:00 antrenman ekle"] },
   "/posts": { ph: "Ne paylaşalım? ör. Foça yarışı için gönderi hazırla", ex: ["Foça yarışı için Instagram gönderisi hazırla", "Yelken okulu kayıtları için gönderi hazırla", "Sıradaki yarış için gönderi hazırla"] },
   "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };

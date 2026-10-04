@@ -9,7 +9,11 @@ const list = () =>
 export const canSeeAthletes = (email) => !!email && list().includes(String(email).toLowerCase());
 
 // Asistana söylenen yoklama mı? ("yoklama: Ali ve Zeynep geldi", "bugün antrenmana Ali gelmedi")
-export const wantsAttendance = (text) => {
+// here: yoklama sayfası açık; orada "yoklama" denmeden de "Ali ve Zeynep geldi", "Emre izinli", "kalanlar gelmedi" yoklamadır
+// (soru ve "geldiğinde" gibi sözler değil)
+const HERE = /(?<![\p{L}])(geldi(ler)?|gelmedi(ler)?|gelmeyen\p{L}*|gelmiş(ler)?|gelmemiş(ler)?|izinli\p{L}*|raporlu\p{L}*|katıldı(lar)?|katılmadı(lar)?|katılmayan\p{L}*|yoktu|vardı|kalanlar\p{L}*)(?![\p{L}])/u;
+export const wantsAttendance = (text, here = false) => {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
-  return t.includes("yoklama") || (/(antrenman|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu|katıldı|katılmadı|katılmayan|vardı|yoktu|gelmiş|gelmemiş)/.test(t));
+  if (t.includes("yoklama") || (/(antrenman|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu|katıldı|katılmadı|katılmayan|vardı|yoktu|gelmiş|gelmemiş)/.test(t))) return true;
+  return here && HERE.test(t) && !/(\?|(?<![\p{L}])m[ıiuü](\p{L}*)?)\s*$/u.test(t.trim());
 };

@@ -125,6 +125,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Açık yarış sayfası (/athletes/races/<id>): yarış adı söylenmeden yapılan işler bu yarışa yazılır
   const hereRace = /^\/athletes\/races\/([\w-]+)$/.exec(path || "")?.[1];
   const curRace = hereRace && hereRace !== "new" ? hereRace : "";
+  const attHere = path === "/athletes/attendance"; // yoklama sayfası: "Ali ve Zeynep geldi" yoklamadır
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -703,7 +704,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
       if (DROP.test(s)) return dropDrafts(viaVoice);
       // Yoklama cümlesi taslağa eklenmez (not olarak taslağa düşüyordu); aşağıda yoklama olarak yapılır
-      if (!QUESTION.test(s) && !(canSeeAthletes(profile?.email) && wantsAttendance(s))) return refineDrafts(s, viaVoice);
+      if (!QUESTION.test(s) && !(canSeeAthletes(profile?.email) && wantsAttendance(s, attHere))) return refineDrafts(s, viaVoice);
     }
     // Taslak yokken yalnızca "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
     if (!drafts.length && !cards.pending && BARE_SAVE.test(s))
@@ -791,8 +792,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return prepareSend(to, focusBody(s), "", "local", viaVoice);
     }
     askTo.current = null;
-    // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir
-    if (canSeeAthletes(profile?.email) && wantsAttendance(s)) return runAttendance(s, viaVoice);
+    // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir.
+    // Yoklama sayfasında "yoklama" denmeden de ("Ali ve Zeynep geldi"). Cümlede başka iş de varsa (mesaj, plan, görev)
+    // yoklamadan sonra cümle yapay zekaya gider, kalan işler görev listesiyle yapılır.
+    if (canSeeAthletes(profile?.email) && wantsAttendance(s, attHere)) return runAttendance(s, viaVoice, jobsIn(s).length ? { s, history } : null);
     // Yarış ekleme / yarışa sporcu ya da not ekleme: yarış evrakı sayfasındaki kayda yazılır, yeni yarış planlara da düşer
     // Yarış sayfasındayken yarış adı gerekmez: "Mehmet'i de ekle", "not al: …" o yarışa yazılır
     if (racer && !skipRace.current && (wantsRace(s) || (curRace && raceJobHere(s)))) return runRace(s, viaVoice);
@@ -982,6 +985,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setSteps([]);
       try {
         await saveAtt(pend.att, fromText && convo.current);
+        if (pend.rest) restAfterAtt(pend.rest, fromText && convo.current, `Yoklama kaydedildi (${attSummary(pend.att)}).`);
       } catch (e) {
         stepsEnd(false);
         reply(e.message || "Kaydedemedim.", { engine: "local" });
@@ -1044,6 +1048,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+    // Yoklama onayından vazgeçildi: cümledeki diğer işler yine yapılır
+    if (cards.pending?.att && cards.pending.rest) {
+      reply("Tamam, yoklamayı kaydetmedim.", { engine: "local" }, fromText && convo.current);
+      return void restAfterAtt(cards.pending.rest, fromText && convo.current, "Yoklama kaydedilmedi.");
+    }
     if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
     queue.current = [];
     reply(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => a.op === "delete") ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
@@ -1281,7 +1290,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
 
   // ---- Yoklama (asistandan) ----
-  async function runAttendance(s, viaVoice) {
+  // rest: cümledeki diğer işler ({ s, history }); yoklama kaydedilince (ya da onay kartında vazgeçilince) yapay zekaya gider
+  async function runAttendance(s, viaVoice, rest = null) {
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
@@ -1291,14 +1301,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const n = Object.keys(r.changes).length;
       if (!n) {
         stepsEnd(false);
+        // Cümle yoklama değil de başka işmiş (yoklama sayfasında "Ali'ye geldi mi diye sor"): yapay zekaya gider
+        if (rest) return void askAI(rest.s, rest.s, viaVoice, rest.history, false);
         return reply(r.message || (r.unknown.length ? `Şu adları sporcularda bulamadım: ${r.unknown.join(", ")}.` : "Kimseyi eşleştiremedim. Adları bir daha söyler misin?"), { engine: "ai", nav: "attendance", expect: true }, viaVoice);
       }
       // Bulunamayan ad varsa kaydetmeden sor
       if (r.unknown.length) {
         stepsEnd();
-        return reply(`${r.unknown.join(", ")} adını bulamadım. ${attSummary(r)}. Bunları kaydedeyim mi?`, { pending: { att: r }, att: { ...r, saved: false }, engine: "ai", expect: true }, viaVoice);
+        return reply(`${r.unknown.join(", ")} adını bulamadım. ${attSummary(r)}. Bunları kaydedeyim mi?`, { pending: { att: r, rest }, att: { ...r, saved: false }, engine: "ai", expect: true }, viaVoice);
       }
       await saveAtt(r, viaVoice);
+      if (rest) restAfterAtt(rest, viaVoice, `Yoklama kaydedildi (${attSummary(r)}).`);
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
@@ -1500,6 +1513,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listening, transcribing, busy, open]);
+
+  // Yoklamadan sonra cümledeki diğer işler: yoklama cevabı okunup bitince yapay zekaya (görev listesi) gider
+  async function restAfterAtt(rest, viaVoice, done) {
+    const id = runId.current;
+    for (let i = 0; i < 80 && (sayQ.current.busy || speakingRef.current); i++) await new Promise((ok) => setTimeout(ok, 150)); // en çok 12 sn
+    if (id !== runId.current) return; // bu arada başka bir şey söylendi
+    askAI(rest.s, `${rest.s}\n(${done} Yoklamayı yeniden yapma; cümledeki diğer işleri yap.)`, viaVoice, rest.history, false);
+  }
 
   async function saveAtt(r, viaVoice) {
     stepTo("Yoklama kaydediliyor");

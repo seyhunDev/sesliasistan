@@ -1,12 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Sheet } from "@/components/ui/Sheet";
-import { useDock } from "@/features/home/TabBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -15,13 +13,11 @@ import { AbsentNotice } from "@/features/athletes/AbsentNotice";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, message, saveAttendance, useDikili } from "@/features/athletes/data";
-import { aliasesOf, generate, missing, useNameIndex } from "@/features/athletes/names";
+import { generate, missing, useNameIndex } from "@/features/athletes/names";
+import { setAttDay } from "@/features/athletes/assistAttendance";
 import { NamesSheet } from "@/features/athletes/NamesSheet";
-import { useSpeech } from "@/hooks/useSpeech";
-import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
-import { Loader, Loading } from "@/components/ui/Loader";
-import { ListeningOverlay } from "@/features/add/Stage";
+import { Loading } from "@/components/ui/Loader";
 
 const ST = {
   present: { label: "Geldi", short: "Geldi", on: "bg-ok text-white", tone: "text-ok" },
@@ -35,14 +31,8 @@ const shift = (d, n) => {
 };
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
-async function askAI(payload) {
-  const res = await authFetch("/api/attendance", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Yoklama anlaşılamadı");
-  return data; // { date, marks, others, unknown, message }
-}
-
-// Yoklama: gün seç, dokunarak işaretle ya da söyle ("Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi").
+// Yoklama: gün seç, dokunarak işaretle ya da ana asistana söyle ("Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi").
+// Asistan bu sayfada yoklamayı ekrandaki güne yazar (setAttDay); kaydedince "sa-att-saved" ile sayfa güncellenir.
 // Her işaret kulüp projesine anında yazılır (kulüp uygulamasıyla aynı alan: attendance_YYYY."MM-DD").
 export default function AttendancePage() {
   const { profile } = useAuth();
@@ -61,8 +51,6 @@ export default function AttendancePage() {
 
 function Roll() {
   const toast = useToast();
-  const params = useSearchParams();
-  const router = useRouter();
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
   const today = todayStr();
@@ -70,9 +58,6 @@ function Roll() {
   const [cls, setCls] = useState("");
   const [local, setLocal] = useState({}); // "tarih|id" -> durum | null (bu oturumda yapılan işaretler)
   const { members, myUid } = useData(); // uygulamada hesabı olan sporcuların yoklama kopyası için
-  const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState(null); // yapay zeka önerisi
-  const said = useRef(false);
   const { idx, save } = useNameIndex();
   const [names, setNames] = useState(false); // ses adları penceresi
   const [prep, setPrep] = useState(false);
@@ -119,42 +104,22 @@ function Roll() {
     apply(date, Object.fromEntries(target.map((a) => [a.id, s])), `${target.length} sporcu: ${ST[s].label.toLocaleLowerCase("tr-TR")}`);
   };
 
-  async function run(text) {
-    if (!list.length) return toast("Önce sporcular yüklensin");
-    setBusy(true);
-    try {
-      const r = await askAI({
-        text,
-        today,
-        athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
-        notes: idx.notes || [],
-      });
-      const changes = {};
-      r.marks.forEach((m) => (changes[m.id] = m.state === "clear" ? null : m.state));
-      if (r.others) list.forEach((a) => !(a.id in changes) && (changes[a.id] = r.others));
-      if (!Object.keys(changes).length) toast(r.message || (r.unknown?.length ? `Bulamadım: ${r.unknown.join(", ")}` : "Kimseyi işaretleyemedim"));
-      else setPreview({ ...r, changes });
-    } catch (e) {
-      toast(e.message);
-    }
-    setBusy(false);
-  }
-
-  const sp = useSpeech({ onFinal: (t) => run(t), onFail: (m) => toast(m), names: list.map((a) => a.studentName).slice(0, 60) });
-  const listening = sp.status === "listening";
-
-  // Asistandan gelindiyse ("yoklama: Ali ve Zeynep geldi") söyleneni bir kez işle
-  const say = params.get("say");
+  // Ana asistan gün söylenmezse ekrandaki güne, sınıf seçiliyse yalnız o sınıfa yazar
   useEffect(() => {
-    if (!say || said.current || !data || err) return;
-    said.current = true;
-    router.replace("/athletes/attendance");
-    run(say);
-  });
-
-  // Alt çubuk: yazılan ve söylenen doğrudan yoklamaya gider
-  const ready = !!data && !err;
-  useDock({ onSend: ready ? run : null, onMic: ready ? () => sp.start({ autoStop: 6000 }) : null });
+    setAttDay(date, cls);
+    return () => setAttDay("");
+  }, [date, cls]);
+  // Ana asistan yoklamayı kaydedince (ya da geri alınca) ekran o güne geçer ve işaretler görünür
+  useEffect(() => {
+    const on = (e) => {
+      const { date: d, changes } = e.detail || {};
+      if (!d || !changes) return;
+      setLocal((l) => ({ ...l, ...Object.fromEntries(Object.keys(changes).map((id) => [`${d}|${id}`, changes[id]])) }));
+      setDate(d);
+    };
+    window.addEventListener("sa-att-saved", on);
+    return () => window.removeEventListener("sa-att-saved", on);
+  }, []);
 
   const count = (s) => list.filter((a) => stateOf(a) === s).length;
 
@@ -243,12 +208,6 @@ function Roll() {
 
           <AbsentNotice key={date} absent={list.filter((a) => stateOf(a) === "absent")} date={date} today={today} members={members} />
 
-          {busy && (
-            <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-4 text-[0.875rem] text-mut">
-              <Loader size="sm" /> Söylediğin işleniyor…
-            </div>
-          )}
-
           {/* Sporcular */}
           <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
             {list.map((a) => {
@@ -275,53 +234,11 @@ function Roll() {
               );
             })}
           </ul>
-          <p className="mt-3 text-center text-[0.75rem] text-mut">Söyle: “Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi”</p>
+          <p className="mt-3 text-center text-[0.75rem] text-mut">Asistana söyle: “Ali, Zeynep geldi, Emre izinli, kalanlar gelmedi”</p>
         </>
       )}
-
-      <ListeningOverlay sp={sp} hint="Kim geldi, kim gelmedi? Ör. “Ali ve Zeynep geldi”" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
 
       <NamesSheet open={names} onClose={() => setNames(false)} idx={idx} save={save} athletes={active} classes={classes} />
-      <Preview p={preview} athletes={active} onClose={() => setPreview(null)} onSave={(p) => {
-        setPreview(null);
-        setDate(p.date);
-        apply(p.date, p.changes, "Yoklama kaydedildi");
-      }} />
     </main>
-  );
-}
-
-// Yapay zekanın anladığı: duruma göre gruplu; onaylayınca kaydedilir
-function Preview({ p, athletes, onClose, onSave }) {
-  const name = Object.fromEntries(athletes.map((a) => [a.id, a.studentName]));
-  const groups = p ? [...Object.keys(ST), null].map((s) => [s, Object.keys(p.changes).filter((id) => p.changes[id] === s)]).filter(([, ids]) => ids.length) : [];
-  return (
-    <Sheet open={!!p} onClose={onClose} title="Yoklama önizleme">
-      {p && (
-        <>
-          <p className="-mt-1 text-[0.875rem] text-mut">
-            <span className="font-medium capitalize text-fg">{dayLabel(p.date)}</span>
-            {p.message ? ` · ${p.message}` : ""}
-          </p>
-          <div className="mt-3 space-y-3">
-            {groups.map(([s, ids]) => (
-              <div key={s || "clear"} className="rounded-2xl bg-bg px-4 py-3">
-                <b className={`text-[0.8125rem] font-semibold ${s ? ST[s].tone : "text-mut"}`}>
-                  {s ? ST[s].label : "İşareti kaldır"} · {ids.length}
-                </b>
-                <p className="mt-1 text-[0.875rem] leading-relaxed">{ids.map((id) => name[id]).join(", ")}</p>
-              </div>
-            ))}
-            {p.unknown?.length > 0 && (
-              <p className="rounded-2xl bg-amber-500/10 px-4 py-3 text-[0.8125rem] text-amber-700">Eşleştiremediklerim: {p.unknown.join(", ")}</p>
-            )}
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 pb-2">
-            <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Vazgeç</button>
-            <button onClick={() => onSave(p)} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Kaydet</button>
-          </div>
-        </>
-      )}
-    </Sheet>
   );
 }
