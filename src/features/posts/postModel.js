@@ -47,7 +47,11 @@ export const tallOf = (f) => f === "story" || f === "reels";
 // Instagram'ın kendi yazılarının/düğmelerinin kapladığı kenarlar (px): yazı ve logo bunların içinde kalır.
 // Hikâye: üstte profil satırı, altta yanıt kutusu. Reels: profil ızgarasında orta 3:4 kırpılır (üst/alt 240),
 // altta kullanıcı adı + açıklama, sağda beğen/yorum düğmeleri.
-export const safeOf = (f) => ({ story: { t: 200, b: 280, r: 0 }, reels: { t: 250, b: 440, r: 130 } })[f] || { t: 0, b: 0, r: 0 };
+// Kare: profil ızgarası her gönderiyi ortadan 3:4 dikey keserek gösterir; karede sağdan ve soldan 135'er px
+// görünmez, yazı ve logo bu yüzden ortadaki 810 px'te kalır (l/r ek kenar). Dikey 4:5'te kesilen yalnız 34 px,
+// normal kenar boşluğu (84) yeter.
+export const safeOf = (f) =>
+  ({ square: { t: 0, b: 0, l: 66, r: 66 }, story: { t: 200, b: 280, l: 0, r: 0 }, reels: { t: 250, b: 440, l: 0, r: 130 } })[f] || { t: 0, b: 0, l: 0, r: 0 };
 // Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Dikey), hikâye, reels
 export const SET_LABELS = { square: "Gönderi", portrait: "Gönderi", story: "Hikâye", reels: "Reels" };
 export const setOf = (f) => [f === "square" ? "square" : "portrait", "story", "reels"];
@@ -222,7 +226,8 @@ export function cleanPost(p = {}) {
   };
 }
 
-export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind) });
+// Yeni gönderi Dikey 4:5: akışta en büyük görünen, profil ızgarasında en az kesilen boyut
+export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind), format: "portrait" });
 
 // Instagram'a yapıştırılacak metin: açıklama + boş satır + etiketler
 export const fullCaption = (p) => [p.caption.trim(), p.hashtags.join(" ")].filter(Boolean).join("\n\n");

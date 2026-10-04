@@ -754,13 +754,13 @@ async function drawAfis(ctx, post, photo, W, H) {
   const [, , , c2] = themeOf(post.theme);
   const base = post.theme === "kum" ? "#1f5a4b" : c2;
   const top = post.pos === "top";
-  const { t: safeT, b: safeB, r: safeR } = safeOf(post.format);
+  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
   const mood = MOODS[moodOf(post)] || MOODS.genel;
   // Yerleşim: logo satırı ve yazı bloğu (ay yıldız ikisinin arasındaki boşluğa göre yerleşir)
   const R = 66;
-  const lx = PAD;
+  const lx = PAD + safeL;
   const ly = PAD - 8 + safeT;
-  const maxW = W - PAD * 2 - safeR;
+  const maxW = W - PAD * 2 - safeR - safeL;
   const headTop = ly + R * 2 + 70;
   const room = top ? H - headTop - PAD - safeB : H - PAD - safeB - headTop - 40;
   let m = measureAfis(ctx, post, maxW, 1);
@@ -800,7 +800,7 @@ async function drawAfis(ctx, post, photo, W, H) {
     if (mood.mark) {
       // Logo ile yazı arasında yer varsa bayraktaki gibi net beyaz ay yıldız; yoksa yazının arkasında silik büyük ay yıldız
       const [b0, b1] = top ? [headTop + m.h + 40, H - safeB - PAD] : [ly + R * 2 + 40, H - PAD - safeB - m.h - 40];
-      const G = Math.min((b1 - b0) * 2, ((W - PAD * 2 - safeR) * 0.62) / 0.674);
+      const G = Math.min((b1 - b0) * 2, ((W - PAD * 2 - safeR - safeL) * 0.62) / 0.674);
       const right = W - PAD - safeR;
       if (mood.crisp && G >= W * 0.5) crescentStar(ctx, right - (764 / 800) * G, (b0 + b1) / 2 - G / 2, G, mood.mark, 0.96);
       else {
@@ -869,7 +869,7 @@ async function drawAfis(ctx, post, photo, W, H) {
     ctx.shadowColor = "rgba(0,0,0,.35)";
     ctx.shadowBlur = 16;
   }
-  paintAfis(ctx, m, PAD, top ? headTop : H - PAD - safeB - m.h, c);
+  paintAfis(ctx, m, lx, top ? headTop : H - PAD - safeB - m.h, c);
   ctx.shadowColor = "transparent";
 }
 
@@ -892,7 +892,8 @@ export async function drawPost(canvas, post, photo) {
   }
   const top = post.pos === "top";
   // Hikâye/Reels'te Instagram'ın üst satırı, alttaki yazılar ve sağdaki düğmeler yazının üstüne binmesin
-  const { t: safeT, b: safeB, r: safeR } = safeOf(post.format);
+  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
+  const L = PAD + safeL;
 
   if (photo) {
     cover(ctx, photo, W, H, post);
@@ -928,12 +929,12 @@ export async function drawPost(canvas, post, photo) {
   }
   ctx.fillStyle = "#ffffff";
   ctx.beginPath();
-  ctx.arc(PAD + R, ly + R, R, 0, Math.PI * 2);
+  ctx.arc(L + R, ly + R, R, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowColor = "transparent";
   if (logo) {
     ctx.clip();
-    ctx.drawImage(logo, PAD + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+    ctx.drawImage(logo, L + 6, ly + 6, R * 2 - 12, R * 2 - 12);
   }
   ctx.restore();
   ctx.save();
@@ -944,12 +945,12 @@ export async function drawPost(canvas, post, photo) {
   ctx.fillStyle = light ? "#123c33" : "#ffffff";
   ctx.textBaseline = "middle";
   ctx.font = `700 30px ${FONT}`;
-  ctx.fillText(CLUB, PAD + R * 2 + 24, ly + R);
+  ctx.fillText(CLUB, L + R * 2 + 24, ly + R);
   ctx.restore();
 
   // Yazı bloğu: Kart ve Bant'ta kutu/şerit içinde, Klasik'te doğrudan zeminde. Sığmazsa her şey birlikte küçülür.
   const inset = style === "kart" ? 52 : 0;
-  const maxW = W - PAD * 2 - inset * 2 - safeR;
+  const maxW = W - PAD * 2 - inset * 2 - safeR - safeL;
   const room = H - PAD * 2 - safeT - safeB - 150 - (style === "klasik" ? 0 : 90);
   let m = measure(ctx, post, maxW, 1);
   for (let k = 0.94; m.h > room && k >= 0.66; k -= 0.06) m = measure(ctx, post, maxW, k);
@@ -963,13 +964,13 @@ export async function drawPost(canvas, post, photo) {
     wish: light ? "#1f5a4b" : accent,
     rule: light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)",
   };
-  let x = PAD;
+  let x = L;
   let y;
   if (style === "kart") {
     // Açık renk yuvarlak kutu; içindeki yazı koyu
-    const bw = W - PAD * 2 + 24 - safeR;
+    const bw = W - PAD * 2 + 24 - safeR - safeL;
     const bh = m.h + inset * 2;
-    const bx = PAD - 12;
+    const bx = L - 12;
     const by = top ? PAD - 12 + safeT : H - PAD - bh - safeB + 12;
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,.22)";
