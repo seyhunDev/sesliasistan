@@ -64,6 +64,8 @@ async function handle(request) {
   }
   const text = S(body?.text, 1500);
   const today = DATE.test(body?.today || "") ? body.today : new Date().toISOString().slice(0, 10);
+  // Yoklama sayfasında ekranda açık gün: cümlede gün yoksa bu gün
+  const day = DATE.test(body?.day || "") && body.day <= today ? body.day : "";
   const list = (Array.isArray(body?.athletes) ? body.athletes : [])
     .map((a) => ({
       id: S(a?.id, 64), name: S(a?.name, 60), cls: S(a?.cls, 30),
@@ -80,6 +82,7 @@ async function handle(request) {
   const line = (a) => `${a.id} | ${a.name} | ${a.cls || "-"}${a.aliases.length ? ` | söylenişler: ${a.aliases.join(", ")}` : ""}`;
   const user = [
     `Bugün: ${today} (${wd})`,
+    day && day !== today ? `Ekranda açık gün: ${day}. Cümlede gün söylenmediyse date bu gün olsun.` : "",
     `Sporcular:\n${list.map(line).join("\n")}`,
     notes.length ? `Karışabilecek adlar:\n${notes.map((n) => `- ${n}`).join("\n")}` : "",
     `Antrenörün söylediği:\n"""\n${text}\n"""`,
@@ -94,7 +97,7 @@ async function handle(request) {
       .map((m) => ({ id: String(m?.id || ""), state: String(m?.state || "") }))
       .filter((m) => ids.has(m.id) && ["present", "absent", "excused", "clear"].includes(m.state) && !seen.has(m.id) && seen.add(m.id));
     const others = ["present", "absent", "excused"].includes(raw?.others) ? raw.others : "";
-    const date = DATE.test(raw?.date || "") && raw.date <= today ? raw.date : today;
+    const date = DATE.test(raw?.date || "") && raw.date <= today ? raw.date : day || today;
     const unknown = (Array.isArray(raw?.unknown) ? raw.unknown : []).map((u) => S(u, 40)).filter(Boolean).slice(0, 10);
     console.log(`[attendance] ${Date.now() - t0} ms, işaret=${marks.length}, diğerleri=${others || "-"}`);
     return NextResponse.json({ date, marks, others, unknown, message: S(raw?.message, 200) });

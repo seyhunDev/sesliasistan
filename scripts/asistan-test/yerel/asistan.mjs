@@ -399,3 +399,21 @@ group("Mesaj gönderme (onay ve gruplar)")([
   ["ekibe", Fa("sabit grup yine Ekip", () => AIA.parseAssistant({ intent: "message", message: "", send: { to: "ekibe", text: "Toplantı 5'te." } }, [], ["Ekip", "Yelken Ekibi"]).send?.to === "Ekip")],
   ["WhatsApp'lı kişi", Fa("uygulamada olmayan kişi de alıcı", () => AIA.parseAssistant({ intent: "message", message: "", send: { to: "Fatma Yıldız (WhatsApp)", text: "Akşam geliyorum." } }, [], ["Fatma Yıldız"]).send?.to === "Fatma Yıldız")],
 ]);
+
+// Yoklama sayfasında ana asistan: "yoklama" denmeden de ad + geldi/gelmedi yoklamadır; soru ve başka işler değil
+const { wantsAttendance } = await import("@/features/athletes/access");
+const AH = (desc, here, want) => ({ desc, fn: (s) => wantsAttendance(s, here), ok: (r) => r === want });
+const JB = (desc, want) => ({ desc, fn: (s) => ST.jobsIn(s).length > 0, ok: (r) => r === want });
+group("Yoklama sayfasında asistan")([
+  ["Ali ve Zeynep geldi", AH("sayfada yoklama", true, true)],
+  ["Emre izinli, kalanlar gelmedi", AH("izinli + kalanlar", true, true)],
+  ["Mehmet raporlu", AH("raporlu", true, true)],
+  ["Ali ve Zeynep geldi", AH("başka sayfada yoklama değil", false, false)],
+  ["yoklama: Ali geldi", AH("her yerde yoklama", false, true)],
+  ["Ali geldi mi", AH("soru yoklama değil", true, false)],
+  ["Ali geldiğinde ona yaz", AH("geldiğinde yoklama değil", true, false)],
+  ["Ali'ye mesaj at, yarın 10'da iskelede olsun", AH("mesaj yoklama değil", true, false)],
+  ["Yarın 10'da antrenman ekle", AH("plan yoklama değil", true, false)],
+  ["Ali ve Zeynep geldi, Emre'nin velisine haber ver", JB("yoklamadan sonra mesaj da yapılır", true)],
+  ["Ali ve Zeynep geldi, kalanlar gelmedi", JB("yalnız yoklama", false)],
+]);
