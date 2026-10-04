@@ -263,8 +263,16 @@ group("Sıralı işler (yapay zeka yanıtı)")([
   PA("mesaj + kayıtlar birlikte korunur", aiMulti, (r) => r.send?.to === "Gökhan Demir" && r.items.length === 2 && r.items[1].body.includes("Vernik")),
   PA("intent create olsa da mesaj atılmaz", { ...aiMulti, intent: "create" }, (r) => !!r.send?.text && r.items.length === 2),
   PA("alıcısız send (create) mesaj sayılmaz", { ...aiMulti, intent: "create", send: { to: "", text: "x" } }, (r) => r.send === null && r.items.length === 2),
-  ["sıra: mesaj önce", { desc: "mesaj önce", fn: () => ST.orderSteps(gokhan, parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].send && r[1].items.length === 2 }],
-  ["sıra: kayıt önce", { desc: "kayıt önce", fn: () => ST.orderSteps("takvime yarın 10'da tekne bakımı ekle, sonra Gökhan'a yaz", parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.length === 2 && !!r[0].items && !!r[1].send }],
+  ["görev listesi: kayıt hemen, mesaj onaya", { desc: "kayıtlar hemen, mesaj onay adımı", fn: () => ST.taskList(parseAssistant(aiMulti, [], ["Gökhan Demir"])), ok: (r) => r.items.length === 2 && r.confirm.length === 1 && !!r.confirm[0].send && !r.now.length }],
+  ["görev listesi: tamamla + güncelle + sil + iki mesaj", { desc: "tamamla/güncelle hemen; silme tek kart, sonra her mesaj", fn: () => ST.taskList(parseAssistant({
+    intent: "action", message: "Tamam.",
+    actions: [{ op: "update", kind: "plan", id: "p1", patch: { time: "11:00" } }, { op: "complete_task", kind: "task", id: "t3" }, { op: "delete", kind: "note", id: "n1" }],
+    sends: [{ to: "Ali", text: "Antrenman 11'e alındı." }, { to: "Gökhan", text: "Antrenman 11'e alındı." }],
+  }, [], ["Gökhan Demir", "Ali Kök"])), ok: (r) => r.now.length === 2 && r.confirm.length === 3 && r.confirm[0].actions?.[0].op === "delete" && r.confirm[1].send.to === "Ali Kök" && r.confirm[2].send.to === "Gökhan Demir" }],
+  PA("sends: aynı mesaj bir kez", { intent: "message", message: "Tamam.", send: { to: "Ali", text: "Geliyorum." }, sends: [{ to: "Ali Kök", text: "Geliyorum." }] }, (r) => r.sends.length === 1 && r.send.to === "Ali Kök"),
+  PA("sends: send olmadan da mesajlar", { intent: "message", message: "Tamam.", sends: [{ to: "Ali", text: "A" }, { to: "Ekip", text: "B" }] }, (r) => r.sends.length === 2 && r.send?.to === "Ali Kök" && r.sends[1].to === "Ekip"),
+  ["görev listesi: soru (chat) iş değil", { desc: "boş liste", fn: () => ST.taskList(parseAssistant({ intent: "chat", message: "Saat kaçta olsun?" })), ok: (r) => !r.items.length && !r.confirm.length && !r.now.length }],
+  ["görev listesi: aç", { desc: "open ayrı", fn: () => ST.taskList(parseAssistant({ intent: "action", message: "", actions: [{ op: "open", kind: "plan", id: "p1" }] })), ok: (r) => r.open?.id === "p1" && !r.now.length }],
 ]);
 
 // ---- Not yalnız açıkça istenince: ana işin (plan, görev, yoklama, günlük) yanına kendiliğinden not eklenmez ----
