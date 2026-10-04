@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, formatOf, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
@@ -109,7 +109,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.shade, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -177,7 +177,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       const dataUrl = await thumbFromDataUrl(r.image, 1440, 0.85);
       setPhoto(dataUrl);
       setPhotoDirty(true);
-      put("focus", 50);
+      setP((x) => ({ ...x, focus: 50, fx: 50, zoom: 100 }));
       if (r.usage) setUsage(r.usage);
       return r.usage || null;
     } catch (x) {
@@ -362,6 +362,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       if (dataUrl.length > 900_000) dataUrl = await thumbFromDataUrl(dataUrl, 1200, 0.7);
       setPhoto(dataUrl);
       setPhotoDirty(true);
+      setP((x) => ({ ...x, focus: 50, fx: 50, zoom: 100 }));
     } catch (x) {
       setErr(x?.message || "Fotoğraf açılamadı");
     } finally {
@@ -418,6 +419,36 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     }
   };
 
+  // Önizlemede parmakla sürükleyince fotoğraf kayar (büyütülmüşse iki yönde); sürüklerken doğrudan çizilir
+  const drag = useRef(null);
+  const dragStart = (e) => {
+    if (!shown || !canvas.current) return;
+    const [, , W, H] = formatOf(post.format);
+    const s = Math.max(W / shown.naturalWidth, H / shown.naturalHeight) * (post.zoom / 100);
+    const ow = shown.naturalWidth * s - W;
+    const oh = shown.naturalHeight * s - H;
+    if (ow < 1 && oh < 1) return;
+    canvas.current.setPointerCapture?.(e.pointerId);
+    drag.current = { x: e.clientX, y: e.clientY, fx: post.fx, fy: post.focus, ow, oh, k: W / canvas.current.getBoundingClientRect().width, raf: 0 };
+  };
+  const dragMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const fx = d.ow < 1 ? d.fx : Math.max(0, Math.min(100, d.fx - (((e.clientX - d.x) * d.k) / d.ow) * 100));
+    const fy = d.oh < 1 ? d.fy : Math.max(0, Math.min(100, d.fy - (((e.clientY - d.y) * d.k) / d.oh) * 100));
+    d.next = { fx: Math.round(fx), focus: Math.round(fy) };
+    if (d.raf) return;
+    d.raf = requestAnimationFrame(() => {
+      d.raf = 0;
+      if (canvas.current && drag.current === d) drawPost(canvas.current, cleanPost({ ...p, ...d.next }), shown);
+    });
+  };
+  const dragEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d?.next) setP((x) => ({ ...x, ...d.next }));
+  };
+
   const race = post.race;
   const classes = classList(post.classes);
   const empty = !race && !post.caption && !post.topic;
@@ -425,7 +456,15 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   return (
     <div className="mt-2 pb-6">
       <div className={`${card} relative overflow-hidden`}>
-        <canvas ref={canvas} className="block h-auto w-full bg-deep" style={{ aspectRatio: aspectOf(post.format) }} />
+        <canvas
+          ref={canvas}
+          onPointerDown={dragStart}
+          onPointerMove={dragMove}
+          onPointerUp={dragEnd}
+          onPointerCancel={dragEnd}
+          className={`block h-auto w-full bg-deep ${shown ? "cursor-grab touch-none" : ""}`}
+          style={{ aspectRatio: aspectOf(post.format) }}
+        />
         {(aiBusy || busy === "img") && (
           <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[0.75rem] font-semibold text-white backdrop-blur">
             <Icon name="spark" className="size-4 animate-pulse" />
@@ -555,12 +594,13 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         {photo && (
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-[0.75rem] text-mut">Önizlemede fotoğrafı parmağınla sürükleyerek yerleştir.</p>
               <label className="block">
-                <span className="text-[0.75rem] font-medium text-mut">Fotoğrafı kaydır</span>
-                <input type="range" min={0} max={100} value={post.focus} onChange={(e) => put("focus", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
+                <span className="text-[0.75rem] font-medium text-mut">Büyüt · %{post.zoom}</span>
+                <input type="range" min={100} max={250} step={5} value={post.zoom} onChange={(e) => put("zoom", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
               </label>
               <label className="block">
-                <span className="text-[0.75rem] font-medium text-mut">Karartma (yazı okunsun)</span>
+                <span className="text-[0.75rem] font-medium text-mut">Gölge (yazı okunsun)</span>
                 <input type="range" min={0} max={100} value={post.shade} onChange={(e) => put("shade", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
               </label>
             </div>
