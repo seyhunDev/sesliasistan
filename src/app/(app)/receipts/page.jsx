@@ -11,6 +11,11 @@ import { PendingPayments } from "@/features/receipts/Payment";
 import { whoText } from "@/lib/people";
 import { CAT, CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
 import { useToast } from "@/components/ui/ToastProvider";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/clientApp";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { MailTo } from "@/features/mail/MailTo";
+import { mailToMe } from "@/features/mail/outbox";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 import { useDock } from "@/features/home/TabBar";
@@ -21,11 +26,23 @@ const shiftMonth = (m, n) => {
   const d = new Date(y, mo - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
+const download = (file) => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 export default function ReceiptsPage() {
   const { receipts, loading, myUid, nameOf } = useData();
   const toast = useToast();
+  const { user, profile } = useAuth();
+  // Gmail betiği kurulu ana hesap uygulamadan mail atar; değilse paylaşım menüsü (Mail seçilir)
+  const mailSet = profile?.mailSeen && user && profile.orgId === user.uid ? { version: profile.mailOutbox, saved: profile.mailTo } : null;
+  const [mailPick, setMailPick] = useState(false);
+  const [mailing, setMailing] = useState(false);
   const { openReceipt } = useReceipt();
   const [month, setMonth] = useState(() => todayStr().slice(0, 7)); // "" = tüm zamanlar
   const [q, setQ] = useState("");
@@ -84,19 +101,55 @@ export default function ReceiptsPage() {
   };
 
   // Muhasebeci için Excel: filtrelenmiş liste, fiş numarasıyla sıralı (Fişler + Kategoriler sayfası)
+  async function book() {
+    const XLSX = await import("xlsx");
+    const wb = XLSX.utils.book_new();
+    for (const [name, rows] of Object.entries(accountingSheets(list, nameOf))) {
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = rows[0].map((h, i) => ({ wch: Math.min(40, Math.max(String(h).length, ...rows.map((r) => String(r[i] ?? "").length)) + 2) }));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+    return { XLSX, wb };
+  }
   async function excel() {
     try {
-      const XLSX = await import("xlsx");
-      const wb = XLSX.utils.book_new();
-      for (const [name, rows] of Object.entries(accountingSheets(list, nameOf))) {
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        ws["!cols"] = rows[0].map((h, i) => ({ wch: Math.min(40, Math.max(String(h).length, ...rows.map((r) => String(r[i] ?? "").length)) + 2) }));
-        XLSX.utils.book_append_sheet(wb, ws, name);
-      }
+      const { XLSX, wb } = await book();
       XLSX.writeFile(wb, accountingName(month));
     } catch {
       toast("Excel dosyası hazırlanamadı");
     }
+  }
+  const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  async function excelFile() {
+    const { XLSX, wb } = await book();
+    return new File([XLSX.write(wb, { type: "array", bookType: "xlsx" })], accountingName(month), { type: XLSX_TYPE });
+  }
+  const mailSubject = () => `Fişler · ${month ? monthLabel(month) : "Tüm zamanlar"}`;
+  const mailBody = () => `${mailSubject()}: ${list.length} belge, toplam ${TLk(total)}, KDV ${TLk(vat)}.\nExcel dosyası ektedir.`;
+  // Mail: betik kuruluysa alıcı seçilir ve uygulama gönderir; değilse telefonun paylaşım menüsü (Mail, WhatsApp…)
+  async function mail() {
+    if (mailSet) return setMailPick(true);
+    try {
+      const file = await excelFile();
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: mailSubject(), text: mailBody() });
+      else {
+        download(file);
+        toast("Dosya indirildi; maile ekleyip gönder");
+      }
+    } catch (e) {
+      if (e?.name !== "AbortError") toast("Excel dosyası hazırlanamadı");
+    }
+  }
+  async function sendMail({ self, to }) {
+    setMailPick(false);
+    setMailing(true);
+    try {
+      await mailToMe(user.uid, { subject: mailSubject(), text: mailBody(), file: await excelFile(), self, to });
+      toast(mailSet.version >= (to.length ? 2 : 1) ? "Mail sıraya alındı, birkaç dakika içinde gider" : "Sıraya alındı. Gitmesi için Mail ayarlarından betiği bir kez yeniden kopyala");
+    } catch (e) {
+      toast(e?.message || "Mail sıraya alınamadı");
+    }
+    setMailing(false);
   }
 
   // Filtrelenmiş listeyi yazdırılabilir sayfada açar
@@ -136,6 +189,9 @@ export default function ReceiptsPage() {
       <PageHeader title="Fişler">
         <button onClick={excel} disabled={!list.length} aria-label="Muhasebe Excel'i" className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-card px-3 text-[0.875rem] font-semibold text-fg transition active:scale-95 disabled:opacity-40">
           <Icon name="download" className="size-4" /> Excel
+        </button>
+        <button onClick={mail} disabled={!list.length || mailing} aria-label="Excel'i mail at" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
+          <Icon name="mail" className="size-[1.125rem]" />
         </button>
         <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
           <Icon name="print" className="size-[1.125rem]" />
@@ -294,6 +350,15 @@ export default function ReceiptsPage() {
         ))
       )}
 
+      {mailSet && (
+        <MailTo
+          open={mailPick}
+          onClose={() => setMailPick(false)}
+          saved={mailSet.saved}
+          onSaved={(l) => updateDoc(doc(db, "users", user.uid), { mailTo: l }).catch(() => toast("Adres kaydedilemedi"))}
+          onSend={sendMail}
+        />
+      )}
     </main>
   );
 }
