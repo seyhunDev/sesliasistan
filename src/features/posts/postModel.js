@@ -42,16 +42,16 @@ export const FORMATS = [
 export const aspectOf = (f) => ({ portrait: "4 / 5", story: "9 / 16" })[f] || "1 / 1";
 export const formatOf = (f) => FORMATS.find(([x]) => x === f) || FORMATS[0];
 
-// Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]
+// Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]; yumuşak, az doygun tonlar
 export const THEMES = [
-  ["deniz", "Deniz", "#2f7d6b", "#123c33", "#f2c14e"],
-  ["gece", "Gece", "#1d3557", "#0b1726", "#7fd1c3"],
-  ["gun", "Gün batımı", "#e76f51", "#7a2e3b", "#ffe8a3"],
-  ["kum", "Kum", "#f4ead8", "#d9c6a2", "#1f5a4b"],
-  ["mor", "Mor", "#6b5a9e", "#2a2045", "#f6c6d8"],
-  ["turkuaz", "Turkuaz", "#1c8c93", "#0b3d47", "#ffd166"],
-  ["bordo", "Bordo", "#a8283d", "#4a0f1c", "#f4d58d"],
-  ["antrasit", "Antrasit", "#3d4753", "#161b22", "#f2c14e"],
+  ["deniz", "Deniz", "#5e9488", "#2b544c", "#f1d9a7"],
+  ["gece", "Gece", "#506a8a", "#1f2f45", "#bfe0d8"],
+  ["gun", "Gün batımı", "#d48b7a", "#8a4b55", "#fde9cf"],
+  ["kum", "Kum", "#f5eee2", "#e3d4bb", "#2f6556"],
+  ["mor", "Mor", "#8a80b3", "#433a68", "#f3d9e2"],
+  ["turkuaz", "Turkuaz", "#5ea6a2", "#285f66", "#fbecc4"],
+  ["bordo", "Bordo", "#b07077", "#5a2b37", "#f6e2c6"],
+  ["antrasit", "Antrasit", "#69727d", "#2a3038", "#ecd8ad"],
 ];
 // Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
 export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", diger: "antrasit" };
