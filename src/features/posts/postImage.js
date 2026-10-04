@@ -1,6 +1,6 @@
 "use client";
 
-import { classList, formatOf, themeOf } from "./postModel";
+import { formatOf, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -174,8 +174,7 @@ function measure(ctx, post, maxW, k) {
       .filter((w) => w.length > 1 && !/^\d/.test(w) && !/sporcu/.test(w)),
   );
   const meta = post.meta ? post.info : "";
-  const classes = post.meta ? classList(post.classes) : [];
-  const busy = people.length + (post.wish ? 1 : 0) + (meta ? 1 : 0) + (classes.length ? 1 : 0);
+  const busy = people.length + (post.wish ? 1 : 0) + (meta ? 1 : 0);
   const items = [];
   const tagH = z(post.tag ? 54 : 12);
   items.push({ t: "tag", h: tagH, gap: 0 });
@@ -186,19 +185,6 @@ function measure(ctx, post, maxW, k) {
     ctx.font = `600 ${z(32)}px ${FONT}`;
     const m = fit(ctx, meta, maxW - z(40), 1, z(32), z(24), 600);
     items.push({ t: "meta", ...m, h: Math.round(m.size * 1.3), gap: z(20) });
-  }
-  if (classes.length) {
-    ctx.font = `700 ${z(26)}px ${FONT}`;
-    // Sığmayan sınıf atlanır (tek satır)
-    const row = [];
-    let w = 0;
-    for (const c of classes) {
-      const cw = ctx.measureText(c.toLocaleUpperCase("tr-TR")).width + z(36);
-      if (w + cw > maxW) break;
-      row.push([c.toLocaleUpperCase("tr-TR"), cw]);
-      w += cw + z(12);
-    }
-    if (row.length) items.push({ t: "chips", row, size: z(26), h: z(48), gap: z(18) });
   }
   if (post.sub) {
     const sub = fitRich(ctx, post.sub, names, maxW, 4, z(38), z(26), 500);
@@ -247,24 +233,6 @@ function paint(ctx, { items, z }, x, y, c) {
       ctx.fillStyle = c.ink;
       ctx.font = `600 ${it.size}px ${FONT}`;
       ctx.fillText(it.lines[0] || "", x + z(38), y + (it.h - it.size) / 2);
-    } else if (it.t === "chips") {
-      ctx.save();
-      ctx.shadowColor = "transparent";
-      ctx.font = `700 ${it.size}px ${FONT}`;
-      ctx.lineWidth = 3;
-      let cx = x;
-      for (const [t, cw] of it.row) {
-        ctx.strokeStyle = c.chipLine;
-        ctx.fillStyle = c.chipBg;
-        pill(ctx, cx + 1.5, y + 1.5, cw - 3, it.h - 3, (it.h - 3) / 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = c.ink;
-        ctx.textBaseline = "middle";
-        ctx.fillText(t, cx + z(18), y + it.h / 2 + 1);
-        cx += cw + z(12);
-      }
-      ctx.restore();
     } else if (it.t === "sub") {
       for (const [j, l] of it.lines.entries()) drawRich(ctx, l, x, y + j * it.lh, it.size, 500, it.space, c.sub, c.name);
     } else if (it.t === "people") {
@@ -384,8 +352,6 @@ export async function drawPost(canvas, post, photo) {
     tagInk: light ? "#ffffff" : "#10231e",
     wish: light ? "#1f5a4b" : accent,
     rule: light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)",
-    chipBg: light ? "rgba(31,90,75,.08)" : "rgba(255,255,255,.12)",
-    chipLine: light ? "rgba(31,90,75,.4)" : "rgba(255,255,255,.55)",
   };
   let x = PAD;
   let y;
@@ -403,7 +369,7 @@ export async function drawPost(canvas, post, photo) {
     pill(ctx, bx, by, bw, bh, 44);
     ctx.fill();
     ctx.restore();
-    Object.assign(c, { ink: "#10231e", accent: deep, tagBg: deep, tagInk: "#ffffff", wish: deep, rule: "rgba(16,35,30,.2)", chipBg: "rgba(16,35,30,.05)", chipLine: "rgba(16,35,30,.3)" });
+    Object.assign(c, { ink: "#10231e", accent: deep, tagBg: deep, tagInk: "#ffffff", wish: deep, rule: "rgba(16,35,30,.2)" });
     x = bx + 12 + inset;
     y = by + inset;
   } else if (style === "bant") {
@@ -418,7 +384,7 @@ export async function drawPost(canvas, post, photo) {
     ctx.fillStyle = accent;
     ctx.fillRect(0, top ? by + bh - 10 : by, W, 10);
     ctx.restore();
-    Object.assign(c, { ink: "#ffffff", accent, tagBg: accent, tagInk: "#10231e", wish: accent, rule: "rgba(255,255,255,.35)", chipBg: "rgba(255,255,255,.1)", chipLine: "rgba(255,255,255,.5)" });
+    Object.assign(c, { ink: "#ffffff", accent, tagBg: accent, tagInk: "#10231e", wish: accent, rule: "rgba(255,255,255,.35)" });
     y = top ? 70 + safeT : by + 76;
   } else {
     if (photo) {

@@ -5,7 +5,7 @@
 //   kind (KINDS), topic (kullanıcının anlattığı), race { name, place, dates, count, classes, athletes [{ name, cls }] } | null,
 //   headline (görseldeki başlık), sub (alt satır), tag (etiket: YARIŞ, SONUÇ…),
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
-//   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (görselde sınıflar, virgülle), meta (görselde yarış yeri, tarihi ve sınıfları), style (STYLES),
+//   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (yarışın sınıfları, virgülle; görselde değil, başlıkta geçer), meta (görselde yarış yeri ve tarihi), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
 //   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
@@ -42,7 +42,11 @@ export const THEMES = [
   ["gece", "Gece", "#1d3557", "#0b1726", "#7fd1c3"],
   ["gun", "Gün batımı", "#e76f51", "#7a2e3b", "#ffe8a3"],
   ["kum", "Kum", "#f4ead8", "#d9c6a2", "#1f5a4b"],
+  ["mor", "Mor", "#6b5a9e", "#2a2045", "#f6c6d8"],
 ];
+// Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
+export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", kulup: "kum", diger: "mor" };
+export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
 
 // Yazı yerleşimi: Klasik (yazı fotoğrafın üstünde), Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
@@ -132,7 +136,7 @@ export function cleanPost(p = {}) {
   };
 }
 
-export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3] });
+export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind) });
 
 // Instagram'a yapıştırılacak metin: açıklama + boş satır + etiketler
 export const fullCaption = (p) => [p.caption.trim(), p.hashtags.join(" ")].filter(Boolean).join("\n\n");
@@ -200,18 +204,39 @@ export function raceClasses(race) {
   for (const c of from.map((x) => S(x, 24)).filter(Boolean)) if (!out.some((o) => o.toLocaleLowerCase("tr-TR") === c.toLocaleLowerCase("tr-TR"))) out.push(c);
   return out.slice(0, 4);
 }
+// Başlıktaki sınıf adları: "ILCA 4, ILCA 6" → "ILCA"; "Optimist, ILCA 4" → "Optimist ve ILCA" (en çok 3)
+export function raceClassNames(race) {
+  const out = [];
+  for (const c of raceClasses(race)) {
+    const b = c.split(/\s+/)[0];
+    if (b && !out.some((o) => o.toLocaleLowerCase("tr-TR") === b.toLocaleLowerCase("tr-TR"))) out.push(b);
+  }
+  return out.slice(0, 3);
+}
+const andTr = (a) => (a.length > 1 ? `${a.slice(0, -1).join(", ")} ve ${a[a.length - 1]}` : a[0] || "");
+// Başlıkta her zaman sınıf geçer: "TYF Ligi Başlıyor" → "ILCA TYF Ligi Başlıyor"; sınıf zaten yazılıysa dokunulmaz
+export function withClass(headline, race) {
+  const h = String(headline || "").trim();
+  const names = raceClassNames(race);
+  if (!h || !names.length) return h;
+  const low = h.toLocaleLowerCase("tr-TR");
+  if (names.some((n) => low.includes(n.toLocaleLowerCase("tr-TR")))) return h;
+  return `${andTr(names)} ${h}`.slice(0, 90);
+}
+export const raceHeadline = (race) => withClass(race?.name || "", race);
 // Görseldeki yer · tarih satırı: "Foça · 7-11 Ekim 2026"
 export const raceMeta = (race) => (race ? [String(race.place || "").split(",")[0].trim(), race.dates].filter(Boolean).join(" · ") : "");
 
 // Yarış ve türden kendiliğinden gelen yazılar
 export const autoOf = (p) => ({
-  headline: p.race?.name || "",
+  headline: raceHeadline(p.race),
   sub: raceSub(p.race, p.kind),
   people: racePeople(p.race),
   wish: raceWish(p.race, p.kind),
   info: raceMeta(p.race),
   classes: raceClasses(p.race).join(", "),
   tag: kindOf(p.kind)[3],
+  theme: kindTheme(p.kind),
 });
 // Görseldeki sınıf etiketleri (düzenlenen alandan; en çok 4)
 export const classList = (v) => String(v || "").split(",").map((x) => S(x, 24)).filter(Boolean).slice(0, 4);
