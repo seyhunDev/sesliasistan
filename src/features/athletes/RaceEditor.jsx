@@ -15,7 +15,8 @@ import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
 import { DOCS, buildRaceDocs, clubInfo, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
-import { applyNotice, readNotice, readNoticeText } from "./raceNotice";
+import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
+import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
 import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
@@ -91,7 +92,7 @@ function Check({ on, tone = "ok" }) {
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
-export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
+export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
@@ -297,18 +298,62 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
   // Yarış talimatı: okunur, yarışa uygulanır (yeni yarışta ad, tarih, yer de talimattan gelir)
   const [reading, setReading] = useState(false);
   // f: dosya ya da yapıştırılan metin
+  // Talimatın kendisi de PDF olarak saklanır (her cihazdan açılır). Yarışta talimat zaten varsa yeni okunanla
+  // karşılaştırılır; fark varsa önce kullanıcıya gösterilir (ask), aynıysa yalnız dosya saklanır.
+  const [ask, setAsk] = useState(null); // { n, pdf, diffs }
   const loadNotice = async (f) => {
     setReading(true);
     try {
-      const n = await (typeof f === "string" ? readNoticeText(f) : readNotice(f));
-      dropFile();
-      setR((p) => applyNotice(p, n));
-      setTab("sum");
-      toast(n.name ? "Talimat okundu" : "Talimat okundu, yarış adını yaz");
+      const text = typeof f === "string";
+      const kind = text ? "text" : await kindOf(f);
+      const [n, pdf] = await Promise.all([text ? readNoticeText(f) : readNotice(f), noticePdf(f, kind).catch(() => null)]);
+      const had = !!latest.current.notice;
+      const diffs = had ? noticeDiff(latest.current, n) : [];
+      if (diffs.length) setAsk({ n, pdf, diffs });
+      else await takeNotice(n, pdf, had ? "same" : "new");
     } catch (e) {
       toast(e?.message || "Talimat okunamadı");
     }
     setReading(false);
+  };
+  // mode: new (ilk talimat), update (farkları gördü, bilgileri güncelle), keep (yalnız dosyayı sakla), same (bilgiler aynı)
+  const takeNotice = async (n, pdf, mode) => {
+    if (mode === "new" || mode === "update") {
+      dropFile();
+      setR((p) => applyNotice(p, n, mode === "update"));
+      setTab("sum");
+    }
+    const saved = pdf ? await keepNoticeFile(pdf, n.name) : false;
+    const msg = {
+      new: n.name || latest.current.name ? "Talimat okundu" : "Talimat okundu, yarış adını yaz",
+      update: "Talimat güncellendi",
+      keep: "Talimat dosyası kaydedildi, bilgiler değişmedi",
+      same: "Talimat dosyası kaydedildi, bilgiler aynı",
+    }[mode];
+    toast(saved || !pdf ? msg : `${msg}; dosya kaydedilemedi, tekrar yükle`);
+  };
+  const keepNoticeFile = async (pdf, name) => {
+    try {
+      const old = latest.current.noticeFile;
+      const meta = await saveNoticeFile(orgId, pdf, noticeName({ name: latest.current.name || name }));
+      put("noticeFile", meta);
+      if (old?.id) dropNoticeFile(orgId, old);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const [opening, setOpening] = useState(false);
+  const noticeOpen = async (share) => {
+    if (!r.noticeFile || opening) return;
+    setOpening(true);
+    try {
+      const f = await loadNoticeFile(orgId, r.noticeFile);
+      await (share ? shareFile(f) : openFile(f, false));
+    } catch (e) {
+      toast(e?.message || "Talimat açılamadı");
+    }
+    setOpening(false);
   };
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
@@ -325,6 +370,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
     await queue.current.catch(() => {});
     dropRaceFile(id.current);
     dropExtras(id.current);
+    dropNoticeFile(orgId, latest.current.noticeFile);
     await onDelete(id.current);
   };
 
@@ -486,7 +532,7 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
           <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
 
           {r.notice ? (
-            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} />
+            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} opening={opening} onOpen={() => noticeOpen(false)} onShare={() => noticeOpen(true)} />
           ) : (
             <>
               <Label>TALİMAT</Label>
@@ -631,6 +677,9 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
 
           <Label right={extras.length ? `${extras.length}` : ""}>EKLENEN EVRAK</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {r.noticeFile && (
+              <FileRow tag="PDF" title="Yarış talimatı" sub={`${sizeText(r.noticeFile.size)} · her cihazdan açılır`} onOpen={() => noticeOpen(false)} onShare={() => noticeOpen(true)} />
+            )}
             {extras.map((x) => (
               <FileRow
                 key={x.id}
@@ -799,6 +848,32 @@ export function RaceEditor({ start, athletes, classes = [], athletesErr, onRetry
         </div>
       </div>
 
+      <Sheet open={!!ask} onClose={() => setAsk(null)} title="Talimat farklı">
+        {ask && (
+          <>
+            <p className="text-[0.875rem] leading-relaxed text-mut">Yüklediğin talimat daha önce okunan bilgiden farklı:</p>
+            <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+              {ask.diffs.map((d) => (
+                <li key={d} className="flex items-start gap-2.5 px-4 py-2.5 text-[0.875rem] leading-snug">
+                  <Icon name="alert" className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                  <span className="min-w-0 flex-1">{d}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 space-y-2">
+              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "update"))} className="h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white">
+                Bilgileri güncelle
+              </button>
+              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "keep"))} className="h-12 w-full rounded-xl bg-bg text-[0.9375rem] font-semibold text-acc">
+                Yalnız dosyayı sakla
+              </button>
+              <button type="button" onClick={() => setAsk(null)} className="h-11 w-full text-[0.875rem] font-semibold text-mut">
+                Vazgeç
+              </button>
+            </div>
+          </>
+        )}
+      </Sheet>
       {onMail && <MailTo open={mailPick} onClose={() => setMailPick(false)} saved={mailTo} onSaved={onMailTo} onSend={mail} />}
       <Pick open={pick} athletes={athletes} value={r.athleteIds} onClose={() => setPick(false)} onChange={(ids) => set("athleteIds")(ids)} />
       <Sheet open={!!fix} onClose={() => setFix(null)} title={fix ? fix.studentName : ""}>

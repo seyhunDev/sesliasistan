@@ -92,6 +92,7 @@ function Race({ orgId, uid, by, mail }) {
         <Loading label="Yarış yükleniyor" />
       ) : (
         <RaceEditor
+          orgId={orgId}
           start={race}
           athletes={data?.athletes || []}
           classes={data?.classes || []}

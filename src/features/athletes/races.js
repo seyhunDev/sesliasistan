@@ -20,6 +20,8 @@ export const RACE_FIELDS = [
   "hotelName", "hotelFrom", "hotelTo",
   // Yarış talimatından okunanlar (program, son tarihler, ücretler, oteller, iletişim; raceNotice.js)
   "notice",
+  // Talimatın kendisi (PDF) noticeFiles'ta; burada künyesi { id, name, size, parts, at } (noticeFile.js)
+  "noticeFile",
   // Elle eklenen işler [{ title, date }]
   "todos",
   // Bütçe (budget.js)
@@ -46,6 +48,11 @@ export function cleanNotice(n) {
   }
   return out;
 }
+
+export const cleanNoticeFile = (f) =>
+  f && typeof f === "object" && /^[\w-]{1,40}$/.test(f.id || "")
+    ? { id: f.id, name: String(f.name || "talimat.pdf").slice(0, 120), size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: String(f.at || "") }
+    : null;
 
 // Yarış öncesi yapılacaklar. Her iş: { key, label, date?, detail?, group }; işaretlenenler checks[key].
 // Evrak işleri (kulüp tarafı) her yarışta aynı. Kayıt/ödeme/konaklama işleri talimattan gelir (talimat yüklenince);
@@ -104,6 +111,8 @@ const clean = (r) =>
             ? !!r[k]
             : k === "notice"
               ? cleanNotice(r[k])
+            : k === "noticeFile"
+              ? cleanNoticeFile(r[k])
             : k === "todos"
               ? cleanTodos(r[k])
             : k === "budget"
@@ -127,7 +136,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", notice: null, todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 // Yarış talimatı (ilan / NoR): PDF ya da fotoğraf yapay zekayla okunur, yarış bilgisi dolar,
-// program, son tarihler, ücretler, oteller, iletişim yarışın "notice" alanında durur. Belgenin kendisi saklanmaz.
+// program, son tarihler, ücretler, oteller, iletişim yarışın "notice" alanında durur. Belgenin kendisi PDF olarak
+// ayrıca saklanır (noticeFile.js; yarışta noticeFile künyesi).
 import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
@@ -19,7 +20,7 @@ const toBase64 = (file) =>
 
 // Dosya türü uzantıya ya da telefonun bildirdiğine değil içeriğe bakılarak bulunur
 // (WhatsApp/Dosyalar'dan gelen talimatlar çoğu zaman uzantısız ve türsüz gelir)
-async function kindOf(file) {
+export async function kindOf(file) {
   const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
   const sig = String.fromCharCode(...head);
   if (sig.startsWith("%PDF")) return "pdf";
@@ -64,9 +65,14 @@ async function send(body) {
   return p;
 }
 
-// Talimatı yarışa uygular: yeni yarışta (adı boş) bilgiler talimattan gelir; var olan yarışta yalnız boş alanlar dolar
-export function applyNotice(r, n) {
+// Talimatı yarışa uygular: yeni yarışta (adı boş) bilgiler talimattan gelir; var olan yarışta yalnız boş alanlar dolar.
+// force: kullanıcı farkları görüp "Bilgileri güncelle" dediyse yer ve tarihler de talimattan alınır (ad kalır)
+export function applyNotice(r, n, force = false) {
   const fresh = !r.name.trim();
+  if (force) {
+    const keep = r.name;
+    return { ...applyNotice({ ...r, name: "" }, n), name: keep || n.name || "" };
+  }
   const take = (k) => (n[k] && (fresh || !String(r[k] || "").trim()) ? n[k] : r[k]);
   const next = {
     ...r,
@@ -95,4 +101,35 @@ export async function addNoticePlans(saveDrafts, r, by) {
     { source: "manual", by },
   );
   return res.error ? 0 : res.plans;
+}
+
+// Yeni okunan talimat kayıtlı bilgiden farklı mı? Yapay zeka aynı talimatı her okuyuşta başka kelimelerle yazabildiği için
+// yalnız sağlam bilgiler karşılaştırılır: yarış tarihleri, son tarihler, program günleri, ücret tutarları, sınıflar.
+// Dönen: ["Yarış tarihi: 7-11 Ekim → 8-12 Ekim", …]; boşsa aynı.
+const dm = (s) => (s ? `${Number(s.slice(8, 10))}.${s.slice(5, 7)}` : "");
+const span = (a, b) => (a && b && b !== a ? `${dm(a)}-${dm(b)}` : dm(a));
+const setOf = (list) => [...new Set(list.filter(Boolean))].sort();
+const same = (a, b) => a.join("|") === b.join("|");
+export function noticeDiff(r, n) {
+  if (!r || !n) return [];
+  const old = r.notice || {};
+  const out = [];
+  if (n.startDate && r.startDate && (n.startDate !== r.startDate || (n.endDate && r.endDate && n.endDate !== r.endDate)))
+    out.push(`Yarış tarihi: ${span(r.startDate, r.endDate)} → ${span(n.startDate, n.endDate || n.startDate)}`);
+  const dl = (x) => setOf((x.deadlines || []).map((d) => d.date));
+  const [d0, d1] = [dl(old), dl(n)];
+  if (!same(d0, d1)) {
+    const added = (n.deadlines || []).filter((d) => !d0.includes(d.date)).map((d) => `${dm(d.date)} ${d.title}`);
+    const gone = (old.deadlines || []).filter((d) => !d1.includes(d.date)).map((d) => `${dm(d.date)} ${d.title}`);
+    if (added.length) out.push(`Yeni son tarih: ${added.slice(0, 3).join(", ")}`);
+    if (gone.length) out.push(`Artık yok: ${gone.slice(0, 3).join(", ")}`);
+  }
+  const days = (x) => setOf((x.schedule || []).map((s) => s.date));
+  if (old.schedule?.length && n.schedule?.length && !same(days(old), days(n))) out.push(`Program günleri: ${days(old).map(dm).join(", ")} → ${days(n).map(dm).join(", ")}`);
+  const fee = (x) => setOf((x.fees || []).map((f) => String(f.amount || "").replace(/[^\d%€$]/g, "")));
+  if (old.fees?.length && n.fees?.length && !same(fee(old), fee(n)))
+    out.push(`Ücretler: ${(old.fees || []).map((f) => f.amount).filter(Boolean).join(", ")} → ${(n.fees || []).map((f) => f.amount).filter(Boolean).join(", ")}`);
+  const cls = (x) => setOf((x.classes || []).map((c) => String(c).toLocaleUpperCase("tr-TR").replace(/İ/g, "I").replace(/\s+/g, "")));
+  if (old.classes?.length && n.classes?.length && !same(cls(old), cls(n))) out.push(`Sınıflar: ${old.classes.join(", ")} → ${n.classes.join(", ")}`);
+  return out;
 }
