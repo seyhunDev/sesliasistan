@@ -274,7 +274,7 @@ group("Instagram tasarım")([
   ["başarı satırı", F("1 sporcu Sporcumuza, çok Sporcularımıza, sonuçta tebrik", () => PM.raceWish(ONE) === "Sporcumuza başarılar!" && PM.raceWish({ ...ONE, athletes: SIX }) === "Sporcularımıza başarılar!" && PM.raceWish(ONE, "sonuc") === "Sporcumuzu tebrik ederiz!" && PM.raceWish(null) === "")],
   ["sınıflar", F("talimattaki sınıflar, yoksa sporcularınki; tekrarsız, en çok 4", () => PM.raceClasses({ classes: "ILCA 4, ILCA 6" }).join() === "ILCA 4,ILCA 6" && PM.raceClasses({ athletes: [...SIX, { name: "X", cls: "ILCA 4" }] }).join() === "Optimist,ILCA 4")],
   ["yer · tarih", F("ilçe · tarih", () => PM.raceMeta(ONE) === "Foça · 7-11 Ekim 2026" && PM.raceMeta(null) === "")],
-  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ DUYURUSU" && r.meta === true && r.style === "klasik"; })],
+  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ DUYURUSU" && r.meta === true && r.style === "afis"; })],
   ["tür değişince", F("kendiliğinden yazılar yenilenir, elle yazılan başlık kalır", () => {
     const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }), headline: "Benim başlığım" });
     const b = PM.reauto(a, { ...a, kind: "sonuc" });
@@ -291,7 +291,7 @@ group("Instagram tasarım")([
     const r = PM.raceWithAthletes({ athleteIds: ["a", "b", "yok"], results: { rows: { b: { place: 2 } } } }, { athletes: [{ id: "a", studentName: "Ali Kaya", currentClassId: "o", studentTc: "12345678901" }, { id: "b", studentName: "Ece Su", currentClassId: "i" }], classes: [{ id: "o", name: "Optimist" }, { id: "i", name: "ILCA 4" }] });
     return r.athletes.length === 2 && r.athletes[0].name === "Ece Su" && r.athletes[0].cls === "ILCA 4" && !/12345678901/.test(JSON.stringify(r.athletes));
   })],
-  ["şablon kaydı", F("bilinmeyen şablon Klasik, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "klasik" && PM.cleanPost({ style: "bant" }).style === "bant" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
+  ["şablon kaydı", F("bilinmeyen şablon Afiş, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "afis" && PM.cleanPost({ style: "bant" }).style === "bant" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
   ["yer ve sınıf düzenlenir", F("yarıştan dolar, alan olarak kaydedilir, eski kayıt doldurulur", () => {
     const a = PM.cleanPost({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" }, ...PM.autoOf({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" } }) });
     const old = PM.withInfo(PM.cleanPost({ race: ONE }));
@@ -330,6 +330,10 @@ const PMs = await import("@/features/posts/postModel");
 group("Instagram hikâye")([
   ["hikâye boyutu", F("1080×1920, oran 9/16", () => { const f = PMs.formatOf("story"); return f[2] === 1080 && f[3] === 1920 && PMs.aspectOf("story") === "9 / 16"; })],
   ["kayıtta korunur", F("cleanPost story kalır, bilinmeyen kare olur", () => PMs.cleanPost({ format: "story" }).format === "story" && PMs.cleanPost({ format: "x" }).format === "square")],
+  ["reels boyutu", F("1080×1920, kayıtta kalır, sağda ve altta güvenli alan", () => { const f = PMs.formatOf("reels"); const s = PMs.safeOf("reels"); return f[3] === 1920 && PMs.aspectOf("reels") === "9 / 16" && PMs.cleanPost({ format: "reels" }).format === "reels" && s.r > 0 && s.b > PMs.safeOf("story").b && PMs.safeOf("square").b === 0; })],
+  ["afiş şablonu", F("yeni gönderi Afiş şablonuyla açılır, eski şablonlar korunur", () => PMs.freshPost("duyuru").style === "afis" && PMs.cleanPost({ style: "kart" }).style === "kart" && PMs.STYLES[0][0] === "afis")],
+  ["karartma", F("varsayılan 55, 0-100 arası", () => PMs.cleanPost({}).shade === 55 && PMs.cleanPost({ shade: 140 }).shade === 100 && PMs.cleanPost({ shade: -5 }).shade === 0 && PMs.cleanPost({ shade: 20 }).shade === 20)],
+  ["üç boyut", F("gönderi + hikâye + reels; gönderi seçili Kare/Dikey, yoksa Dikey", () => PMs.setOf("square").join() === "square,story,reels" && PMs.setOf("portrait").join() === "portrait,story,reels" && PMs.setOf("reels").join() === "portrait,story,reels")],
 ]);
 
 // Aidat ödemeleri listesi (paymentsOf)

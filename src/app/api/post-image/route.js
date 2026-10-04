@@ -49,7 +49,7 @@ export async function POST(request) {
   const race = cleanRace(body?.race);
   const wish = S(body?.wish, 600);
   const topic = S(body?.topic, 600);
-  const ratio = { portrait: "4:5", story: "9:16" }[body?.format] || "1:1";
+  const ratio = { portrait: "4:5", story: "9:16", reels: "9:16" }[body?.format] || "1:1";
   const prompt = [
     `Create a vivid, realistic, high quality photograph for an Instagram post of Dikili Yelken Spor Kulübü (a youth sailing club in Dikili, İzmir, Turkey).`,
     wish ? `What the image should show (Turkish, from the user): "${wish}"` : `Scene: ${SCENE[kind]}.`,

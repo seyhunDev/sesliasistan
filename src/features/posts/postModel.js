@@ -7,7 +7,7 @@
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
 //   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (yarışın sınıfları, virgülle; görselde değil, başlıkta geçer), meta (görselde yarış yeri ve tarihi), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
-//   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
+//   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye) | "reels" 1080x1920 (reels kapağı), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma), shade 0-100 (fotoğrafı karartma, yazı okunsun diye),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
 // }
 
@@ -37,10 +37,19 @@ export const FORMATS = [
   ["square", "Kare 1:1", 1080, 1080],
   ["portrait", "Dikey 4:5", 1080, 1350],
   ["story", "Hikâye 9:16", 1080, 1920],
+  ["reels", "Reels 9:16", 1080, 1920],
 ];
 // CSS en-boy oranı (önizleme ve liste)
-export const aspectOf = (f) => ({ portrait: "4 / 5", story: "9 / 16" })[f] || "1 / 1";
+export const aspectOf = (f) => ({ portrait: "4 / 5", story: "9 / 16", reels: "9 / 16" })[f] || "1 / 1";
 export const formatOf = (f) => FORMATS.find(([x]) => x === f) || FORMATS[0];
+export const tallOf = (f) => f === "story" || f === "reels";
+// Instagram'ın kendi yazılarının/düğmelerinin kapladığı kenarlar (px): yazı ve logo bunların içinde kalır.
+// Hikâye: üstte profil satırı, altta yanıt kutusu. Reels: profil ızgarasında orta 3:4 kırpılır (üst/alt 240),
+// altta kullanıcı adı + açıklama, sağda beğen/yorum düğmeleri.
+export const safeOf = (f) => ({ story: { t: 200, b: 280, r: 0 }, reels: { t: 250, b: 440, r: 130 } })[f] || { t: 0, b: 0, r: 0 };
+// Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Dikey), hikâye, reels
+export const SET_LABELS = { square: "Gönderi", portrait: "Gönderi", story: "Hikâye", reels: "Reels" };
+export const setOf = (f) => [f === "square" ? "square" : "portrait", "story", "reels"];
 
 // Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]; yumuşak, az doygun tonlar
 export const THEMES = [
@@ -58,8 +67,10 @@ export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", ge
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
 
-// Yazı yerleşimi: Klasik (yazı fotoğrafın üstünde), Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
+// Yazı yerleşimi: Afiş (üstte logo + kulüp adı, büyük başlık, eğik etiket; varsayılan), Klasik (yazı fotoğrafın üstünde),
+// Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
 export const STYLES = [
+  ["afis", "Afiş"],
   ["klasik", "Klasik"],
   ["kart", "Kart"],
   ["bant", "Bant"],
@@ -140,6 +151,7 @@ export function cleanPost(p = {}) {
     theme: themeOf(p.theme)[0],
     pos: p.pos === "top" ? "top" : "bottom",
     focus: Math.max(0, Math.min(100, Math.round(Number(p.focus ?? 50)))),
+    shade: Math.max(0, Math.min(100, Math.round(Number(p.shade ?? 55)))),
     hasPhoto: !!p.hasPhoto,
     thumb,
   };
