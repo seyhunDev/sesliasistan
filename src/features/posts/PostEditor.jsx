@@ -481,6 +481,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           className={`block h-auto w-full bg-deep ${shown ? "cursor-grab touch-none" : ""}`}
           style={{ aspectRatio: aspectOf(post.format) }}
         />
+        {/* Karede profil ızgarasında kesilen kenarlar (ızgara 3:4 gösterir): yazı bu çizgilerin içinde kalır */}
+        {post.format === "square" && (
+          <>
+            <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-[12.5%] border-r border-dashed border-white/60 bg-black/25" />
+            <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[12.5%] border-l border-dashed border-white/60 bg-black/25" />
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[0.6875rem] font-medium text-white">Profilde gri kenarlar görünmez</span>
+          </>
+        )}
         {(aiBusy || busy === "img") && (
           <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[0.75rem] font-semibold text-white backdrop-blur">
             <Icon name="spark" className="size-4 animate-pulse" />
