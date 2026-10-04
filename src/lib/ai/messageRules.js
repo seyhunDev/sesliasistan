@@ -9,12 +9,13 @@ const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/\s+/g, " 
 const words = (s) => low(s).split(" ").filter(Boolean).length;
 
 // Bekleyen taslak için sesli/yazılı onay ve ret ("evet gönder", "tamam", "vazgeç", "hayır gönderme")
-const YES = new RegExp(`^(evet|gönder|gönderebilirsin|yolla|at|tamam|tamamdır|olur|onayla|onaylıyorum|doğru|aynen)${END}`);
-const NO = new RegExp(`^(hayır|vazgeç|iptal|gönderme|boş ?ver|istemiyorum|dur|kalsın)${END}`);
+// "onayladım", "onay veriyorum", "gönderelim", "evet yolla" da onaydır; "onaylamıyorum", "yollama" ret
+const YES = new RegExp(`^(evet|gönder|gönderebilirsin|gönderelim|gönderiver|yolla|yollayabilirsin|yollayalım|at|atabilirsin|tamam|tamamdır|olur|onay|onayla|onayladım|onaylıyorum|onaylandı|onaylı|onay veriyorum|doğru|aynen|kabul|uygun|tabii|tabi|kesinlikle|süper|harika)${END}`);
+const NO = new RegExp(`^(hayır|vazgeç|vazgeçtim|iptal|gönderme|yollama|onaylamıyorum|onaylama|boş ?ver|istemiyorum|dur|kalsın)${END}`);
 export function confirmWord(text) {
   const t = low(text).replace(/[.!?,]+$/g, "");
   if (!t || words(t) > 4) return "";
-  if (NO.test(t) || /(^|\s)gönderme($|\s)/.test(t)) return "no";
+  if (NO.test(t) || /(^|\s)(gönderme|yollama|onaylamıyorum)($|\s)/.test(t)) return "no";
   if (YES.test(t)) return "yes";
   return "";
 }
@@ -96,4 +97,26 @@ export function changeText(before = {}, after = {}) {
   if (after.time !== before.time) parts.push(after.time ? `Saat: ${after.time}` : "Saat kaldırıldı, tüm gün");
   if (after.place && after.place !== before.place) parts.push(`Yer: ${after.place}`);
   return parts.length ? `Güncellendi · ${parts.join(" · ")}` : "";
+}
+
+// Kullanıcının kurduğu grup ("Yelken Ekibi grubuna", "Antrenörler'e", "veli grubu"): söylenen ad grup adlarıyla eşleşir.
+// groups: [{ id, name }]. Tam ad (ekleri ve "grubu/grubuna" atılarak) ya da adın başı; birden çok uyarsa en uzun ad. Dönüş: grup ya da null.
+const gfold = (s) =>
+  low(s)
+    .replace(/['’]\S*/g, "")
+    .replace(/\s+(grubu|grubuna|grubunu|grubundakilere|grubundaki|grup|gruba)$/, "")
+    .replace(/[^\p{L}\p{N} ]/gu, "")
+    .trim();
+export function matchGroup(raw, groups = []) {
+  const t = gfold(raw);
+  if (!t) return null;
+  const list = groups.filter((g) => g?.id && gfold(g.name));
+  const exact = list.find((g) => gfold(g.name) === t);
+  if (exact) return exact;
+  // Ek almış söyleyiş: "yelken ekibine" → "yelken ekibi"; adın en çok 4 harf fazlası ek sayılır
+  const hits = list.filter((g) => {
+    const n = gfold(g.name);
+    return n.length >= 3 && t.startsWith(n.slice(0, -1)) && t.length - n.length <= 4;
+  });
+  return hits.sort((a, b) => gfold(b.name).length - gfold(a.name).length)[0] || null;
 }
