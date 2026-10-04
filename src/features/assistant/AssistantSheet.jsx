@@ -66,7 +66,7 @@ import { EventCard } from "@/features/events/EventCard";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
-const ENDPOINT = 2000;
+const ENDPOINT = 1500; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
@@ -162,6 +162,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const convo = useRef(false); // sesli sohbet: her cevaptan sonra mikrofon kendiliğinden açılır
   // Canlı akış: yanıtı beklenen son sesli istek. Yanıt gelmeden konuşmaya devam edilirse yenisiyle birleştirilip yeniden gönderilir.
   const inflight = useRef(null);
+  // Yanıt geldiğinde kullanıcı konuşmaya devam ediyordu: yanıt burada bekler. Söylenen gelirse öncekiyle birleşip yeniden
+  // sorulur (bu atılır); dinleme metinsiz biterse (gürültü, öksürük) bekleyen yanıt uygulanır
+  const parked = useRef(null);
+  const holdIfTalking = (fn) => {
+    if (!inflight.current || !sp.talking()) return false;
+    parked.current = fn;
+    return true;
+  };
   const runId = useRef(0);
   // Asistanla kişi ekleme (yalnız ana hesap): { draft, step: "ask" | "confirm" | "saved" | "undo", ask, dups, uid }
   const personFlow = useRef(null);
@@ -206,12 +214,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Kullanıcı yanıt gelmeden konuşmaya devam etti: bekleyen isteği bırak, öncekiyle birleştirip yeniden gönder
         const merged = `${inflight.current} ${tx}`.replace(/\s+/g, " ").trim();
         inflight.current = null;
+        parked.current = null;
         cancelRun();
         setTurns((p) => (p.at(-1)?.role === "user" ? p.slice(0, -1) : p));
         run(merged, true);
       } else run(text ? `${text} ${tx}` : tx, true);
     },
     onFail: (m) => toast(m),
+    onMiss: () => {
+      const f = parked.current;
+      parked.current = null;
+      if (f) setTimeout(f, 0);
+    },
   });
   // heardNow: o an duyulan (yanıt gelirken hâlâ konuşuyor mu); spStatus: mikrofon durumu
   live.current = { open, text, heardNow: `${sp.finalText}${sp.interim}`.trim(), spStatus: sp.status };
@@ -227,6 +241,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>
     setTimeout(() => {
+      // Okunacak cevap varken açılmaz (mikrofon açılınca konuşma susar; akışta gelen cevap kesilmesin)
+      if (sayQ.current.busy || sayQ.current.items.length) return;
       if (live.current.open && live.current.spStatus === "idle" && inflight.current) sp.start({ auto: true, quiet: true, endpoint: ENDPOINT });
     }, 120);
 
@@ -276,7 +292,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   function reply(message, extra = {}, viaVoice = false) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
     // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
-    if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
+    if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
     const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null } = extra;
@@ -547,7 +563,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function handle(r, s, viaVoice) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa bekle, sözünü kesme (konuşması bitince öncekiyle birleştirilip yeniden sorulur)
-    if (inflight.current && live.current.spStatus === "listening" && live.current.heardNow) return;
+    if (holdIfTalking(() => handle(r, s, viaVoice))) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel();
     // Not açıkça istenmediyse yapay zekanın başka işin yanına eklediği not atılır (öğrenme verisine de girmez)
@@ -673,6 +689,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (fresh || !(drafts.length || cards.pending)) queue.current = [];
     const all = !fresh ? askAll.current : "";
     askAll.current = "";
+    parked.current = null; // yeni istek: bekletilen eski yanıt uygulanmaz
     setTurns((p) => [...p, { role: "user", text: s }]);
     setText("");
     setHeard(s);
@@ -855,15 +872,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     clearSay();
     streamSaid.current = "";
     setStreamText("");
+    if (viaVoice) inflight.current = s;
     if (pc) {
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
-      enqueueSay(pc.line); // yanıtın okunması bunun ardından (kuyruk)
-    }
-    if (viaVoice) {
-      inflight.current = s;
-      // Ön cevap ve akış okunurken mikrofon açılmaz (kendi sesini duymasın); ön cevap yoksa eskisi gibi
-      if (!pc) listenWhileThinking();
-    }
+      // Yanıtın okunması bunun ardından (kuyruk). Ön cevap okunurken mikrofon açılmaz (kendi sesini duymasın);
+      // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
+      enqueueSay(pc.line, viaVoice ? listenWhileThinking : undefined);
+    } else if (viaVoice) listenWhileThinking();
     // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
     const onText = (m) => {
       if (id !== runId.current) return;
