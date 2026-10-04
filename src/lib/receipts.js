@@ -67,3 +67,55 @@ export const confAvg = (conf) => {
   const v = Object.values(conf || {}).filter((x) => typeof x === "number");
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 };
+
+// ---- Fiş numarası ve ödeme durumu ----
+// Kulüp genelinde sıralı numara (/api/receipt-no verir): 7 -> "F-0007". Kâğıt fişin üstüne yazılır.
+export const noText = (n) => (Number(n) > 0 ? `F-${String(Math.round(n)).padStart(4, "0")}` : "");
+// Ana hesabın eklediği fiş kendi parasıyla ödenmiştir: "paid" (eski kayıtlarda payStatus boş, o da ödendi sayılır).
+// Çalışan/aile eklediyse ana hesap ödeyene kadar "pending".
+export const payOf = (r) => r?.payStatus || "paid";
+export const payText = (r) => (payOf(r) === "pending" ? "Ödeme bekliyor" : "Ödendi");
+// Yeni fişin ödeme alanları: staff -> bekliyor; ana hesap -> ödendi (bildirim yok, görüldü sayılır)
+export function newPay(staff, name, now) {
+  if (staff) return { payStatus: "pending" };
+  return { payStatus: "paid", paidAt: now, paidBy: { name: name || "Ana hesap" }, paySeenAt: now };
+}
+
+const dmy = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().join(".") : "");
+const tl = (k) => Math.round(k || 0) / 100;
+
+// Muhasebe Excel'i: { "Fişler": [[başlıklar], …satırlar, toplam], "Kategoriler": […] }. Tutarlar TL sayı (Excel toplar).
+// Tutar fişte yazan toplam; KDV kalemlerden (oran oran). Matrah = tutar - KDV.
+export function accountingSheets(list = [], nameOf) {
+  const rows = [...list].sort((a, b) => (Number(a.no) || 1e9) - (Number(b.no) || 1e9) || `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
+  const head = ["Fiş no", "Tarih", "İşletme", "VKN/TCKN", "Belge türü", "Belge no", "Açıklama", "Kategori", "Ödeme şekli", "Matrah (TL)", "KDV oranı", "KDV (TL)", "Tutar (TL)", "Ödeyen", "Ödeme durumu", "Ödeme tarihi"];
+  let sum = 0;
+  let vatSum = 0;
+  const cats = {};
+  const body = rows.map((r) => {
+    const total = totalOf(r);
+    const t = r.totals || calcTotals(r.items);
+    const vat = t.vat || 0;
+    sum += total;
+    vatSum += vat;
+    const c = r.cat || "Diğer";
+    cats[c] = cats[c] || { n: 0, vat: 0, total: 0 };
+    cats[c].n++;
+    cats[c].vat += vat;
+    cats[c].total += total;
+    const rates = (t.byRate || []).filter((x) => x.base || x.vat).map((x) => `%${x.r}`).join(", ");
+    const desc = r.note || (r.items || []).map((i) => i.n).filter(Boolean).slice(0, 6).join(", ");
+    const payer = r.createdBy?.name || nameOf?.(r.createdByUid) || "";
+    const paid = payOf(r) === "paid";
+    return [noText(r.no), dmy(r.date), r.merchant || "", r.taxId || "", DOC[r.docType] || "Fiş", r.docNo || "", desc, c, r.pay || "", tl(total - vat), rates, tl(vat), tl(total), payer, payText(r), paid ? dmy(r.paidAt || r.createdAt || r.date) : ""];
+  });
+  const foot = ["Toplam", "", `${rows.length} belge`, "", "", "", "", "", "", tl(sum - vatSum), "", tl(vatSum), tl(sum), "", "", ""];
+  const catRows = Object.entries(cats)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([c, v]) => [c, v.n, tl(v.total - v.vat), tl(v.vat), tl(v.total)]);
+  return {
+    Fişler: [head, ...body, foot],
+    Kategoriler: [["Kategori", "Belge", "Matrah (TL)", "KDV (TL)", "Tutar (TL)"], ...catRows, ["Toplam", rows.length, tl(sum - vatSum), tl(vatSum), tl(sum)]],
+  };
+}
+export const accountingName = (month) => `fisler-${month || "tumu"}.xlsx`;

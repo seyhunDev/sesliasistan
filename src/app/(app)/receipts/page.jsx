@@ -7,9 +7,10 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Tile } from "@/components/dashboard/Row";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
-import { PayBadge, PendingPayments } from "@/features/receipts/Payment";
+import { PendingPayments } from "@/features/receipts/Payment";
 import { whoText } from "@/lib/people";
-import { CAT, CATS, DOC, PAYS, TLk, catOf, parseTL, totalOf } from "@/lib/receipts";
+import { CAT, CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
+import { useToast } from "@/components/ui/ToastProvider";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 import { useDock } from "@/features/home/TabBar";
@@ -23,10 +24,8 @@ const shiftMonth = (m, n) => {
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 export default function ReceiptsPage() {
-  const { receipts: all, loading, myUid, nameOf } = useData();
-  // Ödenen fişler ayrı tutulur (listede ve toplamda yok), istenirse aşağıda gösterilir
-  const receipts = useMemo(() => all.filter((r) => r.payStatus !== "paid"), [all]);
-  const [showPaid, setShowPaid] = useState(false);
+  const { receipts, loading, myUid, nameOf } = useData();
+  const toast = useToast();
   const { openReceipt } = useReceipt();
   const [month, setMonth] = useState(() => todayStr().slice(0, 7)); // "" = tüm zamanlar
   const [q, setQ] = useState("");
@@ -36,12 +35,13 @@ export default function ReceiptsPage() {
   const [min, setMin] = useState("");
   const [max, setMax] = useState("");
   const [review, setReview] = useState(false);
+  const [state, setState] = useState(""); // "" | pending | paid
   const [open, setOpen] = useState(false);
 
   const users = useMemo(() => [...new Set(receipts.map((r) => r.createdBy?.name).filter(Boolean))], [receipts]);
-  const active = [pay, by, min, max, review].filter(Boolean).length;
+  const active = [pay, by, min, max, review, state].filter(Boolean).length;
 
-  const [list, paid] = useMemo(() => {
+  const list = useMemo(() => {
     const lo = parseTL(min);
     const hi = parseTL(max);
     const s = q.trim().toLocaleLowerCase("tr-TR");
@@ -52,14 +52,15 @@ export default function ReceiptsPage() {
         if (pay && r.pay !== pay) return false;
         if (by && r.createdBy?.name !== by) return false;
         if (review && r.status !== "review") return false;
+        if (state && payOf(r) !== state) return false;
         if (!Number.isNaN(lo) && t < lo) return false;
         if (!Number.isNaN(hi) && t > hi) return false;
-        if (s && !`${r.merchant} ${r.docNo || ""} ${r.taxId || ""} ${r.note || ""} ${(r.items || []).map((i) => i.n).join(" ")}`.toLocaleLowerCase("tr-TR").includes(s)) return false;
+        if (s && !`${noText(r.no)} ${r.no || ""} ${r.merchant} ${r.docNo || ""} ${r.taxId || ""} ${r.note || ""} ${(r.items || []).map((i) => i.n).join(" ")}`.toLocaleLowerCase("tr-TR").includes(s)) return false;
         return true;
     };
     const byDate = (a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`);
-    return [all.filter((r) => r.payStatus !== "paid" && match(r)).sort(byDate), all.filter((r) => r.payStatus === "paid" && match(r)).sort(byDate)];
-  }, [all, month, q, cats, pay, by, min, max, review]);
+    return receipts.filter(match).sort(byDate);
+  }, [receipts, month, q, cats, pay, by, min, max, review, state]);
 
   const total = list.reduce((a, r) => a + totalOf(r), 0);
   const vat = list.reduce((a, r) => a + (r.totals?.vat || 0), 0);
@@ -79,7 +80,24 @@ export default function ReceiptsPage() {
     setMin("");
     setMax("");
     setReview(false);
+    setState("");
   };
+
+  // Muhasebeci için Excel: filtrelenmiş liste, fiş numarasıyla sıralı (Fişler + Kategoriler sayfası)
+  async function excel() {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+      for (const [name, rows] of Object.entries(accountingSheets(list, nameOf))) {
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws["!cols"] = rows[0].map((h, i) => ({ wch: Math.min(40, Math.max(String(h).length, ...rows.map((r) => String(r[i] ?? "").length)) + 2) }));
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      }
+      XLSX.writeFile(wb, accountingName(month));
+    } catch {
+      toast("Excel dosyası hazırlanamadı");
+    }
+  }
 
   // Filtrelenmiş listeyi yazdırılabilir sayfada açar
   function print() {
@@ -87,7 +105,7 @@ export default function ReceiptsPage() {
     const f = [cats.length && `Kategori: ${cats.join(", ")}`, pay && `Ödeme: ${pay}`, by && `Ekleyen: ${by}`, q && `Arama: ${q}`, review && "Yalnızca kontrol bekleyenler"].filter(Boolean).join(" · ");
     const rows = [...list]
       .reverse()
-      .map((r) => `<tr><td>${esc((r.date || "").split("-").reverse().join("."))}</td><td>${esc(r.merchant)}</td><td>${esc(r.taxId)}</td><td>${esc(r.docNo)}</td><td>${esc(DOC[r.docType] || "")}</td><td>${esc(r.cat)}</td><td>${esc(r.pay)}</td><td>${esc(r.createdBy?.name)}</td><td class="n">${TLk(r.totals?.vat)}</td><td class="n">${TLk(totalOf(r))}</td></tr>`)
+      .map((r) => `<tr><td>${esc(noText(r.no))}</td><td>${esc((r.date || "").split("-").reverse().join("."))}</td><td>${esc(r.merchant)}</td><td>${esc(r.taxId)}</td><td>${esc(r.docNo)}</td><td>${esc(DOC[r.docType] || "")}</td><td>${esc(r.cat)}</td><td>${esc(r.pay)}</td><td>${esc(r.createdBy?.name)}</td><td>${payOf(r) === "pending" ? "Bekliyor" : "Ödendi"}</td><td class="n">${TLk(r.totals?.vat)}</td><td class="n">${TLk(totalOf(r))}</td></tr>`)
       .join("");
     const cat = catRank.map(([c, v]) => `<tr><td>${esc(c)}</td><td class="n">${TLk(v)}</td></tr>`).join("");
     const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
@@ -95,8 +113,8 @@ export default function ReceiptsPage() {
       table{width:100%;border-collapse:collapse;margin-bottom:18px}th,td{border-bottom:1px solid #ddd;padding:6px 4px;text-align:left}th{border-bottom:2px solid #111}
       .n{text-align:right;white-space:nowrap}tfoot td{font-weight:700;border-top:2px solid #111}
     </style></head><body><h1>${esc(title)}</h1><p>${esc(f || "Filtre yok")} · ${list.length} belge</p>
-    <table><thead><tr><th>Tarih</th><th>İşletme</th><th>VKN</th><th>Belge no</th><th>Tür</th><th>Kategori</th><th>Ödeme</th><th>Ekleyen</th><th class="n">KDV</th><th class="n">Tutar</th></tr></thead>
-    <tbody>${rows}</tbody><tfoot><tr><td colspan="8">Toplam</td><td class="n">${TLk(vat)}</td><td class="n">${TLk(total)}</td></tr></tfoot></table>
+    <table><thead><tr><th>No</th><th>Tarih</th><th>İşletme</th><th>VKN</th><th>Belge no</th><th>Tür</th><th>Kategori</th><th>Ödeme</th><th>Ödeyen</th><th>Durum</th><th class="n">KDV</th><th class="n">Tutar</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td colspan="10">Toplam</td><td class="n">${TLk(vat)}</td><td class="n">${TLk(total)}</td></tr></tfoot></table>
     <table style="width:auto;min-width:280px"><thead><tr><th>Kategori</th><th class="n">Tutar</th></tr></thead><tbody>${cat}</tbody></table>
     <script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`;
     const w = window.open("", "_blank");
@@ -116,6 +134,9 @@ export default function ReceiptsPage() {
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       {/* Başlık */}
       <PageHeader title="Fişler">
+        <button onClick={excel} disabled={!list.length} aria-label="Muhasebe Excel'i" className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-card px-3 text-[0.875rem] font-semibold text-fg transition active:scale-95 disabled:opacity-40">
+          <Icon name="download" className="size-4" /> Excel
+        </button>
         <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
           <Icon name="print" className="size-[1.125rem]" />
         </button>
@@ -199,6 +220,13 @@ export default function ReceiptsPage() {
               {users.map((u) => <option key={u}>{u}</option>)}
             </select>
           )}
+          <div className="flex rounded-xl bg-bg p-[0.1875rem]">
+            {[["", "Hepsi"], ["pending", "Ödeme bekleyen"], ["paid", "Ödenen"]].map(([v, l]) => (
+              <button key={v || "all"} onClick={() => setState(v)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${state === v ? "bg-card shadow-sm" : "text-mut"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <input className={inp} inputMode="decimal" placeholder="En az ₺" value={min} onChange={(e) => setMin(e.target.value)} />
             <input className={inp} inputMode="decimal" placeholder="En çok ₺" value={max} onChange={(e) => setMax(e.target.value)} />
@@ -247,12 +275,15 @@ export default function ReceiptsPage() {
                 <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
                   <Tile icon={catOf(r.cat).icon} />
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-medium">{r.merchant || "İsimsiz"}</b>
+                    <b className="block truncate text-[0.9375rem] font-medium">
+                      {r.no > 0 && <span className="mr-1.5 font-mono text-[0.8125rem] font-semibold text-acc">{noText(r.no)}</span>}
+                      {r.merchant || "İsimsiz"}
+                    </b>
                     <small className="block truncate text-[0.8125rem] text-mut">
                       {[r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
                       {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
                     </small>
-                    {r.payStatus === "pending" && <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small>}
+                    {payOf(r) === "pending" ? <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small> : <small className="block text-[0.75rem] font-semibold text-ok">Ödendi</small>}
                   </span>
                   {r.status === "review" && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
                   <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
@@ -261,33 +292,6 @@ export default function ReceiptsPage() {
             </div>
           </section>
         ))
-      )}
-
-      {/* Ödenenler: ayrı ve kapalı; istenince açılır */}
-      {paid.length > 0 && (
-        <section className="mt-8">
-          <button onClick={() => setShowPaid((v) => !v)} className="flex w-full items-center justify-between px-1 text-[0.8125rem] font-semibold text-mut active:opacity-60">
-            <span>Ödenenler · {paid.length} · {TLk(paid.reduce((a, r) => a + totalOf(r), 0))}</span>
-            <span className="font-medium text-acc">{showPaid ? "Gizle" : "Göster"}</span>
-          </button>
-          {showPaid && (
-            <div className="mt-2 divide-y divide-line overflow-hidden rounded-2xl bg-card opacity-80 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-              {paid.map((r) => (
-                <Link key={r.id} href={`/receipts/${r.id}`} className="flex items-center gap-3 px-4 py-3 transition active:bg-bg">
-                  <Tile icon={catOf(r.cat).icon} />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-medium">{r.merchant || "İsimsiz"}</b>
-                    <small className="block truncate text-[0.8125rem] text-mut">
-                      {[fdate(r.date), whoText(r, myUid, nameOf)].filter(Boolean).join(" · ")}
-                    </small>
-                  </span>
-                  <PayBadge r={r} />
-                  <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
       )}
 
     </main>

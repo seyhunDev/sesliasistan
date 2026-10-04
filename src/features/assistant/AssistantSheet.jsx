@@ -981,7 +981,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (cmd.type === "receipt") {
       navigator.vibrate?.(8);
       park();
-      openReceipt({ camera: true });
+      openReceipt({ camera: true, voice: viaVoice }); // kaydedince fiş numarası sesle de söylenir
     } else if (cmd.type === "meeting") {
       navigator.vibrate?.(8);
       park();

@@ -8,7 +8,7 @@ import { Tile } from "@/components/dashboard/Row";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { PayBox } from "@/features/receipts/Payment";
-import { DOC, TLk, catOf, mismatch, totalOf } from "@/lib/receipts";
+import { DOC, TLk, catOf, mismatch, noText, totalOf } from "@/lib/receipts";
 import { fdate, rel } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 
@@ -75,7 +75,12 @@ export default function ReceiptDetailPage() {
       <div className="mt-3 rounded-2xl border border-line bg-card p-4">
         <div className="flex items-center gap-3">
           <Tile icon={c.icon} />
-          <b className="min-w-0 flex-1 truncate text-[1.0625rem] font-semibold">{r.merchant || "İsimsiz"}</b>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[1.0625rem] font-semibold">{r.merchant || "İsimsiz"}</b>
+            <small className="block text-[0.8125rem] text-mut">
+              Fiş no <b className="font-mono font-bold text-acc">{noText(r.no) || "bekleniyor"}</b>
+            </small>
+          </span>
           {img && (
             <button onClick={() => setZoom(true)} aria-label="Fotoğrafı büyüt" className="shrink-0">
               <img src={img} alt="Fiş" className="size-12 rounded-lg object-cover ring-1 ring-line" />
