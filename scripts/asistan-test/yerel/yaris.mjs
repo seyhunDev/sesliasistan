@@ -102,18 +102,26 @@ const DOC_ATH = [
   { id: "b", studentName: "Zeynep Su" },
 ];
 const DOC_RACE = { name: "TYF Yelken Ligi ILCA 1. Ayak", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-11", clubNo: "GID-2026-09", budget: BUD, athleteIds: ["a", "b"] };
+const COACH = { name: "Deneme Antrenör", tc: "11111111110", sicil: "0001234", phone: "555 000 00 00", email: "a@b.c", club: "SERBEST", city: "İZMİR", boatLength: "520" };
 const pages = async (bytes) => (await PDFDocument.load(bytes)).getPageCount();
 group("Yarış evrakı")([
   ["bulunma eki", { desc: "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da", fn: () => ["İzmir", "Antalya", "Çeşme", "İzmit", "Foça"].map(RD.locative).join(" "), ok: (r) => r === "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da" }],
   ["tarih aralığı", { desc: "07-11 EKİM 2026 · 28 EYLÜL-02 EKİM 2026", fn: () => [RD.rangeText("2026-10-07", "2026-10-11"), RD.rangeText("2026-09-28", "2026-10-02"), RD.rangeTitle("2026-10-07", "2026-10-11")], ok: ([a, b, c]) => a === "07-11 EKİM 2026" && b === "28 EYLÜL-02 EKİM 2026" && c === "07-11 Ekim 2026" }],
   ["yazı sayısı", { desc: "GID-2026-09 + 2 → GID-2026-11", fn: () => RD.nextNo("GID-2026-09", 2), ok: (r) => r === "GID-2026-11" }],
   ["sporcu bilgisi", { desc: "büyük harf ad, sınıf okul adından", fn: () => RD.athleteInfo(DOC_ATH[0]), ok: (r) => r.name === "ALİ KAYA" && r.cls === "9/B" && r.letterSchool === "GELİŞİM LİSESİ" && r.parents === "VELİ/AYŞE" }],
-  ["eksik alanlar", { desc: "boş kartta 14 eksik uyarısı", fn: () => RD.missing(DOC_ATH[1]).length, ok: (r) => r === 14 }],
+  ["eksik alanlar", { desc: "boş kartta 17 eksik (katılım formu seçili değilse 14; sicil, yelken no, cinsiyet aranmaz)", fn: () => [RD.missing(DOC_ATH[1]).length, RD.missing(DOC_ATH[1], ["school", "hotel"]).length], ok: ([a, b]) => a === 17 && b === 14 }],
   ["kulüp yazısı bilgisi", { desc: "boşlar yarıştan gelir", fn: () => RD.clubInfo(DOC_RACE), ok: (r) => r.event === DOC_RACE.name && r.place === "Foça-İzmir" && r.from === "2026-10-07" && r.to === "2026-10-11" }],
   ["otel izni bilgisi", { desc: "otel boş, tarihler yarıştan", fn: () => RD.hotelInfo(DOC_RACE), ok: (r) => r.hotel === "" && r.from === "2026-10-07" && r.to === "2026-10-11" }],
-  ["tüm evrak PDF", { desc: "2 sporcu: okul 1 + kafile 1 + seyahat 1 + veli 2 + kulüp 2 + otel 1 = 8 sayfa", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, DOC_ATH, FONTS)), ok: (r) => r === 8 }],
+  ["tüm evrak PDF", { desc: "2 sporcu: okul 1 + kafile 1 + seyahat 1 + veli 2 + kulüp 2 + otel 1 + antrenör 1 + katılım 1 = 10 sayfa", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, DOC_ATH, FONTS)), ok: (r) => r === 10 }],
   ["tek belge", { desc: "yalnız otel izni → 1 sayfa", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, DOC_ATH, FONTS, ["hotel"])), ok: (r) => r === 1 }],
   ["kalabalık otel izni", { desc: "25 sporcu yine tek sayfa", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, Array.from({ length: 25 }, (_, i) => ({ id: `s${i}`, studentName: `Sporcu ${i + 1}` })), FONTS, ["hotel"])), ok: (r) => r === 1 }],
+  ["TYF formları sınıfa göre", { desc: "ILCA 4 ve Optimist sporcuları → 2 antrenör + 2 katılım formu; yarışta sınıf yazılınca 1 + 1", fn: async () => {
+    const list = [{ ...DOC_ATH[0], boatClass: "ILCA 4" }, { ...DOC_ATH[1], boatClass: "Optimist" }];
+    return [await pages(await RD.buildRaceDocs(DOC_RACE, list, FONTS, ["coach", "entry"], COACH)), await pages(await RD.buildRaceDocs({ ...DOC_RACE, entryClass: "ILCA 4" }, list, FONTS, ["coach", "entry"], COACH))];
+  }, ok: ([a, b]) => a === 4 && b === 2 }],
+  ["kalabalık katılım formu", { desc: "40 sporcu sonraki sayfaya taşar, başlık tekrarlanır", fn: async () => pages(await RD.buildRaceDocs(DOC_RACE, Array.from({ length: 40 }, (_, i) => ({ id: `s${i}`, studentName: `Sporcu ${i + 1}`, tyfNo: "0295134", sailNo: "216382" })), FONTS, ["entry"], COACH)), ok: (r) => r === 2 }],
+  ["katılım formu sporcu satırı", { desc: "sicil, yelken no, cinsiyet büyük harf, doğum tarihi noktalı", fn: () => RD.athleteInfo({ studentName: "Mete Ok", tyfNo: "0295134", sailNo: "216382", studentGender: "Erkek", studentBirthDate: "2013-04-29" }), ok: (r) => r.tyfNo === "0295134" && r.sailNo === "216382" && r.gender === "ERKEK" && r.birthDot === "29.04.2013" }],
+  ["antrenör bilgisi", { desc: "başlangıçta ad/e-posta hesaptan, destek botu kulübün; eksik: T.C., sicil, telefon", fn: () => RD.coachMissing(RD.cleanCoach(RD.coachStart({ name: "Deneme Antrenör", email: "a@b.c" }))), ok: (r) => r.join() === "T.C.,sicil no,telefon" }],
   ["bütçe PDF", { desc: "bütçe çıktısı açılır", fn: async () => pages(await BD.buildBudgetPdf(DOC_RACE, DOC_ATH, FONTS)), ok: (r) => r >= 1 }],
 ]);
 
