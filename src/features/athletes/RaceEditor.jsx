@@ -243,8 +243,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     if (!docs.length) return toast("En az bir belge seç");
     setBusy(true);
     try {
-      // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada bugün yazılır, "Yenile"de değişmez (elle değiştirilebilir)
-      const dated = { ...r, letterDate: r.letterDate || todayStr(), docsAt: r.docsAt || new Date().toISOString() };
+      // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada (docsAt yok) bugün yazılır, "Yenile"de değişmez (sonra elle değiştirilebilir).
+      // Eski yarışlardaki tarih yarışın açıldığı gündü; ilk hazırlamada o da bugüne çekilir.
+      const dated = r.docsAt ? { ...r, letterDate: r.letterDate || todayStr() } : { ...r, letterDate: todayStr(), docsAt: new Date().toISOString() };
       if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt) {
         latest.current = dated;
         first.current = true; // kaydı aşağıda yapıyoruz, tekrar kaydedilmesin
@@ -661,7 +662,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </Pair>
             <Row label="Evrak tarihi">{field("letterDate", "", "date")}</Row>
           </Group>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">İzin aralığı kendiliğinden yarıştan bir gün önce başlar, bir gün sonra biter. Evrak tarihi tüm belgelerde aynıdır; boşsa belgeler ilk hazırlandığı gün yazılır, Yenile’de değişmez.</p>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">İzin aralığı kendiliğinden yarıştan bir gün önce başlar, bir gün sonra biter. Evrak tarihi tüm belgelerde aynıdır; belgeler ilk hazırlandığı gün yazılır, Yenile’de değişmez. Sonra buradan değiştirilebilir.</p>
 
           <Label>KULÜP YETKİLİSİ</Label>
           <Group>
