@@ -9,7 +9,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { appAllowed, isMobile, mediaSupported, offMessage, savePermission } from "@/lib/permissions";
-import { CAT, CATS, PAYS, TLk, VATS, calcTotals, confAvg, lowConf, parseQty, parseTL, toInput } from "@/lib/receipts";
+import { CAT, CATS, PAYS, TLk, VATS, calcTotals, confAvg, lowConf, noText, parseQty, parseTL, toInput } from "@/lib/receipts";
+import { useTts } from "@/features/speech/TtsProvider";
 import { todayStr } from "@/lib/utils/format";
 import { readReceipt } from "@/services/receiptService";
 import { CameraView } from "./CameraView";
@@ -88,10 +89,12 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const router = useRouter();
   const path = usePathname();
   const { profile } = useAuth();
-  const { receipts, saveReceipt, updateReceipt, deleteRecord, loadReceiptImage } = useData();
+  const { receipts, saveReceipt, updateReceipt, deleteRecord, loadReceiptImage, isStaff } = useData();
+  const { maybeSpeak } = useTts();
   const editId = seed?.edit || null;
 
-  const [stage, setStage] = useState("pick"); // pick | camera | reading | form
+  const [stage, setStage] = useState("pick"); // pick | camera | reading | form | done
+  const [done, setDone] = useState(null); // kaydedilen fiş: { id, no (sayı | "wait" | null), merchant, total, hint }
   const [form, setForm] = useState(emptyForm);
   const [conf, setConf] = useState(null);
   const [image, setImage] = useState(null); // gösterilen fotoğraf (dataURL)
@@ -133,6 +136,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
     setForm(emptyForm());
     setConf(null);
     setImage(null);
+    setDone(null);
     camBack.current = "pick";
     if (seed?.camera && !appAllowed("camera")) setCamError(offMessage("camera"));
     else if (seed?.camera && !mediaSupported()) setCamError("Bu tarayıcıda kamera doğrudan açılamıyor. Aşağıdan fotoğraf çekebilirsin.");
@@ -249,8 +253,19 @@ export function ReceiptSheet({ open, onClose, seed }) {
       updateReceipt(editId, d, { by, image: img });
       toast("Fiş güncellendi");
     } else {
-      saveReceipt(d, { by, image: img || null, src: aiImage ? "photo" : "manual" });
-      toast(hasDeclared && !matched ? "Fiş kaydedildi · toplamı kontrol et" : "Fiş kaydedildi");
+      const res = saveReceipt(d, { by, image: img || null, src: aiImage ? "photo" : "manual" });
+      navigator.vibrate?.([10, 40, 10]);
+      setSaving(false);
+      if (!res) return onClose();
+      // Numara ekranda gösterilir: kullanıcı kâğıt fişin üstüne yazar
+      setDone({ id: res.id, no: "wait", merchant: d.merchant, total: hasDeclared ? declared : totals.gross, hint: hasDeclared && !matched });
+      setStage("done");
+      const late = new Promise((r) => setTimeout(() => r(null), 8000));
+      Promise.race([res.no, late]).then((no) => {
+        setDone((x) => (x?.id === res.id ? { ...x, no } : x));
+        if (seed?.voice) maybeSpeak(no ? `Fiş kaydedildi. Numarası ${no}. Bu numarayı fişin üstüne yaz.` : "Fiş kaydedildi. Numarası internet gelince verilecek.");
+      });
+      return;
     }
     navigator.vibrate?.([10, 40, 10]);
     setSaving(false);
@@ -298,6 +313,33 @@ export function ReceiptSheet({ open, onClose, seed }) {
             onGallery={() => galRef.current?.click()}
             onCancel={() => setStage(camBack.current)}
           />
+        )}
+
+        {/* Kaydedildi: fiş numarası (kâğıt fişin üstüne yazılır) */}
+        {stage === "done" && done && (
+          <div className="fade-in flex min-h-full flex-col items-center justify-center py-6 text-center">
+            <span className="grid size-16 place-items-center rounded-full bg-ok text-white">
+              <Icon name="check" className="size-8" />
+            </span>
+            <p className="mt-4 text-[1.0625rem] font-semibold">Fiş kaydedildi</p>
+            <p className="mt-0.5 text-[0.875rem] text-mut">
+              {[done.merchant, TLk(done.total)].filter(Boolean).join(" · ")} · {isStaff ? "ödeme bekliyor" : "ödendi"}
+            </p>
+            <div className="mt-6 w-full max-w-[20rem] rounded-3xl border-2 border-dashed border-acc/50 bg-card px-5 py-5">
+              <small className="block text-[0.8125rem] font-medium text-mut">Fiş numarası</small>
+              {done.no === "wait" ? (
+                <span className="my-3 flex justify-center"><Loader label="Numara alınıyor" /></span>
+              ) : done.no ? (
+                <b className="mt-1 block font-mono text-[2.75rem] font-bold leading-none tracking-wide text-acc">{noText(done.no)}</b>
+              ) : (
+                <b className="mt-1 block text-[0.9375rem] font-semibold text-amber-800">İnternet gelince verilecek</b>
+              )}
+              <p className="mt-3 text-[0.875rem] leading-snug">
+                {done.no && done.no !== "wait" ? "Bu numarayı kâğıt fişin üstüne yaz." : "Numara Fişler listesinde fişin yanında görünür."}
+              </p>
+            </div>
+            {done.hint && <p className="mt-3 text-[0.8125rem] text-amber-800">Fişteki toplam kalemlerle uyuşmuyor, kontrol et.</p>}
+          </div>
         )}
 
         {/* 1. Fotoğraf seç */}
@@ -516,6 +558,26 @@ export function ReceiptSheet({ open, onClose, seed }) {
           </div>
         )}
       </div>
+
+      {stage === "done" && (
+        <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <button
+            onClick={() => {
+              setForm(emptyForm());
+              setConf(null);
+              setImage(null);
+              setAiImage(null);
+              setImageDirty(false);
+              setDone(null);
+              setStage("pick");
+            }}
+            className={btn1}
+          >
+            Yeni fiş
+          </button>
+          <button onClick={onClose} className={btn2}>Tamam</button>
+        </footer>
+      )}
 
       {stage === "form" && (
         <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

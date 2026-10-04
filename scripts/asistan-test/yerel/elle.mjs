@@ -73,6 +73,22 @@ group("Fiş hesapları")([
   ["toplam uyuşmazlığı", { desc: "fişte 30 TL, kalemler 25 TL → uyarı", fn: () => [RC.mismatch({ declared: 3000, items: [{ q: 1, u: 2500, r: 20 }] }), RC.mismatch({ declared: 2500, items: [{ q: 1, u: 2500, r: 20 }] })].join(), ok: (r) => r === "true,false" }],
 ]);
 
+// Fiş numarası, ödeme durumu ve muhasebe Excel'i (receipts.js)
+const RCX = [
+  { no: 2, date: "2026-10-03", merchant: "Shell", taxId: "123", docType: "fatura", docNo: "A1", cat: "Yakıt", pay: "Kart", items: [{ n: "Benzin", q: 1, u: 120000, r: 20 }], totals: RC.calcTotals([{ q: 1, u: 120000, r: 20 }]), createdBy: { name: "Ali Kaya" }, payStatus: "pending" },
+  { no: 1, date: "2026-10-01", merchant: "Migros", cat: "Market", pay: "Nakit", note: "Kamp malzemesi", items: [{ n: "Su", q: 2, u: 1000, r: 10 }], totals: RC.calcTotals([{ q: 2, u: 1000, r: 10 }]), createdBy: { name: "Seyhun" }, payStatus: "paid", paidAt: "2026-10-01T10:00:00.000Z" },
+  { date: "2026-09-20", merchant: "Eski", items: [{ n: "x", q: 1, u: 500, r: 0 }], totals: RC.calcTotals([{ q: 1, u: 500, r: 0 }]), createdBy: { name: "Seyhun" } },
+];
+group("Fiş numarası ve muhasebe")([
+  ["numara yazısı", F("7 → F-0007, boş → \"\"", () => RC.noText(7) === "F-0007" && RC.noText(12345) === "F-12345" && RC.noText(null) === "" && RC.noText(0) === "")],
+  ["ana hesabın fişi ödendi", F("staff bekliyor, ana hesap ödendi + görüldü", () => { const a = RC.newPay(true, "Ali", "t"); const b = RC.newPay(false, "Seyhun", "t"); return a.payStatus === "pending" && !a.paidAt && b.payStatus === "paid" && b.paidBy.name === "Seyhun" && b.paySeenAt === "t"; })],
+  ["eski ana hesap fişi", F("payStatus boş → Ödendi", () => RC.payOf({}) === "paid" && RC.payText({}) === "Ödendi" && RC.payText({ payStatus: "pending" }) === "Ödeme bekliyor")],
+  ["Excel sırası ve sütunlar", F("numaraya göre, numarasız sonda", () => { const s = RC.accountingSheets(RCX).Fişler; return s[0][0] === "Fiş no" && s[0].length === 16 && s[1][0] === "F-0001" && s[2][0] === "F-0002" && s[3][0] === "" && s[1][1] === "01.10.2026"; })],
+  ["Excel tutarları", F("Shell 1.200 TL, KDV 200, matrah 1.000; toplam satırı", () => { const s = RC.accountingSheets(RCX).Fişler; const r = s[2]; const t = s[s.length - 1]; return r[9] === 1000 && r[10] === "%20" && r[11] === 200 && r[12] === 1200 && r[13] === "Ali Kaya" && r[14] === "Ödeme bekliyor" && r[15] === "" && t[0] === "Toplam" && t[12] === 1225; })],
+  ["Excel açıklama ve ödeme", F("not açıklamada, ödendi tarihi", () => { const r = RC.accountingSheets(RCX).Fişler[1]; return r[6] === "Kamp malzemesi" && r[14] === "Ödendi" && r[15] === "01.10.2026" && r[4] === "Fiş"; })],
+  ["kategori sayfası", F("Yakıt önce, toplam 12,25+1200", () => { const k = RC.accountingSheets(RCX).Kategoriler; return k[1][0] === "Yakıt" && k[1][4] === 1200 && k[k.length - 1][1] === 3 && k[k.length - 1][4] === 1225; })],
+]);
+
 // Plan hatırlatmaları (reminders.js): zamanlayıcının hangi planı ne zaman bildireceği (İstanbul saati)
 const RM = await import("@/lib/reminders");
 const RP = { id: "p", date: "2026-10-05", time: "10:00", title: "Antrenman" };

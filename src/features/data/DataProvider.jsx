@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
-import { calcTotals, mismatch } from "@/lib/receipts";
+import { calcTotals, mismatch, newPay } from "@/lib/receipts";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { badgeCount } from "@/lib/badge";
@@ -781,6 +781,14 @@ export function DataProvider({ children }) {
   }, [getOrgId, fail, toast]);
 
   // ---- Fişler ----
+  // Numarasız fişlere numara ister (ana hesap: hepsi; diğerleri: kendi eklediği). { id: n }
+  const receiptNos = async (ids) => {
+    const r = await authFetch("/api/receipt-no", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error(`receipt-no ${r.status}`);
+    const { nos = {} } = await r.json();
+    if (Object.keys(nos).length) setData((p) => ({ ...p, receipts: p.receipts.map((x) => (nos[x.id] ? { ...x, no: nos[x.id] } : x)) }));
+    return nos;
+  };
   // Fotoğraf ayrı belgede tutulur (orgs/{uid}/receiptImages/{id}); liste hafif kalır.
   // image: dataURL | undefined (değişmedi) | null (kaldır)
   const saveReceipt = useCallback(
@@ -796,18 +804,33 @@ export function DataProvider({ children }) {
       const now = new Date().toISOString();
       const batch = writeBatch(db);
       const who = owners();
-      // Çalışanın eklediği fiş: ödemesi ana hesaptan bekleniyor
-      const payStatus = me.current.staff ? "pending" : null;
-      batch.set(ref, { ...receiptBody(d), hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, payStatus });
+      // Çalışanın eklediği fiş: ödemesi ana hesaptan bekleniyor. Ana hesabın eklediği: kendisi ödedi, "ödendi".
+      const pay = newPay(me.current.staff, me.current.name, now);
+      batch.set(ref, { ...receiptBody(d), hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, ...pay });
       if (image) batch.set(doc(db, "orgs", ownerId, "receiptImages", ref.id), { data: image, createdAt: now, ...who });
-      batch
-        .commit()
-        .then(() => payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
+      const saved = batch.commit();
+      saved
+        .then(() => pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
         .catch((e) => fail(e, "Fiş kaydetme"));
-      return ref.id;
+      // Fiş numarası (kulüp genelinde sıralı) sunucudan; internet yoksa sonra verilir (aşağıdaki numarasız fiş taraması)
+      const no = saved.then(() => receiptNos([ref.id])).then((m) => m[ref.id] || null).catch(() => null);
+      return { id: ref.id, no };
     },
     [getOrgId, fail],
   );
+
+  // Eski ya da internetsiz eklenen fişler: bir dakikadan eski numarasızlar oturumda bir kez toplu numaralanır
+  const askedNos = useRef(new Set());
+  useEffect(() => {
+    if (!ready || !uid) return;
+    const cut = Date.now() - 60e3;
+    const ids = data.receipts
+      .filter((r) => !(r.no > 0) && !askedNos.current.has(r.id) && Date.parse(r.createdAt || 0) < cut && (!me.current.staff || r.createdByUid === me.current.uid))
+      .map((r) => r.id);
+    if (!ids.length) return;
+    ids.forEach((id) => askedNos.current.add(id));
+    receiptNos(ids.slice(0, 200)).catch(() => {}); // olmazsa sonraki açılışta yeniden denenir
+  }, [data.receipts, ready, uid]);
 
   const updateReceipt = useCallback(
     (id, d, { by, image }) => {

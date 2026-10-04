@@ -1,4 +1,4 @@
-import { totalTL } from "./receipts.js";
+import { noText, totalTL } from "./receipts.js";
 
 // Veri yedeği (Ayarlar › Yedek indir): Excel sayfaları ve tam JSON. Saf fonksiyonlar (test edilir).
 // Sporcu kişisel bilgileri (ayrı kulüp projesinde) yedeğe girmez; bildirim abonelikleri ve küçük görseller atılır.
@@ -30,8 +30,8 @@ export function backupSheets({ plans = [], tasks = [], notes = [], receipts = []
     ],
     Notlar: [["Oluşturma", "Başlık", "Metin"], ...[...notes].sort(byDate("createdAt")).map((n) => [String(n.createdAt || "").slice(0, 10), n.title || "", n.body || ""])],
     Fişler: [
-      ["Tarih", "Yer", "Tutar (TL)", "Ödeme"],
-      ...[...receipts].sort(byDate("date")).map((r) => [r.date || String(r.createdAt || "").slice(0, 10), r.merchant || "", totalTL(r) || "", r.payStatus === "paid" ? "Ödendi" : r.payStatus === "pending" ? "Bekliyor" : ""]),
+      ["Tarih", "Yer", "Tutar (TL)", "Ödeme", "Fiş no"],
+      ...[...receipts].sort(byDate("date")).map((r) => [r.date || String(r.createdAt || "").slice(0, 10), r.merchant || "", totalTL(r) || "", r.payStatus === "paid" ? "Ödendi" : r.payStatus === "pending" ? "Bekliyor" : "", noText(r.no)]),
     ],
     Yarışlar: [
       ["Başlangıç", "Bitiş", "Ad", "Yer", "Sporcu sayısı"],
