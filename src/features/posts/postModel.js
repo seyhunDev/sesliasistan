@@ -7,7 +7,7 @@
 //   people (görselde sporcu satırları: "Ali Yılmaz · Optimist · ilk yarışı", en çok 4 satır),
 //   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (yarışın sınıfları, virgülle; görselde değil, başlıkta geçer), meta (görselde yarış yeri ve tarihi), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
-//   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye) | "reels" 1080x1920 (reels kapağı), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma),
+//   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye) | "reels" 1080x1920 (reels kapağı), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğraf kaydırma), shade 0-100 (fotoğrafı karartma, yazı okunsun diye),
 //   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
 // }
 
@@ -67,8 +67,10 @@ export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", ge
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 export const themeOf = (t) => THEMES.find(([x]) => x === t) || THEMES[0];
 
-// Yazı yerleşimi: Klasik (yazı fotoğrafın üstünde), Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
+// Yazı yerleşimi: Afiş (üstte logo + kulüp adı, büyük başlık, eğik etiket; varsayılan), Klasik (yazı fotoğrafın üstünde),
+// Kart (açık renk kutu içinde), Bant (alt/üstte koyu şerit)
 export const STYLES = [
+  ["afis", "Afiş"],
   ["klasik", "Klasik"],
   ["kart", "Kart"],
   ["bant", "Bant"],
@@ -149,6 +151,7 @@ export function cleanPost(p = {}) {
     theme: themeOf(p.theme)[0],
     pos: p.pos === "top" ? "top" : "bottom",
     focus: Math.max(0, Math.min(100, Math.round(Number(p.focus ?? 50)))),
+    shade: Math.max(0, Math.min(100, Math.round(Number(p.shade ?? 55)))),
     hasPhoto: !!p.hasPhoto,
     thumb,
   };

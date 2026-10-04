@@ -109,7 +109,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.shade, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -554,10 +554,16 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         )}
         {photo && (
           <div className="flex items-center gap-3">
-            <label className="min-w-0 flex-1">
-              <span className="text-[0.75rem] font-medium text-mut">Fotoğrafı kaydır</span>
-              <input type="range" min={0} max={100} value={post.focus} onChange={(e) => put("focus", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
-            </label>
+            <div className="min-w-0 flex-1 space-y-2">
+              <label className="block">
+                <span className="text-[0.75rem] font-medium text-mut">Fotoğrafı kaydır</span>
+                <input type="range" min={0} max={100} value={post.focus} onChange={(e) => put("focus", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
+              </label>
+              <label className="block">
+                <span className="text-[0.75rem] font-medium text-mut">Karartma (yazı okunsun)</span>
+                <input type="range" min={0} max={100} value={post.shade} onChange={(e) => put("shade", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
+              </label>
+            </div>
             <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-card text-rec active:scale-95">
               <Icon name="trash" className="size-[1.125rem]" />
             </button>
@@ -659,6 +665,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             return (
               <button key={f} type="button" onClick={() => shareOne(f)} disabled={!!busy && busy !== "save"} className="flex flex-col items-center gap-1.5 active:scale-95 disabled:opacity-50">
                 <span className={`block w-full overflow-hidden rounded-lg bg-line ring-1 ring-line ${post.format === f ? "ring-2 ring-acc" : ""}`} style={{ aspectRatio: aspectOf(f) }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   {s && <img src={s.thumb} alt="" className="block size-full object-cover" />}
                 </span>
                 <span className="flex items-center gap-1 text-[0.75rem] font-semibold">
