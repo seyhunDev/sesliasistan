@@ -1,6 +1,6 @@
 "use client";
 
-import { formatOf, imagePeople, themeOf } from "./postModel";
+import { formatOf, imagePeople, safeOf, tallOf, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -478,7 +478,7 @@ function measure(ctx, post, maxW, k) {
   const items = [];
   const tagH = z(post.tag ? 34 : 12);
   items.push({ t: "tag", h: tagH, gap: 0 });
-  const headLines = post.format === "story" ? 5 : post.format === "portrait" ? 4 : 3;
+  const headLines = tallOf(post.format) ? 5 : post.format === "portrait" ? 4 : 3;
   const head = fit(ctx, post.headline || " ", maxW, headLines, z(busy > 2 ? 74 : people.length ? 78 : 90), z(46), 700);
   items.push({ t: "head", ...head, lh: Math.round(head.size * 1.06), h: head.lines.length * Math.round(head.size * 1.06), gap: z(28) });
   if (meta) {
@@ -577,10 +577,8 @@ export async function drawPost(canvas, post, photo) {
   // Kum temasında vurgu koyu yeşil; koyu şeritte görünsün diye bantta kum sarısı
   const bandAcc = post.theme === "kum" ? "#e9c46a" : accent;
   const top = post.pos === "top";
-  // Hikâyede Instagram'ın üstteki profil satırı ve alttaki yanıt kutusu yazının üstüne binmesin
-  const story = post.format === "story";
-  const safeT = story ? 200 : 0;
-  const safeB = story ? 280 : 0;
+  // Hikâye/Reels'te Instagram'ın üst satırı, alttaki yazılar ve sağdaki düğmeler yazının üstüne binmesin
+  const { t: safeT, b: safeB, r: safeR } = safeOf(post.format);
 
   if (photo) {
     const s = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
@@ -642,7 +640,7 @@ export async function drawPost(canvas, post, photo) {
 
   // Yazı bloğu: Kart ve Bant'ta kutu/şerit içinde, Klasik'te doğrudan zeminde. Sığmazsa her şey birlikte küçülür.
   const inset = style === "kart" ? 52 : 0;
-  const maxW = W - PAD * 2 - inset * 2;
+  const maxW = W - PAD * 2 - inset * 2 - safeR;
   const room = H - PAD * 2 - safeT - safeB - 150 - (style === "klasik" ? 0 : 90);
   let m = measure(ctx, post, maxW, 1);
   for (let k = 0.94; m.h > room && k >= 0.66; k -= 0.06) m = measure(ctx, post, maxW, k);
@@ -660,7 +658,7 @@ export async function drawPost(canvas, post, photo) {
   let y;
   if (style === "kart") {
     // Açık renk yuvarlak kutu; içindeki yazı koyu
-    const bw = W - PAD * 2 + 24;
+    const bw = W - PAD * 2 + 24 - safeR;
     const bh = m.h + inset * 2;
     const bx = PAD - 12;
     const by = top ? PAD - 12 + safeT : H - PAD - bh - safeB + 12;
@@ -732,8 +730,8 @@ export async function drawSlide(canvas, format, photo) {
   const logo = await loadLogo();
   if (logo) {
     const R = 34;
-    const x = W - PAD - R * 2;
-    const y = H - PAD - R * 2 - (format === "story" ? 280 : 0);
+    const x = W - PAD - R * 2 - safeOf(format).r;
+    const y = H - PAD - R * 2 - safeOf(format).b;
     ctx.save();
     ctx.globalAlpha = 0.92;
     ctx.fillStyle = "#ffffff";

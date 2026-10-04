@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, POST_ASK_KEY, RACE_KINDS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 
@@ -75,6 +75,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const [texts, setTexts] = useState(true);
   const canvas = useRef(null);
   const file = useRef(null);
+  const setFiles = useRef({});
   const fileInput = useRef(null);
   const moreInput = useRef(null);
   const latest = useRef(null);
@@ -82,6 +83,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const autoCap = useRef(start.id ? null : start.caption);
   // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
   const [extras, setExtras] = useState([]); // [{ id, src, i }]
+  const [set, setSet] = useState([]); // üç boyut: [{ f, thumb }]; dosyalar setFiles'ta
   const [pid, setPid] = useState(start.id || null);
 
   const shown = img?.src === photo ? img.i : null; // yüklenmiş fotoğraf (kaldırılınca null)
@@ -117,9 +119,23 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       if (!live) return;
       file.current = await postFile(canvas.current, slug(p.headline)).catch(() => null);
     }, 200);
+    // Üç boyut (gönderi, hikâye, reels): küçük önizleme + paylaşılacak dosya, ana çizimden sonra
+    setFiles.current = {};
+    const t2 = setTimeout(async () => {
+      const c = document.createElement("canvas");
+      const out = [];
+      for (const f of setOf(p.format)) {
+        await drawPost(c, cleanPost({ ...p, format: f }), shown);
+        if (!live) return;
+        setFiles.current[f] = await postFile(c, `${slug(p.headline)}-${f}`).catch(() => null);
+        out.push({ f, thumb: thumbOf(c, 200) });
+      }
+      if (live) setSet(out);
+    }, 900);
     return () => {
       live = false;
       clearTimeout(t);
+      clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [look, shown]);
@@ -276,6 +292,49 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     await download();
     if (await copied) toast("Açıklama kopyalandı");
     if (dirty) save(true);
+  };
+  // Tek boyutu paylaş (üç boyut satırından); açıklama yine panoya
+  const shareOne = async (f) => {
+    const one = setFiles.current[f] || (await (async () => {
+      const c = document.createElement("canvas");
+      await drawPost(c, cleanPost({ ...p, format: f }), shown);
+      return postFile(c, `${slug(p.headline)}-${f}`);
+    })());
+    const text = fullCaption(post);
+    const copied = text ? copyText(text) : Promise.resolve(false);
+    if (dirty) save(true);
+    if (navigator.canShare?.({ files: [one] })) {
+      const sharing = navigator.share({ files: [one] }).catch((e) => e?.name === "NotAllowedError" && saveFiles([one]));
+      if (await copied) toast(f === "reels" ? "Açıklama kopyalandı · Instagram › Reels › galeriden seç" : "Açıklama kopyalandı · Instagram'da yapıştır");
+      return sharing;
+    }
+    saveFiles([one]);
+    if (await copied) toast("Açıklama kopyalandı");
+  };
+  // Üç boyutu birden indir
+  const downloadSet = async () => {
+    const out = [];
+    for (const f of setOf(post.format)) {
+      let one = setFiles.current[f];
+      if (!one) {
+        const c = document.createElement("canvas");
+        await drawPost(c, cleanPost({ ...p, format: f }), shown);
+        one = await postFile(c, `${slug(p.headline)}-${f}`);
+      }
+      out.push(one);
+    }
+    saveFiles(out);
+    toast("Gönderi, hikâye ve reels indirildi");
+  };
+  const saveFiles = (files) => {
+    for (const f of files) {
+      const url = URL.createObjectURL(f);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   };
   const download = async () => {
     for (const f of await getFiles()) {
@@ -593,21 +652,42 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
       <Label>7 · PAYLAŞ</Label>
       <div>
+        {/* Üç boyut birden: aynı tasarım gönderi, hikâye ve reels ölçüsünde; dokununca o boyut paylaşılır */}
+        <div className="mb-3 grid grid-cols-3 items-end gap-2.5">
+          {setOf(post.format).map((f) => {
+            const s = set.find((x) => x.f === f);
+            return (
+              <button key={f} type="button" onClick={() => shareOne(f)} disabled={!!busy && busy !== "save"} className="flex flex-col items-center gap-1.5 active:scale-95 disabled:opacity-50">
+                <span className={`block w-full overflow-hidden rounded-lg bg-line ring-1 ring-line ${post.format === f ? "ring-2 ring-acc" : ""}`} style={{ aspectRatio: aspectOf(f) }}>
+                  {s && <img src={s.thumb} alt="" className="block size-full object-cover" />}
+                </span>
+                <span className="flex items-center gap-1 text-[0.75rem] font-semibold">
+                  <Icon name="share" className="size-3.5 text-acc" />
+                  {SET_LABELS[f]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <Button onClick={share} disabled={!!busy && busy !== "save"}>
           <Icon name="share" className="size-5" />
           Paylaş
         </Button>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <button type="button" onClick={download} className={small}>
             <Icon name="download" className="size-[1.125rem]" />
             Görseli indir
+          </button>
+          <button type="button" onClick={downloadSet} className={`${small} col-span-2 row-start-1`}>
+            <Icon name="download" className="size-[1.125rem]" />
+            Üç boyutu indir
           </button>
           <button type="button" onClick={copy} className={small}>
             <Icon name="copy" className="size-[1.125rem]" />
             Açıklamayı kopyala
           </button>
         </div>
-        <p className="mt-2 px-1 text-center text-[0.75rem] leading-snug text-mut">Paylaş&apos;a basınca açıklama kopyalanır; menüden Instagram&apos;ı seç, açıklama alanına yapıştır.</p>
+        <p className="mt-2 px-1 text-center text-[0.75rem] leading-snug text-mut">Paylaş&apos;a basınca açıklama kopyalanır; menüden Instagram&apos;ı seç, açıklama alanına yapıştır. Reels için görseli Instagram&apos;da Reels › galeriden seç; Instagram onu kısa videoya çevirir.</p>
       </div>
 
       <div className="mt-3 space-y-2.5">
