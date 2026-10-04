@@ -306,12 +306,3 @@ export const wantsPostImage = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");
   return /(görsel|resim|fotoğraf|foto\b|arka ?plan)/.test(t) && /(üret|çiz|oluştur|yap|değiştir|yenile|hazırla|başka|koy)/.test(t);
 };
-
-// Başlığın beyaz/altın bölünmesi: çok satırda ilk yarı beyaz, kalan satırlar altın; tek satırda kelimelerin ikinci yarısı altın
-export function headSplit(lines) {
-  if (lines.length > 1) return lines.map((l, i) => [[l, i < Math.ceil(lines.length / 2) ? 0 : 1]]);
-  const w = String(lines[0] || "").split(" ");
-  if (w.length < 2) return [[[w.join(" "), 0]]];
-  const n = Math.ceil(w.length / 2);
-  return [[[w.slice(0, n).join(" ") + " ", 0], [w.slice(n).join(" "), 1]]];
-}
