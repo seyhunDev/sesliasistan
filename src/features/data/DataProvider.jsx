@@ -245,8 +245,8 @@ export function DataProvider({ children }) {
 
   // ---- Plan / görev / not ----
   // Taslak kartları gerçek kayıtlara çevirir. Sonucu hemen döndürür, yazma arka planda biter.
-  // Kaydet: yazmanın sunucuya ulaşması beklenir. Sonuç: { plans, tasks, notes } ve
-  //   error: yazılamadı (sayılar 0) · queued: bağlantı yok/yavaş, kayıt cihazda sırada (internet gelince gider)
+  // Kaydet: yazmanın sunucuya ulaşması kısa süre beklenir. Sonuç: { plans, tasks, notes } ve
+  //   error: yazılamadı (sayılar 0) · queued: internet yok, kayıt cihazda sırada (internet gelince gider)
   const saveDrafts = useCallback(
     async (drafts, { source, by }) => {
       let ownerId;
@@ -332,10 +332,13 @@ export function DataProvider({ children }) {
           fail(e, "Kaydetme");
           return "err";
         });
+      // Sunucu onayı en çok 2,5 sn beklenir (önceden 8 sn); gelmezse kayıt cihazda yazılmıştır, arkada gönderilir ve
+      // "Ekledim" denir (Seyhun'un seçimi, 2026-10-04). Yazma sonradan reddedilirse fail() uyarı gösterir.
+      // queued yalnız internet yokken: "sıraya alındı, internet gelince kaydedilecek"
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-      const st = await Promise.race([done, new Promise((r) => setTimeout(() => r("slow"), offline ? 300 : 8000))]);
+      const st = await Promise.race([done, new Promise((r) => setTimeout(() => r("slow"), offline ? 300 : 2500))]);
       if (st === "err") return { plans: 0, tasks: 0, notes: 0, error: true };
-      return { ...count, ids, queued: st === "slow" };
+      return { ...count, ids, queued: st === "slow" && offline };
     },
     [getOrgId, fail],
   );

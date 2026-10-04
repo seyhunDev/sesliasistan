@@ -50,13 +50,13 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle
   if (isMulti(text)) {
     const jobs = jobsText(jobsIn(text));
-    const line = `Tamam, sırayla yapıyorum: ${jobs}.`;
+    const line = "Tamam."; // sonucu uygulama söyler ("Ekledim: …"); ön cevap kısa kalır (Seyhun'un seçimi, 2026-10-04)
     return { kind: "multi", line, hint: hintOf(line, { kind: `birden çok iş (sırayla: ${jobs})` }) };
   }
 
   // Mesaj: kime ve ne yazılacağını yapay zeka çıkarır
   if (SEND.test(t) && !CREATE.test(t)) {
-    const line = "Mesajı hazırlıyorum.";
+    const line = "Tamam.";
     return { kind: "send", line, hint: hintOf(line, { kind: "mesaj" }) };
   }
 
@@ -75,21 +75,16 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   const item = interpretRules(text, today)[0] || {};
   const type = byWord || byGuess || (item.type === "note" && !wantsNote(text) ? "" : item.type) || "";
   if (!type) {
-    const line = "Tamam, hazırlıyorum.";
+    const line = "Tamam.";
     return { kind: "create", line, hint: hintOf(line, { kind: "yeni kayıt" }) };
   }
   const date = item.date || "";
   const time = type === "plan" ? hm(item.time) : "";
   const slots = { type, date, time, place: item.place || "" };
 
-  let line;
-  if (type === "plan") {
-    const at = [when(date, today), time && `saat ${time}`].filter(Boolean).join(" ");
-    line = at ? `Tamam, ${at} için bir plan hazırlıyorum.` : "Tamam, bir plan hazırlıyorum.";
-    line += facts({ date, time, plans, weatherRows });
-  } else if (type === "task") {
-    line = date ? `Tamam, ${when(date, today)} için bir görev hazırlıyorum.` : "Tamam, görev olarak hazırlıyorum.";
-  } else line = "Tamam, not alıyorum.";
+  // Kısa: "Tamam." Sonucu ("Ekledim: Antrenman, yarın, 10:00") uygulama söyler; aynı şey iki kez okunmaz.
+  // Planda veriden tek yardımcı bilgi kalır (aynı saatte plan, o saatte rüzgâr).
+  const line = type === "plan" ? `Tamam.${facts({ date, time, plans, weatherRows })}` : "Tamam.";
 
   return {
     kind: KIND_LINE[type] ? type : "create",

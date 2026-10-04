@@ -295,7 +295,8 @@ export async function callGemini({ model, system, user, schema, images = [], max
 // Akış halinde yanıt (asistan): tek deneme, ilk uygun model, şemalı ve düşünme kapalı. Gelen her parçada onText(o ana
 // kadarki metin) çağrılır; bitince tüm JSON döner. Akış başlamadan hata olursa err.started=false: çağıran normal
 // callGemini'ye (yedek modeller, tekrar denemeler) düşer. Akış yarıda kesilirse err.started=true.
-export async function streamGemini({ model, system, user, schema, maxTokens = 4096, timeoutMs = 22000, onText }) {
+// firstMs: ilk parça bu sürede gelmezse akış bırakılır (err.started=false): Google yavaşsa beklemek yerine yedek yola geçilir.
+export async function streamGemini({ model, system, user, schema, maxTokens = 4096, timeoutMs = 22000, firstMs = 0, onText }) {
   const now = Date.now();
   const all = [...new Set([strongModel("gemini"), model].filter(Boolean))];
   const m = all.find((x) => !(coolUntil(x) > now) && !G.schemaBad.has(x));
@@ -315,6 +316,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   const t0 = Date.now();
   let started = false;
+  const firstTimer = firstMs ? setTimeout(() => !started && ctrl.abort(), firstMs) : null;
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`, {
       method: "POST",
@@ -324,6 +326,11 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
     });
     if (res.status !== 200 || !res.body) {
       const text = await res.text().catch(() => "");
+      // Kota doldu: model beklemeye alınır, yedek çağrı aynı modeli boşuna bir kez daha denemez
+      if (res.status === 429) {
+        const q = quotaInfo(text);
+        G.cool.set(m, { until: q.daily ? nextDailyReset() : Date.now() + Math.max(q.retry, 20) * 1000, kind: q.daily ? "day" : "minute", id: q.id });
+      }
       throw Object.assign(new Error(`Gemini akış ${res.status} (${m}) ${shortErr(text)}`), { status: res.status, started: false });
     }
     const reader = res.body.getReader();
@@ -361,6 +368,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
     throw e;
   } finally {
     clearTimeout(timer);
+    clearTimeout(firstTimer);
   }
 }
 

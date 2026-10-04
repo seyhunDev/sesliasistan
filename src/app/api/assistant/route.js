@@ -23,7 +23,7 @@ const hasKey = (p) => (p === "gemini" ? !!process.env.GEMINI_API_KEY : p === "an
 const bad = (error, status = 400, detail = "", extra = {}) =>
   NextResponse.json({ error, ...extra, ...(DEV && detail ? { detail } : {}) }, { status });
 
-function ask(provider, user) {
+function ask(provider, user, timeoutMs = 20000) {
   if (provider === "gemini") {
     return callGemini({
       model: process.env.GEMINI_MODEL,
@@ -31,7 +31,7 @@ function ask(provider, user) {
       user,
       schema: ASSISTANT_TOOL.input_schema,
       maxTokens: 8192,
-      timeoutMs: 20000,
+      timeoutMs,
     });
   }
   return callClaude({
@@ -106,6 +106,7 @@ async function handle(request) {
               schema: ASSISTANT_TOOL.input_schema,
               maxTokens: 8192,
               timeoutMs: 20000,
+              firstMs: 8000, // ilk parça 8 sn'de gelmezse yedek modellere geç (önceden 20 sn bekleyip sonra 20 sn daha deniyordu)
               onText: (acc) => {
                 // İş yapılan yanıtlarda (kayıt, işlem, mesaj) sonucu uygulama gerçek duruma göre söyler: yapay zekanın cümlesi akışta okunmaz
                 if (JOB_INTENT.test(acc)) return;
@@ -118,7 +119,8 @@ async function handle(request) {
             });
           } catch (e) {
             if (e.started) throw e;
-            raw = await ask(provider, user);
+            // Toplam süre ~22 sn'yi geçmesin: yedek çağrı kalan süreyle (telefon da 25 sn sonra vazgeçer)
+            raw = await ask(provider, user, Math.max(6000, 22000 - (Date.now() - t0)));
           }
           const ms = Date.now() - t0;
           const r = parseAssistant(raw, people, forPeople);

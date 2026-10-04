@@ -21,8 +21,9 @@ const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
 const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir, vad.js)
-const END_SILENCE = 2300; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms)
-const END_SILENCE_SHORT = 3000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
+// Konuşma bitişi kısa tutulur (hız); kullanıcı ardından konuşmaya devam ederse söylediği öncekine eklenir (AssistantSheet `inflight`)
+const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms; önceden 2300)
+const END_SILENCE_SHORT = 2000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
 const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
 
 // status: "idle" | "listening" | "transcribing"
@@ -35,7 +36,8 @@ const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
 // names: kişi adları (çalışanlar); ses çevirisine ipucu olarak gider ki doğru yazılsın
 // terms: özel adlar (yarış adları gibi); aynı şekilde ipucu olur
-export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}) {
+// onMiss(): dinleme metinsiz bitti (sessiz dinlemede de çağrılır; bekletilen yanıt uygulansın diye)
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -46,9 +48,10 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail, names, terms };
+  cb.current = { onFinal, onFail, onMiss, names, terms };
   const fail = (m) => {
     if (!R.current.silent) cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
+    cb.current.onMiss?.();
   };
   const stopRef = useRef(null);
 
@@ -405,11 +408,16 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
   const setAutoStop = useCallback((ms) => {
     R.current.autoStop = ms;
   }, []);
+  // Kullanıcı şu an konuşuyor mu (ses duyuldu ya da söylenen yazıya çevriliyor): yanıt bekletilir, sözü kesilmez
+  const talking = useCallback(() => {
+    const s = R.current;
+    return s.status === "transcribing" || (s.status === "listening" && (!!s.voiceSeen || !!s.text));
+  }, []);
 
   useEffect(() => {
     setProvider(pickProvider());
     return () => cancelNow();
   }, []);
 
-  return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop };
+  return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop, talking };
 }

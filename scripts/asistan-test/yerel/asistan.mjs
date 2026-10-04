@@ -108,11 +108,11 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && /yarın saat 10:00/.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
-  ["cumartesi yarış planla", PC("plan, gün adıyla", (r) => r?.kind === "plan" && /için bir plan hazırlıyorum/.test(r.line))],
+  ["cumartesi yarış planla", PC("plan, kısa (sonucu uygulama söyler)", (r) => r?.kind === "plan" && /^Tamam\./.test(r.line) && !/hazırlıyorum/.test(r.line))],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
-  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, not alıyorum.")],
+  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam.")],
   ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
@@ -246,7 +246,7 @@ group("Sıralı işler (tanıma)")([
   ["not al malzeme odası dolu", SM("tek iş (yalnız not)", false)],
 ]);
 group("Sıralı işler (ön cevap)")([
-  [gokhan, PC("tek tür demez, sırayı söyler", (r) => r?.kind === "multi" && /sırayla/.test(r.line) && /mesaj, takvim ve not/.test(r.line) && !r.slots)],
+  [gokhan, PC("kısa söyler, sırayı yapay zekaya ipucu verir", (r) => r?.kind === "multi" && r.line === "Tamam." && /sırayla: mesaj, takvim ve not/.test(r.hint) && !r.slots)],
   ["Ali'ye yaz yarın 9'da gelsin", PC("yalnız mesaj: eskisi gibi", (r) => r?.kind === "send")],
 ]);
 const aiMulti = {
@@ -416,4 +416,25 @@ group("Yoklama sayfasında asistan")([
   ["Yarın 10'da antrenman ekle", AH("plan yoklama değil", true, false)],
   ["Ali ve Zeynep geldi, Emre'nin velisine haber ver", JB("yoklamadan sonra mesaj da yapılır", true)],
   ["Ali ve Zeynep geldi, kalanlar gelmedi", JB("yalnız yoklama", false)],
+]);
+
+// ---- Hızlı cevap: "Saat kaçta olsun?" sorusuna kısa cevap yapay zekaya gitmeden taslağa yazılır ----
+const { quickAnswer } = await import("@/lib/ai/rules");
+const qPlan = [{ type: "plan", title: "Antrenman", date: tom, time: "", endDate: "", allDay: false, place: "" }];
+const qNoDate = [{ ...qPlan[0], date: "" }];
+const QA = (desc, list, kind, ok) => ({ desc, fn: (s) => quickAnswer(s, list, today, { idx: 0, kind })?.[0] || null, ok });
+const QT = (time) => QA(`saat ${time}`, qPlan, "time", (r) => r?.time === time);
+const QN = (desc, list = qPlan, kind = "time") => QA(`${desc} → yapay zekaya`, list, kind, (r) => r === null);
+group("Hızlı cevap (saat/gün)")([
+  ["10'da", QT("10:00")], ["saat 10", QT("10:00")], ["akşam 6", QT("18:00")], ["10.30", QT("10:30")], ["on buçukta", QT("10:30")],
+  ["tüm gün", QA("tüm gün", qPlan, "time", (r) => r?.allDay === true && !r.time)],
+  ["yarın", QA("gün yarın", qNoDate, "date", (r) => r?.date === tom)],
+  ["Ali de gelsin", QN("saat değil")], ["10'da değil 11'de", QN("düzeltme")], ["saat 10 ve Ali'ye yaz", QN("başka iş de var")],
+  ["yarın", QN("gün söylendi ama saat soruldu")], ["bilmiyorum", QN("anlaşılmadı", qNoDate, "date")],
+]);
+
+// ---- Ön cevap kısa: sonucu uygulama söyler ("Ekledim: …"), aynı şey iki kez okunmaz ----
+group("Kısa ön cevap")([
+  ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda yalnız Tamam", (r) => r?.line === "Tamam.")],
+  ["tekneleri hazırla görevi ekle", PC("görevde yalnız Tamam", (r) => r?.line === "Tamam.")],
 ]);

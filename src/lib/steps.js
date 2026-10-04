@@ -1,6 +1,6 @@
 // Tek cümlede sıralı birden çok iş: "Gökhan'a mesaj at, aynı konuyu takvime ekle ve notlara malzeme listesi hazırla".
 // Yapay zekasız, yalnızca sözcüklere bakar: hangi işler var ve hangi sırayla söylendi. Asistan sırayı buna göre kurar,
-// ön cevap da "sırayla yapıyorum" der (tek bir "plan hazırlıyorum" demez).
+// ön cevap tek bir "plan hazırlıyorum" demez; yapay zekaya sırayı ipucu olarak verir.
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 // Kelime sınırı (Türkçe harfler dahil)
