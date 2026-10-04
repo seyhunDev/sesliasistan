@@ -6,6 +6,7 @@ import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { toWav16k } from "@/lib/speech/wav";
 import { makeVad } from "@/lib/speech/vad";
+import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -65,6 +66,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
+    if (s.analyser) setMeter(null, s.analyser);
     s.analyser = null;
   };
 
@@ -111,6 +113,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
       }
       s.lvl = s.lvl * 0.55 + raw * 0.45; // yumuşatma: dalga titremesin
       setLevel(s.lvl);
+      if (!s.analyser) setMeterLevel(s.lvl);
 
       if (s.status !== "listening") return;
       if (sec >= MAX_SEC) {
@@ -273,6 +276,7 @@ export function useSpeech({ onFinal, onFail, lang = "tr-TR", names, terms } = {}
       s.ctx = ctx;
       s.analyser = an;
       s.buf = new Uint8Array(an.fftSize);
+      setMeter(an);
     } catch {}
 
     const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t));
