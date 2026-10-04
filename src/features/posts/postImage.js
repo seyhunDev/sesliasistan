@@ -4,7 +4,27 @@ import { formatOf, imagePeople, themeOf } from "./postModel";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
-const FONT = `-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+// Yazı tipleri: başlık ve metin Outfit (sade, modern), sporcu adları Lora eğik (OFL, public/fonts/post, Türkçe harflerle küçültülmüş)
+const FONT = `"Post Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif`;
+const FACES = [
+  ["Post Sans", "/fonts/post/Outfit-Regular.woff2", { weight: "400" }],
+  ["Post Sans", "/fonts/post/Outfit-Bold.woff2", { weight: "700" }],
+  ["Post Serif", "/fonts/post/Lora-BoldItalic.woff2", { weight: "700", style: "italic" }],
+];
+let fontsP;
+// İlk çizimde bir kez yüklenir; yüklenemezse (internet yok) sistem yazı tipiyle çizilir
+const loadFonts = () =>
+  (fontsP ||= Promise.race([
+    Promise.all(
+      FACES.map(([fam, url, d]) =>
+        new FontFace(fam, `url(${url}) format("woff2")`, d)
+          .load()
+          .then((f) => document.fonts.add(f))
+          .catch(() => null),
+      ),
+    ),
+    new Promise((r) => setTimeout(r, 3000)),
+  ]));
 const CLUB = "DİKİLİ YELKEN SPOR KULÜBÜ";
 const PAD = 84;
 
@@ -48,7 +68,7 @@ function fit(ctx, text, maxW, maxLines, big, small, weight) {
 }
 
 // Sporcu adları ayrı yazı tipinde (eğik, tırnaklı) ve renkte: kelime kelime ölçülür, satıra bölünür
-const NAME_FONT = `Georgia, "Times New Roman", serif`;
+const NAME_FONT = `"Post Serif", Georgia, "Times New Roman", serif`;
 const low = (w) => w.toLocaleLowerCase("tr-TR");
 const bareWord = (w) => low(w.replace(/['’].*$/, "").replace(/[^\p{L}\p{N}]/gu, ""));
 const fontOf = (name, size, weight) => (name ? `italic 700 ${Math.round(size * 1.06)}px ${NAME_FONT}` : `${weight} ${size}px ${FONT}`);
@@ -456,19 +476,18 @@ function measure(ctx, post, maxW, k) {
   const meta = post.meta ? post.info : "";
   const busy = people.length + (post.wish ? 1 : 0) + (meta ? 1 : 0);
   const items = [];
-  const tagH = z(post.tag ? 54 : 12);
+  const tagH = z(post.tag ? 34 : 12);
   items.push({ t: "tag", h: tagH, gap: 0 });
   const headLines = post.format === "story" ? 5 : post.format === "portrait" ? 4 : 3;
-  const head = fit(ctx, post.headline || " ", maxW, headLines, z(busy > 2 ? 72 : people.length ? 76 : 88), z(46), 800);
-  items.push({ t: "head", ...head, lh: Math.round(head.size * 1.1), h: head.lines.length * Math.round(head.size * 1.1), gap: z(26) });
+  const head = fit(ctx, post.headline || " ", maxW, headLines, z(busy > 2 ? 74 : people.length ? 78 : 90), z(46), 700);
+  items.push({ t: "head", ...head, lh: Math.round(head.size * 1.06), h: head.lines.length * Math.round(head.size * 1.06), gap: z(28) });
   if (meta) {
-    ctx.font = `600 ${z(32)}px ${FONT}`;
-    const m = fit(ctx, meta, maxW - z(40), 1, z(32), z(24), 600);
+    const m = fit(ctx, meta, maxW - z(40), 1, z(31), z(24), 400);
     items.push({ t: "meta", ...m, h: Math.round(m.size * 1.3), gap: z(20) });
   }
   if (post.sub) {
-    const sub = fitRich(ctx, post.sub, names, maxW, 4, z(38), z(26), 500);
-    items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.32), h: sub.lines.length * Math.round(sub.size * 1.32), gap: z(22) });
+    const sub = fitRich(ctx, post.sub, names, maxW, 4, z(36), z(26), 400);
+    items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.4), h: sub.lines.length * Math.round(sub.size * 1.4), gap: z(22) });
   }
   if (people.length) {
     const pp = fitRich(ctx, people.join("\n"), names, maxW - z(34), people.length, z(36), z(24), 600);
@@ -476,7 +495,7 @@ function measure(ctx, post, maxW, k) {
     items.push({ t: "people", ...pp, ph, h: z(20) + pp.lines.length * ph, gap: z(18) });
   }
   if (post.wish) {
-    const w = fit(ctx, post.wish, maxW, 1, z(42), z(28), 800);
+    const w = fit(ctx, post.wish, maxW, 1, z(40), z(28), 700);
     items.push({ t: "wish", ...w, h: Math.round(w.size * 1.3), gap: z(24) });
   }
   const h = items.reduce((a, x, i) => a + x.h + (i ? x.gap : 0), 0);
@@ -490,31 +509,32 @@ function paint(ctx, { items, z }, x, y, c) {
     if (it.t === "tag") {
       ctx.save();
       ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.tagBg;
+      ctx.fillStyle = c.accent;
       if (c.tag) {
-        ctx.font = `800 ${z(26)}px ${FONT}`;
-        const t = c.tag.toLocaleUpperCase("tr-TR");
-        pill(ctx, x, y, ctx.measureText(t).width + z(48), it.h, it.h / 2);
-        ctx.fill();
-        ctx.fillStyle = c.tagInk;
+        // Etiket: kısa çizgi + aralıklı büyük harf (dolu kutu yerine sade, dergi tarzı)
+        ctx.fillRect(x, y + it.h / 2 - 1.5, z(44), 3);
+        ctx.font = `700 ${z(25)}px ${FONT}`;
+        if ("letterSpacing" in ctx) ctx.letterSpacing = `${z(5)}px`;
         ctx.textBaseline = "middle";
-        ctx.fillText(t, x + z(24), y + it.h / 2 + 1);
+        ctx.fillText(c.tag.toLocaleUpperCase("tr-TR"), x + z(62), y + it.h / 2 + 1);
+        if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
       } else {
-        pill(ctx, x, y, z(120), it.h, it.h / 2);
-        ctx.fill();
+        ctx.fillRect(x, y + it.h / 2 - 2, z(96), 4);
       }
       ctx.restore();
     } else if (it.t === "head") {
       ctx.fillStyle = c.ink;
-      ctx.font = `800 ${it.size}px ${FONT}`;
+      ctx.font = `700 ${it.size}px ${FONT}`;
       for (const [j, l] of it.lines.entries()) ctx.fillText(l, x - 3, y + j * it.lh);
     } else if (it.t === "meta") {
       pin(ctx, x + z(12), y + it.h * 0.36, z(11), c.accent);
       ctx.fillStyle = c.ink;
-      ctx.font = `600 ${it.size}px ${FONT}`;
+      ctx.globalAlpha = 0.88;
+      ctx.font = `400 ${it.size}px ${FONT}`;
       ctx.fillText(it.lines[0] || "", x + z(38), y + (it.h - it.size) / 2);
+      ctx.globalAlpha = 1;
     } else if (it.t === "sub") {
-      for (const [j, l] of it.lines.entries()) drawRich(ctx, l, x, y + j * it.lh, it.size, 500, it.space, c.sub, c.name);
+      for (const [j, l] of it.lines.entries()) drawRich(ctx, l, x, y + j * it.lh, it.size, 400, it.space, c.sub, c.name);
     } else if (it.t === "people") {
       ctx.save();
       ctx.shadowColor = "transparent";
@@ -536,7 +556,7 @@ function paint(ctx, { items, z }, x, y, c) {
       }
     } else if (it.t === "wish") {
       ctx.fillStyle = c.wish;
-      ctx.font = `800 ${it.size}px ${FONT}`;
+      ctx.font = `700 ${it.size}px ${FONT}`;
       ctx.fillText(it.lines[0] || "", x, y + (it.h - it.size) / 2);
     }
     y += it.h;
@@ -545,6 +565,7 @@ function paint(ctx, { items, z }, x, y, c) {
 
 // post: cleanPost; photo: yüklenmiş Image ya da null
 export async function drawPost(canvas, post, photo) {
+  await loadFonts();
   const [, , W, H] = formatOf(post.format);
   canvas.width = W;
   canvas.height = H;
@@ -586,7 +607,7 @@ export async function drawPost(canvas, post, photo) {
     g.addColorStop(1, c2);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    decor(ctx, W, H, top, light ? "rgba(31,90,75,.13)" : "rgba(255,255,255,.1)", post.kind);
+    decor(ctx, W, H, top, light ? "rgba(31,90,75,.1)" : "rgba(255,255,255,.08)", post.kind);
   }
 
   // Logo + kulüp adı (yazının karşı köşesinde)
@@ -647,7 +668,7 @@ export async function drawPost(canvas, post, photo) {
     ctx.shadowColor = "rgba(0,0,0,.22)";
     ctx.shadowBlur = 40;
     ctx.shadowOffsetY = 10;
-    ctx.fillStyle = "rgba(255,255,255,.95)";
+    ctx.fillStyle = "rgba(252,249,244,.96)";
     pill(ctx, bx, by, bw, bh, 44);
     ctx.fill();
     ctx.restore();
