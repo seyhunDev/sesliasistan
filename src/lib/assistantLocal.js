@@ -21,7 +21,7 @@ export function localReceipt(text) {
   return !/^(ler|lar)/.test(m[3]) && RECEIPT_OPEN.test(t);
 }
 
-export const isYes =(s) => /^(evet|tamam|olur|onayla|onaylıyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
+export const isYes =(s) => /^(evet|tamam|olur|onayla|onayladım|onaylıyorum|onay veriyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
 export const isNo = (s) => /^(hayır|hayir|vazgeç|iptal|yapma|olmasın|istemiyorum|dur)(?=$|[\s.,!?])/.test(lower(s).trim());
 
 // Yapay zekanın önerdiği değişikliği kayda uygulanacak alanlara çevirir (takvim uyumlu alanlar dahil)

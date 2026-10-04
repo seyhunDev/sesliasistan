@@ -365,3 +365,29 @@ group("Antrenman günlüğü (yoklama)")([
   })],
   ["cevap", F("işaretlenenler ve bulunamayanlar söylenir", () => TL.attLine({ marked: ["Ayşe Şahin"], unknown: ["Zeynep"] }) === "Yoklamada geldi olarak işaretledim: Ayşe Şahin. Sporcularda bulamadım: Zeynep.")],
 ]);
+
+// ---- Asistanla mesaj: onay sözcükleri, kurulan gruplar, alıcı listesi ----
+const { matchGroup } = await import("@/lib/ai/messageRules");
+const GR = [{ id: "g1", name: "Yelken Ekibi" }, { id: "g2", name: "Antrenörler" }, { id: "g3", name: "Veliler 2026" }];
+const MG = (desc, exp) => ({ desc, fn: (s) => matchGroup(s, GR)?.id || "", ok: (r) => r === exp });
+group("Mesaj gönderme (onay ve gruplar)")([
+  ["onayladım", CW("onay", "yes"), "kullanıcının söylediği; önceden tanınmıyordu"],
+  ["onay", CW("onay", "yes")],
+  ["tamam onayladım", CW("onay", "yes")],
+  ["onay veriyorum", CW("onay", "yes")],
+  ["gönderelim", CW("onay", "yes")],
+  ["evet yolla", CW("onay", "yes")],
+  ["onaylamıyorum", CW("ret", "no")],
+  ["yollama", CW("ret", "no")],
+  ["onayladım", Y("işlem onayı da evet", isYes, true)],
+  ["Yelken Ekibi grubuna", MG("kurulan grup", "g1")],
+  ["yelken ekibine", MG("ekli söyleyiş", "g1")],
+  ["Antrenörler'e", MG("kesmeli ek", "g2")],
+  ["Veliler 2026 grubu", MG("rakamlı ad", "g3")],
+  ["Ali", MG("kişi grup sayılmaz", "")],
+  ["ekip", MG("sabit grup kelimesi kurulan gruba gitmez", "")],
+  ["kurulan grup adı", Fa("yapay zekanın yazdığı grup adı korunur", () => AIA.parseAssistant({ intent: "message", message: "Göndereyim mi?", send: { to: "Yelken Ekibi", text: "Yarın 9'da iskeledeyiz." } }, [], ["Ekip", "Yelken Ekibi", "Ali Kök"]).send?.to === "Yelken Ekibi")],
+  ["grup kelimesiyle başlayan ad", Fa("'Grup Antrenörler' Ekip'e çevrilmez", () => AIA.parseAssistant({ intent: "message", message: "", send: { to: "Grup Antrenörler", text: "Toplantı 5'te." } }, [], ["Ekip", "Grup Antrenörler"]).send?.to === "Grup Antrenörler")],
+  ["ekibe", Fa("sabit grup yine Ekip", () => AIA.parseAssistant({ intent: "message", message: "", send: { to: "ekibe", text: "Toplantı 5'te." } }, [], ["Ekip", "Yelken Ekibi"]).send?.to === "Ekip")],
+  ["WhatsApp'lı kişi", Fa("uygulamada olmayan kişi de alıcı", () => AIA.parseAssistant({ intent: "message", message: "", send: { to: "Fatma Yıldız (WhatsApp)", text: "Akşam geliyorum." } }, [], ["Fatma Yıldız"]).send?.to === "Fatma Yıldız")],
+]);

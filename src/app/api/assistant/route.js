@@ -63,8 +63,8 @@ async function handle(request) {
   const name = String(body?.name ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 30);
   // Ana hesabın çalışan adları: yeni kayıtlarda sorumlu atama için
   const people = [...new Set((Array.isArray(body?.people) ? body.people : []).slice(0, 20).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))];
-  // Mesaj alıcıları (sohbet rehberindeki kişiler; ana hesap "(ana hesap)" ekiyle)
-  const contacts = [...new Set((Array.isArray(body?.contacts) ? body.contacts : []).slice(0, 40).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'()-]/gu, "").trim().slice(0, 60)).filter(Boolean))];
+  // Mesaj alıcıları (sohbet rehberindeki kişiler, gruplar, WhatsApp'lı kişiler; ana hesap "(ana hesap)" ekiyle). Kalabalık kulüpte 40 sınırı kişileri kesiyordu
+  const contacts = [...new Set((Array.isArray(body?.contacts) ? body.contacts : []).slice(0, 150).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'()-]/gu, "").trim().slice(0, 60)).filter(Boolean))];
   const history = (Array.isArray(body?.history) ? body.history : [])
     .slice(-6)
     .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
