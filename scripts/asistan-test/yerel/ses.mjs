@@ -82,3 +82,14 @@ group("Kayıt temizliği")([
   ["kısık kayıt yükseltilir (en çok 6 kat)", { desc: "tepe ~0,6", fn: () => Math.max(...louder(tone(1, 0.1))), ok: (r) => r > 0.55 && r < 0.65 }],
   ["yüksek kayda dokunulmaz", { desc: "tepe ~0,8", fn: () => Math.max(...louder(tone(1, 0.8))), ok: (r) => r > 0.79 && r < 0.81 }],
 ]);
+
+// Dinlerken ses dalgası: kayıt yolunun analizcisi paylaşılır (ikinci mikrofon yok), başka dinleme ölçeri ezmez
+const meter = await import("@/lib/speech/meter");
+const fakeAn = (amp) => ({ fftSize: 64, getByteTimeDomainData: (b) => b.forEach((_, i) => (b[i] = 128 + Math.round(amp * 127 * (i % 2 ? 1 : -1)))) });
+group("Dinleme dalgası")([
+  ["analizci yoksa yumuşatılmış seviye", { desc: "0,3", fn: () => { meter.setMeter(null); meter.setMeterLevel(0.3); return meter.readMeter(); }, ok: (r) => r === 0.3 }],
+  ["analizciden anlık seviye", { desc: "~0,4", fn: () => { meter.setMeter(fakeAn(0.1)); return meter.readMeter(); }, ok: (r) => r > 0.38 && r < 0.42 }],
+  ["yüksek ses 1'de kalır", { desc: "1", fn: () => { meter.setMeter(fakeAn(0.9)); return meter.readMeter(); }, ok: (r) => r === 1 }],
+  ["başka dinlemenin kapanışı ölçeri kapatmaz", { desc: "açık kalır", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, fakeAn(0.5)); return meter.readMeter(); }, ok: (r) => r > 0.38 }],
+  ["kendi kapanışı ölçeri kapatır", { desc: "0", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, a); return meter.readMeter(); }, ok: (r) => r === 0 }],
+]);
