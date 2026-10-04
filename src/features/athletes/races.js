@@ -12,7 +12,7 @@ import { cleanWeather } from "./raceWeather";
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
 // T.C., veli gibi kişisel bilgiler kopyalanmaz, belge üretilirken sporcu kartından okunur.
 export const RACE_FIELDS = [
-  "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate",
+  "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
@@ -129,12 +129,12 @@ const clean = (r) =>
     ]),
   );
 
-// Yeni yarışın boş hali: yetkili, il, federasyon gibi bilgiler son yarıştan gelir.
+// Yeni yarışın boş hali (evrak tarihi boş: belgeler ilk hazırlanınca o gün yazılır, sonra değişmez): yetkili, il, federasyon gibi bilgiler son yarıştan gelir.
 // Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
 export function freshRace(last = {}, today = "") {
   return {
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
-    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: today,
+    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",

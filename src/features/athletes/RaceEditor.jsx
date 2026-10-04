@@ -243,8 +243,16 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     if (!docs.length) return toast("En az bir belge seç");
     setBusy(true);
     try {
+      // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada bugün yazılır, "Yenile"de değişmez (elle değiştirilebilir)
+      const dated = { ...r, letterDate: r.letterDate || todayStr(), docsAt: r.docsAt || new Date().toISOString() };
+      if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt) {
+        latest.current = dated;
+        first.current = true; // kaydı aşağıda yapıyoruz, tekrar kaydedilmesin
+        setR(dated);
+      }
       await save();
-      const bytes = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, forDocs, await loadFonts(), docs, coach);
+      const docR = { ...dated, endDate: dated.endDate || dated.startDate };
+      const bytes = await buildRaceDocs(docR, forDocs, await loadFonts(), docs, coach);
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-evrak.pdf`;
       const text = [
         `${r.name.trim()} · ${rangeText(r.startDate, r.endDate || r.startDate)}${placeText(r) ? ` · ${placeText(r)}` : ""}`,
@@ -258,7 +266,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       const fonts = await loadFonts();
       const each = [];
       for (const [k, title] of DOCS.filter(([k]) => docs.includes(k))) {
-        const b = await buildRaceDocs({ ...r, endDate: r.endDate || r.startDate }, forDocs, fonts, [k], coach);
+        const b = await buildRaceDocs(docR, forDocs, fonts, [k], coach);
         each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : k === "coach" || k === "entry" ? groupCount : 1 });
       }
       const at = new Date().toISOString();
@@ -651,9 +659,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <Row label="İzin başlangıcı">{field("leaveStart", "", "date")}</Row>
               <Row label="İzin bitişi">{field("leaveEnd", "", "date")}</Row>
             </Pair>
-            <Row label="Yazı tarihi">{field("letterDate", "", "date")}</Row>
+            <Row label="Evrak tarihi">{field("letterDate", "", "date")}</Row>
           </Group>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">İzin aralığı kendiliğinden yarıştan bir gün önce başlar, bir gün sonra biter.</p>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">İzin aralığı kendiliğinden yarıştan bir gün önce başlar, bir gün sonra biter. Evrak tarihi tüm belgelerde aynıdır; boşsa belgeler ilk hazırlandığı gün yazılır, Yenile’de değişmez.</p>
 
           <Label>KULÜP YETKİLİSİ</Label>
           <Group>
@@ -775,10 +783,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             <>
               <Label>KULÜP İZİN YAZISI</Label>
               <Group>
-                <Pair>
-                  <Row label="Sayı (ilk sporcu)">{field("clubNo", "GID-2026-14")}</Row>
-                  <Row label="Yazı tarihi">{clubDate("clubDate", r.letterDate)}</Row>
-                </Pair>
+                <Row label="Sayı (ilk sporcu)">{field("clubNo", "GID-2026-14")}</Row>
                 <Pair>
                   <Row label="İzin başlangıcı">{clubDate("clubFrom", r.startDate)}</Row>
                   <Row label="İzin bitişi">{clubDate("clubTo", r.endDate || r.startDate)}</Row>
