@@ -639,13 +639,20 @@ function hotelForm(pdf, f, h, list) {
 }
 
 // ---- 7-8) TYF formları (federasyon sistemindeki düzen: sade, açık gri çizgili tablolar) ----
-const stamp = (d = new Date()) => `${dmy(d, ".")} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// Basım zamanı = evrak tarihi (tüm belgelerde aynı); saat yalnız evrak o gün ilk hazırlandıysa (docsAt)
+export function stamp(r) {
+  const at = toDate(r?.docsAt);
+  const ok = at && !Number.isNaN(at.getTime());
+  if (!r?.letterDate) return ok ? `${dmy(at, ".")} ${pad(at.getHours())}:${pad(at.getMinutes())}` : "";
+  const day = dmy(r.letterDate, ".");
+  return ok && dmy(at, ".") === day ? `${day} ${pad(at.getHours())}:${pad(at.getMinutes())}` : day;
+}
 // Başlık satırları ortada; son satırın altına basım zamanı. Bir sonraki boş üst değeri döndürür.
-function tyfHead(p, f, lines, top = 62, size = 12.5) {
+function tyfHead(p, f, r, lines, top = 62, size = 12.5) {
   const lead = size * 1.2;
   lines.forEach((s, i) => p.text(s, W / 2, top + i * lead, f.sans, size, "center"));
   const t = top + lines.length * lead + 4;
-  p.text(`Belge Basım Zamanı: ${stamp()}`, W / 2, t, f.sans, 7.5, "center");
+  p.text(`Belge Basım Zamanı: ${stamp(r)}`, W / 2, t, f.sans, 7.5, "center");
   return t + 22;
 }
 // Açık gri çizgili tablo (satır sınırları rows, sütunlar cols)
@@ -686,7 +693,7 @@ function coachForm(pdf, f, r, c, cls) {
   const L = 34;
   const R = W - 34;
   tyfLogos(page, f, 36, 41);
-  let top = tyfHead(p, f, ["TÜRKİYE YELKEN FEDERASYONU", "ANTRENÖR KAYIT FORMU"], 52) + 20;
+  let top = tyfHead(p, f, r, ["TÜRKİYE YELKEN FEDERASYONU", "ANTRENÖR KAYIT FORMU"], 52) + 20;
   const [a, b] = dotRange(r.startDate, r.endDate);
   const rows = [
     ["Faaliyet Adı", up(r.name)],
@@ -737,7 +744,7 @@ function entryForm(pdf, f, r, c, cls, list) {
   tyfLogos(page, f, 64, 68);
   const titleLines = p.wrap(name, f.sans, 11.5, 400).map((ws) => ws.join(" "));
   const [a, b] = dotRange(r.startDate, r.endDate);
-  let top = tyfHead(p, f, [...titleLines, `/ ${up(r.district || r.city)}`, a ? `${a} - ${b}` : "", "KATILIM BİLDİRİM FORMU"].filter(Boolean), 48, 11.5);
+  let top = tyfHead(p, f, r, [...titleLines, `/ ${up(r.district || r.city)}`, a ? `${a} - ${b}` : "", "KATILIM BİLDİRİM FORMU"].filter(Boolean), 48, 11.5);
   p.text("Yarış Sekreterliğine,", L + 32, top, f.sans, 8.5);
   top = p.para(
     `Aşağıda isimleri bulunan; Kulüp idarecisi, antrenör ve sporcuların '${name}' faaliyetine katılmak üzere, faaliyet alanına geldiğini, faaliyet ilanında belirtilen tüm kural ve prosedürlere uyacaklarını kabul ve taahhüt ederim.`,
@@ -873,7 +880,7 @@ export function clubInfo(r) {
   const place = [r.district, r.city].map((x) => String(x || "").trim()).filter(Boolean).join("-");
   return {
     no: String(r.clubNo || "").trim(),
-    date: r.clubDate || r.letterDate,
+    date: r.letterDate, // tüm belgelerde tek evrak tarihi
     from: r.clubFrom || r.startDate,
     to: r.clubTo || r.clubFrom || r.endDate || r.startDate,
     event: String(r.clubEvent || "").trim() || String(r.name || "").trim(),
