@@ -134,6 +134,7 @@ export function RaceList({ races, names = {}, onOpen }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-start gap-2">
                         <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{r.name || "Adsız yarış"}</b>
+                        {r.abroad && <span className="shrink-0 rounded-full bg-acc/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-acc">Yurt dışı</span>}
                         {r.notice && !r.noticeFile && <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-700">Talimat dosyası yok</span>}
                         {(r.note || r.notice) && <Icon name={r.notice ? "paperclip" : "note"} className="mt-0.5 size-4 shrink-0 text-mut" />}
                       </span>

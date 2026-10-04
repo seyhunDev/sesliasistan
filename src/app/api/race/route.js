@@ -24,6 +24,7 @@ op:
 Alanlar:
 - name: yarışın adı, söylendiği gibi ama düzgün yazımla ("D'Azur Optimist Regatta"). Ses tanıma yabancı adları bozar ("dazur", "d azur", "daz ur optimist regata"): söylenen ad bilinen yarış adlarından birine benziyorsa O YAZIMI aynen kullan. update'te boş bırakabilirsin.
 - city / district: il ve ilçe. "Çeşme" -> il İzmir, ilçe Çeşme; "Bodrum" -> Muğla, Bodrum. Yalnızca il söylendiyse district boş.
+- abroad: yarış Türkiye dışındaysa ("yurt dışı yarışı", "Fransa'da", "Yunanistan'daki regatta") true; o zaman city = ülkenin Türkçe adı, district = şehir ("Cannes" -> Fransa, Cannes).
 - startDate / endDate: YYYY-MM-DD. "7-11 Ekim" -> başlangıç 7 Ekim, bitiş 11 Ekim. Yıl söylenmediyse bugünden sonraki ilk o tarih. Tek gün ise endDate = startDate. Söylenmediyse boş.
 - athleteIds: katılacak sporcular ("katılımcılar", "katılımcıları", "kafile", "gidecekler", "sporcular: …" hep bu alandır). Adı listedeki bir sporcuyla eşleştir (yalnızca ad, soyad, lakap ya da ses tanıma hatası olabilir). Her sporcunun "söylenişler" listesi önceden hazırlanmış eşleştirme dizinidir, önce ona bak. Tek başına söylenen ad önce ADI o olan sporcuya aittir. Aynı ada birden çok sporcu uyuyorsa işaretleme, unknown'a "Ali (2 kişi)" yaz. "Optimist grubu" gibi sınıf adı geçerse o sınıftaki herkes.
 - unknown: listede bulunamayan adlar.
@@ -38,6 +39,7 @@ const SCHEMA = {
     name: { type: "string" },
     city: { type: "string" },
     district: { type: "string" },
+    abroad: { type: "boolean" },
     startDate: { type: "string" },
     endDate: { type: "string" },
     athleteIds: { type: "array", items: { type: "string" } },
@@ -138,7 +140,7 @@ async function handle(request) {
     const endDate = DATE.test(raw?.endDate || "") && raw.endDate >= startDate ? raw.endDate : startDate;
     const out = {
       op, raceId, startDate, endDate, athleteIds,
-      name: S(raw?.name, 80), city: S(raw?.city, 40), district: S(raw?.district, 40),
+      name: S(raw?.name, 80), city: S(raw?.city, 40), district: S(raw?.district, 40), abroad: raw?.abroad === true,
       note: String(raw?.note || "").trim().slice(0, 1000),
       unknown: (Array.isArray(raw?.unknown) ? raw.unknown : []).map((u) => S(u, 40)).filter(Boolean).slice(0, 10),
       message: S(raw?.message, 300),

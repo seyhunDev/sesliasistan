@@ -73,9 +73,13 @@ export function applyNotice(r, n, force = false) {
     const keep = r.name;
     return { ...applyNotice({ ...r, name: "" }, n), name: keep || n.name || "" };
   }
-  const take = (k) => (n[k] && (fresh || !String(r[k] || "").trim()) ? n[k] : r[k]);
+  // Yurt içi kayıtlı yarışa yurt dışı talimatı gelince il/ilçe yerine ülke/şehir talimattan alınır
+  const flip = n.abroad === true && !r.abroad;
+  const take = (k) => (n[k] && (fresh || !String(r[k] || "").trim() || (flip && (k === "city" || k === "district"))) ? n[k] : r[k]);
   const next = {
     ...r,
+    // Talimat yurt dışı diyorsa yarış yurt dışı olur (yurt içine kendiliğinden dönmez)
+    abroad: !!r.abroad || n.abroad === true,
     name: take("name"),
     city: take("city"),
     district: take("district"),
