@@ -1,21 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/clientApp";
+import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { duesTile, postsTile, raceTile, readSum, trainingTile } from "@/lib/homeTiles";
+import { duesLive, duesTile, postsTile, raceTile, readSum, saveSum, trainingTile } from "@/lib/homeTiles";
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
 
 // Ana sayfa › ÖZET: kısa bilgi kartları, hepsi aynı boyda ve biçimde (simge + ad, büyük sayı, tek satır açıklama).
 // Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
-// Firestore'a ek okuma yok: aidat ve gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
+// Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 export function HomeSummary({ money, race, dues, posts, training, plans }) {
   const m = useMoney();
-  const [sum] = useState(readSum);
+  const [sum, setSum] = useState(readSum);
   const today = todayStr();
+  const orgId = useAuth().profile?.orgId;
+  const ym = today.slice(0, 7);
+  // Aidat kartı: açılışta ve uygulamaya dönünce bu ayın aidat kaydı okunur (kart Aidatlar sayfası açılmadan da güncel)
+  useEffect(() => {
+    if (!dues || !orgId) return;
+    let live = true;
+    const load = () =>
+      Promise.all([getDoc(doc(db, "orgs", orgId, "dues", "settings")), getDoc(doc(db, "orgs", orgId, "dues", ym))])
+        .then(([c, m]) => {
+          if (!live) return;
+          const next = duesLive(c.data(), m.data(), ym, readSum().dues);
+          if (!next) return;
+          saveSum("dues", next);
+          setSum((p) => ({ ...p, dues: next }));
+        })
+        .catch(() => {});
+    load();
+    const onShow = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      live = false;
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [dues, orgId, ym]);
   const cards = [
     money && m.bank && ["/mail", "chart", "Banka", m.bank],
     money && ["/receipts", "receipt", "Fişler", m.receipts],
