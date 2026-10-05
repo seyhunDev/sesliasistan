@@ -12,6 +12,7 @@ import { EventForm } from "@/features/events/EventForm";
 import { freshEvent, cleanEvent } from "@/features/events/eventModel";
 import { kindFromText } from "@/features/events/eventWords";
 import { addEventPlan, askPlan, deleteEvent, loadEvents, saveEvent } from "@/features/events/events";
+import { goBack } from "@/lib/navTrail";
 
 // Tek etkinlik (yeni etkinlik için /events/new)
 export default function EventPage() {
@@ -56,7 +57,7 @@ function Event({ orgId, uid, by }) {
     try {
       await deleteEvent(orgId, eid);
       toast("Etkinlik silindi");
-      router.push("/events");
+      goBack(router, "/events");
     } catch {
       toast("Silinemedi");
     }

@@ -12,6 +12,7 @@ import { deletePost, loadPhoto, loadPost, savePost } from "@/features/posts/post
 import { loadRaces } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
 import { todayStr } from "@/lib/utils/format";
+import { goBack } from "@/lib/navTrail";
 
 // Tek gönderi (yeni gönderi için /posts/new)
 export default function PostPage() {
@@ -66,7 +67,7 @@ function Post({ orgId, uid }) {
   const onDelete = async (p) => {
     if (p.id) await deletePost(orgId, p);
     toast("Gönderi silindi");
-    router.push("/posts");
+    goBack(router, "/posts");
   };
 
   return (

@@ -762,3 +762,16 @@ group("Faturalar")([
     return !store["orgs/u1/tasks/t1"] && store["orgs/u1/invoices/i1"].status === "paid";
   })],
 ]);
+
+// Geri düğmesi (navTrail.js): gelinen sayfaya döner, uygulama sayfada açıldıysa üst sayfaya
+const NAV = await import("@/lib/navTrail");
+const walk = (steps, start = ["/"]) => steps.reduce((t, [k, u]) => NAV.stepTrail(t, k, u), start);
+group("Geri düğmesi")([
+  ["ana sayfa › Yarışlar › geri", F("ana sayfaya döner (Sporcular'a değil)", () => { const t = walk([["push", "/athletes/races"]]); return t.length === 2 && t[t.length - 2] === "/"; })],
+  ["geri basıldı", F("iz kısalır, ana sayfada geri yok", () => walk([["push", "/athletes/races"], ["pop", "/"]]).join() === "/")],
+  ["Sporcular › Yoklama › geri", F("Sporcular'a döner", () => { const t = walk([["push", "/athletes"], ["push", "/athletes/attendance"], ["pop", "/athletes"]]); return t.join() === "/,/athletes"; })],
+  ["yeni yarış kaydedildi", F("adres değişir, geri listeye", () => walk([["push", "/athletes/races"], ["push", "/athletes/races/new"], ["replace", "/athletes/races/r1"]]).join() === "/,/athletes/races,/athletes/races/r1")],
+  ["aynı adres", F("iki kez yazılmaz", () => walk([["push", "/"]]).length === 1)],
+  ["bilinmeyen adrese dönüş", F("yeni iz başlar", () => walk([["push", "/a"], ["pop", "/b"]]).join() === "/b")],
+  ["boş iz", F("ilk adres yazılır", () => NAV.stepTrail([], "push", "/plans").join() === "/plans")],
+]);
