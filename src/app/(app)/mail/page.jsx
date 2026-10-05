@@ -14,7 +14,9 @@ import { accountsOf, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/m
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { dayLabel, todayIn } from "@/lib/notifyText";
 import { monthOf } from "@/lib/dues";
-import { payeeMoves, payeeOf } from "@/lib/payee";
+import { payeeMoves, payeeOf, whoIn } from "@/lib/payee";
+import { LedgerCard } from "@/features/bank/LedgerCard";
+import { loadLedger } from "@/features/bank/ledgerData";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
 const hm = (iso) => new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -28,7 +30,8 @@ const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,4
 const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 
 // Mailler (yalnızca ana hesap), banka uygulaması düzeninde:
-//   bugünün özeti › hesaplar (son bakiye, önceki özete göre değişim, toplam) › son hareketler (bütün özetlerden) › gelen kutusu › durum
+//   bugünün özeti › hesaplar (son bakiye, önceki özete göre değişim, toplam) › banka defteri (geçmiş dönem Excel'i yükle,
+//   yapay zeka inceler) › son hareketler (banka defterinden: Excel + günlük mailler) › gelen kutusu › durum
 // Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
 // okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {
@@ -41,6 +44,8 @@ export default function MailPage() {
   const [acct, setAcct] = useState(""); // hareketleri tek hesaba süz
   const [allMoves, setAllMoves] = useState(false);
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
+  const [ledger, setLedger] = useState(null); // banka defterinden bu ay ve geçen ayın hareketleri
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (profile && !owner) router.replace("/");
@@ -53,6 +58,21 @@ export default function MailPage() {
       () => setMails([]),
     );
   }, [owner, profile?.uid, max]);
+
+  // Banka defteri (bu ay + geçen ay): yeni mail gelince ya da Excel eklenince yeniden okunur
+  const newest = mails?.[0]?.id || "";
+  const loaded = mails !== null;
+  useEffect(() => {
+    if (!owner || !loaded) return;
+    let live = true;
+    const ym = todayIn().slice(0, 7);
+    const [y, m] = ym.split("-").map(Number);
+    const prev = new Date(Date.UTC(y, m - 2, 15)).toISOString().slice(0, 7);
+    loadLedger(profile.uid, prev, ym).then((r) => live && setLedger(r.movements), () => live && setLedger(null));
+    return () => {
+      live = false;
+    };
+  }, [owner, loaded, profile?.uid, newest, tick]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
   const pending = (mails || []).filter((m) => m.raw?.length && !m.sheets).map((m) => m.id).join(",");
@@ -84,7 +104,7 @@ export default function MailPage() {
 
   const accounts = accountsOf(list);
   const totals = totalsOf(accounts);
-  const moves = movementsOf(list);
+  const moves = ledger || movementsOf(list);
   const todayMails = list.filter((m) => localDate(m.at) === today);
   const todayMoves = moves.filter((x) => localDate(new Date(x.ts).toISOString()) === today);
   const picked = accounts.find((a) => a.key === acct);
@@ -93,7 +113,7 @@ export default function MailPage() {
   // Kişisel hesap (/payments): bu ayın toplamı yalnız yüklü mailler ayın başını kapsıyorsa yazılır (eksik sayı göstermesin)
   const payee = payeeOf(profile);
   const ym = today.slice(0, 7);
-  const covered = list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym;
+  const covered = !!ledger || (list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym);
   const payeeMonth = payeeMoves(moves, payee).filter((x) => monthOf(x) === ym);
   const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
@@ -177,7 +197,9 @@ export default function MailPage() {
             </section>
           )}
 
-          {/* Son hareketler: bütün hesap özetlerinden, günlere göre */}
+          <LedgerCard uid={profile.uid} self={payee.name} onSaved={() => setTick((n) => n + 1)} />
+
+          {/* Son hareketler: banka defterinden (Excel + günlük mailler), günlere göre */}
           {moves.length > 0 && (
             <section className="mt-5">
               <div className="flex items-center gap-2 px-1 pb-2">
@@ -284,12 +306,12 @@ function Moves({ list, today }) {
                 <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />
               </span>
               <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-medium">{x.desc}</b>
-                <small className="block truncate text-[0.75rem] text-mut">{[t, x.kind, x.accountLabel].filter(Boolean).join(" · ")}</small>
+                <b className="block truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
+                <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), x.cat || x.kind].filter(Boolean).join(" · ")}</small>
               </span>
               <span className="shrink-0 text-right">
                 <b className={`block text-[0.9375rem] font-semibold tabular-nums ${x.amount > 0 ? "text-ok" : ""}`}>{signed(x.amount, x.currency)}</b>
-                {x.balance !== null && <small className="block text-[0.6875rem] tabular-nums text-mut">{cash(x.balance, "")}</small>}
+                {typeof x.balance === "number" && <small className="block text-[0.6875rem] tabular-nums text-mut">{cash(x.balance, "")}</small>}
               </span>
             </div>
           </li>

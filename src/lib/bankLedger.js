@@ -18,6 +18,8 @@ export const slim = (m, src) => {
   if (m.text) x.text = cut(m.text, 300);
   if (m.who) x.who = cut(m.who, 80);
   if (m.kind) x.kind = cut(m.kind, 60);
+  if (m.note) x.note = cut(m.note, 200);
+  if (m.cat) x.cat = cut(m.cat, 30); // tür (yapay zeka incelemesi, bankAnalyze.js)
   if (m.balance !== null && m.balance !== undefined) x.balance = m.balance;
   if (src) x.f = src; // yüklenen dosyanın kimliği (dosya silinince onun getirdikleri silinir)
   return x;
@@ -40,7 +42,7 @@ export function ledgerAdd(movements, src = "") {
 }
 
 // Excel'den gelenler mailden gelmiş hareketin yazımını değiştirmez (aidat kayıtları mailin yazımına bağlı); yalnız
-// eksik ad/hücre bilgisini (who, text) tamamlar. Önceki bir Excel'den gelen hareket yeni dosyanınkiyle yenilenir
+// eksik ad/hücre bilgisini (who, text, note, cat) tamamlar. Önceki bir Excel'den gelen hareket yeni dosyanınkiyle yenilenir
 // (eski yüklemelerde ad sütunu saklanmıyordu; aynı dosya yeniden yüklenince tamamlanır).
 export function onlyNew(add, existing) {
   const out = {};
@@ -53,7 +55,7 @@ export function onlyNew(add, existing) {
       else {
         const fill = {};
         if (m.who && !old.who) fill.who = m.who;
-        if (m.text && !old.text) fill.text = m.text;
+        for (const f of ["text", "note", "cat"]) if (m[f] && !old[f]) fill[f] = m[f];
         if (Object.keys(fill).length) fresh[k] = { ...old, ...fill };
       }
     }
