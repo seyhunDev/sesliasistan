@@ -4,7 +4,9 @@
 //
 // inv = {
 //   name, kind ("normal" | "club"), prefix (numara öneki, boş olabilir), cats [ad],
-//   items [{ id, no, name, cat, qty, unit, addedAt, brand, serial, place, state, assignee, price, checkAt, note, updatedAt }],
+//   items [{ id, no, name, cat, qty, unit, addedAt, brand, serial, sailNo, year (alım yılı), place, state, damage (hasar: "yırtık"),
+//            owner "club" | "private", ownerName (özel teknenin sahibi), parent (bağlı olduğu teknenin id'si: salma, dümen, direk…),
+//            assignee, price, checkAt, note, updatedAt }],
 //   log [{ at, op add|remove|edit|delete, no, name, qty, text, by }]   hareketler, en yenisi önde
 // }
 
@@ -16,13 +18,26 @@ export const kindOf = (k) => KINDS.find(([x]) => x === k) || KINDS[0];
 
 // Hazır kategoriler (kullanıcı ekler, siler, adını değiştirir)
 export const CATS = {
-  club: ["Tekne", "Direk", "Bom", "Yelken", "Bot", "Motor", "Şamandıra", "Telsiz", "Can yeleği", "Tekne arabası", "Halat ve donanım", "Bilgisayar", "Yazıcı", "Diğer"],
+  club: ["Tekne", "Salma", "Dümen", "Direk", "Bom", "Yelken", "Bot", "Motor", "Şamandıra", "Telsiz", "Can yeleği", "Tekne arabası", "Halat ve donanım", "Bilgisayar", "Yazıcı", "Diğer"],
   normal: ["Elektronik", "Mobilya", "Mutfak", "Araç gereç", "Kırtasiye", "Diğer"],
 };
 // İlk açılışta hazır gelen envanterler
 export const STARTERS = [
   { name: "Yelken Kulübü", kind: "club" },
   { name: "Normal", kind: "normal" },
+];
+
+// Teknenin takımı: bu kategorilerdeki ürünler bir tekneye bağlanabilir, ayrıca kendi kategorisinde de sayılır
+export const BOAT_CAT = "Tekne";
+export const PART_CATS = ["Salma", "Dümen", "Direk", "Bom", "Yelken"];
+export const isBoat = (x) => fold(x?.cat) === fold(BOAT_CAT);
+export const isPart = (x) => PART_CATS.some((c) => fold(c) === fold(x?.cat));
+// Kategoriye göre gösterilen ek alanlar (diğerlerinde dolu değilse gizli)
+export const hasSailNo = (cat) => ["tekne", "yelken"].includes(fold(cat));
+
+export const OWNERS = [
+  ["club", "Kulübün"],
+  ["private", "Özel"],
 ];
 
 export const STATES = [
@@ -49,6 +64,16 @@ const int = (v, max) => Math.min(Math.max(0, Math.round(Number(v) || 0)), max);
 const num = (v, max = 100_000_000) => {
   const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
   return Number.isFinite(n) ? Math.min(Math.max(0, Math.round(n * 100) / 100), max) : 0;
+};
+const yearOf = (v) => {
+  const n = Math.round(Number(v) || 0);
+  return n >= 1950 && n <= 2100 ? n : 0;
+};
+// "3 yıllık" (alım yılından)
+export const ageText = (year, today = new Date().toISOString()) => {
+  if (!year) return "";
+  const n = Number(today.slice(0, 4)) - year;
+  return n <= 0 ? "bu yıl alındı" : `${n} yıllık`;
 };
 export const newId = () => Math.random().toString(36).slice(2, 10);
 const okId = (x) => /^[\w-]{1,20}$/.test(x || "");
@@ -77,6 +102,12 @@ export function cleanItem(x = {}) {
     addedAt: date(x.addedAt),
     brand: S(x.brand, 60),
     serial: S(x.serial, 40),
+    sailNo: S(x.sailNo, 20),
+    year: yearOf(x.year),
+    damage: S(x.damage, 120),
+    owner: x.owner === "private" ? "private" : "club",
+    ownerName: x.owner === "private" ? S(x.ownerName, 60) : "",
+    parent: okId(x.parent) && x.parent !== x.id ? x.parent : "",
     place: S(x.place, 60),
     state: STATE_KEYS.includes(x.state) ? x.state : "good",
     assignee: S(x.assignee, 60),
@@ -98,13 +129,23 @@ const cleanLog = (x = {}) => ({
 
 export function cleanInv(v = {}) {
   const kind = v.kind === "club" ? "club" : "normal";
-  const cats = [...new Set(arr(v.cats, 40).map((c) => S(c, 30)).filter(Boolean))];
+  let cats = [...new Set(arr(v.cats, 40).map((c) => S(c, 30)).filter(Boolean))];
+  // Sürüm 2: kulüp envanterine Salma ve Dümen kategorileri (eski kayıtlara bir kez eklenir; sonra silinebilir)
+  if (cats.length && kind === "club" && (Number(v.v) || 1) < 2) {
+    const add = ["Salma", "Dümen"].filter((c) => !cats.includes(c));
+    const at = Math.max(0, cats.indexOf("Tekne") + 1);
+    cats = [...cats.slice(0, at), ...add, ...cats.slice(at)];
+  }
+  const items = arr(v.items, MAX_ITEMS).map(cleanItem).filter((x) => x.name);
+  const ids = new Set(items.map((x) => x.id));
   return {
+    v: 2,
     name: S(v.name, 40) || kindOf(kind)[1],
     kind,
     prefix: S(v.prefix, 6).toLocaleUpperCase("tr-TR"),
     cats: cats.length ? cats : [...CATS[kind]],
-    items: arr(v.items, MAX_ITEMS).map(cleanItem).filter((x) => x.name),
+    // Silinen tekneye bağlı parçalar boşa düşer
+    items: items.map((x) => (x.parent && !ids.has(x.parent) ? { ...x, parent: "" } : x)),
     log: arr(v.log, MAX_LOG).map(cleanLog),
     order: int(v.order, 1000),
   };
@@ -136,14 +177,15 @@ export function invStats(inv) {
   return {
     items: items.length,
     qty: items.reduce((n, x) => n + x.qty, 0),
-    bad: items.filter((x) => BAD.includes(x.state)).length,
+    bad: items.filter((x) => BAD.includes(x.state) || x.damage).length,
     value: items.reduce((n, x) => n + x.price * Math.max(1, x.qty), 0),
+    own: items.filter((x) => x.owner === "private").reduce((n, x) => n + x.qty, 0),
   };
 }
 export function statsText(inv) {
   const s = invStats(inv);
   if (!s.items) return "Henüz ürün yok";
-  return [`${s.items} ürün`, `${s.qty} adet`, s.bad ? `${s.bad} sorunlu` : ""].filter(Boolean).join(" · ");
+  return [`${s.items} ürün`, `${s.qty} adet`, s.bad ? `${s.bad} sorunlu` : "", s.own ? `${s.own} özel` : ""].filter(Boolean).join(" · ");
 }
 
 // Kategoriye göre gruplar (envanterin kategori sırası; listede olmayanlar sonda)
@@ -158,7 +200,7 @@ export function groupItems(items, cats) {
 export function searchItems(items, q) {
   const f = fold(q);
   if (!f) return items;
-  return items.filter((x) => fold([x.no, x.name, x.cat, x.brand, x.serial, x.place, x.assignee, x.note, stateLabel(x.state)].join(" ")).includes(f));
+  return items.filter((x) => fold([x.no, x.name, x.cat, x.brand, x.serial, x.sailNo, x.year || "", x.damage, x.ownerName, x.owner === "private" ? "özel" : "kulüp", x.place, x.assignee, x.note, stateLabel(x.state)].join(" ")).includes(f));
 }
 
 // ---- Değişiklikler (sayfa ve asistan aynı fonksiyonlarla yazar; hareket kaydı tutulur) ----
@@ -186,7 +228,7 @@ export function dropItem(inv, id, { now = new Date().toISOString(), by = "" } = 
   return stamp({ ...inv, items: inv.items.filter((x) => x.id !== id) }, { at: now, op: "delete", no: old.no, name: old.name, qty: -old.qty, text: "Envanterden silindi", by });
 }
 
-const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", place: "yer", state: "durum", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not" };
+const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not" };
 // "adet 3 → 5, durum Bakımda, yer Hangar"
 export function changeText(a, b) {
   const out = [];
@@ -195,6 +237,9 @@ export function changeText(a, b) {
     if (k === "qty") out.push(`adet ${a.qty} → ${b.qty}`);
     else if (k === "state") out.push(`durum ${stateLabel(b.state)}`);
     else if (k === "note") out.push("not");
+    else if (k === "owner") out.push(b.owner === "private" ? "özel" : "kulübün");
+    else if (k === "ownerName" && a.owner !== b.owner) continue;
+    else if (k === "parent") out.push(b.parent ? "tekneye bağlandı" : "tekneden ayrıldı");
     else out.push(`${FIELD_NAMES[k]} ${b[k] || "boş"}`);
   }
   return out.join(", ") || "Değişiklik yok";
@@ -205,11 +250,15 @@ export function changeText(a, b) {
 // add + id: o ürünün adedi artar; add id'siz: yeni ürün. remove: adet azalır (0'ın altına inmez). update: söylenen alanlar değişir.
 // delete: onay gerekir; burada uygulanmaz, `deletes`te döner.
 // Dönüş: { inv, lines: ["Ekledim: …"], deletes: [ürün], missing: ["…"] }
-const FIELDS = ["name", "cat", "unit", "brand", "serial", "place", "state", "assignee", "price", "addedAt", "checkAt", "note", "no"];
+const FIELDS = ["name", "cat", "unit", "brand", "serial", "sailNo", "year", "damage", "owner", "ownerName", "place", "state", "assignee", "price", "addedAt", "checkAt", "note", "no"];
 export function cleanOp(o = {}) {
   const op = ["add", "remove", "update", "delete"].includes(o.op) ? o.op : "";
   if (!op) return null;
   const out = { op, id: okId(o.id) ? o.id : "" };
+  // key: bu listede yeni eklenen ürünün geçici adı; parent: bağlanacak tekne (var olan id ya da aynı listedeki key)
+  if (/^[\w-]{1,20}$/.test(o.key || "")) out.key = o.key;
+  if (/^[\w-]{1,20}$/.test(o.parent || "")) out.parent = o.parent;
+  if (o.parent === "none") out.parent = "none";
   if (o.qty != null && o.qty !== "") out.qty = int(o.qty, 1_000_000);
   for (const k of FIELDS) if (o[k] != null && String(o[k]).trim() !== "") out[k] = o[k];
   if (out.state && !STATE_KEYS.includes(out.state)) delete out.state;
@@ -228,10 +277,20 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
   const edited = [];
   const deletes = [];
   const missing = [];
+  const keys = {};
   for (const raw of ops || []) {
     const o = cleanOp(raw);
     if (!o) continue;
     const old = o.id ? cur.items.find((x) => x.id === o.id) : null;
+    // Tekne: aynı listede eklenen teknenin key'i ya da var olan id; "none" tekneden ayırır
+    if (o.parent) {
+      const pid = o.parent === "none" ? "" : keys[o.parent] || o.parent;
+      const boat = pid && cur.items.find((x) => x.id === pid);
+      o.parent = boat ? pid : "";
+      // Takım parçası sahibini belirtmezse teknenin sahibini alır
+      if (boat && !old && !o.owner) Object.assign(o, { owner: boat.owner, ownerName: boat.ownerName });
+      if (!boat && raw.parent !== "none") delete o.parent;
+    }
     if (o.id && !old) {
       missing.push(S(raw.name, 60) || "ürün");
       continue;
@@ -244,6 +303,7 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
       const item = { ...o, id: "", cat: catOf(cur, o.cat), qty: o.qty ?? 1, addedAt: o.addedAt || now.slice(0, 10) };
       cur = upsertItem(cur, item, { now, by });
       const x = cur.items[cur.items.length - 1];
+      if (o.key) keys[o.key] = x.id;
       added.push(x);
       continue;
     }
@@ -256,7 +316,7 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
       continue;
     }
     // update
-    const patch = { ...old, ...pick(o, FIELDS), ...(o.qty != null ? { qty: o.qty } : {}) };
+    const patch = { ...old, ...pick(o, [...FIELDS, "parent"]), ...(o.qty != null ? { qty: o.qty } : {}) };
     if (patch.cat) patch.cat = catOf(cur, patch.cat);
     const next = cleanItem(patch);
     const what = changeText(old, next);
@@ -265,7 +325,16 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
     edited.push({ x: next, what });
   }
   const lines = [];
-  if (added.length) lines.push(`Ekledim: ${added.map((x) => `${x.qty > 1 ? `${x.qty} ${x.unit === "adet" ? "" : `${x.unit} `}` : ""}${x.name} (No ${x.no})`.replace(/\s+/g, " ")).join(", ")}.`);
+  // Aynı anda eklenen tekne ve takımı tek parça söylenir: "Optimist teknesi (No 011, takımıyla: salma, dümen…)"
+  const newIds = new Set(added.map((x) => x.id));
+  const kitOfNew = (b) => added.filter((x) => x.parent === b.id).map((x) => x.cat.toLocaleLowerCase("tr-TR"));
+  const addText = (x) => {
+    const kit = kitOfNew(x);
+    const no = kit.length ? `No ${x.no}, takımıyla: ${kit.join(", ")}` : `No ${x.no}`;
+    return `${x.qty > 1 ? `${x.qty} ${x.unit === "adet" ? "" : `${x.unit} `}` : ""}${x.name} (${no})${x.owner === "private" ? `, özel${x.ownerName ? ` (${x.ownerName})` : ""}` : ""}`.replace(/\s+/g, " ");
+  };
+  const shownAdd = added.filter((x) => !(x.parent && newIds.has(x.parent)));
+  if (shownAdd.length) lines.push(`Ekledim: ${shownAdd.map(addText).join(", ")}.`);
   if (more.length) lines.push(`Artırdım: ${more.map(({ x, qty }) => `${x.name} ${x.qty} → ${qty}`).join(", ")}.`);
   if (less.length) lines.push(`Azalttım: ${less.map(({ x, qty }) => `${x.name} ${x.qty} → ${qty}${qty === 0 ? " (kalmadı)" : ""}`).join(", ")}.`);
   if (edited.length) lines.push(`Değiştirdim: ${edited.map(({ x, what }) => `${x.name}, ${what}`).join("; ")}.`);
@@ -276,7 +345,7 @@ const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] != null).ma
 
 // Yapay zekaya giden kısa liste (yalnız eşleştirme için gerekenler)
 export const brief = (inv) =>
-  inv.items.map((x) => ({ id: x.id, no: x.no, name: x.name, cat: x.cat, qty: x.qty, unit: x.unit, ...(x.brand ? { brand: x.brand } : {}), ...(x.serial ? { serial: x.serial } : {}), ...(x.place ? { place: x.place } : {}), ...(x.assignee ? { assignee: x.assignee } : {}), state: x.state }));
+  inv.items.map((x) => ({ id: x.id, no: x.no, name: x.name, cat: x.cat, qty: x.qty, unit: x.unit, ...(x.brand ? { brand: x.brand } : {}), ...(x.serial ? { serial: x.serial } : {}), ...(x.sailNo ? { sailNo: x.sailNo } : {}), ...(x.year ? { year: x.year } : {}), ...(x.place ? { place: x.place } : {}), ...(x.assignee ? { assignee: x.assignee } : {}), state: x.state, ...(x.damage ? { damage: x.damage } : {}), owner: x.owner, ...(x.ownerName ? { ownerName: x.ownerName } : {}), ...(x.parent ? { parent: x.parent } : {}) }));
 
 // Hangi envanter: cümlede adı geçen ("kulüp envanterine", "normal envantere"), yoksa açık sayfadaki, yoksa son kullanılan, yoksa kulüp
 export function pickInv(text, list, { here = "", last = "" } = {}) {
@@ -298,11 +367,48 @@ export function pickInv(text, list, { here = "", last = "" } = {}) {
 
 // Excel: ürünler ve hareketler
 export function excelRows(inv) {
-  const items = [["No", "Ürün", "Kategori", "Adet", "Birim", "Eklenme", "Marka / model", "Seri no", "Yer", "Durum", "Kimde", "Fiyat (₺)", "Son kontrol", "Not"]];
+  const items = [["No", "Ürün", "Kategori", "Adet", "Birim", "Sahibi", "Tekne", "Eklenme", "Alım yılı", "Marka / model", "Seri no", "Yelken no", "Yer", "Durum", "Hasar", "Kimde", "Fiyat (₺)", "Son kontrol", "Not"]];
+  const byId = new Map(inv.items.map((x) => [x.id, x]));
   for (const [, list] of groupItems(inv.items, inv.cats))
-    for (const x of list) items.push([x.no, x.name, x.cat, x.qty, x.unit, x.addedAt, x.brand, x.serial, x.place, stateLabel(x.state), x.assignee, x.price || "", x.checkAt, x.note]);
+    for (const x of list)
+      items.push([x.no, x.name, x.cat, x.qty, x.unit, ownerText(x), x.parent ? itemLabel(byId.get(x.parent)) : "", x.addedAt, x.year || "", x.brand, x.serial, x.sailNo, x.place, stateLabel(x.state), x.damage, x.assignee, x.price || "", x.checkAt, x.note]);
   const log = [["Zaman", "İşlem", "No", "Ürün", "Adet", "Ayrıntı", "Kim"]];
   const OPS = { add: "Ekleme", remove: "Çıkarma", edit: "Düzenleme", delete: "Silme" };
   for (const e of inv.log) log.push([e.at.slice(0, 16).replace("T", " "), OPS[e.op], e.no, e.name, e.qty, e.text, e.by]);
   return { Ürünler: items, Hareketler: log };
+}
+
+// ---- Sahiplik ve tekne takımı ----
+export const ownerText = (x) => (x.owner === "private" ? `Özel${x.ownerName ? ` · ${x.ownerName}` : ""}` : "Kulübün");
+
+// Bir grubun sayımı: toplam adet, kulübün, özel, (takım parçasıysa) teknede / boşta
+export function countOf(list) {
+  const q = (f) => list.filter(f).reduce((n, x) => n + x.qty, 0);
+  return { total: q(() => true), club: q((x) => x.owner !== "private"), own: q((x) => x.owner === "private"), onBoat: q((x) => !!x.parent), free: q((x) => !x.parent) };
+}
+// "8 adet · kulübün 6 · özel 2 · 3 teknede"
+export function countText(list, part = false) {
+  const c = countOf(list);
+  return [`${c.total} adet`, c.own ? `kulübün ${c.club} · özel ${c.own}` : "", part && c.onBoat ? `${c.onBoat} teknede` : ""].filter(Boolean).join(" · ");
+}
+
+// Teknenin takımı: bağlı parçalar ve eksik takım kategorileri
+export function kitOf(inv, boat) {
+  const parts = inv.items.filter((x) => x.parent === boat.id);
+  const have = new Set(parts.map((x) => fold(x.cat)));
+  return { parts, missing: PART_CATS.filter((c) => !have.has(fold(c))) };
+}
+// "Tam takım" ya da "Eksik: dümen, bom"
+export function kitText(inv, boat) {
+  const k = kitOf(inv, boat);
+  if (!k.parts.length) return "";
+  return k.missing.length ? `Eksik: ${k.missing.map((c) => c.toLocaleLowerCase("tr-TR")).join(", ")}` : "Tam takım";
+}
+// Eksik takım parçalarını oluşturur, tekneye bağlar (sahibi teknenin sahibi). cats: hangi kategoriler (boşsa tüm eksikler)
+export function addKit(inv, boatId, opts = {}, cats = null) {
+  const boat = inv.items.find((x) => x.id === boatId);
+  if (!boat) return inv;
+  const want = cats || kitOf(inv, boat).missing;
+  const base = boat.name.replace(/\s*tekne(si)?\s*/i, " ").trim() || boat.name;
+  return applyOps(inv, want.map((c) => ({ op: "add", name: `${base} ${c.toLocaleLowerCase("tr-TR")}`, cat: c, qty: 1, parent: boatId })), opts).inv;
 }
