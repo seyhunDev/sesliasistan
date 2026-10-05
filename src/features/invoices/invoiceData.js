@@ -11,6 +11,7 @@ import { peopleFor } from "@/lib/people";
 import { prepFile } from "@/features/inventory/invFiles";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/raceFiles";
 import { loadMovementsRange } from "@/features/dues/duesData";
+import { primeOpen } from "./openInvoices";
 import { bankMatches, isoDay, openIndex, paidMovOf, taskInvoice, taskTitle } from "@/lib/invoices";
 
 const PART = 900_000;
@@ -26,13 +27,15 @@ export async function loadInvoices(orgId, { fresh = false } = {}) {
   if (!fresh && memo?.org === orgId && Date.now() - memo.at < LIST_MS) return memo.list;
   const snap = await getDocs(col(orgId));
   const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-  memo = { org: orgId, at: Date.now(), list };
-  return list;
+  return remember(orgId, list);
 }
 const remember = (orgId, list) => {
   memo = { org: orgId, at: Date.now(), list };
+  primeOpen(orgId, list); // ana sayfadaki fatura kartı da güncellensin
   return list;
 };
+// Bellekteki tam liste (yoksa okunur): sunucunun açık fatura listesi eksik yazılmasın
+const current = async (orgId) => (memo?.org === orgId ? memo.list : loadInvoices(orgId));
 const notifyAssign = (id) => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "task", id }) }).catch(() => {});
 
 // Sunucunun banka mailinde baktığı açık faturalar listesi (tek belge)
@@ -137,7 +140,7 @@ export async function createInvoice(orgId, fields, prepared, me, assignee = "") 
   batch.set(taskRef, task);
   await batch.commit();
   if (assignee) notifyAssign(taskRef.id);
-  const list = remember(orgId, [inv, ...(memo?.org === orgId ? memo.list : [])]);
+  const list = remember(orgId, [inv, ...(await current(orgId)).filter((x) => x.id !== inv.id)]);
   syncIndex(orgId, list);
   return inv;
 }
@@ -149,7 +152,7 @@ export async function updateInvoice(orgId, inv, patch) {
   await updateDoc(doc(col(orgId), inv.id), { ...patch, updatedAt: rec.updatedAt });
   if (inv.taskId && ["seller", "amount", "currency", "no", "iban", "due"].some((k) => k in patch))
     await updateDoc(doc(db, "orgs", orgId, "tasks", inv.taskId), { title: taskTitle(next), due: next.due || null, invoice: taskInvoice(next) }).catch(() => {});
-  const list = remember(orgId, (memo?.org === orgId ? memo.list : [next]).map((x) => (x.id === inv.id ? next : x)));
+  const list = remember(orgId, (await current(orgId)).map((x) => (x.id === inv.id ? next : x)));
   syncIndex(orgId, list);
   return next;
 }
@@ -181,7 +184,7 @@ export async function deleteInvoice(orgId, inv) {
   await deleteDoc(doc(col(orgId), inv.id));
   if (inv.taskId) await deleteDoc(doc(db, "orgs", orgId, "tasks", inv.taskId)).catch(() => {});
   dropFile(orgId, inv.file);
-  const list = remember(orgId, (memo?.org === orgId ? memo.list : []).filter((x) => x.id !== inv.id));
+  const list = remember(orgId, (await current(orgId)).filter((x) => x.id !== inv.id));
   syncIndex(orgId, list);
 }
 

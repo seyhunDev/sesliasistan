@@ -13,6 +13,9 @@ import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { assigneesOf, isNewFor, unseenNotes } from "@/lib/people";
 import { TLk, totalOf } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { useOpenInvoices } from "@/features/invoices/openInvoices";
+import { amountText, dueText, urgentInvoices } from "@/lib/invoices";
 
 const SHOW = 4;
 const KIND = { plan: "Plan", task: "Görev", note: "Not", receipt: "Fiş" };
@@ -66,6 +69,8 @@ export function useForYou() {
   const { chats, personName } = useChat();
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
+  const orgId = useAuth().profile?.orgId;
+  const openInv = useOpenInvoices(orgId, !isStaff);
   const [hidden, setHidden] = useState(() => (typeof window === "undefined" ? new Set() : readHidden()));
   // Sayfadaki listede gizlenen, sahnedeki özetten de kalkar (ikisi ayrı kopya)
   useEffect(() => {
@@ -132,9 +137,33 @@ export function useForYou() {
         onOpen: () => open(kind, r.id),
       });
   }
+  // Fatura: son günü geçen ya da 3 gün içinde olan ödenmemiş fatura (ana hesap). Görevi ayrıca "Geciken" olarak çıkmaz.
+  const invTasks = new Set();
+  if (!isStaff)
+    for (const inv of urgentInvoices(openInv || [], today)) {
+      if (inv.taskId) invTasks.add(inv.taskId);
+      const late = inv.due < today;
+      items.push({
+        id: `inv:${inv.id}:${inv.due}`,
+        lead: <IconDot icon="receipt" tone={late ? "rec" : "amb"} />,
+        title: `${inv.seller || "Fatura"} · ${amountText(inv)}`,
+        sub: `Fatura ödenmedi · ${dueText(inv, today).toLocaleLowerCase("tr-TR")}`,
+        subTone: late ? "text-rec" : "text-amber-700",
+        onOpen: () => router.push("/invoices"),
+        trail: (
+          <Pill
+            tone="ok"
+            label="Ödendi olarak işaretle"
+            onClick={() => import("@/features/invoices/invoiceData").then((m) => m.setPaid(orgId, inv, true, "hand")).catch(() => {})}
+          >
+            Ödendi
+          </Pill>
+        ),
+      });
+    }
   // Geciken görev: sağda tek dokunuşla "bitti"
   for (const t of tasks)
-    if (!t.done && !t.doneBy?.[myUid] && t.due && t.due < today) {
+    if (!t.done && !t.doneBy?.[myUid] && t.due && t.due < today && !invTasks.has(t.id)) {
       const days = Math.round((Date.parse(today) - Date.parse(t.due)) / 864e5);
       items.push({
         id: `late:${t.id}:${t.due}`,

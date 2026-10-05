@@ -10,17 +10,22 @@ import { duesLive, duesTile, postsTile, raceTile, readSum, saveSum, trainingTile
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
+import { useOpenInvoices } from "@/features/invoices/openInvoices";
+import { invoiceTile } from "@/lib/invoices";
 
 // Ana sayfa › ÖZET: kısa bilgi kartları, hepsi aynı boyda ve biçimde (simge + ad, büyük sayı, tek satır açıklama).
 // Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
-export function HomeSummary({ money, race, dues, posts, training, plans }) {
+export function HomeSummary({ money, race, dues, posts, training, plans, invoices }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const today = todayStr();
   const orgId = useAuth().profile?.orgId;
   const ym = today.slice(0, 7);
+  // Ödenmemiş faturalar (ana hesap): yalnız açık olanlar okunur; hiç yoksa kart çıkmaz
+  const openInv = useOpenInvoices(orgId, !!invoices);
+  const inv = openInv && invoiceTile(openInv, today);
   // Aidat kartı: açılışta ve uygulamaya dönünce bu ayın aidat kaydı okunur (kart Aidatlar sayfası açılmadan da güncel)
   useEffect(() => {
     if (!dues || !orgId) return;
@@ -45,7 +50,8 @@ export function HomeSummary({ money, race, dues, posts, training, plans }) {
   }, [dues, orgId, ym]);
   const cards = [
     money && m.bank && ["/mail", "chart", "Banka", m.bank],
-    money && ["/receipts", "receipt", "Fiş / Fatura", m.receipts],
+    inv && ["/invoices", "receipt", "Fatura", inv],
+    money && ["/receipts", "receipt", inv ? "Fişler" : "Fiş / Fatura", m.receipts],
     dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, today.slice(0, 7))],
     race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up)],
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],

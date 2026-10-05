@@ -946,3 +946,13 @@ group("Karanlık mod")([
   ["elle seçim", F("telefonun ayarından önce gelir", () => TH.resolveTheme("light", true) === "light" && TH.resolveTheme("dark", false) === "dark")],
   ["ilk çizim kodu", F("aynı anahtar ve kural", () => TH.THEME_SCRIPT.includes('"sa-theme"') && TH.THEME_SCRIPT.includes("prefers-color-scheme: dark"))],
 ]);
+
+// Ana sayfada faturalar (invoices.js): özet kartı ve "Senin için"de yaklaşan/geciken fatura
+group("Ana sayfa faturalar")([
+  ["kart", F("2 ödenmedi, toplam ve en yakın son gün", () => { const t = IV.invoiceTile(INV, "2026-10-05"); return t.big === "2.150,50 TL" && t.sub === "2 ödenmedi · son gün 15 Eki" && t.warn === false; })],
+  ["kart yaklaşınca", F("son gün yarın, uyarı", () => { const t = IV.invoiceTile(INV, "2026-10-14"); return t.sub === "2 ödenmedi · son gün yarın" && t.warn === true; })],
+  ["kart gecikince", F("1 gecikti", () => IV.invoiceTile(INV, "2026-10-16").sub === "2 ödenmedi · 1 gecikti")],
+  ["açık fatura yoksa", F("kart yok", () => IV.invoiceTile([INV[2]], "2026-10-05") === null && IV.invoiceTile([], "2026-10-05") === null)],
+  ["acil faturalar", F("3 gün içinde ya da geciken, en acil önce", () => IV.urgentInvoices(INV, "2026-10-05").length === 0 && IV.urgentInvoices(INV, "2026-10-17").map((x) => x.id).join(",") === "i1,i2")],
+  ["son gün yazısı", F("gecikti / bugün / tarih", () => IV.dueText(INV[0], "2026-10-18") === "Gecikti 3 gün" && IV.dueText(INV[0], "2026-10-15") === "Son gün bugün" && IV.dueText(INV[0], "2026-10-01") === "Son gün 15 Eki" && IV.dueText(INV[2], "2026-10-01") === "Son gün yok")],
+]);
