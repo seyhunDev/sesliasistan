@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Loader } from "@/components/ui/Loader";
 import { FILE_LABELS, prepFile, sizeText } from "./invFiles";
 import { Button } from "@/components/ui/Button";
-import { OWNERS, STATES, UNITS, ageText, hasSailNo, isBoat, isPart, itemLabel, kitOf } from "./invModel";
+import { OWNERS, SERVICE_KINDS, STATES, UNITS, ageText, canLink, cleanItem, cleanService, extraHints, hasSailNo, hostsOf, isBoat, isBot, isMotor, itemLabel, kitOf, lastService, motorsOf, serviceLabel, serviceText } from "./invModel";
 
 export const input =
   "h-11 w-full min-w-0 max-w-full rounded-xl border border-transparent bg-bg px-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
@@ -45,7 +45,12 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
           const out = { ...v };
           for (const [k, val] of Object.entries(r.fields)) {
             if (val == null || val === "") continue;
-            if (k === "note") out.note = v.note && !v.note.includes(val) ? `${v.note}\n${val}` : v.note || val;
+            if (k === "extra") {
+              const list = [...(v.extra || [])];
+              for (const e of val) if (!list.some((y) => y.k.toLocaleLowerCase("tr-TR") === e.k.toLocaleLowerCase("tr-TR"))) list.push(e);
+              out.extra = list;
+            } else if (k === "service") out.service = [val, ...(v.service || [])];
+            else if (k === "note") out.note = v.note && !v.note.includes(val) ? `${v.note}\n${val}` : v.note || val;
             else if (!v[k] || v[k] === "good" || (k === "cat" && !v.id) || (k === "name" && !v.id) || (k === "qty" && !v.id)) out[k] = val;
           }
           return out;
@@ -77,8 +82,14 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
   const set = (k) => (e) => setX((v) => ({ ...v, [k]: e.target.value }));
   const step = (d) => setX((v) => ({ ...v, qty: Math.max(0, (Number(v.qty) || 0) + d) }));
   const catList = cats.includes(x.cat) ? cats : [...cats, x.cat];
-  const boats = (inv?.items || []).filter((y) => isBoat(y) && y.id !== x.id);
+  const boats = hostsOf(inv, x);
   const kit = x.id && isBoat(x) && inv ? kitOf(inv, x) : null;
+  // Botun (ya da teknenin) motoru: ayrı ürün, bakımları kendi kaydında
+  const motors = x.id && (isBot(x) || isBoat(x)) && inv ? motorsOf(inv, x) : [];
+  const newMotor = () => onOpen?.({ ...cleanItem({ name: `${x.name} motoru`, cat: "Motor", parent: x.id, owner: x.owner, ownerName: x.ownerName }), id: "" });
+  const setExtra = (i, k) => (e) => setX((v) => ({ ...v, extra: v.extra.map((y, j) => (j === i ? { ...y, [k]: e.target.value } : y)) }));
+  const addExtra = (k = "") => setX((v) => ({ ...v, extra: [...(v.extra || []), { k, v: "" }] }));
+  const hints = extraHints(x.cat).filter((h) => !(x.extra || []).some((e) => e.k.toLocaleLowerCase("tr-TR") === h.toLocaleLowerCase("tr-TR")));
 
   return (
     <form
@@ -170,10 +181,10 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
         </div>
         {x.owner === "private" && <input value={x.ownerName} onChange={set("ownerName")} maxLength={60} placeholder="Sahibinin adı (ör. sporcu ya da velisi)" className={`mt-2 ${input}`} />}
       </div>
-      {(isPart(x) || x.parent) && (
-        <F label="Bağlı olduğu tekne (takımı)">
+      {(canLink(x) || x.parent) && (
+        <F label={isMotor(x) ? "Takılı olduğu bot / tekne" : "Bağlı olduğu tekne (takımı)"}>
           <select value={x.parent} onChange={set("parent")} className={input}>
-            <option value="">Teknede değil (boşta)</option>
+            <option value="">{isMotor(x) ? "Takılı değil (boşta)" : "Teknede değil (boşta)"}</option>
             {boats.map((b) => (
               <option key={b.id} value={b.id}>
                 {itemLabel(b)}
@@ -204,6 +215,26 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
             </button>
           ) : (
             <p className="mt-1.5 text-[0.8125rem] font-semibold text-ok">Tam takım</p>
+          )}
+        </div>
+      )}
+      {(motors.length > 0 || (x.id && isBot(x))) && (
+        <div className="rounded-xl bg-bg p-3">
+          <span className={lab}>Motoru (bakımlar motorun kaydında tutulur)</span>
+          {motors.map((m) => (
+            <button key={m.id} type="button" onClick={() => onOpen?.(m)} className="mt-1.5 flex w-full items-center gap-2 rounded-lg bg-card px-3 py-2 text-left ring-1 ring-line active:scale-[.98]">
+              <Icon name="wrench" className="size-4 shrink-0 text-mut" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.875rem] font-semibold">{[m.brand || m.name, ...(m.extra || []).filter((e) => /güç|hp|beygir/i.test(e.k)).map((e) => e.v)].join(" · ")}</span>
+                <small className="block truncate text-[0.75rem] text-mut">{lastService(m) ? `Son bakım: ${serviceText(lastService(m))}` : "Bakım kaydı yok"}</small>
+              </span>
+              <Icon name="chev" className="size-4 shrink-0 text-mut" />
+            </button>
+          ))}
+          {motors.length === 0 && (
+            <button type="button" onClick={newMotor} className="mt-1.5 h-9 w-full rounded-lg bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-[.98]">
+              Motor ekle
+            </button>
           )}
         </div>
       )}
@@ -264,6 +295,29 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
           <input value={x.assignee} onChange={set("assignee")} maxLength={60} className={input} />
         </F>
       </div>
+      <div>
+        <span className={lab}>Ek bilgiler</span>
+        {(x.extra || []).map((e, i) => (
+          <div key={i} className="mt-1.5 flex gap-2">
+            <input value={e.k} onChange={setExtra(i, "k")} maxLength={40} placeholder="Başlık (ör. Dümen)" className={`${input} w-[42%] shrink-0`} />
+            <input value={e.v} onChange={setExtra(i, "v")} maxLength={120} placeholder="Bilgi (ör. Hidrolik)" className={input} />
+            <button type="button" onClick={() => setX((v) => ({ ...v, extra: v.extra.filter((_, j) => j !== i) }))} aria-label="Sil" className="grid size-11 shrink-0 place-items-center rounded-xl text-mut active:bg-bg">
+              <Icon name="x" className="size-4" />
+            </button>
+          </div>
+        ))}
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {hints.map((h) => (
+            <button key={h} type="button" onClick={() => addExtra(h)} className="h-8 rounded-full bg-bg px-3 text-[0.8125rem] font-medium text-fg active:scale-95">
+              + {h}
+            </button>
+          ))}
+          <button type="button" onClick={() => addExtra()} className="h-8 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-95">
+            + Bilgi ekle
+          </button>
+        </div>
+      </div>
+      <Services list={x.service || []} onChange={(service) => setX((v) => ({ ...v, service, checkAt: service[0]?.date && service[0].date > (v.checkAt || "") ? service[0].date : v.checkAt }))} />
       <F label="Alış fiyatı (₺, birim)">
         <input value={x.price || ""} onChange={set("price")} inputMode="decimal" className={`${input} tabular-nums`} />
       </F>
@@ -279,6 +333,70 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
         </button>
       )}
     </form>
+  );
+}
+
+// Bakım kayıtları: tarih, tür (yaz/kış…), yapılan, tutar, yapan; en yenisi önde. Kaydet'te ürünle birlikte yazılır.
+function Services({ list, onChange }) {
+  const [add, setAdd] = useState(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const save = () => {
+    const e = cleanService(add);
+    if (!e.date && !e.what) return setAdd(null);
+    onChange([e, ...list].sort((a, b) => (b.date || "").localeCompare(a.date || "")));
+    setAdd(null);
+  };
+  const set = (k) => (e) => setAdd((v) => ({ ...v, [k]: e.target.value }));
+  return (
+    <div>
+      <span className={lab}>Bakımlar</span>
+      {list.length > 0 && (
+        <ul className="mt-1 divide-y divide-line/70 rounded-xl bg-bg">
+          {list.map((e) => (
+            <li key={e.id} className="flex items-start gap-2 py-2 pl-3 pr-1">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.875rem] font-semibold">{serviceText(e)}</span>
+                {(e.what || e.cost > 0 || e.by) && <small className="block text-[0.75rem] text-mut">{[e.what, e.cost > 0 ? `${e.cost.toLocaleString("tr-TR")} ₺` : "", e.by].filter(Boolean).join(" · ")}</small>}
+              </span>
+              <button type="button" onClick={() => window.confirm(`${serviceLabel(e.kind)} kaydı silinsin mi?`) && onChange(list.filter((y) => y.id !== e.id))} aria-label="Sil" className="grid size-8 shrink-0 place-items-center rounded-lg text-mut active:bg-card">
+                <Icon name="x" className="size-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {add ? (
+        <div className="mt-1.5 space-y-2 rounded-xl bg-bg p-3">
+          <div className="flex gap-2">
+            <input type="date" value={add.date} onChange={set("date")} className={`${input} ${dateFix} bg-card`} />
+            <select value={add.kind} onChange={set("kind")} className={`${input} bg-card`}>
+              {SERVICE_KINDS.map(([k, l]) => (
+                <option key={k} value={k}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+          <textarea value={add.what} onChange={set("what")} rows={2} maxLength={300} placeholder="Yapılan (ör. yağ, filtre, pervane, impeller değişti)" className={`${input} h-auto bg-card py-2`} />
+          <div className="flex gap-2">
+            <input value={add.cost} onChange={set("cost")} inputMode="decimal" placeholder="Tutar ₺" className={`${input} bg-card tabular-nums`} />
+            <input value={add.by} onChange={set("by")} maxLength={60} placeholder="Yapan (servis)" className={`${input} bg-card`} />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setAdd(null)} className="h-10 flex-1 rounded-xl text-[0.875rem] font-semibold text-mut active:bg-card">
+              Vazgeç
+            </button>
+            <button type="button" onClick={save} className="h-10 flex-1 rounded-xl bg-deep text-[0.875rem] font-semibold text-white active:scale-[.98]">
+              Bakımı ekle
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setAdd({ date: today, kind: "periyodik", what: "", cost: "", by: "" })} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
+          + Bakım ekle
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -692,4 +692,25 @@ group("Envanter")([
     const x = IM.excelRows(IM.applyOps(club(), [{ op: "add", id: "s1", qty: 1 }], NOW).inv);
     return x.Ürünler.length === 4 && x.Hareketler.length === 2 && x.Ürünler[0][0] === "No";
   })],
+  ["bot ve motor", F("motor ayrı ürün, bota bağlı; ek bilgiler ürünlerde", () => {
+    const r = IM.applyOps(IM.freshInv("K", "club"), [
+      { op: "add", key: "b", name: "Antrenör botu", cat: "Bot", extra: [{ k: "Dümen", v: "Hidrolik" }] },
+      { op: "add", name: "Yamaha motor", cat: "Motor", parent: "b", extra: [{ k: "Güç (HP)", v: "50" }] },
+    ], NOW);
+    const [bot, mot] = r.inv.items;
+    return r.lines.length === 1 && /motoruyla/.test(r.lines[0]) && mot.parent === bot.id && IM.motorsOf(r.inv, bot).length === 1 && bot.extra[0].v === "Hidrolik" && IM.hostsOf(r.inv, mot).some((x) => x.id === bot.id) && IM.searchItems(r.inv.items, "hidrolik").length === 1;
+  })],
+  ["motor bakımı", F("bakım eklenir, en yeni önde, son kontrol tarihi güncellenir", () => {
+    let v = IM.applyOps(IM.freshInv("K", "club"), [{ op: "add", name: "Yamaha motor", cat: "Motor", service: { date: "2026-04-12", kind: "yaz", what: "yağ, filtre" } }], NOW).inv;
+    const id = v.items[0].id;
+    const r = IM.applyOps(v, [{ op: "update", id, service: { date: "2026-11-02", kind: "kis", what: "kışlama" }, extra: [{ k: "çalışma saati", v: "320" }] }], NOW);
+    const x = r.inv.items[0];
+    v = r.inv;
+    return x.service.length === 2 && x.service[0].kind === "kis" && x.checkAt === "2026-11-02" && /bakım eklendi \(02\.11\.2026 · Kış bakımı\)/.test(r.lines[0]) && !/kontrol tarihi/.test(r.lines[0]) && IM.excelRows(v).Bakımlar.length === 3;
+  })],
+  ["ek bilgi", F("aynı başlık değişir (adı korunur), yenisi eklenir, boşlar atılır", () => {
+    const v = IM.upsertItem(club(), { ...club().items[0], extra: [{ k: "Boy", v: "5 m" }, { k: "", v: "" }] }, NOW);
+    const x = IM.applyOps(v, [{ op: "update", id: "t1", extra: [{ k: "boy", v: "5,5 m" }, { k: "Renk", v: "Beyaz" }] }], NOW).inv.items[0];
+    return x.extra.length === 2 && x.extra[0].k === "Boy" && x.extra[0].v === "5,5 m" && x.extra[1].k === "Renk";
+  })],
 ]);
