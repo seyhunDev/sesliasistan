@@ -666,6 +666,13 @@ group("Envanter")([
     const v = IM.cleanInv({ kind: "club", v: 2, cats: ["Tekne", "Bom"], items: [{ id: "x", name: "Optimist bom", cat: "Bom" }] });
     return v.cats.join(",") === "Tekne,Bumba" && v.items[0].cat === "Bumba" && v.items[0].name === "Optimist bumba" && IM.cleanInv({ ...v, cats: [...v.cats, "Bom"] }).cats.includes("Bom");
   })],
+  ["belge künyesi", F("üründe saklanır, AI işlemi silmez, hareket yazılır", () => {
+    const meta = { id: "f1", name: "kutuk.jpg", type: "image/jpeg", size: 240000, parts: 1, label: "Kütük belgesi", at: "2026-10-05" };
+    const v = IM.upsertItem(club(), { ...club().items[0], files: [meta] }, NOW);
+    const x = v.items[0];
+    const after = IM.applyOps(v, [{ op: "update", id: "t1", state: "repair" }], NOW).inv.items[0];
+    return x.files.length === 1 && x.files[0].label === "Kütük belgesi" && /belge eklendi/.test(v.log[0].text) && after.files.length === 1 && IM.cleanItem({ name: "a", files: [{ id: "!!" }] }).files.length === 0;
+  })],
   ["yaş", F("2021 alımı 2026'da 5 yıllık", () => IM.ageText(2021, "2026-10-05") === "5 yıllık")],
   ["excel", F("ürünler ve hareketler sayfası", () => {
     const x = IM.excelRows(IM.applyOps(club(), [{ op: "add", id: "s1", qty: 1 }], NOW).inv);

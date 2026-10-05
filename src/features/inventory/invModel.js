@@ -6,7 +6,7 @@
 //   name, kind ("normal" | "club"), prefix (numara öneki, boş olabilir), cats [ad],
 //   items [{ id, no, name, cat, qty, unit, addedAt, brand, serial, sailNo, year (alım yılı), place, state, damage (hasar: "yırtık"),
 //            owner "club" | "private", ownerName (özel teknenin sahibi), parent (bağlı olduğu teknenin id'si: salma, dümen, direk…),
-//            assignee, price, checkAt, note, updatedAt }],
+//            assignee, price, checkAt, note, files [{ id, name, type, size, parts, label, at }] (belge/fotoğraf künyeleri, invFiles.js), updatedAt }],
 //   log [{ at, op add|remove|edit|delete, no, name, qty, text, by }]   hareketler, en yenisi önde
 // }
 
@@ -91,6 +91,11 @@ export const fold = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const cleanFile = (f) =>
+  okId(f?.id)
+    ? { id: f.id, name: S(f.name, 120) || "dosya", type: f.type === "application/pdf" ? "application/pdf" : "image/jpeg", size: int(f.size, 50_000_000), parts: Math.max(1, int(f.parts, 60)), label: S(f.label, 30), at: date(f.at) }
+    : null;
+
 export function cleanItem(x = {}) {
   return {
     id: okId(x.id) ? x.id : newId(),
@@ -114,6 +119,7 @@ export function cleanItem(x = {}) {
     price: num(x.price),
     checkAt: date(x.checkAt),
     note: L(x.note, 600),
+    files: arr(x.files, 20).map(cleanFile).filter(Boolean),
     updatedAt: S(x.updatedAt, 30),
   };
 }
@@ -234,15 +240,16 @@ export function dropItem(inv, id, { now = new Date().toISOString(), by = "" } = 
   return stamp({ ...inv, items: inv.items.filter((x) => x.id !== id) }, { at: now, op: "delete", no: old.no, name: old.name, qty: -old.qty, text: "Envanterden silindi", by });
 }
 
-const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not" };
+const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not", files: "belge" };
 // "adet 3 → 5, durum Bakımda, yer Hangar"
 export function changeText(a, b) {
   const out = [];
   for (const k of Object.keys(FIELD_NAMES)) {
-    if (a[k] === b[k]) continue;
+    if (k === "files" ? (a.files || []).map((f) => f.id).join() === (b.files || []).map((f) => f.id).join() : a[k] === b[k]) continue;
     if (k === "qty") out.push(`adet ${a.qty} → ${b.qty}`);
     else if (k === "state") out.push(`durum ${stateLabel(b.state)}`);
     else if (k === "note") out.push("not");
+    else if (k === "files") out.push(b.files.length > a.files.length ? "belge eklendi" : "belge silindi");
     else if (k === "owner") out.push(b.owner === "private" ? "özel" : "kulübün");
     else if (k === "ownerName" && a.owner !== b.owner) continue;
     else if (k === "parent") out.push(b.parent ? "tekneye bağlandı" : "tekneden ayrıldı");
