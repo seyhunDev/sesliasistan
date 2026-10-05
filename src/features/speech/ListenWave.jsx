@@ -3,20 +3,19 @@
 import { useEffect, useRef } from "react";
 import { readMeter } from "@/lib/speech/meter";
 
-// Dinlerken kürenin altındaki ses dalgası: ince çubuklar sağdan girer, sola akar, boyu sesin o anki gücü.
+// Dinlerken ses dalgası: ince çubuklar sağdan girer, sola akar, boyu sesin o anki gücü.
 // Çizim canvas'ta, ekran karesi başına (React yeniden çizimi yok); ses useSpeech'in analizcisinden (meter.js).
-const BAR = 3;
-const GAP = 3;
-const STEP = BAR + GAP;
+// round: kürenin içinde (canvas küreyi kaplar); çubuklar dairenin içinde kalır, kenara yaklaştıkça kısalır.
 const EVERY = 55; // ms: her çubuk bu kadar sürenin en yüksek sesi
 
-export function ListenWave({ className = "" }) {
+export function ListenWave({ className = "", round = false, bar = round ? 2.5 : 3, gap = round ? 2.5 : 3 }) {
   const cv = useRef(null);
 
   useEffect(() => {
     const c = cv.current;
     const ctx = c?.getContext?.("2d");
     if (!ctx) return;
+    const BAR = bar, STEP = bar + gap;
     let w = 0, h = 0, n = 0, raf = 0;
     let hist = [];
     let acc = 0, cur = 0, last = performance.now();
@@ -55,10 +54,18 @@ export function ListenWave({ className = "" }) {
       const shift = (acc / EVERY) * STEP;
       const mid = h / 2;
       for (let i = hist.length - 1, k = 0; i >= 0; i--, k++) {
-        const x = w - BAR - k * STEP - shift;
+        const x = (round ? w * 0.86 : w) - BAR - k * STEP - shift;
         if (x < -BAR) break;
         const a = Math.min(1, Math.pow(hist[i], 0.8));
-        const bh = Math.max(BAR, a * h);
+        let top = h;
+        if (round) {
+          // dairenin o noktadaki yüksekliği (kiriş), içeride pay bırakarak; kenardaki çubuk hiç çizilmez
+          const r = w / 2, dx = x + BAR / 2 - r, ch = r * r - dx * dx;
+          if (ch <= 0) continue;
+          top = Math.min(h * 0.56, Math.sqrt(ch) * 2 * 0.62);
+          if (top < BAR * 1.5) continue;
+        }
+        const bh = Math.max(BAR, a * top);
         ctx.globalAlpha = 0.55 + a * 0.45;
         ctx.beginPath();
         if (ctx.roundRect) ctx.roundRect(x, mid - bh / 2, BAR, bh, BAR / 2);
@@ -72,8 +79,9 @@ export function ListenWave({ className = "" }) {
       cancelAnimationFrame(raf);
       ro?.disconnect();
     };
-  }, []);
+  }, [round, bar, gap]);
 
+  if (round) return <canvas ref={cv} aria-hidden="true" className={`vl-live ${className}`} />;
   return (
     <canvas
       ref={cv}
