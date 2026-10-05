@@ -38,7 +38,7 @@ import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { KIND, PAGES, buildPatch, describeAction, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
+import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
 import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
@@ -227,6 +227,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     onFinal: (raw, mode) => {
       const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx));
+      else if (isEnd(tx)) finish(); // "kapat", "tamam kapat": bekleyen istekle birleşmez, sessizce kapanır
       else if (inflight.current) {
         // Kullanıcı yanıt gelmeden konuşmaya devam etti: bekleyen isteği bırak, öncekiyle birleştirip yeniden gönder
         const merged = `${inflight.current} ${tx}`.replace(/\s+/g, " ").trim();
@@ -707,18 +708,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setVoice(true);
       convo.current = true; // sesle konuşuldu: sohbet sesli sürer
     }
-    // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler")
+    // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler"): dinleme durur, sesli cevap yok
     if (isEnd(s)) {
-      tts.speak("Görüşürüz.");
-      finish(true);
+      finish();
       return;
     }
     // "Başka bir isteğin var mı?" sorusuna "yok", "hayır" cevabı sohbeti bitirir
     const more = askedMore.current;
     askedMore.current = false;
     if (more && isNoMore(s)) {
-      tts.speak("Tamam, görüşürüz.");
-      finish(true);
+      finish();
       return;
     }
     const history = fresh ? [] : turns.slice(-6).map((x) => ({ role: x.role, text: x.text }));
@@ -1804,6 +1803,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sahneye canlı durum: dinliyor mu, ne duyuldu, son cevap, düşünüyor mu
   const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+  // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
+  useEffect(() => {
+    if (open && listening && isCloseNow(heardNow)) finish();
+  }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   const lvl = listening ? Math.round(Math.min(1, sp.level * 2.2) * 10) / 10 : 0; // sahnedeki ses dalgası (kaba adımlarla: az yeniden çizim)
   useEffect(() => {
     onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow || (busy ? heard : ""), lastReply, speaking: tts.speaking, booting, level: lvl, talked: turns.length > 0 });

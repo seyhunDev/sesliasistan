@@ -2,7 +2,7 @@
 // Sayfa/sohbet açma, kayıt ekleme, özet, tamamlama, onaylar, ön cevap, yarış açma, alışveriş, geri al.
 // Yalnızca hesaplama yapar; veritabanına ve yapay zekaya dokunmaz.
 import { localCommand } from "@/lib/commands";
-import { isYes, isNo, localQuery, looksLikeCreate, isEnd, isNoMore } from "@/lib/assistantLocal";
+import { isYes, isNo, localQuery, looksLikeCreate, isEnd, isNoMore, isCloseNow } from "@/lib/assistantLocal";
 import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
@@ -127,6 +127,14 @@ group("Sesle kapatma")([
   ["eyvallah", END_T(true)], ["görüşürüz", END_T(true)], ["şimdilik bu kadar", END_T(true)], ["iyi akşamlar", END_T(true)], ["bitir", END_T(true)],
   ["görevi kapat", END_T(false)], ["bildirimleri kapat", END_T(false)], ["yarın 10'da antrenman ekle", END_T(false)],
   ["Ali'ye teşekkür mesajı gönder ve yarın gelmesini söyle", END_T(false)], ["sohbeti kapat", END_T(false)],
+  ["tamam kapat", END_T(true)], ["Kapat tamam.", END_T(true)],
+]);
+
+// Dinlerken "kapat" duyulunca hemen kapanır (konuşma bitişi beklenmez); yalnız söz bütünüyle kapatma isteğiyse
+const CN = (want) => ({ desc: want ? "dinleme hemen durur" : "beklenir", fn: (s) => isCloseNow(s), ok: (r) => r === want });
+group("Hemen kapat (dinlerken)")([
+  ["kapat", CN(true)], ["Tamam kapat.", CN(true)], ["asistanı kapat", CN(true)], ["kapatabilirsin", CN(true)], ["kapat lütfen", CN(true)],
+  ["tamam", CN(false)], ["kapat şu görevi", CN(false)], ["görevi kapat", CN(false)], ["teşekkürler", CN(false)], ["kapa", CN(false)],
 ]);
 
 // Yarış açma ve yarış sayfasında iş: söylenen ad doğru yarışa gider
