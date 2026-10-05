@@ -161,7 +161,7 @@ export default function MailPage() {
                         <small className="block truncate text-[0.75rem] text-mut">Gelen ödemeler · tarih tarih</small>
                       </span>
                       <span className="shrink-0 text-right">
-                        {covered ? (
+                        {covered && payeeMonth.length > 0 ? (
                           <>
                             <b className="block text-[0.9375rem] font-semibold tabular-nums text-ok">+{cash(payeeSum, "TL")}</b>
                             <small className="block text-[0.75rem] text-mut">bu ay · {payeeMonth.length} ödeme</small>

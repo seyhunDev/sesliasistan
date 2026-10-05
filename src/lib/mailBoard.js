@@ -83,6 +83,9 @@ export function movementsOf(mails = []) {
         if (amount === null) continue;
         const date = c.date >= 0 ? String(v[c.date] ?? "") : "";
         const desc = String((c.desc >= 0 && v[c.desc]) || (c.op >= 0 && v[c.op]) || (c.type >= 0 && v[c.type]) || "İşlem");
+        // Açıklama dışındaki yazılı hücreler (gönderen/alıcı adı başka sütunda olabilir; kişisel hesap aramasında kullanılır)
+        const skip = new Set([c.date, c.amount, c.bal, c.desc]);
+        const text = v.filter((x, i) => !skip.has(i) && typeof x === "string" && x.trim() && !/^[\d.,:\s/-]+$/.test(x)).join(" · ").slice(0, 300);
         const id = [keyOf(sum), date, amount, desc].join("|");
         if (seen.has(id)) continue;
         seen.add(id);
@@ -92,6 +95,7 @@ export function movementsOf(mails = []) {
           date,
           desc,
           kind: String((c.op >= 0 && v[c.op]) || (c.channel >= 0 && v[c.channel]) || ""),
+          text,
           amount,
           balance: c.bal >= 0 ? num(v[c.bal]) : null,
           currency: sum.currency || "",

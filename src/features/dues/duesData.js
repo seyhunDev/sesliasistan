@@ -83,5 +83,5 @@ export async function loadMovementsRange(uid, fromYm, toYm) {
     for (const m of mails) if (m.raw?.length && !m.sheets) m.sheets = sheetsFromRaw(m.raw, XLSX);
   }
   const fileList = (files?.docs || []).map((d) => d.data()).filter((f) => (f.from || "") <= `${toYm}-31`);
-  return { movements: mergeMoves(movementsOf(mails), fileList.flatMap((f) => f.moves || [])), sources: mails.length + fileList.length };
+  return { movements: mergeMoves(movementsOf(mails), fileList.flatMap((f) => f.moves || [])), sources: mails.length + fileList.length, mails: mails.length, files: fileList.length };
 }

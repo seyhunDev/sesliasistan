@@ -802,5 +802,8 @@ group("Gelen ödemeler (kişisel hesap)")([
   ["aidat ve fatura değil", F("kendi akışları", () => !PY.payeeAsk("bu ay kaç aidat ödemesi geldi", "2026-10-05") && !PY.payeeAsk("faturaları aç", "2026-10-05") && !PY.payeeAsk("ödeme yaptım", "2026-10-05"))],
   ["cevap", F("2 ödeme, toplam", () => /Bu ay Seyhun Yıldız adına 2 ödeme geldi, toplam 4\.500 lira\. Son ödeme 3 Ekim, 3\.000 lira\./.test(PY.payeeAnswer(PY.payeeMoves(PMOV, SY), SY, "2026-10", "2026-10")))],
   ["cevap: ödeme yok", F("görünmüyor", () => /görünmüyor/.test(PY.payeeAnswer([], SY, "2026-08", "2026-10")))],
+  ["ad başka sütunda", F("text alanında SEYHUN YILDIZ", () => PY.payeeMoves([{ ...inc("FAST GELEN", 800, "05.10.2026 10:00"), text: "Gönderen: SEYHUN YILDIZ" }], SY).length === 1)],
+  ["bitişik ad", F("SEYHUNYILDIZ", () => PY.hasName("EFT SEYHUNYILDIZ KIRA", "Seyhun Yıldız"))],
+  ["adı geçmeyenler", F("aidat havalesi ayrı listede", () => { const r = PY.otherIncoming(PMOV, SY); return r.length === 1 && r[0].amount === 1200; })],
   ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6; })],
 ]);
