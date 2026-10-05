@@ -730,3 +730,28 @@ export function RacesRow() {
     />
   );
 }
+
+// Hesaplar sayfasında "Banka defteri" kartı (yalnız ana hesap): kapalıyken gizli (users.ledgerCard; Seyhun, 2026-10-05)
+export function LedgerRow() {
+  const { profile } = useAuth();
+  const toast = useToast();
+  const [on, setOn] = useState(null);
+  if (profile?.role !== "owner") return null;
+  const cur = on ?? !!profile.ledgerCard;
+  const flip = (v) => {
+    setOn(v);
+    saveUser(profile.uid, { ledgerCard: v }).catch(() => {
+      setOn(!v);
+      toast("Kaydedilemedi, tekrar dene");
+    });
+  };
+  return (
+    <Row
+      icon="wallet"
+      tone="slate"
+      title="Banka defteri kartı"
+      sub={cur ? "Açık: Hesaplar sayfasında görünür" : "Kapalı: Hesaplar sayfasında gizli"}
+      right={<Switch on={cur} onChange={flip} label="Banka defteri kartı" />}
+    />
+  );
+}
