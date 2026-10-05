@@ -93,6 +93,7 @@ export function homeActions(o) {
       (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Antrenman" },
       o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
+      { href: "/wind", icon: "wind", label: "Rüzgâr" },
     ]],
     ["Yönetim", [
       o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
