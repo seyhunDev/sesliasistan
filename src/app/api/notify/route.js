@@ -3,6 +3,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
+import { payLine } from "@/lib/invoices";
 import { addedText, assignedText, cancelledText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
@@ -117,7 +118,7 @@ export async function POST(request) {
     if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
     if (body.event === "changed" && !(r.updatedAt && Date.now() - Date.parse(r.updatedAt) < 2 * 60e3)) return NextResponse.json({ ok: true, skipped: "değişiklik yok" });
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
-    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
+    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, pay: payLine(r.invoice), from: me.name || "Ana hesap" };
     const msg = body.event === "deleted" ? deletedText(info) : kind === "plan" && r.status === "cancelled" ? cancelledText({ ...info, reason: CANCEL_WHY[r.cancelReason] || "" }) : changedText(info);
     const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" }));
     return NextResponse.json({ ok: true, sent });
@@ -169,7 +170,7 @@ export async function POST(request) {
     const byMember = au.uid !== me.orgId && r.createdByUid === au.uid && !r.notified?.[me.orgId] && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
     if (byMember && !to.includes(me.orgId)) to.push(me.orgId);
     if (!to.length) return NextResponse.json({ ok: true, sent: 0 });
-    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, from: me.name || "Ana hesap" };
+    const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, pay: payLine(r.invoice), from: me.name || "Ana hesap" };
     const msg = assignedText(info);
     const now = new Date().toISOString();
     const patch = {};

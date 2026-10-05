@@ -19,6 +19,7 @@ import { mailToMe } from "@/features/mail/outbox";
 import { fdate, monthLabel, todayStr } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 import { useDock } from "@/features/home/TabBar";
+import { ReceiptTabs } from "@/features/invoices/ReceiptTabs";
 
 const inp = "h-11 w-full min-w-0 rounded-xl border border-line bg-card px-3 text-base text-fg outline-none transition focus:border-acc";
 const shiftMonth = (m, n) => {
@@ -197,6 +198,7 @@ export default function ReceiptsPage() {
           <Icon name="print" className="size-[1.125rem]" />
         </button>
       </PageHeader>
+      {profile && profile.role !== "staff" && <ReceiptTabs value="receipts" />}
 
       {/* Ay seçici */}
       <div className="mt-2 flex items-center justify-between rounded-2xl border border-line bg-card p-1">

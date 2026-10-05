@@ -14,6 +14,7 @@ export const AI_LABELS = {
   "race-around": "Yarış çevresi",
   "event-plan": "Etkinlik planı",
   inventory: "Envanter",
+  invoice: "Fatura okuma",
   "training-log": "Antrenman günlüğü",
   "post-caption": "Instagram yazısı",
   person: "Kişi ekleme",

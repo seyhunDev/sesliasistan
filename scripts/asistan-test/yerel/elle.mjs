@@ -714,3 +714,51 @@ group("Envanter")([
     return x.extra.length === 2 && x.extra[0].k === "Boy" && x.extra[0].v === "5,5 m" && x.extra[1].k === "Renk";
   })],
 ]);
+
+// Faturalar (invoices.js): bankada ödendi mi, görev, asistan cümleleri
+const IV = await import("@/lib/invoices");
+const NTX = await import("@/lib/notifyText");
+const INV = [
+  { id: "i1", seller: "Turkcell İletişim Hizmetleri A.Ş.", no: "TCL2026000123456", date: "2026-10-01", due: "2026-10-15", amount: 1250.5, status: "open", taskId: "t1" },
+  { id: "i2", seller: "Gediz Elektrik Perakende Satış A.Ş.", no: "", date: "2026-10-02", due: "2026-10-20", amount: 900, status: "open" },
+  { id: "i3", seller: "Deniz Malzeme Ltd. Şti.", date: "2026-09-10", amount: 3400, status: "paid" },
+];
+const out = (desc, amount, date = "06.10.2026 10:15") => ({ date, desc, amount: -amount, currency: "TL", ts: Date.parse("2026-10-06T07:15:00Z") });
+group("Faturalar")([
+  ["firma adıyla eşleşme", F("TURKCELL ILETISIM, 1.250,50 → emin", () => IV.matchInvoice(out("EFT GIDEN TURKCELL ILETISIM", 1250.5), INV[0]).sure === true)],
+  ["fatura numarasıyla", F("açıklamada TCL2026000123456", () => /fatura numarası/.test(IV.matchInvoice(out("FAST ODEME TCL2026000123456", 1250.5), INV[0]).why))],
+  ["yalnız tutar", F("öneri, emin değil", () => { const r = IV.matchInvoice(out("HAVALE XYZ", 900), INV[1]); return r.ok && !r.sure; })],
+  ["tutar farklı", F("eşleşmez", () => !IV.matchInvoice(out("TURKCELL", 1250), INV[0]).ok)],
+  ["gelen para", F("eşleşmez", () => !IV.matchInvoice({ ...out("TURKCELL", 1250.5), amount: 1250.5 }, INV[0]).ok)],
+  ["faturadan çok önce", F("eşleşmez", () => !IV.matchInvoice({ ...out("TURKCELL", 1250.5), ts: Date.parse("2026-08-01T10:00:00Z") }, INV[0]).ok)],
+  ["genel kelimeler sayılmaz", F("A.Ş., Perakende, Satış sayılmaz", () => IV.sellerWords(INV[1].seller).join(",") === "GEDIZ,ELEKTRIK" && !IV.matchInvoice(out("PERAKENDE ODEME AS", 900), { ...INV[1], seller: "Perakende A.Ş." }).sure)],
+  ["her hareket bir faturaya", F("iki eşleşme, ödenmişe bakılmaz", () => {
+    const r = IV.bankMatches([out("TURKCELL ILETISIM", 1250.5), out("HAVALE", 900), out("DENIZ MALZEME", 3400)], INV);
+    return r.length === 2 && r[0].inv.id === "i1" && r[0].sure && r[1].inv.id === "i2" && !r[1].sure;
+  })],
+  ["durum", F("ödendi / gecikti / ödenmedi", () => IV.stateOf(INV[2], "2026-10-05") === "paid" && IV.stateOf(INV[0], "2026-10-16") === "late" && IV.stateOf(INV[0], "2026-10-05") === "open")],
+  ["özet", F("2 açık, 2.150,50 TL", () => { const s = IV.summaryOf(INV, "2026-10-05"); return s.open === 2 && s.sum === 2150.5 && s.late === 0; })],
+  ["görev", F("başlık ve ödeme bilgisi", () => IV.taskTitle(INV[0]) === "Fatura öde: Turkcell İletişim Hizmetleri A.Ş." && IV.taskInvoice(INV[0]).amount === 1250.5 && /Son ödeme: 15 Eki/.test(IV.payText(INV[0])))],
+  ["görevliye bildirim", F("gövdede tutar", () => NTX.assignedText({ kind: "task", title: "Fatura öde: Turkcell", due: "2026-10-15", pay: IV.payLine(IV.taskInvoice(INV[0])), from: "Seyhun" }, "2026-10-05").body === "1.250,50 TL · Son gün 15 eki · Seyhun verdi")],
+  ["görev tamamlandı", F("görevli tamamlayınca da", () => IV.taskDone({ done: false, doneBy: { u2: true } }) && !IV.taskDone({ done: false }) && !IV.taskDone(null))],
+  ["IBAN", F("boşluklu yazılır, hatalısı boş", () => IV.cleanIban("tr12 0006 4000 0011 2345 6789 01") === "TR12 0006 4000 0011 2345 6789 01" && IV.cleanIban("TR12") === "")],
+  ["asistan: ödendi", F("Turkcell faturası ödendi → Turkcell", () => { const c = IV.invoiceCommand("Turkcell faturası ödendi"); return c?.op === "paid" && IV.pickInvoice(c.t, INV).pick?.id === "i1"; })],
+  ["asistan: hangisi", F("faturayı ödendi işaretle → iki açık fatura, sorar", () => { const c = IV.invoiceCommand("faturayı ödendi işaretle"); const r = IV.pickInvoice(c.t, INV); return c.op === "paid" && !r.pick && r.list.length === 2; })],
+  ["asistan: elektrik", F("elektrik faturasını ödedim → Gediz", () => IV.pickInvoice(IV.invoiceCommand("elektrik faturasını ödedim").t, INV).pick?.id === "i2")],
+  ["asistan: ödenmedi", F("ödenmişlerden seçer", () => { const c = IV.invoiceCommand("Deniz malzeme faturası ödenmedi olarak işaretle"); return c?.op === "unpaid" && IV.pickInvoice(c.t, INV, "unpaid").pick?.id === "i3"; })],
+  ["asistan: soru değil", F("fatura ödendi mi? → yerel değil", () => IV.invoiceCommand("Turkcell faturası ödendi mi") === null && IV.invoiceCommand("fatura çek") === null)],
+  ["banka mailinden kendiliğinden", F("emin olan ödendi, görev tamam, liste kısalır", async () => {
+    const store = { "orgs/u1/invoiceIndex/open": { list: IV.openIndex(INV) }, "orgs/u1/tasks/t1": { title: "x", done: false } };
+    const io = { get: async (p) => store[p] || null, set: async (p, f) => void (store[p] = { ...(store[p] || {}), ...f }) };
+    const r = await IV.runAutoInvoices(io, "u1", [out("EFT TURKCELL ILETISIM HIZ", 1250.5), out("HAVALE", 900)]);
+    const t = IV.invoiceText(r);
+    return r.paid.length === 1 && r.guess === 1 && store["orgs/u1/invoices/i1"].status === "paid" && store["orgs/u1/invoices/i1"].paidAt === "2026-10-06" && store["orgs/u1/tasks/t1"].done === true
+      && store["orgs/u1/invoiceIndex/open"].list.length === 1 && t.title === "Fatura ödendi: Turkcell İletişim Hizmetleri A.Ş.".slice(0, 43) + "…" && t.body === "1.250,50 TL · bankadan görüldü";
+  })],
+  ["silinmiş görev", F("yeniden oluşmaz", async () => {
+    const store = { "orgs/u1/invoiceIndex/open": { list: IV.openIndex(INV) } };
+    const io = { get: async (p) => store[p] || null, set: async (p, f) => void (store[p] = { ...(store[p] || {}), ...f }) };
+    await IV.runAutoInvoices(io, "u1", [out("TURKCELL", 1250.5)]);
+    return !store["orgs/u1/tasks/t1"] && store["orgs/u1/invoices/i1"].status === "paid";
+  })],
+]);
