@@ -12,6 +12,7 @@ import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
 import { UsageRow } from "@/features/settings/Usage";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
+import { TimingRow } from "@/features/settings/Timing";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
 import { initials } from "@/lib/utils/format";
@@ -61,6 +62,7 @@ export default function SettingsPage() {
         {owner && <UsageRow />}
         {owner && <BackupRow />}
         <DeviceDataRow />
+        <TimingRow />
         {owner && <DemoDataRow />}
         {owner && <Row icon="mail" tone="sky" title="Gmail bağlantısı" sub="Gönderenler ve kurulum" href="/mail/setup" />}
         <Row icon="spark" tone="acc" title="Tanıtımı yeniden göster" sub="Başlangıç slaytları" onClick={openOnboarding} chevron />

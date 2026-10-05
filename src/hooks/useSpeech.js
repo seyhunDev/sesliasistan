@@ -6,6 +6,7 @@ import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { toWav16k } from "@/lib/speech/wav";
 import { makeVad, speechEnded } from "@/lib/speech/vad";
+import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 
 const ERR = {
@@ -157,8 +158,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     s.rec = null;
     try { rec?.abort(); } catch {}
     finish();
-    if (text) cb.current.onFinal?.(text, mode);
-    else fail(ERR[err] || NO_SPEECH);
+    if (text) {
+      speechMark("text");
+      cb.current.onFinal?.(text, mode);
+    } else fail(ERR[err] || NO_SPEECH);
   };
 
   // ---- Yol 1: tarayıcı ses tanıması, canlı yazı ----
@@ -315,13 +318,16 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         fd.append("audio", upload, name);
         if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
         if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
+        speechMark("upload");
         const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
         const data = await res.json().catch(() => ({}));
         if (!alive()) return;
         if (!res.ok) throw new Error(data.error || "Ses çevrilemedi");
         finish();
-        if (data.text) cb.current.onFinal?.(data.text, mode);
-        else fail("Ses anlaşılamadı, tekrar dene.");
+        if (data.text) {
+          speechMark("text");
+          cb.current.onFinal?.(data.text, mode);
+        } else fail("Ses anlaşılamadı, tekrar dene.");
       } catch (e) {
         if (!alive()) return;
         finish();
@@ -374,6 +380,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     setRemaining(null);
     setProvider(kind);
     setSt("listening");
+    speechMark("listen"); // süre kaydı (assistTiming)
     ticker();
     if (kind === "webspeech") startWebSpeech(sid);
     else startServer(sid);
@@ -391,6 +398,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       return;
     }
     s.mode = m;
+    speechMark("voiceEnd", s.lastSpeech || 0);
+    speechMark("stop");
     setSt("transcribing");
     if (s.kind === "webspeech") {
       const sid = s.sid;

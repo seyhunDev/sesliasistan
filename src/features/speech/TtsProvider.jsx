@@ -3,6 +3,7 @@ import { authFetch } from "@/lib/authFetch";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { bestVoice, rankVoices, speechChunks, speechText } from "@/lib/speech/speakText";
+import { timingSpeak } from "@/lib/assistTiming";
 
 // Yanıtları sesli okur. Önce sunucudan doğal ses (Gemini) ister, olmazsa cihazın kendi sesine düşer.
 // speak(text, onDone): okuma bitince onDone çağrılır (durdurulursa veya yeni bir okuma başlarsa çağrılmaz).
@@ -162,7 +163,11 @@ export function TtsProvider({ children }) {
       setSpeaking(false);
       onDone?.();
     };
-    list[0].onstart = () => cur.current === list && setSpeaking(true);
+    list[0].onstart = () => {
+      if (cur.current !== list) return;
+      setSpeaking(true);
+      timingSpeak(); // süre kaydı: okuma başladı
+    };
     list.forEach((u, i) => {
       u.onerror = end;
       if (i === list.length - 1) u.onend = end;
