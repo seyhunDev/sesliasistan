@@ -10,7 +10,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
-import { BAD, KINDS, cleanItem, dropItem, excelRows, groupItems, invStats, kindOf, nextNo, searchItems, stateLabel, upsertItem } from "./invModel";
+import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, excelRows, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, stateLabel, upsertItem } from "./invModel";
 import { changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
 import { ItemForm, input } from "./ItemForm";
 
@@ -25,6 +25,7 @@ export function InventoryView({ orgId, id, by }) {
   const [tab, setTab] = useState("items");
   const [cat, setCat] = useState("");
   const [q, setQ] = useState("");
+  const [own, setOwn] = useState(""); // "" hepsi | club | private
   const [item, setItem] = useState(null); // düzenlenen ürün
   const [settings, setSettings] = useState(null);
 
@@ -56,7 +57,7 @@ export function InventoryView({ orgId, id, by }) {
     }
   };
 
-  const shown = useMemo(() => (inv ? searchItems(cat ? inv.items.filter((x) => x.cat === cat) : inv.items, q) : []), [inv, cat, q]);
+  const shown = useMemo(() => (inv ? searchItems(inv.items.filter((x) => (!cat || x.cat === cat) && (!own || x.owner === own)), q) : []), [inv, cat, own, q]);
   if (missing) return <Wrap title="Envanter">{<p className="mt-6 text-center text-[0.875rem] text-mut">Envanter bulunamadı.</p>}</Wrap>;
   if (!inv)
     return (
@@ -70,10 +71,18 @@ export function InventoryView({ orgId, id, by }) {
   for (const x of inv.items) counts.set(x.cat, (counts.get(x.cat) || 0) + 1);
   const chips = [["", "Tümü", inv.items.length], ...groupItems(inv.items, inv.cats).map(([c, l]) => [c, c, l.length])];
   const groups = groupItems(shown, inv.cats);
+  const byId = new Map(inv.items.map((x) => [x.id, x]));
+  const hasPrivate = inv.items.some((x) => x.owner === "private");
 
   const saveItem = async (x) => {
     const done = await change((cur) => upsertItem(cur, { ...x, qty: Number(x.qty) || 0 }, { by }), x.id ? "Kaydedildi" : "Eklendi");
     if (done) setItem(null);
+  };
+  // Teknenin eksik takımı (salma, dümen, direk, bom, yelken) oluşturulur ve bağlanır; form güncel tekneyle açık kalır
+  const makeKit = async (boatId) => {
+    let next = null;
+    const ok = await change((cur) => (next = addKit(cur, boatId, { by })), "Takım eklendi");
+    if (ok && next) setItem(next.items.find((x) => x.id === boatId) || null);
   };
   const delItem = async (x) => {
     if (!window.confirm(`“${x.name}” envanterden silinsin mi?`)) return;
@@ -126,10 +135,11 @@ export function InventoryView({ orgId, id, by }) {
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara: ad, no, yer, kimde…" className={`${input} bg-card pl-9`} />
             </div>
             <Chips value={cat} onChange={setCat} options={chips} className="mt-3" />
+            {hasPrivate && <Seg value={own} onChange={setOwn} options={[["", "Hepsi"], ...OWNERS]} className="mt-3" />}
             {groups.length === 0 && <p className="mt-6 text-center text-[0.875rem] text-mut">Bulunamadı.</p>}
             {groups.map(([c, list]) => (
               <section key={c}>
-                <Label right={`${list.length} ürün · ${list.reduce((n, x) => n + x.qty, 0)} adet`}>{c.toLocaleUpperCase("tr-TR")}</Label>
+                <Label right={countText(list, isPart({ cat: c }))}>{c.toLocaleUpperCase("tr-TR")}</Label>
                 <ul className={`${card} divide-y divide-line/70 overflow-hidden`}>
                   {list.map((x) => (
                     <li key={x.id}>
@@ -138,8 +148,16 @@ export function InventoryView({ orgId, id, by }) {
                         <span className="min-w-0 flex-1">
                           <b className={`block truncate text-[0.9375rem] font-medium ${x.qty === 0 ? "text-mut line-through" : ""}`}>{x.name}</b>
                           <span className="block truncate text-[0.75rem] text-mut">
-                            {[x.brand, x.serial, x.place, x.assignee && `Kimde: ${x.assignee}`].filter(Boolean).join(" · ") || `Eklendi ${x.addedAt.split("-").reverse().join(".")}`}
+                            {[x.parent && byId.get(x.parent) && `→ ${itemLabel(byId.get(x.parent))}`, x.sailNo, x.brand, x.year && ageText(x.year), x.place, x.assignee && `Kimde: ${x.assignee}`].filter(Boolean).join(" · ") ||
+                              `Eklendi ${x.addedAt.split("-").reverse().join(".")}`}
                           </span>
+                          {(x.owner === "private" || x.damage || (isBoat(x) && kitText(inv, x))) && (
+                            <span className="mt-0.5 flex flex-wrap gap-x-2 text-[0.6875rem] font-semibold">
+                              {x.owner === "private" && <span className="text-acc">Özel{x.ownerName ? ` · ${x.ownerName}` : ""}</span>}
+                              {isBoat(x) && kitText(inv, x) && <span className={kitText(inv, x) === "Tam takım" ? "text-ok" : "text-mut"}>{kitText(inv, x)}</span>}
+                              {x.damage && <span className="text-rec">Hasar: {x.damage}</span>}
+                            </span>
+                          )}
                         </span>
                         {x.state !== "good" && <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${BAD.includes(x.state) ? "bg-rec/10 text-rec" : "bg-acc/10 text-acc"}`}>{stateLabel(x.state)}</span>}
                         <span className="shrink-0 text-right tabular-nums">
@@ -181,7 +199,7 @@ export function InventoryView({ orgId, id, by }) {
       )}
 
       <Sheet open={!!item} onClose={() => setItem(null)} title={item?.id ? "Ürün" : "Yeni ürün"}>
-        {item && <ItemForm key={item.id || "new"} start={item} cats={inv.cats} onSave={saveItem} onDelete={item.id ? () => delItem(item) : null} />}
+        {item && <ItemForm key={`${item.id || "new"}:${item.updatedAt}`} start={item} cats={inv.cats} inv={inv} onSave={saveItem} onDelete={item.id ? () => delItem(item) : null} onOpen={setItem} onKit={makeKit} />}
       </Sheet>
 
       <Sheet open={!!settings} onClose={() => setSettings(null)} title="Envanter ayarları">

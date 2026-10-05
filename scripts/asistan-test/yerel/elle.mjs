@@ -628,6 +628,41 @@ group("Envanter")([
       IM.pickInv("kulüp envanterine 2 telsiz", L).id === "k" && IM.pickInv("2 telsiz ekle", L, { here: "e" }).id === "e" && IM.pickInv("envantere 2 telsiz ekle", L).id === "k";
   })],
   ["arama", F("Türkçe harfsiz", () => IM.searchItems(club().items, "samandira").length === 1 && IM.searchItems(club().items, "007").length === 1)],
+  ["tekne ve takımı", F("key ile bağlanır, sahibi tekneden gelir, tek cümle", () => {
+    const r = IM.applyOps(club(), [
+      { op: "add", key: "t1", name: "Optimist teknesi", cat: "Tekne", owner: "private", ownerName: "Ahmet", sailNo: "TUR 1204", year: 2021 },
+      { op: "add", name: "Optimist salma", cat: "Salma", parent: "t1" },
+      { op: "add", name: "Optimist dümen", cat: "Dümen", parent: "t1" },
+    ], NOW);
+    const boat = r.inv.items.find((x) => x.sailNo === "TUR 1204");
+    const parts = r.inv.items.filter((x) => x.parent === boat.id);
+    return parts.length === 2 && parts.every((x) => x.owner === "private" && x.ownerName === "Ahmet") && boat.year === 2021 &&
+      r.lines.length === 1 && /takımıyla: salma, dümen/.test(r.lines[0]) && /özel \(Ahmet\)/.test(r.lines[0]) && IM.kitText(r.inv, boat) === "Eksik: direk, bom, yelken";
+  })],
+  ["eksik takımı ekle", F("tam takım olur", () => {
+    const r = IM.applyOps(club(), [{ op: "add", key: "a", name: "Optimist teknesi", cat: "Tekne" }], NOW);
+    const id = r.inv.items.at(-1).id;
+    const v = IM.addKit(r.inv, id, NOW);
+    return IM.kitText(v, v.items.find((x) => x.id === id)) === "Tam takım" && v.items.some((x) => x.name === "Optimist salma" && x.cat === "Salma");
+  })],
+  ["salma sayımı", F("toplam, kulübün, özel, teknede", () => {
+    const L = [{ qty: 1, owner: "club", parent: "b" }, { qty: 1, owner: "private", parent: "c" }, { qty: 2, owner: "club", parent: "" }];
+    const c = IM.countOf(L);
+    return c.total === 4 && c.club === 3 && c.own === 1 && c.onBoat === 2 && c.free === 2 && IM.countText(L, true) === "4 adet · kulübün 3 · özel 1 · 2 teknede";
+  })],
+  ["tekneden ayırma ve silinen tekne", F("parent boşalır", () => {
+    const r = IM.applyOps(club(), [{ op: "add", key: "t", name: "ILCA", cat: "Tekne" }, { op: "add", name: "ILCA dümen", cat: "Dümen", parent: "t" }], NOW);
+    const part = r.inv.items.at(-1);
+    const off = IM.applyOps(r.inv, [{ op: "update", id: part.id, parent: "none" }], NOW).inv.items.at(-1).parent === "";
+    const gone = IM.cleanInv(IM.dropItem(r.inv, part.parent, NOW)).items.at(-1).parent === "";
+    return off && gone;
+  })],
+  ["eski kulüp envanteri", F("Salma ve Dümen Tekne'nin ardına eklenir, bir kez", () => {
+    const v = IM.cleanInv({ kind: "club", cats: ["Tekne", "Direk", "Diğer"] });
+    const again = IM.cleanInv({ ...v, cats: v.cats.filter((c) => c !== "Dümen") });
+    return v.cats.join(",") === "Tekne,Salma,Dümen,Direk,Diğer" && !again.cats.includes("Dümen");
+  })],
+  ["yaş", F("2021 alımı 2026'da 5 yıllık", () => IM.ageText(2021, "2026-10-05") === "5 yıllık")],
   ["excel", F("ürünler ve hareketler sayfası", () => {
     const x = IM.excelRows(IM.applyOps(club(), [{ op: "add", id: "s1", qty: 1 }], NOW).inv);
     return x.Ürünler.length === 4 && x.Hareketler.length === 2 && x.Ürünler[0][0] === "No";
