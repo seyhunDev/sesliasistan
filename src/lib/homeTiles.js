@@ -21,29 +21,32 @@ const monthName = (ym) => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-T
 const cap = (s) => s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1);
 const dayGap = (ms, now) => Math.floor((new Date(now).setHours(0, 0, 0, 0) - new Date(ms).setHours(0, 0, 0, 0)) / 864e5);
 
-// Aidat özeti: { ym, paidCount, count, pending } (aidat sayfası yazar). Her kart: { big, sub, warn }
+// Her kart: { big, sub, warn }. Büyük satır tek bakışta anlaşılır bir sonuç ("12/30 ödedi", "5 gün kaldı"), alt satır neyle ilgili olduğu.
+// Aidat özeti: { ym, paidCount, count, pending } (aidat sayfası yazar)
 export function duesTile(sum, ym) {
-  if (!sum || sum.ym !== ym) return { big: cap(monthName(ym)), sub: "Kim ödedi, dokun bak" };
+  const m = cap(monthName(ym));
+  if (!sum || sum.ym !== ym) return { big: `${m} aidatı`, sub: "Görmek için dokun" };
   const left = Math.max(0, sum.count - sum.paidCount);
   return {
-    big: `${sum.paidCount}/${sum.count}`,
-    sub: sum.pending > 0 ? `${sum.pending} banka ödemesi bekliyor` : left > 0 ? `${cap(monthName(ym))} · ${left} kişi ödemedi` : `${cap(monthName(ym))} · hepsi ödedi`,
+    big: `${sum.paidCount}/${sum.count} ödedi`,
+    sub: sum.pending > 0 ? `${sum.pending} banka ödemesi bekliyor` : left > 0 ? `${m} · ${left} kişi ödemedi` : `${m} · herkes ödedi`,
     warn: sum.pending > 0,
   };
 }
 
-// Yarış: nextInfo (raceHome.js) { name, when, left } ve yaklaşan sayısı
+// Yarış: nextInfo (raceHome.js) { name (ilçe ya da adın ilk kelimesi), when ("5 gün", "yarın", "bugün", "sürüyor"), left } ve yaklaşan sayısı
 export function raceTile(next, up) {
-  if (!next) return { big: up > 0 ? `${up} yarış` : "Yarış yok", sub: up > 0 ? "Yaklaşan" : "Yeni yarış ekle" };
-  return { big: next.name, sub: [next.when, next.left > 0 ? `${next.left} iş` : "hazır"].join(" · "), warn: next.left > 0 };
+  if (!next) return { big: up > 0 ? `${up} yarış` : "Yarış yok", sub: up > 0 ? "Yaklaşan yarışlar" : "Yeni yarış ekle" };
+  const big = /^\d/.test(next.when) ? `${next.when} kaldı` : cap(next.when);
+  return { big, sub: `${next.name} yarışı · ${next.left > 0 ? `${next.left} iş eksik` : "hazır"}`, warn: next.left > 0 };
 }
 
 // Gönderi özeti: { count, last: { title, at } } (Instagram sayfası yazar)
 export function postsTile(sum, now = Date.now()) {
-  if (!sum?.count) return { big: "Gönderi", sub: "Yeni gönderi hazırla" };
+  if (!sum?.count) return { big: "Gönderi yok", sub: "Yeni gönderi hazırla" };
   const g = sum.last?.at ? dayGap(sum.last.at, now) : null;
   const when = g == null ? "" : g <= 0 ? "bugün" : g === 1 ? "dün" : `${g} gün önce`;
-  return { big: `${sum.count} gönderi`, sub: [when && `Son: ${when}`, sum.last?.title].filter(Boolean).join(" · ") };
+  return { big: `${sum.count} gönderi`, sub: when ? `Sonuncusu ${when}` : sum.last?.title || "Kayıtlı gönderiler" };
 }
 
 // Antrenman: bu ayın antrenman ve günlük sayısı; günü geçmiş, günlüğü yazılmamış antrenman uyarı olur
@@ -52,33 +55,40 @@ export function trainingTile(plans, today) {
   const missing = plans.filter((p) => canLog(p, today) && !p.log && p.date >= `${today.slice(0, 7)}-01`).length;
   return {
     big: `${m.total} antrenman`,
-    sub: missing > 0 ? `${missing} günlük yazılmadı` : m.logged.length ? `${m.logged.length} günlük · ${cap(monthName(today.slice(0, 7)))}` : cap(monthName(today.slice(0, 7))),
+    sub: missing > 0 ? `${missing} günlük yazılmadı` : m.logged.length ? `Bu ay · ${m.logged.length} günlük yazıldı` : "Bu ay",
     warn: missing > 0,
   };
 }
 
-// Ana sayfa › İşlemler düğmeleri (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
+// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
 // races (Yarışlar ana sayfada), training, receipts, shop, lessons }. Toplantı bir sayfa değil: { id: "meeting" } döner.
+// Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
 export function homeActions(o) {
-  return [
-    { href: "/plans", icon: "cal", label: "Planlar" },
-    { href: "/notes", icon: "note", label: "Notlar" },
-    !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
-    !o.side && { id: "meeting", icon: "mic", label: "Toplantı" },
-    o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
-    o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
-    o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
-    o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
-    o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
-    (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Antrenman" },
-    o.receipts && { href: "/receipts", icon: "receipt", label: "Fişler" },
-    !o.staff && { href: "/posts", icon: "camera", label: "Instagram" },
-    !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" },
-    !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
-    { href: "/birthdays", icon: "cake", label: "Doğum günleri" },
-    o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
-    o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
-    !o.staff && { href: "/mail", icon: "mail", label: "Mailler" },
-    { href: "/archive", icon: "archive", label: "Arşiv" },
-  ].filter(Boolean);
+  const groups = [
+    ["Günlük", [
+      { href: "/plans", icon: "cal", label: "Planlar" },
+      { href: "/notes", icon: "note", label: "Notlar" },
+      !o.side && { id: "meeting", icon: "mic", label: "Toplantı" },
+      o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
+      { href: "/birthdays", icon: "cake", label: "Doğum günü" },
+      o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
+      o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
+      { href: "/archive", icon: "archive", label: "Arşiv" },
+    ]],
+    ["Kulüp", [
+      o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
+      o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
+      o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
+      (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Antrenman" },
+      o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
+      !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
+    ]],
+    ["Yönetim", [
+      o.receipts && { href: "/receipts", icon: "receipt", label: "Fişler" },
+      !o.staff && { href: "/mail", icon: "mail", label: "Mailler" },
+      !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
+    ]],
+    ["Sosyal", [!o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" }, !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" }]],
+  ];
+  return groups.map(([title, items]) => ({ title, items: items.filter(Boolean) })).filter((g) => g.items.length);
 }

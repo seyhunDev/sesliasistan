@@ -56,7 +56,7 @@ export function useMoney() {
   const sign = `${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%`;
 
   return {
-    bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `${sign} · son ${spark.length} özet` : tot.n > 1 ? `${tot.n} hesap` : "Son özet", warn: spark.length > 1 && pct < 0 } : null,
-    receipts: { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)}${isStaff ? " · eklediğin" : ""}` },
+    bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `Bakiye · ${sign} son ${spark.length} özette` : tot.n > 1 ? `${tot.n} hesabın bakiyesi` : "Hesap bakiyesi", warn: spark.length > 1 && pct < 0 } : null,
+    receipts: { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} harcaması${isStaff ? " (senin)" : ""}` },
   };
 }

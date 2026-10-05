@@ -91,7 +91,7 @@ export function HomeFeed({ weather }) {
     receipts: canReceipts(kind),
     shop: listsFor(kind, members).length > 0,
     lessons: lessons.length > 0,
-  }).map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a));
+  }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
   return (
     <div className="space-y-6">
@@ -104,7 +104,7 @@ export function HomeFeed({ weather }) {
       <TodayCard weather={weather} />
       {side && <MyAttendanceCard kind={kind} />}
       <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} />
-      <HomeActions items={actions} />
+      <HomeActions groups={actions} />
     </div>
   );
 }

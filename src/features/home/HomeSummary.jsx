@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { duesTile, postsTile, raceTile, readSum, trainingTile } from "@/lib/homeTiles";
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
+import { BRAND } from "./HomeActions";
 
 // Ana sayfa › ÖZET: kısa bilgi kartları, hepsi aynı boyda ve biçimde (simge + ad, büyük sayı, tek satır açıklama).
 // Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
@@ -21,7 +22,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans }) {
     dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, today.slice(0, 7))],
     race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up)],
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
-    posts && ["/posts", "camera", "Instagram", postsTile(sum.posts)],
+    posts && ["/posts", "instagram", "Instagram", postsTile(sum.posts), "instagram"],
   ].filter(Boolean);
   if (!cards.length) return null;
 
@@ -31,7 +32,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans }) {
         ÖZET
       </h2>
       <ul className="grid grid-cols-2 gap-2.5">
-        {cards.map(([href, icon, label, t]) => (
+        {cards.map(([href, icon, label, t, brand]) => (
           <li key={href}>
             <Link
               href={href}
@@ -39,7 +40,13 @@ export function HomeSummary({ money, race, dues, posts, training, plans }) {
               className="flex h-full min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-[.98]"
             >
               <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
-                <Icon name={icon} className="size-4 shrink-0 text-acc" />
+                {brand ? (
+                  <span className={`grid size-5 shrink-0 place-items-center rounded-md ${BRAND[brand]}`}>
+                    <Icon name={icon} className="size-3.5" />
+                  </span>
+                ) : (
+                  <Icon name={icon} className="size-4 shrink-0 text-acc" />
+                )}
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 <Icon name="chev" className="size-3.5 shrink-0" />
               </span>
