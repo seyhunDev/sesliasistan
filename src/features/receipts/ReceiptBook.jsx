@@ -38,7 +38,7 @@ const download = (file) => {
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 // Seçim: "" hepsi, receipt yalnız fişler, invoice yalnız faturalar (ana hesap)
-const KINDS = [["", "Tümü"], ["receipt", "Fiş"], ["invoice", "Fatura"]];
+const KINDS = [["", "Tümü"], ["receipt", "Fişler"], ["invoice", "Faturalar"]];
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 
 // Fişler ve faturalar tek sayfada; kind ilk seçim (/invoices "invoice" ile açar)
@@ -77,7 +77,7 @@ export function ReceiptBook({ kind: start = "" }) {
     const match = (r) => {
         const t = totalOf(r);
         if (month && !(r.date || "").startsWith(month)) return false;
-        if (cats.length && !cats.includes(r.cat)) return false;
+        if (shownKind === "receipt" && cats.length && !cats.includes(r.cat)) return false;
         if (pay && r.pay !== pay) return false;
         if (by && r.createdBy?.name !== by) return false;
         if (review && r.status !== "review") return false;
@@ -91,9 +91,9 @@ export function ReceiptBook({ kind: start = "" }) {
     return shownKind === "invoice" ? [] : receipts.filter(match).sort(byDate);
   }, [receipts, month, q, cats, pay, by, min, max, review, state, shownKind]);
 
-  // Karışık listedeki faturalar: fişe özgü süzgeçler (kategori, ödeme şekli, ekleyen, kontrol) seçiliyse girmez
-  const invList = useMemo(() => {
-    if (shownKind !== "" || cats.length || pay || by || review) return [];
+  // Tümü'deki faturalar: fişe özgü süzgeçler (ödeme şekli, ekleyen, kontrol) seçiliyse girmez
+  const invMatch = useMemo(() => {
+    if (shownKind !== "" || pay || by || review) return [];
     const lo = parseTL(min);
     const hi = parseTL(max);
     const s = low(q.trim());
@@ -107,7 +107,20 @@ export function ReceiptBook({ kind: start = "" }) {
       if (s && !low(`${x.seller} ${x.no} ${x.taxId} ${x.desc} ${x.note}`).includes(s)) return false;
       return true;
     });
-  }, [desk.list, shownKind, month, q, cats, pay, by, min, max, review, state]);
+  }, [desk.list, shownKind, month, q, pay, by, min, max, review, state]);
+  // Tümü'de ödenmemiş faturalar ayın dışında da en üstte ayrı bölümde (son güne göre), ödenenler gün listesinde
+  const invOpen = useMemo(() => {
+    if (shownKind !== "" || pay || by || review || state === "paid") return [];
+    const lo = parseTL(min);
+    const hi = parseTL(max);
+    const s = low(q.trim());
+    return (desk.list || [])
+      .filter((x) => x.status !== "paid")
+      .filter((x) => (Number.isNaN(lo) || (x.amount || 0) >= lo) && (Number.isNaN(hi) || (x.amount || 0) <= hi))
+      .filter((x) => !s || low(`${x.seller} ${x.no} ${x.taxId} ${x.desc} ${x.note}`).includes(s))
+      .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+  }, [desk.list, shownKind, q, pay, by, min, max, review, state]);
+  const invList = invMatch.filter((x) => x.status === "paid");
 
   const total = list.reduce((a, r) => a + totalOf(r), 0);
   const vat = list.reduce((a, r) => a + (r.totals?.vat || 0), 0);
@@ -237,16 +250,16 @@ export function ReceiptBook({ kind: start = "" }) {
         )}
       </PageHeader>
       {owner && (
-        <div className="-mx-5 mt-1 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+        <div className="mt-1 flex rounded-full bg-line/60 p-1">
           {KINDS.map(([k, l]) => (
             <button
               key={k || "all"}
-              onClick={() => setKind(k)}
+              onClick={() => (setKind(k), setCats([]))}
               aria-pressed={kind === k}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 ${kind === k ? "border-acc bg-acc text-white" : "border-line bg-card"}`}
+              className={`flex-1 rounded-full py-2 text-[0.875rem] font-semibold transition ${kind === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.1)]" : "text-mut"}`}
             >
               {l}
-              {k === "invoice" && desk.sum.open > 0 && <span className={`ml-1.5 rounded-full px-1.5 text-[0.75rem] ${kind === k ? "bg-white/25" : "bg-rec/10 text-rec"}`}>{desk.sum.open}</span>}
+              {k === "invoice" && desk.sum.open > 0 && <span className="ml-1.5 rounded-full bg-rec/10 px-1.5 text-[0.75rem] text-rec tabular-nums">{desk.sum.open}</span>}
             </button>
           ))}
         </div>
@@ -271,7 +284,21 @@ export function ReceiptBook({ kind: start = "" }) {
         </button>
       </div>
 
-      {/* Özet */}
+      {/* Özet: Tümü'de fişler ve ödenecek faturalar yan yana; Fişler'de kategorili toplam */}
+      {shownKind === "" ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={() => setKind("receipt")} className="rounded-2xl bg-acc p-3.5 text-left text-white active:scale-[.98]">
+            <small className="block text-[0.75rem] font-semibold opacity-80">Fişler · {month ? monthLabel(month) : "tümü"}</small>
+            <b className="mt-1 block text-[1.375rem] font-bold leading-tight tabular-nums">{TLk(total)}</b>
+            <small className="block text-[0.75rem] opacity-80">{list.length} fiş</small>
+          </button>
+          <button onClick={() => setKind("invoice")} className={`rounded-2xl p-3.5 text-left active:scale-[.98] ${desk.sum.late ? "bg-rec text-white" : desk.sum.open ? "bg-deep text-white" : "border border-line bg-card"}`}>
+            <small className="block text-[0.75rem] font-semibold opacity-80">Ödenecek faturalar</small>
+            <b className="mt-1 block text-[1.375rem] font-bold leading-tight tabular-nums">{desk.sum.open ? TL(desk.sum.sum) : "Yok"}</b>
+            <small className="block text-[0.75rem] opacity-80">{desk.sum.open ? [`${desk.sum.open} fatura`, desk.sum.late && `${desk.sum.late} gecikti`].filter(Boolean).join(" · ") : "Hepsi ödendi"}</small>
+          </button>
+        </div>
+      ) : (
       <div className="mt-3 rounded-2xl bg-acc p-4 text-white">
         <div className="text-[1.75rem] font-bold leading-tight tracking-tight tabular-nums">{TLk(total)}</div>
         <p className="text-[0.8125rem] opacity-80">
@@ -294,19 +321,22 @@ export function ReceiptBook({ kind: start = "" }) {
           </>
         )}
       </div>
+      )}
+
+      {owner && (
+        <div className={`mt-3 grid gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
+          <button onClick={() => openReceipt()} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc active:scale-[.98]">
+            <Icon name="camera" className="size-5" /> Fiş ekle
+          </button>
+          {shownKind === "" && (
+          <button onClick={desk.pick} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc active:scale-[.98]">
+            <Icon name="plus" className="size-5" /> Fatura yükle
+          </button>
+          )}
+        </div>
+      )}
 
       <PendingPayments />
-
-      {shownKind === "" && desk.sum.open > 0 && (
-        <button onClick={() => setKind("invoice")} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-line bg-card px-4 py-3 text-left active:scale-[.98]">
-          <Icon name="receipt" className="size-5 text-acc" />
-          <span className="flex-1 text-[0.9375rem] font-semibold">
-            {desk.sum.open} fatura ödenmedi · {TL(desk.sum.sum)}
-            {desk.sum.late > 0 && <span className="text-rec"> · {desk.sum.late} gecikti</span>}
-          </span>
-          <Icon name="chev" className="size-4" />
-        </button>
-      )}
 
       {pending > 0 && !review && (
         <button onClick={() => setReview(true)} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
@@ -370,7 +400,8 @@ export function ReceiptBook({ kind: start = "" }) {
         </div>
       )}
 
-      {/* Kategoriler */}
+      {/* Kategoriler (yalnız fişler) */}
+      {shownKind === "receipt" && (
       <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
         {CATS.map((c) => {
           const on = cats.includes(c);
@@ -381,11 +412,27 @@ export function ReceiptBook({ kind: start = "" }) {
           );
         })}
       </div>
+      )}
+
+      {/* Ödenecek faturalar (Tümü): son güne göre, ay seçiminden bağımsız */}
+      {invOpen.length > 0 && (
+        <section>
+          <h3 className="mb-2 mt-5 flex justify-between px-1 text-[0.8125rem] font-semibold text-mut">
+            <span>Ödenecek faturalar</span>
+            <span className="tabular-nums">{TL(invOpen.reduce((a, x) => a + (x.amount || 0), 0))}</span>
+          </h3>
+          <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
+            {invOpen.map((x) => (
+              <InvoiceRow key={x.id} inv={x} desk={desk} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Liste */}
       {loading ? (
         <Loading />
-      ) : days.length === 0 ? (
+      ) : days.length === 0 && invOpen.length ? null : days.length === 0 ? (
         <div className="py-14 text-center">
           <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-card text-mut ring-1 ring-line">
             <Icon name="receipt" className="size-7" />
