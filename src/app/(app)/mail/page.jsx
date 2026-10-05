@@ -55,6 +55,7 @@ export default function MailPage() {
   const [allMoves, setAllMoves] = useState(false);
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
   const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
+  const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
   const [inboxOpen, setInboxOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
@@ -82,7 +83,8 @@ export default function MailPage() {
       .then(
         (r) => live && setLedger(r.movements),
         () => live && setLedger(null),
-      );
+      )
+      .finally(() => live && setLedgerBusy(false));
     return () => {
       live = false;
     };
@@ -225,9 +227,9 @@ export default function MailPage() {
             </section>
           )}
 
-          {rep && <Summary rep={rep} />}
+          {ledgerBusy && !ledger ? <SummarySkeleton /> : rep && <Summary rep={rep} />}
 
-          <LedgerCard uid={profile.uid} self={payee.name} payee={payee} onSaved={() => (setLedger(null), setTick((n) => n + 1))} />
+          <LedgerCard uid={profile.uid} self={payee.name} payee={payee} onSaved={() => (setLedger(null), setLedgerBusy(true), setTick((n) => n + 1))} />
 
           {/* Son hareketler: banka defterinden (Excel + günlük mailler), günlere göre */}
           {moves.length > 0 && (
@@ -370,6 +372,46 @@ function Summary({ rep }) {
           </>
         )}
         {!rep.top.length && <div className="h-3.5" />}
+      </div>
+    </section>
+  );
+}
+
+// Özet okunurken: aynı düzende yanıp sönen iskelet (sayfa bir anda kaymasın)
+function SummarySkeleton() {
+  const bar = (w, h = "h-3") => <span className={`shimmer block rounded-full ${h} ${w}`} />;
+  return (
+    <section className="mt-5" aria-busy="true" aria-label="Özet yükleniyor">
+      <h2 className={`${title} flex items-center gap-2`}>
+        Özet <span className="text-[0.75rem] font-medium">hesaplanıyor…</span>
+      </h2>
+      <div className={`${card} px-4 py-3.5`}>
+        <div className="grid grid-cols-2 gap-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-2 rounded-xl bg-bg px-3 py-2.5">
+              {bar("w-14", "h-2.5")}
+              {bar("w-24", "h-4")}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-3">
+          <span className="shimmer size-[1.125rem] shrink-0 rounded-full" />
+          <span className="flex-1 space-y-1.5">
+            {bar("w-32")}
+            {bar("w-16", "h-2.5")}
+          </span>
+          {bar("w-20", "h-4")}
+        </div>
+        <div className="mt-3 space-y-3 pb-1">
+          {bar("w-24", "h-2.5")}
+          {["w-40", "w-32", "w-36"].map((w) => (
+            <div key={w} className="flex items-center gap-3">
+              {bar("w-4", "h-2.5")}
+              <span className="flex-1">{bar(w)}</span>
+              {bar("w-16")}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
