@@ -18,7 +18,7 @@ export const kindOf = (k) => KINDS.find(([x]) => x === k) || KINDS[0];
 
 // Hazır kategoriler (kullanıcı ekler, siler, adını değiştirir)
 export const CATS = {
-  club: ["Tekne", "Salma", "Dümen", "Direk", "Bom", "Yelken", "Bot", "Motor", "Şamandıra", "Telsiz", "Can yeleği", "Tekne arabası", "Halat ve donanım", "Bilgisayar", "Yazıcı", "Diğer"],
+  club: ["Tekne", "Salma", "Dümen", "Direk", "Bumba", "Yelken", "Bot", "Motor", "Şamandıra", "Telsiz", "Can yeleği", "Tekne arabası", "Halat ve donanım", "Bilgisayar", "Yazıcı", "Diğer"],
   normal: ["Elektronik", "Mobilya", "Mutfak", "Araç gereç", "Kırtasiye", "Diğer"],
 };
 // İlk açılışta hazır gelen envanterler
@@ -29,7 +29,7 @@ export const STARTERS = [
 
 // Teknenin takımı: bu kategorilerdeki ürünler bir tekneye bağlanabilir, ayrıca kendi kategorisinde de sayılır
 export const BOAT_CAT = "Tekne";
-export const PART_CATS = ["Salma", "Dümen", "Direk", "Bom", "Yelken"];
+export const PART_CATS = ["Salma", "Dümen", "Direk", "Bumba", "Yelken"];
 export const isBoat = (x) => fold(x?.cat) === fold(BOAT_CAT);
 export const isPart = (x) => PART_CATS.some((c) => fold(c) === fold(x?.cat));
 // Kategoriye göre gösterilen ek alanlar (diğerlerinde dolu değilse gizli)
@@ -136,10 +136,16 @@ export function cleanInv(v = {}) {
     const at = Math.max(0, cats.indexOf("Tekne") + 1);
     cats = [...cats.slice(0, at), ...add, ...cats.slice(at)];
   }
-  const items = arr(v.items, MAX_ITEMS).map(cleanItem).filter((x) => x.name);
+  // Sürüm 3: "Bom" kategorisinin adı "Bumba" (kategoride ve ürünlerde; "Optimist bom" → "Optimist bumba")
+  const old3 = (Number(v.v) || 1) < 3;
+  if (old3) cats = cats.map((c) => (c === "Bom" ? "Bumba" : c));
+  const items = arr(v.items, MAX_ITEMS)
+    .map(cleanItem)
+    .filter((x) => x.name)
+    .map((x) => (old3 && x.cat === "Bom" ? { ...x, cat: "Bumba", name: x.name.replace(/(^|\s)bom$/i, (m, sp) => `${sp}${/B/.test(m) ? "Bumba" : "bumba"}`) } : x));
   const ids = new Set(items.map((x) => x.id));
   return {
-    v: 2,
+    v: 3,
     name: S(v.name, 40) || kindOf(kind)[1],
     kind,
     prefix: S(v.prefix, 6).toLocaleUpperCase("tr-TR"),
@@ -398,7 +404,7 @@ export function kitOf(inv, boat) {
   const have = new Set(parts.map((x) => fold(x.cat)));
   return { parts, missing: PART_CATS.filter((c) => !have.has(fold(c))) };
 }
-// "Tam takım" ya da "Eksik: dümen, bom"
+// "Tam takım" ya da "Eksik: dümen, bumba"
 export function kitText(inv, boat) {
   const k = kitOf(inv, boat);
   if (!k.parts.length) return "";

@@ -78,7 +78,7 @@ export function Sheet({ open, onClose, title, children }) {
               </button>
             </div>
           </div>
-          <div ref={bodyRef} onTouchStart={start(true)} onTouchMove={move} onTouchEnd={end} className="min-h-0 overflow-y-auto overscroll-contain px-5">
+          <div ref={bodyRef} onTouchStart={start(true)} onTouchMove={move} onTouchEnd={end} className="min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5">
             {children}
           </div>
         </div>

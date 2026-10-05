@@ -78,7 +78,7 @@ export function InventoryView({ orgId, id, by }) {
     const done = await change((cur) => upsertItem(cur, { ...x, qty: Number(x.qty) || 0 }, { by }), x.id ? "Kaydedildi" : "Eklendi");
     if (done) setItem(null);
   };
-  // Teknenin eksik takımı (salma, dümen, direk, bom, yelken) oluşturulur ve bağlanır; form güncel tekneyle açık kalır
+  // Teknenin eksik takımı (salma, dümen, direk, bumba, yelken) oluşturulur ve bağlanır; form güncel tekneyle açık kalır
   const makeKit = async (boatId) => {
     let next = null;
     const ok = await change((cur) => (next = addKit(cur, boatId, { by })), "Takım eklendi");

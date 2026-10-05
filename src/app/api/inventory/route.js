@@ -18,13 +18,14 @@ Cümledeki TÜM envanter işlerini sırayla "ops" listesine yaz:
   * Ayrı takip edilen şeyler (tekne, bot, motor, bilgisayar) için kullanıcı ayrı ad/numara/yelken no söylediyse her biri ayrı add olsun ("Optimist 1 ve Optimist 2" → iki add, qty 1). Yalnız sayı söylendiyse ("3 Optimist teknesi") tek add, qty 3.
   * Söylendiyse doldur: brand (marka/model), serial (seri no, gövde no, plaka), sailNo (yelken numarası: "TUR 1204"), year (alım yılı, 4 haneli; "3 yıllık" → bugünün yılı − 3), damage (hasar/kusur kısa: "yelkende yırtık", "baş tarafta kırık"; durum da broken ya da worn olabilir), place (yer: depo, hangar, iskele, ofis), assignee (kimde, zimmet), price (₺, yalnız sayı), state, note, addedAt (eklenme/alış tarihi YYYY-MM-DD; "dün aldık" → dünün tarihi), unit (adet, takım, çift, metre, kutu…).
   * owner: "club" (kulübün, varsayılan) ya da "private" (özel: sporcunun/velinin kendi malı); ownerName: özel ise sahibinin adı ("Ahmet'in teknesi" → private, Ahmet).
-  * Tekne takımı: kategoriler Salma, Dümen, Direk, Bom, Yelken bir tekneye bağlanabilir (parent). Hem tekne hem takım parçası ayrı ürün olarak tutulur, parça kendi kategorisinde de sayılır.
-    "Tam donanımlı Optimist teknesi ekle" → tekne add (key "t1") + Salma, Dümen, Direk, Bom, Yelken add'leri parent "t1" ("Optimist salma" gibi adlarla). Takım söylenmediyse yalnız tekne.
+  * Tekne takımı: kategoriler Salma, Dümen, Direk, Bumba, Yelken bir tekneye bağlanabilir (parent). Hem tekne hem takım parçası ayrı ürün olarak tutulur, parça kendi kategorisinde de sayılır.
+    "Tam donanımlı Optimist teknesi ekle" → tekne add (key "t1") + Salma, Dümen, Direk, Bumba, Yelken add'leri parent "t1" ("Optimist salma" gibi adlarla). Takım söylenmediyse yalnız tekne.
     Var olan tekneye bağlamak için parent = teknenin id'si; tekneden ayırmak için update parent "none". Aynı cümlede eklenen tekneye bağlarken o teknenin key'ini kullan.
     Takım parçası tekneyle eklenince sahibini teknenin sahibi kabul et (yazmana gerek yok).
 - remove: adet azaltma (kayboldu, kırıldı, satıldı, verildi, kullanıldı, "2 can yeleği çıkar"). id + qty (söylenmezse 1). Kaybolduysa state "lost" yazma; yalnız adet azalır.
 - update: var olan ürünün bilgisini değiştirme ("Optimist 4 bakımda", "telsizi Ali'ye verdim" → assignee Ali, "yazıcının yeri ofis", "numarasını 120 yap" → no). id + yalnız değişen alanlar. Adedi açıkça bir sayıya ayarlıyorsa ("şamandıra sayısı 12") qty = yeni toplam.
 - delete: ürünün kaydını tamamen silme ("Optimist 3'ü envanterden sil", "eski yazıcıyı listeden kaldır"). id. Uygulama onay sorar.
+- "Bom" ve "boom" kulüpte Bumba demektir (kategori Bumba).
 - state değerleri: ${STATES.map(([k, l]) => `${k} (${l})`).join(", ")}.
 - id YALNIZ verilen listeden. Var olan bir ürünü bulamıyorsan (remove/update/delete için) uydurma: o işi yazma, message'da "… bulamadım" de.
 - Birden çok aday uyuyorsa (iki "Telsiz") ve hangisi olduğu anlaşılmıyorsa işi yazma, message'da hangisi olduğunu sor (numaralarıyla).
