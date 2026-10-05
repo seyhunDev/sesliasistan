@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
 import { openOnboarding } from "@/features/onboarding/Onboarding";
-import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow, RacesRow, LedgerRow } from "@/features/settings/Groups";
+import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow, RacesRow, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
@@ -43,6 +43,7 @@ export default function SettingsPage() {
       {/* Sık kullanılanlar: en çok değiştirilen ayarlar */}
       <Group title="Sık kullanılanlar" footer={n.on ? "" : "Bildirimler kapalıyken günlük özet ve hatırlatmalar bu cihaza gelmez."}>
         <SizeRow />
+        <ThemeRow />
         <NotifyRow n={n} />
         <SummaryRow />
         <VoiceRow />

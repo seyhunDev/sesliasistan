@@ -16,6 +16,7 @@ import { disableReminders, enableReminders, loadReminders, needsInstall, pushCon
 import { LEADS } from "@/lib/reminders";
 import { WIND_KN, WIND_KNS } from "@/lib/notifyExtra";
 import { SIZES, applySize } from "@/lib/textSize";
+import { THEMES, applyTheme, readTheme } from "@/lib/theme";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
 import { Badge, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
@@ -53,6 +54,20 @@ export function SizeRow() {
   return (
     <Row icon="search" tone="sky" title="Yazı boyutu" sub="Yazılar, simgeler ve düğmeler birlikte büyür">
       <Chips value={size} options={SIZES} onChange={pick} />
+    </Row>
+  );
+}
+
+// ---- Görünüm: açık / koyu (yalnız bu cihazda; otomatikte telefonun ayarını izler) ----
+export function ThemeRow() {
+  const [theme, setTheme] = useState(readTheme); // sunucu yalnız açılış ekranını çizer, ayarlar tarayıcıda açılır
+  const pick = (v) => {
+    setTheme(v);
+    applyTheme(v);
+  };
+  return (
+    <Row icon="moon" tone="slate" title="Görünüm" sub="Otomatik: telefon koyu moddaysa uygulama da koyu olur">
+      <Chips value={theme} options={THEMES} onChange={pick} />
     </Row>
   );
 }

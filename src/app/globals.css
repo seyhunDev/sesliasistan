@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: önekli sınıflar koyu görünümde (html[data-theme="dark"]) çalışır, telefonun ayarına doğrudan bakmaz */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 :root {
   /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı, deniz yeşili vurgu (koyusu: --deep) */
   --bg: #f4f3ef;
@@ -14,6 +17,39 @@
   --ok: #4a8a64;
   --proc: #f59e0b;
 }
+
+/* KOYU GÖRÜNÜM (Ayarlar › Görünüm: Otomatik / Açık / Koyu; <html data-theme> sayfa çizilmeden kurulur, bkz. lib/theme.js).
+   Renklerin hepsi yukarıdaki değişkenlerden geldiği için çoğu yer kendiliğinden döner. Kubbe ve koyu yeşil kartlar
+   (bg-deep) zaten koyu, aynı kalır. Instagram görselleri ve PDF'ler kendi renkleriyle çizilir, etkilenmez. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121416;
+  --card: #1c1f22;
+  --fg: #e7e6e2;
+  --mut: #9a9ea4;
+  --line: #2e3236;
+  --acc: #3b9680;
+  --acc2: #3b9680;
+  --rec: #e0675e;
+  --ok: #55a374;
+}
+/* Açık zemin için yazılmış uyarı kutuları ve renkli yazılar koyu zeminde okunur tonlara çevrilir */
+html[data-theme="dark"] :is(.bg-amber-50, .bg-amber-100) { background-color: rgba(245, 158, 11, .14); }
+html[data-theme="dark"] .bg-emerald-100 { background-color: rgba(16, 185, 129, .16); }
+html[data-theme="dark"] :is(.border-amber-300) { border-color: rgba(245, 158, 11, .35); }
+html[data-theme="dark"] :is(.ring-amber-200, .ring-red-200) { --tw-ring-color: rgba(245, 158, 11, .3); }
+html[data-theme="dark"] :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #fbbf5c; }
+html[data-theme="dark"] :is(.text-rose-600, .text-rose-700, .text-red-600) { color: #fb8a9a; }
+html[data-theme="dark"] .text-pink-600 { color: #f58bc3; }
+html[data-theme="dark"] :is(.text-sky-600, .text-sky-700) { color: #6cc4f5; }
+html[data-theme="dark"] :is(.text-violet-600, .text-violet-700) { color: #b9a6fb; }
+html[data-theme="dark"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-teal-600) { color: #5fd3a6; }
+html[data-theme="dark"] .text-slate-700 { color: #c3cbd6; }
+/* Açık zemindeki koyu yeşil yazı (kubbe ve bg-deep kartlarının içi hariç) */
+html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *, .dome *) { color: #7fd0b8; }
+/* Gölgeler koyu zeminde görünmez; kartlar ince bir kenarla ayrılır */
+html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .045); }
+html[data-theme="dark"] .dome .bg-card { box-shadow: none; }
 
 @theme inline {
   --color-bg: var(--bg);
