@@ -1,5 +1,0 @@
-## Nerede kaldım
-- Gelen ödemeler hesap adına göre (Seyhun: "sadece açıklamaya bakmayalım, hesap ismi olmalı; açıklamayı açıklama olarak yazalım, ödemenin ne olduğunu görmek için"; gerçek banka verisiyle denenmedi): her harekete karşı tarafın adı (`who`) eklendi: banka Excel'inde/mailde gönderen ya da alıcı adı ayrı sütundaysa (Gönderen, Alıcı, Karşı taraf, Ad Soyad, Unvan, Hesap adı…) oradan, yoksa açıklamadaki "GÖNDEREN: AD SOYAD", "ALICI AD SOYAD" yazımından (`whoOf`, mailBoard.js; defterde de saklanır). Gelen ödemeler'de ad varsa yalnız hesap adına bakılır, açıklama yalnız bilgi olarak satırın altında görünür; ad bulunamayan harekette eskisi gibi açıklamaya bakılır (`whoIn`, payee.js). Excel çıktısına "Gönderen / hesap adı" sütunu eklendi. Aidat eşleştirmesi de gönderen adını açıklamayla birlikte kullanır (`matchMovement`). Testleri `test:elle` › "Gelen ödemeler (kişisel hesap)".
-
-## Sıradaki işler
-0. Gelen ödemeler'de satırların üstünde kalın gönderen adı çıkıyor mu bak. Çıkmıyorsa bankanın ad sütunu tanınmıyordur: Mailler › bir hesap özetini aç, tablonun sütun başlıklarını (yalnız başlıkları) yeni threade yaz.
