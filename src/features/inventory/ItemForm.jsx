@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { OWNERS, STATES, UNITS, ageText, hasSailNo, isBoat, isPart, itemLabel, kitOf } from "./invModel";
 
 export const input =
-  "h-11 w-full rounded-xl border border-transparent bg-bg px-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
+  "h-11 w-full min-w-0 max-w-full rounded-xl border border-transparent bg-bg px-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
+// iPhone tarih kutusu kendi genişliğini dayatıp formu yana taşırıyordu
+const dateFix = "appearance-none [&::-webkit-date-and-time-value]:text-left";
 const lab = "block text-[0.75rem] font-medium text-mut";
 
 function F({ label, children, className = "" }) {
@@ -18,7 +20,7 @@ function F({ label, children, className = "" }) {
 }
 
 // Ürün formu: her alan düzenlenebilir (numara ve eklenme tarihi dahil).
-// Takım parçasında (salma, dümen, direk, bom, yelken) bağlı olduğu tekne; teknede takımı (aç, eksikleri oluştur).
+// Takım parçasında (salma, dümen, direk, bumba, yelken) bağlı olduğu tekne; teknede takımı (aç, eksikleri oluştur).
 export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) {
   const [x, setX] = useState(start);
   const set = (k) => (e) => setX((v) => ({ ...v, [k]: e.target.value }));
@@ -29,7 +31,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) 
 
   return (
     <form
-      className="space-y-3 pb-2"
+      className="w-full min-w-0 space-y-3 overflow-x-hidden pb-2"
       onSubmit={(e) => {
         e.preventDefault();
         if (x.name.trim()) onSave(x);
@@ -144,10 +146,10 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) 
       </F>
       <div className="flex gap-2">
         <F label="Eklenme tarihi" className="min-w-0 flex-1">
-          <input type="date" value={x.addedAt} onChange={set("addedAt")} className={input} />
+          <input type="date" value={x.addedAt} onChange={set("addedAt")} className={`${input} ${dateFix}`} />
         </F>
         <F label="Son kontrol / bakım" className="min-w-0 flex-1">
-          <input type="date" value={x.checkAt} onChange={set("checkAt")} className={input} />
+          <input type="date" value={x.checkAt} onChange={set("checkAt")} className={`${input} ${dateFix}`} />
         </F>
       </div>
       <div className="flex gap-2">

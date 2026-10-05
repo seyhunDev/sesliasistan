@@ -589,7 +589,7 @@ const club = () => IM.cleanInv({ name: "Yelken Kulübü", kind: "club", items: [
   { id: "r1", no: "007", name: "El telsizi", cat: "Telsiz", qty: 4 },
 ] });
 group("Envanter")([
-  ["hazır kategoriler", F("kulüpte tekne, direk, bom, bot, şamandıra, telsiz, bilgisayar, yazıcı", () => ["Tekne", "Direk", "Bom", "Bot", "Şamandıra", "Telsiz", "Bilgisayar", "Yazıcı"].every((c) => IM.cleanInv({ kind: "club" }).cats.includes(c)))],
+  ["hazır kategoriler", F("kulüpte tekne, direk, bumba, bot, şamandıra, telsiz, bilgisayar, yazıcı", () => ["Tekne", "Direk", "Bumba", "Bot", "Şamandıra", "Telsiz", "Bilgisayar", "Yazıcı"].every((c) => IM.cleanInv({ kind: "club" }).cats.includes(c)))],
   ["otomatik numara", F("en büyük numara + 1, önekle", () => IM.nextNo(club()) === "008" && IM.nextNo({ ...club(), prefix: "DYK" }) === "DYK-008" && IM.nextNo(IM.cleanInv({})) === "001")],
   ["elle değişen numara", F("DYK-120 varsa sıradaki 121", () => IM.nextNo({ items: [{ no: "DYK-120" }, { no: "5" }] }) === "121")],
   ["yeni ürün", F("numara, tarih, kategori eşleşmesi, hareket", () => {
@@ -637,7 +637,7 @@ group("Envanter")([
     const boat = r.inv.items.find((x) => x.sailNo === "TUR 1204");
     const parts = r.inv.items.filter((x) => x.parent === boat.id);
     return parts.length === 2 && parts.every((x) => x.owner === "private" && x.ownerName === "Ahmet") && boat.year === 2021 &&
-      r.lines.length === 1 && /takımıyla: salma, dümen/.test(r.lines[0]) && /özel \(Ahmet\)/.test(r.lines[0]) && IM.kitText(r.inv, boat) === "Eksik: direk, bom, yelken";
+      r.lines.length === 1 && /takımıyla: salma, dümen/.test(r.lines[0]) && /özel \(Ahmet\)/.test(r.lines[0]) && IM.kitText(r.inv, boat) === "Eksik: direk, bumba, yelken";
   })],
   ["eksik takımı ekle", F("tam takım olur", () => {
     const r = IM.applyOps(club(), [{ op: "add", key: "a", name: "Optimist teknesi", cat: "Tekne" }], NOW);
@@ -661,6 +661,10 @@ group("Envanter")([
     const v = IM.cleanInv({ kind: "club", cats: ["Tekne", "Direk", "Diğer"] });
     const again = IM.cleanInv({ ...v, cats: v.cats.filter((c) => c !== "Dümen") });
     return v.cats.join(",") === "Tekne,Salma,Dümen,Direk,Diğer" && !again.cats.includes("Dümen");
+  })],
+  ["bom → bumba", F("eski kayıtta kategori ve ad değişir, bir kez", () => {
+    const v = IM.cleanInv({ kind: "club", v: 2, cats: ["Tekne", "Bom"], items: [{ id: "x", name: "Optimist bom", cat: "Bom" }] });
+    return v.cats.join(",") === "Tekne,Bumba" && v.items[0].cat === "Bumba" && v.items[0].name === "Optimist bumba" && IM.cleanInv({ ...v, cats: [...v.cats, "Bom"] }).cats.includes("Bom");
   })],
   ["yaş", F("2021 alımı 2026'da 5 yıllık", () => IM.ageText(2021, "2026-10-05") === "5 yıllık")],
   ["excel", F("ürünler ve hareketler sayfası", () => {
