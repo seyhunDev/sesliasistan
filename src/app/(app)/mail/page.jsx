@@ -16,12 +16,22 @@ import { dayLabel, todayIn } from "@/lib/notifyText";
 import { monthOf } from "@/lib/dues";
 import { payeeMoves, payeeOf, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
-import { loadLedger } from "@/features/bank/ledgerData";
+import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
+import { report } from "@/lib/bankAnalyze";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
-const hm = (iso) => new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+const hm = (iso) =>
+  new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
 const when = (iso, today) => `${dayLabel(localDate(iso), today)} ${hm(iso)}`;
-const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const shortDay = (d) =>
+  new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "short",
+  });
 const cash = (n, cur) => `${money(n)}${cur ? ` ${cur}` : ""}`;
 const signed = (n, cur) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${cash(Math.abs(n), cur)}`;
 const PAGE = 40;
@@ -29,9 +39,9 @@ const MOVES = 6; // kapalıyken gösterilen hareket sayısı
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 
-// Mailler (yalnızca ana hesap), banka uygulaması düzeninde:
-//   bugünün özeti › hesaplar (son bakiye, önceki özete göre değişim, toplam) › banka defteri (geçmiş dönem Excel'i yükle,
-//   yapay zeka inceler) › son hareketler (banka defterinden: Excel + günlük mailler) › gelen kutusu › durum
+// Hesaplar (adres /mail, yalnızca ana hesap), banka uygulaması düzeninde, sade:
+//   hesaplar (son bakiye, toplam, kişisel hesabın aldıkları) › özet (bugüne kadar gelen/giden, kim ne kadar ödedi) ›
+//   banka defteri (geçmiş dönem Excel'i yükle, yapay zeka inceler; baştan kur) › son hareketler › gelen mailler (kapalı) › durum
 // Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
 // okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {
@@ -44,7 +54,8 @@ export default function MailPage() {
   const [acct, setAcct] = useState(""); // hareketleri tek hesaba süz
   const [allMoves, setAllMoves] = useState(false);
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
-  const [ledger, setLedger] = useState(null); // banka defterinden bu ay ve geçen ayın hareketleri
+  const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
+  const [inboxOpen, setInboxOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -66,16 +77,22 @@ export default function MailPage() {
     if (!owner || !loaded) return;
     let live = true;
     const ym = todayIn().slice(0, 7);
-    const [y, m] = ym.split("-").map(Number);
-    const prev = new Date(Date.UTC(y, m - 2, 15)).toISOString().slice(0, 7);
-    loadLedger(profile.uid, prev, ym).then((r) => live && setLedger(r.movements), () => live && setLedger(null));
+    ledgerStart(profile.uid, ym)
+      .then((first) => loadLedger(profile.uid, first, ym))
+      .then(
+        (r) => live && setLedger(r.movements),
+        () => live && setLedger(null),
+      );
     return () => {
       live = false;
     };
   }, [owner, loaded, profile?.uid, newest, tick]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
-  const pending = (mails || []).filter((m) => m.raw?.length && !m.sheets).map((m) => m.id).join(",");
+  const pending = (mails || [])
+    .filter((m) => m.raw?.length && !m.sheets)
+    .map((m) => m.id)
+    .join(",");
   useEffect(() => {
     if (!owner || !pending) return;
     let live = true;
@@ -84,7 +101,9 @@ export default function MailPage() {
       for (const m of mails.filter((x) => pending.split(",").includes(x.id))) {
         if (!live) return;
         const sheets = sheetsFromRaw(m.raw, XLSX);
-        updateDoc(doc(db, "orgs", profile.uid, "mails", m.id), { sheets }).catch((e) => console.warn("[mail] tablo kaydedilemedi", e?.code));
+        updateDoc(doc(db, "orgs", profile.uid, "mails", m.id), {
+          sheets,
+        }).catch((e) => console.warn("[mail] tablo kaydedilemedi", e?.code));
       }
     });
     return () => {
@@ -100,13 +119,15 @@ export default function MailPage() {
   const ready = !!profile.mailSeen; // betik en az bir kez bağlandı
   const seen = profile.mailSeen;
   const live = seen && now - Date.parse(seen) < 20 * 60e3;
-  const lastMail = list.map((m) => m.receivedAt || m.at).sort().at(-1) || "";
+  const lastMail =
+    list
+      .map((m) => m.receivedAt || m.at)
+      .sort()
+      .at(-1) || "";
 
   const accounts = accountsOf(list);
   const totals = totalsOf(accounts);
   const moves = ledger || movementsOf(list);
-  const todayMails = list.filter((m) => localDate(m.at) === today);
-  const todayMoves = moves.filter((x) => localDate(new Date(x.ts).toISOString()) === today);
   const picked = accounts.find((a) => a.key === acct);
   const shownMoves = (picked ? moves.filter((x) => x.account === acct) : moves).slice(0, allMoves ? 200 : MOVES);
   const moveTotal = picked ? moves.filter((x) => x.account === acct).length : moves.length;
@@ -116,11 +137,13 @@ export default function MailPage() {
   const covered = !!ledger || (list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym);
   const payeeMonth = payeeMoves(moves, payee).filter((x) => monthOf(x) === ym);
   const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
+  const payeeAll = payeeMoves(moves, payee);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
+  const rep = ledger?.length ? report(ledger, payee, 1000) : null;
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Mailler" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
+      <PageHeader title="Hesaplar" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
         <Link href="/mail/setup" aria-label="Mail ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
           <Icon name="wrench" className="size-5" />
         </Link>
@@ -130,13 +153,6 @@ export default function MailPage() {
         <Loading />
       ) : (
         <>
-          {/* Bugün: gelen mail, hesap hareketi, Gmail'in son kontrolü */}
-          <section className="mt-2 grid grid-cols-3 gap-2" aria-label="Bugünün özeti">
-            <Stat label="Bugün gelen" value={todayMails.length} unit="mail" />
-            <Stat label="Bugün hareket" value={todayMoves.length} unit="işlem" />
-            <Stat label="Gmail kontrol" value={seen ? hm(seen) : "—"} unit={seen ? dayLabel(localDate(seen), today) : "bağlı değil"} bad={ready && !live} />
-          </section>
-
           {/* Hesaplar: toplam bakiye ve her hesabın son bakiyesi */}
           {accounts.length > 0 && (
             <section className="mt-5">
@@ -150,19 +166,29 @@ export default function MailPage() {
                     </p>
                   ))}
                   <p className="mt-1.5 text-[0.75rem] text-white/75">
-                    {accounts.length} hesap · son özet {when(accounts.map((a) => a.at).sort().at(-1), today)}
+                    {accounts.length} hesap · son özet{" "}
+                    {when(
+                      accounts
+                        .map((a) => a.at)
+                        .sort()
+                        .at(-1),
+                      today,
+                    )}
                   </p>
                 </div>
                 <ul className="divide-y divide-line">
                   {accounts.map((a) => (
                     <li key={a.key}>
-                      <button type="button" onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setAllMoves(false))} aria-pressed={acct === a.key} className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${acct === a.key ? "bg-acc/5" : ""}`}>
+                      <button
+                        type="button"
+                        onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setAllMoves(false))}
+                        aria-pressed={acct === a.key}
+                        className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${acct === a.key ? "bg-acc/5" : ""}`}
+                      >
                         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.75rem] font-bold text-acc">{a.currency || "₺"}</span>
                         <span className="min-w-0 flex-1">
                           <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
-                          <small className="block truncate text-[0.75rem] text-mut">
-                            {[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}
-                          </small>
+                          <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}</small>
                         </span>
                         <span className="shrink-0 text-right">
                           <b className="block text-[0.9375rem] font-semibold tabular-nums">{cash(a.balance, a.currency)}</b>
@@ -178,7 +204,9 @@ export default function MailPage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[0.9375rem] font-semibold">{payee.name || "Kişisel hesap"}</b>
-                        <small className="block truncate text-[0.75rem] text-mut">Gelen ödemeler · tarih tarih</small>
+                        <small className="block truncate text-[0.75rem] text-mut">
+                          {payeeAll.length ? `Aldığı ödemeler · toplam ${money(payeeAll.reduce((n, x) => n + x.amount, 0))} TL` : "Aldığı ödemeler · tarih tarih"}
+                        </small>
                       </span>
                       <span className="shrink-0 text-right">
                         {covered && payeeMonth.length > 0 ? (
@@ -197,7 +225,9 @@ export default function MailPage() {
             </section>
           )}
 
-          <LedgerCard uid={profile.uid} self={payee.name} onSaved={() => setTick((n) => n + 1)} />
+          {rep && <Summary rep={rep} />}
+
+          <LedgerCard uid={profile.uid} self={payee.name} payee={payee} onSaved={() => (setLedger(null), setTick((n) => n + 1))} />
 
           {/* Son hareketler: banka defterinden (Excel + günlük mailler), günlere göre */}
           {moves.length > 0 && (
@@ -223,30 +253,41 @@ export default function MailPage() {
 
           {/* Gelen kutusu: gönderene göre süz; dokununca mail açılır */}
           <section className="mt-5">
-            <h2 className={title}>Gelen kutusu</h2>
-            <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none]">
-              <Chip on={!from} onClick={() => setFrom("")} label="Tümü" n={list.length} />
-              {rules.map((r) => (
-                <Chip key={r.from} on={from === r.from} onClick={() => setFrom(r.from)} label={r.name} n={list.filter((m) => ruleFor(m.from, [r])).length} />
-              ))}
-            </div>
-            {inbox.length ? (
-              <div className={card}>
-                <ul className="divide-y divide-line">
-                  {inbox.map((m, i) => (
-                    <MailRow key={m.id} m={m} today={today} head={i === 0 || localDate(inbox[i - 1].at) !== localDate(m.at)} />
+            <button type="button" onClick={() => setInboxOpen((v) => !v)} aria-expanded={inboxOpen} className="flex w-full items-center gap-2 px-1 pb-2 text-left">
+              <h2 className="min-w-0 flex-1 text-[0.8125rem] font-semibold text-mut">Gelen mailler ({list.length})</h2>
+              <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${inboxOpen ? "rotate-90" : ""}`} />
+            </button>
+            {inboxOpen && (
+              <>
+                <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none]">
+                  <Chip on={!from} onClick={() => setFrom("")} label="Tümü" n={list.length} />
+                  {rules.map((r) => (
+                    <Chip key={r.from} on={from === r.from} onClick={() => setFrom(r.from)} label={r.name} n={list.filter((m) => ruleFor(m.from, [r])).length} />
                   ))}
-                </ul>
-                {list.length >= max && (
-                  <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
-                    Daha eski mailler
-                  </button>
+                </div>
+                {inbox.length ? (
+                  <div className={card}>
+                    <ul className="divide-y divide-line">
+                      {inbox.map((m, i) => (
+                        <MailRow key={m.id} m={m} today={today} head={i === 0 || localDate(inbox[i - 1].at) !== localDate(m.at)} />
+                      ))}
+                    </ul>
+                    {list.length >= max && (
+                      <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
+                        Daha eski mailler
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p className={`${card} px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
+                    {!ready
+                      ? "Gmail'ini bağlayınca bankadan gelen hesap özetleri burada görünür."
+                      : from
+                        ? "Bu gönderenden mail yok."
+                        : "Henüz mail gelmedi. Seçtiğin gönderenlerden mail gelince burada görünür ve telefonuna bildirim gelir."}
+                  </p>
                 )}
-              </div>
-            ) : (
-              <p className={`${card} px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-                {!ready ? "Gmail'ini bağlayınca bankadan gelen hesap özetleri burada görünür." : from ? "Bu gönderenden mail yok." : "Henüz mail gelmedi. Seçtiğin gönderenlerden mail gelince burada görünür ve telefonuna bildirim gelir."}
-              </p>
+              </>
             )}
           </section>
 
@@ -269,20 +310,79 @@ export default function MailPage() {
   );
 }
 
-// Küçük özet kutusu: etiket, büyük değer, birim (tek satır, kaymaz)
-function Stat({ label, value, unit, bad }) {
+// Özet (banka defterinin başından bugüne): gelen/giden, kişisel hesabın aldığı, kim ne kadar ödedi
+function Summary({ rep }) {
+  const [all, setAll] = useState(false);
+  const day = (d) =>
+    d
+      ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "";
+  const list = all ? rep.top : rep.top.slice(0, 5);
   return (
-    <div className="min-w-0 rounded-2xl bg-card px-3 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <p className="truncate text-[0.6875rem] font-semibold text-mut">{label}</p>
-      <p className={`truncate text-[1.25rem] font-bold leading-tight tabular-nums tracking-tight ${bad ? "text-rec" : ""}`}>{value}</p>
-      <p className="truncate text-[0.6875rem] text-mut">{unit}</p>
-    </div>
+    <section className="mt-5">
+      <h2 className={title}>
+        Özet · {day(rep.from)} – {day(rep.to)}
+      </h2>
+      <div className={card}>
+        <div className="grid grid-cols-2 gap-2 px-4 pt-3.5">
+          <div className="rounded-xl bg-ok/10 px-3 py-2">
+            <p className="text-[0.6875rem] font-semibold text-ok">GELEN · {rep.inN}</p>
+            <p className="truncate text-[1.0625rem] font-bold tabular-nums text-ok">+{money(rep.inSum)} TL</p>
+          </div>
+          <div className="rounded-xl bg-rec/10 px-3 py-2">
+            <p className="text-[0.6875rem] font-semibold text-rec">GİDEN · {rep.outN}</p>
+            <p className="truncate text-[1.0625rem] font-bold tabular-nums text-rec">−{money(-rep.outSum)} TL</p>
+          </div>
+        </div>
+        {rep.got && (
+          <Link href="/payments" className="mx-4 mt-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-2.5 active:scale-[.99]">
+            <Icon name="user" className="size-[1.125rem] shrink-0 text-acc" />
+            <span className="min-w-0 flex-1">
+              <b className="block truncate text-[0.875rem] font-semibold">{rep.got.name || "Kişisel hesap"} aldı</b>
+              <small className="block text-[0.75rem] text-mut">{rep.got.n} ödeme</small>
+            </span>
+            <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{money(rep.got.sum)} TL</b>
+            <Icon name="chev" className="size-4 shrink-0 text-mut" />
+          </Link>
+        )}
+        {rep.top.length > 0 && (
+          <>
+            <p className="px-4 pt-3 text-[0.75rem] font-semibold text-mut">En çok ödeyenler</p>
+            <ol className="px-4 pb-1 pt-1">
+              {list.map((w, i) => (
+                <li key={w.who} className="flex items-center gap-2 py-1.5 text-[0.875rem]">
+                  <span className="w-5 shrink-0 text-right text-[0.75rem] tabular-nums text-mut">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{w.who}</span>
+                  <span className="shrink-0 text-[0.75rem] text-mut">{w.n} ödeme</span>
+                  <span className="w-24 shrink-0 text-right font-semibold tabular-nums text-ok">{money(w.sum)}</span>
+                </li>
+              ))}
+            </ol>
+            {rep.top.length > 5 && (
+              <button type="button" onClick={() => setAll((v) => !v)} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-acc active:bg-bg">
+                {all ? "Daha az göster" : `Kim ne kadar ödedi · herkes (${rep.top.length})`}
+              </button>
+            )}
+          </>
+        )}
+        {!rep.top.length && <div className="h-3.5" />}
+      </div>
+    </section>
   );
 }
 
 function Chip({ on, onClick, label, n }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={on} className={`flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-fg text-card" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-fg text-card" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
+    >
       {label}
       <span className={`tabular-nums ${on ? "text-card/70" : "text-mut"}`}>{n}</span>
     </button>
@@ -359,7 +459,13 @@ function MailRow({ m, today, head }) {
                 <button
                   key={f.name}
                   type="button"
-                  onClick={() => download(f.name, Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0)), "application/vnd.ms-excel")}
+                  onClick={() =>
+                    download(
+                      f.name,
+                      Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0)),
+                      "application/vnd.ms-excel",
+                    )
+                  }
                   className="flex h-8 max-w-full items-center gap-1.5 rounded-full bg-bg px-3 text-[0.75rem] font-semibold text-mut active:scale-95"
                 >
                   <Icon name="up" className="size-3.5 shrink-0 rotate-180" /> <span className="truncate">{f.name}</span>
@@ -374,13 +480,29 @@ function MailRow({ m, today, head }) {
 }
 
 // Dosya adı: Türkçe harfler sade Latin harfe (bazı tarayıcılar ASCII dışı adı yok sayıp "download" der)
-const TR = { ç: "c", ğ: "g", ı: "i", İ: "I", ö: "o", ş: "s", ü: "u", Ç: "C", Ğ: "G", Ö: "O", Ş: "S", Ü: "U" };
+const TR = {
+  ç: "c",
+  ğ: "g",
+  ı: "i",
+  İ: "I",
+  ö: "o",
+  ş: "s",
+  ü: "u",
+  Ç: "C",
+  Ğ: "G",
+  Ö: "O",
+  Ş: "S",
+  Ü: "U",
+};
 const fileName = (s) => s.replace(/[çğıİöşüÇĞÖŞÜ]/g, (c) => TR[c]).replace(/[^\w.-]+/g, "-");
 
 // CSV dosyası indir (Excel açar)
 function download(name, text, type = "text/csv;charset=utf-8") {
   const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = Object.assign(document.createElement("a"), { href: url, download: fileName(name) });
+  const a = Object.assign(document.createElement("a"), {
+    href: url,
+    download: fileName(name),
+  });
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -392,7 +514,13 @@ function Statement({ s, m }) {
   const [open, setOpen] = useState(false);
   const { sum = {}, columns = [], rows = [], meta = {} } = s;
   const col = (re) => columns.findIndex((c) => re.test(c));
-  const c = { date: col(/tarih|date/i), desc: col(/açıklama|aciklama|description/i), amount: col(/tutar|amount/i), bal: col(/bakiye|balance/i), type: col(/[iİ]şlem tipi|^[iİ]şlem$/i) };
+  const c = {
+    date: col(/tarih|date/i),
+    desc: col(/açıklama|aciklama|description/i),
+    amount: col(/tutar|amount/i),
+    bal: col(/bakiye|balance/i),
+    type: col(/[iİ]şlem tipi|^[iİ]şlem$/i),
+  };
   const cur = sum.currency || "";
   return (
     <div className="px-4 pb-3">

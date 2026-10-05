@@ -9,29 +9,27 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { loadMovementsRange } from "@/features/dues/duesData";
-import { rebuildLedger } from "@/features/bank/ledgerData";
+import { ledgerStart, rebuildLedger } from "@/features/bank/ledgerData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
-import { lastMonths } from "@/lib/dues";
-import { monthName, otherIncoming, payeeCsv, payeeMoves, payeeOf, payeeSummary, whoIn } from "@/lib/payee";
+import { monthName, payeeCsv, payeeMoves, payeeOf, payeeSummary, whoIn } from "@/lib/payee";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date()).slice(0, 7);
 const dayText = (m) => new Date((m.ts || 0) + 3 * 3600e3).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short", timeZone: "UTC" });
 const hmOf = (m) => /\d{1,2}:\d{2}/.exec(m.date)?.[0] || "";
 
-// Kişisel hesap (yalnız ana hesap): banka hesap özeti maillerinde (ve yüklenen banka Excel'lerinde) belli bir kişi adına
-// gelen ödemeler, ayrı bir hesap gibi. Ad ve hesap ayarı users/{uid}.payee; okuma sayfa açılınca bir kez (6 ay, istenirse 12).
+// Kişisel hesap (yalnız ana hesap): banka defterinde (günlük mailler + yüklenen Excel) belli bir kişinin aldığı ödemeler,
+// ayrı bir hesap gibi: kulüp hesabından ona giden paralar (maaş, huzur hakkı…) ve seçiliyse kendi hesabına gelenler (payee.js).
+// Ad ve hesap ayarı users/{uid}.payee; okuma sayfa açılınca bir kez, defterin başından bu aya.
 export default function PaymentsPage() {
   const { profile } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const owner = profile?.role === "owner";
-  const [span, setSpan] = useState(6);
   const [data, setData] = useState(null); // { movements, sources } | { error }
   const [edit, setEdit] = useState(false);
   const [open, setOpen] = useState(""); // açık ay (boşsa en yeni)
-  const [others, setOthers] = useState(false); // adı geçmeyen gelen paralar açık mı
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0); // Yenile'den sonra yeniden okunur
   const ym = thisMonth();
@@ -42,14 +40,14 @@ export default function PaymentsPage() {
   useEffect(() => {
     if (!owner) return;
     let live = true;
-    const yms = lastMonths(ym, span);
-    loadMovementsRange(profile.uid, yms[0], yms.at(-1))
+    ledgerStart(profile.uid, ym)
+      .then((first) => loadMovementsRange(profile.uid, first, ym))
       .then((r) => live && setData(r))
       .catch(() => live && setData({ error: true, movements: [] }));
     return () => {
       live = false;
     };
-  }, [owner, profile?.uid, span, ym, tick]);
+  }, [owner, profile?.uid, ym, tick]);
 
   const payee = payeeOf(profile);
   const movements = data?.movements;
@@ -60,7 +58,6 @@ export default function PaymentsPage() {
   }, [movements]);
   const list = useMemo(() => payeeMoves(movements || [], payee), [movements, payee.name, payee.account]); // eslint-disable-line react-hooks/exhaustive-deps
   const sum = payeeSummary(list, ym);
-  const rest = useMemo(() => otherIncoming(movements || [], payee), [movements, payee.name, payee.account]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!owner) return null;
 
   const save = (next) =>
@@ -85,7 +82,7 @@ export default function PaymentsPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={title} sub="Gelen ödemeler · banka hesap özetinden" back="/mail">
+      <PageHeader title={title} sub="Aldığı ödemeler · banka hesaplarından" back="/mail">
         <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95 disabled:opacity-50">
           <Icon name="repeat" className={`size-5 ${busy ? "animate-spin" : ""}`} />
         </button>
@@ -108,14 +105,14 @@ export default function PaymentsPage() {
                 <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.month.count} ödeme · TL</p>
               </div>
               <div className="min-w-0 border-l border-white/20 pl-4">
-                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">SON {span} AY</p>
+                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">BUGÜNE KADAR</p>
                 <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.total)}</p>
                 <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.count} ödeme · TL</p>
               </div>
             </div>
             <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
-              {payee.name ? `Hesap adı “${payee.name}” olan gelen paralar (ad bankada ayrı yazılmamışsa açıklamada aranır)` : "Hesaba gelen bütün paralar"}
-              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Banka defterinde bu dönemde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}{". Excel'deki ödemeler eksikse Aidatlar › ayar › Banka Excel'i'nden dosyayı yeniden yükle."} Değiştirmek için sağ üstteki kaleme dokun.
+              {payee.name ? `Hesaplardan “${payee.name}” adına giden paralar (maaş, huzur hakkı…)` : "Seçili hesaba gelen bütün paralar"}
+              {payee.account ? ` ve ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesaba"} gelenler` : ""}. Banka defterinde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}. Değiştirmek için sağ üstteki kaleme dokun.
             </p>
           </section>
 
@@ -123,7 +120,7 @@ export default function PaymentsPage() {
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] text-mut`}>Banka hareketleri okunamadı. İnternet bağlantını kontrol edip sayfayı yeniden aç.</p>
           ) : !list.length ? (
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-              {data.sources ? `Son ${span} ayın banka hareketlerinde ${payee.name ? `${payee.name} adına ` : ""}gelen ödeme bulunamadı.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
+              {data.sources ? `Banka hareketlerinde ${payee.name ? `${payee.name} adına ` : ""}ödeme bulunamadı. Geçmiş dönem eksikse Hesaplar sayfasından banka Excel'ini yükle.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
             </p>
           ) : (
             <section className="mt-5">
@@ -149,8 +146,8 @@ export default function PaymentsPage() {
                                 {hmOf(m) && <span className="block tabular-nums">{hmOf(m)}</span>}
                               </span>
                               <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
-                                {whoIn(m) && <b className="block font-semibold">{whoIn(m)}</b>}
-                                <span className={whoIn(m) ? "block text-[0.8125rem] text-mut" : ""}>{m.desc}</span>
+                                <b className="block font-semibold">{m.note || (m.out ? "Hesaptan gönderildi" : whoIn(m) || m.desc)}</b>
+                                <span className="block text-[0.8125rem] text-mut">{[m.out ? "Giden" : "Gelen", m.accountLabel, m.out ? "" : whoIn(m)].filter(Boolean).join(" · ")}</span>
                               </span>
                               <b className="shrink-0 text-[0.875rem] font-semibold tabular-nums text-ok">+{money(m.amount)}</b>
                             </li>
@@ -166,53 +163,20 @@ export default function PaymentsPage() {
               </button>
             </section>
           )}
-
-          {rest.length > 0 && (
-            <section className="mt-5">
-              <button type="button" onClick={() => setOthers((v) => !v)} aria-expanded={others} className="flex w-full items-center gap-2 px-1 pb-2 text-left">
-                <h2 className="min-w-0 flex-1 text-[0.8125rem] font-semibold text-mut">{payee.name ? `Adı geçmeyen gelen paralar (${rest.length})` : `Diğer gelen paralar (${rest.length})`}</h2>
-                <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${others ? "rotate-90" : ""}`} />
-              </button>
-              {others && (
-                <div className={`${card} fade-in`}>
-                  <p className="px-4 pt-3 text-[0.75rem] leading-snug text-mut">Bunlar sayılmadı. Senin ödemen burada görünüyorsa bankanın yazdığı adı (ör. açıklamadaki biçimi) kalemle hesap adına yaz.</p>
-                  <ul className="divide-y divide-line">
-                    {rest.slice(0, 40).map((m) => (
-                      <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} className="flex items-start gap-3 px-4 py-2.5">
-                        <span className="w-[4.5rem] shrink-0 pt-0.5 text-[0.75rem] leading-tight text-mut">{dayText(m)}</span>
-                        <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
-                          {whoIn(m) && <b className="block font-semibold">{whoIn(m)}</b>}
-                          {m.desc}
-                          {m.text && <small className="block text-[0.75rem] text-mut">{m.text}</small>}
-                        </span>
-                        <b className="shrink-0 text-[0.875rem] font-semibold tabular-nums">+{money(m.amount)}</b>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
-          )}
-
-          {span < 12 && !data.error && (
-            <button type="button" onClick={() => (setData(null), setSpan(12))} className="mt-3 h-11 w-full rounded-2xl text-[0.875rem] font-semibold text-acc active:bg-card">
-              Son 12 ayı göster
-            </button>
-          )}
         </>
       )}
     </main>
   );
 }
 
-// Ad ve hesap ayarı: ad açıklamada aranır; boş bırakılırsa seçili hesaba gelen her para sayılır
+// Ad ve hesap ayarı: hesaplardan bu ada giden paralar; kendi hesabı seçiliyse ona gelenler de
 function Settings({ payee, accounts, onSave, onClose }) {
   const [name, setName] = useState(payee.name);
   const [account, setAccount] = useState(payee.account);
   return (
     <section className={`${card} fade-in mt-2 space-y-3 px-4 py-4`}>
       <label className="block">
-        <span className="text-[0.8125rem] font-semibold text-mut">Hesap adı (gönderen ya da alıcı)</span>
+        <span className="text-[0.8125rem] font-semibold text-mut">Ad (bankada alıcı olarak yazılan)</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="mt-1 h-11 w-full rounded-xl bg-bg px-3.5 text-[1rem] outline-none" />
       </label>
       {accounts.length > 1 && (
@@ -227,7 +191,7 @@ function Settings({ payee, accounts, onSave, onClose }) {
           </div>
         </div>
       )}
-      <p className="text-[0.75rem] leading-snug text-mut">Ad boş kalırsa seçili hesaba gelen bütün paralar gösterilir.</p>
+      <p className="text-[0.75rem] leading-snug text-mut">Hesaplardan bu ada giden paralar sayılır. Kendi hesabını seçersen o hesaba gelenler de sayılır; ad boşsa yalnız seçili hesaba gelenler.</p>
       <div className="flex gap-2">
         <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold">
           Vazgeç

@@ -96,7 +96,7 @@ export function homeActions(o) {
     ]],
     ["Yönetim", [
       o.receipts && { href: "/receipts", icon: "receipt", label: "Fişler" },
-      !o.staff && { href: "/mail", icon: "mail", label: "Mailler" },
+      !o.staff && { href: "/mail", icon: "wallet", label: "Hesaplar" },
       !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
     ]],
     ["Sosyal", [!o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" }, !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" }]],

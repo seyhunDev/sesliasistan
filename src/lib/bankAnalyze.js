@@ -5,6 +5,7 @@
 //   3) Özet gösterilir (report), onaylanınca hareketler banka defterine eklenir (ledgerData.addFileMoves).
 // Günlük hesap özeti mailleri bu akışa girmez; Excel'in bittiği günden sonrası maillerden gelir.
 import { words } from "./dues.js";
+import { payeeMoves } from "./payee.js";
 
 export const CATS = ["Aidat", "Fatura", "Banka ücreti", "Hesaplar arası", "Kart / alışveriş", "Maaş", "Diğer gelen", "Diğer giden"];
 
@@ -55,8 +56,9 @@ export function applyAi(moves, rows = []) {
 const round = (n) => Math.round(n * 100) / 100;
 const dayOf = (ts) => (Number.isFinite(ts) ? new Date(ts + 3 * 3600e3).toISOString().slice(0, 10) : "");
 
-// Yüklenen Excel'in özeti: dönem, gelen/giden, türlere göre, en çok gönderenler, adı bulunamayan gelenler
-export function report(moves) {
+// Özet (yüklenen Excel'in incelemesi ve Hesaplar sayfasındaki kalıcı özet): dönem, gelen/giden, türlere göre,
+// kim ne kadar ödedi (en çok önce; top kaç kişi), adı bulunamayan gelenler, kişisel hesabın (payee) aldığı
+export function report(moves, payee = null, top = 5) {
   const days = moves.map((m) => dayOf(m.ts)).filter(Boolean).sort();
   const ins = moves.filter((m) => m.amount > 0);
   const outs = moves.filter((m) => m.amount < 0);
@@ -86,9 +88,16 @@ export function report(moves) {
     outN: outs.length,
     outSum: round(outs.reduce((s, m) => s + m.amount, 0)),
     cats: [...cats.values()].sort((a, b) => Math.abs(b.sum) - Math.abs(a.sum)),
-    top: [...who.values()].sort((a, b) => b.sum - a.sum).slice(0, 5),
+    top: [...who.values()].sort((a, b) => b.sum - a.sum).slice(0, top),
+    payers: who.size,
     noWho: ins.filter((m) => !m.who).length,
+    got: payee?.name || payee?.account ? gotOf(moves, payee) : null,
   };
+}
+
+function gotOf(moves, payee) {
+  const l = payeeMoves(moves, payee);
+  return { name: payee.name, n: l.length, sum: round(l.reduce((s, m) => s + m.amount, 0)) };
 }
 
 // Excel ile günlük maillerin birleştiği yer: Excel'in son günü ve sonrasının nereden geldiği

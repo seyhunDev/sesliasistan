@@ -48,7 +48,7 @@ export default function SettingsPage() {
         <VoiceRow />
         <WeatherPlaceRow />
         <RacesRow />
-        {owner && <Row icon="wallet" tone="ok" title="Mailler" sub={sendersOf(profile.mailFrom).map((r) => r.name).join(", ")} href="/mail" />}
+        {owner && <Row icon="wallet" tone="ok" title="Hesaplar" sub={sendersOf(profile.mailFrom).map((r) => r.name).join(", ")} href="/mail" />}
         {owner && <Row icon="users" tone="ok" title="Kişiler" sub={members.length ? `${members.length} kişi · ekle, gör, kaldır` : "Ekip ya da aile ekle"} href="/staff" />}
       </Group>
 

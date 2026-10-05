@@ -1,4 +1,4 @@
-// Kişisel hesap: banka hesap özetlerinde belli bir kişi adına (varsayılan ana hesabın adı, ör. "Seyhun Yıldız") gelen ödemeler.
+// Kişisel hesap: banka hesap özetlerinde belli bir kişinin (varsayılan ana hesabın adı, ör. "Seyhun Yıldız") aldığı ödemeler.
 // Ayrı bir hesap gibi gösterilir: tarih tarih açıklamalarıyla, bu ay ve toplam (sayfa /payments). Saf fonksiyonlar, test edilir.
 // Ayar ana hesabın profilinde: users/{uid}.payee = { name, account } (account boşsa bütün hesaplar; ad boşsa o hesaba gelen her para).
 import { words, monthOf } from "./dues.js";
@@ -16,18 +16,33 @@ export function hasName(desc, name) {
   return want.every((x) => got.has(x)) || w.join("").includes(want.join(""));
 }
 // Hesap adı (gönderen/alıcı) varsa yalnız ona bakılır; açıklama yalnız ödemenin ne olduğunu gösterir.
-// Ad bulunamayan harekette (bankanın ayrı ad sütunu yoksa) açıklamaya ve diğer hücrelere bakılır.
 export const whoIn = (m) => m.who || whoOf(m.desc);
-const textOf = (m) => whoIn(m) || `${m.desc || ""} ${m.text || ""}`;
-const incoming = (m, payee) => m.amount > 0 && (!m.currency || m.currency === "TL") && (!payee.account || m.account === payee.account);
+const tlIn = (m, payee) => (!m.currency || m.currency === "TL") && (!payee.account || m.account === payee.account);
 
-// O kişiye gelen TL paralar, en yeni önce
-export function payeeMoves(movements, payee) {
-  return movements.filter((m) => incoming(m, payee) && hasName(textOf(m), payee.name)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+// Kişinin ALDIĞI para:
+//   - izlenen hesaplardan ona GİDEN para (kulüp hesabından "maaş, huzur hakkı" gibi; alıcı adı = kişinin adı)
+//   - hesap seçiliyse (kişinin kendi hesabı) o hesaba gelen para (ad yazılıysa gönderende değil, alıcı kendisi)
+//   - hesap seçili değilse gönderen adı okunamamış ama açıklamasında adı geçen gelen para (eski yazımlar)
+// Gönderen adı kişinin kendisi olan gelen para (kendi cebinden kulübe yatırdığı) sayılmaz.
+export function received(m, payee) {
+  if (typeof m.amount !== "number" || !tlIn(m, payee)) return false;
+  const who = whoIn(m);
+  if (m.amount < 0) return !!(payee.name && who && hasName(who, payee.name));
+  if (payee.account) return !(payee.name && who && hasName(who, payee.name));
+  if (!payee.name) return true;
+  return !who && hasName(`${m.desc || ""} ${m.text || ""}`, payee.name);
 }
-// Adı geçmeyen gelen paralar (en yeni önce): sayfada "bulunamadı" denince açıklamaların nasıl yazıldığı görülsün
+
+// Kişinin aldığı paralar (tutar artı; ona giden para "out" işaretli), en yeni önce
+export function payeeMoves(movements, payee) {
+  return movements
+    .filter((m) => received(m, payee))
+    .map((m) => (m.amount < 0 ? { ...m, amount: -m.amount, out: true } : m))
+    .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+}
+// Sayılmayan gelen paralar (en yeni önce): sayfada "bulunamadı" denince açıklamaların nasıl yazıldığı görülsün
 export const otherIncoming = (movements, payee) =>
-  movements.filter((m) => incoming(m, payee) && !hasName(textOf(m), payee.name)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  movements.filter((m) => m.amount > 0 && tlIn(m, payee) && !received(m, payee)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
 
 const round = (n) => Math.round(n * 100) / 100;
 
