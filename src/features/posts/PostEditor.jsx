@@ -16,9 +16,18 @@ const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
 const chip = (on) =>
   `flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${on ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`;
-const row = "flex items-center gap-3 py-2.5";
-const rowLabel = "w-14 shrink-0 text-[0.8125rem] font-medium text-mut";
 const small = "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50";
+
+// Önizlemenin altındaki ayar araçları
+const TOOLS = [
+  ["photo", "Fotoğraf", "camera"],
+  ["fit", "Büyüt", "image"],
+  ["shade", "Gölge", "moon"],
+  ["size", "Boyut", "clip"],
+  ["style", "Şablon", "box"],
+  ["color", "Renk", "sun"],
+  ["text", "Yazı yeri", "edit"],
+];
 
 const slug = (s) =>
   String(s || "gonderi")
@@ -54,7 +63,7 @@ function legacyCopy(t) {
   return ok;
 }
 
-// Gönderi ekranı: önizleme + tasarım (biçim, şablon, renk) + paylaş; yarış (sporcular, sınıflar), tür, görsel, görseldeki yazılar, açıklama.
+// Gönderi ekranı: önizleme, hemen altında görsel ayarları (fotoğraf, büyüt/kaydır, gölge, boyut, şablon, renk, yazı yeri) + paylaş; yarış (sporcular, sınıflar), tür, görsel, görseldeki yazılar, açıklama.
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
@@ -80,6 +89,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const fileInput = useRef(null);
   const moreInput = useRef(null);
   const latest = useRef(null);
+  const drag = useRef(null);
+  // Önizlemenin altındaki ayarlar: seçili araç
+  const [tool, setTool] = useState(startPhoto ? "fit" : "photo");
   // Yapay zekanın son yazdığı açıklama: elle değiştirilmediyse tür değişince yeni türe göre yeniden yazılır (kayıtlı gönderide elle sayılır)
   const autoCap = useRef(start.id ? null : start.caption);
   // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
@@ -109,17 +121,18 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     };
   }, []);
 
-  // Önizlemeyi çiz, paylaşılacak dosyayı hazırla (yazarken kısa gecikmeyle)
+  // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
   const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
+    const raf = requestAnimationFrame(() => {
+      if (canvas.current && !drag.current) drawPost(canvas.current, cleanPost(p), shown);
+    });
     const t = setTimeout(async () => {
-      if (!canvas.current) return;
-      await drawPost(canvas.current, cleanPost(p), shown);
-      if (!live) return;
+      if (!canvas.current || !live) return;
       file.current = await postFile(canvas.current, slug(p.headline)).catch(() => null);
-    }, 200);
+    }, 400);
     // Üç boyut (gönderi, hikâye, reels): küçük önizleme + paylaşılacak dosya, ana çizimden sonra
     setFiles.current = {};
     const t2 = setTimeout(async () => {
@@ -135,6 +148,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     }, 900);
     return () => {
       live = false;
+      cancelAnimationFrame(raf);
       clearTimeout(t);
       clearTimeout(t2);
     };
@@ -179,6 +193,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       setPhoto(dataUrl);
       setPhotoDirty(true);
       setP((x) => ({ ...x, focus: 50, fx: 50, zoom: 100 }));
+      setTool("fit");
       if (r.usage) setUsage(r.usage);
       return r.usage || null;
     } catch (x) {
@@ -368,6 +383,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       setPhoto(dataUrl);
       setPhotoDirty(true);
       setP((x) => ({ ...x, focus: 50, fx: 50, zoom: 100 }));
+      setTool("fit");
     } catch (x) {
       setErr(x?.message || "Fotoğraf açılamadı");
     } finally {
@@ -436,7 +452,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   };
 
   // Önizlemede parmakla sürükleyince fotoğraf kayar (büyütülmüşse iki yönde); sürüklerken doğrudan çizilir
-  const drag = useRef(null);
   const dragStart = (e) => {
     if (!shown || !canvas.current) return;
     const [, , W, H] = formatOf(post.format);
@@ -467,6 +482,26 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
   const race = post.race;
   const classes = classList(post.classes);
+  const slider = (k, label, min, max, step = 1, unit = "") => (
+    <label className="block">
+      <span className="flex items-center justify-between text-[0.75rem] font-medium text-mut">
+        {label}
+        <span className="tabular-nums">
+          {unit === "%" ? "%" : ""}
+          {post[k]}
+        </span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={post[k]} onChange={(e) => put(k, Number(e.target.value))} className="mt-1 w-full touch-pan-y accent-[var(--acc)]" />
+    </label>
+  );
+  const noPhoto = (
+    <div className="flex items-center gap-3">
+      <p className="min-w-0 flex-1 text-[0.8125rem] text-mut">Bu ayar fotoğraf eklenince çalışır.</p>
+      <button type="button" onClick={() => setTool("photo")} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+        Fotoğraf ekle
+      </button>
+    </div>
+  );
   const empty = !race && !post.caption && !post.topic;
 
   return (
@@ -495,6 +530,90 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             {busy === "img" ? "Görsel çiziliyor…" : "Yapay zeka yazıyor…"}
           </span>
         )}
+      </div>
+
+      {/* Görsel ayarları önizlemenin hemen altında: araç seç, değiştir, önizlemede anında gör */}
+      <div className={`${card} mt-3 overflow-hidden`}>
+        <div className="grid grid-cols-4 gap-1.5 px-3 pt-3">
+          {TOOLS.map(([k, label, icon]) => (
+            <button key={k} type="button" aria-pressed={tool === k} onClick={() => setTool(k)} className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl text-[0.75rem] font-semibold transition active:scale-95 ${tool === k ? "bg-deep text-white" : "bg-bg text-fg"}`}>
+              <Icon name={icon} className="size-[1.125rem]" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-3 px-4 pb-4 pt-3">
+          {tool === "photo" && (
+            <>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => fileInput.current?.click()} disabled={busy === "photo"} className={small}>
+                  <Icon name="camera" className="size-[1.125rem]" />
+                  {busy === "photo" ? "Hazırlanıyor…" : photo ? "Değiştir" : "Fotoğraf seç"}
+                </button>
+                <button type="button" onClick={genImage} disabled={!!busy || usage?.left === 0} className={small}>
+                  <Icon name="spark" className="size-[1.125rem] text-acc" />
+                  {busy === "img" ? "Çiziliyor…" : "Yapay zeka görseli"}
+                </button>
+                {photo && (
+                  <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-card text-rec active:scale-95">
+                    <Icon name="trash" className="size-[1.125rem]" />
+                  </button>
+                )}
+              </div>
+              {usage && (
+                <p className={`text-center text-[0.6875rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
+                  Yapay zeka görseli: bugün {usage.today}/{usage.limit} · bu ay {usage.month} (≈ ${usage.cost.toFixed(2)}) · görsel başı ≈ ${usage.price}{" · "}
+                  <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer" className="font-semibold text-acc underline">
+                    Google kotası
+                  </a>
+                </p>
+              )}
+            </>
+          )}
+          {tool === "fit" &&
+            (photo ? (
+              <>
+                {slider("zoom", "Büyüt", 100, 250, 5, "%")}
+                {slider("fx", "Sağa-sola kaydır", 0, 100)}
+                {slider("focus", "Yukarı-aşağı kaydır", 0, 100)}
+                <div className="flex items-center gap-3">
+                  <p className="min-w-0 flex-1 text-[0.75rem] text-mut">Önizlemede parmağınla sürükleyerek de yerleştirebilirsin.</p>
+                  <button type="button" onClick={() => setP((x) => ({ ...x, zoom: 100, fx: 50, focus: 50 }))} className="h-8 shrink-0 rounded-full px-3 text-[0.75rem] font-semibold text-acc ring-1 ring-line active:scale-95">
+                    Sıfırla
+                  </button>
+                </div>
+              </>
+            ) : (
+              noPhoto
+            ))}
+          {tool === "shade" && (photo ? <>{slider("shade", "Gölge (yazı okunsun)", 0, 100)}</> : noPhoto)}
+          {tool === "size" && <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} />}
+          {tool === "style" && <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} />}
+          {tool === "color" && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {THEMES.map(([k, label, c1, c2]) => (
+                <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
+                  <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+                </button>
+              ))}
+            </div>
+          )}
+          {tool === "text" && (
+            <>
+              <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Yazı üstte"], ["bottom", "Yazı altta"]]} />
+              {race && (
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
+                  <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
+                </label>
+              )}
+              <button type="button" onClick={() => (setTexts(true), document.getElementById("post-texts")?.scrollIntoView({ behavior: "smooth", block: "start" }))} className="text-[0.8125rem] font-semibold text-acc">
+                Yazıları düzenle ›
+              </button>
+            </>
+          )}
+          {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
+        </div>
       </div>
 
       {/* Ana asistana ne söyleneceği (ayrı yapay zeka kutusu yok) */}
@@ -607,49 +726,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </ul>
       )}
 
-      <Label>3 · FOTOĞRAF</Label>
-      <div className="space-y-3">
+      <Label right="isteğe bağlı">3 · KAYDIRMALI GÖNDERİ</Label>
+      <div>
         <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
-        <div className="flex gap-2">
-          <button type="button" onClick={() => fileInput.current?.click()} disabled={busy === "photo"} className={small}>
-            <Icon name="camera" className="size-[1.125rem]" />
-            {busy === "photo" ? "Hazırlanıyor…" : photo ? "Fotoğrafı değiştir" : "Fotoğraf seç"}
-          </button>
-          <button type="button" onClick={genImage} disabled={!!busy || usage?.left === 0} className={small}>
-            <Icon name="spark" className="size-[1.125rem] text-acc" />
-            {busy === "img" ? "Çiziliyor…" : "Yapay zeka görseli"}
-          </button>
-        </div>
-        {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
-        {usage && (
-          <p className={`text-center text-[0.6875rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
-            Yapay zeka görseli: bugün {usage.today}/{usage.limit} · bu ay {usage.month} (≈ ${usage.cost.toFixed(2)}) · görsel başı ≈ ${usage.price}{" · "}
-            <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer" className="font-semibold text-acc underline">
-              Google kotası
-            </a>
-          </p>
-        )}
-        {photo && (
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 flex-1 space-y-2">
-              <p className="text-[0.75rem] text-mut">Önizlemede fotoğrafı parmağınla sürükleyerek yerleştir.</p>
-              <label className="block">
-                <span className="text-[0.75rem] font-medium text-mut">Büyüt · %{post.zoom}</span>
-                <input type="range" min={100} max={250} step={5} value={post.zoom} onChange={(e) => put("zoom", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
-              </label>
-              <label className="block">
-                <span className="text-[0.75rem] font-medium text-mut">Gölge (yazı okunsun)</span>
-                <input type="range" min={0} max={100} value={post.shade} onChange={(e) => put("shade", Number(e.target.value))} className="mt-1 w-full accent-[var(--acc)]" />
-              </label>
-            </div>
-            <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-card text-rec active:scale-95">
-              <Icon name="trash" className="size-[1.125rem]" />
-            </button>
-          </div>
-        )}
         <input ref={moreInput} type="file" accept="image/*" multiple className="hidden" onChange={addExtras} />
         <div>
-          <span className="text-[0.75rem] font-medium text-mut">Kaydırmalı gönderi {extras.length ? `· ${extras.length + 1} sayfa` : "(ek fotoğraflar)"}</span>
+          <span className="text-[0.75rem] font-medium text-mut">{extras.length ? `${extras.length + 1} sayfa · ilk sayfa yukarıdaki tasarım` : "Ek fotoğraflar (ilk sayfa yukarıdaki tasarım)"}</span>
           <div className="-mx-5 mt-1.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
             {extras.map((x, k) => (
               <span key={x.id} className="relative shrink-0">
@@ -670,39 +752,11 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       </div>
 
-
-      {/* Tasarım: biçim, şablon, renk, yazının yeri; her satırda solda ad, sağda seçim */}
-      <Label>4 · TASARIM</Label>
-      <div className={`${card} divide-y divide-line px-4`}>
-        <div className={row}>
-          <span className={rowLabel}>Boyut</span>
-          <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} className="flex-1" />
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Şablon</span>
-          <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} className="flex-1" />
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Renk</span>
-          <div className="flex flex-1 flex-wrap items-center gap-1.5">
-            {THEMES.map(([k, label, c1, c2]) => (
-              <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
-                <span className="size-6 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={row}>
-          <span className={rowLabel}>Yazı</span>
-          <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Üstte"], ["bottom", "Altta"]]} className="flex-1" />
-        </div>
-      </div>
-
       {/* Görseldeki yazılar: kendiliğinden dolar, istenirse elle düzenlenir */}
-      <button type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
+      <button id="post-texts" type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 scroll-mt-4 flex w-full items-center gap-3 px-4 py-3 text-left`}>
         <Icon name="edit" className="size-5 shrink-0 text-acc" />
         <span className="min-w-0 flex-1">
-          <b className="block text-[0.9375rem] font-semibold">5 · Görseldeki yazılar</b>
+          <b className="block text-[0.9375rem] font-semibold">4 · Görseldeki yazılar</b>
           <span className="block truncate text-[0.75rem] text-mut">{[post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
         </span>
         <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
@@ -727,14 +781,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>6 · AÇIKLAMA</Label>
+      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>5 · AÇIKLAMA</Label>
       <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder={aiBusy ? "Yapay zeka yazıyor…" : "Yarış seçince ya da asistana anlatınca yapay zeka yazar; kendin de yazabilirsin"} />
       <label className="mt-3 block">
         <span className="text-[0.8125rem] font-medium text-mut">Etiketler (#)</span>
         <textarea value={tags} onChange={(e) => setTags(e.target.value)} onBlur={() => setTags(cleanTags(tags).join(" "))} rows={2} className={area} placeholder="#dikiliyelken #yelken #sailing" />
       </label>
 
-      <Label>7 · PAYLAŞ</Label>
+      <Label>6 · PAYLAŞ</Label>
       <div>
         {/* Üç boyut birden: aynı tasarım gönderi, hikâye ve reels ölçüsünde; dokununca o boyut paylaşılır */}
         <div className="mb-3 grid grid-cols-3 items-end gap-2.5">
