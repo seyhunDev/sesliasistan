@@ -579,3 +579,57 @@ group("Cihazdaki veriler")([
   })],
   ["ayar boyutu", F("anahtar + değer, 2 bayt/karakter", () => DD.storageBytes([["ab", "cd"], ["x", null]]) === 10)],
 ]);
+
+// Envanter (invModel.js): numara, yapay zeka işlemlerinin uygulanması, hedef envanter, hareket kaydı
+const IM = await import("@/features/inventory/invModel");
+const NOW = { now: "2026-10-05T10:00:00.000Z", by: "Seyhun" };
+const club = () => IM.cleanInv({ name: "Yelken Kulübü", kind: "club", items: [
+  { id: "t1", no: "001", name: "Optimist teknesi", cat: "Tekne", qty: 1 },
+  { id: "s1", no: "002", name: "Şamandıra", cat: "Şamandıra", qty: 10 },
+  { id: "r1", no: "007", name: "El telsizi", cat: "Telsiz", qty: 4 },
+] });
+group("Envanter")([
+  ["hazır kategoriler", F("kulüpte tekne, direk, bom, bot, şamandıra, telsiz, bilgisayar, yazıcı", () => ["Tekne", "Direk", "Bom", "Bot", "Şamandıra", "Telsiz", "Bilgisayar", "Yazıcı"].every((c) => IM.cleanInv({ kind: "club" }).cats.includes(c)))],
+  ["otomatik numara", F("en büyük numara + 1, önekle", () => IM.nextNo(club()) === "008" && IM.nextNo({ ...club(), prefix: "DYK" }) === "DYK-008" && IM.nextNo(IM.cleanInv({})) === "001")],
+  ["elle değişen numara", F("DYK-120 varsa sıradaki 121", () => IM.nextNo({ items: [{ no: "DYK-120" }, { no: "5" }] }) === "121")],
+  ["yeni ürün", F("numara, tarih, kategori eşleşmesi, hareket", () => {
+    const r = IM.applyOps(club(), [{ op: "add", name: "Lazer yazıcı", cat: "yazıcılar", qty: 1, brand: "HP" }], NOW);
+    const x = r.inv.items.at(-1);
+    return x.no === "008" && x.cat === "Yazıcı" && x.addedAt === "2026-10-05" && x.brand === "HP" && r.inv.log[0].op === "add" && r.inv.log[0].by === "Seyhun" && /Ekledim: Lazer yazıcı \(No 008\)/.test(r.lines[0]);
+  })],
+  ["iki yeni ürün", F("ardışık numaralar", () => {
+    const r = IM.applyOps(club(), [{ op: "add", name: "Optimist 2", cat: "Tekne" }, { op: "add", name: "Optimist 3", cat: "Tekne" }], NOW);
+    return r.inv.items.slice(-2).map((x) => x.no).join(",") === "008,009";
+  })],
+  ["var olana ekleme", F("şamandıra 10 → 15", () => {
+    const r = IM.applyOps(club(), [{ op: "add", id: "s1", qty: 5 }], NOW);
+    return r.inv.items.find((x) => x.id === "s1").qty === 15 && /Artırdım: Şamandıra 10 → 15/.test(r.lines[0]) && r.inv.log[0].qty === 5;
+  })],
+  ["çıkarma", F("telsiz 4 → 0, eksiye inmez", () => {
+    const r = IM.applyOps(club(), [{ op: "remove", id: "r1", qty: 9 }], NOW);
+    return r.inv.items.find((x) => x.id === "r1").qty === 0 && /kalmadı/.test(r.lines[0]) && r.inv.log[0].op === "remove";
+  })],
+  ["değiştirme", F("durum bakımda, kimde Ali", () => {
+    const r = IM.applyOps(club(), [{ op: "update", id: "t1", state: "repair", assignee: "Ali" }], NOW);
+    const x = r.inv.items.find((y) => y.id === "t1");
+    return x.state === "repair" && x.assignee === "Ali" && /Değiştirdim: Optimist teknesi, durum Bakımda, kimde Ali/.test(r.lines[0]);
+  })],
+  ["silme onay ister", F("uygulanmaz, sorulur", () => {
+    const r = IM.applyOps(club(), [{ op: "delete", id: "t1" }], NOW);
+    return r.deletes.length === 1 && r.inv.items.length === 3 && !r.changed && IM.dropItem(r.inv, "t1", NOW).items.length === 2;
+  })],
+  ["olmayan ürün", F("uydurma id atlanır", () => {
+    const r = IM.applyOps(club(), [{ op: "remove", id: "yok", name: "Kano" }], NOW);
+    return !r.changed && /Bulamadım: Kano/.test(r.lines[0]);
+  })],
+  ["hangi envanter", F("adı geçen, sayfadaki, kulüp", () => {
+    const L = [{ id: "n", name: "Normal", kind: "normal" }, { id: "k", name: "Yelken Kulübü", kind: "club" }, { id: "e", name: "Ev", kind: "normal" }];
+    return IM.pickInv("normal envantere kahve makinesi ekle", L).id === "n" && IM.pickInv("ev envanterine ütü ekle", L).id === "e" &&
+      IM.pickInv("kulüp envanterine 2 telsiz", L).id === "k" && IM.pickInv("2 telsiz ekle", L, { here: "e" }).id === "e" && IM.pickInv("envantere 2 telsiz ekle", L).id === "k";
+  })],
+  ["arama", F("Türkçe harfsiz", () => IM.searchItems(club().items, "samandira").length === 1 && IM.searchItems(club().items, "007").length === 1)],
+  ["excel", F("ürünler ve hareketler sayfası", () => {
+    const x = IM.excelRows(IM.applyOps(club(), [{ op: "add", id: "s1", qty: 1 }], NOW).inv);
+    return x.Ürünler.length === 4 && x.Hareketler.length === 2 && x.Ürünler[0][0] === "No";
+  })],
+]);

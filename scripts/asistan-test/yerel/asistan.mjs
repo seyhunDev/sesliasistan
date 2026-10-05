@@ -575,3 +575,16 @@ group("Süre kaydı")([
   ["kopyalanan metin", { desc: "toplam ve adımlar yazılı", fn: () => TM.timingText(scene(voiceAdd)), ok: (s) => /toplam 5,7 sn/.test(s) && /Susmanın beklenmesi: 1,6 sn/.test(s) && /Kaydetme: 300 ms/.test(s) }],
 ]);
 TM.timingTest({});
+
+// Envanter cümleleri (invWords.js): her yerde "envanter/demirbaş/stok" geçince, envanter sayfasında başka işe benzemeyen her cümle
+const IW = await import("@/features/inventory/invWords");
+const WI = (want, here = false) => ({ desc: `${want ? "envanter" : "envanter değil"}${here ? " (sayfada)" : ""}`, fn: (s) => IW.wantsInventory(s, here) && !localNavigate(s, { names: navNames }), ok: (r) => r === want });
+const NI = { desc: "Envanter sayfası açılır", fn: (s) => localNavigate(s, { names: navNames }), ok: (r) => r?.page === "inventory" };
+group("Envanter (tanıma)")([
+  ["envantere 3 optimist teknesi ekle", WI(true)], ["yelken kulübü envanterinden 2 şamandıra çıkar", WI(true)], ["kulüp envanterinde kaç telsiz var", WI(true)],
+  ["demirbaşlara lazer yazıcı ekle", WI(true)], ["stokta kaç can yeleği var", WI(true)], ["envanterdeki optimist 4'ü sil", WI(true)],
+  ["2 can yeleği kayboldu", WI(true, true)], ["optimist 4 bakımda", WI(true, true)], ["yazıcı ekle", WI(true, true)],
+  ["yarın 10'da antrenman ekle", WI(false, true)], ["Ali'ye mesaj at", WI(false, true)], ["planlara git", WI(false, true)],
+  ["yarın 10'da antrenman ekle", WI(false)], ["2 can yeleği kayboldu", WI(false)], ["envanteri aç", WI(false)], ["envanter sayfasına git", WI(false)],
+  ["envanteri aç", NI], ["envanter", NI], ["demirbaşları göster", NI],
+]);
