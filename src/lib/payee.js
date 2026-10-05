@@ -2,6 +2,7 @@
 // Ayrı bir hesap gibi gösterilir: tarih tarih açıklamalarıyla, bu ay ve toplam (sayfa /payments). Saf fonksiyonlar, test edilir.
 // Ayar ana hesabın profilinde: users/{uid}.payee = { name, account } (account boşsa bütün hesaplar; ad boşsa o hesaba gelen her para).
 import { words, monthOf } from "./dues.js";
+import { whoOf } from "./mailBoard.js";
 
 export const payeeOf = (profile) => ({ name: (profile?.payee?.name ?? profile?.name ?? "").trim(), account: profile?.payee?.account || "" });
 
@@ -14,7 +15,10 @@ export function hasName(desc, name) {
   const got = new Set(w);
   return want.every((x) => got.has(x)) || w.join("").includes(want.join(""));
 }
-const textOf = (m) => `${m.desc || ""} ${m.text || ""}`;
+// Hesap adı (gönderen/alıcı) varsa yalnız ona bakılır; açıklama yalnız ödemenin ne olduğunu gösterir.
+// Ad bulunamayan harekette (bankanın ayrı ad sütunu yoksa) açıklamaya ve diğer hücrelere bakılır.
+export const whoIn = (m) => m.who || whoOf(m.desc);
+const textOf = (m) => whoIn(m) || `${m.desc || ""} ${m.text || ""}`;
 const incoming = (m, payee) => m.amount > 0 && (!m.currency || m.currency === "TL") && (!payee.account || m.account === payee.account);
 
 // O kişiye gelen TL paralar, en yeni önce
@@ -48,8 +52,8 @@ export function payeeSummary(list, ym) {
 export function payeeCsv(list, name) {
   const q = (s) => `"${String(s ?? "").replace(/"/g, '""')}"`;
   const amt = (n) => String(round(n)).replace(".", ",");
-  const rows = list.map((m) => [m.date, m.desc, amt(m.amount), m.accountLabel || ""].map(q).join(";"));
-  return "﻿" + [[`${name || "Kişisel hesap"} · gelen ödemeler`].map(q).join(";"), ["Tarih", "Açıklama", "Tutar (TL)", "Hesap"].map(q).join(";"), ...rows].join("\n");
+  const rows = list.map((m) => [m.date, whoIn(m), m.desc, amt(m.amount), m.accountLabel || ""].map(q).join(";"));
+  return "﻿" + [[`${name || "Kişisel hesap"} · gelen ödemeler`].map(q).join(";"), ["Tarih", "Gönderen / hesap adı", "Açıklama", "Tutar (TL)", "Hesap"].map(q).join(";"), ...rows].join("\n");
 }
 
 // Asistan sorusu: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi", "ekimde ne kadar para aldım"

@@ -16,6 +16,7 @@ const cut = (s, n) => String(s ?? "").slice(0, n);
 export const slim = (m, src) => {
   const x = { date: cut(m.date, 40), ts: Number.isFinite(m.ts) ? m.ts : null, desc: cut(m.desc, 300), amount: m.amount, currency: m.currency || "TL", account: cut(m.account, 80), accountLabel: cut(m.accountLabel, 60) };
   if (m.text) x.text = cut(m.text, 300);
+  if (m.who) x.who = cut(m.who, 80);
   if (m.kind) x.kind = cut(m.kind, 60);
   if (m.balance !== null && m.balance !== undefined) x.balance = m.balance;
   if (src) x.f = src; // yüklenen dosyanın kimliği (dosya silinince onun getirdikleri silinir)

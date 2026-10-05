@@ -2,6 +2,7 @@
 // Firestore'a ek okuma yok: aidat ve gönderi özeti ilgili sayfa açılınca bu cihazda saklanır (sa-home-sum),
 // yarış bilgisi raceHome.js'in zaten yaptığı okumadan, antrenman bellekteki planlardan gelir.
 import { canLog, monthLog } from "./trainingLog";
+import { monthRows } from "./dues";
 
 const KEY = "sa-home-sum";
 export function readSum() {
@@ -32,6 +33,16 @@ export function duesTile(sum, ym) {
     sub: sum.pending > 0 ? `${sum.pending} banka ödemesi bekliyor` : left > 0 ? `${m} · ${left} kişi ödemedi` : `${m} · herkes ödedi`,
     warn: sum.pending > 0,
   };
+}
+
+// Aidat kartının canlı özeti: ana sayfa açılınca dues/settings (roster: etkin sporcular) ve bu ayın kaydı okunur (2 okuma),
+// böylece sunucunun bankadan kendiliğinden yazdığı ödeme Aidatlar sayfası açılmadan da görünür. Bekleyen banka ödemesi
+// sayısı yalnız Aidatlar sayfasında hesaplanır, son bilinen değer kalır.
+export function duesLive(cfg, month, ym, prev) {
+  const roster = cfg?.roster || [];
+  if (!roster.length) return prev;
+  const t = monthRows(roster.filter((a) => a.id && a.studentName), month || {}, cfg);
+  return { ym, paidCount: t.paidCount, count: t.rows.length, pending: prev?.ym === ym ? prev.pending || 0 : 0 };
 }
 
 // Yarış: nextInfo (raceHome.js) { name (ilçe ya da adın ilk kelimesi), when ("5 gün", "yarın", "bugün", "sürüyor"), left } ve yaklaşan sayısı
