@@ -775,3 +775,32 @@ group("Geri düğmesi")([
   ["bilinmeyen adrese dönüş", F("yeni iz başlar", () => walk([["push", "/a"], ["pop", "/b"]]).join() === "/b")],
   ["boş iz", F("ilk adres yazılır", () => NAV.stepTrail([], "push", "/plans").join() === "/plans")],
 ]);
+
+// Gelen ödemeler / kişisel hesap (payee.js): banka özetinde belli bir kişi adına gelen paralar
+const PY = await import("@/lib/payee");
+const inc = (desc, amount, date, account = "TL|1234|Vadesiz") => ({ date, desc, amount, currency: "TL", account, accountLabel: "Vadesiz ·1234", ts: Date.parse(`${date.slice(6, 10)}-${date.slice(3, 5)}-${date.slice(0, 2)}T09:00:00Z`) });
+const PMOV = [
+  inc("FAST GELEN AHMET KAYA SEYHUN YILDIZ ANTRENORLUK", 3000, "03.10.2026 12:00"),
+  inc("EFT GELEN SEYHUN YILDIZ EKIM DERS", 1500, "01.10.2026 10:00"),
+  inc("HAVALE MEHMET OZ AIDAT", 1200, "02.10.2026 10:00"),
+  inc("EFT GELEN SEYHUN YILDIZ EYLUL", 2000, "15.09.2026 10:00"),
+  inc("EFT GELEN SEYHUN YILDIZ DOLAR", 50, "16.09.2026 10:00", "USD|9999|Vadesiz"),
+  { ...inc("GIDEN EFT SEYHUN YILDIZ", -700, "04.10.2026 10:00") },
+];
+const SY = { name: "Seyhun Yıldız", account: "" };
+group("Gelen ödemeler (kişisel hesap)")([
+  ["Türkçe harfsiz ad", F("SEYHUN YILDIZ = Seyhun Yıldız", () => PY.hasName("EFT SEYHUN YILDIZ", "Seyhun Yıldız") && !PY.hasName("EFT SEYHUN KAYA", "Seyhun Yıldız"))],
+  ["yalnız gelen ve adı geçen", F("4 ödeme, giden ve başka ad yok", () => PY.payeeMoves(PMOV, SY).length === 4)],
+  ["hesap seçimi", F("yalnız USD hesabı", () => PY.payeeMoves(PMOV, { name: "Seyhun Yıldız", account: "USD|9999|Vadesiz" }).length === 1)],
+  ["ad boş", F("hesaba gelen her para", () => PY.payeeMoves(PMOV, { name: "", account: "TL|1234|Vadesiz" }).length === 4)],
+  ["ay ay toplam", F("ekim 4.500, eylül 2.050, toplam 6.550", () => { const r = PY.payeeSummary(PY.payeeMoves(PMOV, SY), "2026-10"); return r.month.total === 4500 && r.month.count === 2 && r.byMonth[1].total === 2050 && r.total === 6550; })],
+  ["en yeni önce", F("3 Ekim ilk", () => PY.payeeMoves(PMOV, SY)[0].amount === 3000)],
+  ["varsayılan ad", F("hesabın adı, ayar varsa o", () => PY.payeeOf({ name: "Seyhun Yıldız" }).name === "Seyhun Yıldız" && PY.payeeOf({ name: "X", payee: { name: "Kulüp" } }).name === "Kulüp")],
+  ["soru: bu ay", F("bu ay ne kadar ödeme aldım", () => PY.payeeAsk("Bu ay ne kadar ödeme aldım?", "2026-10-05")?.ym === "2026-10")],
+  ["soru: geçen ay", F("geçen ay kaç ödeme geldi", () => PY.payeeAsk("geçen ay kaç ödeme geldi", "2026-10-05")?.ym === "2026-09")],
+  ["soru: ay adı", F("kasımda (geçen yıl)", () => PY.payeeAsk("kasımda ne kadar para geldi", "2026-10-05")?.ym === "2025-11")],
+  ["aidat ve fatura değil", F("kendi akışları", () => !PY.payeeAsk("bu ay kaç aidat ödemesi geldi", "2026-10-05") && !PY.payeeAsk("faturaları aç", "2026-10-05") && !PY.payeeAsk("ödeme yaptım", "2026-10-05"))],
+  ["cevap", F("2 ödeme, toplam", () => /Bu ay Seyhun Yıldız adına 2 ödeme geldi, toplam 4\.500 lira\. Son ödeme 3 Ekim, 3\.000 lira\./.test(PY.payeeAnswer(PY.payeeMoves(PMOV, SY), SY, "2026-10", "2026-10")))],
+  ["cevap: ödeme yok", F("görünmüyor", () => /görünmüyor/.test(PY.payeeAnswer([], SY, "2026-08", "2026-10")))],
+  ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6; })],
+]);

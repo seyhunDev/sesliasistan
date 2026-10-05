@@ -70,6 +70,8 @@ import { askInventory, changeInventory, createInventory, lastInv, loadInventorie
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
+import { payeeAnswer, payeeAsk, payeeMoves, payeeOf } from "@/lib/payee";
+import { loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
@@ -865,6 +867,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     invAsk.current = null;
     const ic = !isStaff && !drafts.length ? invoiceCommand(s) || (ia && !QUESTION.test(s) && s.split(" ").length <= 6 ? { ...ia, t: s } : null) : null;
     if (ic && (await runInvoice(ic, viaVoice, !!ia))) return;
+    // Gelen ödemeler: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi" (yalnız ana hesap; banka özetinden, payee.js)
+    const pq = !isStaff && profile?.role === "owner" && !drafts.length ? payeeAsk(s, todayStr()) : null;
+    if (pq) return runPayee(pq, viaVoice);
     // Alışveriş listesi: ekle / aldım / sil / oku (yapay zekaya gitmeden; shopWords.js)
     const shopLists = listsFor(myKind, members);
     const sc = shopLists.length ? shopCommand(s) : null;
@@ -1415,6 +1420,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       reply("Faturayı kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
     }
     return true;
+  }
+
+  async function runPayee(pq, viaVoice) {
+    setPhase("thinking");
+    try {
+      const { movements } = await loadMovementsRange(profile.uid, pq.ym, pq.ym);
+      const payee = payeeOf(profile);
+      reply(payeeAnswer(payeeMoves(movements, payee), payee, pq.ym, todayStr().slice(0, 7)), { engine: "local", nav: "payments" }, viaVoice);
+    } catch {
+      reply("Banka hareketlerini okuyamadım.", { engine: "local" }, viaVoice);
+    }
   }
 
   async function runShopRead(list, viaVoice) {
