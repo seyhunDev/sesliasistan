@@ -42,8 +42,9 @@ export const feeOf = (a, cfg) => Number(cfg?.fees?.[a.id]) || Number(cfg?.fee) |
 // Hareketi sporcularla eşleştirir → { picks: [sporcu], sure, why, list: [{ a, score, why }] }
 // Kardeşler: aynı soyadlı birden çok aday ve tutar aidatların toplamına eşitse hepsi birlikte önerilir.
 export function matchMovement(m, athletes, cfg = {}) {
-  const t = new Set(words(m.desc));
-  const joined = ` ${words(m.desc).join(" ")} `;
+  const src = [m.who, m.desc].filter(Boolean).join(" "); // gönderen hesabın adı (ayrı sütun varsa) + açıklama
+  const t = new Set(words(src));
+  const joined = ` ${words(src).join(" ")} `;
   const list = [];
   for (const a of athletes) {
     const sur = lastOf(a.studentName);

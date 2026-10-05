@@ -793,6 +793,7 @@ const PMOV = [
   { ...inc("GIDEN EFT SEYHUN YILDIZ", -700, "04.10.2026 10:00") },
 ];
 const SY = { name: "Seyhun Yıldız", account: "" };
+const MBX = await import("@/lib/mailBoard");
 group("Gelen ödemeler (kişisel hesap)")([
   ["Türkçe harfsiz ad", F("SEYHUN YILDIZ = Seyhun Yıldız", () => PY.hasName("EFT SEYHUN YILDIZ", "Seyhun Yıldız") && !PY.hasName("EFT SEYHUN KAYA", "Seyhun Yıldız"))],
   ["yalnız gelen ve adı geçen", F("4 ödeme, giden ve başka ad yok", () => PY.payeeMoves(PMOV, SY).length === 4)],
@@ -810,7 +811,9 @@ group("Gelen ödemeler (kişisel hesap)")([
   ["ad başka sütunda", F("text alanında SEYHUN YILDIZ", () => PY.payeeMoves([{ ...inc("FAST GELEN", 800, "05.10.2026 10:00"), text: "Gönderen: SEYHUN YILDIZ" }], SY).length === 1)],
   ["bitişik ad", F("SEYHUNYILDIZ", () => PY.hasName("EFT SEYHUNYILDIZ KIRA", "Seyhun Yıldız"))],
   ["adı geçmeyenler", F("aidat havalesi ayrı listede", () => { const r = PY.otherIncoming(PMOV, SY); return r.length === 1 && r[0].amount === 1200; })],
-  ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6; })],
+  ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6 && /Gönderen/.test(c); })],
+  ["hesap adı sütunu", F("ad sütunundan, açıklama bilgi", () => { const l = PY.payeeMoves(MBX.movementsOf([{ at: "2026-10-05T07:00:00Z", sheets: [{ columns: ["Tarih", "Gönderen Adı", "Açıklama", "Tutar"], rows: [{ v: ["05.10.2026 10:12", "SEYHUN YILDIZ", "Ekim kira", 5000] }, { v: ["05.10.2026 11:00", "AHMET KAYA", "SEYHUN YILDIZ icin", 300] }], sum: { currency: "TL" } }] }]), SY); return l.length === 1 && l[0].who === "SEYHUN YILDIZ" && l[0].desc === "Ekim kira"; })],
+  ["açıklamadaki gönderen", F("GÖNDEREN: AD SOYAD", () => MBX.whoOf("FAST GÖNDEREN: SEYHUN YILDIZ aidat ekim") === "SEYHUN YILDIZ" && MBX.whoOf("POS SATIS MIGROS") === "")],
 ]);
 
 // Banka defteri (bankLedger.js): Excel bir kez doldurur, mailler ekler, aynı hareket bir kez

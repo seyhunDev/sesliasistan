@@ -12,7 +12,7 @@ import { loadMovementsRange } from "@/features/dues/duesData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
 import { lastMonths } from "@/lib/dues";
-import { monthName, otherIncoming, payeeCsv, payeeMoves, payeeOf, payeeSummary } from "@/lib/payee";
+import { monthName, otherIncoming, payeeCsv, payeeMoves, payeeOf, payeeSummary, whoIn } from "@/lib/payee";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date()).slice(0, 7);
@@ -95,7 +95,7 @@ export default function PaymentsPage() {
               </div>
             </div>
             <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
-              {payee.name ? `Açıklamasında “${payee.name}” geçen gelen paralar` : "Hesaba gelen bütün paralar"}
+              {payee.name ? `Hesap adı “${payee.name}” olan gelen paralar (ad bankada ayrı yazılmamışsa açıklamada aranır)` : "Hesaba gelen bütün paralar"}
               {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Banka defterinde bu dönemde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}. Değiştirmek için sağ üstteki kaleme dokun.
             </p>
           </section>
@@ -129,7 +129,10 @@ export default function PaymentsPage() {
                                 {dayText(m)}
                                 {hmOf(m) && <span className="block tabular-nums">{hmOf(m)}</span>}
                               </span>
-                              <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">{m.desc}</span>
+                              <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
+                                {whoIn(m) && <b className="block font-semibold">{whoIn(m)}</b>}
+                                <span className={whoIn(m) ? "block text-[0.8125rem] text-mut" : ""}>{m.desc}</span>
+                              </span>
                               <b className="shrink-0 text-[0.875rem] font-semibold tabular-nums text-ok">+{money(m.amount)}</b>
                             </li>
                           ))}
@@ -159,6 +162,7 @@ export default function PaymentsPage() {
                       <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} className="flex items-start gap-3 px-4 py-2.5">
                         <span className="w-[4.5rem] shrink-0 pt-0.5 text-[0.75rem] leading-tight text-mut">{dayText(m)}</span>
                         <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
+                          {whoIn(m) && <b className="block font-semibold">{whoIn(m)}</b>}
                           {m.desc}
                           {m.text && <small className="block text-[0.75rem] text-mut">{m.text}</small>}
                         </span>
@@ -189,7 +193,7 @@ function Settings({ payee, accounts, onSave, onClose }) {
   return (
     <section className={`${card} fade-in mt-2 space-y-3 px-4 py-4`}>
       <label className="block">
-        <span className="text-[0.8125rem] font-semibold text-mut">Hesap adı (açıklamada aranır)</span>
+        <span className="text-[0.8125rem] font-semibold text-mut">Hesap adı (gönderen ya da alıcı)</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" className="mt-1 h-11 w-full rounded-xl bg-bg px-3.5 text-[1rem] outline-none" />
       </label>
       {accounts.length > 1 && (
