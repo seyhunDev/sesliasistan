@@ -82,6 +82,24 @@ export function whoOf(desc) {
   return w.length >= 2 ? w.join(" ") : "";
 }
 
+// İş Bankası hesap özetinin açıklama yazımı ("*" ile ayrılmış parçalar) → { who: karşı tarafın hesap adı, note: ödemenin açıklaması }.
+//   Gelen FAST/EFT:  GÖNDEREN ADI*banka kodu (4 hane)*açıklama*sorgu no*FAST
+//   Giden FAST/EFT/havale:  ALICI ADI*TR IBAN*açıklama*…
+//   Gelen havale:  açıklama*GÖNDEREN ADI*referans (harf + rakamlar)
+// Bu yazıma uymayan (ücret, fatura, kart) hareketlerde ikisi de "".
+const IBAN = /^TR\d{24}$/;
+const isName = (s) => /[A-Za-zÇĞİÖŞÜçğıöşü]{2}/.test(s) && !/^[\d\s.,/:-]+$/.test(s) && !/^(FAST|EFT|HAVALE)$/i.test(s);
+export function partyOf(desc) {
+  const p = String(desc || "").split("*").map((x) => x.replace(/\s+/g, " ").trim());
+  if (p.length < 3) return { who: "", note: "" };
+  const note = (s) => (s && isName(s) && !/^\d+$/.test(s) ? s : "");
+  const iban = p.findIndex((x, i) => i > 0 && IBAN.test(x.replace(/\s/g, "")));
+  if (iban > 0) return { who: isName(p[iban - 1]) ? p[iban - 1] : "", note: note(p[iban + 1]) };
+  if (/^\d{3,5}$/.test(p[1]) && isName(p[0])) return { who: p[0], note: note(p[2]) };
+  if (/^[A-Z]\d{8,}$/.test(p.at(-1)) && isName(p.at(-2))) return { who: p.at(-2), note: note(p.slice(0, -2).join(" ")) };
+  return { who: "", note: "" };
+}
+
 // Bütün özetlerdeki hareketler tek listede, en yeni önce; aynı hareket (iki özette de geçen) bir kez
 export function movementsOf(mails = []) {
   const seen = new Set();
@@ -100,7 +118,8 @@ export function movementsOf(mails = []) {
         const desc = String((c.desc >= 0 && v[c.desc]) || (c.op >= 0 && v[c.op]) || (c.type >= 0 && v[c.type]) || "İşlem");
         // Açıklama dışındaki yazılı hücreler (gönderen/alıcı adı başka sütunda olabilir; kişisel hesap aramasında kullanılır)
         const skip = new Set([c.date, c.amount, c.bal, c.desc, c.who]);
-        const who = String((c.who >= 0 && v[c.who]) || whoOf(desc)).trim().slice(0, 80);
+        const party = partyOf(desc);
+        const who = String((c.who >= 0 && v[c.who]) || party.who || whoOf(desc)).trim().slice(0, 80);
         const text = v.filter((x, i) => !skip.has(i) && typeof x === "string" && x.trim() && !/^[\d.,:\s/-]+$/.test(x)).join(" · ").slice(0, 300);
         const id = [keyOf(sum), date, amount, desc].join("|");
         if (seen.has(id)) continue;
@@ -110,9 +129,10 @@ export function movementsOf(mails = []) {
           ts: parseTrDate(date) ?? Date.parse(m.at),
           date,
           desc,
-          kind: String((c.op >= 0 && v[c.op]) || (c.channel >= 0 && v[c.channel]) || ""),
+          kind: String((c.type >= 0 && v[c.type]) || (c.op >= 0 && v[c.op]) || (c.channel >= 0 && v[c.channel]) || ""),
           text,
           who,
+          ...(party.note ? { note: party.note.slice(0, 200) } : {}),
           amount,
           balance: c.bal >= 0 ? num(v[c.bal]) : null,
           currency: sum.currency || "",

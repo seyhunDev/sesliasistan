@@ -839,3 +839,39 @@ group("Banka defteri")([
   ["giden de saklanır", F("eksi tutar", () => Object.values(BL.ledgerAdd([mv("01.10.2026", -90, "FATURA")])["2026-10"])[0].amount === -90)],
   ["ay aralığı", F("kasım–şubat", () => BL.monthsBetween("2025-11", "2026-02").join() === "2025-11,2025-12,2026-01,2026-02")],
 ]);
+
+// Banka Excel'i incelemesi (Mailler sayfası): İş Bankası açıklama yazımından ad + açıklama, yapay zeka yanıtının denetimi
+const MB2 = await import("@/lib/mailBoard");
+const BA = await import("@/lib/bankAnalyze");
+const BS2 = await import("@/lib/bankSheet");
+const IB = "TR" + "0".repeat(24);
+group("Banka Excel incelemesi")([
+  ["gelen FAST", F("gönderen ve not", () => { const p = MB2.partyOf("AYSE KARA DEMIR*0062*Ekim aidat Mete*1234567890*FAST"); return p.who === "AYSE KARA DEMIR" && p.note === "Ekim aidat Mete"; })],
+  ["giden FAST", F("alıcı (IBAN'dan önce)", () => { const p = MB2.partyOf(`MARINA ISLETME LTD*${IB}*Kasim baglama*1234567890 R1234567890123*FAST`); return p.who === "MARINA ISLETME LTD" && p.note === "Kasim baglama"; })],
+  ["gelen havale", F("açıklama önce, gönderen sonra", () => { const p = MB2.partyOf("Eylul aidati yelken*ALI VELI*R1234567890123"); return p.who === "ALI VELI" && p.note === "Eylul aidati yelken"; })],
+  ["ücret satırı", F("ad yok", () => { const p = MB2.partyOf("ÜCRET R1234567890123 12345,00 TRY ÜZ."); return p.who === "" && p.note === ""; })],
+  ["hareketlerde ad", F("movementsOf who/note, tür İşlem Tipi", () => {
+    const s = BS2.parseStatement([["Sayın ÖRNEK KULÜP"], ["Tarih/Saat", "İşlem Tutarı*", "Bakiye", "İşlem", "İşlem Tipi", "Açıklama"], ["01/10/2026-10:00:00", 1500, 9000, "FA", "FAST", "AYSE KARA*0062*Ekim aidat*123*FAST"]]);
+    const [m] = MB2.movementsOf([{ at: "2026-10-01T10:00:00Z", sheets: [{ ...s, rows: s.rows.map((v) => ({ v })) }] }]);
+    return m.who === "AYSE KARA" && m.note === "Ekim aidat" && m.kind === "FAST" && s.meta["Hesap sahibi"] === "ÖRNEK KULÜP";
+  })],
+  ["maske", F("IBAN ve uzun numara yapay zekaya gitmez", () => { const x = BA.maskAi(`ALI*${IB}*not*12345678901*FAST`); return !x.includes("0000000") && x.includes("IBAN"); })],
+  ["uydurma ad alınmaz", F("açıklamada geçmeyen ad atılır", () => {
+    const [a, b] = BA.applyAi([{ desc: "ODEME*XYZ", amount: 100 }, { desc: "Kamp ucreti MEHMET OZ odedi", amount: 200 }], [{ i: 0, who: "Hayali Kişi", cat: "Aidat" }, { i: 1, who: "Mehmet Öz", note: "Kamp ücreti", cat: "Diğer gelen" }]);
+    return !a.who && a.cat === "Aidat" && b.who === "Mehmet Öz" && b.note === "Kamp ücreti";
+  })],
+  ["kesin okuma önce", F("partyOf adı yapay zekanınkini ezer", () => BA.applyAi([{ desc: "ALI VELI*0062*x*1*FAST", who: "ALI VELI", amount: 5 }], [{ i: 0, who: "VELI", cat: "Uydurma" }])[0].who === "ALI VELI")],
+  ["yanıtsızda yerel tür", F("ücret, fatura, gelen", () => { const r = BA.applyAi([{ desc: "FAST ÜCRETİ", amount: -5 }, { desc: "ELEKTRIK FATURA", amount: -300 }, { desc: "X*Y*Z", amount: 50 }], []); return r.map((m) => m.cat).join() === "Banka ücreti,Fatura,Diğer gelen"; })],
+  ["özet", F("gelen/giden, türler, en çok gönderen", () => {
+    const ms = [{ ts: Date.parse("2026-07-01T09:00:00Z"), amount: 1500, who: "AYSE KARA", cat: "Aidat" }, { ts: Date.parse("2026-08-01T09:00:00Z"), amount: 1500, who: "Ayşe Kara", cat: "Aidat" }, { ts: Date.parse("2026-10-02T09:00:00Z"), amount: -200, cat: "Fatura" }, { ts: Date.parse("2026-09-01T09:00:00Z"), amount: 80, cat: "Diğer gelen" }];
+    const r = BA.report(ms);
+    return r.from === "2026-07-01" && r.to === "2026-10-02" && r.inN === 3 && r.inSum === 3080 && r.outSum === -200 && r.top[0].n === 2 && r.top[0].sum === 3000 && r.noWho === 1 && r.cats[0].cat === "Aidat";
+  })],
+  ["mail ile birleşme", F("boşluk varsa uyarır", () => BA.handoff("2026-10-02", "2026-10-03").startsWith("Sonrası") && BA.handoff("2026-10-02", "2026-10-10").startsWith("Dikkat") && BA.handoff("2026-10-02", "").includes("günlük"))],
+  ["defter türü saklar", F("note ve cat, mail kaydına tamamlanır", () => {
+    const mail = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X")]);
+    const file = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X", { note: "Ekim aidatı", cat: "Aidat" })], "f1");
+    const x = Object.values(BL.onlyNew(file, mail)["2026-10"])[0];
+    return !x.f && x.note === "Ekim aidatı" && x.cat === "Aidat";
+  })],
+]);

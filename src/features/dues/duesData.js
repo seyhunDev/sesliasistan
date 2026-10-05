@@ -26,8 +26,8 @@ export async function loadMovements(uid, ym) {
   return { movements: r.movements, mails: r.sources };
 }
 
-// Banka Excel'i yükle (telefonda okunur): hareketler banka defterine eklenir → { id, name, from, to, count, added }
-export async function uploadStatement(uid, file) {
+// Banka Excel'ini telefonda okur → { name, all (bütün hareketler), holder (hesap sahibi), from, to } (kaydetmez; Mailler sayfası önce inceletir)
+export async function readStatement(file) {
   if (!/\.(xlsx?|csv)$/i.test(file.name)) throw new Error("Excel (.xls, .xlsx) ya da CSV dosyası seç");
   if (file.size > 5_000_000) throw new Error("Dosya çok büyük (en çok 5 MB)");
   const XLSX = xlsxOf(await import("xlsx"));
@@ -36,18 +36,25 @@ export async function uploadStatement(uid, file) {
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   const sheets = sheetsFromRaw([{ name: file.name, data: btoa(bin) }], XLSX, 5000);
   const all = movementsOf([{ at: new Date().toISOString(), sheets }]);
-  const moves = filedMoves(all);
   if (!all.length) throw new Error("Dosyada hesap hareketi bulunamadı (hesap özeti mi?)");
-  const r = rangeOf(all);
-  // Dosya kaydında yalnız bilgi; hareketler banka defterine yazılır (gelen ve giden, mailde olanlar bir kez)
-  const rec = { name: file.name.slice(0, 120), at: new Date().toISOString(), ...r, count: moves.length, total: all.length, ledger: true };
+  const holder = sheets.map((x) => x.meta?.["Hesap sahibi"]).find(Boolean) || "";
+  return { name: file.name.slice(0, 120), all, holder, ...rangeOf(all) };
+}
+// Okunan Excel'i kaydeder: dosya kaydında yalnız bilgi, hareketler banka defterine (gelen ve giden, mailde olanlar bir kez)
+// → { id, name, from, to, count, added }
+export async function saveStatement(uid, read, extra = {}) {
+  const { name, all, from, to } = read;
+  const count = filedMoves(all).length;
+  const rec = { name, at: new Date().toISOString(), from, to, count, total: all.length, ledger: true, ...extra };
   const ref = await addDoc(collection(db, "orgs", uid, "bankFiles"), rec);
   const added = await addFileMoves(uid, ref.id, all);
-  return { id: ref.id, name: rec.name, ...r, count: rec.count, added };
+  return { id: ref.id, name, from, to, count, added };
 }
+// Banka Excel'i yükle (Aidatlar ayarı; incelemesiz)
+export const uploadStatement = async (uid, file) => saveStatement(uid, await readStatement(file));
 export async function loadStatements(uid) {
   const snap = await getDocs(query(collection(db, "orgs", uid, "bankFiles"), orderBy("at", "desc"), limit(20)));
-  return snap.docs.map((d) => { const x = d.data(); return { id: d.id, name: x.name, from: x.from, to: x.to, count: x.count, total: x.total, at: x.at }; });
+  return snap.docs.map((d) => { const x = d.data(); return { id: d.id, name: x.name, from: x.from, to: x.to, count: x.count, total: x.total, at: x.at, ai: !!x.ai }; });
 }
 export async function deleteStatement(uid, f) {
   if (f.from && f.to) await dropFileMoves(uid, f.id, f.from.slice(0, 7), f.to.slice(0, 7));

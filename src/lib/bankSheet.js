@@ -37,6 +37,8 @@ export function parseStatement(input, maxRows = 500) {
   for (const r of hi < 0 ? rows : rows.slice(0, hi)) {
     r.forEach((v, i) => {
       const k = str(v);
+      // İş Bankası başlığı "Sayın AD SOYAD" (hesap sahibi)
+      if (/^Sayın\s+\S/i.test(k) && k.length < 90 && !meta["Hesap sahibi"]) meta["Hesap sahibi"] = k.replace(/^Sayın\s+/i, "").trim();
       if (!k.endsWith(":") || k.length > 40) return;
       const val = r.slice(i + 1).find((x) => !empty(x));
       const key = k.slice(0, -1).trim();
