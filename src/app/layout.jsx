@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
+import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
@@ -17,7 +18,10 @@ export const viewport = {
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
-    themeColor: "#f4f3ef",
+    themeColor: [
+        { media: "(prefers-color-scheme: light)", color: THEME_BG.light },
+        { media: "(prefers-color-scheme: dark)", color: THEME_BG.dark },
+    ],
 };
 
 const SIZE_SCRIPT = `try{var s=localStorage.getItem("sa-size");if(s==="l"||s==="xl")document.documentElement.dataset.size=s}catch(e){}`;
@@ -28,6 +32,8 @@ export default function RootLayout({ children }) {
             <head>
                 {/* Yazı boyutu seçimi sayfa çizilmeden uygulansın (sonradan büyüyüp zıplamasın) */}
                 <script dangerouslySetInnerHTML={{ __html: SIZE_SCRIPT }} />
+                {/* Açık / koyu görünüm de ilk çizimden önce (beyaz parlayıp kararmasın) */}
+                <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
             </head>
             <body>
                 <AuthProvider>{children}</AuthProvider>

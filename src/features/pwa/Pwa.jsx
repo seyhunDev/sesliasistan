@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { syncPush } from "@/lib/push";
+import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
 import { netText, netTone } from "@/lib/netSync";
 import { checkWrites, netState, subscribeNet } from "./netWatch";
 
@@ -11,6 +12,11 @@ export function ServiceWorkerSetup() {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
     const url = process.env.NODE_ENV === "production" ? "/sw.js" : "/sw.js?dev=1";
     navigator.serviceWorker.register(url).catch((e) => console.warn("[sw] kaydedilemedi:", e?.message));
+  }, []);
+  // Görünüm otomatikse telefonun açık/koyu ayarı değişince uygulama da değişir; elle seçimde durum çubuğu rengi tutar
+  useEffect(() => {
+    applyTheme(readTheme());
+    return watchTheme();
   }, []);
   return null;
 }

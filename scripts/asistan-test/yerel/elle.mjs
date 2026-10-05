@@ -936,3 +936,13 @@ group("İnternet göstergesi")([
   ["zayıf bağlantı", F("gönderiliyor", () => /^Bağlantı zayıf/.test(NS.netText({ online: true, pending: true })) && NS.netTone({ online: true, pending: true }) === "wait")],
   ["hepsi gitti", F("gönderildi, yeşil", () => /gönderildi$/.test(NS.netText({ online: true, sent: true })) && NS.netTone({ online: true }) === "ok")],
 ]);
+
+// Karanlık mod (theme.js): seçim ve otomatik
+const TH = await import("@/lib/theme");
+group("Karanlık mod")([
+  ["seçenekler", F("Otomatik, Açık, Koyu", () => TH.THEMES.map((x) => x[1]).join() === "Otomatik,Açık,Koyu")],
+  ["bozuk değer", F("otomatik sayılır", () => TH.cleanTheme("mavi") === "" && TH.cleanTheme("dark") === "dark")],
+  ["otomatik", F("telefonun ayarını izler", () => TH.resolveTheme("", true) === "dark" && TH.resolveTheme("", false) === "light")],
+  ["elle seçim", F("telefonun ayarından önce gelir", () => TH.resolveTheme("light", true) === "light" && TH.resolveTheme("dark", false) === "dark")],
+  ["ilk çizim kodu", F("aynı anahtar ve kural", () => TH.THEME_SCRIPT.includes('"sa-theme"') && TH.THEME_SCRIPT.includes("prefers-color-scheme: dark"))],
+]);

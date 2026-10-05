@@ -43,12 +43,12 @@ export const initialsOf = (n = "") =>
 
 // Kişiye göre sabit renk (aynı kişi hep aynı renk; yazı ile zemin arası yeterli kontrast)
 const TONES = [
-  "bg-[#dcefe7] text-deep",
-  "bg-[#f3e3cf] text-[#8a4f0c]",
-  "bg-[#dcebe0] text-[#2f6446]",
-  "bg-[#f1dcdc] text-[#8e3a34]",
-  "bg-[#e5e0f0] text-[#553f86]",
-  "bg-[#dbe9e9] text-[#2c6262]",
+  "bg-[#dcefe7] text-deep dark:bg-[#1f3d35] dark:text-[#9fdcc8]",
+  "bg-[#f3e3cf] text-[#8a4f0c] dark:bg-[#43321d] dark:text-[#f0c38a]",
+  "bg-[#dcebe0] text-[#2f6446] dark:bg-[#233a2b] dark:text-[#9fd8b2]",
+  "bg-[#f1dcdc] text-[#8e3a34] dark:bg-[#442827] dark:text-[#f2aaa2]",
+  "bg-[#e5e0f0] text-[#553f86] dark:bg-[#322b47] dark:text-[#c6b8f2]",
+  "bg-[#dbe9e9] text-[#2c6262] dark:bg-[#213a3a] dark:text-[#9ad4d4]",
 ];
 export const toneFor = (key = "") => TONES[[...String(key)].reduce((a, c) => a + c.charCodeAt(0), 0) % TONES.length];
 
