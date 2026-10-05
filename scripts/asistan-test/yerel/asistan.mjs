@@ -531,3 +531,47 @@ group("Yerel adımların süresi")([
   SURE("yanıt ayrıştırma + görev listesi", 5, () => ST.taskList(parseAssistant(aiMulti, [], ["Gökhan Demir"]))),
   ["veri özeti boyu sınırlı", { desc: "en çok 26.000 karakter (sunucu sınırı)", fn: () => buildDigest({ ...big, receipts: [], name: "Seyhun", members: [] }).length, ok: (r) => r > 0 && r <= 26000 }],
 ]);
+
+// Asistan süre kaydı (Ayarlar › Asistan süre kaydı): uydurma saatle bir komutun anları yazılır, adımlar ve toplam denetlenir.
+const TM = await import("@/lib/assistTiming");
+const memStore = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
+// at: [an, ms] sırası; sesli komutta dinleme anları önce speechMark ile
+function scene(steps) {
+  let t = 0;
+  TM.timingTest({ now: () => t, storage: memStore() });
+  for (const [what, ms, arg] of steps) {
+    t = ms;
+    if (what === "speech") TM.speechMark(arg[0], arg[1]);
+    else if (what === "start") TM.timingStart(arg, true);
+    else if (what === "startText") TM.timingStart(arg, false);
+    else if (what === "reply") TM.timingReply(arg);
+    else if (what === "speak") TM.timingSpeak();
+    else TM.timingMark(what);
+  }
+  TM.timingFlush();
+  return TM.timingList();
+}
+// iPhone'da tipik sesli ekleme: dinleme 0, son ses 2000, durdurma 3600, yükleme 3800, yazı 4800, komut 4810,
+// ön cevap 4815, gönderme 4820, "Tamam." okunuyor 4900, yapay zeka 7300, kayıt 7600, cevap 7610, okuma 7700
+const voiceAdd = [
+  ["speech", 0, ["listen"]], ["speech", 3600, ["voiceEnd", 2000]], ["speech", 3600, ["stop"]], ["speech", 3800, ["upload"]], ["speech", 4800, ["text"]],
+  ["start", 4810, "yarın 10'da antrenman ekle"], ["pre", 4815], ["ai", 4820], ["speak", 4900], ["aiDone", 7300], ["saved", 7600], ["reply", 7610, "local"], ["speak", 7700],
+];
+const stepMs = (l, name) => TM.timingSteps(l[0]).steps.find((s) => s.name === name)?.ms;
+group("Süre kaydı")([
+  ["sesli ekleme kaydedilir", { desc: "1 kayıt, sesli, metin", fn: () => scene(voiceAdd), ok: (l) => l.length === 1 && l[0].voice && l[0].text === "yarın 10'da antrenman ekle" }],
+  ["toplam sustuğun andan okumaya", { desc: "7700 − 2000 = 5700 ms", fn: () => TM.timingSteps(scene(voiceAdd)[0]).total, ok: (r) => r === 5700 }],
+  ["susmanın beklenmesi", { desc: "1600 ms", fn: () => stepMs(scene(voiceAdd), "stop"), ok: (r) => r === 1600 }],
+  ["yükleme ve yazıya çevirme", { desc: "1000 ms", fn: () => stepMs(scene(voiceAdd), "text"), ok: (r) => r === 1000 }],
+  ["yapay zeka cevabı", { desc: "ön cevap okunmasından yapay zekanın bitişine 2400 ms; yapay zeka toplam 2480", fn: () => { const l = scene(voiceAdd); return [stepMs(l, "aiDone"), TM.timingSteps(l[0]).ai]; }, ok: (r) => r[0] === 2400 && r[1] === 2480 }],
+  ["ön cevap ve cevap okuması ayrı", { desc: "preSay 4900, speak 7700", fn: () => scene(voiceAdd)[0].marks, ok: (m) => m.preSay === 4900 && m.speak === 7700 }],
+  ["yapay zeka cevapladı", { desc: "sonucu uygulama söylese de 'ai'", fn: () => scene(voiceAdd)[0].engine, ok: (r) => r === "ai" }],
+  ["konuşma toplama girmez", { desc: "Konuşman adımı user", fn: () => TM.timingSteps(scene(voiceAdd)[0]).steps.find((s) => s.name === "voiceEnd"), ok: (s) => s?.user && s.ms === 2000 }],
+  ["yerel sayfa açma", { desc: "yazılı, Yerel, toplam 200 ms", fn: () => { const l = scene([["startText", 1000, "planları aç"], ["reply", 1001, "local"], ["speak", 1200]]); return [l[0].voice, l[0].engine, TM.timingSteps(l[0]).total]; }, ok: (r) => !r[0] && r[1] === "local" && r[2] === 200 }],
+  ["sesli yanıt kapalı", { desc: "okuma olmadan da kayıt; toplam cevaba kadar", fn: () => TM.timingSteps(scene([["startText", 0, "x"], ["ai", 10], ["aiDone", 2010], ["reply", 2020]])[0]).total, ok: (r) => r === 2020 }],
+  ["cevapsız komut kaydedilmez", { desc: "kullanıcı devam etti, yeniden soruldu", fn: () => scene([["start", 0, "yarın 10'da"], ["ai", 5], ["start", 900, "yarın 10'da antrenman, Ali de gelsin"], ["reply", 3000], ["speak", 3100]]), ok: (l) => l.length === 1 && /Ali/.test(l[0].text) }],
+  ["eski dinleme yazılı komuta karışmaz", { desc: "yazılı komutta dinleme anı yok", fn: () => scene([["speech", 0, ["listen"]], ["speech", 500, ["text"]], ["startText", 800, "planları aç"], ["reply", 801], ["speak", 900]])[0].marks, ok: (m) => m.listen == null && m.text == null }],
+  ["en çok 20 komut", { desc: "25 komuttan son 20 kalır, en yenisi önce", fn: () => scene(Array.from({ length: 25 }, (_, i) => [["startText", i * 100, `k${i}`], ["reply", i * 100 + 50]]).flat()), ok: (l) => l.length === 20 && l[0].text === "k24" }],
+  ["kopyalanan metin", { desc: "toplam ve adımlar yazılı", fn: () => TM.timingText(scene(voiceAdd)), ok: (s) => /toplam 5,7 sn/.test(s) && /Susmanın beklenmesi: 1,6 sn/.test(s) && /Kaydetme: 300 ms/.test(s) }],
+]);
+TM.timingTest({});

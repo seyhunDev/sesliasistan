@@ -65,6 +65,7 @@ import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
+import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -303,6 +304,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
     // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
     if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
+    timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
     const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null } = extra;
@@ -433,6 +435,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     setPhase("thinking");
     const r = await saveDrafts(list.map(tidy), { source: viaVoice || convo.current ? "voice" : "manual", by });
+    timingMark("saved");
     setPhase("idle");
     // Kayıt veritabanına yazılamadıysa "kaydettim" denmez; taslak durur, yeniden "kaydet" denebilir
     if (!r || r.error || r.plans + r.tasks + r.notes === 0) {
@@ -685,6 +688,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   async function run(t, viaVoice = false, fresh = false) {
     const s = t.trim();
     if (!s) return toast("Yaz veya mikrofona bas");
+    timingStart(s, viaVoice);
     if (viaVoice) {
       setVoice(true);
       convo.current = true; // sesle konuşuldu: sohbet sesli sürer
@@ -896,6 +900,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setStreamText("");
     if (viaVoice) inflight.current = s;
     if (pc) {
+      timingMark("pre");
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
       // Yanıtın okunması bunun ardından (kuyruk). Ön cevap okunurken mikrofon açılmaz (kendi sesini duymasın);
       // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
@@ -904,6 +909,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
     const onText = (m) => {
       if (id !== runId.current) return;
+      timingMark("first");
       setStreamText(m);
       const end = Math.max(...[". ", "? ", "! ", "… ", ".\n", "?\n", "!\n"].map((p) => m.lastIndexOf(p)));
       if (end < 0) return;
@@ -920,8 +926,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
+      timingMark("ai");
       const r = await askAssistant({ text: ask, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
+      timingMark("aiDone");
       setPhase("preparing");
       handle(r, ask, viaVoice); // bekleme yok: işler hemen yapılır
     } catch (err) {
