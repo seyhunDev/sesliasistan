@@ -13,13 +13,14 @@ import { movementsOf } from "../../src/lib/mailBoard.js";
 import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
 import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
+import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 
 export const config = { schedule: "*/5 * * * *" };
 
 // Okuma tasarrufu: bildirimle ilgili kullanıcılar her çalışmada tek sorguyla bir kez okunur (önceden 7 ayrı sorgu,
 // aynı kişi her birinde yeniden okunuyordu). Kulübün plan/görev sorguları da çalışma boyunca paylaşılır.
-const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt"];
+const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt", "duesAt"];
 const hasAt = (d, k) => typeof d[k] === "string" && d[k] > "";
 async function notifyUsers(db) {
   const users = db.collection("users");
@@ -101,8 +102,9 @@ async function sendDueReminders() {
   const summaries = await sendSummaries(db, all, q).catch((e) => (console.error("[summary]", e.message), 0));
   const mails = await sendMailDigests(db, all).catch((e) => (console.error("[mail]", e.message), 0));
   const extras = await sendExtras(db, all, q).catch((e) => (console.error("[extras]", e.message), 0));
-  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek`);
-  return new Response(`ok ${sent} ${summaries} ${mails} ${extras}`);
+  const dues = await sendDuesRemind(db, all).catch((e) => (console.error("[aidat hatırlatma]", e.message), 0));
+  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat`);
+  return new Response(`ok ${sent} ${summaries} ${mails} ${extras} ${dues}`);
 }
 
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
@@ -219,6 +221,42 @@ async function sendExtras(db, all, q) {
         await u.ref.update({ weeklySent: today });
       }
     }
+  }
+  return n;
+}
+
+// Aidat hatırlatması (ana hesap): son ödeme günü geçince ertesi sabah bir kez "Aidat: N sporcu ödemedi" (duesRemind.js).
+// Okuma: günde en çok bir kez aidat ayarı, ayda bir kez ay kaydı. Velilere kendiliğinden gitmez; ana hesap Aidatlar'dan gönderir.
+async function sendDuesRemind(db, all) {
+  let n = 0;
+  for (const u of all.filter((x) => hasAt(x.data(), "duesAt") && (x.data().role === "owner" || !x.data().orgId || x.data().orgId === x.id))) {
+    const d = u.data();
+    const subs = Object.entries(d.push || {});
+    if (!subs.length) continue;
+    const tz = d.reminders?.tz || "Europe/Istanbul";
+    const today = localNow(tz).date;
+    const ym = today.slice(0, 7);
+    const nowHM = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+    if (d.duesSent === ym || !due(d.duesAt, d.duesChecked, today, nowHM)) continue;
+    await u.ref.update({ duesChecked: today });
+    const dues = db.collection("orgs").doc(u.id).collection("dues");
+    const cfg = (await dues.doc("settings").get()).data();
+    if (!cfg?.fee || !pastDue(today, cfg)) continue;
+    const msg = ownerText(unpaidRoster(cfg, (await dues.doc(ym).get()).data() || {}), ym);
+    if (msg) {
+      const payload = JSON.stringify({ ...msg, tag: `dues-remind-${ym}`, url: "/dues" });
+      await Promise.all(
+        subs.map(async ([key, sub]) => {
+          try {
+            await webpush.sendNotification(sub, payload, { TTL: 6 * 3600 });
+            n++;
+          } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+          }
+        }),
+      );
+    }
+    await u.ref.update({ duesSent: ym });
   }
   return n;
 }

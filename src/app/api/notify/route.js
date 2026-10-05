@@ -8,6 +8,7 @@ import { addedText, assignedText, cancelledText, changedText, deleteReqText, del
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 import { absentPush } from "@/lib/absent";
+import { remindPush, unpaidRoster } from "@/lib/duesRemind";
 
 export const runtime = "nodejs";
 
@@ -91,6 +92,33 @@ export async function POST(request) {
       const msg = absentPush(r.name, date, today);
       sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `absent-${mid}-${date}`, url: "/my-attendance" }));
       await ref.update({ [`absentSent.${date}`]: new Date().toISOString() });
+    }
+    return NextResponse.json({ ok: true, sent, parents });
+  }
+
+  // ---- Aidat hatırlatması: bu ay ödemeyen sporcuların uygulamadaki velilerine (yalnız ana hesap). Tutar istemciden değil
+  //      aidat kayıtlarından (dues/settings + dues/{ay}) okunur; ödemiş sporcuya ve aynı ay ikinci kez gitmez ----
+  if (body?.event === "dues") {
+    if (me.role !== "owner") return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    const ym = String(body.ym || "");
+    if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: "Geçersiz ay" }, { status: 400 });
+    const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter((x) => /^[\w-]{1,128}$/.test(x)).slice(0, 80);
+    const dues = org.collection("dues");
+    const [c, m] = await Promise.all([dues.doc("settings").get(), dues.doc(ym).get()]);
+    const owe = new Map(unpaidRoster(c.data() || {}, m.data() || {}).map((x) => [x.a.id, x]));
+    let sent = 0;
+    let parents = 0;
+    for (const mid of ids) {
+      const ref = org.collection("athleteAtt").doc(mid);
+      const r = (await ref.get()).data();
+      const x = r && owe.get(r.athleteId);
+      if (!x || r.duesSent?.[ym]) continue;
+      const to = (r.parents || []).filter(Boolean);
+      if (!to.length) continue;
+      parents += to.length;
+      const msg = remindPush(x, ym);
+      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `dues-${mid}-${ym}`, url: "/" }));
+      await ref.update({ [`duesSent.${ym}`]: new Date().toISOString() });
     }
     return NextResponse.json({ ok: true, sent, parents });
   }

@@ -79,6 +79,7 @@ export function AuthProvider({ children }) {
             windAt: doc_?.windAt || "", // ayarlar: rüzgâr uyarısı saati
             windKn: Number(doc_?.windKn) || 0, // ayarlar: rüzgâr uyarısı eşiği (knot; 0 = varsayılan, notifyExtra.js)
             weeklyAt: doc_?.weeklyAt || "", // ayarlar: pazartesi haftalık özet saati
+            duesAt: typeof doc_?.duesAt === "string" ? doc_.duesAt : null, // aidat: ödemeyenler bildirimi saati ("" kapalı, null henüz yazılmadı; duesRemind.js)
             summaryHidden: doc_?.summaryHidden || "", // ana ekranda kapatılan özet ("YYYY-MM-DD:morning|evening")
             mailFrom: Array.isArray(doc_?.mailFrom) ? doc_.mailFrom : [], // mail: izlenen gönderenler [{ name, from }]
             mailSeen: doc_?.mailSeen || "", // mail: Gmail betiğinin son kontrolü (ISO; betik yazar)

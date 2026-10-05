@@ -19,6 +19,11 @@ import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
 import { rosterOf } from "@/lib/duesAuto";
+import { dueDayOf, pastDue, unpaidOf } from "@/lib/duesRemind";
+import { DuesRemind } from "@/features/dues/DuesRemind";
+import { useData } from "@/features/data/DataProvider";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/clientApp";
 
 // Aidatlar (ana hesap + sporcu yetkisi). Tek bakışta tablo: sporcular × son 6 ay (✓ ödedi, ½ eksik, boş bekliyor).
 // Hücreye dokun: o ayın ödemeleri (tarih, açıklama), nakit ekle. Ay başlığına dokun: ayın ödemeler listesi + Excel.
@@ -32,7 +37,7 @@ export default function DuesPage() {
     if (profile && !allowed) router.replace("/");
   }, [profile, allowed, router]);
   if (!allowed) return null;
-  return <Dues uid={profile.uid} />;
+  return <Dues uid={profile.uid} duesAt={profile.duesAt} />;
 }
 
 const TL = (n) => `${money(n).replace(/,00$/, "")} TL`;
@@ -40,8 +45,14 @@ const card = "rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const shortMonth = (ym) => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "short" }).replace(".", "");
 const day = (s) => String(s || "").slice(0, 10);
 
-function Dues({ uid }) {
+function Dues({ uid, duesAt }) {
   const toast = useToast();
+  const { members } = useData();
+  // Ana hesaba "Aidat: N sporcu ödemedi" bildirimi (son günün ertesi, plan-reminders.mjs): varsayılan açık, bir kez yazılır
+  const [notifyAt, setNotifyAt] = useState(duesAt ?? "10:00");
+  useEffect(() => {
+    if (duesAt == null) updateDoc(doc(db, "users", uid), { duesAt: "10:00" }).catch(() => {});
+  }, [duesAt, uid]);
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
   const thisMonth = todayStr().slice(0, 7);
@@ -186,6 +197,20 @@ function Dues({ uid }) {
           </small>
         </span>
       </div>
+      {cfg.fee > 0 && pastDue(todayStr(), cfg) && (
+        <DuesRemind
+          list={unpaidOf(grid.rows.map((r) => r.cells[thisMonth]))}
+          ym={thisMonth}
+          dueDay={dueDayOf(cfg)}
+          members={members || []}
+          reminded={months[thisMonth]?.reminded}
+          onMark={(ids) => {
+            const at = new Date().toISOString();
+            const m = months[thisMonth] || {};
+            writeMonth(thisMonth, { ...m, reminded: { ...(m.reminded || {}), ...Object.fromEntries(ids.map((id) => [id, at])) } });
+          }}
+        />
+      )}
       {mv?.error ? (
         <p className={`mt-2 px-4 py-3 text-[0.8125rem] text-rec ${card}`}>Banka mailleri okunamadı. Gmail bağlantısı kurulu mu?</p>
       ) : (
@@ -283,6 +308,15 @@ function Dues({ uid }) {
       <Sheet open={setOpen} onClose={() => setSetOpen(false)} title="Aidat ayarları">
         <div className="overflow-y-auto px-5 pb-2">
           <FeeBox cfg={cfg} onSave={(fee) => (writeCfg({ ...cfg, fee }), toast("Aidat tutarı kaydedildi"))} />
+          <RemindBox
+            cfg={cfg}
+            notifyAt={notifyAt}
+            onDay={(dueDay) => (writeCfg({ ...cfg, dueDay }), toast(`Son ödeme günü ayın ${dueDay}. günü`))}
+            onNotify={(v) => {
+              setNotifyAt(v);
+              updateDoc(doc(db, "users", uid), { duesAt: v }).catch(() => (setNotifyAt(notifyAt), toast("Kaydedilemedi")));
+            }}
+          />
           {EXCEL_UPLOAD && <BankFiles uid={uid} onChange={() => setTick((t) => t + 1)} />}
         </div>
       </Sheet>
@@ -315,6 +349,29 @@ function FeeBox({ cfg, onSave }) {
         <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder="ör. 1500" className="h-11 min-w-0 flex-1 rounded-xl bg-card px-3 text-[0.9375rem] outline-none" />
         <button type="button" onClick={() => Number(v) > 0 && onSave(Number(String(v).replace(",", ".")))} className="h-11 rounded-xl bg-acc px-5 font-semibold text-white active:scale-[.98]">Kaydet</button>
       </div>
+    </div>
+  );
+}
+
+// Son ödeme günü ve ana hesaba "ödemeyenler" bildirimi (son günün ertesi sabahı, ayda bir kez)
+function RemindBox({ cfg, notifyAt, onDay, onNotify }) {
+  const day = dueDayOf(cfg);
+  return (
+    <div className={`mt-3 p-4 ${card} !bg-bg shadow-none`}>
+      <p className="text-[0.9375rem] font-semibold">Aidat hatırlatması</p>
+      <p className="mt-0.5 text-[0.8125rem] text-mut">Son ödeme günü geçince ödemeyenlerin velilerine buradan hatırlatırsın (bildirim ya da WhatsApp).</p>
+      <label className="mt-2 flex items-center gap-2 text-[0.875rem]">
+        <span className="min-w-0 flex-1">Son ödeme günü (ayın)</span>
+        <select value={day} onChange={(e) => onDay(Number(e.target.value))} className="h-9 rounded-xl bg-card px-3 outline-none">
+          {Array.from({ length: 28 }, (_, i) => i + 1).map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      </label>
+      <label className="mt-2 flex items-center gap-2 text-[0.875rem]">
+        <span className="min-w-0 flex-1">Ertesi sabah ödemeyenleri bana bildir</span>
+        <input type="checkbox" checked={!!notifyAt} onChange={(e) => onNotify(e.target.checked ? "10:00" : "")} className="size-5 accent-[var(--acc)]" />
+      </label>
     </div>
   );
 }

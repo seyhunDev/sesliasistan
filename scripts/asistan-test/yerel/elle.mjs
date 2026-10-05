@@ -537,6 +537,33 @@ group("Aidat otomatik")([
   })],
 ]);
 
+// Aidat hatırlatması (duesRemind.js): son gün geçince ödemeyenler, veli metni, ana hesap bildirimi
+const DR = await import("@/lib/duesRemind");
+const DRM = { paid: { a1: [{ amt: 1500 }], a2: [{ amt: 500 }] } };
+group("Aidat hatırlatması")([
+  ["son gün", F("varsayılan 10: 10'unda değil, 11'inde; ayarda 5", () => !DR.pastDue("2026-10-10", {}) && DR.pastDue("2026-10-11", {}) && DR.pastDue("2026-10-06", { dueDay: 5 }) && DR.dueDayOf({ dueDay: 40 }) === 10)],
+  ["ödemeyenler", F("Deniz ödedi; Ege 1000 eksik; Ada hiç", () => {
+    const l = DR.unpaidOf(DU.monthRows(DA, DRM, DCFG).rows);
+    const by = Object.fromEntries(l.map((x) => [x.a.id, x]));
+    return !by.a1 && by.a2?.state === "part" && by.a2.rest === 1000 && by.a3?.state === "due" && by.a3.rest === 1000;
+  })],
+  ["aidat tanımlı değil", F("kimse listeye girmez", () => DR.unpaidOf(DU.monthRows(DA, {}, {}).rows).length === 0)],
+  ["sunucu listesi", F("roster'dan: Ege, Ada, Kaan, Mert", () => DR.unpaidRoster({ ...DCFG, roster: DA }, DRM).map((x) => x.a.id).sort().join() === "a2,a3,a4,a5")],
+  ["veli metni", F("ad, ay, tutar; eksikte kalan", () => {
+    const [ege, ada] = DR.unpaidRoster({ ...DCFG, roster: DA }, DRM).sort((a, b) => a.a.id.localeCompare(b.a.id));
+    if (ege.a.id !== "a2" || ada.a.id !== "a3") return false;
+    const t1 = DR.remindText(ege, "2026-10").replace(/\u00a0/g, " ");
+    const t2 = DR.remindText(ada, "2026-10").replace(/\u00a0/g, " ");
+    return /^Merhaba, Ege için ekim aidatının 1\.000 TL.si henüz/i.test(t1) && /Ada için ekim aidatı \(1\.000 TL\) henüz hesabımıza ulaşmadı/i.test(t2) && /dikkate almayın/.test(t2);
+  })],
+  ["bildirim", F("veliye ve ana hesaba", () => {
+    const l = DR.unpaidRoster({ ...DCFG, roster: DA }, DRM);
+    const p = DR.remindPush(l[0], "2026-10");
+    const o = DR.ownerText(l, "2026-10");
+    return /^Aidat hatırlatması: /.test(p.title) && /^Ekim aidatı/.test(p.body) && o.title === "Aidat: 4 sporcu ödemedi" && /^Ekim aidatı · .+ · velilere hatırlatmak için dokun$/.test(o.body) && DR.ownerText([], "2026-10") === null;
+  })],
+]);
+
 // Toplantı modu (lib/meeting/result.js): yapay zeka çıktısını temizleme, başlıklı özet, mesaj alıcısı
 const MR = await import("@/lib/meeting/result");
 const MPEOPLE = ["Ali Kaya", "Sanver Demir"];
