@@ -7,6 +7,7 @@ import { money } from "@/lib/bankSheet";
 import { handoff, report } from "@/lib/bankAnalyze";
 import { deleteStatement, loadStatements, readStatement, saveStatement } from "@/features/dues/duesData";
 import { analyzeMoves, firstMailDay } from "@/features/bank/analyzeData";
+import { resetLedger } from "@/features/bank/ledgerData";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const day = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -16,7 +17,7 @@ const ROWS = 25;
 // Banka defteri (Mailler sayfası): geçmiş dönem Excel'den bir kez, sonrası günlük maillerden.
 // Excel yükle → telefonda okunur → yapay zeka inceler (tür, gönderen/alıcı adı, açıklama) → özet → "Deftere ekle".
 // Günlük mail akışına dokunmaz; aynı hareket iki kaynakta da varsa bir kez durur (bankLedger.js).
-export function LedgerCard({ uid, self, onSaved }) {
+export function LedgerCard({ uid, self, payee, onSaved }) {
   const toast = useToast();
   const input = useRef(null);
   const [files, setFiles] = useState(null);
@@ -45,7 +46,7 @@ export function LedgerCard({ uid, self, onSaved }) {
       setStep("inceleniyor");
       setProg("");
       const a = await analyzeMoves(read.all, read.holder || self, (k, n) => n > 1 && setProg(`${k}/${n}`));
-      setRes({ read, moves: a.moves, rep: report(a.moves), failed: a.failed, parts: a.parts, error: a.error });
+      setRes({ read, moves: a.moves, rep: report(a.moves, payee), failed: a.failed, parts: a.parts, error: a.error });
     } catch (x) {
       toast(x?.message || "Dosya okunamadı");
     }
@@ -63,6 +64,22 @@ export function LedgerCard({ uid, self, onSaved }) {
       onSaved?.();
     } catch (x) {
       toast(x?.message || "Kaydedilemedi");
+    }
+    setStep("");
+  }
+
+  // Baştan kur: defter ve yüklenen Excel kayıtları silinir, yalnız maillerden yeniden kurulur; sonra Excel yeniden yüklenir
+  async function reset() {
+    if (!confirm("Banka defteri silinip baştan kurulsun mu? Yüklenen Excel'ler silinir, defter günlük maillerden yeniden kurulur. Mailler, aidat onayları ve faturalar silinmez. Sonra Excel'i yeniden yükle.")) return;
+    setStep("kuruluyor");
+    try {
+      await resetLedger(uid);
+      setRes(null);
+      refresh();
+      onSaved?.();
+      toast("Defter baştan kuruldu. Şimdi Excel'i yükle.");
+    } catch {
+      toast("Baştan kurulamadı, internet bağlantını kontrol et");
     }
     setStep("");
   }
@@ -99,7 +116,7 @@ export function LedgerCard({ uid, self, onSaved }) {
             className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60"
           >
             <Icon name={step ? "load" : "download"} className={`size-[1.125rem] ${step ? "animate-spin" : "rotate-180"}`} />
-            {step === "okunuyor" ? "Excel okunuyor…" : step === "inceleniyor" ? `Yapay zeka inceliyor… ${prog}` : step === "kaydediliyor" ? "Deftere ekleniyor…" : "Banka Excel’i yükle"}
+            {step === "okunuyor" ? "Excel okunuyor…" : step === "inceleniyor" ? `Yapay zeka inceliyor… ${prog}` : step === "kaydediliyor" ? "Deftere ekleniyor…" : step === "kuruluyor" ? "Defter baştan kuruluyor…" : "Banka Excel’i yükle"}
           </button>
         </div>
 
@@ -146,6 +163,11 @@ export function LedgerCard({ uid, self, onSaved }) {
             )}
 
             <div className="mt-3 space-y-1 text-[0.75rem] leading-snug text-mut">
+              {rep.got && (
+                <p className="text-[0.8125rem] font-semibold text-fg">
+                  {rep.got.name || "Kişisel hesap"} aldı: {rep.got.n} ödeme, {money(rep.got.sum)} TL
+                </p>
+              )}
               {rep.noWho > 0 && <p>{rep.noWho} gelen paranın gönderen adı açıklamada bulunamadı.</p>}
               {res.failed > 0 && <p className="text-rec">Yapay zeka {res.failed === res.parts ? "yanıt vermedi" : "bir kısmına yanıt vermedi"} ({res.error}); türler yerel kurala göre yazıldı.</p>}
               <p>{handoff(rep.to, mailDay)}</p>
@@ -179,6 +201,11 @@ export function LedgerCard({ uid, self, onSaved }) {
           </div>
         )}
 
+        {files && !rep && (
+          <button type="button" disabled={!!step} onClick={reset} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-rec active:bg-bg disabled:opacity-50">
+            {"Baştan kur (defteri sil, Excel’i yeniden yükle)"}
+          </button>
+        )}
         {files?.length > 0 && (
           <ul className="divide-y divide-line border-t border-line px-4">
             {files.map((f) => (

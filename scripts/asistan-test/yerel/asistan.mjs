@@ -68,7 +68,7 @@ const cases = [
   ["notları aç", P("notes")], ["notlarıma git", P("notes")], ["notlar", P("notes")],
   ["takvimi aç", P("calendar")], ["takvime geç", P("calendar")],
   ["mesajları aç", P("messages")], ["mesajlarıma git", P("messages")], ["sohbetleri göster", P("messages")],
-  ["fişleri aç", P("receipts")], ["harcamaları göster", P("receipts")], ["faturalara bakalım", P("invoices")], ["faturaları aç", P("invoices")], ["ödemelerimi aç", P("payments")], ["gelen ödemeleri göster", P("payments")], ["aidat ödemelerini aç", P("dues")],
+  ["fişleri aç", P("receipts")], ["harcamaları göster", P("receipts")], ["faturalara bakalım", P("invoices")], ["faturaları aç", P("invoices")], ["ödemelerimi aç", P("payments")], ["gelen ödemeleri göster", P("payments")], ["hesaplarımı aç", P("accounts")], ["mailleri aç", P("accounts")], ["aidat ödemelerini aç", P("dues")],
   ["alışveriş listesini aç", P("shopping")], ["market listesine git", P("shopping")],
   ["doğum günlerini aç", P("birthdays")], ["doğumgünleri sayfası", P("birthdays")],
   ["ders programını aç", P("schedule")], ["dersleri göster", P("schedule")],

@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
@@ -21,8 +21,14 @@ async function withSheets(snap) {
   return mails;
 }
 // Ay ay yazar (iç içe alanlar birleşir; başka cihazın eklediği hareketler silinmez)
+// En eski ay meta.first'e yazılır (özet ve Gelen ödemeler buradan başlar)
 async function write(uid, add) {
+  const yms = Object.keys(add);
   await Promise.all(Object.entries(add).map(([ym, moves]) => setDoc(bank(uid, ym), { moves }, { merge: true })));
+  if (!yms.length) return;
+  const low = yms.sort()[0];
+  const meta = (await getDoc(bank(uid, "meta"))).data() || {};
+  if (!meta.first || low < meta.first) await setDoc(bank(uid, "meta"), { first: low }, { merge: true });
 }
 const lastAt = (mails, prev = "") => mails.reduce((a, m) => (String(m.at || "") > a ? String(m.at) : a), prev);
 
@@ -100,4 +106,20 @@ export async function dropFileMoves(uid, fileId, fromYm, toYm) {
     const keys = Object.entries(moves).filter(([, m]) => m.f === fileId).map(([k]) => k);
     if (keys.length) await updateDoc(bank(uid, ym), Object.fromEntries(keys.map((k) => [`moves.${k}`, deleteField()])));
   }
+}
+
+// Defterin başladığı ay (yoksa 12 ay önce)
+export async function ledgerStart(uid, ym) {
+  const first = (await getDoc(bank(uid, "meta"))).data()?.first;
+  if (first && first <= ym) return first;
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 12, 15)).toISOString().slice(0, 7);
+}
+
+// Baştan kur: defterin bütün ayları ve yüklenen Excel kayıtları silinir, defter yalnız maillerden yeniden kurulur.
+// Mailler, aidat onayları, faturalar silinmez. Sonra Excel yeniden yüklenir.
+export async function resetLedger(uid) {
+  const [months, files] = await Promise.all([getDocs(collection(db, "orgs", uid, "bank")), getDocs(collection(db, "orgs", uid, "bankFiles"))]);
+  await Promise.all([...months.docs, ...files.docs].map((d) => deleteDoc(d.ref)));
+  return seed(uid);
 }

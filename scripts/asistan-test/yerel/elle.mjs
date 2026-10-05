@@ -813,7 +813,14 @@ group("Gelen ödemeler (kişisel hesap)")([
   ["bitişik ad", F("SEYHUNYILDIZ", () => PY.hasName("EFT SEYHUNYILDIZ KIRA", "Seyhun Yıldız"))],
   ["adı geçmeyenler", F("aidat havalesi ayrı listede", () => { const r = PY.otherIncoming(PMOV, SY); return r.length === 1 && r[0].amount === 1200; })],
   ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6 && /Gönderen/.test(c); })],
-  ["hesap adı sütunu", F("ad sütunundan, açıklama bilgi", () => { const l = PY.payeeMoves(MBX.movementsOf([{ at: "2026-10-05T07:00:00Z", sheets: [{ columns: ["Tarih", "Gönderen Adı", "Açıklama", "Tutar"], rows: [{ v: ["05.10.2026 10:12", "SEYHUN YILDIZ", "Ekim kira", 5000] }, { v: ["05.10.2026 11:00", "AHMET KAYA", "SEYHUN YILDIZ icin", 300] }], sum: { currency: "TL" } }] }]), SY); return l.length === 1 && l[0].who === "SEYHUN YILDIZ" && l[0].desc === "Ekim kira"; })],
+  ["hesap adı sütunu", F("ona giden para ad sütunundan, açıklama bilgi", () => { const l = PY.payeeMoves(MBX.movementsOf([{ at: "2026-10-05T07:00:00Z", sheets: [{ columns: ["Tarih", "Gönderen Adı", "Açıklama", "Tutar"], rows: [{ v: ["05.10.2026 10:12", "SEYHUN YILDIZ", "Ekim kira", -5000] }, { v: ["05.10.2026 11:00", "AHMET KAYA", "SEYHUN YILDIZ icin", 300] }], sum: { currency: "TL" } }] }]), SY); return l.length === 1 && l[0].who === "SEYHUN YILDIZ" && l[0].desc === "Ekim kira" && l[0].amount === 5000 && l[0].out; })],
+  ["kulüp hesabından ona giden", F("maaş + huzur hakkı aldığı ödeme, kendi yatırdığı değil", () => {
+    const out = { ...inc("SEYHUN YILDIZ*TR000000000000000000000000*MAAS HUZUR HAKKI*1 R1234567890123*FAST", -300000, "10.09.2026 10:00"), who: "SEYHUN YILDIZ" };
+    const own = { ...inc("SEYHUN YILDIZ*0062*kulube*1*FAST", 1000, "11.09.2026 10:00"), who: "SEYHUN YILDIZ" };
+    const l = PY.payeeMoves([out, own], SY);
+    return l.length === 1 && l[0].amount === 300000 && l[0].out && PY.otherIncoming([out, own], SY).length === 1;
+  })],
+  ["kendi hesabı seçili", F("o hesaba gelen her para", () => PY.payeeMoves([{ ...inc("X*0062*a*1*FAST", 700, "11.09.2026 10:00"), who: "ALI VELI" }], { name: "Seyhun Yıldız", account: "TL|1234|Vadesiz" }).length === 1)],
   ["açıklamadaki gönderen", F("GÖNDEREN: AD SOYAD", () => MBX.whoOf("FAST GÖNDEREN: SEYHUN YILDIZ aidat ekim") === "SEYHUN YILDIZ" && MBX.whoOf("POS SATIS MIGROS") === "")],
 ]);
 
