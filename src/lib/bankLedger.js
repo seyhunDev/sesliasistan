@@ -39,12 +39,24 @@ export function ledgerAdd(movements, src = "") {
   return out;
 }
 
-// Excel'den gelenler mailden gelmiş hareketin üstüne yazılmaz (aidat kayıtları mailin yazımına bağlı): yalnız yeni anahtarlar
+// Excel'den gelenler mailden gelmiş hareketin yazımını değiştirmez (aidat kayıtları mailin yazımına bağlı); yalnız
+// eksik ad/hücre bilgisini (who, text) tamamlar. Önceki bir Excel'den gelen hareket yeni dosyanınkiyle yenilenir
+// (eski yüklemelerde ad sütunu saklanmıyordu; aynı dosya yeniden yüklenince tamamlanır).
 export function onlyNew(add, existing) {
   const out = {};
   for (const [ym, moves] of Object.entries(add)) {
     const have = existing[ym] || {};
-    const fresh = Object.fromEntries(Object.entries(moves).filter(([k]) => !have[k]));
+    const fresh = {};
+    for (const [k, m] of Object.entries(moves)) {
+      const old = have[k];
+      if (!old || (old.f && (m.who || !old.who))) fresh[k] = m;
+      else {
+        const fill = {};
+        if (m.who && !old.who) fill.who = m.who;
+        if (m.text && !old.text) fill.text = m.text;
+        if (Object.keys(fill).length) fresh[k] = { ...old, ...fill };
+      }
+    }
     if (Object.keys(fresh).length) out[ym] = fresh;
   }
   return out;

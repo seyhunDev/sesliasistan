@@ -1,0 +1,5 @@
+## Nerede kaldım
+- Banka defteri: Yenile ve Excel'i yeniden yükleme (Seyhun: "3 aylık Excel'deki ödemelerin hepsi yok sanki, yenile tuşu yok mu, gerekirse Excel'i yenileyelim"): eski Excel yüklemesi (Aidatlar) yalnız gelen paraların açıklamasını saklıyordu; gönderen adı ayrı sütundaysa o hareketler adla eşleşemiyordu. Artık aynı Excel yeniden yüklenince önceki Excel'den gelen hareketler yeni okunanla (ad sütunu dahil) yenilenir; mailden gelen hareketin yazımı değişmez, yalnız eksik gönderen adı ve hücre bilgisi tamamlanır (`onlyNew`, bankLedger.js). Gelen ödemeler'in başlığında Yenile düğmesi: banka defteri bütün maillerden yeniden kurulur, yeni okunan bilgiler (gönderen adı) eklenir, hiçbir şey silinmez (`rebuildLedger`, ledgerData.js). Testleri `test:elle` › "Banka defteri".
+
+## Sıradaki işler
+0. Gelen ödemeler › Yenile'ye bas. Sonra Aidatlar › ayar › Banka Excel'i'nde eski 3 aylık dosyayı sil, aynı dosyayı yeniden yükle; Gelen ödemeler'de "…'i yüklenen Excel'den" sayısı ve ödemeler gelmeli. Hâlâ eksikse eksik bir ödemenin satırını "Adı geçmeyen gelen paralar"da ara; orada da yoksa Mailler'de hesap özetinin sütun başlıklarını yeni threade yaz.
