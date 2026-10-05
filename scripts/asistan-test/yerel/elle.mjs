@@ -882,3 +882,13 @@ group("Banka Excel incelemesi")([
     return !x.f && x.note === "Ekim aidatı" && x.cat === "Aidat";
   })],
 ]);
+
+// İnternet göstergesi (netSync.js): üstteki şeridin yazısı
+const NS = await import("@/lib/netSync");
+group("İnternet göstergesi")([
+  ["bağlı, bekleyen yok", F("şerit yok", () => NS.netText({ online: true, pending: false, sent: false }) === "")],
+  ["internet yok", F("bağlantı gelince gönderilir", () => /^İnternet yok · kaydettiklerin bağlantı gelince gönderilir$/.test(NS.netText({ online: false })))],
+  ["internet yok, kayıt var", F("kaydedildi, gönderilecek", () => /kaydedildi, bağlantı gelince gönderilecek/.test(NS.netText({ online: false, pending: true })))],
+  ["zayıf bağlantı", F("gönderiliyor", () => /^Bağlantı zayıf/.test(NS.netText({ online: true, pending: true })) && NS.netTone({ online: true, pending: true }) === "wait")],
+  ["hepsi gitti", F("gönderildi, yeşil", () => /gönderildi$/.test(NS.netText({ online: true, sent: true })) && NS.netTone({ online: true }) === "ok")],
+]);

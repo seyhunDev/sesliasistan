@@ -470,8 +470,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
     const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
     const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
-    if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} sıraya alındı, internet gelince kaydedilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
-    done(r.queued ? `${lead}Bağlantı zayıf: ${what}${whoTxt} sıraya alındı, internet gelince kaydedilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
+    if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} kaydedildi, bağlantı gelince gönderilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
+    done(r.queued ? `${lead}İnternet yok: ${what}${whoTxt} kaydedildi, bağlantı gelince gönderilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
   }
   function dropDrafts(viaVoice) {
     setDrafts([]);

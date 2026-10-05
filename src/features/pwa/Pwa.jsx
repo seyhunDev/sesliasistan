@@ -2,6 +2,8 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { syncPush } from "@/lib/push";
+import { netText, netTone } from "@/lib/netSync";
+import { checkWrites, netState, subscribeNet } from "./netWatch";
 
 // Service worker'ı kaydeder: yayında çevrimdışı açılış + bildirim; geliştirmede yalnızca bildirim (önbellek kapalı)
 export function ServiceWorkerSetup() {
@@ -46,13 +48,40 @@ const subscribe = (cb) => {
 // İnternet var mı (sunucuda her zaman var sayılır)
 export const useOnline = () => useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
 
-// Bağlantı yokken üstte ince şerit: veriler telefonda, değişiklikler bağlantı gelince gönderilir
+// Üstte ince şerit: internet yokken, kayıt sunucuya gitmeyi beklerken ve hepsi gidince kısa süre "gönderildi".
+// Ekranın en üstünde sabit (iPhone durum çubuğunun altına kadar); açıkken sayfa ve yapışkan başlıklar aşağı kayar
+// (body[data-net], globals.css). Kayıtlar cihazda (IndexedDB) sırada kalır, uygulama kapansa da bağlantı gelince gider.
 export function OfflineBanner() {
   const online = useOnline();
-  if (online) return null;
+  const net = useSyncExternalStore(subscribeNet, netState, netState);
+  const text = netText({ online, ...net });
+
+  // Bağlantı değişince, uygulamaya dönünce ve aralıklarla (çevrimdışıyken sık) bekleyen yazma var mı bakılır
+  useEffect(() => {
+    checkWrites();
+    const t = setInterval(() => document.visibilityState === "visible" && checkWrites(), online ? 20e3 : 3e3);
+    const vis = () => document.visibilityState === "visible" && checkWrites();
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", vis);
+    };
+  }, [online]);
+
+  useEffect(() => {
+    if (!text) return;
+    document.body.dataset.net = "1";
+    return () => delete document.body.dataset.net;
+  }, [text]);
+
+  if (!text) return null;
+  const ok = netTone({ online, ...net }) === "ok";
   return (
-    <div role="status" className="fade-in sticky top-0 z-30 bg-fg px-4 py-2 text-center text-[0.8125rem] font-medium text-bg">
-      Çevrimdışısın · değişikliklerin bağlantı gelince kaydedilir
+    <div
+      role="status"
+      className={`fade-in fixed inset-x-0 top-0 z-[45] flex h-[calc(1.75rem+env(safe-area-inset-top))] items-end justify-center px-4 pb-1.5 text-center text-[0.8125rem] font-medium text-white ${ok ? "bg-[#1f7a4d]" : "bg-[#1f2a2e]"}`}
+    >
+      {text}
     </div>
   );
 }
