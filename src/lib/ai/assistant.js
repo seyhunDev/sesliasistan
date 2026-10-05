@@ -220,6 +220,11 @@ function parseSend(raw, contacts, one = raw?.send) {
 // Modelin çıktısını doğrular: geçersiz alanlar atılır
 // people: çalışan adları; yeni kayıtlardaki sorumlular bu listeye göre doğrulanır
 // contacts: mesaj alıcılarının adları; alıcı bu listeye göre doğrulanır ("Ekip" her zaman geçerli)
+// Akışta gelen yarım JSON bir iş yanıtı mı (kayıt, işlem, mesaj): öyleyse yapay zekanın cümlesi akışta okunmaz,
+// sonucu uygulama gerçek duruma göre söyler ("Ekledim: …"). Soru/sohbet yanıtlarında cümle geldikçe okunur.
+const JOB_INTENT = /"intent"\s*:\s*"(create|action|message)"/;
+export const isJobJson = (acc) => JOB_INTENT.test(String(acc || ""));
+
 export function parseAssistant(raw, people = [], contacts = []) {
   const arr = (v) => (Array.isArray(v) ? v : []);
   const send = parseSend(raw, contacts);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Empty, Hero, HeroLabel, Label, card } from "@/components/ui/Page";
@@ -10,13 +10,12 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useDock } from "@/features/home/TabBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
-import { useSpeech } from "@/hooks/useSpeech";
-import { authFetch } from "@/lib/authFetch";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { SCHEDULE_KEY, askSchedule, takeSchedule } from "@/features/schedule/assistSchedule";
 import { weekdayOf } from "@/lib/agenda";
 import { compressImage } from "@/lib/image";
 import { cap, todayStr } from "@/lib/utils/format";
 import { Loader } from "@/components/ui/Loader";
-import { ListeningOverlay } from "@/features/add/Stage";
 
 const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 const SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -24,14 +23,8 @@ const field = "h-12 w-full rounded-xl bg-bg px-3.5 text-base text-fg outline-non
 const byTime = (a, b) => (a.start || "").localeCompare(b.start || "");
 const span = (l) => (l.end ? `${l.start}–${l.end}` : l.start);
 
-async function askAI(payload) {
-  const res = await authFetch("/api/schedule", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Ders programı çıkarılamadı");
-  return data; // { lessons, message }
-}
-
-// Ders programı: haftalık tekrarlanan dersler. Ekleme: tek tek, yazarak/konuşarak ya da fotoğrafla (yapay zeka önizler, sen kaydedersin).
+// Ders programı: haftalık tekrarlanan dersler. Ekleme: tek tek, fotoğrafla ya da ana asistana söyleyerek ("salı 13:00 fizik B-204");
+// yapay zeka önizler, sen kaydedersin. Sayfanın kendi dinleyicisi yok: söylenen ana asistana gider (AssistantSheet `runSchedule`).
 export default function SchedulePage() {
   const { lessons, saveLessons, updateLesson, clearLessons, removeWithUndo, myUid } = useData();
   const toast = useToast();
@@ -47,7 +40,7 @@ export default function SchedulePage() {
   async function run(payload, kind) {
     setBusy(kind);
     try {
-      const r = await askAI({ ...payload, current: mine.map(({ title, day: d, start, end, place, teacher }) => ({ title, day: d, start, end, place, teacher })) });
+      const r = await askSchedule({ ...payload, current: mine.map(({ title, day: d, start, end, place, teacher }) => ({ title, day: d, start, end, place, teacher })) });
       if (!r.lessons.length) toast(r.message || "Ders bulamadım");
       else setPreview(r);
     } catch (e) {
@@ -56,8 +49,18 @@ export default function SchedulePage() {
     setBusy("");
   }
 
-  const sp = useSpeech({ onFinal: (tx) => run({ text: tx }, "text"), onFail: (m) => toast(m) });
-  const listening = sp.status === "listening";
+  // Ana asistanın hazırladığı program: önizleme açılır (sayfa kapalıyken hazırlandıysa açılınca)
+  useEffect(() => {
+    const show = (r) => r?.lessons?.length && setPreview(r);
+    show(takeSchedule());
+    const on = (e) => {
+      takeSchedule();
+      show(e.detail);
+    };
+    window.addEventListener(SCHEDULE_KEY, on);
+    return () => window.removeEventListener(SCHEDULE_KEY, on);
+  }, []);
+  const { openAssistant } = useAssistant();
 
   async function onPhoto(e) {
     const file = e.target.files?.[0];
@@ -75,7 +78,7 @@ export default function SchedulePage() {
     fileRef.current?.click();
   }
   const newLesson = () => setEdit({ title: "", day, start: "09:00", end: "09:45", place: "", teacher: "" });
-  const listen = () => sp.start({ autoStop: 6000 });
+  const listen = () => openAssistant({ listen: true });
 
   const list = lessons.filter((l) => l.day === day).sort(byTime);
   const counts = SHORT.map((_, i) => lessons.filter((l) => l.day === i + 1).length);
@@ -88,8 +91,6 @@ export default function SchedulePage() {
   const max = Math.max(1, ...counts);
   const live = (l) => day === today && l.start <= nowHM && (l.end || l.start) > nowHM;
   useDock({
-    onSend: (t) => run({ text: t }, "text"),
-    onMic: listen,
     create: [
       ["plus", "Ders ekle", "Tek tek gir", newLesson],
       ["camera", "Fotoğraftan", "Programın fotoğrafı", pickPhoto],
@@ -187,8 +188,6 @@ export default function SchedulePage() {
           Tüm programı sil
         </button>
       )}
-
-      <ListeningOverlay sp={sp} hint="Dersleri, günleri ve saatleri söyle" onCancel={sp.cancel} onSend={() => sp.stop("send")} />
 
 
       {edit && (

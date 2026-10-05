@@ -46,8 +46,8 @@ group("Ses seçimi")([
 ]);
 
 
-// Konuşma bitişi (kayıt yolu, iPhone): gürültüde de susunca dinleme biter (vad.js; useSpeech'teki 2,3 sn kuralıyla)
-const { makeVad } = await import("@/lib/speech/vad");
+// Konuşma bitişi (kayıt yolu, iPhone): gürültüde de susunca dinleme biter (vad.js; useSpeech ile aynı kural: endWait)
+const { makeVad, endWait, speechEnded, END_SILENCE, END_SILENCE_SHORT } = await import("@/lib/speech/vad");
 const { trimQuiet, louder } = await import("@/lib/speech/wav");
 let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -59,8 +59,7 @@ const scene = ({ noise, talk = [1000, 4000], pause, voice = 0.3, total = 30000 }
     const n = noise(t) * (0.7 + rnd() * 0.6);
     const speaking = talk && t >= talk[0] && t < talk[1] && t % 400 < 300 && !(pause && t >= pause[0] && t < pause[1]);
     v.step(speaking ? Math.max(n, voice * (0.6 + rnd() * 0.5)) : n, t);
-    const wait = v.lastSpeech - v.voiceFrom < 1500 ? 3000 : 2300;
-    if (v.voiceSeen && t - v.lastSpeech >= wait) return { seen: true, end: t - (talk ? talk[1] : 0) };
+    if (speechEnded(v, t)) return { seen: true, end: t - (talk ? talk[1] : 0), wait: endWait(v) };
   }
   return { seen: v.voiceSeen, end: null };
 };
@@ -74,6 +73,26 @@ group("Konuşma bitişi (gürültü)")([
   ["cümle ortasında 1,5 sn duraksama kesmez (rüzgârda)", { desc: "konuşmanın sonunda biter", fn: scene({ noise: () => 0.09, talk: [1000, 7000], pause: [3000, 4500] }), ok: (r) => r.seen && r.end > 0 && r.end <= 3500 }],
   ["konuşmadan: tek çarpma konuşma sayılmaz", { desc: "konuşma yok", fn: () => { const v = makeVad(); [0.01, 0.01, 0.5, 0.01, 0.01].forEach((l, i) => v.step(l, i * 100)); return v.voiceSeen; }, ok: (r) => r === false }],
 ]);
+// Konuşma bitti → gönderme kararı kaç ms sonra (sessiz odada): uzun cümlede 1,6 sn, kısa sözde ("evet") 2 sn.
+// Cümle ortasındaki kısa duraksama kesmez. Bekleme 0,1 sn'lik ölçüm adımıyla ve son hecenin payıyla biraz uzayabilir.
+const AFTER = (lo, hi) => ({ desc: `${lo / 1000}-${hi / 1000} sn sonra gönderilir`, ok: (r) => r.seen && r.end >= lo && r.end <= hi });
+group("Konuşma bitişi süresi")([
+  ["uzun cümle (3 sn)", { ...AFTER(END_SILENCE - 300, END_SILENCE + 300), fn: scene({ noise: () => 0.01 }) }],
+  ["kısa söz (\"evet\", 0,8 sn)", { ...AFTER(END_SILENCE_SHORT - 300, END_SILENCE_SHORT + 300), fn: scene({ noise: () => 0.01, talk: [1000, 1800] }) }],
+  ["1,2 sn duraksama kesmez", { desc: "duraksamada gönderilmez, sonunda gönderilir", fn: scene({ noise: () => 0.01, talk: [1000, 6000], pause: [2500, 3700] }), ok: (r) => r.seen && r.end > 0 && r.end <= END_SILENCE + 300 }],
+  ["2,2 sn duraksama: gönderilir (devamı öncekine eklenir)", { desc: "duraksamada gönderilir", fn: scene({ noise: () => 0.01, talk: [1000, 7000], pause: [3000, 5200] }), ok: (r) => r.seen && r.end < 0 }],
+]);
+
+// Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)
+const { spokenText } = await import("@/lib/speech/hallucination");
+const SPK = (desc, data, exp) => [desc, { desc: exp ? `“${exp}”` : "boş", fn: () => spokenText(data), ok: (r) => r === exp }];
+group("Whisper parçaları")([
+  SPK("emin parça kalır", { segments: [{ text: " Yarın antrenman ekle.", no_speech_prob: 0.02, avg_logprob: -0.2 }] }, "Yarın antrenman ekle."),
+  SPK("sessiz ve emin olmayan parça atılır", { segments: [{ text: "Yarın antrenman ekle.", no_speech_prob: 0.01, avg_logprob: -0.3 }, { text: "İzlediğiniz için teşekkürler.", no_speech_prob: 0.9, avg_logprob: -1.1 }] }, "Yarın antrenman ekle."),
+  SPK("sessiz ama emin parça kalır", { segments: [{ text: "Evet.", no_speech_prob: 0.7, avg_logprob: -0.3 }] }, "Evet."),
+  SPK("parça yoksa düz metin", { text: " Planları aç " }, "Planları aç"),
+]);
+
 const tone = (sec, amp) => Float32Array.from({ length: 16000 * sec }, (_, i) => amp * Math.sin(i / 3));
 const withTalk = () => { const x = new Float32Array(16000 * 6); x.set(tone(2, 0.3), 16000 * 2); return x; };
 group("Kayıt temizliği")([

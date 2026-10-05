@@ -63,6 +63,8 @@ import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
+import { wantsSchedule } from "@/features/schedule/scheduleWords";
+import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -112,7 +114,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const tts = useTts();
   const { profile } = useAuth();
   const { openBirthday } = useBirthday();
-  const { plans, tasks, notes, receipts, birthdays, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply, isLocked } = useData();
+  const { plans, tasks, notes, receipts, birthdays, lessons = [], myUid: dataUid, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply, isLocked } = useData();
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
@@ -798,6 +800,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     // Açık gönderi ekranında söylenen gönderiyi değiştirir: "daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında görsel üret"
     if (onPost) return runPost(s, viaVoice);
+    // Ders programı ("salı 13:00 fizik B-204", "salı fiziği 14'e al"): sayfada her cümle, başka yerde "ders programı" denince.
+    // Yapay zeka programı çıkarır, Ders programı sayfasında önizleme açılır; kaydetmeyi (ekle / değiştir) kullanıcı seçer
+    if (wantsSchedule(s, path === "/schedule")) return runSchedule(s, viaVoice);
     // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
     const bday = !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
     if (bday) {
@@ -1571,6 +1576,30 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [listening, transcribing, busy, open]);
 
   // Yoklamadan sonra cümledeki diğer işler: yoklama cevabı okunup bitince yapay zekaya (görev listesi) gider
+  async function runSchedule(s, viaVoice) {
+    const id = ++runId.current;
+    ctrl.current?.abort();
+    setPhase("thinking");
+    setSteps([]);
+    stepTo("Ders programı hazırlanıyor");
+    try {
+      const current = lessons.filter((l) => l.createdByUid === dataUid).map(({ title, day, start, end, place, teacher }) => ({ title, day, start, end, place, teacher }));
+      const r = await askSchedule({ text: s, current });
+      if (id !== runId.current) return;
+      stepsEnd(true);
+      if (!r.lessons?.length) return reply(r.message || "Ders bulamadım. Gün, saat ve dersi söyler misin?", { engine: "ai", expect: true }, viaVoice);
+      showSchedule(r);
+      if (path !== "/schedule") router.push("/schedule");
+      reply(`${(r.message || `${r.lessons.length} ders hazırladım.`).trim()} Önizlemeyi açtım, kontrol edip kaydet.`, { engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(e.message || "Ders programı hazırlanamadı.", { engine: "ai" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+
   async function restAfterAtt(rest, viaVoice, done) {
     const id = runId.current;
     for (let i = 0; i < 80 && (sayQ.current.busy || speakingRef.current); i++) await new Promise((ok) => setTimeout(ok, 150)); // en çok 12 sn

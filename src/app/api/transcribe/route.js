@@ -2,7 +2,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { countAi } from "@/lib/server/aiUsage";
 import { NextResponse } from "next/server";
 import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
-import { dropHallucination } from "@/lib/speech/hallucination";
+import { dropHallucination, spokenText } from "@/lib/speech/hallucination";
 
 export const runtime = "nodejs";
 
@@ -23,17 +23,6 @@ const WHISPER = {
 const namesHint = (names, terms = []) =>
   (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "") + (terms.length ? ` Yarış adları (bu yazımla): ${terms.join(", ")}.` : "");
 
-// Sessiz parçaları at: konuşma yok olasılığı yüksek ve model kendinden emin değilse (Whisper burada uydurur)
-function spoken(data) {
-  const segs = Array.isArray(data?.segments) ? data.segments : null;
-  if (!segs?.length) return String(data?.text || "").trim();
-  return segs
-    .filter((g) => !(g.no_speech_prob > 0.6 && g.avg_logprob < -0.7))
-    .map((g) => String(g.text || "").trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
 async function viaWhisper(name, file, names, terms) {
   const s = WHISPER[name];
   const send = (model) => {
@@ -49,7 +38,7 @@ async function viaWhisper(name, file, names, terms) {
   let res = await send(s.model());
   // OpenAI'da model adı hesapta yoksa eski, yaygın modele düş
   if (name === "openai" && !res.ok && [400, 404].includes(res.status) && s.model() !== "whisper-1") res = await send("whisper-1");
-  if (res.ok) return spoken(await res.json());
+  if (res.ok) return spokenText(await res.json());
   const body = (await res.text()).slice(0, 300);
   const err = new Error(`${name} ${res.status}: ${body}`);
   // Kota/bakiye yok ya da anahtar geçersiz: bir süre bu servisi hiç deneme

@@ -42,19 +42,19 @@ export function InfoFields({ v, set }) {
   );
 }
 
-// Yeni etkinlik: bilgiler + "ne planlıyorsun" → yapay zekayla hazırla ya da boş oluştur.
-// Boş bırakılan bilgiler için yapay zeka genel bir değerlendirme yapar (yer/mevsim önerir).
-export function EventForm({ start, onAi, onBlank }) {
+// Yeni etkinlik: bilgiler + not → oluştur. Planı (ihtiyaç listesi, bütçe, işler) etkinlik ekranındaki
+// "Yapay zekayla hazırla" düğmesi ya da ana asistan ("kamp planı yap") hazırlar; formda ayrı yapay zeka kutusu yok.
+export function EventForm({ start, onBlank }) {
   const [v, setV] = useState(start);
   const [idea, setIdea] = useState("");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
-  const run = async (kind) => {
+  const run = async () => {
     setErr("");
-    setBusy(kind);
+    setBusy("blank");
     try {
-      await (kind === "ai" ? onAi(v, idea) : onBlank(v, idea));
+      await onBlank(v, idea);
     } catch (e) {
       setErr(e?.message || "Olmadı, tekrar dene.");
       setBusy("");
@@ -65,19 +65,14 @@ export function EventForm({ start, onAi, onBlank }) {
     <div className="mt-2 space-y-4 pb-6">
       <InfoFields v={v} set={setV} />
       <label className="block">
-        <span className="text-[0.8125rem] font-medium text-mut">Ne planlıyorsun? (isteğe bağlı)</span>
+        <span className="text-[0.8125rem] font-medium text-mut">Not (isteğe bağlı)</span>
         <textarea value={idea} onChange={(e) => setIdea(e.target.value)} maxLength={1500} className={area} placeholder="Çocuklarla 2 gece çadır kampı, deniz kenarı olsun; bütçe kişi başı 3 bin civarı" />
       </label>
       {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
-      <Button onClick={() => run("ai")} loading={busy === "ai"} disabled={!!busy}>
-        <Icon name="zap" className="size-5" />
-        Yapay zekayla hazırla
+      <Button onClick={run} loading={!!busy} disabled={!!busy || !v.title.trim()}>
+        Oluştur
       </Button>
-      {busy === "ai" && <p className="-mt-2 text-center text-[0.8125rem] text-mut">İhtiyaç listesi, bütçe ve yapılacaklar hazırlanıyor…</p>}
-      <Button variant="ghost" onClick={() => run("blank")} loading={busy === "blank"} disabled={!!busy || !v.title.trim()}>
-        Boş oluştur
-      </Button>
-      <p className="text-center text-[0.75rem] leading-snug text-mut">Yer ya da tarih boşsa genel bir plan yapılır. Listeleri sonra elle değiştirebilirsin.</p>
+      <p className="text-center text-[0.75rem] leading-snug text-mut">İhtiyaç listesi, bütçe ve yapılacakları sonra etkinlik ekranında “Yapay zekayla hazırla” ile ya da asistana söyleyerek hazırlatabilirsin.</p>
     </div>
   );
 }

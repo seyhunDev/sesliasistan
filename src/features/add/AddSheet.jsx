@@ -8,36 +8,26 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
-import { useSpeech } from "@/hooks/useSpeech";
-import { interpretText } from "@/services/aiService";
-import { addDays, cap, rel, todayStr } from "@/lib/utils/format";
-import { localReceipt } from "@/lib/assistantLocal";
-import { localCreate } from "@/lib/commands";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { addDays, rel, todayStr } from "@/lib/utils/format";
 import { labelFromItems } from "@/lib/brain/model";
 import { ackState, assigneesOf, lockedFor, unseenNotes } from "@/lib/people";
-import { assigneeHints, assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names";
+import { assigneeHints, assigneesInText, namesToUids, uidsToNames } from "@/lib/names";
 import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
-import { ActionDock, Composer } from "./Composer";
 import { DraftCard } from "./DraftCard";
-import { AssignedView, AssistantPanel, Replies, ReplyComposer, recordFocus } from "./Assigned";
-import { confirmWord } from "@/lib/ai/messageRules";
+import { AssignedView, Replies, ReplyComposer, recordFocus } from "./Assigned";
 import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
-import { ListeningStage, ProcessingStage } from "./Stage";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { CancelPlan } from "./CancelPlan";
 import { TrainingLog } from "./TrainingLog";
 import { canLog } from "@/lib/trainingLog";
-import { blank, carry, check, firstNeed, fresh, isBlank, nid, pub, tidy, toPatch } from "./drafts";
+import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
 
-const SILENCE_MS = 0; // Otomatik kapanma kapalı
-const BEAT = 450; // "hazırlanıyor" adımının görünme süresi (ms)
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const TIME_CHIPS = [["Sabah 09:00", "09:00"], ["Öğleden sonra 14:00", "14:00"], ["Akşam 18:00", "18:00"]];
 
 const EDIT_TITLE = { plan: "Plan", task: "Görev", note: "Not" };
@@ -69,58 +59,30 @@ export function AddSheet({ open, onClose, seed }) {
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
   const { plans, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
-  const { openReceipt } = useReceipt();
+  const { openAssistant } = useAssistant();
   const router = useRouter();
-  const [text, setText] = useState("");
   const [drafts, setDrafts] = useState([]);
-  const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
-  const [secs, setSecs] = useState(0);
   const [voice, setVoice] = useState(false);
-  const [heard, setHeard] = useState(""); // yapay zekaya giden son metin
+  const [heard, setHeard] = useState(""); // asistanın taslağı doğuran cümlesi (öğrenme kaydı için)
   const [reply, setReply] = useState({ engine: "", message: "" });
   const [turns, setTurns] = useState([]); // konuşma: { role: "user" | "assistant", text, chip? }
   const [whoAsk, setWhoAsk] = useState(null); // aynı adlı birden çok kişi: { said, options: [ad] } → "Hangi Ali?"
   const [ask, setAsk] = useState(null); // bekleyen soru: { idx, kind: "date" | "time" }
-  const [editReply, setEditReply] = useState("");
-  const [outbox, setOutbox] = useState(null); // asistanın hazırladığı, onay bekleyen: { text, done }
-  const [aiMode, setAiMode] = useState("msg"); // kayıt içi yazma modu: msg (aynen gider) | ai (asistan)
-  const [msgText, setMsgText] = useState(""); // kayıt içi mesaj kutusunun yazısı
   const [pickAssign, setPickAssign] = useState(null); // kaydetmeden önce sorumlu sorusu: null | seçilen uid'ler
   const orig = useRef(""); // düzenlemede açılıştaki hâl (değişiklik var mı?)
-  const [error, setError] = useState("");
   const scrollRef = useRef(null);
-  const runId = useRef(0);
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
-  const ctrl = useRef(null);
-  const snaps = useRef([]); // "Son mesajı düzelt" için önceki durumlar
-  const live = useRef({});
-  live.current = { open, text };
 
-  // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama için gider
+  // Çalışan adları (ana hesap): asistanın hazırladığı taslakta sorumlu cümleden bulunur
   const staffNames = !isStaff ? members.map((m) => m.name).filter(Boolean) : [];
-  const sp = useSpeech({
-    names: staffNames,
-    onFinal: (raw, mode) => {
-      const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
-      if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx)); // metin kutuda kalsın, düzenleyip gönder
-      else if (edit) runEdit(text ? `${text} ${tx}` : tx, true);
-      else run(text ? `${text} ${tx}` : tx, true);
-    },
-    onFail: (m) => toast(m),
-  });
 
   const edit = seed?.edit;
   const by = { name: profile?.name ?? "Kullanıcı" };
-  const firstName = (profile?.name || "").split(" ")[0];
   const [seriesAsk, setSeriesAsk] = useState(null); // tekrarlayan planı silme: ikinci dokunuşta onay (kayıt kimliği)
   const rec = edit ? ({ plan: plans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
   const locked = !!edit && lockedFor(rec, myUid, isStaff);
-  // Kaydın konuşmasındaki diğer kişiler (asistan mesajı bunlara gider); çalışan için ana hesap her zaman var
-  const threadNames = rec
-    ? [...new Set([...[rec.createdByUid, ...assigneesOf(rec)].filter((u) => u && u !== myUid).map((u) => nameOf(u)).filter(Boolean), ...(isStaff ? ["Ana hesap"] : [])])]
-    : [];
   const hasThread = !!rec && (assigneesOf(rec).some((u) => u !== rec.createdByUid) || !!rec.replies);
   const plan = drafts.find((d) => d.type === "plan");
   // Ana hesap her kayda sorumlu çalışan(lar) seçebilir; çalışanın eklediği kayıt yine onda kalır
@@ -131,7 +93,6 @@ export function AddSheet({ open, onClose, seed }) {
     shut();
     router.push("/staff");
   };
-  const assignable = assign || [];
   // Yapay zekanın verdiği sorumlu adlarını çalışan kimliklerine çevirir (atama yetkisi yoksa yok sayılır)
   // Yapay zeka sorumlu vermediyse kullanıcının kendi cümlesinden bulunur ("Ali'nin benzin alma görevi", "Ali'ye ver", "Ali alsın")
   const withAssignees = ({ assignTo, ...x }, text = "") => {
@@ -150,109 +111,15 @@ export function AddSheet({ open, onClose, seed }) {
     ].filter(Boolean).join(" · ")
     : "";
   const title = edit ? EDIT_TITLE[edit.kind] : manual && drafts.length === 1 ? NEW_TITLE[drafts[0].type] : "Yeni kayıt";
-  const listening = sp.status === "listening";
-  const transcribing = sp.status === "transcribing";
-  const busy = phase !== "idle";
   const chat = turns.length > 0;
-  const placeholder = edit
-    ? "Sesle veya yazıyla değiştir · örn. “saati 10 yap”"
-    : ask?.kind === "time"
-      ? "Saati yaz veya söyle · örn. “10 olsun” veya “fark etmez”"
-      : ask?.kind === "date"
-        ? "Günü yaz veya söyle · örn. “pazartesi”"
-        : chat
-          ? "Eklemek veya değiştirmek istediğin bir şey var mı?"
-          : "örn. Yarın 10'da antrenman";
-
-  function cancelRun() {
-    runId.current += 1;
-    ctrl.current?.abort();
-    setPhase("idle");
-  }
 
   const scrollToReply = () =>
     setTimeout(() => scrollRef.current?.querySelector("[data-last-reply]")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
-
-  // Sesle konuşulduysa asistan da sesle dinlemeye devam eder (sessizlikte kapanır, hata çıkarsa sessiz kalır)
-  const startAuto = () => {
-    const L = live.current;
-    if (L.open && !L.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true });
-  };
-
-  // ---- Yeni kayıt: her mesaj aynı taslağı tamamlar veya günceller ----
-  async function run(t, viaVoice = false) {
-    const s = t.trim();
-    if (!s) return toast("Yaz veya mikrofona bas");
-    // "Fiş yükle" gibi istekler plan/görev değil: fiş kamerasını aç
-    if (!drafts.length && localReceipt(s)) {
-      shut();
-      openReceipt({ camera: true });
-      return;
-    }
-    // İlk mesaj kısa ve kalıba uyuyorsa ("yarın 10'da antrenman ekle") yapay zekaya gitmeden hazırla
-    const quick = !drafts.length && !reply.message ? localCreate(s) : null;
-    const id = ++runId.current;
-    ctrl.current?.abort();
-    const c = new AbortController();
-    ctrl.current = c;
-    if (viaVoice) setVoice(true);
-
-    const known = drafts.filter((d) => !isBlank(d));
-    // Devamlılık: ilk mesaj + sonraki mesajlar + asistan yanıtları + güncel taslaklar birlikte gider
-    const history = turns.slice(-10).map((t) => ({ role: t.role, text: t.text }));
-    const ctx = known.length || reply.message || history.length ? { mode: "create", drafts: known.map((d) => pub(d, assignable)), last: reply.message, history } : null;
-    snaps.current.push({ drafts, reply, turns, ask });
-    setTurns((p) => [...p, { role: "user", text: s }]);
-    setText("");
-    setHeard(s);
-    setError("");
-    setAsk(null);
-    setPhase("thinking");
-    try {
-      const r = quick ? { items: quick.items, message: quick.message, source: "local" } : await interpretText(s, firstName, c.signal, ctx, staffNames, seed?.prefer);
-      if (id !== runId.current) return;
-      setPhase("preparing");
-      await sleep(BEAT);
-      if (id !== runId.current) return;
-
-      const items = applyRepeat(r.items, s, todayStr()).map((x) => withAssignees(x, s));
-      askWhich(s, items);
-      let next = !items.length ? drafts : ctx ? carry(known, items) : [...drafts, ...items.map(fresh)];
-      const need = firstNeed(next);
-      const first = !!need && !next[need.idx]._asked; // bu soru ilk kez soruluyor
-      if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-      const msg = r.message || "";
-
-      setDrafts(next);
-      setAsk(need);
-      setReply({ engine: r.source, message: msg });
-      if (msg) setTurns((p) => [...p, { role: "assistant", text: msg }]);
-      if (r.warning) toast(r.warning);
-      scrollToReply();
-      navigator.vibrate?.([8, 30, 8]);
-      if (msg) {
-        const isQuestion = msg.trim().includes("?");
-        if ((first || isQuestion) && viaVoice) tts.speakThen(msg, startAuto); // soru: okunsun, sonra mikrofon açılsın
-        else tts.maybeSpeak(msg);
-      }
-    } catch (e) {
-      if (id !== runId.current) return;
-      const snap = snaps.current.pop();
-      if (snap) {
-        setTurns(snap.turns); // gönderilemeyen mesajı akıştan çıkar
-        setAsk(snap.ask || null);
-      }
-      setError(e.message || "Yapay zeka yanıt vermedi");
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
-  }
 
   // ---- Hızlı cevap düğmeleri: yapay zekayı beklemeden kartı hemen günceller ----
   function pickChip(kind, value) {
     if (!ask) return;
     const i = ask.idx;
-    snaps.current.push({ drafts, reply, turns, ask });
     tts.stop();
     let label;
     let said;
@@ -282,78 +149,6 @@ export function AddSheet({ open, onClose, seed }) {
     navigator.vibrate?.(8);
   }
 
-  // ---- Düzenleme: sesle veya yazıyla yalnızca bu kaydı değiştir (Kaydet'e basana kadar kaydedilmez) ----
-  async function runEdit(t, viaVoice = false) {
-    const s = t.trim();
-    if (!s) return toast("Yaz veya mikrofona bas");
-    const cur = drafts[0];
-    if (!cur) return;
-    // Bekleyen taslak varsa kısa onay/ret ("gönder", "evet", "vazgeç") doğrudan uygulanır; başka bir şey taslağı değiştirir
-    if (outbox) {
-      const c = confirmWord(s);
-      if (c === "yes") return confirmOutbox();
-      if (c === "no") return cancelOutbox(true);
-    }
-    const id = ++runId.current;
-    ctrl.current?.abort();
-    const c = new AbortController();
-    ctrl.current = c;
-    if (viaVoice) setVoice(true);
-    setText("");
-    setHeard(s);
-    setError("");
-    setEditReply("");
-    setPhase("thinking");
-    try {
-      const r = await interpretText(
-        s,
-        firstName,
-        c.signal,
-        { mode: locked ? "reply" : "edit", kind: edit.kind, drafts: [pub(cur, assignable)], last: editReply, thread: threadNames, pendingSend: outbox?.text || "" },
-        staffNames,
-      );
-      if (id !== runId.current) return;
-      setPhase("preparing");
-      await sleep(BEAT);
-      if (id !== runId.current) return;
-      const n = locked ? null : r.items.map((x) => withAssignees(x, s))[0]; // çalışan başkasının kaydını değiştiremez
-      if (n && n.type === cur.type) {
-        const clearTime = n.allDay === true && !n.time; // "tüm gün yap" / "saati kaldır"
-        setDrafts([
-          {
-            ...cur,
-            title: n.title || cur.title,
-            ...(n.assignees?.length ? { assignees: n.assignees } : {}),
-            ...(cur.type === "plan"
-              ? {
-                date: n.date || cur.date,
-                endDate: n.endDate || cur.endDate,
-                time: clearTime ? "" : n.time || cur.time,
-                allDay: clearTime ? true : n.time ? false : cur.allDay,
-                place: n.place || cur.place,
-              }
-              : {}),
-            ...(cur.type === "task" ? { date: n.date || cur.date } : {}),
-            ...(cur.type === "note" ? { body: n.body || cur.body } : {}),
-          },
-        ]);
-      }
-      const out = r.send || r.done ? { text: r.send || "", done: !!r.done } : null;
-      setOutbox(out);
-      setEditReply(r.message || (out ? "Göndereyim mi?" : "Güncelledim, kontrol edip kaydedebilirsin."));
-      // Taslak hazırsa: sesle konuşulduysa taslağı okuyup mikrofonu açar, "gönder" / "vazgeç" diye cevap verilebilir
-      const say = out?.text ? `${r.message || "Göndereyim mi?"} ${out.text}` : r.message;
-      if (out && viaVoice) tts.speakThen(say, startAuto);
-      else if (say) tts.maybeSpeak(say);
-      navigator.vibrate?.([8, 30, 8]);
-    } catch (e) {
-      if (id !== runId.current) return;
-      setError(e.message || "Yapay zeka yanıt vermedi");
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
-  }
-
   // Asistan yeni kayıt niyetini çözdüyse taslak kartlarla ve yanıtla açılır; eksik bilgiyi burada tamamlarsın
   // Cümlede aynı ada sahip birden çok kişi geçtiyse ve sorumlu seçilemediyse kullanıcıya sor
   function askWhich(text, items) {
@@ -379,8 +174,7 @@ export function AddSheet({ open, onClose, seed }) {
     setReply({ engine: pf.engine || "", message: pf.message || "" });
     if (pf.message) {
       const isQuestion = pf.message.trim().includes("?");
-      if ((need || isQuestion) && seed?.voice) tts.speakThen(pf.message, startAuto);
-      else tts.maybeSpeak(pf.message);
+      if (need || isQuestion) tts.maybeSpeak(pf.message);
     }
   }
 
@@ -405,20 +199,10 @@ export function AddSheet({ open, onClose, seed }) {
     };
   }, [viewKey, setViewing]);
 
-  // Beklerken geçen saniyeler
-  useEffect(() => {
-    if (phase !== "thinking") return;
-    setSecs(0);
-    const id = setInterval(() => setSecs((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
-
   // Ekran kapanınca ses, dinleme ve bekleyen istek durur
   useEffect(() => {
     if (!open) {
       stopTts();
-      cancelRun();
-      sp.cancel();
       startedFor.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -427,19 +211,11 @@ export function AddSheet({ open, onClose, seed }) {
   // Her açılışta sıfırla; başlangıç metni varsa otomatik yapay zekaya gönder
   useEffect(() => {
     if (!open) return;
-    snaps.current = [];
     if (startedFor.current === seed?.id) return;
     startedFor.current = seed?.id;
-    setText("");
-    setPhase("idle");
     setHeard("");
-    setError("");
     setTurns([]);
     setAsk(null);
-    setEditReply("");
-    setOutbox(null);
-    setAiMode("msg");
-    setMsgText("");
     setPickAssign(null);
     setReply({ engine: "", message: "" });
     setVoice(!!seed?.voice);
@@ -454,8 +230,6 @@ export function AddSheet({ open, onClose, seed }) {
     }
     setDrafts(seed?.type ? [{ ...blank(seed.type), ...(seed.date ? { date: seed.date } : {}) }] : []); // takvimden: seçili gün hazır gelir
     if (seed?.prefill) startPrefill(seed.prefill);
-    else if (seed?.text) run(seed.text, !!seed.voice);
-    else if (seed?.listen) sp.start({ autoStop: SILENCE_MS }); // sayfa çubuğundaki mikrofon: açılır açılmaz dinler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
 
@@ -463,45 +237,17 @@ export function AddSheet({ open, onClose, seed }) {
   const remove = (i) => setDrafts((p) => p.filter((_, k) => k !== i));
   const changeType = (i, type) => update(i, { type, ...(type === "note" && !drafts[i].body ? { body: drafts[i].title } : {}) });
 
-  const shut = () => {
-    sp.cancel();
-    cancelRun();
+  const shut = () => onClose();
+  // Yazarak/konuşarak ekleme ana asistanla: bu ekran kapanır, asistan dinlemeye başlar (kayıt ekranının kendi asistanı yok)
+  const toAssistant = () => {
     onClose();
+    openAssistant({ listen: true });
   };
-
-  // Bekleyen isteği bırak, metni geri getir (tekrar düzenleyip gönderebilsin)
-  function abort() {
-    const t = heard;
-    cancelRun();
-    const snap = snaps.current.pop();
-    if (snap && !edit) {
-      setTurns(snap.turns);
-      setDrafts(snap.drafts);
-      setReply(snap.reply);
-      setAsk(snap.ask || null);
-    }
-    setText(t);
-  }
-
-  // Son mesajı geri al: önceki duruma dön, metni yazı alanına getir
-  function fixLast() {
-    const snap = snaps.current.pop();
-    if (!snap) return;
-    tts.stop();
-    const lastUser = [...turns].reverse().find((t) => t.role === "user");
-    setText(lastUser?.chip ? "" : lastUser?.text || "");
-    setTurns(snap.turns);
-    setDrafts(snap.drafts);
-    setReply(snap.reply);
-    setAsk(snap.ask || null);
-    setError("");
-  }
 
   // Kaydet: sorumlusu olmayan kayıt varsa önce "Sorumlu eklemek ister misin?" sorulur (ana hesap, çalışan varken).
   // Yapay zeka görevliyi anlamadıysa buradan elle seçilir.
   async function create() {
-    if (text.trim()) return toast("Yazdığın metni önce gönder (↑) ya da sil");
-    if (!drafts.length) return toast("Yaz, konuş veya aşağıdan ekle");
+    if (!drafts.length) return toast("Aşağıdan ekle ya da asistana söyle");
     for (const d of drafts) {
       const e = check(d);
       if (e) return toast(e);
@@ -537,31 +283,6 @@ export function AddSheet({ open, onClose, seed }) {
     onClose();
   }
 
-  // Asistanın hazırladığı mesajı gönderir / tamamlandı işaretler (onaydan sonra). Kaydedilmemiş değişiklik varsa önce kaydeder.
-  function confirmOutbox() {
-    const o = outbox;
-    if (!o || !edit) return;
-    if (!locked && dirty) {
-      const e = drafts[0] ? check(drafts[0]) : "Kayıt bulunamadı";
-      if (e) return toast(e);
-    }
-    if (o.text) addReply(edit.kind, edit.id, o.text);
-    if (o.done) {
-      if (locked) setMyDone(edit.kind, edit.id, true);
-      else if (edit.kind === "task" && !rec?.done) toggleTask(edit.id);
-    }
-    setOutbox(null);
-    setEditReply("");
-    tts.maybeSpeak(o.text ? "Gönderdim." : "Tamamdır.");
-    toast(o.text && o.done ? `Mesaj gönderildi · ${doneOf(edit.kind).state.toLocaleLowerCase("tr-TR")}` : o.text ? "Mesaj gönderildi" : doneOf(edit.kind).toast);
-    if (!locked && dirty) saveEdit();
-  }
-  function cancelOutbox(spoken = false) {
-    setOutbox(null);
-    setEditReply(spoken ? "Tamam, göndermedim." : "");
-    if (spoken) tts.maybeSpeak("Tamam, göndermedim.");
-  }
-
   function saveEdit() {
     const d = drafts[0];
     const e = d ? check(d) : "Kayıt bulunamadı";
@@ -577,11 +298,9 @@ export function AddSheet({ open, onClose, seed }) {
     onClose();
   }
 
-  const staged = listening || transcribing || busy;
-
   // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
   // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
-  const recDock = open && !!edit && !!rec && !staged;
+  const recDock = open && !!edit && !!rec;
   const baseFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
   // Günlüğü yazılabilen antrenman planı: kubbedeki örnekler günlük üzerine (asistan bu plana yazar)
   const recFocus = baseFocus && edit.kind === "plan" && canLog(rec, todayStr()) ? { ...baseFocus, log: true } : baseFocus;
@@ -615,40 +334,7 @@ export function AddSheet({ open, onClose, seed }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id, recKey]);
   const padB = recDock ? "pb-3" : "pb-[calc(0.75rem+env(safe-area-inset-bottom))]";
-  const send = () => (edit ? runEdit(text, false) : run(text, false));
-  const composer = <Composer value={text} onChange={setText} onSend={send} onMic={() => sp.start({ autoStop: SILENCE_MS })} busy={busy} placeholder={placeholder} />;
-  // Kayıt içi asistan (mesaj kutusunda): değiştir ya da mesajı yazdır; taslak onayla gider
-  const panel = edit ? (
-    <AssistantPanel
-      kind={edit.kind}
-      reply={editReply}
-      out={outbox}
-      saveToo={!locked && dirty}
-      onConfirm={confirmOutbox}
-      onCancel={() => cancelOutbox(false)}
-      onEdit={() => {
-        setMsgText(outbox?.text || "");
-        setAiMode("msg");
-        setOutbox(null);
-        setEditReply("Mesajı düzenleyip Mesaj modunda gönderebilirsin.");
-      }}
-    />
-  ) : null;
-  const assistant = edit
-    ? {
-        onAsk: (t) => runEdit(t, false),
-        onMic: () => sp.start({ autoStop: SILENCE_MS }),
-        busy,
-        panel,
-        mode: aiMode,
-        setMode: setAiMode,
-        text: msgText,
-        setText: setMsgText,
-        hint: locked ? "örn. tamamladım, ana hesaba faturanın masada olduğunu yaz" : "örn. saati 10 yap · Ali'ye kargonun geciktiğini söyle",
-      }
-    : null;
   const primary = "h-12 flex-[1.6] rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98] disabled:opacity-40";
-  const secondary = "h-12 flex-1 rounded-xl border border-line bg-card text-base font-semibold transition active:scale-[.98]";
 
   const askObj = ask
     ? {
@@ -656,22 +342,9 @@ export function AddSheet({ open, onClose, seed }) {
         ask.kind === "time"
           ? [...TIME_CHIPS.map(([l, v]) => ({ label: l, onPick: () => pickChip("time", v) })), { label: "Tüm gün", onPick: () => pickChip("time", "allday") }]
           : [{ label: "Bugün", onPick: () => pickChip("date", todayStr()) }, { label: "Yarın", onPick: () => pickChip("date", addDays(1)) }],
-      onMic: () => sp.start({ autoStop: SILENCE_MS }),
       hint: ask.kind === "time" ? "Cevap vermezsen tüm gün olarak eklerim." : "",
     }
     : null;
-
-  const errorCard = error && (
-    <div className="fade-in mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
-      <p className="flex items-center gap-2 text-[0.9375rem] font-semibold">
-        <Icon name="alert" className="size-[1.125rem]" /> Şu an anlayamadım
-      </p>
-      <p className="mt-1 text-[0.875rem] opacity-90">{error}</p>
-      <button onClick={() => (edit ? runEdit(heard, voice) : run(heard, voice))} className="mt-3 h-10 rounded-xl bg-amber-900 px-4 text-sm font-semibold text-white transition active:scale-95">
-        Tekrar dene
-      </button>
-    </div>
-  );
 
   return (
     <Screen voice open={open} onClose={shut} title={title}>
@@ -694,32 +367,7 @@ export function AddSheet({ open, onClose, seed }) {
 
       {/* İçerik (kayar) */}
       <div ref={scrollRef} data-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">
-        {listening ? (
-          <ListeningStage
-            sp={sp}
-            total={SILENCE_MS / 1000}
-            prompt={
-              edit
-                ? [editReply, outbox?.text && `“${outbox.text}”`].filter(Boolean).join("\n")
-                : turns.at(-1)?.role === "assistant"
-                  ? turns.at(-1).text
-                  : ask
-                    ? reply.message
-                    : ""
-            }
-            onCancel={sp.cancel}
-            onStopEdit={() => sp.stop("edit")}
-            onSend={() => sp.stop("send")}
-          />
-        ) : transcribing || busy ? (
-          <ProcessingStage
-            step={transcribing ? "transcribing" : phase}
-            voice={voice || transcribing}
-            heard={transcribing ? `${sp.finalText}${sp.interim}`.trim() : heard}
-            secs={secs}
-            onCancel={transcribing ? sp.cancel : abort}
-          />
-        ) : edit && locked && rec ? (
+        {edit && locked && rec ? (
           <AssignedView
             kind={edit.kind}
             rec={rec}
@@ -734,12 +382,10 @@ export function AddSheet({ open, onClose, seed }) {
               addReply(edit.kind, edit.id, t);
               toast("Mesaj gönderildi");
             }}
-            assistant={assistant}
             docked
           />
         ) : edit ? (
           <>
-            {errorCard}
             {drafts[0] && (
               <EditCard
                 d={drafts[0]}
@@ -791,17 +437,8 @@ export function AddSheet({ open, onClose, seed }) {
                 )}
               </div>
             )}
-            {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" assistant={assistant} docked />}
+            {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
             <div className="mt-3" />
-            {!hasThread && outbox && <div className="mt-3 overflow-hidden rounded-2xl bg-card">{panel}</div>}
-            {!hasThread && !outbox && editReply && (
-              <div className="fade-in mt-3 flex items-start gap-2.5">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white"><Icon name="spark" className="size-3.5" /></span>
-                <div className="min-w-0 rounded-2xl rounded-tl-md bg-card px-3.5 py-2.5 ring-1 ring-line">
-                  <p className="text-[0.9375rem] leading-snug">{editReply}</p>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <>
@@ -818,11 +455,14 @@ export function AddSheet({ open, onClose, seed }) {
                 </button>
               </>
             ) : !chat ? (
-              /* Başlangıç: tek soru, tek yazı alanı, elle ekleme için üç sade düğme */
+              /* Başlangıç: elle ekleme için üç sade düğme; yazarak/konuşarak ekleme ana asistanla */
               <div className="pt-6">
                 <p className="px-1 text-[1.375rem] font-semibold leading-snug tracking-tight">Ne eklemek istersin?</p>
-                <p className="mt-1 px-1 text-[0.875rem] text-mut">Yaz ya da konuş; plan, görev ya da not olarak ben ayırırım.</p>
-                <div className="mt-5">{composer}</div>
+                <p className="mt-1 px-1 text-[0.875rem] text-mut">Asistana söyle; plan, görev ya da not olarak o ayırır.</p>
+                <button type="button" onClick={toAssistant} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
+                  <Icon name="mic" className="size-5" />
+                  Asistana söyle
+                </button>
                 <div className="mt-8 flex items-center gap-2 px-1">
                   <span className="mr-1 text-[0.8125rem] text-mut">Elle ekle</span>
                   {MANUAL.map(([t, l, ic]) => (
@@ -840,8 +480,7 @@ export function AddSheet({ open, onClose, seed }) {
             ) : (
               /* Konuşma: mesajlar + kaydedilecekler + altta yazı alanı */
               <>
-                <Thread turns={turns} engine={reply.engine} tts={tts} ask={askObj} canFix={!busy} onFix={fixLast} />
-                {errorCard}
+                <Thread turns={turns} engine={reply.engine} tts={tts} ask={askObj} canFix={false} />
                 {whoAsk && (
                   <div className="fade-in mt-4 rounded-2xl bg-card px-4 py-3.5 ring-1 ring-line">
                     <b className="block text-[0.9375rem] font-semibold">Birden fazla {whoAsk.said} var, hangisi?</b>
@@ -873,9 +512,8 @@ export function AddSheet({ open, onClose, seed }) {
         )}
       </div>
 
-      {/* Alt butonlar (sabit). Dinleme ve işleme sahnelerinde kendi butonları var.
-          Konuşma sırasında (yeni kayıt): yazı alanı + Konuş + tek ana düğme (yazı varsa Gönder, yoksa Kaydet) bir arada. */}
-      {!staged && edit && rec && (locked || hasThread) ? (
+      {/* Alt butonlar (sabit). Kayıt ekranının kendi asistanı yok: değişiklik için alttaki ana asistan kubbesi (recDock) */}
+      {edit && rec && (locked || hasThread) ? (
         /* Mesajlaşma: yazma alanı altta sabit (WhatsApp gibi); değişiklik varsa üstünde Kaydet */
         <footer data-pagebar className={`shrink-0 border-t border-line bg-bg px-4 pt-2.5 ${recDock ? "pb-2.5" : "pb-[calc(0.625rem+env(safe-area-inset-bottom))]"}`}>
           {!locked && dirty && (
@@ -889,7 +527,6 @@ export function AddSheet({ open, onClose, seed }) {
               if (locked) toast("Mesaj gönderildi");
             }}
             placeholder={locked ? "Ana hesaba mesaj yaz…" : "Mesaj yaz…"}
-            assistant={assistant}
             kind={edit.kind}
             rec={rec}
             nameOf={nameOf}
@@ -897,19 +534,7 @@ export function AddSheet({ open, onClose, seed }) {
             orb={false}
           />
         </footer>
-      ) : !staged && !locked && !edit && chat && !manual && !pickAssign ? (
-        <footer className="shrink-0 border-t border-line bg-bg px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-          <ActionDock
-            value={text}
-            onChange={setText}
-            onSend={send}
-            onMic={() => sp.start({ autoStop: SILENCE_MS })}
-            busy={busy}
-            placeholder={placeholder}
-            idle={{ label: drafts.length > 1 ? `Kaydet (${drafts.length})` : "Kaydet", icon: "check", on: drafts.length > 0, run: create }}
-          />
-        </footer>
-      ) : !staged && !locked && (edit || drafts.length > 0) && (
+      ) : !locked && (edit || drafts.length > 0) && (
         <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
           {edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>

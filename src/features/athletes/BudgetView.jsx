@@ -1,7 +1,7 @@
 "use client";
 
 // Yarış bütçesi sekmesi: özet, kişi/gece sayısı, kategoriye göre kalemler, sporcu başına ödeme (ödendi işareti),
-// yapay zekayla doldurma ve PDF çıktı. Kayıt yarışın "budget" alanına (RaceEditor otomatik kaydeder).
+// talimattaki ücretleri ekleme (tek dokunuş), PDF çıktı; serbest anlatım ana asistanla ("bütçeye otel … ekle"). Kayıt yarışın "budget" alanına (RaceEditor otomatik kaydeder).
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
@@ -38,8 +38,6 @@ export function BudgetView({ r, athletes, onChange }) {
   const t = totals(b, athletes.length);
   const set = (patch) => onChange(cleanBudget({ ...b, ...patch }));
   const [edit, setEdit] = useState(null); // düzenlenen kalem (yeni için id'siz)
-  const [ai, setAi] = useState(false);
-  const [aiText, setAiText] = useState("");
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [link, setLink] = useState(false); // fiş bağlama
@@ -69,8 +67,6 @@ export function BudgetView({ r, athletes, onChange }) {
         // Tutarı boş ya da tahmini gelen tek kalem: kontrol için hemen açılır
         const check = p.items.filter((x) => !x.amount || x.est);
         if (check.length === 1) setEdit(check[0]);
-        setAi(false);
-        setAiText("");
       }
     } catch (e) {
       toast(e?.message || "Bütçe hazırlanamadı");
@@ -179,22 +175,16 @@ export function BudgetView({ r, athletes, onChange }) {
           ))}
         </div>
       ))}
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setEdit({ cat: "Kayıt", title: "", amount: "", unit: "athlete", qty: 1, club: false })} className={`${card} flex h-12 items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
-          <Icon name="plus" className="size-5" />
-          Kalem ekle
-        </button>
-        <button type="button" onClick={() => setAi(true)} className={`${card} flex h-12 items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
-          <Icon name="spark" className="size-5" />
-          Yapay zekayla
-        </button>
-      </div>
+      <button type="button" onClick={() => setEdit({ cat: "Kayıt", title: "", amount: "", unit: "athlete", qty: 1, club: false })} className={`${card} flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
+        <Icon name="plus" className="size-5" />
+        Kalem ekle
+      </button>
       {hasNoticeFees && (
         <button type="button" disabled={busy} onClick={() => runAi("Talimattaki kayıt ücretlerini ve otel fiyatlarını bütçeye ekle.")} className="mt-2 w-full rounded-xl px-4 py-2.5 text-left text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
           {busy ? "Hazırlanıyor…" : "Talimattaki ücretleri ve otelleri ekle"}
         </button>
       )}
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Sesle de ekleyebilirsin: “{r.name.trim() || "Yarış"} bütçesine otel kişi başı gecelik 3500 lira ekle”.</p>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">Alttaki asistana söyleyebilirsin: “Bütçeye otel kişi başı gecelik 3500 lira ekle”, “minibüs toplam 6000, kulüp öder”.</p>
 
       {athletes.length > 0 && b.items.length > 0 && (
         <>
@@ -237,19 +227,6 @@ export function BudgetView({ r, athletes, onChange }) {
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
         {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
-      </Sheet>
-      <Sheet open={ai} onClose={() => setAi(false)} title="Yapay zekayla bütçe">
-        <textarea
-          value={aiText}
-          onChange={(e) => setAiText(e.target.value)}
-          placeholder="Ör: kayıt ücreti sporcu başı 1250, otel kişi başı gecelik 3500, minibüs toplam 6000, antrenör yolluğunu kulüp öder"
-          rows={6}
-          className="block w-full resize-none rounded-2xl bg-bg px-4 py-3 text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/70"
-        />
-        <p className="mt-2 px-1 text-[0.75rem] text-mut">Klavyedeki mikrofonla söyleyebilirsin. Talimattaki ücretler de dikkate alınır; kalemler mevcut bütçeye eklenir.</p>
-        <button type="button" disabled={busy || aiText.trim().length < 4} onClick={() => runAi(aiText)} className="sticky bottom-0 mt-3 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
-          {busy ? "Hazırlanıyor…" : "Bütçeye ekle"}
-        </button>
       </Sheet>
     </>
   );

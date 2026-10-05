@@ -443,3 +443,91 @@ group("Kısa ön cevap")([
   ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda yalnız Tamam", (r) => r?.line === "Tamam.")],
   ["tekneleri hazırla görevi ekle", PC("görevde yalnız Tamam", (r) => r?.line === "Tamam.")],
 ]);
+
+// ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----
+// Kural: sayfa açma (ve fiş kamerası, toplantı, yardım) yerelde; kayıt, tamamlama, özet, mesaj yapay zekaya (aiFirst).
+const AF = (desc, ok) => ({ desc, fn: (s) => localCommand(s, data, today, { aiFirst: true }), ok });
+const AF_AI = AF("yapay zekaya gider", (r) => r === null);
+group("Akış: yerel mi yapay zeka mı")([
+  ["planları aç", AF("yerelde sayfa açılır", (r) => r?.type === "navigate" && r.page === "plans")],
+  ["yoklamayı aç", AF("yerelde sayfa açılır", (r) => r?.type === "navigate" && r.page === "attendance")],
+  ["fiş yükle", AF("yerelde fiş kamerası", (r) => r?.type === "receipt")],
+  ["yardım", AF("yerelde yardım", (r) => r?.type === "reply")],
+  ["yarın saat 10'da antrenman ekle", AF_AI, "kayıt yerelde hazır olsa da yapay zeka (başlık/tür doğru)"],
+  ["tekneleri hazırla görevini tamamla", AF_AI],
+  ["bugün neler var", AF_AI],
+  ["geciken görevler", AF_AI],
+  ["Ali'ye yaz yarın 9'da gelsin", AF_AI],
+  ["görevler", AF("tek kelime sayfa adı: sayfa", (r) => r?.type === "navigate" && r.page === "tasks")],
+]);
+
+const { isJobJson } = await import("@/lib/ai/assistant");
+const { partialMessage } = await import("@/lib/ai/gemini");
+const JJ = (desc, exp) => ({ desc, fn: isJobJson, ok: (r) => r === exp });
+group("Akış: iş yanıtında cümle akışta okunmaz")([
+  ['{"intent":"create","message":"Tamam', JJ("kayıt: okunmaz (sonucu uygulama söyler)", true)],
+  ['{"intent": "action", "message": "', JJ("işlem: okunmaz", true)],
+  ['{"intent":"message","message":"Ali', JJ("mesaj: okunmaz", true)],
+  ['{"intent":"query","message":"Yarın iki plan', JJ("soru: geldikçe okunur", false)],
+  ['{"intent":"chat","message":"Saat kaçta', JJ("soru-cevap: okunur", false)],
+  ['{"inte', JJ("niyet henüz gelmedi: okunur sayılır", false)],
+]);
+const PM = (desc, exp) => ({ desc, fn: partialMessage, ok: (r) => r === exp });
+group("Akış: yarım yanıttan okunacak cümle")([
+  ['{"intent":"query","message":"Yarın iki plan var. Saat', PM("yarım cümle de gelir", "Yarın iki plan var. Saat")],
+  ['{"intent":"query","message":"“Antrenman” saat 10\\u0027da', PM("kaçışlı harf çözülür", "“Antrenman” saat 10'da")],
+  ['{"intent":"query","message":"Rüzgâr 12 knot \\u00', PM("yarım kaçış atılır", "Rüzgâr 12 knot ")],
+  ['{"intent":"query","message":"Ali \\"geliyorum\\" dedi', PM("tırnak", 'Ali "geliyorum" dedi')],
+  ['{"intent":"query"', PM("cümle henüz yok", "")],
+]);
+
+// Sunucunun akışı satır satır (NDJSON) gelir; satırlar ağ parçalarına bölünebilir
+const { readStream } = await import("@/services/assistantService");
+const enc = new TextEncoder();
+const fakeRes = (chunks) => new Response(new ReadableStream({ start(c) { chunks.forEach((x) => c.enqueue(enc.encode(x))); c.close(); } }));
+const RS = (desc, chunks, ok) => [desc, { desc, fn: async () => {
+  const seen = [];
+  try { return { r: await readStream(fakeRes(chunks), (m) => seen.push(m)), seen }; } catch (e) { return { err: e.message, seen }; }
+}, ok }];
+const doneLine = JSON.stringify({ t: "done", intent: "query", message: "Yarın iki plan var.", items: [], source: "ai", ms: 1400 });
+group("Akış: yanıtın telefona dönüşü (NDJSON)")([
+  RS("cümle parçaları sırayla, sonunda tüm yanıt", [`{"t":"m","m":"Yarın"}\n`, `{"t":"m","m":"Yarın iki plan var."}\n`, `${doneLine}\n`],
+    (x) => x.seen.join("|") === "Yarın|Yarın iki plan var." && x.r?.message === "Yarın iki plan var." && x.r.ms === 1400 && !("t" in x.r)),
+  RS("satır ağda ikiye bölünse de okunur", [`{"t":"m","m":"Yar`, `ın"}\n${doneLine.slice(0, 20)}`, `${doneLine.slice(20)}\n`], (x) => x.seen[0] === "Yarın" && x.r?.intent === "query"),
+  RS("bozuk satır atlanır", [`çöp satır\n`, `${doneLine}\n`], (x) => x.r?.intent === "query"),
+  RS("sunucu hatası: neden ile birlikte hata", [`{"t":"err","error":"Kota doldu","reason":"quota"}\n`], (x) => x.err === "Kota doldu"),
+  RS("akış yarıda kesildi: hata", [`{"t":"m","m":"Yarın"}\n`], (x) => /yarıda kesildi/.test(x.err || "")),
+]);
+
+// Ders programı ana asistanla (sayfanın kendi dinleyicisi kaldırıldı)
+const { wantsSchedule } = await import("@/features/schedule/scheduleWords");
+const WS = (here, want) => ({ desc: `${here ? "ders sayfasında" : "başka sayfada"}: ${want ? "ders programı" : "değil"}`, fn: (s) => wantsSchedule(s, here), ok: (r) => r === want });
+group("Ders programı (ana asistan)")([
+  ["salı 13:00 fizik B-204", WS(true, true)],
+  ["salı fiziği 14'e al", WS(true, true)],
+  ["pazartesi 9'da matematik, 10:30'da kimya", WS(true, true)],
+  ["ders programıma çarşamba 10'da kimya ekle", WS(false, true)],
+  ["salı 13:00 fizik", WS(false, false)],
+  ["yarın 10'da antrenman ekle", WS(false, false)],
+  ["salı kaç dersim var?", WS(true, false)],
+  ["Ali'ye yaz yarın gelmesin", WS(true, false)],
+  ["yarın 10'da görev ekle", WS(true, false)],
+]);
+
+// Yerel adımların süresi (telefonda değil bu bilgisayarda; kalabalık veriyle): ön cevap, yerel komut, veri özeti, yanıt ayrıştırma.
+// Kullanıcı susunca yapay zekaya gitmeden önce bunlar çalışır; her biri birkaç ms'nin altında kalmalı.
+const { buildDigest } = await import("@/lib/ai/digest");
+const big = {
+  plans: Array.from({ length: 150 }, (_, i) => ({ id: `p${i}`, title: `Antrenman ${i}`, date: `2026-10-${String(1 + (i % 28)).padStart(2, "0")}`, time: "10:00", place: "İskele", cat: "Antrenman" })),
+  tasks: Array.from({ length: 80 }, (_, i) => ({ id: `t${i}`, title: `Görev ${i}`, due: `2026-10-${String(1 + (i % 28)).padStart(2, "0")}`, done: i % 3 === 0 })),
+  notes: Array.from({ length: 80 }, (_, i) => ({ id: `n${i}`, title: `Not ${i}`, body: "Malzeme odası dolu, yelkenler kontrol edilecek. ".repeat(3) })),
+};
+const per = (fn, n = 200) => { const t0 = performance.now(); for (let i = 0; i < n; i++) fn(); return (performance.now() - t0) / n; };
+const SURE = (desc, max, fn) => [desc, { desc: `${max} ms altında`, fn: () => +per(fn).toFixed(3), ok: (r) => r < max }];
+group("Yerel adımların süresi")([
+  SURE("ön cevap (precue)", 5, () => precue("yarın saat 10'da antrenman ekle, Ali de gelsin", { plans: big.plans, today })),
+  SURE("yerel komut (sayfa açma denetimi)", 5, () => localCommand("Gökhan'a yarın 10'da tekne bakımı olduğunu yaz", big, today, { aiFirst: true })),
+  SURE("veri özeti (yapay zekaya giden)", 30, () => buildDigest({ ...big, receipts: [], name: "Seyhun", members: [] })),
+  SURE("yanıt ayrıştırma + görev listesi", 5, () => ST.taskList(parseAssistant(aiMulti, [], ["Gökhan Demir"]))),
+  ["veri özeti boyu sınırlı", { desc: "en çok 26.000 karakter (sunucu sınırı)", fn: () => buildDigest({ ...big, receipts: [], name: "Seyhun", members: [] }).length, ok: (r) => r > 0 && r <= 26000 }],
+]);

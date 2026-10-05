@@ -24,7 +24,8 @@ export async function askAssistant({ text, name = "", digest = "", history = [],
 }
 
 // NDJSON akışı: {t:"m", m} parçaları, {t:"done", ...yanıt} ya da {t:"err", error, reason}
-async function readStream(res, onText) {
+// Satırlar ağ parçalarına bölünebilir (yarım satır sonraki parçada tamamlanır); bozuk satır atlanır.
+export async function readStream(res, onText) {
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = "";

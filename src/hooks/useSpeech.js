@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { toWav16k } from "@/lib/speech/wav";
-import { makeVad } from "@/lib/speech/vad";
+import { makeVad, speechEnded } from "@/lib/speech/vad";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 
 const ERR = {
@@ -21,10 +21,7 @@ const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
 const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir, vad.js)
-// Konuşma bitişi kısa tutulur (hız); kullanıcı ardından konuşmaya devam ederse söylediği öncekine eklenir (AssistantSheet `inflight`)
-const END_SILENCE = 1600; // kayıt yolunda konuşma bittikten sonra bu kadar sessizlikte kendiliğinden gönder (ms; önceden 2300)
-const END_SILENCE_SHORT = 2000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
-const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
+// Konuşma bitişi (1,6 sn; kısa konuşmada 2 sn) vad.js'te: END_SILENCE, speechEnded
 
 // status: "idle" | "listening" | "transcribing"
 // onFinal(text, mode): mode "send" (hemen gönder) | "edit" (metin kutuda kalsın)
@@ -124,7 +121,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         return;
       }
       // Kayıt yolu: konuşuldu ve sustu, kendiliğinden gönder (canlı yazı olmadığı için bekletmeyelim)
-      if (s.kind === "server" && s.voiceSeen && now - s.lastSpeech >= (s.lastSpeech - s.voiceFrom < SHORT_TALK ? END_SILENCE_SHORT : END_SILENCE)) {
+      if (s.kind === "server" && speechEnded(s, now)) {
         stopRef.current?.("send");
         return;
       }

@@ -6,6 +6,16 @@
 const WIN = 30; // son 3 sn (100 ms adım)
 const TALK = 60; // kullanıcının ses düzeyi için son 6 sn'lik konuşma adımı
 
+// Konuşma bitişi (kayıt yolu): konuşma bittikten sonra bu kadar sessizlikte söylenen kendiliğinden gönderilir.
+// Kısa tutulur (hız); kullanıcı ardından konuşmaya devam ederse söylediği öncekine eklenir (AssistantSheet `inflight`).
+export const END_SILENCE = 1600; // ms (önceden 2300)
+export const END_SILENCE_SHORT = 2000; // yalnız birkaç kelime söylendiyse (cümle yarım olabilir) biraz daha bekle (ms)
+export const SHORT_TALK = 1500; // bundan kısa konuşma "kısa" sayılır (ms)
+// Bu konuşmanın sonunda ne kadar sessizlik beklenir (ms)
+export const endWait = (v) => (v.lastSpeech - v.voiceFrom < SHORT_TALK ? END_SILENCE_SHORT : END_SILENCE);
+// Konuşuldu ve sustu: şimdi gönderilmeli mi
+export const speechEnded = (v, now) => !!v.voiceSeen && now - v.lastSpeech >= endWait(v);
+
 const median = (a) => {
   const s = [...a].sort((x, y) => x - y);
   return s[Math.floor(s.length / 2)] || 0;
