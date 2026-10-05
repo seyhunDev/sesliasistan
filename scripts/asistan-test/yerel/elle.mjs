@@ -807,3 +807,16 @@ group("Gelen ödemeler (kişisel hesap)")([
   ["adı geçmeyenler", F("aidat havalesi ayrı listede", () => { const r = PY.otherIncoming(PMOV, SY); return r.length === 1 && r[0].amount === 1200; })],
   ["Excel", F("başlık ve satır", () => { const c = PY.payeeCsv(PY.payeeMoves(PMOV, SY), "Seyhun Yıldız"); return /Tarih/.test(c) && /"3000"/.test(c) && c.split("\n").length === 6; })],
 ]);
+
+// Banka defteri (bankLedger.js): Excel bir kez doldurur, mailler ekler, aynı hareket bir kez
+const BL = await import("@/lib/bankLedger");
+const mv = (date, amount, desc, extra = {}) => ({ date, desc, amount, currency: "TL", account: "TL|1234|", ts: Date.parse(`${date.slice(6, 10)}-${date.slice(3, 5)}-${date.slice(0, 2)}T09:00:00Z`), ...extra });
+group("Banka defteri")([
+  ["aylara dağıtır", F("eylül ve ekim", () => { const a = BL.ledgerAdd([mv("30.09.2026 10:00", 100, "EFT A"), mv("01.10.2026 10:00", 200, "EFT B")]); return Object.keys(a).sort().join() === "2026-09,2026-10"; })],
+  ["Excel ile mail aynı hareket", F("saat farkı olsa da tek anahtar", () => { const a = BL.ledgerAdd([mv("01.10.2026 10:00", 200, "EFT GELEN SEYHUN YILDIZ")]); const b = BL.ledgerAdd([mv("01.10.2026", 200, "EFT GELEN SEYHUN YILDIZ")], "f1"); return Object.keys(a["2026-10"])[0] === Object.keys(b["2026-10"])[0]; })],
+  ["aynı gün iki eş hareket", F("ikisi de kalır", () => Object.keys(BL.ledgerAdd([mv("01.10.2026 10:00", 50, "POS"), mv("01.10.2026 15:00", 50, "POS")])["2026-10"]).length === 2)],
+  ["Excel mailin üstüne yazmaz", F("yalnız yeni anahtar", () => { const mail = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X")]); const file = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X"), mv("02.10.2026", 300, "EFT Y")], "f1"); const n = BL.onlyNew(file, mail); return Object.keys(n["2026-10"]).length === 1 && Object.values(n["2026-10"])[0].f === "f1"; })],
+  ["liste", F("en yeni önce, id anahtar", () => { const l = BL.ledgerList({ "2026-10": { moves: BL.ledgerAdd([mv("01.10.2026", 1, "A"), mv("03.10.2026", 2, "B")])["2026-10"] } }); return l[0].amount === 2 && l[0].id.startsWith("k"); })],
+  ["giden de saklanır", F("eksi tutar", () => Object.values(BL.ledgerAdd([mv("01.10.2026", -90, "FATURA")])["2026-10"])[0].amount === -90)],
+  ["ay aralığı", F("kasım–şubat", () => BL.monthsBetween("2025-11", "2026-02").join() === "2025-11,2025-12,2026-01,2026-02")],
+]);

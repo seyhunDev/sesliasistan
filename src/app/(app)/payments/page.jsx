@@ -96,7 +96,7 @@ export default function PaymentsPage() {
             </div>
             <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
               {payee.name ? `Açıklamasında “${payee.name}” geçen gelen paralar` : "Hesaba gelen bütün paralar"}
-              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Okunan: {data.mails || 0} banka maili, {data.files || 0} yüklenen Excel. Değiştirmek için sağ üstteki kaleme dokun.
+              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Banka defterinde bu dönemde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}. Değiştirmek için sağ üstteki kaleme dokun.
             </p>
           </section>
 
@@ -104,7 +104,7 @@ export default function PaymentsPage() {
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] text-mut`}>Banka hareketleri okunamadı. İnternet bağlantını kontrol edip sayfayı yeniden aç.</p>
           ) : !list.length ? (
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-              {data.sources ? `Son ${span} ayın hesap özetlerinde ${payee.name ? `${payee.name} adına ` : ""}gelen ödeme bulunamadı.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
+              {data.sources ? `Son ${span} ayın banka hareketlerinde ${payee.name ? `${payee.name} adına ` : ""}gelen ödeme bulunamadı.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
             </p>
           ) : (
             <section className="mt-5">

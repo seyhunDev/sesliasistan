@@ -454,7 +454,7 @@ function BankFiles({ uid, onChange }) {
     setBusy(true);
     try {
       const r = await uploadStatement(uid, f);
-      toast(`${r.count} gelen para eklendi (${r.from.split("-").reverse().join(".")} – ${r.to.split("-").reverse().join(".")})`);
+      toast(`${r.added} yeni hareket eklendi (${r.from.split("-").reverse().join(".")} – ${r.to.split("-").reverse().join(".")})`);
       onChange();
       if (open) refresh();
     } catch (x) {
@@ -464,7 +464,7 @@ function BankFiles({ uid, onChange }) {
   }
   async function del(f) {
     if (!confirm(`${f.name} silinsin mi? Onayladığın ödemeler kalır.`)) return;
-    await deleteStatement(uid, f.id).catch(() => toast("Silinemedi"));
+    await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
     refresh();
     onChange();
   }
@@ -493,7 +493,7 @@ function BankFiles({ uid, onChange }) {
               <li key={f.id} className="flex items-center gap-2 py-2">
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[0.875rem] font-medium">{f.name}</b>
-                  <small className="text-[0.75rem] text-mut">{day(f.from)} – {day(f.to)} · {f.count} gelen para</small>
+                  <small className="text-[0.75rem] text-mut">{day(f.from)} – {day(f.to)} · {f.total ? `${f.total} hareket` : `${f.count} gelen para`}</small>
                 </span>
                 <button type="button" onClick={() => del(f)} aria-label="Sil" className="grid size-8 place-items-center rounded-full text-mut active:scale-95">
                   <Icon name="trash" className="size-4" />
