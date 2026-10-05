@@ -184,3 +184,31 @@ export function invoiceText(res) {
   const body = [p.length === 1 ? amountText(p[0]) : p.slice(0, 2).map((x) => x.seller).join(", "), "bankadan görüldü"].filter(Boolean).join(" · ");
   return { title: title.length > 44 ? `${title.slice(0, 43)}…` : title, body };
 }
+
+// ---- Ana sayfa ----
+const daysTo = (d, today) => Math.round((dayMs(d) - dayMs(today)) / 864e5);
+// Son güne göre kısa yazı: "Gecikti 3 gün", "Son gün bugün", "Son gün yarın", "Son gün 15 Eki"
+export function dueText(inv, today) {
+  if (!inv?.due || !DATE.test(today || "")) return "Son gün yok";
+  const n = daysTo(inv.due, today);
+  if (n < 0) return `Gecikti ${-n} gün`;
+  if (n === 0) return "Son gün bugün";
+  if (n === 1) return "Son gün yarın";
+  return `Son gün ${shortDay(inv.due)}`;
+}
+// Son günü geçen ya da yaklaşan (en çok days gün) ödenmemiş faturalar, en acil önce
+export function urgentInvoices(list, today, days = 3) {
+  return list
+    .filter((x) => x.status !== "paid" && x.due && daysTo(x.due, today) <= days)
+    .sort((a, b) => a.due.localeCompare(b.due));
+}
+// Özet kartı: ödenmemiş toplam, adet ve en yakın son gün → { big, sub, warn } ya da null (açık fatura yoksa)
+export function invoiceTile(list, today) {
+  const open = list.filter((x) => x.status !== "paid");
+  if (!open.length) return null;
+  const s = summaryOf(open, today);
+  const next = [...open].filter((x) => x.due).sort((a, b) => a.due.localeCompare(b.due))[0];
+  const late = s.late ? `${s.late} gecikti` : "";
+  const sub = [`${open.length} ödenmedi`, late || (next ? dueText(next, today).replace("Son gün", "son gün") : "")].filter(Boolean).join(" · ");
+  return { big: s.sum ? TL(s.sum) : amountText(open[0]), sub, warn: !!s.late || urgentInvoices(open, today).length > 0 };
+}

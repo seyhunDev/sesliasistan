@@ -103,7 +103,7 @@ export function HomeFeed({ weather }) {
       </div>
       <TodayCard weather={weather} />
       {side && <MyAttendanceCard kind={kind} />}
-      <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} />
+      <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
       <HomeActions groups={actions} />
     </div>
   );
