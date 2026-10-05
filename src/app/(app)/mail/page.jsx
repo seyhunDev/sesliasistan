@@ -13,6 +13,8 @@ import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
 import { accountsOf, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { dayLabel, todayIn } from "@/lib/notifyText";
+import { monthOf } from "@/lib/dues";
+import { payeeMoves, payeeOf } from "@/lib/payee";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
 const hm = (iso) => new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -88,6 +90,12 @@ export default function MailPage() {
   const picked = accounts.find((a) => a.key === acct);
   const shownMoves = (picked ? moves.filter((x) => x.account === acct) : moves).slice(0, allMoves ? 200 : MOVES);
   const moveTotal = picked ? moves.filter((x) => x.account === acct).length : moves.length;
+  // Kişisel hesap (/payments): bu ayın toplamı yalnız yüklü mailler ayın başını kapsıyorsa yazılır (eksik sayı göstermesin)
+  const payee = payeeOf(profile);
+  const ym = today.slice(0, 7);
+  const covered = list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym;
+  const payeeMonth = payeeMoves(moves, payee).filter((x) => monthOf(x) === ym);
+  const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
 
   return (
@@ -143,6 +151,27 @@ export default function MailPage() {
                       </button>
                     </li>
                   ))}
+                  <li>
+                    <Link href="/payments" className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ok/10 text-ok">
+                        <Icon name="user" className="size-[1.125rem]" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[0.9375rem] font-semibold">{payee.name || "Kişisel hesap"}</b>
+                        <small className="block truncate text-[0.75rem] text-mut">Gelen ödemeler · tarih tarih</small>
+                      </span>
+                      <span className="shrink-0 text-right">
+                        {covered ? (
+                          <>
+                            <b className="block text-[0.9375rem] font-semibold tabular-nums text-ok">+{cash(payeeSum, "TL")}</b>
+                            <small className="block text-[0.75rem] text-mut">bu ay · {payeeMonth.length} ödeme</small>
+                          </>
+                        ) : (
+                          <Icon name="chev" className="size-4 text-mut" />
+                        )}
+                      </span>
+                    </Link>
+                  </li>
                 </ul>
               </div>
             </section>
