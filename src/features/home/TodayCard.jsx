@@ -19,6 +19,7 @@ const hmOf = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinu
 // Bugün (ya da sabah/akşam özeti saati geldiyse "Günün özeti" / "Yarının özeti"; ✕ ile o gün kapanır, "Bugün"e döner).
 // Üstte ilerleme çubuğu; satırlar: geciken görevler, planlar (saat, yer; antrenman/yarışta o saatlerin en sert rüzgârı,
 // eşik geçilirse kırmızı), görevler, bugün bitenler. weather: useWeather() sonucu (OwnerHome).
+// Şu an süren plan "Şu an" diye vurgulanır (eski Sıradaki kartının yerine).
 // Görev satırındaki daireye dokunmak tamamlar; satırın kendisi kaydı açar.
 export function TodayCard({ weather }) {
   const { profile } = useAuth();
@@ -86,9 +87,10 @@ export function TodayCard({ weather }) {
               const off = k === "plan" && r.status === "cancelled";
               const wx = k === "plan" && !off ? windOf(r) : null;
               const windy = overWind(wx, lim);
+              const live = k === "plan" && r.time && !off && !evening && planState(r, now) === "now";
               const sub =
                 k === "plan"
-                  ? [r.time || "Gün boyu", off ? "İptal edildi" : r.place, wx && !windy && `rüzgâr ${wx.wind} kn`].filter(Boolean).join(" · ")
+                  ? [live ? `Şu an · ${r.time}` : r.time || "Gün boyu", off ? "İptal edildi" : r.place, wx && !windy && `rüzgâr ${wx.wind} kn`].filter(Boolean).join(" · ")
                   : late
                     ? `${Math.round((Date.parse(today) - Date.parse(r.due)) / 864e5)} gün gecikti`
                     : done
@@ -113,7 +115,7 @@ export function TodayCard({ weather }) {
                   <button type="button" onClick={() => openAdd({ edit: { kind: k, id: r.id } })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <span className="min-w-0 flex-1">
                       <b className={`block truncate text-[0.9375rem] font-semibold ${done || off ? "text-mut line-through" : ""}`}>{r.title}</b>
-                      <small className={`block truncate text-[0.75rem] ${late ? "font-medium text-rec" : done ? "text-ok" : "text-mut"}`}>
+                      <small className={`block truncate text-[0.75rem] ${late ? "font-medium text-rec" : done ? "text-ok" : live ? "font-semibold text-acc" : "text-mut"}`}>
                         {sub}
                         {windy && <span className="font-semibold text-rec"> · rüzgâr {wx.wind} kn, sağanak {wx.gust} kn</span>}
                       </small>

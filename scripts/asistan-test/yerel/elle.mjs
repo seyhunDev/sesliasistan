@@ -449,7 +449,7 @@ group("Aidat tablosu")([
   })],
 ]);
 
-// Ana sayfadaki büyük kartlar (Aidatlar, Yarışlar, Instagram, Antrenman günlüğü)
+// Ana sayfadaki özet kartları (Aidat, Yarış, Instagram, Antrenman) ve İşlemler düğmeleri
 const HT = await import("@/lib/homeTiles");
 group("Ana sayfa kartları")([
   ["aidat", F("12/30, bekleyen banka ödemesi uyarı; eski ay özeti gösterilmez", () => {
@@ -476,6 +476,16 @@ group("Ana sayfa kartları")([
     ];
     const t = HT.trainingTile(plans, "2026-10-03");
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
+  })],
+  ["işlemler: ana hesap", F("Envanter ve Toplantı var, sıra sabit, hepsi tek tip", () => {
+    const a = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const l = a.map((x) => x.label);
+    return l[0] === "Planlar" && l.includes("Envanter") && l.includes("Aidatlar") && l.includes("Yoklama") && a.find((x) => x.id === "meeting") && a.every((x) => x.icon && x.label && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+  })],
+  ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var", () => {
+    const s = HT.homeActions({ staff: true, receipts: true }).map((x) => x.label);
+    const p = HT.homeActions({ side: true, parent: true }).map((x) => x.label);
+    return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fişler") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fişler") && !p.includes("Antrenman");
   })],
 ]);
 

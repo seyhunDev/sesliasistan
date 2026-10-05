@@ -56,3 +56,29 @@ export function trainingTile(plans, today) {
     warn: missing > 0,
   };
 }
+
+// Ana sayfa › İşlemler düğmeleri (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
+// races (Yarışlar ana sayfada), training, receipts, shop, lessons }. Toplantı bir sayfa değil: { id: "meeting" } döner.
+export function homeActions(o) {
+  return [
+    { href: "/plans", icon: "cal", label: "Planlar" },
+    { href: "/notes", icon: "note", label: "Notlar" },
+    !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
+    !o.side && { id: "meeting", icon: "mic", label: "Toplantı" },
+    o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
+    o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
+    o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
+    o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
+    o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
+    (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Antrenman" },
+    o.receipts && { href: "/receipts", icon: "receipt", label: "Fişler" },
+    !o.staff && { href: "/posts", icon: "camera", label: "Instagram" },
+    !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" },
+    !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
+    { href: "/birthdays", icon: "cake", label: "Doğum günleri" },
+    o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
+    o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
+    !o.staff && { href: "/mail", icon: "mail", label: "Mailler" },
+    { href: "/archive", icon: "archive", label: "Arşiv" },
+  ].filter(Boolean);
+}
