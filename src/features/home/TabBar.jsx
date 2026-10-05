@@ -186,7 +186,7 @@ export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.87
       onClick={() => !held.current && onTap()}
       aria-label={LIGHT_LABEL[state] || LIGHT_LABEL.idle}
       style={{ "--lvl": state === "listening" ? level : 0 }}
-      className={`vlight ${size} shrink-0 select-none transition-[width,height] duration-500 active:scale-95 [-webkit-touch-callout:none]`}
+      className={`vlight ${size} shrink-0 select-none transition-[width,height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)] active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
@@ -242,6 +242,16 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
   const idle = bar && !rec && !active && !typing;
   const [mini, setMini] = useState(false);
   const small = idle && mini;
+  // Küçülüp büyürken satır ve küre kendi geçişiyle (0,5 sn) boy değiştirir; kubbe her karede onları birebir izler (kendi
+  // yükseklik geçişi o sırada kapalı, yoksa kubbe geride kalıp küre taşıyordu)
+  const [follow, setFollow] = useState(false);
+  const firstSmall = useRef(true);
+  useEffect(() => {
+    if (firstSmall.current) return void (firstSmall.current = false);
+    setFollow(true);
+    const t = setTimeout(() => setFollow(false), 600);
+    return () => clearTimeout(t);
+  }, [small]);
   useEffect(() => {
     if (!idle) return;
     let last = window.scrollY;
@@ -367,6 +377,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
       data-state={active ? state : "idle"}
       data-on={active ? "" : undefined}
       data-mini={small ? "" : undefined}
+      data-follow={follow ? "" : undefined}
       role="region"
       aria-label="Asistan"
       style={{ "--lvl": active ? live.level || 0 : 0 }}
@@ -396,7 +407,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
             </div>
           ) : idle ? (
             // Boşta tek satır: iki sekme · küre · iki sekme. Yazmak için küreye basılı tut; Oluştur asistan açılınca.
-            <div className={`flex ${small ? "h-14" : "h-[5.25rem]"} items-center transition-[height] duration-300`}>
+            <div className={`flex ${small ? "h-14" : "h-[5.25rem]"} items-center transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)]`}>
               <nav aria-label="Sekmeler" className="flex min-w-0 flex-1 items-center">
                 <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} mini={small} />
                 <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} mini={small} />

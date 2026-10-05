@@ -248,6 +248,7 @@ select {
 /* Tepedeki ışık: kubbenin içinden yayılan yumuşak parıltı */
 @property --tint { syntax: "<color>"; inherits: true; initial-value: rgba(190, 245, 224, .38); }
 .dome { --tint: rgba(190, 245, 224, .38); transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease, --tint .35s ease; }
+.dome[data-follow] { transition: box-shadow .5s ease, --tint .35s ease; }
 .dome[data-state="listening"] { --tint: rgba(255, 140, 120, .42); }
 .dome[data-state="busy"] { --tint: rgba(255, 210, 120, .4); }
 .dome[data-state="speaking"] { --tint: rgba(130, 200, 255, .42); }
