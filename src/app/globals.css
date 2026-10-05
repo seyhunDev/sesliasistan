@@ -99,6 +99,10 @@ body[data-dock] main { padding-bottom: calc(var(--stage-h, 20rem) + 1.25rem); }
 body[data-dock] .fixed[data-pagebar] { bottom: var(--stage-h, 7rem); padding-bottom: 0.5rem; }
 body[data-dock] main:has(.fixed[data-pagebar]:not(.hidden)) { padding-bottom: calc(var(--stage-h, 7rem) + 6rem); }
 
+/* İnternet şeridi açıkken (OfflineBanner, Pwa.jsx) sayfa ve yapışkan başlıklar şeridin altına iner */
+body[data-net] { padding-top: 1.75rem; }
+body[data-net] .sticky.top-0 { top: 1.75rem; }
+
 /* Mikrofon ve gönder düğmesi animasyonları */
 @keyframes animin { from { opacity: 0; transform: scale(.6); } }
 .anim-in { animation: animin .28s cubic-bezier(.3, 1.5, .5, 1) both; }

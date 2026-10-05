@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Splash } from "@/components/ui/Splash";
+import { checkWrites } from "@/features/pwa/netWatch";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -338,6 +339,7 @@ export function DataProvider({ children }) {
       const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       const st = await Promise.race([done, new Promise((r) => setTimeout(() => r("slow"), offline ? 300 : 2500))]);
       if (st === "err") return { plans: 0, tasks: 0, notes: 0, error: true };
+      if (st === "slow") checkWrites(); // üstteki şerit: "kaydedildi, bağlantı gelince gönderilecek"
       return { ...count, ids, queued: st === "slow" && offline };
     },
     [getOrgId, fail],
