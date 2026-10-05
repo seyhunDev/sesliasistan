@@ -138,7 +138,7 @@ export function Hearing({ text, listening, solo }) {
       </div>
     );
   return (
-    <div className="fade-in mt-4 flex justify-end" aria-live="polite">
+    <div data-hearing="" className="fade-in mt-4 flex justify-end" aria-live="polite">
       <p className={`max-w-[85%] text-right text-[1.125rem] font-medium leading-snug tracking-tight ${text ? "text-fg" : "text-mut"}`}>
         {text}
         {listening && <span className="ml-1 inline-block h-[1.1em] w-[2px] translate-y-[3px] animate-pulse rounded-full bg-acc" aria-hidden="true" />}
@@ -274,33 +274,60 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
     };
   }, [typing, active]);
 
-  // Yeni balon ya da kart gelince aşağı kayar; uzun yanıtta yanıtın başı görünür kalır. Kullanıcı yukarı kaydırdıysa dokunmaz.
+  // Yeni balon ya da kart gelince aşağı kayar; uzun yanıtta yanıtın başı görünür kalır (konuşurken duyulan söz her zaman
+  // görünür). Kullanıcı parmakla yukarı kaydırdıysa dokunmaz; yeniden en alta inince ya da yeni yanıtta takip sürer.
   useEffect(() => {
     const el = pane.current;
-    if (!active || !el || typeof MutationObserver === "undefined") return;
+    if (!active || !el) return;
     userUp.current = false;
     let lastR = null;
+    let touchAt = 0;
+    let frame = 0;
+    let pin = false; // kullanıcı kendisi en alta indi: yanıtın başına geri çekilmez
     const down = () => {
+      frame = 0;
       const r = el.querySelector("[data-last-reply]");
       if (r !== lastR) {
         lastR = r;
         userUp.current = false; // yeni yanıt: yeniden takip et
+        pin = false;
       }
       if (userUp.current) return;
       const bottom = el.scrollHeight - el.clientHeight;
-      const start = r ? r.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16 : bottom;
-      el.scrollTo({ top: Math.max(0, Math.min(bottom, start)), behavior: "smooth" });
+      const hearing = el.querySelector("[data-hearing]");
+      const start = r && !hearing && !pin ? r.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 16 : bottom;
+      const top = Math.max(0, Math.min(bottom, start));
+      if (Math.abs(el.scrollTop - top) > 2) el.scrollTo({ top, behavior: "smooth" });
     };
-    const mo = new MutationObserver(down);
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    const onUser = () => (userUp.current = true); // yalnız parmakla/tekerlekle kaydırma
+    // Aynı karede gelen değişiklikler tek kaydırma (art arda smooth kaydırmalar iPhone'da birbirini durduruyordu)
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(down);
+    };
+    const mo = typeof MutationObserver !== "undefined" ? new MutationObserver(soon) : null;
+    mo?.observe(el, { childList: true, subtree: true, characterData: true });
+    // İçerik ya da alanın boyu DOM değişmeden de değişir (açılış geçişi, klavye, dinlemede alanın kısalması)
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(soon) : null;
+    ro?.observe(el);
+    if (el.firstElementChild) ro?.observe(el.firstElementChild);
+    const onUser = () => (touchAt = Date.now()); // yalnız parmakla/tekerlekle kaydırma
+    const onScroll = () => {
+      if (Date.now() - touchAt > 1000) return; // kendi kaydırmamız
+      userUp.current = el.scrollHeight - el.clientHeight - el.scrollTop > 48;
+      pin = !userUp.current;
+    };
     el.addEventListener("touchmove", onUser, { passive: true });
     el.addEventListener("wheel", onUser, { passive: true });
+    el.addEventListener("touchend", onUser, { passive: true }); // parmak kalkınca süren kayma da kullanıcının
+    el.addEventListener("scroll", onScroll, { passive: true });
     down();
     return () => {
-      mo.disconnect();
+      mo?.disconnect();
+      ro?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
       el.removeEventListener("touchmove", onUser);
       el.removeEventListener("wheel", onUser);
+      el.removeEventListener("touchend", onUser);
+      el.removeEventListener("scroll", onScroll);
     };
   }, [active, client]);
 
