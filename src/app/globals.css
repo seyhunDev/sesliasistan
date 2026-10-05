@@ -132,7 +132,7 @@ body {
 /* Alt çubuk (yazma satırı + sekmeler) görünen sayfalarda içerik çubuğun altında kalmasın */
 body[data-dock] main { padding-bottom: calc(var(--stage-h, 20rem) + 1.25rem); }
 /* Kubbeli sayfada sayfanın kendi alt düğme çubuğu (yarış: evrak, bütçe) kubbenin hemen üstüne oturur */
-body[data-dock] .fixed[data-pagebar] { bottom: var(--stage-h, 7rem); padding-bottom: 0.5rem; }
+body[data-dock] .fixed[data-pagebar] { bottom: var(--dome-h, var(--stage-h, 7rem)); padding-bottom: 0.5rem; transition: bottom .5s cubic-bezier(.22, .8, .24, 1); }
 body[data-dock] main:has(.fixed[data-pagebar]:not(.hidden)) { padding-bottom: calc(var(--stage-h, 7rem) + 6rem); }
 
 /* İnternet şeridi açıkken (OfflineBanner, Pwa.jsx) sayfa ve yapışkan başlıklar şeridin altına iner */

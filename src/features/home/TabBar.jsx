@@ -236,6 +236,31 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
   const pane = useRef(null);
   const userUp = useRef(false);
   const shown = bar || rec || active || typing;
+  // Boştayken sayfa aşağı kaydırılınca kubbe ince çubuğa iner (küçük küre, sekmesiz); yukarı kaydırınca, sayfanın başına
+  // dönünce ya da kubbeye dokununca eski hâline döner. Sayfanın alt boşluğu (--stage-h) büyük boyda kalır, içerik zıplamaz.
+  const idle = bar && tabs && !rec && !active && !typing;
+  const [mini, setMini] = useState(false);
+  const small = idle && mini;
+  useEffect(() => {
+    if (!idle) return;
+    let last = window.scrollY;
+    let run = 0;
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const y = Math.max(0, Math.min(max, window.scrollY)); // iPhone'un esneme kaymasını sayma
+      const dy = y - last;
+      last = y;
+      if (y < 60) return setMini(false);
+      run = Math.sign(dy) === Math.sign(run) ? run + dy : dy;
+      if (run > 24) setMini(true);
+      else if (run < -16) setMini(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      setMini(false);
+    };
+  }, [idle, path]);
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
   useLayoutEffect(() => {
@@ -245,7 +270,8 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
     const set = () => {
       const h = shown ? i.offsetHeight : 0;
       o.style.height = `${h}px`;
-      if (bar && !rec && !active && !typing) document.documentElement.style.setProperty("--stage-h", `${h}px`);
+      if (bar && !rec && !active && !typing) document.documentElement.style.setProperty("--dome-h", `${h}px`);
+      if (bar && !rec && !active && !typing && !small) document.documentElement.style.setProperty("--stage-h", `${h}px`);
       if (rec && !active && !typing) document.documentElement.style.setProperty("--rec-h", `${h}px`);
     };
     set();
@@ -253,7 +279,7 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
     const ro = new ResizeObserver(set);
     ro.observe(i);
     return () => ro.disconnect();
-  }, [shown, bar, rec, active, typing, client]);
+  }, [shown, bar, rec, active, typing, small, client]);
 
   // Klavye: kubbe görünen alanın altına oturur; konuşma alanı kalan yüksekliğe sığar
   useEffect(() => {
@@ -339,6 +365,7 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
       data-dome=""
       data-state={active ? state : "idle"}
       data-on={active ? "" : undefined}
+      data-mini={small ? "" : undefined}
       role="region"
       aria-label="Asistan"
       style={{ "--lvl": active ? live.level || 0 : 0 }}
@@ -349,8 +376,8 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
         <path className="rim" d="M0 10 A50 10 0 0 1 100 10" />
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
-      <div ref={inner} className="absolute inset-x-0 bottom-0">
-        <div className="mx-auto w-full max-w-[30rem] px-4 pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-1.25rem))] pt-3">
+      <div ref={inner} className="absolute inset-x-0 bottom-0" onClick={small ? (e) => !e.target.closest("button") && setMini(false) : undefined}>
+        <div className={`mx-auto w-full max-w-[30rem] px-4 pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-1.25rem))] ${small ? "pt-1.5" : "pt-3"}`}>
           {active && (
             <div
               ref={pane}
@@ -367,12 +394,12 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
           ) : (
-            <div className="relative flex h-[5.25rem] items-center justify-between px-1">
+            <div className={`relative flex ${small ? "h-14" : "h-[5.25rem]"} items-center justify-between px-1 transition-[height] duration-300`}>
               <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
                 <Icon name="keyboard" className="size-[1.375rem]" />
               </button>
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : "size-[4.875rem]"} />
+                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : small ? "size-12" : "size-[4.875rem]"} />
               </span>
               {active ? (
                 <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
@@ -387,7 +414,7 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
               )}
             </div>
           )}
-          {bar && tabs && !rec && !active && !typing && (
+          {idle && !small && (
             <nav aria-label="Sekmeler" className="fade-in mt-1 flex items-start">
               <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
               <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
