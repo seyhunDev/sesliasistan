@@ -227,7 +227,7 @@ export function ReceiptBook({ kind: start = "" }) {
     create: [
       ["camera", "Fiş fotoğrafı", "Çek ya da seç", () => openReceipt()],
       ["edit", "Elle ekle", "Tutarı yaz", () => openReceipt({ manual: true })],
-      ...(owner ? [["receipt", "Fatura yükle", "PDF ya da fotoğraf", desk.pick]] : []),
+      ...(owner ? [["receipt", "Fatura ekle", "Fotoğraf ya da PDF", desk.pick]] : []),
     ],
   });
 
@@ -330,7 +330,7 @@ export function ReceiptBook({ kind: start = "" }) {
           </button>
           {shownKind === "" && (
           <button onClick={desk.pick} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc active:scale-[.98]">
-            <Icon name="plus" className="size-5" /> Fatura yükle
+            <Icon name="plus" className="size-5" /> Fatura ekle
           </button>
           )}
         </div>
