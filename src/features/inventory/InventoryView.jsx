@@ -10,7 +10,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
-import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, excelRows, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, stateLabel, upsertItem } from "./invModel";
+import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, excelRows, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, serviceText, stateLabel, upsertItem } from "./invModel";
 import { askInventory, changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
 import { dropInvFile, openInvFile, saveInvFile } from "./invFiles";
 import { ItemForm, input } from "./ItemForm";
@@ -178,7 +178,7 @@ export function InventoryView({ orgId, id, by }) {
                         <span className="min-w-0 flex-1">
                           <b className={`block truncate text-[0.9375rem] font-medium ${x.qty === 0 ? "text-mut line-through" : ""}`}>{x.name}</b>
                           <span className="block truncate text-[0.75rem] text-mut">
-                            {[x.parent && byId.get(x.parent) && `→ ${itemLabel(byId.get(x.parent))}`, x.sailNo, x.brand, x.year && ageText(x.year), x.place, x.assignee && `Kimde: ${x.assignee}`, x.files?.length && `${x.files.length} belge`].filter(Boolean).join(" · ") ||
+                            {[x.parent && byId.get(x.parent) && `→ ${itemLabel(byId.get(x.parent))}`, x.sailNo, x.brand, x.year && ageText(x.year), x.place, x.assignee && `Kimde: ${x.assignee}`, x.service?.length && `Bakım ${serviceText(x.service[0])}`, x.files?.length && `${x.files.length} belge`].filter(Boolean).join(" · ") ||
                               `Eklendi ${x.addedAt.split("-").reverse().join(".")}`}
                           </span>
                           {(x.owner === "private" || x.damage || (isBoat(x) && kitText(inv, x))) && (

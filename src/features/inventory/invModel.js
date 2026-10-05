@@ -6,6 +6,8 @@
 //   name, kind ("normal" | "club"), prefix (numara öneki, boş olabilir), cats [ad],
 //   items [{ id, no, name, cat, qty, unit, addedAt, brand, serial, sailNo, year (alım yılı), place, state, damage (hasar: "yırtık"),
 //            owner "club" | "private", ownerName (özel teknenin sahibi), parent (bağlı olduğu teknenin id'si: salma, dümen, direk…),
+//            extra [{ k, v }] (serbest ek bilgiler: "Dümen: Hidrolik", "Motor gücü: 50 HP"),
+//            service [{ id, date, kind yaz|kis|periyodik|ariza|diger, what, cost, by }] (bakım kayıtları, en yenisi önde),
 //            assignee, price, checkAt, note, files [{ id, name, type, size, parts, label, at }] (belge/fotoğraf künyeleri, invFiles.js), updatedAt }],
 //   log [{ at, op add|remove|edit|delete, no, name, qty, text, by }]   hareketler, en yenisi önde
 // }
@@ -32,6 +34,32 @@ export const BOAT_CAT = "Tekne";
 export const PART_CATS = ["Salma", "Dümen", "Direk", "Bumba", "Yelken"];
 export const isBoat = (x) => fold(x?.cat) === fold(BOAT_CAT);
 export const isPart = (x) => PART_CATS.some((c) => fold(c) === fold(x?.cat));
+// Motor bir bota (ya da tekneye) bağlanır; bakım asıl motora yapılır, botun ekranında motorun bakımları görünür
+export const BOT_CATS = ["Bot"];
+export const isBot = (x) => BOT_CATS.some((c) => fold(c) === fold(x?.cat));
+export const isMotor = (x) => fold(x?.cat) === "motor";
+// Bağlanabilir mi: takım parçası tekneye, motor bota ya da tekneye
+export const canLink = (x) => isPart(x) || isMotor(x);
+export const hostsOf = (inv, x) => (inv?.items || []).filter((y) => y.id !== x.id && (isMotor(x) ? isBot(y) || isBoat(y) : isBoat(y)));
+export const motorsOf = (inv, x) => (inv?.items || []).filter((y) => y.parent === x.id && isMotor(y));
+
+// Bakım türleri
+export const SERVICE_KINDS = [
+  ["yaz", "Yaz bakımı"],
+  ["kis", "Kış bakımı"],
+  ["periyodik", "Periyodik"],
+  ["ariza", "Arıza / onarım"],
+  ["diger", "Diğer"],
+];
+export const serviceLabel = (k) => SERVICE_KINDS.find(([x]) => x === k)?.[1] || "Bakım";
+// Kategoriye göre önerilen ek bilgi başlıkları (kullanıcı istediğini yazar)
+export const EXTRA_HINTS = {
+  bot: ["Motor gücü", "Dümen", "Boy", "Gövde", "Bağlama limanı", "Ruhsat no"],
+  motor: ["Güç (HP)", "Yakıt", "Çalışma saati", "Şaft", "Motor no", "Yağ"],
+  tekne: ["Gövde rengi", "Ağırlık", "Bağlama limanı"],
+  yelken: ["Kesim", "Malzeme"],
+};
+export const extraHints = (cat) => EXTRA_HINTS[fold(cat)] || ["Ölçü", "Renk", "Garanti bitişi"];
 // Kategoriye göre gösterilen ek alanlar (diğerlerinde dolu değilse gizli)
 export const hasSailNo = (cat) => ["tekne", "yelken"].includes(fold(cat));
 
@@ -91,6 +119,33 @@ export const fold = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const cleanExtra = (list) => {
+  const seen = new Set();
+  const out = [];
+  for (const e of arr(list, 30)) {
+    const x = { k: S(e?.k, 40), v: S(e?.v, 120) };
+    if (!x.k && !x.v) continue;
+    if (x.k && seen.has(fold(x.k))) continue;
+    if (x.k) seen.add(fold(x.k));
+    out.push(x);
+  }
+  return out.slice(0, 20);
+};
+const KIND_KEYS = ["yaz", "kis", "periyodik", "ariza", "diger"];
+export const cleanService = (e = {}) => ({
+  id: okId(e.id) ? e.id : newId(),
+  date: date(e.date),
+  kind: KIND_KEYS.includes(e.kind) ? e.kind : "diger",
+  what: L(e.what, 300),
+  cost: num(e.cost),
+  by: S(e.by, 60),
+});
+// En yeni önde
+const sortService = (list) => [...list].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+export const lastService = (x) => (x?.service || [])[0] || null;
+// "12.04.2026 · Yaz bakımı"
+export const serviceText = (e) => (e ? [e.date ? e.date.split("-").reverse().join(".") : "", serviceLabel(e.kind)].filter(Boolean).join(" · ") : "");
+
 const cleanFile = (f) =>
   okId(f?.id)
     ? { id: f.id, name: S(f.name, 120) || "dosya", type: f.type === "application/pdf" ? "application/pdf" : "image/jpeg", size: int(f.size, 50_000_000), parts: Math.max(1, int(f.parts, 60)), label: S(f.label, 30), at: date(f.at) }
@@ -119,6 +174,8 @@ export function cleanItem(x = {}) {
     price: num(x.price),
     checkAt: date(x.checkAt),
     note: L(x.note, 600),
+    extra: cleanExtra(x.extra),
+    service: sortService(arr(x.service, 60).map(cleanService).filter((e) => e.date || e.what)),
     files: arr(x.files, 20).map(cleanFile).filter(Boolean),
     updatedAt: S(x.updatedAt, 30),
   };
@@ -212,7 +269,7 @@ export function groupItems(items, cats) {
 export function searchItems(items, q) {
   const f = fold(q);
   if (!f) return items;
-  return items.filter((x) => fold([x.no, x.name, x.cat, x.brand, x.serial, x.sailNo, x.year || "", x.damage, x.ownerName, x.owner === "private" ? "özel" : "kulüp", x.place, x.assignee, x.note, stateLabel(x.state)].join(" ")).includes(f));
+  return items.filter((x) => fold([x.no, x.name, x.cat, x.brand, x.serial, x.sailNo, x.year || "", x.damage, x.ownerName, x.owner === "private" ? "özel" : "kulüp", x.place, x.assignee, x.note, stateLabel(x.state), ...(x.extra || []).map((e) => `${e.k} ${e.v}`)].join(" ")).includes(f));
 }
 
 // ---- Değişiklikler (sayfa ve asistan aynı fonksiyonlarla yazar; hareket kaydı tutulur) ----
@@ -240,19 +297,22 @@ export function dropItem(inv, id, { now = new Date().toISOString(), by = "" } = 
   return stamp({ ...inv, items: inv.items.filter((x) => x.id !== id) }, { at: now, op: "delete", no: old.no, name: old.name, qty: -old.qty, text: "Envanterden silindi", by });
 }
 
-const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not", files: "belge" };
+const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not", files: "belge", extra: "ek bilgi", service: "bakım" };
 // "adet 3 → 5, durum Bakımda, yer Hangar"
 export function changeText(a, b) {
   const out = [];
   for (const k of Object.keys(FIELD_NAMES)) {
-    if (k === "files" ? (a.files || []).map((f) => f.id).join() === (b.files || []).map((f) => f.id).join() : a[k] === b[k]) continue;
+    const same = k === "files" ? (a.files || []).map((f) => f.id).join() === (b.files || []).map((f) => f.id).join() : k === "extra" || k === "service" ? JSON.stringify(a[k] || []) === JSON.stringify(b[k] || []) : a[k] === b[k];
+    if (same || (k === "checkAt" && (b.service || []).length > (a.service || []).length)) continue;
     if (k === "qty") out.push(`adet ${a.qty} → ${b.qty}`);
     else if (k === "state") out.push(`durum ${stateLabel(b.state)}`);
     else if (k === "note") out.push("not");
     else if (k === "files") out.push(b.files.length > a.files.length ? "belge eklendi" : "belge silindi");
+    else if (k === "service") out.push((b.service || []).length > (a.service || []).length ? `bakım eklendi (${serviceText(lastService(b))})` : "bakım kaydı değişti");
+    else if (k === "extra") out.push("ek bilgiler");
     else if (k === "owner") out.push(b.owner === "private" ? "özel" : "kulübün");
     else if (k === "ownerName" && a.owner !== b.owner) continue;
-    else if (k === "parent") out.push(b.parent ? "tekneye bağlandı" : "tekneden ayrıldı");
+    else if (k === "parent") out.push(b.parent ? (isMotor(b) ? "bota bağlandı" : "tekneye bağlandı") : isMotor(b) ? "bottan ayrıldı" : "tekneden ayrıldı");
     else out.push(`${FIELD_NAMES[k]} ${b[k] || "boş"}`);
   }
   return out.join(", ") || "Değişiklik yok";
@@ -277,6 +337,11 @@ export function cleanOp(o = {}) {
   if (out.state && !STATE_KEYS.includes(out.state)) delete out.state;
   if (out.addedAt && !DATE.test(out.addedAt)) delete out.addedAt;
   if (out.checkAt && !DATE.test(out.checkAt)) delete out.checkAt;
+  // Ek bilgiler (eklenen/değişen başlıklar) ve yeni bakım kaydı
+  const extra = cleanExtra(o.extra).filter((e) => e.k && e.v);
+  if (extra.length) out.extra = extra;
+  const sv = o.service && (o.service.date || o.service.what) ? cleanService(o.service) : null;
+  if (sv) out.service = sv;
   if (op === "add" && !out.id && !S(out.name, 80)) return null;
   if (op !== "add" && !out.id) return null;
   return out;
@@ -298,7 +363,7 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
     // Tekne: aynı listede eklenen teknenin key'i ya da var olan id; "none" tekneden ayırır
     if (o.parent) {
       const pid = o.parent === "none" ? "" : keys[o.parent] || o.parent;
-      const boat = pid && cur.items.find((x) => x.id === pid);
+      const boat = pid && cur.items.find((x) => x.id === pid && (isBoat(x) || isBot(x)));
       o.parent = boat ? pid : "";
       // Takım parçası sahibini belirtmezse teknenin sahibini alır
       if (boat && !old && !o.owner) Object.assign(o, { owner: boat.owner, ownerName: boat.ownerName });
@@ -313,7 +378,7 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
       continue;
     }
     if (o.op === "add" && !old) {
-      const item = { ...o, id: "", cat: catOf(cur, o.cat), qty: o.qty ?? 1, addedAt: o.addedAt || now.slice(0, 10) };
+      const item = { ...o, id: "", cat: catOf(cur, o.cat), qty: o.qty ?? 1, addedAt: o.addedAt || now.slice(0, 10), service: o.service ? [o.service] : [], checkAt: o.checkAt || o.service?.date || "" };
       cur = upsertItem(cur, item, { now, by });
       const x = cur.items[cur.items.length - 1];
       if (o.key) keys[o.key] = x.id;
@@ -323,13 +388,13 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
     if (o.op === "add" || o.op === "remove") {
       const d = o.qty ?? 1;
       const qty = o.op === "add" ? old.qty + d : Math.max(0, old.qty - d);
-      const patch = { ...old, ...pick(o, ["state", "place", "assignee", "note"]), qty };
+      const patch = { ...old, ...pick(o, ["state", "place", "assignee", "note"]), ...withMore(old, o), qty };
       cur = upsertItem(cur, patch, { now, by });
       (o.op === "add" ? more : less).push({ x: old, qty });
       continue;
     }
     // update
-    const patch = { ...old, ...pick(o, [...FIELDS, "parent"]), ...(o.qty != null ? { qty: o.qty } : {}) };
+    const patch = { ...old, ...pick(o, [...FIELDS, "parent"]), ...withMore(old, o), ...(o.qty != null ? { qty: o.qty } : {}) };
     if (patch.cat) patch.cat = catOf(cur, patch.cat);
     const next = cleanItem(patch);
     const what = changeText(old, next);
@@ -343,7 +408,7 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
   const kitOfNew = (b) => added.filter((x) => x.parent === b.id).map((x) => x.cat.toLocaleLowerCase("tr-TR"));
   const addText = (x) => {
     const kit = kitOfNew(x);
-    const no = kit.length ? `No ${x.no}, takımıyla: ${kit.join(", ")}` : `No ${x.no}`;
+    const no = !kit.length ? `No ${x.no}` : isBot(x) || kit.every((c) => c === "motor") ? `No ${x.no}, motoruyla` : `No ${x.no}, takımıyla: ${kit.join(", ")}`;
     return `${x.qty > 1 ? `${x.qty} ${x.unit === "adet" ? "" : `${x.unit} `}` : ""}${x.name} (${no})${x.owner === "private" ? `, özel${x.ownerName ? ` (${x.ownerName})` : ""}` : ""}`.replace(/\s+/g, " ");
   };
   const shownAdd = added.filter((x) => !(x.parent && newIds.has(x.parent)));
@@ -354,11 +419,29 @@ export function applyOps(inv, ops, { now = new Date().toISOString(), by = "" } =
   if (missing.length) lines.push(`Bulamadım: ${missing.join(", ")}.`);
   return { inv: cur, lines, deletes, missing, changed: added.length + more.length + less.length + edited.length > 0 };
 }
+// Ek bilgi: aynı başlık değişir, yenisi eklenir; bakım: listeye eklenir (bakım yapıldıysa son kontrol tarihi de)
+const withMore = (old, o) => {
+  const out = {};
+  if (o.extra?.length) {
+    const list = [...(old.extra || [])];
+    for (const e of o.extra) {
+      const i = list.findIndex((y) => fold(y.k) === fold(e.k));
+      if (i >= 0) list[i] = { k: list[i].k, v: e.v };
+      else list.push(e);
+    }
+    out.extra = list;
+  }
+  if (o.service) {
+    out.service = [o.service, ...(old.service || [])];
+    if (o.service.date && o.service.date > (old.checkAt || "")) out.checkAt = o.service.date;
+  }
+  return out;
+};
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] != null).map((k) => [k, o[k]]));
 
 // Yapay zekaya giden kısa liste (yalnız eşleştirme için gerekenler)
 export const brief = (inv) =>
-  inv.items.map((x) => ({ id: x.id, no: x.no, name: x.name, cat: x.cat, qty: x.qty, unit: x.unit, ...(x.brand ? { brand: x.brand } : {}), ...(x.serial ? { serial: x.serial } : {}), ...(x.sailNo ? { sailNo: x.sailNo } : {}), ...(x.year ? { year: x.year } : {}), ...(x.place ? { place: x.place } : {}), ...(x.assignee ? { assignee: x.assignee } : {}), state: x.state, ...(x.damage ? { damage: x.damage } : {}), owner: x.owner, ...(x.ownerName ? { ownerName: x.ownerName } : {}), ...(x.parent ? { parent: x.parent } : {}) }));
+  inv.items.map((x) => ({ id: x.id, no: x.no, name: x.name, cat: x.cat, qty: x.qty, unit: x.unit, ...(x.brand ? { brand: x.brand } : {}), ...(x.serial ? { serial: x.serial } : {}), ...(x.sailNo ? { sailNo: x.sailNo } : {}), ...(x.year ? { year: x.year } : {}), ...(x.place ? { place: x.place } : {}), ...(x.assignee ? { assignee: x.assignee } : {}), state: x.state, ...(x.damage ? { damage: x.damage } : {}), owner: x.owner, ...(x.ownerName ? { ownerName: x.ownerName } : {}), ...(x.parent ? { parent: x.parent } : {}), ...(x.extra?.length ? { extra: x.extra } : {}), ...(x.service?.length ? { lastService: [serviceText(x.service[0]), x.service[0].what].filter(Boolean).join(" · "), services: x.service.length } : {}) }));
 
 // Hangi envanter: cümlede adı geçen ("kulüp envanterine", "normal envantere"), yoksa açık sayfadaki, yoksa son kullanılan, yoksa kulüp
 export function pickInv(text, list, { here = "", last = "" } = {}) {
@@ -380,15 +463,18 @@ export function pickInv(text, list, { here = "", last = "" } = {}) {
 
 // Excel: ürünler ve hareketler
 export function excelRows(inv) {
-  const items = [["No", "Ürün", "Kategori", "Adet", "Birim", "Sahibi", "Tekne", "Eklenme", "Alım yılı", "Marka / model", "Seri no", "Yelken no", "Yer", "Durum", "Hasar", "Kimde", "Fiyat (₺)", "Son kontrol", "Not"]];
+  const items = [["No", "Ürün", "Kategori", "Adet", "Birim", "Sahibi", "Tekne", "Eklenme", "Alım yılı", "Marka / model", "Seri no", "Yelken no", "Yer", "Durum", "Hasar", "Kimde", "Fiyat (₺)", "Son kontrol", "Ek bilgiler", "Son bakım", "Not"]];
   const byId = new Map(inv.items.map((x) => [x.id, x]));
   for (const [, list] of groupItems(inv.items, inv.cats))
     for (const x of list)
-      items.push([x.no, x.name, x.cat, x.qty, x.unit, ownerText(x), x.parent ? itemLabel(byId.get(x.parent)) : "", x.addedAt, x.year || "", x.brand, x.serial, x.sailNo, x.place, stateLabel(x.state), x.damage, x.assignee, x.price || "", x.checkAt, x.note]);
+      items.push([x.no, x.name, x.cat, x.qty, x.unit, ownerText(x), x.parent ? itemLabel(byId.get(x.parent)) : "", x.addedAt, x.year || "", x.brand, x.serial, x.sailNo, x.place, stateLabel(x.state), x.damage, x.assignee, x.price || "", x.checkAt, (x.extra || []).map((e) => (e.k ? `${e.k}: ${e.v}` : e.v)).join("; "), serviceText(lastService(x)), x.note]);
   const log = [["Zaman", "İşlem", "No", "Ürün", "Adet", "Ayrıntı", "Kim"]];
   const OPS = { add: "Ekleme", remove: "Çıkarma", edit: "Düzenleme", delete: "Silme" };
   for (const e of inv.log) log.push([e.at.slice(0, 16).replace("T", " "), OPS[e.op], e.no, e.name, e.qty, e.text, e.by]);
-  return { Ürünler: items, Hareketler: log };
+  const svc = [["Tarih", "No", "Ürün", "Bakım", "Yapılan", "Tutar (₺)", "Yapan"]];
+  for (const x of inv.items) for (const e of x.service || []) svc.push([e.date, x.no, x.name, serviceLabel(e.kind), e.what, e.cost || "", e.by]);
+  svc.splice(1, svc.length, ...svc.slice(1).sort((a, b) => String(b[0]).localeCompare(String(a[0]))));
+  return { Ürünler: items, Bakımlar: svc, Hareketler: log };
 }
 
 // ---- Sahiplik ve tekne takımı ----

@@ -22,13 +22,17 @@ Cümledeki TÜM envanter işlerini sırayla "ops" listesine yaz:
     "Tam donanımlı Optimist teknesi ekle" → tekne add (key "t1") + Salma, Dümen, Direk, Bumba, Yelken add'leri parent "t1" ("Optimist salma" gibi adlarla). Takım söylenmediyse yalnız tekne.
     Var olan tekneye bağlamak için parent = teknenin id'si; tekneden ayırmak için update parent "none". Aynı cümlede eklenen tekneye bağlarken o teknenin key'ini kullan.
     Takım parçası tekneyle eklenince sahibini teknenin sahibi kabul et (yazmana gerek yok).
+  * Motor: botun/teknenin motoru AYRI ürün olur (cat Motor), parent = botun id'si ya da aynı listedeki key'i. "Antrenör botu ekle, Yamaha 50 beygir motorlu" → bot add (key "b1") + motor add (name "Yamaha 50 HP motor", brand "Yamaha", parent "b1", extra Güç (HP): 50). Motorun bilgileri (güç, yakıt, çalışma saati, motor no, şaft) motorun extra'sına.
+- extra: alanlarda olmayan her ek bilgi başlık-bilgi çifti olarak ({k, v}, kısa): "dümeni hidrolik" → {k: "Dümen", v: "Hidrolik"}, "boyu 5,5 metre" → {k: "Boy", v: "5,5 m"}, "bağlama limanı Dikili" → {k: "Bağlama limanı", v: "Dikili"}. Var olan başlık aynı adla yazılırsa değişir. update'te yalnız yeni/değişen başlıkları yaz.
+- service: bakım kaydı (tek; add ya da update ile): {date YYYY-MM-DD (söylenmezse bugün), kind yaz|kis|periyodik|ariza|diger ("yaz bakımı" → yaz, "kışlama" → kis, "arıza, onarım" → ariza), what (yapılan, kısa: "yağ, filtre, impeller değişti"), cost (₺), by (yapan servis)}.
+  Bota bakım denince motoru varsa (listede parent'ı o bot olan Motor) bakımı MOTORA yaz; bakım gövdeye yapıldıysa ("botun altı boyandı") bota.
 - remove: adet azaltma (kayboldu, kırıldı, satıldı, verildi, kullanıldı, "2 can yeleği çıkar"). id + qty (söylenmezse 1). Kaybolduysa state "lost" yazma; yalnız adet azalır.
 - update: var olan ürünün bilgisini değiştirme ("Optimist 4 bakımda", "telsizi Ali'ye verdim" → assignee Ali, "yazıcının yeri ofis", "numarasını 120 yap" → no). id + yalnız değişen alanlar. Adedi açıkça bir sayıya ayarlıyorsa ("şamandıra sayısı 12") qty = yeni toplam.
 - delete: ürünün kaydını tamamen silme ("Optimist 3'ü envanterden sil", "eski yazıcıyı listeden kaldır"). id. Uygulama onay sorar.
 - "Bom" ve "boom" kulüpte Bumba demektir (kategori Bumba).
 - Fotoğraf ya da belge verildiyse (cümle "bu fotoğraftaki/belgedeki"): içindekini oku.
   * Ürün fotoğrafıysa: ne olduğunu (ad, kategori), görünen marka/model, yelken no, görünen hasarı (damage) yaz.
-  * Kütük belgesi, ruhsat, tescil belgesi, bağlama kütüğü ise: teknenin/botun adı → name (ör. "Antrenör botu (DENİZ 1)"), cat (motorlu bot/antrenör botu → Bot, yelkenli → Tekne), tescil/kütük/kayıt no → serial, yapım ya da alım yılı → year, marka/model/motor → brand, bağlama limanı ve diğer önemli bilgiler (boy, motor gücü, kütük sayfa no) → note satır satır ("Bağlama limanı: Dikili"). Okuyamadığını uydurma.
+  * Kütük belgesi, ruhsat, tescil belgesi, bağlama kütüğü ise: teknenin/botun adı → name (ör. "Antrenör botu (DENİZ 1)"), cat (motorlu bot/antrenör botu → Bot, yelkenli → Tekne), tescil/kütük/kayıt no → serial, yapım ya da alım yılı → year, marka/model/motor → brand, bağlama limanı ve diğer önemli bilgiler (boy, motor gücü, kütük sayfa no) → extra ({k: "Bağlama limanı", v: "Dikili"}, {k: "Boy", v: "5,5 m"}…). Okuyamadığını uydurma.
   * Fatura ise: ürün(ler), adet, birim fiyat → price, fatura tarihi → addedAt.
   * fileLabel: belgenin türü ("Fotoğraf", "Kütük belgesi", "Ruhsat / tescil", "Fatura", "Garanti belgesi", "Sigorta", "Bakım kaydı", "Diğer belge").
   * Belge var olan bir ürüne aitse (cümlede id verildiyse) update kullan, değilse add.
@@ -36,7 +40,7 @@ Cümledeki TÜM envanter işlerini sırayla "ops" listesine yaz:
 - id YALNIZ verilen listeden. Var olan bir ürünü bulamıyorsan (remove/update/delete için) uydurma: o işi yazma, message'da "… bulamadım" de.
 - Birden çok aday uyuyorsa (iki "Telsiz") ve hangisi olduğu anlaşılmıyorsa işi yazma, message'da hangisi olduğunu sor (numaralarıyla).
 - Kullanıcı yeni bir envanter isterse ("ev için yeni envanter aç", "tekne malzemeleri diye envanter oluştur") newInv {name, kind: "club" yelken/kulüp için, değilse "normal"} yaz; o cümledeki ürünler o yeni envantere eklenir (add, id boş).
-- Soru sorulduysa ("kaç teknemiz var", "telsizler kimde", "bakımda olanlar", "kaç salmamız var, kaçı özel, kaçı teknede") ops boş; message'da listeden kısa, doğru cevap ver (sayılarla, en çok 3 cümle).
+- Soru sorulduysa ("kaç teknemiz var", "telsizler kimde", "bakımda olanlar", "botun motoruna en son ne zaman bakım yapıldı" (lastService), "kaç salmamız var, kaçı özel, kaçı teknede") ops boş; message'da listeden kısa, doğru cevap ver (sayılarla, en çok 3 cümle).
 - İş varsa message boş kalabilir ya da tek kısa soru olur; yapılanları uygulama söyler.
 - Envanterle ilgisiz bir istekse ops boş, message: "Bu envanterle ilgili değil gibi; ne eklememi ya da değiştirmemi istersin?"`;
 
@@ -64,8 +68,10 @@ const OP = {
     damage: { type: "string" },
     owner: { type: "string", enum: ["club", "private"] },
     ownerName: { type: "string" },
-    parent: { type: "string", description: "bağlı olduğu teknenin id'si, aynı listedeki key'i ya da none" },
+    parent: { type: "string", description: "bağlı olduğu teknenin/botun id'si, aynı listedeki key'i ya da none" },
     key: { type: "string", description: "yeni eklenen ürünün geçici adı (t1, t2…)" },
+    extra: { type: "array", items: { type: "object", properties: { k: { type: "string" }, v: { type: "string" } }, required: ["k", "v"] } },
+    service: { type: "object", properties: { date: { type: "string" }, kind: { type: "string", enum: ["yaz", "kis", "periyodik", "ariza", "diger"] }, what: { type: "string" }, cost: { type: "number" }, by: { type: "string" } } },
   },
   required: ["op"],
 };
