@@ -449,23 +449,24 @@ group("Aidat tablosu")([
   })],
 ]);
 
-// Ana sayfadaki büyük kartlar (Aidatlar, Yarışlar, Instagram, Antrenman günlüğü)
+// Ana sayfadaki özet kartları (Aidat, Yarış, Instagram, Antrenman) ve İşlemler düğmeleri
 const HT = await import("@/lib/homeTiles");
 group("Ana sayfa kartları")([
   ["aidat", F("12/30, bekleyen banka ödemesi uyarı; eski ay özeti gösterilmez", () => {
     const a = HT.duesTile({ ym: "2026-10", paidCount: 12, count: 30, pending: 3 }, "2026-10");
     const b = HT.duesTile({ ym: "2026-10", paidCount: 30, count: 30, pending: 0 }, "2026-10");
     const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
-    return a.big === "12/30" && a.warn && a.sub.includes("3 banka") && b.sub.includes("hepsi ödedi") && !b.warn && c.big === "Ekim";
+    return a.big === "12/30 ödedi" && a.warn && a.sub.includes("3 banka") && b.sub.includes("herkes ödedi") && !b.warn && c.big === "Ekim aidatı";
   })],
-  ["yarış", F("Foça · 5 gün · 2 iş", () => {
+  ["yarış", F("5 gün kaldı · Foça yarışı · 2 iş eksik", () => {
     const a = HT.raceTile({ name: "Foça", when: "5 gün", left: 2 }, 1);
-    return a.big === "Foça" && a.sub === "5 gün · 2 iş" && a.warn && HT.raceTile(null, 0).big === "Yarış yok";
+    const b = HT.raceTile({ name: "Çeşme", when: "yarın", left: 0 }, 1);
+    return a.big === "5 gün kaldı" && a.sub === "Foça yarışı · 2 iş eksik" && a.warn && b.big === "Yarın" && b.sub === "Çeşme yarışı · hazır" && !b.warn && HT.raceTile(null, 0).big === "Yarış yok";
   })],
   ["instagram", F("sayı ve son gönderi", () => {
     const now = Date.parse("2026-10-03T12:00:00");
     const a = HT.postsTile({ count: 4, last: { title: "Foça'da", at: Date.parse("2026-10-01T09:00:00") } }, now);
-    return a.big === "4 gönderi" && a.sub === "Son: 2 gün önce · Foça'da" && HT.postsTile(null).sub === "Yeni gönderi hazırla";
+    return a.big === "4 gönderi" && a.sub === "Sonuncusu 2 gün önce" && HT.postsTile(null).big === "Gönderi yok";
   })],
   ["antrenman", F("bu ay sayısı, yazılmayan günlük uyarı", () => {
     const plans = [
@@ -476,6 +477,19 @@ group("Ana sayfa kartları")([
     ];
     const t = HT.trainingTile(plans, "2026-10-03");
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
+  })],
+  ["işlemler: ana hesap", F("gruplu, Envanter ve Toplantı var, Instagram Sosyal grubunda, tek tip", () => {
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const a = g.flatMap((x) => x.items);
+    const l = a.map((x) => x.label);
+    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Aidatlar") && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 11 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+  })],
+  ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var; boş grup yok", () => {
+    const sg = HT.homeActions({ staff: true, receipts: true });
+    const pg = HT.homeActions({ side: true, parent: true });
+    const s = sg.flatMap((x) => x.items.map((i) => i.label));
+    const p = pg.flatMap((x) => x.items.map((i) => i.label));
+    return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fişler") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fişler") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
 ]);
 

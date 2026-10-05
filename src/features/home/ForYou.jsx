@@ -205,8 +205,10 @@ export function useForYou() {
 
 // "Senin için": bildirim merkezi gibi sade liste. Her öğe: solda simge/kişi, tek satır başlık, tek satır açıklama,
 // sağda zaman ya da tek eylem. Dokun → ilgili kayıt/sohbet açılır. Sola kaydır → bugünlük gizle. Hiç öneri yoksa bölüm görünmez.
+// Ana sayfada geciken görevler gösterilmez: hemen altındaki Bugün kartında zaten var (iki kez görünüyordu).
 export function ForYou() {
-  const { list, hide } = useForYou();
+  const { list: all0, hide } = useForYou();
+  const list = all0.filter((x) => !x.id.startsWith("late:"));
   const [all, setAll] = useState(false);
   if (!list.length) return null;
   const shown = all ? list : list.slice(0, SHOW);
