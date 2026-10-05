@@ -190,13 +190,17 @@ export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.87
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
-      <span className="vl-wave" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-        <i />
-        <i />
-      </span>
+      {state === "listening" ? (
+        <ListenWave round />
+      ) : (
+        <span className="vl-wave" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+      )}
     </button>
   );
 }
@@ -335,7 +339,7 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
           ) : (
-            <div className={`relative flex h-[5.25rem] items-center justify-between px-1 transition-[margin] duration-300 ${active && state === "listening" ? "mt-2" : ""}`}>
+            <div className="relative flex h-[5.25rem] items-center justify-between px-1">
               <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
                 <Icon name="keyboard" className="size-[1.375rem]" />
               </button>
@@ -353,11 +357,6 @@ function Dome({ bar, tabs = true, rec, active, state, live, talk, typeNow, typin
                   <Icon name="plus" className="size-6" />
                 </button>
               )}
-            </div>
-          )}
-          {active && state === "listening" && !typing && (
-            <div className="fade-in flex justify-center pb-1 pt-1.5">
-              <ListenWave />
             </div>
           )}
           {bar && tabs && !rec && !active && !typing && (
