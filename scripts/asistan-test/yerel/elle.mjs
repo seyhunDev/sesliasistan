@@ -824,6 +824,16 @@ group("Banka defteri")([
   ["Excel ile mail aynı hareket", F("saat farkı olsa da tek anahtar", () => { const a = BL.ledgerAdd([mv("01.10.2026 10:00", 200, "EFT GELEN SEYHUN YILDIZ")]); const b = BL.ledgerAdd([mv("01.10.2026", 200, "EFT GELEN SEYHUN YILDIZ")], "f1"); return Object.keys(a["2026-10"])[0] === Object.keys(b["2026-10"])[0]; })],
   ["aynı gün iki eş hareket", F("ikisi de kalır", () => Object.keys(BL.ledgerAdd([mv("01.10.2026 10:00", 50, "POS"), mv("01.10.2026 15:00", 50, "POS")])["2026-10"]).length === 2)],
   ["Excel mailin üstüne yazmaz", F("yalnız yeni anahtar", () => { const mail = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X")]); const file = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X"), mv("02.10.2026", 300, "EFT Y")], "f1"); const n = BL.onlyNew(file, mail); return Object.keys(n["2026-10"]).length === 1 && Object.values(n["2026-10"])[0].f === "f1"; })],
+  ["Excel yeniden yüklenince", F("eski Excel kaydı adla yenilenir, mail kaydının yalnız adı tamamlanır", () => {
+    const oldFile = BL.ledgerAdd([mv("02.10.2026", 300, "EFT Y")], "f0");
+    const mail = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X")]);
+    const ex = { "2026-10": { ...oldFile["2026-10"], ...mail["2026-10"] } };
+    const again = BL.ledgerAdd([mv("01.10.2026", 200, "EFT X", { who: "ALI KAYA" }), mv("02.10.2026", 300, "EFT Y", { who: "SEYHUN YILDIZ" })], "f1");
+    const n = Object.values(BL.onlyNew(again, ex)["2026-10"]);
+    const y = n.find((m) => m.amount === 300);
+    const x = n.find((m) => m.amount === 200);
+    return n.length === 2 && y.f === "f1" && y.who === "SEYHUN YILDIZ" && !x.f && x.who === "ALI KAYA" && x.date === "01.10.2026";
+  })],
   ["liste", F("en yeni önce, id anahtar", () => { const l = BL.ledgerList({ "2026-10": { moves: BL.ledgerAdd([mv("01.10.2026", 1, "A"), mv("03.10.2026", 2, "B")])["2026-10"] } }); return l[0].amount === 2 && l[0].id.startsWith("k"); })],
   ["giden de saklanır", F("eksi tutar", () => Object.values(BL.ledgerAdd([mv("01.10.2026", -90, "FATURA")])["2026-10"])[0].amount === -90)],
   ["ay aralığı", F("kasım–şubat", () => BL.monthsBetween("2025-11", "2026-02").join() === "2025-11,2025-12,2026-01,2026-02")],

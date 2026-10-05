@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { loadMovementsRange } from "@/features/dues/duesData";
+import { rebuildLedger } from "@/features/bank/ledgerData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
 import { lastMonths } from "@/lib/dues";
@@ -31,6 +32,8 @@ export default function PaymentsPage() {
   const [edit, setEdit] = useState(false);
   const [open, setOpen] = useState(""); // açık ay (boşsa en yeni)
   const [others, setOthers] = useState(false); // adı geçmeyen gelen paralar açık mı
+  const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0); // Yenile'den sonra yeniden okunur
   const ym = thisMonth();
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function PaymentsPage() {
     return () => {
       live = false;
     };
-  }, [owner, profile?.uid, span, ym]);
+  }, [owner, profile?.uid, span, ym, tick]);
 
   const payee = payeeOf(profile);
   const movements = data?.movements;
@@ -64,12 +67,28 @@ export default function PaymentsPage() {
     updateDoc(doc(db, "users", profile.uid), { payee: next })
       .then(() => (setEdit(false), toast("Kaydedildi")))
       .catch(() => toast("Kaydedilemedi"));
+  // Yenile: banka defteri bütün maillerden yeniden kurulur (yeni okunan bilgiler, ör. gönderen adı, eklenir)
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      await rebuildLedger(profile.uid);
+      setData(null);
+      setTick((n) => n + 1);
+      toast("Banka hareketleri yenilendi");
+    } catch {
+      toast("Yenilenemedi, internet bağlantını kontrol et");
+    }
+    setBusy(false);
+  };
   const shown = open || sum.byMonth[0]?.ym || "";
   const title = payee.name || "Kişisel hesap";
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title={title} sub="Gelen ödemeler · banka hesap özetinden" back="/mail">
+        <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95 disabled:opacity-50">
+          <Icon name="repeat" className={`size-5 ${busy ? "animate-spin" : ""}`} />
+        </button>
         <button type="button" onClick={() => setEdit((v) => !v)} aria-label="Hesap ayarı" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
           <Icon name="edit" className="size-5" />
         </button>
@@ -96,7 +115,7 @@ export default function PaymentsPage() {
             </div>
             <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
               {payee.name ? `Hesap adı “${payee.name}” olan gelen paralar (ad bankada ayrı yazılmamışsa açıklamada aranır)` : "Hesaba gelen bütün paralar"}
-              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Banka defterinde bu dönemde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}. Değiştirmek için sağ üstteki kaleme dokun.
+              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Banka defterinde bu dönemde {data.sources || 0} hareket var{data.fromFiles ? ` (${data.fromFiles}'i yüklenen Excel'den)` : ""}{". Excel'deki ödemeler eksikse Aidatlar › ayar › Banka Excel'i'nden dosyayı yeniden yükle."} Değiştirmek için sağ üstteki kaleme dokun.
             </p>
           </section>
 

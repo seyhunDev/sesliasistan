@@ -65,6 +65,13 @@ export async function syncLedger(uid) {
   return { ...meta, mailAt };
 }
 
+// Defteri yeniden kurar ("Yenile"): bütün mailler yeniden okunur (yeni bilgiler, ör. gönderen adı, eklenir); Excel'den
+// gelenler kalır. Silinen bir şey olmaz; aynı hareket aynı anahtarla üstüne yazılır.
+export async function rebuildLedger(uid) {
+  await setDoc(bank(uid, "meta"), { seeded: null }, { merge: true });
+  return seed(uid);
+}
+
 // Aralığın hareketleri (ilk ayın başı … son ay) → { movements, sources (hareket sayısı), fromFiles (Excel'den gelen) }
 export async function loadLedger(uid, fromYm, toYm) {
   await syncLedger(uid);
