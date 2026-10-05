@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { Empty, Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
@@ -10,11 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { useDock } from "@/features/home/TabBar";
 import { input } from "@/features/inventory/ItemForm";
 import { todayStr } from "@/lib/utils/format";
 import { STATE, TL, amountText, cleanIban, payText, shortDay, stateOf, summaryOf, taskDone } from "@/lib/invoices";
-import { ReceiptTabs } from "./ReceiptTabs";
 import { bankCheck, createInvoice, deleteInvoice, ensureTask, loadInvoices, openInvoiceFile, prepFile, readInvoice, replaceFile, setPaid, shareInvoiceFile, syncIndex, updateInvoice } from "./invoiceData";
 
 const lab = "block text-[0.75rem] font-medium text-mut";
@@ -42,14 +39,14 @@ const fieldsOf = (f) => ({
 });
 const formOf = (inv) => ({ ...blank(), ...inv, amount: inv.amount ? String(inv.amount).replace(".", ",") : "" });
 
-export function InvoicesView({ orgId }) {
+// Faturaların verisi ve pencereleri (yükleme, ayrıntı); Fişler ve faturalar sayfası kullanır, orgId yoksa (çalışan) boş kalır
+export function useInvoiceDesk(orgId) {
   const toast = useToast();
   const { profile } = useAuth();
   const { tasks, members = [], updateRecord, nameOf } = useData();
   const me = useMemo(() => ({ uid: profile?.uid, name: profile?.name || "" }), [profile?.uid, profile?.name]);
   const today = todayStr();
   const [list, setList] = useState(null);
-  const [tab, setTab] = useState("open");
   const [add, setAdd] = useState(null); // { form, prepared, reading, assignee }
   const [openId, setOpenId] = useState("");
   const [checking, setChecking] = useState(false);
@@ -59,6 +56,7 @@ export function InvoicesView({ orgId }) {
 
   const reload = useCallback(
     (fresh = false) =>
+      orgId &&
       loadInvoices(orgId, { fresh }).then(
         (l) => setList(l),
         () => (setList((p) => p || []), toast("Faturalar okunamadı")),
@@ -66,15 +64,16 @@ export function InvoicesView({ orgId }) {
     [orgId, toast],
   );
   useEffect(() => {
+    if (!orgId) return;
     reload();
     const on = () => reload(true);
     window.addEventListener("sa-invoices-saved", on);
     return () => window.removeEventListener("sa-invoices-saved", on);
-  }, [reload]);
+  }, [reload, orgId]);
   // Sunucunun baktığı açık fatura listesi bu cihazda bir kez tazelenir (eski kayıtlar için)
   const synced = useRef(false);
   useEffect(() => {
-    if (list && !synced.current) {
+    if (orgId && list && !synced.current) {
       synced.current = true;
       syncIndex(orgId, list);
     }
@@ -95,13 +94,11 @@ export function InvoicesView({ orgId }) {
 
   const replace = (next) => setList((p) => p.map((x) => (x.id === next.id ? next : x)));
   const sum = useMemo(() => summaryOf(list || [], today), [list, today]);
-  const shown = useMemo(() => (list || []).filter((x) => (tab === "all" ? true : tab === "paid" ? x.status === "paid" : x.status !== "paid")), [list, tab]);
   const current = (list || []).find((x) => x.id === openId) || null;
   const taskOf = (inv) => tasks.find((t) => t.id === inv?.taskId);
   const whoOf = (inv) => (taskOf(inv)?.assignees || []).map((u) => nameOf?.(u)).filter(Boolean).join(", ");
 
   const pick = () => fileRef.current?.click();
-  useDock({ create: [["receipt", "Fatura yükle", "PDF ya da fotoğraf", pick]] });
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -171,95 +168,9 @@ export function InvoicesView({ orgId }) {
     }
   }
 
-  return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Faturalar" sub="Ödenecek faturalar ve takibi" />
-      <ReceiptTabs value="invoices" />
+  const sheets = (
+    <>
       <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={onFile} />
-
-      <Hero className="mt-3">
-        <HeroLabel>ÖDENMEMİŞ</HeroLabel>
-        <div className="mt-1 text-[1.75rem] font-bold leading-tight tabular-nums">{TL(sum.sum)}</div>
-        <div className="mt-3 flex gap-2">
-          <Stat n={sum.open} label="Ödenmedi" />
-          <Stat n={sum.late} label="Son günü geçti" tone={sum.late ? "rec" : ""} />
-        </div>
-      </Hero>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button onClick={pick} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold text-acc active:scale-[.98]`}>
-          <Icon name="plus" className="size-5" /> Fatura yükle
-        </button>
-        <button onClick={check} disabled={checking || !sum.open} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold disabled:opacity-50 active:scale-[.98]`}>
-          <Icon name={checking ? "load" : "wallet"} className={`size-5 ${checking ? "animate-spin" : ""}`} /> Bankada kontrol et
-        </button>
-      </div>
-
-      {guesses.length > 0 && (
-        <>
-          <Label right={guesses.length}>BANKADA OLASI ÖDEMELER</Label>
-          <div className="space-y-2">
-            {guesses.map((g) => (
-              <div key={`${g.inv.id}${g.m.date}`} className={`${card} p-4`}>
-                <p className="text-[0.875rem] leading-snug">
-                  <b className="font-semibold">{g.inv.seller}</b> · {amountText(g.inv)}
-                </p>
-                <p className="mt-1 text-[0.8125rem] leading-snug text-mut">
-                  {g.m.date} · {g.m.desc}
-                </p>
-                <p className="mt-0.5 text-[0.75rem] text-mut">Tutar ve tarih tutuyor, açıklamada firma adı yok.</p>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => confirmGuess(g, true)} className="h-10 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]">
-                    Bu ödeme, ödendi
-                  </button>
-                  <button onClick={() => confirmGuess(g, false)} className="h-10 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
-                    Değil
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <Seg
-        className="mt-5"
-        value={tab}
-        onChange={setTab}
-        options={[
-          ["open", "Ödenmedi", sum.open],
-          ["paid", "Ödendi", (list || []).length - sum.open],
-          ["all", "Tümü"],
-        ]}
-      />
-
-      {!list ? (
-        <Loading />
-      ) : !shown.length ? (
-        <Empty icon="receipt" title={list.length ? "Bu listede fatura yok" : "Henüz fatura yok"} sub={list.length ? "" : "Faturanın PDF'ini ya da fotoğrafını yükle; firma, tutar ve son gün kendiliğinden okunur, görevlere de eklenir."} />
-      ) : (
-        <div className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
-          {shown.map((inv) => {
-            const st = stateOf(inv, today);
-            const who = whoOf(inv);
-            return (
-              <button key={inv.id} onClick={() => setOpenId(inv.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{inv.seller || "Fatura"}</b>
-                  <span className="block truncate text-[0.8125rem] text-mut">
-                    {[st === "paid" ? inv.paidAt && `Ödendi ${shortDay(inv.paidAt)}` : inv.due && `Son gün ${shortDay(inv.due)}`, who ? `Görevli: ${who}` : st !== "paid" && "Görevli yok", inv.desc].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right">
-                  <b className="block text-[0.9375rem] font-semibold tabular-nums">{amountText(inv)}</b>
-                  <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${TONE[st]}`}>{STATE[st]}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Yeni fatura: okunan bilgiler, görevli */}
       <Sheet open={!!add} onClose={() => !saving && setAdd(null)} title="Yeni fatura">
         {add && (
@@ -328,9 +239,112 @@ export function InvoicesView({ orgId }) {
           }}
         />
       </Sheet>
-    </main>
+    </>
+  );
+  return { list, sum, today, pick, check, checking, guesses, confirmGuess, open: setOpenId, whoOf, sheets };
+}
+
+// Faturalar seçiliyken: ödenmemiş toplam, yükle / bankada kontrol, olası ödemeler, liste
+export function InvoicePanel({ desk }) {
+  const { list, sum, pick, check, checking, guesses, confirmGuess } = desk;
+  const [tab, setTab] = useState("open");
+  const shown = useMemo(() => (list || []).filter((x) => (tab === "all" ? true : tab === "paid" ? x.status === "paid" : x.status !== "paid")), [list, tab]);
+  return (
+    <>
+      <Hero className="mt-3">
+        <HeroLabel>ÖDENMEMİŞ</HeroLabel>
+        <div className="mt-1 text-[1.75rem] font-bold leading-tight tabular-nums">{TL(sum.sum)}</div>
+        <div className="mt-3 flex gap-2">
+          <Stat n={sum.open} label="Ödenmedi" />
+          <Stat n={sum.late} label="Son günü geçti" tone={sum.late ? "rec" : ""} />
+        </div>
+      </Hero>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button onClick={pick} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold text-acc active:scale-[.98]`}>
+          <Icon name="plus" className="size-5" /> Fatura yükle
+        </button>
+        <button onClick={check} disabled={checking || !sum.open} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold disabled:opacity-50 active:scale-[.98]`}>
+          <Icon name={checking ? "load" : "wallet"} className={`size-5 ${checking ? "animate-spin" : ""}`} /> Bankada kontrol et
+        </button>
+      </div>
+
+      {guesses.length > 0 && (
+        <>
+          <Label right={guesses.length}>BANKADA OLASI ÖDEMELER</Label>
+          <div className="space-y-2">
+            {guesses.map((g) => (
+              <div key={`${g.inv.id}${g.m.date}`} className={`${card} p-4`}>
+                <p className="text-[0.875rem] leading-snug">
+                  <b className="font-semibold">{g.inv.seller}</b> · {amountText(g.inv)}
+                </p>
+                <p className="mt-1 text-[0.8125rem] leading-snug text-mut">
+                  {g.m.date} · {g.m.desc}
+                </p>
+                <p className="mt-0.5 text-[0.75rem] text-mut">Tutar ve tarih tutuyor, açıklamada firma adı yok.</p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => confirmGuess(g, true)} className="h-10 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]">
+                    Bu ödeme, ödendi
+                  </button>
+                  <button onClick={() => confirmGuess(g, false)} className="h-10 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
+                    Değil
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <Seg
+        className="mt-5"
+        value={tab}
+        onChange={setTab}
+        options={[
+          ["open", "Ödenmedi", sum.open],
+          ["paid", "Ödendi", (list || []).length - sum.open],
+          ["all", "Tümü"],
+        ]}
+      />
+
+      {!list ? (
+        <Loading />
+      ) : !shown.length ? (
+        <Empty icon="receipt" title={list.length ? "Bu listede fatura yok" : "Henüz fatura yok"} sub={list.length ? "" : "Faturanın PDF'ini ya da fotoğrafını yükle; firma, tutar ve son gün kendiliğinden okunur, görevlere de eklenir."} />
+      ) : (
+        <div className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+          {shown.map((inv) => (
+            <InvoiceRow key={inv.id} inv={inv} desk={desk} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
+
+// Listede bir fatura: firma, son gün/ödendi, görevli, tutar ve durum; badge "Fatura" işareti (karışık listede)
+export function InvoiceRow({ inv, desk, badge }) {
+  const st = stateOf(inv, desk.today);
+  const who = desk.whoOf(inv);
+  return (
+    <button onClick={() => desk.open(inv.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[0.9375rem] font-semibold">
+          {badge && <span className="mr-1.5 rounded-md bg-proc/20 px-1.5 py-0.5 align-[1px] text-[0.6875rem] font-bold uppercase tracking-wide text-fg">Fatura</span>}
+          {inv.seller || "Fatura"}
+        </b>
+        <span className="block truncate text-[0.8125rem] text-mut">
+          {[st === "paid" ? inv.paidAt && `Ödendi ${shortDay(inv.paidAt)}` : inv.due && `Son gün ${shortDay(inv.due)}`, who ? `Görevli: ${who}` : st !== "paid" && "Görevli yok", inv.desc].filter(Boolean).join(" · ")}
+        </span>
+      </span>
+      <span className="shrink-0 text-right">
+        <b className="block text-[0.9375rem] font-semibold tabular-nums">{amountText(inv)}</b>
+        <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${TONE[st]}`}>{STATE[st]}</span>
+      </span>
+    </button>
+  );
+}
+
 
 function InvoiceForm({ form, set }) {
   const f = (k) => ({ value: form[k] ?? "", onChange: (e) => set({ ...form, [k]: e.target.value }) });
