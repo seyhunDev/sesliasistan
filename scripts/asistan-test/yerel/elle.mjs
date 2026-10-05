@@ -779,6 +779,7 @@ group("Geri düğmesi")([
   ["aynı adres", F("iki kez yazılmaz", () => walk([["push", "/"]]).length === 1)],
   ["bilinmeyen adrese dönüş", F("yeni iz başlar", () => walk([["push", "/a"], ["pop", "/b"]]).join() === "/b")],
   ["boş iz", F("ilk adres yazılır", () => NAV.stepTrail([], "push", "/plans").join() === "/plans")],
+  ["Aidatlar'da açıldı › geri › geri", F("döngü yok: üst sayfa yerine geçer, sonra ana sayfa", () => { const t = walk([["replace", "/athletes"]], ["/dues"]); return t.join() === "/athletes" && t.length === 1; })],
 ]);
 
 // Gelen ödemeler / kişisel hesap (payee.js): banka özetinde belli bir kişi adına gelen paralar

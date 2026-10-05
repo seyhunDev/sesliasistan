@@ -292,7 +292,7 @@ function Dues({ uid }) {
 function Shell({ children, onSettings }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <PageHeader title="Aidatlar" sub="Son 6 ay" back="/athletes">
+      <PageHeader title="Aidatlar" sub="Son 6 ay" back="/">
         {onSettings && (
           <button type="button" onClick={onSettings} aria-label="Aidat ayarları" className="grid size-10 place-items-center rounded-full bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90">
             <Icon name="sliders" className="size-5" />

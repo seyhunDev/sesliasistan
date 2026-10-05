@@ -70,8 +70,9 @@ export function installTrail() {
 // Uygulama içinde dönülecek önceki sayfa var mı
 export const canGoBack = () => trail.length > 1;
 
-// Önceki sayfaya dön; yoksa verilen sayfaya git (silinen kayıttan çıkarken de)
+// Önceki sayfaya dön; yoksa verilen sayfaya git (silinen kayıttan çıkarken de). Gidilen sayfa
+// bu sayfanın yerine geçer (replace), push olsaydı oradan geri basınca buraya dönülür, döngü olurdu.
 export function goBack(router, href = "/") {
   if (canGoBack()) router.back();
-  else router.push(href);
+  else router.replace(href);
 }
