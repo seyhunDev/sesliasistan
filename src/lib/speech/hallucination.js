@@ -39,3 +39,15 @@ export function dropHallucination(text, prompt = "") {
   if (prompt && f.length >= 20 && flat(prompt).startsWith(f.slice(0, 20))) return "";
   return t;
 }
+
+// Whisper'ın parça parça yanıtı (Groq verbose_json): sessiz parçalar atılır. Konuşma yok olasılığı yüksek VE model
+// kendinden emin değilse (Whisper burada uydurur). Parça yoksa düz metin.
+export function spokenText(data) {
+  const segs = Array.isArray(data?.segments) ? data.segments : null;
+  if (!segs?.length) return String(data?.text || "").trim();
+  return segs
+    .filter((g) => !(g.no_speech_prob > 0.6 && g.avg_logprob < -0.7))
+    .map((g) => String(g.text || "").trim())
+    .filter(Boolean)
+    .join(" ");
+}

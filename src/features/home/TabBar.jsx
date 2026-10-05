@@ -20,7 +20,8 @@ import { canReceipts } from "@/lib/kinds";
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
 // Sayfaya göre yazma satırı: ipucu, asistanın varsayılan kayıt türü (prefer), Oluştur'da öne çıkan seçenek, paneldeki örnekler.
-// Kendi işi olan sayfalar (dersler, fişler) useDock ile bunları değiştirir.
+// Kendi işi olan sayfalar (dersler, fişler) useDock ile Oluştur'a kendi seçeneklerini ekler. Yazılan ve söylenen her zaman
+// ana asistana gider: sayfalar kubbeyi kendi dinleyicisine bağlayamaz (tek asistan kuralı).
 const PAGES = {
   "/": { ph: "Sor ya da ekle…", ex: ["Yarın saat 10'da antrenman ekle", "Bugün neler var?", "Yoklamayı aç"] },
   "/calendar": { ph: "Plan ekle ya da sor…", prefer: "plan", first: "Plan" },
@@ -30,8 +31,9 @@ const PAGES = {
   "/notes": { ph: "Not al ya da sor…", prefer: "note", first: "Not", ex: ["Malzeme odası dolu", "3 numaranın dümeni gevşek", "Bu hafta neler var?"] },
   "/birthdays": { ph: "ör. Ayşe'nin doğum günü 12 Mart", first: "Doğum günü" },
   "/receipts": { ph: "Fişlerle ilgili sor…", first: "Fiş" },
-  "/schedule": { ph: "ör. salı 13:00 fizik B-204", first: "Dersler" },
+  "/schedule": { ph: "ör. salı 13:00 fizik B-204", first: "Dersler", ex: ["Salı 13:00 fizik B-204", "Pazartesi 9'da matematik, 10:30'da kimya", "Salı fiziği 14'e al"] },
   "/athletes/attendance": { ph: "Kim geldi? ör. Ali ve Zeynep geldi…", ex: ["Ali ve Zeynep geldi, Emre izinli, kalanlar gelmedi", "Emre gelmedi, velisine haber ver", "Yarın 16:00 antrenman ekle"] },
+  "/events": { ph: "Etkinlik planla ya da sor…", ex: ["Kamp planı yap, 2 gece, Kazdağları", "Balığa gideceğiz, ne lazım?", "İç Anadolu gezisi planla"] },
   "/posts": { ph: "Ne paylaşalım? ör. Foça yarışı için gönderi hazırla", ex: ["Foça yarışı için Instagram gönderisi hazırla", "Yelken okulu kayıtları için gönderi hazırla", "Sıradaki yarış için gönderi hazırla"] },
   "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };
@@ -43,8 +45,8 @@ const isRace = (path) => path.startsWith("/athletes/races/");
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");
 
-// Sayfanın kendi ayarı (ör. yoklama: yazılan doğrudan yoklamaya gider). Fonksiyonlar her çağrıda güncel hâliyle çalışır.
-// cfg: { ph, prefer, onSend(text), onMic(), create: [[icon, label, desc, onClick]] } — create öğeleri Oluştur'da en üstte
+// Sayfanın kendi ayarı. Fonksiyonlar her çağrıda güncel hâliyle çalışır.
+// cfg: { ph, prefer, create: [[icon, label, desc, onClick]] } — create öğeleri Oluştur'da en üstte
 const DockCtx = createContext({ setPage() {} });
 export function DockProvider({ children }) {
   const [page, setPage] = useState(null);
@@ -57,20 +59,16 @@ export function useDock(cfg) {
     ref.current = cfg;
   });
   const { ph, prefer } = cfg;
-  const hasSend = !!cfg.onSend;
-  const hasMic = !!cfg.onMic;
   const createKey = (cfg.create || []).map((c) => c[1]).join("|");
   useEffect(() => {
     const page = {
       ph,
       prefer,
-      onSend: hasSend ? (t) => ref.current.onSend?.(t) : null,
-      onMic: hasMic ? () => ref.current.onMic?.() : null,
       create: createKey ? createKey.split("|").map((_, i) => [...ref.current.create[i].slice(0, 3), () => ref.current.create?.[i]?.[3]()]) : [],
     };
     setPage(page);
     return () => setPage((p) => (p === page ? null : p));
-  }, [setPage, ph, prefer, hasSend, hasMic, createKey]);
+  }, [setPage, ph, prefer, createKey]);
 }
 
 // Yazma satırı (sahnenin içinde, koyu): yazı alanı · mikrofon (söyleneni kutuya yazar) · gönder
@@ -90,8 +88,7 @@ function Composer({ cfg, onDone }) {
     setText("");
     input.current?.blur();
     onDone();
-    if (cfg.onSend) cfg.onSend(t);
-    else openAssistant({ text: t, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus, dock: true });
+    openAssistant({ text: t, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus, dock: true });
   };
 
   return (
@@ -418,7 +415,6 @@ export function TabBar({ cfg, bar, tabs = true, rec = false }) {
       if (state === "busy") return act.current.abort?.();
       return act.current.listen?.(); // boşta ya da konuşurken: sözünü keser, dinler
     }
-    if (cfg.onMic) return cfg.onMic();
     openAssistant({ listen: true, dock: true, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus });
   };
   // Yazarak sor ("Şimdi sen dene" yönlendirmesi de kapanır)

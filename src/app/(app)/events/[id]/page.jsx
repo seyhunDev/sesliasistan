@@ -9,9 +9,9 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { EventEditor } from "@/features/events/EventEditor";
 import { EventForm } from "@/features/events/EventForm";
-import { kindOf, freshEvent, cleanEvent } from "@/features/events/eventModel";
+import { freshEvent, cleanEvent } from "@/features/events/eventModel";
 import { kindFromText } from "@/features/events/eventWords";
-import { addEventPlan, askPlan, deleteEvent, loadEvents, mergeForm, saveEvent } from "@/features/events/events";
+import { addEventPlan, askPlan, deleteEvent, loadEvents, saveEvent } from "@/features/events/events";
 
 // Tek etkinlik (yeni etkinlik için /events/new)
 export default function EventPage() {
@@ -47,14 +47,7 @@ function Event({ orgId, uid, by }) {
   const onSave = useCallback((e) => saveEvent(orgId, uid, e), [orgId, uid]);
   const created = (nid) => router.replace(`/events/${nid}`);
 
-  // Yeni: yapay zekayla (formda girilenler önce gelir; boşlar için genel plan) ya da boş
-  const onAi = async (form, idea) => {
-    const text = [idea, !idea && form.title ? form.title : "", !idea && !form.title ? `${kindOf(form.kind)[1]} planı` : ""].filter(Boolean).join("\n");
-    const p = await askPlan({ text, event: form, general: true });
-    const nid = await saveEvent(orgId, uid, mergeForm({ ...form, note: idea && idea !== form.title ? idea : "" }, p.event));
-    toast("Etkinlik hazırlandı");
-    created(nid);
-  };
+  // Yeni: boş oluşturulur; plan etkinlik ekranındaki "Yapay zekayla hazırla" ya da ana asistanla gelir
   const onBlank = async (form, idea) => {
     const nid = await saveEvent(orgId, uid, cleanEvent({ ...form, kind: form.kind || kindFromText(form.title), note: idea, source: "manual" }));
     created(nid);
@@ -78,7 +71,7 @@ function Event({ orgId, uid, by }) {
       ) : !ev ? (
         <Loading label="Etkinlik yükleniyor" />
       ) : id === "new" ? (
-        <EventForm start={ev} onAi={onAi} onBlank={onBlank} />
+        <EventForm start={ev} onBlank={onBlank} />
       ) : (
         <EventEditor key={id} start={ev} onSave={onSave} onDelete={onDelete} onPlan={(e) => addEventPlan(saveDrafts, e, by)} onAiFill={onAiFill} />
       )}

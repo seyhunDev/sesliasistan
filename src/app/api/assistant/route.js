@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
 import { callClaude } from "@/lib/ai/anthropic";
 import { callGemini, partialMessage, streamGemini, withAiCool } from "@/lib/ai/gemini";
-import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, parseAssistant } from "@/lib/ai/assistant";
+import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
@@ -42,8 +42,6 @@ function ask(provider, user, timeoutMs = 20000) {
     maxTokens: 2048,
   });
 }
-
-const JOB_INTENT = /"intent"\s*:\s*"(create|action|message)"/;
 
 async function handle(request) {
   const au = await requireUser(request);
@@ -109,7 +107,7 @@ async function handle(request) {
               firstMs: 8000, // ilk parça 8 sn'de gelmezse yedek modellere geç (önceden 20 sn bekleyip sonra 20 sn daha deniyordu)
               onText: (acc) => {
                 // İş yapılan yanıtlarda (kayıt, işlem, mesaj) sonucu uygulama gerçek duruma göre söyler: yapay zekanın cümlesi akışta okunmaz
-                if (JOB_INTENT.test(acc)) return;
+                if (isJobJson(acc)) return;
                 const m = partialMessage(acc);
                 if (m && m !== lastM) {
                   lastM = m;

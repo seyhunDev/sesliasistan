@@ -32,14 +32,10 @@ const initialsOf = (n = "") =>
     .map((x) => x[0].toLocaleUpperCase("tr-TR"))
     .join("") || "?";
 
-// assistant (verildiyse): { panel, text, setText } — kayıt içi asistanın yanıtı/taslağı ve yazı kutusu.
 // Kutu boşken sağdaki küre ana asistanı bu kaydın bilgisiyle açar (özetle, tamamla, "yaz" → bu kaydın konuşması).
 // docked: yazma alanı burada çizilmez, ekranın altına sabitlenir (ReplyComposer); mesajlar geldikçe liste alta kayar
-export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz…", assistant, docked = false, kind }) {
-  // Yazı da üstten gelebilir (asistan taslağındaki "Düzenle" metni kutuya koyar)
-  const [ownText, setOwnText] = useState("");
-  const text = assistant?.setText ? assistant.text : ownText;
-  const setText = assistant?.setText || setOwnText;
+export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz…", docked = false, kind }) {
+  const [text, setText] = useState("");
   const [all, setAll] = useState(false);
   // Açıldığı andaki "son baktığım" zaman: kayıt açılınca görüldü yazılır, ama çizgi bu açılışta yerinde kalsın
   const [seenAt] = useState(() => rec?.ack?.[myUid]?.n || "");
@@ -133,9 +129,6 @@ export function Replies({ rec, myUid, nameOf, onSend, placeholder = "Mesaj yaz�
         )}
       </div>
 
-      {/* Asistanın yanıtı ve bekleyen mesaj taslağı (onay) */}
-      {assistant?.panel}
-
       {!docked && <Composer text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} />}
     </div>
   );
@@ -171,11 +164,9 @@ function Composer({ text, setText, send, placeholder, focus, kind, bare = false,
   );
 }
 
-// Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte). Yazı asistan nesnesinden gelebilir (AddSheet'te tutulur).
-export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant, kind, rec, nameOf, myUid, orb = true }) {
-  const [ownText, setOwnText] = useState("");
-  const text = assistant?.setText ? assistant.text : ownText;
-  const setText = assistant?.setText || setOwnText;
+// Ekranın altına sabitlenen yazma alanı (Replies docked ile birlikte)
+export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", kind, rec, nameOf, myUid, orb = true }) {
+  const [text, setText] = useState("");
   const send = () => {
     const t = text.trim();
     if (!t) return;
@@ -185,50 +176,8 @@ export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", assistant,
   return <Composer bare text={text} setText={setText} send={send} placeholder={placeholder} kind={kind} focus={recordFocus(kind, rec, nameOf, myUid)} orb={orb} />;
 }
 
-// Asistanın kayıt içindeki yanıtı + bekleyen mesaj taslağı (Gönder / Düzenle / Vazgeç). Mesaj onaysız gitmez.
-// out: { text, done } · reply: asistanın cümlesi · saveToo: kaydedilmemiş değişiklik varsa düğme "Kaydet ve gönder"
-export function AssistantPanel({ reply, out, saveToo, onConfirm, onCancel, onEdit, kind }) {
-  if (!reply && !out) return null;
-  const label = out?.text ? (saveToo ? "Kaydet ve gönder" : "Gönder") : saveToo ? "Kaydet ve tamamla" : "Tamamla";
-  return (
-    <div className="fade-in border-t border-line px-3 py-3" aria-live="polite">
-      {reply && (
-        <div className="flex items-start gap-2">
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white"><Icon name="spark" className="size-3.5" /></span>
-          <p className="min-w-0 rounded-2xl rounded-tl-md bg-bg px-3 py-2 text-[0.875rem] leading-snug">{reply}</p>
-        </div>
-      )}
-      {out && (
-        <div className="mt-2.5 rounded-2xl border border-dashed border-acc/50 bg-acc/[.04] p-3">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">{out.text ? "Gönderilecek mesaj" : "Onay bekliyor"}</p>
-          {out.text && <p className="mt-1 whitespace-pre-wrap text-[0.9375rem] leading-snug">{out.text}</p>}
-          {out.done && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-[0.8125rem] font-medium text-ok">
-              <Icon name="check" className="size-4" /> {doneOf(kind).toast.replace("işaretlendi", "işaretlenecek")}
-            </p>
-          )}
-          <div className="mt-2.5 flex gap-2">
-            <button type="button" onClick={onConfirm} className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-acc px-3 text-[0.875rem] font-semibold text-white active:scale-[.98]">
-              <Icon name={out.text ? "up" : "check"} className="size-4" /> {label}
-            </button>
-            {out.text && (
-              <button type="button" onClick={onEdit} className="h-10 shrink-0 rounded-xl bg-card px-3 text-[0.875rem] font-semibold ring-1 ring-line active:scale-[.98]">
-                Düzenle
-              </button>
-            )}
-            <button type="button" onClick={onCancel} className="h-10 shrink-0 rounded-xl px-2.5 text-[0.875rem] font-semibold text-mut active:bg-bg">
-              Vazgeç
-            </button>
-          </div>
-          <p className="mt-1.5 text-[0.6875rem] text-mut">Sesle de onaylayabilirsin: “gönder” ya da “vazgeç”.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için "gerçekleşti / yaptım / okudum" der ve mesaj yazar
-export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, assistant, docked = false }) {
+export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, docked = false }) {
   const mine = rec.doneBy?.[myUid];
   const by = nameOf(rec.createdByUid) || "Ana hesap";
   const rows = [
@@ -271,7 +220,7 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
       </button>
       {mine && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
 
-      <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" assistant={assistant} docked={docked} />
+      <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" docked={docked} />
     </div>
   );
 }
