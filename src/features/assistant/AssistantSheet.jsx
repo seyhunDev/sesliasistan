@@ -73,6 +73,7 @@ import { loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/inv
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
+import { goBack } from "@/lib/navTrail";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
@@ -500,8 +501,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // "geri dön": önceki sayfa (uygulama yeni açıldıysa geçmiş yok, ana sayfa)
     if (nav.back) {
       navigator.vibrate?.(8);
-      if (window.history.length > 1) router.back();
-      else router.push(PAGES.home.path);
+      goBack(router, PAGES.home.path);
       return leave("Önceki sayfaya döndüm.", viaVoice);
     }
     if (nav.chat) {

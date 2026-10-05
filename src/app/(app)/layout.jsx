@@ -22,10 +22,14 @@ import { logout } from "@/lib/auth";
 import { OfflineBanner, PushSync } from "@/features/pwa/Pwa";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
+import { installTrail } from "@/lib/navTrail";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
   const router = useRouter();
+
+  // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
+  useEffect(() => installTrail(), []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");

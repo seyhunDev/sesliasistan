@@ -15,6 +15,7 @@ import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits"
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
+import { goBack } from "@/lib/navTrail";
 
 const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
@@ -383,7 +384,7 @@ export function ChatView({ cid }) {
       <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
         <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
-          <button type="button" onClick={() => router.push("/messages")} aria-label="Mesajlar" className="grid size-10 shrink-0 place-items-center rounded-full active:bg-line">
+          <button type="button" onClick={() => goBack(router, "/messages")} aria-label="Geri" className="grid size-10 shrink-0 place-items-center rounded-full active:bg-line">
             <Icon name="back" className="size-5" />
           </button>
           <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">

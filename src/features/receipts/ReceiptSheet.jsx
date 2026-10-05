@@ -16,6 +16,7 @@ import { readReceipt } from "@/services/receiptService";
 import { CameraView } from "./CameraView";
 import { Loader } from "@/components/ui/Loader";
 import { QuotaPill } from "@/components/ui/QuotaPill";
+import { goBack } from "@/lib/navTrail";
 
 let seq = 0;
 const nid = () => `i${Date.now()}_${seq++}`;
@@ -282,7 +283,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
     deleteRecord("receipt", editId);
     toast("Fiş silindi");
     onClose();
-    if (path.startsWith(`/receipts/${editId}`)) router.push("/receipts");
+    if (path.startsWith(`/receipts/${editId}`)) goBack(router, "/receipts");
   }
 
   const title = editId ? "Fişi düzenle" : "Fiş ekle";

@@ -19,6 +19,7 @@ import { mailToMe } from "@/features/mail/outbox";
 import { db } from "@/lib/firebase/clientApp";
 import { doc, updateDoc } from "firebase/firestore";
 import { todayStr } from "@/lib/utils/format";
+import { goBack } from "@/lib/navTrail";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -71,7 +72,7 @@ function Race({ orgId, uid, by, mail, coach }) {
   const onDelete = async (rid) => {
     try {
       await deleteRace(orgId, rid);
-      router.push("/athletes/races");
+      goBack(router, "/athletes/races");
     } catch {
       toast("Silinemedi");
     }

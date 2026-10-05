@@ -14,6 +14,7 @@ import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, ex
 import { askInventory, changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
 import { dropInvFile, openInvFile, saveInvFile } from "./invFiles";
 import { ItemForm, input } from "./ItemForm";
+import { goBack } from "@/lib/navTrail";
 
 const tl = (n) => `${Math.round(n || 0).toLocaleString("tr-TR")} ₺`;
 const OPS = { add: ["Eklendi", "text-ok"], remove: ["Çıkarıldı", "text-rec"], edit: ["Düzenlendi", "text-mut"], delete: ["Silindi", "text-rec"] };
@@ -248,7 +249,7 @@ export function InventoryView({ orgId, id, by }) {
                 await deleteInventory(orgId, id);
                 inv.items.flatMap((x) => x.files || []).forEach((f) => dropInvFile(orgId, f));
                 toast("Envanter silindi");
-                router.push("/inventory");
+                goBack(router, "/inventory");
               } catch {
                 toast("Silinemedi");
               }
