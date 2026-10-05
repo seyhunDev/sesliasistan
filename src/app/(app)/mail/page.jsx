@@ -41,7 +41,7 @@ const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 
 // Hesaplar (adres /mail, yalnızca ana hesap), banka uygulaması düzeninde, sade:
 //   hesaplar (son bakiye, toplam, kişisel hesabın aldıkları) › özet (bugüne kadar gelen/giden, kim ne kadar ödedi) ›
-//   banka defteri (geçmiş dönem Excel'i yükle, yapay zeka inceler; baştan kur) › son hareketler › gelen mailler (kapalı) › durum
+//   banka defteri (günlük maillerden; Excel yükleme kapalı, EXCEL_UPLOAD; baştan kur) › son hareketler › gelen mailler (kapalı) › durum
 // Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
 // okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {

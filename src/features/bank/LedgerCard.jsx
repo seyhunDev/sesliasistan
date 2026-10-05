@@ -13,6 +13,9 @@ const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,4
 const day = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "");
 const tl = (n) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${money(Math.abs(n))} TL`;
 const ROWS = 25;
+// Excel'i deftere yükleme şimdilik kapalı (Seyhun, 2026-10-05: "kullanmayacağız, artık günlük mailleri takip ediyoruz").
+// Kod duruyor; açmak için true yap (Hesaplar › Banka defteri ve Aidatlar › ayar › Banka Excel'i).
+export const EXCEL_UPLOAD = false;
 
 // Banka defteri (Mailler sayfası): geçmiş dönem Excel'den bir kez, sonrası günlük maillerden.
 // Excel yükle → telefonda okunur → yapay zeka inceler (tür, gönderen/alıcı adı, açıklama) → özet → "Deftere ekle".
@@ -68,16 +71,16 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
     setStep("");
   }
 
-  // Baştan kur: defter ve yüklenen Excel kayıtları silinir, yalnız maillerden yeniden kurulur; sonra Excel yeniden yüklenir
+  // Baştan kur: defter ve yüklenen Excel kayıtları silinir, yalnız maillerden yeniden kurulur
   async function reset() {
-    if (!confirm("Banka defteri silinip baştan kurulsun mu? Yüklenen Excel'ler silinir, defter günlük maillerden yeniden kurulur. Mailler, aidat onayları ve faturalar silinmez. Sonra Excel'i yeniden yükle.")) return;
+    if (!confirm("Banka defteri silinip baştan kurulsun mu? Yüklenen Excel'ler silinir, defter günlük maillerden yeniden kurulur. Mailler, aidat onayları ve faturalar silinmez.")) return;
     setStep("kuruluyor");
     try {
       await resetLedger(uid);
       setRes(null);
       refresh();
       onSaved?.();
-      toast("Defter baştan kuruldu. Şimdi Excel'i yükle.");
+      toast(EXCEL_UPLOAD ? "Defter baştan kuruldu. Şimdi Excel'i yükle." : "Defter günlük maillerden baştan kuruldu.");
     } catch {
       toast("Baştan kurulamadı, internet bağlantını kontrol et");
     }
@@ -99,25 +102,55 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
       <div className={card}>
         <div className="px-4 py-3.5">
           <p className="text-[0.875rem] leading-snug">
-            {last ? (
+            {!EXCEL_UPLOAD ? (
               <>
-                Geçmiş dönem Excel’den: <b className="font-semibold">{day(last.from)} – {day(last.to)}</b>. Sonrası günlük maillerden ekleniyor.
+                Banka hareketleri günlük hesap özeti maillerinden ekleniyor.
+                {last && (
+                  <>
+                    {" "}
+                    Daha önce yüklenen Excel:{" "}
+                    <b className="font-semibold">
+                      {day(last.from)} – {day(last.to)}
+                    </b>
+                    .
+                  </>
+                )}
+              </>
+            ) : last ? (
+              <>
+                Geçmiş dönem Excel’den:{" "}
+                <b className="font-semibold">
+                  {day(last.from)} – {day(last.to)}
+                </b>
+                . Sonrası günlük maillerden ekleniyor.
               </>
             ) : (
               "Geçmiş dönemi eklemek için bankadan indirdiğin hesap özeti Excel’ini yükle. Yapay zeka inceler, sen onaylayınca deftere eklenir. Sonrası günlük maillerden gelir."
             )}
           </p>
           {mailDay && <p className="mt-1 text-[0.75rem] text-mut">Günlük mailler {day(mailDay)} gününden beri kayıtlı.</p>}
-          <input ref={input} type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" className="hidden" onChange={pick} />
-          <button
-            type="button"
-            disabled={!!step}
-            onClick={() => input.current?.click()}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60"
-          >
-            <Icon name={step ? "load" : "download"} className={`size-[1.125rem] ${step ? "animate-spin" : "rotate-180"}`} />
-            {step === "okunuyor" ? "Excel okunuyor…" : step === "inceleniyor" ? `Yapay zeka inceliyor… ${prog}` : step === "kaydediliyor" ? "Deftere ekleniyor…" : step === "kuruluyor" ? "Defter baştan kuruluyor…" : "Banka Excel’i yükle"}
-          </button>
+          {EXCEL_UPLOAD && (
+            <>
+              <input ref={input} type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" className="hidden" onChange={pick} />
+              <button
+                type="button"
+                disabled={!!step}
+                onClick={() => input.current?.click()}
+                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60"
+              >
+                <Icon name={step ? "load" : "download"} className={`size-[1.125rem] ${step ? "animate-spin" : "rotate-180"}`} />
+                {step === "okunuyor"
+                  ? "Excel okunuyor…"
+                  : step === "inceleniyor"
+                    ? `Yapay zeka inceliyor… ${prog}`
+                    : step === "kaydediliyor"
+                      ? "Deftere ekleniyor…"
+                      : step === "kuruluyor"
+                        ? "Defter baştan kuruluyor…"
+                        : "Banka Excel’i yükle"}
+              </button>
+            </>
+          )}
         </div>
 
         {rep && (
@@ -169,7 +202,11 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
                 </p>
               )}
               {rep.noWho > 0 && <p>{rep.noWho} gelen paranın gönderen adı açıklamada bulunamadı.</p>}
-              {res.failed > 0 && <p className="text-rec">Yapay zeka {res.failed === res.parts ? "yanıt vermedi" : "bir kısmına yanıt vermedi"} ({res.error}); türler yerel kurala göre yazıldı.</p>}
+              {res.failed > 0 && (
+                <p className="text-rec">
+                  Yapay zeka {res.failed === res.parts ? "yanıt vermedi" : "bir kısmına yanıt vermedi"} ({res.error}); türler yerel kurala göre yazıldı.
+                </p>
+              )}
               <p>{handoff(rep.to, mailDay)}</p>
             </div>
 
@@ -203,7 +240,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
 
         {files && !rep && (
           <button type="button" disabled={!!step} onClick={reset} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-rec active:bg-bg disabled:opacity-50">
-            {"Baştan kur (defteri sil, Excel’i yeniden yükle)"}
+            {step === "kuruluyor" ? "Defter baştan kuruluyor…" : EXCEL_UPLOAD ? "Baştan kur (defteri sil, Excel’i yeniden yükle)" : "Baştan kur (defteri maillerden yeniden kur)"}
           </button>
         )}
         {files?.length > 0 && (

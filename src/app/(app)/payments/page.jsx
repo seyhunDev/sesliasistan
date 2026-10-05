@@ -120,7 +120,7 @@ export default function PaymentsPage() {
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] text-mut`}>Banka hareketleri okunamadı. İnternet bağlantını kontrol edip sayfayı yeniden aç.</p>
           ) : !list.length ? (
             <p className={`${card} mt-4 px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-              {data.sources ? `Banka hareketlerinde ${payee.name ? `${payee.name} adına ` : ""}ödeme bulunamadı. Geçmiş dönem eksikse Hesaplar sayfasından banka Excel'ini yükle.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
+              {data.sources ? `Banka hareketlerinde ${payee.name ? `${payee.name} adına ` : ""}ödeme bulunamadı.` : "Henüz banka hesap özeti yok. Gmail bağlanınca İş Bankası mailleri buraya gelir."}
             </p>
           ) : (
             <section className="mt-5">

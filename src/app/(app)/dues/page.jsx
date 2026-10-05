@@ -12,6 +12,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
+import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
 import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
 import { feeOf, gridOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
@@ -22,7 +23,7 @@ import { rosterOf } from "@/lib/duesAuto";
 // Aidatlar (ana hesap + sporcu yetkisi). Tek bakışta tablo: sporcular × son 6 ay (✓ ödedi, ½ eksik, boş bekliyor).
 // Hücreye dokun: o ayın ödemeleri (tarih, açıklama), nakit ekle. Ay başlığına dokun: ayın ödemeler listesi + Excel.
 // Bankadan gelen ve henüz sporcuya yazılmamış paralar ayrı ekranda ("Eşleştir"): öneri → Onayla / Başka sporcu / Aidat değil.
-// Aidat tutarı ve banka Excel'i yükleme Ayarlar'da (dişli).
+// Aidat tutarı Ayarlar'da (dişli); banka Excel'i yükleme kapalı (EXCEL_UPLOAD, LedgerCard.jsx).
 export default function DuesPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -282,7 +283,7 @@ function Dues({ uid }) {
       <Sheet open={setOpen} onClose={() => setSetOpen(false)} title="Aidat ayarları">
         <div className="overflow-y-auto px-5 pb-2">
           <FeeBox cfg={cfg} onSave={(fee) => (writeCfg({ ...cfg, fee }), toast("Aidat tutarı kaydedildi"))} />
-          <BankFiles uid={uid} onChange={() => setTick((t) => t + 1)} />
+          {EXCEL_UPLOAD && <BankFiles uid={uid} onChange={() => setTick((t) => t + 1)} />}
         </div>
       </Sheet>
     </Shell>
