@@ -13,7 +13,6 @@ import { BirthdayProvider } from "@/features/birthdays/BirthdayProvider";
 import { OpenFromUrl } from "@/features/add/OpenFromUrl";
 import { ReceiptProvider } from "@/features/receipts/ReceiptProvider";
 import { AssistantProvider } from "@/features/assistant/AssistantProvider";
-import { AssistantFab } from "@/features/assistant/AssistantFab";
 import { DockProvider, TabBarHost } from "@/features/home/TabBar";
 import { TtsProvider } from "@/features/speech/TtsProvider";
 import { BrainSync } from "@/features/brain/BrainSync";
@@ -62,7 +61,6 @@ export default function AppLayout({ children }) {
                   <PushSync profile={profile} />
                   {children}
                   <TabBarHost />
-                  <AssistantFab />
                   <BrainSync />
                   <OpenFromUrl />
                   <Onboarding />
