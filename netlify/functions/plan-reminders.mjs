@@ -9,8 +9,10 @@ import { dueReminders, localNow, reminderText, remindKey } from "../../src/lib/r
 import { due, eveningText, morningText } from "../../src/lib/summary.js";
 import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
 import { mailDigestText } from "../../src/lib/bankSheet.js";
+import { movementsOf } from "../../src/lib/mailBoard.js";
 import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
+import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 
 export const config = { schedule: "*/5 * * * *" };
@@ -247,7 +249,16 @@ async function sendMailDigests(db, all) {
         set: (path, fields) => db.doc(path).set(fields, { merge: true }),
       };
       const dues = duesText(await runAutoDues(io, u.id, mails).catch((e) => (console.error("[aidat]", e.message), null)));
-      const payload = JSON.stringify(dues ? { ...dues, tag: `dues-${snap.docs[0].id}`, url: "/dues" } : { ...mailDigestText(mails), tag: `mail-${snap.docs[0].id}`, url: "/mail" });
+      // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
+      const inv = invoiceText(await runAutoInvoices(io, u.id, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
+      const tag = snap.docs[0].id;
+      const payload = JSON.stringify(
+        dues
+          ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${tag}`, url: "/dues" }
+          : inv
+            ? { ...inv, tag: `inv-${tag}`, url: "/invoices" }
+            : { ...mailDigestText(mails), tag: `mail-${tag}`, url: "/mail" },
+      );
       await Promise.all(
         Object.entries(d.push || {}).map(async ([key, sub]) => {
           try {

@@ -68,6 +68,8 @@ import { dropInvFile } from "@/features/inventory/invFiles";
 import { applyOps, dropItem, itemLabel, statsText, pickInv } from "@/features/inventory/invModel";
 import { askInventory, changeInventory, createInventory, lastInv, loadInventories, setLastInv } from "@/features/inventory/inventory";
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
+import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
+import { loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
@@ -303,6 +305,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   // İşler bitince (son işten sonra) asistan "Başka bir isteğin var mı?" diye sorar; "yok/hayır" denirse kapanır
   const askedMore = useRef(false);
+  const invAsk = useRef(null); // "Hangi fatura?" soruldu: { op }
   function done(message, extra = {}, viaVoice = false) {
     reply(`${message.trim()} ${MORE}`, extra, viaVoice);
     askedMore.current = true;
@@ -856,6 +859,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         expect: true,
       }, viaVoice);
     }
+    // Fatura: "Turkcell faturası ödendi", "faturayı ödendi işaretle" (yalnız ana hesap; invoices.js). Hangisi diye
+    // sorulduysa sonraki cümle firma adıdır.
+    const ia = invAsk.current;
+    invAsk.current = null;
+    const ic = !isStaff && !drafts.length ? invoiceCommand(s) || (ia && !QUESTION.test(s) && s.split(" ").length <= 6 ? { ...ia, t: s } : null) : null;
+    if (ic && (await runInvoice(ic, viaVoice, !!ia))) return;
     // Alışveriş listesi: ekle / aldım / sil / oku (yapay zekaya gitmeden; shopWords.js)
     const shopLists = listsFor(myKind, members);
     const sc = shopLists.length ? shopCommand(s) : null;
@@ -1370,6 +1379,44 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     reply(`${op === "remove" ? `Listeden çıkardım: ${names}.` : `Alındı olarak işaretledim: ${names}.`}${left}`, { engine: "local", nav: "shopping" }, viaVoice);
     return true;
   }
+  // ---- Fatura ödendi / ödenmedi (asistandan) ----
+  // ia: önceki turda "hangi fatura" soruldu; bulunamazsa false döner, cümle başka işlere devam eder
+  async function runInvoice(ic, viaVoice, asked = false) {
+    let list;
+    try {
+      list = await loadInvoices(profile.orgId);
+    } catch {
+      reply("Faturaları okuyamadım.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    const { pick, list: many } = pickInvoice(ic.t, list, ic.op);
+    if (!pick) {
+      if (asked && !many.length) return false;
+      if (!many.length) {
+        reply(ic.op === "paid" ? "Ödenmemiş fatura yok." : "Ödendi işaretli fatura yok.", { engine: "local", nav: "invoices" }, viaVoice);
+        return true;
+      }
+      invAsk.current = { op: ic.op };
+      const names = many.slice(0, 4).map((x) => `${x.seller} ${amountText(x)}`);
+      reply(`Hangi fatura? ${names.join(", ")}${many.length > 4 ? " ve diğerleri" : ""}. Firmanın adını söyle.`, { engine: "local", expect: true }, viaVoice);
+      return true;
+    }
+    try {
+      await setInvoicePaid(profile.orgId, pick, ic.op === "paid", "hand");
+      window.dispatchEvent(new Event("sa-invoices-saved"));
+      done(
+        ic.op === "paid"
+          ? `Ödendi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.${pick.taskId ? " Görevi de tamamladım." : ""}`
+          : `Ödenmedi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.`,
+        { engine: "local", nav: "invoices" },
+        viaVoice,
+      );
+    } catch {
+      reply("Faturayı kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+    }
+    return true;
+  }
+
   async function runShopRead(list, viaVoice) {
     try {
       const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));

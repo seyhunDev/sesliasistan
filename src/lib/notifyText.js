@@ -25,10 +25,11 @@ export function dayLabel(date, today = todayIn()) {
 const who = (name) => (!name ? "" : name.length <= 18 ? name : name.split(" ")[0]);
 
 // Birine görev/plan/not verildi
-export function assignedText({ kind, title, date, time, due, place, from }, today = todayIn()) {
+// Fatura görevi: gövdede tutar da ("1.250 TL · Son gün 12 Eki · Seyhun verdi")
+export function assignedText({ kind, title, date, time, due, place, pay, from }, today = todayIn()) {
   const t = String(title || "").trim();
   if (kind === "plan") return { title: head("Yeni plan", t), body: line([dayLabel(date, today), time].filter(Boolean).join(" "), place, from && `${who(from)} ekledi`) };
-  if (kind === "task") return { title: head("Yeni görev", t), body: line(due && `Son gün ${dayLabel(due, today).toLocaleLowerCase("tr-TR")}`, from && `${who(from)} verdi`) };
+  if (kind === "task") return { title: head("Yeni görev", t), body: line(pay, due && `Son gün ${dayLabel(due, today).toLocaleLowerCase("tr-TR")}`, from && `${who(from)} verdi`) };
   return { title: head("Yeni not", t), body: line(from && `${who(from)} paylaştı`) };
 }
 

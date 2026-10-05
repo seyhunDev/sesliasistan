@@ -4,6 +4,8 @@ import { mailDigestText } from "@/lib/bankSheet";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { restDb } from "@/lib/server/firestoreRest";
 import { duesText, runAutoDues } from "@/lib/duesAuto";
+import { invoiceText, runAutoInvoices } from "@/lib/invoices";
+import { movementsOf } from "@/lib/mailBoard";
 
 export const runtime = "nodejs";
 
@@ -52,13 +54,21 @@ export async function POST(request) {
     },
   };
   const dues = duesText(await runAutoDues(io, uid, mails).catch((e) => (console.error("[aidat]", e.message), null)));
+  // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
+  const inv = invoiceText(await runAutoInvoices(io, uid, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
 
   const subs = Object.values(user.data.push || {}).filter((s) => s?.endpoint);
   let sent = 0;
   const errors = [];
   if (subs.length) {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
-    const payload = JSON.stringify(dues ? { ...dues, tag: `dues-${list[0].id}`, url: "/dues" } : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" });
+    const payload = JSON.stringify(
+      dues
+        ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
+        : inv
+          ? { ...inv, tag: `inv-${list[0].id}`, url: "/invoices" }
+          : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" },
+    );
     await Promise.all(
       subs.map((s) =>
         webpush.sendNotification(s, payload, { TTL: 6 * 3600 }).then(

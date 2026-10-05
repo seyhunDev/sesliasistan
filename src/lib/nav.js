@@ -14,6 +14,7 @@ export const PAGES = {
   tasks: { path: "/tasks", label: "Görevler" },
   notes: { path: "/notes", label: "Notlar" },
   receipts: { path: "/receipts", label: "Fişler", need: "receipts" },
+  invoices: { path: "/invoices", label: "Faturalar", need: "owner" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
@@ -65,7 +66,8 @@ const TARGETS = [
   ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
   ["archive", /(^|\s)arşiv\S*/],
   ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
-  ["receipts", /(^|\s)(fiş\S*|fatura\S*|harcama\S*|masraf\S*)/],
+  ["invoices", /(^|\s)fatura\S*/],
+  ["receipts", /(^|\s)(fiş\S*|harcama\S*|masraf\S*)/],
   ["tasks", /(^|\s)(görev\S*|yapılacak\S*|işler\S*|işlerim\S*)/],
   ["notes", /(^|\s)not(lar\S*|ları\S*|larım\S*|um\S*|u|a)?(?=\s|$)/],
   ["calendar", /(^|\s)takvim\S*/],
@@ -80,7 +82,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|instagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|antrenman günlüğü|envanter(im)?|demirbaşlar)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|instagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|antrenman günlüğü|envanter(im)?|demirbaşlar)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;
