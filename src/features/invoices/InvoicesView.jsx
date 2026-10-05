@@ -328,6 +328,9 @@ export function InvoiceRow({ inv, desk, badge }) {
   const who = desk.whoOf(inv);
   return (
     <button onClick={() => desk.open(inv.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+      <span className={`grid size-9 shrink-0 place-items-center rounded-[0.625rem] ${st === "paid" ? "bg-bg text-fg" : st === "late" ? "bg-rec/10 text-rec" : "bg-proc/20 text-fg"}`}>
+        <Icon name="receipt" className="size-[1.125rem]" />
+      </span>
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[0.9375rem] font-semibold">
           {badge && <span className="mr-1.5 rounded-md bg-proc/20 px-1.5 py-0.5 align-[1px] text-[0.6875rem] font-bold uppercase tracking-wide text-fg">Fatura</span>}
