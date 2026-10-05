@@ -8,6 +8,10 @@ const CLOSE_AT = 110; // bu kadar piksel aşağı çekilirse kapanır
 const FLICK = 0.6; // ya da bu hızdan (px/ms) hızlı fırlatılırsa
 
 const noop = () => () => {};
+const typing = () => {
+  const el = document.activeElement;
+  return (!!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) || (window.visualViewport?.offsetTop || 0) > 0;
+};
 // Alttan açılan pencere: X ile, arka plana dokunarak, Esc ile ya da aşağı çekerek kapanır.
 // Sayfanın en üst katmanına (body) çizilir: kaydırılan ya da soldurma maskeli bir kutunun (ör. asistan sahnesi)
 // içinden açılsa da kırpılmaz, altında kalmaz.
@@ -30,6 +34,8 @@ export function Sheet({ open, onClose, title, children }) {
 
   const start = (fromContent) => (e) => {
     if (fromContent && (bodyRef.current?.scrollTop || 0) > 0) return;
+    // Klavye açıkken (yazı alanı seçili) iPhone sayfayı kaydırır; içerikten aşağı çekmek pencereyi kapatmasın
+    if (fromContent && typing()) return;
     drag.current = { y: e.touches[0].clientY, t: Date.now(), fromContent };
   };
   const move = (e) => {

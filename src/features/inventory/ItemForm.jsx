@@ -101,12 +101,44 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
         </button>
       )}
       {!start.id && msg && <p className="text-[0.8125rem] text-mut">{msg}</p>}
+      <div>
+        {/* Belgeler en üstte: fotoğraf eklemek için aşağı inmek gerekmesin */}
+        <span className={lab}>Belgeler ve fotoğraflar (kütük belgesi, ruhsat, fatura…)</span>
+        {(x.files?.length > 0 || pend.length > 0) && (
+          <ul className="mt-1 divide-y divide-line/70 rounded-xl bg-bg">
+            {(x.files || []).map((f) => (
+              <FileRow
+                key={f.id}
+                f={f}
+                onOpen={() => onFile?.(f)}
+                onLabel={(label) => setX((v) => ({ ...v, files: v.files.map((y) => (y.id === f.id ? { ...y, label } : y)) }))}
+                onDrop={() => window.confirm(`“${f.label || f.name}” silinsin mi? (Kaydet'e basınca silinir)`) && setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
+              />
+            ))}
+            {pend.map((f) => (
+              <FileRow
+                key={f.tmp}
+                f={{ ...f, size: f.blob.size }}
+                pending
+                onRead={onRead && !busy ? () => read(f) : null}
+                onLabel={(label) => setPend((l) => l.map((y) => (y.tmp === f.tmp ? { ...y, label } : y)))}
+                onDrop={() => setPend((l) => l.filter((y) => y.tmp !== f.tmp))}
+              />
+            ))}
+          </ul>
+        )}
+        {start.id && msg && <p className="mt-1 text-[0.8125rem] text-mut">{msg}</p>}
+        <button type="button" onClick={() => pick.current?.click()} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
+          <Icon name="paperclip" className="size-4" />
+          Fotoğraf ya da belge ekle
+        </button>
+      </div>
       <div className="flex gap-2">
         <F label="No" className="w-24 shrink-0">
           <input value={x.no} onChange={set("no")} maxLength={20} className={`${input} tabular-nums`} />
         </F>
         <F label="Ürün" className="min-w-0 flex-1">
-          <input value={x.name} onChange={set("name")} maxLength={80} placeholder="ör. Optimist teknesi" className={input} autoFocus={!start.id} />
+          <input value={x.name} onChange={set("name")} maxLength={80} placeholder="ör. Optimist teknesi" className={input} />
         </F>
       </div>
       <div className="flex gap-2">
@@ -238,37 +270,6 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
       <F label="Not">
         <textarea value={x.note} onChange={set("note")} maxLength={600} rows={2} className={`${input} h-auto py-2`} />
       </F>
-      <div>
-        <span className={lab}>Belgeler ve fotoğraflar (kütük belgesi, ruhsat, fatura…)</span>
-        {(x.files?.length > 0 || pend.length > 0) && (
-          <ul className="mt-1 divide-y divide-line/70 rounded-xl bg-bg">
-            {(x.files || []).map((f) => (
-              <FileRow
-                key={f.id}
-                f={f}
-                onOpen={() => onFile?.(f)}
-                onLabel={(label) => setX((v) => ({ ...v, files: v.files.map((y) => (y.id === f.id ? { ...y, label } : y)) }))}
-                onDrop={() => window.confirm(`“${f.label || f.name}” silinsin mi? (Kaydet'e basınca silinir)`) && setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
-              />
-            ))}
-            {pend.map((f) => (
-              <FileRow
-                key={f.tmp}
-                f={{ ...f, size: f.blob.size }}
-                pending
-                onRead={onRead && !busy ? () => read(f) : null}
-                onLabel={(label) => setPend((l) => l.map((y) => (y.tmp === f.tmp ? { ...y, label } : y)))}
-                onDrop={() => setPend((l) => l.filter((y) => y.tmp !== f.tmp))}
-              />
-            ))}
-          </ul>
-        )}
-        {start.id && msg && <p className="mt-1 text-[0.8125rem] text-mut">{msg}</p>}
-        <button type="button" onClick={() => pick.current?.click()} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
-          <Icon name="paperclip" className="size-4" />
-          Fotoğraf ya da belge ekle
-        </button>
-      </div>
       <Button type="submit" disabled={!x.name.trim() || busy === "read"}>
         Kaydet
       </Button>
