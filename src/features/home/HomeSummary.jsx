@@ -45,7 +45,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans }) {
   }, [dues, orgId, ym]);
   const cards = [
     money && m.bank && ["/mail", "chart", "Banka", m.bank],
-    money && ["/receipts", "receipt", "Fişler", m.receipts],
+    money && ["/receipts", "receipt", "Fiş / Fatura", m.receipts],
     dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, today.slice(0, 7))],
     race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up)],
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
