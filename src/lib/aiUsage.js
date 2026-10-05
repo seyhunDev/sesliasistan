@@ -13,6 +13,7 @@ export const AI_LABELS = {
   "race-budget": "Yarış bütçesi",
   "race-around": "Yarış çevresi",
   "event-plan": "Etkinlik planı",
+  inventory: "Envanter",
   "training-log": "Antrenman günlüğü",
   "post-caption": "Instagram yazısı",
   person: "Kişi ekleme",

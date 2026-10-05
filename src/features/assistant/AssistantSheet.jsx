@@ -63,6 +63,10 @@ import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
+import { InvCard } from "@/features/inventory/InvCard";
+import { applyOps, dropItem, itemLabel, statsText, pickInv } from "@/features/inventory/invModel";
+import { askInventory, changeInventory, createInventory, lastInv, loadInventories, setLastInv } from "@/features/inventory/inventory";
+import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
@@ -131,6 +135,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const hereRace = /^\/athletes\/races\/([\w-]+)$/.exec(path || "")?.[1];
   const curRace = hereRace && hereRace !== "new" ? hereRace : "";
   const attHere = path === "/athletes/attendance"; // yoklama sayfası: "Ali ve Zeynep geldi" yoklamadır
+  const invPage = (path || "").startsWith("/inventory"); // envanter sayfaları: "2 şamandıra kayboldu" envanterdir
+  const invHere = /^\/inventory\/([\w-]+)$/.exec(path || "")?.[1] || "";
   const { openAdd } = useAdd();
   const { openReceipt } = useReceipt();
   const { openMeeting } = useMeeting();
@@ -179,6 +185,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const personFlow = useRef(null);
   // Asistanla etkinlik planı: yer/zaman sorulduysa { text, turns } (sonraki cümle cevap; sessiz kalınırsa genel plan)
   const eventFlow = useRef(null);
+  const invFlow = useRef(null); // envanter: silme onayı bekleniyor { org, id, name, kind, ask: [ürün] }
   const logFlow = useRef(null); // antrenman günlüğü: { ask, text } tarih soruldu · { date, time } az önce yazıldı, eksikler söylenebilir
   const turnCount = useRef(0);
   const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
@@ -307,13 +314,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null } = extra;
+    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null } = extra;
     const awaiting = expect || !!pending;
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
     if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
+    if (!inv?.ask?.length) invFlow.current = null; // silme sorusu kalktıysa onay da biter
     setStreamText("");
     setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person, event });
+    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person, event, inv });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -730,6 +738,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (isDrop(s)) return reply("Tamam, etkinlik planını bıraktım.", { engine: "local" }, viaVoice);
       if (!wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runEvent(`${f.text}\nCevap: ${s}`, viaVoice, true);
     }
+    // Envanterden silme soruldu: "evet/sil" siler, "hayır/vazgeç" bırakır; başka bir istekse soru düşer, aşağıdan devam
+    if (invFlow.current && !fresh) {
+      const f = invFlow.current;
+      if (isYes(s) || /^sil\S*[\s.!]*$/i.test(s)) return invDelete(f, viaVoice);
+      if (isNo(s) || invDrop(s)) {
+        invFlow.current = null;
+        return done("Tamam, silmedim.", { engine: "local" }, viaVoice);
+      }
+      invFlow.current = null;
+    }
     // Antrenman günlüğü sürüyor: tarih soruldu (cevap gün) ya da günlük az önce yazıldı (eksik bilgi: "çok iyi geçti", "90 dakika")
     const lf = !fresh ? logFlow.current : null;
     logFlow.current = null;
@@ -755,6 +773,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
     // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
     if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
+    // Envanter ("envantere 3 Optimist teknesi ekle", "envanterden 2 şamandıra çıkar", envanter sayfasında "Optimist 4 bakımda"):
+    // yapay zeka işlem listesi çıkarır; ekleme, çıkarma, değiştirme hemen yapılır, silme onay ister. Yalnız ana hesap.
+    if (!isStaff && wantsInventory(s, invPage) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runInventory(s, viaVoice);
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -1553,6 +1574,63 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id === runId.current) setPhase("idle");
     }
   }
+  // Envanter: hedef envanter (cümlede adı geçen, açık sayfadaki, son kullanılan, yoksa kulüp) seçilir, yapay zeka işlemleri verir
+  async function runInventory(s, viaVoice) {
+    const id = ++runId.current;
+    const org = profile?.orgId || myUid;
+    setPhase("thinking");
+    setSteps([]);
+    stepTo("Envanter işleniyor");
+    try {
+      const list = await loadInventories(org);
+      let inv = pickInv(s, list, { here: invHere, last: lastInv() });
+      if (!inv) throw new Error("Envanter bulunamadı.");
+      const r = await askInventory(s, inv, list.filter((x) => x.id !== inv.id).map((x) => x.name));
+      if (id !== runId.current) return;
+      if (r.newInv) {
+        stepTo("Yeni envanter açılıyor");
+        inv = await createInventory(org, r.newInv.name, r.newInv.kind, list.length + 1);
+      }
+      setLastInv(inv.id);
+      const plan = applyOps(inv, r.ops, { by: profile?.name || "" });
+      if (plan.changed) {
+        stepTo("Envantere kaydediliyor");
+        inv = await changeInventory(org, inv.id, (cur) => applyOps(cur, r.ops, { by: profile?.name || "" }).inv);
+      }
+      if (id !== runId.current) return;
+      stepsEnd();
+      const card = { id: inv.id, name: inv.name, kind: inv.kind, sub: statsText(inv) };
+      const said = [r.newInv ? `Yeni envanter açtım: ${inv.name}.` : "", ...plan.lines].filter(Boolean).join(" ");
+      if (plan.changed) {
+        navigator.vibrate?.([10, 40, 10]);
+        toast("Envanter kaydedildi");
+      }
+      if (plan.deletes.length) {
+        invFlow.current = { org, id: inv.id, name: inv.name, kind: inv.kind, ask: plan.deletes };
+        const q = `${plan.deletes.map((x) => `“${itemLabel(x)}”`).join(", ")} envanterden silinsin mi?`;
+        return reply(`${said} ${q}`.trim(), { inv: { ...card, ask: plan.deletes }, engine: "ai", expect: true }, viaVoice);
+      }
+      if (!said) return reply(r.message || "Envanterde bir değişiklik yapmadım. Ne eklememi ya da çıkarmamı istersin?", { inv: card, engine: "ai", expect: !r.message }, viaVoice);
+      done(`${said}${r.message && /\?\s*$/.test(r.message) ? ` ${r.message}` : ""}`, { inv: card, engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(`${e.message || "Envanter işlenemedi."} Envanter sayfasından elle de ekleyebilirsin.`, { engine: "local", nav: "inventory" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+  async function invDelete(f, viaVoice = false) {
+    invFlow.current = null;
+    try {
+      const inv = await changeInventory(f.org, f.id, (cur) => f.ask.reduce((v, x) => dropItem(v, x.id, { by: profile?.name || "" }), cur));
+      toast("Envanterden silindi");
+      done(`Sildim: ${f.ask.map((x) => x.name).join(", ")}.`, { inv: { id: f.id, name: inv.name, kind: inv.kind, sub: statsText(inv) }, engine: "local" }, viaVoice);
+    } catch {
+      toast("Silinemedi");
+      reply("Silemedim, bağlantını kontrol edip tekrar dene.", { engine: "local" }, viaVoice);
+    }
+  }
   async function eventDelete(e) {
     try {
       await deleteEvent(profile?.orgId || myUid, e.id);
@@ -1884,6 +1962,20 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             }}
             onOpen={() => (!embedded && park(), router.push(`/events/${cards.event.id}`))}
             onDelete={() => eventDelete(cards.event)}
+          />
+        )}
+
+        {/* Envanter: yapılanlardan sonra Envanteri aç; silme sorulurken Sil / Vazgeç */}
+        {cards.inv && (
+          <InvCard
+            v={cards.inv}
+            onOpen={() => (!embedded && park(), router.push(`/inventory/${cards.inv.id}`))}
+            onDelete={() => invFlow.current && (setTurns((p) => [...p, { role: "user", text: "Sil", chip: true }]), invDelete(invFlow.current))}
+            onKeep={() => {
+              invFlow.current = null;
+              setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+              done("Tamam, silmedim.", { engine: "local" });
+            }}
           />
         )}
 

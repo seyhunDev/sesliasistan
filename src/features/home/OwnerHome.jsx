@@ -101,6 +101,7 @@ export function HomeFeed({ weather }) {
   const links = [
     ["/plans", "cal", "Planlar", pendingPlans(plans, now)],
     !staff && ["/events", "tent", "Etkinlikler"],
+    !staff && ["/inventory", "box", "Envanter"],
     ["/notes", "note", "Notlar", notes.length],
     !staff && ["/people/staff", "users", "Kişiler"],
     athletes && ["/athletes", "anchor", "Sporcular"],
