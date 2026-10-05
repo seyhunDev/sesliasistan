@@ -94,6 +94,14 @@ export function isEnd(text) {
   return END_START.test(t) || END_ANY.test(t);
 }
 
+// Dinlerken canlı yazıda duyulan söz yalnız kapatma isteğiyse ("kapat", "tamam kapat", "asistanı kapat", "kapatabilirsin"):
+// konuşma bitişini beklemeden dinleme durur, asistan sessizce kapanır. Bütün söz bu olmalı (devamı gelebilecek cümle sayılmaz).
+const CLOSE_NOW = /^(?:tamam(?:dır)?\s+|peki\s+)?(?:asistan(?:ı)?\s+)?(?:kapat(?:abilirsin)?|kapan)(?:\s+(?:tamam|lütfen|artık))?$/;
+export function isCloseNow(text) {
+  const t = lower(String(text || "")).replace(/[.,!?…]+/g, " ").replace(/\s+/g, " ").trim();
+  return CLOSE_NOW.test(t);
+}
+
 // "Başka bir isteğin var mı?" sorusuna olumsuz kısa cevap ("yok", "hayır", "başka yok", "gerek yok", "yok sağ ol"): asistan kapanır.
 // Yalnız bu soru sorulduysa bakılır; kısa cümle (en çok 4 kelime), içinde iş isteyen söz yoksa.
 const NO_MORE = /^(?:yok|hayır|başka (?:bir şey |bir isteğim )?yok|gerek yok|istemiyorum|olmaz|şimdilik yok|yok yok)(?=$|[\s.,!?])/;
