@@ -17,6 +17,7 @@ export const PAGES = {
   invoices: { path: "/invoices", label: "Faturalar", need: "owner" },
   payments: { path: "/payments", label: "Gelen ödemeler", need: "owner" },
   accounts: { path: "/mail", label: "Hesaplar", need: "owner" },
+  finance: { path: "/finance", label: "Gelir gider", need: "owner" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
@@ -69,6 +70,7 @@ const TARGETS = [
   ["archive", /(^|\s)arşiv\S*/],
   ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
   ["invoices", /(^|\s)fatura\S*/],
+  ["finance", /(^|\s)(gelir gider\S*|gelir ve gider\S*|gelir-gider\S*|aylık özet\S*|aylık gelir\S*)/],
   ["payments", /(^|\s)(ödemeler\S*|aldığım ödeme\S*|gelen ödeme\S*|kişisel hesab\S*|kişisel hesap\S*)/],
   ["accounts", /(^|\s)(hesaplar\S*|hesaplarım\S*|banka hesab\S*|mailler\S*|maillerim\S*)(?=\s|$)/],
   ["receipts", /(^|\s)(fiş\S*|harcama\S*|masraf\S*)/],
@@ -86,7 +88,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|instagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|antrenman günlüğü|envanter(im)?|demirbaşlar)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|instagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|gelir gider|antrenman günlüğü|envanter(im)?|demirbaşlar)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

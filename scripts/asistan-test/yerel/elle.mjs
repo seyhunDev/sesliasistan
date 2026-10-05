@@ -882,3 +882,44 @@ group("Banka Excel incelemesi")([
     return !x.f && x.note === "Ekim aidatı" && x.cat === "Aidat";
   })],
 ]);
+
+// Aylık gelir/gider özeti (finance.js): banka defterinden ay ay, türlere göre; muhasebe Excel'i
+const FN = await import("@/lib/finance");
+const FMOV = [
+  inc("AYSE SAHIN*0062*ekim*1*FAST", 1500, "02.10.2026 10:00"),
+  inc("MEHMET KAYA*0062*EKIM AIDATI*1*FAST", 1500, "03.10.2026 10:00"),
+  { ...inc("SEYHUN YILDIZ*TR000000000000000000000000*MAAS HUZUR HAKKI*1*FAST", -10000, "04.10.2026 10:00"), who: "SEYHUN YILDIZ" },
+  inc("GEDIZ ELEKTRIK FATURA ODEMESI", -850, "05.10.2026 10:00"),
+  inc("HESAP ISLETIM UCRETI", -25, "05.10.2026 11:00"),
+  inc("SGK PRIM ODEMESI", -3000, "06.10.2026 10:00"),
+  inc("POS MIGROS IZMIR", -420, "07.10.2026 10:00"),
+  inc("HESAPLAR ARASI", -2000, "08.10.2026 10:00"),
+  inc("HESAPLAR ARASI", 2000, "08.10.2026 10:05", "TL|5678|Vadesiz"),
+  inc("BAGIS ALI VELI", 5000, "10.09.2026 10:00"),
+  { ...inc("USD GELEN", 100, "10.09.2026 10:00"), currency: "USD" },
+];
+const FCTX = { payee: SY, aidat: new Set([DU.movKey(FMOV[0])]), payers: [] };
+const FL = FN.withCats(FMOV, FCTX);
+const fcat = (i) => FL.find((m) => m.desc === FMOV[i].desc && m.amount === FMOV[i].amount).fin;
+group("Gelir gider (aylık özet)")([
+  ["aidat (Aidatlar'da onaylı)", F("açıklamada aidat yazmasa da", () => fcat(0) === "Aidat")],
+  ["aidat (açıklamadan)", F("EKIM AIDATI", () => fcat(1) === "Aidat")],
+  ["aidat (öğrenilmiş gönderen)", F("payers", () => FN.finCat({ ...inc("X*0062*a*1*FAST", 1500, "02.10.2026 10:00"), who: "AYSE SAHIN" }, { payers: ["AYSE SAHIN"] }) === "Aidat")],
+  ["kulüpten Seyhun Yıldız'a", F("Ödeme: Seyhun Yıldız", () => fcat(2) === "Ödeme: Seyhun Yıldız")],
+  ["fatura, banka ücreti, SGK, kart", F("açıklamadan", () => fcat(3) === "Fatura" && fcat(4) === "Banka ücreti" && fcat(5) === "Vergi / SGK" && fcat(6) === "Kart / alışveriş")],
+  ["hesaplar arası", F("aynı gün aynı tutar iki hesap, toplama girmez", () => fcat(7) === FN.INTERNAL && fcat(8) === FN.INTERNAL)],
+  ["diğer gelen, döviz yok", F("bağış Diğer gelen, USD sayılmaz", () => fcat(9) === "Diğer gelen" && FL.length === 10)],
+  ["ay ay toplam", F("ekim gelen 3.000, giden 14.295; eylül gelen 5.000", () => {
+    const [eyl, eki] = FN.monthly(FL, ["2026-09", "2026-10"]);
+    return eki.inSum === 3000 && eki.outSum === 14295 && eki.net === -11295 && eki.cats.Aidat === 3000 && eyl.inSum === 5000 && eyl.outSum === 0 && !eki.cats[FN.INTERNAL];
+  })],
+  ["dönem toplamı", F("gelen 8.000, net −6.295", () => { const t = FN.periodTotal(FN.monthly(FL, ["2026-09", "2026-10"])); return t.inSum === 8000 && t.net === -6295; })],
+  ["türler", F("giden en büyük önce", () => { const t = FN.catTotals(FL); return t.outs[0].cat === "Ödeme: Seyhun Yıldız" && t.ins[0].cat === "Diğer gelen" && !t.outs.some((x) => x.cat === FN.INTERNAL); })],
+  ["Excel sayfaları", F("Aylık özet, Hareketler, Türler", () => {
+    const s = FN.financeSheets(FL, ["2026-09", "2026-10"]);
+    const o = s["Aylık özet"];
+    const h = s.Hareketler;
+    return Object.keys(s).join(",") === "Aylık özet,Hareketler,Türler" && o[0][0] === "Ay" && o[0].includes("Aidat (TL)") && o.length === 4 && o[3][0] === "Toplam" && o[3][1] === 8000 && h[0].length === 7 && h[1][0] === "10.09.2026" && h.at(-1)[5] === 8000 && h.at(-1)[6] === 14295 && /2 hesaplar arası/.test(h.at(-1)[3]);
+  })],
+  ["Excel dosya adı", F("gelir-gider-2026-05_2026-10.xlsx", () => FN.financeName(["2026-05", "2026-10"]) === "gelir-gider-2026-05_2026-10.xlsx")],
+]);

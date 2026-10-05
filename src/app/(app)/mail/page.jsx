@@ -351,6 +351,14 @@ function Summary({ rep }) {
             <Icon name="chev" className="size-4 shrink-0 text-mut" />
           </Link>
         )}
+        <Link href="/finance" className="mx-4 mt-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-2.5 active:scale-[.99]">
+          <Icon name="chart" className="size-[1.125rem] shrink-0 text-acc" />
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.875rem] font-semibold">Gelir gider</b>
+            <small className="block text-[0.75rem] text-mut">Ay ay, türlere göre · muhasebe Excel&apos;i</small>
+          </span>
+          <Icon name="chev" className="size-4 shrink-0 text-mut" />
+        </Link>
         {rep.top.length > 0 && (
           <>
             <p className="px-4 pt-3 text-[0.75rem] font-semibold text-mut">En çok ödeyenler</p>
