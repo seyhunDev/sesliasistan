@@ -278,7 +278,8 @@ select {
 @property --vl-a { syntax: "<color>"; inherits: true; initial-value: #fff; }
 @property --vl-b { syntax: "<color>"; inherits: true; initial-value: #e9f7f1; }
 @property --vl-h { syntax: "<color>"; inherits: true; initial-value: rgba(205, 248, 232, .45); }
-.vlight { --vl-a: #fff; --vl-b: #e9f7f1; --vl-w: var(--deep); --vl-h: rgba(205, 248, 232, .45); position: relative; display: grid; place-items: center; border-radius: 9999px; --lvl: 0; -webkit-tap-highlight-color: transparent; transition: transform .15s ease-out, --vl-a .35s ease, --vl-b .35s ease, --vl-h .35s ease; transform: scale(calc(1 + var(--lvl) * .1)); }
+.vlight { --vl-a: #fff; --vl-b: #e9f7f1; --vl-w: var(--deep); --vl-h: rgba(205, 248, 232, .45); position: relative; display: grid; place-items: center; border-radius: 9999px; --lvl: 0; -webkit-tap-highlight-color: transparent; transition: transform .15s ease-out, width .5s cubic-bezier(.22, .8, .24, 1), height .5s cubic-bezier(.22, .8, .24, 1), --vl-a .35s ease, --vl-b .35s ease, --vl-h .35s ease; transform: scale(calc(1 + var(--lvl) * .1)); }
+/* Boy değişimi (kubbe küçülüp büyürken, konuşurken) burada: Tailwind'in transition-[...] sınıfı bu katmansız kuralın altında kalıyordu */
 .vlight[data-state="listening"] { --vl-a: #ff8a7a; --vl-b: #e0584b; --vl-w: #fff; --vl-h: rgba(255, 128, 110, .6); }
 .vlight[data-state="busy"] { --vl-a: #ffd987; --vl-b: #f0a93a; --vl-w: #6b4206; --vl-h: rgba(255, 205, 110, .55); }
 .vlight[data-state="speaking"] { --vl-a: #8fd3ff; --vl-b: #3d97e0; --vl-w: #fff; --vl-h: rgba(120, 195, 255, .55); }

@@ -186,7 +186,7 @@ export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.87
       onClick={() => !held.current && onTap()}
       aria-label={LIGHT_LABEL[state] || LIGHT_LABEL.idle}
       style={{ "--lvl": state === "listening" ? level : 0 }}
-      className={`vlight ${size} shrink-0 select-none transition-[width,height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)] active:scale-95 [-webkit-touch-callout:none]`}
+      className={`vlight ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
