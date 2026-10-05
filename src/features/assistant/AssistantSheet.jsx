@@ -64,6 +64,7 @@ import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
 import { EventCard } from "@/features/events/EventCard";
 import { InvCard } from "@/features/inventory/InvCard";
+import { dropInvFile } from "@/features/inventory/invFiles";
 import { applyOps, dropItem, itemLabel, statsText, pickInv } from "@/features/inventory/invModel";
 import { askInventory, changeInventory, createInventory, lastInv, loadInventories, setLastInv } from "@/features/inventory/inventory";
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
@@ -1625,6 +1626,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     try {
       const inv = await changeInventory(f.org, f.id, (cur) => f.ask.reduce((v, x) => dropItem(v, x.id, { by: profile?.name || "" }), cur));
       toast("Envanterden silindi");
+      f.ask.flatMap((x) => x.files || []).forEach((m) => dropInvFile(f.org, m));
       done(`Sildim: ${f.ask.map((x) => x.name).join(", ")}.`, { inv: { id: f.id, name: inv.name, kind: inv.kind, sub: statsText(inv) }, engine: "local" }, viaVoice);
     } catch {
       toast("Silinemedi");

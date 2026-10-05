@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Icon } from "@/components/ui/Icon";
+import { Loader } from "@/components/ui/Loader";
+import { FILE_LABELS, prepFile, sizeText } from "./invFiles";
 import { Button } from "@/components/ui/Button";
 import { OWNERS, STATES, UNITS, ageText, hasSailNo, isBoat, isPart, itemLabel, kitOf } from "./invModel";
 
@@ -21,8 +24,56 @@ function F({ label, children, className = "" }) {
 
 // Ürün formu: her alan düzenlenebilir (numara ve eklenme tarihi dahil).
 // Takım parçasında (salma, dümen, direk, bumba, yelken) bağlı olduğu tekne; teknede takımı (aç, eksikleri oluştur).
-export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) {
+// Belgeler ve fotoğraflar: kaydedilmiş olanlar açılır/silinir; yeni seçilenler (pend) Kaydet'te yüklenir.
+// onRead(dosya, form): yapay zeka fotoğrafı/belgeyi okur, boş alanları doldurur. onFile(meta): kayıtlı dosyayı açar.
+export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, onRead, onFile }) {
   const [x, setX] = useState(start);
+  const [pend, setPend] = useState([]);
+  const [busy, setBusy] = useState(""); // "read" | ""
+  const [msg, setMsg] = useState("");
+  const pick = useRef(null);
+  const readNext = useRef(false); // seçilen dosya hemen okunsun mu ("Fotoğraf ya da belgeden doldur")
+
+  const read = async (f) => {
+    if (!onRead) return;
+    setBusy("read");
+    setMsg("");
+    try {
+      const r = await onRead(f, x);
+      if (r?.fields) {
+        setX((v) => {
+          const out = { ...v };
+          for (const [k, val] of Object.entries(r.fields)) {
+            if (val == null || val === "") continue;
+            if (k === "note") out.note = v.note && !v.note.includes(val) ? `${v.note}\n${val}` : v.note || val;
+            else if (!v[k] || v[k] === "good" || (k === "cat" && !v.id) || (k === "name" && !v.id) || (k === "qty" && !v.id)) out[k] = val;
+          }
+          return out;
+        });
+      }
+      if (r?.label) setPend((l) => l.map((p) => (p.tmp === f.tmp ? { ...p, label: r.label } : p)));
+      setMsg(r?.message || (r?.fields ? "Bilgileri doldurdum, kontrol edip kaydet." : "Okuyamadım; bilgileri elle yaz."));
+    } catch (e) {
+      setMsg(e?.message || "Okunamadı");
+    } finally {
+      setBusy("");
+    }
+  };
+  const add = async (e) => {
+    const list = [...(e.target.files || [])];
+    e.target.value = "";
+    const now = readNext.current;
+    readNext.current = false;
+    for (const file of list.slice(0, 5)) {
+      try {
+        const f = { ...(await prepFile(file)), tmp: Math.random().toString(36).slice(2) };
+        setPend((l) => [...l, f]);
+        if (now) await read(f);
+      } catch (err) {
+        setMsg(err?.message || "Dosya eklenemedi");
+      }
+    }
+  };
   const set = (k) => (e) => setX((v) => ({ ...v, [k]: e.target.value }));
   const step = (d) => setX((v) => ({ ...v, qty: Math.max(0, (Number(v.qty) || 0) + d) }));
   const catList = cats.includes(x.cat) ? cats : [...cats, x.cat];
@@ -34,9 +85,22 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) 
       className="w-full min-w-0 space-y-3 overflow-x-hidden pb-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (x.name.trim()) onSave(x);
+        if (x.name.trim()) onSave(x, pend);
       }}
     >
+      <input ref={pick} type="file" accept="image/*,application/pdf" multiple hidden onChange={add} />
+      {!start.id && onRead && (
+        <button
+          type="button"
+          disabled={!!busy}
+          onClick={() => ((readNext.current = true), pick.current?.click())}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc/10 text-[0.9375rem] font-semibold text-acc active:scale-[.98] disabled:opacity-60"
+        >
+          {busy === "read" ? <Loader size="sm" className="text-current" /> : <Icon name="camera" className="size-5" />}
+          {busy === "read" ? "Okunuyor…" : "Fotoğraf ya da belgeden doldur"}
+        </button>
+      )}
+      {!start.id && msg && <p className="text-[0.8125rem] text-mut">{msg}</p>}
       <div className="flex gap-2">
         <F label="No" className="w-24 shrink-0">
           <input value={x.no} onChange={set("no")} maxLength={20} className={`${input} tabular-nums`} />
@@ -174,7 +238,38 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) 
       <F label="Not">
         <textarea value={x.note} onChange={set("note")} maxLength={600} rows={2} className={`${input} h-auto py-2`} />
       </F>
-      <Button type="submit" disabled={!x.name.trim()}>
+      <div>
+        <span className={lab}>Belgeler ve fotoğraflar (kütük belgesi, ruhsat, fatura…)</span>
+        {(x.files?.length > 0 || pend.length > 0) && (
+          <ul className="mt-1 divide-y divide-line/70 rounded-xl bg-bg">
+            {(x.files || []).map((f) => (
+              <FileRow
+                key={f.id}
+                f={f}
+                onOpen={() => onFile?.(f)}
+                onLabel={(label) => setX((v) => ({ ...v, files: v.files.map((y) => (y.id === f.id ? { ...y, label } : y)) }))}
+                onDrop={() => window.confirm(`“${f.label || f.name}” silinsin mi? (Kaydet'e basınca silinir)`) && setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
+              />
+            ))}
+            {pend.map((f) => (
+              <FileRow
+                key={f.tmp}
+                f={{ ...f, size: f.blob.size }}
+                pending
+                onRead={onRead && !busy ? () => read(f) : null}
+                onLabel={(label) => setPend((l) => l.map((y) => (y.tmp === f.tmp ? { ...y, label } : y)))}
+                onDrop={() => setPend((l) => l.filter((y) => y.tmp !== f.tmp))}
+              />
+            ))}
+          </ul>
+        )}
+        {start.id && msg && <p className="mt-1 text-[0.8125rem] text-mut">{msg}</p>}
+        <button type="button" onClick={() => pick.current?.click()} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
+          <Icon name="paperclip" className="size-4" />
+          Fotoğraf ya da belge ekle
+        </button>
+      </div>
+      <Button type="submit" disabled={!x.name.trim() || busy === "read"}>
         Kaydet
       </Button>
       {onDelete && (
@@ -183,5 +278,40 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit }) 
         </button>
       )}
     </form>
+  );
+}
+
+// Belge satırı: tür (seçilir), ad ve boyut; aç, oku (yapay zeka), sil
+function FileRow({ f, pending, onOpen, onRead, onLabel, onDrop }) {
+  const labels = FILE_LABELS.includes(f.label) || !f.label ? FILE_LABELS : [f.label, ...FILE_LABELS];
+  return (
+    <li className="flex items-center gap-2 py-1.5 pl-2.5 pr-1">
+      <Icon name={f.type === "application/pdf" ? "clip" : "image"} className="size-4 shrink-0 text-mut" />
+      <span className="min-w-0 flex-1">
+        <select value={f.label || ""} onChange={(e) => onLabel(e.target.value)} className="max-w-full bg-transparent text-[0.875rem] font-medium outline-none">
+          {!f.label && <option value="">Tür seç</option>}
+          {labels.map((l) => (
+            <option key={l}>{l}</option>
+          ))}
+        </select>
+        <small className="block truncate text-[0.6875rem] text-mut">
+          {f.name} · {sizeText(f.size)}
+          {pending ? " · Kaydet'te yüklenir" : ""}
+        </small>
+      </span>
+      {onRead && (
+        <button type="button" onClick={onRead} className="h-8 shrink-0 rounded-lg px-2 text-[0.75rem] font-semibold text-acc active:bg-card">
+          Bilgileri oku
+        </button>
+      )}
+      {onOpen && (
+        <button type="button" onClick={onOpen} className="h-8 shrink-0 rounded-lg px-2 text-[0.75rem] font-semibold text-acc active:bg-card">
+          Aç
+        </button>
+      )}
+      <button type="button" onClick={onDrop} aria-label="Sil" className="grid size-8 shrink-0 place-items-center rounded-lg text-mut active:bg-card">
+        <Icon name="x" className="size-4" />
+      </button>
+    </li>
   );
 }

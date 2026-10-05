@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
 import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, excelRows, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, stateLabel, upsertItem } from "./invModel";
-import { changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
+import { askInventory, changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
+import { dropInvFile, openInvFile, saveInvFile } from "./invFiles";
 import { ItemForm, input } from "./ItemForm";
 
 const tl = (n) => `${Math.round(n || 0).toLocaleString("tr-TR")} ₺`;
@@ -74,9 +75,35 @@ export function InventoryView({ orgId, id, by }) {
   const byId = new Map(inv.items.map((x) => [x.id, x]));
   const hasPrivate = inv.items.some((x) => x.owner === "private");
 
-  const saveItem = async (x) => {
-    const done = await change((cur) => upsertItem(cur, { ...x, qty: Number(x.qty) || 0 }, { by }), x.id ? "Kaydedildi" : "Eklendi");
-    if (done) setItem(null);
+  // Yeni seçilen belgeler önce yüklenir, sonra ürün kaydedilir; formdan çıkarılan belgeler kayıttan sonra silinir
+  const saveItem = async (x, pend = []) => {
+    let metas = [];
+    try {
+      if (pend.length) toast(pend.length > 1 ? `${pend.length} dosya yükleniyor…` : "Dosya yükleniyor…");
+      metas = await Promise.all(pend.map((f) => saveInvFile(orgId, f)));
+    } catch {
+      return toast("Dosya yüklenemedi, bağlantını kontrol et");
+    }
+    const old = inv.items.find((y) => y.id === x.id);
+    const gone = (old?.files || []).filter((f) => !(x.files || []).some((y) => y.id === f.id));
+    const done = await change((cur) => upsertItem(cur, { ...x, qty: Number(x.qty) || 0, files: [...(x.files || []), ...metas] }, { by }), x.id ? "Kaydedildi" : "Eklendi");
+    if (done) {
+      setItem(null);
+      gone.forEach((f) => dropInvFile(orgId, f));
+    } else metas.forEach((f) => dropInvFile(orgId, f));
+  };
+  // Fotoğrafı ya da belgeyi yapay zeka okur: formdaki alanlara önerilen bilgiler (kaydetmez)
+  const readFile = async (f, form) => {
+    const pdf = f.type === "application/pdf";
+    const text = form.id
+      ? `Bu ${pdf ? "belge" : "fotoğraf"} envanterdeki "${form.name}" (id ${form.id}) ürününe ait. Bilgilerini güncelle (update, id ${form.id}).`
+      : `Bu ${pdf ? "belgedeki" : "fotoğraftaki"} ürünü envantere ekle (tek ürünse tek add).`;
+    const r = await askInventory(text, inv, [], [{ mimeType: f.type, data: f.base64 }]);
+    const op = r.ops.find((o) => (form.id ? o.id === form.id : o.op === "add" && !o.id)) || r.ops[0];
+    if (!op) return { message: r.message || "Okuyamadım; bilgileri elle yaz.", label: r.fileLabel };
+    const fields = { ...op };
+    for (const k of ["op", "id", "key", "parent"]) delete fields[k];
+    return { fields, label: r.fileLabel, message: r.message || (r.ops.length > 1 ? "İlk ürünü doldurdum; başka ürün de var, ayrı ekle." : "") };
   };
   // Teknenin eksik takımı (salma, dümen, direk, bumba, yelken) oluşturulur ve bağlanır; form güncel tekneyle açık kalır
   const makeKit = async (boatId) => {
@@ -85,8 +112,11 @@ export function InventoryView({ orgId, id, by }) {
     if (ok && next) setItem(next.items.find((x) => x.id === boatId) || null);
   };
   const delItem = async (x) => {
-    if (!window.confirm(`“${x.name}” envanterden silinsin mi?`)) return;
-    if (await change((cur) => dropItem(cur, x.id, { by }), "Silindi")) setItem(null);
+    if (!window.confirm(`“${x.name}” envanterden silinsin mi?${x.files?.length ? ` ${x.files.length} belge/fotoğrafı da silinir.` : ""}`)) return;
+    if (await change((cur) => dropItem(cur, x.id, { by }), "Silindi")) {
+      setItem(null);
+      (x.files || []).forEach((f) => dropInvFile(orgId, f));
+    }
   };
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
@@ -103,7 +133,7 @@ export function InventoryView({ orgId, id, by }) {
           <button type="button" onClick={() => setSettings({ name: inv.name, kind: inv.kind, prefix: inv.prefix, cats: inv.cats, add: "" })} aria-label="Envanter ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90">
             <Icon name="sliders" className="size-5" />
           </button>
-          <button type="button" onClick={() => setItem(cleanItem({ id: "", no: nextNo(inv), cat: cat || inv.cats[0], addedAt: todayStr(), qty: 1 }))} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
+          <button type="button" onClick={() => setItem({ ...cleanItem({ no: nextNo(inv), cat: cat || inv.cats[0], addedAt: todayStr(), qty: 1 }), id: "" })} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
             <Icon name="plus" className="size-[1.125rem]" />
             Ürün
           </button>
@@ -148,7 +178,7 @@ export function InventoryView({ orgId, id, by }) {
                         <span className="min-w-0 flex-1">
                           <b className={`block truncate text-[0.9375rem] font-medium ${x.qty === 0 ? "text-mut line-through" : ""}`}>{x.name}</b>
                           <span className="block truncate text-[0.75rem] text-mut">
-                            {[x.parent && byId.get(x.parent) && `→ ${itemLabel(byId.get(x.parent))}`, x.sailNo, x.brand, x.year && ageText(x.year), x.place, x.assignee && `Kimde: ${x.assignee}`].filter(Boolean).join(" · ") ||
+                            {[x.parent && byId.get(x.parent) && `→ ${itemLabel(byId.get(x.parent))}`, x.sailNo, x.brand, x.year && ageText(x.year), x.place, x.assignee && `Kimde: ${x.assignee}`, x.files?.length && `${x.files.length} belge`].filter(Boolean).join(" · ") ||
                               `Eklendi ${x.addedAt.split("-").reverse().join(".")}`}
                           </span>
                           {(x.owner === "private" || x.damage || (isBoat(x) && kitText(inv, x))) && (
@@ -199,7 +229,7 @@ export function InventoryView({ orgId, id, by }) {
       )}
 
       <Sheet open={!!item} onClose={() => setItem(null)} title={item?.id ? "Ürün" : "Yeni ürün"}>
-        {item && <ItemForm key={`${item.id || "new"}:${item.updatedAt}`} start={item} cats={inv.cats} inv={inv} onSave={saveItem} onDelete={item.id ? () => delItem(item) : null} onOpen={setItem} onKit={makeKit} />}
+        {item && <ItemForm key={`${item.id || "new"}:${item.updatedAt}`} start={item} cats={inv.cats} inv={inv} onSave={saveItem} onDelete={item.id ? () => delItem(item) : null} onOpen={setItem} onKit={makeKit} onRead={readFile} onFile={(f) => openInvFile(orgId, f).catch(() => toast("Dosya açılamadı"))} />}
       </Sheet>
 
       <Sheet open={!!settings} onClose={() => setSettings(null)} title="Envanter ayarları">
@@ -216,6 +246,7 @@ export function InventoryView({ orgId, id, by }) {
               if (!window.confirm(`“${inv.name}” envanteri ve içindeki ${inv.items.length} ürün silinsin mi? Geri alınamaz.`)) return;
               try {
                 await deleteInventory(orgId, id);
+                inv.items.flatMap((x) => x.files || []).forEach((f) => dropInvFile(orgId, f));
                 toast("Envanter silindi");
                 router.push("/inventory");
               } catch {

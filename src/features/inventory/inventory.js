@@ -88,11 +88,12 @@ export const setLastInv = (id) => {
 };
 
 // Yapay zeka: cümleden envanter işlemleri ({ ops, message, newInv })
-export async function askInventory(text, inv, others = []) {
+// files: [{ mimeType, data (base64) }] fotoğraf ya da belge (yapay zeka okur)
+export async function askInventory(text, inv, others = [], files = []) {
   const res = await authFetch("/api/inventory", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, today: todayStr(), inv: { name: inv.name, kind: inv.kind, cats: inv.cats, items: brief(inv) }, others }),
+    body: JSON.stringify({ text, today: todayStr(), inv: { name: inv.name, kind: inv.kind, cats: inv.cats, items: brief(inv) }, others, files }),
   });
   const p = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(p.error || "Envanter işlenemedi");
