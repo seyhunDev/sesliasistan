@@ -148,7 +148,7 @@ export const looseKey = (m) => [dayOf(m.date), Math.round(m.amount * 100), words
 export function filedMoves(movements) {
   return movements
     .filter((m) => m.amount > 0 && (!m.currency || m.currency === "TL"))
-    .map((m) => ({ date: m.date, ts: m.ts, desc: String(m.desc || "").slice(0, 300), amount: m.amount, currency: m.currency || "TL", account: m.account || "", accountLabel: m.accountLabel || "" }));
+    .map((m) => ({ date: m.date, ts: m.ts, desc: String(m.desc || "").slice(0, 300), text: String(m.text || "").slice(0, 300), amount: m.amount, currency: m.currency || "TL", account: m.account || "", accountLabel: m.accountLabel || "" }));
 }
 // Dosyanın tarih aralığı (YYYY-MM-DD): ay sorgusunda hangi dosyaların okunacağı
 export function rangeOf(moves) {

@@ -12,7 +12,7 @@ import { loadMovementsRange } from "@/features/dues/duesData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
 import { lastMonths } from "@/lib/dues";
-import { monthName, payeeCsv, payeeMoves, payeeOf, payeeSummary } from "@/lib/payee";
+import { monthName, otherIncoming, payeeCsv, payeeMoves, payeeOf, payeeSummary } from "@/lib/payee";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date()).slice(0, 7);
@@ -30,6 +30,7 @@ export default function PaymentsPage() {
   const [data, setData] = useState(null); // { movements, sources } | { error }
   const [edit, setEdit] = useState(false);
   const [open, setOpen] = useState(""); // açık ay (boşsa en yeni)
+  const [others, setOthers] = useState(false); // adı geçmeyen gelen paralar açık mı
   const ym = thisMonth();
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function PaymentsPage() {
   }, [movements]);
   const list = useMemo(() => payeeMoves(movements || [], payee), [movements, payee.name, payee.account]); // eslint-disable-line react-hooks/exhaustive-deps
   const sum = payeeSummary(list, ym);
+  const rest = useMemo(() => otherIncoming(movements || [], payee), [movements, payee.name, payee.account]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!owner) return null;
 
   const save = (next) =>
@@ -80,18 +82,21 @@ export default function PaymentsPage() {
       ) : (
         <>
           <section className={`${card} mt-2`}>
-            <div className="bg-acc px-4 py-4 text-white">
-              <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">BU AY ALINAN</p>
-              <p className="mt-0.5 text-[1.75rem] font-bold leading-tight tabular-nums tracking-tight">
-                {money(sum.month.total)} <span className="text-[1rem] font-semibold text-white/80">TL</span>
-              </p>
-              <p className="mt-1 text-[0.75rem] text-white/75">
-                {sum.month.count} ödeme · son {span} ayda toplam {money(sum.total)} TL ({sum.count} ödeme)
-              </p>
+            <div className="grid grid-cols-2 bg-acc px-4 py-4 text-white">
+              <div className="min-w-0">
+                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">BU AY</p>
+                <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.month.total)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.month.count} ödeme · TL</p>
+              </div>
+              <div className="min-w-0 border-l border-white/20 pl-4">
+                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">SON {span} AY</p>
+                <p className="mt-0.5 truncate text-[1.5rem] font-bold leading-tight tabular-nums tracking-tight">{money(sum.total)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-white/75">{sum.count} ödeme · TL</p>
+              </div>
             </div>
             <p className="px-4 py-2.5 text-[0.75rem] leading-snug text-mut">
               {payee.name ? `Açıklamasında “${payee.name}” geçen gelen paralar` : "Hesaba gelen bütün paralar"}
-              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Değiştirmek için sağ üstteki kaleme dokun.
+              {payee.account ? ` · ${accounts.find((a) => a.key === payee.account)?.label || "seçili hesap"}` : ""}. Okunan: {data.mails || 0} banka maili, {data.files || 0} yüklenen Excel. Değiştirmek için sağ üstteki kaleme dokun.
             </p>
           </section>
 
@@ -137,6 +142,32 @@ export default function PaymentsPage() {
               <button type="button" onClick={() => download(`${title}-odemeler.csv`, payeeCsv(list, payee.name))} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card text-[0.875rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98]">
                 <Icon name="download" className="size-4" /> Excel olarak indir
               </button>
+            </section>
+          )}
+
+          {rest.length > 0 && (
+            <section className="mt-5">
+              <button type="button" onClick={() => setOthers((v) => !v)} aria-expanded={others} className="flex w-full items-center gap-2 px-1 pb-2 text-left">
+                <h2 className="min-w-0 flex-1 text-[0.8125rem] font-semibold text-mut">{payee.name ? `Adı geçmeyen gelen paralar (${rest.length})` : `Diğer gelen paralar (${rest.length})`}</h2>
+                <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${others ? "rotate-90" : ""}`} />
+              </button>
+              {others && (
+                <div className={`${card} fade-in`}>
+                  <p className="px-4 pt-3 text-[0.75rem] leading-snug text-mut">Bunlar sayılmadı. Senin ödemen burada görünüyorsa bankanın yazdığı adı (ör. açıklamadaki biçimi) kalemle hesap adına yaz.</p>
+                  <ul className="divide-y divide-line">
+                    {rest.slice(0, 40).map((m) => (
+                      <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} className="flex items-start gap-3 px-4 py-2.5">
+                        <span className="w-[4.5rem] shrink-0 pt-0.5 text-[0.75rem] leading-tight text-mut">{dayText(m)}</span>
+                        <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
+                          {m.desc}
+                          {m.text && <small className="block text-[0.75rem] text-mut">{m.text}</small>}
+                        </span>
+                        <b className="shrink-0 text-[0.875rem] font-semibold tabular-nums">+{money(m.amount)}</b>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
 

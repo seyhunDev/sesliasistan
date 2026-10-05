@@ -5,20 +5,25 @@ import { words, monthOf } from "./dues.js";
 
 export const payeeOf = (profile) => ({ name: (profile?.payee?.name ?? profile?.name ?? "").trim(), account: profile?.payee?.account || "" });
 
-// Açıklamada adın bütün kelimeleri geçiyor mu (banka büyük harf ve Türkçe harfsiz yazabilir: SEYHUN YILDIZ = Seyhun Yıldız)
+// Açıklamada (ya da satırın diğer yazılı hücrelerinde) adın bütün kelimeleri geçiyor mu. Banka büyük harf ve Türkçe harfsiz
+// yazabilir (SEYHUN YILDIZ = Seyhun Yıldız), kelimeleri bitişik de yazabilir (SEYHUNYILDIZ).
 export function hasName(desc, name) {
   const want = words(name);
   if (!want.length) return true;
-  const got = new Set(words(desc));
-  return want.every((w) => got.has(w));
+  const w = words(desc);
+  const got = new Set(w);
+  return want.every((x) => got.has(x)) || w.join("").includes(want.join(""));
 }
+const textOf = (m) => `${m.desc || ""} ${m.text || ""}`;
+const incoming = (m, payee) => m.amount > 0 && (!m.currency || m.currency === "TL") && (!payee.account || m.account === payee.account);
 
 // O kişiye gelen TL paralar, en yeni önce
 export function payeeMoves(movements, payee) {
-  return movements
-    .filter((m) => m.amount > 0 && (!m.currency || m.currency === "TL") && (!payee.account || m.account === payee.account) && hasName(m.desc, payee.name))
-    .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return movements.filter((m) => incoming(m, payee) && hasName(textOf(m), payee.name)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
 }
+// Adı geçmeyen gelen paralar (en yeni önce): sayfada "bulunamadı" denince açıklamaların nasıl yazıldığı görülsün
+export const otherIncoming = (movements, payee) =>
+  movements.filter((m) => incoming(m, payee) && !hasName(textOf(m), payee.name)).sort((a, b) => (b.ts || 0) - (a.ts || 0));
 
 const round = (n) => Math.round(n * 100) / 100;
 
