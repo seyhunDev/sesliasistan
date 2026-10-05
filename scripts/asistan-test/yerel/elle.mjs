@@ -487,14 +487,14 @@ group("Ana sayfa kartları")([
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const a = g.flatMap((x) => x.items);
     const l = a.map((x) => x.label);
-    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Aidatlar") && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 11 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
   })],
   ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var; boş grup yok", () => {
     const sg = HT.homeActions({ staff: true, receipts: true });
     const pg = HT.homeActions({ side: true, parent: true });
     const s = sg.flatMap((x) => x.items.map((i) => i.label));
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
-    return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fişler") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fişler") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
+    return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
 ]);
 

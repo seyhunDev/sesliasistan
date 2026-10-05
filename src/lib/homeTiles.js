@@ -95,7 +95,7 @@ export function homeActions(o) {
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
     ]],
     ["Yönetim", [
-      o.receipts && { href: "/receipts", icon: "receipt", label: "Fişler" },
+      o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
       !o.staff && { href: "/mail", icon: "wallet", label: "Hesaplar" },
       !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
     ]],
