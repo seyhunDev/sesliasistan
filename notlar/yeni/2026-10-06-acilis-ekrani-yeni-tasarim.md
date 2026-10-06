@@ -1,0 +1,5 @@
+## Nerede kaldım
+- Açılış ekranı yeni tasarım (Seyhun: "loading sayfamızı değiştirmemişsin, daha güzel bir tasarım, uygun animasyonla"; telefonda denenmedi): PR #138 tek ve sabit açılışı getirmişti ama görünüş eskisine çok benziyordu (açık zemin, küçük logo, nokta/çizgi). Artık tam ekran koyu yeşil zemin (kubbe ve logo rengi, ortası açık; açık ve koyu modda aynı), ortada büyük beyaz beş ses çubuğu sırayla yükselip konuşur gibi dalgalanır, altında "Sesli Asistan" ve yavaşça yanıp sönen "HAZIRLANIYOR", en altta deniz ufku çizilerek yükselir. Bitince dalga büyüyüp solar, ufuk aşağı iner, sayfa alttan belirir, kubbe yükselir. En kısa görünme 650 → 900 ms (animasyon fark edilsin). `BootSplash.jsx`, globals.css › AÇILIŞ EKRANI, `MIN` lib/boot.js.
+
+## Sıradaki işler
+0. Yayından sonra uygulamayı ana ekrandan tamamen kapatıp aç (gerekirse iki kez: ilk açılışta eski sayfa önbellekten gelebilir). Yeşil açılış ekranı görünmeli. Ondan önce bir an beyaz ekran görünürse o iPhone'un kendi ekranıdır; istenirse yeşil açılış görseli (apple-touch-startup-image) eklenir.
