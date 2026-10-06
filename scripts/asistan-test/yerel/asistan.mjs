@@ -8,6 +8,7 @@ import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
 import { suite, today, tom, data } from "./ortak.mjs";
 import { shareText } from "@/lib/cancelPlan";
+import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -608,6 +609,10 @@ group("Mesaj ve WhatsApp")([
   ["vatsap grubuna da at", Fa("ses tanıma yazışı da WhatsApp", () => ST.wantsWhatsApp("vatsap grubuna da at"))],
   ["sporculara gönder", Fa("WhatsApp istenmedi", () => !ST.wantsWhatsApp("sporculara gönder"))],
   ["paylaşım varsa", Fa("paylaşım menüsü açılır, metin panoya", () => { const got = {}; const r = shareText("9.30 antrenman", { share: (o) => { got.s = o.text; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }); return r === "share" && got.s === "9.30 antrenman" && got.c === "9.30 antrenman" && !got.u; })],
+  ["grup bağlantısı", Fa("davet bağlantısı temizlenir", () => cleanWaLink("https://chat.whatsapp.com/AbCdEf1234567890xyz?mode=gi_t") === "https://chat.whatsapp.com/AbCdEf1234567890xyz" && !cleanWaLink("https://wa.me/905321112233"))],
+  ["Sporcular ↔ Sporcular, Aile ↔ Aileler", Fa("uygulama grubu WhatsApp grubuyla eşleşir", () => { const g = [{ name: "Sporcular", link: "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "Aileler", link: "https://chat.whatsapp.com/BBBBBBBBBBBBBBBBBBBB" }]; return waGroupFor("Sporcular", g).endsWith("AAAA") && waGroupFor("Aile", g).endsWith("BBBB") && !waGroupFor("Ekip", g); })],
+  ["aynı ad iki kez", Fa("tekrar eden grup ve bozuk bağlantı atılır", () => cleanWaGroups([{ name: "Sporcular", link: "chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "sporcu grubu", link: "https://chat.whatsapp.com/CCCCCCCCCCCCCCCCCCCC" }, { name: "Ekip", link: "x" }]).length === 1)],
+  ["grup bağlantısı kayıtlıysa", Fa("grup açılır, metin panoya", () => { const got = {}; const r = shareText("9.30", { share: () => { got.s = 1; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }, "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA"); return r === "group" && got.c === "9.30" && !got.s && got.u.includes("chat.whatsapp.com"); })],
   ["paylaşım yoksa", Fa("WhatsApp sohbet seçimi açılır", () => { let u = ""; const r = shareText("a b", {}, (x) => { u = x; }); return r === "link" && u === "https://wa.me/?text=a%20b"; })],
   ["sporculara gönder (yapay zeka)", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "sporculara", text: "Perşembe ve cuma antrenman var, başlangıç 9.30." } }, [], ["Sporcular", "Ali Kök"]).send?.to === "Sporcular")],
 ]);
