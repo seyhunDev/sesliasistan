@@ -162,7 +162,7 @@ const LIGHT_LABEL = {
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
-export function VoiceLight({ onTap, onHold, state, size = "size-[4.875rem]" }) {
+export function VoiceLight({ onTap, onHold, state, size = "size-[4.5rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -385,7 +385,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
       <div ref={inner} className="absolute inset-x-0 bottom-0" onClick={small ? (e) => !e.target.closest("button") && setMini(false) : undefined}>
-        <div className={`mx-auto w-full max-w-[30rem] px-4 pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-1.25rem))] ${small ? "pt-1.5" : idle ? "pt-2" : "pt-3"}`}>
+        <div className={`mx-auto w-full max-w-[30rem] px-4 pb-[max(0.625rem,calc(env(safe-area-inset-bottom)-0.75rem))] ${small ? "pt-1.5" : idle ? "pt-2" : "pt-3"}`}>
           {active && (
             <div
               ref={pane}
@@ -404,9 +404,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
           ) : (
+            // Küre 4.5rem, satır 4.75rem; alt kenara küçük pay (Seyhun: "küre çizgiye yapışık, yukarı al ve küçült, minimal", 2026-10-06)
             // Tek satır, küre hep aynı öğe ve ortada: boşta iki sekme · küre · iki sekme (sekmesiz sayfada sekmeler solar),
             // asistan açıkken yaz + oluştur · küre · kapat. Durum değişince küre yeniden kurulmaz, yerinde büyür/küçülür.
-            <div ref={row} data-h={small ? 3.5 : 5.25} className={`flex ${small ? "h-14" : "h-[5.25rem]"} items-center transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)] ${idle ? "" : "px-1"}`}>
+            <div ref={row} data-h={small ? 3.5 : 4.75} className={`flex ${small ? "h-14" : "h-[4.75rem]"} items-center transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)] ${idle ? "" : "px-1"}`}>
               {idle ? (
                 <nav aria-label="Sekmeler" inert={slim || undefined} className={`flex min-w-0 flex-1 items-center transition-opacity duration-300 ${slim ? "opacity-0" : ""}`}>
                   <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} mini={small} />
@@ -425,7 +426,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 </span>
               )}
               <span className="shrink-0 px-1.5">
-                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size={small ? "size-12" : active ? "size-[5.25rem]" : "size-[4.875rem]"} />
+                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size={small ? "size-12" : "size-[4.5rem]"} />
               </span>
               {idle ? (
                 <nav aria-label="Sekmeler" inert={slim || undefined} className={`flex min-w-0 flex-1 items-center transition-opacity duration-300 ${slim ? "opacity-0" : ""}`}>
@@ -447,7 +448,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           )}
           {/* Şu an yapılan iş: kürenin hemen altında, ortada (konuşma yazıları yukarıda yerinde kalır) */}
           {active && !typing && live.status && (
-            <div className="fade-in -mt-0.5 flex items-center justify-center gap-2 pb-1.5" role="status" aria-live="polite">
+            <div className="fade-in mt-1.5 flex items-center justify-center gap-2 pb-0.5" role="status" aria-live="polite">
               <span className="work-ring" aria-hidden="true" />
               <span className="work-text max-w-[80%] truncate text-[0.8125rem] font-medium">{live.status}…</span>
             </div>
