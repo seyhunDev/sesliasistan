@@ -222,6 +222,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const busy = phase !== "idle";
 
   const sp = useSpeech({
+    noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
     names: staffNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
@@ -1807,11 +1808,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   useEffect(() => {
     if (open && listening && isCloseNow(heardNow)) finish();
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lvl = listening ? Math.round(Math.min(1, sp.level * 2.2) * 10) / 10 : 0; // sahnedeki ses dalgası (kaba adımlarla: az yeniden çizim)
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, level: lvl, talked: turns.length > 0 });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, lvl, turns.length]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0 });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, turns.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;

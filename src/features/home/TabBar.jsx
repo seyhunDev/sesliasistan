@@ -162,7 +162,7 @@ const LIGHT_LABEL = {
   busy: "Vazgeç",
   speaking: "Sözünü kes ve konuş",
 };
-export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.875rem]" }) {
+export function VoiceLight({ onTap, onHold, state, size = "size-[4.875rem]" }) {
   const t = useRef(null);
   const held = useRef(false);
   const down = () => {
@@ -185,7 +185,6 @@ export function VoiceLight({ onTap, onHold, state, level = 0, size = "size-[4.87
       onContextMenu={(e) => e.preventDefault()}
       onClick={() => !held.current && onTap()}
       aria-label={LIGHT_LABEL[state] || LIGHT_LABEL.idle}
-      style={{ "--lvl": state === "listening" ? level : 0 }}
       className={`vlight ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
@@ -380,7 +379,6 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
       data-follow={follow ? "" : undefined}
       role="region"
       aria-label="Asistan"
-      style={{ "--lvl": active ? live.level || 0 : 0 }}
       className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
     >
       <span className="dome-glow" aria-hidden="true" />
@@ -413,7 +411,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
                 <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} mini={small} />
               </nav>
               <span className="shrink-0 px-1.5">
-                <VoiceLight state="idle" level={0} onTap={talk} onHold={typeNow} size={small ? "size-12" : "size-[4.875rem]"} />
+                <VoiceLight state="idle" onTap={talk} onHold={typeNow} size={small ? "size-12" : "size-[4.875rem]"} />
               </span>
               <nav aria-label="Sekmeler" className="flex min-w-0 flex-1 items-center">
                 <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} mini={small} />
@@ -433,7 +431,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
                 )}
               </span>
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <VoiceLight state={active ? state : "idle"} level={live.level} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : "size-[4.875rem]"} />
+                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : "size-[4.875rem]"} />
               </span>
               {active ? (
                 <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>

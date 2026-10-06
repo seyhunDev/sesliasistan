@@ -253,7 +253,7 @@ select {
 .dome[data-state="busy"] { --tint: rgba(255, 210, 120, .4); }
 .dome[data-state="speaking"] { --tint: rgba(130, 200, 255, .42); }
 .dome-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 46% at 50% 0%, var(--tint), transparent 70%); opacity: .7; animation: domebreath 5s ease-in-out infinite; transition: opacity .4s ease; }
-.dome[data-state="listening"] .dome-glow { animation: none; opacity: calc(.75 + var(--lvl) * .25); transform: scale(calc(1 + var(--lvl) * .25)); transform-origin: 50% 0; transition: transform .12s ease-out; }
+.dome[data-state="listening"] .dome-glow { animation: none; opacity: calc(.75 + var(--lvl) * .25); transform: scale(calc(1 + var(--lvl) * .25)); transform-origin: 50% 0; transition: none; will-change: transform, opacity; }
 .dome[data-state="busy"] .dome-glow { animation: domedrift 2.4s ease-in-out infinite alternate; }
 .dome[data-state="speaking"] .dome-glow { animation: domebeat 1.3s ease-in-out infinite; }
 /* Yay: üst kenar boyunca ince ışık çizgisi; düşünürken üzerinde ışık akar */
@@ -293,10 +293,14 @@ select {
 .vlight .vl-wave i:nth-child(3) { --m: 1; --s: .85; animation-delay: -1s; }
 .vlight .vl-wave i:nth-child(4) { --m: .75; --s: .55; animation-delay: -1.4s; }
 .vlight .vl-wave i:nth-child(5) { --m: .4; --s: .3; animation-delay: -1.8s; }
-/* Dinlerken küre içindeki akan dalga (ListenWave round): diski kaplar, sol kenarı yumuşakça silinir */
-.vlight .vl-live { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 9999px; color: var(--vl-w); -webkit-mask-image: linear-gradient(to right, transparent 8%, #000 45%); mask-image: linear-gradient(to right, transparent 8%, #000 45%); animation: vlfade .25s ease-out; }
+/* Dinlerken küre içindeki dalga (ListenWave round): diski kaplar, çubuklar ortada sabit, yalnız sesle boy değiştirir */
+.vlight .vl-live { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 9999px; color: var(--vl-w); animation: vlfade .25s ease-out; }
 @keyframes vlfade { from { opacity: 0; } }
 .vlight[data-state="listening"] .vl-halo { opacity: calc(.7 + var(--lvl) * .3); }
+/* Dinlerken --lvl her ekran karesinde ListenWave'den gelir: transform ve hale geçişsiz izler (geçiş her karede yeniden
+   başlayınca takılıyordu); renk ve boy geçişleri kalır */
+.vlight[data-state="listening"] { transition: width .5s cubic-bezier(.22, .8, .24, 1), height .5s cubic-bezier(.22, .8, .24, 1), --vl-a .35s ease, --vl-b .35s ease, --vl-h .35s ease; will-change: transform; }
+.vlight[data-state="listening"] .vl-halo { transition: none; }
 .vlight[data-state="listening"] .vl-wave i { animation: none; transform: scaleY(calc(.22 + var(--lvl) * var(--m) * .85 + .1)); transition: transform .1s ease-out; }
 .vlight[data-state="busy"] .vl-ring { opacity: 1; }
 .vlight[data-state="busy"] .vl-wave i { animation: vlwave .9s ease-in-out infinite; }

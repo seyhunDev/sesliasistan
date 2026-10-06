@@ -34,8 +34,9 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
 // names: kişi adları (çalışanlar); ses çevirisine ipucu olarak gider ki doğru yazılsın
 // terms: özel adlar (yarış adları gibi); aynı şekilde ipucu olur
+// noLevel: ses seviyesi React durumuna yazılmaz (yalnız ölçere, meter.js); dinlerken saniyede 10 yeniden çizim olmaz
 // onMiss(): dinleme metinsiz bitti (sessiz dinlemede de çağrılır; bekletilen yanıt uygulansın diye)
-export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms } = {}) {
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -113,7 +114,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         raw = now - (s.lastAct || 0) < 400 ? 0.35 + Math.random() * 0.5 : 0.05 + Math.random() * 0.05;
       }
       s.lvl = s.lvl * 0.55 + raw * 0.45; // yumuşatma: dalga titremesin
-      setLevel(s.lvl);
+      if (!noLevel) setLevel(s.lvl);
       if (!s.analyser) setMeterLevel(s.lvl);
 
       if (s.status !== "listening") return;

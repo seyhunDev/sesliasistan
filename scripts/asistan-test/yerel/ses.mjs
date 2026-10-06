@@ -112,3 +112,14 @@ group("Dinleme dalgası")([
   ["başka dinlemenin kapanışı ölçeri kapatmaz", { desc: "açık kalır", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, fakeAn(0.5)); return meter.readMeter(); }, ok: (r) => r > 0.38 }],
   ["kendi kapanışı ölçeri kapatır", { desc: "0", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, a); return meter.readMeter(); }, ok: (r) => r === 0 }],
 ]);
+
+// Dalga ortada sabit: çubuk sayısı ve yeri değişmez, yalnız boyları sesle değişir
+const { waveBars, WAVE_MIN } = await import("@/lib/speech/waveBars");
+const wb = (lv, t = 0.4, n = 5) => waveBars(lv, t, n);
+group("Dinleme dalgası (ortada sabit)")([
+  ["sessizlikte hepsi en kısada", { desc: `hepsi ${WAVE_MIN}`, fn: () => wb(0), ok: (r) => r.length === 5 && r.every((x) => x === WAVE_MIN) }],
+  ["ses yükselince çubuklar uzar", { desc: "yüksek > kısık", fn: () => [wb(0.2), wb(0.9)], ok: ([a, b]) => b.every((x, i) => x > a[i]) }],
+  ["ortadaki çubuk kenardakinden uzun", { desc: "orta > kenar", fn: () => { const t = [0, 0.3, 0.7, 1.1, 1.6]; return t.map((x) => { const r = wb(1, x); return r[2] - Math.max(r[0], r[4]); }); }, ok: (r) => r.filter((d) => d > 0).length >= 4 }],
+  ["çubuk sayısı zamanla değişmez (kayma yok)", { desc: "her an 5", fn: () => [0, 1, 2, 3].map((t) => wb(0.5, t).length), ok: (r) => r.every((n) => n === 5) }],
+  ["boy 1'i geçmez", { desc: "≤ 1", fn: () => [0, 0.5, 1, 2].flatMap((t) => wb(5, t)), ok: (r) => r.every((x) => x <= 1 && x >= WAVE_MIN) }],
+]);
