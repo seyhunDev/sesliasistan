@@ -389,10 +389,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           {active && (
             <div
               ref={pane}
-              // SABİT YÜKSEKLİK (Seyhun: "iş yazısı gelince küre ve yanındakiler yukarı kalkıyor", 2026-10-06): konuşma alanı
-              // asistan açıkken hep aynı boyda (görünen ekranın %45'i; klavyede kalan alana sığar). Yazılar alttan yukarı dolar,
-              // fazlası içinde kayar; mesaj, kart, dinleme ya da iş yazısı kubbenin boyunu, küreyi ve düğmeleri oynatmaz.
-              className="h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-12.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+              // Konuşma alanı mesajlar geldikçe kademeli büyür (kubbe yumuşak geçişle yükselir), görünen ekranın %45'ine ulaşınca
+              // sabitlenir ve kaydırma oradan sonra başlar (Seyhun, 2026-10-06). Küre satırı ve durum şeridi altta, alan yalnız
+              // yukarı doğru büyür: mesaj, kart, dinleme ya da iş yazısı küreyi ve düğmeleri oynatmaz.
+              className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
             >
               <div className="flex min-h-full flex-col justify-end pb-2 pt-3">
                 <div ref={setSlot} />
@@ -400,9 +400,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               </div>
             </div>
           )}
-          {/* Durum şeridi: şu an yapılan iş kürenin ÜSTÜNDE, kendi sabit yerinde (yazı yokken de yeri ayrılır, hiçbir şey zıplamaz) */}
+          {/* Durum şeridi: şu an yapılan iş kürenin ÜSTÜNDE, kendi sabit yerinde (yazı yokken de yeri ayrılır, hiçbir şey zıplamaz);
+              altında küreye kadar boşluk (Seyhun: "bitişik gibi", 2026-10-06) */}
           {active && (
-            <div className="flex h-8 items-center justify-center" role="status" aria-live="polite">
+            <div className="flex h-11 items-start justify-center pt-0.5" role="status" aria-live="polite">
               {live.status && (
                 <span key={live.status} className="dome-chip fade-in">
                   <span className="work-ring" aria-hidden="true" />
