@@ -130,6 +130,26 @@ export function wantsLog(text) {
   return TRAIN_W.test(t) && PAST.test(t);
 }
 
+// Anlatılan bir antrenman mı ("bugünkü antrenmanda 14 knot poyraz, start ve tramola"): günlük sözcüğü ya da geçmiş zaman
+// olmasa da antrenman + günlük bilgisi (rüzgâr, konu, süre…) geçiyorsa. Gelecek, soru, mesaj/görev isteği sayılmaz.
+// Yapay zeka (ya da yedek kurallar) böyle bir cümleden yalnız not çıkarırsa not açılmaz, günlüğe yazılır.
+export function looksLikeLog(text) {
+  const t = low(text);
+  if (!t || /(mesaj|görev|hatırlat|söyle|haber ver|gönder)/.test(t)) return false;
+  if (wantsLog(text)) return true;
+  if (!TRAIN_W.test(t) || FUTURE.test(t) || /\?\s*$/.test(String(text).trim()) || t.split(" ").length > 120) return false;
+  return INFO.test(t);
+}
+
+// Notlar'da duran ama antrenman günlüğüne benzeyen not (eski sürümler günlük anlatımını ayrıca not olarak da kaydediyordu).
+// "Not olarak kalsın" denmiş (keepNote) ya da arşivlenmiş not sayılmaz. Notlar sayfasında ayrı kartta, ana sayfada hiç görünmez.
+export function isLogNote(n) {
+  if (!n || n.archived || n.keepNote) return false;
+  if (n.cat === "Antrenman") return true;
+  const t = low(`${n.title || ""} ${n.body || ""}`);
+  return TRAIN_W.test(t) && (LOG_W.test(t) || INFO.test(t));
+}
+
 // Yalnız "günlük oluştur / antrenman günlüğü ekle" (anlatım yok): asistan anlatmasını ister, sonraki cümle günlüğe gider
 export const bareLog = (text) => low(text).split(" ").length <= 6 && !INFO.test(low(text));
 
