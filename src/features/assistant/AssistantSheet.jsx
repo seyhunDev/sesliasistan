@@ -41,6 +41,7 @@ import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
 import { brainCommand, localCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
@@ -686,6 +687,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const ticked = [];
     const opened2 = [];
     const changed = [];
+    const notesDone = [];
+    const notesBack = [];
     for (const a of acts) {
       const rec = find(a.kind, a.id);
       if (!rec) {
@@ -699,6 +702,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (a.kind === "task" && (a.op === "complete_task" || a.op === "reopen_task")) {
         if (rec.done !== (a.op === "complete_task")) toggleTask(a.id);
         (a.op === "complete_task" ? ticked : opened2).push(rec.title);
+      } else if (a.kind === "note" && (a.op === "done_note" || a.op === "reopen_note")) {
+        // Not silinmez: "yapıldı" Arşiv'e kaldırır, "geri al" Notlar'a döndürür
+        const on = a.op === "done_note";
+        if (!!rec.archived !== on || !!rec.done !== on) updateRecord("note", a.id, on ? noteDonePatch() : noteReopenPatch(), by);
+        (on ? notesDone : notesBack).push(rec.title);
       } else if (a.op === "update") {
         const patch = buildPatch(a.kind, a.patch, rec);
         if (!Object.keys(patch).length) continue;
@@ -712,6 +720,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (ticked.length) out.said += `Tamamladım: ${list(ticked)}. `;
     if (opened2.length) out.said += `Yeniden açtım: ${list(opened2)}. `;
     if (changed.length) out.said += `Değiştirdim: ${changed.join("; ")}. `;
+    if (notesDone.length) out.said += `Yapıldı, Arşiv'e kaldırdım: ${list(notesDone)}. `;
+    if (notesBack.length) out.said += `Notlara geri aldım: ${list(notesBack)}. `;
     if (out.done) {
       toast(`${out.done} kayıt güncellendi`);
       navigator.vibrate?.([10, 40, 10]);

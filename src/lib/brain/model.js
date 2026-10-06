@@ -131,6 +131,7 @@ export function labelFromAI(r) {
   if (r.intent === "create" && r.items?.length) return labelFromItems(r.items);
   const op = r.actions?.[0]?.op;
   if (op === "complete_task") return "complete";
+  if (op === "done_note") return "action:done_note";
   if (op === "delete") return "action:delete";
   if (op === "update") return "action:update";
   if (r.intent === "navigate" && r.navigate) return `nav:${r.navigate}`;

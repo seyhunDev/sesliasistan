@@ -25,6 +25,7 @@ import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { CancelPlan } from "./CancelPlan";
 import { TrainingLog } from "./TrainingLog";
+import { NoteDone } from "./NoteDone";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { canLog } from "@/lib/trainingLog";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
@@ -412,6 +413,7 @@ export function AddSheet({ open, onClose, seed }) {
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
             {edit.kind === "plan" && rec && !locked && <CancelPlan key={rec.id} rec={rec} by={by} start={!!edit.cancel} />}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
+            {edit.kind === "note" && rec && !locked && <NoteDone rec={rec} by={by} onDone={onClose} />}
             {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} owner={!isStaff} />}
             {edit.kind === "plan" && rec?.seriesId && (
               <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">

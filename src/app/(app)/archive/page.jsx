@@ -10,6 +10,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useNow } from "@/hooks/useNow";
 import { planState } from "@/lib/agenda";
 import { assigneesOf } from "@/lib/people";
+import { noteReopenPatch, noteStateText } from "@/lib/noteState";
 
 const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 const ICON = { plan: "cal", task: "task", note: "note" };
@@ -54,7 +55,7 @@ function Archive() {
       }),
     ...notes
       .filter((n) => n.archived)
-      .map((n) => ({ kind: "note", r: n, date: n.archivedAt || n.createdAt || "", when: fmt(n.archivedAt || n.createdAt), status: "Arşivlendi", detail: n.body && n.body !== n.title ? n.body : "" })),
+      .map((n) => ({ kind: "note", r: n, date: n.doneAt || n.archivedAt || n.createdAt || "", when: fmt(n.doneAt || n.archivedAt || n.createdAt), status: noteStateText(n), detail: n.body && n.body !== n.title ? n.body : "" })),
   ]
     .map((x) => ({ ...x, creator: who(x.r.createdByUid), assignees: people(x.r) }))
     .sort((a, b) => String(b.date).localeCompare(String(a.date)));
@@ -146,7 +147,7 @@ function Archive() {
                   <td className="whitespace-nowrap px-3 py-3">{x.creator || "—"}</td>
                   <td className="px-3 py-3 text-mut">{x.assignees || "—"}</td>
                   <td className="px-3 py-3">
-                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold ${x.kind === "task" ? "bg-ok/10 text-ok" : "bg-line/70 text-mut"}`}>{x.status}</span>
+                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold ${x.kind === "task" || x.r.done ? "bg-ok/10 text-ok" : "bg-line/70 text-mut"}`}>{x.status}</span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
                     {x.kind === "task" && (
@@ -155,8 +156,8 @@ function Archive() {
                       </button>
                     )}
                     {x.kind === "note" && (
-                      <button type="button" onClick={() => updateRecord("note", x.r.id, { archived: false }, by)} className="text-[0.8125rem] font-semibold text-acc">
-                        Arşivden çıkar
+                      <button type="button" onClick={() => updateRecord("note", x.r.id, noteReopenPatch(), by)} className="text-[0.8125rem] font-semibold text-acc">
+                        Notlara geri al
                       </button>
                     )}
                   </td>
@@ -171,7 +172,7 @@ function Archive() {
             <Icon name="archive" className="size-7" />
           </span>
           <p className="mt-3 max-w-[18rem] text-[0.9375rem] leading-snug text-mut">
-            {q ? `“${q}” bulunamadı.` : "Arşiv boş. Tamamlanan görevler, geçmiş planlar ve arşivlediğin notlar burada toplanır."}
+            {q ? `“${q}” bulunamadı.` : "Arşiv boş. Tamamlanan görevler, geçmiş planlar ve “Yapıldı” dediğin ya da arşivlediğin notlar burada toplanır."}
           </p>
         </div>
       )}
