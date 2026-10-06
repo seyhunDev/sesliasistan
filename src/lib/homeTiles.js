@@ -1,7 +1,7 @@
 // Ana sayfadaki büyük kartların (Aidatlar, Yarışlar, Instagram, Antrenman günlüğü) yazıları.
 // Firestore'a ek okuma yok: aidat ve gönderi özeti ilgili sayfa açılınca bu cihazda saklanır (sa-home-sum),
 // yarış bilgisi raceHome.js'in zaten yaptığı okumadan, antrenman bellekteki planlardan gelir.
-import { canLog, monthLog } from "./trainingLog";
+import { canLog, isLogNote, monthLog } from "./trainingLog";
 import { monthRows } from "./dues";
 
 const KEY = "sa-home-sum";
@@ -128,7 +128,7 @@ export function toggleShortcut(current, key) {
 // Ana sayfa › NOTLAR: arşivlenmemiş notlardan önce sabitlenenler, sonra en yeni (oluşturma ya da son değişiklik); en çok n tane.
 // Bellekteki notlardan (DataProvider), Firestore'a ek okuma yok. Dönüş: { list, total }.
 export function homeNotes(notes = [], n = 5) {
-  const live = notes.filter((x) => x && !x.archived);
+  const live = notes.filter((x) => x && !x.archived && !isLogNote(x)); // antrenman günlüğüne benzeyenler not sayılmaz
   const at = (x) => x.updatedAt || x.createdAt || "";
   const list = [...live].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || at(b).localeCompare(at(a))).slice(0, n);
   return { list, total: live.length };
