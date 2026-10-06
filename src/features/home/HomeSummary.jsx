@@ -18,7 +18,8 @@ import { invoiceTile } from "@/lib/invoices";
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
-// Önbellekte bilgi varsa (aidat özeti, bellekteki faturalar/yarışlar) iskelet hiç çıkmaz; en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
+// Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
+// yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
 const fisTile = (r, inv) => (!inv ? r : !r ? inv : { big: r.big, sub: `Fatura: ${inv.sub}`, warn: inv.warn });
 export function HomeSummary({ money, race, dues, posts, training, plans, invoices }) {
@@ -31,7 +32,20 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
   const ym = today.slice(0, 7);
   // Ödenmemiş faturalar (ana hesap): yalnız açık olanlar okunur; hiç yoksa kart çıkmaz
   const openInv = useOpenInvoices(orgId, !!invoices);
-  const inv = openInv && invoiceTile(openInv, today);
+  // Yarış ve fatura kartı: gelen bilgi bu cihazda saklanır, sonraki açılışta okuma bitene kadar o gösterilir (aynı gün)
+  const oldInv = sum.inv?.day === today ? sum.inv : null;
+  const oldRace = sum.race?.day === today ? sum.race : null;
+  const inv = openInv ? invoiceTile(openInv, today) : oldInv?.tile || null;
+  const raceNow = race && !race.loading ? { up: race.up, next: race.next } : null;
+  const raceInfo = raceNow || oldRace || { up: 0, next: null };
+  const invKey = openInv && JSON.stringify(inv);
+  const raceKey = raceNow && JSON.stringify(raceNow);
+  useEffect(() => {
+    if (invKey) saveSum("inv", { day: today, tile: JSON.parse(invKey) });
+  }, [invKey, today]);
+  useEffect(() => {
+    if (raceKey) saveSum("race", { day: today, ...JSON.parse(raceKey) });
+  }, [raceKey, today]);
   // Aidat kartı: açılışta ve uygulamaya dönünce bu ayın aidat kaydı okunur (kart Aidatlar sayfası açılmadan da güncel)
   useEffect(() => {
     if (!dues || !orgId) return;
@@ -58,9 +72,9 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
   // Okuması süren kartlar (önbellekte bilgisi olmayan)
   const wait = {
     bank: money && m.loading,
-    inv: invoices && !!orgId && openInv === null,
+    inv: invoices && !!orgId && openInv === null && !oldInv,
     dues: dues && !!orgId && sum.dues?.ym !== ym && !duesGot,
-    race: race && race.loading,
+    race: race && race.loading && !oldRace,
   };
   const busy = !late && Object.values(wait).some(Boolean);
   // Açılışta iskeletle başlayan kartlar: bilgi gelince belirerek açılır (diğerleri olduğu gibi)
@@ -76,7 +90,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
     // Fiş ve fatura tek kart (sayfası da tek, sekmeli): büyük satır ayın fiş harcaması, açık fatura varsa alt satır onu söyler
     skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
     skel("dues") || (dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, ym), null, "dues"]),
-    skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up), null, "race"]),
+    skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(raceInfo.next, raceInfo.up), null, "race"]),
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
     posts && ["/posts", "instagram", "Instagram", postsTile(sum.posts), "instagram"],
   ].filter(Boolean);
