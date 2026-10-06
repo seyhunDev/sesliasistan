@@ -124,3 +124,12 @@ export function toggleShortcut(current, key) {
   if (current.includes(key)) return current.filter((k) => k !== key);
   return current.length >= SHORTCUT_MAX ? null : [...current, key];
 }
+
+// Ana sayfa › NOTLAR: arşivlenmemiş notlardan önce sabitlenenler, sonra en yeni (oluşturma ya da son değişiklik); en çok n tane.
+// Bellekteki notlardan (DataProvider), Firestore'a ek okuma yok. Dönüş: { list, total }.
+export function homeNotes(notes = [], n = 5) {
+  const live = notes.filter((x) => x && !x.archived);
+  const at = (x) => x.updatedAt || x.createdAt || "";
+  const list = [...live].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || at(b).localeCompare(at(a))).slice(0, n);
+  return { list, total: live.length };
+}

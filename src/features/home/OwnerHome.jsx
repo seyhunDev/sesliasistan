@@ -20,6 +20,7 @@ import { listsFor } from "@/features/shop/shop";
 import { TodayCard } from "./TodayCard";
 import { HomeActions } from "./HomeActions";
 import { HomeSummary } from "./HomeSummary";
+import { HomeNotes } from "./HomeNotes";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
@@ -67,7 +68,7 @@ export function OwnerHome() {
   );
 }
 
-// Ana sayfanın iki bölümü: önce bilgiler (Bildirimler › Senin için › doğum günü › Bugün › Yoklamam › Özet), sonra İşlemler (aynı tip düğmeler).
+// Ana sayfanın iki bölümü: önce bilgiler (Bildirimler › Senin için › doğum günü › Bugün › Yoklamam › Özet › Notlar), sonra İşlemler (aynı tip düğmeler).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather }) {
   const { profile } = useAuth();
@@ -108,6 +109,7 @@ export function HomeFeed({ weather }) {
       <TodayCard weather={weather} />
       {side && <MyAttendanceCard kind={kind} />}
       <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
+      <HomeNotes />
       <HomeActions groups={actions} />
     </div>
   );
