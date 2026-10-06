@@ -23,7 +23,7 @@ import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
-import { CancelPlan } from "./CancelPlan";
+import { PlanActions } from "./PlanActions";
 import { TrainingLog } from "./TrainingLog";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
@@ -80,7 +80,6 @@ export function AddSheet({ open, onClose, seed }) {
 
   const edit = seed?.edit;
   const by = { name: profile?.name ?? "Kullanıcı" };
-  const [seriesAsk, setSeriesAsk] = useState(null); // tekrarlayan planı silme: ikinci dokunuşta onay (kayıt kimliği)
   const rec = edit ? ({ plan: plans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
@@ -354,7 +353,7 @@ export function AddSheet({ open, onClose, seed }) {
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         <div className="flex items-center gap-2">
-          {edit && (locked || edit.kind === "note") ? null : edit ? (
+          {edit && (locked || edit.kind === "note" || edit.kind === "plan") ? null : edit ? (
             <button onClick={removeRecord} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-rec transition active:scale-90 active:bg-rec/10">
               <Icon name="trash" className="size-5" />
             </button>
@@ -395,6 +394,8 @@ export function AddSheet({ open, onClose, seed }) {
                 planTitle={linkedPlan}
                 done={!!rec?.done}
                 pinned={!!rec?.pinned}
+                cancelled={edit.kind === "plan" && rec?.status === "cancelled"}
+                repeat={edit.kind === "plan" && rec?.seriesId ? repeatLabel(rec.repeat?.until) : ""}
                 onToggleDone={() => {
                   toggleTask(edit.id);
                   toast(rec?.done ? "Görev yeniden açıldı" : "Görev yapıldı");
@@ -411,38 +412,31 @@ export function AddSheet({ open, onClose, seed }) {
                 }
               />
             )}
-            {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
-            {edit.kind === "plan" && rec && !locked && <CancelPlan key={rec.id} rec={rec} by={by} start={!!edit.cancel} />}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
-            {/* Not: işlemler içerikten ayrı, mesajların altında */}
             {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} owner={!isStaff} />}
-            {edit.kind === "plan" && rec?.seriesId && (
-              <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-                <Icon name="repeat" className="size-5 shrink-0 text-mut" />
-                <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
-                  <b className="block font-semibold">{repeatLabel(rec.repeat?.until)}</b>
-                  <span className="text-mut">Değişiklik yalnız bu haftaya uygulanır.</span>
-                </span>
-                {!isStaff && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (seriesAsk !== rec.id) return setSeriesAsk(rec.id);
+            {/* Mesajlar (atananlar ve ana hesap) */}
+            {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
+            {/* Plan ve not: işlemler içerikten ayrı, mesajların altında; Sil en altta */}
+            {edit.kind === "plan" && rec && !locked && (
+              <PlanActions
+                key={`act-${rec.id}`}
+                rec={rec}
+                by={by}
+                cancelStart={!!edit.cancel}
+                onDelete={removeRecord}
+                onDeleteSeries={
+                  rec.seriesId && !isStaff
+                    ? async () => {
                       const n = await deleteSeries(rec.seriesId, rec.date);
-                      setSeriesAsk(null);
                       if (n) {
                         toast(`${n} haftalık plan silindi`);
                         onClose();
                       }
-                    }}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold transition active:scale-95 ${seriesAsk === rec.id ? "bg-rec text-white" : "text-rec ring-1 ring-rec/30"}`}
-                  >
-                    {seriesAsk === rec.id ? "Emin misin? Sil" : "Bu ve sonrakileri sil"}
-                  </button>
-                )}
-              </div>
+                    }
+                    : null
+                }
+              />
             )}
-            {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
             {edit.kind === "note" && rec && !locked && <NoteActions rec={rec} by={by} onDone={onClose} onDelete={removeRecord} />}
             <div className="mt-3" />
           </>
@@ -540,7 +534,7 @@ export function AddSheet({ open, onClose, seed }) {
             orb={false}
           />
         </footer>
-      ) : !locked && (edit || drafts.length > 0) && !(edit?.kind === "note" && !dirty) && (
+      ) : !locked && (edit || drafts.length > 0) && !((edit?.kind === "note" || edit?.kind === "plan") && !dirty) && (
         <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
           {edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>
