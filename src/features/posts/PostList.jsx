@@ -13,7 +13,7 @@ export function PostList({ posts, onOpen }) {
       <Empty
         icon="camera"
         title="Henüz gönderi yok"
-        sub="Yarış duyurusu, sonuç ya da antrenman için Instagram gönderisi hazırla: fotoğrafını seç, ne olduğunu anlat; görsel yazıları ve açıklama yapay zekayla gelsin."
+        sub="Yarış, sonuç ya da antrenman için Instagram gönderisi hazırla: fotoğrafını seç, ne olduğunu anlat; görsel yazıları ve açıklama yapay zekayla gelsin."
       />
     );
   return (

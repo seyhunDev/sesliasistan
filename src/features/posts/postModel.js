@@ -20,7 +20,7 @@ export const POST_ASK_KEY = "sa-post-ask";
 
 // [anahtar, ad, ikon, görseldeki etiket]; ekrandaki sıra da bu (yarış türleri önde)
 export const KINDS = [
-  ["duyuru", "Yarış duyurusu", "flag", "YARIŞ DUYURUSU"],
+  ["duyuru", "Yarış", "flag", "YARIŞ"],
   ["sonuc", "Yarış sonucu", "star", "YARIŞ SONUCU"],
   ["antrenman", "Antrenman", "wind", "ANTRENMAN"],
   ["genel", "Duyuru", "bell", "DUYURU"],
@@ -69,7 +69,7 @@ export const THEMES = [
   ["al", "Al", "#d0142c", "#7d0a17", "#ffffff"],
 ];
 // Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
-export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", ozel: "al", diger: "antrasit" };
+export const KIND_THEME = { duyuru: "gece", sonuc: "gun", antrenman: "deniz", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", ozel: "al", diger: "antrasit" };
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 
 // Özel günler: hazır şablon (etiket, başlık, alt satır, dilek) ve görselin havası (mood):
@@ -211,7 +211,8 @@ export function cleanPost(p = {}) {
     classes: S(p.classes, 100),
     meta: p.meta !== false,
     style: styleOf(p.style)[0],
-    tag: S(p.tag, 18),
+    // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
+    tag: p.tag === "YARIŞ DUYURUSU" ? "YARIŞ" : S(p.tag, 18),
     caption: L(p.caption, 2200),
     hashtags: cleanTags(p.hashtags),
     format: formatOf(p.format)[0],

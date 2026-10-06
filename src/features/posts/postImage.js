@@ -588,7 +588,7 @@ const MOODS = {
   deniz: { dark: "rgb(4,26,48)", tint: "rgb(185,212,232)", accent: YELLOW, tagBg: YELLOW, tagInk: "#0b1f3f", bg: ["#1d6a8f", "#062440"], mark: "#ffffff", markA: 0.16 },
 };
 // Afiş'te seçilen rengin (tür değişince türün rengi) karşılığı: gölge/zemin rengi (dark), etiket kutusu ve vurgu (tag),
-// etiket yazısı (ink). Etiketin arka planı böylece türe göre değişir: Yarış duyurusu sarı, Sonuç turuncu, Antrenman mint…
+// etiket yazısı (ink). Etiketin arka planı böylece türe göre değişir: Yarış mint, Sonuç turuncu, Antrenman sarı…
 const AFIS_THEMES = {
   deniz: { dark: NAVY, tag: YELLOW, ink: "#0b1f3f", tint: "rgb(190,205,232)" },
   gece: { dark: "rgb(10,18,34)", tag: "#7fd3c4", ink: "#0b1f3f" },
