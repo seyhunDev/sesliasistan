@@ -23,7 +23,7 @@ const WHISPER = {
 const namesHint = (names, terms = []) =>
   (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "") + (terms.length ? ` Yarış adları (bu yazımla): ${terms.join(", ")}.` : "");
 
-async function viaWhisper(name, file, names, terms) {
+async function viaWhisper(name, file, names, terms, partial = false) {
   const s = WHISPER[name];
   const send = (model) => {
     const fd = new FormData();
@@ -33,7 +33,7 @@ async function viaWhisper(name, file, names, terms) {
     fd.append("prompt", HINT + namesHint(names, terms));
     // Groq: parça başına "konuşma yok" olasılığı gelir; sessiz parçalar (uydurma metin) atılır
     if (name === "groq") fd.append("response_format", "verbose_json");
-    return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(20000) });
+    return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(partial ? 8000 : 20000) });
   };
   let res = await send(s.model());
   // OpenAI'da model adı hesapta yoksa eski, yaygın modele düş
@@ -41,10 +41,11 @@ async function viaWhisper(name, file, names, terms) {
   if (res.ok) return spokenText(await res.json());
   const body = (await res.text()).slice(0, 300);
   const err = new Error(`${name} ${res.status}: ${body}`);
+  err.status = res.status;
+  if (partial) throw err; // ara yazı: servisi beklemeye alma, asıl (son) çeviri denesin
   // Kota/bakiye yok ya da anahtar geçersiz: bir süre bu servisi hiç deneme
   if (res.status === 401 || res.status === 403 || /insufficient_quota|billing/i.test(body)) markCool(`stt:${name}`, 6 * 60 * MIN);
   else if (res.status === 429) markCool(`stt:${name}`, (Number(res.headers.get("retry-after")) || 60) * 1000);
-  err.status = res.status;
   throw err;
 }
 
@@ -79,7 +80,6 @@ function providers() {
 async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
-  countAi(au, "transcribe");
   const list = providers();
   if (!list.length) {
     return NextResponse.json({ error: "Ses çevirisi için sunucuda GROQ_API_KEY, OPENAI_API_KEY ya da GEMINI_API_KEY gerekli." }, { status: 501 });
@@ -94,7 +94,21 @@ async function handle(request) {
   if (!file || typeof file === "string") return NextResponse.json({ error: "Ses dosyası yok" }, { status: 400 });
   if (file.size > 12 * 1024 * 1024) return NextResponse.json({ error: "Kayıt çok uzun" }, { status: 413 });
   const names = [...new Set(String(form.get("names") || "").split(",").map((n) => n.replace(/[^\p{L} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))].slice(0, 60); // sporcu yoklamasında liste uzun olabilir
+  // Ara yazı (dinlerken ekranda gösterilir): yalnız hızlı Whisper servisi, sayaca yazılmaz, hata sessiz
+  const partial = form.get("partial") === "1";
   const terms = [...new Set(String(form.get("terms") || "").split("|").map((n) => n.replace(/[^\p{L}\p{N} .'’&-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 50)).filter(Boolean))].slice(0, 12);
+
+  if (partial) {
+    const p = list.find((x) => x !== "gemini" && !isCooling(`stt:${x}`));
+    if (!p) return NextResponse.json({ text: "" });
+    try {
+      return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p });
+    } catch (e) {
+      console.warn(`[transcribe:ara:${p}]`, e.message.slice(0, 200));
+      return NextResponse.json({ text: "" });
+    }
+  }
+  countAi(au, "transcribe");
 
   const tried = [];
   let quota = false;

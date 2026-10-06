@@ -16,6 +16,11 @@ export const endWait = (v) => (v.lastSpeech - v.voiceFrom < SHORT_TALK ? END_SIL
 // Konuşuldu ve sustu: şimdi gönderilmeli mi
 export const speechEnded = (v, now) => !!v.voiceSeen && now - v.lastSpeech >= endWait(v);
 
+// Dokun-konuş-dokun-gönder (kayıt yolu): dinlerken söylenen ara ara yazıya çevrilip ekranda gösterilir.
+// Yeni ara yazı ancak öncekinden PART_MS sonra, önceki istek bittiyse ve o arada yeniden konuşulduysa istenir.
+export const PART_MS = 2000;
+export const partialDue = (s, now) => !s.partBusy && !!s.voiceSeen && s.lastSpeech > (s.partFrom || 0) && now - (s.partAt || s.t0 || 0) >= PART_MS;
+
 const median = (a) => {
   const s = [...a].sort((x, y) => x - y);
   return s[Math.floor(s.length / 2)] || 0;
