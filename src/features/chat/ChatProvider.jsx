@@ -43,7 +43,7 @@ export function sendErrorText() {
 }
 export function ChatProvider({ children }) {
   const { profile } = useAuth();
-  const { myUid: uid, setExtraBadge, members } = useData();
+  const { myUid: uid, members } = useData();
   const orgId = profile?.orgId || "";
   const [list, setList] = useState([]);
   const [fixed, setFixed] = useState({}); // sabit grup belgeleri: { team: {...}, family: {...} }
@@ -147,7 +147,6 @@ export function ChatProvider({ children }) {
   }, [groupIds, fixed, list, uid, personName]);
 
   const unreadTotal = chats.reduce((n, c) => n + (c.unread && !c.mutedByMe ? 1 : 0), 0);
-  useEffect(() => setExtraBadge?.(unreadTotal), [unreadTotal, setExtraBadge]);
 
   // ---- İşlemler ----
   const chatRef = useCallback((cid) => doc(chatsCol, cid), [chatsCol]);

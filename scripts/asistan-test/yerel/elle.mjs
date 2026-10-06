@@ -1077,3 +1077,30 @@ const scrollTops = async () => {
 group("Sayfa geçişinde kaydırma")([
   ["yeni sayfa", F("en üstten başlar, geri dönüşte konum kalır", scrollTops)],
 ]);
+
+// Bildirim kutusu (lib/inbox): ana sayfadaki "Bildirimler" ile simgedeki sayı aynı listeden
+const NB = await import("@/lib/inbox");
+group("Bildirim kutusu")([
+  ["eklenir, en yeni önde", F("iki bildirim, sayı 2", () => {
+    let l = NB.inboxAdd([], { title: "Yeni görev: Motor yağı", body: "Ali verdi", tag: "task-1", url: "/?open=task:1" }, "2026-10-06T10:00:00.000Z");
+    l = NB.inboxAdd(l, { title: "Ali", body: "Merhaba", tag: "chat-x", url: "/messages?c=x" }, "2026-10-06T11:00:00.000Z");
+    return l.length === 2 && l[0].tag === "chat-x" && NB.inboxBadge(l, "") === 2;
+  })],
+  ["aynı etiket yerine geçer", F("aynı sohbetten ikinci mesaj tek satır", () => {
+    let l = NB.inboxAdd([], { title: "Ali", body: "1", tag: "chat-x" }, "2026-10-06T10:00:00.000Z");
+    l = NB.inboxAdd(l, { title: "Ali", body: "2", tag: "chat-x" }, "2026-10-06T10:05:00.000Z");
+    return l.length === 1 && l[0].body === "2";
+  })],
+  ["görülünce sıfır", F("inboxSeen sonrası yeni olan sayılır", () => {
+    let l = NB.inboxAdd([], { title: "A", tag: "a" }, "2026-10-06T10:00:00.000Z");
+    const seen = l[0].at;
+    if (NB.inboxBadge(l, seen) !== 0) return false;
+    l = NB.inboxAdd(l, { title: "B", tag: "b" }, "2026-10-06T12:00:00.000Z");
+    return NB.inboxBadge(l, seen) === 1 && NB.inboxUnread(l, seen)[0].title === "B";
+  })],
+  ["en çok 30", F("eskiler düşer", () => {
+    let l = [];
+    for (let i = 0; i < 40; i++) l = NB.inboxAdd(l, { title: `B${i}`, tag: `t${i}` }, new Date(Date.UTC(2026, 9, 6, 0, i)).toISOString());
+    return l.length === NB.INBOX_MAX && l[0].title === "B39";
+  })],
+]);

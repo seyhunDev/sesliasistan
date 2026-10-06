@@ -3,50 +3,9 @@ import crypto from "node:crypto";
 import webpush from "web-push";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/server/admin";
-import { badgeCount } from "@/lib/badge";
-import { GROUP_IDS, inGroup } from "@/lib/kinds";
+import { recordInbox } from "@/lib/inbox";
 
 export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
-
-// Uygulama simgesindeki sayı: uygulamadaki "Senin için" ile aynı kural (lib/badge). Ana hesap işletmedeki bütün
-// kayıtları görür; kişi yalnızca içinde olduğu kayıtları. Okunmamış sohbetler (sessize alınan hariç) de eklenir.
-export async function unreadCount(orgId, uid) {
-  if (!orgId || !uid) return 0;
-  const owner = orgId === uid;
-  const org = adminDb().collection("orgs").doc(orgId);
-  // Ana hesap bütün koleksiyonu okumaz (her bildirimde binlerce okuma olurdu): sayıya yalnız son 14 günde eklenen,
-  // son 14 günde not yazılan (replyAt, /api/notify yazar) ya da silme isteği bekleyen kayıtlar girebilir (lib/people, lib/badge).
-  const since = new Date(Date.now() - 14 * 864e5).toISOString();
-  const rows = (q) => q.get().then((s) => s.docs, () => []);
-  const [plans, tasks, notes] = await Promise.all(
-    ["plans", "tasks", "notes"].map(async (k) => {
-      const c = org.collection(k);
-      if (!owner) return rows(c.where("people", "array-contains", uid)).then((ds) => ds.map((d) => d.data()));
-      const parts = await Promise.all([rows(c.where("createdAt", ">=", since)), rows(c.where("replyAt", ">=", since)), rows(c.where("deleteReq.by", ">", ""))]);
-      return [...new Map(parts.flat().map((d) => [d.id, d.data()])).values()];
-    }),
-  );
-  const receipts = await (owner ? org.collection("receipts").where("payStatus", "==", "pending") : org.collection("receipts").where("createdByUid", "==", uid))
-    .get()
-    .then((s) => s.docs.map((d) => d.data()), () => []);
-  if (owner) {
-    // Bekleyen silme istekleri (ödeme beklemeyen fişlerde de olabilir)
-    const reqs = await org.collection("receipts").where("deleteReq.by", ">", "").get().then((s) => s.docs.map((d) => d.data()), () => []);
-    for (const r of reqs) if (r.payStatus !== "pending") receipts.push(r);
-  }
-  // Okunmamış sohbetler: kişinin üye olduğu sohbetler + türüne uyan sabit gruplar (Ekip, Aile, Sporcular)
-  const chats = org.collection("chats");
-  const prof = owner ? null : (await adminDb().collection("users").doc(uid).get().catch(() => null))?.data();
-  const kind = owner ? "owner" : prof?.kind || "staff";
-  const fixed = GROUP_IDS.filter((g) => inGroup(g, kind));
-  const [mine, ...groups] = await Promise.all([chats.where("members", "array-contains", uid).get().catch(() => null), ...fixed.map((g) => chats.doc(g).get().catch(() => null))]);
-  let unreadChats = 0;
-  for (const c of [...(mine?.docs || []), ...groups.filter((g) => g?.exists)]) {
-    const d = c.data();
-    if (!d.muted?.[uid] && (d.seq || 0) > (d.read?.[uid] || 0) && d.last?.by !== uid) unreadChats++;
-  }
-  return badgeCount({ uid, owner, plans, tasks, notes, receipts, unreadChats });
-}
 
 // Gönderim hatasını kısa Türkçe açıklamaya çevirir (Ayarlar › Dene ve kayıt için)
 export function pushError(e) {
@@ -62,11 +21,14 @@ export function pushError(e) {
 }
 
 export async function sendTo(uid, payload) {
-  const ref = adminDb().collection("users").doc(uid);
+  const db = adminDb();
+  const ref = db.collection("users").doc(uid);
+  // Önce bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışların sayısı (lib/inbox)
+  const badge = await recordInbox(db, uid, payload);
   const user = (await ref.get()).data() || {};
   const push = user.push || {};
   if (!Object.keys(push).length) return 0;
-  if (payload.badge === undefined) payload = { ...payload, badge: await unreadCount(user.orgId || uid, uid).catch(() => undefined) };
+  if (payload.badge === undefined && badge !== undefined) payload = { ...payload, badge };
   try {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
   } catch (e) {

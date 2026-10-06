@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay } from "@/lib/receipts";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
-import { badgeCount } from "@/lib/badge";
+import { inboxBadge } from "@/lib/inbox";
 import { seriesDates } from "@/lib/repeat";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
@@ -88,7 +88,6 @@ export function DataProvider({ children }) {
   const staff = profile?.role === "staff";
   const [data, setData] = useState(EMPTY);
   const [members, setMembers] = useState([]); // ana hesabın çalışanları: [{ uid, name, email }]
-  const [extraBadge, setExtraBadge] = useState(0); // okunmamış sohbet sayısı (simgedeki sayıya eklenir)
   const [ready, setReady] = useState(false);
   const cur = useRef(data); // geri çağrılarda her zaman güncel veri
   cur.current = data;
@@ -444,7 +443,6 @@ export function DataProvider({ children }) {
       if (rec.deleteReq) return toast("Silme isteği zaten ana hesapta bekliyor.");
       try {
         await updateDoc(doc(db, "orgs", getOrgId(), k, id), { deleteReq: { by: u, at: new Date().toISOString() } });
-        notifyEvent(kind, id, "deleteReq");
         toast(
           "Silme isteği ana hesaba gönderildi",
           undo
@@ -514,10 +512,7 @@ export function DataProvider({ children }) {
       });
       try {
         const ownerId = getOrgId();
-        // Kayıtta başka kişiler varsa önce "iptal/kaldırıldı" bildirimi (sunucu kaydı silinmeden okur)
-        const gone = ["plan", "task", "note"].includes(kind) && cur.current[k]?.find?.((x) => x.id === id);
-        const others = gone ? [...new Set([gone.createdByUid, ...(gone.people || []), ...(gone.assignees || [])])].filter((u) => u && u !== me.current.uid) : [];
-        if (others.length) await notifyEvent(kind, id, "deleted");
+        // Silme bildirim göndermez (Seyhun'un kuralı)
         const batch = writeBatch(db);
         batch.delete(doc(db, "orgs", ownerId, k, id));
         if (kind === "plan") {
@@ -585,14 +580,15 @@ export function DataProvider({ children }) {
     if (staff && ready) loadQuota(authFetch);
   }, [staff, ready]);
 
-  // Uygulama simgesindeki sayı (iPhone'da ana ekrandaki uygulama, iOS 16.4+): ana sayfadaki "Yenilikler" kartıyla aynı —
-  // henüz açılmamış yeni kayıtlar + başkalarının yazdığı görülmemiş notu olan kayıtlar (kayıt başına 1)
+  // Uygulama simgesindeki sayı (iPhone'da ana ekrandaki uygulama, iOS 16.4+): gönderilen bildirimlerden okunmamışların sayısı.
+  // Sunucu her bildirimle aynısını gönderir (lib/inbox); ana sayfadaki "Bildirimler" kartı bu listeyi gösterir, görülünce sıfırlanır.
+  const inbox = profile?.inbox;
+  const inboxSeen = profile?.inboxSeen;
   useEffect(() => {
-    if (!uid || !ready || typeof navigator === "undefined" || !navigator.setAppBadge) return;
-    // Sunucu da her bildirimle aynı kuralla sayar (lib/badge): telefondaki sayı ile "Senin için" tutarlı
-    const n = badgeCount({ uid, owner: !staff, plans: data.plans, tasks: data.tasks, notes: data.notes, receipts: data.receipts, unreadChats: extraBadge });
+    if (!uid || typeof navigator === "undefined" || !navigator.setAppBadge) return;
+    const n = inboxBadge(inbox, inboxSeen);
     (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
-  }, [data, uid, ready, extraBadge, staff]);
+  }, [uid, inbox, inboxSeen]);
 
   // ---- Geri alınabilir silme ----
   // Kayıt hemen listeden kalkar, "Geri al" düğmeli bildirim çıkar. Süre dolunca gerçekten silinir.
@@ -918,7 +914,7 @@ export function DataProvider({ children }) {
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
         saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setExtraBadge, setMyDone, addReply, isLocked,
+        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, addReply, isLocked,
       }}
     >
       {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}
