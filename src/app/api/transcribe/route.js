@@ -89,7 +89,8 @@ async function viaGemini(file, names, terms) {
   return String(out?.text || "").trim();
 }
 
-// Denenecek servisler sırayla: STT_PROVIDER ile seçilen önce, sonra Gemini Transcribe, Groq, OpenAI, Gemini (anahtarı olanlar)
+// Denenecek servisler sırayla: Gemini Transcribe her zaman önce (GEMINI_TRANSCRIBE_MODEL=off değilse),
+// sonra STT_PROVIDER ile seçilen yedek, sonra Groq, OpenAI, Gemini (anahtarı olanlar)
 function providers() {
   const has = {
     gtranscribe: !!process.env.GEMINI_API_KEY && gtModel() !== "off",
@@ -98,7 +99,7 @@ function providers() {
     gemini: !!(process.env.GEMINI_API_KEY && (process.env.GEMINI_STT_MODEL || process.env.GEMINI_MODEL)),
   };
   const first = (process.env.STT_PROVIDER || "").toLowerCase();
-  return [...new Set([first, "gtranscribe", "groq", "openai", "gemini"])].filter((p) => has[p]);
+  return [...new Set(["gtranscribe", first, "groq", "openai", "gemini"])].filter((p) => has[p]);
 }
 
 async function handle(request) {
