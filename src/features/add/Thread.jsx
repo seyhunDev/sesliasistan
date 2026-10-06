@@ -3,7 +3,8 @@
 // Konuşma akışı (sade): senin mesajların sağda hafif deniz mavisi balon, asistanın yanıtı solda büyük düz metin.
 // ask: { chips: [{ label, onPick }] }  ->  son yanıtın altında hızlı cevap düğmeleri (Onayla, Vazgeç…).
 // Yanıtın altında "Dinle", kaynak etiketi (AI…) ya da "Sesle cevapla" yok: sade (sesli yanıt ayarlardan, cevap küreyle).
-export function Thread({ turns, ask, canFix, onFix }) {
+// extra(turn, i): cevabın altına sabit düğmeler (sohbet bunların altında sürer)
+export function Thread({ turns, ask, canFix, onFix, extra }) {
   if (!turns.length) return null;
   const last = turns.length - 1;
   const lastUser = turns.map((t) => t.role).lastIndexOf("user");
@@ -23,6 +24,7 @@ export function Thread({ turns, ask, canFix, onFix }) {
         ) : (
           <div key={i} className="fade-in" {...(i === last ? { "data-last-reply": "1" } : {})}>
             <p className="min-w-0 pr-6 text-[1.0625rem] leading-relaxed tracking-[-.005em]">{t.text}</p>
+            {extra?.(t, i)}
             {i === last && (
               <>
                 {ask?.chips?.length > 0 && (
