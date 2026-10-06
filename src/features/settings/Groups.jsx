@@ -20,6 +20,7 @@ import { THEMES, applyTheme, readTheme } from "@/lib/theme";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
 import { Badge, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
+import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/waGroups";
 
 // Ayarlar sayfasının satırları. Sayfa bunları "Sık kullanılanlar" ve "Diğer ayarlar" olarak dizer;
 // seyrek ayarlar (izinler, hatırlatma süresi…) dokununca açılan satırlarda durur.
@@ -768,5 +769,76 @@ export function LedgerRow() {
       sub={cur ? "Açık: Hesaplar sayfasında görünür" : "Kapalı: Hesaplar sayfasında gizli"}
       right={<Switch on={cur} onChange={flip} label="Banka defteri kartı" />}
     />
+  );
+}
+
+// ---- WhatsApp grupları: grubun davet bağlantısı kaydedilir (users.waGroups [{name, link}]); asistan o gruba
+// gönderilen mesajda WhatsApp grubunu doğrudan açar, metni panoya kopyalar (WhatsApp'ta gruba metin bağlantısı yok) ----
+export function WaGroupsRow() {
+  const { profile } = useAuth();
+  const toast = useToast();
+  const [list, setList] = useState(null);
+  const [name, setName] = useState("");
+  const [link, setLink] = useState("");
+  if (!profile?.uid) return null;
+  const cur = list ?? cleanWaGroups(profile.waGroups);
+  const save = (next) => {
+    const prev = cur;
+    setList(next);
+    return saveUser(profile.uid, { waGroups: next }).catch(() => {
+      setList(prev);
+      toast("Kaydedilemedi, tekrar dene");
+    });
+  };
+  const add = () => {
+    const l = cleanWaLink(link);
+    if (!name.trim()) return toast("Grubun adını yaz (ör. Sporcular)");
+    if (!l) return toast("Bağlantı chat.whatsapp.com/… olmalı");
+    const next = cleanWaGroups([{ name: name.trim(), link: l }, ...cur.filter((g) => g.name.trim().toLocaleLowerCase("tr-TR") !== name.trim().toLocaleLowerCase("tr-TR"))]);
+    save(next).then(() => {
+      setName("");
+      setLink("");
+      toast(`${name.trim()} WhatsApp grubu kaydedildi`);
+    });
+  };
+  return (
+    <Fold icon="whatsapp" tone="ok" title="WhatsApp grupları" sub={cur.length ? cur.map((g) => g.name).join(", ") : "Grup bağlantısı ekle"}>
+      <div className="px-4 pb-3.5">
+        {cur.length > 0 && (
+          <ul className="divide-y divide-line overflow-hidden rounded-xl bg-bg">
+            {cur.map((g) => (
+              <li key={g.name} className="flex items-center gap-2 px-3 py-2.5">
+                <Icon name="whatsapp" className="size-4 shrink-0 text-ok" />
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-medium">{g.name}</b>
+                  <small className="block truncate text-[0.75rem] text-mut">{g.link.replace("https://", "")}</small>
+                </span>
+                <a href={g.link} target="_blank" rel="noreferrer" className="rounded-lg px-2 py-1 text-[0.8125rem] font-semibold text-acc active:opacity-60">Aç</a>
+                <button type="button" aria-label={`${g.name} sil`} onClick={() => save(cur.filter((x) => x !== g))} className="grid size-8 place-items-center rounded-lg text-mut active:opacity-60">
+                  <Icon name="x" className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {cur.length < WA_GROUP_MAX && (
+          <div className="mt-2 grid gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {WA_GROUP_NAMES.filter((n) => !cur.some((g) => g.name === n)).map((n) => (
+                <button key={n} type="button" onClick={() => setName(n)} className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium ring-1 ring-line active:scale-95 ${name === n ? "bg-acc text-white ring-acc" : "bg-card"}`}>
+                  {n}
+                </button>
+              ))}
+            </div>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Grup adı (uygulamadaki grupla aynı: Sporcular, Aile, Ekip…)" className="h-11 min-w-0 rounded-xl bg-bg px-3 text-base outline-none placeholder:text-mut" />
+            <input value={link} onChange={(e) => setLink(e.target.value)} type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" className="h-11 min-w-0 rounded-xl bg-bg px-3 text-base outline-none placeholder:text-mut" />
+            <button type="button" onClick={add} className="h-11 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Grubu ekle</button>
+          </div>
+        )}
+        <p className="mt-2 px-1 text-[0.75rem] leading-snug text-mut">
+          {"Bağlantı: WhatsApp › grup › grup bilgisi › Bağlantıyla davet et › Bağlantıyı kopyala. Asistan bu ada gönderdiği mesajda WhatsApp grubunu doğrudan açar ve metni kopyalar; grupta yazı alanına basılı tutup Yapıştır de, gönder. Bağlantıyı bilen gruba katılabilir, kimseyle paylaşma."}
+        </p>
+      </div>
+    </Fold>
   );
 }
