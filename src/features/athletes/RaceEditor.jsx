@@ -13,7 +13,7 @@ import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
-import { COACH_DOCS, COACH_FIELDS, DOCS, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
@@ -104,7 +104,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [tab, setTab] = useState(start.name ? "sum" : "info");
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
-  const [docs, setDocs] = useState(DOCS.map(([k]) => k));
+  // Seçili belgeler yarışta saklanır (yeni yarışta son yarışın seçimi, yoksa okul/kulüp yazıları kapalı)
+  const [startDocs] = useState(() => cleanDocs(start.docs));
+  const [docs, setDocs] = useState(() => startDocs || DOC_DEFAULT);
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState(null); // hazırlanan PDF
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
@@ -117,14 +119,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     getRaceFile(start.id).then((f) => {
       if (!live || !f?.blob) return;
       setFile(new File([f.blob], f.name, { type: "application/pdf" }));
-      if (Array.isArray(f.docs) && f.docs.length) setDocs(f.docs);
+      if (Array.isArray(f.docs) && f.docs.length && !startDocs) setDocs(cleanDocs(f.docs));
       setMailText(f.mailText || "");
       setMade({ at: f.at, pages: f.pages });
       setParts((f.parts || []).map((x) => ({ ...x, file: new File([x.blob], partName(f.name, x.title), { type: "application/pdf" }) })));
     });
     getExtras(start.id).then((l) => live && setExtras(l));
     return () => void (live = false);
-  }, [start.id]);
+  }, [start.id, startDocs]);
   const [known] = useState(raceNames); // daha önce yazılmış yarış adları (öneri)
 
   // Belgeyi değiştiren alanlar hazır PDF'i geçersiz kılar (cihazdaki kopya da silinir)
@@ -133,6 +135,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setMade(null);
     setParts([]);
     dropRaceFile(id.current);
+  };
+  // Belge seçimi: yarışa da yazılır (sonraki açılışta ve sonraki yarışta aynı seçim gelir)
+  const pickDoc = (k, on) => {
+    dropFile();
+    const next = DOCS.map(([x]) => x).filter((x) => (x === k ? on : docs.includes(x)));
+    setDocs(next);
+    setR((p) => ({ ...p, docs: next }));
   };
   const set = (k) => (v) => {
     dropFile();
@@ -166,6 +175,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [coach, setCoach] = useState(() => cleanCoach(savedCoach));
   const coachDirty = useRef(false);
   const coachLast = useRef(coach);
+  const [coachSaved, setCoachSaved] = useState(false);
   const setCoachField = (k) => (v) => {
     dropFile();
     coachDirty.current = true;
@@ -176,15 +186,23 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     if (!coachDirty.current || !onCoach) return;
     const t = setTimeout(() => {
       coachDirty.current = false;
-      onCoach(cleanCoach(coach));
+      setCoachSaved(false);
+      Promise.resolve(onCoach(cleanCoach(coach))).then((ok) => ok !== false && setCoachSaved(true));
     }, 800);
     return () => clearTimeout(t);
   }, [coach, onCoach]);
   useEffect(() => () => void (coachDirty.current && onCoach?.(cleanCoach(coachLast.current))), [onCoach]);
+  // Başka cihazda (ya da bu cihazda başka sayfada) kaydedilen bilgi gelince alanlar güncellenir (yazarken değil)
+  const savedKey = JSON.stringify(cleanCoach(savedCoach));
+  useEffect(() => {
+    if (!coachDirty.current) setCoach(JSON.parse(savedKey));
+  }, [savedKey]);
   const tyf = docs.includes("coach") || docs.includes("entry");
   const coachOn = docs.some((k) => COACH_DOCS.includes(k));
   const coachLack = coachOn ? coachMissing(coach, docs) : [];
   // Seçili belgelerde boş kalacak antrenör alanları (sarı görünür)
+  // Bilgiler tamamsa antrenör bölümü kapalı gelir (her yarışta yeniden sorulmuyor gibi görünsün diye), Düzenle ile açılır
+  const [coachOpen, setCoachOpen] = useState(() => coachMissing(cleanCoach(savedCoach), startDocs || DOC_DEFAULT).length > 0);
   const coachLackKeys = coachOn ? COACH_FIELDS.map(([k]) => k).filter((k) => coachMissing({ ...coach, [k]: "" }, docs).length > coachLack.length) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
 
@@ -284,7 +302,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       await queue.current.catch(() => {});
       if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
       setTab("docs");
-      if (docs.length === DOCS.length && !r.checks?.docs) put("checks", { ...r.checks, docs: true });
+      if (!r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
       toast(e?.message || "Belgeler hazırlanamadı");
     }
@@ -799,7 +817,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 <li key={k}>
                   <button
                     type="button"
-                    onClick={() => (dropFile(), setDocs((d) => (on ? d.filter((x) => x !== k) : DOCS.map(([x]) => x).filter((x) => x === k || d.includes(x)))))}
+                    onClick={() => pickDoc(k, !on)}
                     aria-pressed={on}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg"
                   >
@@ -894,7 +912,18 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
           {coachOn && (
             <>
-              <Label right="hesabına kaydedilir">{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
+              <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
+              {!coachOpen ? (
+                <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
+                  <Icon name="user" className="size-5 shrink-0 text-acc" />
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
+                    <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
+                  </span>
+                  <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
+                </button>
+              ) : (
+              <>
               <Group>
                 {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
                   <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
@@ -909,7 +938,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   </Row>
                 ))}
               </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, sonraki yarışlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, hesabına kaydedilir; sonraki yarışlarda ve diğer cihazlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
+              </>
+              )}
             </>
           )}
 

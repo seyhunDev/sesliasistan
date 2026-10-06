@@ -3,7 +3,7 @@
 import { cleanResults } from "@/lib/raceResults";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { nextNo } from "./raceDocs";
+import { cleanDocs, nextNo } from "./raceDocs";
 import { cleanBudget } from "./budget";
 import { rememberRaceNames } from "./raceNames";
 import { cleanAround } from "./raceAround";
@@ -36,6 +36,8 @@ export const RACE_FIELDS = [
   "weather",
   // Sonuçlar { fleet, rows: { sporcuId: { place, note } } } (raceResults.js)
   "results",
+  // Evrak'ta seçili belgeler (DOCS anahtarları; yoksa DOC_DEFAULT)
+  "docs",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -150,6 +152,8 @@ const clean = (r) =>
               ? cleanWeather(r[k])
             : k === "results"
               ? cleanResults(r[k])
+            : k === "docs"
+              ? cleanDocs(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -164,7 +168,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", docs: cleanDocs(last.docs), notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 
