@@ -5,6 +5,7 @@
 // 6) Otel konaklama izni: tüm sporcuların velileri tek sayfada imzalar (otel adı yoksa elle yazılacak boşluk)
 // 7) TYF Antrenör kayıt formu: antrenör bilgileri hesabın profilinden (users/{uid}.coach), sınıf başına bir sayfa
 // 8) TYF Katılım bildirim formu (sporcu kayıt): kulüp, destek botu, antrenör ve sporcular; sınıf başına bir form
+// 9) EK-3/C Seyahat Taahhüt Belgesi: antrenör için (18 yaşından büyük, kendi imkânlarıyla), bilgiler hesabın antrenör kaydından
 // pdf-lib yalnızca belge hazırlanırken yüklenir (sayfa açılışını ağırlaştırmasın)
 
 export const DOCS = [
@@ -12,6 +13,7 @@ export const DOCS = [
   ["kafile", "EK-2 Kafile Onayı"],
   ["travel", "Seyahat dilekçesi"],
   ["parent", "EK-3/D Veli İzin Belgesi"],
+  ["adult", "EK-3/C Seyahat Taahhüt Belgesi"],
   ["club", "Kulüp izin yazısı"],
   ["hotel", "Otel konaklama izni"],
   ["coach", "Antrenör kayıt formu"],
@@ -34,6 +36,11 @@ export const COACH_FIELDS = [
   ["name", "Ad soyad"],
   ["tc", "T.C. kimlik no", "numeric"],
   ["sicil", "TYF sicil no", "numeric"],
+  ["license", "Antrenör lisans no"],
+  ["father", "Baba adı"],
+  ["mother", "Anne adı"],
+  ["birthPlace", "Doğum yeri"],
+  ["birthDate", "Doğum tarihi", "date"],
   ["level", "Kademesi (yılı)"],
   ["club", "Kulübü (antrenör formunda)"],
   ["city", "İli"],
@@ -53,8 +60,14 @@ export const coachStart = (profile = {}) => ({
   team: CLUB.tyfName, boatLength: "520", boatColor: "Gri", boatPower: "50", boatCount: "1",
 });
 export const cleanCoach = (c) => Object.fromEntries(COACH_FIELDS.map(([k]) => [k, String(c?.[k] ?? "").trim().slice(0, 120)]));
-// Formlarda boş kalacak önemli antrenör bilgileri
-export const coachMissing = (c) => [["name", "ad soyad"], ["tc", "T.C."], ["sicil", "sicil no"], ["phone", "telefon"]].filter(([k]) => !String(c?.[k] || "").trim()).map(([, l]) => l);
+// Antrenör bilgisi kullanan belgeler
+export const COACH_DOCS = ["kafile", "adult", "coach", "entry"];
+// Seçili belgelerde boş kalacak önemli antrenör bilgileri
+export const coachMissing = (c, docs = ["coach", "entry"]) => {
+  const has = (...ks) => ks.some((k) => docs.includes(k));
+  const need = [["name", "ad soyad", has(...COACH_DOCS)], ["tc", "T.C.", has("adult", "coach", "entry")], ["sicil", "sicil no", has("coach", "entry")], ["phone", "telefon", has("adult", "coach", "entry")], ["father", "baba adı", has("adult")], ["mother", "anne adı", has("adult")], ["birthPlace", "doğum yeri", has("adult")], ["birthDate", "doğum tarihi", has("adult")]];
+  return need.filter(([k, , on]) => on && !String(c?.[k] || "").trim()).map(([, l]) => l);
+};
 
 export const FONT_FILES = {
   serif: "LiberationSerif-Regular.ttf",
@@ -300,7 +313,13 @@ function fitCell(p, s, x, top, w, h, font, size, opt) {
 }
 
 // ---- 2) EK-2 Kafile Onayı ----
-function kafile(pdf, f, r, list) {
+// Kafile listesi: önce antrenör (hesabın antrenör adı, lisans no boş), sonra sporcular
+export const kafileRows = (list, coach = {}) => {
+  const name = up(coach.name);
+  return [...(name ? [{ name, license: String(coach.license || "").trim(), role: "ANTRENÖR" }] : []), ...list.map((a) => ({ name: a.name, license: a.license, role: "SPORCU" }))];
+};
+function kafile(pdf, f, r, list, coach) {
+  const rows = kafileRows(list, coach);
   const page = pdf.addPage([W, H]);
   const p = painter(page);
   p.text("(EK-2)", 527, 95, f.serifB, 12, "right");
@@ -336,18 +355,18 @@ function kafile(pdf, f, r, list) {
   // Kafile listesi (en az 5 satır)
   const c2 = [72, 99, 275, 378, 527];
   const r2 = [346, 359];
-  const n = Math.max(5, list.length);
+  const n = Math.max(5, rows.length);
   const rh = Math.min(14.5, 230 / n);
   for (let i = 0; i < n; i++) r2.push(r2.at(-1) + rh);
   grid(p, c2, r2);
   ["NO", "ADI SOYADI", "LİSANS NO", "GÖREVİ / UNVANI"].forEach((h, i) => p.cell(h, c2[i], r2[0], c2[i + 1] - c2[i], 13, f.serifB, 9.5, { align: "center" }));
-  list.forEach((a, i) => {
+  rows.forEach((a, i) => {
     const t = r2[i + 1];
     const sm = Math.min(10, rh - 2);
     p.cell(String(i + 1), c2[0], t, c2[1] - c2[0], rh, f.serifB, sm, { align: "center" });
     fitCell(p, a.name, c2[1], t, c2[2] - c2[1], rh, f.serif, Math.min(12, rh - 2));
     p.cell(a.license, c2[2], t, c2[3] - c2[2], rh, f.serif, sm, { align: "center" });
-    p.cell("SPORCU", c2[3], t, c2[4] - c2[3], rh, f.serif, sm, { align: "center" });
+    p.cell(a.role, c2[3], t, c2[4] - c2[3], rh, f.serif, sm, { align: "center" });
   });
 
   const pt = Math.max(432, r2.at(-1) + 30);
@@ -509,6 +528,99 @@ function parentForm(pdf, f, r, a) {
     p.text(s, L + 6, 778 + i * 11, f.sans, 8);
   });
   p.text("1", W / 2, 818, f.serif, 11, "center");
+}
+
+// ---- 9) EK-3/C Seyahat Taahhüt Belgesi (antrenör; EK-3/D ile aynı düzen) ----
+function adultForm(pdf, f, r, c) {
+  const page = pdf.addPage([W, H]);
+  const p = painter(page);
+  const L = 81;
+  const R = 533;
+  const M = 177;
+  p.text("EK-3/C", R, 70, f.serifB, 13, "right");
+
+  p.box(L, 77, R - L, 211);
+  p.cell("SEYAHAT TAAHHÜT BELGESİ", L, 77, R - L, 22, f.sansB, 17, { align: "center" });
+  p.cell("(KENDİ İMKÂNLARIYLA SEYAHAT EDECEK 18 YAŞINDAN BÜYÜKLER İÇİN)", L, 96, R - L, 15, f.sansB, 10.5, { align: "center" });
+  const rows = [113, 128, 145.5, 163, 181, 199, 216.5, 234, 251.5, 270, 288];
+  rows.slice(0, -1).forEach((t) => p.line(L, t, R, t));
+  [1, 2, 3, 5, 6, 7, 8, 9].forEach((i) => p.line(M, rows[i], M, rows[i + 1]));
+  p.cell("ORGANİZASYONUN", L, rows[0], R - L, rows[1] - rows[0], f.sansB, 9.5, { align: "center" });
+  // Kafile başlığı: görevi (ANTRENÖR) altı çizili
+  const parts = ["KAFİLE (BAŞKAN / BAŞKAN YRD. / ", "ANTRENÖR", " / REFAKATÇİ / TERCÜMAN / SPORCU)"];
+  const fs0 = 9;
+  const tw = parts.reduce((n, x) => n + p.width(x, f.sansB, fs0), 0);
+  const ax = (L + R) / 2 - tw / 2 + p.width(parts[0], f.sansB, fs0);
+  p.cell(parts.join(""), L, rows[4], R - L, rows[5] - rows[4], f.sansB, fs0, { align: "center" });
+  p.line(ax, rows[4] + 13.5, ax + p.width(parts[1], f.sansB, fs0), rows[4] + 13.5, 0.8);
+  const org = [["Adı", up(r.name)], ["Yeri", `${up(r.city)} -${up(r.district)}`], ["Tarihi", rangeText(r.startDate, r.endDate)]];
+  org.forEach(([k, v], i) => {
+    p.cell(k, L, rows[i + 1], M - L, rows[i + 2] - rows[i + 1], f.sans, 9.5);
+    fitCell(p, v, M, rows[i + 1], R - M, rows[i + 2] - rows[i + 1], f.sansB, 9.5, { align: "center" });
+  });
+  const birth = [up(c.birthPlace), dmy(c.birthDate, "-")].filter(Boolean).join("/");
+  const sp = [
+    ["TC Kimlik No", c.tc, "left"],
+    ["Adı ve Soyadı", up(c.name), "left"],
+    ["Baba - Anne Adı", [up(c.father), up(c.mother)].filter(Boolean).join("/") || "/", "center"],
+    ["Doğum Yeri - Tarihi", birth || "/", "center"],
+    ["İrtibat Telefonu", c.phone, "center"],
+  ];
+  sp.forEach(([k, v, al], i) => {
+    p.cell(k, L, rows[i + 5], M - L, rows[i + 6] - rows[i + 5], f.sans, 9.5);
+    fitCell(p, v, M, rows[i + 5], R - M, rows[i + 6] - rows[i + 5], f.sansB, 9.5, { align: al });
+  });
+
+  const fs = 9.5;
+  const ld = 11.5;
+  const tx = L + 3;
+  const tw2 = R - L - 6;
+  // Beyan ve doğrulama kutusu (örnekteki gibi tek çerçeve)
+  p.box(L, 296, R - L, 294);
+  p.line(L, 550, R, 550);
+  let top = 308;
+  [
+    "Katılacağım resmi müsabakalara ait yönerge ve talimatlarının bütün hükümleri hakkında bilgi sahibi olduğumu,",
+    "Yönerge ve talimatların taraflara yüklediği vecibeleri eksiksiz yerine getireceğimi,",
+    "Belirtilen organizasyona kendi imkânlarımla seyahat edeceğimi, gerekli yol, iaşe ve ibate giderleri ile her türlü sorumluluğun tarafıma ait olduğunu beyan ve taahhüt ederim.",
+  ].forEach((s, i) => {
+    p.text(`${i + 1}.`, tx + 3, top, f.sans, fs);
+    top = p.para(s, tx + 20, top, tw2 - 20, f.sans, fs, ld) + 2;
+  });
+  const sw = p.text("(Adı Soyadı ve İmza)", 448, 440, f.sans, 9.5, "center");
+  p.text("(1)", 448 + sw / 2 + 2, 435, f.sans, 6);
+  p.para(
+    "Yukarıda açık kimliği yazılı kişiye ait seyahat taahhüt belgesi huzurumuzda imzalanmış ve kimlik kontrolü yapılmıştır.",
+    tx, 563, tw2, f.sans, 10, 12,
+  );
+
+  // Huzurunda imza atan görevli
+  const g = [590, 608, 626, 644, 664];
+  p.box(L, g[0], R - L, g.at(-1) - g[0]);
+  g.slice(1, -1).forEach((t) => p.line(L, t, 334, t));
+  p.line(L, g[1], R, g[1]);
+  p.line(181, g[1], 181, g.at(-1));
+  p.line(334, g[1], 334, g.at(-1));
+  p.cell("HUZURUNDA İMZA ATILAN GÖREVLİNİN;", L, g[0], R - L, g[1] - g[0], f.sansB, 9.5, { align: "center" });
+  p.cell("Adı Soyadı", L, g[1], 100, 18, f.sans, 9.5);
+  const kw = p.width("Kurumu / Görevi ", f.sans, 9.5);
+  p.cell("Kurumu / Görevi ", L, g[2], 100, 18, f.sans, 9.5);
+  p.text("(2)", L + 4 + kw, g[2] + 8, f.sans, 6);
+  p.cell("Tarih", L, g[3], 100, 20, f.sans, 9.5);
+  fitCell(p, up(r.signer), 181, g[1], 153, 18, f.sans, 9.5);
+  p.cell(`KULÜP/${up(r.signerTitle)}`, 181, g[2], 153, 18, f.sans, 9.5, { align: "center" });
+  p.cell(dmy(r.letterDate), 181, g[3], 153, 20, f.sans, 9.5);
+  const iw = p.text("(Adı Soyadı ve İmza)", 433, 659, f.sans, 8, "center");
+  p.text("(1)", 433 + iw / 2 + 2, 655, f.sans, 5.5);
+
+  p.line(L, 764, L + 138, 764, 0.5);
+  [
+    "Elle yazılacak ve ıslak imza olacaktır.",
+    "Gençlik Hizmetleri ve Spor İl / İlçe Müdürlükleri veya Okul Müdürlükleri tarafından yetkilendirilmiş kişiler.",
+  ].forEach((s, i) => {
+    p.text(String(i + 1), L, 775 + i * 11, f.sans, 5.5);
+    p.text(s, L + 6, 778 + i * 11, f.sans, 8);
+  });
 }
 
 // ---- 5) Kulüp izin yazısı (sporcu başına; kulüp antetli) ----
@@ -858,9 +970,10 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   const race = { ...r, year, place: `${up(r.district)}-${up(r.city)}` };
   const list = athletes.map(athleteInfo);
   if (only.includes("school")) schoolLetter(pdf, f, race, list);
-  if (only.includes("kafile")) kafile(pdf, f, race, list);
+  if (only.includes("kafile")) kafile(pdf, f, race, list, cleanCoach(coach));
   if (only.includes("travel")) travel(pdf, f, race, list);
   if (only.includes("parent")) list.forEach((a) => parentForm(pdf, f, race, a));
+  if (only.includes("adult")) adultForm(pdf, f, race, cleanCoach(coach));
   if (only.includes("club")) {
     const c = clubInfo(r);
     list.forEach((a, i) => clubLetter(pdf, f, c, a, c.no ? nextNo(c.no, i) : ""));

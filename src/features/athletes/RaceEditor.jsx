@@ -13,7 +13,7 @@ import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
-import { COACH_FIELDS, DOCS, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { COACH_DOCS, COACH_FIELDS, DOCS, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
@@ -37,11 +37,14 @@ const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 
 // Belgelerin kısa tanımı
+// Yalnız TYF formlarında kullanılan antrenör alanları
+const TYF_ONLY = ["sicil", "level", "club", "city", "email", "adb", "team", "boatNo", "boatLength", "boatColor", "boatPower", "boatCount"];
 const DOC_INFO = {
   school: ["book", "GSİM'e: sporcuların okul ve il-ilçe listesi"],
   kafile: ["flag", "Valilik onayı: kafile ve lisans numaraları"],
   travel: ["mail", "GSİM Spor Faaliyetleri Birimine dilekçe"],
   parent: ["users", "Her sporcu için bir sayfa, veli imzalar"],
+  adult: ["user", "Antrenör için: kendi imkânlarıyla seyahat taahhüdü"],
   club: ["note", "Kulüpten okula, her sporcuya ayrı; tarihleri ayrı"],
   hotel: ["home", "Tek sayfa: tüm velilerin otel konaklama imzası"],
   coach: ["user", "TYF: antrenör ve destek botu bilgileri, beyan"],
@@ -179,7 +182,10 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   }, [coach, onCoach]);
   useEffect(() => () => void (coachDirty.current && onCoach?.(cleanCoach(coachLast.current))), [onCoach]);
   const tyf = docs.includes("coach") || docs.includes("entry");
-  const coachLack = tyf ? coachMissing(coach) : [];
+  const coachOn = docs.some((k) => COACH_DOCS.includes(k));
+  const coachLack = coachOn ? coachMissing(coach, docs) : [];
+  // Seçili belgelerde boş kalacak antrenör alanları (sarı görünür)
+  const coachLackKeys = coachOn ? COACH_FIELDS.map(([k]) => k).filter((k) => coachMissing({ ...coach, [k]: "" }, docs).length > coachLack.length) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
 
   // Değişiklikler kendiliğinden kaydedilir (yarış adı yazıldıktan sonra); kayıtlar sırayla gider, çift kayıt olmaz.
@@ -224,7 +230,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   });
 
   const pages =
-    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0) + (docs.includes("coach") ? groupCount : 0) + (docs.includes("entry") ? groupCount : 0);
+    (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("adult") ? 1 : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0) + (docs.includes("coach") ? groupCount : 0) + (docs.includes("entry") ? groupCount : 0);
   const ready = [
     [r.abroad ? "Yarış adı, ülke, şehir, başlangıç tarihi" : "Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
@@ -883,14 +889,20 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   ? `Sporcular ${autoClasses.length} sınıfta; her sınıfa ayrı form hazırlanır. Tek form için sınıfı yaz.`
                   : "Boşsa sporcuların sınıfı yazılır. Sicil no, yelken no ve cinsiyet sporcu kartından gelir."}
               </p>
-              <Label right="hesabına kaydedilir">ANTRENÖR VE DESTEK BOTU</Label>
+            </>
+          )}
+
+          {coachOn && (
+            <>
+              <Label right="hesabına kaydedilir">{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
               <Group>
-                {COACH_FIELDS.map(([k, label, mode]) => (
-                  <Row key={k} label={label} className={coach[k] || !["name", "tc", "sicil", "phone"].includes(k) ? "" : "bg-amber-500/5"}>
+                {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
+                  <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
                     <input
                       value={coach[k]}
                       onChange={(e) => setCoachField(k)(e.target.value)}
-                      inputMode={mode || undefined}
+                      type={mode === "date" ? "date" : undefined}
+                      inputMode={mode && mode !== "date" ? mode : undefined}
                       maxLength={k === "tc" ? 11 : 120}
                       className={input}
                     />
