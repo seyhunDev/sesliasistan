@@ -1,0 +1,5 @@
+## Nerede kaldım
+- Not detay sayfası yenilendi (Seyhun: "çok kullanışsız, işlemleri ayıralım, kullanışlı olsun, notlar zaten kısa"; telefonda denenmedi): not artık tek kartta: büyük başlık, hemen altında metin ("Ayrıntı ekle"); altında küçük satırda Sabit işareti, kategori etiketi, kim ekledi / ne zaman. Sorumlu ve bağlı plan varsa ayrı kartta. İçerikten ayrı "İŞLEMLER" bölümü: Yapıldı (yeşil, Arşiv'e gönderir ve ekranı kapatır), Sabitle/Bırak, Kopyala, Paylaş (telefonun paylaşım menüsü; yoksa kopyalar); yapılmış/arşivdeki notta durum satırı + "Notlara al". Sil üstteki çöp kutusundan kalktı, en altta ayrı "Notu sil" (5 sn geri al bildirimi aynı). Değişiklik yokken alttaki gri "Değişiklik yok" düğmesi notta görünmez, yazınca "Kaydet" çıkar. Plan ve görev ekranları değişmedi. `NoteActions.jsx` (eski NoteDone), `EditCard.jsx` not dalı, `noteText` (noteState.js). Testi `test:asistan` › "Not yapıldı (arşiv)" › "kopyalanacak metin".
+
+## Sıradaki işler
+0. Not detayını telefonda dene: bir notu aç; başlık ve metin üstte net mi, Sabitle, Kopyala, Paylaş (WhatsApp'a), Yapıldı ve en alttaki "Notu sil" çalışıyor mu. Başlığı değiştirince alttaki "Kaydet" çıkıyor mu.

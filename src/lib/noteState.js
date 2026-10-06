@@ -4,3 +4,9 @@
 export const noteDonePatch = (at = new Date().toISOString()) => ({ done: true, doneAt: at, archived: true, archivedAt: at, pinned: false });
 export const noteReopenPatch = () => ({ done: false, doneAt: null, archived: false, archivedAt: null });
 export const noteStateText = (n) => (n?.done ? "Yapıldı" : n?.archived ? "Arşivlendi" : "Açık");
+// Kopyala / paylaş için notun düz metni: başlık, metin başlıktan farklıysa altında
+export const noteText = (n) => {
+  const t = String(n?.title || "").trim();
+  const b = String(n?.body || "").trim();
+  return b && b !== t ? (t ? `${t}\n${b}` : b) : t;
+};
