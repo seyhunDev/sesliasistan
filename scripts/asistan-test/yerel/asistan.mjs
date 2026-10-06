@@ -8,6 +8,7 @@ import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
 import { suite, today, tom, data } from "./ortak.mjs";
 import { shareText } from "@/lib/cancelPlan";
+import { waMode } from "@/lib/steps";
 import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 
 const { group, results } = suite("asistan");
@@ -608,7 +609,13 @@ group("Mesaj ve WhatsApp")([
   ["sporculara ve WhatsApp grubuna da gönder", Fa("WhatsApp istendi", () => ST.wantsWhatsApp("sporculara ve WhatsApp grubuna da gönder"))],
   ["vatsap grubuna da at", Fa("ses tanıma yazışı da WhatsApp", () => ST.wantsWhatsApp("vatsap grubuna da at"))],
   ["sporculara gönder", Fa("WhatsApp istenmedi", () => !ST.wantsWhatsApp("sporculara gönder"))],
-  ["paylaşım varsa", Fa("paylaşım menüsü açılır, metin panoya", () => { const got = {}; const r = shareText("9.30 antrenman", { share: (o) => { got.s = o.text; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }); return r === "share" && got.s === "9.30 antrenman" && got.c === "9.30 antrenman" && !got.u; })],
+  ["paylaşım menüsü açılmaz", Fa("WhatsApp doğrudan açılır, metin panoya", () => { const got = {}; const r = shareText("9.30 antrenman", { share: () => { got.s = 1; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }); return r === "link" && !got.s && got.c === "9.30 antrenman" && got.u === "https://wa.me/?text=9.30%20antrenman"; })],
+  ["WhatsApp sporcular grubuna gönder", Fa("yalnız WhatsApp", () => waMode("WhatsApp sporcular grubuna gönder") === "only")],
+  ["vatsap grubuna at", Fa("yalnız WhatsApp (ses tanıma yazışı)", () => waMode("vatsap grubuna at") === "only")],
+  ["sporculara ve WhatsApp grubuna da gönder", Fa("uygulama + WhatsApp", () => waMode("sporculara ve WhatsApp grubuna da gönder") === "also")],
+  ["sporculara gönder, WhatsApp grubuna da at", Fa("uygulama + WhatsApp", () => waMode("sporculara gönder, WhatsApp grubuna da at") === "also")],
+  ["hem uygulamada hem WhatsApp'ta paylaş", Fa("uygulama + WhatsApp", () => waMode("hem uygulamada hem WhatsApp'ta paylaş") === "also")],
+  ["sporculara gönder (WhatsApp yok)", Fa("WhatsApp istenmedi", () => waMode("sporculara gönder") === "")],
   ["grup bağlantısı", Fa("davet bağlantısı temizlenir", () => cleanWaLink("https://chat.whatsapp.com/AbCdEf1234567890xyz?mode=gi_t") === "https://chat.whatsapp.com/AbCdEf1234567890xyz" && !cleanWaLink("https://wa.me/905321112233"))],
   ["Sporcular ↔ Sporcular, Aile ↔ Aileler", Fa("uygulama grubu WhatsApp grubuyla eşleşir", () => { const g = [{ name: "Sporcular", link: "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "Aileler", link: "https://chat.whatsapp.com/BBBBBBBBBBBBBBBBBBBB" }]; return waGroupFor("Sporcular", g).endsWith("AAAA") && waGroupFor("Aile", g).endsWith("BBBB") && !waGroupFor("Ekip", g); })],
   ["aynı ad iki kez", Fa("tekrar eden grup ve bozuk bağlantı atılır", () => cleanWaGroups([{ name: "Sporcular", link: "chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "sporcu grubu", link: "https://chat.whatsapp.com/CCCCCCCCCCCCCCCCCCCC" }, { name: "Ekip", link: "x" }]).length === 1)],

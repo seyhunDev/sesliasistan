@@ -1,0 +1,7 @@
+## Nerede kaldım
+
+- "WhatsApp grubuna gönder" yalnız WhatsApp'a (Seyhun: "WhatsApp grubuna gönder dersem sadece WhatsApp grubuna göndermek için hazırlayalım; WhatsApp'a git, grubu aç, mesajı yapıştır; alttan seçim ekranı niye açılıyor"; telefonda denenmedi): cümlede WhatsApp geçip uygulama da istenmediyse ("WhatsApp sporcular grubuna gönder", "vatsap grubuna at") mesaj uygulamadaki gruba gitmez; kart "Sporcular WhatsApp grubu için mesaj hazır … WhatsApp'ta açayım mı?" der, düğme "WhatsApp'ta aç". "sporculara ve WhatsApp grubuna da", "hem uygulamada hem WhatsApp'ta" eskisi gibi ikisine (`waMode` "only"/"also", steps.js). Sesle onaylanınca WhatsApp kendiliğinden açılamaz (iPhone dokunuş ister), "WhatsApp grubunda aç" düğmesi gelir. Telefonun paylaşım menüsü artık hiç açılmaz: Ayarlar › WhatsApp gruplarında bağlantısı varsa grup doğrudan açılır, metin panoya kopyalanır (yazı alanına basılı tut, Yapıştır); yoksa WhatsApp metin hazır açılır, grup orada seçilir (`shareText`, cancelPlan.js). Yalnız Ayarlar'da olan bir WhatsApp grubuna da ("WhatsApp veliler grubuna yaz") gönderilir. Testleri `test:asistan` › "Mesaj ve WhatsApp".
+
+## Sıradaki işler
+
+- Ayarlar › WhatsApp grupları'na Sporcular bağlantısını ekle. Asistana "WhatsApp sporcular grubuna gönder: perşembe 9.30 antrenman" de, "WhatsApp'ta aç"a bas: grup açılmalı, yazı alanına basılı tutup Yapıştır. Uygulamadaki Sporcular sohbetine gitmediğini kontrol et.
