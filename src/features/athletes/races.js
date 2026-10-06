@@ -168,7 +168,7 @@ export function freshRace(last = {}, today = "") {
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", docs: cleanDocs(last.docs), notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", docs: null, notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 
