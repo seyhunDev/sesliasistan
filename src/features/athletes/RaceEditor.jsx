@@ -104,7 +104,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [tab, setTab] = useState(start.name ? "sum" : "info");
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
-  // Seçili belgeler yarışta saklanır (yeni yarışta son yarışın seçimi, yoksa okul/kulüp yazıları kapalı)
+  // Seçili belgeler yarışta saklanır (yeni yarışta hepsi, kulüp izin yazısı kapalı)
   const [startDocs] = useState(() => cleanDocs(start.docs));
   const [docs, setDocs] = useState(() => startDocs || DOC_DEFAULT);
   const [busy, setBusy] = useState(false);
@@ -136,7 +136,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setParts([]);
     dropRaceFile(id.current);
   };
-  // Belge seçimi: yarışa da yazılır (sonraki açılışta ve sonraki yarışta aynı seçim gelir)
+  // Belge seçimi: yarışa da yazılır (sonraki açılışta aynı seçim gelir)
   const pickDoc = (k, on) => {
     dropFile();
     const next = DOCS.map(([x]) => x).filter((x) => (x === k ? on : docs.includes(x)));
