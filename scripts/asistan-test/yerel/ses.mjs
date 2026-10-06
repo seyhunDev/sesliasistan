@@ -135,3 +135,18 @@ group("Dinleme dalgası (ortada sabit)")([
   ["çubuk sayısı zamanla değişmez (kayma yok)", { desc: "her an 5", fn: () => [0, 1, 2, 3].map((t) => wb(0.5, t).length), ok: (r) => r.every((n) => n === 5) }],
   ["boy 1'i geçmez", { desc: "≤ 1", fn: () => [0, 0.5, 1, 2].flatMap((t) => wb(5, t)), ok: (r) => r.every((x) => x <= 1 && x >= WAVE_MIN) }],
 ]);
+
+// Gemini 3.5 Transcribe: istek gövdesi (SMART kip, Türkçe, kelime listesi), yanıtın tek satır okunması, süre ve Kullanım satırı
+const GS = await import("@/lib/speech/geminiStt");
+const { sttUsage } = await import("@/lib/aiUsage");
+const wavOf = (sec) => { const b = new Uint8Array(44 + 32000 * sec); b.set([82, 73, 70, 70]); b[28] = 0x00; b[29] = 0x7d; return b; }; // 32000 bayt/sn
+group("Gemini ses tanıma")([
+  ["istek SMART kip ve Türkçe", { desc: "mode SMART, tr-TR", fn: () => GS.sttBody("QUJD", "audio/wav", ["Optimist"]).generationConfig.audioTranscriptionConfig, ok: (c) => c.mode === "SMART" && c.languageCodes[0] === "tr-TR" && c.customVocabulary[0] === "Optimist" }],
+  ["ses gövdede", { desc: "inlineData", fn: () => GS.sttBody("QUJD", "audio/wav").contents[0].parts[0].inlineData, ok: (d) => d.mimeType === "audio/wav" && d.data === "QUJD" }],
+  ["kelime listesi: adlar önce, kısa kelime yok, en çok 100", { desc: "Ali Kaya başta", fn: () => GS.sttVocab("yelken, aç, Optimist, git.", ["Ali Kaya"], ["Foça Kupası"]), ok: (v) => v[0] === "Ali Kaya" && v.includes("Foça Kupası") && v.includes("Optimist") && !v.includes("aç") && v.length <= 100 }],
+  ["uzun liste 100'de kesilir", { desc: "100", fn: () => GS.sttVocab("", Array.from({ length: 150 }, (_, i) => `Ad ${i}`)).length, ok: (n) => n === 100 }],
+  ["madde madde yanıt tek satır olur", { desc: "“Listeye ekle: süt ekmek”", fn: () => GS.sttText({ candidates: [{ content: { parts: [{ text: "Listeye ekle:\n- süt\n- ekmek\n" }] } }] }), ok: (t) => t === "Listeye ekle: süt ekmek" }],
+  ["boş yanıt boş metin", { desc: "boş", fn: () => GS.sttText({}), ok: (t) => t === "" }],
+  ["WAV süresi başlıktan", { desc: "3 sn", fn: () => GS.audioSecs(wavOf(3), "audio/wav"), ok: (n) => n === 3 }],
+  ["Kullanım: saniye dakikaya, ücret", { desc: "2 dk ≈ $0,01", fn: () => sttUsage({ "stt-sec": 120 }), ok: (u) => u.min === 2 && Math.abs(u.cost - 0.01) < 1e-9 }],
+]);

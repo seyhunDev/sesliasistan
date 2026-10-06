@@ -31,6 +31,13 @@ export function usageRows(doc) {
   return { rows, total: rows.reduce((n, [, v]) => n + v, 0) };
 }
 
+// Gemini ses tanıma (Gemini 3.5 Transcribe): ses saniyesi sayılır, ücret dakika başına
+export const STT_PRICE_MIN = 0.005;
+export function sttUsage(doc) {
+  const min = Math.round(((Number(doc?.["stt-sec"]) || 0) / 60) * 10) / 10;
+  return { min, cost: min * STT_PRICE_MIN };
+}
+
 // Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller
 export const usd = (n) => `$${(Math.round(n * 100) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const monthName = (ym) => (ym ? new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) : "");
