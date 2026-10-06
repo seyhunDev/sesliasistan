@@ -455,7 +455,6 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
             <div className="flex h-10 items-center justify-center" role="status" aria-live="polite">
               {live.status && (
                 <span key={live.status} className="dome-chip fade-in">
-                  <span className="work-ring" aria-hidden="true" />
                   <span className="work-text truncate">{live.status}…</span>
                 </span>
               )}
