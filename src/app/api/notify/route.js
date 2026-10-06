@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
-import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
+import { ackSig, pushReady, sendTo as sendPush } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
 import { payLine } from "@/lib/invoices";
 import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
@@ -35,6 +35,9 @@ export async function POST(request) {
     body = await request.json();
   } catch {}
   const me = await profileOf(au.uid);
+  // Gönderenin kendi cihazlarına hiç gitmez (aynı telefon başka bir hesapta da kayıtlı olabilir)
+  const mine = new Set(me.devices);
+  const sendTo = (u, payload) => sendPush(u, payload, mine);
   const db = adminDb();
   const org = db.collection("orgs").doc(me.orgId);
 

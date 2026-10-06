@@ -4,6 +4,7 @@ import webpush from "web-push";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/server/admin";
 import { recordInbox } from "@/lib/inbox";
+import { otherDevices } from "@/lib/pushDevices";
 
 export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
@@ -20,13 +21,14 @@ export function pushError(e) {
   return `Bildirim gönderilemedi (kod ${c}).`;
 }
 
-export async function sendTo(uid, payload) {
+// skip: gönderenin kendi cihaz anahtarları (lib/pushDevices)
+export async function sendTo(uid, payload, skip) {
   const db = adminDb();
   const ref = db.collection("users").doc(uid);
   // Önce bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışların sayısı (lib/inbox)
   const badge = await recordInbox(db, uid, payload);
   const user = (await ref.get()).data() || {};
-  const push = user.push || {};
+  const push = otherDevices(user.push, skip);
   if (!Object.keys(push).length) return 0;
   if (payload.badge === undefined && badge !== undefined) payload = { ...payload, badge };
   try {

@@ -74,6 +74,16 @@ const subEntry = (j) => ({ endpoint: j.endpoint, keys: j.keys, at: new Date().to
 // Uygulama her açılışta: izin verilmişse bu cihazın aboneliğini kontrol eder; yoksa oluşturur, kayıtta yoksa ya da
 // değiştiyse yeniden yazar. Ana ekrana yeniden ekleme ya da iPhone'un aboneliği yenilemesi bildirimleri sessizce
 // kesiyordu (eski abonelik silinir, yenisi kaydedilmezdi). Sonuç: "ok" | "saved" | "skip"
+// Aboneliği başka hesaplardan siler (aynı telefonda önce başka hesapla girildiyse); oturum başına bir kez
+const CLAIM = "sa_push_claim";
+function claimPush(j) {
+  try {
+    if (sessionStorage.getItem(CLAIM) === j.endpoint) return;
+    sessionStorage.setItem(CLAIM, j.endpoint);
+  } catch {}
+  authFetch("/api/push-claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: deviceKey(j.endpoint), endpoint: j.endpoint }) }).catch(() => {});
+}
+
 export async function syncPush(p) {
   if (!p?.uid || !KEY || !pushSupported() || Notification.permission !== "granted" || offHere()) return "skip";
   const reg = await navigator.serviceWorker.ready;
@@ -82,8 +92,12 @@ export async function syncPush(p) {
   const key = deviceKey(j.endpoint);
   const data = (await getDoc(doc(db, "users", p.uid))).data() || {};
   const saved = data.push?.[key];
-  if (saved && saved.keys?.p256dh === j.keys?.p256dh && saved.keys?.auth === j.keys?.auth && data.reminders?.on) return "ok";
+  if (saved && saved.keys?.p256dh === j.keys?.p256dh && saved.keys?.auth === j.keys?.auth && data.reminders?.on) {
+    claimPush(j);
+    return "ok";
+  }
   await setDoc(doc(db, "users", p.uid), { ...ids(p), reminders: { on: true, tz: tz() }, push: { [key]: subEntry(j) } }, { merge: true });
+  claimPush(j);
   return "saved";
 }
 
@@ -106,6 +120,10 @@ export async function enableReminders(p, lead) {
     },
     { merge: true },
   );
+  try {
+    sessionStorage.removeItem(CLAIM);
+  } catch {}
+  claimPush(j);
 }
 
 export async function setLead(p, lead) {

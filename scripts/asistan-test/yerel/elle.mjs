@@ -24,6 +24,14 @@ group("Ek bildirimler")([
   })],
 ]);
 
+// Kendi mesajına bildirim gelmesin (pushDevices.js): aynı telefon iki hesapta kayıtlıysa gönderenin cihazı atlanır
+const PD = await import("@/lib/pushDevices");
+group("Kendi bildirimi")([
+  ["ortak telefon", F("gönderenin telefonu çıkar, alıcının kendi telefonu kalır", () => Object.keys(PD.otherDevices({ dA: {}, dB: {} }, new Set(["dA"]))).join() === "dB")],
+  ["atlanacak yok", F("bütün cihazlar kalır", () => Object.keys(PD.otherDevices({ dA: {}, dB: {} })).length === 2)],
+  ["yalnız ortak telefon", F("hiç cihaz kalmaz", () => Object.keys(PD.otherDevices({ dA: {} }, new Set(["dA"]))).length === 0)],
+]);
+
 // Yoklama ay raporu (attendanceReport.js)
 const AR = await import("@/features/athletes/attendanceReport");
 const ATH = [
