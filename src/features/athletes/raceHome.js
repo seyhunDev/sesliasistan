@@ -50,7 +50,7 @@ export function useRaceHome() {
     if (!on) return;
     let live = true;
     countRaces(profile.orgId).then((c) => {
-      if (live && c) setN(c);
+      if (live) setN(c || {}); // okunamazsa da "yükleniyor" bitsin
     });
     return () => {
       live = false;
@@ -62,6 +62,7 @@ export function useRaceHome() {
     on,
     up: on ? n?.up || 0 : 0,
     next: on ? n?.next || null : null,
+    loading: on && n === null,
     set: (on) => updateDoc(doc(db, "users", profile.uid), { races: on ? "on" : "off" }),
   };
 }
