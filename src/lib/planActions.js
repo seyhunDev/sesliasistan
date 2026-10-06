@@ -1,6 +1,4 @@
-import { icsOf } from "@/lib/ics";
-
-// Plan ekranındaki işlemler (Ertele, Kopyala, Paylaş, Takvime ekle) için saf yardımcılar.
+// Plan ekranındaki işlemler (Ertele, Kopyala, Paylaş) için saf yardımcılar.
 const D = (s) => new Date(`${s}T00:00`);
 const pad = (n) => String(n).padStart(2, "0");
 const shift = (s, n) => {
@@ -26,6 +24,3 @@ export function planText(p) {
 // Ertele: tarih (ve varsa bitiş) n gün ileri; saat ve süre aynı kalır
 export const postponePatch = (p, n = 1) => ({ date: shift(p.date, n), ...(p.endDate ? { endDate: shift(p.endDate, n) } : {}) });
 
-// Tek planlık takvim dosyası (iPhone'da açınca "Takvime ekle" sorar)
-export const planIcs = (p, now) => icsOf([p], { name: p?.title || "Plan", now });
-export const icsName = (p) => `${String(p?.title || "plan").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40) || "plan"}.ics`;

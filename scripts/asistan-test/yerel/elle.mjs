@@ -1134,6 +1134,4 @@ group("Plan detay işlemleri")([
   ["çok günlü", { desc: "aralık yazılır, saat yok", fn: () => PA.planWhen({ date: "2026-10-06", endDate: "2026-10-08" }), ok: (r) => r.includes("–") && !r.includes("Tüm gün") }],
   ["ertele", { desc: "tarih ve bitiş 1 gün ileri, ay sonu", fn: () => JSON.stringify(PA.postponePatch({ date: "2026-10-31", endDate: "2026-11-02" })), ok: (r) => r === '{"date":"2026-11-01","endDate":"2026-11-03"}' }],
   ["ertele tek gün", { desc: "bitiş eklenmez", fn: () => JSON.stringify(PA.postponePatch({ date: "2026-10-06" }, 7)), ok: (r) => r === '{"date":"2026-10-13"}' }],
-  ["takvim dosyası", { desc: "tek etkinlik, yer", fn: () => PA.planIcs(pa, new Date("2026-10-06T00:00:00Z")), ok: (r) => (r.match(/BEGIN:VEVENT/g) || []).length === 1 && r.includes("LOCATION:İskele") && r.includes("SUMMARY:Antrenman") }],
-  ["dosya adı", { desc: "güvenli ad", fn: () => PA.icsName({ title: "Foça yarışı / hazırlık" }), ok: (r) => r === "Foça-yarışı-hazırlık.ics" }],
 ]);
