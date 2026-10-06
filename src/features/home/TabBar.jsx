@@ -389,7 +389,9 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           {active && (
             <div
               ref={pane}
-              className={`${state === "listening" ? "max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.75rem)]" : "max-h-[calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem)]"} overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]`}
+              // Konuşma alanı en çok görünen ekranın %45'i (Seyhun: "yarının biraz altında kalmalı", 2026-10-06); fazlası içinde
+              // kayar: yeni mesajda en alta iner, yukarı kaydırınca eskiler görünür (aşağıdaki kaydırma takibi). Küre ve düğmeler sabit.
+              className={`${state === "listening" ? "max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.75rem),calc(var(--vvh,100dvh)*.45))]" : "max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem),calc(var(--vvh,100dvh)*.45))]"} overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]`}
             >
               <div className="pb-3">
                 <div ref={setSlot} />
