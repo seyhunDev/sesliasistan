@@ -302,6 +302,13 @@ select {
 @keyframes vlwave { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(calc(.35 + var(--m) * .6)); } }
 @keyframes vlspin { to { transform: rotate(360deg); } }
 
+/* Asistan hazırlarken: dönen ince halka + üstünden ışık geçen yazı ("Plan hazırlanıyor…", AssistantSheet `work`) */
+.work-ring { width: 1rem; height: 1rem; flex-shrink: 0; border-radius: 9999px; border: 2px solid color-mix(in srgb, var(--acc) 22%, transparent); border-top-color: var(--acc); animation: halospin .8s linear infinite; }
+.work-text { background: linear-gradient(90deg, var(--mut) 0%, var(--mut) 38%, var(--acc) 50%, var(--mut) 62%, var(--mut) 100%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: worksheen 1.6s linear infinite; }
+@keyframes worksheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .work-ring, .work-text { animation-duration: 3s; } }
+
 /* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
    Logo yumuşakça belirir, içindeki ses çubukları dalgalanır, altında ince çizgi akar. Bitince logo hafifçe büyüyüp
    ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
