@@ -20,6 +20,7 @@ import { invoiceTile } from "@/lib/invoices";
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
 // Önbellekte bilgi varsa (aidat özeti, bellekteki faturalar/yarışlar) iskelet hiç çıkmaz; en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
+const fisTile = (r, inv) => (!inv ? r : !r ? inv : { big: r.big, sub: `Fatura: ${inv.sub}`, warn: inv.warn });
 export function HomeSummary({ money, race, dues, posts, training, plans, invoices }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
@@ -72,8 +73,8 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
   const skel = (k) => busy && wait[k] && [k, null];
   const cards = [
     skel("bank") || (money && m.bank && ["/mail", "chart", "Banka", m.bank, null, "bank"]),
-    skel("inv") || (inv && ["/invoices", "receipt", "Fatura", inv, null, "inv"]),
-    money && ["/receipts", "receipt", inv ? "Fişler" : "Fiş / Fatura", m.receipts],
+    // Fiş ve fatura tek kart (sayfası da tek, sekmeli): büyük satır ayın fiş harcaması, açık fatura varsa alt satır onu söyler
+    skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
     skel("dues") || (dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, ym), null, "dues"]),
     skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up), null, "race"]),
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
