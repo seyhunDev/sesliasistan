@@ -367,6 +367,69 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
     };
   }, [active, client]);
 
+  // Aşağı çekerek kapat (Seyhun, 2026-10-06): asistan açıkken kubbe parmakla aşağı sürüklenir; yeterince (dinlerken daha
+  // çok) ya da hızlı çekilince konuşma kapanır, azsa yerine döner. Konuşma alanı kaydırılmışken oradan başlayan çekme
+  // kaydırmadır; yazarken (klavye) ve düğmelerden başlayan dokunuşta çalışmaz.
+  const st = useRef(state);
+  const close = useRef(onClose);
+  useLayoutEffect(() => {
+    st.current = state;
+    close.current = onClose;
+  });
+  useEffect(() => {
+    const el = box.current;
+    if (!active || typing || !el) return;
+    let y0 = null;
+    let t0 = 0;
+    let dy = 0;
+    let drag = false;
+    const reset = (anim) => {
+      el.style.transition = anim ? "transform .3s cubic-bezier(.22,.8,.24,1), height .5s cubic-bezier(.22,.8,.24,1)" : "";
+      el.style.transform = "";
+    };
+    const start = (e) => {
+      if (e.touches.length !== 1 || e.target.closest("button, a, input, textarea, [data-orb]")) return (y0 = null);
+      const p = pane.current;
+      if (p && p.contains(e.target) && p.scrollTop > 2) return (y0 = null);
+      y0 = e.touches[0].clientY;
+      t0 = Date.now();
+      dy = 0;
+      drag = false;
+    };
+    const move = (e) => {
+      if (y0 == null) return;
+      dy = e.touches[0].clientY - y0;
+      if (!drag && dy > 10) drag = true;
+      if (!drag) return;
+      if (dy <= 0) return (el.style.transform = "");
+      e.preventDefault(); // konuşma alanı kaymasın, kubbe parmağı izlesin
+      el.style.transition = "none";
+      el.style.transform = `translate3d(0,${Math.round(dy)}px,0)`;
+    };
+    const end = () => {
+      if (y0 == null) return;
+      y0 = null;
+      if (!drag) return;
+      const fast = dy / Math.max(1, Date.now() - t0) > 0.6 && dy > 50;
+      const far = dy > (st.current === "listening" ? 160 : 110);
+      // Kapanınca kubbe zaten boştaki boyuna iner; sürüklenen kubbe aynı anda yerine yumuşakça döner
+      if (fast || far) close.current?.();
+      reset(true);
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end, { passive: true });
+    el.addEventListener("touchcancel", end, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+      el.style.transform = "";
+      el.style.transition = "";
+    };
+  }, [active, typing]);
+
   const heard = active && (state === "listening" || live.transcribing) && live.heard; // gönderilirken de yazı kalır
   return (
     <div
