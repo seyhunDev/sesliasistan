@@ -230,6 +230,30 @@ select {
   transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease;
   -webkit-backface-visibility: hidden;
 }
+/* ADA (2026-10-06, Seyhun: "tamamen değiştir, daha yaratıcı, profesyonel, modern"): kubbe artık kenardan kenara yeşil zemin
+   değil, saydam bir taşıyıcı; içinde sayfanın üstünde yüzen koyu cam adalar (.isle: sohbet kartı, asistan çubuğu, sekmeler).
+   Taşıyıcı dokunuş almaz, adalar alır: adaların arasından ve yanlarından sayfaya dokunulur. Yukarıdaki değişkenler (beyaz yazı,
+   koyu zemin renkleri) adaların içinde geçerli kalır. */
+.dome { background: none; border-radius: 0; box-shadow: none; pointer-events: none; }
+.dome[data-on] { box-shadow: none; }
+.dome .isle { pointer-events: auto; }
+.isle {
+  --edge: rgba(174, 232, 211, .55);
+  border-radius: 1.625rem;
+  background: linear-gradient(180deg, rgba(38, 90, 76, .97) 0%, rgba(20, 52, 44, .98) 100%);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 0 0 1px rgba(255, 255, 255, .07), 0 18px 40px -18px rgba(8, 28, 23, .7), 0 2px 8px -2px rgba(8, 28, 23, .25);
+}
+/* Çubuğun üst kenarında ince ışık çizgisi: durumun rengi (hareket etmez, yalnız renk değişir) */
+@property --edge { syntax: "<color>"; inherits: true; initial-value: rgba(174, 232, 211, .55); }
+.isle-bar { position: relative; transition: --edge .35s ease, box-shadow .3s ease; }
+.isle-bar::before { content: ""; position: absolute; left: 18%; right: 18%; top: 0; height: 1.5px; border-radius: 9999px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--edge), transparent); }
+.dome[data-state="listening"] .isle-bar { --edge: rgba(255, 150, 132, .95); }
+.dome[data-state="busy"] .isle-bar { --edge: rgba(255, 210, 120, .9); }
+.dome[data-state="speaking"] .isle-bar { --edge: rgba(140, 205, 255, .95); }
+.isle-on { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 0 0 1.5px rgba(255, 150, 132, .55), 0 18px 40px -18px rgba(8, 28, 23, .7); }
+html[data-theme="dark"] .isle { background: linear-gradient(180deg, rgba(40, 92, 78, .96) 0%, rgba(20, 52, 44, .97) 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px rgba(255, 255, 255, .09), 0 18px 40px -18px rgba(0, 0, 0, .8); }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
    klavye için verilen transform'u ezmesin) */
 @keyframes domerise { from { transform: translateY(100%); } }
