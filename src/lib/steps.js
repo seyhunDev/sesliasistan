@@ -47,6 +47,14 @@ export function jobsText(kinds) {
   return l.length > 1 ? `${l.slice(0, -1).join(", ")} ve ${l.at(-1)}` : l[0] || "";
 }
 
+// Mesaj isteğinde kayıt da isteniyor mu (takvim, plan, görev, not ya da "ekle/oluştur/kaydet"). İstenmiyorsa mesajdaki
+// gün ve saat kayıt değildir ("Perşembe 9.30'da antrenman var, sporculara gönder" plan açmaz).
+const RECORD_VERB = new RegExp(`${W}(ekle\\p{L}*|oluştur\\p{L}*|kaydet\\p{L}*|kur(?:alım|ar mısın)?(?![\\p{L}]))`, "u");
+export const wantsRecord = (raw) => jobsIn(raw).some((k) => k !== "send") || RECORD_VERB.test(lower(String(raw || "")));
+
+// WhatsApp da isteniyor mu ("sporculara ve WhatsApp grubuna gönder"); ses tanıma "vatsap", "whats app" yazabilir
+export const wantsWhatsApp = (raw) => /(whats\s?app|w?vats\s?app?|wats\s?app?|vatsap)/i.test(String(raw || ""));
+
 // Görev listesi: yapay zekanın yanıtındaki işler, onay gerekip gerekmediğine göre.
 // now: hemen yapılan işlemler (görev tamamlama/yeniden açma, güncelleme); items: yeni kayıtlar (bilgisi tamamsa hemen kaydedilir);
 // confirm: onay isteyen adımlar sırayla (önce silmeler tek kartta, sonra her mesaj ayrı kartta); open: düzenleme/iptal ekranı.
