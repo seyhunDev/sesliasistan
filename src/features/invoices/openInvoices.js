@@ -32,6 +32,9 @@ function load(orgId, fresh = false) {
   return p;
 }
 
+// Açılış ekranı sürerken okumayı başlatır (DataProvider); ana sayfa açılınca aynı istek kullanılır, ikinci okuma olmaz
+export const prefetchOpen = (orgId) => orgId && load(orgId);
+
 // enabled: yalnız ana hesap. Dönüş: açık faturalar ya da null (yükleniyor)
 export function useOpenInvoices(orgId, enabled) {
   const [list, setList] = useState(() => (memo?.org === orgId ? memo.list : null));

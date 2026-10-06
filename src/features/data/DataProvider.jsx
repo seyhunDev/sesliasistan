@@ -92,6 +92,16 @@ export function DataProvider({ children }) {
   const cur = useRef(data); // geri çağrılarda her zaman güncel veri
   cur.current = data;
 
+  // Ana sayfa özeti için yarış ve açık fatura okumaları açılış ekranı sürerken başlar (açılışı uzatmaz, okuma sayısı aynı)
+  const owner = profile?.role === "owner";
+  const races = profile?.races;
+  const email = profile?.email;
+  useEffect(() => {
+    if (!orgId) return;
+    import("@/features/athletes/raceHome").then((m) => m.prefetchRaces({ email, orgId, races })).catch(() => {});
+    if (owner) import("@/features/invoices/openInvoices").then((m) => m.prefetchOpen(orgId)).catch(() => {});
+  }, [orgId, owner, races, email]);
+
   const me = useRef({});
   useEffect(() => {
     me.current = { uid, orgId, staff, name: profile?.name };
