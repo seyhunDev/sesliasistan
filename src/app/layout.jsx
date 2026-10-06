@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
+import { BootSplash } from "@/components/ui/BootSplash";
 import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
@@ -24,7 +25,7 @@ export const viewport = {
     ],
 };
 
-const SIZE_SCRIPT = `try{var s=localStorage.getItem("sa-size");if(s==="l"||s==="xl")document.documentElement.dataset.size=s}catch(e){}`;
+const SIZE_SCRIPT = `document.documentElement.dataset.boot="on";try{var s=localStorage.getItem("sa-size");if(s==="l"||s==="xl")document.documentElement.dataset.size=s}catch(e){}`;
 
 export default function RootLayout({ children }) {
     return (
@@ -36,6 +37,8 @@ export default function RootLayout({ children }) {
                 <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
             </head>
             <body>
+                {/* Tek açılış ekranı: yükleme aşamaları boyunca sabit kalır, sonra sayfaya yumuşak geçer (lib/boot.js) */}
+                <BootSplash />
                 <AuthProvider>{children}</AuthProvider>
                 <ServiceWorkerSetup />
             </body>

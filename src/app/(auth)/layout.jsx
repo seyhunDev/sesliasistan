@@ -16,7 +16,7 @@ export default function AuthLayout({ children }) {
 
   if (loading || user) return <Splash />;
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
+    <div data-boot-enter="" className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
       {/* Uygulama kimliği */}
       <div className="mb-7 flex flex-col items-center text-center">
         <AppLogo size={60} className="shadow-[0_12px_28px_-12px_rgba(31,90,75,.7)]" />

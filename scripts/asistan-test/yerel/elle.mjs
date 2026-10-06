@@ -969,3 +969,47 @@ group("Ana sayfa faturalar")([
   ["acil faturalar", F("3 gün içinde ya da geciken, en acil önce", () => IV.urgentInvoices(INV, "2026-10-05").length === 0 && IV.urgentInvoices(INV, "2026-10-17").map((x) => x.id).join(",") === "i1,i2")],
   ["son gün yazısı", F("gecikti / bugün / tarih", () => IV.dueText(INV[0], "2026-10-18") === "Gecikti 3 gün" && IV.dueText(INV[0], "2026-10-15") === "Son gün bugün" && IV.dueText(INV[0], "2026-10-01") === "Son gün 15 Eki" && IV.dueText(INV[2], "2026-10-01") === "Son gün yok")],
 ]);
+
+// Açılış ekranı (boot.js): yükleme aşamaları arasında ekran kaybolup yeniden gelmesin.
+// Durum modül içinde ortak olduğu için adımlar tek denetimde sırayla çalışır.
+const BT = await import("@/lib/boot");
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const bootSteps = async () => {
+  const out = [];
+  const seen = [];
+  const off = BT.onBoot((v) => seen.push(v));
+  // 1) oturum bitip veri yüklemesi aynı anda başlayınca ekran kalır, veri gelince bir kez çekilir
+  let a = BT.holdBoot();
+  a();
+  let b = BT.holdBoot();
+  await wait(900);
+  out.push(BT.bootShown() && seen.length === 0);
+  b();
+  await wait(300);
+  out.push(!BT.bootShown() && seen.join() === "false");
+  // 2) aşamalar arasında 50 ms boşluk olsa da sönmez
+  a = BT.holdBoot();
+  a();
+  await wait(50);
+  b = BT.holdBoot();
+  await wait(300);
+  out.push(BT.bootShown() && seen.join() === "false,true");
+  b();
+  await wait(800);
+  out.push(!BT.bootShown());
+  // 3) iki kez bırakmak sayacı bozmaz
+  a = BT.holdBoot();
+  b = BT.holdBoot();
+  a();
+  a();
+  await wait(800);
+  out.push(BT.bootShown());
+  b();
+  await wait(800);
+  out.push(!BT.bootShown());
+  off();
+  return out.every(Boolean) || out.map((x) => (x ? 1 : 0)).join("");
+};
+group("Açılış ekranı")([
+  ["aşamalar", F("geçişte sönmez, kısa boşlukta sönmez, iki kez bırakma sayacı bozmaz", bootSteps)],
+]);
