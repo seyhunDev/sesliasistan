@@ -1,0 +1,7 @@
+## Nerede kaldım
+
+- Mikrofon kapanınca arka plandaki ses devam ediyor (Seyhun: "arka planda YouTube çalıyor, mikrofonu açınca ses gidiyor, durdurunca devam etmesi gerekmiyor mu, diğer uygulamalarda çalışıyor"; telefonda denenmedi): mikrofon izleri ve ses motoru zaten kapanıyordu, ama iPhone ses oturumu "kayıt" kipinde kalıyordu; iOS diğer uygulamalara "devam edebilirsin" demediği için YouTube/müzik durmuş kalıyordu. Artık mikrofon açılmadan önce oturum `play-and-record`, kapanınca (150 ms sonra) `transient` yapılır; çalan sesimiz yoksa iOS oturumu bırakır, arka plan sesi kaldığı yerden sürer (`micOpening`, `micClosed`, src/lib/speech/audioSession.js; useSpeech ve toplantı kaydı useMeetingRecorder). Safari 16.4+ `navigator.audioSession`; destek yoksa hiçbir şey yapılmaz. Sesli yanıtı açmak için çalınan sessiz ses de çaldıktan sonra boşaltılır (dolu kalan ses öğesi oturumu tutmasın; TtsProvider `unlock`). Asistan sesli cevap okurken arka plan sesi yine durur, okuma bitince devam etmesi beklenir. Testleri `test:ses` › "Ses oturumu (arka plan sesi)".
+
+## Sıradaki işler
+
+0. Arka plan sesini dene: YouTube ya da müzik çalarken uygulamayı aç, asistana dokunup konuş, gönder; mikrofon kapanınca ses kendiliğinden devam etmeli. Sesli yanıt açıksa cevap bittikten sonra da devam etmeli. Devam etmiyorsa iPhone'un iOS sürümünü ve sesin YouTube uygulamasından mı Safari'den mi geldiğini yeni threade yaz.
