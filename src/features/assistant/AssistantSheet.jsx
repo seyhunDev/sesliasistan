@@ -153,6 +153,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const { openMeeting } = useMeeting();
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
+  const [used, setUsed] = useState(() => new Set()); // dokunulan sonuç düğmeleri ("<tur>:<tür>")
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
   const [voice, setVoice] = useState(false);
   const [heard, setHeard] = useState("");
@@ -342,8 +343,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
     if (!inv?.ask?.length) invFlow.current = null; // silme sorusu kalktıysa onay da biter
     setStreamText("");
-    setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, share, att, engine, awaiting, races, person, event, inv });
+    // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
+    const links = show.length || chat || share || nav ? { show, chat, share, nav } : null;
+    setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
+    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -1878,6 +1881,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin
       const t = setTimeout(() => {
         setTurns([]);
+        setUsed(new Set());
         setDrafts([]);
         setSaved([]);
         setCards(EMPTY);
@@ -1911,6 +1915,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSaved([]);
     setText("");
     setTurns([]);
+    setUsed(new Set());
     setCards(EMPTY);
     setPhase("idle");
     setHeard("");
@@ -1925,10 +1930,61 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [open, seed?.id]);
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
-  const shown = cards.show
-    .filter((x, i, a) => a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i)
-    .map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) }))
-    .filter((x) => x.rec);
+  const shownOf = (show = []) =>
+    show
+      .filter((x, i, a) => a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i)
+      .map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) }))
+      .filter((x) => x.rec);
+  // Cevabın altındaki sonuç düğmeleri; dokunulan düğme soluklaşır ("used")
+  const markLink = (i, k) => setUsed((u) => (u.has(`${i}:${k}`) ? u : new Set(u).add(`${i}:${k}`)));
+  const linkCls = (i, k) => (used.has(`${i}:${k}`) ? " opacity-55" : "");
+  const turnLinks = (t, i) => {
+    const l = t.links;
+    if (!l) return null;
+    const shown = shownOf(l.show);
+    return (
+      <>
+        {shown.length > 0 && (
+          <RecordList
+            items={shown}
+            plans={plans}
+            onToggle={toggleTask}
+            onOpen={(kind, id) => {
+              if (!embedded) park();
+              openAdd({ edit: { kind, id } });
+            }}
+          />
+        )}
+        {l.share && (
+          <button
+            type="button"
+            onClick={() => (markLink(i, "share"), shareText(l.share))}
+            className={`fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-ok text-[0.875rem] font-semibold text-white active:scale-[.98]${linkCls(i, "share")}`}
+          >
+            <Icon name="whatsapp" className="size-4" /> {used.has(`${i}:share`) ? "WhatsApp'ta paylaşıldı · yeniden" : "WhatsApp grubuna da gönder"}
+          </button>
+        )}
+        {l.chat && (
+          <button
+            type="button"
+            onClick={() => {
+              markLink(i, "chat");
+              finish(false);
+              router.push(`/messages?c=${l.chat}`);
+            }}
+            className={`fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]${linkCls(i, "chat")}`}
+          >
+            <Icon name="chat" className="size-4" /> Sohbeti aç
+          </button>
+        )}
+        {l.nav && PAGES[l.nav] && (
+          <button type="button" onClick={() => (markLink(i, "nav"), go(l.nav, ""))} className={`fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]${linkCls(i, "nav")}`}>
+            {PAGES[l.nav].label} sayfasını aç
+          </button>
+        )}
+      </>
+    );
+  };
   const askObj = cards.awaiting
     ? {
       chips: cards.pending?.actions || cards.pending?.att ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : [], // mesaj kartının kendi düğmeleri var
@@ -1963,7 +2019,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={turnLinks} />
 
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (
@@ -2218,42 +2274,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {shown.length > 0 && (
-          <RecordList
-            items={shown}
-            plans={plans}
-            onToggle={toggleTask}
-            onOpen={(kind, id) => {
-              if (!embedded) park();
-              openAdd({ edit: { kind, id } });
-            }}
-          />
-        )}
-
-        {cards.share && (
-          <button
-            type="button"
-            onClick={() => shareText(cards.share)}
-            className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-ok text-[0.875rem] font-semibold text-white active:scale-[.98]"
-          >
-            <Icon name="whatsapp" className="size-4" /> {"WhatsApp grubuna da gönder"}
-          </button>
-        )}
-
-        {cards.chat && (
-          <button
-            type="button"
-            onClick={() => {
-              const to = cards.chat;
-              finish(false);
-              router.push(`/messages?c=${to}`);
-            }}
-            className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]"
-          >
-            <Icon name="chat" className="size-4" /> Sohbeti aç
-          </button>
-        )}
-
         {cards.races?.length > 0 && (
           <div className="fade-in mt-3 grid gap-2">
             {cards.races.map((r) => (
@@ -2266,11 +2286,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {cards.nav && (
-          <button type="button" onClick={() => go(cards.nav, "")} className="fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
-            {PAGES[cards.nav].label} sayfasını aç
-          </button>
-        )}
     </>
   );
 
