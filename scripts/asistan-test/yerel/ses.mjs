@@ -150,3 +150,33 @@ group("Gemini ses tanıma")([
   ["WAV süresi başlıktan", { desc: "3 sn", fn: () => GS.audioSecs(wavOf(3), "audio/wav"), ok: (n) => n === 3 }],
   ["Kullanım: saniye dakikaya, ücret", { desc: "2 dk ≈ $0,01", fn: () => sttUsage({ "stt-sec": 120 }), ok: (u) => u.min === 2 && Math.abs(u.cost - 0.01) < 1e-9 }],
 ]);
+
+// iPhone ses oturumu: mikrofon kapanınca bırakılır (arka plandaki YouTube/müzik devam etsin)
+const as = await import("@/lib/speech/audioSession");
+const fakeSession = () => { const s = { type: "auto", seen: [] }; return new Proxy(s, { set: (o, k, v) => { if (k === "type") o.seen.push(v); o[k] = v; return true; } }); };
+const withSession = async (run) => {
+  const sess = fakeSession();
+  const had = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: { audioSession: sess }, configurable: true });
+  try { await run(); await new Promise((r) => setTimeout(r, 200)); } finally {
+    if (had) Object.defineProperty(globalThis, "navigator", had); else delete globalThis.navigator;
+  }
+  return sess;
+};
+// Durumlar sırayla denenir (aynı sayaç ve navigator paylaşılır)
+const sessionRun = await (async () => {
+  const out = {};
+  out.open = (await withSession(async () => { as.micOpening(); })).seen[0];
+  out.closed = (await withSession(async () => { as.micClosed(); })).type;
+  out.two = (await withSession(async () => { as.micOpening(); as.micOpening(); as.micClosed(); })).type;
+  as.micClosed();
+  await new Promise((r) => setTimeout(r, 200));
+  try { as.micOpening(); as.micClosed(); out.none = true; } catch { out.none = false; }
+  return out;
+})();
+group("Ses oturumu (arka plan sesi)")([
+  ["mikrofon açılınca kayıt kipi", { desc: "play-and-record", fn: () => sessionRun.open, ok: (r) => r === "play-and-record" }],
+  ["mikrofon kapanınca oturum bırakılır", { desc: "transient", fn: () => sessionRun.closed, ok: (r) => r === "transient" }],
+  ["iki mikrofondan biri kapanınca bırakılmaz", { desc: "play-and-record", fn: () => sessionRun.two, ok: (r) => r === "play-and-record" }],
+  ["destek yoksa hata vermez", { desc: "sorunsuz", fn: () => sessionRun.none, ok: (r) => r === true }],
+]);

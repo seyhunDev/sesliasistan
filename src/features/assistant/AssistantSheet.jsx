@@ -314,6 +314,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const draftSrc = useRef(""); // taslakları doğuran cümle (öğrenme kaydı ve "Düzenle" için; sohbetin ilk cümlesi değil)
   const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
   const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
+  const [work, setWork] = useState(""); // beklerken görünen iş: "Plan hazırlanıyor" (ön cevaptan, lib/precue.js)
+  const [workPhase, setWorkPhase] = useState(""); // iş bitince (boşta) yazı silinsin: önceki iş başka akışta görünmesin
+  if (phase === "idle" && workPhase !== "idle") {
+    setWorkPhase("idle");
+    if (work) setWork("");
+  } else if (phase !== "idle" && workPhase === "idle") setWorkPhase(phase);
 
   // İşler bitince (son işten sonra) asistan "Başka bir isteğin var mı?" diye sorar; "yok/hayır" denirse kapanır
   const askedMore = useRef(false);
@@ -942,6 +948,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     streamSaid.current = "";
     setStreamText("");
     if (viaVoice) inflight.current = s;
+    setWork(pc?.work || "");
     if (pc) {
       timingMark("pre");
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
@@ -2055,8 +2062,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           />
         )}
 
+        {/* Hazırlanıyor: ön cevaptan sonra yapay zeka çalışırken ne yapıldığı, akan ışıkla (sahnede de) */}
+        {busy && work && !streamText && steps.every((x) => x.st !== "run") && (
+          <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
+            <span className="work-ring" aria-hidden="true" />
+            <span className="work-text text-[0.875rem] font-medium">{work}…</span>
+            {!embedded && (
+              <button type="button" onClick={abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
+                Vazgeç
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
-        {!embedded && (busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
+        {!embedded && (busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && (
           <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
             <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
               <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />

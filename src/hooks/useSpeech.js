@@ -8,6 +8,7 @@ import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { makeVad, partialDue, speechEnded } from "@/lib/speech/vad";
 import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
+import { micClosed, micOpening } from "@/lib/speech/audioSession";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -67,14 +68,18 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     clearInterval(s.timer);
     s.timer = null;
     clearTimeout(s.finalTimer);
+    try { s.proc?.disconnect(); } catch {}
+    s.proc = null;
     s.stream?.getTracks().forEach((t) => t.stop());
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
-    try { s.proc?.disconnect(); } catch {}
-    s.proc = null;
     if (s.analyser) setMeter(null, s.analyser);
     s.analyser = null;
+    if (s.micOn) {
+      s.micOn = false;
+      micClosed(); // iPhone: ses oturumu bırakılır, arka plandaki ses (YouTube, müzik) devam eder
+    }
   };
 
   const finish = () => {
@@ -285,6 +290,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     const s = R.current;
     const alive = () => s.sid === sid;
     let stream;
+    if (!s.micOn) {
+      s.micOn = true;
+      micOpening();
+    }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
       savePermission("microphone", "granted");
