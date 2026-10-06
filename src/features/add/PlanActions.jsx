@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canCancel } from "@/lib/cancelPlan";
-import { icsName, planIcs, planText, postponePatch } from "@/lib/planActions";
+import { planText, postponePatch } from "@/lib/planActions";
 import { todayStr } from "@/lib/utils/format";
 import { CancelPlan } from "./CancelPlan";
 
@@ -23,7 +23,8 @@ function Act({ icon, label, tone = "text-acc bg-acc/10", on, onClick }) {
   );
 }
 
-// Plan ekranının işlemleri, içerikten ayrı: Ertele (1 gün), İptal et (haber ver formu açılır), Kopyala, Paylaş, Takvime ekle.
+// Plan ekranının işlemleri, içerikten ayrı: Ertele (1 gün), İptal et (haber ver formu açılır), Kopyala, Paylaş.
+// Takvime ekle düğmesi yok: plan zaten uygulamanın takvimidir; iPhone Takvim'e Ayarlar › iPhone takvimi aboneliğiyle kendiliğinden gider.
 // İptal edilmiş planda durum + "Geri al". Sil en altta ayrı: "Planı sil", haftalık seride "Bu ve sonrakileri sil" (ana hesap).
 export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSeries }) {
   const { updateRecord } = useData();
@@ -50,22 +51,6 @@ export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSe
       }
     } else copy();
   };
-  // Takvim dosyası: paylaşım menüsünde Takvim seçilir; desteklenmezse dosya iner (açınca "Takvime ekle")
-  const toCalendar = async () => {
-    const file = new File([planIcs(rec)], icsName(rec), { type: "text/calendar" });
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-      } catch {
-        /* vazgeçildi */
-      }
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const a = Object.assign(document.createElement("a"), { href: url, download: file.name });
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  };
   const postpone = () => {
     const back = { date: rec.date, ...(rec.endDate ? { endDate: rec.endDate } : {}) };
     updateRecord("plan", rec.id, postponePatch(rec), by);
@@ -86,7 +71,6 @@ export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSe
   acts.push(
     <Act key="k" icon="copy" label="Kopyala" onClick={copy} />,
     <Act key="s" icon="share" label="Paylaş" onClick={share} />,
-    rec.date && <Act key="t" icon="cal" label="Takvime" onClick={toCalendar} />,
   );
   const list = acts.filter(Boolean);
 
