@@ -25,7 +25,7 @@ import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { CancelPlan } from "./CancelPlan";
 import { TrainingLog } from "./TrainingLog";
-import { NoteDone } from "./NoteDone";
+import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { canLog } from "@/lib/trainingLog";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
@@ -354,7 +354,7 @@ export function AddSheet({ open, onClose, seed }) {
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         <div className="flex items-center gap-2">
-          {edit && locked ? null : edit ? (
+          {edit && (locked || edit.kind === "note") ? null : edit ? (
             <button onClick={removeRecord} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-rec transition active:scale-90 active:bg-rec/10">
               <Icon name="trash" className="size-5" />
             </button>
@@ -394,6 +394,7 @@ export function AddSheet({ open, onClose, seed }) {
                 meta={recMeta}
                 planTitle={linkedPlan}
                 done={!!rec?.done}
+                pinned={!!rec?.pinned}
                 onToggleDone={() => {
                   toggleTask(edit.id);
                   toast(rec?.done ? "Görev yeniden açıldı" : "Görev yapıldı");
@@ -413,7 +414,7 @@ export function AddSheet({ open, onClose, seed }) {
             {/* Mesajlar (atananlar ve ana hesap) + asistan: değiştir ya da mesajı yazdır */}
             {edit.kind === "plan" && rec && !locked && <CancelPlan key={rec.id} rec={rec} by={by} start={!!edit.cancel} />}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
-            {edit.kind === "note" && rec && !locked && <NoteDone rec={rec} by={by} onDone={onClose} />}
+            {/* Not: işlemler içerikten ayrı, mesajların altında */}
             {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} owner={!isStaff} />}
             {edit.kind === "plan" && rec?.seriesId && (
               <div className="mt-3 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
@@ -442,6 +443,7 @@ export function AddSheet({ open, onClose, seed }) {
               </div>
             )}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
+            {edit.kind === "note" && rec && !locked && <NoteActions rec={rec} by={by} onDone={onClose} onDelete={removeRecord} />}
             <div className="mt-3" />
           </>
         ) : (
@@ -538,7 +540,7 @@ export function AddSheet({ open, onClose, seed }) {
             orb={false}
           />
         </footer>
-      ) : !locked && (edit || drafts.length > 0) && (
+      ) : !locked && (edit || drafts.length > 0) && !(edit?.kind === "note" && !dirty) && (
         <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
           {edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>

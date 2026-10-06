@@ -78,7 +78,7 @@ function DayChips({ value, onPick, onClear }) {
 // d: taslak, onChange(patch). meta: "Ali ekledi · dün". done/onToggleDone: yalnızca görev.
 // assign: ana hesabın çalışanları (boşsa "Çalışan ekle"), çalışan hesabında null (satır gösterilmez).
 // acks: kayıtlı sorumluların durumu [{ uid, name, key, label, at }] (ana hesapta gösterilir)
-export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAddStaff, onChange, acks = [] }) {
+export function EditCard({ d, meta, planTitle, done, pinned, onToggleDone, assign, onAddStaff, onChange, acks = [] }) {
   const [open, setOpen] = useState(""); // açık satır
   const toggle = (k) => () => setOpen((o) => (o === k ? "" : k));
   const put = (patch, close = true) => {
@@ -90,6 +90,101 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
   const names = (d.assignees || []).map((u) => assign?.find((m) => m.uid === u)?.name).filter(Boolean);
 
   const rel = (v) => (v && v >= today ? leftLabel(v, today) : "");
+
+  // Sorumlu satırı ve sorumluların durumu: not ve diğer kayıtlarda aynı
+  const who = assign && assign.length > 0 && (
+    <Row
+      icon="users"
+      label="Sorumlu"
+      value={names.length ? names.join(", ") : "Genel"}
+      tone={names.length ? "font-medium text-acc" : undefined}
+      open={open === "who"}
+      onToggle={toggle("who")}
+    >
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" onClick={() => put({ assignees: [], _general: true }, false)} className={chip(!names.length)}>
+          Genel
+        </button>
+        {assign.map((m) => {
+          const on = (d.assignees || []).includes(m.uid);
+          return (
+            <button
+              key={m.uid}
+              type="button"
+              aria-pressed={on}
+              onClick={() => put({ assignees: on ? d.assignees.filter((u) => u !== m.uid) : [...(d.assignees || []), m.uid], _general: false }, false)}
+              className={`${chip(on)} inline-flex items-center gap-1`}
+            >
+              {on && <Icon name="check" className="size-3.5" />}
+              {m.name}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[0.8125rem] text-mut">Birden fazla kişi seçebilirsin; seçilenler bu kaydı kendi listesinde görür.</p>
+    </Row>
+  );
+  const ackList = acks.length > 0 && (
+    <div className="mt-3 rounded-2xl bg-card px-4 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+    {acks.map((a) => (
+      <p key={a.uid} className="flex items-center gap-2 py-1 text-[0.875rem]">
+        <Icon
+          name={a.key === "sent" || a.key === "pending" || a.key === "done" ? "check" : "checks"}
+          className={`size-4 shrink-0 [stroke-width:2.5] ${a.key === "done" ? "text-ok" : a.key === "read" ? "text-sky-600" : a.key === "pending" ? "text-line" : "text-mut"}`}
+        />
+        <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
+        <span className={`shrink-0 text-[0.8125rem] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : "text-mut"}`}>
+          {a.label}
+          {a.at ? ` · ${stamp(a.at)}` : ""}
+        </span>
+      </p>
+    ))}
+  </div>
+  );
+
+  // Not: kısa içerik tek kartta (başlık büyük, metin hemen altında); kim/ne zaman ve etiket küçük, kartın altında
+  if (d.type === "note")
+    return (
+      <div className="pb-2">
+        <div className="rounded-2xl bg-card px-4 pb-4 pt-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+          <Grow
+            value={d.title}
+            onChange={(e) => onChange({ title: cap(e.target.value) })}
+            placeholder="Başlık"
+            autoCapitalize="sentences"
+            enterKeyHint="done"
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
+            className="text-[1.375rem] font-semibold leading-snug tracking-tight text-fg placeholder:text-mut/60"
+          />
+          <Grow
+            value={d.body}
+            onChange={(e) => onChange({ body: e.target.value })}
+            placeholder="Ayrıntı ekle"
+            autoCapitalize="sentences"
+            className="mt-2 min-h-[1.75rem] text-[1.0625rem] leading-relaxed text-fg/85 placeholder:text-mut/60"
+          />
+        </div>
+        {(meta || d.cat || pinned) && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.8125rem] text-mut">
+            {pinned && (
+              <span className="inline-flex items-center gap-1 font-medium text-amber-600">
+                <Icon name="star" className="size-3.5" />
+                Sabit
+              </span>
+            )}
+            {d.cat && <span className="rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-medium text-acc">{d.cat}</span>}
+            {meta && <span>{meta}</span>}
+          </p>
+        )}
+        {((assign && assign.length > 0) || planTitle) && (
+          <ul className="mt-4 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
+            {who}
+            {planTitle && <Row icon="cal" label="Bağlı plan" value={planTitle} tone="text-fg" />}
+          </ul>
+        )}
+        {ackList}
+      </div>
+    );
 
   return (
     <div className="pb-4">
@@ -116,19 +211,6 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
         />
       </div>
       {meta && <p className={`mt-1.5 text-[0.8125rem] text-mut ${d.type === "task" ? "pl-10" : ""}`}>{meta}</p>}
-
-      {/* Not metni */}
-      {d.type === "note" && (
-        <div className="mt-4 rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-          <Grow
-            value={d.body}
-            onChange={(e) => onChange({ body: e.target.value })}
-            placeholder="Not"
-            autoCapitalize="sentences"
-            className="min-h-[6rem] text-[1rem] leading-relaxed text-fg placeholder:text-mut/60"
-          />
-        </div>
-      )}
 
       {/* Ayrıntılar */}
       <ul className="mt-5 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
@@ -217,38 +299,7 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
           </Row>
         )}
 
-        {assign && assign.length > 0 && (
-          <Row
-            icon="users"
-            label="Sorumlu"
-            value={names.length ? names.join(", ") : "Genel"}
-            tone={names.length ? "font-medium text-acc" : undefined}
-            open={open === "who"}
-            onToggle={toggle("who")}
-          >
-            <div className="flex flex-wrap gap-1.5">
-              <button type="button" onClick={() => put({ assignees: [], _general: true }, false)} className={chip(!names.length)}>
-                Genel
-              </button>
-              {assign.map((m) => {
-                const on = (d.assignees || []).includes(m.uid);
-                return (
-                  <button
-                    key={m.uid}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => put({ assignees: on ? d.assignees.filter((u) => u !== m.uid) : [...(d.assignees || []), m.uid], _general: false }, false)}
-                    className={`${chip(on)} inline-flex items-center gap-1`}
-                  >
-                    {on && <Icon name="check" className="size-3.5" />}
-                    {m.name}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-[0.8125rem] text-mut">Birden fazla kişi seçebilirsin; seçilenler bu kaydı kendi listesinde görür.</p>
-          </Row>
-        )}
+        {who}
         {assign && !assign.length && onAddStaff && (
           <li className="border-b border-line">
             <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
@@ -262,24 +313,7 @@ export function EditCard({ d, meta, planTitle, done, onToggleDone, assign, onAdd
         {planTitle && <Row icon="cal" label="Bağlı plan" value={planTitle} tone="text-fg" />}
       </ul>
 
-      {/* Sorumlulara ulaştı mı, gördüler mi */}
-      {acks.length > 0 && (
-        <div className="mt-3 rounded-2xl bg-card px-4 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-          {acks.map((a) => (
-            <p key={a.uid} className="flex items-center gap-2 py-1 text-[0.875rem]">
-              <Icon
-                name={a.key === "sent" || a.key === "pending" || a.key === "done" ? "check" : "checks"}
-                className={`size-4 shrink-0 [stroke-width:2.5] ${a.key === "done" ? "text-ok" : a.key === "read" ? "text-sky-600" : a.key === "pending" ? "text-line" : "text-mut"}`}
-              />
-              <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
-              <span className={`shrink-0 text-[0.8125rem] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : "text-mut"}`}>
-                {a.label}
-                {a.at ? ` · ${stamp(a.at)}` : ""}
-              </span>
-            </p>
-          ))}
-        </div>
-      )}
+      {ackList}
     </div>
   );
 }

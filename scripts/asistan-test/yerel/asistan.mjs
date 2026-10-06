@@ -298,6 +298,7 @@ const nNotes = [
 group("Not yapıldı (arşiv)")([
   ["yapıldı yaması", { desc: "done + arşiv, sabit kalkar", fn: () => NS.noteDonePatch("2026-10-06T10:00:00Z"), ok: (r) => r.done && r.archived && r.doneAt === r.archivedAt && r.pinned === false }],
   ["geri al yaması", { desc: "Notlar'a döner", fn: () => NS.noteReopenPatch(), ok: (r) => r.done === false && r.archived === false && r.doneAt === null }],
+  ["kopyalanacak metin", { desc: "başlık + farklıysa metin", fn: () => [NS.noteText({ title: "Yelken", body: "Tamir edilecek" }), NS.noteText({ title: "Yelken", body: "Yelken" }), NS.noteText({ title: "", body: "Yalnız metin" })].join("|"), ok: (r) => r === "Yelken\nTamir edilecek|Yelken|Yalnız metin" }],
   ["durum yazısı", { desc: "Yapıldı / Arşivlendi / Açık", fn: () => nNotes.map(NS.noteStateText).join(","), ok: (r) => r === "Açık,Yapıldı,Arşivlendi" }],
   ["veri özeti", { desc: "açık notlar ve arşivdekiler ayrı, durum yazılı", fn: () => bdNote({ notes: nNotes, now: new Date(`${today}T12:00:00`) }), ok: (r) => /## SON NOTLAR\nn:n1 \| [^\n]*Malzeme odası dolu \| $/m.test(r) && /n:n2 [^\n]*\| yapıldı/.test(r) && /n:n3 [^\n]*\| arşivde/.test(r) && /Notlar: 1 açık, 2 arşivde/.test(r) }],
   ["görev listesi: not yapıldı hemen", { desc: "done_note ve reopen_note onaysız", fn: () => ST.taskList(parseAssistant({ intent: "action", message: "Tamam.", actions: [{ op: "done_note", kind: "note", id: "n1" }, { op: "reopen_note", kind: "note", id: "n2" }] })), ok: (r) => r.now.length === 2 && !r.confirm.length }],
