@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Hero, Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
+import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
@@ -406,18 +407,11 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       return false;
     }
   };
-  const [opening, setOpening] = useState(false);
-  const noticeOpen = async (share) => {
-    if (!r.noticeFile || opening) return;
-    setOpening(true);
-    try {
-      const f = await loadNoticeFile(orgId, r.noticeFile);
-      await (share ? shareFile(f) : openFile(f, false));
-    } catch (e) {
-      toast(e?.message || "Talimat açılamadı");
-    }
-    setOpening(false);
-  };
+  // Talimat uygulama içinde açılır (PdfViewer); yeni sekme iPhone'da dosya indikten sonra engelleniyordu
+  const [viewer, setViewer] = useState(false);
+  const noticeOpen = () => r.noticeFile && setViewer(true);
+  const noticeFileMeta = r.noticeFile;
+  const loadViewer = useCallback(() => loadNoticeFile(orgId, noticeFileMeta), [orgId, noticeFileMeta]);
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
     const n = await onNoticePlan(r);
@@ -624,7 +618,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
 
           {r.notice ? (
-            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} opening={opening} onOpen={() => noticeOpen(false)} onShare={() => noticeOpen(true)} />
+            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} onOpen={noticeOpen} onShare={noticeOpen} />
           ) : (
             <>
               <Label>TALİMAT</Label>
@@ -772,7 +766,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <Label right={extras.length ? `${extras.length}` : ""}>EKLENEN EVRAK</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {r.noticeFile && (
-              <FileRow tag="PDF" title="Yarış talimatı" sub={`${sizeText(r.noticeFile.size)} · her cihazdan açılır`} onOpen={() => noticeOpen(false)} onShare={() => noticeOpen(true)} />
+              <FileRow tag="PDF" title="Yarış talimatı" sub={`${sizeText(r.noticeFile.size)} · her cihazdan açılır`} onOpen={noticeOpen} onShare={noticeOpen} />
             )}
             {extras.map((x) => (
               <FileRow
@@ -1031,6 +1025,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           />
         )}
       </Sheet>
+      {viewer && r.noticeFile && <PdfViewer title={r.noticeFile.name || "Yarış talimatı"} load={loadViewer} onClose={() => setViewer(false)} />}
     </>
   );
 }
