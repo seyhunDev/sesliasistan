@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { afisTag, drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { todayStr } from "@/lib/utils/format";
@@ -532,6 +532,71 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         )}
       </div>
 
+      {/* Yarış bağla önizlemenin hemen altında: ilk iş; bağlıysa adı ve Değiştir */}
+      <div className={`${card} mt-3 px-4 py-3`}>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
+            <Icon name="flag" className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
+            <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
+          </span>
+          <button type="button" onClick={openRaces} disabled={busy === "races"} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 disabled:opacity-60 ${race && !races ? "text-acc ring-1 ring-line" : "bg-acc text-white"}`}>
+            {busy === "races" ? "…" : races ? "Kapat" : race ? "Değiştir" : "Yarış bağla"}
+          </button>
+          {race && (
+            <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" className="grid size-9 shrink-0 place-items-center rounded-full text-mut active:bg-line">
+              <Icon name="x" className="size-[1.125rem]" />
+            </button>
+          )}
+        </div>
+        {race && (
+          <div className="mt-3 border-t border-line pt-3">
+            {classes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {classes.map((c) => (
+                  <span key={c} className="rounded-full bg-bg px-2.5 py-1 text-[0.75rem] font-semibold ring-1 ring-line">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length > 2 ? "Adları açıklamada geçer (görselde yalnız 1-2 sporcunun adı yazılır)" : race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
+            {race.athletes?.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {race.athletes.map((a, i) => (
+                  <span key={`${a.name}-${i}`} className="flex h-8 items-center gap-1 rounded-full bg-deep/10 pl-3 pr-1 text-[0.8125rem] font-semibold">
+                    {a.name}
+                    {a.cls && <small className="font-normal text-mut">· {a.cls}</small>}
+                    <button type="button" aria-label={`${a.name} çıkar`} onClick={() => dropAthlete(i)} className="grid size-6 place-items-center rounded-full text-mut active:bg-line">
+                      <Icon name="x" className="size-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
+              <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
+            </label>
+          </div>
+        )}
+      </div>
+      {races && (
+        <ul className={`${card} mt-2 divide-y divide-line overflow-hidden`}>
+          {races.length === 0 && <li className="px-4 py-3 text-[0.875rem] text-mut">Kayıtlı yarış yok</li>}
+          {races.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-2.5 text-left active:bg-line/50">
+                <b className="block truncate text-[0.875rem] font-semibold">{r.name || "Adsız yarış"}</b>
+                <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* Görsel ayarları önizlemenin hemen altında: araç seç, değiştir, önizlemede anında gör */}
       <div className={`${card} mt-3 overflow-hidden`}>
         <div className="grid grid-cols-4 gap-1.5 px-3 pt-3">
@@ -662,73 +727,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right={RACE_KINDS.includes(post.kind) ? null : "isteğe bağlı"}>2 · YARIŞ</Label>
-      <div className={`${card} px-4 py-3`}>
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
-            <Icon name="flag" className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
-            <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
-          </span>
-          {race ? (
-            <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" className="grid size-9 place-items-center rounded-full text-mut active:bg-line">
-              <Icon name="x" className="size-[1.125rem]" />
-            </button>
-          ) : (
-            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
-              {busy === "races" ? "…" : races ? "Kapat" : "Yarış seç"}
-            </button>
-          )}
-        </div>
-        {race && (
-          <div className="mt-3 border-t border-line pt-3">
-            {classes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {classes.map((c) => (
-                  <span key={c} className="rounded-full bg-bg px-2.5 py-1 text-[0.75rem] font-semibold ring-1 ring-line">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
-            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length > 2 ? "Adları açıklamada geçer (görselde yalnız 1-2 sporcunun adı yazılır)" : race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
-            {race.athletes?.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {race.athletes.map((a, i) => (
-                  <span key={`${a.name}-${i}`} className="flex h-8 items-center gap-1 rounded-full bg-deep/10 pl-3 pr-1 text-[0.8125rem] font-semibold">
-                    {a.name}
-                    {a.cls && <small className="font-normal text-mut">· {a.cls}</small>}
-                    <button type="button" aria-label={`${a.name} çıkar`} onClick={() => dropAthlete(i)} className="grid size-6 place-items-center rounded-full text-mut active:bg-line">
-                      <Icon name="x" className="size-3.5" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <label className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
-              <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
-            </label>
-          </div>
-        )}
-      </div>
-      {races && (
-        <ul className={`${card} mt-2 divide-y divide-line overflow-hidden`}>
-          {races.length === 0 && <li className="px-4 py-3 text-[0.875rem] text-mut">Kayıtlı yarış yok</li>}
-          {races.map((r) => (
-            <li key={r.id}>
-              <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-2.5 text-left active:bg-line/50">
-                <b className="block truncate text-[0.875rem] font-semibold">{r.name || "Adsız yarış"}</b>
-                <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Label right="isteğe bağlı">3 · KAYDIRMALI GÖNDERİ</Label>
+      <Label right="isteğe bağlı">2 · KAYDIRMALI GÖNDERİ</Label>
       <div>
         <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
         <input ref={moreInput} type="file" accept="image/*" multiple className="hidden" onChange={addExtras} />
@@ -758,7 +757,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       <button id="post-texts" type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 scroll-mt-4 flex w-full items-center gap-3 px-4 py-3 text-left`}>
         <Icon name="edit" className="size-5 shrink-0 text-acc" />
         <span className="min-w-0 flex-1">
-          <b className="block text-[0.9375rem] font-semibold">4 · Görseldeki yazılar</b>
+          <b className="block text-[0.9375rem] font-semibold">3 · Görseldeki yazılar</b>
           <span className="block truncate text-[0.75rem] text-mut">{[post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
         </span>
         <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
@@ -783,14 +782,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>5 · AÇIKLAMA</Label>
+      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>4 · AÇIKLAMA</Label>
       <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder={aiBusy ? "Yapay zeka yazıyor…" : "Yarış seçince ya da asistana anlatınca yapay zeka yazar; kendin de yazabilirsin"} />
       <label className="mt-3 block">
         <span className="text-[0.8125rem] font-medium text-mut">Etiketler (#)</span>
         <textarea value={tags} onChange={(e) => setTags(e.target.value)} onBlur={() => setTags(cleanTags(tags).join(" "))} rows={2} className={area} placeholder="#dikiliyelken #yelken #sailing" />
       </label>
 
-      <Label>6 · PAYLAŞ</Label>
+      <Label>5 · PAYLAŞ</Label>
       <div>
         {/* Üç boyut birden: aynı tasarım gönderi, hikâye ve reels ölçüsünde; dokununca o boyut paylaşılır */}
         <div className="mb-3 grid grid-cols-3 items-end gap-2.5">
