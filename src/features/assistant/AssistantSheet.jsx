@@ -18,7 +18,7 @@ import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
 import { applyRepeat, seriesDates } from "@/lib/repeat";
-import { waLink } from "@/lib/cancelPlan";
+import { shareText } from "@/lib/cancelPlan";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
@@ -1147,8 +1147,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       // Grup mesajı WhatsApp grubuna da istendiyse (sesle onaylanınca WhatsApp kendiliğinden açılamaz): "WhatsApp'ta da paylaş" düğmesi
       const waLeft = ok && team && pend.send.alsoWa && !waOpened;
       if (!waLeft && nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
-      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun, açılan listeden grubu seç.`, { engine: "local", chat: cid, share: body }, fromText && convo.current);
-      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? "; WhatsApp'ta da açtım, oradan grubu seç" : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "" }, fromText && convo.current);
+      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun, paylaşım menüsünün üstündeki son sohbetlerden grubu seç.`, { engine: "local", chat: cid, share: body }, fromText && convo.current);
+      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? "; paylaşımda WhatsApp grubunu seç" : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "" }, fromText && convo.current);
     }
     let n = 0;
     for (const a of pend.actions) {
@@ -2187,7 +2187,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                   onClick={() => {
                     // WhatsApp grubuna da istendiyse: dokunuşla WhatsApp paylaşımı hemen açılır (grup orada seçilir), uygulamadaki gruba da gönderilir
                     const p = cards.pending.send;
-                    if (p.team && p.alsoWa) window.open(waLink(p.text), "_blank");
+                    if (p.team && p.alsoWa) shareText(p.text);
                     confirmPending(false, p.team && p.alsoWa);
                   }}
                   disabled={!cards.pending.send.text.trim()}
@@ -2197,15 +2197,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 </button>
               )}
               {cards.pending.send.team && (
-                <a href={waLink(cards.pending.send.text)} target="_blank" rel="noreferrer" aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
+                <button type="button" onClick={() => shareText(cards.pending.send.text)} aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
                   <Icon name="whatsapp" className="size-5" />
-                </a>
+                </button>
               )}
               <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team && cards.pending.send.alsoWa ? " Uygulamadaki gruba gider; WhatsApp da açılır, oradan grubunu seç." : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun, açılan listeden grubu seç." : ""}</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team && cards.pending.send.alsoWa ? " Uygulamadaki gruba gider; paylaşım menüsü de açılır, son sohbetlerden WhatsApp grubunu seç." : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun, son sohbetlerden grubu seç." : ""}</p>
           </div>
         )}
 
@@ -2231,14 +2231,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         )}
 
         {cards.share && (
-          <a
-            href={waLink(cards.share)}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => shareText(cards.share)}
             className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-ok text-[0.875rem] font-semibold text-white active:scale-[.98]"
           >
-            <Icon name="whatsapp" className="size-4" /> {"WhatsApp'ta da paylaş"}
-          </a>
+            <Icon name="whatsapp" className="size-4" /> {"WhatsApp grubuna da gönder"}
+          </button>
         )}
 
         {cards.chat && (

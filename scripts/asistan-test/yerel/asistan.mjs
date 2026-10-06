@@ -7,6 +7,7 @@ import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
 import { suite, today, tom, data } from "./ortak.mjs";
+import { shareText } from "@/lib/cancelPlan";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -606,5 +607,7 @@ group("Mesaj ve WhatsApp")([
   ["sporculara ve WhatsApp grubuna da gönder", Fa("WhatsApp istendi", () => ST.wantsWhatsApp("sporculara ve WhatsApp grubuna da gönder"))],
   ["vatsap grubuna da at", Fa("ses tanıma yazışı da WhatsApp", () => ST.wantsWhatsApp("vatsap grubuna da at"))],
   ["sporculara gönder", Fa("WhatsApp istenmedi", () => !ST.wantsWhatsApp("sporculara gönder"))],
+  ["paylaşım varsa", Fa("paylaşım menüsü açılır, metin panoya", () => { const got = {}; const r = shareText("9.30 antrenman", { share: (o) => { got.s = o.text; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }); return r === "share" && got.s === "9.30 antrenman" && got.c === "9.30 antrenman" && !got.u; })],
+  ["paylaşım yoksa", Fa("WhatsApp sohbet seçimi açılır", () => { let u = ""; const r = shareText("a b", {}, (x) => { u = x; }); return r === "link" && u === "https://wa.me/?text=a%20b"; })],
   ["sporculara gönder (yapay zeka)", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "sporculara", text: "Perşembe ve cuma antrenman var, başlangıç 9.30." } }, [], ["Sporcular", "Ali Kök"]).send?.to === "Sporcular")],
 ]);
