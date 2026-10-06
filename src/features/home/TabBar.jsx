@@ -430,6 +430,23 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   }, [active, typing]);
 
   const heard = active && (state === "listening" || live.transcribing) && live.heard; // gönderilirken de yazı kalır
+  // Kubbe asistan başlayınca yükselmez: konuşma alanında ilk yazı (duyulan söz, mesaj, kart) ya da iş yazısı belirince açılır,
+  // sonra mesajlar geldikçe büyür, ekranın %45'inde durur ve içeride kaydırma başlar (Seyhun, 2026-10-06). Bir kez açılınca
+  // konuşma bitene kadar küçülmez (cevaplar arasında inip kalkmasın).
+  const body = useRef(null);
+  const [filled, setFilled] = useState(false);
+  useEffect(() => {
+    const el = body.current;
+    if (!active || !el || typeof ResizeObserver === "undefined") return;
+    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı sayılmaz
+    const ro = new ResizeObserver(() => el.offsetHeight > 8 && setFilled(true));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      setFilled(false);
+    };
+  }, [active]);
+  const open = active && (filled || !!heard || !!live.status);
   return (
     <div
       ref={box}
@@ -447,16 +464,16 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
       <div ref={inner} className="absolute inset-x-0 bottom-0" onClick={small ? (e) => !e.target.closest("button") && setMini(false) : undefined}>
-        <div className={`mx-auto w-full max-w-[30rem] px-4 pb-[max(0.625rem,calc(env(safe-area-inset-bottom)-0.75rem))] ${small ? "pt-1.5" : idle ? "pt-2" : "pt-3"}`}>
+        <div className={`mx-auto w-full max-w-[30rem] px-4 pb-[max(0.625rem,calc(env(safe-area-inset-bottom)-0.75rem))] ${small ? "pt-1.5" : idle || !open ? "pt-2" : "pt-3"}`}>
           {active && (
             <div
               ref={pane}
               // Konuşma alanı mesajlar geldikçe kademeli büyür (kubbe yumuşak geçişle yükselir), görünen ekranın %45'ine ulaşınca
               // sabitlenir ve kaydırma oradan sonra başlar (Seyhun, 2026-10-06). Küre satırı ve durum şeridi altta, alan yalnız
               // yukarı doğru büyür: mesaj, kart, dinleme ya da iş yazısı küreyi ve düğmeleri oynatmaz.
-              className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-14.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+              className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-15.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
             >
-              <div className="flex min-h-full flex-col justify-end pb-2 pt-3">
+              <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-2 pt-3" : ""}`}>
                 <div ref={setSlot} />
                 {heard && <Hearing text={live.heard} listening={state === "listening"} solo={!live.talked} />}
               </div>
@@ -464,8 +481,8 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           )}
           {/* Durum şeridi: şu an yapılan iş kürenin ÜSTÜNDE, kendi sabit yerinde (yazı yokken de yeri ayrılır, hiçbir şey zıplamaz);
               altında küreye kadar geniş boşluk (Seyhun: "bitişik gibi", "aralarındaki boşluğu arttır", 2026-10-06) */}
-          {active && (
-            <div className="flex h-[3.75rem] items-start justify-center pt-0.5" role="status" aria-live="polite">
+          {open && (
+            <div className="flex h-[4.75rem] items-start justify-center pt-0.5" role="status" aria-live="polite">
               {live.status && (
                 <span key={live.status} className="dome-chip fade-in">
                   <span className="work-ring" aria-hidden="true" />
