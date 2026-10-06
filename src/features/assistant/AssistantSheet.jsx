@@ -21,7 +21,7 @@ import { applyRepeat, seriesDates } from "@/lib/repeat";
 import { shareGroup } from "@/lib/cancelPlan";
 import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
-import { inventoryWork, taskOf } from "@/lib/assistTasks";
+import { inventoryWork, taskOf, waitText } from "@/lib/assistTasks";
 import { askAssistant } from "@/services/assistantService";
 import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
@@ -2185,17 +2185,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
-        {!embedded && (busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && (
-          <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
-            <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
-              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />
-              <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.15s]" />
-              <i className="size-1.5 animate-bounce rounded-full bg-mut" />
-            </span>
-            <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
-              Vazgeç
-            </button>
+        {/* Yazıya çeviriyor / anlaşılıyor: işin adı (work) ya da adım gelene kadar beklerken ne olduğu yazar (sahnede de).
+            iPhone'da konuşma kaydedilip sunucuda yazıya çevrilir; bu sırada söylenen henüz görünmez, "Sesin yazıya çevriliyor…" */}
+        {(busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && !(transcribing && heardNow) && (
+          <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
+            <span className="work-ring" aria-hidden="true" />
+            <span className="work-text text-[0.875rem] font-medium">{waitText({ transcribing })}…</span>
+            {!embedded && (
+              <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
+                Vazgeç
+              </button>
+            )}
           </div>
         )}
 

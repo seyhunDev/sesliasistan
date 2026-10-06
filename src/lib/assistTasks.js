@@ -76,3 +76,7 @@ export function tasksPrompt() {
   const app = TASKS.filter((x) => x.by !== "yz");
   return `- Senin işlerin: ${mine.map((x) => `${x.name} ("${x.say}")`).join("; ")}\n- Uygulamanın kendi yaptıkları: ${app.map((x) => `${x.name} ("${x.say}")`).join("; ")}`;
 }
+
+// İş belli olmadan beklerken görünen yazı: ses sunucuda yazıya çevriliyorsa "Sesin yazıya çevriliyor", sonra (ön cevap ya da
+// adım gelene kadar) "Anlaşılıyor". İş belli olunca yerini işin kendi yazısı alır ("WhatsApp mesajı hazırlanıyor").
+export const waitText = ({ transcribing }) => (transcribing ? "Sesin yazıya çevriliyor" : "Anlaşılıyor");
