@@ -19,6 +19,9 @@ const TYPE_W = [
   ["plan", /(^| )(plan(ı|a)?|planla\S*|etkinli\S*|takvime)( |$)/],
 ];
 const KIND_LINE = { plan: "plan", task: "görev", note: "not" };
+// Ön cevap: ne yapıldığı (sesli okunur) ve beklerken ekrandaki "hazırlanıyor" yazısı (work)
+const DOING = { plan: "Tamam, planı hazırlıyorum.", task: "Tamam, görevi hazırlıyorum.", note: "Tamam, notu alıyorum." };
+const WORK = { plan: "Plan hazırlanıyor", task: "Görev hazırlanıyor", note: "Not yazılıyor" };
 
 const hm = (t) => (t ? t.slice(0, 5) : "");
 const mins = (t) => (t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null);
@@ -44,20 +47,21 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
       const n = plans.filter((p) => p.date <= d && (p.endDate || p.date) >= d).length;
       line = n ? `Bakıyorum, ${day} ${n} plan görüyorum.` : `Bakıyorum, ${day} için takvim boş görünüyor.`;
     }
-    return { kind: "query", line, hint: hintOf(line, { kind: "soru" }) };
+    return { kind: "query", line, work: "Bakıyorum", hint: hintOf(line, { kind: "soru" }) };
   }
 
   // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle
   if (isMulti(text)) {
     const jobs = jobsText(jobsIn(text));
-    const line = "Tamam."; // sonucu uygulama söyler ("Ekledim: …"); ön cevap kısa kalır (Seyhun'un seçimi, 2026-10-04)
-    return { kind: "multi", line, hint: hintOf(line, { kind: `birden çok iş (sırayla: ${jobs})` }) };
+    // Ne yapıldığı kısaca söylenir ("Tamam, sırayla yapıyorum: mesaj, takvim ve not."); sonucu yine uygulama söyler
+    const line = `Tamam, sırayla yapıyorum: ${jobs}.`;
+    return { kind: "multi", line, work: "İşler hazırlanıyor", hint: hintOf(line, { kind: `birden çok iş (sırayla: ${jobs})` }) };
   }
 
   // Mesaj: kime ve ne yazılacağını yapay zeka çıkarır
   if (SEND.test(t) && !CREATE.test(t)) {
-    const line = "Tamam.";
-    return { kind: "send", line, hint: hintOf(line, { kind: "mesaj" }) };
+    const line = "Tamam, mesajı hazırlıyorum.";
+    return { kind: "send", line, work: "Mesaj hazırlanıyor", hint: hintOf(line, { kind: "mesaj" }) };
   }
 
   // Yeni kayıt: tür ve alanlar kurallarla
@@ -70,25 +74,27 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   if (!wantsCreate) {
     if (t.split(/\s+/).length <= 3) return null; // "teşekkürler", "tamam sağ ol": ön cevaba gerek yok
     const line = "Bir bakayım.";
-    return { kind: "other", line, hint: hintOf(line, {}) };
+    return { kind: "other", line, work: "Düşünüyorum", hint: hintOf(line, {}) };
   }
   const item = interpretRules(text, today)[0] || {};
   const type = byWord || byGuess || (item.type === "note" && !wantsNote(text) ? "" : item.type) || "";
   if (!type) {
-    const line = "Tamam.";
-    return { kind: "create", line, hint: hintOf(line, { kind: "yeni kayıt" }) };
+    const line = "Tamam, hazırlıyorum.";
+    return { kind: "create", line, work: "Hazırlanıyor", hint: hintOf(line, { kind: "yeni kayıt" }) };
   }
   const date = item.date || "";
   const time = type === "plan" ? hm(item.time) : "";
   const slots = { type, date, time, place: item.place || "" };
 
-  // Kısa: "Tamam." Sonucu ("Ekledim: Antrenman, yarın, 10:00") uygulama söyler; aynı şey iki kez okunmaz.
+  // Ne yapıldığı kısaca söylenir ("Tamam, planı hazırlıyorum."; Seyhun: "tamam değil, şunu yapıyorum desin", 2026-10-06).
+  // Ayrıntıyı ("Ekledim: Antrenman, yarın, 10:00") sonuçta uygulama söyler; aynı şey iki kez okunmaz.
   // Planda veriden tek yardımcı bilgi kalır (aynı saatte plan, o saatte rüzgâr).
-  const line = type === "plan" ? `Tamam.${facts({ date, time, plans, weatherRows })}` : "Tamam.";
+  const line = `${DOING[type] || "Tamam, hazırlıyorum."}${type === "plan" ? facts({ date, time, plans, weatherRows }) : ""}`;
 
   return {
     kind: KIND_LINE[type] ? type : "create",
     line,
+    work: WORK[type] || "Hazırlanıyor",
     slots,
     hint: hintOf(line, { kind: KIND_LINE[type] || "yeni kayıt", date, time }),
   };

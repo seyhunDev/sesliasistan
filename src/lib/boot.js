@@ -3,7 +3,7 @@
 // Artık tek bir açılış ekranı var (kök düzende, sabit katman); bekleyen her aşama `holdBoot()` ile onu tutar.
 // Son tutan bırakınca kısa bir aralıkta (aşamalar arasında) kimse tutmazsa ekran yumuşakça çekilir.
 const GAP = 160; // aşama geçişi için pay (ms): bırakılan ekran bu sürede yeniden tutulursa hiç kıpırdamaz
-const MIN = 650; // açılış ekranı bundan kısa görünmez (anlık gelip giden ekran kıpırtı gibi görünür)
+const MIN = 900; // açılış ekranı bundan kısa görünmez (anlık gelip giden ekran kıpırtı gibi görünür)
 
 let holds = 0;
 let shown = true; // sunucu çizimi ekranla başlar

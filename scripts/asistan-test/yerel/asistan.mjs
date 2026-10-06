@@ -108,11 +108,11 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
-  ["cumartesi yarış planla", PC("plan, kısa (sonucu uygulama söyler)", (r) => r?.kind === "plan" && /^Tamam\./.test(r.line) && !/hazırlıyorum/.test(r.line))],
+  ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
-  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam.")],
+  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, notu alıyorum." && r.work === "Not yazılıyor")],
   ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
@@ -254,7 +254,7 @@ group("Sıralı işler (tanıma)")([
   ["not al malzeme odası dolu", SM("tek iş (yalnız not)", false)],
 ]);
 group("Sıralı işler (ön cevap)")([
-  [gokhan, PC("kısa söyler, sırayı yapay zekaya ipucu verir", (r) => r?.kind === "multi" && r.line === "Tamam." && /sırayla: mesaj, takvim ve not/.test(r.hint) && !r.slots)],
+  [gokhan, PC("sırayı söyler, yapay zekaya ipucu verir", (r) => r?.kind === "multi" && r.line === "Tamam, sırayla yapıyorum: mesaj, takvim ve not." && /sırayla: mesaj, takvim ve not/.test(r.hint) && !r.slots)],
   ["Ali'ye yaz yarın 9'da gelsin", PC("yalnız mesaj: eskisi gibi", (r) => r?.kind === "send")],
 ]);
 const aiMulti = {
@@ -448,8 +448,9 @@ group("Başka isteğin var mı (cevap)")([
   ["yok ama Ali'ye yaz", NM(false)], ["evet", NM(false)], ["yarın antrenman ekle", NM(false)], ["hayır yarın değil cuma ekle", NM(false)],
 ]);
 group("Kısa ön cevap")([
-  ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda yalnız Tamam", (r) => r?.line === "Tamam.")],
-  ["tekneleri hazırla görevi ekle", PC("görevde yalnız Tamam", (r) => r?.line === "Tamam.")],
+  ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda ne yaptığını söyler", (r) => r?.line === "Tamam, mesajı hazırlıyorum." && r.work === "Mesaj hazırlanıyor")],
+  ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
+  ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
 ]);
 
 // ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----
