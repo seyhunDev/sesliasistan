@@ -630,6 +630,9 @@ group("Envanter (tanıma)")([
   ["yarın 10'da antrenman ekle", WI(false, true)], ["Ali'ye mesaj at", WI(false, true)], ["planlara git", WI(false, true)],
   ["yarın 10'da antrenman ekle", WI(false)], ["2 can yeleği kayboldu", WI(false)], ["envanteri aç", WI(false)], ["envanter sayfasına git", WI(false)],
   ["envanteri aç", NI], ["envanter", NI], ["demirbaşları göster", NI],
+  // "plan yap / hatırlat / not al" denince envanter sözcüğü geçse de kayıt (Seyhun'un cümlesi, 2026-10-06)
+  ["yarın akşam 5'e plan yap envanter listesi çıkarılacak", WI(false)], ["envanter sayımını hatırlat", WI(false)], ["not al envanter eksik", WI(false)],
+  ["Ali'ye yaz envanter listesini çıkarsın", WI(false)], ["envantere 3 telsiz ekle", WI(true)], ["envanterden 2 şamandıra çıkar, Ali'ye de hatırlat", WI(true)],
 ]);
 
 // ---- Mesaj + WhatsApp: yalnız mesaj istenince kayıt açılmaz; WhatsApp isteği tanınır ----
