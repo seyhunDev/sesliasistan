@@ -22,7 +22,7 @@ export function Thread({ turns, ask, canFix, onFix, extra }) {
             )}
           </div>
         ) : (
-          <div key={i} className="fade-in" {...(i === last ? { "data-last-reply": "1" } : {})}>
+          <div key={i} className={i === last ? "animate-pop" : "fade-in"} {...(i === last ? { "data-last-reply": "1" } : {})}>
             <p className="min-w-0 pr-6 text-[1.0625rem] leading-relaxed tracking-[-.005em]">{t.text}</p>
             {extra?.(t, i)}
             {i === last && (

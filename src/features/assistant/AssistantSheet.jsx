@@ -2071,6 +2071,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={turnLinks} />
 
+        {/* Cevabın yeri: gelene kadar yanıp sönen iskelet satırlar (Seyhun: "önden modern loading, yazı gelince tık çıksın",
+            2026-10-06); yanıt akmaya başlayınca ya da adımlar görünürken yok */}
+        {busy && !streamText && steps.every((x) => x.st !== "run") && (
+          <div className="fade-in mt-3.5 space-y-2 pr-6" aria-hidden="true">
+            <span className="shimmer block h-3.5 w-[88%] rounded-full" />
+            <span className="shimmer block h-3.5 w-[72%] rounded-full [animation-delay:.2s]" />
+            <span className="shimmer block h-3.5 w-[46%] rounded-full [animation-delay:.4s]" />
+          </div>
+        )}
+
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (
           <div className="mt-3.5" aria-live="polite">
