@@ -41,7 +41,6 @@ const PAGES = {
   "/wind": { ph: "Rüzgârı sor…", ex: ["Yarın öğlen rüzgâr kaç knot?", "Bu hafta yelkene en uygun gün hangisi?", "Cumartesi poyraz sertleşir mi?"] },
   "/training": { ph: "Antrenmanı anlat, günlüğe yazayım…", ex: ["Dün 14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü", "Bugünkü antrenman çok iyi geçti, Ali ve Ayşe geldi", "Antrenman günlüğünü aç"] },
 };
-const TABS = ["/", "/calendar", "/messages", "/tasks"];
 // Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
@@ -367,6 +366,69 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
     };
   }, [active, client]);
 
+  // Aşağı çekerek kapat (Seyhun, 2026-10-06): asistan açıkken kubbe parmakla aşağı sürüklenir; yeterince (dinlerken daha
+  // çok) ya da hızlı çekilince konuşma kapanır, azsa yerine döner. Konuşma alanı kaydırılmışken oradan başlayan çekme
+  // kaydırmadır; yazarken (klavye) ve düğmelerden başlayan dokunuşta çalışmaz.
+  const st = useRef(state);
+  const close = useRef(onClose);
+  useLayoutEffect(() => {
+    st.current = state;
+    close.current = onClose;
+  });
+  useEffect(() => {
+    const el = box.current;
+    if (!active || typing || !el) return;
+    let y0 = null;
+    let t0 = 0;
+    let dy = 0;
+    let drag = false;
+    const reset = (anim) => {
+      el.style.transition = anim ? "transform .3s cubic-bezier(.22,.8,.24,1), height .5s cubic-bezier(.22,.8,.24,1)" : "";
+      el.style.transform = "";
+    };
+    const start = (e) => {
+      if (e.touches.length !== 1 || e.target.closest("button, a, input, textarea, [data-orb]")) return (y0 = null);
+      const p = pane.current;
+      if (p && p.contains(e.target) && p.scrollTop > 2) return (y0 = null);
+      y0 = e.touches[0].clientY;
+      t0 = Date.now();
+      dy = 0;
+      drag = false;
+    };
+    const move = (e) => {
+      if (y0 == null) return;
+      dy = e.touches[0].clientY - y0;
+      if (!drag && dy > 10) drag = true;
+      if (!drag) return;
+      if (dy <= 0) return (el.style.transform = "");
+      e.preventDefault(); // konuşma alanı kaymasın, kubbe parmağı izlesin
+      el.style.transition = "none";
+      el.style.transform = `translate3d(0,${Math.round(dy)}px,0)`;
+    };
+    const end = () => {
+      if (y0 == null) return;
+      y0 = null;
+      if (!drag) return;
+      const fast = dy / Math.max(1, Date.now() - t0) > 0.6 && dy > 50;
+      const far = dy > (st.current === "listening" ? 160 : 110);
+      // Kapanınca kubbe zaten boştaki boyuna iner; sürüklenen kubbe aynı anda yerine yumuşakça döner
+      if (fast || far) close.current?.();
+      reset(true);
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end, { passive: true });
+    el.addEventListener("touchcancel", end, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+      el.style.transform = "";
+      el.style.transition = "";
+    };
+  }, [active, typing]);
+
   const heard = active && (state === "listening" || live.transcribing) && live.heard; // gönderilirken de yazı kalır
   return (
     <div
@@ -392,7 +454,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               // Konuşma alanı mesajlar geldikçe kademeli büyür (kubbe yumuşak geçişle yükselir), görünen ekranın %45'ine ulaşınca
               // sabitlenir ve kaydırma oradan sonra başlar (Seyhun, 2026-10-06). Küre satırı ve durum şeridi altta, alan yalnız
               // yukarı doğru büyür: mesaj, kart, dinleme ya da iş yazısı küreyi ve düğmeleri oynatmaz.
-              className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
+              className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-14.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
             >
               <div className="flex min-h-full flex-col justify-end pb-2 pt-3">
                 <div ref={setSlot} />
@@ -401,9 +463,9 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
             </div>
           )}
           {/* Durum şeridi: şu an yapılan iş kürenin ÜSTÜNDE, kendi sabit yerinde (yazı yokken de yeri ayrılır, hiçbir şey zıplamaz);
-              altında küreye kadar boşluk (Seyhun: "bitişik gibi", 2026-10-06) */}
+              altında küreye kadar geniş boşluk (Seyhun: "bitişik gibi", "aralarındaki boşluğu arttır", 2026-10-06) */}
           {active && (
-            <div className="flex h-11 items-start justify-center pt-0.5" role="status" aria-live="polite">
+            <div className="flex h-[3.75rem] items-start justify-center pt-0.5" role="status" aria-live="polite">
               {live.status && (
                 <span key={live.status} className="dome-chip fade-in">
                   <span className="work-ring" aria-hidden="true" />
@@ -568,7 +630,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
 }
 
 // Uygulama yerleşiminde tek kez çizilir: sayfa değişince yeniden kurulmaz (geçişte titreme/zıplama olmaz).
-// Dört ana sekmede sekmelerle görünür; diğer sayfalarda ince hâliyle (yalnız küre), sohbet ekranında yalnız asistan çalışırken.
+// Her sayfada sekmelerle görünür (ana sayfadaki gibi), sohbet ekranında yalnız asistan çalışırken.
 // Sekmeler görünürken sayfaların alt boşluğu kubbeye göre büyür (globals.css).
 function Host() {
   const path = usePathname();
@@ -576,10 +638,11 @@ function Host() {
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
   const race = isRace(path) || isPost(path) || isInv(path);
-  // Kubbe sekmeleriyle yalnız dört ana sekmede
-  const bar = TABS.includes(path) && !(path === "/messages" && chat);
-  // Sekmesiz sayfalarda kubbe ince hâliyle (yalnız küre); sohbet ekranında yok (kendi yazma satırı var)
-  const slim = !bar && !(path.startsWith("/messages") && chat);
+  // Kubbe her sayfada ana sayfadaki gibi: sekmeleri, büyük küresi, kaydırınca incelmesi aynı (Seyhun: "asistanın kubbenin
+  // tasarımı diğer sayfalarda da aynı olsun", 2026-10-06). Önceden dört ana sekme dışında yalnız küreli ince hâliyle duruyordu.
+  // Sohbet ekranında yok (kendi yazma satırı var).
+  const bar = !(path.startsWith("/messages") && chat);
+  const slim = false;
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
   useEffect(() => {
