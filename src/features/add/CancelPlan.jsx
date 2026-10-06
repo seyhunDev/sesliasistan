@@ -9,14 +9,13 @@ import { GROUPS } from "@/lib/kinds";
 import { CANCEL_REASONS, canCancel, cancelText, shareText } from "@/lib/cancelPlan";
 import { todayStr } from "@/lib/utils/format";
 
-// Plan ekranında: "İptal et ve haber ver". Plan silinmez, "iptal" olur (geri alınabilir); plandaki kişilere bildirim gider,
+// Plan ekranında, İşlemler › "İptal et" ile açılan form: "İptal et ve haber ver". Plan silinmez, "iptal" olur (geri alınabilir); plandaki kişilere bildirim gider,
 // istenirse Sporcular/Ekip grubuna mesaj yazılır, WhatsApp'a da aynı metin paylaşılır.
-export function CancelPlan({ rec, by, start = false }) {
+export function CancelPlan({ rec, by, onClose }) {
   const { updateRecord } = useData();
   const chat = useChat();
   const toast = useToast();
   const today = todayStr();
-  const [open, setOpen] = useState(start);
   const [reason, setReason] = useState("wind");
   const [text, setText] = useState(() => cancelText(rec, "wind", today));
   const [touched, setTouched] = useState(false);
@@ -24,39 +23,7 @@ export function CancelPlan({ rec, by, start = false }) {
   const [to, setTo] = useState(() => (groups.includes("athletes") ? ["athletes"] : []));
   const [busy, setBusy] = useState(false);
 
-  if (rec.status === "cancelled") {
-    return (
-      <div className="mt-3 flex items-center gap-3 rounded-2xl bg-rec/10 px-4 py-3 text-rec">
-        <Icon name="x" className="size-5 shrink-0" />
-        <span className="min-w-0 flex-1 text-[0.875rem] font-semibold">Bu plan iptal edildi</span>
-        <button
-          type="button"
-          onClick={() => {
-            updateRecord("plan", rec.id, { status: "planned", cancelReason: "", cancelledAt: null }, by);
-            toast("İptal geri alındı");
-          }}
-          className="shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ring-1 ring-rec/30 active:scale-95"
-        >
-          Geri al
-        </button>
-      </div>
-    );
-  }
   if (!canCancel(rec, today)) return null;
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.99]"
-      >
-        <Icon name="wind" className="size-5 shrink-0 text-mut" />
-        <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">İptal et ve haber ver</span>
-        <Icon name="chev" className="size-4 text-mut" />
-      </button>
-    );
-  }
 
   const pickReason = (r) => {
     setReason(r);
@@ -72,7 +39,7 @@ export function CancelPlan({ rec, by, start = false }) {
     let ok = 0;
     for (const g of to) if (await chat.send(g, t, { create: { type: "team" } })) ok++;
     setBusy(false);
-    setOpen(false);
+    onClose?.();
     toast(ok ? `Plan iptal edildi · ${to.map((g) => GROUPS[g].name).join(", ")} grubuna yazıldı` : "Plan iptal edildi");
   }
 
@@ -115,7 +82,7 @@ export function CancelPlan({ rec, by, start = false }) {
             <Icon name="whatsapp" className="size-4" /> WhatsApp
           </span>
         </button>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
+        <button type="button" onClick={() => onClose?.()} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
           <Icon name="x" className="size-5" />
         </button>
       </div>

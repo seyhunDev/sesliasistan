@@ -78,7 +78,7 @@ function DayChips({ value, onPick, onClear }) {
 // d: taslak, onChange(patch). meta: "Ali ekledi · dün". done/onToggleDone: yalnızca görev.
 // assign: ana hesabın çalışanları (boşsa "Çalışan ekle"), çalışan hesabında null (satır gösterilmez).
 // acks: kayıtlı sorumluların durumu [{ uid, name, key, label, at }] (ana hesapta gösterilir)
-export function EditCard({ d, meta, planTitle, done, pinned, onToggleDone, assign, onAddStaff, onChange, acks = [] }) {
+export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [] }) {
   const [open, setOpen] = useState(""); // açık satır
   const toggle = (k) => () => setOpen((o) => (o === k ? "" : k));
   const put = (patch, close = true) => {
@@ -141,6 +141,128 @@ export function EditCard({ d, meta, planTitle, done, pinned, onToggleDone, assig
     ))}
   </div>
   );
+
+  const addStaffRow = assign && !assign.length && onAddStaff && (
+    <li className="border-b border-line">
+      <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
+        <Icon name="users" className="size-5 shrink-0 text-mut" />
+        <span className="text-[0.9375rem]">Sorumlu</span>
+        <span className="ml-auto text-[0.9375rem] font-medium text-acc">Kişi ekle</span>
+      </button>
+    </li>
+  );
+
+  // Plan: ne, ne zaman, nerede tek kartta (büyük başlık, altında tarih/süre/saat/yer satırları);
+  // altında küçük bilgi satırı (iptal, her hafta, kategori, kim ekledi); sorumlu ve bağlı kayıt ayrı kartta
+  if (d.type === "plan")
+    return (
+      <div className="pb-2">
+        <div className="overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+          <div className="px-4 pb-3 pt-3.5">
+            <Grow
+              value={d.title}
+              onChange={(e) => onChange({ title: cap(e.target.value) })}
+              placeholder="Başlık"
+              autoCapitalize="sentences"
+              enterKeyHint="done"
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
+              className={`text-[1.375rem] font-semibold leading-snug tracking-tight placeholder:text-mut/60 ${cancelled ? "text-mut line-through" : "text-fg"}`}
+            />
+          </div>
+          <ul className="border-t border-line [&>li:last-child]:border-b-0">
+            <Row
+              icon="cal"
+              label={multi ? "Başlangıç" : "Tarih"}
+              value={d.date ? dayLabel(d.date) : "Seçilmedi"}
+              tone={d.date ? "text-fg" : "font-medium text-amber-700"}
+              open={open === "date"}
+              onToggle={toggle("date")}
+            >
+              <DayChips value={d.date} onPick={(v) => put({ date: v, ...(d.endDate && v > d.endDate ? { endDate: "" } : {}) })} />
+              {rel(d.date) && <p className="mt-2 text-[0.8125rem] text-mut">{rel(d.date)}</p>}
+            </Row>
+            <Row
+              icon="flag"
+              label="Süre"
+              value={multi ? `${spanDays(d.date, d.endDate)} gün · ${short(d.endDate)} bitiyor` : "Tek gün"}
+              tone={multi ? "text-fg" : undefined}
+              open={open === "span"}
+              onToggle={d.date ? toggle("span") : undefined}
+            >
+              <div className="flex flex-wrap gap-1.5">
+                <button type="button" onClick={() => put({ endDate: "" })} className={chip(!multi)}>
+                  Tek gün
+                </button>
+                {[2, 3, 7].map((n) => {
+                  const end = addDaysFrom(d.date, n - 1);
+                  return (
+                    <button key={n} type="button" onClick={() => put({ endDate: end, time: "", allDay: true })} className={chip(d.endDate === end)}>
+                      {n} gün
+                    </button>
+                  );
+                })}
+                <Picker type="date" value={d.endDate} onChange={(v) => v && v > d.date && put({ endDate: v, time: "", allDay: true })} className={chip(false)}>
+                  Bitiş seç
+                </Picker>
+              </div>
+            </Row>
+            {!multi && (
+              <Row icon="clock" label="Saat" value={d.time || "Tüm gün"} tone={d.time ? "text-fg tabular-nums" : undefined} open={open === "time"} onToggle={toggle("time")}>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => put({ time: "", allDay: true })} className={chip(!d.time)}>
+                    Tüm gün
+                  </button>
+                  {TIMES.map((t) => (
+                    <button key={t} type="button" onClick={() => put({ time: t, allDay: false })} className={`${chip(d.time === t)} tabular-nums`}>
+                      {t}
+                    </button>
+                  ))}
+                  <Picker type="time" value={d.time} onChange={(v) => v && put({ time: v, allDay: false }, false)} className={chip(d.time && !TIMES.includes(d.time))}>
+                    <span className="tabular-nums">{d.time && !TIMES.includes(d.time) ? d.time : "Diğer"}</span>
+                  </Picker>
+                </div>
+              </Row>
+            )}
+            <li className="border-b border-line">
+              <label className="flex min-h-[3.25rem] items-center gap-3 px-4">
+                <Icon name="pin" className="size-5 shrink-0 text-mut" />
+                <span className="shrink-0 text-[0.9375rem]">Yer</span>
+                <input
+                  value={d.place}
+                  onChange={(e) => onChange({ place: e.target.value })}
+                  placeholder="Ekle"
+                  autoCapitalize="words"
+                  enterKeyHint="done"
+                  className="min-w-0 flex-1 bg-transparent text-right text-[0.9375rem] text-fg outline-none placeholder:text-mut"
+                />
+              </label>
+            </li>
+          </ul>
+        </div>
+        {(meta || (d.cat && d.cat !== "Genel") || cancelled || repeat) && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.8125rem] text-mut">
+            {cancelled && <span className="rounded-full bg-rec/10 px-2 py-0.5 text-[0.75rem] font-semibold text-rec">İptal edildi</span>}
+            {repeat && (
+              <span className="inline-flex items-center gap-1 font-medium text-fg/80">
+                <Icon name="repeat" className="size-3.5" />
+                {repeat}
+              </span>
+            )}
+            {d.cat && d.cat !== "Genel" && <span className="rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-medium text-acc">{d.cat}</span>}
+            {meta && <span>{meta}</span>}
+          </p>
+        )}
+        {repeat && <p className="mt-1 px-1 text-[0.75rem] text-mut">Değişiklik yalnız bu haftaya uygulanır.</p>}
+        {((assign && assign.length > 0) || (assign && onAddStaff) || planTitle) && (
+          <ul className="mt-4 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
+            {who}
+            {addStaffRow}
+            {planTitle && <Row icon="cal" label="Bağlı plan" value={planTitle} tone="text-fg" />}
+          </ul>
+        )}
+        {ackList}
+      </div>
+    );
 
   // Not: kısa içerik tek kartta (başlık büyük, metin hemen altında); kim/ne zaman ve etiket küçük, kartın altında
   if (d.type === "note")
@@ -214,77 +336,6 @@ export function EditCard({ d, meta, planTitle, done, pinned, onToggleDone, assig
 
       {/* Ayrıntılar */}
       <ul className="mt-5 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
-        {d.type === "plan" && (
-          <>
-            <Row
-              icon="cal"
-              label={multi ? "Başlangıç" : "Tarih"}
-              value={d.date ? dayLabel(d.date) : "Seçilmedi"}
-              tone={d.date ? "text-fg" : "font-medium text-amber-700"}
-              open={open === "date"}
-              onToggle={toggle("date")}
-            >
-              <DayChips value={d.date} onPick={(v) => put({ date: v, ...(d.endDate && v > d.endDate ? { endDate: "" } : {}) })} />
-              {rel(d.date) && <p className="mt-2 text-[0.8125rem] text-mut">{rel(d.date)}</p>}
-            </Row>
-            <Row
-              icon="flag"
-              label="Süre"
-              value={multi ? `${spanDays(d.date, d.endDate)} gün · ${short(d.endDate)} bitiyor` : "Tek gün"}
-              tone={multi ? "text-fg" : undefined}
-              open={open === "span"}
-              onToggle={d.date ? toggle("span") : undefined}
-            >
-              <div className="flex flex-wrap gap-1.5">
-                <button type="button" onClick={() => put({ endDate: "" })} className={chip(!multi)}>
-                  Tek gün
-                </button>
-                {[2, 3, 7].map((n) => {
-                  const end = addDaysFrom(d.date, n - 1);
-                  return (
-                    <button key={n} type="button" onClick={() => put({ endDate: end, time: "", allDay: true })} className={chip(d.endDate === end)}>
-                      {n} gün
-                    </button>
-                  );
-                })}
-                <Picker type="date" value={d.endDate} onChange={(v) => v && v > d.date && put({ endDate: v, time: "", allDay: true })} className={chip(false)}>
-                  Bitiş seç
-                </Picker>
-              </div>
-            </Row>
-            {!multi && (
-              <Row icon="clock" label="Saat" value={d.time || "Tüm gün"} tone={d.time ? "text-fg tabular-nums" : undefined} open={open === "time"} onToggle={toggle("time")}>
-                <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => put({ time: "", allDay: true })} className={chip(!d.time)}>
-                    Tüm gün
-                  </button>
-                  {TIMES.map((t) => (
-                    <button key={t} type="button" onClick={() => put({ time: t, allDay: false })} className={`${chip(d.time === t)} tabular-nums`}>
-                      {t}
-                    </button>
-                  ))}
-                  <Picker type="time" value={d.time} onChange={(v) => v && put({ time: v, allDay: false }, false)} className={chip(d.time && !TIMES.includes(d.time))}>
-                    <span className="tabular-nums">{d.time && !TIMES.includes(d.time) ? d.time : "Diğer"}</span>
-                  </Picker>
-                </div>
-              </Row>
-            )}
-            <li className="border-b border-line">
-              <label className="flex min-h-[3.25rem] items-center gap-3 px-4">
-                <Icon name="pin" className="size-5 shrink-0 text-mut" />
-                <span className="shrink-0 text-[0.9375rem]">Yer</span>
-                <input
-                  value={d.place}
-                  onChange={(e) => onChange({ place: e.target.value })}
-                  placeholder="Ekle"
-                  autoCapitalize="words"
-                  enterKeyHint="done"
-                  className="min-w-0 flex-1 bg-transparent text-right text-[0.9375rem] text-fg outline-none placeholder:text-mut"
-                />
-              </label>
-            </li>
-          </>
-        )}
 
         {d.type === "task" && (
           <Row
@@ -300,15 +351,7 @@ export function EditCard({ d, meta, planTitle, done, pinned, onToggleDone, assig
         )}
 
         {who}
-        {assign && !assign.length && onAddStaff && (
-          <li className="border-b border-line">
-            <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
-              <Icon name="users" className="size-5 shrink-0 text-mut" />
-              <span className="text-[0.9375rem]">Sorumlu</span>
-              <span className="ml-auto text-[0.9375rem] font-medium text-acc">Kişi ekle</span>
-            </button>
-          </li>
-        )}
+        {addStaffRow}
 
         {planTitle && <Row icon="cal" label="Bağlı plan" value={planTitle} tone="text-fg" />}
       </ul>
