@@ -56,3 +56,15 @@ export function navClick(e) {
   if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
   navStart(a.getAttribute("href"));
 }
+
+// Yeni sayfa en üstten başlar; geri/ileri (tarayıcı geçmişi) ile dönülen sayfada tarayıcı eski konumu korur.
+// Önceden önceki sayfanın kaydırma konumu yeni sayfaya taşınıyordu (sayfa üstü kesik açılıyordu).
+let popped = false;
+export const navPopped = () => {
+  popped = true;
+};
+export function navArrived() {
+  const back = popped;
+  popped = false;
+  if (!back && typeof window !== "undefined" && window.scrollY) window.scrollTo(0, 0);
+}

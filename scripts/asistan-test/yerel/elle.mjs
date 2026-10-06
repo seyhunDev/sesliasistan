@@ -1057,3 +1057,23 @@ const backTaps = async () => {
 group("Geri düğmesi dokunuşu")([
   ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa", backTaps)],
 ]);
+
+// Sayfa geçişinde kaydırma (navProgress.js): yeni sayfa en üstten, geri dönülen sayfa yerinde
+const NP = await import("@/lib/navProgress");
+const scrollTops = async () => {
+  await wait(800);
+  const tops = [];
+  globalThis.window = { scrollY: 600, scrollTo: (x, y) => tops.push(y) };
+  try {
+    NP.navArrived(); // ileri: en üste
+    NP.navPopped();
+    NP.navArrived(); // geri: dokunulmaz
+    NP.navArrived(); // sonraki ileri yine en üste
+    return tops.join() === "0,0" || tops.join();
+  } finally {
+    delete globalThis.window;
+  }
+};
+group("Sayfa geçişinde kaydırma")([
+  ["yeni sayfa", F("en üstten başlar, geri dönüşte konum kalır", scrollTops)],
+]);

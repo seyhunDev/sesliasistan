@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { navClick, navDone, navPhase, navSubscribe, wrapRouter } from "@/lib/navProgress";
+import { navArrived, navClick, navDone, navPhase, navPopped, navSubscribe, wrapRouter } from "@/lib/navProgress";
 
 // Sayfa geçişinde üstte ince ilerleme çizgisi (popüler uygulamalardaki gibi): dokunulan düğme ya da bağlantı
 // başka sayfaya gidiyorsa hemen başlar, yeni sayfa açılınca dolup kaybolur; "gidiyor mu?" sorusu kalmaz.
 // Bütün geçişler kapsanır: bağlantılar (tıklama yakalanır) ve router.push/replace/back (navProgress.js).
+// Yeni açılan sayfa en üstten başlar (geri dönülen sayfa eski yerinde kalır).
 // Ayrıca iPhone'da :active (basılıyken koyulaşma, globals.css) her öğede çalışsın diye boş touchstart dinleyicisi.
 const noop = () => {};
 
@@ -19,14 +20,21 @@ export function NavProgress() {
     wrapRouter(router);
     document.addEventListener("click", navClick, true);
     document.addEventListener("touchstart", noop, { passive: true });
+    window.addEventListener("popstate", navPopped);
     return () => {
+      window.removeEventListener("popstate", navPopped);
       document.removeEventListener("click", navClick, true);
       document.removeEventListener("touchstart", noop);
     };
   }, [router]);
 
-  // Yeni sayfa açıldı: çizgi dolar ve kaybolur
-  useEffect(() => navDone(), [path]);
+  // Yeni sayfa açıldı: çizgi dolar ve kaybolur; ileri gidişte sayfa en üstten başlar
+  const first = useRef(true);
+  useEffect(() => {
+    navDone();
+    if (first.current) first.current = false;
+    else navArrived();
+  }, [path]);
 
   if (phase === "idle") return null;
   return (
