@@ -475,13 +475,14 @@ group("Göreve göre ara yazı")([
   ["cumartesi tekne yıkama ekle", PC("tür belli değilse kayıt", (r) => !/Plan|Görev/.test(r?.work || "") || r?.kind === "plan")],
 ]);
 {
-  const { TASKS, inventoryWork, tasksPrompt } = await import("@/lib/assistTasks");
+  const { TASKS, inventoryWork, tasksPrompt, waitText } = await import("@/lib/assistTasks");
   group("Asistanın iş listesi")([
     ["kimlikler tekrarsız", { desc: "her iş bir kez", fn: () => TASKS.map((x) => x.id), ok: (ids) => new Set(ids).size === ids.length }],
     ["yapay zekalı işlerin yazısı var", { desc: "doing ve work dolu", fn: () => TASKS.filter((x) => x.by !== "yerel" && !(x.doing && x.work)).map((x) => x.id), ok: (xs) => !xs.length }],
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
+    ["yazıya çevirme", { desc: "beklerken ne olduğu yazar", fn: () => [waitText({ transcribing: true }), waitText({})], ok: ([a, b]) => a === "Sesin yazıya çevriliyor" && b === "Anlaşılıyor" }],
     ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2600 && /envanter/.test(p) }],
   ]);
 }
