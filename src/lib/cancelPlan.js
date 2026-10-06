@@ -31,22 +31,14 @@ export const canCancel = (plan, today) => !!plan && plan.status !== "cancelled" 
 export const waLink = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
 // WhatsApp grubuna metin: WhatsApp'ın gruba metinle açılan bağlantısı yok (wa.me yalnız telefon numarasına).
-// Telefonun paylaşım menüsü açılır; son sohbetlerde grup (ör. Sporcular) tek dokunuşla seçilir, metin hazır gelir.
-// Paylaşım yoksa (Mac Chrome) WhatsApp'ın sohbet seçimi açılır. Metin her durumda panoya da kopyalanır.
-// Grubun davet bağlantısı kayıtlıysa (Ayarlar › WhatsApp grupları) grup doğrudan açılır, metin panodan yapıştırılır.
-// Dokunuşun içinde, beklemeden çağrılmalı (iPhone paylaşımı yalnız dokunuşla açar).
+// Grubun davet bağlantısı kayıtlıysa (Ayarlar › WhatsApp grupları) grup doğrudan açılır, metin panodan yapıştırılır;
+// yoksa WhatsApp metin hazır açılır, grup orada seçilir. Telefonun paylaşım menüsü açılmaz (Seyhun: "doğrudan WhatsApp'a gitsin").
+// Dokunuşun içinde, beklemeden çağrılmalı (iPhone pano ve yeni pencereyi yalnız dokunuşla açar).
 export function shareText(text, nav = typeof navigator !== "undefined" ? navigator : null, open = (u) => window.open(u, "_blank"), group = "") {
   try { nav?.clipboard?.writeText?.(text)?.catch?.(() => {}); } catch {}
   if (group) {
     open(group);
     return "group";
-  }
-  if (nav?.share && (!nav.canShare || nav.canShare({ text }))) {
-    try {
-      const p = nav.share({ text });
-      p?.catch?.((e) => e?.name === "NotAllowedError" && open(waLink(text)));
-      return "share";
-    } catch {}
   }
   open(waLink(text));
   return "link";

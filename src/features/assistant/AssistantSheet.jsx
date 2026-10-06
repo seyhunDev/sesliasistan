@@ -54,7 +54,7 @@ import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsern
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, jobsIn, keepNotes, taskList, wantsRecord, wantsWhatsApp } from "@/lib/steps";
+import { isMulti, jobsIn, keepNotes, taskList, wantsRecord, waMode } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -589,7 +589,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sıralı işlerin bir adımı: mesaj kartı (onayla gönderilir) ya da kayıtlar (bilgisi tamamsa hemen kaydedilir)
   // lead: önceki adımın sonucu ("Gönderdim. "); msg: yapay zekanın ilk adım için yazdığı cümle (akışta okunmuş olabilir)
   function runStep(st, viaVoice, lead = "", msg = "") {
-    if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead, wantsWhatsApp(st.s));
+    if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead, waMode(st.s));
     if (st.actions) return askDelete(st.actions, viaVoice, lead, msg);
     return startDrafts(st.items, st.s, msg, st.engine, viaVoice, lead);
   }
@@ -905,7 +905,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (askTo.current && !QUESTION.test(s)) {
       const to = askTo.current;
       askTo.current = null;
-      return prepareSend(to, focusBody(s), "", "local", viaVoice, "", wantsWhatsApp(s));
+      return prepareSend(to, focusBody(s), "", "local", viaVoice, "", waMode(s));
     }
     askTo.current = null;
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir.
@@ -1023,7 +1023,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       if (mi?.send && (toTeam || mi.to || mi.unknown)) {
         toast("Yapay zekaya ulaşamadım, mesajı olduğu gibi hazırladım. Kontrol et.");
-        return prepareSend(toTeam ? s.split(/\s+/)[0] : mi.to || mi.unknown, mi.send, "", "rules", viaVoice, "", wantsWhatsApp(s));
+        return prepareSend(toTeam ? s.split(/\s+/)[0] : mi.to || mi.unknown, mi.send, "", "rules", viaVoice, "", waMode(s));
       }
       // Ekleme isteğine benziyorsa panelde taslak hazırlanır (sunucu yedek kurallarla kart çıkarır)
       if (looksLikeCreate(s)) {
@@ -1088,9 +1088,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!c || !myUid) return null;
     return { cid: dmId(myUid, c.p.uid), label: c.name, create: { type: "dm", members: [myUid, c.p.uid].sort() } };
   }
-  // alsoWa: istekte WhatsApp da geçti ("sporculara ve WhatsApp grubuna gönder"): kart "Gönder + WhatsApp" olur
-  function prepareSend(to, text, msg, engine, viaVoice, lead = "", alsoWa = false) {
-    const dest = resolveTo(to);
+  // wa: istekte WhatsApp geçti. "also" ("sporculara ve WhatsApp grubuna da"): kart "Gönder + WhatsApp";
+  // "only" ("WhatsApp sporcular grubuna gönder"): yalnız WhatsApp grubu açılır, uygulamadaki gruba gitmez
+  function prepareSend(to, text, msg, engine, viaVoice, lead = "", wa = "") {
+    let dest = resolveTo(to);
+    // Yalnız Ayarlar › WhatsApp gruplarında olan grup ("WhatsApp veliler grubuna yaz")
+    if (!dest && wa === "only") {
+      const g = (profile?.waGroups || []).find((x) => waGroupFor(String(to || ""), [x]));
+      if (g) dest = { label: g.name, team: true, icon: "users" };
+    }
+    const waOnly = wa === "only" && !!dest?.team;
+    const alsoWa = wa === "also";
     if (!dest) {
       const who = String(to || "").trim();
       queue.current = []; // alıcı yoksa sıralı işler de durur (kullanıcı yeniden söyler)
@@ -1099,6 +1107,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (known) return reply(`${lead}${known} uygulamada değil ve kişilerde telefonu yok; mesaj gönderemiyorum. Kişiler'den telefonunu eklersen WhatsApp'la gönderebilirim.`, { engine }, viaVoice);
       return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
     }
+    if (waOnly) return reply(`${lead}${dest.label} WhatsApp grubu için mesaj hazır: “${text}” WhatsApp'ta açayım mı?`, { pending: { send: { ...dest, text, waOnly: true } }, engine, expect: true }, viaVoice);
     const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
     reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
   }
@@ -1120,6 +1129,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         reply(e.message || "Kaydedemedim.", { engine: "local" });
       }
       return;
+    }
+    if (pend.send?.waOnly) {
+      // Yalnız WhatsApp grubu: kartta dokunulunca grup zaten açıldı; sesle onaylanınca WhatsApp kendiliğinden açılamaz (iPhone dokunuş ister), düğme verilir
+      const { text: body, label } = pend.send;
+      const link = waGroupOf(label);
+      setCards((c) => ({ ...c, pending: null, awaiting: false }));
+      const how = link ? "metin kopyalandı, yazı alanına basılı tutup Yapıştır de, gönder" : "grubu seç, gönder";
+      if (!waOpened) return reply(`Hazır. WhatsApp'ta ${label} grubunu açmak için aşağıdaki düğmeye dokun; ${how}.`, { engine: "local", share: body, wa: link }, fromText && convo.current);
+      if (nextStep(fromText && convo.current, "WhatsApp'ta açtım. ")) return;
+      return done(`WhatsApp'ta ${label} grubunu açtım; ${how}.`, { engine: "local" }, fromText && convo.current);
     }
     if (pend.send) {
       const { cid, text: body, create, label, team, rec, wa } = pend.send;
@@ -1153,8 +1172,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const waLeft = ok && team && pend.send.alsoWa && !waOpened;
       if (!waLeft && nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
       const waG = team ? waGroupOf(label) : "";
-      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun${waG ? ", grup açılınca yazı alanına basılı tutup Yapıştır de." : ", paylaşım menüsünün üstündeki son sohbetlerden grubu seç."}`, { engine: "local", chat: cid, share: body, wa: waG }, fromText && convo.current);
-      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? (waG ? "; WhatsApp grubunda yazı alanına basılı tutup Yapıştır de" : "; paylaşımda WhatsApp grubunu seç") : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "", wa: waG }, fromText && convo.current);
+      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun${waG ? ", grup açılınca yazı alanına basılı tutup Yapıştır de." : ", WhatsApp'ta grubu seç."}`, { engine: "local", chat: cid, share: body, wa: waG }, fromText && convo.current);
+      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? (waG ? "; WhatsApp grubunda yazı alanına basılı tutup Yapıştır de" : "; WhatsApp'ta grubu seç") : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "", wa: waG }, fromText && convo.current);
     }
     let n = 0;
     for (const a of pend.actions) {
@@ -1964,7 +1983,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             onClick={() => (markLink(i, "share"), shareGroup(l.share, l.wa))}
             className={`fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-ok text-[0.875rem] font-semibold text-white active:scale-[.98]${linkCls(i, "share")}`}
           >
-            <Icon name="whatsapp" className="size-4" /> {used.has(`${i}:share`) ? "WhatsApp'ta paylaşıldı · yeniden" : "WhatsApp grubuna da gönder"}
+            <Icon name="whatsapp" className="size-4" /> {used.has(`${i}:share`) ? "WhatsApp'ta açıldı · yeniden" : "WhatsApp grubunda aç"}
           </button>
         )}
         {l.chat && (
@@ -2246,16 +2265,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                   onClick={() => {
                     // WhatsApp grubuna da istendiyse: dokunuşla WhatsApp paylaşımı hemen açılır (grup orada seçilir), uygulamadaki gruba da gönderilir
                     const p = cards.pending.send;
-                    if (p.team && p.alsoWa) shareGroup(p.text, waGroupOf(p.label));
-                    confirmPending(false, p.team && p.alsoWa);
+                    const wa = p.team && (p.alsoWa || p.waOnly);
+                    if (wa) shareGroup(p.text, waGroupOf(p.label));
+                    confirmPending(false, wa);
                   }}
                   disabled={!cards.pending.send.text.trim()}
                   className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40"
                 >
-                  <Icon name="up" className="size-4" /> {cards.pending.send.team && cards.pending.send.alsoWa ? "Gönder + WhatsApp" : "Gönder"}
+                  <Icon name={cards.pending.send.waOnly ? "whatsapp" : "up"} className="size-4" /> {cards.pending.send.waOnly ? "WhatsApp'ta aç" : cards.pending.send.team && cards.pending.send.alsoWa ? "Gönder + WhatsApp" : "Gönder"}
                 </button>
               )}
-              {cards.pending.send.team && (
+              {cards.pending.send.team && !cards.pending.send.waOnly && (
                 <button type="button" onClick={() => shareGroup(cards.pending.send.text, waGroupOf(cards.pending.send.label))} aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
                   <Icon name="whatsapp" className="size-5" />
                 </button>
@@ -2264,7 +2284,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team && waGroupOf(cards.pending.send.label) ? ` WhatsApp grubu da açılır; metin kopyalanır, yazı alanına basılı tutup Yapıştır de.` : cards.pending.send.team && cards.pending.send.alsoWa ? " Uygulamadaki gruba gider; paylaşım menüsü de açılır, son sohbetlerden WhatsApp grubunu seç." : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun, son sohbetlerden grubu seç." : ""}</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.waOnly ? (waGroupOf(cards.pending.send.label) ? " Yalnız WhatsApp grubuna: grup açılır, metin kopyalanır; yazı alanına basılı tutup Yapıştır de." : " Yalnız WhatsApp grubuna: WhatsApp açılır, grubu seç. Grubu doğrudan açmak için Ayarlar › WhatsApp grupları'na bağlantısını ekle.") : cards.pending.send.team && waGroupOf(cards.pending.send.label) ? " WhatsApp grubu da açılır; metin kopyalanır, yazı alanına basılı tutup Yapıştır de." : cards.pending.send.team && cards.pending.send.alsoWa ? " Uygulamadaki gruba gider; WhatsApp da açılır, grubu seç." : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun." : ""}</p>
           </div>
         )}
 

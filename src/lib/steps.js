@@ -54,6 +54,17 @@ export const wantsRecord = (raw) => jobsIn(raw).some((k) => k !== "send") || REC
 
 // WhatsApp da isteniyor mu ("sporculara ve WhatsApp grubuna gönder"); ses tanıma "vatsap", "whats app" yazabilir
 export const wantsWhatsApp = (raw) => /(whats\s?app|w?vats\s?app?|wats\s?app?|vatsap)/i.test(String(raw || ""));
+const WA_WORD = "(?:whats\\s?app|w?vats\\s?app?|wats\\s?app?|vatsap)";
+// Yalnız WhatsApp mı ("WhatsApp grubuna gönder"), yoksa uygulamadaki gruba da mı ("sporculara ve WhatsApp grubuna da", "hem uygulamaya hem WhatsApp'a")
+export function waMode(raw) {
+  const s = String(raw || "").toLocaleLowerCase("tr-TR");
+  if (!wantsWhatsApp(s)) return "";
+  const also =
+    /\b(hem|uygulama\S*|mesajlar\S*|sohbet\S*)\b/.test(s) ||
+    new RegExp(`\\b(ve|da|de|ayrıca)\\s+${WA_WORD}`).test(s) ||
+    new RegExp(`${WA_WORD}\\S*(\\s+\\S+)?\\s+(da|de|dahil)\\b`).test(s);
+  return also ? "also" : "only";
+}
 
 // Görev listesi: yapay zekanın yanıtındaki işler, onay gerekip gerekmediğine göre.
 // now: hemen yapılan işlemler (görev tamamlama/yeniden açma, güncelleme); items: yeni kayıtlar (bilgisi tamamsa hemen kaydedilir);
