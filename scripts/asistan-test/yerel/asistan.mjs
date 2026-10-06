@@ -287,6 +287,26 @@ group("Sıralı işler (yapay zeka yanıtı)")([
   ["görev listesi: aç", { desc: "open ayrı", fn: () => ST.taskList(parseAssistant({ intent: "action", message: "", actions: [{ op: "open", kind: "plan", id: "p1" }] })), ok: (r) => r.open?.id === "p1" && !r.now.length }],
 ]);
 
+// ---- Notun yaşamı: "yapıldı" denen not silinmez, Arşiv'e gider, geri alınır ----
+const NS = await import("@/lib/noteState");
+const { buildDigest: bdNote } = await import("@/lib/ai/digest");
+const nNotes = [
+  { id: "n1", title: "Malzeme odası dolu", body: "", createdAt: `${today}T09:00:00` },
+  { id: "n2", title: "Yelken tamiri", body: "", createdAt: `${today}T08:00:00`, ...NS.noteDonePatch(`${today}T10:00:00`) },
+  { id: "n3", title: "Eski not", body: "", createdAt: `${today}T07:00:00`, archived: true, archivedAt: `${today}T07:30:00` },
+];
+group("Not yapıldı (arşiv)")([
+  ["yapıldı yaması", { desc: "done + arşiv, sabit kalkar", fn: () => NS.noteDonePatch("2026-10-06T10:00:00Z"), ok: (r) => r.done && r.archived && r.doneAt === r.archivedAt && r.pinned === false }],
+  ["geri al yaması", { desc: "Notlar'a döner", fn: () => NS.noteReopenPatch(), ok: (r) => r.done === false && r.archived === false && r.doneAt === null }],
+  ["durum yazısı", { desc: "Yapıldı / Arşivlendi / Açık", fn: () => nNotes.map(NS.noteStateText).join(","), ok: (r) => r === "Açık,Yapıldı,Arşivlendi" }],
+  ["veri özeti", { desc: "açık notlar ve arşivdekiler ayrı, durum yazılı", fn: () => bdNote({ notes: nNotes, now: new Date(`${today}T12:00:00`) }), ok: (r) => /## SON NOTLAR\nn:n1 \| [^\n]*Malzeme odası dolu \| $/m.test(r) && /n:n2 [^\n]*\| yapıldı/.test(r) && /n:n3 [^\n]*\| arşivde/.test(r) && /Notlar: 1 açık, 2 arşivde/.test(r) }],
+  ["görev listesi: not yapıldı hemen", { desc: "done_note ve reopen_note onaysız", fn: () => ST.taskList(parseAssistant({ intent: "action", message: "Tamam.", actions: [{ op: "done_note", kind: "note", id: "n1" }, { op: "reopen_note", kind: "note", id: "n2" }] })), ok: (r) => r.now.length === 2 && !r.confirm.length }],
+  ["malzeme odası notu yapıldı", PC("ön cevap: not arşive", (r) => r?.kind === "action" && /arşive/.test(r.line))],
+  ["notu arşivle", PC("ön cevap: not arşive", (r) => r?.kind === "action" && /arşive/.test(r.line))],
+  ["motor yağı görevini tamamla", PC("görev tamamlama değişmedi", (r) => r?.kind === "action" && /görevi tamamlıyorum/.test(r.line))],
+  ["not al malzeme odası dolu", PC("not alma değişmedi", (r) => r?.kind === "note")],
+]);
+
 // ---- Not yalnız açıkça istenince: ana işin (plan, görev, yoklama, günlük) yanına kendiliğinden not eklenmez ----
 const { interpretRules } = await import("@/lib/ai/rules");
 const WN = (want) => ({ desc: want ? "not isteği" : "not isteği değil", fn: (s) => ST.wantsNote(s), ok: (r) => r === want });

@@ -15,6 +15,8 @@ import { rel, todayStr } from "@/lib/utils/format";
 import { assigneesOf, unseenNotes, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
 import { isLogNote } from "@/lib/trainingLog";
+import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
+import { useToast } from "@/components/ui/ToastProvider";
 
 // Arama için sadeleştirir: büyük/küçük harf, ı/i ve ş, ğ, ç, ö, ü farkını yok sayar ("iskota" = "Iskota")
 const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/\p{M}/gu, "");
@@ -32,6 +34,7 @@ export default function NotesPage() {
   const { openMeeting } = useMeeting();
   const { profile } = useAuth();
   const { openAdd } = useAdd();
+  const toast = useToast();
   const [q, setQ] = useState("");
   const [f, setF] = useState("all"); // all | pinned | mine | given | cat:<ad>
   const by = { name: profile?.name ?? "Kullanıcı" };
@@ -60,9 +63,15 @@ export default function NotesPage() {
   };
   const groups = ["BUGÜN", "DÜN", "BU HAFTA", "DAHA ÖNCE"].map((k) => [k, rest.filter((n) => bucket(n) === k)]).filter(([, v]) => v.length);
 
+  // İşi biten not: "Yapıldı" denir, Arşiv'e gider (silinmez); hemen "Geri al" da var
+  const markDone = (n) => {
+    updateRecord("note", n.id, noteDonePatch(), by);
+    navigator.vibrate?.(10);
+    toast("Yapıldı, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("note", n.id, noteReopenPatch(), by) } });
+  };
   const acts = (n) => [
+    { label: "Yapıldı", icon: "check", tone: "neutral", onAction: () => markDone(n) },
     { label: n.pinned ? "Bırak" : "Sabitle", icon: "star", tone: "neutral", onAction: () => updateRecord("note", n.id, { pinned: !n.pinned }, by) },
-    { label: "Arşivle", icon: "archive", tone: "neutral", onAction: () => updateRecord("note", n.id, { archived: true, archivedAt: new Date().toISOString(), pinned: false }, by) },
     { label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("note", n.id) },
   ];
   const open = (n) => openAdd({ edit: { kind: "note", id: n.id } });
@@ -207,7 +216,7 @@ export default function NotesPage() {
         </section>
       ))}
 
-      {notes.length > 0 && <p className="mt-8 text-center text-[0.75rem] text-mut">İpucu: sabitlemek, arşivlemek ya da silmek için notu sola kaydır.</p>}
+      {notes.length > 0 && <p className="mt-8 text-center text-[0.75rem] text-mut">{"İpucu: işi biten notu sola kaydırıp “Yapıldı” de; Arşiv’e gider, silinmez."}</p>}
     </main>
   );
 }

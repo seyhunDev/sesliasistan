@@ -15,6 +15,7 @@ export const TASKS = [
   { id: "record", group: "Kayıtlar", name: "Türü belli olmayan kayıt", say: "cumartesi tekne yıkama", who: "herkes", by: "yz", doing: "Tamam, kaydı hazırlıyorum.", work: "Kayıt hazırlanıyor" },
   { id: "complete", group: "Kayıtlar", name: "Görevi tamamlama", say: "motor yağı görevini tamamla", who: "herkes", by: "yz", doing: "Tamam, görevi tamamlıyorum.", work: "Görev tamamlanıyor" },
   { id: "reopen", group: "Kayıtlar", name: "Görevi yeniden açma", say: "motor yağı görevini yeniden aç", who: "herkes", by: "yz", doing: "Tamam, görevi yeniden açıyorum.", work: "Görev yeniden açılıyor" },
+  { id: "noteDone", group: "Kayıtlar", name: "Notu yapıldı yapma (Arşiv'e gider, silinmez) ya da geri alma", say: "malzeme odası notu yapıldı", who: "herkes", by: "yz", doing: "Tamam, notu yapıldı olarak arşive kaldırıyorum.", work: "Not arşive kaldırılıyor" },
   { id: "update", group: "Kayıtlar", name: "Değiştirme / erteleme", say: "antrenmanı 11'e al", who: "herkes", by: "yz", doing: "Tamam, kaydı değiştiriyorum.", work: "Kayıt değiştiriliyor" },
   { id: "delete", group: "Kayıtlar", name: "Silme", say: "yarınki toplantıyı sil", who: "herkes", by: "yz", confirm: true, doing: "Tamam, silinecek kaydı buluyorum.", work: "Silinecek kayıt aranıyor" },
   { id: "cancel", group: "Kayıtlar", name: "Plan iptali ve haber verme", say: "yarınki antrenmanı iptal et", who: "herkes", by: "yz", confirm: true, doing: "Tamam, iptali hazırlıyorum.", work: "İptal hazırlanıyor" },

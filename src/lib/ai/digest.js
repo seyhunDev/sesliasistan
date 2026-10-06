@@ -42,7 +42,9 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
   const byP = (x, y) => `${x.date}${x.time || ""}`.localeCompare(`${y.date}${y.time || ""}`);
   const pl = (p) => `p:${p.id} | ${p.date} ${dn(p.date)}${p.endDate && p.endDate !== p.date ? ` → ${p.endDate} ${dn(p.endDate)}` : ""} | ${p.time || "tüm gün"} | ${p.title}${p.status === "cancelled" ? " (İPTAL)" : ""} | ${p.place || "-"} | ${p.cat || "Genel"}${who(p)}`;
   const tl = (t) => `t:${t.id} | son:${t.due ? `${t.due} ${dn(t.due)}` : "-"} | ${t.done ? "tamam" : "açık"} | ${t.title} | plan:${t.planId ? pTitle(t.planId) : "-"}${who(t)}`;
-  const nl = (n) => `n:${n.id} | ${(n.createdAt || "").slice(0, 10)} | ${n.title} | ${(n.body || "").replace(/\s+/g, " ").slice(0, 80)}`;
+  const nl = (n) => `n:${n.id} | ${(n.createdAt || "").slice(0, 10)} | ${n.title} | ${(n.body || "").replace(/\s+/g, " ").slice(0, 80)}${n.done ? " | yapıldı" : n.archived ? " | arşivde" : ""}`;
+  const liveNotes = notes.filter((n) => !n.archived);
+  const offAt = (n) => n.doneAt || n.archivedAt || n.createdAt || "";
   const block = (title, lines, max = 40) =>
     `## ${title}\n${lines.length ? lines.slice(0, max).join("\n") + (lines.length > max ? `\n(+${lines.length - max} daha)` : "") : "- yok"}`;
 
@@ -91,8 +93,9 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
     block("BU AY PLANLAR", plansIn(monthStart, monthEnd), 30),
     block("SONRAKİ 60 GÜN PLANLAR (gelecek haftadan sonrası)", plansIn(addDate(ne, 1), addDate(today, 60))),
     block("TARİHSİZ AÇIK GÖREVLER", open.filter((t) => !t.due).map(tl)),
-    block("SON NOTLAR", [...notes].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10).map(nl), 10),
-    `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${notes.length}`,
+    block("SON NOTLAR", [...liveNotes].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10).map(nl), 10),
+    block("ARŞİVDEKİ SON NOTLAR (yapıldı denen ya da arşivlenen)", notes.filter((n) => n.archived).sort((a, b) => offAt(b).localeCompare(offAt(a))).slice(0, 5).map(nl), 5),
+    `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${liveNotes.length} açık, ${notes.length - liveNotes.length} arşivde`,
     block(`YIL ${year} TÜM PLANLAR`, yearPlans, 60),
     `## FİŞ TOPLAMLARI (örnek veri)\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter((r) => r.status === "review").length}`,
   ]
