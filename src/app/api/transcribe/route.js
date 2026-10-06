@@ -3,6 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { NextResponse } from "next/server";
 import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
 import { dropHallucination, spokenText } from "@/lib/speech/hallucination";
+import { audioSecs, sttBody, sttText, sttVocab } from "@/lib/speech/geminiStt";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,28 @@ async function viaWhisper(name, file, names, terms, partial = false) {
   throw err;
 }
 
+// Gemini 3.5 Transcribe: Google'ın konuşma modeli, SMART kipte dolguları ve "yok, şöyle olsun" düzeltmelerini temizler.
+// Son yazı önce bununla denenir; olmazsa Whisper (Groq, OpenAI). GEMINI_TRANSCRIBE_MODEL=off ile kapatılır.
+const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcribe";
+async function viaTranscribe(file, names, terms) {
+  const buf = Buffer.from(await file.arrayBuffer());
+  const mimeType = (file.type || "audio/wav").split(";")[0];
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+    body: JSON.stringify(sttBody(buf.toString("base64"), mimeType, sttVocab(HINT, names, terms))),
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = await res.text();
+  if (res.ok) return { text: sttText(JSON.parse(body)), secs: audioSecs(buf, mimeType) };
+  const err = new Error(`gtranscribe ${res.status}: ${body.slice(0, 300)}`);
+  err.status = res.status;
+  // Model yok/istek biçimi kabul edilmedi ya da anahtar geçersiz: bir süre deneme, Whisper çalışsın. Kota: söylenen süre kadar
+  if ([400, 401, 403, 404].includes(res.status)) markCool("stt:gtranscribe", 6 * 60 * MIN);
+  else if (res.status === 429) markCool("stt:gtranscribe", (Number(res.headers.get("retry-after")) || 60) * 1000);
+  throw err;
+}
+
 // Gemini: ses dosyası doğrudan modele verilir
 const GSCHEMA = { type: "object", properties: { text: { type: "string", description: "Konuşmanın aynen yazıya dökülmüş hali" } }, required: ["text"] };
 async function viaGemini(file, names, terms) {
@@ -66,15 +89,16 @@ async function viaGemini(file, names, terms) {
   return String(out?.text || "").trim();
 }
 
-// Denenecek servisler sırayla: STT_PROVIDER ile seçilen önce, sonra Groq, OpenAI, Gemini (anahtarı olanlar)
+// Denenecek servisler sırayla: STT_PROVIDER ile seçilen önce, sonra Gemini Transcribe, Groq, OpenAI, Gemini (anahtarı olanlar)
 function providers() {
   const has = {
+    gtranscribe: !!process.env.GEMINI_API_KEY && gtModel() !== "off",
     groq: !!process.env.GROQ_API_KEY,
     openai: !!process.env.OPENAI_API_KEY,
     gemini: !!(process.env.GEMINI_API_KEY && (process.env.GEMINI_STT_MODEL || process.env.GEMINI_MODEL)),
   };
   const first = (process.env.STT_PROVIDER || "").toLowerCase();
-  return [...new Set([first, "groq", "openai", "gemini"])].filter((p) => has[p]);
+  return [...new Set([first, "gtranscribe", "groq", "openai", "gemini"])].filter((p) => has[p]);
 }
 
 async function handle(request) {
@@ -99,7 +123,7 @@ async function handle(request) {
   const terms = [...new Set(String(form.get("terms") || "").split("|").map((n) => n.replace(/[^\p{L}\p{N} .'’&-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 50)).filter(Boolean))].slice(0, 12);
 
   if (partial) {
-    const p = list.find((x) => x !== "gemini" && !isCooling(`stt:${x}`));
+    const p = list.find((x) => WHISPER[x] && !isCooling(`stt:${x}`));
     if (!p) return NextResponse.json({ text: "" });
     try {
       return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p });
@@ -120,7 +144,12 @@ async function handle(request) {
     }
     try {
       const t0 = Date.now();
-      const raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
+      let raw;
+      if (p === "gtranscribe") {
+        const r = await viaTranscribe(file, names, terms);
+        raw = r.text;
+        countAi(au, "stt-sec", r.secs); // Kullanım: Gemini ses tanıma dakikası (ücret dakika başına)
+      } else raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
       const text = dropHallucination(raw, HINT);
       if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);
       console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
