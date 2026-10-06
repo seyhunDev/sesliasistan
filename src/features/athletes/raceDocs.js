@@ -20,6 +20,11 @@ export const DOCS = [
   ["entry", "Katılım bildirim formu"],
 ];
 
+// Yeni yarışta seçili gelen belgeler: basılıp imzalatılan yazılar (okul izni, kulüp izin yazısı) yalnız gerekince seçilir
+export const DOC_DEFAULT = DOCS.map(([k]) => k).filter((k) => k !== "school" && k !== "club");
+// Kayıtlı seçimi temizler (bilinmeyen anahtar atılır, DOCS sırasında); hiç seçim yoksa null
+export const cleanDocs = (v) => (Array.isArray(v) ? DOCS.map(([k]) => k).filter((k) => v.includes(k)) : null);
+
 // Kulübün antet bilgileri (kulüp izin yazısının üst ve alt bilgisi)
 export const CLUB = {
   name: "DİKİLİ YELKEN SPOR KULÜBÜ",
