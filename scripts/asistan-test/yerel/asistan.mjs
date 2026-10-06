@@ -116,7 +116,7 @@ group("Ön cevap")([
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
   ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
-  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, notu alıyorum." && r.work === "Not yazılıyor")],
+  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, notu alıyorum." && r.work === "Not alınıyor")],
   ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
@@ -456,6 +456,35 @@ group("Kısa ön cevap")([
   ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
   ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
 ]);
+
+// Her işin kendi ara yazısı (Seyhun: "hepsinde plan hazırlanıyor diyor"; assistTasks.js)
+const WK = (desc, work, line) => PC(desc, (r) => r?.work === work && (!line || r.line === line));
+group("Göreve göre ara yazı")([
+  ["Ali'ye WhatsApp'tan yarın 10'da gelsin diye yaz", WK("WhatsApp: plan değil", "WhatsApp mesajı hazırlanıyor", "Tamam, WhatsApp mesajını hazırlıyorum.")],
+  ["Gökhan'a mesaj atar mısın yarın 10'da toplantı var", WK("saatli mesaj plan sanılmaz", "Mesaj hazırlanıyor")],
+  ["aliye yaz yarın gelsin", WK("kesme işaretsiz alıcı", "Mesaj hazırlanıyor")],
+  ["ekibe yarın 9'da iskelede olun diye gönder", WK("gruba mesaj", "Grup mesajı hazırlanıyor")],
+  ["motor yağı görevini tamamla", WK("tamamlama", "Görev tamamlanıyor", "Tamam, görevi tamamlıyorum.")],
+  ["antrenmanı 11'e al", WK("değiştirme", "Kayıt değiştiriliyor")],
+  ["toplantıyı yarına ertele", WK("erteleme", "Kayıt değiştiriliyor")],
+  ["yarınki toplantıyı sil", WK("silme", "Silinecek kayıt aranıyor")],
+  ["yarınki antrenmanı iptal et", WK("iptal", "İptal hazırlanıyor")],
+  ["her salı 16:00 antrenman", WK("tekrarlayan plan", "Tekrarlayan plan hazırlanıyor")],
+  ["yarın rüzgar kaç knot", PC("hava sorusunda takvim sayılmaz", (r) => r?.work === "Hava durumuna bakılıyor" && r.line === "Bakıyorum.")],
+  ["yoklama al Ali geldi", PC("yoklama değişiklik sanılmaz", (r) => r?.kind !== "action" && !/Plan/.test(r?.work || ""))],
+  ["cumartesi tekne yıkama ekle", PC("tür belli değilse kayıt", (r) => !/Plan|Görev/.test(r?.work || "") || r?.kind === "plan")],
+]);
+{
+  const { TASKS, inventoryWork, tasksPrompt } = await import("@/lib/assistTasks");
+  group("Asistanın iş listesi")([
+    ["kimlikler tekrarsız", { desc: "her iş bir kez", fn: () => TASKS.map((x) => x.id), ok: (ids) => new Set(ids).size === ids.length }],
+    ["yapay zekalı işlerin yazısı var", { desc: "doing ve work dolu", fn: () => TASKS.filter((x) => x.by !== "yerel" && !(x.doing && x.work)).map((x) => x.id), ok: (xs) => !xs.length }],
+    ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
+    ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
+    ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2600 && /envanter/.test(p) }],
+  ]);
+}
 
 // ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----
 // Kural: sayfa açma (ve fiş kamerası, toplantı, yardım) yerelde; kayıt, tamamlama, özet, mesaj yapay zekaya (aiFirst).

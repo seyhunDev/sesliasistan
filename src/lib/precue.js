@@ -7,7 +7,8 @@
 import { interpretRules } from "@/lib/ai/rules";
 import { dayLabel } from "@/lib/agenda";
 import { normalizeSpeech } from "@/lib/speech/normalize";
-import { isMulti, jobsIn, jobsText, wantsNote } from "@/lib/steps";
+import { isMulti, jobsIn, jobsText, wantsNote, wantsWhatsApp } from "@/lib/steps";
+import { cueOf } from "@/lib/assistTasks";
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|ne zaman|nerede|kim|nasıl|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
@@ -19,9 +20,24 @@ const TYPE_W = [
   ["plan", /(^| )(plan(ı|a)?|planla\S*|etkinli\S*|takvime)( |$)/],
 ];
 const KIND_LINE = { plan: "plan", task: "görev", note: "not" };
-// Ön cevap: ne yapıldığı (sesli okunur) ve beklerken ekrandaki "hazırlanıyor" yazısı (work)
-const DOING = { plan: "Tamam, planı hazırlıyorum.", task: "Tamam, görevi hazırlıyorum.", note: "Tamam, notu alıyorum." };
-const WORK = { plan: "Plan hazırlanıyor", task: "Görev hazırlanıyor", note: "Not yazılıyor" };
+// Mesajın alıcısı: "Ali'ye", "Gökhan'a", "ekibe", "sporculara", "velilere", "gruba" (listeye/takvime/nota gibi yerler alıcı değil)
+const NOT_TO = /^(liste|takvim|not|plan|görev|defter|envanter|günlü|ajanda|program|saat|gün|hafta|ay|yarın|bugün|sabah|akşam)/;
+const TO_WORD = /(?<![\p{L}])(\p{L}+)(?:['’](?:y?[ae])|(?:[ae]|lar[ae]|ler[ae]|ye|ya))(?![\p{L}])/gu;
+const GROUP_TO = /(?<![\p{L}])(ekibe|ekiptekilere|sporculara|velilere|ailelere|aileye|herkese|gruba|grubuna|çalışanlara|antrenörlere|öğrencilere)(?![\p{L}])/u;
+function recipientIn(t) {
+  if (GROUP_TO.test(t)) return "group";
+  for (const m of t.matchAll(TO_WORD)) if (/['’]/.test(m[0]) && !NOT_TO.test(m[1])) return "person";
+  return "";
+}
+// Var olan kayıtta işlem (yeni kayıt değil): tamamla, yeniden aç, iptal, sil, değiştir/ertele
+const ACTIONS = [
+  ["reopen", /(yeniden|tekrar|geri) aç\p{L}*/u],
+  ["complete", /(tamamla\p{L}*|(^| )bitti(?![\p{L}])|yapıldı olarak|tamamlandı)/u],
+  ["cancel", /iptal (et|edelim|ediyoruz|oldu)/u],
+  ["delete", /(^| )(sil|silelim|siler misin|sil\p{L}*|kaldır\p{L}*)( |$)/u],
+  ["update", /(ertele\p{L}*|değiştir\p{L}*|güncelle\p{L}*|kaydır\p{L}*|(saatini|saati|tarihini|gününü) \S+|(\d+['’]?|\p{L}+['’])(e|a|ye|ya) (al|çek)(?![\p{L}]))/u],
+];
+const pcOf = (id, extra = {}) => ({ kind: id, ...cueOf(id), ...extra });
 
 const hm = (t) => (t ? t.slice(0, 5) : "");
 const mins = (t) => (t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null);
@@ -38,30 +54,42 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   if (!text) return null;
   const t = lower(text);
 
+  const rawLow = lower(String(raw || ""));
+  const jobs = jobsIn(raw);
+  // Mesaj: kime ve ne yazılacağını yapay zeka çıkarır. Ham cümleye bakılır (ses düzeltmesi sondaki "yaz"ı "ekle" yapıyor).
+  // "Ali'ye WhatsApp'tan yaz", "Gökhan'a mesaj atar mısın", "sporculara söyle antrenman iptal"
+  const to = recipientIn(rawLow);
+  const sendOnly = jobs.includes("send") && jobs.every((k) => k === "send") && (to || /mesaj|whats|vatsap/u.test(rawLow) || SEND.test(rawLow)) && !CREATE.test(rawLow);
+  if (sendOnly) {
+    const id = wantsWhatsApp(raw) ? "whatsapp" : to === "group" ? "group" : "send";
+    return pcOf(id, { kind: "send", hint: hintOf(cueOf(id).line, { kind: id === "whatsapp" ? "WhatsApp mesajı" : "mesaj" }) });
+  }
   // Soru: yalnızca genel giriş (cevabı yapay zeka verir); bugün/yarın soruluyorsa kaç kayıt olduğu söylenir
   if (QUESTION.test(t) && !CREATE.test(t)) {
     const day = /(^| )yarın/.test(t) ? "yarın" : /(^| )bugün/.test(t) ? "bugün" : "";
     let line = "Bakıyorum.";
-    if (day) {
+    const wx = /hava|rüzgar|rüzgâr|yağmur|knot|sağanak/.test(t);
+    if (day && !wx) {
       const d = day === "bugün" ? today : addDays(today, 1);
       const n = plans.filter((p) => p.date <= d && (p.endDate || p.date) >= d).length;
       line = n ? `Bakıyorum, ${day} ${n} plan görüyorum.` : `Bakıyorum, ${day} için takvim boş görünüyor.`;
     }
-    return { kind: "query", line, work: "Bakıyorum", hint: hintOf(line, { kind: "soru" }) };
+    return { kind: "query", line, work: wx ? cueOf("weather").work : cueOf("query").work, hint: hintOf(line, { kind: "soru" }) };
   }
 
   // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle
-  if (isMulti(text)) {
-    const jobs = jobsText(jobsIn(text));
+  if (isMulti(raw)) {
+    const list = jobsText(jobs);
     // Ne yapıldığı kısaca söylenir ("Tamam, sırayla yapıyorum: mesaj, takvim ve not."); sonucu yine uygulama söyler
-    const line = `Tamam, sırayla yapıyorum: ${jobs}.`;
-    return { kind: "multi", line, work: "İşler hazırlanıyor", hint: hintOf(line, { kind: `birden çok iş (sırayla: ${jobs})` }) };
+    const line = `Tamam, sırayla yapıyorum: ${list}.`;
+    return { kind: "multi", line, work: cueOf("multi").work, hint: hintOf(line, { kind: `birden çok iş (sırayla: ${list})` }) };
   }
 
-  // Mesaj: kime ve ne yazılacağını yapay zeka çıkarır
-  if (SEND.test(t) && !CREATE.test(t)) {
-    const line = "Tamam, mesajı hazırlıyorum.";
-    return { kind: "send", line, work: "Mesaj hazırlanıyor", hint: hintOf(line, { kind: "mesaj" }) };
+  // Var olan kayıtta işlem ("motor yağı görevini tamamla", "antrenmanı 11'e al", "yarınki toplantıyı sil"): plan hazırlanmaz
+  const act = !CREATE.test(rawLow) && ACTIONS.find(([, re]) => re.test(rawLow))?.[0];
+  if (act) {
+    const c = cueOf(act);
+    return { kind: "action", line: c.line, work: c.work, hint: hintOf(c.line, { kind: `işlem (${act})` }) };
   }
 
   // Yeni kayıt: tür ve alanlar kurallarla
@@ -74,13 +102,13 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   if (!wantsCreate) {
     if (t.split(/\s+/).length <= 3) return null; // "teşekkürler", "tamam sağ ol": ön cevaba gerek yok
     const line = "Bir bakayım.";
-    return { kind: "other", line, work: "Düşünüyorum", hint: hintOf(line, {}) };
+    return { kind: "other", line, work: "Bakıyorum", hint: hintOf(line, {}) };
   }
   const item = interpretRules(text, today)[0] || {};
   const type = byWord || byGuess || (item.type === "note" && !wantsNote(text) ? "" : item.type) || "";
   if (!type) {
-    const line = "Tamam, hazırlıyorum.";
-    return { kind: "create", line, work: "Hazırlanıyor", hint: hintOf(line, { kind: "yeni kayıt" }) };
+    const c = cueOf("record");
+    return { kind: "create", line: c.line, work: c.work, hint: hintOf(c.line, { kind: "yeni kayıt" }) };
   }
   const date = item.date || "";
   const time = type === "plan" ? hm(item.time) : "";
@@ -89,12 +117,13 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Ne yapıldığı kısaca söylenir ("Tamam, planı hazırlıyorum."; Seyhun: "tamam değil, şunu yapıyorum desin", 2026-10-06).
   // Ayrıntıyı ("Ekledim: Antrenman, yarın, 10:00") sonuçta uygulama söyler; aynı şey iki kez okunmaz.
   // Planda veriden tek yardımcı bilgi kalır (aynı saatte plan, o saatte rüzgâr).
-  const line = `${DOING[type] || "Tamam, hazırlıyorum."}${type === "plan" ? facts({ date, time, plans, weatherRows }) : ""}`;
+  const cue = cueOf(type === "plan" && /(^| )(her|haftada bir) /u.test(t) ? "repeat" : type);
+  const line = `${cue.line}${type === "plan" ? facts({ date, time, plans, weatherRows }) : ""}`;
 
   return {
     kind: KIND_LINE[type] ? type : "create",
     line,
-    work: WORK[type] || "Hazırlanıyor",
+    work: cue.work,
     slots,
     hint: hintOf(line, { kind: KIND_LINE[type] || "yeni kayıt", date, time }),
   };

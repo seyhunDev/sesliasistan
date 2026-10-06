@@ -21,6 +21,7 @@ import { applyRepeat, seriesDates } from "@/lib/repeat";
 import { shareGroup } from "@/lib/cancelPlan";
 import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
+import { inventoryWork, taskOf } from "@/lib/assistTasks";
 import { askAssistant } from "@/services/assistantService";
 import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
@@ -318,7 +319,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const draftSrc = useRef(""); // taslakları doğuran cümle (öğrenme kaydı ve "Düzenle" için; sohbetin ilk cümlesi değil)
   const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
   const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
-  const [work, setWork] = useState(""); // beklerken görünen iş: "Plan hazırlanıyor" (ön cevaptan, lib/precue.js)
+  const [work, setWork] = useState(""); // beklerken görünen iş: "Mesaj hazırlanıyor", "Plan hazırlanıyor"… (ön cevaptan, lib/precue.js; liste lib/assistTasks.js)
   const [workPhase, setWorkPhase] = useState(""); // iş bitince (boşta) yazı silinsin: önceki iş başka akışta görünmesin
   if (phase === "idle" && workPhase !== "idle") {
     setWorkPhase("idle");
@@ -1628,7 +1629,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
-    stepTo("Günlük hazırlanıyor");
+    stepTo(taskOf("log").work);
     try {
       const r = await askLog({ text, date });
       if (id !== runId.current) return;
@@ -1679,7 +1680,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
-    stepTo(general ? "Plan hazırlanıyor" : "Etkinlik inceleniyor");
+    stepTo(general ? taskOf("event").work : "Etkinlik inceleniyor");
     try {
       const p = await askPlan({ text, general });
       if (id !== runId.current) return;
@@ -1711,7 +1712,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const org = profile?.orgId || myUid;
     setPhase("thinking");
     setSteps([]);
-    stepTo("Envanter işleniyor");
+    stepTo(inventoryWork(s));
     try {
       const list = await loadInventories(org);
       let inv = pickInv(s, list, { here: invHere, last: lastInv() });
