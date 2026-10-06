@@ -443,6 +443,13 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               )}
             </div>
           )}
+          {/* Şu an yapılan iş: kürenin hemen altında, ortada (konuşma yazıları yukarıda yerinde kalır) */}
+          {active && !typing && live.status && (
+            <div className="fade-in -mt-0.5 flex items-center justify-center gap-2 pb-1.5" role="status" aria-live="polite">
+              <span className="work-ring" aria-hidden="true" />
+              <span className="work-text max-w-[80%] truncate text-[0.8125rem] font-medium">{live.status}…</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
