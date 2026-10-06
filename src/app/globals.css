@@ -313,6 +313,15 @@ select {
   background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px -10px rgba(0, 0, 0, .4);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: .8125rem; font-weight: 500; }
 .dome-chip .work-ring { width: .875rem; height: .875rem; }
+/* Kubbedeki yazı kutusu (mesajlaşma uygulamaları gibi): buzlu cam hap; dinlerken kenarı küreyle aynı renge döner */
+.dome-input { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); transition: box-shadow .3s ease, background-color .3s ease; }
+.dome-input:focus-within { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .4); }
+.dome-input-on { box-shadow: inset 0 0 0 1.5px rgba(255, 160, 145, .75); background: rgba(255, 255, 255, .15); }
+/* Küçük ses ışığı (kutunun içinde): dalga çubukları ince, hale dar; boyu hiç değişmez */
+.vlight.vl-sm { transform: none; }
+.vlight.vl-sm .vl-halo { inset: -18%; }
+.vlight.vl-sm .vl-wave { gap: 2.5px; }
+.vlight.vl-sm .vl-wave i { width: 2.5px; }
 
 /* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
    Koyu yeşil zemin (kubbe ve logo rengi; açık ve koyu modda aynı), ortada beyaz ses çubukları sırayla yükselip
@@ -388,3 +397,5 @@ body[data-typing] [data-pagebar] {
 .navbar-done { transform: scaleX(1); opacity: 0; transition: transform .2s ease-out, opacity .3s ease .15s; }
 @keyframes navgrow { from { transform: scaleX(0); } 15% { transform: scaleX(.45); } to { transform: scaleX(.9); } }
 @media (prefers-reduced-motion: reduce) { .navbar-run { animation: none; transform: scaleX(.6); } }
+/* Kubbedeki sohbette senin mesajın: sağda belirgin buzlu balon (mesajlaşma uygulamaları gibi) */
+.dome [data-user-bubble] { background: rgba(255, 255, 255, .16); }

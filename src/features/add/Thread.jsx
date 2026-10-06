@@ -14,7 +14,7 @@ export function Thread({ turns, ask, canFix, onFix, extra }) {
       {turns.map((t, i) =>
         t.role === "user" ? (
           <div key={i} className="fade-in flex flex-col items-end">
-            <p className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-acc/10 px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
+            <p data-user-bubble="" className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-acc/10 px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
             {canFix && i === lastUser && (
               <button onClick={onFix} className="mt-1 px-1 text-[0.75rem] font-medium text-mut transition active:opacity-50">
                 {t.chip ? "Geri al" : "Düzelt"}
