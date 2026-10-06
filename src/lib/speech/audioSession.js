@@ -18,12 +18,22 @@ const setType = (t) => {
   } catch {}
 };
 
+// Oturumu varsayılana döndür (mikrofon açılamadığında da yeniden denemeden önce)
+export function micReset() {
+  const s = session();
+  if (s && s.type !== "auto" && s.type !== "play-and-record") setType("auto");
+}
+
 let mics = 0; // aynı anda açık mikrofon sayısı (asistan, toplantı)
 let timer = null;
 
 // getUserMedia'dan hemen önce
+// Kapalıyken de: oturum önceki sürümden "transient"te kaldıysa mikrofon açılamaz ("Mikrofon bulunamadı"); "auto"ya döner
 export function micOpening(on = SESSION_SWITCH) {
-  if (!on) return;
+  if (!on) {
+    micReset();
+    return;
+  }
   mics += 1;
   clearTimeout(timer);
   setType("play-and-record");
