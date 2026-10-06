@@ -208,7 +208,7 @@ select {
 .step-in { animation: stepin .35s ease-out both; }
 
 /* ASİSTAN KUBBESİ (Ufuk): ekranın altında, iki kenara uzanan deniz yeşili kubbe. Üst kenarı yay çizer (ortası yüksek),
-   alt güvenli alanı da doldurur. Konuşma, kartlar ve yazma satırı kubbenin içinde; içerik büyüdükçe kubbe yükselir.
+   alt güvenli alanı da doldurur. Konuşma, kartlar ve yazma satırı kubbenin içinde; asistan açıkken kubbenin boyu sabittir (içerik içinde kayar).
    İçindeki her şey koyu zemine göre renk alır (değişkenler kubbenin içinde yeniden tanımlanır).
    data-state: idle (yay nefes alır) · listening (yay parlar, sesle ışık güçlenir; --lvl 0–1) · busy (yay boyunca ışık
    akar) · speaking (ışık nabız gibi atar) */
@@ -308,6 +308,11 @@ select {
   -webkit-background-clip: text; background-clip: text; color: transparent; animation: worksheen 1.6s linear infinite; }
 @keyframes worksheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
 @media (prefers-reduced-motion: reduce) { .work-ring, .work-text { animation-duration: 3s; } }
+/* Kubbedeki durum şeridi: kürenin üstünde ince buzlu cam kapsül ("Plan hazırlanıyor…"); yeri hep ayrılı, boyu sabit */
+.dome-chip { display: inline-flex; max-width: 86%; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .875rem 0 .625rem; border-radius: 9999px;
+  background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px -10px rgba(0, 0, 0, .4);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: .8125rem; font-weight: 500; }
+.dome-chip .work-ring { width: .875rem; height: .875rem; }
 
 /* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
    Koyu yeşil zemin (kubbe ve logo rengi; açık ve koyu modda aynı), ortada beyaz ses çubukları sırayla yükselip
