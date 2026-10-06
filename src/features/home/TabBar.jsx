@@ -151,7 +151,7 @@ export function Hearing({ text, listening, solo }) {
 // SES IŞIĞI (kubbenin tepesindeki tek düğme, simgesiz): disk, içinde ses dalgası (globals.css .vlight). Durum yazıyla
 // değil renkle anlaşılır (disk, hale, kubbenin parıltısı ve yayı aynı renge döner):
 //   boşta     beyaz, dalga yavaşça nefes alır                      dokun → dinlemeye başla
-//   dinliyor  kırmızı, dalga sesinle yükselir                      dokun → bitir ve gönder (sessizlikte kendisi de gönderir)
+//   dinliyor  kırmızı, dalga sesinle yükselir                      dokun → bitir ve gönder (kendiliğinden göndermez)
 //   çalışıyor kehribar (ses yükleniyor, yapay zeka düşünüyor),
 //             çevresinde ışık döner, yayda ışık akar               dokun → vazgeç
 //   konuşuyor mavi, dalga atar                                     dokun → sözünü kes, dinle
@@ -369,7 +369,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
     };
   }, [active, client]);
 
-  const heard = active && state === "listening" && live.heard;
+  const heard = active && (state === "listening" || live.transcribing) && live.heard; // gönderilirken de yazı kalır
   return (
     <div
       ref={box}
@@ -397,7 +397,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
             >
               <div className="pb-3">
                 <div ref={setSlot} />
-                {heard && <Hearing text={live.heard} listening solo={!live.talked} />}
+                {heard && <Hearing text={live.heard} listening={state === "listening"} solo={!live.talked} />}
               </div>
             </div>
           )}

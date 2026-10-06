@@ -83,6 +83,18 @@ group("Konuşma bitişi süresi")([
   ["2,2 sn duraksama: gönderilir (devamı öncekine eklenir)", { desc: "duraksamada gönderilir", fn: scene({ noise: () => 0.01, talk: [1000, 7000], pause: [3000, 5200] }), ok: (r) => r.seen && r.end < 0 }],
 ]);
 
+// Dokun-konuş-dokun-gönder: dinlerken ara yazı ne zaman istenir (kayıt yolu, vad.js partialDue)
+const { partialDue, PART_MS } = await import("@/lib/speech/vad");
+const PD = (s, now, want) => ({ desc: want ? "istenir" : "istenmez", fn: () => partialDue(s, now), ok: (r) => r === want });
+group("Dinlerken ara yazı")([
+  ["konuşuldu, 2 sn geçti", PD({ t0: 0, voiceSeen: true, lastSpeech: 1800 }, PART_MS, true)],
+  ["henüz konuşulmadı", PD({ t0: 0, voiceSeen: false, lastSpeech: 0 }, 5000, false)],
+  ["önceki istek sürüyor", PD({ t0: 0, voiceSeen: true, lastSpeech: 4000, partBusy: true, partAt: 2000, partFrom: 1800 }, 4500, false)],
+  ["son ara yazıdan beri konuşulmadı", PD({ t0: 0, voiceSeen: true, lastSpeech: 1800, partAt: 2000, partFrom: 1800 }, 6000, false)],
+  ["yeniden konuşuldu ama 2 sn dolmadı", PD({ t0: 0, voiceSeen: true, lastSpeech: 3000, partAt: 2000, partFrom: 1800 }, 3500, false)],
+  ["yeniden konuşuldu, 2 sn doldu", PD({ t0: 0, voiceSeen: true, lastSpeech: 3800, partAt: 2000, partFrom: 1800 }, 4000, true)],
+]);
+
 // Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)
 const { spokenText } = await import("@/lib/speech/hallucination");
 const SPK = (desc, data, exp) => [desc, { desc: exp ? `“${exp}”` : "boş", fn: () => spokenText(data), ok: (r) => r === exp }];

@@ -78,8 +78,13 @@ import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
-// Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
-const ENDPOINT = 1500; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
+// Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
+// dinler, söylenen ekranda yazılır, yeniden dokununca gönderilir. Cevaptan sonra ya da yapay zeka düşünürken mikrofon
+// kendiliğinden açılmaz, sessizlikte kendiliğinden gönderilmez. Eller serbest sohbete dönmek için true.
+const HANDS_FREE = false;
+// Eller serbest sohbette: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
+const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
+const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
@@ -253,15 +258,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sesli sohbette cevaptan sonra dinlemeye devam (15 sn konuşulmazsa mikrofon durur, sohbet açık kalır)
   // Kısa gecikme: cevap aynı anda hazırlandıysa (yerel komut) yazı kutusunun temizlenmiş hali okunsun
   const startAuto = () =>
+    HANDS_FREE &&
     setTimeout(() => {
-      if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true, endpoint: ENDPOINT });
+      if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true, endpoint: ENDPOINT, handsFree: true });
     }, 150);
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>
+    HANDS_FREE &&
     setTimeout(() => {
       // Okunacak cevap varken açılmaz (mikrofon açılınca konuşma susar; akışta gelen cevap kesilmesin)
       if (sayQ.current.busy || sayQ.current.items.length) return;
-      if (live.current.open && live.current.spStatus === "idle" && inflight.current) sp.start({ auto: true, quiet: true, endpoint: ENDPOINT });
+      if (live.current.open && live.current.spStatus === "idle" && inflight.current) sp.start({ auto: true, quiet: true, endpoint: ENDPOINT, handsFree: true });
     }, 120);
 
   function cancelRun() {
@@ -1817,7 +1824,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     convo.current = true;
     clearSay();
     tts.stop();
-    sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
+    sp.start(listenOpts(false));
   };
   useEffect(() => {
     onAct?.({
@@ -1880,7 +1887,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         convo.current = true;
-        sp.start({ autoStop: SILENCE_MS, auto: true, endpoint: ENDPOINT });
+        sp.start(listenOpts(true));
       }
       return;
     }
@@ -1897,7 +1904,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (seed?.text) run(seed.text, !!seed.voice, true);
     else if (seed?.listen) {
       setBooting(true);
-      sp.start({ autoStop: SILENCE_MS, auto: true, endpoint: ENDPOINT });
+      sp.start(listenOpts(true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
