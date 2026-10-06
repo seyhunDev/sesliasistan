@@ -185,20 +185,18 @@ export function VoiceLight({ onTap, onHold, state, size = "size-[4.5rem]", compa
   );
 }
 
-function NavTab({ href, icon, label, active, badge, mini }) {
+function NavTab({ href, icon, label, active, badge }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-1 transition active:scale-95 ${active ? "text-white" : "text-white/60"}`}
+      className={`relative flex h-full min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl transition active:scale-95 ${active ? "text-white" : "text-white/70"}`}
     >
       <span className="relative flex">
         <Icon name={icon} className="size-[1.375rem]" />
         {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white ring-2 ring-[#25685a]">{badge > 99 ? "99+" : badge}</span>}
       </span>
-      {/* Kubbe küçülünce yazı kaybolmaz (düğmeler zıplamasın, aralarında boşluk kalmasın), yalnız soluklaşır; seçili sekme
-          daha net kalır */}
-      <span className={`text-[0.6875rem] transition-opacity duration-500 ${active ? "font-bold" : "font-medium"} ${mini ? (active ? "opacity-80" : "opacity-40") : ""}`}>{label}</span>
+      <span className={`text-[0.6875rem] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
     </Link>
   );
 }
@@ -218,30 +216,9 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   const pane = useRef(null);
   const userUp = useRef(false);
   const shown = bar || slim || rec || active || typing;
-  // Boştayken sayfa aşağı kaydırılınca sekme yazıları soluklaşır (kubbenin boyu değişmez); yukarı kaydırınca ya da sayfanın
-  // başına dönünce eski hâline döner.
+  // Sekmeler sabit: kaydırınca soluklaşmaz ve değişmez (iPhone uygulamalarındaki alt sekme çubuğu gibi; Seyhun: "soluklaşınca
+  // zor tıklanıyor", 2026-10-06)
   const idle = (bar || slim) && !rec && !active && !typing;
-  const [mini, setMini] = useState(false);
-  useEffect(() => {
-    if (!idle) return;
-    let last = window.scrollY;
-    let run = 0;
-    const onScroll = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      const y = Math.max(0, Math.min(max, window.scrollY)); // iPhone'un esneme kaymasını sayma
-      const dy = y - last;
-      last = y;
-      if (y < 60) return setMini(false);
-      run = Math.sign(dy) === Math.sign(run) ? run + dy : dy;
-      if (run > 24) setMini(true);
-      else if (run < -16) setMini(false);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      setMini(false);
-    };
-  }, [idle, path]);
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
   useLayoutEffect(() => {
@@ -496,10 +473,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               ekranında yok */}
           {!active && !typing && !rec && (
             <nav aria-label="Sekmeler" className="mt-1 flex h-[3.25rem] items-center">
-              <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} mini={mini} />
-              <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} mini={mini} />
-              <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} mini={mini} />
-              <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} mini={mini} />
+              <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
+              <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
+              <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
+              <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
             </nav>
           )}
         </div>
