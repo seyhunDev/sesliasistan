@@ -10,7 +10,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
-import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, excelRows, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, serviceText, stateLabel, upsertItem } from "./invModel";
+import { BAD, KINDS, OWNERS, addKit, ageText, cleanItem, countText, dropItem, dropLog, dropOrphanLogs, excelRows, logKey, orphanLogs, groupItems, invStats, isBoat, isPart, itemLabel, kindOf, kitText, nextNo, searchItems, serviceText, stateLabel, upsertItem } from "./invModel";
 import { askInventory, changeInventory, deleteInventory, loadInventories, setLastInv } from "./inventory";
 import { dropInvFile, openInvFile, saveInvFile } from "./invFiles";
 import { ItemForm, input } from "./ItemForm";
@@ -75,6 +75,7 @@ export function InventoryView({ orgId, id, by }) {
   const groups = groupItems(shown, inv.cats);
   const byId = new Map(inv.items.map((x) => [x.id, x]));
   const hasPrivate = inv.items.some((x) => x.owner === "private");
+  const orphans = orphanLogs(inv).length;
 
   // Yeni seçilen belgeler önce yüklenir, sonra ürün kaydedilir; formdan çıkarılan belgeler kayıttan sonra silinir
   const saveItem = async (x, pend = []) => {
@@ -118,6 +119,14 @@ export function InventoryView({ orgId, id, by }) {
       setItem(null);
       (x.files || []).forEach((f) => dropInvFile(orgId, f));
     }
+  };
+  const delLog = (e) => {
+    if (!window.confirm(`“${e.name}” hareketi silinsin mi? Yalnız kayıt silinir, ürünlerin adedi değişmez.`)) return;
+    change((cur) => dropLog(cur, logKey(e)), "Hareket silindi");
+  };
+  const delOrphans = (n) => {
+    if (!window.confirm(`Envanterde artık olmayan ürünlerin ${n} hareketi silinsin mi? Ürünlerin adedi değişmez.`)) return;
+    change((cur) => dropOrphanLogs(cur), "Hareketler silindi");
   };
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
@@ -210,9 +219,17 @@ export function InventoryView({ orgId, id, by }) {
       ) : inv.log.length === 0 ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">Henüz hareket yok.</p>
       ) : (
+        <>
+        {orphans > 0 && (
+          <button type="button" onClick={() => delOrphans(orphans)} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.875rem] font-semibold text-rec ring-1 ring-line active:scale-[.98]">
+            <Icon name="trash" className="size-4" />
+            Silinen ürünlerin hareketlerini temizle ({orphans})
+          </button>
+        )}
         <ul className={`${card} mt-4 divide-y divide-line/70`}>
           {inv.log.map((e, i) => (
-            <li key={i} className="px-3.5 py-2.5">
+            <li key={i} className="flex items-center gap-2 py-2.5 pl-3.5 pr-1.5">
+              <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <b className="min-w-0 truncate text-[0.875rem] font-medium">
                   {e.no && <span className="mr-1.5 tabular-nums text-mut">{e.no}</span>}
@@ -224,9 +241,14 @@ export function InventoryView({ orgId, id, by }) {
                 </small>
               </div>
               <small className="block truncate text-[0.75rem] text-mut">{[e.at.slice(0, 16).replace("T", " ").split(" ").map((p, j) => (j ? p : p.split("-").reverse().join("."))).join(" "), e.text, e.by].filter(Boolean).join(" · ")}</small>
+              </div>
+              <button type="button" onClick={() => delLog(e)} aria-label="Hareketi sil" className="grid size-9 shrink-0 place-items-center rounded-full text-mut active:scale-90 active:bg-line/50">
+                <Icon name="x" className="size-4" />
+              </button>
             </li>
           ))}
         </ul>
+        </>
       )}
 
       <Sheet open={!!item} onClose={() => setItem(null)} title={item?.id ? "Ürün" : "Yeni ürün"}>

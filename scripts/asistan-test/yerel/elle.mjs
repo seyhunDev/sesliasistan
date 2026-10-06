@@ -652,6 +652,18 @@ const club = () => IM.cleanInv({ name: "Yelken Kulübü", kind: "club", items: [
 group("Envanter")([
   ["hazır kategoriler", F("kulüpte tekne, direk, bumba, bot, şamandıra, telsiz, bilgisayar, yazıcı", () => ["Tekne", "Direk", "Bumba", "Bot", "Şamandıra", "Telsiz", "Bilgisayar", "Yazıcı"].every((c) => IM.cleanInv({ kind: "club" }).cats.includes(c)))],
   ["otomatik numara", F("en büyük numara + 1, önekle", () => IM.nextNo(club()) === "008" && IM.nextNo({ ...club(), prefix: "DYK" }) === "DYK-008" && IM.nextNo(IM.cleanInv({})) === "001")],
+  ["hareket silme", F("tek hareket silinir, adet değişmez", () => {
+    const r = IM.applyOps(club(), [{ op: "add", id: "s1", qty: 5 }, { op: "remove", id: "r1", qty: 1 }], NOW);
+    const v = IM.dropLog(r.inv, IM.logKey(r.inv.log[0]));
+    return v.log.length === r.inv.log.length - 1 && v.items.find((x) => x.id === "s1").qty === 15 && v.items.find((x) => x.id === "r1").qty === 3 && IM.dropLog(v, "yok") === v;
+  })],
+  ["silinen ürünün hareketleri", F("yalnız artık olmayan ürünlerinkiler temizlenir", () => {
+    let v = IM.applyOps(club(), [{ op: "add", name: "Deneme", cat: "Diğer" }], NOW).inv;
+    v = IM.dropItem(v, v.items.at(-1).id, NOW);
+    v = IM.applyOps(v, [{ op: "add", id: "s1", qty: 1 }], NOW).inv;
+    const w = IM.dropOrphanLogs(v);
+    return IM.orphanLogs(v).length === 2 && w.log.length === 1 && w.log[0].name === "Şamandıra" && w.items.length === 3;
+  })],
   ["elle değişen numara", F("DYK-120 varsa sıradaki 121", () => IM.nextNo({ items: [{ no: "DYK-120" }, { no: "5" }] }) === "121")],
   ["yeni ürün", F("numara, tarih, kategori eşleşmesi, hareket", () => {
     const r = IM.applyOps(club(), [{ op: "add", name: "Lazer yazıcı", cat: "yazıcılar", qty: 1, brand: "HP" }], NOW);

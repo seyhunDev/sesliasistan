@@ -297,6 +297,24 @@ export function dropItem(inv, id, { now = new Date().toISOString(), by = "" } = 
   return stamp({ ...inv, items: inv.items.filter((x) => x.id !== id) }, { at: now, op: "delete", no: old.no, name: old.name, qty: -old.qty, text: "Envanterden silindi", by });
 }
 
+// Hareket kaydını silme (deneme kayıtları için). Hareketler yalnız geçmiştir: silmek ürünlerin adedini değiştirmez.
+// Hareketlerin kimliği yok; imza (zaman + işlem + no + ad + adet + ayrıntı) ile bulunur, aynı imzadan yalnız biri silinir.
+export const logKey = (e) => [e.at, e.op, e.no, e.name, e.qty, e.text, e.by].join("|");
+export function dropLog(inv, key) {
+  const i = inv.log.findIndex((e) => logKey(e) === key);
+  return i < 0 ? inv : { ...inv, log: inv.log.filter((_, j) => j !== i) };
+}
+// Envanterde artık olmayan ürünlerin hareketleri (numarası varsa numarayla, yoksa adla bakılır)
+export function orphanLogs(inv) {
+  const nos = new Set(inv.items.map((x) => x.no).filter(Boolean));
+  const names = new Set(inv.items.map((x) => fold(x.name)));
+  return inv.log.filter((e) => (e.no ? !nos.has(e.no) : !names.has(fold(e.name))));
+}
+export function dropOrphanLogs(inv) {
+  const gone = new Set(orphanLogs(inv));
+  return gone.size ? { ...inv, log: inv.log.filter((e) => !gone.has(e)) } : inv;
+}
+
 const FIELD_NAMES = { no: "numara", name: "ad", cat: "kategori", qty: "adet", unit: "birim", addedAt: "eklenme tarihi", brand: "marka", serial: "seri no", sailNo: "yelken no", year: "alım yılı", place: "yer", state: "durum", damage: "hasar", owner: "sahibi", ownerName: "sahibi", parent: "tekne", assignee: "kimde", price: "fiyat", checkAt: "kontrol tarihi", note: "not", files: "belge", extra: "ek bilgi", service: "bakım" };
 // "adet 3 → 5, durum Bakımda, yer Hangar"
 export function changeText(a, b) {
