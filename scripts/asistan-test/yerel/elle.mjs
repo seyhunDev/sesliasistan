@@ -496,6 +496,19 @@ group("Ana sayfa kartları")([
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
     return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
+  ["kısayollar: varsayılan", F("ana hesapta Planlar, Notlar, Sporcular, Yoklama, Toplantı, Envanter; en çok 6", () => {
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const k = HT.shortcutsOf(g).map(HT.linkKey);
+    return k.join(",") === "/plans,/notes,/athletes,/athletes/attendance,meeting,/inventory";
+  })],
+  ["kısayollar: çalışan ve seçim", F("eksik varsayılan sırayla tamamlanır; seçim uygulanır, olmayan sayfa atlanır; 6'dan fazla eklenmez", () => {
+    const sg = HT.homeActions({ staff: true, receipts: true });
+    const s = HT.shortcutsOf(sg);
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const p = HT.shortcutsOf(g, ["/dues", "/yok", "/posts"]).map(HT.linkKey);
+    const six = ["a", "b", "c", "d", "e", "f"];
+    return s.length === 6 && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(six, "g") === null && HT.toggleShortcut(six, "a").length === 5 && HT.toggleShortcut(["a"], "b").join() === "a,b";
+  })],
 ]);
 
 // Günlük banka mailinden aidatın kendiliğinden yazılması ve bildirimi
