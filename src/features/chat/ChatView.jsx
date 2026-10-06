@@ -21,6 +21,9 @@ const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
 const ACT = "flex w-full items-center gap-3 px-4 py-3.5 text-left text-[0.9375rem] font-medium active:bg-card";
 const TYPING_MS = 6000;
+// Mesajlaşmada yapay zeka şimdilik kapalı (Seyhun, 2026-10-06): yazı kutusunun yanındaki asistan küresi ve hazır yanıt
+// önerileri görünmez. Geri açmak için true.
+const CHAT_AI = false;
 const EMOJI = ["👍", "❤️", "😂", "😮", "🙏", "✅"];
 const NAME_TONES = ["text-deep", "text-[#8a4f0c] dark:text-[#f0b46a]", "text-[#2f6446] dark:text-[#8fd0a6]", "text-[#8e3a34] dark:text-[#f29a90]", "text-[#553f86] dark:text-[#b9a6f0]", "text-[#2c6262] dark:text-[#86cccc]"];
 // Hazır yanıt önerileri: son mesaj başkasındansa yapay zeka 3 kısa yanıt önerir (mesaj başına bir kez; oturum boyunca saklanır)
@@ -285,7 +288,7 @@ export function ChatView({ cid }) {
 
   // Son mesaj başkasındansa hazır yanıtlar; dokununca kutuya yazılır, istersen düzeltip gönderirsin
   const last = msgs.at(-1);
-  const suggKey = last && last.by !== uid && !last.deleted && last.text && !last.pending ? `${cid}/${last.id}` : "";
+  const suggKey = CHAT_AI && last && last.by !== uid && !last.deleted && last.text && !last.pending ? `${cid}/${last.id}` : "";
   const [sugg, setSugg] = useState({ key: "", list: [] });
   useEffect(() => {
     if (!suggKey) return;
@@ -598,6 +601,7 @@ export function ChatView({ cid }) {
             examples={["Bu sohbeti özetle", "Bundan görev çıkar", "Yarın 9'da iskelede olalım yaz"]}
             sendIcon={editing ? "check" : "up"}
             sendLabel={editing ? "Düzenlemeyi kaydet" : "Gönder"}
+            orb={CHAT_AI}
             leading={
               !editing && (
                 <button type="button" onClick={() => setAttach(true)} aria-label="Ekle: fotoğraf, dosya, sesli mesaj" className="grid size-11 shrink-0 place-items-center rounded-full text-acc active:bg-card">
