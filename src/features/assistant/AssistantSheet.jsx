@@ -1873,14 +1873,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sahneye canlı durum: dinliyor mu, ne duyuldu, son cevap, düşünüyor mu
   const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+  // Şu an yapılan iş (kubbede kürenin altında, ortada): sürmekte olan adım, işin yazısı ("WhatsApp mesajı hazırlanıyor")
+  // ya da iş belli olana kadar "Sesin yazıya çevriliyor" / "Anlaşılıyor". Yanıt akarken ya da Chrome'da söz görünürken yok.
+  const stepNow = steps.find((x) => x.st === "run")?.label || "";
+  const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || (busy && work) || waitText({ transcribing }) : "";
   // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
   useEffect(() => {
     if (open && listening && isCloseNow(heardNow)) finish();
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0 });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, turns.length]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, turns.length, workNow]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
@@ -2173,7 +2177,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         )}
 
         {/* Hazırlanıyor: ön cevaptan sonra yapay zeka çalışırken ne yapıldığı, akan ışıkla (sahnede de) */}
-        {busy && work && !streamText && steps.every((x) => x.st !== "run") && (
+        {!embedded && busy && work && !streamText && steps.every((x) => x.st !== "run") && (
           <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
             <span className="work-ring" aria-hidden="true" />
             <span className="work-text text-[0.875rem] font-medium">{work}…</span>
@@ -2187,7 +2191,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         {/* Yazıya çeviriyor / anlaşılıyor: işin adı (work) ya da adım gelene kadar beklerken ne olduğu yazar (sahnede de).
             iPhone'da konuşma kaydedilip sunucuda yazıya çevrilir; bu sırada söylenen henüz görünmez, "Sesin yazıya çevriliyor…" */}
-        {(busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && !(transcribing && heardNow) && (
+        {!embedded && (busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && !(transcribing && heardNow) && (
           <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
             <span className="work-ring" aria-hidden="true" />
             <span className="work-text text-[0.875rem] font-medium">{waitText({ transcribing })}…</span>
