@@ -57,7 +57,7 @@ import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsern
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, jobsIn, extraNote, keepNotes, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
+import { isMulti, isQuestion, jobsIn, extraNote, keepNotes, messageFirst, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -124,7 +124,8 @@ const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsi
 const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
-const QUESTION = /\?\s*$|\b(neler var|ne var|kaç|hangi|ne zaman|göster|listele|özetle)\b/i;
+// Soru mu ("kaç görev var", "haftayı özetle"): \b Türkçe harfle biten kelimede çalışmadığı için isQuestion (steps.js) kullanılır
+const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
@@ -749,8 +750,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setVoice(true);
       convo.current = true; // sesle konuşuldu: sohbet sesli sürer
     }
+    // Cümle birine mesajla başlıyorsa ("Ali'ye yaz, faturayı ödedim", "ekibe yaz, kamp planı yapıyoruz") yerel akışlara
+    // (kapatma, günlük, etkinlik, envanter, gönderi, ders programı, doğum günü, fatura, yoklama, yarış) girmez; mesaj ana yapay zekayla hazırlanır
+    const msgFirst = messageFirst(s);
     // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler"): dinleme durur, sesli cevap yok
-    if (isEnd(s)) {
+    if (isEnd(s) && !msgFirst) {
       finish();
       return;
     }
@@ -813,18 +817,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const fp = focusRef.current?.rec?.kind === "plan" ? plans.find((p) => p.id === focusRef.current.rec.id) : null;
     const logPlan = fp && canLog(fp, todayStr()) ? fp : null;
     const at = logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {};
-    if (!isAthleteSide(myKind) && wantsLog(s) && bareLog(s)) {
+    if (!msgFirst && !isAthleteSide(myKind) && wantsLog(s) && bareLog(s)) {
       reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
       logFlow.current = { collect: true, text: s, ...at };
       return;
     }
-    if (!isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s)))) return runLog(s, viaVoice, at);
+    if (!msgFirst && !isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s)))) return runLog(s, viaVoice, at);
     // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
     // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
-    if (!isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
+    if (!msgFirst && !isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
     // Envanter ("envantere 3 Optimist teknesi ekle", "envanterden 2 şamandıra çıkar", envanter sayfasında "Optimist 4 bakımda"):
     // yapay zeka işlem listesi çıkarır; ekleme, çıkarma, değiştirme hemen yapılır, silme onay ister. Yalnız ana hesap.
-    if (!isStaff && wantsInventory(s, invPage) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runInventory(s, viaVoice);
+    if (!msgFirst && !isStaff && wantsInventory(s, invPage) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runInventory(s, viaVoice);
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -858,7 +862,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (picked) return goRace(picked, viaVoice);
     // Instagram gönderisi ("Foça yarışı için Instagram gönderisi hazırla"): yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
     const onPost = !isStaff && path.startsWith("/posts/") && postHandler();
-    if (!isStaff && !onPost && wantsPost(s)) return startPost(s, viaVoice);
+    if (!msgFirst && !isStaff && !onPost && wantsPost(s)) return startPost(s, viaVoice);
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
     if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races.current, todayStr())))) {
       // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
@@ -879,9 +883,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (onPost) return runPost(s, viaVoice);
     // Ders programı ("salı 13:00 fizik B-204", "salı fiziği 14'e al"): sayfada her cümle, başka yerde "ders programı" denince.
     // Yapay zeka programı çıkarır, Ders programı sayfasında önizleme açılır; kaydetmeyi (ekle / değiştir) kullanıcı seçer
-    if (wantsSchedule(s, path === "/schedule")) return runSchedule(s, viaVoice);
+    if (!msgFirst && wantsSchedule(s, path === "/schedule")) return runSchedule(s, viaVoice);
     // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
-    const bday = !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
+    // "Not al: Ali'nin doğum günü …" nottur, doğum günü kaydı değil
+    const bday = !msgFirst && !wantsNote(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
     if (bday) {
       // Ad ve tarih belliyse hemen kaydedilir (kişiye özel takvime); eksikse form dolu açılır
       if (bday.name && bday.month) {
@@ -911,7 +916,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // sorulduysa sonraki cümle firma adıdır.
     const ia = invAsk.current;
     invAsk.current = null;
-    const ic = !isStaff && !drafts.length ? invoiceCommand(s) || (ia && !QUESTION.test(s) && s.split(" ").length <= 6 ? { ...ia, t: s } : null) : null;
+    const ic = !isStaff && !drafts.length && !msgFirst && !isQuestion(s) ? invoiceCommand(s) || (ia && !QUESTION.test(s) && s.split(" ").length <= 6 ? { ...ia, t: s } : null) : null;
     if (ic && (await runInvoice(ic, viaVoice, !!ia))) return;
     // Gelen ödemeler: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi" (yalnız ana hesap; banka özetinden, payee.js)
     const pq = !isStaff && profile?.role === "owner" && !drafts.length ? payeeAsk(s, todayStr()) : null;
@@ -936,10 +941,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir.
     // Yoklama sayfasında "yoklama" denmeden de ("Ali ve Zeynep geldi"). Cümlede başka iş de varsa (mesaj, plan, görev)
     // yoklamadan sonra cümle yapay zekaya gider, kalan işler görev listesiyle yapılır.
-    if (canSeeAthletes(profile?.email) && wantsAttendance(s, attHere)) return runAttendance(s, viaVoice, jobsIn(s).length ? { s, history } : null);
+    if (!msgFirst && canSeeAthletes(profile?.email) && wantsAttendance(s, attHere)) return runAttendance(s, viaVoice, jobsIn(s).length ? { s, history } : null);
     // Yarış ekleme / yarışa sporcu ya da not ekleme: yarış evrakı sayfasındaki kayda yazılır, yeni yarış planlara da düşer
     // Yarış sayfasındayken yarış adı gerekmez: "Mehmet'i de ekle", "not al: …" o yarışa yazılır
-    if (racer && !skipRace.current && (wantsRace(s) || (curRace && raceJobHere(s)))) return runRace(s, viaVoice);
+    if (racer && !msgFirst && !skipRace.current && (wantsRace(s) || (curRace && raceJobHere(s)))) return runRace(s, viaVoice);
     skipRace.current = false;
     // Tür sayfasından gelen ilk cümle (soru değilse): o türde taslak
     if (preferRef.current && !drafts.length && !QUESTION.test(s)) {

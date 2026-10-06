@@ -149,6 +149,8 @@ export function localNavigate(text, { names = [] } = {}) {
   if (BACK.test(t)) return { back: true };
   const polite = POLITE_Q.test(t);
   if ((QUESTION.test(t) && !polite) || TIME_W.test(t) || OTHER_JOB.test(t)) return null;
+  // "motor yağı görevini yeniden aç": kaydı yeniden açma (yapay zeka yapar), sayfa açma değil
+  if (/(görev|not|plan)\S*\s+(yeniden|tekrar|geri)\s+aç/.test(t)) return null;
   const verb = VERB.test(t) || polite;
   const chatWords = CHAT_W.test(t);
   const peopleWords = PEOPLE_W.test(t);

@@ -34,7 +34,7 @@ log(`Sesli Asistan testleri · ${stamp}`);
 log("");
 
 const AREAS = {
-  asistan: { title: "ASİSTAN (cümleyi anlama)", files: ["asistan", "kisi"] },
+  asistan: { title: "ASİSTAN (cümleyi anlama)", files: ["asistan", "kisi", "yonlendirme"] },
   ses: { title: "SES (tanıma ve okuma)", files: ["ses"] },
   elle: { title: "ELLE İŞLEMLER (sayfa hesapları)", files: ["elle"] },
   yaris: { title: "YARIŞ (bütçe, iş, evrak, çevre, hava)", files: ["yaris"] },

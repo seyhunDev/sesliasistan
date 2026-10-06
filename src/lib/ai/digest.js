@@ -96,8 +96,9 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
     block("SON NOTLAR", [...liveNotes].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10).map(nl), 10),
     block("ARŞİVDEKİ SON NOTLAR (yapıldı denen ya da arşivlenen)", notes.filter((n) => n.archived).sort((a, b) => offAt(b).localeCompare(offAt(a))).slice(0, 5).map(nl), 5),
     `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${liveNotes.length} açık, ${notes.length - liveNotes.length} arşivde`,
+    // Fiş toplamları uzun yıl listesinden önce: özet 12.000 karakterde kesilince fiş bilgisi düşmesin
+    `## FİŞ TOPLAMLARI\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter((r) => r.status === "review").length}`,
     block(`YIL ${year} TÜM PLANLAR`, yearPlans, 60),
-    `## FİŞ TOPLAMLARI (örnek veri)\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter((r) => r.status === "review").length}`,
   ]
     .join("\n\n")
     .slice(0, 12000);

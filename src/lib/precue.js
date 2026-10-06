@@ -11,8 +11,9 @@ import { isMulti, jobsIn, jobsText, wantsNote, wantsWhatsApp } from "@/lib/steps
 import { cueOf } from "@/lib/assistTasks";
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
-const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|ne zaman|nerede|kim|nasıl|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
-const CREATE = /(ekle|oluştur|kaydet|koy(?!ul)|planla|hatırlat|not (al|düş|et)|takvime|ayarla)/;
+const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|neydi|ne zaman|nerede|kim|nasıl|ne durumda|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
+// "eklediğim", "ayarları" ekleme isteği değildir
+const CREATE = /(ekle(?!diğ|dim|din|di )|oluştur|kaydet|koy(?!ul)|planla|hatırlat|not (al|düş|et)|takvime|ayarla(?!r))/;
 const SEND = /(^| )(yaz|gönder|ilet|haber ver|mesaj (at|gönder|yaz))( |$)|('|’)?(e|a|ye|ya) (yaz|söyle)( |$)/;
 const TYPE_W = [
   ["note", /(^| )(not al\S*|not düş\S*|not et|not ekle\S*|^not )/],
@@ -96,7 +97,8 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
 
   // Yeni kayıt: tür ve alanlar kurallarla
   const label = guess?.score >= 0.55 ? guess.label : "";
-  const byWord = TYPE_W.find(([, re]) => re.test(t))?.[0] || "";
+  // Not açıkça istendiyse ("notlara ekle …", "Not: …") tür nottur
+  const byWord = (wantsNote(text) && !SEND.test(rawLow) && "note") || TYPE_W.find(([, re]) => re.test(t))?.[0] || "";
   // Not yalnız açıkça istenince söylenir ("not alıyorum"); öğrenilmiş tahmin ya da kuralın varsayılanı notu seçtirmez
   const byGuess = { "create:plan": "plan", "create:task": "task", "create:plan+note": "plan" }[label] || "";
   const hasTime = /saat \d|\d{1,2}[:.]\d{2}|\d{1,2}'?(de|da|te|ta)( |$)/.test(t);
