@@ -12,6 +12,7 @@ import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { ForYou } from "./ForYou";
+import { Notifications } from "./Notifications";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -66,7 +67,7 @@ export function OwnerHome() {
   );
 }
 
-// Ana sayfanın iki bölümü: önce bilgiler (Senin için › doğum günü › Bugün › Yoklamam › Özet), sonra İşlemler (aynı tip düğmeler).
+// Ana sayfanın iki bölümü: önce bilgiler (Bildirimler › Senin için › doğum günü › Bugün › Yoklamam › Özet), sonra İşlemler (aynı tip düğmeler).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather }) {
   const { profile } = useAuth();
@@ -95,6 +96,9 @@ export function HomeFeed({ weather }) {
 
   return (
     <div className="space-y-6">
+      <div className="empty:hidden">
+        <Notifications />
+      </div>
       <div className="empty:hidden">
         <ForYou />
       </div>

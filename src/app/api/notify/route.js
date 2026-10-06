@@ -4,7 +4,7 @@ import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
 import { payLine } from "@/lib/invoices";
-import { addedText, assignedText, cancelledText, changedText, deleteReqText, deletedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
+import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
 import { unseenNotes } from "@/lib/people";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 import { absentPush } from "@/lib/absent";
@@ -123,32 +123,22 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent, parents });
   }
 
-  // ---- Not eklendi / tamamlandı ----
-  // ---- Silme isteği (çalışan kendi kaydı için): yalnızca ana hesaba ----
-  const DEL_COLS = { ...COLS, receipt: "receipts", birthday: "birthdays", lesson: "lessons" };
-  if (DEL_COLS[body?.kind] && body.event === "deleteReq") {
-    const ref = org.collection(DEL_COLS[body.kind]).doc(String(body.id || ""));
-    const r = (await ref.get()).data();
-    if (!r) return NextResponse.json({ error: "Kayıt yok" }, { status: 404 });
-    const req = r.deleteReq;
-    if (!req || req.by !== au.uid || r.createdByUid !== au.uid || Date.now() - Date.parse(req.at || 0) > 2 * 60e3) return NextResponse.json({ ok: true, skipped: "istek yok" });
-    const title = r.title || r.merchant || r.name || "";
-    const sent = await sendTo(me.orgId, { ...deleteReqText({ kind: body.kind, title, from: me.name }), tag: `delreq-${body.kind}-${ref.id}`, url: "/" });
-    return NextResponse.json({ ok: true, sent });
-  }
+  // ---- Silme bildirim göndermez (Seyhun'un kuralı): silinen kayıt ve çalışanın silme isteği için bildirim yok.
+  //      Silme isteği ana hesapta "Senin için" listesinde karar olarak görünür. Eski sürüm uygulamalar çağırırsa yok sayılır. ----
+  if (body?.event === "deleted" || body?.event === "deleteReq") return NextResponse.json({ ok: true, skipped: "silme bildirimi yok" });
 
-  // ---- Kayıt değişti / silindi: kayıttaki diğer kişilere (değiştiren hariç). Metin kayıttan okunur ----
-  if (COLS[body?.kind] && (body.event === "changed" || body.event === "deleted")) {
+  // ---- Kayıt değişti: kayıttaki diğer kişilere (değiştiren hariç). Metin kayıttan okunur ----
+  if (COLS[body?.kind] && body.event === "changed") {
     const kind = body.kind;
     const ref = org.collection(COLS[kind]).doc(String(body.id || ""));
     const r = (await ref.get()).data();
     if (!r) return NextResponse.json({ ok: true, skipped: "kayıt yok" });
     if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
-    if (body.event === "changed" && !(r.updatedAt && Date.now() - Date.parse(r.updatedAt) < 2 * 60e3)) return NextResponse.json({ ok: true, skipped: "değişiklik yok" });
+    if (!(r.updatedAt && Date.now() - Date.parse(r.updatedAt) < 2 * 60e3)) return NextResponse.json({ ok: true, skipped: "değişiklik yok" });
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.people || []), ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
     const info = { kind, title: r.title, date: r.date, time: r.time, due: r.due, place: r.place, pay: payLine(r.invoice), from: me.name || "Ana hesap" };
-    const msg = body.event === "deleted" ? deletedText(info) : kind === "plan" && r.status === "cancelled" ? cancelledText({ ...info, reason: CANCEL_WHY[r.cancelReason] || "" }) : changedText(info);
-    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: body.event === "changed" ? `/?open=${kind}:${ref.id}` : "/" }));
+    const msg = kind === "plan" && r.status === "cancelled" ? cancelledText({ ...info, reason: CANCEL_WHY[r.cancelReason] || "" }) : changedText(info);
+    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` }));
     return NextResponse.json({ ok: true, sent });
   }
 

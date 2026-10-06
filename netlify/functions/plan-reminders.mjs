@@ -15,6 +15,10 @@ import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
 import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
 import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
+import { recordInbox } from "../../src/lib/inbox.js";
+
+// Bildirim kutusuna yazar (ana sayfadaki "Bildirimler") ve simgedeki sayıyı ekler (lib/inbox)
+const withBadge = async (db, uid, msg) => JSON.stringify({ ...msg, badge: await recordInbox(db, uid, msg) });
 
 export const config = { schedule: "*/5 * * * *" };
 
@@ -83,7 +87,7 @@ async function sendDueReminders() {
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
     const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && (role !== "staff" || (p.people || []).includes(u.id)));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
-      const payload = JSON.stringify(reminderText(p, lead));
+      const payload = await withBadge(db, u.id, reminderText(p, lead));
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
@@ -130,7 +134,7 @@ async function sendSummaries(db, all, q) {
     ]);
     const data = { plans: p.docs.map((x) => x.data()).filter((x) => mine(x) && x.status !== "cancelled"), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
     const send = async (msg, tag) => {
-      const payload = JSON.stringify({ ...msg, tag, url: "/" });
+      const payload = await withBadge(db, u.id, { ...msg, tag, url: "/" });
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
@@ -176,7 +180,7 @@ async function sendExtras(db, all, q) {
     const staff = d.role === "staff";
     const mine = (x) => !staff || (x.people || []).includes(u.id);
     const send = async (msg, tag, url = "/") => {
-      const payload = JSON.stringify({ ...msg, tag, url });
+      const payload = await withBadge(db, u.id, { ...msg, tag, url });
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
@@ -244,7 +248,7 @@ async function sendDuesRemind(db, all) {
     if (!cfg?.fee || !pastDue(today, cfg)) continue;
     const msg = ownerText(unpaidRoster(cfg, (await dues.doc(ym).get()).data() || {}), ym);
     if (msg) {
-      const payload = JSON.stringify({ ...msg, tag: `dues-remind-${ym}`, url: "/dues" });
+      const payload = await withBadge(db, u.id, { ...msg, tag: `dues-remind-${ym}`, url: "/dues" });
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
@@ -290,7 +294,9 @@ async function sendMailDigests(db, all) {
       // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
       const inv = invoiceText(await runAutoInvoices(io, u.id, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
       const tag = snap.docs[0].id;
-      const payload = JSON.stringify(
+      const payload = await withBadge(
+        db,
+        u.id,
         dues
           ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${tag}`, url: "/dues" }
           : inv

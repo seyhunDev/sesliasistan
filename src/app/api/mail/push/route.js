@@ -6,6 +6,7 @@ import { restDb } from "@/lib/server/firestoreRest";
 import { duesText, runAutoDues } from "@/lib/duesAuto";
 import { invoiceText, runAutoInvoices } from "@/lib/invoices";
 import { movementsOf } from "@/lib/mailBoard";
+import { inboxAdd, inboxBadge } from "@/lib/inbox";
 
 export const runtime = "nodejs";
 
@@ -60,15 +61,17 @@ export async function POST(request) {
   const subs = Object.values(user.data.push || {}).filter((s) => s?.endpoint);
   let sent = 0;
   const errors = [];
+  const msg = dues
+    ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
+    : inv
+      ? { ...inv, tag: `inv-${list[0].id}`, url: "/invoices" }
+      : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" };
+  // Bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışlar (lib/inbox)
+  const inbox = inboxAdd(user.data.inbox, msg);
+  const badge = (await db.patch(`users/${uid}`, { inbox }).catch(() => 0)) === 200 ? inboxBadge(inbox, user.data.inboxSeen) : undefined;
   if (subs.length) {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
-    const payload = JSON.stringify(
-      dues
-        ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
-        : inv
-          ? { ...inv, tag: `inv-${list[0].id}`, url: "/invoices" }
-          : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" },
-    );
+    const payload = JSON.stringify({ ...msg, badge });
     await Promise.all(
       subs.map((s) =>
         webpush.sendNotification(s, payload, { TTL: 6 * 3600 }).then(
