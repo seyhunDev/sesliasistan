@@ -40,6 +40,11 @@ function countRaces(orgId) {
   return cache.p;
 }
 
+// Açılış ekranı sürerken okumayı başlatır (DataProvider); ana sayfa aynı isteği (cache.p) kullanır
+export function prefetchRaces(profile) {
+  if (canSeeAthletes(profile?.email) && profile?.orgId && profile.races !== "off") countRaces(profile.orgId);
+}
+
 export function useRaceHome() {
   const { profile } = useAuth();
   const allowed = canSeeAthletes(profile?.email) && !!profile?.orgId;
