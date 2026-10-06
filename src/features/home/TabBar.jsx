@@ -436,6 +436,8 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
         <path className="rim" d="M0 10 A50 10 0 0 1 100 10" />
         <path className="flow" d="M0 10 A50 10 0 0 1 100 10" />
       </svg>
+      {/* Tutamaç: asistan açıkken kubbenin tepesinde kısa çizgi; aşağı çekerek kapatılabildiği anlaşılsın (Seyhun, 2026-10-06) */}
+      {active && <span className="fade-in pointer-events-none absolute left-1/2 top-2 z-10 h-[5px] w-10 -translate-x-1/2 rounded-full bg-white/45" aria-hidden="true" />}
       <div ref={inner} className="absolute inset-x-0 bottom-0">
         <div className={`mx-auto w-full max-w-[30rem] px-3 pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.75rem))] ${open ? "pt-3" : "pt-6"}`}>
           {active && (
