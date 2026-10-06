@@ -127,8 +127,13 @@ export function wantsLog(text) {
   if (FUTURE.test(t)) return false;
   // "bugünkü antrenmanı kaydet 12 knot poyraz", "antrenman notu: start ve tramola"
   if (TRAIN_W.test(t) && /(kaydet|kayd[ıi]|notu(?=\s|$))/.test(t) && INFO.test(t)) return true;
+  // "antrenman" denmeden anlatılan antrenman: geçmiş zaman + rüzgâr (knot ya da yön) + çalışılan konu
+  // ("dün 14 knot poyrazda start çalıştık, 2 saat sürdü")
+  if (PAST.test(t) && WIND_W.test(t) && TOPIC_W.test(t)) return true;
   return TRAIN_W.test(t) && PAST.test(t);
 }
+const WIND_W = new RegExp(`(\\d+ ?(knot|not|nat|kt|kn)(?=\\s|$)|(^|\\s)(${DIRS.filter((d) => !["Kaba", "Batı"].includes(d)).map((d) => d.toLocaleLowerCase("tr-TR")).join("|")})\\S*)`);
+const TOPIC_W = new RegExp(`(^|\\s)(${TOPICS.filter((x) => x !== "Yarış provası").map((x) => x.toLocaleLowerCase("tr-TR").split(/[ /]/)[0]).join("|")})\\S*|(^|\\s)çalıştık(?=\\s|$)`);
 
 // Anlatılan bir antrenman mı ("bugünkü antrenmanda 14 knot poyraz, start ve tramola"): günlük sözcüğü ya da geçmiş zaman
 // olmasa da antrenman + günlük bilgisi (rüzgâr, konu, süre…) geçiyorsa. Gelecek, soru, mesaj/görev isteği sayılmaz.

@@ -5,7 +5,7 @@
 const lower = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.,!?;:"“”()]/g, " ").replace(/\s+/g, " ").trim();
 
 // Etkinlik türü sözcükleri
-const ACT = /(^|\s)(kamp\S*|balık\S*|olta\S*|gezi\S*|tatil\S*|konser\S*|piknik\S*|festival\S*|trekking\S*|yürüyüş\S*|seyahat\S*|kayak\S*|dalış\S*|tur(u|a|da)?|turu\S*|organizasyon\S*|etkinli\S*|karavan\S*|bisiklet\S*|tiyatro\S*|maç(a|ı)?)(?=\s|$)/;
+const ACT = /(^|\s)(kamp\S*|balık\S*|balığ\S*|olta\S*|gezi\S*|tatil\S*|konser\S*|piknik\S*|festival\S*|trekking\S*|yürüyüş\S*|seyahat\S*|kayak\S*|dalış\S*|tur(u|a|da)?|turu\S*|organizasyon\S*|etkinli\S*|karavan\S*|bisiklet\S*|tiyatro\S*|maç(a|ı)?)(?=\s|$)/;
 // Planlama/öneri isteği (yalnız "planla" yetmez: o takvime tek plan olabilir)
 const WANT =
   /(tavsiye|öneri|önerir|ihtiyaç|ne(ler)? (lazım|gerek|götür|al)|bütçe|organize|plan(ı|ını|ımı)? (yap|hazırla|çıkar|oluştur|kur)|planlamak|planlayalım|planlar m[ıi]s[ıi]n|planla(yalım|sana|yabilir|r mısın)|yapmak ist|gitmek ist|gideceğiz|gidiyoruz|gitmeyi düşün|yapmayı düşün|düşünüyoruz|düşünüyorum|hazırlık|listesi)/;

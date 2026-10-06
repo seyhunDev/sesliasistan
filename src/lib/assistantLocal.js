@@ -91,6 +91,8 @@ const END_NOT = /(görev|plan|not|bildirim|sohbet|mesaj|alarm|hatırlat|ışık|
 export function isEnd(text) {
   const t = lower(String(text || "")).replace(/[.,!?…]+/g, " ").replace(/\s+/g, " ").trim();
   if (!t || t.split(" ").length > 5 || END_NOT.test(t)) return false;
+  // Birine söylenecek söz kapatma değildir: "Ali'ye söyle teşekkürler", "Ali'ye teşekkürler de"
+  if (/\p{L}['’](y?[ae])(?![\p{L}])/u.test(t) || /(^| )(söyle\S*|yaz|ilet|de)$/.test(t)) return false;
   return END_START.test(t) || END_ANY.test(t);
 }
 

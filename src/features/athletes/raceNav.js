@@ -147,3 +147,23 @@ export function pickChoice(text, choices, today = "") {
   const r = rankRaces(t, choices, today);
   return r[0] && r[0].score >= 0.6 && (!r[1] || r[0].score - r[1].score >= 0.2) ? r[0].race : null;
 }
+
+// Yarış kaydı isteği mi? (soru değil; "yarış" + ekleme/katılma/not fiili ya da katılımcı listesi)
+// Bilinen yarış adı da yeter: "D'Azur katılımcıları Ali ve Ayşe" (adın ilk anlamlı kelimesi, harf dışı atılarak)
+const bareW = (s) => low(s).replace(/[^\p{L}\p{N}]+/gu, "");
+const COMMON_W = new Set(["optimist", "laser", "ilca", "yelken", "regatta", "regata", "kupa", "kupası", "trofesi", "open", "cup", "trophy", "türkiye", "şampiyonası", "yarışı"]);
+const knownIn = (t, known) => {
+  const flat = bareW(t);
+  return known.some((n) => {
+    const w = low(n).split(/\s+/).map(bareW).find((x) => x.length >= 4 && !COMMON_W.has(x));
+    return w && flat.includes(w);
+  });
+};
+export const wantsRaceText = (text, known = []) => {
+  const t = low(text).trim();
+  if (!(/yarış|regat/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
+  // "yarın 10'da Foça yarışı için toplantı ekle": yarış için plan/görev/mesaj, yarışın kendisi değil
+  if (/(toplantı|buluşma|görev|hatırlat|takvim|mesaj|\d{1,2}[:.]\d{2}|\d{1,2}['’](d|t)[ae](?![\p{L}]))/u.test(t)) return false;
+  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);
+};
+

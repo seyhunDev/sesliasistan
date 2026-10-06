@@ -49,6 +49,27 @@ export function jobsText(kinds) {
   return l.length > 1 ? `${l.slice(0, -1).join(", ")} ve ${l.at(-1)}` : l[0] || "";
 }
 
+// Cümle birine mesajla mı başlıyor? İlk bölümde (ilk virgüle ya da "ve"ye kadar) hem alıcı hem mesaj fiili var:
+// "Ali'ye yaz, faturayı ödedim", "ekibe yaz, kamp planı yapıyoruz", "Ayşe'ye söyle ders programını göndersin".
+// Böyle cümleler yerel akışlara (yoklama, envanter, etkinlik, fatura, doğum günü, günlük…) girmez; ana yapay zekaya gider.
+// "Emre gelmedi, velisine haber ver" mesajla başlamaz: önce yoklama, sonra mesaj (eskisi gibi).
+const TO_GROUP = new RegExp(`${W}(ekibe|ekiptekilere|sporculara|velilere|ailelere|aileye|herkese|gruba|grubuna|çalışanlara|antrenörlere|öğrencilere)(?![\\p{L}])`, "u");
+const TO_PERSON = /(?<![\p{L}])\p{L}+['’](?:y?[ae])(?![\p{L}])/u;
+const MSG_VERB = new RegExp(`${W}(yaz(?:sana|ar mısın|alım|ın)?|söyle\\p{L}*|haber ver\\p{L}*|ilet\\p{L}*|gönder(?!il)\\p{L}*|mesaj (?:at|gönder|yaz)\\p{L}*|de ki)(?![\\p{L}])`, "u");
+export function messageFirst(raw) {
+  const head = lower(String(raw || "")).split(/[,;:]|(?<![\p{L}])(?:ve|sonra|ardından)(?![\p{L}])/u)[0];
+  return MSG_VERB.test(head) && (TO_PERSON.test(head) || TO_GROUP.test(head));
+}
+
+// Soru mu? Soru işareti, sonda "mi/mı/mu/mü" ya da soru sözü (kim, kaç, hangi, ne zaman, nerede, neydi, nasıl).
+// Kayıt yazan yerel akışlar (yoklama, fatura) soruya girmez. (\b kullanılmaz: Türkçe harfte çalışmıyor.)
+export function isQuestion(raw) {
+  const t = lower(String(raw || "")).trim();
+  if (/\?\s*$/.test(t)) return true;
+  if (/(?<![\p{L}])m[ıiuü](?:s[ıiuü]n|y[ıiuü]z|d[ıiuü]r|ydı|ydi|ydu|ydü)?[.!\s]*$/u.test(t)) return true;
+  return /(?<![\p{L}])(kim|kimler|kimi|kimde|kaç|kaçı|hangi|hangisi|ne zaman|nerede|neydi|nasıl|neler)(?![\p{L}])/u.test(t);
+}
+
 // Mesaj isteğinde kayıt da isteniyor mu (takvim, plan, görev, not ya da "ekle/oluştur/kaydet"). İstenmiyorsa mesajdaki
 // gün ve saat kayıt değildir ("Perşembe 9.30'da antrenman var, sporculara gönder" plan açmaz).
 const RECORD_VERB = new RegExp(`${W}(ekle\\p{L}*|oluştur\\p{L}*|kaydet\\p{L}*|kur(?:alım|ar mısın)?(?![\\p{L}]))`, "u");

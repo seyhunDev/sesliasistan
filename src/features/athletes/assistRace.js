@@ -12,25 +12,10 @@ import { raceNames } from "./raceNames";
 import { tl, totals } from "./budget";
 import { askBudget, mergeBudget } from "./raceBudgetAi";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
+import { wantsRaceText } from "./raceNav";
 
-const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
-
-// Yarış kaydı isteği mi? (soru değil; "yarış" + ekleme/katılma/not fiili ya da katılımcı listesi)
-// Bilinen yarış adı da yeter: "D'Azur katılımcıları Ali ve Ayşe" (adın ilk anlamlı kelimesi, harf dışı atılarak)
-const bare = (s) => low(s).replace(/[^\p{L}\p{N}]+/gu, "");
-const COMMON = new Set(["optimist", "laser", "ilca", "yelken", "regatta", "regata", "kupa", "kupası", "trofesi", "open", "cup", "trophy", "türkiye", "şampiyonası", "yarışı"]);
-const knownIn = (t, known) => {
-  const flat = bare(t);
-  return known.some((n) => {
-    const w = low(n).split(/\s+/).map(bare).find((x) => x.length >= 4 && !COMMON.has(x));
-    return w && flat.includes(w);
-  });
-};
-export const wantsRace = (text, known = raceNames()) => {
-  const t = low(text).trim();
-  if (!(/yarış|regat/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
-  return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);
-};
+// Yarış kaydı isteği mi? Saf kural raceNav.js'te (testlenir); burada kayıtlı yarış adları da verilir
+export const wantsRace = (text, known = raceNames()) => wantsRaceText(text, known);
 
 // Asistanın değiştirdiği yarış açık sayfadaysa sayfa da güncellensin (RaceEditor dinler)
 const told = (r) => window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: r }));
