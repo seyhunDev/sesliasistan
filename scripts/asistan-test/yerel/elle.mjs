@@ -1027,3 +1027,33 @@ const bootSteps = async () => {
 group("Açılış ekranı")([
   ["aşamalar", F("geçişte sönmez, kısa boşlukta sönmez, iki kez bırakma sayacı bozmaz", bootSteps)],
 ]);
+
+// Geri düğmesi dokunuşu (navTrail.js goBack): arka arkaya basış tek geri; geri gidilemezse üst sayfaya.
+// Tarayıcı benzeri küçük bir pencere kurulur; diğer testleri etkilemesin diye en sonda ve kendi içinde kaldırılır.
+const backTaps = async () => {
+  await wait(0);
+  const loc = { pathname: "/inventory", search: "", href: "https://x.app/inventory" };
+  const store = {};
+  globalThis.window = { location: loc, history: { pushState() {}, replaceState() {} }, addEventListener() {} };
+  globalThis.sessionStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) };
+  try {
+    NAV.installTrail();
+    window.history.pushState(null, "", "/inventory/k1");
+    loc.pathname = "/inventory/k1";
+    const calls = [];
+    const router = { back: () => calls.push("back"), replace: (h) => calls.push(`replace ${h}`) };
+    NAV.goBack(router, "/inventory");
+    NAV.goBack(router, "/inventory");
+    NAV.goBack(router, "/inventory");
+    const once = calls.join() === "back";
+    await wait(700); // adres değişmedi: geçmiş boştu, üst sayfaya gidilir
+    const fell = calls.join() === "back,replace /inventory";
+    return (once && fell && !NAV.canGoBack()) || calls.join();
+  } finally {
+    delete globalThis.window;
+    delete globalThis.sessionStorage;
+  }
+};
+group("Geri düğmesi dokunuşu")([
+  ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa", backTaps)],
+]);

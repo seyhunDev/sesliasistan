@@ -21,6 +21,7 @@ export function InventoryHome({ orgId }) {
   const [error, setError] = useState("");
   const [add, setAdd] = useState(null); // { name, kind }
   const [busy, setBusy] = useState(false);
+  const [going, setGoing] = useState(""); // dokunulan envanter: sayfa açılana kadar vurgulu kalır
 
   useEffect(() => {
     const load = (force) => loadInventories(orgId, { force }).then(setList, (e) => (setList([]), setError(e?.message || "Envanter alınamadı.")));
@@ -60,7 +61,15 @@ export function InventoryHome({ orgId }) {
           <ul className="space-y-2.5">
             {list.map((v) => (
               <li key={v.id}>
-                <button type="button" onClick={() => router.push(`/inventory/${v.id}`)} className={`${card} flex w-full items-center gap-3 p-3.5 text-left transition active:scale-[.99]`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (going) return;
+                    setGoing(v.id);
+                    router.push(`/inventory/${v.id}`);
+                  }}
+                  className={`${card} flex w-full items-center gap-3 p-3.5 text-left transition duration-150 active:scale-[.97] active:bg-acc/10 ${going === v.id ? "scale-[.98] bg-acc/10 ring-2 ring-acc/40" : ""}`}
+                >
                   <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-acc/10 text-acc">
                     <Icon name={kindOf(v.kind)[2]} className="size-6" />
                   </span>
@@ -69,7 +78,7 @@ export function InventoryHome({ orgId }) {
                     <span className="block truncate text-[0.8125rem] text-mut">{statsText(v)}</span>
                     <span className="mt-0.5 block truncate text-[0.75rem] text-mut">{v.cats.slice(0, 6).join(", ")}</span>
                   </span>
-                  <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                  <Icon name={going === v.id ? "load" : "chev"} className={`size-4 shrink-0 ${going === v.id ? "animate-spin text-acc" : "text-mut"}`} />
                 </button>
               </li>
             ))}

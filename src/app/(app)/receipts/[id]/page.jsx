@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { BackLink } from "@/components/ui/BackLink";
 import { useParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Tile } from "@/components/dashboard/Row";
@@ -52,7 +52,7 @@ export default function ReceiptDetailPage() {
   if (!r) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pt-4">
-        <Link href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</Link>
+        <BackLink href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</BackLink>
         {loading ? <Loading /> : <p className="mt-12 text-center text-mut">Fiş bulunamadı.</p>}
       </main>
     );
@@ -67,7 +67,7 @@ export default function ReceiptDetailPage() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       <div className="flex items-center justify-between py-1.5">
-        <Link href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</Link>
+        <BackLink href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</BackLink>
         <button onClick={() => openReceipt({ edit: r.id })} className={btn}><Icon name="edit" className="size-[1.125rem]" /> Düzenle</button>
       </div>
 

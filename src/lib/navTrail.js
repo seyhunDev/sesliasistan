@@ -72,7 +72,26 @@ export const canGoBack = () => trail.length > 1;
 
 // Önceki sayfaya dön; yoksa verilen sayfaya git (silinen kayıttan çıkarken de). Gidilen sayfa
 // bu sayfanın yerine geçer (replace), push olsaydı oradan geri basınca buraya dönülür, döngü olurdu.
+// Arka arkaya basışlar tek geri sayılır (ikinci basış iki sayfa geri götürmesin). Geri gidilemediyse
+// (iz tarayıcı geçmişiyle uyuşmuyor: iPhone uygulamayı yeniden açınca geçmiş boş olabilir) kısa süre
+// sonra adres hâlâ aynıysa üst sayfaya gidilir; böylece düğme hiçbir zaman "tepkisiz" kalmaz.
+const WAIT = 600;
+let pending = 0;
 export function goBack(router, href = "/") {
-  if (canGoBack()) router.back();
-  else router.replace(href);
+  if (typeof window === "undefined") return;
+  if (Date.now() - pending < WAIT) return;
+  pending = Date.now();
+  if (!canGoBack()) {
+    router.replace(href);
+    return;
+  }
+  const from = here();
+  router.back();
+  setTimeout(() => {
+    pending = 0;
+    if (here() !== from) return;
+    trail = [from];
+    save();
+    router.replace(href);
+  }, WAIT);
 }

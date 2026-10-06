@@ -183,7 +183,7 @@ export function InventoryView({ orgId, id, by }) {
                 <ul className={`${card} divide-y divide-line/70 overflow-hidden`}>
                   {list.map((x) => (
                     <li key={x.id}>
-                      <button type="button" onClick={() => setItem(x)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left active:bg-bg">
+                      <button type="button" onClick={() => setItem(x)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors duration-100 active:bg-acc/10">
                         <span className="w-12 shrink-0 text-[0.75rem] font-semibold tabular-nums text-mut">{x.no}</span>
                         <span className="min-w-0 flex-1">
                           <b className={`block truncate text-[0.9375rem] font-medium ${x.qty === 0 ? "text-mut line-through" : ""}`}>{x.name}</b>
