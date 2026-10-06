@@ -260,6 +260,14 @@ select {
 @keyframes domebeat { 0%, 100% { opacity: .65; } 30% { opacity: 1; } }
 @keyframes domedrift { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
 @keyframes rimflow { from { stroke-dashoffset: 72px; } to { stroke-dashoffset: calc(-100vw - 8px); } }
+/* SADE DURUM (Seyhun: "kubbenin kenarında animasyon, kürenin etrafında dönen halka, iş yazısının başında loading; fazla",
+   2026-10-06): durumu tek yer gösterir, yazı kutusundaki küre (rengi ve içindeki dalga). Kubbenin yayı ve parıltısı yalnız
+   renk değiştirir, hareket etmez; kürenin çevresinde dönen halka ve iş yazısındaki dönen halka/akan ışık yok. */
+.dome-glow, .dome[data-state] .dome-glow { animation: none; transform: none; opacity: .6; }
+.dome-rim .rim, .dome[data-state] .dome-rim .rim { animation: none; opacity: .8; }
+.dome-rim .flow { display: none; }
+.vlight .vl-ring { display: none; }
+.dome-chip .work-text { animation: none; background: none; color: rgba(255, 255, 255, .85); }
 
 /* Ses ışığı (kubbenin tepesindeki tek düğme): disk, içinde ses dalgası. Simge ve yazı yok; durumu renk ve dalga anlatır.
    boşta   beyaz disk, yeşil dalga, yavaşça nefes alır
@@ -309,7 +317,7 @@ select {
 @keyframes worksheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
 @media (prefers-reduced-motion: reduce) { .work-ring, .work-text { animation-duration: 3s; } }
 /* Kubbedeki durum şeridi: kürenin üstünde ince buzlu cam kapsül ("Plan hazırlanıyor…"); yeri hep ayrılı, boyu sabit */
-.dome-chip { display: inline-flex; max-width: 86%; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .875rem 0 .625rem; border-radius: 9999px;
+.dome-chip { display: inline-flex; max-width: 86%; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .875rem; border-radius: 9999px;
   background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px -10px rgba(0, 0, 0, .4);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: .8125rem; font-weight: 500; }
 .dome-chip .work-ring { width: .875rem; height: .875rem; }
