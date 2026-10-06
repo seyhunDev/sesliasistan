@@ -169,9 +169,6 @@ body[data-net] .sticky.top-0 { top: 1.75rem; }
 .typing i { width: 4px; height: 4px; border-radius: 9999px; background: currentColor; animation: typing 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: .2s; }
 .typing i:nth-child(3) { animation-delay: .4s; }
-/* Açılış: simge yumuşakça belirir, noktalar biraz sonra gelir */
-@keyframes splashin { from { opacity: 0; transform: scale(.9); } }
-.splash-in { animation: splashin .5s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes softin { from { opacity: 0; } }
 .soft-in { animation: softin .4s ease-out .35s both; }
 @keyframes recdot { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
@@ -305,9 +302,39 @@ select {
 @keyframes vlwave { 0%, 100% { transform: scaleY(.25); } 50% { transform: scaleY(calc(.35 + var(--m) * .6)); } }
 @keyframes vlspin { to { transform: rotate(360deg); } }
 
-/* Açılış ekranı: logo yumuşakça belirir, altında ufuk çizgisi doluyor */
-@keyframes horizon { 0% { transform: scaleX(0); opacity: .2; } 60% { opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
-.splash-line { transform-origin: center; animation: horizon 1.6s cubic-bezier(.4, 0, .2, 1) infinite; }
+/* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
+   Logo yumuşakça belirir, içindeki ses çubukları dalgalanır, altında ince çizgi akar. Bitince logo hafifçe büyüyüp
+   ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
+.boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: var(--bg); overflow: hidden; }
+.boot::before { content: ""; position: absolute; left: 50%; top: 50%; width: 34rem; height: 34rem; transform: translate(-50%, -58%); border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--acc) 17%, transparent), transparent); animation: bootglow 3.2s ease-in-out infinite; }
+.boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; animation: bootin .6s cubic-bezier(.2, .9, .3, 1) both; }
+.boot-logo { border-radius: 22%; box-shadow: 0 18px 40px -16px rgba(31, 90, 75, .75); }
+.boot-logo rect[x] { transform-box: fill-box; transform-origin: center; animation: booteq 1.25s cubic-bezier(.45, 0, .55, 1) infinite; }
+.boot-logo rect[x="190"], .boot-logo rect[x="290"] { animation-delay: .12s; }
+.boot-logo rect[x="240"] { animation-delay: .24s; }
+.boot-name { margin-top: 1.1rem; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.01em; color: var(--fg); }
+.boot-bar { position: relative; margin-top: 1.25rem; width: 4.5rem; height: 3px; border-radius: 9999px; overflow: hidden; background: color-mix(in srgb, var(--acc) 16%, transparent); }
+.boot-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: inherit; background: var(--acc); animation: bootbar 1.15s cubic-bezier(.65, 0, .35, 1) infinite; }
+.boot[data-phase="out"] { pointer-events: none; animation: bootout .52s cubic-bezier(.4, 0, .2, 1) forwards; }
+.boot[data-phase="out"] .boot-mark { animation: bootzoom .52s cubic-bezier(.4, 0, .2, 1) forwards; }
+@keyframes bootin { from { opacity: 0; transform: translateY(6px) scale(.92); } }
+@keyframes booteq { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
+@keyframes bootbar { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes bootglow { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+@keyframes bootout { to { opacity: 0; visibility: hidden; } }
+@keyframes bootzoom { to { transform: scale(1.12); opacity: 0; } }
+/* Sayfa açılış ekranının arkasından belirir; kubbe ekran çekilene kadar bekler, sonra yükselir */
+@keyframes bootenter { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .5s ease-out .06s backwards; }
+/* kaydırma (transform) yalnız içinde sabit çubuk yoksa: transform sabit öğeleri sayfaya bağlar, zıplarlardı */
+html[data-boot="enter"] :is(main, [data-boot-enter]):not(:has(.fixed)) { animation: bootenter .6s cubic-bezier(.22, .8, .24, 1) .06s backwards; }
+html[data-boot="on"] .dome-rise { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .boot::before, .boot-logo rect[x], .boot-bar::after, .boot-mark { animation: none; }
+  .boot[data-phase="out"] .boot-mark { animation: none; }
+  html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .3s ease-out backwards; }
+}
 
 /* Asistan açıkken sayfanın alttaki düğme çubuğu (evrak hazırla, kaydet…) gizlenir: asistan onun arkasında kalmasın */
 body[data-asst] [data-pagebar],
