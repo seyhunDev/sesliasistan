@@ -454,6 +454,18 @@ group("Aidat tablosu")([
 // Ana sayfadaki özet kartları (Aidat, Yarış, Instagram, Antrenman) ve İşlemler düğmeleri
 const HT = await import("@/lib/homeTiles");
 group("Ana sayfa kartları")([
+  ["notlar", F("sabitlenen önce, sonra en yeni; arşiv sayılmaz; en çok 5", () => {
+    const ns = [
+      { id: "a", title: "A", createdAt: "2026-10-01T10:00" },
+      { id: "b", title: "B", createdAt: "2026-10-05T10:00" },
+      { id: "c", title: "C", createdAt: "2026-09-01T10:00", pinned: true },
+      { id: "d", title: "D", createdAt: "2026-10-06T10:00", archived: true },
+      { id: "e", title: "E", createdAt: "2026-09-02T10:00", updatedAt: "2026-10-06T09:00" },
+      ...[1, 2, 3].map((i) => ({ id: "x" + i, title: "X", createdAt: "2026-08-0" + i })),
+    ];
+    const r = HT.homeNotes(ns, 5);
+    return r.total === 7 && r.list.map((n) => n.id).join() === "c,e,b,a,x3" && HT.homeNotes([], 5).list.length === 0;
+  })],
   ["aidat canlı", F("sunucunun yazdığı ödeme sayılır, bekleyen sayısı kalır", () => {
     const cfg = { fee: 1500, roster: [{ id: "a", studentName: "Ali Kaya" }, { id: "b", studentName: "Ayşe Ok" }] };
     const r = HT.duesLive(cfg, { paid: { a: [{ amt: 1500, via: "eft", by: "auto" }] } }, "2026-10", { ym: "2026-10", paidCount: 0, count: 2, pending: 1 });
