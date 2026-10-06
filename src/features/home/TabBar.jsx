@@ -210,14 +210,15 @@ function NavTab({ href, icon, label, active, badge, mini }) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      aria-label={mini ? label : undefined}
       className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl py-1 transition active:scale-95 ${active ? "text-white" : "text-white/60"}`}
     >
       <span className="relative flex">
         <Icon name={icon} className="size-[1.375rem]" />
         {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white ring-2 ring-[#25685a]">{badge > 99 ? "99+" : badge}</span>}
       </span>
-      {!mini && <span className={`text-[0.6875rem] ${active ? "font-bold" : "font-medium"}`}>{label}</span>}
+      {/* Kubbe küçülünce yazı kaybolmaz (düğmeler zıplamasın, aralarında boşluk kalmasın), yalnız soluklaşır; seçili sekme
+          daha net kalır */}
+      <span className={`text-[0.6875rem] transition-opacity duration-500 ${active ? "font-bold" : "font-medium"} ${mini ? (active ? "opacity-80" : "opacity-40") : ""}`}>{label}</span>
     </Link>
   );
 }
