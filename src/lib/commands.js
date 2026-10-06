@@ -22,7 +22,7 @@ const QUESTION_W = /(^| )(mı|mi|mu|mü|neler|ne|kaç|hangi|nedir|nerede)( |$)/;
 // ---- Yardım ----
 const HELP = /^(yardım|komutlar|ne yapabilirsin|neler yapabilirsin|nasıl kullanırım|ne diyebilirim)( |$)/;
 const HELP_MSG =
-  "Şunları hemen yaparım: “fiş yükle” dersen kamerayı açarım. “Yoklamayı aç”, “ana sayfaya dön”, “ekip grubunu aç” gibi sayfa ve sohbet açarım. “Bugün neler var”, “bu hafta özeti”, “geciken görevler” diye sorabilirsin. “Yarın saat onda antrenman ekle”, “tekneleri hazırla görevi ekle”, “not al malzeme odası dolu” diye kayıt eklerim. “Tekneleri hazırla görevini tamamla” dersen tamamlarım. Daha karmaşık isteklerde yapay zekaya sorarım.";
+  "Şunları hemen yaparım: plan, görev ve not eklerim (“yarın saat onda antrenman ekle”), görevi tamamlar, kaydı değiştirir, siler ya da iptal ederim. Kişiye, gruba ya da WhatsApp'tan mesaj hazırlarım, onaylayınca gönderirim. “Bugün neler var”, “yarın rüzgâr kaç knot” diye sorabilirsin. Yoklama, antrenman günlüğü, yarış, envanter, Instagram gönderisi, etkinlik planı, ders programı, kişi, alışveriş listesi ve fatura işlerini de söyleyebilirsin. “Yoklamayı aç” gibi sayfa açarım, “fiş yükle” dersen kamerayı açarım.";
 
 // ---- Özet ----
 const RANGES = [
