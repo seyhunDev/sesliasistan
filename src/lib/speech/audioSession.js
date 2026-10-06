@@ -1,42 +1,52 @@
 // iPhone ses oturumu (Safari 16.4+, navigator.audioSession).
-// Mikrofon açılınca iOS ses oturumunu "kayıt" kipine alır, arka plandaki YouTube/müzik durur (normal).
-// Ama mikrofon kapanınca oturum o kipte kalırsa iOS diğer uygulamalara "devam edebilirsin" demez,
-// arka plan sesi kaldığı yerden sürmez. Mikrofon kapanınca kip "transient"e (kısa ses: diğerleri susar,
-// bitince devam eder) çekilir; çalan sesimiz yoksa oturum bırakılır ve diğer uygulamalar devam eder.
-// Destek yoksa (Chrome, eski iOS) hiçbir şey yapmaz.
-// KAPALI (2026-10-06): yayından sonra iPhone'da kayıt boş gelmeye başladı ("Ses alınamadı"); kip değiştirme
-// mikrofonu susturuyor olabilir. Telefonda denenip sorun olmadığı görülmeden açılmaz (true yap).
-export const SESSION_SWITCH = false;
+// Mikrofon açılınca iOS ses oturumunu kayıt kipine alır, arka plandaki YouTube/müzik durur (normal).
+// Yerel uygulamalar mikrofonla iş bitince oturumu bırakıp diğerlerine "devam edebilirsin" der; web'de bunun
+// tek yolu navigator.audioSession. Mikrofon TAMAMEN kapandıktan sonra kip kısa bir an "transient"e
+// (kısa ses: diğerleri susar, bitince devam eder) alınır, çalan sesimiz olmadığı için iOS oturumu bırakır
+// ve arka plandaki ses devam eder; ardından kip hemen "auto"ya döner.
+// İlk denemede (PR #140) mikrofon açılmadan önce "play-and-record" yazılıyor ve kip "transient"te bırakılıyordu;
+// kayıt boş geldi ("Ses alınamadı") ve mikrofon açılamadı ("Mikrofon bulunamadı"). Artık:
+// - mikrofon açılırken kip her zaman "auto"ya döner (iPhone mikrofonu kendisi kayıt kipine alır, önceki gibi),
+// - "transient" yalnız hiçbir mikrofon açık değilken ve en çok RELEASE_MS sürer,
+// - bir hata olursa sessizce eski davranışa düşer (kip "auto"da kalır).
+// Destek yoksa (Chrome, eski iOS) hiçbir şey yapmaz. Sorun çıkarsa SESSION_SWITCH = false: yalnız sıfırlama kalır.
+export const SESSION_SWITCH = true;
+export const CLOSE_WAIT_MS = 300; // izlerin gerçekten kapanması için bekleme
+export const RELEASE_MS = 600; // "transient"te kalma süresi
 
 const session = () => (typeof navigator !== "undefined" ? navigator.audioSession : null);
 
 const setType = (t) => {
   const s = session();
-  if (!s) return;
+  if (!s) return false;
   try {
     if (s.type !== t) s.type = t;
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 };
 
-// Oturumu varsayılana döndür (mikrofon açılamadığında da yeniden denemeden önce)
+// Oturumu varsayılana döndür (mikrofon açılırken ve açılamadığında yeniden denemeden önce)
 export function micReset() {
   const s = session();
   if (s && s.type !== "auto" && s.type !== "play-and-record") setType("auto");
 }
 
 let mics = 0; // aynı anda açık mikrofon sayısı (asistan, toplantı)
-let timer = null;
+let timers = [];
+const clear = () => {
+  timers.forEach(clearTimeout);
+  timers = [];
+};
 
 // getUserMedia'dan hemen önce
-// Kapalıyken de: oturum önceki sürümden "transient"te kaldıysa mikrofon açılamaz ("Mikrofon bulunamadı"); "auto"ya döner
 export function micOpening(on = SESSION_SWITCH) {
-  if (!on) {
-    micReset();
-    return;
+  if (on) {
+    mics += 1;
+    clear(); // bırakma sürüyorsa iptal
   }
-  mics += 1;
-  clearTimeout(timer);
-  setType("play-and-record");
+  micReset();
 }
 
 // Mikrofon izleri durdurulup ses motoru kapatıldıktan sonra
@@ -44,11 +54,12 @@ export function micClosed(on = SESSION_SWITCH) {
   if (!on) return;
   mics = Math.max(0, mics - 1);
   if (mics) return;
-  clearTimeout(timer);
-  // İzlerin gerçekten kapanmasını bekle, sonra oturumu bırak
-  timer = setTimeout(() => {
-    if (mics) return;
-    setType("auto");
-    setType("transient");
-  }, 150);
+  clear();
+  timers.push(
+    setTimeout(() => {
+      if (mics) return;
+      if (!setType("transient")) return setType("auto");
+      timers.push(setTimeout(() => !mics && setType("auto"), RELEASE_MS));
+    }, CLOSE_WAIT_MS),
+  );
 }
