@@ -22,6 +22,7 @@ import { shareGroup } from "@/lib/cancelPlan";
 import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
+import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
@@ -327,6 +328,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // İşler bitince (son işten sonra) asistan "Başka bir isteğin var mı?" diye sorar; "yok/hayır" denirse kapanır
   const askedMore = useRef(false);
   const invAsk = useRef(null); // "Hangi fatura?" soruldu: { op }
+  // Bu sohbette hazırlanan son mesaj taslağı { to, label, text, wa, state, age }: yapay zekaya bağlam olarak gider,
+  // "şunu da ekle", "saati 10 yap" onu değiştirir (lib/convoContext.js). Sohbet kapanınca sıfırlanır.
+  const msgDraft = useRef(null);
   function done(message, extra = {}, viaVoice = false) {
     reply(`${message.trim()} ${MORE}`, extra, viaVoice);
     askedMore.current = true;
@@ -742,7 +746,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       finish();
       return;
     }
-    const history = fresh ? [] : turns.slice(-6).map((x) => ({ role: x.role, text: x.text }));
+    const history = fresh ? [] : historyFor(turns);
+    // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti); yeni sohbette hiç yok
+    if (fresh) msgDraft.current = null;
+    else if (msgDraft.current && ++msgDraft.current.age > DRAFT_AGE) msgDraft.current = null;
     // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
     if (fresh || !(drafts.length || cards.pending)) queue.current = [];
     const all = !fresh ? askAll.current : "";
@@ -825,6 +832,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     // Sıralı işte mesajın içeriği soruldu: cevap, tüm istekle birlikte doğrudan yapay zekaya (yerel kurallar onu plan sanmasın)
     if (all && !DROP.test(s) && !QUESTION.test(s)) return askAI(s, `${all}\nMesajın içeriği: ${s}`, viaVoice, history, false);
+    // Az önce hazırlanan mesaja değişiklik ("şunu da ekle", "saati 10 yap", "sonuna teşekkürler yaz"): yerel kurallar
+    // (plan, alışveriş…) araya girmez, ön cevap "plan hazırlıyorum" demez; taslakla birlikte doğrudan yapay zekaya
+    if (!fresh && msgDraft.current && isDraftEdit(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return askAI(s, s, viaVoice, history, false, { edit: true });
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): adı kayıtlı yarışlarla eşleşirse o yarışın sayfası
     // Önceki turda sorulan yarış seçenekleri: "ikincisi", "sonuncu", "Foça olan"
     const choices = raceChoices.current;
@@ -936,7 +946,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
 
   // Yapay zekaya sorar. s: kullanıcının bu cümlesi, ask: yapay zekaya giden istek (sıralı işte önceki istekle birleşik)
-  async function askAI(s, ask, viaVoice, history, toFocus) {
+  // opts.edit: açık mesaj taslağının değiştirilmesi (ön cevap yalnız "Tamam.", tür ipucu gitmez)
+  async function askAI(s, ask, viaVoice, history, toFocus, opts = {}) {
     // Öğrenilenler (brain) artık yapay zekadan önce kayıt hazırlamaz: yalnızca yapay zekaya ulaşılamazsa yedek (aşağıda)
     const id = ++runId.current;
     ctrl.current?.abort();
@@ -951,7 +962,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setPhase("thinking");
     // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
     // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
-    const pc = precue(ask, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
+    const pc = opts.edit ? editPrecue() : precue(ask, { plans, today: todayStr(), guess: brainGuess(s), weatherRows: (d) => dayHours(cachedWeather(), d) });
     clearSay();
     streamSaid.current = "";
     setStreamText("");
@@ -985,7 +996,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       countHit("ai");
       timingMark("ai");
-      const r = await askAssistant({ text: ask, name: firstName, digest, history, people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
+      const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       timingMark("aiDone");
       setPhase("preparing");
@@ -1091,6 +1102,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // wa: istekte WhatsApp geçti. "also" ("sporculara ve WhatsApp grubuna da"): kart "Gönder + WhatsApp";
   // "only" ("WhatsApp sporcular grubuna gönder"): yalnız WhatsApp grubu açılır, uygulamadaki gruba gitmez
   function prepareSend(to, text, msg, engine, viaVoice, lead = "", wa = "") {
+    // Aynı alıcıya düzeltilen taslak önceki WhatsApp seçimini korur ("şunu da ekle" cümlesinde WhatsApp geçmez)
+    const prev = msgDraft.current;
+    if (!wa && prev?.wa && (sameTo(to, prev.to) || sameTo(to, prev.label))) wa = prev.wa;
     let dest = resolveTo(to);
     // Yalnız Ayarlar › WhatsApp gruplarında olan grup ("WhatsApp veliler grubuna yaz")
     if (!dest && wa === "only") {
@@ -1099,6 +1113,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     const waOnly = wa === "only" && !!dest?.team;
     const alsoWa = wa === "also";
+    if (dest) msgDraft.current = { to: String(to || ""), label: dest.label, text, wa: waOnly ? "only" : alsoWa ? "also" : "", state: "pending", age: 0 };
     if (!dest) {
       const who = String(to || "").trim();
       queue.current = []; // alıcı yoksa sıralı işler de durur (kullanıcı yeniden söyler)
@@ -1111,13 +1126,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
     reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
   }
-  const setSendText = (t) => setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
+  const setSendText = (t) => {
+    if (msgDraft.current) msgDraft.current = { ...msgDraft.current, text: t }; // kartta elle düzeltilen metin de bağlama gider
+    setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
+  };
 
   // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
   async function confirmPending(fromText = false, waOpened = false) {
     const pend = cards.pending;
     if (!pend) return;
     if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
+    if (pend.send && msgDraft.current) msgDraft.current = { ...msgDraft.current, text: pend.send.text, state: pend.send.waOnly || pend.send.wa ? "wa" : "sent" };
     if (pend.att) {
       setCards((c) => ({ ...c, pending: null, awaiting: false }));
       setSteps([]);
@@ -1200,6 +1219,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function cancelPending(fromText = false) {
     if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+    if (cards.pending?.send && msgDraft.current) msgDraft.current = { ...msgDraft.current, state: "dropped" };
     // Yoklama onayından vazgeçildi: cümledeki diğer işler yine yapılır
     if (cards.pending?.att && cards.pending.rest) {
       reply("Tamam, yoklamayı kaydetmedim.", { engine: "local" }, fromText && convo.current);
@@ -1844,6 +1864,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     convo.current = false;
     queue.current = [];
     askAll.current = "";
+    msgDraft.current = null; // sohbet bitti: bağlam sıfırlanır
     onClose();
   }
 
@@ -1901,6 +1922,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       startedFor.current = null;
       setBooting(false);
       // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin
+      msgDraft.current = null;
       const t = setTimeout(() => {
         setTurns([]);
         setUsed(new Set());
@@ -1933,6 +1955,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return;
     }
     convo.current = !!(seed?.listen || seed?.voice);
+    msgDraft.current = null;
     setDrafts([]);
     setSaved([]);
     setText("");

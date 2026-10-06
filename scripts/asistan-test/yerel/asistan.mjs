@@ -10,6 +10,7 @@ import { suite, today, tom, data } from "./ortak.mjs";
 import { shareText } from "@/lib/cancelPlan";
 import { waMode } from "@/lib/steps";
 import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
+import * as CX from "@/lib/convoContext";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -622,4 +623,43 @@ group("Mesaj ve WhatsApp")([
   ["grup bağlantısı kayıtlıysa", Fa("grup açılır, metin panoya", () => { const got = {}; const r = shareText("9.30", { share: () => { got.s = 1; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }, "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA"); return r === "group" && got.c === "9.30" && !got.s && got.u.includes("chat.whatsapp.com"); })],
   ["paylaşım yoksa", Fa("WhatsApp sohbet seçimi açılır", () => { let u = ""; const r = shareText("a b", {}, (x) => { u = x; }); return r === "link" && u === "https://wa.me/?text=a%20b"; })],
   ["sporculara gönder (yapay zeka)", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "sporculara", text: "Perşembe ve cuma antrenman var, başlangıç 9.30." } }, [], ["Sporcular", "Ali Kök"]).send?.to === "Sporcular")],
+]);
+
+// Açık sohbetin bağlamı: hazırlanan mesaj taslağına "şunu da ekle" gibi değişiklikler (lib/convoContext.js)
+const ED = (desc) => ({ desc, fn: CX.isDraftEdit, ok: (r) => r === true });
+const NE = (desc) => ({ desc, fn: CX.isDraftEdit, ok: (r) => r === false });
+group("Sohbet bağlamı (mesaj taslağı)")([
+  ["şunu da ekle, saat 9.30'da iskelede olsunlar", ED("taslağa ekleme")],
+  ["can yeleklerini de getirsinler diye ekle", ED("taslağa ekleme")],
+  ["mesaja ekle: öğle yemeği getirsinler", ED("mesaj kelimesi")],
+  ["saati 10 yap", ED("değişiklik")],
+  ["yarın yerine cuma olsun", ED("değişiklik")],
+  ["sonuna teşekkürler ekle", ED("sonuna")],
+  ["daha kısa yaz", ED("kısalt")],
+  ["ayrıca öğle yemeği de getirsinler", ED("ayrıca")],
+  ["mesajı daha kibar yap", ED("kibar")],
+  ["yarın 10'da antrenman planı ekle", NE("yeni plan: taslak değil")],
+  ["listeye su ekle", NE("alışveriş listesi")],
+  ["görevlere tekne bakımı ekle", NE("görev")],
+  ["takvime de ekle", NE("takvim")],
+  ["yoklamayı aç", NE("sayfa")],
+  ["tamam", NE("onay sözü")],
+  ["teşekkürler", NE("teşekkür")],
+  ["geçmiş", Fa("ön cevaplar gitmez, toplam 1500 karakteri geçmez, en yeni kalır", () => {
+    const turns = [...Array(8)].map((_, i) => ({ role: i % 2 ? "assistant" : "user", text: `${i} ${"x".repeat(500)}` }));
+    turns.push({ role: "assistant", text: "Tamam.", pre: true });
+    const h = CX.historyFor(turns);
+    return h.length <= 6 && h.every((t) => t.text !== "Tamam.") && h.map((t) => t.text).join("").length <= 1500 && h.at(-1).text.startsWith("7");
+  })],
+  ["taslak bölümü", Fa("alıcı, durum ve metin yapay zekaya gider", () => {
+    const b = CX.draftBlock(CX.draftFor({ to: "sporculara", label: "Sporcular", text: "Perşembe 9.30 antrenman var.", wa: "only", state: "pending" }));
+    return /AÇIK MESAJ TASLAĞI/.test(b) && /Alıcı: Sporcular \(yalnız WhatsApp grubu\)/.test(b) && /onay bekliyor/.test(b) && /Perşembe 9\.30/.test(b);
+  })],
+  ["gönderilmiş taslak", Fa("durum gönderildi", () => /Durum: gönderildi/.test(CX.draftBlock(CX.draftFor({ label: "Ali Kök", text: "Yarın gel.", state: "sent" }))))],
+  ["boş taslak", Fa("bölüm yazılmaz", () => CX.draftBlock(CX.draftFor({ label: "Ali", text: " " })) === "" && CX.draftBlock(null) === "")],
+  ["uzun taslak", Fa("metin 1000 karakterde kesilir", () => CX.draftFor({ label: "Ali", text: "a".repeat(3000) }).text.length <= 1000)],
+  ["eski sürümün uzun geçmişi", Fa("sunucuda da kısaltılır", () => CX.historyBlock([...Array(6)].map(() => ({ role: "user", text: "y".repeat(400) }))).length <= 1800)],
+  ["aynı alıcı", Fa("Sporcular grubuna = sporcular", () => CX.sameTo("Sporcular grubuna", "sporcular") && !CX.sameTo("Ali", "Ayşe") && !CX.sameTo("", ""))],
+  ["ön cevap", Fa("yalnız Tamam, plan ipucu yok", () => { const p = CX.editPrecue(); return p.line === "Tamam." && !/tür=plan/.test(p.hint) && /TASLA/.test(p.hint); })],
+  ["değişen taslak (yapay zeka)", Fa("yeni metin aynı alıcıya, kayıt yok", () => { const r = AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "Sporcular", text: "Perşembe 9.30 antrenman var, can yeleklerinizi getirin." }, items: [] }, [], ["Sporcular"]); return r.send?.to === "Sporcular" && /can yelek/.test(r.send.text) && !r.items.length; })],
 ]);

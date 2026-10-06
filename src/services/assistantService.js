@@ -2,14 +2,14 @@ import { authFetch } from "@/lib/authFetch";
 import { saveQuota } from "@/lib/quota";
 import { todayStr } from "@/lib/utils/format";
 
-// Asistan ucunu çağırır. digest: cihazda üretilen veri özeti, history: son konuşma turları, people: çalışan adları
+// Asistan ucunu çağırır. digest: cihazda üretilen veri özeti, history: son konuşma turları (kısa), draft: bu sohbetteki mesaj taslağı, people: çalışan adları
 // onText verilirse akış istenir: okunacak metin geldikçe onText(o ana kadarki metin) çağrılır (sunucu desteklemezse
 // tek parça yanıt gelir, onText hiç çağrılmaz; sonuç aynı).
-export async function askAssistant({ text, name = "", digest = "", history = [], people = [], contacts = [], precue = "", onText }, signal) {
+export async function askAssistant({ text, name = "", digest = "", history = [], draft = null, people = [], contacts = [], precue = "", onText }, signal) {
   const res = await authFetch("/api/assistant", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text, name, digest, history, today: todayStr(), ...(people.length ? { people } : {}), ...(contacts.length ? { contacts } : {}), ...(precue ? { precue } : {}), ...(onText ? { stream: true } : {}) }),
+    body: JSON.stringify({ text, name, digest, history, ...(draft ? { draft } : {}), today: todayStr(), ...(people.length ? { people } : {}), ...(contacts.length ? { contacts } : {}), ...(precue ? { precue } : {}), ...(onText ? { stream: true } : {}) }),
     signal,
   });
   if (res.ok && (res.headers.get("content-type") || "").includes("ndjson") && res.body) return readStream(res, onText);
