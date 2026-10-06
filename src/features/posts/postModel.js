@@ -52,9 +52,9 @@ export const tallOf = (f) => f === "story" || f === "reels";
 // normal kenar boşluğu (84) yeter.
 export const safeOf = (f) =>
   ({ square: { t: 0, b: 0, l: 66, r: 66 }, story: { t: 200, b: 280, l: 0, r: 0 }, reels: { t: 250, b: 440, l: 0, r: 130 } })[f] || { t: 0, b: 0, l: 0, r: 0 };
-// Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Dikey), hikâye, reels
+// Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Kare), hikâye, reels
 export const SET_LABELS = { square: "Gönderi", portrait: "Gönderi", story: "Hikâye", reels: "Reels" };
-export const setOf = (f) => [f === "square" ? "square" : "portrait", "story", "reels"];
+export const setOf = (f) => [f === "portrait" ? "portrait" : "square", "story", "reels"];
 
 // Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]; yumuşak, az doygun tonlar
 export const THEMES = [
@@ -228,7 +228,7 @@ export function cleanPost(p = {}) {
 }
 
 // Yeni gönderi Dikey 4:5: akışta en büyük görünen, profil ızgarasında en az kesilen boyut
-export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind), format: "portrait" });
+export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind), format: "square" });
 
 // Instagram'a yapıştırılacak metin: açıklama + boş satır + etiketler
 export const fullCaption = (p) => [p.caption.trim(), p.hashtags.join(" ")].filter(Boolean).join("\n\n");
