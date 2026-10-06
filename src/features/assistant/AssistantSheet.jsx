@@ -56,7 +56,7 @@ import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsern
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, jobsIn, keepNotes, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
+import { isMulti, jobsIn, extraNote, keepNotes, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -464,10 +464,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
   }
   // Bilgisi tamam taslak (eksik soru yok, başlık/tarih var) sormadan kaydedilir; kartta yalnız Düzenle kalır
-  const extra = (m) => {
-    const t = (m || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?|\s*kaydedeyim mi\?/gi, "").replace(/^(tamam|tamamdır)[.!]?$/i, "").trim();
-    return t && !/(ekledim|kaydettim|hazırladım|oluşturdum)/i.test(t) ? `${t} ` : "";
-  };
+  // Kayıt sorulmadan yapıldığı için yapay zekanın soru ve "oluşturuyorum/ekliyorum" cümleleri atılır
+  // (önceden "Akşam 8 için planı oluşturuyorum, onaylıyor musun? Ekledim: …" okunuyordu); yalnız ek bilgi kalır
+  const extra = (m) => extraNote(m);
   const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
   // pre: yapay zekanın ek sözü (çakışma, rüzgâr…); varsa "Ekledim" cümlesinden önce gelir (akışta okunduysa tekrar okunmaz)
   async function saveDraftsNow(viaVoice, list = drafts, pre = "", lead = "") {

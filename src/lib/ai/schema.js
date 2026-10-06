@@ -1,5 +1,6 @@
 import { matchPerson, namesInMessage } from "@/lib/names";
 import { z } from "zod";
+import { cleanTitle } from "@/lib/titleClean";
 
 export const CATEGORIES = ["Antrenman", "Toplantı", "Kamp", "Yarış", "Ekipman", "Genel"];
 
@@ -20,7 +21,7 @@ export const TOOL = {
           type: "object",
           properties: {
             type: { type: "string", enum: ["plan", "task", "note"] },
-            title: { type: "string", description: "Kısa başlık" },
+            title: { type: "string", description: "Kısa başlık: yalnız konu (\"Akşam yemeği\"); \"bana\", \"benim için\", \"lütfen\", gün/saat sözleri girmez" },
             body: { type: "string", description: "Yalnızca not için: notun tam metni" },
             date: { type: "string", description: "YYYY-MM-DD ya da boş. Plan tarihi veya görev son tarihi." },
             endDate: { type: "string", description: "Çok günlü plan için bitiş, YYYY-MM-DD ya da boş" },
@@ -96,7 +97,7 @@ export function toDrafts(raw, people = [], message = "") {
 
   const drafts = items.map((i) => ({
     type: i.type,
-    title: i.title.trim(),
+    title: i.type === "note" ? i.title.trim() : cleanTitle(i.title),
     body: i.type === "note" ? (i.body || i.title).trim() : "",
     date: i.type === "note" ? "" : i.date,
     endDate: i.type === "plan" ? i.endDate : "",

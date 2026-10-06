@@ -103,3 +103,13 @@ export function keepNotes(items, raw, keep = 0) {
   let left = keep;
   return list.filter((d) => d?.type !== "note" || left-- > 0);
 }
+
+// Bilgisi tamam kayıt sormadan eklenir; "Ekledim: …" cümlesinin önüne yapay zekanın yalnız ek bilgisi gelir (çakışma, rüzgâr, sorumlu).
+// Soru cümleleri ("onaylıyor musun?", "kaydedeyim mi?") ve işi anlatan cümleler ("planı oluşturuyorum", "ekledim") atılır:
+// kayıt zaten yapıldı, hem sorup hem eklemek çelişir.
+const DOING = /(ekle|kaydet|oluştur|hazırla|planla|ayarla|onay|kaydedebilirsin|kontrol edip)/i;
+export function extraNote(m) {
+  const parts = String(m || "").replace(/\s+/g, " ").trim().match(/[^.!?]+[.!?]*/g) || [];
+  const keep = parts.map((x) => x.trim()).filter((x) => x && !/\?\s*$/.test(x) && !DOING.test(x) && !/^(tamam|tamamdır|peki|olur)[.!]?$/i.test(x));
+  return keep.length ? `${keep.join(" ")} ` : "";
+}
