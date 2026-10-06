@@ -224,35 +224,27 @@ function NavTab({ href, icon, label, active, badge, mini }) {
 
 // KUBBE: tek asistan görünümü. Boştayken altta sabit (iki kenara uzanır, alt güvenli alanı da kaplar): üstte
 // yaz · ses ışığı · oluştur, altta sekmeler. Asistan çalışınca sekmeler çekilir, konuşma kubbenin içinde akar ve kubbe
-// içerik kadar yükselir (yay hep üstte). Yazarken kubbe klavyenin üstüne taşınır. Çubuksuz sayfalarda (ayarlar,
-// sohbet ekranı…) yalnız asistan çalışırken görünür. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde
+// içerik kadar yükselir (yay hep üstte). Yazarken kubbe klavyenin üstüne taşınır. slim: sekmesiz sayfa (ayarlar, yarış…);
+// kubbe aynı yerde ince hâliyle durur (yalnız küre, sekmeler solup gider), dokununca yerinde büyür. Önceden bu sayfalarda
+// sağ altta ayrı bir küre vardı; dokununca o kayboluyor, kubbe sıfırdan yükseliyor, küre ortaya sıçrıyordu. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde
 // sekmesiz ve Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
 const ghost = "grid size-11 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition active:scale-90 active:bg-white/20";
-function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
+function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
   const pane = useRef(null);
   const userUp = useRef(false);
-  const shown = bar || rec || active || typing;
+  const shown = bar || slim || rec || active || typing;
   // Boştayken sayfa aşağı kaydırılınca kubbe ince çubuğa iner (küçük küre, sekmesiz); yukarı kaydırınca, sayfanın başına
   // dönünce ya da kubbeye dokununca eski hâline döner. Sayfanın alt boşluğu (--stage-h) büyük boyda kalır, içerik zıplamaz.
-  const idle = bar && !rec && !active && !typing;
+  const idle = (bar || slim) && !rec && !active && !typing;
   const [mini, setMini] = useState(false);
-  const small = idle && mini;
-  // Küçülüp büyürken satır ve küre kendi geçişiyle (0,5 sn) boy değiştirir; kubbe her karede onları birebir izler (kendi
-  // yükseklik geçişi o sırada kapalı, yoksa kubbe geride kalıp küre taşıyordu)
-  const [follow, setFollow] = useState(false);
-  const firstSmall = useRef(true);
+  const small = idle && (mini || !!slim);
+  const row = useRef(null);
   useEffect(() => {
-    if (firstSmall.current) return void (firstSmall.current = false);
-    setFollow(true);
-    const t = setTimeout(() => setFollow(false), 600);
-    return () => clearTimeout(t);
-  }, [small]);
-  useEffect(() => {
-    if (!idle) return;
+    if (!idle || slim) return;
     let last = window.scrollY;
     let run = 0;
     const onScroll = () => {
@@ -270,18 +262,24 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
       window.removeEventListener("scroll", onScroll);
       setMini(false);
     };
-  }, [idle, path]);
+  }, [idle, slim, path]);
 
   // Yükseklik içeriği izler (kubbe içerikle birlikte büyür/küçülür; geçiş CSS'te). Boştaki yükseklik sayfanın alt boşluğu olur.
   useLayoutEffect(() => {
     const o = box.current;
     const i = inner.current;
     if (!o || !i) return;
+    // Satır (küre satırı) kendi geçişiyle boy değiştirirken kubbe ara ölçüleri değil satırın varacağı boyu hedefler:
+    // önceden her karede yeni hedef yazılıyor, geçiş her karede yeniden başlıyor ve kubbe takılarak büyüyüp küçülüyordu.
+    // Kubbe ve satır aynı eğriyle (0,5 sn) birlikte hareket eder.
     const set = () => {
-      const h = shown ? i.offsetHeight : 0;
-      o.style.height = `${h}px`;
-      if (bar && !rec && !active && !typing) document.documentElement.style.setProperty("--dome-h", `${h}px`);
-      if (bar && !rec && !active && !typing && !small) document.documentElement.style.setProperty("--stage-h", `${h}px`);
+      let h = shown ? i.offsetHeight : 0;
+      const r = row.current;
+      if (shown && r?.dataset.h) h += parseFloat(r.dataset.h) * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) - r.offsetHeight;
+      h = Math.round(h);
+      if (o.style.height !== `${h}px`) o.style.height = `${h}px`;
+      if ((bar || slim) && !rec && !active && !typing) document.documentElement.style.setProperty("--dome-h", `${h}px`);
+      if (((bar && !small) || slim) && !rec && !active && !typing) document.documentElement.style.setProperty("--stage-h", `${h}px`);
       if (rec && !active && !typing) document.documentElement.style.setProperty("--rec-h", `${h}px`);
     };
     set();
@@ -289,7 +287,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
     const ro = new ResizeObserver(set);
     ro.observe(i);
     return () => ro.disconnect();
-  }, [shown, bar, rec, active, typing, small, client]);
+  }, [shown, bar, slim, rec, active, typing, small, client]);
 
   // Klavye: kubbe görünen alanın altına oturur; konuşma alanı kalan yüksekliğe sığar
   useEffect(() => {
@@ -376,7 +374,6 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
       data-state={active ? state : "idle"}
       data-on={active ? "" : undefined}
       data-mini={small ? "" : undefined}
-      data-follow={follow ? "" : undefined}
       role="region"
       aria-label="Asistan"
       className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
@@ -403,42 +400,45 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
             <div className="stage-in pb-2 pt-1">
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
-          ) : idle ? (
-            // Boşta tek satır: iki sekme · küre · iki sekme. Yazmak için küreye basılı tut; Oluştur asistan açılınca.
-            <div className={`flex ${small ? "h-14" : "h-[5.25rem]"} items-center transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)]`}>
-              <nav aria-label="Sekmeler" className="flex min-w-0 flex-1 items-center">
-                <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} mini={small} />
-                <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} mini={small} />
-              </nav>
-              <span className="shrink-0 px-1.5">
-                <VoiceLight state="idle" onTap={talk} onHold={typeNow} size={small ? "size-12" : "size-[4.875rem]"} />
-              </span>
-              <nav aria-label="Sekmeler" className="flex min-w-0 flex-1 items-center">
-                <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} mini={small} />
-                <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} mini={small} />
-              </nav>
-            </div>
           ) : (
-            <div className="relative flex h-[5.25rem] items-center justify-between px-1">
-              <span className="flex gap-2">
-                <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
-                  <Icon name="keyboard" className="size-[1.375rem]" />
-                </button>
-                {!rec && (
-                  <button type="button" onClick={onMenu} aria-label="Oluştur" className={ghost}>
-                    <Icon name="plus" className="size-6" />
-                  </button>
-                )}
-              </span>
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size={active ? "size-[5.25rem]" : "size-[4.875rem]"} />
-              </span>
-              {active ? (
-                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
-                  <Icon name="x" className="size-[1.375rem]" />
-                </button>
+            // Tek satır, küre hep aynı öğe ve ortada: boşta iki sekme · küre · iki sekme (sekmesiz sayfada sekmeler solar),
+            // asistan açıkken yaz + oluştur · küre · kapat. Durum değişince küre yeniden kurulmaz, yerinde büyür/küçülür.
+            <div ref={row} data-h={small ? 3.5 : 5.25} className={`flex ${small ? "h-14" : "h-[5.25rem]"} items-center transition-[height] duration-500 ease-[cubic-bezier(.22,.8,.24,1)] ${idle ? "" : "px-1"}`}>
+              {idle ? (
+                <nav aria-label="Sekmeler" inert={slim || undefined} className={`flex min-w-0 flex-1 items-center transition-opacity duration-300 ${slim ? "opacity-0" : ""}`}>
+                  <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} mini={small} />
+                  <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} mini={small} />
+                </nav>
               ) : (
-                <span className="size-11" aria-hidden="true" />
+                <span className="fade-in flex flex-1 gap-2">
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={ghost}>
+                    <Icon name="keyboard" className="size-[1.375rem]" />
+                  </button>
+                  {!rec && (
+                    <button type="button" onClick={onMenu} aria-label="Oluştur" className={ghost}>
+                      <Icon name="plus" className="size-6" />
+                    </button>
+                  )}
+                </span>
+              )}
+              <span className="shrink-0 px-1.5">
+                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size={small ? "size-12" : active ? "size-[5.25rem]" : "size-[4.875rem]"} />
+              </span>
+              {idle ? (
+                <nav aria-label="Sekmeler" inert={slim || undefined} className={`flex min-w-0 flex-1 items-center transition-opacity duration-300 ${slim ? "opacity-0" : ""}`}>
+                  <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} mini={small} />
+                  <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} mini={small} />
+                </nav>
+              ) : (
+                <span className="flex flex-1 justify-end">
+                  {active ? (
+                    <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={`fade-in ${ghost}`}>
+                      <Icon name="x" className="size-[1.375rem]" />
+                    </button>
+                  ) : (
+                    <span className="size-11" aria-hidden="true" />
+                  )}
+                </span>
               )}
             </div>
           )}
@@ -449,7 +449,7 @@ function Dome({ bar, rec, active, state, live, talk, typeNow, typing, onTypingDo
 }
 
 // Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
-export function TabBar({ cfg, bar, rec = false }) {
+export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const path = usePathname();
   const router = useRouter();
   const { openAssistant, live, act, setSlot } = useAssistant();
@@ -507,6 +507,7 @@ export function TabBar({ cfg, bar, rec = false }) {
     <>
       <Dome
         bar={bar}
+        slim={slim}
         rec={rec}
         active={active}
         state={state}
@@ -525,12 +526,6 @@ export function TabBar({ cfg, bar, rec = false }) {
         path={path}
         unread={unreadTotal}
       />
-      {!bar && !rec && !active && !typing && !path.startsWith("/messages") && (
-        // Sekmesiz sayfalarda ana asistan sağ altta küçük küre: dokun konuş, basılı tut yaz; açılınca kubbe alttan yükselir
-        <div data-fab="" className="fade-in fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-30 grid place-items-center rounded-full bg-[linear-gradient(180deg,#33876f,#1f5a4b)] p-1 shadow-[0_12px_28px_-12px_rgba(20,70,56,.7)] transition-[bottom] duration-300">
-          <VoiceLight state="idle" onTap={talk} onHold={typeNow} size="size-[3.25rem]" />
-        </div>
-      )}
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
         <div className="grid grid-cols-2 gap-2.5">
           {items.map(([icon, label, desc, onClick, hi]) => (
@@ -556,7 +551,7 @@ export function TabBar({ cfg, bar, rec = false }) {
 }
 
 // Uygulama yerleşiminde tek kez çizilir: sayfa değişince yeniden kurulmaz (geçişte titreme/zıplama olmaz).
-// Dört ana sekmede sekmelerle görünür; diğerlerinde (sohbet ekranı dahil) yalnız asistan çalışırken, boşta sağ altta küre.
+// Dört ana sekmede sekmelerle görünür; diğer sayfalarda ince hâliyle (yalnız küre), sohbet ekranında yalnız asistan çalışırken.
 // Sekmeler görünürken sayfaların alt boşluğu kubbeye göre büyür (globals.css).
 function Host() {
   const path = usePathname();
@@ -564,8 +559,10 @@ function Host() {
   const { page } = useContext(DockCtx);
   const { setStageOn } = useAssistant();
   const race = isRace(path) || isPost(path) || isInv(path);
-  // Kubbe (sekmelerle) yalnız dört ana sekmede; diğer sayfalarda asistan sağ altta küçük küre (TabBar)
+  // Kubbe sekmeleriyle yalnız dört ana sekmede
   const bar = TABS.includes(path) && !(path === "/messages" && chat);
+  // Sekmesiz sayfalarda kubbe ince hâliyle (yalnız küre); sohbet ekranında yok (kendi yazma satırı var)
+  const slim = !bar && !(path.startsWith("/messages") && chat);
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
   useEffect(() => {
@@ -575,14 +572,14 @@ function Host() {
   }, []);
   useEffect(() => setStageOn(bar || !!rec), [bar, rec, setStageOn]);
   useEffect(() => {
-    if (!bar) return;
+    if (!bar && !slim) return;
     document.body.dataset.dock = "1";
     return () => delete document.body.dataset.dock;
-  }, [bar]);
+  }, [bar, slim]);
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
     : { ...(PAGES[path] || (isPost(path) ? POST : isInv(path) ? INV : race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} rec={!!rec} />;
+  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} />;
 }
 export function TabBarHost() {
   return (
