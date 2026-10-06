@@ -56,14 +56,20 @@ const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcr
 async function viaTranscribe(file, names, terms) {
   const buf = Buffer.from(await file.arrayBuffer());
   const mimeType = (file.type || "audio/wav").split(";")[0];
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
-    body: JSON.stringify(sttBody(buf.toString("base64"), mimeType, sttVocab(HINT, names, terms))),
-    signal: AbortSignal.timeout(15000),
-  });
+  let res;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+      body: JSON.stringify(sttBody(buf.toString("base64"), mimeType, sttVocab(HINT, names, terms))),
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch (e) {
+    markCool("stt:gtranscribe", 30 * MIN); // yanıt gelmedi: bir süre doğrudan Whisper
+    throw e;
+  }
   const body = await res.text();
-  if (res.ok) return { text: sttText(JSON.parse(body)), secs: audioSecs(buf, mimeType) };
+  if (res.ok) return { text: sttText(JSON.parse(body)), secs: audioSecs(buf, mimeType), shape: body.slice(0, 200) };
   const err = new Error(`gtranscribe ${res.status}: ${body.slice(0, 300)}`);
   err.status = res.status;
   // Model yok/istek biçimi kabul edilmedi ya da anahtar geçersiz: bir süre deneme, Whisper çalışsın. Kota: söylenen süre kadar
@@ -148,8 +154,14 @@ async function handle(request) {
       let raw;
       if (p === "gtranscribe") {
         const r = await viaTranscribe(file, names, terms);
-        raw = r.text;
         countAi(au, "stt-sec", r.secs); // Kullanım: Gemini ses tanıma dakikası (ücret dakika başına)
+        // Boş yazı: konuşma yok mu, yanıt mı okunamadı bilinemez; bir sonraki servis (Whisper) de denensin
+        if (!r.text && list.indexOf(p) < list.length - 1) {
+          console.warn(`[transcribe] gtranscribe boş yazı döndü (${r.shape}), sıradaki deneniyor`);
+          tried.push("gtranscribe:boş");
+          continue;
+        }
+        raw = r.text;
       } else raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
       const text = dropHallucination(raw, HINT);
       if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);

@@ -166,15 +166,17 @@ const withSession = async (run) => {
 // Durumlar sırayla denenir (aynı sayaç ve navigator paylaşılır)
 const sessionRun = await (async () => {
   const out = {};
-  out.open = (await withSession(async () => { as.micOpening(); })).seen[0];
-  out.closed = (await withSession(async () => { as.micClosed(); })).type;
-  out.two = (await withSession(async () => { as.micOpening(); as.micOpening(); as.micClosed(); })).type;
-  as.micClosed();
+  out.off = (await withSession(async () => { as.micOpening(); as.micClosed(); })).seen.length; // kapalıyken (varsayılan) dokunulmaz
+  out.open = (await withSession(async () => { as.micOpening(true); })).seen[0];
+  out.closed = (await withSession(async () => { as.micClosed(true); })).type;
+  out.two = (await withSession(async () => { as.micOpening(true); as.micOpening(true); as.micClosed(true); })).type;
+  as.micClosed(true);
   await new Promise((r) => setTimeout(r, 200));
-  try { as.micOpening(); as.micClosed(); out.none = true; } catch { out.none = false; }
+  try { as.micOpening(true); as.micClosed(true); out.none = true; } catch { out.none = false; }
   return out;
 })();
 group("Ses oturumu (arka plan sesi)")([
+  ["kapalıyken oturuma dokunulmaz (varsayılan)", { desc: "değişiklik yok", fn: () => sessionRun.off, ok: (n) => as.SESSION_SWITCH || n === 0 }],
   ["mikrofon açılınca kayıt kipi", { desc: "play-and-record", fn: () => sessionRun.open, ok: (r) => r === "play-and-record" }],
   ["mikrofon kapanınca oturum bırakılır", { desc: "transient", fn: () => sessionRun.closed, ok: (r) => r === "transient" }],
   ["iki mikrofondan biri kapanınca bırakılmaz", { desc: "play-and-record", fn: () => sessionRun.two, ok: (r) => r === "play-and-record" }],
