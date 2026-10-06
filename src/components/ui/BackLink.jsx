@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { canGoBack } from "@/lib/navTrail";
+import { goBack } from "@/lib/navTrail";
 
 // Geri düğmesi: gelinen sayfaya döner; uygulama bu sayfada açıldıysa `href`e (üst sayfa) gider.
 // Üst sayfaya giderken geçmişte bu sayfanın yerine geçer (replace): yoksa üst sayfada geri basınca
@@ -15,9 +15,9 @@ export function BackLink({ href = "/", onClick, ...rest }) {
       replace
       onClick={(e) => {
         onClick?.(e);
-        if (e.defaultPrevented || !canGoBack()) return;
+        if (e.defaultPrevented) return;
         e.preventDefault();
-        router.back();
+        goBack(router, href);
       }}
       {...rest}
     />
