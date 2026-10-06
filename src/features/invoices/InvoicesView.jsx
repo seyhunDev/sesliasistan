@@ -52,6 +52,9 @@ export function useInvoiceDesk(orgId) {
   const [checking, setChecking] = useState(false);
   const [guesses, setGuesses] = useState([]);
   const fileRef = useRef(null);
+  const camRef = useRef(null);
+  const photoRef = useRef(null);
+  const [choose, setChoose] = useState(false); // Fatura ekle: fotoğraf çek / fotoğraf seç / PDF
   const replaceRef = useRef(null);
 
   const reload = useCallback(
@@ -98,7 +101,11 @@ export function useInvoiceDesk(orgId) {
   const taskOf = (inv) => tasks.find((t) => t.id === inv?.taskId);
   const whoOf = (inv) => (taskOf(inv)?.assignees || []).map((u) => nameOf?.(u)).filter(Boolean).join(", ");
 
-  const pick = () => fileRef.current?.click();
+  const pick = () => setChoose(true);
+  const from = (ref) => {
+    setChoose(false);
+    ref.current?.click();
+  };
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -171,6 +178,27 @@ export function useInvoiceDesk(orgId) {
   const sheets = (
     <>
       <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={onFile} />
+      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
+      <input ref={photoRef} type="file" accept="image/*" hidden onChange={onFile} />
+      <Sheet open={choose} onClose={() => setChoose(false)} title="Fatura ekle">
+        <div className="space-y-2 pb-4">
+          {[
+            [camRef, "camera", "Fotoğrafını çek", "Kâğıt faturayı kamerayla çek"],
+            [photoRef, "image", "Fotoğraflardan seç", "Ekran görüntüsü ya da kayıtlı fotoğraf"],
+            [fileRef, "paperclip", "PDF ya da dosya seç", "Mailden gelen e-fatura PDF'i"],
+          ].map(([ref, icon, title, sub]) => (
+            <button key={title} onClick={() => from(ref)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:scale-[.98]`}>
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                <Icon name={icon} className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block text-[0.9375rem] font-semibold">{title}</b>
+                <small className="block text-[0.8125rem] text-mut">{sub}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Sheet>
       {/* Yeni fatura: okunan bilgiler, görevli */}
       <Sheet open={!!add} onClose={() => !saving && setAdd(null)} title="Yeni fatura">
         {add && (
@@ -262,7 +290,7 @@ export function InvoicePanel({ desk }) {
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button onClick={pick} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold text-acc active:scale-[.98]`}>
-          <Icon name="plus" className="size-5" /> Fatura yükle
+          <Icon name="plus" className="size-5" /> Fatura ekle
         </button>
         <button onClick={check} disabled={checking || !sum.open} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold disabled:opacity-50 active:scale-[.98]`}>
           <Icon name={checking ? "load" : "wallet"} className={`size-5 ${checking ? "animate-spin" : ""}`} /> Bankada kontrol et
