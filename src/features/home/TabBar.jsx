@@ -99,7 +99,7 @@ function Composer({ cfg, onDone }) {
   };
 
   return (
-    <div className="flex h-12 items-center gap-1 rounded-2xl bg-card pl-4 pr-1.5 ring-1 ring-line focus-within:ring-acc/40">
+    <div className="flex h-12 w-full items-center gap-1 rounded-2xl bg-card pl-4 pr-1.5 ring-1 ring-line focus-within:ring-acc/40">
       {listening ? (
         <p className="min-w-0 flex-1 truncate text-[0.9375rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
       ) : (
@@ -225,7 +225,7 @@ function NavTab({ href, icon, label, active, badge, mini }) {
 
 // KUBBE: tek asistan görünümü. Boştayken altta sabit (iki kenara uzanır, alt güvenli alanı da kaplar): üstte
 // yaz · ses ışığı · oluştur, altta sekmeler. Asistan çalışınca sekmeler çekilir, konuşma kubbenin içinde akar ve kubbe
-// içerik kadar yükselir (yay hep üstte). Yazarken kubbe klavyenin üstüne taşınır. slim: sekmesiz sayfa (ayarlar, yarış…);
+// bir kez sabit boya yükselir (yay hep üstte; boyu içerikle değişmez, konuşma içinde kayar). Yazarken kubbe klavyenin üstüne taşınır. slim: sekmesiz sayfa (ayarlar, yarış…);
 // kubbe aynı yerde ince hâliyle durur (yalnız küre, sekmeler solup gider), dokununca yerinde büyür. Önceden bu sayfalarda
 // sağ altta ayrı bir küre vardı; dokununca o kayboluyor, kubbe sıfırdan yükseliyor, küre ortaya sıçrıyordu. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde
 // sekmesiz ve Oluştur'suz görünür, asistan o kaydı bilir (focus).
@@ -389,18 +389,30 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           {active && (
             <div
               ref={pane}
-              // Konuşma alanı en çok görünen ekranın %45'i (Seyhun: "yarının biraz altında kalmalı", 2026-10-06); fazlası içinde
-              // kayar: yeni mesajda en alta iner, yukarı kaydırınca eskiler görünür (aşağıdaki kaydırma takibi). Küre ve düğmeler sabit.
-              className={`${state === "listening" ? "max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-13.75rem),calc(var(--vvh,100dvh)*.45))]" : "max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-11.5rem),calc(var(--vvh,100dvh)*.45))]"} overflow-y-auto overscroll-contain px-1 pt-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]`}
+              // SABİT YÜKSEKLİK (Seyhun: "iş yazısı gelince küre ve yanındakiler yukarı kalkıyor", 2026-10-06): konuşma alanı
+              // asistan açıkken hep aynı boyda (görünen ekranın %45'i; klavyede kalan alana sığar). Yazılar alttan yukarı dolar,
+              // fazlası içinde kayar; mesaj, kart, dinleme ya da iş yazısı kubbenin boyunu, küreyi ve düğmeleri oynatmaz.
+              className="h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-12.5rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-1 [mask-image:linear-gradient(to_bottom,transparent,#000_1.25rem)] [scrollbar-width:none]"
             >
-              <div className="pb-3">
+              <div className="flex min-h-full flex-col justify-end pb-2 pt-3">
                 <div ref={setSlot} />
                 {heard && <Hearing text={live.heard} listening={state === "listening"} solo={!live.talked} />}
               </div>
             </div>
           )}
+          {/* Durum şeridi: şu an yapılan iş kürenin ÜSTÜNDE, kendi sabit yerinde (yazı yokken de yeri ayrılır, hiçbir şey zıplamaz) */}
+          {active && (
+            <div className="flex h-8 items-center justify-center" role="status" aria-live="polite">
+              {live.status && (
+                <span key={live.status} className="dome-chip fade-in">
+                  <span className="work-ring" aria-hidden="true" />
+                  <span className="work-text truncate">{live.status}…</span>
+                </span>
+              )}
+            </div>
+          )}
           {typing ? (
-            <div className="stage-in pb-2 pt-1">
+            <div className="stage-in flex h-[4.75rem] items-center">
               <Composer cfg={cfg} onDone={onTypingDone} />
             </div>
           ) : (
@@ -444,13 +456,6 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                   )}
                 </span>
               )}
-            </div>
-          )}
-          {/* Şu an yapılan iş: kürenin hemen altında, ortada (konuşma yazıları yukarıda yerinde kalır) */}
-          {active && !typing && live.status && (
-            <div className="fade-in mt-1.5 flex items-center justify-center gap-2 pb-0.5" role="status" aria-live="polite">
-              <span className="work-ring" aria-hidden="true" />
-              <span className="work-text max-w-[80%] truncate text-[0.8125rem] font-medium">{live.status}…</span>
             </div>
           )}
         </div>
