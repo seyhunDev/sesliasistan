@@ -8,7 +8,7 @@ import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { makeVad, partialDue, speechEnded } from "@/lib/speech/vad";
 import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
-import { micClosed, micOpening } from "@/lib/speech/audioSession";
+import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -295,7 +295,16 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       micOpening();
     }
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      const ask = () => navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      try {
+        stream = await ask();
+      } catch (e) {
+        // İzin reddi değilse (iPhone ses oturumu takılı, mikrofon başka işte): oturumu sıfırla, bir kez daha dene
+        if (errorState(e) === "denied") throw e;
+        micReset();
+        await new Promise((r) => setTimeout(r, 300));
+        stream = await ask();
+      }
       savePermission("microphone", "granted");
     } catch (e) {
       const st = errorState(e);

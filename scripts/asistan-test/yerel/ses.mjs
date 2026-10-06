@@ -167,6 +167,7 @@ const withSession = async (run) => {
 const sessionRun = await (async () => {
   const out = {};
   out.off = (await withSession(async () => { as.micOpening(); as.micClosed(); })).seen.length; // kapalıyken (varsayılan) dokunulmaz
+  out.reset = await (async () => { const sess = fakeSession(); sess.type = "transient"; const had = Object.getOwnPropertyDescriptor(globalThis, "navigator"); Object.defineProperty(globalThis, "navigator", { value: { audioSession: sess }, configurable: true }); try { as.micOpening(); return sess.type; } finally { if (had) Object.defineProperty(globalThis, "navigator", had); else delete globalThis.navigator; } })();
   out.open = (await withSession(async () => { as.micOpening(true); })).seen[0];
   out.closed = (await withSession(async () => { as.micClosed(true); })).type;
   out.two = (await withSession(async () => { as.micOpening(true); as.micOpening(true); as.micClosed(true); })).type;
@@ -176,6 +177,7 @@ const sessionRun = await (async () => {
   return out;
 })();
 group("Ses oturumu (arka plan sesi)")([
+  ["takılı kalan oturum mikrofon açılırken sıfırlanır", { desc: "transient → auto", fn: () => sessionRun.reset, ok: (r) => r === "auto" || as.SESSION_SWITCH }],
   ["kapalıyken oturuma dokunulmaz (varsayılan)", { desc: "değişiklik yok", fn: () => sessionRun.off, ok: (n) => as.SESSION_SWITCH || n === 0 }],
   ["mikrofon açılınca kayıt kipi", { desc: "play-and-record", fn: () => sessionRun.open, ok: (r) => r === "play-and-record" }],
   ["mikrofon kapanınca oturum bırakılır", { desc: "transient", fn: () => sessionRun.closed, ok: (r) => r === "transient" }],
