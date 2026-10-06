@@ -331,6 +331,27 @@ group("Antrenman günlüğü (tanıma)")([
   ["Ali dünkü antrenmana geldi mi", WL(false)], ["Ali bugünkü antrenmana gelmedi", WL(false), "yoklama"], ["bugünkü antrenman nasıl geçti?", WL(false)],
   ["antrenman günlüğünü aç", { desc: "localCommand yine sayfa açar", fn: cmd, ok: (r) => r?.type === "navigate" && r.page === "training" }],
 ]);
+
+// ---- Not ↔ antrenman günlüğü ayrı: günlük anlatımı not olmaz, eski günlük notları Notlar'da görünmez ----
+const HT = await import("@/lib/homeTiles");
+const LL = (want) => ({ desc: want ? "antrenman anlatımı" : "antrenman anlatımı değil", fn: (s) => TL.looksLikeLog(s), ok: (r) => r === want });
+const LN = (desc, n, want) => ["", { desc, fn: () => TL.isLogNote(n), ok: (r) => r === want }];
+group("Antrenman günlüğü not değil")([
+  ["bugünkü antrenmanda 14 knot poyraz, start ve tramola", LL(true)],
+  ["antrenman 90 dakika, rüzgar 12 knot", LL(true)],
+  ["yarın antrenman var, rüzgar 15 knot olacak", LL(false), "gelecek"],
+  ["antrenmanda rüzgar kaç knottu?", LL(false), "soru"],
+  ["Ali'ye antrenman 14 knot rüzgarda iyi geçti diye mesaj at", LL(false), "mesaj"],
+  ["malzeme odası dolu", LL(false)],
+  KN("antrenman anlatımından tek başına not çıkmaz", "bugünkü antrenmanda 14 knot poyraz, start ve tramola", [{ type: "note", title: "Antrenman" }], 0, ""),
+  KN("not istenirse kalır", "bugünkü antrenmanda 14 knot poyraz, not al", [{ type: "note", title: "Antrenman" }], 0, "note"),
+  LN("Antrenman kategorili not günlüğe benzer", { title: "Antrenman", cat: "Antrenman", body: "" }, true),
+  LN("antrenman + knot geçen not günlüğe benzer", { title: "Antrenman notu", body: "12 knot poyraz, start çalıştık" }, true),
+  LN("'Not kalsın' denen not sayılmaz", { title: "Antrenman notu", cat: "Antrenman", keepNote: true }, false),
+  LN("arşivdeki not sayılmaz", { title: "Antrenman", cat: "Antrenman", archived: true }, false),
+  LN("sıradan not sayılmaz", { title: "Malzeme odası dolu", body: "" }, false),
+  ["", { desc: "ana sayfa Notlar kartı günlük notlarını saymaz", fn: () => HT.homeNotes([{ id: "a", title: "Antrenman", cat: "Antrenman" }, { id: "b", title: "Halat al" }]).total, ok: (r) => r === 1 }],
+]);
 const AI_LOG = { wind: "14", dir: "poyraz", topics: ["start", "tramola çalışması", "Kürek"], min: 120, rating: 0, note: "Ali starta geç kaldı", athletes: "Ali, Ayşe", sea: "Hafif dalgalı", details: [{ k: "Antrenör", v: "Gökhan" }], src: "ai" };
 const F = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 group("Antrenman günlüğü (alanlar)")([

@@ -56,12 +56,12 @@ import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsern
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, jobsIn, keepNotes, taskList, wantsRecord, waMode } from "@/lib/steps";
+import { isMulti, jobsIn, keepNotes, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { attLine, bareLog, canLog, isLogAnswer, logReply, missingOf, wantsLog } from "@/lib/trainingLog";
+import { attLine, bareLog, canLog, isLogAnswer, logReply, looksLikeLog, missingOf, wantsLog } from "@/lib/trainingLog";
 import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
@@ -620,6 +620,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (holdIfTalking(() => handle(r, s, viaVoice))) return;
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel();
+    // Antrenman anlatımından yalnız not çıktıysa not açılmaz, günlüğe yazılır (not nottur, günlük günlüktür)
+    const onlyNotes = r.items?.length && r.items.every((d) => d?.type === "note") && !r.actions?.length && !r.send?.text && !r.sends?.length;
+    if (onlyNotes && !isAthleteSide(myKind) && !wantsNote(s) && looksLikeLog(s)) return runLog(s, viaVoice);
     // Not açıkça istenmediyse yapay zekanın başka işin yanına eklediği not atılır (öğrenme verisine de girmez)
     if (r.items?.length) r = { ...r, items: keepNotes(r.items, s) };
     const msg = (r.message || "").trim();

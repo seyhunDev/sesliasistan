@@ -14,6 +14,7 @@ import { addDate } from "@/lib/ai/digest";
 import { rel, todayStr } from "@/lib/utils/format";
 import { assigneesOf, unseenNotes, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
+import { isLogNote } from "@/lib/trainingLog";
 
 // Arama için sadeleştirir: büyük/küçük harf, ı/i ve ş, ğ, ç, ö, ü farkını yok sayar ("iskota" = "Iskota")
 const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/\p{M}/gu, "");
@@ -22,7 +23,11 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 // sabitlenenler kart olarak yan yana, diğerleri zamana göre gruplu; kategori rozeti ve okunmamış mesaj işareti.
 export default function NotesPage() {
   const { notes: allNotes, updateRecord, removeWithUndo, myUid, nameOf } = useData();
-  const notes = allNotes.filter((n) => !n.archived); // arşivlenenler Arşiv sayfasında
+  const live = allNotes.filter((n) => !n.archived); // arşivlenenler Arşiv sayfasında
+  // Antrenman günlüğüne benzeyen notlar listede değil, ayrı kartta (eski sürümler günlüğü ayrıca not olarak da yazıyordu)
+  const logNotes = live.filter(isLogNote);
+  const notes = live.filter((n) => !isLogNote(n));
+  const [showLog, setShowLog] = useState(false);
   const pillOf = useWho();
   const { openMeeting } = useMeeting();
   const { profile } = useAuth();
@@ -122,6 +127,49 @@ export default function NotesPage() {
           </label>
           {chips.length > 2 && <Chips value={f} onChange={setF} options={chips} className="mt-3" />}
         </>
+      )}
+
+      {logNotes.length > 0 && (
+        <section className={`${card} mt-3 overflow-hidden`}>
+          <button onClick={() => setShowLog(!showLog)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
+              <Icon name="note" className="size-[1.125rem]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-[0.9375rem] font-semibold">{logNotes.length} not antrenman günlüğüne benziyor</b>
+              <small className="block text-[0.8125rem] leading-snug text-mut">Notlar listesinde gösterilmiyor. Arşive taşıyabilirsin; arşivden geri alınır.</small>
+            </span>
+            <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${showLog ? "rotate-90" : ""}`} />
+          </button>
+          {showLog && (
+            <>
+              <ul className="divide-y divide-line border-t border-line">
+                {logNotes.map((n) => (
+                  <li key={n.id} className="flex items-start gap-2 px-4 py-2.5">
+                    <button onClick={() => open(n)} className="min-w-0 flex-1 text-left active:opacity-70">
+                      <b className="block truncate text-[0.875rem] font-semibold">{n.title}</b>
+                      {n.body && n.body !== n.title && <small className="line-clamp-2 block text-[0.75rem] leading-snug text-mut">{n.body}</small>}
+                      {n.createdAt && <small className="block text-[0.6875rem] text-mut">{rel(n.createdAt.slice(0, 10))}</small>}
+                    </button>
+                    <button onClick={() => updateRecord("note", n.id, { keepNote: true }, by)} className="shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold text-acc ring-1 ring-line active:bg-bg">
+                      Not kalsın
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  const at = new Date().toISOString();
+                  for (const n of logNotes) updateRecord("note", n.id, { archived: true, archivedAt: at, archivedWhy: "training", pinned: false }, by);
+                }}
+                className="flex w-full items-center justify-center gap-2 border-t border-line px-4 py-3 text-[0.875rem] font-semibold text-acc active:bg-bg"
+              >
+                <Icon name="archive" className="size-4" />
+                Hepsini arşive taşı
+              </button>
+            </>
+          )}
+        </section>
       )}
 
       {notes.length === 0 && <Empty icon="note" title="Henüz not yok" sub="Aşağıdan söyle, yaz ya da + ile ekle. Toplantıyı da kaydedebilirsin." />}

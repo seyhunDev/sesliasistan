@@ -1,3 +1,5 @@
+import { looksLikeLog } from "@/lib/trainingLog";
+
 // Tek cümlede sıralı birden çok iş: "Gökhan'a mesaj at, aynı konuyu takvime ekle ve notlara malzeme listesi hazırla".
 // Yapay zekasız, yalnızca sözcüklere bakar: hangi işler var ve hangi sırayla söylendi. Asistan sırayı buna göre kurar,
 // ön cevap tek bir "plan hazırlıyorum" demez; yapay zekaya sırayı ipucu olarak verir.
@@ -97,7 +99,7 @@ export function keepNotes(items, raw, keep = 0) {
   const list = Array.isArray(items) ? items : [];
   if (wantsNote(raw)) return list;
   const others = list.some((d) => d?.type !== "note");
-  if (!others && !MAIN_JOB.test(lower(String(raw || "")))) return list;
+  if (!others && !MAIN_JOB.test(lower(String(raw || ""))) && !looksLikeLog(raw)) return list;
   let left = keep;
   return list.filter((d) => d?.type !== "note" || left-- > 0);
 }
