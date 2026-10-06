@@ -717,3 +717,22 @@ group("Sohbet bağlamı (mesaj taslağı)")([
   ["ön cevap", Fa("yalnız Tamam, plan ipucu yok", () => { const p = CX.editPrecue(); return p.line === "Tamam." && !/tür=plan/.test(p.hint) && /TASLA/.test(p.hint); })],
   ["değişen taslak (yapay zeka)", Fa("yeni metin aynı alıcıya, kayıt yok", () => { const r = AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "Sporcular", text: "Perşembe 9.30 antrenman var, can yeleklerinizi getirin." }, items: [] }, [], ["Sporcular"]); return r.send?.to === "Sporcular" && /can yelek/.test(r.send.text) && !r.items.length; })],
 ]);
+
+const { extraNote } = await import("@/lib/steps");
+const { cleanTitle } = await import("@/lib/titleClean");
+const titleOf = (s) => cmd(s)?.items?.[0]?.title;
+group("Temiz başlık ve sorusuz ekleme")([
+  ["bana yarın akşam için bir akşam yemeği planla", Y("başlık 'Akşam yemeği' (bana yok)", titleOf, "Akşam yemeği")],
+  ["bana yarın akşam 8'de akşam yemeği planla", T("saat 20:00, başlık 'Akşam yemeği'", (r) => r?.items?.[0]?.time === "20:00" && r.items[0].title === "Akşam yemeği")],
+  ["benim için yarın 10'da antrenman ekle", Y("başlık 'Antrenman'", titleOf, "Antrenman")],
+  ["yarın sabah kahvaltısı planla, 9'da", T("'sabah kahvaltısı' saat sözü sayılmaz", (r) => /kahvaltı/i.test(r?.items?.[0]?.title || ""))],
+  ["Bana için akşam yemeği", Y("yapay zekanın başlığı da temizlenir", cleanTitle, "Akşam yemeği")],
+  ["Lütfen veli toplantısı planla", Y("lütfen ve planla atılır", cleanTitle, "Veli toplantısı")],
+  ["Bir haftalık kamp", Y("baştaki 'bir' atılır", cleanTitle, "Haftalık kamp")],
+  ["bana", Y("hepsi dolgu ise başlık boş kalmaz", cleanTitle, "bana")],
+  ["yapay zeka başlığı", Fa("toDrafts 'bana' ile başlamaz", () => AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Bana akşam yemeği", date: "2026-10-07", time: "20:00" }] }).items[0]?.title === "Akşam yemeği")],
+  ["Akşam 8 için planı oluşturuyorum, onaylıyor musun?", Y("onay sorusu 'Ekledim'in önüne gelmez", extraNote, "")],
+  ["Tamam. Kaydedeyim mi?", Y("tamam ve soru atılır", extraNote, "")],
+  ["O saatte Antrenman planı da var. Kaydedeyim mi?", Y("ek bilgi kalır", extraNote, "O saatte Antrenman planı da var. ")],
+  ["Rüzgâr 22 knot olacak.", Y("rüzgâr bilgisi kalır", extraNote, "Rüzgâr 22 knot olacak. ")],
+]);

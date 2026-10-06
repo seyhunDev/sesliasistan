@@ -36,6 +36,7 @@ const LOC = "(?:['’]?\\s?(?:da|de|ta|te))"; // -da/-de: "onda", "on da", "10'd
 const FROM = "(?:['’]?\\s?(?:da|de|ta|te|dan|den|tan|ten))"; // "10'da", "10'dan (12'ye kadar)"
 const DAT = "(?:['’]?\\s?(?:a|e|ya|ye|ye|dan|den|tan|ten))";
 const POD = "(sabah|akşam|gece|öğleden sonra|öğlen|öğle)";
+const MEAL = "(?!\\s+(?:yemeğ|kahvalt))"; // "akşam yemeği", "sabah kahvaltısı" saat sözü değil
 const MONTHS = "ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık";
 const DAYW = "yarın|bugün|öbür gün|pazartesi|salı|çarşamba|perşembe|cumartesi|cuma|pazar";
 const NOT_TIME = `(?!\\s*(?:${MONTHS}|gün|kişi|tane|adet|dakika|dk|saat|hafta|ay|yıl|numara|nolu))`;
@@ -72,7 +73,7 @@ function canonicalTime(t) {
   const mm = idx === 4 || idx === 3 || idx === 5 ? 0 : +(m[2] || 0);
   if (hh0 > 23 || mm > 59) return t;
 
-  const pod = new RegExp(POD, "iu").exec(t)?.[1]?.toLocaleLowerCase("tr-TR") || "";
+  const pod = new RegExp(`${POD}${MEAL}`, "iu").exec(t)?.[1]?.toLocaleLowerCase("tr-TR") || "";
   let hh = hh0;
   if (pod === "gece" && hh === 12) hh = 0;
   else if (/akşam|gece|öğleden sonra/.test(pod) && hh < 12) hh += 12;
@@ -89,7 +90,7 @@ function canonicalTime(t) {
   const tail = new RegExp(`^\\s*(?:ile|-|–)?\\s*(?:saat\\s*)?\\d{1,2}(?:[:.]\\d{2})?${DAT}?\\s*(?:kadar|arası|arasında)?(?![\\d${L}])`, "iu").exec(t.slice(end));
   if (tail && /(ile|-|–|kadar|arası|dan|den|tan|ten)/iu.test(`${m[0]} ${tail[0]}`)) end += tail[0].length;
   t = `${t.slice(0, start)}${rep}${t.slice(end)}`;
-  return t.replace(new RegExp(`(?<![${L}])${POD}(?![${L}])`, "giu"), " ");
+  return t.replace(new RegExp(`(?<![${L}])${POD}(?![${L}])${MEAL}`, "giu"), " "); // "akşam yemeği" kalır
 }
 
 export function normalizeSpeech(text) {

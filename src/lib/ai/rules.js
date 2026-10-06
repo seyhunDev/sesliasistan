@@ -1,6 +1,7 @@
 // Yedek yorumlayıcı: AI anahtarı yokken veya AI hata verdiğinde çalışır.
 import { normalizeSpeech } from "@/lib/speech/normalize";
 import { keepNotes } from "@/lib/steps";
+import { cleanTitle } from "@/lib/titleClean";
 
 const MONR = "ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık";
 const MONS = MONR.split("|");
@@ -77,7 +78,7 @@ function parseWhen(t, c) {
     }
   }
 
-  const pod = /(sabah|öğleden sonra|akşam|gece|öğlen|öğle)/i.exec(w);
+  const pod = /(sabah|öğleden sonra|akşam|gece|öğlen|öğle)(?!\s+(?:yemeğ|kahvalt))/i.exec(w);
   let hh = null, mm = 0;
   const words = "bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|onbir|oniki|on";
   const tp = [
@@ -99,7 +100,7 @@ function parseWhen(t, c) {
     if ((/akşam|gece|öğleden sonra/.test(pd) && hh < 12) || (/öğle/.test(pd) && hh < 7)) hh += 12;
     r.time = `${pad(hh)}:${pad(mm)}`;
   } else if (pod && /öğle/.test(lc(pod[1]))) r.time = "12:00";
-  w = w.replace(new RegExp(P + "(?:sabah|öğleden sonra|akşam|gece|öğlen|öğle)" + Q, "i"), "$1 ");
+  w = w.replace(new RegExp(P + "(?:sabah|öğleden sonra|akşam|gece|öğlen|öğle)(?!\\s+(?:yemeğ|kahvalt))" + Q, "i"), "$1 "); // "akşam yemeği" başlıkta kalır
   return { ...r, text: clean(w) };
 }
 
@@ -178,6 +179,7 @@ function classify(sg, c) {
     d.endDate = "";
   }
   if (!d.title) d.title = cap(clean(raw));
+  if (type !== "note") d.title = cleanTitle(d.title);
   return d;
 }
 
