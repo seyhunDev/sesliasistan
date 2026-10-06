@@ -13,9 +13,12 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { useKind } from "@/features/auth/useKind";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { useSpeech } from "@/hooks/useSpeech";
-import { canReceipts } from "@/lib/kinds";
+import { canReceipts, isAthleteSide } from "@/lib/kinds";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -531,19 +534,48 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
     setMenu(false);
     fn();
   };
-  const base = [
-    ["cal", "Plan", "Tarih ve saat", () => openAdd({ type: "plan" })],
-    ["task", "Görev", "Yapılacak iş", () => openAdd({ type: "task" })],
-    ["note", "Not", "Kısa not", () => openAdd({ type: "note" })],
-    canReceipts(kind) && ["camera", "Fiş", "Fotoğrafla", () => openReceipt()],
-    ["cake", "Doğum günü", "Hatırlat", () => openBirthday()],
-    ["book", "Dersler", "Program", () => router.push("/schedule")],
-  ].filter(Boolean);
-  // Sayfanın kendi seçenekleri ve sayfanın türü en üstte, vurgulu
+  // Oluştur menüsü gruplu (Seyhun: "artı düğmesinin içeriğini geliştirin, daha fazla özelliğimiz var", 2026-10-06): kişinin
+  // görebildiği her hızlı oluşturma işi, ana sayfadaki İşlemler'le aynı izinlerle. Sayfanın kendi seçenekleri en üstte.
+  const { profile } = useAuth();
+  const { openMeeting } = useMeeting();
+  const staff = profile?.role === "staff";
+  const owner = profile?.role === "owner";
+  const side = isAthleteSide(kind);
+  const athletes = canSeeAthletes(profile?.email);
+  const to = (href) => () => router.push(href);
+  const groups = [
+    ["Kayıt", [
+      ["cal", "Plan", "Tarih ve saat", () => openAdd({ type: "plan" })],
+      ["task", "Görev", "Yapılacak iş", () => openAdd({ type: "task" })],
+      ["note", "Not", "Kısa not", () => openAdd({ type: "note" })],
+      ["cake", "Doğum günü", "Hatırlat", () => openBirthday()],
+    ]],
+    ["Kulüp", [
+      athletes && ["checks", "Yoklama", "Bugün kim geldi", to("/athletes/attendance")],
+      athletes && ["flag", "Yarış", "Yeni yarış", to("/athletes/races/new")],
+      athletes && !side && ["trend", "Antrenman", "Günlüğe yaz", to("/training")],
+      !staff && !side && ["box", "Envanter", "Ürün ekle", to("/inventory")],
+    ]],
+    ["Yönetim", [
+      canReceipts(kind) && ["camera", "Fiş", "Fotoğrafla", () => openReceipt()],
+      owner && ["receipt", "Fatura", "PDF ya da fotoğraf", to("/invoices")],
+      !side && ["users", "Toplantı", "Sesli tutanak", () => openMeeting()],
+      ["chat", "Mesaj", "Kişi ya da grup", to("/messages")],
+    ]],
+    ["Paylaş", [
+      !staff && !side && ["instagram", "Instagram", "Gönderi hazırla", to("/posts/new")],
+      !staff && !side && ["tent", "Etkinlik", "Kamp, gezi…", to("/events/new")],
+      ["book", "Dersler", "Program", to("/schedule")],
+    ]],
+  ].map(([title, list]) => [title, list.filter(Boolean)]);
+  // Sayfanın kendi seçenekleri ve sayfanın türü en üstte, vurgulu ("Bu sayfada"); aynı ad gruplarda tekrar etmez
   const own = cfg.create || [];
-  const firstItem = base.find((b) => b[1] === cfg.first);
+  const firstItem = groups.flatMap(([, l]) => l).find((b) => b[1] === cfg.first);
   const top = [...own, ...(firstItem && !own.some((o) => o[1] === firstItem[1]) ? [firstItem] : [])];
-  const items = [...top.map((x) => [...x, true]), ...base.filter((b) => !top.some((t) => t[1] === b[1]))];
+  const sections = [
+    ...(top.length ? [["Bu sayfada", top.map((x) => [...x, true])]] : []),
+    ...groups.map(([title, list]) => [title, list.filter((b) => !top.some((t) => t[1] === b[1]))]),
+  ].filter(([, list]) => list.length);
 
   // Tek düğmenin işi duruma göre (VoiceLight'taki tablo)
   const talk = () => {
@@ -584,22 +616,29 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         unread={unreadTotal}
       />
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
-        <div className="grid grid-cols-2 gap-2.5">
-          {items.map(([icon, label, desc, onClick, hi]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={go(onClick)}
-              className={`flex items-center gap-2.5 rounded-2xl px-3 py-3 text-left transition active:scale-[.98] ${hi ? "bg-acc/10 ring-1 ring-acc/30" : "bg-bg"}`}
-            >
-              <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${hi ? "bg-deep text-white" : "bg-card text-acc"}`}>
-                <Icon name={icon} className="size-5" />
-              </span>
-              <span className="min-w-0">
-                <b className="block truncate text-[0.9375rem] font-semibold">{label}</b>
-                <small className="block truncate text-[0.75rem] text-mut">{desc}</small>
-              </span>
-            </button>
+        <div className="space-y-4">
+          {sections.map(([title, list]) => (
+            <section key={title}>
+              <h3 className="mb-1.5 px-1 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{title}</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {list.map(([icon, label, desc, onClick, hi]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={go(onClick)}
+                    className={`flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left transition active:scale-[.98] ${hi ? "bg-acc/10 ring-1 ring-acc/30" : "bg-bg"}`}
+                  >
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${hi ? "bg-deep text-white" : "bg-card text-acc"}`}>
+                      <Icon name={icon} className="size-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <b className="block truncate text-[0.9375rem] font-semibold">{label}</b>
+                      <small className="block truncate text-[0.75rem] text-mut">{desc}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </Sheet>
