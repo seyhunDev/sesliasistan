@@ -6,6 +6,7 @@ import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/l
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
+import { draftBlock, historyBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -65,10 +66,9 @@ async function handle(request) {
   const people = [...new Set((Array.isArray(body?.people) ? body.people : []).slice(0, 20).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'-]/gu, "").trim().slice(0, 40)).filter(Boolean))];
   // Mesaj alıcıları (sohbet rehberindeki kişiler, gruplar, WhatsApp'lı kişiler; ana hesap "(ana hesap)" ekiyle). Kalabalık kulüpte 40 sınırı kişileri kesiyordu
   const contacts = [...new Set((Array.isArray(body?.contacts) ? body.contacts : []).slice(0, 150).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'()-]/gu, "").trim().slice(0, 60)).filter(Boolean))];
-  const history = (Array.isArray(body?.history) ? body.history : [])
-    .slice(-6)
-    .map((h) => `${h?.role === "assistant" ? "Asistan" : "Kullanıcı"}: ${String(h?.text ?? "").slice(0, 400)}`)
-    .join("\n");
+  // Açık sohbetin kısa bağlamı: son turlar (toplam ~1500 karakter) ve bu sohbette hazırlanan mesaj taslağı (lib/convoContext.js)
+  const history = historyBlock(body?.history);
+  const draft = draftBlock(body?.draft);
 
   // Ön cevap: telefon kullanıcıya hemen kısa bir giriş söyledi; yanıt onun devamı olmalı (tekrar etmemeli)
   const precue = String(body?.precue ?? "").slice(0, 500);
@@ -80,7 +80,7 @@ async function handle(request) {
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
   const forPeople = contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, ""));
