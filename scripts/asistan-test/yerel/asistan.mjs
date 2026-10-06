@@ -597,3 +597,14 @@ group("Envanter (tanıma)")([
   ["yarın 10'da antrenman ekle", WI(false)], ["2 can yeleği kayboldu", WI(false)], ["envanteri aç", WI(false)], ["envanter sayfasına git", WI(false)],
   ["envanteri aç", NI], ["envanter", NI], ["demirbaşları göster", NI],
 ]);
+
+// ---- Mesaj + WhatsApp: yalnız mesaj istenince kayıt açılmaz; WhatsApp isteği tanınır ----
+group("Mesaj ve WhatsApp")([
+  ["Perşembe, Cuma günü antrenman olacak. Saat antrenman başlangıç 9.30. Sporculara gönder.", Fa("yalnız mesaj: kayıt istenmiyor", () => !ST.wantsRecord("Perşembe, Cuma günü antrenman olacak. Saat antrenman başlangıç 9.30. Sporculara gönder."))],
+  ["Ali'ye yaz ve yarın 10'a toplantı ekle", Fa("ekle: kayıt da isteniyor", () => ST.wantsRecord("Ali'ye yaz ve yarın 10'a toplantı ekle"))],
+  ["Gökhan'a yaz, takvime de ekle", Fa("takvim: kayıt da isteniyor", () => ST.wantsRecord("Gökhan'a yaz, takvime de ekle"))],
+  ["sporculara ve WhatsApp grubuna da gönder", Fa("WhatsApp istendi", () => ST.wantsWhatsApp("sporculara ve WhatsApp grubuna da gönder"))],
+  ["vatsap grubuna da at", Fa("ses tanıma yazışı da WhatsApp", () => ST.wantsWhatsApp("vatsap grubuna da at"))],
+  ["sporculara gönder", Fa("WhatsApp istenmedi", () => !ST.wantsWhatsApp("sporculara gönder"))],
+  ["sporculara gönder (yapay zeka)", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "sporculara", text: "Perşembe ve cuma antrenman var, başlangıç 9.30." } }, [], ["Sporcular", "Ali Kök"]).send?.to === "Sporcular")],
+]);
