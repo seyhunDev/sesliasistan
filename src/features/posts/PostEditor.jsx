@@ -8,7 +8,7 @@ import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, RACE_KINDS, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
-import { drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
+import { afisTag, drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { todayStr } from "@/lib/utils/format";
 
@@ -593,7 +593,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             <div className="flex flex-wrap items-center gap-1.5">
               {THEMES.map(([k, label, c1, c2]) => (
                 <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
-                  <span className="size-7 rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }} />
+                  <span className="grid size-7 place-items-center rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+                    {post.style === "afis" && <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />}
+                  </span>
                 </button>
               ))}
             </div>
