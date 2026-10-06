@@ -68,7 +68,14 @@ function Race({ orgId, uid, by, mail, coach }) {
     },
     [orgId, uid],
   );
-  const onCoach = useCallback((c) => updateDoc(doc(db, "users", uid), { coach: c }).catch(() => toast("Antrenör bilgisi kaydedilemedi")), [uid, toast]);
+  const onCoach = useCallback(
+    (c) =>
+      updateDoc(doc(db, "users", uid), { coach: c }).then(
+        () => true,
+        () => (toast("Antrenör bilgisi kaydedilemedi"), false),
+      ),
+    [uid, toast],
+  );
   const onDelete = async (rid) => {
     try {
       await deleteRace(orgId, rid);

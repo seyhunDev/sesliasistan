@@ -2,25 +2,29 @@
 
 import { useEffect, useRef } from "react";
 import { readMeter } from "@/lib/speech/meter";
+import { waveBars } from "@/lib/speech/waveBars";
 
-// Dinlerken ses dalgası: ince çubuklar sağdan girer, sola akar, boyu sesin o anki gücü.
+// Dinlerken ses dalgası: çubuklar ortada sabit durur, boyları sesin o anki gücüyle yükselip alçalır (kaymaz).
 // Çizim canvas'ta, ekran karesi başına (React yeniden çizimi yok); ses useSpeech'in analizcisinden (meter.js).
-// round: kürenin içinde (canvas küreyi kaplar); çubuklar dairenin içinde kalır, kenara yaklaştıkça kısalır.
-const EVERY = 55; // ms: her çubuk bu kadar sürenin en yüksek sesi
-
-export function ListenWave({ className = "", round = false, bar = round ? 2.5 : 3, gap = round ? 2.5 : 3 }) {
+// round: kürenin içinde (canvas küreyi kaplar), boştaki dalgayla aynı yerde ve aynı çubuk ölçüsünde.
+// Aynı karede kürenin ve kubbenin --lvl değişkeni de yazılır (küre hafifçe büyür, hale ve kubbe ışığı güçlenir);
+// önceden bu değer saniyede 10 kez React'ten geliyordu, büyük asistan bileşeni her seferinde yeniden çiziliyor ve
+// geçişler 100 ms'de bir yeniden başladığı için hareket takılıyordu.
+export function ListenWave({ className = "", round = false, count = round ? 5 : 9, bar = round ? 4.5 : 3, gap = round ? 4 : 3 }) {
   const cv = useRef(null);
 
   useEffect(() => {
     const c = cv.current;
     const ctx = c?.getContext?.("2d");
     if (!ctx) return;
-    const BAR = bar, STEP = bar + gap;
-    let w = 0, h = 0, n = 0, raf = 0;
-    let hist = [];
-    let acc = 0, cur = 0, last = performance.now();
+    const orb = c.closest("[data-orb]");
+    const dome = c.closest("[data-dome]");
+    let w = 0, h = 0, raf = 0;
     let peak = 0.2; // kendiliğinden kazanç: kısık seste de dalga görünsün, bağırınca taşmasın
-    const color = getComputedStyle(c).color || "#ffb3a8";
+    let lvl = 0; // yumuşatılmış seviye (çabuk yükselir, yavaş iner)
+    let sent = -1;
+    let hs = Array(count).fill(0);
+    const color = getComputedStyle(c).color || "#fff";
 
     const size = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -29,47 +33,40 @@ export function ListenWave({ className = "", round = false, bar = round ? 2.5 : 
       c.width = Math.round(w * dpr);
       c.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      n = Math.ceil(w / STEP) + 2;
-      hist = Array(Math.max(0, n - hist.length)).fill(0).concat(hist).slice(-n);
     };
     size();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(size) : null;
     ro?.observe(c);
 
     const frame = (now) => {
-      const dt = Math.min(200, now - last);
-      last = now;
       const v = readMeter();
-      cur = Math.max(cur, v);
-      acc += dt;
-      while (acc >= EVERY) {
-        acc -= EVERY;
-        peak = Math.max(0.2, cur, peak * 0.985);
-        hist.push(cur / peak);
-        cur = 0;
-        if (hist.length > n) hist.shift();
+      peak = Math.max(0.2, v, peak * 0.995);
+      const g = Math.min(1, Math.pow(v / peak, 0.8));
+      lvl += (g - lvl) * (g > lvl ? 0.45 : 0.12);
+      const want = waveBars(lvl, now / 1000, count);
+      hs = hs.map((x, i) => x + (want[i] - x) * (want[i] > x ? 0.5 : 0.18));
+
+      // Küre ve kubbe ışığı: yalnız değer gözle görülür değişince yazılır (stil hesabı az olsun)
+      const q = Math.round(lvl * 50) / 50;
+      if (q !== sent) {
+        sent = q;
+        orb?.style.setProperty("--lvl", q);
+        dome?.style.setProperty("--lvl", q);
       }
+
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = color;
-      const shift = (acc / EVERY) * STEP;
+      const total = count * bar + (count - 1) * gap;
+      const x0 = (w - total) / 2;
       const mid = h / 2;
-      for (let i = hist.length - 1, k = 0; i >= 0; i--, k++) {
-        const x = (round ? w * 0.86 : w) - BAR - k * STEP - shift;
-        if (x < -BAR) break;
-        const a = Math.min(1, Math.pow(hist[i], 0.8));
-        let top = h;
-        if (round) {
-          // dairenin o noktadaki yüksekliği (kiriş), içeride pay bırakarak; kenardaki çubuk hiç çizilmez
-          const r = w / 2, dx = x + BAR / 2 - r, ch = r * r - dx * dx;
-          if (ch <= 0) continue;
-          top = Math.min(h * 0.56, Math.sqrt(ch) * 2 * 0.62);
-          if (top < BAR * 1.5) continue;
-        }
-        const bh = Math.max(BAR, a * top);
-        ctx.globalAlpha = 0.55 + a * 0.45;
+      const top = round ? h * 0.52 : h;
+      for (let i = 0; i < count; i++) {
+        const bh = Math.max(bar, hs[i] * top);
+        const x = x0 + i * (bar + gap);
+        ctx.globalAlpha = 0.75 + Math.min(1, hs[i]) * 0.25;
         ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(x, mid - bh / 2, BAR, bh, BAR / 2);
-        else ctx.rect(x, mid - bh / 2, BAR, bh);
+        if (ctx.roundRect) ctx.roundRect(x, mid - bh / 2, bar, bh, bar / 2);
+        else ctx.rect(x, mid - bh / 2, bar, bh);
         ctx.fill();
       }
       raf = requestAnimationFrame(frame);
@@ -78,15 +75,11 @@ export function ListenWave({ className = "", round = false, bar = round ? 2.5 : 
     return () => {
       cancelAnimationFrame(raf);
       ro?.disconnect();
+      orb?.style.removeProperty("--lvl");
+      dome?.style.removeProperty("--lvl");
     };
-  }, [round, bar, gap]);
+  }, [round, count, bar, gap]);
 
   if (round) return <canvas ref={cv} aria-hidden="true" className={`vl-live ${className}`} />;
-  return (
-    <canvas
-      ref={cv}
-      aria-hidden="true"
-      className={`block h-7 w-full max-w-[13rem] text-[#ffb3a8] [mask-image:linear-gradient(to_right,transparent,#000_35%)] ${className}`}
-    />
-  );
+  return <canvas ref={cv} aria-hidden="true" className={`block h-7 w-full max-w-[13rem] text-[#ffb3a8] ${className}`} />;
 }

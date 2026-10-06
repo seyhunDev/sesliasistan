@@ -15,8 +15,9 @@ async function orgOf(uid) {
   return o;
 }
 
-export function countAi(au, kind) {
-  if (!adminOn() || !au?.uid || !/^[a-z-]{2,20}$/.test(kind)) return;
+// n: artış (çoğunlukla 1; "stt-sec" ses saniyesi sayar ve kişi sayacına girmez)
+export function countAi(au, kind, n = 1) {
+  if (!adminOn() || !au?.uid || !/^[a-z-]{2,20}$/.test(kind) || !(n > 0)) return;
   (async () => {
     const org = await orgOf(au.uid);
     const { adminDb } = await import("@/lib/server/admin");
@@ -25,7 +26,7 @@ export function countAi(au, kind) {
     await adminDb()
       .collection("usage")
       .doc(`ai_${org}_${month}`)
-      .set({ month, org, [kind]: FieldValue.increment(1), by: { [au.uid]: FieldValue.increment(1) } }, { merge: true });
+      .set({ month, org, [kind]: FieldValue.increment(n), ...(kind === "stt-sec" ? {} : { by: { [au.uid]: FieldValue.increment(1) } }) }, { merge: true });
   })().catch((e) => console.warn("[aiUsage]", e?.message));
 }
 

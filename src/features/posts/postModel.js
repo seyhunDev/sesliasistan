@@ -20,7 +20,7 @@ export const POST_ASK_KEY = "sa-post-ask";
 
 // [anahtar, ad, ikon, görseldeki etiket]; ekrandaki sıra da bu (yarış türleri önde)
 export const KINDS = [
-  ["duyuru", "Yarış duyurusu", "flag", "YARIŞ DUYURUSU"],
+  ["duyuru", "Yarış", "flag", "YARIŞ"],
   ["sonuc", "Yarış sonucu", "star", "YARIŞ SONUCU"],
   ["antrenman", "Antrenman", "wind", "ANTRENMAN"],
   ["genel", "Duyuru", "bell", "DUYURU"],
@@ -52,9 +52,9 @@ export const tallOf = (f) => f === "story" || f === "reels";
 // normal kenar boşluğu (84) yeter.
 export const safeOf = (f) =>
   ({ square: { t: 0, b: 0, l: 66, r: 66 }, story: { t: 200, b: 280, l: 0, r: 0 }, reels: { t: 250, b: 440, l: 0, r: 130 } })[f] || { t: 0, b: 0, l: 0, r: 0 };
-// Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Dikey), hikâye, reels
+// Üç boyut birden: gönderi (seçili Kare/Dikey, yoksa Kare), hikâye, reels
 export const SET_LABELS = { square: "Gönderi", portrait: "Gönderi", story: "Hikâye", reels: "Reels" };
-export const setOf = (f) => [f === "square" ? "square" : "portrait", "story", "reels"];
+export const setOf = (f) => [f === "portrait" ? "portrait" : "square", "story", "reels"];
 
 // Fotoğraf yokken zemin: [ad, üst renk, alt renk, vurgu]; yumuşak, az doygun tonlar
 export const THEMES = [
@@ -69,7 +69,7 @@ export const THEMES = [
   ["al", "Al", "#d0142c", "#7d0a17", "#ffffff"],
 ];
 // Her türün kendi zemin rengi (tür değişince renk de değişir; elle seçilen renk kalır)
-export const KIND_THEME = { duyuru: "deniz", sonuc: "gun", antrenman: "gece", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", ozel: "al", diger: "antrasit" };
+export const KIND_THEME = { duyuru: "gece", sonuc: "gun", antrenman: "deniz", genel: "mor", kayit: "turkuaz", kulup: "kum", kutlama: "bordo", ozel: "al", diger: "antrasit" };
 export const kindTheme = (k) => KIND_THEME[k] || "deniz";
 
 // Özel günler: hazır şablon (etiket, başlık, alt satır, dilek) ve görselin havası (mood):
@@ -211,7 +211,8 @@ export function cleanPost(p = {}) {
     classes: S(p.classes, 100),
     meta: p.meta !== false,
     style: styleOf(p.style)[0],
-    tag: S(p.tag, 18),
+    // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
+    tag: p.tag === "YARIŞ DUYURUSU" ? "YARIŞ" : S(p.tag, 18),
     caption: L(p.caption, 2200),
     hashtags: cleanTags(p.hashtags),
     format: formatOf(p.format)[0],
@@ -227,7 +228,7 @@ export function cleanPost(p = {}) {
 }
 
 // Yeni gönderi Dikey 4:5: akışta en büyük görünen, profil ızgarasında en az kesilen boyut
-export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind), format: "portrait" });
+export const freshPost = (kind = "diger") => cleanPost({ kind, tag: kindOf(kind)[3], theme: kindTheme(kind), format: "square" });
 
 // Instagram'a yapıştırılacak metin: açıklama + boş satır + etiketler
 export const fullCaption = (p) => [p.caption.trim(), p.hashtags.join(" ")].filter(Boolean).join("\n\n");

@@ -83,6 +83,18 @@ group("Konuşma bitişi süresi")([
   ["2,2 sn duraksama: gönderilir (devamı öncekine eklenir)", { desc: "duraksamada gönderilir", fn: scene({ noise: () => 0.01, talk: [1000, 7000], pause: [3000, 5200] }), ok: (r) => r.seen && r.end < 0 }],
 ]);
 
+// Dokun-konuş-dokun-gönder: dinlerken ara yazı ne zaman istenir (kayıt yolu, vad.js partialDue)
+const { partialDue, PART_MS } = await import("@/lib/speech/vad");
+const PD = (s, now, want) => ({ desc: want ? "istenir" : "istenmez", fn: () => partialDue(s, now), ok: (r) => r === want });
+group("Dinlerken ara yazı")([
+  ["konuşuldu, 2 sn geçti", PD({ t0: 0, voiceSeen: true, lastSpeech: 1800 }, PART_MS, true)],
+  ["henüz konuşulmadı", PD({ t0: 0, voiceSeen: false, lastSpeech: 0 }, 5000, false)],
+  ["önceki istek sürüyor", PD({ t0: 0, voiceSeen: true, lastSpeech: 4000, partBusy: true, partAt: 2000, partFrom: 1800 }, 4500, false)],
+  ["son ara yazıdan beri konuşulmadı", PD({ t0: 0, voiceSeen: true, lastSpeech: 1800, partAt: 2000, partFrom: 1800 }, 6000, false)],
+  ["yeniden konuşuldu ama 2 sn dolmadı", PD({ t0: 0, voiceSeen: true, lastSpeech: 3000, partAt: 2000, partFrom: 1800 }, 3500, false)],
+  ["yeniden konuşuldu, 2 sn doldu", PD({ t0: 0, voiceSeen: true, lastSpeech: 3800, partAt: 2000, partFrom: 1800 }, 4000, true)],
+]);
+
 // Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)
 const { spokenText } = await import("@/lib/speech/hallucination");
 const SPK = (desc, data, exp) => [desc, { desc: exp ? `“${exp}”` : "boş", fn: () => spokenText(data), ok: (r) => r === exp }];
@@ -111,4 +123,64 @@ group("Dinleme dalgası")([
   ["yüksek ses 1'de kalır", { desc: "1", fn: () => { meter.setMeter(fakeAn(0.9)); return meter.readMeter(); }, ok: (r) => r === 1 }],
   ["başka dinlemenin kapanışı ölçeri kapatmaz", { desc: "açık kalır", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, fakeAn(0.5)); return meter.readMeter(); }, ok: (r) => r > 0.38 }],
   ["kendi kapanışı ölçeri kapatır", { desc: "0", fn: () => { const a = fakeAn(0.1); meter.setMeter(a); meter.setMeter(null, a); return meter.readMeter(); }, ok: (r) => r === 0 }],
+]);
+
+// Dalga ortada sabit: çubuk sayısı ve yeri değişmez, yalnız boyları sesle değişir
+const { waveBars, WAVE_MIN } = await import("@/lib/speech/waveBars");
+const wb = (lv, t = 0.4, n = 5) => waveBars(lv, t, n);
+group("Dinleme dalgası (ortada sabit)")([
+  ["sessizlikte hepsi en kısada", { desc: `hepsi ${WAVE_MIN}`, fn: () => wb(0), ok: (r) => r.length === 5 && r.every((x) => x === WAVE_MIN) }],
+  ["ses yükselince çubuklar uzar", { desc: "yüksek > kısık", fn: () => [wb(0.2), wb(0.9)], ok: ([a, b]) => b.every((x, i) => x > a[i]) }],
+  ["ortadaki çubuk kenardakinden uzun", { desc: "orta > kenar", fn: () => { const t = [0, 0.3, 0.7, 1.1, 1.6]; return t.map((x) => { const r = wb(1, x); return r[2] - Math.max(r[0], r[4]); }); }, ok: (r) => r.filter((d) => d > 0).length >= 4 }],
+  ["çubuk sayısı zamanla değişmez (kayma yok)", { desc: "her an 5", fn: () => [0, 1, 2, 3].map((t) => wb(0.5, t).length), ok: (r) => r.every((n) => n === 5) }],
+  ["boy 1'i geçmez", { desc: "≤ 1", fn: () => [0, 0.5, 1, 2].flatMap((t) => wb(5, t)), ok: (r) => r.every((x) => x <= 1 && x >= WAVE_MIN) }],
+]);
+
+// Gemini 3.5 Transcribe: istek gövdesi (SMART kip, Türkçe, kelime listesi), yanıtın tek satır okunması, süre ve Kullanım satırı
+const GS = await import("@/lib/speech/geminiStt");
+const { sttUsage } = await import("@/lib/aiUsage");
+const wavOf = (sec) => { const b = new Uint8Array(44 + 32000 * sec); b.set([82, 73, 70, 70]); b[28] = 0x00; b[29] = 0x7d; return b; }; // 32000 bayt/sn
+group("Gemini ses tanıma")([
+  ["istek SMART kip ve Türkçe", { desc: "mode SMART, tr-TR", fn: () => GS.sttBody("QUJD", "audio/wav", ["Optimist"]).generationConfig.audioTranscriptionConfig, ok: (c) => c.mode === "SMART" && c.languageCodes[0] === "tr-TR" && c.customVocabulary[0] === "Optimist" }],
+  ["ses gövdede", { desc: "inlineData", fn: () => GS.sttBody("QUJD", "audio/wav").contents[0].parts[0].inlineData, ok: (d) => d.mimeType === "audio/wav" && d.data === "QUJD" }],
+  ["kelime listesi: adlar önce, kısa kelime yok, en çok 100", { desc: "Ali Kaya başta", fn: () => GS.sttVocab("yelken, aç, Optimist, git.", ["Ali Kaya"], ["Foça Kupası"]), ok: (v) => v[0] === "Ali Kaya" && v.includes("Foça Kupası") && v.includes("Optimist") && !v.includes("aç") && v.length <= 100 }],
+  ["uzun liste 100'de kesilir", { desc: "100", fn: () => GS.sttVocab("", Array.from({ length: 150 }, (_, i) => `Ad ${i}`)).length, ok: (n) => n === 100 }],
+  ["madde madde yanıt tek satır olur", { desc: "“Listeye ekle: süt ekmek”", fn: () => GS.sttText({ candidates: [{ content: { parts: [{ text: "Listeye ekle:\n- süt\n- ekmek\n" }] } }] }), ok: (t) => t === "Listeye ekle: süt ekmek" }],
+  ["boş yanıt boş metin", { desc: "boş", fn: () => GS.sttText({}), ok: (t) => t === "" }],
+  ["WAV süresi başlıktan", { desc: "3 sn", fn: () => GS.audioSecs(wavOf(3), "audio/wav"), ok: (n) => n === 3 }],
+  ["Kullanım: saniye dakikaya, ücret", { desc: "2 dk ≈ $0,01", fn: () => sttUsage({ "stt-sec": 120 }), ok: (u) => u.min === 2 && Math.abs(u.cost - 0.01) < 1e-9 }],
+]);
+
+// iPhone ses oturumu: mikrofon kapanınca bırakılır (arka plandaki YouTube/müzik devam etsin)
+const as = await import("@/lib/speech/audioSession");
+const fakeSession = () => { const s = { type: "auto", seen: [] }; return new Proxy(s, { set: (o, k, v) => { if (k === "type") o.seen.push(v); o[k] = v; return true; } }); };
+const withSession = async (run) => {
+  const sess = fakeSession();
+  const had = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", { value: { audioSession: sess }, configurable: true });
+  try { await run(); await new Promise((r) => setTimeout(r, 200)); } finally {
+    if (had) Object.defineProperty(globalThis, "navigator", had); else delete globalThis.navigator;
+  }
+  return sess;
+};
+// Durumlar sırayla denenir (aynı sayaç ve navigator paylaşılır)
+const sessionRun = await (async () => {
+  const out = {};
+  out.off = (await withSession(async () => { as.micOpening(); as.micClosed(); })).seen.length; // kapalıyken (varsayılan) dokunulmaz
+  out.reset = await (async () => { const sess = fakeSession(); sess.type = "transient"; const had = Object.getOwnPropertyDescriptor(globalThis, "navigator"); Object.defineProperty(globalThis, "navigator", { value: { audioSession: sess }, configurable: true }); try { as.micOpening(); return sess.type; } finally { if (had) Object.defineProperty(globalThis, "navigator", had); else delete globalThis.navigator; } })();
+  out.open = (await withSession(async () => { as.micOpening(true); })).seen[0];
+  out.closed = (await withSession(async () => { as.micClosed(true); })).type;
+  out.two = (await withSession(async () => { as.micOpening(true); as.micOpening(true); as.micClosed(true); })).type;
+  as.micClosed(true);
+  await new Promise((r) => setTimeout(r, 200));
+  try { as.micOpening(true); as.micClosed(true); out.none = true; } catch { out.none = false; }
+  return out;
+})();
+group("Ses oturumu (arka plan sesi)")([
+  ["takılı kalan oturum mikrofon açılırken sıfırlanır", { desc: "transient → auto", fn: () => sessionRun.reset, ok: (r) => r === "auto" || as.SESSION_SWITCH }],
+  ["kapalıyken oturuma dokunulmaz (varsayılan)", { desc: "değişiklik yok", fn: () => sessionRun.off, ok: (n) => as.SESSION_SWITCH || n === 0 }],
+  ["mikrofon açılınca kayıt kipi", { desc: "play-and-record", fn: () => sessionRun.open, ok: (r) => r === "play-and-record" }],
+  ["mikrofon kapanınca oturum bırakılır", { desc: "transient", fn: () => sessionRun.closed, ok: (r) => r === "transient" }],
+  ["iki mikrofondan biri kapanınca bırakılmaz", { desc: "play-and-record", fn: () => sessionRun.two, ok: (r) => r === "play-and-record" }],
+  ["destek yoksa hata vermez", { desc: "sorunsuz", fn: () => sessionRun.none, ok: (r) => r === true }],
 ]);

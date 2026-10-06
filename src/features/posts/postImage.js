@@ -564,13 +564,6 @@ function paint(ctx, { items, z }, x, y, c) {
   }
 }
 
-// Renk karıştırma (#rrggbb): a'dan b'ye t oranında
-function mix(a, b, t) {
-  const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16));
-  const [p, q] = [h(a), h(b)];
-  return `rgb(${p.map((v, i) => Math.round(v + (q[i] - v) * t)).join(",")})`;
-}
-
 // Fotoğrafı kaplayacak şekilde çizer: zoom (100-250 %) büyütür, fx/focus (0-100) yatay/dikey kaydırır
 function cover(ctx, photo, W, H, post) {
   const s = Math.max(W / photo.naturalWidth, H / photo.naturalHeight) * ((post.zoom || 100) / 100);
@@ -594,6 +587,36 @@ const MOODS = {
   dini: { dark: NAVY, tint: "rgb(190,205,232)", accent: "#e3c06b", tagBg: "#e3c06b", tagInk: "#0b1f3f", bg: ["#1a4170", "#06132a"], mark: "#e3c06b", markA: 0.2 },
   deniz: { dark: "rgb(4,26,48)", tint: "rgb(185,212,232)", accent: YELLOW, tagBg: YELLOW, tagInk: "#0b1f3f", bg: ["#1d6a8f", "#062440"], mark: "#ffffff", markA: 0.16 },
 };
+// Afiş'te seçilen rengin (tür değişince türün rengi) karşılığı: gölge/zemin rengi (dark), etiket kutusu ve vurgu (tag),
+// etiket yazısı (ink). Etiketin arka planı böylece türe göre değişir: Yarış mint, Sonuç turuncu, Antrenman sarı…
+const AFIS_THEMES = {
+  deniz: { dark: NAVY, tag: YELLOW, ink: "#0b1f3f", tint: "rgb(190,205,232)" },
+  gece: { dark: "rgb(10,18,34)", tag: "#7fd3c4", ink: "#0b1f3f" },
+  gun: { dark: "rgb(52,16,24)", tag: "#f4a261", ink: "#2a0f12" },
+  kum: { dark: "rgb(10,40,32)", tag: "#9ad7ae", ink: "#0d2a22" },
+  mor: { dark: "rgb(28,20,54)", tag: "#c5b3f6", ink: "#1e1440" },
+  turkuaz: { dark: "rgb(5,36,42)", tag: "#5fd4c8", ink: "#06262b" },
+  bordo: { dark: "rgb(46,10,22)", tag: "#f29bb0", ink: "#3a0a18" },
+  antrasit: { dark: "rgb(16,18,22)", tag: "#e3e7ec", ink: "#16191e" },
+  al: { dark: "rgb(86,4,12)", tag: "#ffffff", ink: "#c8102e" },
+};
+// Renk seçicide Afiş'in etiket rengi (küçük nokta)
+export const afisTag = (theme) => (AFIS_THEMES[theme] || AFIS_THEMES.deniz).tag;
+// "rgb(r,g,b)" ya da "#rrggbb" iki rengi t oranında karıştırır, "rgb(...)" döner
+function mixRgb(a, b, t) {
+  const v = (x) => (x.startsWith("#") ? [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)) : x.match(/\d+/g).map(Number));
+  const [p, q] = [v(a), v(b)];
+  return `rgb(${p.map((n, i) => Math.round(n + (q[i] - n) * t)).join(",")})`;
+}
+// Afiş'in havası: özel günde günün havası (MOODS), diğer türlerde seçili renge göre
+function afisMood(post) {
+  const m = moodOf(post);
+  if (m !== "genel") return MOODS[m] || MOODS.genel;
+  const [k, , c1] = themeOf(post.theme);
+  const t = AFIS_THEMES[k] || AFIS_THEMES.deniz;
+  // Fotoğraf seçili rengin açık tonuna çalar (multiply), gölge rengin koyusu
+  return { dark: t.dark, tint: t.tint || mixRgb(c1, "#ffffff", 0.5), accent: t.tag, tagBg: t.tag, tagInk: t.ink };
+}
 // Türk bayrağındaki ay yıldız (bayrak ölçüleriyle; G bayrağın yüksekliği, (x, y) bayrağın sol üstü)
 function crescentStar(ctx, x, y, G, color, alpha) {
   const u = G / 800;
@@ -755,7 +778,7 @@ async function drawAfis(ctx, post, photo, W, H) {
   const base = post.theme === "kum" ? "#1f5a4b" : c2;
   const top = post.pos === "top";
   const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
-  const mood = MOODS[moodOf(post)] || MOODS.genel;
+  const mood = afisMood(post);
   // Yerleşim: logo satırı ve yazı bloğu (ay yıldız ikisinin arasındaki boşluğa göre yerleşir)
   const R = 66;
   const lx = PAD + safeL;
@@ -810,10 +833,10 @@ async function drawAfis(ctx, post, photo, W, H) {
     }
     fade(ctx, W, H, top, mood.dark, 0.55, 0.55);
   } else {
-    // Sade koyu lacivert zemin (fotoğraf eklenince yerini fotoğraf alır)
+    // Sade koyu zemin, seçili rengin tonunda (fotoğraf eklenince yerini fotoğraf alır)
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, mix(base, "#0b1f3f", 0.6));
-    g.addColorStop(1, "#06132a");
+    g.addColorStop(0, mixRgb(base, mood.dark, 0.45));
+    g.addColorStop(1, mixRgb(mood.dark, "#000000", 0.25));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
     const r = ctx.createRadialGradient(W * 0.8, H * 0.18, 0, W * 0.8, H * 0.18, W * 0.85);

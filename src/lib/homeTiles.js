@@ -104,3 +104,23 @@ export function homeActions(o) {
   ];
   return groups.map(([title, items]) => ({ title, items: items.filter(Boolean) })).filter((g) => g.items.length);
 }
+
+// Ana sayfa › Kısayollar: İşlemler'in hepsi yerine en çok SHORTCUT_MAX düğme; kalanlar "Tümü" penceresinde (gruplu).
+// Seçim kişinin profilinde (users/{uid}.homeLinks: anahtar listesi, anahtar = href ya da id). Seçim yoksa ya da seçilenler
+// bu kişide yoksa varsayılanlar, eksik kalırsa grupların sırasıyla tamamlanır. Dönüş: düğmeler (homeActions öğeleri).
+export const SHORTCUT_MAX = 6;
+export const DEFAULT_SHORTCUTS = ["/plans", "/notes", "/athletes", "/athletes/attendance", "meeting", "/inventory"];
+export const linkKey = (a) => a.href || a.id;
+export function shortcutsOf(groups, picked) {
+  const all = groups.flatMap((g) => g.items);
+  const byKey = new Map(all.map((a) => [linkKey(a), a]));
+  const own = Array.isArray(picked) ? picked.filter((k) => byKey.has(k)) : [];
+  const keys = own.length ? own : DEFAULT_SHORTCUTS.filter((k) => byKey.has(k));
+  if (!own.length) for (const a of all) if (keys.length < SHORTCUT_MAX && !keys.includes(linkKey(a))) keys.push(linkKey(a));
+  return keys.slice(0, SHORTCUT_MAX).map((k) => byKey.get(k));
+}
+// Tümü penceresinde bir düğmeyi kısayollara ekle/çıkar: yeni anahtar listesi (dolu iken ekleme yapılmaz → null)
+export function toggleShortcut(current, key) {
+  if (current.includes(key)) return current.filter((k) => k !== key);
+  return current.length >= SHORTCUT_MAX ? null : [...current, key];
+}

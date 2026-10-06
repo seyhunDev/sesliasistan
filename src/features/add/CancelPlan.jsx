@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { GROUPS } from "@/lib/kinds";
-import { CANCEL_REASONS, canCancel, cancelText, waLink } from "@/lib/cancelPlan";
+import { CANCEL_REASONS, canCancel, cancelText, shareText } from "@/lib/cancelPlan";
 import { todayStr } from "@/lib/utils/format";
 
 // Plan ekranında: "İptal et ve haber ver". Plan silinmez, "iptal" olur (geri alınabilir); plandaki kişilere bildirim gider,
@@ -110,11 +110,11 @@ export function CancelPlan({ rec, by, start = false }) {
         <button type="button" disabled={busy} onClick={go} className="h-11 flex-1 rounded-full bg-rec text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60">
           {busy ? "İptal ediliyor…" : "İptal et"}
         </button>
-        <a href={waLink(text)} target="_blank" rel="noreferrer" className="grid h-11 place-items-center rounded-full px-4 text-[0.9375rem] font-semibold ring-1 ring-line active:scale-[.98]">
+        <button type="button" onClick={() => shareText(text)} className="grid h-11 place-items-center rounded-full px-4 text-[0.9375rem] font-semibold ring-1 ring-line active:scale-[.98]">
           <span className="inline-flex items-center gap-1.5">
             <Icon name="whatsapp" className="size-4" /> WhatsApp
           </span>
-        </a>
+        </button>
         <button type="button" onClick={() => setOpen(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
           <Icon name="x" className="size-5" />
         </button>

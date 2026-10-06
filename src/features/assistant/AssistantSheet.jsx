@@ -18,7 +18,8 @@ import { interpretText } from "@/services/aiService";
 import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
 import { applyRepeat, seriesDates } from "@/lib/repeat";
-import { waLink } from "@/lib/cancelPlan";
+import { shareGroup } from "@/lib/cancelPlan";
+import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
 import { askAssistant } from "@/services/assistantService";
 import { buildDigest } from "@/lib/ai/digest";
@@ -53,7 +54,7 @@ import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsern
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, jobsIn, keepNotes, taskList } from "@/lib/steps";
+import { isMulti, jobsIn, keepNotes, taskList, wantsRecord, wantsWhatsApp } from "@/lib/steps";
 import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
@@ -78,8 +79,13 @@ import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
-// Canlı sohbet: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
-const ENDPOINT = 1500; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
+// Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
+// dinler, söylenen ekranda yazılır, yeniden dokununca gönderilir. Cevaptan sonra ya da yapay zeka düşünürken mikrofon
+// kendiliğinden açılmaz, sessizlikte kendiliğinden gönderilmez. Eller serbest sohbete dönmek için true.
+const HANDS_FREE = false;
+// Eller serbest sohbette: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
+const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
+const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
 const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
@@ -97,7 +103,7 @@ const focusBody = (s) => {
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
 // Belirli bir numaraya WhatsApp mesajı (uygulamada hesabı olmayan kişi)
 const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
-const EMPTY = { show: [], pending: null, nav: "", chat: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
+const EMPTY = { show: [], pending: null, nav: "", chat: "", share: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
@@ -148,6 +154,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const { openMeeting } = useMeeting();
   const [text, setText] = useState("");
   const [turns, setTurns] = useState([]);
+  const [used, setUsed] = useState(() => new Set()); // dokunulan sonuç düğmeleri ("<tur>:<tür>")
   const [phase, setPhase] = useState("idle"); // idle | thinking | preparing
   const [voice, setVoice] = useState(false);
   const [heard, setHeard] = useState("");
@@ -217,11 +224,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   const myKind = useKind();
   const firstName = (profile?.name || "").split(" ")[0];
+  const waGroupOf = (label) => waGroupFor(label, profile?.waGroups); // Ayarlar › WhatsApp grupları
   const by = { name: profile?.name ?? "Kullanıcı" };
   const find = (kind, id) => ({ plan: plans, task: tasks, note: notes }[kind] || []).find((x) => x.id === id);
   const busy = phase !== "idle";
 
   const sp = useSpeech({
+    noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
     names: staffNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
@@ -253,15 +262,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sesli sohbette cevaptan sonra dinlemeye devam (15 sn konuşulmazsa mikrofon durur, sohbet açık kalır)
   // Kısa gecikme: cevap aynı anda hazırlandıysa (yerel komut) yazı kutusunun temizlenmiş hali okunsun
   const startAuto = () =>
+    HANDS_FREE &&
     setTimeout(() => {
-      if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true, endpoint: ENDPOINT });
+      if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true, endpoint: ENDPOINT, handsFree: true });
     }, 150);
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>
+    HANDS_FREE &&
     setTimeout(() => {
       // Okunacak cevap varken açılmaz (mikrofon açılınca konuşma susar; akışta gelen cevap kesilmesin)
       if (sayQ.current.busy || sayQ.current.items.length) return;
-      if (live.current.open && live.current.spStatus === "idle" && inflight.current) sp.start({ auto: true, quiet: true, endpoint: ENDPOINT });
+      if (live.current.open && live.current.spStatus === "idle" && inflight.current) sp.start({ auto: true, quiet: true, endpoint: ENDPOINT, handsFree: true });
     }, 120);
 
   function cancelRun() {
@@ -306,6 +317,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const draftSrc = useRef(""); // taslakları doğuran cümle (öğrenme kaydı ve "Düzenle" için; sohbetin ilk cümlesi değil)
   const streamSaid = useRef(""); // akışta okunmak üzere kuyruğa giren metin (yanıt gelince yalnız kalanı okunur)
   const [streamText, setStreamText] = useState(""); // akışta gelen yanıt (kelime kelime)
+  const [work, setWork] = useState(""); // beklerken görünen iş: "Plan hazırlanıyor" (ön cevaptan, lib/precue.js)
+  const [workPhase, setWorkPhase] = useState(""); // iş bitince (boşta) yazı silinsin: önceki iş başka akışta görünmesin
+  if (phase === "idle" && workPhase !== "idle") {
+    setWorkPhase("idle");
+    if (work) setWork("");
+  } else if (phase !== "idle" && workPhase === "idle") setWorkPhase(phase);
 
   // İşler bitince (son işten sonra) asistan "Başka bir isteğin var mı?" diye sorar; "yok/hayır" denirse kapanır
   const askedMore = useRef(false);
@@ -322,14 +339,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null } = extra;
+    const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null } = extra;
     const awaiting = expect || !!pending;
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
     if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
     if (!inv?.ask?.length) invFlow.current = null; // silme sorusu kalktıysa onay da biter
     setStreamText("");
-    setTurns((p) => [...p, { role: "assistant", text: message }]);
-    setCards({ show, pending, nav, chat, att, engine, awaiting, races, person, event, inv });
+    // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
+    const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
+    setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
+    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -570,7 +589,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sıralı işlerin bir adımı: mesaj kartı (onayla gönderilir) ya da kayıtlar (bilgisi tamamsa hemen kaydedilir)
   // lead: önceki adımın sonucu ("Gönderdim. "); msg: yapay zekanın ilk adım için yazdığı cümle (akışta okunmuş olabilir)
   function runStep(st, viaVoice, lead = "", msg = "") {
-    if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead);
+    if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead, wantsWhatsApp(st.s));
     if (st.actions) return askDelete(st.actions, viaVoice, lead, msg);
     return startDrafts(st.items, st.s, msg, st.engine, viaVoice, lead);
   }
@@ -605,6 +624,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // onay gerekenler (silme, mesaj) ardından tek tek sorulur. Ne yapıldığını yapay zeka değil uygulama söyler (gerçek sonuç).
     // Yapay zeka mesajı yalnızca cevabına yazdıysa ("Ekibe şunu göndereyim mi: …") kart yine hazırlanır
     const sendRec = r.intent === "message" && !r.send?.text ? fromMessage(msg) : null;
+    // Yalnız mesaj istendiyse ("Perşembe 9.30'da antrenman var, sporculara gönder") mesajdaki gün/saat kayıt değildir:
+    // takvim/plan/görev/not denmedikçe yapay zekanın eklediği kayıtlar atılır (kendiliğinden plan açılmasın)
+    if ((r.send?.text || r.sends?.length || sendRec?.text) && r.items?.length && !wantsRecord(s)) r = { ...r, items: [] };
     const job = taskList(sendRec?.text ? { ...r, sends: [sendRec] } : r);
     const { items, open: opened } = job;
     if (job.confirm.length || items.length || job.now.length) {
@@ -883,7 +905,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (askTo.current && !QUESTION.test(s)) {
       const to = askTo.current;
       askTo.current = null;
-      return prepareSend(to, focusBody(s), "", "local", viaVoice);
+      return prepareSend(to, focusBody(s), "", "local", viaVoice, "", wantsWhatsApp(s));
     }
     askTo.current = null;
     // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir.
@@ -934,6 +956,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     streamSaid.current = "";
     setStreamText("");
     if (viaVoice) inflight.current = s;
+    setWork(pc?.work || "");
     if (pc) {
       timingMark("pre");
       setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
@@ -1000,7 +1023,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       if (mi?.send && (toTeam || mi.to || mi.unknown)) {
         toast("Yapay zekaya ulaşamadım, mesajı olduğu gibi hazırladım. Kontrol et.");
-        return prepareSend(toTeam ? s.split(/\s+/)[0] : mi.to || mi.unknown, mi.send, "", "rules", viaVoice);
+        return prepareSend(toTeam ? s.split(/\s+/)[0] : mi.to || mi.unknown, mi.send, "", "rules", viaVoice, "", wantsWhatsApp(s));
       }
       // Ekleme isteğine benziyorsa panelde taslak hazırlanır (sunucu yedek kurallarla kart çıkarır)
       if (looksLikeCreate(s)) {
@@ -1065,7 +1088,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!c || !myUid) return null;
     return { cid: dmId(myUid, c.p.uid), label: c.name, create: { type: "dm", members: [myUid, c.p.uid].sort() } };
   }
-  function prepareSend(to, text, msg, engine, viaVoice, lead = "") {
+  // alsoWa: istekte WhatsApp da geçti ("sporculara ve WhatsApp grubuna gönder"): kart "Gönder + WhatsApp" olur
+  function prepareSend(to, text, msg, engine, viaVoice, lead = "", alsoWa = false) {
     const dest = resolveTo(to);
     if (!dest) {
       const who = String(to || "").trim();
@@ -1076,11 +1100,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
     }
     const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
-    reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text } }, engine, expect: true }, viaVoice);
+    reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
   }
   const setSendText = (t) => setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
 
-  async function confirmPending(fromText = false) {
+  // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
+  async function confirmPending(fromText = false, waOpened = false) {
     const pend = cards.pending;
     if (!pend) return;
     if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
@@ -1124,8 +1149,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepsEnd(!!ok);
       toast(ok ? "Mesaj gönderildi" : "Mesaj gönderilemedi");
       navigator.vibrate?.([10, 40, 10]);
-      if (nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
-      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "" }, fromText && convo.current);
+      // Grup mesajı WhatsApp grubuna da istendiyse (sesle onaylanınca WhatsApp kendiliğinden açılamaz): "WhatsApp'ta da paylaş" düğmesi
+      const waLeft = ok && team && pend.send.alsoWa && !waOpened;
+      if (!waLeft && nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
+      const waG = team ? waGroupOf(label) : "";
+      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun${waG ? ", grup açılınca yazı alanına basılı tutup Yapıştır de." : ", paylaşım menüsünün üstündeki son sohbetlerden grubu seç."}`, { engine: "local", chat: cid, share: body, wa: waG }, fromText && convo.current);
+      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? (waG ? "; WhatsApp grubunda yazı alanına basılı tutup Yapıştır de" : "; paylaşımda WhatsApp grubunu seç") : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "", wa: waG }, fromText && convo.current);
     }
     let n = 0;
     for (const a of pend.actions) {
@@ -1807,17 +1836,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   useEffect(() => {
     if (open && listening && isCloseNow(heardNow)) finish();
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
-  const lvl = listening ? Math.round(Math.min(1, sp.level * 2.2) * 10) / 10 : 0; // sahnedeki ses dalgası (kaba adımlarla: az yeniden çizim)
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, level: lvl, talked: turns.length > 0 });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, lvl, turns.length]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0 });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, turns.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
     clearSay();
     tts.stop();
-    sp.start({ autoStop: SILENCE_MS, endpoint: ENDPOINT });
+    sp.start(listenOpts(false));
   };
   useEffect(() => {
     onAct?.({
@@ -1856,6 +1884,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin
       const t = setTimeout(() => {
         setTurns([]);
+        setUsed(new Set());
         setDrafts([]);
         setSaved([]);
         setCards(EMPTY);
@@ -1880,7 +1909,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (seed?.text) run(seed.text, !!seed.voice);
       else if (seed?.listen) {
         convo.current = true;
-        sp.start({ autoStop: SILENCE_MS, auto: true, endpoint: ENDPOINT });
+        sp.start(listenOpts(true));
       }
       return;
     }
@@ -1889,6 +1918,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSaved([]);
     setText("");
     setTurns([]);
+    setUsed(new Set());
     setCards(EMPTY);
     setPhase("idle");
     setHeard("");
@@ -1897,16 +1927,67 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (seed?.text) run(seed.text, !!seed.voice, true);
     else if (seed?.listen) {
       setBooting(true);
-      sp.start({ autoStop: SILENCE_MS, auto: true, endpoint: ENDPOINT });
+      sp.start(listenOpts(true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, seed?.id]);
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
-  const shown = cards.show
-    .filter((x, i, a) => a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i)
-    .map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) }))
-    .filter((x) => x.rec);
+  const shownOf = (show = []) =>
+    show
+      .filter((x, i, a) => a.findIndex((y) => y.kind === x.kind && y.id === x.id) === i)
+      .map((x) => ({ kind: x.kind, rec: find(x.kind, x.id) }))
+      .filter((x) => x.rec);
+  // Cevabın altındaki sonuç düğmeleri; dokunulan düğme soluklaşır ("used")
+  const markLink = (i, k) => setUsed((u) => (u.has(`${i}:${k}`) ? u : new Set(u).add(`${i}:${k}`)));
+  const linkCls = (i, k) => (used.has(`${i}:${k}`) ? " opacity-55" : "");
+  const turnLinks = (t, i) => {
+    const l = t.links;
+    if (!l) return null;
+    const shown = shownOf(l.show);
+    return (
+      <>
+        {shown.length > 0 && (
+          <RecordList
+            items={shown}
+            plans={plans}
+            onToggle={toggleTask}
+            onOpen={(kind, id) => {
+              if (!embedded) park();
+              openAdd({ edit: { kind, id } });
+            }}
+          />
+        )}
+        {l.share && (
+          <button
+            type="button"
+            onClick={() => (markLink(i, "share"), shareGroup(l.share, l.wa))}
+            className={`fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-ok text-[0.875rem] font-semibold text-white active:scale-[.98]${linkCls(i, "share")}`}
+          >
+            <Icon name="whatsapp" className="size-4" /> {used.has(`${i}:share`) ? "WhatsApp'ta paylaşıldı · yeniden" : "WhatsApp grubuna da gönder"}
+          </button>
+        )}
+        {l.chat && (
+          <button
+            type="button"
+            onClick={() => {
+              markLink(i, "chat");
+              finish(false);
+              router.push(`/messages?c=${l.chat}`);
+            }}
+            className={`fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]${linkCls(i, "chat")}`}
+          >
+            <Icon name="chat" className="size-4" /> Sohbeti aç
+          </button>
+        )}
+        {l.nav && PAGES[l.nav] && (
+          <button type="button" onClick={() => (markLink(i, "nav"), go(l.nav, ""))} className={`fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]${linkCls(i, "nav")}`}>
+            {PAGES[l.nav].label} sayfasını aç
+          </button>
+        )}
+      </>
+    );
+  };
   const askObj = cards.awaiting
     ? {
       chips: cards.pending?.actions || cards.pending?.att ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : [], // mesaj kartının kendi düğmeleri var
@@ -1941,7 +2022,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} />
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={turnLinks} />
 
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (
@@ -2048,8 +2129,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           />
         )}
 
+        {/* Hazırlanıyor: ön cevaptan sonra yapay zeka çalışırken ne yapıldığı, akan ışıkla (sahnede de) */}
+        {busy && work && !streamText && steps.every((x) => x.st !== "run") && (
+          <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
+            <span className="work-ring" aria-hidden="true" />
+            <span className="work-text text-[0.875rem] font-medium">{work}…</span>
+            {!embedded && (
+              <button type="button" onClick={abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
+                Vazgeç
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Düşünüyor / yazıya çeviriyor: sahnede yazı yok, küre anlatır; yalnız tam panelde nokta + yazı */}
-        {!embedded && (busy || transcribing) && !streamText && steps.every((x) => x.st !== "run") && (
+        {!embedded && (busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && (
           <div className="fade-in mt-2 flex items-center gap-2 text-[0.8125rem] text-mut">
             <span className="flex gap-1 rounded-2xl rounded-tl-md bg-bg px-3 py-2.5" aria-hidden="true">
               <i className="size-1.5 animate-bounce rounded-full bg-mut [animation-delay:-.3s]" />
@@ -2147,20 +2241,30 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                   <Icon name="whatsapp" className="size-4" /> {"WhatsApp'ta gönder"}
                 </a>
               ) : (
-                <button type="button" onClick={() => confirmPending()} disabled={!cards.pending.send.text.trim()} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
-                  <Icon name="up" className="size-4" /> Gönder
+                <button
+                  type="button"
+                  onClick={() => {
+                    // WhatsApp grubuna da istendiyse: dokunuşla WhatsApp paylaşımı hemen açılır (grup orada seçilir), uygulamadaki gruba da gönderilir
+                    const p = cards.pending.send;
+                    if (p.team && p.alsoWa) shareGroup(p.text, waGroupOf(p.label));
+                    confirmPending(false, p.team && p.alsoWa);
+                  }}
+                  disabled={!cards.pending.send.text.trim()}
+                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40"
+                >
+                  <Icon name="up" className="size-4" /> {cards.pending.send.team && cards.pending.send.alsoWa ? "Gönder + WhatsApp" : "Gönder"}
                 </button>
               )}
               {cards.pending.send.team && (
-                <a href={waLink(cards.pending.send.text)} target="_blank" rel="noreferrer" aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
+                <button type="button" onClick={() => shareGroup(cards.pending.send.text, waGroupOf(cards.pending.send.label))} aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
                   <Icon name="whatsapp" className="size-5" />
-                </a>
+                </button>
               )}
               <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team ? " Uygulamada olmayan veliler için WhatsApp düğmesiyle aynı metni gruba paylaş." : ""}</p>
+            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.team && waGroupOf(cards.pending.send.label) ? ` WhatsApp grubu da açılır; metin kopyalanır, yazı alanına basılı tutup Yapıştır de.` : cards.pending.send.team && cards.pending.send.alsoWa ? " Uygulamadaki gruba gider; paylaşım menüsü de açılır, son sohbetlerden WhatsApp grubunu seç." : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun, son sohbetlerden grubu seç." : ""}</p>
           </div>
         )}
 
@@ -2171,32 +2275,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               {cards.pending.actions.map((a, i) => <li key={i}>• {describeAction(a, find(a.kind, a.id))}</li>)}
             </ul>
           </div>
-        )}
-
-        {shown.length > 0 && (
-          <RecordList
-            items={shown}
-            plans={plans}
-            onToggle={toggleTask}
-            onOpen={(kind, id) => {
-              if (!embedded) park();
-              openAdd({ edit: { kind, id } });
-            }}
-          />
-        )}
-
-        {cards.chat && (
-          <button
-            type="button"
-            onClick={() => {
-              const to = cards.chat;
-              finish(false);
-              router.push(`/messages?c=${to}`);
-            }}
-            className="fade-in mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]"
-          >
-            <Icon name="chat" className="size-4" /> Sohbeti aç
-          </button>
         )}
 
         {cards.races?.length > 0 && (
@@ -2211,11 +2289,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {cards.nav && (
-          <button type="button" onClick={() => go(cards.nav, "")} className="fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
-            {PAGES[cards.nav].label} sayfasını aç
-          </button>
-        )}
     </>
   );
 

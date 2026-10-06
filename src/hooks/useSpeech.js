@@ -4,10 +4,11 @@ import { authFetch } from "@/lib/authFetch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
-import { toWav16k } from "@/lib/speech/wav";
-import { makeVad, speechEnded } from "@/lib/speech/vad";
+import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
+import { makeVad, partialDue, speechEnded } from "@/lib/speech/vad";
 import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
+import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -26,7 +27,10 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 
 // status: "idle" | "listening" | "transcribing"
 // onFinal(text, mode): mode "send" (hemen gönder) | "edit" (metin kutuda kalsın)
-// start({ autoStop: ms, auto, quiet, endpoint: ms }): autoStop kadar konuşulmazsa dinleme biter (0 = kapalı).
+// Varsayılan: dokun-konuş-dokun-gönder (ChatGPT/Claude gibi). Dinleme kullanıcı durdurana kadar sürer, söylenen
+// dinlerken ekranda yazılır (kayıt yolunda ara ara sunucuda yazıya çevrilir), durdurunca gönderilir.
+// start({ autoStop: ms, auto, quiet, endpoint: ms, handsFree }): autoStop kadar konuşulmazsa dinleme biter (0 = kapalı).
+//   handsFree: kayıt yolunda konuşma bitince (END_SILENCE) kendiliğinden gönder (şimdilik kimse kullanmıyor).
 //   endpoint: konuşma başladıktan sonra bu kadar sessizlikte söylenen kendiliğinden gönderilir (canlı sohbet; 0 = kapalı).
 //   Kayıt yolunda bu zaten END_SILENCE ile yapılır; bu seçenek canlı yazı yolunda (Web Speech) da aynısını yapar.
 //   auto: kendiliğinden başlatıldı (15 sn sessizlikte kapanır). quiet: hatalar gösterilmez
@@ -34,8 +38,9 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 //   Konuşulduysa metni gönderir, hiç konuşulmadıysa "ses duyulmadı" der.
 // names: kişi adları (çalışanlar); ses çevirisine ipucu olarak gider ki doğru yazılsın
 // terms: özel adlar (yarış adları gibi); aynı şekilde ipucu olur
+// noLevel: ses seviyesi React durumuna yazılmaz (yalnız ölçere, meter.js); dinlerken saniyede 10 yeniden çizim olmaz
 // onMiss(): dinleme metinsiz bitti (sessiz dinlemede de çağrılır; bekletilen yanıt uygulansın diye)
-export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms } = {}) {
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -63,12 +68,18 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     clearInterval(s.timer);
     s.timer = null;
     clearTimeout(s.finalTimer);
+    try { s.proc?.disconnect(); } catch {}
+    s.proc = null;
     s.stream?.getTracks().forEach((t) => t.stop());
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
     if (s.analyser) setMeter(null, s.analyser);
     s.analyser = null;
+    if (s.micOn) {
+      s.micOn = false;
+      micClosed(); // iPhone: ses oturumu bırakılır, arka plandaki ses (YouTube, müzik) devam eder
+    }
   };
 
   const finish = () => {
@@ -113,7 +124,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         raw = now - (s.lastAct || 0) < 400 ? 0.35 + Math.random() * 0.5 : 0.05 + Math.random() * 0.05;
       }
       s.lvl = s.lvl * 0.55 + raw * 0.45; // yumuşatma: dalga titremesin
-      setLevel(s.lvl);
+      if (!noLevel) setLevel(s.lvl);
       if (!s.analyser) setMeterLevel(s.lvl);
 
       if (s.status !== "listening") return;
@@ -121,11 +132,13 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         stopRef.current?.("send");
         return;
       }
-      // Kayıt yolu: konuşuldu ve sustu, kendiliğinden gönder (canlı yazı olmadığı için bekletmeyelim)
-      if (s.kind === "server" && speechEnded(s, now)) {
+      // Kayıt yolu, eller serbest: konuşuldu ve sustu, kendiliğinden gönder
+      if (s.handsFree && s.kind === "server" && speechEnded(s, now)) {
         stopRef.current?.("send");
         return;
       }
+      // Kayıt yolu: söylenen ara ara yazıya çevrilip gösterilir (gönderme yine kullanıcının dokunuşuyla)
+      if (s.kind === "server" && s.pcmLen && partialDue(s, now)) livePartial(s.sid);
       // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
       // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
       if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {
@@ -239,13 +252,59 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     begin();
   };
 
+  // Kayıt yolunda ara yazı: şimdiye kadarki ses sunucuda yazıya çevrilir, ekranda gösterilir (gönderilmez)
+  const livePartial = async (sid) => {
+    const s = R.current;
+    s.partBusy = true;
+    s.partAt = Date.now();
+    s.partFrom = s.lastSpeech;
+    try {
+      const all = new Float32Array(s.pcmLen);
+      let o = 0;
+      for (const c of s.pcm) {
+        all.set(c, o);
+        o += c.length;
+      }
+      const wav = await pcmToWav16k(all, s.rate);
+      if (s.sid !== sid || s.status !== "listening") return;
+      const fd = new FormData();
+      fd.append("audio", wav, "ara.wav");
+      fd.append("partial", "1");
+      if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
+      if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
+      const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (s.sid !== sid || s.status === "idle") return;
+      if (res.ok && data.text) {
+        s.partial = data.text;
+        setFinalText(data.text);
+      }
+    } catch {
+    } finally {
+      if (s.sid === sid) s.partBusy = false;
+    }
+  };
+
   // ---- Yol 2: kayıt + sunucuda çeviri ----
   const startServer = async (sid) => {
     const s = R.current;
     const alive = () => s.sid === sid;
     let stream;
+    if (!s.micOn) {
+      s.micOn = true;
+      micOpening();
+    }
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      const ask = () => navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      try {
+        stream = await ask();
+      } catch (e) {
+        // İzin reddi değilse (iPhone ses oturumu takılı, mikrofon başka işte): oturumu sıfırla, bir kez daha dene
+        if (errorState(e) === "denied") throw e;
+        micReset();
+        await new Promise((r) => setTimeout(r, 300));
+        stream = await ask();
+      }
       savePermission("microphone", "granted");
     } catch (e) {
       const st = errorState(e);
@@ -273,7 +332,25 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const lp = ctx.createBiquadFilter();
       lp.type = "lowpass";
       lp.frequency.value = 4000;
-      ctx.createMediaStreamSource(stream).connect(hp);
+      const src = ctx.createMediaStreamSource(stream);
+      src.connect(hp);
+      // Ham ses de toplanır: dinlerken ara ara yazıya çevrilip gösterilsin (livePartial)
+      try {
+        const proc = ctx.createScriptProcessor(4096, 1, 1);
+        s.pcm = [];
+        s.pcmLen = 0;
+        s.rate = ctx.sampleRate;
+        proc.onaudioprocess = (e) => {
+          e.outputBuffer.getChannelData(0).fill(0); // hoparlöre ses gitmez
+          if (!alive() || s.status !== "listening") return;
+          const d = new Float32Array(e.inputBuffer.getChannelData(0));
+          s.pcm.push(d);
+          s.pcmLen += d.length;
+        };
+        src.connect(proc);
+        proc.connect(ctx.destination);
+        s.proc = proc;
+      } catch {}
       hp.connect(lp);
       lp.connect(an);
       s.ctx = ctx;
@@ -324,14 +401,17 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (!alive()) return;
         if (!res.ok) throw new Error(data.error || "Ses çevrilemedi");
         finish();
-        if (data.text) {
+        const text = data.text || s.partial;
+        if (text) {
           speechMark("text");
-          cb.current.onFinal?.(data.text, mode);
+          cb.current.onFinal?.(text, mode);
         } else fail("Ses anlaşılamadı, tekrar dene.");
       } catch (e) {
         if (!alive()) return;
         finish();
-        fail(e.message);
+        // Son çeviri olmadıysa dinlerken gösterilen yazıyla devam
+        if (s.partial) cb.current.onFinal?.(s.partial, mode);
+        else fail(e.message);
       }
     };
     mr.start();
@@ -372,7 +452,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
-      endpoint: opts.endpoint || 0,
+      endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, proc: null, partial: "", partBusy: false, partAt: 0, partFrom: 0,
     });
     setFinalText("");
     setInterim("");

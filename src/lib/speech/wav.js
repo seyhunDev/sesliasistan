@@ -14,25 +14,41 @@ export async function toWav16k(blob) {
       const p = ctx.decodeAudioData(ab, res, rej);
       if (p?.then) p.then(res, rej);
     });
-    const off = new OAC(1, Math.max(1, Math.ceil(audio.duration * RATE)), RATE);
-    const src = off.createBufferSource();
-    src.buffer = audio;
-    // Rüzgâr ve motor uğultusu (konuşmanın altındaki çok pes sesler) atılır
-    const hp = off.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 90;
-    src.connect(hp);
-    hp.connect(off.destination);
-    src.start(0);
-    const out = await new Promise((res, rej) => {
-      off.oncomplete = (e) => res(e.renderedBuffer);
-      const p = off.startRendering();
-      if (p?.then) p.then(res, rej);
-    });
-    return encode(louder(trimQuiet(out.getChannelData(0))));
+    return await render(audio);
   } finally {
     try { ctx.close(); } catch {}
   }
+}
+
+// Kayıt sürerken toplanan ham ses (Float32, cihazın örnek hızında) → 16 kHz WAV (dinlerken ara yazı için)
+export async function pcmToWav16k(samples, rate) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OAC || !samples?.length) throw new Error("ses yok");
+  const tmp = new OAC(1, 1, RATE);
+  const audio = tmp.createBuffer(1, samples.length, rate);
+  audio.getChannelData(0).set(samples);
+  return render(audio);
+}
+
+// 16 kHz'e çevir, pes uğultuyu at, sessizliği kırp, kısık sesi yükselt
+async function render(audio) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const off = new OAC(1, Math.max(1, Math.ceil(audio.duration * RATE)), RATE);
+  const src = off.createBufferSource();
+  src.buffer = audio;
+  // Rüzgâr ve motor uğultusu (konuşmanın altındaki çok pes sesler) atılır
+  const hp = off.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 90;
+  src.connect(hp);
+  hp.connect(off.destination);
+  src.start(0);
+  const out = await new Promise((res, rej) => {
+    off.oncomplete = (e) => res(e.renderedBuffer);
+    const p = off.startRendering();
+    if (p?.then) p.then(res, rej);
+  });
+  return encode(louder(trimQuiet(out.getChannelData(0))));
 }
 
 const FRAME = RATE / 50; // 20 ms

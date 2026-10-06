@@ -123,7 +123,7 @@ group("Instagram gönderisi")([
   ["az sporcu", { desc: "Ad · sınıf satırları", fn: () => PM.peopleLines(SIX.slice(0, 2)), ok: (r) => r === "Ali Kaya · Optimist\nAyşe Su · Optimist" }],
   ["kalabalık", { desc: "6 sporcumuz yarışta + ilk adlar", fn: () => PM.peopleLines(SIX), ok: (r) => r.startsWith("6 sporcumuz yarışta\nAli, Ayşe, Can") }],
   ["görsel satırı en çok 4", { desc: "4 satır", fn: () => PM.cleanPeople("a\nb\nc\nd\ne\nf").split("\n").length, ok: (r) => r === 4 }],
-  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ DUYURUSU" && r.headline === "Foça Kupası" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
+  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ" && r.headline === "Foça Kupası" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
   ["yarış sonucu", { desc: "biten yarış → sonuç", fn: () => PM.postFromRace({ name: "Ege Kupası", startDate: "2026-09-01", endDate: "2026-09-02" }, "2026-10-03").kind, ok: (r) => r === "sonuc" }],
   ["kişisel bilgi gitmez", { desc: "yarıştan yalnız ad ve sınıf", fn: () => JSON.stringify(PM.raceBrief({ name: "X" }, [{ name: "Ali Kaya", cls: "ILCA", tc: "12345678901", parentPhone: "0532" }])), ok: (r) => !/12345678901|0532/.test(r) && /Ali Kaya/.test(r) }],
   ["bozuk kayıt", { desc: "tür, biçim, zemin, konum varsayılan; odak 0-100", fn: () => PM.cleanPost({ kind: "x", format: "y", theme: "z", pos: "orta", focus: 250, thumb: "http://kötü" }), ok: (r) => r.kind === "diger" && r.format === "square" && r.theme === "deniz" && r.pos === "bottom" && r.focus === 100 && r.thumb === "" }],
@@ -291,7 +291,7 @@ group("Instagram tasarım")([
   ["başarı satırı", F("1 sporcu Sporcumuza, çok Sporcularımıza, sonuçta tebrik", () => PM.raceWish(ONE) === "Sporcumuza başarılar!" && PM.raceWish({ ...ONE, athletes: SIX }) === "Sporcularımıza başarılar!" && PM.raceWish(ONE, "sonuc") === "Sporcumuzu tebrik ederiz!" && PM.raceWish(null) === "")],
   ["sınıflar", F("talimattaki sınıflar, yoksa sporcularınki; tekrarsız, en çok 4", () => PM.raceClasses({ classes: "ILCA 4, ILCA 6" }).join() === "ILCA 4,ILCA 6" && PM.raceClasses({ athletes: [...SIX, { name: "X", cls: "ILCA 4" }] }).join() === "Optimist,ILCA 4")],
   ["yer · tarih", F("ilçe · tarih", () => PM.raceMeta(ONE) === "Foça · 7-11 Ekim 2026" && PM.raceMeta(null) === "")],
-  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ DUYURUSU" && r.meta === true && r.style === "afis"; })],
+  ["yarıştan ilk hali", F("başlık, alt satır, dilek, etiket gelir", () => { const r = PM.postFromRace({ name: "TYF Ligi", district: "Foça", startDate: "2026-10-07", athletes: [{ name: "Mete Ok", cls: "ILCA 4" }] }, "2026-10-03"); return r.wish === "Sporcumuza başarılar!" && r.tag === "YARIŞ" && r.meta === true && r.style === "afis"; })],
   ["tür değişince", F("kendiliğinden yazılar yenilenir, elle yazılan başlık kalır", () => {
     const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }), headline: "Benim başlığım" });
     const b = PM.reauto(a, { ...a, kind: "sonuc" });
@@ -327,7 +327,7 @@ group("Instagram tasarım")([
     const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }) });
     const b = PM.reauto(a, { ...a, kind: "sonuc" });
     const c = PM.reauto({ ...a, theme: "kum" }, { ...a, theme: "kum", kind: "sonuc" });
-    return set.size === PM.KINDS.length && a.theme === "deniz" && b.theme === "gun" && c.theme === "kum" && PM.freshPost("antrenman").theme === "gece" && PM.postFromRace({ name: "X", startDate: "2026-09-01" }, "2026-10-03").theme === "gun";
+    return set.size === PM.KINDS.length && a.theme === "gece" && b.theme === "gun" && c.theme === "kum" && PM.freshPost("antrenman").theme === "deniz" && PM.postFromRace({ name: "X", startDate: "2026-09-01" }, "2026-10-03").theme === "gun";
   })],
   ["görselde en çok 2 sporcu", F("yarışta sporcu satırı yok, 3+ satır görselde yazılmaz", () =>
     PM.racePeople({ ...ONE, athletes: SIX }) === "" &&
@@ -336,7 +336,7 @@ group("Instagram tasarım")([
     PM.imagePeople("A\nB\nC") === "")],
   ["ayrıntılı türler", F("yarış duyurusu/sonucu etiketleri, her türün ayrı rengi", () => {
     const tags = Object.fromEntries(PM.KINDS.map(([k, , , t]) => [k, t]));
-    return tags.duyuru === "YARIŞ DUYURUSU" && tags.sonuc === "YARIŞ SONUCU" && tags.kayit === "KAYITLAR AÇIK" && PM.KINDS.length >= 8 && PM.cleanPost({ kind: "kutlama" }).kind === "kutlama" && PM.freshPost("kutlama").theme === "bordo" && PM.RACE_KINDS.includes("sonuc");
+    return tags.duyuru === "YARIŞ" && PM.cleanPost({ tag: "YARIŞ DUYURUSU" }).tag === "YARIŞ" && tags.sonuc === "YARIŞ SONUCU" && tags.kayit === "KAYITLAR AÇIK" && PM.KINDS.length >= 8 && PM.cleanPost({ kind: "kutlama" }).kind === "kutlama" && PM.freshPost("kutlama").theme === "bordo" && PM.RACE_KINDS.includes("sonuc");
   })],
   ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],
@@ -344,14 +344,16 @@ group("Instagram tasarım")([
 
 // Instagram hikâye boyutu (postModel.js)
 const PMs = await import("@/features/posts/postModel");
+const PIs = await import("@/features/posts/postImage");
 group("Instagram hikâye")([
   ["hikâye boyutu", F("1080×1920, oran 9/16", () => { const f = PMs.formatOf("story"); return f[2] === 1080 && f[3] === 1920 && PMs.aspectOf("story") === "9 / 16"; })],
   ["kayıtta korunur", F("cleanPost story kalır, bilinmeyen kare olur", () => PMs.cleanPost({ format: "story" }).format === "story" && PMs.cleanPost({ format: "x" }).format === "square")],
   ["reels boyutu", F("1080×1920, kayıtta kalır, sağda ve altta güvenli alan", () => { const f = PMs.formatOf("reels"); const s = PMs.safeOf("reels"); return f[3] === 1920 && PMs.aspectOf("reels") === "9 / 16" && PMs.cleanPost({ format: "reels" }).format === "reels" && s.r > 0 && s.b > PMs.safeOf("story").b && PMs.safeOf("square").b === 0; })],
   ["afiş şablonu", F("yeni gönderi Afiş şablonuyla açılır, eski şablonlar korunur", () => PMs.freshPost("duyuru").style === "afis" && PMs.cleanPost({ style: "kart" }).style === "kart" && PMs.STYLES[0][0] === "afis")],
   ["karartma", F("varsayılan 55, 0-100 arası", () => PMs.cleanPost({}).shade === 55 && PMs.cleanPost({ shade: 140 }).shade === 100 && PMs.cleanPost({ shade: -5 }).shade === 0 && PMs.cleanPost({ shade: 20 }).shade === 20)],
-  ["üç boyut", F("gönderi + hikâye + reels; gönderi seçili Kare/Dikey, yoksa Dikey", () => PMs.setOf("square").join() === "square,story,reels" && PMs.setOf("portrait").join() === "portrait,story,reels" && PMs.setOf("reels").join() === "portrait,story,reels")],
-  ["profil ızgarası", F("karede yazı ortadaki 3:4'te (sağ/sol 66 px ek kenar), yeni gönderi Dikey", () => { const s = PMs.safeOf("square"); return s.l === 66 && s.r === 66 && PMs.safeOf("portrait").l === 0 && PMs.freshPost().format === "portrait" && PMs.cleanPost({ format: "square" }).format === "square"; })],
+  ["üç boyut", F("gönderi + hikâye + reels; gönderi seçili Kare/Dikey, yoksa Kare", () => PMs.setOf("square").join() === "square,story,reels" && PMs.setOf("portrait").join() === "portrait,story,reels" && PMs.setOf("reels").join() === "square,story,reels")],
+  ["afiş renkleri", F("her rengin kendi etiket rengi var, türler farklı etiket rengiyle açılır", () => { const tags = PMs.THEMES.map(([k]) => PIs.afisTag(k)); const kinds = ["duyuru", "sonuc", "antrenman", "genel", "kayit", "kulup"].map((k) => PIs.afisTag(PMs.kindTheme(k))); return new Set(tags).size === tags.length && new Set(kinds).size === kinds.length && PIs.afisTag("x") === PIs.afisTag("deniz"); })],
+  ["profil ızgarası", F("karede yazı ortadaki 3:4'te (sağ/sol 66 px ek kenar), yeni gönderi Kare (1080×1080)", () => { const s = PMs.safeOf("square"); return s.l === 66 && s.r === 66 && PMs.safeOf("portrait").l === 0 && PMs.freshPost().format === "square" && PMs.cleanPost({ format: "square" }).format === "square"; })],
 ]);
 
 // Notlar: thread'lerin notlar/yeni/ dosyaları NOTLAR.md'ye taşınır (scripts/notlar-topla.mjs)
@@ -495,6 +497,19 @@ group("Ana sayfa kartları")([
     const s = sg.flatMap((x) => x.items.map((i) => i.label));
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
     return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
+  })],
+  ["kısayollar: varsayılan", F("ana hesapta Planlar, Notlar, Sporcular, Yoklama, Toplantı, Envanter; en çok 6", () => {
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const k = HT.shortcutsOf(g).map(HT.linkKey);
+    return k.join(",") === "/plans,/notes,/athletes,/athletes/attendance,meeting,/inventory";
+  })],
+  ["kısayollar: çalışan ve seçim", F("eksik varsayılan sırayla tamamlanır; seçim uygulanır, olmayan sayfa atlanır; 6'dan fazla eklenmez", () => {
+    const sg = HT.homeActions({ staff: true, receipts: true });
+    const s = HT.shortcutsOf(sg);
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const p = HT.shortcutsOf(g, ["/dues", "/yok", "/posts"]).map(HT.linkKey);
+    const six = ["a", "b", "c", "d", "e", "f"];
+    return s.length === 6 && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(six, "g") === null && HT.toggleShortcut(six, "a").length === 5 && HT.toggleShortcut(["a"], "b").join() === "a,b";
   })],
 ]);
 
@@ -967,4 +982,48 @@ group("Ana sayfa faturalar")([
   ["açık fatura yoksa", F("kart yok", () => IV.invoiceTile([INV[2]], "2026-10-05") === null && IV.invoiceTile([], "2026-10-05") === null)],
   ["acil faturalar", F("3 gün içinde ya da geciken, en acil önce", () => IV.urgentInvoices(INV, "2026-10-05").length === 0 && IV.urgentInvoices(INV, "2026-10-17").map((x) => x.id).join(",") === "i1,i2")],
   ["son gün yazısı", F("gecikti / bugün / tarih", () => IV.dueText(INV[0], "2026-10-18") === "Gecikti 3 gün" && IV.dueText(INV[0], "2026-10-15") === "Son gün bugün" && IV.dueText(INV[0], "2026-10-01") === "Son gün 15 Eki" && IV.dueText(INV[2], "2026-10-01") === "Son gün yok")],
+]);
+
+// Açılış ekranı (boot.js): yükleme aşamaları arasında ekran kaybolup yeniden gelmesin.
+// Durum modül içinde ortak olduğu için adımlar tek denetimde sırayla çalışır.
+const BT = await import("@/lib/boot");
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const bootSteps = async () => {
+  const out = [];
+  const seen = [];
+  const off = BT.onBoot((v) => seen.push(v));
+  // 1) oturum bitip veri yüklemesi aynı anda başlayınca ekran kalır, veri gelince bir kez çekilir
+  let a = BT.holdBoot();
+  a();
+  let b = BT.holdBoot();
+  await wait(900);
+  out.push(BT.bootShown() && seen.length === 0);
+  b();
+  await wait(300);
+  out.push(!BT.bootShown() && seen.join() === "false");
+  // 2) aşamalar arasında 50 ms boşluk olsa da sönmez
+  a = BT.holdBoot();
+  a();
+  await wait(50);
+  b = BT.holdBoot();
+  await wait(300);
+  out.push(BT.bootShown() && seen.join() === "false,true");
+  b();
+  await wait(800);
+  out.push(!BT.bootShown());
+  // 3) iki kez bırakmak sayacı bozmaz
+  a = BT.holdBoot();
+  b = BT.holdBoot();
+  a();
+  a();
+  await wait(800);
+  out.push(BT.bootShown());
+  b();
+  await wait(800);
+  out.push(!BT.bootShown());
+  off();
+  return out.every(Boolean) || out.map((x) => (x ? 1 : 0)).join("");
+};
+group("Açılış ekranı")([
+  ["aşamalar", F("geçişte sönmez, kısa boşlukta sönmez, iki kez bırakma sayacı bozmaz", bootSteps)],
 ]);

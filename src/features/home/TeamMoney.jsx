@@ -11,18 +11,25 @@ import { TLk, totalOf } from "@/lib/receipts";
 
 // Ana sayfa özet kartları için para: banka (hesap özetlerinden, yalnız ana hesap) ve bu ayın fişleri.
 // Banka Mailler sayfasıyla aynı hesabı gösterir: aynı mailler (son 40), aynı hesaplar (accountsOf), TL toplamı;
-// değişim son 7 özetteki toplam bakiyeye göre. Dönüş: { bank: {big, sub, warn} | null, receipts: {big, sub} }
+// değişim son 7 özetteki toplam bakiyeye göre. Dönüş: { bank: {big, sub, warn} | null, receipts: {big, sub}, loading (banka okunuyor) }
 export function useMoney() {
   const { profile } = useAuth();
   const { receipts, isStaff } = useData();
   const owner = profile?.role === "owner";
   const [mails, setMails] = useState([]);
+  const [got, setGot] = useState(false); // ilk okuma geldi mi (önbellekten de olur); gelene kadar kartta iskelet
   useEffect(() => {
     if (!owner) return;
     return onSnapshot(
       query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(40)),
-      (s) => setMails(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      () => setMails([]),
+      (s) => {
+        setMails(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setGot(true);
+      },
+      () => {
+        setMails([]);
+        setGot(true);
+      },
     );
   }, [owner, profile?.uid]);
 
@@ -57,6 +64,7 @@ export function useMoney() {
 
   return {
     bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `Bakiye · ${sign} son ${spark.length} özette` : tot.n > 1 ? `${tot.n} hesabın bakiyesi` : "Hesap bakiyesi", warn: spark.length > 1 && pct < 0 } : null,
+    loading: owner && !got,
     receipts: { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} harcaması${isStaff ? " (senin)" : ""}` },
   };
 }

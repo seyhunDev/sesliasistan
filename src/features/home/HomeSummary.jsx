@@ -17,9 +17,15 @@ import { invoiceTile } from "@/lib/invoices";
 // Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
+// İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
+// Önbellekte bilgi varsa (aidat özeti, bellekteki faturalar/yarışlar) iskelet hiç çıkmaz; en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
+const WAIT = 8000;
+const fisTile = (r, inv) => (!inv ? r : !r ? inv : { big: r.big, sub: `Fatura: ${inv.sub}`, warn: inv.warn });
 export function HomeSummary({ money, race, dues, posts, training, plans, invoices }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
+  const [duesGot, setDuesGot] = useState(false);
+  const [late, setLate] = useState(false);
   const today = todayStr();
   const orgId = useAuth().profile?.orgId;
   const ym = today.slice(0, 7);
@@ -34,12 +40,13 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
       Promise.all([getDoc(doc(db, "orgs", orgId, "dues", "settings")), getDoc(doc(db, "orgs", orgId, "dues", ym))])
         .then(([c, m]) => {
           if (!live) return;
+          setDuesGot(true);
           const next = duesLive(c.data(), m.data(), ym, readSum().dues);
           if (!next) return;
           saveSum("dues", next);
           setSum((p) => ({ ...p, dues: next }));
         })
-        .catch(() => {});
+        .catch(() => live && setDuesGot(true));
     load();
     const onShow = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onShow);
@@ -48,47 +55,81 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
       document.removeEventListener("visibilitychange", onShow);
     };
   }, [dues, orgId, ym]);
+  // Okuması süren kartlar (önbellekte bilgisi olmayan)
+  const wait = {
+    bank: money && m.loading,
+    inv: invoices && !!orgId && openInv === null,
+    dues: dues && !!orgId && sum.dues?.ym !== ym && !duesGot,
+    race: race && race.loading,
+  };
+  const busy = !late && Object.values(wait).some(Boolean);
+  // Açılışta iskeletle başlayan kartlar: bilgi gelince belirerek açılır (diğerleri olduğu gibi)
+  const [fade] = useState(() => new Set(Object.keys(wait).filter((k) => wait[k])));
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setLate(true), WAIT);
+    return () => clearTimeout(t);
+  }, [busy]);
+  const skel = (k) => busy && wait[k] && [k, null];
   const cards = [
-    money && m.bank && ["/mail", "chart", "Banka", m.bank],
-    inv && ["/invoices", "receipt", "Fatura", inv],
-    money && ["/receipts", "receipt", inv ? "Fişler" : "Fiş / Fatura", m.receipts],
-    dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, today.slice(0, 7))],
-    race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up)],
+    skel("bank") || (money && m.bank && ["/mail", "chart", "Banka", m.bank, null, "bank"]),
+    // Fiş ve fatura tek kart (sayfası da tek, sekmeli): büyük satır ayın fiş harcaması, açık fatura varsa alt satır onu söyler
+    skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
+    skel("dues") || (dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, ym), null, "dues"]),
+    skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(race.next, race.up), null, "race"]),
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
     posts && ["/posts", "instagram", "Instagram", postsTile(sum.posts), "instagram"],
   ].filter(Boolean);
   if (!cards.length) return null;
 
   return (
-    <section aria-labelledby="home-sum">
+    <section aria-labelledby="home-sum" aria-busy={busy}>
       <h2 id="home-sum" className="mb-2.5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
         ÖZET
       </h2>
       <ul className="grid grid-cols-2 gap-2.5">
-        {cards.map(([href, icon, label, t, brand]) => (
-          <li key={href}>
-            <Link
-              href={href}
-              aria-label={`${label}: ${t.big}, ${t.sub}`}
-              className="flex h-full min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-[.98]"
-            >
-              <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
-                {brand ? (
-                  <span className={`grid size-5 shrink-0 place-items-center rounded-md ${BRAND[brand]}`}>
-                    <Icon name={icon} className="size-3.5" />
-                  </span>
-                ) : (
-                  <Icon name={icon} className="size-4 shrink-0 text-acc" />
-                )}
-                <span className="min-w-0 flex-1 truncate">{label}</span>
-                <Icon name="chev" className="size-3.5 shrink-0" />
-              </span>
-              <b className="mt-auto truncate pt-2 text-[1.25rem] font-semibold leading-tight tabular-nums tracking-tight">{t.big}</b>
-              <small className={`truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
-            </Link>
-          </li>
-        ))}
+        {cards.map(([href, icon, label, t, brand, k]) =>
+          !icon ? (
+            <Skeleton key={`s-${href}`} />
+          ) : (
+            <li key={href} className={fade.has(k) ? "fade-in" : undefined}>
+              <Link
+                href={href}
+                aria-label={`${label}: ${t.big}, ${t.sub}`}
+                className="flex h-full min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-[.98]"
+              >
+                <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
+                  {brand ? (
+                    <span className={`grid size-5 shrink-0 place-items-center rounded-md ${BRAND[brand]}`}>
+                      <Icon name={icon} className="size-3.5" />
+                    </span>
+                  ) : (
+                    <Icon name={icon} className="size-4 shrink-0 text-acc" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  <Icon name="chev" className="size-3.5 shrink-0" />
+                </span>
+                <b className="mt-auto truncate pt-2 text-[1.25rem] font-semibold leading-tight tabular-nums tracking-tight">{t.big}</b>
+                <small className={`truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
+              </Link>
+            </li>
+          ),
+        )}
       </ul>
     </section>
+  );
+}
+
+// Kartla aynı boy ve düzende iskelet: simge + ad, büyük sayı, açıklama satırı (renkler temaya göre, .shimmer globals.css)
+function Skeleton() {
+  return (
+    <li aria-hidden="true" className="flex min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line">
+      <span className="flex items-center gap-1.5">
+        <span className="shimmer size-4 shrink-0 rounded-md" />
+        <span className="shimmer block h-3 w-16 rounded-full" />
+      </span>
+      <span className="shimmer mt-auto block h-5 w-24 rounded-full" />
+      <span className="shimmer mt-2 block h-3 w-28 max-w-full rounded-full" />
+    </li>
   );
 }

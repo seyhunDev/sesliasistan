@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { appAllowed, errorState, offMessage, permissionHelp } from "@/lib/permissions";
 import { toWav16k } from "@/lib/speech/wav";
+import { micClosed, micOpening } from "@/lib/speech/audioSession";
 import { transcribeChunk } from "@/services/meetingService";
 
 const CHUNK_MS = 60 * 1000; // 1 dakikalık parçalar: küçük yükleme, sunucu süre sınırına takılmaz
@@ -87,6 +88,10 @@ export function useMeetingRecorder({ onFail, onNotice } = {}) {
   // Mikrofonu açar, ses seviyesi ölçerini kurar
   const openMic = useCallback(async () => {
     const s = R.current;
+    if (!s.micOn) {
+      s.micOn = true;
+      micOpening();
+    }
     s.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     s.stream.getAudioTracks().forEach((t) => (t.onended = () => !s.stopping && recoverRef.current?.()));
     try {
@@ -130,6 +135,10 @@ export function useMeetingRecorder({ onFail, onNotice } = {}) {
     s.wake?.release?.().catch(() => {});
     s.wake = null;
     setLevel(0);
+    if (s.micOn) {
+      s.micOn = false;
+      micClosed(); // iPhone: ses oturumu bırakılır, arka plandaki ses (YouTube, müzik) devam eder
+    }
   };
 
   // Kesilen dinlemeyi yeniden başlatır: eldeki parça kaydedilir, mikrofon yeniden açılır
@@ -183,6 +192,7 @@ export function useMeetingRecorder({ onFail, onNotice } = {}) {
     try {
       await openMic();
     } catch (e) {
+      release();
       cb.current.onFail?.(errorState(e) === "denied" ? `Mikrofon izni verilmedi. ${permissionHelp("microphone")}` : "Mikrofon açılamadı.");
       return false;
     }

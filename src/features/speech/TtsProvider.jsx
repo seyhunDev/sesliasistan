@@ -106,8 +106,16 @@ export function TtsProvider({ children }) {
       if (unlocked.current || !on.current) return;
       unlocked.current = true;
       try {
-        audio.current.src = silentWav();
-        audio.current.play().catch(() => { });
+        const a = audio.current;
+        const url = silentWav();
+        a.src = url;
+        // Sessiz ses çalınca öğe boşaltılır: dolu kalırsa iPhone ses oturumunu bırakmaz, arka plandaki ses devam etmez
+        const drop = () => {
+          if (a.src !== url) return;
+          try { a.pause(); a.removeAttribute("src"); a.load(); } catch { }
+          URL.revokeObjectURL(url);
+        };
+        a.play().then(() => setTimeout(drop, 300), drop);
       } catch { }
       if (dev) {
         try {

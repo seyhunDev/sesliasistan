@@ -7,6 +7,8 @@ import { parseBirthday } from "@/lib/birthdayParse";
 import { messageIntent, confirmWord } from "@/lib/ai/messageRules";
 import { localNavigate } from "@/lib/nav";
 import { suite, today, tom, data } from "./ortak.mjs";
+import { shareText } from "@/lib/cancelPlan";
+import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -108,11 +110,11 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
-  ["cumartesi yarış planla", PC("plan, kısa (sonucu uygulama söyler)", (r) => r?.kind === "plan" && /^Tamam\./.test(r.line) && !/hazırlıyorum/.test(r.line))],
+  ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
-  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam.")],
+  ["not al malzeme odası dolu", PC("not", (r) => r?.kind === "note" && r.line === "Tamam, notu alıyorum." && r.work === "Not yazılıyor")],
   ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
@@ -254,7 +256,7 @@ group("Sıralı işler (tanıma)")([
   ["not al malzeme odası dolu", SM("tek iş (yalnız not)", false)],
 ]);
 group("Sıralı işler (ön cevap)")([
-  [gokhan, PC("kısa söyler, sırayı yapay zekaya ipucu verir", (r) => r?.kind === "multi" && r.line === "Tamam." && /sırayla: mesaj, takvim ve not/.test(r.hint) && !r.slots)],
+  [gokhan, PC("sırayı söyler, yapay zekaya ipucu verir", (r) => r?.kind === "multi" && r.line === "Tamam, sırayla yapıyorum: mesaj, takvim ve not." && /sırayla: mesaj, takvim ve not/.test(r.hint) && !r.slots)],
   ["Ali'ye yaz yarın 9'da gelsin", PC("yalnız mesaj: eskisi gibi", (r) => r?.kind === "send")],
 ]);
 const aiMulti = {
@@ -448,8 +450,9 @@ group("Başka isteğin var mı (cevap)")([
   ["yok ama Ali'ye yaz", NM(false)], ["evet", NM(false)], ["yarın antrenman ekle", NM(false)], ["hayır yarın değil cuma ekle", NM(false)],
 ]);
 group("Kısa ön cevap")([
-  ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda yalnız Tamam", (r) => r?.line === "Tamam.")],
-  ["tekneleri hazırla görevi ekle", PC("görevde yalnız Tamam", (r) => r?.line === "Tamam.")],
+  ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda ne yaptığını söyler", (r) => r?.line === "Tamam, mesajı hazırlıyorum." && r.work === "Mesaj hazırlanıyor")],
+  ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
+  ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
 ]);
 
 // ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----
@@ -595,4 +598,21 @@ group("Envanter (tanıma)")([
   ["yarın 10'da antrenman ekle", WI(false, true)], ["Ali'ye mesaj at", WI(false, true)], ["planlara git", WI(false, true)],
   ["yarın 10'da antrenman ekle", WI(false)], ["2 can yeleği kayboldu", WI(false)], ["envanteri aç", WI(false)], ["envanter sayfasına git", WI(false)],
   ["envanteri aç", NI], ["envanter", NI], ["demirbaşları göster", NI],
+]);
+
+// ---- Mesaj + WhatsApp: yalnız mesaj istenince kayıt açılmaz; WhatsApp isteği tanınır ----
+group("Mesaj ve WhatsApp")([
+  ["Perşembe, Cuma günü antrenman olacak. Saat antrenman başlangıç 9.30. Sporculara gönder.", Fa("yalnız mesaj: kayıt istenmiyor", () => !ST.wantsRecord("Perşembe, Cuma günü antrenman olacak. Saat antrenman başlangıç 9.30. Sporculara gönder."))],
+  ["Ali'ye yaz ve yarın 10'a toplantı ekle", Fa("ekle: kayıt da isteniyor", () => ST.wantsRecord("Ali'ye yaz ve yarın 10'a toplantı ekle"))],
+  ["Gökhan'a yaz, takvime de ekle", Fa("takvim: kayıt da isteniyor", () => ST.wantsRecord("Gökhan'a yaz, takvime de ekle"))],
+  ["sporculara ve WhatsApp grubuna da gönder", Fa("WhatsApp istendi", () => ST.wantsWhatsApp("sporculara ve WhatsApp grubuna da gönder"))],
+  ["vatsap grubuna da at", Fa("ses tanıma yazışı da WhatsApp", () => ST.wantsWhatsApp("vatsap grubuna da at"))],
+  ["sporculara gönder", Fa("WhatsApp istenmedi", () => !ST.wantsWhatsApp("sporculara gönder"))],
+  ["paylaşım varsa", Fa("paylaşım menüsü açılır, metin panoya", () => { const got = {}; const r = shareText("9.30 antrenman", { share: (o) => { got.s = o.text; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }); return r === "share" && got.s === "9.30 antrenman" && got.c === "9.30 antrenman" && !got.u; })],
+  ["grup bağlantısı", Fa("davet bağlantısı temizlenir", () => cleanWaLink("https://chat.whatsapp.com/AbCdEf1234567890xyz?mode=gi_t") === "https://chat.whatsapp.com/AbCdEf1234567890xyz" && !cleanWaLink("https://wa.me/905321112233"))],
+  ["Sporcular ↔ Sporcular, Aile ↔ Aileler", Fa("uygulama grubu WhatsApp grubuyla eşleşir", () => { const g = [{ name: "Sporcular", link: "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "Aileler", link: "https://chat.whatsapp.com/BBBBBBBBBBBBBBBBBBBB" }]; return waGroupFor("Sporcular", g).endsWith("AAAA") && waGroupFor("Aile", g).endsWith("BBBB") && !waGroupFor("Ekip", g); })],
+  ["aynı ad iki kez", Fa("tekrar eden grup ve bozuk bağlantı atılır", () => cleanWaGroups([{ name: "Sporcular", link: "chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA" }, { name: "sporcu grubu", link: "https://chat.whatsapp.com/CCCCCCCCCCCCCCCCCCCC" }, { name: "Ekip", link: "x" }]).length === 1)],
+  ["grup bağlantısı kayıtlıysa", Fa("grup açılır, metin panoya", () => { const got = {}; const r = shareText("9.30", { share: () => { got.s = 1; return Promise.resolve(); }, clipboard: { writeText: (t) => { got.c = t; return Promise.resolve(); } } }, (u) => { got.u = u; }, "https://chat.whatsapp.com/AAAAAAAAAAAAAAAAAAAA"); return r === "group" && got.c === "9.30" && !got.s && got.u.includes("chat.whatsapp.com"); })],
+  ["paylaşım yoksa", Fa("WhatsApp sohbet seçimi açılır", () => { let u = ""; const r = shareText("a b", {}, (x) => { u = x; }); return r === "link" && u === "https://wa.me/?text=a%20b"; })],
+  ["sporculara gönder (yapay zeka)", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Tamam.", send: { to: "sporculara", text: "Perşembe ve cuma antrenman var, başlangıç 9.30." } }, [], ["Sporcular", "Ali Kök"]).send?.to === "Sporcular")],
 ]);
