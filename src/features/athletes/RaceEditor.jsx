@@ -18,15 +18,15 @@ import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, 
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
-import { NoticeDeadlines, NoticeDetails, NoticeUpload } from "./NoticeView";
+import { NoticeDetails, NoticeUpload } from "./NoticeView";
 import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanNotice, cleanSkips, cleanTodos, doneCount, shiftDay, stepsOf, todoKey } from "./races";
-import { DateBadge, Progress, initials, leftText, placeText } from "./RaceList";
+import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, shiftDay, stepsOf, todoKey } from "./races";
+import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -448,23 +448,25 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     await onDelete(id.current);
   };
 
-  const n = doneCount(r);
   const steps = stepsOf(r);
-  const fromNotice = steps.some((x) => x.group === "notice");
-  const inGroup = (group) => steps.filter((x) => (group === "docs" || group === "abroad" ? x.group === group : x.group !== "docs" && x.group !== "abroad"));
-  // Yurt dışı: hazır listeden çıkarma / geri getirme
-  const skipped = r.abroad ? cleanSkips(r.skips).length : 0;
-  const skipStep = (key) =>
-    setR((p) => {
-      const checks = { ...p.checks };
-      delete checks[key];
-      return { ...p, skips: cleanSkips([...(p.skips || []), key]), checks };
-    });
+  const fromNotice = (r.notice?.tasks || r.notice?.deadlines || []).length > 0;
+  const hidden = hiddenCount(r);
   // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
   const setAbroad = (on) =>
     setR((p) => (!!p.abroad === on ? p : { ...p, abroad: on, city: on && !p.district.trim() ? "" : !on && !p.city.trim() ? "İzmir" : p.city }));
-  const count = (group) => `${inGroup(group).filter((x) => r.checks?.[x.key]).length}/${inGroup(group).length}`;
-  // Elle iş ekleme/silme (her yarışa ayrı)
+  // Tek liste, işaretleme yok: yapılan ya da gerekmeyen iş × ile çıkarılır (elle eklenen silinir), geri alınabilir
+  const dropStep = ({ key, group }) => {
+    const back = { todos: latest.current.todos, skips: latest.current.skips, checks: latest.current.checks };
+    setR((p) => {
+      const checks = { ...p.checks };
+      delete checks[key];
+      return group === "own" ? { ...p, todos: (p.todos || []).filter((t) => todoKey(t.title) !== key), checks } : { ...p, skips: cleanSkips([...(p.skips || []), key]), checks };
+    });
+    toast("Listeden çıkarıldı", { action: { label: "Geri al", onClick: () => setR((p) => ({ ...p, ...back })) } });
+  };
+  // Çıkarılanları geri getir (eski işaretlemeler de; "Evrakları hazırla" belgeler hazırsa çıkmış kalır)
+  const restoreSteps = () => setR((p) => ({ ...p, skips: [], checks: p.checks?.docs && file ? { docs: true } : {} }));
+  // Elle iş ekleme (her yarışa ayrı)
   const [todo, setTodo] = useState("");
   const [todoDate, setTodoDate] = useState("");
   const addTodo = () => {
@@ -475,80 +477,34 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setTodo("");
     setTodoDate("");
   };
-  const removeTodo = (key) => {
-    const checks = { ...r.checks };
-    delete checks[key];
-    setR((p) => ({ ...p, todos: (p.todos || []).filter((t) => todoKey(t.title) !== key), checks }));
-  };
-  const stepList = (group) => (
-    <ul className={`${card} divide-y divide-line overflow-hidden`}>
-      {inGroup(group).map(({ key, label, date, detail, group: g }) => {
-        const on = !!r.checks?.[key];
-        const left = date ? daysTo(date) : null;
-        return (
-          <li key={key} className="flex items-center">
-            <button type="button" onClick={() => put("checks", { ...r.checks, [key]: !on })} aria-pressed={on} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left active:bg-bg">
-              <Check on={on} />
-              <span className="min-w-0 flex-1">
-                <span className={`block text-[0.9375rem] ${on ? "text-mut line-through decoration-mut/50" : "font-medium"}`}>{label}</span>
-                {(date || detail) && (
-                  <span className="block text-[0.8125rem] text-mut">
-                    {[date && shortDay(date), detail].filter(Boolean).join(" · ")}
-                  </span>
-                )}
-              </span>
-              {left !== null && !on && (
-                <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
-                  {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
-                </span>
-              )}
-            </button>
-            {(g === "own" || g === "abroad") && (
-              <button type="button" onClick={() => (g === "own" ? removeTodo(key) : skipStep(key))} aria-label={`${label} işini sil`} className="-ml-2 grid size-11 shrink-0 place-items-center text-mut">
-                <Icon name="x" className="size-4" />
-              </button>
-            )}
-          </li>
-        );
-      })}
-      {group === "prep" && (
-        <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
-          <Icon name="plus" className="size-5 shrink-0 text-acc" />
-          <input
-            value={todo}
-            onChange={(e) => setTodo(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTodo()}
-            placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
-            className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
-          />
-          {todo.trim() && (
-            <span className="flex w-full items-center gap-2 pb-1 pl-7">
-              <span className="text-[0.8125rem] text-mut">Son tarih</span>
-              <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
-              <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
-                Ekle
-              </button>
-            </span>
-          )}
-        </li>
-      )}
-    </ul>
+  const dueOpen = (r.notice?.deadlines || []).filter((d) => d.date && daysTo(d.date) >= 0).length;
+  // İşlemler (plan ve not ekranlarındaki gibi): yuvarlak simge + kısa ad
+  const acts = [
+    r.planAdded
+      ? { icon: "check", label: "Planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Yarış planlarda") }
+      : { icon: "cal", label: "Planlara ekle", onClick: toPlan },
+    dueOpen > 0 && (r.notice?.planned ? { icon: "check", label: "Tarihler planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Son tarihler planlarda") } : { icon: "clock", label: "Son tarihler", onClick: noticePlan }),
+    start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: toPost },
+  ].filter(Boolean);
+  const actCls = "flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition active:scale-95 active:bg-bg";
+  const actBody = (a) => (
+    <>
+      <span className={`grid size-11 place-items-center rounded-full ${a.tone || "bg-acc/10 text-acc"}`}>
+        <Icon name={a.icon} className="size-5" />
+      </span>
+      <span className="w-full truncate text-center text-[0.8125rem] font-medium">{a.label}</span>
+    </>
   );
   return (
     <>
-      {/* Özet kart */}
+      {/* Üst kart: yer, tarih, kalan gün, sporcu */}
       <Hero className="mt-2">
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <DateBadge r={r} light />
           <div className="min-w-0 flex-1">
             <b className="block truncate text-[1.0625rem] font-semibold leading-tight">{placeText(r) || "Yer girilmedi"}</b>
-            <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">{[leftText(r), `${chosen.length} sporcu`, r.planAdded && "planda"].filter(Boolean).join(" · ")}</span>
-            <span className="mt-2.5 flex items-center gap-2">
-              <Progress n={n} of={steps.length} light className="flex-1" />
-              <span className="text-[0.75rem] font-semibold tabular-nums text-white/85">
-                {n}/{steps.length} iş
-              </span>
-            </span>
+            <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">{rangeText(r.startDate, r.endDate) || "Tarih girilmedi"}</span>
+            <span className="mt-1.5 block truncate text-[0.8125rem] font-medium text-white/90">{[leftText(r), `${chosen.length} sporcu`, r.abroad && "Yurt dışı"].filter(Boolean).join(" · ")}</span>
           </div>
         </div>
       </Hero>
@@ -562,30 +518,60 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "sum" && (
         <>
-          <Label right={`${fromNotice ? "talimata göre · " : ""}${count("prep")}`}>KAYIT VE HAZIRLIK</Label>
-          {stepList("prep")}
-          {!fromNotice && <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.notice ? "Talimatta iş bulunamadı; işleri elle ekleyebilirsin." : "Talimatı yüklersen kayıt, ödeme, konaklama gibi işler son tarihleriyle buraya gelir. İstediğin işi elle de ekleyebilirsin."}</p>}
-
-          {r.abroad && (
-            <>
-              <Label right={count("abroad")}>TÜRKİYE’DE YAPILACAKLAR · YURT DIŞI</Label>
-              {stepList("abroad")}
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">
-                Hazır liste; gerekmeyeni × ile çıkar, eksik olanı yukarıdan iş olarak ekle.
-                {skipped > 0 && (
-                  <>
-                    {" "}
-                    <button type="button" onClick={() => put("skips", [])} className="font-semibold text-acc">
-                      Çıkarılanları geri getir ({skipped})
-                    </button>
-                  </>
-                )}
-              </p>
-            </>
-          )}
-
-          <Label right={count("docs")}>EVRAK</Label>
-          {stepList("docs")}
+          <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {steps.map((s) => {
+              const left = s.date ? daysTo(s.date) : null;
+              return (
+                <li key={s.key} className="flex items-center gap-3 pl-4">
+                  <span className="size-1.5 shrink-0 rounded-full bg-acc" />
+                  <span className="min-w-0 flex-1 py-3">
+                    <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
+                    {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
+                  </span>
+                  {left !== null && (
+                    <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+                      {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
+                    </span>
+                  )}
+                  <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut">
+                    <Icon name="x" className="size-4" />
+                  </button>
+                </li>
+              );
+            })}
+            <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
+              <Icon name="plus" className="size-5 shrink-0 text-acc" />
+              <input
+                value={todo}
+                onChange={(e) => setTodo(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addTodo()}
+                placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
+                className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
+              />
+              {todo.trim() && (
+                <span className="flex w-full items-center gap-2 pb-1 pl-7">
+                  <span className="text-[0.8125rem] text-mut">Son tarih</span>
+                  <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
+                  <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+                    Ekle
+                  </button>
+                </span>
+              )}
+            </li>
+          </ul>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">
+            {fromNotice ? "Talimattaki işler son tarihleriyle listede." : r.notice ? "Talimatta iş bulunamadı." : "Talimatı yüklersen kayıt, ödeme, konaklama işleri son tarihleriyle gelir."}
+            {r.abroad && " Yurt dışı hazırlıkları da listede."} Yapılan ya da gerekmeyen işi × ile çıkar.
+            {hidden > 0 && (
+              <>
+                {" "}
+                <button type="button" onClick={restoreSteps} className="font-semibold text-acc">
+                  Çıkarılanları geri getir ({hidden})
+                </button>
+              </>
+            )}
+          </p>
 
           <Label>NOT</Label>
           <div className={`${card} px-4 py-3`}>
@@ -593,46 +579,25 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               value={r.note}
               onChange={(e) => put("note", e.target.value)}
               placeholder="Konaklama, ulaşım, kayıt ücreti, tekne taşıma…"
-              rows={4}
+              rows={3}
               className="block w-full resize-none bg-transparent text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/60"
             />
           </div>
 
-          <Label>TAKVİM</Label>
-          <div className={`${card} flex items-center gap-3 px-4 py-3`}>
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
-              <Icon name="cal" className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <b className="block text-[0.9375rem] font-semibold">{r.planAdded ? "Planlarda" : "Planlarda değil"}</b>
-              <span className="block truncate text-[0.8125rem] text-mut">{rangeText(r.startDate, r.endDate) || "Tarih girilmedi"}</span>
-            </span>
-            {r.planAdded ? (
-              <Icon name="check" className="size-5 text-ok" />
-            ) : (
-              <button type="button" onClick={toPlan} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
-                Ekle
-              </button>
+          <Label>İŞLEMLER</Label>
+          <div className={`${card} grid gap-1 p-1.5`} style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }}>
+            {acts.map((a) =>
+              a.href ? (
+                <Link key={a.label} href={a.href} onClick={a.onClick} className={actCls}>
+                  {actBody(a)}
+                </Link>
+              ) : (
+                <button key={a.label} type="button" onClick={a.onClick} className={actCls}>
+                  {actBody(a)}
+                </button>
+              ),
             )}
           </div>
-
-          {start.id && (
-            <>
-              <Label>INSTAGRAM</Label>
-              <Link href="/posts/new" onClick={toPost} className={`${card} flex items-center gap-3 px-4 py-3 active:scale-[.99]`}>
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
-                  <Icon name="camera" className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold">Gönderi hazırla</b>
-                  <span className="block truncate text-[0.8125rem] text-mut">Duyuru ya da sonuç: görsel ve açıklama</span>
-                </span>
-                <Icon name="chev" className="size-4 text-mut" />
-              </Link>
-            </>
-          )}
-
-          <NoticeDeadlines n={r.notice} planned={!!r.notice?.planned} onPlan={noticePlan} />
 
           {r.notice ? (
             <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} onOpen={noticeOpen} onShare={noticeOpen} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
@@ -641,6 +606,15 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <Label>TALİMAT</Label>
               <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} />
             </>
+          )}
+
+          {start.id && (
+            <div className="mt-8 flex justify-center">
+              <button type="button" onClick={remove} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.875rem] font-medium text-rec transition active:scale-95 active:bg-rec/10">
+                <Icon name="trash" className="size-4" />
+                Yarışı sil
+              </button>
+            </div>
           )}
         </>
       )}
@@ -698,7 +672,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </div>
           )}
           <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
-          {r.abroad && <p className="mt-2 px-1 text-[0.75rem] text-mut">Özet’te Türkiye’de yapılacaklar listesi açılır (pasaport, vize, izinler, sigorta, nakliye…). İngilizce yarış ilanı da Türkçe okunur.</p>}
+          {r.abroad && <p className="mt-2 px-1 text-[0.75rem] text-mut">Özet’teki yapılacaklara Türkiye’de yapılacaklar eklenir (pasaport, vize, izinler, sigorta, nakliye…). İngilizce yarış ilanı da Türkçe okunur.</p>}
           <Label>YARIŞ</Label>
           <Group>
             <Row label="Yarış adı">
@@ -747,12 +721,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </Pair>
           </Group>
 
-          {start.id && (
-            <button type="button" onClick={remove} className={`${card} mt-6 flex h-12 w-full items-center justify-center gap-2 text-[0.9375rem] font-semibold text-rec`}>
-              <Icon name="trash" className="size-[1.125rem]" />
-              Yarışı sil
-            </button>
-          )}
         </>
       )}
 
