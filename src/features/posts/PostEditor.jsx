@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { modernPal } from "./postModern";
 import { afisTag, drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { todayStr } from "@/lib/utils/format";
@@ -18,13 +19,15 @@ const chip = (on) =>
   `flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${on ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`;
 const small = "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50";
 
+const DESIGN_KEY = "sa-post-design";
+
 // Önizlemenin altındaki ayar araçları
 const TOOLS = [
   ["photo", "Fotoğraf", "camera"],
   ["fit", "Büyüt", "image"],
   ["shade", "Gölge", "moon"],
   ["size", "Boyut", "clip"],
-  ["style", "Şablon", "box"],
+  ["style", "Tasarım", "box"],
   ["color", "Renk", "sun"],
   ["text", "Yazı yeri", "edit"],
 ];
@@ -69,7 +72,15 @@ function legacyCopy(t) {
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
 export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onRaces, onAthletes }) {
   const toast = useToast();
-  const [start] = useState(() => withInfo(given));
+  // Yeni gönderi son seçilen tasarımla (Klasik / Modern) açılır
+  const [start] = useState(() => {
+    const g = withInfo(given);
+    if (g.id) return g;
+    try {
+      if (localStorage.getItem(DESIGN_KEY) === "modern") return { ...g, style: "modern" };
+    } catch {}
+    return g;
+  });
   const [p, setP] = useState(start);
   const [tags, setTags] = useState(start.hashtags.join(" "));
   const [photo, setPhoto] = useState(startPhoto);
@@ -104,6 +115,16 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const post = cleanPost({ ...p, hashtags: cleanTags(tags) });
   const dirty = photoDirty || sig(post) !== saved;
   const put = (k, v) => setP((x) => ({ ...x, [k]: v }));
+  // Klasik'e dönünce son klasik şablon geri gelir
+  const lastClassic = useRef(start.style === "modern" ? "afis" : start.style);
+  const setDesign = (d) => {
+    if (d === designOf(post.style)) return;
+    if (d === "modern") lastClassic.current = post.style;
+    put("style", d === "modern" ? "modern" : lastClassic.current || "afis");
+    try {
+      localStorage.setItem(DESIGN_KEY, d);
+    } catch {}
+  };
 
   useEffect(() => {
     let live = true;
@@ -672,12 +693,24 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             ))}
           {tool === "shade" && (photo ? <>{slider("shade", "Gölge (yazı okunsun)", 0, 100)}</> : noPhoto)}
           {tool === "size" && <Seg value={post.format} onChange={(v) => put("format", v)} options={FORMATS.map(([k, l]) => [k, l.split(" ")[0]])} />}
-          {tool === "style" && <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} />}
+          {tool === "style" && (
+            <>
+              <Seg value={designOf(post.style)} onChange={setDesign} options={DESIGNS} />
+              {post.style === "modern" ? (
+                <p className="text-[0.75rem] leading-snug text-mut">
+                  {modernOf(post.kind) ? `Modern tasarım türe göre değişir. ${MODERN_HINT[modernOf(post.kind)]}.` : "Özel günde günün afişi kullanılır."}
+                </p>
+              ) : (
+                <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} />
+              )}
+            </>
+          )}
           {tool === "color" && (
             <div className="flex flex-wrap items-center gap-1.5">
               {THEMES.map(([k, label, c1, c2]) => (
                 <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
                   <span className="grid size-7 place-items-center rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
+                    {post.style === "modern" && <span className="size-2.5 rounded-full ring-1 ring-black/20" style={{ background: modernPal(k).acc }} />}
                     {post.style === "afis" && <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />}
                   </span>
                 </button>

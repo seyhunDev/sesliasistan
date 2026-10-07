@@ -1,6 +1,7 @@
 "use client";
 
 import { formatOf, imagePeople, moodOf, safeOf, tallOf, themeOf } from "./postModel";
+import { drawModern } from "./postModern";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -640,15 +641,19 @@ function crescentStar(ctx, x, y, G, color, alpha) {
   ctx.fill("nonzero");
   ctx.restore();
 }
-function measureAfis(ctx, post, maxW, k) {
-  const z = (n) => Math.round(n * k);
-  const people = imagePeople(post.people) ? imagePeople(post.people).split("\n") : [];
-  const names = new Set(
+// Görselde vurgulanacak adlar: yarışın sporcuları + sporcu satırlarının baştaki adı
+function namesOf(post, people) {
+  return new Set(
     [...(post.race?.athletes || []).map((a) => a.name), ...people.map((l) => l.split("·")[0])]
       .flatMap((n) => String(n || "").split(/\s+/))
       .map(bareWord)
       .filter((w) => w.length > 1 && !/^\d/.test(w) && !/sporcu/.test(w)),
   );
+}
+function measureAfis(ctx, post, maxW, k) {
+  const z = (n) => Math.round(n * k);
+  const people = imagePeople(post.people) ? imagePeople(post.people).split("\n") : [];
+  const names = namesOf(post, people);
   const meta = post.meta ? String(post.info || "").replace(/\s*·\s*/g, " • ") : "";
   const items = [];
   if (post.tag) items.push({ t: "tag", h: z(76), gap: 0 });
@@ -909,7 +914,9 @@ export async function drawPost(canvas, post, photo) {
   const deep = post.theme === "kum" ? "#1f5a4b" : c2;
   // Kum temasında vurgu koyu yeşil; koyu şeritte görünsün diye bantta kum sarısı
   const bandAcc = post.theme === "kum" ? "#e9c46a" : accent;
-  if (style === "afis") {
+  // Modern tasarım türe göre çizilir (postModern.js); özel günde Afiş
+  if (style === "modern" && (await drawModern(KIT, ctx, post, photo, W, H))) return canvas;
+  if (style === "afis" || style === "modern") {
     await drawAfis(ctx, post, photo, W, H);
     return canvas;
   }
@@ -1033,6 +1040,9 @@ export async function drawPost(canvas, post, photo) {
   ctx.shadowColor = "transparent";
   return canvas;
 }
+
+// Modern tasarımın kullandığı çizim yardımcıları
+const KIT = { FONT, PAD, fit, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, decor, fade };
 
 // Instagram'a gidecek dosya (JPEG)
 export function postFile(canvas, name = "gonderi") {

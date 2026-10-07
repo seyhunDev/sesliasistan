@@ -142,6 +142,21 @@ export const STYLES = [
 ];
 export const styleOf = (s) => STYLES.find(([x]) => x === s) || STYLES[0];
 
+// Tasarım: Klasik (yukarıdaki şablonlar) ya da Modern (style "modern"). Modern'de yerleşim türe göre değişir:
+// race: yarış duyurusu ve sonucu (dev başlık, arkada dış çizgili büyük yazı, tarih/yer kutusu),
+// training: antrenman (eğik, hızlı başlık, bilgi hapları, hız çizgileri),
+// school: kayıt / yelken okulu (açık zemin, yuvarlak şekiller, eğik çıkartma etiketi, düğme gibi dilek),
+// news: duyuru, kulüp haberi, kutlama, diğer (dergi düzeni: üstte künye, çerçeveli görsel, altında başlık).
+// Özel günde Modern de Afiş'i kullanır (günün havası: bayrak, anma, bayram).
+export const DESIGNS = [
+  ["klasik", "Klasik"],
+  ["modern", "Modern"],
+];
+export const designOf = (style) => (style === "modern" ? "modern" : "klasik");
+const MODERN = { duyuru: "race", sonuc: "race", antrenman: "training", kayit: "school", genel: "news", kulup: "news", kutlama: "news", diger: "news" };
+export const modernOf = (kind) => MODERN[kind] || null;
+export const MODERN_HINT = { race: "Yarış: dev başlık, tarih ve yer kutusu", training: "Antrenman: eğik başlık, bilgi hapları", school: "Yelken okulu: açık zemin, çıkartma etiket", news: "Haber: dergi düzeni, çerçeveli görsel" };
+
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
 
@@ -210,7 +225,7 @@ export function cleanPost(p = {}) {
     info: S(p.info, 60),
     classes: S(p.classes, 100),
     meta: p.meta !== false,
-    style: styleOf(p.style)[0],
+    style: p.style === "modern" ? "modern" : styleOf(p.style)[0],
     // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
     tag: p.tag === "YARIŞ DUYURUSU" ? "YARIŞ" : S(p.tag, 18),
     caption: L(p.caption, 2200),
