@@ -270,7 +270,7 @@ function ItemForm({ item, nights, hotels, onSave, onRemove }) {
   const put = (k) => (v) => setX((p) => ({ ...p, [k]: v }));
   const amount = Number(String(x.amount).replace(/\./g, "").replace(",", ".")) || 0;
   const room = x.unit === "room";
-  const offers = hotels.flatMap((h) => cleanRooms(h.rooms).map((r) => ({ h, x: o })));
+  const offers = hotels.flatMap((h) => cleanRooms(h.rooms).map((o) => ({ h, x: o })));
   const hotelCount = new Set(offers.map((o) => o.h.name)).size;
   const cap = Number(x.cap) || 1;
   const beds = Math.min(cap, Number(x.beds) || 1);
