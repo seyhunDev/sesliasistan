@@ -13,6 +13,7 @@ import { activeSummary, addDay, dayItems } from "@/lib/summary";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { dayHours } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
+import { CARD, SectionHead } from "./ui";
 
 const hmOf = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -53,8 +54,7 @@ export function TodayCard({ weather }) {
 
   return (
     <section aria-label={heading}>
-      <div className="mb-2.5 flex items-center justify-between px-1">
-        <span className="text-[0.75rem] font-bold tracking-[.08em] text-mut">{heading}</span>
+      <SectionHead title={heading}>
         <span className="flex items-center gap-2 text-[0.75rem] tabular-nums text-mut">
           {total > 0 && !evening && `${finished}/${total} tamam`}
           {kind !== "today" && (
@@ -63,7 +63,7 @@ export function TodayCard({ weather }) {
             </button>
           )}
         </span>
-      </div>
+      </SectionHead>
       {total > 0 && !evening && (
         <div className="mb-2.5 flex gap-1 px-1" aria-hidden="true">
           {[...Array(finished).fill({ done: true }), ...rows].map((x, i) => (
@@ -71,7 +71,7 @@ export function TodayCard({ weather }) {
           ))}
         </div>
       )}
-      <div className="overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]">
+      <div className={`overflow-hidden ${CARD}`}>
         {rows.length === 0 ? (
           <p className="flex items-center justify-between gap-3 px-4 py-4 text-[0.875rem] text-mut">
             {finished ? "Bugünün hepsi tamam." : evening ? "Yarın için plan ya da görev yok." : "Bugün için plan ya da görev yok."}

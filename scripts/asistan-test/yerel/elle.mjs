@@ -505,6 +505,12 @@ group("Ana sayfa kartları")([
     const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
     return a.big === "12/30 ödedi" && a.warn && a.sub.includes("3 banka") && b.sub.includes("herkes ödedi") && !b.warn && c.big === "Ekim aidatı";
   })],
+  ["aidat", F("doluluk çubuğu: 12/30 → 0,4; herkes ödedi → 1; eski ayda yok", () => {
+    const a = HT.duesTile({ ym: "2026-10", paidCount: 12, count: 30, pending: 0 }, "2026-10");
+    const b = HT.duesTile({ ym: "2026-10", paidCount: 30, count: 30, pending: 0 }, "2026-10");
+    const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
+    return a.bar === 0.4 && b.bar === 1 && c.bar === undefined;
+  })],
   ["yarış", F("5 gün kaldı · Foça yarışı · 2 iş eksik", () => {
     const a = HT.raceTile({ name: "Foça", when: "5 gün", left: 2 }, 1);
     const b = HT.raceTile({ name: "Çeşme", when: "yarın", left: 0 }, 1);

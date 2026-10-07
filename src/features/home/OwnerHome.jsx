@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -11,8 +12,7 @@ import { homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
-import { ForYou } from "./ForYou";
-import { Notifications } from "./Notifications";
+import { InboxBell, InboxBox, InboxSheet, useInbox } from "./Inbox";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -25,8 +25,8 @@ import { MyAttendanceCard } from "./MyAttendanceCard";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
-// Ana sayfa (sade): gün ve tarih, altında tek satır hava. Akış (HomeFeed): bilgiler (Senin için, doğum günü, Bugün,
-// sporcu/veli: Yoklamam, Özet kartları), en altta İşlemler düğmeleri. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
+// Ana sayfa (sade): gün ve tarih, altında tek satır hava; sağ üstte zil (Senin için penceresi) ve Ayarlar. Akış (HomeFeed): Bugün,
+// Senin için (tek kutu: yapılacaklar + yeni bildirimler, 3 satır), doğum günü, sporcu/veli: Yoklamam, Özet kartları, Notlar, Kısayollar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
 export function OwnerHome() {
   const { profile } = useAuth();
   const now = useNow();
@@ -34,6 +34,8 @@ export function OwnerHome() {
   const staff = profile?.role === "staff";
   const qa = useQuota("assistant");
   const qr = useQuota("receipt");
+  const inbox = useInbox();
+  const [sheet, setSheet] = useState(false);
 
   const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
   const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
@@ -54,6 +56,7 @@ export function OwnerHome() {
             </p>
           )}
         </div>
+        <InboxBell inbox={inbox} onOpen={() => setSheet(true)} />
         <Link href="/settings" aria-label="Ayarlar" className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc active:scale-90">
           {initials(profile?.name)}
         </Link>
@@ -62,15 +65,16 @@ export function OwnerHome() {
       <PaidNotice />
 
       <div className="mt-5">
-        <HomeFeed weather={weather} />
+        <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
       </div>
+      <InboxSheet inbox={inbox} open={sheet} onClose={() => setSheet(false)} />
     </main>
   );
 }
 
-// Ana sayfanın iki bölümü: önce bilgiler (Bildirimler › Senin için › doğum günü › Bugün › Yoklamam › Özet › Notlar), sonra İşlemler (aynı tip düğmeler).
+// Ana sayfanın iki bölümü: önce bilgiler (Bugün › Senin için › doğum günü › Yoklamam › Özet › Notlar), sonra Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
-export function HomeFeed({ weather }) {
+export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
   const { plans, lessons, members } = useData();
   const staff = profile?.role === "staff";
@@ -97,16 +101,11 @@ export function HomeFeed({ weather }) {
 
   return (
     <div className="space-y-6">
-      <div className="empty:hidden">
-        <Notifications />
-      </div>
-      <div className="empty:hidden">
-        <ForYou />
-      </div>
+      <TodayCard weather={weather} />
+      <InboxBox inbox={inbox} onAll={onInbox} />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
-      <TodayCard weather={weather} />
       {side && <MyAttendanceCard kind={kind} />}
       <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
       <HomeNotes />

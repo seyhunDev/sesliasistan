@@ -8,13 +8,14 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { SHORTCUT_MAX, linkKey, shortcutsOf, toggleShortcut } from "@/lib/homeTiles";
+import { SectionHead, TAP } from "./ui";
 
 // Marka renkleri: yalnız tanınan sosyal medya düğmesinde (Instagram simgesi ve renk geçişi); diğerleri uygulamanın yeşil simgesi
 export const BRAND = {
   instagram: "bg-[linear-gradient(45deg,#f9a03a_0%,#e9583f_30%,#d62f6c_60%,#a23ab6_100%)] text-white",
 };
 
-const cls = "relative flex h-[5.25rem] w-full flex-col items-center justify-center gap-1.5 rounded-2xl bg-card px-0.5 text-center shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-95";
+const cls = `relative flex h-[5.25rem] w-full flex-col items-center justify-center gap-1.5 px-0.5 text-center ${TAP}`;
 function Body({ icon, label, brand }) {
   return (
     <>
@@ -65,9 +66,7 @@ export function HomeActions({ groups }) {
 
   return (
     <nav aria-labelledby="home-act">
-      <h2 id="home-act" className="mb-2.5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
-        KISAYOLLAR
-      </h2>
+      <SectionHead id="home-act" title="KISAYOLLAR" />
       <ul className="grid grid-cols-3 gap-2">
         {short.map((a) => (
           <li key={linkKey(a)}>
@@ -76,7 +75,7 @@ export function HomeActions({ groups }) {
         ))}
       </ul>
       {total > short.length && (
-        <button type="button" onClick={() => setOpen(true)} className="mt-2 flex w-full items-center justify-between rounded-2xl bg-card px-4 py-3 text-[0.9375rem] font-semibold ring-1 ring-line active:scale-[.98]">
+        <button type="button" onClick={() => setOpen(true)} className={`mt-2 flex w-full items-center justify-between px-4 py-3 text-[0.9375rem] font-semibold ${TAP}`}>
           <span className="flex items-center gap-2.5">
             <Icon name="more" className="size-5 text-acc" />
             Tüm sayfalar

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { monthOf, useMyAttendance } from "@/features/athletes/myAttendance";
+import { CARD, SectionHead } from "./ui";
 
 const ST = { present: ["Geldi", "text-ok"], absent: ["Gelmedi", "text-rec"], excused: ["İzinli", "text-amber-700"] };
 const DAY = new Intl.DateTimeFormat("tr-TR", { weekday: "short", day: "numeric", month: "short" });
@@ -16,10 +17,8 @@ export function MyAttendanceCard({ kind }) {
 
   return (
     <section aria-label="Yoklama">
-      <div className="mb-2.5 flex items-center justify-between px-1">
-        <span className="text-[0.75rem] font-bold tracking-[.08em] text-mut">{parent ? "YOKLAMA · BU AY" : "YOKLAMAM · BU AY"}</span>
-      </div>
-      <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]">
+      <SectionHead title={parent ? "YOKLAMA · BU AY" : "YOKLAMAM · BU AY"} />
+      <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
         {recs.map((r) => {
           const m = monthOf(r);
           const last = m.last && ST[m.last[1]];

@@ -10,11 +10,13 @@ import { duesLive, duesTile, postsTile, raceTile, readSum, saveSum, trainingTile
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
+import { CARD, SectionHead, TAP } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
 // Ana sayfa › ÖZET: kısa bilgi kartları, hepsi aynı boyda ve biçimde (simge + ad, büyük sayı, tek satır açıklama).
-// Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
+// Dokununca ilgili sayfa açılır. Dikkat isteyen kart (warn: bekleyen ödeme, eksik iş, yazılmamış günlük) kehribar çerçeve ve noktayla
+// öne çıkar, diğerleri sade kalır; aidat kartında ödeyenlerin doluluk çubuğu (bar). Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
@@ -98,9 +100,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
-      <h2 id="home-sum" className="mb-2.5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
-        ÖZET
-      </h2>
+      <SectionHead id="home-sum" title="ÖZET" />
       <ul className="grid grid-cols-2 gap-2.5">
         {cards.map(([href, icon, label, t, brand, k]) =>
           !icon ? (
@@ -110,7 +110,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
               <Link
                 href={href}
                 aria-label={`${label}: ${t.big}, ${t.sub}`}
-                className="flex h-full min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-[.98]"
+                className={`relative flex h-full min-h-[5.75rem] flex-col p-3.5 ${t.warn ? TAP.replace("ring-1 ring-line/70", "ring-2 ring-amber-500/45") : TAP}`}
               >
                 <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
                   {brand ? (
@@ -121,9 +121,14 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
                     <Icon name={icon} className="size-4 shrink-0 text-acc" />
                   )}
                   <span className="min-w-0 flex-1 truncate">{label}</span>
-                  <Icon name="chev" className="size-3.5 shrink-0" />
+                  {t.warn ? <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="dikkat" /> : <Icon name="chev" className="size-3.5 shrink-0" />}
                 </span>
                 <b className="mt-auto truncate pt-2 text-[1.25rem] font-semibold leading-tight tabular-nums tracking-tight">{t.big}</b>
+                {t.bar != null && (
+                  <span className="my-1.5 block h-1.5 overflow-hidden rounded-full bg-line" aria-hidden="true">
+                    <span className={`block h-full rounded-full ${t.bar >= 1 ? "bg-ok" : "bg-acc"}`} style={{ width: `${Math.round(t.bar * 100)}%` }} />
+                  </span>
+                )}
                 <small className={`truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
               </Link>
             </li>
@@ -137,7 +142,7 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
 // Kartla aynı boy ve düzende iskelet: simge + ad, büyük sayı, açıklama satırı (renkler temaya göre, .shimmer globals.css)
 function Skeleton() {
   return (
-    <li aria-hidden="true" className="flex min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line">
+    <li aria-hidden="true" className={`flex min-h-[5.75rem] flex-col p-3.5 ${CARD}`}>
       <span className="flex items-center gap-1.5">
         <span className="shimmer size-4 shrink-0 rounded-md" />
         <span className="shimmer block h-3 w-16 rounded-full" />

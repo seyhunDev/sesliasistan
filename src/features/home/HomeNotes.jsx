@@ -7,6 +7,7 @@ import { useData } from "@/features/data/DataProvider";
 import { homeNotes } from "@/lib/homeTiles";
 import { rel } from "@/lib/utils/format";
 import { unseenNotes } from "@/lib/people";
+import { CARD, SectionHead } from "./ui";
 
 // Ana sayfa › NOTLAR: notlar açık liste (sabitlenenler önce, sonra en yeni; en çok 5). Satırda başlık, içeriğin ilk satırı, tarih;
 // dokununca not açılır. Başlıkta "Tümü" Notlar sayfasına, altta "Not ekle". Notlar bellekte (DataProvider), ek okuma yok;
@@ -18,18 +19,15 @@ export function HomeNotes() {
 
   return (
     <section aria-labelledby="home-notes">
-      <div className="mb-2.5 flex items-baseline px-1">
-        <h2 id="home-notes" className="flex-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
-          NOTLAR{total > 0 && <span className="ml-1.5 font-semibold tabular-nums tracking-normal">{total}</span>}
-        </h2>
+      <SectionHead id="home-notes" title="NOTLAR" count={total}>
         {total > 0 && (
           <Link href="/notes" className="flex items-center gap-0.5 text-[0.8125rem] font-semibold text-acc active:opacity-70">
             Tümü
             <Icon name="chev" className="size-3.5" />
           </Link>
         )}
-      </div>
-      <div className="overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line">
+      </SectionHead>
+      <div className={`overflow-hidden ${CARD}`}>
         {list.length === 0 ? (
           <p className="px-4 py-3.5 text-[0.875rem] text-mut">Henüz not yok</p>
         ) : (

@@ -32,6 +32,7 @@ export function duesTile(sum, ym) {
     big: `${sum.paidCount}/${sum.count} ödedi`,
     sub: sum.pending > 0 ? `${sum.pending} banka ödemesi bekliyor` : left > 0 ? `${m} · ${left} kişi ödemedi` : `${m} · herkes ödedi`,
     warn: sum.pending > 0,
+    bar: sum.count > 0 ? Math.min(1, sum.paidCount / sum.count) : null, // kartta doluluk çubuğu (ödeyenler / hepsi)
   };
 }
 
