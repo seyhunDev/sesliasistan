@@ -433,6 +433,16 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setRoomsBusy(false);
   };
   const loadViewer = useCallback(() => loadNoticeFile(orgId, noticeFileMeta), [orgId, noticeFileMeta]);
+  // Talimat menüsü (başlığın altındaki talimat satırının ayar düğmesi): aç, yenisini yükle, kaldır
+  const [noticeMenu, setNoticeMenu] = useState(false);
+  const dropNotice = () => {
+    if (!confirm("Yarış talimatı kaldırılsın mı? Talimattan gelen işler ve bilgiler silinir; yarışın adı, tarihi, yeri kalır.")) return;
+    const old = latest.current.noticeFile;
+    setR((p) => ({ ...p, notice: null, noticeFile: null }));
+    if (old?.id) dropNoticeFile(orgId, old);
+    setNoticeMenu(false);
+    toast("Talimat kaldırıldı");
+  };
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
     const n = await onNoticePlan(r);
@@ -501,8 +511,49 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   );
   return (
     <>
+      {/* Yarış talimatı en üstte: yoksa yükle (yeni yarış talimattan oluşur), varsa aç; ayar düğmesiyle değiştir ya da kaldır */}
+      {!r.notice || reading ? (
+        <div className="mt-2">
+          <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} sub={r.name ? undefined : "Talimatı yükle; ad, tarih, yer, program, son tarihler, ücret ve oteller kendiliğinden dolar. Talimat yoksa aşağıdan elle yaz."} />
+        </div>
+      ) : (
+        <div className={`${card} mt-2 flex items-center gap-1 pl-4 pr-1.5`}>
+          <button type="button" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
+            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[0.625rem] font-bold ${r.noticeFile ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>{r.noticeFile ? "PDF" : <Icon name="alert" className="size-4" />}</span>
+            <span className="min-w-0 flex-1">
+              <b className="block truncate text-[0.9375rem] font-semibold">Yarış talimatı</b>
+              <span className="block truncate text-[0.8125rem] text-mut">{r.noticeFile ? "Ekli · açmak için dokun" : "Dosya kayıtlı değil · yüklemek için dokun"}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => setNoticeMenu(true)} aria-label="Talimat ayarları" className="grid size-10 shrink-0 place-items-center text-mut">
+            <Icon name="sliders" className="size-5" />
+          </button>
+        </div>
+      )}
+      <Sheet open={noticeMenu} onClose={() => setNoticeMenu(false)} title="Yarış talimatı">
+        <div className="space-y-2">
+          {r.noticeFile && (
+            <button type="button" onClick={() => (setNoticeMenu(false), noticeOpen())} className="flex h-12 w-full items-center gap-3 rounded-xl bg-bg px-4 text-left text-[0.9375rem] font-semibold">
+              <Icon name="paperclip" className="size-5 text-acc" />
+              Talimatı aç
+            </button>
+          )}
+          <NoticeUpload
+            busy={reading}
+            onFile={(f) => (setNoticeMenu(false), loadNotice(f))}
+            onText={(t) => (setNoticeMenu(false), loadNotice(t))}
+            title={r.noticeFile ? "Yeni talimat yükle" : "Talimat dosyasını yükle"}
+            sub={r.noticeFile ? "Güncellenen talimatı yükle; okunanla karşılaştırırım, fark varsa söylerim." : "Bilgiler daha önce okundu ama dosya saklanmamıştı. Aynı talimatı yükle; saklarım, fark varsa söylerim."}
+          />
+          <button type="button" onClick={dropNotice} className="flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-medium text-rec">
+            <Icon name="trash" className="size-4" />
+            Talimatı kaldır
+          </button>
+        </div>
+      </Sheet>
+
       {/* Üst kart: yer, tarih, kalan gün, sporcu */}
-      <Hero className="mt-2">
+      <Hero className="mt-3">
         <div className="flex items-center gap-3">
           <DateBadge r={r} light />
           <div className="min-w-0 flex-1">
@@ -618,14 +669,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             )}
           </div>
 
-          {r.notice ? (
-            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} onOpen={noticeOpen} onShare={noticeOpen} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
-          ) : (
-            <>
-              <Label>TALİMAT</Label>
-              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} />
-            </>
-          )}
+          <NoticeDetails n={r.notice} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
 
           {start.id && (
             <div className="mt-8 flex justify-center">
@@ -685,11 +729,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "info" && (
         <>
-          {!r.notice && (
-            <div className="mt-4">
-              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} />
-            </div>
-          )}
           <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
           {r.abroad && <p className="mt-2 px-1 text-[0.75rem] text-mut">Özet’teki yapılacaklara Türkiye’de yapılacaklar eklenir (pasaport, vize, izinler, sigorta, nakliye…). İngilizce yarış ilanı da Türkçe okunur.</p>}
           <Label>YARIŞ</Label>
