@@ -11,7 +11,8 @@ import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, howT
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
-import { openFile, shareFile } from "./fileActions";
+import { shareFile } from "./fileActions";
+import { PdfViewer } from "@/components/ui/PdfViewer";
 import { loadFonts } from "./raceDocs";
 import { askBudget, mergeBudget } from "./raceBudgetAi";
 
@@ -40,6 +41,7 @@ export function BudgetView({ r, athletes, onChange }) {
   const [edit, setEdit] = useState(null); // düzenlenen kalem (yeni için id'siz)
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [view, setView] = useState(null); // açık çıktı (uygulama içinde, kapat düğmesiyle)
   const [link, setLink] = useState(false); // fiş bağlama
   const { receipts = [] } = useData();
   const spent = b.spent || [];
@@ -79,7 +81,8 @@ export function BudgetView({ r, athletes, onChange }) {
       const bytes = await buildBudgetPdf({ ...r, budget: b }, athletes, await loadFonts());
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-butce.pdf`;
       const f = new File([bytes], name, { type: "application/pdf" });
-      await (share ? shareFile(f) : openFile(f, false));
+      if (share) await shareFile(f);
+      else setView(f);
     } catch (e) {
       toast(e?.message || "Çıktı hazırlanamadı");
     }
@@ -238,6 +241,8 @@ export function BudgetView({ r, athletes, onChange }) {
           </button>
         </div>
       </div>
+
+      {view && <PdfViewer title="Bütçe çıktısı" load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
         {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} hotels={r.notice?.hotels || []} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}

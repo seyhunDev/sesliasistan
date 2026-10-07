@@ -327,7 +327,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setMailing(false);
   };
   const share = (f = file) => shareFile(f);
-  const openPdf = (download, f = file) => openFile(f, download);
+  // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
+  const [docView, setDocView] = useState(null);
+  const openPdf = (f = file) => setDocView(f);
   // Elle evrak ekleme (PDF, fotoğraf…): bu cihazda yarışa bağlı saklanır
   const pickExtra = useRef(null);
   const addExtras = async (list) => {
@@ -769,9 +771,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             <>
               <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIRLANAN EVRAK</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf(false)} onShare={() => share()} />
+                <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf()} onShare={() => share()} />
                 {parts.map((x) => (
-                  <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(false, x.file)} onShare={() => share(x.file)} />
+                  <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />
                 ))}
               </ul>
               <div className="mt-2 flex items-start gap-3 px-1">
@@ -794,7 +796,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 tag={/pdf/.test(x.type) ? "PDF" : /image/.test(x.type) ? "FOTO" : "DOSYA"}
                 title={x.name}
                 sub={`${sizeText(x.blob.size)} · ${madeText(x.at)}`}
-                onOpen={() => openFile(asFile(x), false)}
+                onOpen={() => (/pdf/.test(x.type) ? setDocView(asFile(x)) : openFile(asFile(x), false))}
                 onShare={() => shareFile(asFile(x))}
                 onRemove={() => removeExtra(x)}
               />
@@ -967,7 +969,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
-              <button type="button" onClick={() => openPdf(false)} className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line">
+              <button type="button" onClick={() => openPdf()} className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line">
                 <Icon name="print" className="size-5" />
                 Aç
               </button>
@@ -1033,6 +1035,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           />
         )}
       </Sheet>
+      {docView && <PdfViewer title={docView.name} load={() => Promise.resolve(docView)} onClose={() => setDocView(null)} />}
       {viewer && r.noticeFile && <PdfViewer title={r.noticeFile.name || "Yarış talimatı"} load={loadViewer} onClose={() => setViewer(false)} />}
     </>
   );
