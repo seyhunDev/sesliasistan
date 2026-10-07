@@ -402,7 +402,7 @@ group("Instagram modern tasarım")([
   ["kayıtta korunur", F("modern kalır, Klasik şablonlar değişmez", () => PMs.cleanPost({ style: "modern" }).style === "modern" && PMs.cleanPost({ style: "kart" }).style === "kart" && PMs.designOf("modern") === "modern" && PMs.designOf("afis") === "klasik" && PMs.designOf("bant") === "klasik")],
   ["türe göre düzen", F("yarış/sonuç race, antrenman training, kayıt school, haberler news, özel gün Afiş", () => PMs.modernOf("duyuru") === "race" && PMs.modernOf("sonuc") === "race" && PMs.modernOf("antrenman") === "training" && PMs.modernOf("kayit") === "school" && ["genel", "kulup", "kutlama", "diger"].every((k) => PMs.modernOf(k) === "news") && PMs.modernOf("ozel") === null)],
   ["her düzenin açıklaması", F("dört düzenin ekranda açıklaması var", () => ["race", "training", "school", "news"].every((k) => PMs.MODERN_HINT[k]))],
-  ["renkler", F("her rengin modern vurgusu var, türler farklı vurguyla açılır", () => { const acc = ["duyuru", "sonuc", "antrenman", "genel", "kayit", "kulup"].map((k) => PMo.modernPal(PMs.kindTheme(k)).acc); return PMs.THEMES.every(([k]) => /^#[0-9a-f]{6}$/.test(PMo.modernPal(k).acc)) && new Set(acc).size === acc.length && PMo.modernPal("x") === PMo.modernPal("deniz"); })],
+  ["çizim", F("Modern çizimi dışa açık; renkler türe sabit (renk aracı Modern'de gizli)", () => typeof PMo.drawModern === "function")],
 ]);
 
 // Notlar: thread'lerin notlar/yeni/ dosyaları NOTLAR.md'ye taşınır (scripts/notlar-topla.mjs)

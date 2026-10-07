@@ -1,61 +1,45 @@
 "use client";
 
-import { formatOf, imagePeople, modernOf, safeOf, tallOf } from "./postModel";
+import { imagePeople, modernOf, safeOf, tallOf } from "./postModel";
 
-// Modern tasarım (2026 çizgisi): dev ve sıkı başlık, büyük dış çizgili arka yazı, hafif kumlu doku, cam kutular/haplar,
-// canlı tek vurgu rengi. Yerleşim türe göre değişir (modernOf): race, training, school, news.
-// Çizim yardımcıları postImage.js'ten "kit" olarak gelir (döngüsel içe aktarma olmasın diye).
+// Modern tasarım: her türün kendine has, akışta tek bakışta tanınan düzeni var (spor kulüplerinin "maç günü", "skor",
+// "antrenman programı", "kampanya" ve "haber" kartları gibi). Renk seçimi Modern'de kullanılmaz; her türün rengi sabit:
+// race (yarış duyurusu): fotoğraf + lacivert, dev dar büyük harf başlık (son satır sarı), büyük sarı tarih, altta sarı kayan şerit.
+// result (yarış sonucu): üstte fotoğraf, altta eğik kesimli sarı pano; lacivert başlık ve sıra rozetli sporcu listesi.
+// training (antrenman): açık yeşil zemin, yuvarlak köşeli fotoğraf kartı, GÜN / SAAT / YER kutuları (program kartı).
+// school (kayıt / yelken okulu): gök mavisi zemin, yuvarlak fotoğraf, dönük sarı çıkartma, altta kum dalgası ve düğme.
+// news (duyuru, kulüp haberi, kutlama, diğer): beyaz zemin, üstte lacivert künye, tam genişlik fotoğraf, kırmızı etiket.
+// Özel günde Modern de Afiş'i kullanır. Çizim yardımcıları postImage.js'ten "kit" olarak gelir.
 
-// Renk seçimine (tür değişince türün rengi) göre: a koyu ana renk, b en koyu, acc canlı vurgu, accInk vurgunun üstündeki yazı
-const PAL = {
-  deniz: { a: "#0e4a47", b: "#04201e", acc: "#c8f169" },
-  gece: { a: "#16306a", b: "#050d22", acc: "#d6ff3d" },
-  gun: { a: "#6a1d2e", b: "#1d0710", acc: "#ff8a5b" },
-  kum: { a: "#1f5a4b", b: "#0b2a22", acc: "#ff7a45" },
-  mor: { a: "#3a2a7a", b: "#0f0a26", acc: "#b9a6ff" },
-  turkuaz: { a: "#0a5158", b: "#021d21", acc: "#7af0dc" },
-  bordo: { a: "#6a1730", b: "#1c050c", acc: "#ffb3c7" },
-  antrasit: { a: "#2a3039", b: "#0a0b0d", acc: "#e8ff5a" },
-  al: { a: "#c8102e", b: "#4d0610", acc: "#ffffff", accInk: "#c8102e" },
-};
-export const modernPal = (theme) => PAL[theme] || PAL.deniz;
-const PAPER = "#f4f0e8";
-const CREAM = "#f8f2e6";
-const INK = "#121417";
-
-// Hafif kumlu doku (her çizimde aynı desen)
-let grainC;
-function grain(ctx, W, H, alpha) {
-  if (typeof document === "undefined") return;
-  if (!grainC) {
-    grainC = document.createElement("canvas");
-    grainC.width = grainC.height = 180;
-    const g = grainC.getContext("2d");
-    const d = g.createImageData(180, 180);
-    let s = 7;
-    for (let i = 0; i < d.data.length; i += 4) {
-      s = (s * 16807) % 2147483647;
-      const v = s % 256;
-      d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
-      d.data[i + 3] = 255;
-    }
-    g.putImageData(d, 0, 0);
-  }
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.globalCompositeOperation = "overlay";
-  ctx.fillStyle = ctx.createPattern(grainC, "repeat");
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
-}
-
-const rgba = (hex, a) => {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return `rgba(${r},${g},${b},${a})`;
-};
+const NAVY = "#0b1f3f";
+const YELLOW = "#f6c445";
+const RED = "#d7262e";
+const DISPLAY = (s) => `400 ${s}px "Post Display", Impact, "Arial Narrow Bold", sans-serif`;
+const up = (t) => String(t || "").toLocaleUpperCase("tr-TR");
 const spacing = (ctx, px) => {
   if ("letterSpacing" in ctx) ctx.letterSpacing = `${px}px`;
 };
+const hexA = (hex, a) => `rgba(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(",")},${a})`;
+
+// Yazıyı verilen yazı tipinde en büyük boyutta sığdırır
+// Başlık: kaldırıldıysa boş (satırı yok, yeri kalmaz); boyu ayardan (headSize)
+function headF(K, ctx, post, text, maxW, maxLines, big, small, font) {
+  if (!post.headline) return { size: small, lines: [] };
+  const k = K.sizeK(post.headSize);
+  return fitF(K, ctx, text, maxW, maxLines, Math.round(big * k), Math.round(small * k), font);
+}
+// Alt satır boyu ayardan (subSize)
+const subK = (K, post) => K.sizeK(post.subSize);
+function fitF(K, ctx, text, maxW, maxLines, big, small, font) {
+  for (let s = big; s >= small; s -= 4) {
+    ctx.font = font(s);
+    const lines = K.wrap(ctx, text, maxW);
+    if (lines.length <= maxLines && lines.every((l) => ctx.measureText(l).width <= maxW)) return { size: s, lines };
+  }
+  ctx.font = font(small);
+  return { size: small, lines: K.wrap(ctx, text, maxW).slice(0, maxLines) };
+}
+const sans = (K, w) => (s) => `${w} ${s}px ${K.FONT}`;
 
 // Fotoğrafı bir kutuya kaplar (büyütme ve kaydırma ayarlarıyla)
 function coverRect(ctx, photo, x, y, w, h, post) {
@@ -65,50 +49,14 @@ function coverRect(ctx, photo, x, y, w, h, post) {
   ctx.drawImage(photo, x + (w - dw) * ((post.fx ?? 50) / 100), y + (h - dh) * ((post.focus ?? 50) / 100), dw, dh);
 }
 
-// Koyu zemin: fotoğraf (renge çalar, yazının tarafı koyulaşır) ya da renk geçişi + iki yumuşak ışık lekesi
-function darkBg(K, ctx, post, photo, W, H, p, top) {
-  if (photo) {
-    K.cover(ctx, photo, W, H, post);
-    const k = post.shade / 100;
-    ctx.save();
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = K.mixRgb(p.a, "#ffffff", 0.55);
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-    K.fade(ctx, W, H, top, K.mixRgb(p.b, p.b, 0), 0.8 + k * 0.18, 0.58 + k * 0.2);
-    const g = top ? ctx.createLinearGradient(0, H, 0, H - 320) : ctx.createLinearGradient(0, 0, 0, 340);
-    g.addColorStop(0, rgba(p.b, 0.55 + k * 0.2));
-    g.addColorStop(1, rgba(p.b, 0));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    const g = ctx.createLinearGradient(0, 0, W * 0.4, H);
-    g.addColorStop(0, p.a);
-    g.addColorStop(1, p.b);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    for (const [cx, cy, r, col] of [
-      [0.88, 0.14, 0.62, rgba(p.acc === "#ffffff" ? "#ff8a8a" : p.acc, 0.26)],
-      [0.05, 0.72, 0.7, rgba(p.a, 0.9)],
-    ]) {
-      const rg = ctx.createRadialGradient(W * cx, H * cy, 0, W * cx, H * cy, W * r);
-      rg.addColorStop(0, col);
-      rg.addColorStop(1, col.replace(/[\d.]+\)$/, "0)"));
-      ctx.fillStyle = rg;
-      ctx.fillRect(0, 0, W, H);
-    }
-  }
-  grain(ctx, W, H, photo ? 0.05 : 0.09);
-}
-
-// Logo + iki satır kulüp adı; yüksekliği 2R
+// Logo + iki satır kulüp adı (yükseklik 2R)
 async function brand(K, post, ctx, x, y, R, ink, shadow) {
   // Logo ve kulüp adı kapatılabilir (noBrand)
   if (post.noBrand) return;
   const logo = await K.loadLogo();
   ctx.save();
   if (shadow) {
-    ctx.shadowColor = "rgba(0,0,0,.25)";
+    ctx.shadowColor = "rgba(0,0,0,.3)";
     ctx.shadowBlur = 14;
   }
   ctx.fillStyle = "#ffffff";
@@ -123,103 +71,32 @@ async function brand(K, post, ctx, x, y, R, ink, shadow) {
   ctx.restore();
   ctx.save();
   ctx.fillStyle = ink;
-  ctx.font = `700 ${Math.round(R * 0.52)}px ${K.FONT}`;
+  if (shadow) {
+    ctx.shadowColor = "rgba(0,0,0,.35)";
+    ctx.shadowBlur = 8;
+  }
+  ctx.font = `700 ${Math.round(R * 0.5)}px ${K.FONT}`;
   spacing(ctx, 3);
   ctx.textBaseline = "middle";
-  ctx.fillText("DİKİLİ YELKEN", x + R * 2 + 22, y + R * 0.62);
-  ctx.globalAlpha = 0.7;
-  ctx.font = `400 ${Math.round(R * 0.46)}px ${K.FONT}`;
-  ctx.fillText("SPOR KULÜBÜ", x + R * 2 + 22, y + R * 1.42);
+  ctx.fillText("DİKİLİ YELKEN", x + R * 2 + 22, y + R * 0.64);
+  ctx.fillText("SPOR KULÜBÜ", x + R * 2 + 22, y + R * 1.4);
   spacing(ctx, 0);
   ctx.restore();
 }
 
-// Arkada büyük dış çizgili yazı (YARIŞ, ANTRENMAN…); dikeyse sağ kenar boyunca
-function outlineWord(K, ctx, word, { x, y, len, color, vertical, italic, max = 300 }) {
-  ctx.save();
-  const style = italic ? "italic 800" : "800";
-  let size = max;
-  ctx.font = `${style} ${size}px ${K.FONT}`;
-  spacing(ctx, 6);
-  const w = ctx.measureText(word).width;
-  if (w > len) size = Math.max(90, Math.floor((size * len) / w));
-  ctx.font = `${style} ${size}px ${K.FONT}`;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.textBaseline = "top";
-  ctx.translate(x, y);
-  if (vertical) ctx.rotate(Math.PI / 2);
-  ctx.strokeText(word, 0, 0);
-  spacing(ctx, 0);
-  ctx.restore();
-  return size;
+// "Foça · 12-14 Ekim 2026 · 10:00" → parçalar ve türleri (tarih, saat, yer)
+const DAYS = /(pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|bugün|yarın|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|\d{1,2}[./-]\d{1,2})/i;
+function partsOf(info) {
+  return String(info || "")
+    .split(/\s*[·•|]\s*/)
+    .filter(Boolean)
+    .map((t) => ({ t, kind: /\b\d{1,2}[:.]\d{2}\b/.test(t) && t.length < 14 ? "time" : DAYS.test(t) || /\d{4}/.test(t) ? "date" : "place" }));
 }
 
-// Yazı bloğu: o = { head, lines, italic, kicker (etiket başta çizgiyle), sticker (eğik çıkartma etiket), info "box"|"chips"|"line", wish "arrow"|"cta"|"rule" }
-function measure(K, ctx, post, maxW, k, o) {
-  const z = (n) => Math.round(n * k);
+// Görselde vurgulanacak adlar ve sporcu satırları
+function namesFor(K, post) {
   const people = imagePeople(post.people) ? imagePeople(post.people).split("\n") : [];
-  const names = K.namesOf(post, people);
-  const info = post.meta ? String(post.info || "").trim() : "";
-  const items = [];
-  const add = (it, gap) => items.push({ ...it, gap: items.length ? gap : 0 });
-  if (post.tag && o.kicker) add({ t: "kicker", h: z(34) }, 0);
-  if (post.tag && o.sticker) add({ t: "sticker", h: z(70) }, 0);
-  const weight = o.italic ? "italic 800" : 800;
-  const hk = K.sizeK(post.headSize);
-  const sk = K.sizeK(post.subSize);
-  if (post.headline) {
-    const hi = z(o.head * hk);
-    const head = K.fit(ctx, post.headline, maxW, o.lines, hi, z(Math.round(o.head * 0.45 * hk)), weight);
-    const lh = Math.round(head.size * 0.98);
-    add({ t: "head", ...head, weight, lh, h: head.lines.length * lh + Math.round(head.size * 0.08) }, z(o.kicker ? 26 : 30));
-  }
-  if (info) {
-    if (o.info === "box") {
-      const f = K.fit(ctx, info.replace(/\s*[·•]\s*/g, "  •  "), maxW - z(110), 1, z(36), z(24), 700);
-      add({ t: "box", ...f, h: z(92) }, z(34));
-    } else if (o.info === "chips") {
-      ctx.font = `700 ${z(30)}px ${K.FONT}`;
-      const parts = info.split(/\s*[·•]\s*/).filter(Boolean).slice(0, 4);
-      const rows = [[]];
-      let w = 0;
-      for (const t of parts) {
-        const cw = Math.min(maxW, ctx.measureText(t).width + z(56));
-        if (rows.at(-1).length && w + z(14) + cw > maxW) {
-          rows.push([]);
-          w = 0;
-        }
-        rows.at(-1).push({ t, w: cw });
-        w += (rows.at(-1).length > 1 ? z(14) : 0) + cw;
-      }
-      add({ t: "chips", rows, size: z(30), ch: z(64), h: rows.length * z(64) + (rows.length - 1) * z(12) }, z(30));
-    } else {
-      const f = K.fit(ctx, info.replace(/\s*[·•]\s*/g, " • "), maxW - z(44), 1, z(34), z(24), 700);
-      add({ t: "line", ...f, h: Math.round(f.size * 1.3) }, z(24));
-    }
-  }
-  if (post.sub) {
-    const sub = K.fitRich(ctx, post.sub, names, maxW, sk > 1 ? 5 : 4, z(31 * sk), z(23 * sk), 400);
-    const l = Math.round(sub.size * 1.42);
-    add({ t: "sub", ...sub, lh: l, h: sub.lines.length * l }, z(info ? 26 : 30));
-  }
-  if (people.length) {
-    const pp = K.fitRich(ctx, people.join("\n"), names, maxW - z(34), people.length, z(33), z(24), 600);
-    const ph = Math.round(pp.size * 1.42);
-    add({ t: "people", ...pp, ph, h: pp.lines.length * ph }, z(18));
-  }
-  if (post.wish) {
-    if (o.wish === "cta") {
-      const w = K.fit(ctx, post.wish, maxW - z(150), 1, z(36), z(24), 700);
-      add({ t: "cta", ...w, h: z(84) }, z(36));
-    } else {
-      const w = K.fit(ctx, post.wish, maxW - (o.wish === "arrow" ? z(64) : 0), 2, z(38), z(26), 700);
-      const l = Math.round(w.size * 1.28);
-      if (o.wish === "rule") add({ t: "rule", h: z(5) }, z(32));
-      add({ t: "wish", ...w, lh: l, h: w.lines.length * l, arrow: o.wish === "arrow" }, o.wish === "rule" ? z(26) : z(34));
-    }
-  }
-  return { items, h: items.reduce((a, x) => a + x.h + x.gap, 0), z };
+  return { people, names: K.namesOf(post, people) };
 }
 
 function arrowRight(ctx, x, y, s, color, width) {
@@ -231,435 +108,799 @@ function arrowRight(ctx, x, y, s, color, width) {
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + s, y);
-  ctx.moveTo(x + s * 0.62, y - s * 0.36);
+  ctx.moveTo(x + s * 0.6, y - s * 0.38);
   ctx.lineTo(x + s, y);
-  ctx.lineTo(x + s * 0.62, y + s * 0.36);
+  ctx.lineTo(x + s * 0.6, y + s * 0.38);
   ctx.stroke();
   ctx.restore();
 }
 
-// c = { ink, soft (ikincil yazı), acc, accInk, name (sporcu adı rengi), glass, glassLine, sticker, stickerInk, cta, ctaInk, maxW }
-function paint(K, ctx, post, { items, z }, x, y, c) {
-  ctx.textBaseline = "top";
-  for (const it of items) {
-    y += it.gap;
+// Düğme gibi dilek: dolu hap, sağında daire içinde ok
+function cta(K, ctx, x, y, text, size, h, bg, ink, dot, dotInk, maxW) {
+  ctx.save();
+  ctx.font = `800 ${size}px ${K.FONT}`;
+  const w = Math.min(maxW, ctx.measureText(text).width + h * 1.9);
+  ctx.shadowColor = "rgba(0,0,0,.18)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = bg;
+  K.pill(ctx, x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.fillStyle = ink;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + h * 0.48, y + h / 2 + 1, w - h * 1.7);
+  ctx.fillStyle = dot;
+  ctx.beginPath();
+  ctx.arc(x + w - h / 2, y + h / 2, h / 2 - 9, 0, Math.PI * 2);
+  ctx.fill();
+  arrowRight(ctx, x + w - h / 2 - 13, y + h / 2, 26, dotInk, 4);
+  ctx.restore();
+  return w;
+}
+
+// Sığmazsa her şeyi birlikte küçültür: build(k) → { h, draw(y) }
+function shrink(build, room) {
+  let b = build(1);
+  for (let k = 0.94; b.h > room && k >= 0.55; k -= 0.05) b = build(k);
+  return b;
+}
+
+// ─── 1. Yarış duyurusu: maç günü afişi ───
+async function drawRace(K, ctx, post, photo, W, H, S) {
+  const k0 = post.shade / 100;
+  if (photo) {
+    coverRect(ctx, photo, 0, 0, W, H, post);
     ctx.save();
-    if (it.t === "kicker") {
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.acc;
-      ctx.fillRect(x, y + it.h / 2 - z(2), z(64), z(4));
-      ctx.font = `700 ${z(28)}px ${K.FONT}`;
-      spacing(ctx, z(5));
-      ctx.textBaseline = "middle";
-      ctx.fillText(post.tag.toLocaleUpperCase("tr-TR"), x + z(84), y + it.h / 2 + 1);
-    } else if (it.t === "sticker") {
-      ctx.shadowColor = "rgba(0,0,0,.18)";
-      ctx.shadowBlur = 18;
-      ctx.shadowOffsetY = 6;
-      ctx.font = `800 ${z(30)}px ${K.FONT}`;
-      spacing(ctx, z(3));
-      const label = post.tag.toLocaleUpperCase("tr-TR");
-      const w = ctx.measureText(label).width + z(56);
-      ctx.translate(x + w / 2, y + it.h / 2);
-      ctx.rotate(-0.07);
-      ctx.fillStyle = c.sticker;
-      K.pill(ctx, -w / 2, -it.h / 2, w, it.h, z(18));
-      ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.stickerInk;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText(label, z(2), 2);
-    } else if (it.t === "head") {
-      ctx.fillStyle = c.ink;
-      ctx.font = `${it.weight} ${it.size}px ${K.FONT}`;
-      spacing(ctx, -Math.round(it.size * 0.025));
-      for (const [j, l] of it.lines.entries()) ctx.fillText(l, x - 3, y + j * it.lh);
-    } else if (it.t === "box") {
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.glass;
-      K.pill(ctx, x, y, c.maxW, it.h, z(24));
-      ctx.fill();
-      ctx.strokeStyle = c.glassLine;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = c.acc;
-      K.pill(ctx, x + z(14), y + z(14), z(64), it.h - z(28), z(16));
-      ctx.fill();
-      K.pin(ctx, x + z(46), y + it.h / 2 - z(9), z(11), c.accInk);
-      ctx.fillStyle = c.ink;
-      ctx.font = `700 ${it.size}px ${K.FONT}`;
-      ctx.textBaseline = "middle";
-      ctx.fillText(it.lines[0] || "", x + z(100), y + it.h / 2 + 1);
-    } else if (it.t === "chips") {
-      ctx.shadowColor = "transparent";
-      ctx.font = `700 ${it.size}px ${K.FONT}`;
-      ctx.textBaseline = "middle";
-      let cy = y;
-      for (const row of it.rows) {
-        let cx = x;
-        for (const [i, ch] of row.entries()) {
-          ctx.fillStyle = i === 0 ? c.acc : c.glass;
-          K.pill(ctx, cx, cy, ch.w, it.ch, it.ch / 2);
-          ctx.fill();
-          if (i) {
-            ctx.strokeStyle = c.glassLine;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-          ctx.fillStyle = i === 0 ? c.accInk : c.ink;
-          ctx.fillText(ch.t, cx + z(28), cy + it.ch / 2 + 1, ch.w - z(56));
-          cx += ch.w + z(14);
-        }
-        cy += it.ch + z(12);
-      }
-    } else if (it.t === "line") {
-      ctx.shadowColor = "transparent";
-      K.pin(ctx, x + z(13), y + it.h / 2 - z(9), z(12), c.acc);
-      ctx.fillStyle = c.ink;
-      ctx.font = `700 ${it.size}px ${K.FONT}`;
-      ctx.textBaseline = "middle";
-      ctx.fillText(it.lines[0] || "", x + z(44), y + it.h / 2 + 1);
-    } else if (it.t === "sub") {
-      for (const [j, l] of it.lines.entries()) K.drawRich(ctx, l, x, y + j * it.lh, it.size, 400, it.space, c.soft, c.name);
-    } else if (it.t === "people") {
-      let py = y;
-      for (const l of it.lines) {
-        ctx.save();
-        ctx.shadowColor = "transparent";
-        ctx.fillStyle = c.acc;
-        ctx.fillRect(x, py + it.ph / 2 - z(4), z(18), z(5));
-        ctx.restore();
-        K.drawRich(ctx, l, x + z(34), py + (it.ph - it.size) / 2 - 2, it.size, 600, it.space, c.ink, c.name);
-        py += it.ph;
-      }
-    } else if (it.t === "rule") {
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.acc;
-      ctx.fillRect(x, y, z(90), it.h);
-    } else if (it.t === "wish") {
-      ctx.fillStyle = c.wish || c.acc;
-      ctx.font = `700 ${it.size}px ${K.FONT}`;
-      const dx = it.arrow ? z(64) : 0;
-      if (it.arrow) arrowRight(ctx, x, y + it.size * 0.55, z(40), c.wish || c.acc, z(5));
-      for (const [j, l] of it.lines.entries()) ctx.fillText(l, x + dx, y + j * it.lh);
-    } else if (it.t === "cta") {
-      ctx.shadowColor = "rgba(0,0,0,.18)";
-      ctx.shadowBlur = 20;
-      ctx.shadowOffsetY = 6;
-      ctx.font = `700 ${it.size}px ${K.FONT}`;
-      const w = Math.min(c.maxW, ctx.measureText(it.lines[0] || "").width + z(150));
-      ctx.fillStyle = c.cta;
-      K.pill(ctx, x, y, w, it.h, it.h / 2);
-      ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.fillStyle = c.ctaInk;
-      ctx.textBaseline = "middle";
-      ctx.fillText(it.lines[0] || "", x + z(40), y + it.h / 2 + 1);
-      ctx.fillStyle = c.acc;
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = "rgb(170,190,225)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    K.fade(ctx, W, H, false, "rgb(7,21,44)", 0.9 + k0 * 0.1, 0.62 + k0 * 0.15);
+    const g = ctx.createLinearGradient(0, 0, 0, 360 + S.t);
+    g.addColorStop(0, "rgba(7,21,44,.65)");
+    g.addColorStop(1, "rgba(7,21,44,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, 360 + S.t);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, W * 0.3, H);
+    g.addColorStop(0, "#18386b");
+    g.addColorStop(1, "#050f22");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // Arkada büyük yelken silüeti ve iki ince sarı çizgi
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,.05)";
+    ctx.beginPath();
+    ctx.moveTo(W * 0.62, H * 0.08);
+    ctx.lineTo(W * 1.02, H * 0.62);
+    ctx.lineTo(W * 0.6, H * 0.62);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hexA(YELLOW, 0.5);
+    ctx.lineWidth = 3;
+    for (const d of [0, 26]) {
       ctx.beginPath();
-      ctx.arc(x + w - it.h / 2, y + it.h / 2, it.h / 2 - z(10), 0, Math.PI * 2);
-      ctx.fill();
-      arrowRight(ctx, x + w - it.h / 2 - z(14), y + it.h / 2, z(28), c.accInk, z(4));
+      ctx.moveTo(W * 0.5 + d, 0);
+      ctx.lineTo(W + d, H * 0.42);
+      ctx.stroke();
     }
     ctx.restore();
-    y += it.h;
   }
-}
-
-// Yazı bloğunu alana sığdırır (sığmazsa her şey birlikte küçülür)
-function fitBlock(K, ctx, post, maxW, room, o) {
-  let m = measure(K, ctx, post, maxW, 1, o);
-  for (let k = 0.94; m.h > room && k >= 0.56; k -= 0.06) m = measure(K, ctx, post, maxW, k, o);
-  return m;
-}
-
-const lines = (f) => (tallOf(f) ? 5 : f === "portrait" ? 4 : 3);
-
-// Yarış duyurusu / sonucu: koyu zemin, sağ kenarda dikey dış çizgili YARIŞ / SONUÇ, sağ üstte dolu etiket hapı,
-// dev başlık, tarih ve yer cam kutuda, ok ile dilek
-async function drawRace(K, ctx, post, photo, W, H, p, S) {
-  const top = post.pos === "top";
-  darkBg(K, ctx, post, photo, W, H, p, top);
-  const R = 46;
-  const hy = PADY(S);
-  outlineWord(K, ctx, post.kind === "sonuc" ? "SONUÇ" : "YARIŞ", {
-    x: W - S.r - 26,
-    y: hy + R * 2 + 46,
-    len: H - hy - R * 2 - 46 - S.b - 60,
-    color: rgba(p.acc === "#ffffff" ? "#ffffff" : p.acc, photo ? 0.22 : 0.2),
-    vertical: true,
-    max: 230,
-  });
-  await brand(K, post, ctx, S.x, hy, R, "#ffffff", !!photo);
-  if (post.tag) {
+  const x = S.x;
+  const maxW = S.w;
+  await brand(K, post, ctx, x, S.t + 70, 46, "#ffffff", !!photo);
+  // Sağ üstte sınıflar (ILCA · OPTIMIST)
+  const cls = up(String(post.classes || "").split(",").map((c) => c.trim()).filter(Boolean).slice(0, 2).join(" · "));
+  if (cls) {
     ctx.save();
-    ctx.font = `800 26px ${K.FONT}`;
+    ctx.font = `700 26px ${K.FONT}`;
     spacing(ctx, 3);
-    const label = post.tag.toLocaleUpperCase("tr-TR");
-    const w = ctx.measureText(label).width + 52;
-    const x = W - S.r - K.PAD - w;
-    ctx.fillStyle = p.acc;
-    K.pill(ctx, x, hy + R - 31, w, 62, 31);
-    ctx.fill();
-    ctx.fillStyle = p.accInk || p.b;
+    const w = ctx.measureText(cls).width + 48;
+    ctx.strokeStyle = YELLOW;
+    ctx.lineWidth = 3;
+    K.pill(ctx, x + maxW - w, S.t + 70 + 46 - 28, w, 56, 28);
+    ctx.stroke();
+    ctx.fillStyle = YELLOW;
     ctx.textBaseline = "middle";
-    ctx.fillText(label, x + 26, hy + R + 1);
+    ctx.fillText(cls, x + maxW - w + 24, S.t + 70 + 47);
     spacing(ctx, 0);
     ctx.restore();
   }
-  const maxW = S.w - 70;
-  const headTop = hy + R * 2 + 70;
-  const room = H - headTop - K.PAD - S.b;
-  const m = fitBlock(K, ctx, post, maxW, room, { head: post.kind === "sonuc" ? 124 : 136, lines: lines(post.format), info: "box", wish: "arrow" });
+
+  // Altta sarı kayan şerit: dilek tekrar tekrar
+  const T = 78;
+  const ty = H - S.b - T;
+  ctx.fillStyle = YELLOW;
+  ctx.fillRect(0, ty, W, T);
+  if (S.b) {
+    ctx.fillStyle = NAVY;
+    ctx.fillRect(0, ty + T, W, S.b);
+  }
+  const word = up(post.wish || post.tag || "YARIŞ GÜNÜ");
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, ty, W, T);
+  ctx.clip();
+  ctx.font = DISPLAY(40);
+  ctx.fillStyle = NAVY;
+  ctx.textBaseline = "middle";
+  spacing(ctx, 2);
+  let cx = -60;
+  while (cx < W) {
+    ctx.fillText(word, cx, ty + T / 2 + 2);
+    cx += ctx.measureText(word).width + 34;
+    ctx.save();
+    ctx.translate(cx, ty + T / 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-7, -7, 14, 14);
+    ctx.restore();
+    cx += 34;
+  }
+  spacing(ctx, 0);
+  ctx.restore();
+
+  const { names } = namesFor(K, post);
+  const parts = partsOf(post.meta ? post.info : "");
+  const date = parts.find((p) => p.kind === "date");
+  const rest = parts.filter((p) => p !== date).map((p) => p.t);
+  const lines = tallOf(post.format) ? 4 : 3;
+  const top = S.t + 70 + 92 + 50;
+  const b = shrink((k) => {
+    const z = (n) => Math.round(n * k);
+    const head = headF(K, ctx, post, up(post.headline), maxW, lines, z(176), z(84), DISPLAY);
+    const hl = Math.round(head.size * 0.98);
+    const sub = post.sub ? K.fitRich(ctx, post.sub, names, maxW, 3, z(30 * subK(K, post)), z(22 * subK(K, post)), 400) : null;
+    const sl = sub ? Math.round(sub.size * 1.4) : 0;
+    let dh = 0;
+    let dfit = null;
+    if (date || rest.length) {
+      dfit = date ? fitF(K, ctx, up(date.t.replace(/\s*-\s*/, "–")), maxW * 0.6, 1, z(96), z(52), DISPLAY) : null;
+      dh = dfit ? Math.round(dfit.size * 1.05) : z(56);
+    }
+    const kick = post.tag ? z(34) : 0;
+    const h = kick + (kick ? z(24) : 0) + head.lines.length * hl + (sub ? z(24) + sub.lines.length * sl : 0) + (dh ? z(40) + dh : 0);
+    return {
+      h,
+      draw(y) {
+        if (kick) {
+          ctx.fillStyle = YELLOW;
+          ctx.fillRect(x, y + kick / 2 - z(3), z(56), z(6));
+          ctx.font = `800 ${z(30)}px ${K.FONT}`;
+          spacing(ctx, z(6));
+          ctx.textBaseline = "middle";
+          ctx.fillText(up(post.tag), x + z(76), y + kick / 2 + 1);
+          spacing(ctx, 0);
+          y += kick + z(24);
+        }
+        ctx.textBaseline = "top";
+        ctx.font = DISPLAY(head.size);
+        for (const [i, l] of head.lines.entries()) {
+          ctx.fillStyle = i === head.lines.length - 1 && head.lines.length > 1 ? YELLOW : "#ffffff";
+          ctx.fillText(l, x - 2, y + i * hl);
+        }
+        y += head.lines.length * hl;
+        if (sub) {
+          y += z(24);
+          ctx.globalAlpha = 0.92;
+          for (const [i, l] of sub.lines.entries()) K.drawRich(ctx, l, x, y + i * sl, sub.size, 400, sub.space, "#ffffff", YELLOW);
+          ctx.globalAlpha = 1;
+          y += sub.lines.length * sl;
+        }
+        if (dh) {
+          y += z(40);
+          let px = x;
+          if (dfit) {
+            ctx.font = DISPLAY(dfit.size);
+            ctx.fillStyle = YELLOW;
+            ctx.fillText(dfit.lines[0], x, y);
+            px = x + ctx.measureText(dfit.lines[0]).width + z(30);
+            ctx.fillStyle = "rgba(255,255,255,.5)";
+            ctx.fillRect(px, y + dh * 0.12, 3, dh * 0.72);
+            px += z(30);
+          }
+          if (rest.length) {
+            const pw = x + maxW - px;
+            const p1 = fitF(K, ctx, up(rest[0]), pw, 1, z(40), z(22), sans(K, 800));
+            ctx.fillStyle = "#ffffff";
+            ctx.font = `800 ${p1.size}px ${K.FONT}`;
+            spacing(ctx, z(2));
+            const two = rest.length > 1;
+            ctx.fillText(p1.lines[0] || "", px, y + (two ? dh * 0.12 : (dh - p1.size) / 2));
+            if (two) {
+              ctx.globalAlpha = 0.8;
+              const p2 = fitF(K, ctx, rest.slice(1).join(" · "), pw, 1, z(30), z(20), sans(K, 400));
+              ctx.font = `400 ${p2.size}px ${K.FONT}`;
+              ctx.fillText(p2.lines[0] || "", px, y + dh * 0.12 + p1.size * 1.25);
+              ctx.globalAlpha = 1;
+            }
+            spacing(ctx, 0);
+          }
+        }
+      },
+    };
+  }, ty - 56 - top);
+  ctx.save();
   if (photo) {
     ctx.shadowColor = "rgba(0,0,0,.3)";
     ctx.shadowBlur = 14;
   }
-  paint(K, ctx, post, m, S.x, top ? headTop : H - K.PAD - S.b - m.h, { ...darkInk(p), maxW });
-  ctx.shadowColor = "transparent";
+  b.draw(ty - 56 - b.h);
+  ctx.restore();
 }
 
-// Antrenman: koyu zemin, ince eğik çizgiler, sağ üstte üç hız çubuğu, ortada eğik dış çizgili ANTRENMAN,
-// çizgili etiket, eğik (italik) başlık, bilgi hapları
-async function drawTraining(K, ctx, post, photo, W, H, p, S) {
-  const top = post.pos === "top";
-  darkBg(K, ctx, post, photo, W, H, p, top);
-  if (!photo) {
+// ─── 2. Yarış sonucu: skor kartı ───
+async function drawResult(K, ctx, post, photo, W, H, S) {
+  const x = S.x;
+  const maxW = S.w;
+  const { names } = namesFor(K, post);
+  const rows = (post.race?.athletes || []).filter((a) => a.res).slice(0, 4);
+  const pad = 56;
+  const panel = shrink((k) => {
+    const z = (n) => Math.round(n * k);
+    const head = headF(K, ctx, post, up(post.headline), maxW, 3, z(122), z(64), DISPLAY);
+    const hl = Math.round(head.size * 0.98);
+    const rh = z(74);
+    const sub = !rows.length && post.sub ? K.fitRich(ctx, post.sub, names, maxW, 3, z(30 * subK(K, post)), z(22 * subK(K, post)), 400) : null;
+    const sl = sub ? Math.round(sub.size * 1.4) : 0;
+    const info = post.meta && post.info ? fitF(K, ctx, up(post.info.replace(/\s*·\s*/g, " • ")), maxW, 1, z(26), z(18), sans(K, 700)) : null;
+    const wish = post.wish ? fitF(K, ctx, post.wish, maxW, 1, z(36), z(24), sans(K, 800)) : null;
+    const h = (info ? z(26) + z(26) : 0) + head.lines.length * hl + (rows.length ? z(30) + rows.length * rh : 0) + (sub ? z(24) + sub.lines.length * sl : 0) + (wish ? z(30) + wish.size * 1.2 : 0);
+    return {
+      h,
+      draw(y) {
+        ctx.textBaseline = "top";
+        if (info) {
+          ctx.fillStyle = hexA(NAVY, 0.75);
+          ctx.font = `700 ${info.size}px ${K.FONT}`;
+          spacing(ctx, z(3));
+          ctx.fillText(info.lines[0], x, y);
+          spacing(ctx, 0);
+          y += z(52);
+        }
+        ctx.fillStyle = NAVY;
+        ctx.font = DISPLAY(head.size);
+        for (const [i, l] of head.lines.entries()) ctx.fillText(l, x - 2, y + i * hl);
+        y += head.lines.length * hl;
+        if (rows.length) {
+          y += z(30);
+          for (const a of rows) {
+            ctx.fillStyle = hexA(NAVY, 0.15);
+            ctx.fillRect(x, y + rh - 2, maxW, 2);
+            const b = z(54);
+            ctx.fillStyle = NAVY;
+            K.pill(ctx, x, y + (rh - b) / 2 - 1, b, b, z(12));
+            ctx.fill();
+            ctx.fillStyle = YELLOW;
+            ctx.font = DISPLAY(z(34));
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(String(a.res).replace(/\s*\.?\s*$/, "").slice(0, 3), x + b / 2, y + rh / 2);
+            ctx.textAlign = "left";
+            ctx.fillStyle = NAVY;
+            ctx.font = `800 ${z(34)}px ${K.FONT}`;
+            ctx.fillText(a.name, x + b + z(24), y + rh / 2, maxW - b - z(200));
+            if (a.cls) {
+              ctx.font = `600 ${z(26)}px ${K.FONT}`;
+              ctx.textAlign = "right";
+              ctx.fillStyle = hexA(NAVY, 0.7);
+              ctx.fillText(up(a.cls), x + maxW, y + rh / 2);
+              ctx.textAlign = "left";
+            }
+            ctx.textBaseline = "top";
+            y += rh;
+          }
+        }
+        if (sub) {
+          y += z(24);
+          for (const [i, l] of sub.lines.entries()) K.drawRich(ctx, l, x, y + i * sl, sub.size, 400, sub.space, NAVY, NAVY);
+          y += sub.lines.length * sl;
+        }
+        if (wish) {
+          y += z(30);
+          ctx.fillStyle = NAVY;
+          ctx.font = `800 ${wish.size}px ${K.FONT}`;
+          ctx.fillText(wish.lines[0], x, y);
+        }
+      },
+    };
+  }, H - S.b - H * 0.36 - 90 - pad * 2);
+  const cut = 90;
+  const py = Math.max(H * 0.36, H - S.b - pad - panel.h - pad - cut / 2);
+  // Üstte fotoğraf (yoksa lacivert + kupa çizimi)
+  if (photo) coverRect(ctx, photo, 0, 0, W, py + cut, post);
+  else {
+    const g = ctx.createLinearGradient(0, 0, 0, py + cut);
+    g.addColorStop(0, "#18386b");
+    g.addColorStop(1, "#06132a");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, py + cut);
     ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,.045)";
-    ctx.lineWidth = 2;
-    for (let i = -H; i < W; i += 30) {
-      ctx.beginPath();
-      ctx.moveTo(i, H);
-      ctx.lineTo(i + H * 0.55, 0);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.rect(0, 0, W, py);
+    ctx.clip();
+    K.decor(ctx, W, py + cut * 3, true, "rgba(255,255,255,.1)", "sonuc");
     ctx.restore();
   }
-  // Hız çubukları (sağ üst)
+  const g = ctx.createLinearGradient(0, 0, 0, 320 + S.t);
+  g.addColorStop(0, "rgba(7,21,44,.6)");
+  g.addColorStop(1, "rgba(7,21,44,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, 320 + S.t);
+  // Eğik kesimli sarı pano
   ctx.save();
-  ctx.fillStyle = p.acc;
-  const bx = W - S.r - K.PAD;
-  const by = PADY(S) + 6;
-  for (const [i, [len, th]] of [[300, 26], [220, 18], [140, 12]].entries()) {
-    const y = by + i * 34;
-    ctx.globalAlpha = 1 - i * 0.22;
-    ctx.beginPath();
-    ctx.moveTo(bx - len + 14, y);
-    ctx.lineTo(bx + 14, y);
-    ctx.lineTo(bx, y + th);
-    ctx.lineTo(bx - len, y + th);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-  const R = 46;
-  const hy = PADY(S);
-  const word = "ANTRENMAN";
-  outlineWord(K, ctx, word, {
-    x: S.x - 10,
-    y: top ? H - S.b - K.PAD - H * 0.24 : hy + R * 2 + (H - hy - S.b) * 0.12,
-    len: S.w + 40,
-    color: photo ? "rgba(255,255,255,.18)" : rgba(p.acc === "#ffffff" ? "#ffffff" : p.acc, 0.16),
-    italic: true,
-    max: 220,
-  });
-  await brand(K, post, ctx, S.x, hy, R, "#ffffff", !!photo);
-  const maxW = S.w;
-  const headTop = hy + R * 2 + 80;
-  const room = H - headTop - K.PAD - S.b;
-  const m = fitBlock(K, ctx, post, maxW, room, { head: 128, lines: lines(post.format), italic: true, kicker: true, info: "chips", wish: "arrow" });
-  if (photo) {
-    ctx.shadowColor = "rgba(0,0,0,.3)";
-    ctx.shadowBlur = 14;
-  }
-  paint(K, ctx, post, m, S.x, top ? headTop : H - K.PAD - S.b - m.h, { ...darkInk(p), maxW });
-  ctx.shadowColor = "transparent";
-}
-
-// Kayıt / yelken okulu: krem zemin, büyük yumuşak daireler, fotoğraf kemerli çerçevede, eğik çıkartma etiket,
-// koyu başlık, çizgili haplar, düğme gibi dilek (Kayıt için yaz →)
-async function drawSchool(K, ctx, post, photo, W, H, p, S) {
-  ctx.fillStyle = CREAM;
-  ctx.fillRect(0, 0, W, H);
-  const blob = p.acc === "#ffffff" ? rgba(p.a, 0.22) : rgba(p.acc, 0.85);
-  ctx.fillStyle = blob;
+  ctx.shadowColor = "rgba(0,0,0,.3)";
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = YELLOW;
   ctx.beginPath();
-  ctx.arc(W * 0.94, H * 0.1, W * 0.4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = rgba(p.a, 0.1);
-  ctx.beginPath();
-  ctx.arc(W * 0.02, H * 0.52, W * 0.26, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = rgba(p.a, 0.08);
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.84);
-  ctx.bezierCurveTo(W * 0.3, H * 0.78, W * 0.6, H * 0.92, W, H * 0.82);
+  ctx.moveTo(0, py);
+  ctx.lineTo(W, py + cut);
   ctx.lineTo(W, H);
   ctx.lineTo(0, H);
   ctx.closePath();
   ctx.fill();
-  // Küçük nokta ızgarası (sağ üst)
-  ctx.fillStyle = rgba(p.b, 0.35);
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
-    ctx.beginPath();
-    ctx.arc(W - S.r - K.PAD - j * 30, PADY(S) + 150 + i * 30, 5, 0, Math.PI * 2);
-    ctx.fill();
+  ctx.restore();
+  // Panonun üst kenarında lacivert etiket
+  if (post.tag) {
+    ctx.save();
+    ctx.font = `800 28px ${K.FONT}`;
+    spacing(ctx, 4);
+    const w = ctx.measureText(up(post.tag)).width + 56;
+    const ly = py + ((x + w / 2) / W) * cut - 30;
+    ctx.translate(x, ly + 30);
+    ctx.rotate(Math.atan2(cut, W));
+    ctx.fillStyle = NAVY;
+    ctx.fillRect(0, -30, w, 60);
+    ctx.fillStyle = YELLOW;
+    ctx.textBaseline = "middle";
+    ctx.fillText(up(post.tag), 28, 2);
+    spacing(ctx, 0);
+    ctx.restore();
   }
-  grain(ctx, W, H, 0.06);
-  const R = 44;
-  const hy = PADY(S);
-  await brand(K, post, ctx, S.x, hy, R, p.b, true);
-  const maxW = S.w;
-  const free = H - hy - R * 2 - 50 - K.PAD - S.b;
-  const room = photo ? free * 0.58 : free;
-  const m = fitBlock(K, ctx, post, maxW, room, { head: 120, lines: lines(post.format), sticker: true, info: "chips", wish: "cta" });
-  const ty = H - K.PAD - S.b - m.h;
-  if (photo) {
-    const fy = hy + R * 2 + 44;
-    const fh = ty - 46 - fy;
-    if (fh > 140) {
-      const fw = maxW;
-      const r = Math.min(fw / 2, fh * 0.6);
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(S.x, fy + fh);
-      ctx.lineTo(S.x, fy + r);
-      ctx.arcTo(S.x, fy, S.x + r, fy, r);
-      ctx.lineTo(S.x + fw - r, fy);
-      ctx.arcTo(S.x + fw, fy, S.x + fw, fy + r, r);
-      ctx.lineTo(S.x + fw, fy + fh - 36);
-      ctx.arcTo(S.x + fw, fy + fh, S.x + fw - 36, fy + fh, 36);
-      ctx.lineTo(S.x + 36, fy + fh);
-      ctx.arcTo(S.x, fy + fh, S.x, fy + fh - 36, 36);
-      ctx.closePath();
-      ctx.shadowColor = "rgba(0,0,0,.18)";
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 10;
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-      ctx.shadowColor = "transparent";
-      ctx.clip();
-      coverRect(ctx, photo, S.x, fy, fw, fh, post);
-      ctx.restore();
-    }
-  } else {
-    K.decor(ctx, W, H, false, rgba(p.a, 0.08), post.kind);
-  }
-  paint(K, ctx, post, m, S.x, ty, {
-    ink: p.b,
-    soft: rgba(p.b, 0.78),
-    acc: p.acc === "#ffffff" ? p.a : p.acc,
-    accInk: p.acc === "#ffffff" ? "#ffffff" : p.b,
-    name: p.a,
-    glass: "rgba(255,255,255,.7)",
-    glassLine: rgba(p.b, 0.18),
-    sticker: p.a,
-    stickerInk: "#ffffff",
-    cta: p.b,
-    ctaInk: "#ffffff",
-    wish: p.a,
-    maxW,
-  });
+  await brand(K, post, ctx, x, S.t + 70, 46, "#ffffff", true);
+  panel.draw(py + cut + pad - 10);
 }
 
-// Haber / duyuru / kutlama / diğer: dergi düzeni. Kâğıt zemin, üstte künye (logo, kulüp adı, ay yıl, kalın + ince çizgi),
-// ortada yuvarlak köşeli görsel (fotoğraf ya da renkli pano + türün çizimi), sol üstünde etiket hapı; altta başlık
-async function drawNews(K, ctx, post, photo, W, H, p, S) {
-  ctx.fillStyle = PAPER;
+// ─── 3. Antrenman: program kartı ───
+async function drawTraining(K, ctx, post, photo, W, H, S) {
+  const G = "#0f3d33";
+  const GM = "#13805f";
+  ctx.fillStyle = "#eef4f0";
   ctx.fillRect(0, 0, W, H);
-  grain(ctx, W, H, 0.07);
-  const R = 34;
-  const hy = PADY(S);
-  await brand(K, post, ctx, S.x, hy, R, INK, false);
-  const now = new Date().toLocaleDateString("tr-TR", { month: "long", year: "numeric" }).toLocaleUpperCase("tr-TR");
   ctx.save();
-  ctx.fillStyle = INK;
-  ctx.font = `700 22px ${K.FONT}`;
-  spacing(ctx, 3);
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  ctx.fillText(now, S.x + S.w, hy + R);
-  spacing(ctx, 0);
+  ctx.strokeStyle = hexA(G, 0.05);
+  ctx.lineWidth = 2;
+  for (let i = -H; i < W; i += 28) {
+    ctx.beginPath();
+    ctx.moveTo(i, H);
+    ctx.lineTo(i + H * 0.6, 0);
+    ctx.stroke();
+  }
   ctx.restore();
-  const ry = hy + R * 2 + 22;
-  ctx.fillStyle = INK;
-  ctx.fillRect(S.x, ry, S.w, 5);
-  ctx.fillRect(S.x, ry + 13, S.w, 1.5);
+  const x = S.x;
   const maxW = S.w;
-  const free = H - ry - 50 - K.PAD - S.b;
-  const m0 = fitBlock(K, ctx, post, maxW, free * 0.5, { head: 104, lines: lines(post.format), info: "line", wish: "rule" });
-  const ty = H - K.PAD - S.b - m0.h;
-  const py = ry + 44;
-  const ph = ty - 44 - py;
-  let m = m0;
-  if (ph > 160) {
+  const hy = S.t + 64;
+  await brand(K, post, ctx, x, hy, 42, G, false);
+  if (post.tag) {
     ctx.save();
-    K.pill(ctx, S.x, py, S.w, ph, 28);
+    ctx.font = `800 26px ${K.FONT}`;
+    spacing(ctx, 4);
+    const w = ctx.measureText(up(post.tag)).width + 52;
+    ctx.fillStyle = GM;
+    K.pill(ctx, x + maxW - w, hy + 42 - 29, w, 58, 29);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(up(post.tag), x + maxW - w + 26, hy + 43);
+    spacing(ctx, 0);
+    ctx.restore();
+  }
+  const { names } = namesFor(K, post);
+  const parts = partsOf(post.meta ? post.info : "").slice(0, 3);
+  const LABEL = { date: "GÜN", time: "SAAT", place: "YER" };
+  const block = shrink((k) => {
+    const z = (n) => Math.round(n * k);
+    const head = headF(K, ctx, post, post.headline, maxW, tallOf(post.format) ? 4 : 3, z(92), z(52), sans(K, 800));
+    const hl = Math.round(head.size * 1.06);
+    const bh = parts.length ? z(118) : 0;
+    const sub = post.sub ? K.fitRich(ctx, post.sub, names, maxW, 3, z(29 * subK(K, post)), z(22 * subK(K, post)), 400) : null;
+    const sl = sub ? Math.round(sub.size * 1.42) : 0;
+    const wish = post.wish ? fitF(K, ctx, post.wish, maxW - z(60), 1, z(34), z(24), sans(K, 800)) : null;
+    const h = head.lines.length * hl + (bh ? z(32) + bh : 0) + (sub ? z(26) + sub.lines.length * sl : 0) + (wish ? z(28) + wish.size * 1.2 : 0);
+    return {
+      h,
+      draw(y) {
+        ctx.textBaseline = "top";
+        ctx.fillStyle = G;
+        ctx.font = `800 ${head.size}px ${K.FONT}`;
+        spacing(ctx, -Math.round(head.size * 0.01));
+        for (const [i, l] of head.lines.entries()) ctx.fillText(l, x - 2, y + i * hl);
+        spacing(ctx, 0);
+        y += head.lines.length * hl;
+        if (bh) {
+          y += z(32);
+          const gap = z(14);
+          const bw = (maxW - gap * (parts.length - 1)) / parts.length;
+          for (const [i, p] of parts.entries()) {
+            const bx = x + i * (bw + gap);
+            ctx.fillStyle = "#ffffff";
+            K.pill(ctx, bx, y, bw, bh, z(22));
+            ctx.fill();
+            ctx.strokeStyle = hexA(G, 0.12);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = GM;
+            ctx.fillRect(bx + z(24), y + z(24), z(28), z(5));
+            ctx.font = `800 ${z(22)}px ${K.FONT}`;
+            spacing(ctx, z(3));
+            ctx.fillText(LABEL[p.kind], bx + z(62), y + z(15));
+            spacing(ctx, 0);
+            const v = fitF(K, ctx, p.t, bw - z(48), 1, z(36), z(20), sans(K, 800));
+            ctx.fillStyle = G;
+            ctx.font = `800 ${v.size}px ${K.FONT}`;
+            ctx.fillText(v.lines[0] || "", bx + z(24), y + bh - z(24) - v.size);
+          }
+          y += bh;
+        }
+        if (sub) {
+          y += z(26);
+          for (const [i, l] of sub.lines.entries()) K.drawRich(ctx, l, x, y + i * sl, sub.size, 400, sub.space, hexA(G, 0.85), GM);
+          y += sub.lines.length * sl;
+        }
+        if (wish) {
+          y += z(28);
+          arrowRight(ctx, x, y + wish.size * 0.58, z(36), GM, z(5));
+          ctx.fillStyle = GM;
+          ctx.font = `800 ${wish.size}px ${K.FONT}`;
+          ctx.fillText(wish.lines[0], x + z(56), y);
+        }
+      },
+    };
+  }, H * 0.5);
+  const by = H - S.b - 80 - block.h;
+  const cy = hy + 84 + 44;
+  const ch = by - 50 - cy;
+  if (ch > 180) {
+    ctx.save();
+    ctx.shadowColor = "rgba(15,61,51,.25)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = G;
+    K.pill(ctx, x, cy, maxW, ch, 36);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
     ctx.clip();
-    if (photo) coverRect(ctx, photo, S.x, py, S.w, ph, post);
+    if (photo) coverRect(ctx, photo, x, cy, maxW, ch, post);
     else {
-      const g = ctx.createLinearGradient(S.x, py, S.x + S.w * 0.4, py + ph);
-      g.addColorStop(0, p.a);
-      g.addColorStop(1, p.b);
+      const g = ctx.createLinearGradient(x, cy, x + maxW, cy + ch);
+      g.addColorStop(0, "#1f8a68");
+      g.addColorStop(1, G);
       ctx.fillStyle = g;
-      ctx.fillRect(S.x, py, S.w, ph);
-      ctx.translate(S.x, py);
-      K.decor(ctx, S.w, ph, true, "rgba(255,255,255,.14)", post.kind);
-      ctx.translate(-S.x, -py);
-      grain(ctx, W, H, 0.08);
+      ctx.fillRect(x, cy, maxW, ch);
+      ctx.translate(x, cy);
+      K.decor(ctx, maxW, ch, true, "rgba(255,255,255,.16)", "antrenman");
+    }
+    ctx.restore();
+  }
+  block.draw(by);
+}
+
+// ─── 4. Kayıt / yelken okulu: yaz kampanyası ───
+async function drawSchool(K, ctx, post, photo, W, H, S) {
+  const SKY = ["#5cc8f0", "#1b7fc8"];
+  const SAND = "#ffd45c";
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, SKY[0]);
+  g.addColorStop(1, SKY[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // Güneş ışığı
+  const r = ctx.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, W * 0.7);
+  r.addColorStop(0, "rgba(255,255,255,.35)");
+  r.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = r;
+  ctx.fillRect(0, 0, W, H);
+  const x = S.x;
+  const maxW = S.w;
+  await brand(K, post, ctx, x, S.t + 64, 42, "#ffffff", false);
+  const { names } = namesFor(K, post);
+  const parts = partsOf(post.meta ? post.info : "").slice(0, 3);
+
+  // Üstte başlık (beyaz, dar büyük harf)
+  const top = S.t + 64 + 84 + 40;
+  const head = shrink((k) => {
+    const z = (n) => Math.round(n * k);
+    const f = headF(K, ctx, post, up(post.headline), maxW, 3, z(150), z(76), DISPLAY);
+    const hl = Math.round(f.size * 1);
+    const sub = post.sub ? K.fitRich(ctx, post.sub, names, maxW, 3, z(30 * subK(K, post)), z(22 * subK(K, post)), 600) : null;
+    const sl = sub ? Math.round(sub.size * 1.4) : 0;
+    return {
+      h: f.lines.length * hl + (sub ? z(20) + sub.lines.length * sl : 0),
+      draw(y) {
+        ctx.save();
+        ctx.textBaseline = "top";
+        ctx.shadowColor = "rgba(8,50,90,.35)";
+        ctx.shadowOffsetY = 6;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = DISPLAY(f.size);
+        for (const [i, l] of f.lines.entries()) ctx.fillText(l, x - 2, y + i * hl);
+        ctx.restore();
+        y += f.lines.length * hl;
+        if (sub) {
+          y += z(20);
+          ctx.textBaseline = "top";
+          for (const [i, l] of sub.lines.entries()) K.drawRich(ctx, l, x, y + i * sl, sub.size, 600, sub.space, "#ffffff", SAND);
+        }
+      },
+    };
+  }, H * 0.3);
+  head.draw(top);
+
+  // Altta kum dalgası: bilgi hapları + düğme
+  const ch = 64;
+  const bottom = H - S.b - 64;
+  const ctaY = post.wish ? bottom - 88 : bottom;
+  const chipY = parts.length ? ctaY - (post.wish ? 30 : 0) - ch : ctaY;
+  const sandTop = Math.min(chipY - 70, H * 0.8);
+  ctx.fillStyle = SAND;
+  ctx.beginPath();
+  ctx.moveTo(0, sandTop + 40);
+  ctx.bezierCurveTo(W * 0.3, sandTop - 30, W * 0.62, sandTop + 70, W, sandTop);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.7)";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(0, sandTop + 22);
+  ctx.bezierCurveTo(W * 0.3, sandTop - 48, W * 0.62, sandTop + 52, W, sandTop - 18);
+  ctx.stroke();
+  if (parts.length) {
+    ctx.save();
+    ctx.font = `700 30px ${K.FONT}`;
+    ctx.textBaseline = "middle";
+    let cx = x;
+    for (const p of parts) {
+      const w = Math.min(maxW - (cx - x), ctx.measureText(p.t).width + 52);
+      if (w < 120) break;
+      ctx.strokeStyle = NAVY;
+      ctx.lineWidth = 3;
+      K.pill(ctx, cx, chipY, w, ch, ch / 2);
+      ctx.stroke();
+      ctx.fillStyle = NAVY;
+      ctx.fillText(p.t, cx + 26, chipY + ch / 2 + 1, w - 52);
+      cx += w + 14;
+    }
+    ctx.restore();
+  }
+  if (post.wish) cta(K, ctx, x, ctaY, post.wish, 34, 88, NAVY, "#ffffff", SAND, NAVY, maxW);
+
+  // Ortada yuvarlak fotoğraf (yoksa yelkenli çizimi) ve dönük sarı çıkartma
+  const midTop = top + head.h + 40;
+  const midBot = sandTop + 10;
+  const D = Math.min(maxW * 0.78, midBot - midTop);
+  if (D > 160) {
+    const cx = x + maxW - D / 2 - (maxW - D) * 0.15;
+    const cy = midTop + (midBot - midTop) / 2;
+    ctx.save();
+    ctx.shadowColor = "rgba(8,50,90,.35)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(cx, cy, D / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.beginPath();
+    ctx.arc(cx, cy, D / 2 - 12, 0, Math.PI * 2);
+    ctx.clip();
+    if (photo) coverRect(ctx, photo, cx - D / 2, cy - D / 2, D, D, post);
+    else {
+      const s = ctx.createLinearGradient(0, cy - D / 2, 0, cy + D / 2);
+      s.addColorStop(0, "#9fe0f7");
+      s.addColorStop(0.62, "#9fe0f7");
+      s.addColorStop(0.62, "#2a8fd6");
+      s.addColorStop(1, "#1569b0");
+      ctx.fillStyle = s;
+      ctx.fillRect(cx - D / 2, cy - D / 2, D, D);
+      const u = D / 10;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(cx - u * 0.2, cy - u * 3.6);
+      ctx.lineTo(cx - u * 0.2, cy + u * 0.9);
+      ctx.lineTo(cx - u * 2.8, cy + u * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = RED;
+      ctx.beginPath();
+      ctx.moveTo(cx + u * 0.2, cy - u * 2.6);
+      ctx.lineTo(cx + u * 0.2, cy + u * 0.9);
+      ctx.lineTo(cx + u * 2.2, cy + u * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = NAVY;
+      ctx.beginPath();
+      ctx.moveTo(cx - u * 3.2, cy + u * 1.2);
+      ctx.lineTo(cx + u * 2.8, cy + u * 1.2);
+      ctx.lineTo(cx + u * 2.1, cy + u * 1.9);
+      ctx.lineTo(cx - u * 2.6, cy + u * 1.9);
+      ctx.closePath();
+      ctx.fill();
     }
     ctx.restore();
     if (post.tag) {
+      // Dönük sarı çıkartma: etiket iki satıra bölünür
+      const R = Math.min(118, D * 0.3);
+      const bx = cx - D / 2 + R * 0.35;
+      const byy = cy - D / 2 + R * 0.75;
+      const words = up(post.tag).split(" ");
+      const l = words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : [words[0]];
       ctx.save();
-      ctx.font = `800 24px ${K.FONT}`;
-      spacing(ctx, 3);
-      const label = post.tag.toLocaleUpperCase("tr-TR");
-      const w = ctx.measureText(label).width + 48;
-      ctx.fillStyle = p.acc;
-      K.pill(ctx, S.x + 24, py + 24, w, 54, 27);
+      ctx.translate(bx, byy);
+      ctx.rotate(-0.22);
+      ctx.shadowColor = "rgba(8,50,90,.3)";
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 6;
+      ctx.fillStyle = SAND;
+      ctx.beginPath();
+      for (let i = 0; i < 32; i++) {
+        const a = (i / 32) * Math.PI * 2;
+        const rr = i % 2 ? R : R * 0.92;
+        ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = p.accInk || p.b;
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = NAVY;
+      ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(label, S.x + 48, py + 52);
-      spacing(ctx, 0);
+      const f = fitF(K, ctx, l.reduce((a, b) => (a.length > b.length ? a : b)), R * 1.5, 1, Math.round(R * 0.42), 16, DISPLAY);
+      ctx.font = DISPLAY(f.size);
+      const lh = f.size * 1.02;
+      for (const [i, t] of l.entries()) ctx.fillText(t, 0, (i - (l.length - 1) / 2) * lh + 2);
       ctx.restore();
     }
-  } else {
-    // Yazı çok: pano yok, etiket başlığın üstünde çizgili
-    m = fitBlock(K, ctx, post, maxW, free, { head: 104, lines: lines(post.format), kicker: true, info: "line", wish: "rule" });
   }
-  paint(K, ctx, post, m, S.x, H - K.PAD - S.b - m.h, {
-    ink: INK,
-    soft: "rgba(18,20,23,.72)",
-    acc: p.a,
-    accInk: "#ffffff",
-    name: p.a,
-    wish: p.a,
-    maxW,
-  });
 }
 
-const darkInk = (p) => ({
-  ink: "#ffffff",
-  soft: "rgba(255,255,255,.86)",
-  acc: p.acc,
-  accInk: p.accInk || p.b,
-  name: p.acc,
-  glass: "rgba(255,255,255,.1)",
-  glassLine: "rgba(255,255,255,.22)",
-});
-const PADY = (S) => S.t + S.pad - 10;
+// ─── 5. Duyuru / kulüp haberi: haber bülteni ───
+async function drawNews(K, ctx, post, photo, W, H, S) {
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  const x = S.x;
+  const maxW = S.w;
+  // Üstte lacivert künye
+  const band = S.t + 170;
+  ctx.fillStyle = NAVY;
+  ctx.fillRect(0, 0, W, band);
+  await brand(K, post, ctx, x, S.t + 42, 43, "#ffffff", false);
+  ctx.save();
+  ctx.fillStyle = YELLOW;
+  ctx.font = `800 26px ${K.FONT}`;
+  spacing(ctx, 5);
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillText(post.kind === "kulup" ? "KULÜPTEN HABER" : post.kind === "kutlama" ? "KUTLAMA" : "DUYURU", x + maxW, S.t + 85);
+  spacing(ctx, 0);
+  ctx.restore();
+  ctx.fillStyle = RED;
+  ctx.fillRect(0, band, W, 8);
+
+  const { names } = namesFor(K, post);
+  const info = post.meta ? String(post.info || "").replace(/\s*·\s*/g, " • ") : "";
+  const foot = 70;
+  const block = shrink((k) => {
+    const z = (n) => Math.round(n * k);
+    const head = headF(K, ctx, post, post.headline, maxW, tallOf(post.format) ? 4 : 3, z(88), z(48), sans(K, 800));
+    const hl = Math.round(head.size * 1.08);
+    const sub = post.sub ? K.fitRich(ctx, post.sub, names, maxW, 3, z(30 * subK(K, post)), z(22 * subK(K, post)), 400) : null;
+    const sl = sub ? Math.round(sub.size * 1.42) : 0;
+    const inf = info ? fitF(K, ctx, info, maxW - z(40), 1, z(30), z(20), sans(K, 700)) : null;
+    const wish = post.wish ? fitF(K, ctx, post.wish, maxW - z(28), 1, z(34), z(22), sans(K, 800)) : null;
+    const h = head.lines.length * hl + (inf ? z(24) + inf.size * 1.3 : 0) + (sub ? z(22) + sub.lines.length * sl : 0) + (wish ? z(30) + wish.size * 1.3 : 0);
+    return {
+      h,
+      draw(y) {
+        ctx.textBaseline = "top";
+        ctx.fillStyle = NAVY;
+        ctx.font = `800 ${head.size}px ${K.FONT}`;
+        spacing(ctx, -Math.round(head.size * 0.01));
+        for (const [i, l] of head.lines.entries()) ctx.fillText(l, x - 2, y + i * hl);
+        spacing(ctx, 0);
+        y += head.lines.length * hl;
+        if (inf) {
+          y += z(24);
+          K.pin(ctx, x + z(12), y + inf.size * 0.38, z(12), RED);
+          ctx.fillStyle = NAVY;
+          ctx.font = `700 ${inf.size}px ${K.FONT}`;
+          ctx.fillText(inf.lines[0], x + z(40), y);
+          y += inf.size * 1.3;
+        }
+        if (sub) {
+          y += z(22);
+          for (const [i, l] of sub.lines.entries()) K.drawRich(ctx, l, x, y + i * sl, sub.size, 400, sub.space, "#4a5568", NAVY);
+          y += sub.lines.length * sl;
+        }
+        if (wish) {
+          y += z(30);
+          ctx.fillStyle = YELLOW;
+          ctx.fillRect(x, y - z(4), z(8), wish.size * 1.3);
+          ctx.fillStyle = NAVY;
+          ctx.font = `800 ${wish.size}px ${K.FONT}`;
+          ctx.fillText(wish.lines[0], x + z(28), y);
+        }
+      },
+    };
+  }, H * 0.48);
+  const by = H - S.b - foot - 30 - block.h;
+  const tagH = post.tag ? 66 : 0;
+  const ph = by - 40 - tagH / 2 - (band + 8);
+  const py = band + 8;
+  if (ph > 120) {
+    if (photo) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, py, W, ph);
+      ctx.clip();
+      coverRect(ctx, photo, 0, py, W, ph, post);
+      ctx.restore();
+    } else {
+      const g = ctx.createLinearGradient(0, py, W * 0.4, py + ph);
+      g.addColorStop(0, "#1d4c86");
+      g.addColorStop(1, NAVY);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, py, W, ph);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, py, W, ph);
+      ctx.clip();
+      ctx.translate(0, py);
+      K.decor(ctx, W, ph, true, "rgba(255,255,255,.12)", post.kind);
+      ctx.restore();
+    }
+  }
+  if (post.tag) {
+    // Fotoğrafın alt kenarında kırmızı etiket (haber alt yazısı gibi)
+    ctx.save();
+    ctx.font = `800 28px ${K.FONT}`;
+    spacing(ctx, 4);
+    const w = ctx.measureText(up(post.tag)).width + 56;
+    const ty = (ph > 120 ? py + ph : py + 30) - tagH / 2;
+    ctx.fillStyle = RED;
+    ctx.fillRect(x, ty, w, tagH);
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(up(post.tag), x + 28, ty + tagH / 2 + 1);
+    spacing(ctx, 0);
+    ctx.restore();
+  }
+  block.draw(by);
+  // Altta ince çizgi ve kulüp adı
+  const fy = H - S.b - foot;
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillRect(x, fy, maxW, 2);
+  ctx.save();
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = `700 22px ${K.FONT}`;
+  spacing(ctx, 3);
+  ctx.textBaseline = "middle";
+  if (!post.noBrand) ctx.fillText("DİKİLİ YELKEN SPOR KULÜBÜ", x, fy + foot / 2);
+  ctx.textAlign = "right";
+  ctx.fillText(up(new Date().toLocaleDateString("tr-TR", { month: "long", year: "numeric" })), x + maxW, fy + foot / 2);
+  spacing(ctx, 0);
+  ctx.restore();
+}
+
+const DRAW = { race: drawRace, training: drawTraining, school: drawSchool, news: drawNews };
 
 // Modern'de çizilemeyen tür (özel gün) için false döner; çağıran Afiş'e düşer
 export async function drawModern(K, ctx, post, photo, W, H) {
   const lay = modernOf(post.kind);
   if (!lay) return false;
   const s = safeOf(post.format);
-  const S = { t: s.t, b: s.b, r: s.r, l: s.l, pad: K.PAD, x: K.PAD + s.l, w: W - K.PAD * 2 - s.l - s.r };
-  const p = modernPal(post.theme);
-  const fn = { race: drawRace, training: drawTraining, school: drawSchool, news: drawNews }[lay];
-  await fn(K, ctx, post, photo, W, H, p, S);
-  return formatOf(post.format)[0];
+  const S = { t: s.t, b: s.b, x: K.PAD + s.l, w: W - K.PAD * 2 - s.l - s.r };
+  await (post.kind === "sonuc" ? drawResult : DRAW[lay])(K, ctx, post, photo, W, H, S);
+  return true;
 }

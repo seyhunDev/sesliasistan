@@ -8,7 +8,6 @@ import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
-import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { postArchiveCommand, postDeleteCommand } from "@/lib/assistMore";
@@ -853,7 +852,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
               <div className="mt-1.5 space-y-2">
                 <Seg value={designOf(post.style)} onChange={setDesign} options={DESIGNS} />
                 {post.style === "modern" ? (
-                  <p className="text-[0.75rem] leading-snug text-mut">{modernOf(post.kind) ? `Modern tasarım türe göre değişir. ${MODERN_HINT[modernOf(post.kind)]}.` : "Özel günde günün afişi kullanılır."}</p>
+                  <p className="text-[0.75rem] leading-snug text-mut">{modernOf(post.kind) ? `Her türün kendi tasarımı ve rengi var. ${post.kind === "sonuc" ? "Sonuç: sarı skor kartı, sıralı sporcu listesi" : MODERN_HINT[modernOf(post.kind)]}.` : "Özel günde günün afişi kullanılır."}</p>
                 ) : (
                   <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} />
                 )}
@@ -861,16 +860,19 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             </div>
             <div>
               <span className="text-[0.8125rem] font-medium text-mut">Renk</span>
+              {post.style === "modern" && modernOf(post.kind) ? (
+                <p className="mt-1 text-[0.75rem] leading-snug text-mut">Modern tasarımda her türün rengi sabit; renk değiştirmek için Tasarım › Klasik.</p>
+              ) : (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {THEMES.map(([k, label, c1, c2]) => (
                   <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-10 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
                     <span className="grid size-8 place-items-center rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
-                      {post.style === "modern" && <span className="size-2.5 rounded-full ring-1 ring-black/20" style={{ background: modernPal(k).acc }} />}
-                      {post.style === "afis" && <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />}
+                        {post.style === "afis" && <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />}
                     </span>
                   </button>
                 ))}
               </div>
+              )}
             </div>
             <div>
               <span className="text-[0.8125rem] font-medium text-mut">Boyut</span>

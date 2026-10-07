@@ -142,12 +142,9 @@ export const STYLES = [
 ];
 export const styleOf = (s) => STYLES.find(([x]) => x === s) || STYLES[0];
 
-// Tasarım: Klasik (yukarıdaki şablonlar) ya da Modern (style "modern"). Modern'de yerleşim türe göre değişir:
-// race: yarış duyurusu ve sonucu (dev başlık, arkada dış çizgili büyük yazı, tarih/yer kutusu),
-// training: antrenman (eğik, hızlı başlık, bilgi hapları, hız çizgileri),
-// school: kayıt / yelken okulu (açık zemin, yuvarlak şekiller, eğik çıkartma etiketi, düğme gibi dilek),
-// news: duyuru, kulüp haberi, kutlama, diğer (dergi düzeni: üstte künye, çerçeveli görsel, altında başlık).
-// Özel günde Modern de Afiş'i kullanır (günün havası: bayrak, anma, bayram).
+// Tasarım: Klasik (yukarıdaki şablonlar) ya da Modern (style "modern"). Modern'de her türün kendine has düzeni ve sabit
+// rengi var (postModern.js): race yarış afişi (sonuçta skor kartı), training antrenman program kartı, school yaz okulu
+// kampanyası, news haber bülteni. Özel günde Modern de Afiş'i kullanır.
 export const DESIGNS = [
   ["klasik", "Klasik"],
   ["modern", "Modern"],
@@ -155,7 +152,7 @@ export const DESIGNS = [
 export const designOf = (style) => (style === "modern" ? "modern" : "klasik");
 const MODERN = { duyuru: "race", sonuc: "race", antrenman: "training", kayit: "school", genel: "news", kulup: "news", kutlama: "news", diger: "news" };
 export const modernOf = (kind) => MODERN[kind] || null;
-export const MODERN_HINT = { race: "Yarış: dev başlık, tarih ve yer kutusu", training: "Antrenman: eğik başlık, bilgi hapları", school: "Yelken okulu: açık zemin, çıkartma etiket", news: "Haber: dergi düzeni, çerçeveli görsel" };
+export const MODERN_HINT = { race: "Yarış afişi: dev başlık, büyük tarih, altta kayan şerit (sonuçta sarı skor kartı)", training: "Antrenman programı: fotoğraf kartı, Gün / Saat / Yer kutuları", school: "Yaz okulu kampanyası: gök mavisi, yuvarlak fotoğraf, çıkartma, düğme", news: "Haber bülteni: lacivert künye, büyük fotoğraf, kırmızı etiket" };
 
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);

@@ -12,6 +12,9 @@ const FACES = [
   ["Post Sans", "/fonts/post/Outfit-Bold.woff2", { weight: "700" }],
   ["Post Sans", "/fonts/post/Outfit-ExtraBold.woff2", { weight: "800" }],
   ["Post Serif", "/fonts/post/Lora-BoldItalic.woff2", { weight: "700", style: "italic" }],
+  // Modern tasarımın dar, kalın afiş yazısı (Anton, OFL); Türkçe harfler latin-ext dosyasında
+  ["Post Display", "/fonts/post/Anton-Latin.woff2", { unicodeRange: "U+0000-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122" }],
+  ["Post Display", "/fonts/post/Anton-LatinExt.woff2", { unicodeRange: "U+0100-0130, U+0132-024F, U+1E00-1EFF" }],
 ];
 let fontsP;
 // İlk çizimde bir kez yüklenir; yüklenemezse (internet yok) sistem yazı tipiyle çizilir
@@ -647,6 +650,41 @@ function crescentStar(ctx, x, y, G, color, alpha) {
   ctx.fill("nonzero");
   ctx.restore();
 }
+// Afiş'in eğik etiketi: önde ince eğik çizgi, sonra dolu eğik kutu; içinde koyu, aralıklı büyük harf
+function slantTag(ctx, x, y, h, tag, bg, ink, z) {
+  ctx.save();
+  ctx.shadowColor = "transparent";
+  ctx.font = `800 ${z(34)}px ${FONT}`;
+  if ("letterSpacing" in ctx) ctx.letterSpacing = `${z(3)}px`;
+  const label = String(tag || "").toLocaleUpperCase("tr-TR");
+  const tw = ctx.measureText(label).width;
+  const sk = h * 0.34;
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.moveTo(x + sk, y);
+  ctx.lineTo(x + sk + z(11), y);
+  ctx.lineTo(x + z(11), y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
+  ctx.fill();
+  const bx = x + z(30);
+  const bw = tw + z(64);
+  ctx.beginPath();
+  ctx.moveTo(bx + sk, y);
+  ctx.lineTo(bx + bw + sk, y);
+  ctx.lineTo(bx + bw, y + h);
+  ctx.lineTo(bx, y + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = ink;
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, bx + sk / 2 + z(32), y + h / 2 + 2);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+  ctx.restore();
+  ctx.textBaseline = "top";
+  return bx + bw + sk;
+}
+
 // Görselde vurgulanacak adlar: yarışın sporcuları + sporcu satırlarının baştaki adı
 function namesOf(post, people) {
   return new Set(
@@ -703,37 +741,7 @@ function paintAfis(ctx, { items, z }, x, y, c) {
   for (const [i, it] of items.entries()) {
     if (i) y += it.gap;
     if (it.t === "tag") {
-      // Önde ince eğik çizgi, sonra dolu eğik kutu; içinde koyu, aralıklı büyük harf
-      ctx.save();
-      ctx.shadowColor = "transparent";
-      ctx.font = `800 ${z(34)}px ${FONT}`;
-      if ("letterSpacing" in ctx) ctx.letterSpacing = `${z(3)}px`;
-      const label = c.tag.toLocaleUpperCase("tr-TR");
-      const tw = ctx.measureText(label).width;
-      const h = it.h;
-      const sk = h * 0.34;
-      ctx.fillStyle = c.tagBg || c.accent;
-      ctx.beginPath();
-      ctx.moveTo(x + sk, y);
-      ctx.lineTo(x + sk + z(11), y);
-      ctx.lineTo(x + z(11), y + h);
-      ctx.lineTo(x, y + h);
-      ctx.closePath();
-      ctx.fill();
-      const bx = x + z(30);
-      const bw = tw + z(64);
-      ctx.beginPath();
-      ctx.moveTo(bx + sk, y);
-      ctx.lineTo(bx + bw + sk, y);
-      ctx.lineTo(bx + bw, y + h);
-      ctx.lineTo(bx, y + h);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = c.tagInk;
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, bx + sk / 2 + z(32), y + h / 2 + 2);
-      if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
-      ctx.restore();
+      slantTag(ctx, x, y, it.h, c.tag, c.tagBg || c.accent, c.tagInk, z);
       ctx.textBaseline = "top";
     } else if (it.t === "head") {
       ctx.fillStyle = c.ink;
@@ -788,23 +796,9 @@ function fade(ctx, W, H, top, rgb, a, reach) {
   ctx.fillRect(0, 0, W, H);
 }
 
-async function drawAfis(ctx, post, photo, W, H) {
-  const [, , , c2] = themeOf(post.theme);
-  const base = post.theme === "kum" ? "#1f5a4b" : c2;
-  const top = post.pos === "top";
-  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
-  const mood = afisMood(post);
-  // Yerleşim: logo satırı ve yazı bloğu (ay yıldız ikisinin arasındaki boşluğa göre yerleşir)
-  const R = 66;
-  const lx = PAD + safeL;
-  const ly = PAD - 8 + safeT;
-  const maxW = W - PAD * 2 - safeR - safeL;
-  const headTop = ly + R * 2 + 70;
-  const room = top ? H - headTop - PAD - safeB : H - PAD - safeB - headTop - 40;
-  let m = measureAfis(ctx, post, maxW, 1);
-  for (let k = 0.94; m.h > room && k >= 0.6; k -= 0.06) m = measureAfis(ctx, post, maxW, k);
+// Afiş zemini: fotoğraf (günün rengine çalar, yazının tarafı koyulaşır) ya da sade koyu zemin, seçili rengin tonunda
+function afisBase(ctx, post, photo, W, H, top, mood) {
   const navy = (a) => mood.dark.replace("rgb", "rgba").replace(")", `,${a.toFixed(3)})`);
-
   if (photo) {
     cover(ctx, photo, W, H, post);
     const k = post.shade / 100;
@@ -823,7 +817,85 @@ async function drawAfis(ctx, post, photo, W, H) {
     ctx.fillStyle = navy(0.04 + k * 0.18);
     ctx.fillRect(0, 0, W, H);
     fade(ctx, W, H, top, mood.dark, 0.82 + k * 0.17, 0.6 + k * 0.18);
-  } else if (mood.bg) {
+  } else {
+    const [, , , c2] = themeOf(post.theme);
+    const base = post.theme === "kum" ? "#1f5a4b" : c2;
+    // Sade koyu zemin, seçili rengin tonunda (fotoğraf eklenince yerini fotoğraf alır)
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, mixRgb(base, mood.dark, 0.45));
+    g.addColorStop(1, mixRgb(mood.dark, "#000000", 0.25));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    const r = ctx.createRadialGradient(W * 0.8, H * 0.18, 0, W * 0.8, H * 0.18, W * 0.85);
+    r.addColorStop(0, "rgba(255,255,255,.12)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// Üst kenar gölgesi + logo | kulüp adı (iki satır, aralıklı büyük harf)
+async function afisHead(ctx, post, photo, W, H, top, mood, lx, ly, R) {
+  const { t: safeT } = safeOf(post.format);
+  const navy = (a) => mood.dark.replace("rgb", "rgba").replace(")", `,${a.toFixed(3)})`);
+  // Logo satırı okunsun diye üst kenar koyu lacivert (yazı üstteyse geçiş zaten koyu)
+  if (!top) {
+    const g2 = ctx.createLinearGradient(0, 0, 0, 420 + safeT);
+    g2.addColorStop(0, navy(photo ? 0.6 + (post.shade / 100) * 0.2 : 0.3));
+    g2.addColorStop(1, navy(0));
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, W, 420 + safeT);
+  }
+
+  // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf); istenirse kapatılır (noBrand)
+  if (post.noBrand) return;
+  const logo = await loadLogo();
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.3)";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(lx + R, ly + R, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  if (logo) {
+    ctx.clip();
+    ctx.drawImage(logo, lx + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+  }
+  ctx.restore();
+  const dx = lx + R * 2 + 36;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,.55)";
+  ctx.fillRect(dx, ly + R - 44, 2, 88);
+  ctx.fillStyle = "#ffffff";
+  if (photo) {
+    ctx.shadowColor = "rgba(0,0,0,.4)";
+    ctx.shadowBlur = 10;
+  }
+  ctx.font = `700 37px ${FONT}`;
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
+  ctx.textBaseline = "middle";
+  ctx.fillText("DİKİLİ YELKEN", dx + 34, ly + R - 23);
+  ctx.fillText("SPOR KULÜBÜ", dx + 34, ly + R + 25);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+  ctx.restore();
+}
+
+async function drawAfis(ctx, post, photo, W, H) {
+  const top = post.pos === "top";
+  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
+  const mood = afisMood(post);
+  // Yerleşim: logo satırı ve yazı bloğu (ay yıldız ikisinin arasındaki boşluğa göre yerleşir)
+  const R = 66;
+  const lx = PAD + safeL;
+  const ly = PAD - 8 + safeT;
+  const maxW = W - PAD * 2 - safeR - safeL;
+  const headTop = ly + R * 2 + 70;
+  const room = top ? H - headTop - PAD - safeB : H - PAD - safeB - headTop - 40;
+  let m = measureAfis(ctx, post, maxW, 1);
+  for (let k = 0.94; m.h > room && k >= 0.6; k -= 0.06) m = measureAfis(ctx, post, maxW, k);
+
+  if (!photo && mood.bg) {
     // Özel gün zemini: günün renginde geçiş, sağda ay yıldız (anmada yok)
     const g = ctx.createLinearGradient(0, 0, W * 0.3, H);
     g.addColorStop(0, mood.bg[0]);
@@ -847,61 +919,8 @@ async function drawAfis(ctx, post, photo, W, H) {
       }
     }
     fade(ctx, W, H, top, mood.dark, 0.55, 0.55);
-  } else {
-    // Sade koyu zemin, seçili rengin tonunda (fotoğraf eklenince yerini fotoğraf alır)
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, mixRgb(base, mood.dark, 0.45));
-    g.addColorStop(1, mixRgb(mood.dark, "#000000", 0.25));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    const r = ctx.createRadialGradient(W * 0.8, H * 0.18, 0, W * 0.8, H * 0.18, W * 0.85);
-    r.addColorStop(0, "rgba(255,255,255,.12)");
-    r.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = r;
-    ctx.fillRect(0, 0, W, H);
-  }
-  // Logo satırı okunsun diye üst kenar koyu lacivert (yazı üstteyse geçiş zaten koyu)
-  if (!top) {
-    const g2 = ctx.createLinearGradient(0, 0, 0, 420 + safeT);
-    g2.addColorStop(0, navy(photo ? 0.6 + (post.shade / 100) * 0.2 : 0.3));
-    g2.addColorStop(1, navy(0));
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, W, 420 + safeT);
-  }
-
-  // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf); istenirse kapatılır (noBrand)
-  if (!post.noBrand) {
-    const logo = await loadLogo();
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,.3)";
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(lx + R, ly + R, R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowColor = "transparent";
-    if (logo) {
-      ctx.clip();
-      ctx.drawImage(logo, lx + 6, ly + 6, R * 2 - 12, R * 2 - 12);
-    }
-    ctx.restore();
-    const dx = lx + R * 2 + 36;
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,.55)";
-    ctx.fillRect(dx, ly + R - 44, 2, 88);
-    ctx.fillStyle = "#ffffff";
-    if (photo) {
-      ctx.shadowColor = "rgba(0,0,0,.4)";
-      ctx.shadowBlur = 10;
-    }
-    ctx.font = `700 37px ${FONT}`;
-    if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
-    ctx.textBaseline = "middle";
-    ctx.fillText("DİKİLİ YELKEN", dx + 34, ly + R - 23);
-    ctx.fillText("SPOR KULÜBÜ", dx + 34, ly + R + 25);
-    if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
-    ctx.restore();
-  }
+  } else afisBase(ctx, post, photo, W, H, top, mood);
+  await afisHead(ctx, post, photo, W, H, top, mood, lx, ly, R);
 
   // Yazı bloğu
   const c = { tag: post.tag, ink: "#ffffff", accent: mood.accent, tagBg: mood.tagBg, tagInk: mood.tagInk };
@@ -1058,7 +1077,7 @@ export async function drawPost(canvas, post, photo) {
 }
 
 // Modern tasarımın kullandığı çizim yardımcıları
-const KIT = { FONT, PAD, sizeK, fit, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, decor, fade };
+const KIT = { FONT, NAME_FONT, PAD, sizeK, wrap, fit, decor, bareWord, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, fade, afisMood, afisBase, afisHead, slantTag };
 
 // Instagram'a gidecek dosya (JPEG)
 export function postFile(canvas, name = "gonderi") {
