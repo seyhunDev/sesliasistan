@@ -17,6 +17,7 @@ const area =
   "mt-1.5 w-full resize-none rounded-xl border border-transparent bg-bg px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
 const chip = (on) =>
   `flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[0.8125rem] font-semibold transition active:scale-95 ${on ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`;
+const stepBtn = "grid size-10 shrink-0 place-items-center rounded-full bg-bg text-fg ring-1 ring-line transition active:scale-90 disabled:opacity-40";
 const small = "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50";
 
 const DESIGN_KEY = "sa-post-design";
@@ -104,6 +105,15 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const drag = useRef(null);
   // Önizlemenin altındaki ayarlar: seçili araç
   const [tool, setTool] = useState(startPhoto ? "fit" : "photo");
+  // Önizleme ekranın üstünde sabit (sayfa başlığının altında); yazı yazarken küçülür, klavyeye yer kalsın
+  const [typing, setTyping] = useState(false);
+  const [top, setTop] = useState(0);
+  useEffect(() => {
+    const head = () => setTop(canvas.current?.closest("main")?.querySelector(":scope > .sticky")?.offsetHeight || 0);
+    head();
+    window.addEventListener("resize", head);
+    return () => window.removeEventListener("resize", head);
+  }, []);
   // Yapay zekanın son yazdığı açıklama: elle değiştirilmediyse tür değişince yeni türe göre yeniden yazılır (kayıtlı gönderide elle sayılır)
   const autoCap = useRef(start.id ? null : start.caption);
   // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
@@ -510,8 +520,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
   const race = post.race;
   const classes = classList(post.classes);
-  const slider = (k, label, min, max, step = 1, unit = "") => (
-    <label className="block">
+  // Kaydırıcı + iki yanda − / + (önizlemeye bakarak adım adım)
+  const slider = (k, label, min, max, step = 5, unit = "") => (
+    <div>
       <span className="flex items-center justify-between text-[0.75rem] font-medium text-mut">
         {label}
         <span className="tabular-nums">
@@ -519,8 +530,16 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           {post[k]}
         </span>
       </span>
-      <input type="range" min={min} max={max} step={step} value={post[k]} onChange={(e) => put(k, Number(e.target.value))} className="mt-1 w-full touch-pan-y accent-[var(--acc)]" />
-    </label>
+      <span className="mt-1 flex items-center gap-2">
+        <button type="button" aria-label={`${label} azalt`} onClick={() => put(k, Math.max(min, post[k] - step))} disabled={post[k] <= min} className={stepBtn}>
+          <Icon name="minus" className="size-5" />
+        </button>
+        <input type="range" min={min} max={max} step={step} value={post[k]} onChange={(e) => put(k, Number(e.target.value))} aria-label={label} className="min-w-0 flex-1 touch-pan-y accent-[var(--acc)]" />
+        <button type="button" aria-label={`${label} artır`} onClick={() => put(k, Math.min(max, post[k] + step))} disabled={post[k] >= max} className={stepBtn}>
+          <Icon name="plus" className="size-5" />
+        </button>
+      </span>
+    </div>
   );
   const noPhoto = (
     <div className="flex items-center gap-3">
@@ -533,16 +552,23 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const empty = !race && !post.caption && !post.topic;
 
   return (
-    <div className="mt-2 pb-6">
-      <div className={`${card} relative overflow-hidden`}>
+    <div
+      className="mt-2 pb-6"
+      onFocusCapture={(e) => /^(TEXTAREA|INPUT)$/.test(e.target.tagName) && !/^(range|checkbox|file|button)$/.test(e.target.type) && setTyping(true)}
+      onBlurCapture={() => setTyping(false)}
+    >
+      {/* Önizleme üstte sabit kalır (ekranın yarısı); ayarlar ve yazılar altında kayar, değişiklik hep görünür */}
+      <div className="sticky z-[9] -mx-5 bg-bg/95 px-5 pb-2 pt-1 backdrop-blur [container-type:inline-size]" style={{ top }}>
+        <div className={`${card} overflow-hidden`}>
+          <div className="relative mx-auto w-fit">
         <canvas
           ref={canvas}
           onPointerDown={dragStart}
           onPointerMove={dragMove}
           onPointerUp={dragEnd}
           onPointerCancel={dragEnd}
-          className={`block h-auto w-full bg-deep ${shown ? "cursor-grab touch-none" : ""}`}
-          style={{ aspectRatio: aspectOf(post.format) }}
+          className={`block w-auto max-w-full bg-deep transition-[height] duration-200 ${shown ? "cursor-grab touch-none" : ""}`}
+          style={{ aspectRatio: aspectOf(post.format), height: `min(${typing ? 24 : 52}svh, calc(100cqw * ${formatOf(post.format)[3] / formatOf(post.format)[2]}))` }}
         />
         {/* Karede profil ızgarasında kesilen kenarlar (ızgara 3:4 gösterir): yazı bu çizgilerin içinde kalır */}
         {post.format === "square" && (
@@ -558,93 +584,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             {busy === "img" ? "Görsel çiziliyor…" : "Yapay zeka yazıyor…"}
           </span>
         )}
-      </div>
-
-      {/* Yarış bağla önizlemenin hemen altında: ilk iş; bağlıysa adı ve üç nokta (Değiştir / Kaldır) */}
-      <div className={`${card} mt-3 px-4 py-3`}>
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
-            <Icon name="flag" className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
-            <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
-          </span>
-          {race && !races ? (
-            <div className="relative shrink-0">
-              <button type="button" onClick={() => setRaceMenu((v) => !v)} aria-label="Yarış seçenekleri" aria-expanded={raceMenu} disabled={busy === "races"} className="grid size-9 place-items-center rounded-full text-mut ring-1 ring-line active:bg-line disabled:opacity-60">
-                <Icon name="more" className="size-5" />
-              </button>
-              {raceMenu && (
-                <>
-                  <button type="button" aria-label="Menüyü kapat" onClick={() => setRaceMenu(false)} className="fixed inset-0 z-20 cursor-default" />
-                  <div role="menu" className="absolute right-0 top-11 z-30 w-40 overflow-hidden rounded-xl bg-card shadow-lg ring-1 ring-line">
-                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), openRaces())} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[0.875rem] font-semibold active:bg-line/50">
-                      <Icon name="flag" className="size-[1.125rem] text-acc" />
-                      Değiştir
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), dropRace())} className="flex w-full items-center gap-2.5 border-t border-line px-4 py-3 text-left text-[0.875rem] font-semibold text-rec active:bg-line/50">
-                      <Icon name="trash" className="size-[1.125rem]" />
-                      Kaldır
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
-              {busy === "races" ? "…" : races ? "Kapat" : "Yarış bağla"}
-            </button>
-          )}
-        </div>
-        {race && (
-          <div className="mt-3 border-t border-line pt-3">
-            {classes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {classes.map((c) => (
-                  <span key={c} className="rounded-full bg-bg px-2.5 py-1 text-[0.75rem] font-semibold ring-1 ring-line">
-                    {c}
-                  </span>
-                ))}
-              </div>
-            )}
-            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length > 2 ? "Adları açıklamada geçer (görselde yalnız 1-2 sporcunun adı yazılır)" : race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
-            {race.athletes?.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {race.athletes.map((a, i) => (
-                  <span key={`${a.name}-${i}`} className="flex h-8 items-center gap-1 rounded-full bg-deep/10 pl-3 pr-1 text-[0.8125rem] font-semibold">
-                    {a.name}
-                    {a.cls && <small className="font-normal text-mut">· {a.cls}</small>}
-                    <button type="button" aria-label={`${a.name} çıkar`} onClick={() => dropAthlete(i)} className="grid size-6 place-items-center rounded-full text-mut active:bg-line">
-                      <Icon name="x" className="size-3.5" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <label className="mt-3 flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
-              <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
-            </label>
           </div>
-        )}
+        </div>
       </div>
-      {races && (
-        <ul className={`${card} mt-2 divide-y divide-line overflow-hidden`}>
-          {races.length === 0 && <li className="px-4 py-3 text-[0.875rem] text-mut">Kayıtlı yarış yok</li>}
-          {races.map((r) => (
-            <li key={r.id}>
-              <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-2.5 text-left active:bg-line/50">
-                <b className="block truncate text-[0.875rem] font-semibold">{r.name || "Adsız yarış"}</b>
-                <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {/* Görsel ayarları önizlemenin hemen altında: araç seç, değiştir, önizlemede anında gör */}
-      <div className={`${card} mt-3 overflow-hidden`}>
+      <div className={`${card} mt-1 overflow-hidden`}>
         <div className="grid grid-cols-4 gap-1.5 px-3 pt-3">
           {TOOLS.map(([k, label, icon]) => (
             <button key={k} type="button" aria-pressed={tool === k} onClick={() => setTool(k)} className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl text-[0.75rem] font-semibold transition active:scale-95 ${tool === k ? "bg-deep text-white" : "bg-bg text-fg"}`}>
@@ -738,7 +683,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
                   <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
                 </label>
               )}
-              <button type="button" onClick={() => (setTexts(true), document.getElementById("post-texts")?.scrollIntoView({ behavior: "smooth", block: "start" }))} className="text-[0.8125rem] font-semibold text-acc">
+              <button type="button" onClick={() => (setTexts(true), document.getElementById("post-texts")?.scrollIntoView({ behavior: "smooth", block: "center" }))} className="text-[0.8125rem] font-semibold text-acc">
                 Yazıları düzenle ›
               </button>
             </>
@@ -746,6 +691,89 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
         </div>
       </div>
+
+      {/* Yarış bağla ayarların altında; bağlıysa adı ve üç nokta (Değiştir / Kaldır) */}
+      <div className={`${card} mt-3 px-4 py-3`}>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
+            <Icon name="flag" className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
+            <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
+          </span>
+          {race && !races ? (
+            <div className="relative shrink-0">
+              <button type="button" onClick={() => setRaceMenu((v) => !v)} aria-label="Yarış seçenekleri" aria-expanded={raceMenu} disabled={busy === "races"} className="grid size-9 place-items-center rounded-full text-mut ring-1 ring-line active:bg-line disabled:opacity-60">
+                <Icon name="more" className="size-5" />
+              </button>
+              {raceMenu && (
+                <>
+                  <button type="button" aria-label="Menüyü kapat" onClick={() => setRaceMenu(false)} className="fixed inset-0 z-20 cursor-default" />
+                  <div role="menu" className="absolute right-0 top-11 z-30 w-40 overflow-hidden rounded-xl bg-card shadow-lg ring-1 ring-line">
+                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), openRaces())} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[0.875rem] font-semibold active:bg-line/50">
+                      <Icon name="flag" className="size-[1.125rem] text-acc" />
+                      Değiştir
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), dropRace())} className="flex w-full items-center gap-2.5 border-t border-line px-4 py-3 text-left text-[0.875rem] font-semibold text-rec active:bg-line/50">
+                      <Icon name="trash" className="size-[1.125rem]" />
+                      Kaldır
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
+              {busy === "races" ? "…" : races ? "Kapat" : "Yarış bağla"}
+            </button>
+          )}
+        </div>
+        {race && (
+          <div className="mt-3 border-t border-line pt-3">
+            {classes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {classes.map((c) => (
+                  <span key={c} className="rounded-full bg-bg px-2.5 py-1 text-[0.75rem] font-semibold ring-1 ring-line">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+            <span className="mt-2.5 block text-[0.75rem] font-medium text-mut">{race.athletes?.length > 2 ? "Adları açıklamada geçer (görselde yalnız 1-2 sporcunun adı yazılır)" : race.athletes?.length ? "Görselde ve açıklamada geçen sporcular" : race.count ? `${race.count} sporcu (adlar alınamadı)` : "Sporcu seçilmemiş"}</span>
+            {race.athletes?.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {race.athletes.map((a, i) => (
+                  <span key={`${a.name}-${i}`} className="flex h-8 items-center gap-1 rounded-full bg-deep/10 pl-3 pr-1 text-[0.8125rem] font-semibold">
+                    {a.name}
+                    {a.cls && <small className="font-normal text-mut">· {a.cls}</small>}
+                    <button type="button" aria-label={`${a.name} çıkar`} onClick={() => dropAthlete(i)} className="grid size-6 place-items-center rounded-full text-mut active:bg-line">
+                      <Icon name="x" className="size-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <label className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
+              <input type="checkbox" checked={post.meta} onChange={(e) => put("meta", e.target.checked)} className="size-5 accent-[var(--acc)]" />
+            </label>
+          </div>
+        )}
+      </div>
+      {races && (
+        <ul className={`${card} mt-2 divide-y divide-line overflow-hidden`}>
+          {races.length === 0 && <li className="px-4 py-3 text-[0.875rem] text-mut">Kayıtlı yarış yok</li>}
+          {races.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-2.5 text-left active:bg-line/50">
+                <b className="block truncate text-[0.875rem] font-semibold">{r.name || "Adsız yarış"}</b>
+                <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Ana asistana ne söyleneceği (ayrı yapay zeka kutusu yok) */}
       <div className={`mt-4 flex gap-3 rounded-2xl px-4 py-3 ${aiErr ? "bg-rec/10" : "bg-acc/10"}`}>
