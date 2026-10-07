@@ -92,6 +92,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const [err, setErr] = useState("");
   const [aiErr, setAiErr] = useState("");
   const [races, setRaces] = useState(null);
+  const [raceMenu, setRaceMenu] = useState(false);
   const [usage, setUsage] = useState(null);
   const [texts, setTexts] = useState(true);
   const canvas = useRef(null);
@@ -553,7 +554,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         )}
       </div>
 
-      {/* Yarış bağla önizlemenin hemen altında: ilk iş; bağlıysa adı ve Değiştir */}
+      {/* Yarış bağla önizlemenin hemen altında: ilk iş; bağlıysa adı ve üç nokta (Değiştir / Kaldır) */}
       <div className={`${card} mt-3 px-4 py-3`}>
         <div className="flex items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-500/10 text-rose-700">
@@ -563,12 +564,30 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             <b className="block truncate text-[0.9375rem] font-semibold">{race?.name || "Yarış bağlı değil"}</b>
             <span className="block truncate text-[0.8125rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Yarış seçilince sporcular, sınıflar ve başarı dileği gelir"}</span>
           </span>
-          <button type="button" onClick={openRaces} disabled={busy === "races"} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 disabled:opacity-60 ${race && !races ? "text-acc ring-1 ring-line" : "bg-acc text-white"}`}>
-            {busy === "races" ? "…" : races ? "Kapat" : race ? "Değiştir" : "Yarış bağla"}
-          </button>
-          {race && (
-            <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" className="grid size-9 shrink-0 place-items-center rounded-full text-mut active:bg-line">
-              <Icon name="x" className="size-[1.125rem]" />
+          {race && !races ? (
+            <div className="relative shrink-0">
+              <button type="button" onClick={() => setRaceMenu((v) => !v)} aria-label="Yarış seçenekleri" aria-expanded={raceMenu} disabled={busy === "races"} className="grid size-9 place-items-center rounded-full text-mut ring-1 ring-line active:bg-line disabled:opacity-60">
+                <Icon name="more" className="size-5" />
+              </button>
+              {raceMenu && (
+                <>
+                  <button type="button" aria-label="Menüyü kapat" onClick={() => setRaceMenu(false)} className="fixed inset-0 z-20 cursor-default" />
+                  <div role="menu" className="absolute right-0 top-11 z-30 w-40 overflow-hidden rounded-xl bg-card shadow-lg ring-1 ring-line">
+                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), openRaces())} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[0.875rem] font-semibold active:bg-line/50">
+                      <Icon name="flag" className="size-[1.125rem] text-acc" />
+                      Değiştir
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => (setRaceMenu(false), dropRace())} className="flex w-full items-center gap-2.5 border-t border-line px-4 py-3 text-left text-[0.875rem] font-semibold text-rec active:bg-line/50">
+                      <Icon name="trash" className="size-[1.125rem]" />
+                      Kaldır
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
+              {busy === "races" ? "…" : races ? "Kapat" : "Yarış bağla"}
             </button>
           )}
         </div>
