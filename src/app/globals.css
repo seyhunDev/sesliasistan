@@ -46,10 +46,9 @@ html[data-theme="dark"] :is(.text-violet-600, .text-violet-700) { color: #b9a6fb
 html[data-theme="dark"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-teal-600) { color: #5fd3a6; }
 html[data-theme="dark"] .text-slate-700 { color: #c3cbd6; }
 /* Açık zemindeki koyu yeşil yazı (kubbe ve bg-deep kartlarının içi hariç) */
-html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *, .dome *) { color: #7fd0b8; }
+html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *) { color: #7fd0b8; }
 /* Gölgeler koyu zeminde görünmez; kartlar ince bir kenarla ayrılır */
 html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .045); }
-html[data-theme="dark"] .dome .bg-card { box-shadow: none; }
 
 @theme inline {
   --color-bg: var(--bg);
@@ -212,86 +211,38 @@ select {
    İçindeki her şey koyu zemine göre renk alır (değişkenler kubbenin içinde yeniden tanımlanır).
    data-state: idle (yay nefes alır) · listening (yay parlar, sesle ışık güçlenir; --lvl 0–1) · busy (yay boyunca ışık
    akar) · speaking (ışık nabız gibi atar) */
-.dome {
-  --arc: 1.75rem;
-  --fg: #fff;
-  --mut: rgba(255, 255, 255, .7);
-  --bg: rgba(255, 255, 255, .1);
-  --card: rgba(255, 255, 255, .13);
-  --line: rgba(255, 255, 255, .16);
-  --acc: #aee8d3;
-  --lvl: 0;
-  color: var(--fg);
-  border-radius: 50% 50% 0 0 / var(--arc) var(--arc) 0 0;
-  background: linear-gradient(180deg, #33876f 0%, #2a7461 40%, #1f5a4b 100%);
-  /* İkinci gölge: kubbenin hemen altına aynı renkte dolgu. Normalde ekran dışında kalır; iPhone ana ekran uygulamasında
-     sabit çubuk yukarı itilirse (iOS hatası) altta krem şerit görünmesin. */
-  box-shadow: 0 -10px 34px -18px rgba(20, 70, 56, .55), 0 6rem 0 #1f5a4b;
-  transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease;
-  -webkit-backface-visibility: hidden;
-}
-/* ADA (2026-10-06, Seyhun: "tamamen değiştir, daha yaratıcı, profesyonel, modern"): kubbe artık kenardan kenara yeşil zemin
-   değil, saydam bir taşıyıcı; içinde sayfanın üstünde yüzen koyu cam adalar (.isle: sohbet kartı, asistan çubuğu, sekmeler).
-   Taşıyıcı dokunuş almaz, adalar alır: adaların arasından ve yanlarından sayfaya dokunulur. Yukarıdaki değişkenler (beyaz yazı,
-   koyu zemin renkleri) adaların içinde geçerli kalır. */
-.dome { background: none; border-radius: 0; box-shadow: none; pointer-events: none; }
-.dome[data-on] { box-shadow: none; }
-.dome .isle { pointer-events: auto; }
-.isle {
-  --edge: rgba(174, 232, 211, .55);
-  border-radius: 1.625rem;
-  background: linear-gradient(180deg, rgba(38, 90, 76, .97) 0%, rgba(20, 52, 44, .98) 100%);
-  -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 0 0 1px rgba(255, 255, 255, .07), 0 18px 40px -18px rgba(8, 28, 23, .7), 0 2px 8px -2px rgba(8, 28, 23, .25);
-}
-/* Çubuğun üst kenarında ince ışık çizgisi: durumun rengi (hareket etmez, yalnız renk değişir) */
-@property --edge { syntax: "<color>"; inherits: true; initial-value: rgba(174, 232, 211, .55); }
-.isle-bar { position: relative; transition: --edge .35s ease, box-shadow .3s ease; }
-.isle-bar::before { content: ""; position: absolute; left: 18%; right: 18%; top: 0; height: 1.5px; border-radius: 9999px; pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--edge), transparent); }
-.dome[data-state="listening"] .isle-bar { --edge: rgba(255, 150, 132, .95); }
-.dome[data-state="busy"] .isle-bar { --edge: rgba(255, 210, 120, .9); }
-.dome[data-state="speaking"] .isle-bar { --edge: rgba(140, 205, 255, .95); }
-.isle-on { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .13), inset 0 0 0 1.5px rgba(255, 150, 132, .55), 0 18px 40px -18px rgba(8, 28, 23, .7); }
-html[data-theme="dark"] .isle { background: linear-gradient(180deg, rgba(40, 92, 78, .96) 0%, rgba(20, 52, 44, .97) 100%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px rgba(255, 255, 255, .09), 0 18px 40px -18px rgba(0, 0, 0, .8); }
+/* MERKEZ (2026-10-07, Seyhun: "tasarım tamamen farklı, popüler uygulamalardaki kullanıcı deneyimi"): .dome saydam taşıyıcı,
+   dokunuş almaz. Boşta içinde açık renkli alt sekme çubuğu (.atabbar, Instagram/WhatsApp gibi) ve ortasında yukarı taşan asistan
+   düğmesi (.acenter); asistan açıkken alttan sayfa (.asheet, ChatGPT/Gemini gibi). Renkler sayfanın kendi değişkenleri
+   (açık ve koyu modda kendiliğinden doğru). */
+.dome { --lvl: 0; pointer-events: none; transition: height .45s cubic-bezier(.22, .8, .24, 1); -webkit-backface-visibility: hidden; }
+.dome :is(.atabbar, .acenter, .asheet) { pointer-events: auto; }
+.atabbar { background: color-mix(in srgb, var(--card) 90%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+  box-shadow: 0 -0.5px 0 var(--line), 0 -8px 24px -18px rgba(20, 40, 34, .25); }
+/* Altta, güvenli alanın da altında aynı renk: iPhone sabit çubuğu yukarı iterse altta boşluk görünmesin */
+.atabbar::after, .asheet::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 6rem; background: inherit; }
+.acenter { background: var(--card); box-shadow: 0 -0.5px 0 var(--line), 0 8px 22px -10px rgba(20, 90, 70, .45); }
+/* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
+.acenter .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .35); }
+.asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
+  box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
+@media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
+.asheet-input { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s ease; }
+.asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
+.asheet-on { box-shadow: inset 0 0 0 1.5px rgba(224, 88, 75, .55); }
+.asheet .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .3); }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
    klavye için verilen transform'u ezmesin) */
 @keyframes domerise { from { transform: translateY(100%); } }
 .dome-rise { animation: domerise .6s cubic-bezier(.22, .8, .24, 1) backwards; }
-.dome[data-on] { box-shadow: 0 -18px 50px -16px rgba(20, 70, 56, .55), 0 6rem 0 #1f5a4b; }
 /* Koyu zeminde dolgu düğmeler beyaz, yazısı koyu yeşil */
-.dome .bg-acc { background-color: #fff; color: var(--deep); }
-.dome ::placeholder { color: rgba(255, 255, 255, .55); }
 /* Tepedeki ışık: kubbenin içinden yayılan yumuşak parıltı */
-@property --tint { syntax: "<color>"; inherits: true; initial-value: rgba(190, 245, 224, .38); }
-.dome { --tint: rgba(190, 245, 224, .38); transition: height .5s cubic-bezier(.22, .8, .24, 1), box-shadow .5s ease, --tint .35s ease; }
-.dome[data-state="listening"] { --tint: rgba(255, 140, 120, .42); }
-.dome[data-state="busy"] { --tint: rgba(255, 210, 120, .4); }
-.dome[data-state="speaking"] { --tint: rgba(130, 200, 255, .42); }
-.dome-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 46% at 50% 0%, var(--tint), transparent 70%); opacity: .7; animation: domebreath 5s ease-in-out infinite; transition: opacity .4s ease; }
-.dome[data-state="listening"] .dome-glow { animation: none; opacity: calc(.75 + var(--lvl) * .25); transform: scale(calc(1 + var(--lvl) * .25)); transform-origin: 50% 0; transition: none; will-change: transform, opacity; }
-.dome[data-state="busy"] .dome-glow { animation: domedrift 2.4s ease-in-out infinite alternate; }
-.dome[data-state="speaking"] .dome-glow { animation: domebeat 1.3s ease-in-out infinite; }
 /* Yay: üst kenar boyunca ince ışık çizgisi; düşünürken üzerinde ışık akar */
-.dome-rim { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: var(--arc); overflow: visible; pointer-events: none; }
-.dome-rim path { fill: none; vector-effect: non-scaling-stroke; }
-.dome-rim .rim { stroke: rgba(205, 248, 232, .85); stroke-width: 1.5; transition: stroke .35s ease; animation: domebreath 5s ease-in-out infinite; }
-.dome-rim .flow { stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 72px 400vw; opacity: 0; filter: drop-shadow(0 0 3px rgba(205, 248, 232, .9)); }
-.dome[data-state="listening"] .dome-rim .rim { animation: none; opacity: 1; stroke-width: 2; stroke: #ffb3a8; }
-.dome[data-state="busy"] .dome-rim .flow { opacity: 1; animation: rimflow 1.5s linear infinite; stroke: #ffe2a3; filter: drop-shadow(0 0 3px rgba(255, 205, 110, .9)); }
-.dome[data-state="speaking"] .dome-rim .rim { animation: domebeat 1.3s ease-in-out infinite; stroke: #b5e0ff; }
-@keyframes domebreath { 0%, 100% { opacity: .5; } 50% { opacity: .9; } }
-@keyframes domebeat { 0%, 100% { opacity: .65; } 30% { opacity: 1; } }
-@keyframes domedrift { from { transform: translateX(-12%); } to { transform: translateX(12%); } }
-@keyframes rimflow { from { stroke-dashoffset: 72px; } to { stroke-dashoffset: calc(-100vw - 8px); } }
 /* SADE DURUM (Seyhun: "kubbenin kenarında animasyon, kürenin etrafında dönen halka, iş yazısının başında loading; fazla",
    2026-10-06): durumu tek yer gösterir, yazı kutusundaki küre (rengi ve içindeki dalga). Kubbenin yayı ve parıltısı yalnız
    renk değiştirir, hareket etmez; kürenin çevresinde dönen halka ve iş yazısındaki dönen halka/akan ışık yok. */
-.dome-glow, .dome[data-state] .dome-glow { animation: none; transform: none; opacity: .6; }
-.dome-rim .rim, .dome[data-state] .dome-rim .rim { animation: none; opacity: .8; }
-.dome-rim .flow { display: none; }
 .vlight .vl-ring { display: none; }
-.dome-chip .work-text { animation: none; background: none; color: rgba(255, 255, 255, .85); }
+.dome-chip .work-text { animation: none; background: none; color: var(--mut); }
 
 /* Ses ışığı (kubbenin tepesindeki tek düğme): disk, içinde ses dalgası. Simge ve yazı yok; durumu renk ve dalga anlatır.
    boşta   beyaz disk, yeşil dalga, yavaşça nefes alır
@@ -342,13 +293,10 @@ html[data-theme="dark"] .isle { background: linear-gradient(180deg, rgba(40, 92,
 @media (prefers-reduced-motion: reduce) { .work-ring, .work-text { animation-duration: 3s; } }
 /* Kubbedeki durum şeridi: kürenin üstünde ince buzlu cam kapsül ("Plan hazırlanıyor…"); yeri hep ayrılı, boyu sabit */
 .dome-chip { display: inline-flex; max-width: 86%; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .875rem; border-radius: 9999px;
-  background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px -10px rgba(0, 0, 0, .4);
+  background: var(--bg); box-shadow: inset 0 0 0 1px var(--line);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: .8125rem; font-weight: 500; }
 .dome-chip .work-ring { width: .875rem; height: .875rem; }
 /* Kubbedeki yazı kutusu (mesajlaşma uygulamaları gibi): buzlu cam hap; dinlerken kenarı küreyle aynı renge döner */
-.dome-input { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); transition: box-shadow .3s ease, background-color .3s ease; }
-.dome-input:focus-within { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .4); }
-.dome-input-on { box-shadow: inset 0 0 0 1.5px rgba(255, 160, 145, .75); background: rgba(255, 255, 255, .15); }
 /* Küçük ses ışığı (kutunun içinde): dalga çubukları ince, hale dar; boyu hiç değişmez */
 .vlight.vl-sm { transform: none; }
 .vlight.vl-sm .vl-halo { inset: -18%; }
@@ -430,4 +378,3 @@ body[data-typing] [data-pagebar] {
 @keyframes navgrow { from { transform: scaleX(0); } 15% { transform: scaleX(.45); } to { transform: scaleX(.9); } }
 @media (prefers-reduced-motion: reduce) { .navbar-run { animation: none; transform: scaleX(.6); } }
 /* Kubbedeki sohbette senin mesajın: sağda belirgin buzlu balon (mesajlaşma uygulamaları gibi) */
-.dome [data-user-bubble] { background: rgba(255, 255, 255, .16); }
