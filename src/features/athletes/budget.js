@@ -65,6 +65,58 @@ export function cleanBudget(b) {
   };
 }
 
+// Talimattaki otel odaları (notice.hotels[].rooms): talimatta yazan her oda tipi ve fiyatı.
+// { cap: kaç kişilik, label: "Tek kişilik", price: talimattaki yazım ("3.200 TL"), amount: sayı, per: room (oda gecelik) | person (kişi başı gecelik),
+//   cur: TL|EUR|USD|GBP, board: pansiyon ("Yarım pansiyon") }
+const CURS = ["TL", "EUR", "USD", "GBP"];
+export function cleanRooms(a) {
+  return (Array.isArray(a) ? a : [])
+    .map((x) => {
+      const cap = int(x?.cap, 10);
+      const amount = num(x?.amount);
+      const price = S(x?.price, 40);
+      if (!cap && !amount && !price) return null;
+      return {
+        cap: Math.max(1, cap || 1),
+        label: S(x?.label, 60),
+        price,
+        amount,
+        per: x?.per === "person" ? "person" : "room",
+        cur: CURS.includes(x?.cur) ? x.cur : "TL",
+        board: S(x?.board, 40),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.cap - b.cap)
+    .slice(0, 12);
+}
+// Odanın gecelik toplam fiyatı (kişi başı yazılmışsa × kapasite)
+export const roomNight = (x) => (x.per === "person" ? x.amount * x.cap : x.amount);
+const capName = (n) => (n === 1 ? "Tek kişilik" : `${n} kişilik`);
+const money = (n, cur) => (cur && cur !== "TL" ? `${(Math.round(n * 100) / 100).toLocaleString("tr-TR")} ${cur}` : tl(n));
+// Satır: "3 kişilik · 3.200 ₺/gece oda · kişi başı 1.067 ₺"
+export function roomLine(x) {
+  const name = x.label || capName(x.cap);
+  if (!x.amount) return [name, x.price, x.board].filter(Boolean).join(" · ");
+  const night = roomNight(x);
+  return [name, `${money(night, x.cur)}/gece oda`, x.cap > 1 ? `kişi başı ${money(night / x.cap, x.cur)}` : "", x.board].filter(Boolean).join(" · ");
+}
+// Talimattaki odadan bütçe oda kalemi (bizden kalan kişi sonra seçilir)
+export function roomFromNotice(h, x, nights) {
+  return {
+    cat: "Konaklama",
+    title: `${h.name ? `${h.name} · ` : ""}${x.label || capName(x.cap)}${x.cur !== "TL" ? ` (${x.cur})` : ""}`.slice(0, 80),
+    amount: roomNight(x),
+    unit: "room",
+    cap: x.cap,
+    beds: x.cap,
+    rooms: 1,
+    who: "athlete",
+    qty: nights || 1,
+    club: false,
+  };
+}
+
 // Yarış tarihlerinden gece sayısı
 export function nightsOf(r) {
   if (!r?.startDate) return 0;

@@ -4,7 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { logAiError } from "@/lib/ai/errors";
-import { CATS, cleanItem } from "@/features/athletes/budget";
+import { CATS, cleanItem, cleanRooms, roomLine } from "@/features/athletes/budget";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ const SYSTEM = `Sen bir yelken kulübünde antrenörün bütçe asistanısın. A
 Sana yarış bilgisi, sporcu sayısı, antrenör/refakatçi sayısı, gece sayısı, varsa yarış talimatındaki ücretler/oteller ve bütçedeki mevcut kalemler verilir.
 Anlatılanlardan bütçe kalemleri çıkar. Yalnızca antrenörün söylediği ya da açıkça istediği kalemleri yaz; antrenörün eklemek istediği kalemi tutarı olmasa da mutlaka yaz.
 Tutarı söylenmemiş kalemin tutarını talimattan al. Orada da yoksa Türkiye'deki güncel fiyatlara göre makul bir tahmin yaz ve est: true yap (ör. "Dikili'den Foça'ya teknelerin ulaşımı" → Tekne/Ekipman, shared, römorklu araç yakıt + şoför tahmini). Tahmin edemiyorsan amount 0 yaz; antrenör tutarı sonra girer.
-Antrenör "talimattaki ücretleri ekle" derse talimattaki ücret ve otelleri kalem yap.
+Antrenör "talimattaki ücretleri ekle" derse talimattaki ücret ve otelleri kalem yap. Talimatta otelin oda fiyatları varsa otel kalemini unit room yap (amount = odanın gecelik toplamı, cap = oda kapasitesi); hangi odadan kaç tane ve bizden kaç kişi söylenmediyse sporcu ve antrenör sayısına göre en az odayla makul bir dağılım yaz (antrenöre tek kişilik oda varsa onu).
 
 Her kalem:
 - cat: ${CATS.join(", ")} (otel/pansiyon/konaklama → Konaklama; kayıt/katılım/geç kayıt ücreti → Kayıt; yakıt, minibüs, otobüs, uçak → Ulaşım; tekne taşıma, römork, kiralık tekne → Tekne/Ekipman).
@@ -66,7 +66,7 @@ async function handle(request) {
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Kalemleri elle ekleyebilirsin.", 503);
   const r = body?.race || {};
   const fees = (Array.isArray(body?.fees) ? body.fees : []).slice(0, 12).map((f) => `- ${S(f?.title, 80)}: ${S(f?.amount, 40)} ${S(f?.note, 160)}`);
-  const hotels = (Array.isArray(body?.hotels) ? body.hotels : []).slice(0, 8).map((h) => `- ${S(h?.name, 80)}: ${S(h?.note, 200)}`);
+  const hotels = (Array.isArray(body?.hotels) ? body.hotels : []).slice(0, 8).map((h) => `- ${S(h?.name, 80)}: ${S(h?.note, 200)}${cleanRooms(h?.rooms).map((x) => `\n  · ${roomLine(x)}${x.price ? ` (talimatta: ${x.price})` : ""}`).join("")}`);
   const items = (Array.isArray(body?.items) ? body.items : []).slice(0, 40).map((x) => `- ${S(x?.cat, 20)} | ${S(x?.title, 80)} | ${N(x?.amount, 1e7)} TL | ${S(x?.unit, 10)} | ${N(x?.qty, 365)}${x?.unit === "room" ? ` | ${N(x?.cap, 10)} kişilik, bizden ${N(x?.beds, 10)} ${x?.who === "staff" ? "antrenör" : "sporcu"}, ${N(x?.rooms, 30) || 1} oda` : ""}`);
   const user = [
     `Yarış: ${S(r.name, 80) || "-"} | ${S(r.startDate, 10)} - ${S(r.endDate, 10)} | ${S(r.district, 40)} ${S(r.city, 40)}`,

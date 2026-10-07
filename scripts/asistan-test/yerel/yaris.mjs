@@ -85,6 +85,24 @@ group("Yarış bütçesi: otel odası")([
   ["hesap yazısı", { desc: "3 kişilik oda · bizden 1 sporcu", fn: () => { const t = BU.totals(ROOMS, 4); return BU.howText(t.lines[1], t).replace(/ /g, " "); }, ok: (r) => r === "3 kişilik oda · bizden 1 sporcu · 3.200 ₺ ÷ 3 × 1 × 4 gece" }],
 ]);
 
+// Talimattaki otel odaları (notice.hotels[].rooms)
+const NR = BU.cleanRooms([
+  { cap: 3, label: "3 kişilik", price: "3.200 TL", amount: 3200, per: "room" },
+  { cap: 1, label: "Tek kişilik", price: "2.500 TL", amount: "2.500" },
+  { cap: 2, price: "kişi başı 1.500 TL", amount: 1500, per: "person" },
+  { cap: 5, label: "5 kişilik", amount: 6000, cur: "EUR" },
+  { cap: 4, label: "4 kişilik" , amount: 4800 },
+  {},
+]);
+group("Talimattaki otel odaları")([
+  ["hepsi kalır", { desc: "boş satır atılır, 1-5 kişilik sırayla", fn: () => NR.map((x) => x.cap).join(), ok: (r) => r === "1,2,3,4,5" }],
+  ["kişi başı fiyat", { desc: "2 kişilik kişi başı 1500 → oda 3000", fn: () => BU.roomNight(NR[1]), ok: (r) => r === 3000 }],
+  ["satır", { desc: "3 kişilik · 3.200 ₺/gece oda · kişi başı 1.066,67 ₺", fn: () => BU.roomLine(NR[2]).replace(/ /g, " "), ok: (r) => r.startsWith("3 kişilik · 3.200 ₺/gece oda · kişi başı 1.066") }],
+  ["döviz", { desc: "EUR yazılır", fn: () => BU.roomLine(NR[4]), ok: (r) => /6\.000 EUR\/gece/.test(r) }],
+  ["bütçe kalemi", { desc: "otel adı, oda, kapasite, gece", fn: () => BU.roomFromNotice({ name: "Phokaia" }, NR[2], 4), ok: (r) => r.unit === "room" && r.amount === 3200 && r.cap === 3 && r.qty === 4 && r.title === "Phokaia · 3 kişilik" }],
+  ["talimat kaydı", { desc: "oteldeki odalar kayıtta kalır", fn: async () => (await import("@/features/athletes/races")).cleanNotice({ hotels: [{ name: "X", rooms: NR }] }).hotels[0].rooms.length, ok: (r) => r === 5 }],
+]);
+
 // Yarış iş listesi (races.js): talimattaki işler + elle işler + evrak, tekrarsız
 const RS = await import("@/features/athletes/races");
 const RACE_T = { notice: { tasks: [{ title: "Online kayıt", date: "2026-10-01" }, { title: "Online kayıt" }] }, todos: [{ title: "Römork" }, { title: "römork" }, { title: "" }], checks: { docs: true, "m:römork": true } };
@@ -98,7 +116,7 @@ group("Yarış iş listesi")([
   ["yurt dışı listeden çıkarma", { desc: "çıkarılan iş listede yok; bozuk anahtar atılır", fn: () => [RS.stepsOf({ abroad: true, skips: ["a:vize", "x"] }).some((s) => s.key === "a:vize"), RS.cleanSkips(["a:vize", "a:vize", "t:x", "x", "gsim", 5])], ok: ([a, b]) => a === false && b.join() === "a:vize,t:x,gsim" }],
   ["yurt içi varsayılan", { desc: "eski yarış (abroad yok) yurt içi; kayıt temizliği boolean", fn: () => [RS.freshRace().abroad, RS.stepsOf({ skips: ["a:vize"] }).some((s) => s.group === "abroad")], ok: ([a, b]) => a === false && b === false }],
   ["elle iş temizliği", { desc: "boş başlık atılır, bozuk tarih silinir", fn: () => RS.cleanTodos([{ title: "  A  ", date: "7 Ekim" }, { title: "" }]), ok: (r) => r.length === 1 && r[0].title === "A" && r[0].date === "" }],
-  ["talimat temizliği", { desc: "bilinmeyen alan atılır", fn: () => RS.cleanNotice({ venue: "Foça", hack: "x", classes: ["ILCA", 5] }), ok: (r) => r.venue === "Foça" && !("hack" in r) && r.classes.join() === "ILCA" }],
+  ["talimat temizliği", { desc: "bilinmeyen alan atılır", fn: async () => (await import("@/features/athletes/races")).cleanNotice({ venue: "Foça", hack: "x", classes: ["ILCA", 5] }), ok: (r) => r.venue === "Foça" && !("hack" in r) && r.classes.join() === "ILCA" }],
 ]);
 
 // Talimat dosyası: yeniden yüklenen talimat kayıtlı bilgiyle karşılaştırılır (raceNotice.js), künye temizliği (races.js)

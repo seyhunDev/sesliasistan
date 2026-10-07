@@ -25,9 +25,10 @@ import { BudgetView } from "./BudgetView";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanSkips, cleanTodos, hiddenCount, shiftDay, stepsOf, todoKey } from "./races";
+import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
+const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -386,7 +387,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       dropFile();
       setR((p) => applyNotice(p, n, mode === "update"));
       setTab("sum");
-    }
+    } else if (n.hotels?.length) setR((p) => withHotels(p, n)); // bilgiler aynı olsa da oteller (oda fiyatları) yenilenir
     const saved = pdf ? await keepNoticeFile(pdf, n.name) : false;
     const msg = {
       new: n.name || latest.current.name ? "Talimat okundu" : "Talimat okundu, yarış adını yaz",
@@ -411,6 +412,22 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [viewer, setViewer] = useState(false);
   const noticeOpen = () => r.noticeFile && setViewer(true);
   const noticeFileMeta = r.noticeFile;
+  // Eski talimatta oda fiyatları yok: kayıtlı dosya yeniden okunur, yalnız oteller yenilenir
+  const [roomsBusy, setRoomsBusy] = useState(false);
+  const rereadRooms = async () => {
+    setRoomsBusy(true);
+    try {
+      const n = await readNotice(await loadNoticeFile(orgId, noticeFileMeta));
+      if (!n.hotels?.some((h) => h.rooms?.length)) toast("Talimatta oda fiyatı bulunamadı");
+      else {
+        setR((p) => withHotels(p, n));
+        toast("Oda fiyatları eklendi");
+      }
+    } catch (e) {
+      toast(e?.message || "Talimat okunamadı");
+    }
+    setRoomsBusy(false);
+  };
   const loadViewer = useCallback(() => loadNoticeFile(orgId, noticeFileMeta), [orgId, noticeFileMeta]);
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
@@ -583,7 +600,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           </div>
 
           {r.notice ? (
-            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} onOpen={noticeOpen} onShare={noticeOpen} />
+            <NoticeDetails n={r.notice} busy={reading} onFile={loadNotice} onText={loadNotice} file={r.noticeFile} onOpen={noticeOpen} onShare={noticeOpen} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
           ) : (
             <>
               <Label>TALİMAT</Label>
