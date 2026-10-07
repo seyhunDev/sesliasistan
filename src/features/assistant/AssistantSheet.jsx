@@ -2004,7 +2004,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Cevabın altındaki sonuç düğmeleri; dokunulan düğme soluklaşır ("used")
   const markLink = (i, k) => setUsed((u) => (u.has(`${i}:${k}`) ? u : new Set(u).add(`${i}:${k}`)));
   const linkCls = (i, k) => (used.has(`${i}:${k}`) ? " opacity-55" : "");
-  const turnLinks = (t, i) => {
+  const turnLinks = (t, i, embedded) => {
     const l = t.links;
     if (!l) return null;
     const shown = shownOf(l.show);
@@ -2085,7 +2085,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={turnLinks} />
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
         {/* Cevabın yeri: gelene kadar yanıp sönen iskelet satırlar (Seyhun: "önden modern loading, yazı gelince tık çıksın",
             2026-10-06); yanıt akmaya başlayınca ya da adımlar görünürken yok */}

@@ -221,9 +221,6 @@ export function NoticeDetails({ n, onRooms, roomsBusy }) {
         </>
       )}
 
-      {file && <div className="mt-4">
-        <NoticeUpload busy={busy} onFile={onFile} onText={onText} title="Talimatı yeniden yükle" sub="Güncel talimat gelince yükle; program ve son tarihler yenilenir, girdiğin bilgiler korunur. Fark varsa önce gösteririm." />
-      </div>}
     </>
   );
 }
