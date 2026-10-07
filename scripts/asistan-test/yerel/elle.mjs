@@ -131,7 +131,7 @@ group("Instagram gönderisi")([
   ["az sporcu", { desc: "Ad · sınıf satırları", fn: () => PM.peopleLines(SIX.slice(0, 2)), ok: (r) => r === "Ali Kaya · Optimist\nAyşe Su · Optimist" }],
   ["kalabalık", { desc: "6 sporcumuz yarışta + ilk adlar", fn: () => PM.peopleLines(SIX), ok: (r) => r.startsWith("6 sporcumuz yarışta\nAli, Ayşe, Can") }],
   ["görsel satırı en çok 4", { desc: "4 satır", fn: () => PM.cleanPeople("a\nb\nc\nd\ne\nf").split("\n").length, ok: (r) => r === 4 }],
-  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ" && r.headline === "Foça Kupası" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
+  ["yarış duyurusu", { desc: "bitmemiş yarış → duyuru, başlık ve alt satır", fn: () => PM.postFromRace({ name: "Foça Kupası", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-08", athleteIds: ["1", "2"] }, "2026-10-03"), ok: (r) => r.kind === "duyuru" && r.tag === "YARIŞ" && r.headline === "Yarışa Hazırız" && r.sub === "Sporcularımız, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." && r.race.count === 2 && r.race.place === "Foça, İzmir" }],
   ["yarış sonucu", { desc: "biten yarış → sonuç", fn: () => PM.postFromRace({ name: "Ege Kupası", startDate: "2026-09-01", endDate: "2026-09-02" }, "2026-10-03").kind, ok: (r) => r === "sonuc" }],
   ["kişisel bilgi gitmez", { desc: "yarıştan yalnız ad ve sınıf", fn: () => JSON.stringify(PM.raceBrief({ name: "X" }, [{ name: "Ali Kaya", cls: "ILCA", tc: "12345678901", parentPhone: "0532" }])), ok: (r) => !/12345678901|0532/.test(r) && /Ali Kaya/.test(r) }],
   ["bozuk kayıt", { desc: "tür, biçim, zemin, konum varsayılan; odak 0-100", fn: () => PM.cleanPost({ kind: "x", format: "y", theme: "z", pos: "orta", focus: 250, thumb: "http://kötü" }), ok: (r) => r.kind === "diger" && r.format === "square" && r.theme === "deniz" && r.pos === "bottom" && r.focus === 100 && r.thumb === "" }],
@@ -322,14 +322,25 @@ group("Instagram tasarım")([
     const old = PM.withInfo(PM.cleanPost({ race: ONE }));
     return a.info === "Foça · 7-11 Ekim 2026" && a.classes === "ILCA 4, ILCA 6" && PM.classList("Optimist, ILCA 4,, Laser, 420, 29er").join() === "Optimist,ILCA 4,Laser,420" && old.classes === "ILCA 4" && old.info === "Foça · 7-11 Ekim 2026";
   })],
-  ["başlıkta sınıf", F("yarışın sınıfı başa eklenir, ILCA 4/6 tek ILCA, yazılıysa eklenmez", () =>
-    PM.raceHeadline(ONE) === "ILCA TYF Ligi" &&
-    PM.raceHeadline({ ...ONE, classes: "ILCA 4, ILCA 6" }) === "ILCA TYF Ligi" &&
-    PM.raceHeadline({ ...ONE, classes: "Optimist, ILCA 4" }) === "Optimist ve ILCA TYF Ligi" &&
-    PM.raceHeadline({ ...ONE, name: "TYF Yelken Ligi ILCA 1. Ayak" }) === "TYF Yelken Ligi ILCA 1. Ayak" &&
-    PM.withClass("TYF Ligi'nde 1. Ayak Yarışları", { athletes: SIX }) === "Optimist TYF Ligi'nde 1. Ayak Yarışları" &&
-    PM.withClass("Kulüp Haberi", null) === "Kulüp Haberi" &&
-    PM.autoOf({ kind: "duyuru", race: ONE }).headline === "ILCA TYF Ligi")],
+  ["kısa başlık", F("yarış bağlıyken başlık yarışın adı değil, bizden kısa söz; sonuçta değişir", () =>
+    PM.raceHeadline(ONE) === "Yarışa Hazırız" &&
+    PM.raceHeadline(ONE, "sonuc") === "Emeğinize Sağlık" &&
+    PM.raceHeadline(null) === "" &&
+    PM.autoOf({ kind: "duyuru", race: ONE }).headline.split(" ").length <= 4 &&
+    !/TYF/.test(PM.autoOf({ kind: "duyuru", race: ONE }).headline))],
+  ["başlık ve yazı boyu", F("varsayılan 100; başlık 60-150, alt satır 80-150, 5'er; başlık kaldırılabilir", () => {
+    const a = PM.cleanPost({});
+    const b = PM.cleanPost({ headSize: 200, subSize: 40, noHead: true });
+    return a.headSize === 100 && a.subSize === 100 && a.noHead === false && b.headSize === 150 && b.subSize === 80 && b.noHead === true && PM.cleanPost({ headSize: 87 }).headSize === 85;
+  })],
+  ["asistanla başlık", F("kaldır, geri getir, bir tık küçült, alt yazıyı büyüt; yeni başlık yazdırma yapay zekaya", () => {
+    const p = { headSize: 100, subSize: 100 };
+    const q = (t) => JSON.stringify(PM.sizeAsk(t, p));
+    return q("başlığı kaldır") === '{"noHead":true}' && q("başlık olmasın") === '{"noHead":true}' && q("başlığı geri getir") === '{"noHead":false}' &&
+      q("başlığı bir tık küçült") === '{"headSize":90,"noHead":false}' && q("başlığı büyüt") === '{"headSize":120,"noHead":false}' &&
+      q("alt yazıyı biraz büyüt") === '{"subSize":110}' && PM.sizeAsk("başlığı “Denizdeyiz” yap", p) === null && PM.sizeAsk("başlığı Denizdeyiz yap", p) === null && PM.sizeAsk("daha kısa yaz", p) === null &&
+      PM.sizeAsk("başlığı küçült", { headSize: 60 }).headSize === 60;
+  })],
   ["türe göre renk", F("her tür ayrı zemin; tür değişince renk değişir, elle seçilen kalır", () => {
     const set = new Set(PM.KINDS.map(([k]) => PM.kindTheme(k)));
     const a = PM.cleanPost({ kind: "duyuru", race: ONE, ...PM.autoOf({ kind: "duyuru", race: ONE }) });

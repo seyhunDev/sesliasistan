@@ -463,6 +463,8 @@ function pin(ctx, x, y, r, color) {
   ctx.restore();
 }
 
+// Başlık ve alt yazı boyutu (%60-150; 100 = otomatik boyut)
+const sizeK = (v) => Math.max(60, Math.min(150, Number(v) || 100)) / 100;
 // Yazı bloğunun parçaları ve yükseklikleri (k: küçültme katsayısı; sığmazsa küçülür)
 function measure(ctx, post, maxW, k) {
   const z = (n) => Math.round(n * k);
@@ -481,14 +483,18 @@ function measure(ctx, post, maxW, k) {
   const tagH = z(post.tag ? 34 : 12);
   items.push({ t: "tag", h: tagH, gap: 0 });
   const headLines = tallOf(post.format) ? 5 : post.format === "portrait" ? 4 : 3;
-  const head = fit(ctx, post.headline || " ", maxW, headLines, z(busy > 2 ? 74 : people.length ? 78 : 90), z(46), 700);
-  items.push({ t: "head", ...head, lh: Math.round(head.size * 1.06), h: head.lines.length * Math.round(head.size * 1.06), gap: z(28) });
+  const hk = sizeK(post.headSize);
+  const sk = sizeK(post.subSize);
+  if (post.headline) {
+    const head = fit(ctx, post.headline, maxW, headLines, z((busy > 2 ? 74 : people.length ? 78 : 90) * hk), z(46 * hk), 700);
+    items.push({ t: "head", ...head, lh: Math.round(head.size * 1.06), h: head.lines.length * Math.round(head.size * 1.06), gap: z(28) });
+  }
   if (meta) {
     const m = fit(ctx, meta, maxW - z(40), 1, z(31), z(24), 400);
     items.push({ t: "meta", ...m, h: Math.round(m.size * 1.3), gap: z(20) });
   }
   if (post.sub) {
-    const sub = fitRich(ctx, post.sub, names, maxW, 4, z(36), z(26), 400);
+    const sub = fitRich(ctx, post.sub, names, maxW, sk > 1 ? 5 : 4, z(36 * sk), z(26 * sk), 400);
     items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.4), h: sub.lines.length * Math.round(sub.size * 1.4), gap: z(22) });
   }
   if (people.length) {
@@ -659,20 +665,24 @@ function measureAfis(ctx, post, maxW, k) {
   if (post.tag) items.push({ t: "tag", h: z(76), gap: 0 });
   const lines = tallOf(post.format) ? 5 : post.format === "portrait" ? 4 : 3;
   const more = (post.sub ? 1 : 0) + people.length + (meta ? 1 : 0);
-  const text = post.headline || " ";
-  // Örnekteki gibi az satır: iki satıra çok küçülmeden sığıyorsa iki satır
-  const hi = z(more > 2 ? 104 : 118);
-  const two = fit(ctx, text, maxW, 2, hi, Math.round(hi * 0.78), 800);
-  ctx.font = `800 ${two.size}px ${FONT}`;
-  const head = wrap(ctx, text, maxW).length <= 2 ? two : fit(ctx, text, maxW, lines, hi, z(56), 800);
-  const lh = Math.round(head.size * 1.08);
-  items.push({ t: "head", ...head, lh, h: head.lines.length * lh, gap: z(post.tag ? 34 : 0) });
+  const text = post.headline;
+  const hk = sizeK(post.headSize);
+  const sk = sizeK(post.subSize);
+  if (text) {
+    // Örnekteki gibi az satır: iki satıra çok küçülmeden sığıyorsa iki satır
+    const hi = z((more > 2 ? 104 : 118) * hk);
+    const two = fit(ctx, text, maxW, 2, hi, Math.round(hi * 0.78), 800);
+    ctx.font = `800 ${two.size}px ${FONT}`;
+    const head = wrap(ctx, text, maxW).length <= 2 ? two : fit(ctx, text, maxW, lines, hi, z(56 * hk), 800);
+    const lh = Math.round(head.size * 1.08);
+    items.push({ t: "head", ...head, lh, h: head.lines.length * lh, gap: z(post.tag ? 34 : 0) });
+  }
   if (meta) {
     const m = fit(ctx, meta, maxW, 1, z(38), z(26), 400);
     items.push({ t: "meta", ...m, h: Math.round(m.size * 1.25), gap: z(40) });
   }
   if (post.sub) {
-    const sub = fitRich(ctx, post.sub, names, maxW, 4, z(32), z(24), 400);
+    const sub = fitRich(ctx, post.sub, names, maxW, sk > 1 ? 5 : 4, z(32 * sk), z(24 * sk), 400);
     items.push({ t: "sub", ...sub, lh: Math.round(sub.size * 1.42), h: sub.lines.length * Math.round(sub.size * 1.42), gap: z(meta ? 18 : 30) });
   }
   if (people.length) {
@@ -904,6 +914,8 @@ async function drawAfis(ctx, post, photo, W, H) {
 // post: cleanPost; photo: yüklenmiş Image ya da null
 export async function drawPost(canvas, post, photo) {
   await loadFonts();
+  // Başlık kaldırıldıysa görselde başlık yok (yazısı saklı kalır, geri açılınca gelir)
+  if (post.noHead) post = { ...post, headline: "" };
   const [, , W, H] = formatOf(post.format);
   canvas.width = W;
   canvas.height = H;
@@ -1042,7 +1054,7 @@ export async function drawPost(canvas, post, photo) {
 }
 
 // Modern tasarımın kullandığı çizim yardımcıları
-const KIT = { FONT, PAD, fit, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, decor, fade };
+const KIT = { FONT, PAD, sizeK, fit, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, decor, fade };
 
 // Instagram'a gidecek dosya (JPEG)
 export function postFile(canvas, name = "gonderi") {

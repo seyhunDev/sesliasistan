@@ -164,10 +164,14 @@ function measure(K, ctx, post, maxW, k, o) {
   if (post.tag && o.kicker) add({ t: "kicker", h: z(34) }, 0);
   if (post.tag && o.sticker) add({ t: "sticker", h: z(70) }, 0);
   const weight = o.italic ? "italic 800" : 800;
-  const hi = z(o.head);
-  const head = K.fit(ctx, post.headline || " ", maxW, o.lines, hi, z(Math.round(o.head * 0.45)), weight);
-  const lh = Math.round(head.size * 0.98);
-  add({ t: "head", ...head, weight, lh, h: head.lines.length * lh + Math.round(head.size * 0.08) }, z(o.kicker ? 26 : 30));
+  const hk = K.sizeK(post.headSize);
+  const sk = K.sizeK(post.subSize);
+  if (post.headline) {
+    const hi = z(o.head * hk);
+    const head = K.fit(ctx, post.headline, maxW, o.lines, hi, z(Math.round(o.head * 0.45 * hk)), weight);
+    const lh = Math.round(head.size * 0.98);
+    add({ t: "head", ...head, weight, lh, h: head.lines.length * lh + Math.round(head.size * 0.08) }, z(o.kicker ? 26 : 30));
+  }
   if (info) {
     if (o.info === "box") {
       const f = K.fit(ctx, info.replace(/\s*[·•]\s*/g, "  •  "), maxW - z(110), 1, z(36), z(24), 700);
@@ -193,7 +197,7 @@ function measure(K, ctx, post, maxW, k, o) {
     }
   }
   if (post.sub) {
-    const sub = K.fitRich(ctx, post.sub, names, maxW, 4, z(31), z(23), 400);
+    const sub = K.fitRich(ctx, post.sub, names, maxW, sk > 1 ? 5 : 4, z(31 * sk), z(23 * sk), 400);
     const l = Math.round(sub.size * 1.42);
     add({ t: "sub", ...sub, lh: l, h: sub.lines.length * l }, z(info ? 26 : 30));
   }

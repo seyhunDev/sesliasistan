@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanPeople, dayOf, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish, withClass } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, dayOf, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -23,7 +23,7 @@ Gönderi türü verilir; açıklama, başlık, etiket ve dilek HER ZAMAN bu tür
 - diger: anlatılana göre.
 
 Yaz:
-- headline: görselin üstündeki büyük yazı, 2-6 kelime, kısa ve şık (dergi başlığı gibi; ünlem yalnız sonuçta, büyük harfle bağırma yok) ("Foça'da Yelken Ligi", "Kürsüdeyiz!", "Rüzgâr Bizden Yana"). Yarış verildiyse yarışın adından ve sınıfından kısa bir başlık; başlıkta HER ZAMAN yarışın sınıfı geçer (birden çok ILCA varsa yalnız "ILCA"): "ILCA TYF Ligi Başlıyor", "Optimist TYF Ligi'nde 1. Ayak Yarışları", "ILCA ve Optimist Foça'da". Emoji yok.
+- headline: görseldeki başlık, KISA: 2-4 kelime, en çok 30 karakter; kulübün ağzından, bize dair bir söz (dergi başlığı gibi; ünlem yalnız sonuçta, büyük harfle bağırma yok) ("Yarışa Hazırız", "Rüzgâr Bizden Yana", "Kürsüdeyiz!", "Denizdeyiz", "Yeni Sezon Başlıyor"). Yarışın adını, yerini ya da sınıfını başlığa YAZMA; onlar yer · tarih satırında ve açıklamada geçer. Asıl anlatım açıklamada. Emoji yok.
 - sub: görseldeki alt satır, en çok 50 karakter: yer · tarih ya da kısa bilgi ("Foça · 7-11 Ekim", "ILCA 4 · 2. ayak"). Bilgi yoksa boş.
 - people: görselde sporcu satırları, YALNIZ 1 ya da 2 sporcu varsa (yarış verilmediyse ve kullanıcı sporcu andıysa): her sporcu bir satır "Ad Soyad · sınıf · kısa açıklama", en çok 45 karakter; kısa açıklama yalnız anlatılandan. 3 ve daha çok sporcu varsa people BOŞ, adlar görselde değil açıklamada geçer.
 - wish: görselin en altındaki kısa dilek/çağrı satırı, en çok 40 karakter, tek ünlemle biter ("Sporcularımıza başarılar!", "Tebrikler şampiyonlar!", "Kayıtlar başladı, bekleriz!"). Emoji yok.
@@ -90,8 +90,8 @@ async function handle(request) {
     const t0 = Date.now();
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 2500, timeoutMs: 22000 });
     const out = {
-      // Yarış bağlıysa başlıkta sınıf yoksa başa eklenir (kullanıcı sınıfı çıkarmayı istemediyse)
-      headline: race && !/sınıf/i.test(ask) ? withClass(L(raw?.headline, 90), race) : L(raw?.headline, 90),
+      // Başlık kısa ve bize dair (yarışın adı değil); değişiklik isteğinde başlık yalnız açıkça istenirse değişir
+      headline: ask && !/başlık/i.test(ask) && cur.headline ? L(cur.headline, 90) : L(raw?.headline, 90),
       // Yarış bağlıysa alt satır kalıp cümle (sporcumuz/sporcularımız + yer); 1-2 sporcunun adı orada geçtiği için ayrı satır yok
       // Değişiklik isteğinde (yarış bağlıyken) alt satır ve dilek yalnız açıkça istenirse değişir
       sub: race && (!ask || !/alt ?(satır|yazı)|cümle/i.test(ask)) ? (ask && S(cur.sub, 200)) || raceSub(race, kind) : S(raw?.sub, 200),
