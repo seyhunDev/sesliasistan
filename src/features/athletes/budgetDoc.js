@@ -122,21 +122,15 @@ export async function buildBudgetPdf(r, athletes, fonts) {
     band(y - 12, 18);
     text("Sporcu", cols[0], y, f.b, 8.5, { color: MUT });
     text("Tutar", cols[3], y, f.b, 8.5, { color: MUT, align: "right" });
-    text("Durum", cols[4], y, f.b, 8.5, { color: MUT, align: "right" });
     y += 18;
     athletes.forEach((a, i) => {
       need(20);
       text(`${i + 1}. ${a.studentName}`, cols[0], y, f.r, 9.5, { max: cols[3] - cols[0] - 80 });
       text(tl(t.perAthlete), cols[3], y, f.r, 9.5, { align: "right" });
-      const paid = !!b.paid?.[a.id];
-      text(paid ? "Ödendi" : "Bekliyor", cols[4], y, paid ? f.b : f.r, 9.5, { align: "right", color: paid ? NAVY : MUT });
       y += 18;
       rule(y - 13);
     });
-    const done = athletes.filter((a) => b.paid?.[a.id]).length;
-    y += 6;
-    text(`Toplanan: ${tl(done * t.perAthlete)} / ${tl(t.athletes * t.perAthlete)} (${done}/${athletes.length} sporcu)`, cols[0], y, f.b, 9.5);
-    y += 24;
+    y += 18;
   }
 
   need(40);
