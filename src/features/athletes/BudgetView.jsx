@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, cleanBudget, cleanItem, emptyBudget, howText, nearReceipts, newId, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, emptyBudget, howText, nearReceipts, newId, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
@@ -87,6 +87,8 @@ export function BudgetView({ r, athletes, onChange }) {
   };
 
   const groups = CATS.map((c) => [c, t.lines.filter((l) => l.cat === c)]).filter(([, l]) => l.length);
+  const inRooms = roomPeople(b);
+  const roomGap = inRooms && (inRooms.athlete !== athletes.length || inRooms.staff !== b.staff);
   const hasNoticeFees = !!(r.notice?.fees?.length || r.notice?.hotels?.length);
 
   return (
@@ -175,16 +177,28 @@ export function BudgetView({ r, athletes, onChange }) {
           ))}
         </div>
       ))}
-      <button type="button" onClick={() => setEdit({ cat: "Kayıt", title: "", amount: "", unit: "athlete", qty: 1, club: false })} className={`${card} flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
-        <Icon name="plus" className="size-5" />
-        Kalem ekle
-      </button>
+      {inRooms && (
+        <p className={`mb-2 px-1 text-[0.75rem] ${roomGap ? "font-semibold text-rec" : "text-mut"}`}>
+          Odalarda bizden {inRooms.athlete} sporcu, {inRooms.staff} antrenör kalıyor
+          {roomGap ? ` · yarışta ${athletes.length} sporcu, ${b.staff} antrenör var` : "."}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setEdit({ cat: "Kayıt", title: "", amount: "", unit: "athlete", qty: 1, club: false })} className={`${card} flex h-12 flex-1 items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
+          <Icon name="plus" className="size-5" />
+          Kalem ekle
+        </button>
+        <button type="button" onClick={() => setEdit(newRoom(b.nights))} className={`${card} flex h-12 flex-1 items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc`}>
+          <Icon name="home" className="size-5" />
+          Otel odası ekle
+        </button>
+      </div>
       {hasNoticeFees && (
         <button type="button" disabled={busy} onClick={() => runAi("Talimattaki kayıt ücretlerini ve otel fiyatlarını bütçeye ekle.")} className="mt-2 w-full rounded-xl px-4 py-2.5 text-left text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
           {busy ? "Hazırlanıyor…" : "Talimattaki ücretleri ve otelleri ekle"}
         </button>
       )}
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Alttaki asistana söyleyebilirsin: “Bütçeye otel kişi başı gecelik 3500 lira ekle”, “minibüs toplam 6000, kulüp öder”.</p>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">Alttaki asistana söyleyebilirsin: “Bütçeye otel kişi başı gecelik 3500 lira ekle”, “minibüs toplam 6000, kulüp öder”, “3 kişilik oda gecelik 3200, bizden 1 sporcu kalıyor”.</p>
 
       {athletes.length > 0 && b.items.length > 0 && (
         <>
@@ -232,10 +246,32 @@ export function BudgetView({ r, athletes, onChange }) {
   );
 }
 
+// Yeni otel odası: 3 kişilik, bizden 3 sporcu, gece sayısı yarıştan
+const newRoom = (nights) => ({ cat: "Konaklama", title: "Otel odası", amount: "", unit: "room", cap: 3, beds: 3, rooms: 1, who: "athlete", qty: nights || 1, club: false });
+
+function Count({ label, value, min = 1, max, onChange }) {
+  const v = Number(value) || min;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex-1 text-[0.9375rem]">{label}</span>
+      <button type="button" onClick={() => onChange(Math.max(min, v - 1))} aria-label={`${label} azalt`} className="grid size-9 place-items-center rounded-full bg-bg text-acc">
+        <Icon name="minus" className="size-4" />
+      </button>
+      <b className="w-6 text-center text-[1rem] tabular-nums">{v}</b>
+      <button type="button" onClick={() => onChange(Math.min(max, v + 1))} aria-label={`${label} artır`} className="grid size-9 place-items-center rounded-full bg-bg text-acc">
+        <Icon name="plus" className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 function ItemForm({ item, nights, onSave, onRemove }) {
   const [x, setX] = useState({ ...item, id: item.id || newId(), amount: item.amount === "" || item.amount === 0 ? "" : String(item.amount).replace(".", ",") });
   const put = (k) => (v) => setX((p) => ({ ...p, [k]: v }));
   const amount = Number(String(x.amount).replace(/\./g, "").replace(",", ".")) || 0;
+  const room = x.unit === "room";
+  const cap = Number(x.cap) || 1;
+  const beds = Math.min(cap, Number(x.beds) || 1);
   const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none placeholder:text-mut/70";
   return (
     <div className="space-y-4">
@@ -244,7 +280,7 @@ function ItemForm({ item, nights, onSave, onRemove }) {
           <button
             key={c}
             type="button"
-            onClick={() => setX((p) => ({ ...p, cat: c, qty: c === "Konaklama" && (p.qty || 1) === 1 && nights ? nights : p.qty, unit: c === "Konaklama" && p.unit === "athlete" ? "person" : p.unit }))}
+            onClick={() => setX((p) => (c === "Konaklama" && p.unit === "athlete" ? { ...newRoom(nights), ...p, cat: c, unit: "room", qty: (p.qty || 1) === 1 && nights ? nights : p.qty, title: p.title || "Otel odası" } : { ...p, cat: c }))}
             aria-pressed={x.cat === c}
             className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${x.cat === c ? "bg-acc text-white" : "bg-bg text-mut"}`}
           >
@@ -254,15 +290,40 @@ function ItemForm({ item, nights, onSave, onRemove }) {
       </div>
       <input value={x.title} onChange={(e) => put("title")(e.target.value)} placeholder="Kalem adı (ör. Kayıt ücreti)" className={field} />
       <div className="flex items-center gap-2">
-        <input value={x.amount} onChange={(e) => put("amount")(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder="Tutar" className={`${field} flex-1`} />
+        <input value={x.amount} onChange={(e) => put("amount")(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder={room ? "Odanın gecelik fiyatı (oda toplamı)" : "Tutar"} className={`${field} flex-1`} />
         <span className="text-[0.9375rem] font-semibold text-mut">₺</span>
       </div>
-      <Seg value={x.unit} onChange={put("unit")} options={UNITS} />
+      <Seg value={x.unit} onChange={(u) => setX((p) => (u === "room" ? { ...newRoom(nights), ...p, unit: u, cap: p.cap || 3, beds: p.beds || 1, rooms: p.rooms || 1, who: p.who || "athlete" } : { ...p, unit: u }))} options={UNITS} />
       <p className="-mt-2 px-1 text-[0.75rem] text-mut">
-        {x.unit === "athlete" ? "Her sporcu için (kayıt ücreti)." : x.unit === "person" ? "Antrenör dahil herkes için (otel, yemek)." : "Toplam tutar; sporculara bölünür (minibüs, yakıt)."}
+        {x.unit === "athlete"
+          ? "Her sporcu için (kayıt ücreti)."
+          : x.unit === "person"
+            ? "Antrenör dahil herkes için (otel, yemek)."
+            : room
+              ? "Otel odası: odanın gecelik toplam fiyatını gir; yalnız bizden kalan kişilerin payı ödenir."
+              : "Toplam tutar; sporculara bölünür (minibüs, yakıt)."}
       </p>
+      {room && (
+        <div className="space-y-3 rounded-2xl bg-bg/60 p-3">
+          <div>
+            <span className="mb-1.5 block text-[0.8125rem] text-mut">Oda kaç kişilik?</span>
+            <Seg value={String(cap)} onChange={(v) => setX((p) => ({ ...p, cap: Number(v), beds: Math.min(Number(v), Number(p.beds) || 1) }))} options={[["1", "Tek"], ["2", "2 kişi"], ["3", "3 kişi"], ["4", "4 kişi"]]} />
+          </div>
+          <div>
+            <span className="mb-1.5 block text-[0.8125rem] text-mut">Odada kim kalıyor?</span>
+            <Seg value={x.who || "athlete"} onChange={put("who")} options={WHO} />
+          </div>
+          <Count label="Odada bizden kaç kişi" value={beds} max={cap} onChange={put("beds")} />
+          <Count label="Bu odadan kaç tane" value={x.rooms} max={30} onChange={put("rooms")} />
+          {amount > 0 && (
+            <p className="px-1 text-[0.8125rem] text-mut">
+              Kişi başı gecelik <b className="text-fg">{tl(amount / cap)}</b> · bu satır toplam <b className="text-fg">{tl((amount / cap) * beds * (Number(x.rooms) || 1) * (Number(x.qty) || 1))}</b>
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-3">
-        <span className="flex-1 text-[0.9375rem]">{x.cat === "Konaklama" ? "Gece" : "Adet"}</span>
+        <span className="flex-1 text-[0.9375rem]">{x.cat === "Konaklama" || room ? "Gece" : "Adet"}</span>
         <input type="number" min="1" value={x.qty} onChange={(e) => put("qty")(e.target.value)} className="h-11 w-24 rounded-xl bg-bg px-3 text-center text-[0.9375rem] outline-none" />
       </div>
       <button type="button" onClick={() => put("club")(!x.club)} aria-pressed={x.club} className="flex w-full items-center gap-3 text-left">
