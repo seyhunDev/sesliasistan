@@ -2,6 +2,7 @@
 // pdf-lib yalnızca çıktı alınırken yüklenir. Yazı tipleri ve logo raceDocs.loadFonts'tan.
 import { CLUB, rangeText } from "./raceDocs.js";
 import { UNITS, howText, tl, totals } from "./budget.js";
+import { tripText } from "./races.js";
 
 const W = 595.28;
 const H = 841.89;
@@ -57,7 +58,11 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   y += 18;
   text([rangeText(r.startDate, r.endDate), [r.district, r.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), L, y, f.r, 10.5, { color: MUT });
   y += 16;
-  text(`${t.athletes} sporcu · ${b.staff} antrenör/refakatçi · ${b.nights} gece`, L, y, f.r, 10.5, { color: MUT });
+  text(`${t.athletes} sporcu · ${b.staff} antrenör/refakatçi`, L, y, f.r, 10.5, { color: MUT });
+  for (const line of tripText(r)) {
+    y += 16;
+    text(line, L, y, f.r, 10.5, { color: MUT, max: R - L });
+  }
   y += 26;
 
   // Özet kutuları
