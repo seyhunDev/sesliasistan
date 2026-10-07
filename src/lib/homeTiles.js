@@ -3,6 +3,7 @@
 // yarış bilgisi raceHome.js'in zaten yaptığı okumadan, antrenman bellekteki planlardan gelir.
 import { canLog, isLogNote, monthLog } from "./trainingLog";
 import { monthRows } from "./dues";
+import { planState } from "./agenda";
 
 const KEY = "sa-home-sum";
 export function readSum() {
@@ -30,7 +31,7 @@ export function duesTile(sum, ym) {
   const left = Math.max(0, sum.count - sum.paidCount);
   return {
     big: `${sum.paidCount}/${sum.count} ödedi`,
-    sub: sum.pending > 0 ? `${sum.pending} banka ödemesi bekliyor` : left > 0 ? `${m} · ${left} kişi ödemedi` : `${m} · herkes ödedi`,
+    sub: sum.pending > 0 ? `${sum.pending} ödeme onay bekliyor` : left > 0 ? `${m} · ${left} kişi ödemedi` : `${m} · herkes ödedi`,
     warn: sum.pending > 0,
     bar: sum.count > 0 ? Math.min(1, sum.paidCount / sum.count) : null, // kartta doluluk çubuğu (ödeyenler / hepsi)
   };
@@ -109,8 +110,8 @@ export function homeActions(o) {
 // Ana sayfa › Kısayollar: İşlemler'in hepsi yerine en çok SHORTCUT_MAX düğme; kalanlar "Tümü" penceresinde (gruplu).
 // Seçim kişinin profilinde (users/{uid}.homeLinks: anahtar listesi, anahtar = href ya da id). Seçim yoksa ya da seçilenler
 // bu kişide yoksa varsayılanlar, eksik kalırsa grupların sırasıyla tamamlanır. Dönüş: düğmeler (homeActions öğeleri).
-export const SHORTCUT_MAX = 6;
-export const DEFAULT_SHORTCUTS = ["/plans", "/notes", "/athletes", "/athletes/attendance", "meeting", "/inventory"];
+export const SHORTCUT_MAX = 7; // 4 sütunda iki sıra: 7 kısayol + "Tümü"
+export const DEFAULT_SHORTCUTS = ["/plans", "/notes", "/athletes", "/athletes/attendance", "meeting", "/inventory", "/receipts"];
 export const linkKey = (a) => a.href || a.id;
 export function shortcutsOf(groups, picked) {
   const all = groups.flatMap((g) => g.items);
@@ -133,4 +134,19 @@ export function homeNotes(notes = [], n = 5) {
   const at = (x) => x.updatedAt || x.createdAt || "";
   const list = [...live].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || at(b).localeCompare(at(a))).slice(0, n);
   return { list, total: live.length };
+}
+
+// Ana sayfa › ŞU AN kartı: bugünün süren ya da sıradaki planı (main) ve ondan sonraki (after). Bugün kalan plan yoksa
+// yarının ilk planı "tomorrow" olarak gelir. İptal edilen ve saati geçen planlar sayılmaz. Bellekteki planlardan, ek okuma yok.
+// Dönüş: { main: { p, when: "now" | "next" | "tomorrow" } | null, after: { p, tomorrow } | null }
+export function nowPlans(plans = [], today, tomorrow, now = new Date()) {
+  const on = (d) =>
+    plans
+      .filter((p) => p && p.date && p.status !== "cancelled" && p.date <= d && (p.endDate || p.date) >= d)
+      .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const left = on(today).filter((p) => planState(p, now) !== "past");
+  const next = on(tomorrow);
+  const main = left[0] ? { p: left[0], when: planState(left[0], now) === "now" ? "now" : "next" } : next[0] ? { p: next[0], when: "tomorrow" } : null;
+  const rest = main?.when === "tomorrow" ? next.slice(1).map((p) => [p, true]) : [...left.slice(1).map((p) => [p, false]), ...next.map((p) => [p, true])];
+  return { main, after: rest[0] ? { p: rest[0][0], tomorrow: rest[0][1] } : null };
 }

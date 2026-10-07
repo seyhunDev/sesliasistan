@@ -42,6 +42,21 @@ export const IconDot = ({ icon, tone }) => (
   </span>
 );
 
+// Görevi bitir: boş daire, dokununca işaretlenir (satırın kendisi görevi açar)
+const DoneBtn = ({ onClick }) => (
+  <button
+    type="button"
+    aria-label="Yapıldı olarak işaretle"
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
+    className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-line text-transparent transition hover:text-ok active:scale-90 active:border-ok active:text-ok"
+  >
+    <Icon name="check" className="size-4 [stroke-width:3]" />
+  </button>
+);
+
 // Sağdaki tek eylem: küçük yuvarlak düğme (işaret) ya da kısa yazılı düğme
 function Pill({ children, onClick, tone = "light", label }) {
   const cls = { light: "bg-bg text-fg", rec: "bg-rec/10 text-rec", ok: "bg-ok text-white", acc: "bg-acc text-white" }[tone];
@@ -61,7 +76,7 @@ function Pill({ children, onClick, tone = "light", label }) {
 }
 
 // "Senin için" öğeleri (ana sayfadaki liste ve asistan sahnesindeki kısa özet aynı listeyi kullanır).
-// Sıra: Karar › Mesaj › Rüzgâr › Geciken › Yeni › Ödeme. Gizlenenler çıkarılmış hâliyle döner.
+// Sıra: Karar › Mesaj › Fatura › Geciken › Bugünkü görev › Yeni › Ödeme. Gizlenenler çıkarılmış hâliyle döner.
 export function useForYou() {
   const router = useRouter();
   const { plans, tasks, notes, receipts, myUid, nameOf, isStaff, markSeen, deleteRecord, rejectDelete, toggleTask, markPaid } = useData();
@@ -130,6 +145,7 @@ export function useForYou() {
             {nameOf(last.by) || "Kişi"} <span className="font-normal text-mut">· {r.title}</span>
           </>
         ),
+        short: nameOf(last.by) || "Mesaj",
         sub: last.text,
         time: listTime(last.at),
         badge: fresh.length,
@@ -171,21 +187,20 @@ export function useForYou() {
         sub: `${days} gün gecikti`,
         subTone: "text-rec",
         onOpen: () => open("task", t.id),
-        trail: (
-          <button
-            type="button"
-            aria-label="Yapıldı olarak işaretle"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleTask(t.id);
-            }}
-            className="grid size-8 shrink-0 place-items-center rounded-full border-2 border-line text-transparent transition hover:text-ok active:scale-90 active:border-ok active:text-ok"
-          >
-            <Icon name="check" className="size-4 [stroke-width:3]" />
-          </button>
-        ),
+        trail: <DoneBtn onClick={() => toggleTask(t.id)} />,
       });
     }
+  // Bugün son günü olan görev (ana sayfada Bugün listesi yok; görevler burada, sağda tek dokunuşla "bitti")
+  for (const t of tasks)
+    if (!t.done && !t.doneBy?.[myUid] && t.due === today && !invTasks.has(t.id))
+      items.push({
+        id: `due:${t.id}:${t.due}`,
+        lead: <IconDot icon="task" tone="acc" />,
+        title: t.title,
+        sub: "Bugün yapılacak",
+        onOpen: () => open("task", t.id),
+        trail: <DoneBtn onClick={() => toggleTask(t.id)} />,
+      });
   // Yeni verilen / eklenen
   for (const [kind, r] of recs)
     if (isNewFor(r, myUid) && !(kind === "task" && r.done))

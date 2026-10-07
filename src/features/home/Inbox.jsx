@@ -13,7 +13,6 @@ import { isUnread } from "@/lib/inbox";
 import { IconDot, useForYou } from "./ForYou";
 import { CARD, SectionHead } from "./ui";
 
-const SHOW = 3;
 
 // Etiketten simge: sohbet, plan/özet, görev, not, para (fiş, fatura, aidat, banka maili), diğerleri zil
 function iconOf(tag = "") {
@@ -26,8 +25,7 @@ function iconOf(tag = "") {
 }
 
 // "Senin için" (tek kutu): bakman gereken her şey bir listede. Önce yapılacaklar (useForYou: silme isteği, mesaj, fatura,
-// yeni verilen, ödenecek fiş), sonra telefona gelen okunmamış bildirimler (users/{uid}.inbox, lib/inbox). Geciken görevler
-// burada yok, Bugün kartında. Başlıktaki zilin sayısı bu listenin uzunluğu; zil (ve "Tümü") pencereyi açar, pencerede
+// geciken ve bugünkü görev, yeni verilen, ödenecek fiş), sonra telefona gelen okunmamış bildirimler (users/{uid}.inbox, lib/inbox). Başlıktaki zilin sayısı bu listenin uzunluğu; zil (ve "Tümü") pencereyi açar, pencerede
 // yapılacakların hepsi ve son 30 bildirim. Ana sayfa görülünce bildirimler okundu yazılır (inboxSeen, simgedeki sayı sıfırlanır),
 // ama bu ziyaret boyunca listede kalır. Bir kez çağrılır (OwnerHome), sonuç zile ve kutuya verilir.
 export function useInbox() {
@@ -76,7 +74,7 @@ export function useInbox() {
       onOpen: () => x.url && x.url !== "/" && router.push(x.url),
     };
   };
-  const actions = todo.filter((x) => !x.id.startsWith("late:"));
+  const actions = todo;
   const fresh = since === null ? [] : inbox.filter((x) => isUnread(x, since)).map(note).filter((x) => !gone.has(x.id));
   const list = [...actions, ...fresh];
   const hide = (id) => (id.startsWith("n:") ? setGone((g) => new Set(g).add(id)) : hideTodo(id));
@@ -170,19 +168,43 @@ export function InboxSheet({ inbox, open, onClose }) {
   );
 }
 
-// Ana sayfadaki kutu: en önemli SHOW satır, gerisi "Tümü" ile pencerede. Boşsa görünmez.
-export function InboxBox({ inbox, onAll }) {
-  const { list, hide } = inbox;
+// Ana sayfadaki tek satır: "N şey seni bekliyor", solda ilk üç öğenin küçük simgesi, altında ilk başlıklar; dokununca pencere.
+// Bekleyen yoksa görünmez.
+const MINI = [
+  [/^(del|late):/, "alert", "bg-rec/10 text-rec"],
+  [/^inv:/, "receipt", "bg-amber-500/12 text-amber-700"],
+  [/^pay:/, "receipt", "bg-ok/10 text-ok"],
+  [/^(chat|msg):/, "chat", "bg-acc/10 text-acc"],
+  [/^n:/, "bell", "bg-acc/10 text-acc"],
+  [/./, "task", "bg-acc/10 text-acc"],
+];
+const miniOf = (id) => MINI.find(([re]) => re.test(id));
+export function WaitRow({ inbox, onAll }) {
+  const { list } = inbox;
   if (!list.length) return null;
+  const names = list
+    .slice(0, 3)
+    .map((x) => (typeof x.title === "string" ? x.title : x.short))
+    .filter(Boolean);
   return (
-    <section id="foryou" aria-labelledby="home-foryou" className="scroll-mt-4">
-      <SectionHead id="home-foryou" title="SENİN İÇİN" count={list.length}>
-        <button type="button" onClick={onAll} className="flex items-center gap-0.5 font-semibold text-acc active:opacity-70">
-          Tümü
-          <Icon name="chev" className="size-3.5" />
-        </button>
-      </SectionHead>
-      <List rows={list.slice(0, SHOW)} onHide={hide} />
-    </section>
+    <button type="button" onClick={onAll} aria-label={`${list.length} şey seni bekliyor`} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left ${CARD} transition active:scale-[.98]`}>
+      <span className="flex shrink-0">
+        {list.slice(0, 3).map((x, i) => {
+          const [, icon, tone] = miniOf(x.id);
+          return (
+            <span key={x.id} style={{ zIndex: 3 - i }} className="relative -ml-2 grid size-9 place-items-center rounded-full bg-card ring-2 ring-card first:ml-0">
+              <span className={`grid size-full place-items-center rounded-full ${tone}`}>
+                <Icon name={icon} className="size-4" />
+              </span>
+            </span>
+          );
+        })}
+      </span>
+      <span className="min-w-0 flex-1">
+        <b className="block text-[1rem] font-semibold leading-snug">{list.length} şey seni bekliyor</b>
+        <small className="line-clamp-2 block text-[0.8125rem] leading-snug text-mut">{names.join(" · ")}</small>
+      </span>
+      <Icon name="chev" className="size-4 shrink-0 text-mut" />
+    </button>
   );
 }

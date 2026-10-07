@@ -503,7 +503,7 @@ group("Ana sayfa kartları")([
     const a = HT.duesTile({ ym: "2026-10", paidCount: 12, count: 30, pending: 3 }, "2026-10");
     const b = HT.duesTile({ ym: "2026-10", paidCount: 30, count: 30, pending: 0 }, "2026-10");
     const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
-    return a.big === "12/30 ödedi" && a.warn && a.sub.includes("3 banka") && b.sub.includes("herkes ödedi") && !b.warn && c.big === "Ekim aidatı";
+    return a.big === "12/30 ödedi" && a.warn && a.sub.includes("3 ödeme onay") && b.sub.includes("herkes ödedi") && !b.warn && c.big === "Ekim aidatı";
   })],
   ["aidat", F("doluluk çubuğu: 12/30 → 0,4; herkes ödedi → 1; eski ayda yok", () => {
     const a = HT.duesTile({ ym: "2026-10", paidCount: 12, count: 30, pending: 0 }, "2026-10");
@@ -544,18 +544,34 @@ group("Ana sayfa kartları")([
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
     return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
-  ["kısayollar: varsayılan", F("ana hesapta Planlar, Notlar, Sporcular, Yoklama, Toplantı, Envanter; en çok 6", () => {
+  ["kısayollar: varsayılan", F("ana hesapta Planlar, Notlar, Sporcular, Yoklama, Toplantı, Envanter, Fiş / Fatura; en çok 7", () => {
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const k = HT.shortcutsOf(g).map(HT.linkKey);
-    return k.join(",") === "/plans,/notes,/athletes,/athletes/attendance,meeting,/inventory";
+    return k.join(",") === "/plans,/notes,/athletes,/athletes/attendance,meeting,/inventory,/receipts";
   })],
-  ["kısayollar: çalışan ve seçim", F("eksik varsayılan sırayla tamamlanır; seçim uygulanır, olmayan sayfa atlanır; 6'dan fazla eklenmez", () => {
+  ["kısayollar: çalışan ve seçim", F("eksik varsayılan sırayla tamamlanır; seçim uygulanır, olmayan sayfa atlanır; 7'den fazla eklenmez", () => {
     const sg = HT.homeActions({ staff: true, receipts: true });
     const s = HT.shortcutsOf(sg);
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const p = HT.shortcutsOf(g, ["/dues", "/yok", "/posts"]).map(HT.linkKey);
-    const six = ["a", "b", "c", "d", "e", "f"];
-    return s.length === 6 && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(six, "g") === null && HT.toggleShortcut(six, "a").length === 5 && HT.toggleShortcut(["a"], "b").join() === "a,b";
+    const full = ["a", "b", "c", "d", "e", "f", "g"];
+    return s.length === Math.min(7, sg.flatMap((x) => x.items).length) && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(full, "h") === null && HT.toggleShortcut(full, "a").length === 6 && HT.toggleShortcut(["a"], "b").join() === "a,b";
+  })],
+  ["şu an kartı", F("süren plan önce, sonra sıradaki; bugün kalmadıysa yarının ilki; iptal ve geçen sayılmaz", () => {
+    const now = new Date("2026-10-07T14:20:00");
+    const ps = [
+      { id: "a", title: "Sabah", date: "2026-10-07", time: "09:00" },
+      { id: "b", title: "Antrenman", date: "2026-10-07", time: "14:00", durationMin: 120 },
+      { id: "c", title: "İptal", date: "2026-10-07", time: "16:00", status: "cancelled" },
+      { id: "d", title: "Toplantı", date: "2026-10-07", time: "18:30" },
+      { id: "e", title: "Bakım", date: "2026-10-08", time: "10:00" },
+      { id: "f", title: "Yarış", date: "2026-10-08", time: "12:00" },
+    ];
+    const r = HT.nowPlans(ps, "2026-10-07", "2026-10-08", now);
+    const late = HT.nowPlans(ps, "2026-10-07", "2026-10-08", new Date("2026-10-07T21:00:00"));
+    const none = HT.nowPlans([], "2026-10-07", "2026-10-08", now);
+    return r.main.p.id === "b" && r.main.when === "now" && r.after.p.id === "d" && !r.after.tomorrow &&
+      late.main.p.id === "e" && late.main.when === "tomorrow" && late.after.p.id === "f" && none.main === null && none.after === null;
   })],
 ]);
 

@@ -8,21 +8,22 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { SHORTCUT_MAX, linkKey, shortcutsOf, toggleShortcut } from "@/lib/homeTiles";
-import { SectionHead, TAP } from "./ui";
+import { CARD, SectionHead } from "./ui";
 
 // Marka renkleri: yalnız tanınan sosyal medya düğmesinde (Instagram simgesi ve renk geçişi); diğerleri uygulamanın yeşil simgesi
 export const BRAND = {
   instagram: "bg-[linear-gradient(45deg,#f9a03a_0%,#e9583f_30%,#d62f6c_60%,#a23ab6_100%)] text-white",
 };
 
-const cls = `relative flex h-[5.25rem] w-full flex-col items-center justify-center gap-1.5 px-0.5 text-center ${TAP}`;
-function Body({ icon, label, brand }) {
+// Düğme: üstte yuvarlatılmış kare simge (kart görünümünde), altında tek satır ad; kutu yok, simgeler ızgarada nefes alır
+const cls = "relative flex w-full flex-col items-center gap-2 text-center transition active:scale-95";
+function Body({ icon, label, brand, on }) {
   return (
     <>
-      <span className={`grid size-10 shrink-0 place-items-center rounded-full ${BRAND[brand] || "bg-acc/10 text-acc"}`}>
-        <Icon name={icon} className="size-5" />
+      <span className={`grid size-[3.75rem] shrink-0 place-items-center ${on ? CARD.replace("ring-1 ring-line/70", "ring-2 ring-acc") : CARD} ${BRAND[brand] || "text-acc"}`}>
+        <Icon name={icon} className="size-6" />
       </span>
-      <span className="w-full truncate whitespace-nowrap text-[0.8125rem] font-semibold leading-tight tracking-[-0.01em]">{label}</span>
+      <span className="w-full truncate whitespace-nowrap text-[0.8125rem] font-medium leading-tight tracking-[-0.01em]">{label}</span>
     </>
   );
 }
@@ -40,7 +41,7 @@ function Tile({ a, onGo }) {
   );
 }
 
-// Ana sayfa › KISAYOLLAR: en çok 6 aynı tip düğme (yuvarlak simge + tek satır ad, 3 sütun), altında "Tüm sayfalar":
+// Ana sayfa › KISAYOLLAR: 4 sütunda en çok 7 düğme (simge + tek satır ad), sonuncu "Tümü":
 // alttan açılan pencerede bütün sayfalar gruplu (Günlük, Kulüp, Yönetim, Sosyal). Pencerede "Kısayolları düzenle" ile
 // düğmelere dokunarak kısayol seçilir (users/{uid}.homeLinks). Sayı/rozet yok; bilgi ÖZET ve SENİN İÇİN'de. groups: homeActions() (homeTiles.js).
 export function HomeActions({ groups }) {
@@ -67,26 +68,18 @@ export function HomeActions({ groups }) {
   return (
     <nav aria-labelledby="home-act">
       <SectionHead id="home-act" title="KISAYOLLAR" />
-      <ul className="grid grid-cols-3 gap-2">
+      <ul className="grid grid-cols-4 gap-x-1.5 gap-y-4">
         {short.map((a) => (
           <li key={linkKey(a)}>
             <Tile a={a} />
           </li>
         ))}
+        {total > short.length && (
+          <li>
+            <Tile a={{ id: "all", icon: "more", label: "Tümü", onClick: () => setOpen(true) }} />
+          </li>
+        )}
       </ul>
-      {total > short.length && (
-        <button type="button" onClick={() => setOpen(true)} className={`mt-2 flex w-full items-center justify-between px-4 py-3 text-[0.9375rem] font-semibold ${TAP}`}>
-          <span className="flex items-center gap-2.5">
-            <Icon name="more" className="size-5 text-acc" />
-            Tüm sayfalar
-          </span>
-          <span className="flex items-center gap-1 text-[0.8125rem] font-normal text-mut">
-            {total}
-            <Icon name="chev" className="size-3.5" />
-          </span>
-        </button>
-      )}
-
       <Sheet open={open} onClose={close} title="Tüm sayfalar">
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 px-1">
@@ -101,16 +94,16 @@ export function HomeActions({ groups }) {
           {groups.map((g) => (
             <section key={g.title} aria-label={g.title}>
               <h3 className="mb-2 px-1 text-[0.8125rem] font-semibold text-fg/70">{g.title}</h3>
-              <ul className="grid grid-cols-3 gap-2">
+              <ul className="grid grid-cols-4 gap-x-1.5 gap-y-4">
                 {g.items.map((a) => {
                   const on = keys.includes(linkKey(a));
                   return (
                     <li key={linkKey(a)}>
                       {edit ? (
-                        <button type="button" onClick={() => toggle(a)} aria-pressed={on} className={`${cls} ${on ? "ring-2 ring-acc" : "opacity-70"}`}>
-                          <Body {...a} />
+                        <button type="button" onClick={() => toggle(a)} aria-pressed={on} className={`${cls} ${on ? "" : "opacity-60"}`}>
+                          <Body {...a} on={on} />
                           {on && (
-                            <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-acc text-white">
+                            <span className="absolute right-1 top-0 grid size-5 place-items-center rounded-full bg-acc text-white">
                               <Icon name="check" className="size-3" />
                             </span>
                           )}

@@ -12,21 +12,20 @@ import { homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
-import { InboxBell, InboxBox, InboxSheet, useInbox } from "./Inbox";
+import { InboxBell, InboxSheet, WaitRow, useInbox } from "./Inbox";
+import { NowCard } from "./NowCard";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { TodayCard } from "./TodayCard";
 import { HomeActions } from "./HomeActions";
 import { HomeSummary } from "./HomeSummary";
-import { HomeNotes } from "./HomeNotes";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
-// Ana sayfa (sade): gün ve tarih, altında tek satır hava; sağ üstte zil (Senin için penceresi) ve Ayarlar. Akış (HomeFeed): Bugün,
-// Senin için (tek kutu: yapılacaklar + yeni bildirimler, 3 satır), doğum günü, sporcu/veli: Yoklamam, Özet kartları, Notlar, Kısayollar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
+// Ana sayfa (sade): gün ve tarih, altında tek satır hava; sağ üstte zil (Senin için penceresi) ve Ayarlar. Akış (HomeFeed): Şu an kartı,
+// "N şey seni bekliyor" satırı (zil ile aynı pencere), doğum günü, sporcu/veli: Yoklamam, Kulüp/Özet satırları, Kısayollar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
 export function OwnerHome() {
   const { profile } = useAuth();
   const now = useNow();
@@ -72,7 +71,7 @@ export function OwnerHome() {
   );
 }
 
-// Ana sayfanın iki bölümü: önce bilgiler (Bugün › Senin için › doğum günü › Yoklamam › Özet › Notlar), sonra Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra: Şu an + Seni bekleyen › doğum günü › Yoklamam › Kulüp/Özet › Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
@@ -101,14 +100,15 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div className="space-y-6">
-      <TodayCard weather={weather} />
-      <InboxBox inbox={inbox} onAll={onInbox} />
+      <div className="space-y-3">
+        <NowCard weather={weather} />
+        <WaitRow inbox={inbox} onAll={onInbox} />
+      </div>
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
       {side && <MyAttendanceCard kind={kind} />}
-      <HomeSummary money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
-      <HomeNotes />
+      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
       <HomeActions groups={actions} />
     </div>
   );
