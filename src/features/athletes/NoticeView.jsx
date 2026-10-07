@@ -4,11 +4,9 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
-import { todayStr } from "@/lib/utils/format";
 
 const day = (s) => new Date(`${s}T12:00:00`);
 const short = (s) => day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
-const left = (s) => Math.round((day(s) - day(todayStr())) / 864e5);
 const tel = (p) => `tel:${String(p).replace(/[^\d+]/g, "")}`;
 
 // Talimat yükleme kartı: dosya (PDF, fotoğraf; uzantısız olsa da) ya da kopyalanan metin
@@ -75,50 +73,6 @@ export function NoticeUpload({ busy, onFile, onText, title = "Yarış talimatın
 }
 
 const List = ({ children }) => <ul className={`${card} divide-y divide-line overflow-hidden`}>{children}</ul>;
-
-// Son tarihler (özetin üstünde, yapılacakların hemen altında)
-export function NoticeDeadlines({ n, planned, onPlan }) {
-  const list = n?.deadlines || [];
-  if (!list.length) return null;
-  const open = list.filter((d) => left(d.date) >= 0).length;
-  return (
-    <>
-      <Label right={open ? `${open} yaklaşan` : "geçti"}>SON TARİHLER</Label>
-      <List>
-        {list.map((d, i) => {
-          const n = left(d.date);
-          const past = n < 0;
-          return (
-            <li key={i} className={`flex items-start gap-3 px-4 py-3 ${past ? "opacity-55" : ""}`}>
-              <span className={`mt-0.5 w-14 shrink-0 rounded-lg py-1 text-center text-[0.75rem] font-semibold tabular-nums ${past ? "bg-bg text-mut" : n <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
-                {past ? "Geçti" : n === 0 ? "Bugün" : `${n} gün`}
-              </span>
-              <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold leading-snug">{d.title}</b>
-                <span className="block text-[0.8125rem] text-mut">{[short(d.date), d.time, d.detail].filter(Boolean).join(" · ")}</span>
-              </span>
-            </li>
-          );
-        })}
-        {open > 0 && (
-          <li>
-            {planned ? (
-              <span className="flex items-center gap-2 px-4 py-3 text-[0.8125rem] text-mut">
-                <Icon name="check" className="size-4 text-ok" />
-                Son tarihler planlarda
-              </span>
-            ) : (
-              <button type="button" onClick={onPlan} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.875rem] font-semibold text-acc active:bg-bg">
-                <Icon name="cal" className="size-[1.125rem]" />
-                Son tarihleri planlara ekle
-              </button>
-            )}
-          </li>
-        )}
-      </List>
-    </>
-  );
-}
 
 const sizeText = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 const dayText = (s) => (s ? day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "");

@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Empty, Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { todayStr } from "@/lib/utils/format";
 import { rangeText } from "./raceDocs";
-import { doneCount, stepsOf } from "./races";
+import { stepsOf } from "./races";
 
 const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
 const day = (s) => new Date(`${s}T12:00:00`);
@@ -40,16 +40,6 @@ export function DateBadge({ r, light }) {
   );
 }
 
-export function Progress({ n, of, light, className = "" }) {
-  const pct = of ? Math.round((n / of) * 100) : 0;
-  const fill = light ? "bg-white" : n === of ? "bg-ok" : "bg-amber-500";
-  return (
-    <span className={`block h-1.5 overflow-hidden rounded-full ${light ? "bg-white/20" : "bg-line"} ${className}`}>
-      <span className={`block h-full rounded-full transition-[width] ${fill}`} style={{ width: `${pct}%` }} />
-    </span>
-  );
-}
-
 // Üst üste küçük ad baş harfleri
 export function Faces({ ids, names, max = 3 }) {
   if (!ids.length) return <span className="text-[0.75rem] text-mut">Sporcu seçilmedi</span>;
@@ -66,7 +56,7 @@ export function Faces({ ids, names, max = 3 }) {
   );
 }
 
-const nextStep = (r) => stepsOf(r).find((s) => !r.checks?.[s.key])?.label;
+const nextStep = (r) => stepsOf(r)[0]?.label;
 // Talimattaki en yakın son tarih
 const nextDeadline = (r) => (r.notice?.deadlines || []).find((d) => diff(d.date) >= 0);
 
@@ -91,7 +81,7 @@ export function RaceList({ races, names = {}, onOpen }) {
             <span className="mt-0.5 block text-[0.8125rem] text-white/75">{[rangeText(next.startDate, next.endDate), placeText(next)].filter(Boolean).join(" · ")}</span>
             <div className="mt-3 flex gap-2">
               <Stat n={next.athleteIds.length} label="Sporcu" />
-              <Stat n={`${doneCount(next)}/${stepsOf(next).length}`} label="İş tamam" />
+              <Stat n={stepsOf(next).length} label="Yapılacak" />
               <Stat n={Math.max(0, diff(next.startDate))} label="Gün kaldı" />
             </div>
             {nextDeadline(next) && (
@@ -125,8 +115,7 @@ export function RaceList({ races, names = {}, onOpen }) {
           <Label right={list.length}>{tab === "up" ? "YAKLAŞAN YARIŞLAR" : "GEÇMİŞ YARIŞLAR"}</Label>
           <ul className="space-y-2.5">
             {list.map((r) => {
-              const n = doneCount(r);
-              const of = stepsOf(r).length;
+              const todo = stepsOf(r).length;
               return (
                 <li key={r.id}>
                   <button type="button" onClick={() => onOpen(r)} className={`${card} flex w-full gap-3 p-3.5 text-left transition active:scale-[.99] ${tab === "past" ? "opacity-75" : ""}`}>
@@ -138,13 +127,7 @@ export function RaceList({ races, names = {}, onOpen }) {
                         {r.notice && !r.noticeFile && <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-700">Talimat dosyası yok</span>}
                         {(r.note || r.notice) && <Icon name={r.notice ? "paperclip" : "note"} className="mt-0.5 size-4 shrink-0 text-mut" />}
                       </span>
-                      <span className="block truncate text-[0.8125rem] text-mut">{[placeText(r), leftText(r)].filter(Boolean).join(" · ")}</span>
-                      <span className="mt-2.5 flex items-center gap-2">
-                        <Progress n={n} of={of} className="flex-1" />
-                        <span className={`text-[0.75rem] font-semibold tabular-nums ${n === of ? "text-ok" : "text-mut"}`}>
-                          {n}/{of}
-                        </span>
-                      </span>
+                      <span className="block truncate text-[0.8125rem] text-mut">{[placeText(r), leftText(r), tab === "up" && todo && `${todo} iş`].filter(Boolean).join(" · ")}</span>
                       <span className="mt-2.5 flex items-center justify-between gap-2">
                         <Faces ids={r.athleteIds} names={names} />
                         {r.planAdded && (

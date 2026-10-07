@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "./access";
 import { isPast } from "./RaceList";
-import { doneCount, loadRaces, stepsOf } from "./races";
+import { loadRaces, stepsOf } from "./races";
 import { todayStr } from "@/lib/utils/format";
 
 // Ana sayfadaki Yarışlar kartı: sporcu yetkisi olanlarda kendiliğinden görünür, Ayarlar'dan kapatılır (users/{uid}.races = "off").
@@ -23,7 +23,7 @@ export function nextInfo(list) {
   if (!r) return null;
   const a = gap(r.startDate);
   const when = a > 1 ? `${a} gün` : a === 1 ? "yarın" : a === 0 ? "bugün" : "sürüyor";
-  return { name: r.district || String(r.name || "").split(" ")[0] || "Yarış", when, left: stepsOf(r).length - doneCount(r) };
+  return { name: r.district || String(r.name || "").split(" ")[0] || "Yarış", when, left: stepsOf(r).length };
 }
 
 function countRaces(orgId) {
