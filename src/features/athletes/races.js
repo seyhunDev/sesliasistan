@@ -16,6 +16,8 @@ export const RACE_FIELDS = [
   "abroad", "skips",
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
+  // Yolculuk: çıkış günü/saati, çıkış yeri, buluşma noktası (boşsa çıkış yeri), dönüş günü/saati (tripText)
+  "departDate", "departTime", "departFrom", "meetPoint", "returnDate", "returnTime",
   // Kulüp izin yazısı (boş olanlar yarıştan gelir; bkz. raceDocs clubInfo)
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
   // Otel konaklama izni (otel adı boşsa belgede elle yazılacak yer kalır)
@@ -177,19 +179,33 @@ export function freshRace(last = {}, today = "") {
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
     startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
-    travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [], note: "", checks: {}, planAdded: false,
+    travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
+    departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
     clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", docs: null, notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 
 // Yarışı planlara yazar (tüm gün, çok günlü, "Yarış" kategorisi). saveDrafts: DataProvider'dan.
+// Yolculuk yazıldıysa plan çıkış gününde, çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası (tek plan, ayrı kayıt yok).
 export async function addRacePlan(saveDrafts, r, by) {
+  const date = r.departDate || r.startDate;
+  const end = r.returnDate || r.endDate || "";
+  const time = /^\d{2}:\d{2}$/.test(r.departTime || "") ? r.departTime : "";
   const res = await saveDrafts(
-    [{ type: "plan", title: r.name.trim(), date: r.startDate, endDate: r.endDate && r.endDate !== r.startDate ? r.endDate : "", time: "", place: [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [] }],
+    [{ type: "plan", title: r.name.trim(), date, endDate: end && end > date ? end : "", time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [] }],
     { source: "manual", by },
   );
   return !res.error && res.plans > 0;
+}
+
+// Yolculuk özeti (bütçe çıktısı, kopyalanan metin): ["Çıkış: 11 Eki Cmt 07:00 · Dikili Marina · buluşma Belediye önü", "Dönüş: 16 Eki Prş 18:00"]
+const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
+export function tripText(r) {
+  const go = [r?.departDate && tripDay(r.departDate), r?.departTime].filter(Boolean).join(" ");
+  const from = [r?.departFrom, r?.meetPoint && r.meetPoint !== r.departFrom && `buluşma ${r.meetPoint}`].filter(Boolean).join(" · ");
+  const back = [r?.returnDate && tripDay(r.returnDate), r?.returnTime].filter(Boolean).join(" ");
+  return [(go || from) && `Çıkış: ${[go, from].filter(Boolean).join(" · ")}`, back && `Dönüş: ${back}`].filter(Boolean);
 }
 
 export async function loadRaces(orgId) {

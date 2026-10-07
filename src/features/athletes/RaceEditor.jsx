@@ -156,6 +156,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     });
   };
   const put = (k, v) => setR((p) => ({ ...p, [k]: v }));
+  // Yolculuk alanları belgeye girmez (hazır PDF bozulmaz)
+  const tripField = (k, ph, type = "text") => <input type={type} value={r[k] || ""} onChange={(e) => put(k, e.target.value)} placeholder={ph} className={`${input} appearance-none`} />;
   const field = (k, ph, type = "text") => <input type={type} value={r[k]} onChange={(e) => set(k)(e.target.value)} placeholder={ph} className={input} />;
   // Kulüp yazısı alanı: boşsa yarıştaki değer görünür (tarihlerde değer olarak)
   const club = clubInfo(r);
@@ -518,6 +520,21 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "sum" && (
         <>
+          <Label>YOLCULUK</Label>
+          <Group>
+            <Pair>
+              <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
+              <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
+            </Pair>
+            <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
+            <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
+            <Pair>
+              <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
+              <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
+            </Pair>
+          </Group>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.planAdded ? "Yarış planlarda. Yolculuğu sonradan değiştirirsen planı da Planlar’dan güncelle." : "Planlara eklerken yarış çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası olur."}</p>
+
           <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {steps.map((s) => {
@@ -712,7 +729,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </Pair>
           </Group>
 
-          <Label>SEYAHAT</Label>
+          <Label>SEYAHAT · İZİN BELGELERİNDE</Label>
           <Group>
             <Row label="Seyahat türü">{field("travel", "Kendi İmkanları İle")}</Row>
             <Pair>
@@ -730,6 +747,24 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "docs" && (
         <>
+          {/* Önce eksikler: belge hazırlamayı ne engelliyor */}
+          {!(file && ready.every(([, ok]) => ok)) && (
+            <>
+          <Label right={ready.every(([, ok]) => ok) ? "hazır" : ""}>HAZIRLIK</Label>
+          <ul className={`${card} space-y-2.5 px-4 py-3.5`}>
+            {ready.map(([label, ok, to, soft]) => (
+              <li key={label}>
+                <button type="button" onClick={() => !ok && setTab(to)} className="flex w-full items-center gap-2.5 text-left">
+                  <Icon name={ok ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${ok ? "text-ok" : soft ? "text-amber-600" : "text-rec"}`} />
+                  <span className={`flex-1 text-[0.875rem] ${ok ? "text-mut" : "font-medium"}`}>{label}</span>
+                  {!ok && <Icon name="chev" className="size-4 text-mut" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+            </>
+          )}
+
           {file && (
             <>
               <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIRLANAN EVRAK</Label>
@@ -923,24 +958,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </>
           )}
 
-          <Label>HAZIRLIK</Label>
-          <ul className={`${card} space-y-2.5 px-4 py-3.5`}>
-            {ready.map(([label, ok, to, soft]) => (
-              <li key={label}>
-                <button type="button" onClick={() => !ok && setTab(to)} className="flex w-full items-center gap-2.5 text-left">
-                  <Icon name={ok ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${ok ? "text-ok" : soft ? "text-amber-600" : "text-rec"}`} />
-                  <span className={`flex-1 text-[0.875rem] ${ok ? "text-mut" : "font-medium"}`}>{label}</span>
-                  {!ok && <Icon name="chev" className="size-4 text-mut" />}
-                </button>
-              </li>
-            ))}
-          </ul>
 
         </>
       )}
 
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${tab === "budget" || tab === "around" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${tab !== "docs" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
