@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, WHO, cleanBudget, cleanItem, emptyBudget, howText, nearReceipts, newId, roomPeople, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
@@ -240,7 +240,7 @@ export function BudgetView({ r, athletes, onChange }) {
       </div>
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
-        {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
+        {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} hotels={r.notice?.hotels || []} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
       </Sheet>
     </>
   );
@@ -265,11 +265,13 @@ function Count({ label, value, min = 1, max, onChange }) {
   );
 }
 
-function ItemForm({ item, nights, onSave, onRemove }) {
+function ItemForm({ item, nights, hotels, onSave, onRemove }) {
   const [x, setX] = useState({ ...item, id: item.id || newId(), amount: item.amount === "" || item.amount === 0 ? "" : String(item.amount).replace(".", ",") });
   const put = (k) => (v) => setX((p) => ({ ...p, [k]: v }));
   const amount = Number(String(x.amount).replace(/\./g, "").replace(",", ".")) || 0;
   const room = x.unit === "room";
+  const offers = hotels.flatMap((h) => cleanRooms(h.rooms).map((r) => ({ h, x: o })));
+  const hotelCount = new Set(offers.map((o) => o.h.name)).size;
   const cap = Number(x.cap) || 1;
   const beds = Math.min(cap, Number(x.beds) || 1);
   const field = "h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none placeholder:text-mut/70";
@@ -303,11 +305,34 @@ function ItemForm({ item, nights, onSave, onRemove }) {
               ? "Otel odası: odanın gecelik toplam fiyatını gir; yalnız bizden kalan kişilerin payı ödenir."
               : "Toplam tutar; sporculara bölünür (minibüs, yakıt)."}
       </p>
+      {room && offers.length > 0 && (
+        <div>
+          <span className="mb-1.5 block text-[0.8125rem] text-mut">Talimattaki odalar · seç, fiyat dolsun</span>
+          <div className="flex flex-col gap-1.5">
+            {offers.map(({ h, x: o }, i) => {
+              const on = o.amount > 0 && o.cap === cap && amount === roomFromNotice(h, o).amount;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={!o.amount}
+                  onClick={() => setX((p) => { const n = roomFromNotice(h, o, nights); return { ...p, title: n.title, amount: String(n.amount).replace(".", ","), cap: n.cap, beds: Math.min(n.cap, Number(p.beds) || n.cap) }; })}
+                  aria-pressed={on}
+                  className={`rounded-xl px-3 py-2 text-left text-[0.8125rem] disabled:opacity-50 ${on ? "bg-acc text-white" : "bg-bg"}`}
+                >
+                  {hotelCount > 1 && <b className="block font-semibold">{h.name}</b>}
+                  {roomLine(o)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {room && (
         <div className="space-y-3 rounded-2xl bg-bg/60 p-3">
           <div>
             <span className="mb-1.5 block text-[0.8125rem] text-mut">Oda kaç kişilik?</span>
-            <Seg value={String(cap)} onChange={(v) => setX((p) => ({ ...p, cap: Number(v), beds: Math.min(Number(v), Number(p.beds) || 1) }))} options={[["1", "Tek"], ["2", "2 kişi"], ["3", "3 kişi"], ["4", "4 kişi"]]} />
+            <Seg value={String(cap)} onChange={(v) => setX((p) => ({ ...p, cap: Number(v), beds: Math.min(Number(v), Number(p.beds) || 1) }))} options={[["1", "Tek"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"]]} />
           </div>
           <div>
             <span className="mb-1.5 block text-[0.8125rem] text-mut">Odada kim kalıyor?</span>
