@@ -10,11 +10,13 @@ import { duesLive, duesTile, postsTile, raceTile, readSum, saveSum, trainingTile
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
+import { CARD, SectionHead } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › ÖZET: kısa bilgi kartları, hepsi aynı boyda ve biçimde (simge + ad, büyük sayı, tek satır açıklama).
-// Dokununca ilgili sayfa açılır. Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
+// Ana sayfa › KULÜP / ÖZET: tek kartta satırlar (simge, ad, tek satır açıklama, sağda değer). Dokununca ilgili sayfa açılır.
+// Dikkat isteyen satır (warn: bekleyen ödeme, eksik iş, yazılmamış günlük, geciken fatura) kehribar simge ve yazıyla öne çıkar;
+// aidat satırında ödeyenlerin doluluk çubuğu (bar). Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
@@ -22,7 +24,7 @@ import { invoiceTile } from "@/lib/invoices";
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
 const fisTile = (r, inv) => (!inv ? r : !r ? inv : { big: r.big, sub: `Fatura: ${inv.sub}`, warn: inv.warn });
-export function HomeSummary({ money, race, dues, posts, training, plans, invoices }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -85,12 +87,13 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
     return () => clearTimeout(t);
   }, [busy]);
   const skel = (k) => busy && wait[k] && [k, null];
+  // Sıra: dikkat isteyebilenler (aidat, yarış) önce
   const cards = [
-    skel("bank") || (money && m.bank && ["/mail", "chart", "Banka", m.bank, null, "bank"]),
-    // Fiş ve fatura tek kart (sayfası da tek, sekmeli): büyük satır ayın fiş harcaması, açık fatura varsa alt satır onu söyler
-    skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
     skel("dues") || (dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, ym), null, "dues"]),
     skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(raceInfo.next, raceInfo.up), null, "race"]),
+    skel("bank") || (money && m.bank && ["/mail", "chart", "Banka", m.bank, null, "bank"]),
+    // Fiş ve fatura tek satır (sayfası da tek, sekmeli): değer ayın fiş harcaması, açık fatura varsa alt satır onu söyler
+    skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
     training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
     posts && ["/posts", "instagram", "Instagram", postsTile(sum.posts), "instagram"],
   ].filter(Boolean);
@@ -98,33 +101,28 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
-      <h2 id="home-sum" className="mb-2.5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">
-        ÖZET
-      </h2>
-      <ul className="grid grid-cols-2 gap-2.5">
+      <SectionHead id="home-sum" title={title} />
+      <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
         {cards.map(([href, icon, label, t, brand, k]) =>
           !icon ? (
             <Skeleton key={`s-${href}`} />
           ) : (
             <li key={href} className={fade.has(k) ? "fade-in" : undefined}>
-              <Link
-                href={href}
-                aria-label={`${label}: ${t.big}, ${t.sub}`}
-                className="flex h-full min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line transition active:scale-[.98]"
-              >
-                <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
-                  {brand ? (
-                    <span className={`grid size-5 shrink-0 place-items-center rounded-md ${BRAND[brand]}`}>
-                      <Icon name={icon} className="size-3.5" />
-                    </span>
-                  ) : (
-                    <Icon name={icon} className="size-4 shrink-0 text-acc" />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  <Icon name="chev" className="size-3.5 shrink-0" />
+              <Link href={href} aria-label={`${label}: ${t.big}, ${t.sub}`} className="flex items-center gap-3 py-3 pl-4 pr-3 transition active:bg-bg">
+                <span className={`grid size-[2.375rem] shrink-0 place-items-center rounded-xl ${brand ? BRAND[brand] : t.warn ? "bg-amber-500/12 text-amber-700" : "bg-acc/10 text-acc"}`}>
+                  <Icon name={icon} className="size-5" />
                 </span>
-                <b className="mt-auto truncate pt-2 text-[1.25rem] font-semibold leading-tight tabular-nums tracking-tight">{t.big}</b>
-                <small className={`truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-semibold leading-snug">{label}</b>
+                  <small className={`block truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
+                  {t.bar != null && (
+                    <span className="mt-1.5 block h-1.5 w-[90%] overflow-hidden rounded-full bg-line" aria-hidden="true">
+                      <span className={`block h-full rounded-full ${t.bar >= 1 ? "bg-ok" : "bg-acc"}`} style={{ width: `${Math.round(t.bar * 100)}%` }} />
+                    </span>
+                  )}
+                </span>
+                <b className="max-w-[45%] shrink-0 truncate text-right text-[1rem] font-bold tabular-nums tracking-tight">{t.big}</b>
+                <Icon name="chev" className="size-4 shrink-0 text-mut" />
               </Link>
             </li>
           ),
@@ -134,16 +132,16 @@ export function HomeSummary({ money, race, dues, posts, training, plans, invoice
   );
 }
 
-// Kartla aynı boy ve düzende iskelet: simge + ad, büyük sayı, açıklama satırı (renkler temaya göre, .shimmer globals.css)
+// Satırla aynı boy ve düzende iskelet: simge, ad, açıklama, sağda değer (renkler temaya göre, .shimmer globals.css)
 function Skeleton() {
   return (
-    <li aria-hidden="true" className="flex min-h-[5.75rem] flex-col rounded-2xl bg-card p-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)] ring-1 ring-line">
-      <span className="flex items-center gap-1.5">
-        <span className="shimmer size-4 shrink-0 rounded-md" />
-        <span className="shimmer block h-3 w-16 rounded-full" />
+    <li aria-hidden="true" className="flex items-center gap-3 py-3 pl-4 pr-3">
+      <span className="shimmer size-[2.375rem] shrink-0 rounded-xl" />
+      <span className="min-w-0 flex-1">
+        <span className="shimmer block h-3.5 w-20 rounded-full" />
+        <span className="shimmer mt-2 block h-3 w-32 max-w-full rounded-full" />
       </span>
-      <span className="shimmer mt-auto block h-5 w-24 rounded-full" />
-      <span className="shimmer mt-2 block h-3 w-28 max-w-full rounded-full" />
+      <span className="shimmer block h-4 w-14 rounded-full" />
     </li>
   );
 }
