@@ -60,14 +60,16 @@ export const cleanNoticeFile = (f) =>
     ? { id: f.id, name: String(f.name || "talimat.pdf").slice(0, 120), size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: String(f.at || "") }
     : null;
 
-// Yarış öncesi yapılacaklar. Her iş: { key, label, date?, detail?, group }; işaretlenenler checks[key].
+// Yarış öncesi yapılacaklar: tek düz liste. Her iş: { key, label, date?, detail?, group }.
+// İşaretleme yok: yapılan ya da gerekmeyen iş × ile listeden çıkarılır (skips; elle eklenen iş silinir).
+// Eski yarışlarda işaretlenmiş işler (checks[key]) de çıkarılmış sayılır; "Evrakları hazırla" belgeler hazırlanınca kendiliğinden çıkar.
 // Evrak işleri (kulüp tarafı) her yarışta aynı. Kayıt/ödeme/konaklama işleri talimattan gelir (talimat yüklenince);
 // her yarışa elle iş de eklenir (todos). Hazır standart liste yok.
 export const DOC_STEPS = [
-  ["docs", "Evraklar hazırlandı"],
-  ["parents", "Veliler imzaladı"],
-  ["schools", "Okullara verildi"],
-  ["gsim", "GSİM'e verildi (il dışı çıkış oluru)"],
+  ["docs", "Evrakları hazırla"],
+  ["parents", "Velilere imzalat"],
+  ["schools", "Okullara ver"],
+  ["gsim", "GSİM'e ver (il dışı çıkış oluru)"],
 ];
 // Yurt dışı yarışta Türkiye'de yapılacaklar (hazır liste; gerekmeyen × ile çıkarılır, skips). Talimattaki ve elle işler ayrıca eklenir.
 export const ABROAD_STEPS = [
@@ -111,19 +113,28 @@ export const cleanTodos = (a) =>
     .filter((t) => t.title)
     .slice(0, 30);
 export const todoKey = (title) => slug(title, "m:");
-export const cleanSkips = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && /^a:[a-z]{1,20}$/.test(k)))].slice(0, 30);
+// Listeden çıkarılan işler: yurt dışı hazır işleri (a:), talimat işleri (t:), evrak işleri
+const SKIP_RE = /^(a:[a-z]{1,20}|t:[\p{L}\p{N}-]{1,40}|docs|parents|schools|gsim)$/u;
+export const cleanSkips = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && SKIP_RE.test(k)))].slice(0, 60);
 
-export function stepsOf(r) {
+// Bütün işler (çıkarılanlar dahil)
+function allSteps(r) {
   const seen = new Set();
   const own = cleanTodos(r?.todos)
     .map((t) => ({ key: todoKey(t.title), label: t.title, date: t.date, detail: "", group: "own" }))
     .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
-  const skip = new Set(cleanSkips(r?.skips));
-  const abroad = r?.abroad ? ABROAD_STEPS.filter(([key]) => !skip.has(key)).map(([key, label, detail]) => ({ key, label, detail, date: "", group: "abroad" })) : [];
+  const abroad = r?.abroad ? ABROAD_STEPS.map(([key, label, detail]) => ({ key, label, detail, date: "", group: "abroad" })) : [];
   const docs = DOC_STEPS.filter(([key]) => !(r?.abroad && key === "gsim")).map(([key, label]) => ({ key, label, group: "docs" }));
   return [...noticeTasks(r?.notice), ...own, ...abroad, ...docs];
 }
-export const doneCount = (r) => stepsOf(r).filter((s) => r.checks?.[s.key]).length;
+const gone = (r, s) => !!r?.checks?.[s.key] || cleanSkips(r?.skips).includes(s.key);
+// Yapılacaklar: çıkarılmayanlar; son tarihlisi önde (tarih sırasıyla), sonra tarihsizler eklendiği sırayla
+export function stepsOf(r) {
+  const list = allSteps(r).filter((s) => !gone(r, s));
+  return [...list.filter((s) => s.date).sort((a, b) => a.date.localeCompare(b.date)), ...list.filter((s) => !s.date)];
+}
+// Listeden çıkarılan (ya da eskiden işaretlenen) iş sayısı ("geri getir" için)
+export const hiddenCount = (r) => allSteps(r).filter((s) => gone(r, s)).length;
 
 const col = (orgId) => collection(db, "orgs", orgId, "races");
 const clean = (r) =>
