@@ -423,12 +423,9 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
         {sheet ? (
           <div className="asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))]">
             {active && (
-              <div className="relative flex h-8 items-center justify-center">
+              <div className="flex h-6 items-end justify-center">
                 {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
-                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className="absolute right-3 top-2 grid size-8 place-items-center rounded-full bg-fg/[.06] text-mut transition active:scale-90">
-                  <Icon name="x" className="size-[1.125rem]" />
-                </button>
               </div>
             )}
             {active && (
@@ -454,7 +451,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
             )}
             <div className={`flex h-[3.75rem] items-center gap-2 px-3 ${active ? "" : "pt-2"}`}>
               {!rec && (
-                <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-10 shrink-0 place-items-center rounded-full bg-fg/[.06] text-fg transition active:scale-90">
+                <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
                   <Icon name="plus" className="size-[1.375rem]" />
                 </button>
               )}
@@ -471,6 +468,13 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                   </button>
                   <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
                 </div>
+              )}
+              {/* Kapat: en altta, sabit yerde ve büyük (Seyhun: "üstteki X zor basılıyor, kayıyor", 2026-10-07). Üstteki yer
+                  sohbet büyüdükçe kayıyordu. */}
+              {active && (
+                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90 active:bg-fg/[.14]">
+                  <Icon name="x" className="size-[1.375rem]" />
+                </button>
               )}
             </div>
           </div>
