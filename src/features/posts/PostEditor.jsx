@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
@@ -29,7 +29,7 @@ const TOOLS = [
   ["size", "Boyut", "clip"],
   ["style", "Tasarım", "box"],
   ["color", "Renk", "sun"],
-  ["text", "Yazı yeri", "edit"],
+  ["text", "Yazı", "edit"],
 ];
 
 const slug = (s) =>
@@ -144,7 +144,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -237,6 +237,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       if (wantsPostImage(text)) {
         const u = await mk(text);
         return { say: `Yeni görseli ekledim, başlık ve logo üstünde.${u ? ` Bugün ${u.today}/${u.limit} görsel.` : ""}` };
+      }
+      // "Başlığı kaldır", "başlığı biraz küçült", "alt yazıyı büyüt": yalnız görsel ayarı
+      const size = sizeAsk(text, now);
+      if (size) {
+        setP((x) => ({ ...x, ...size }));
+        return { say: size.noHead ? "Başlığı görselden kaldırdım." : size.noHead === false && !size.headSize ? "Başlık görselde yeniden görünüyor." : size.headSize ? `Başlık boyu yüzde ${size.headSize}.` : `Alt satır boyu yüzde ${size.subSize}.` };
       }
       // Boş gönderide ilk cümle ne paylaşılacağıdır (konu); sonrakiler değişiklik
       const first = !now.caption && !now.race && !now.topic.trim();
@@ -720,6 +726,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           {tool === "text" && (
             <>
               <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Yazı üstte"], ["bottom", "Yazı altta"]]} />
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-[0.8125rem]">Başlık görselde</span>
+                <input type="checkbox" checked={!post.noHead} onChange={(e) => put("noHead", !e.target.checked)} className="size-5 accent-[var(--acc)]" />
+              </label>
+              {!post.noHead && slider("headSize", "Başlık boyu", 60, 150, 5, "%")}
+              {slider("subSize", "Alt satır boyu", 80, 150, 5, "%")}
               {race && (
                 <label className="flex items-center justify-between gap-3">
                   <span className="text-[0.8125rem]">Yer ve tarih görselde</span>
@@ -810,16 +822,26 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         <Icon name="edit" className="size-5 shrink-0 text-acc" />
         <span className="min-w-0 flex-1">
           <b className="block text-[0.9375rem] font-semibold">3 · Görseldeki yazılar</b>
-          <span className="block truncate text-[0.75rem] text-mut">{[post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
+          <span className="block truncate text-[0.75rem] text-mut">{[post.noHead ? "" : post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
         </span>
         <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
       </button>
       {texts && (
         <div className="mt-3 space-y-3">
-          <label className="block">
-            <span className="text-[0.8125rem] font-medium text-mut">Başlık</span>
-            <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="ILCA TYF Ligi Başlıyor" />
-          </label>
+          <div>
+            <span className="flex items-center justify-between gap-3 text-[0.8125rem] font-medium text-mut">
+              Başlık (kısa)
+              <label className="flex items-center gap-2 font-normal">
+                Görselde
+                <input type="checkbox" checked={!post.noHead} onChange={(e) => put("noHead", !e.target.checked)} className="size-5 accent-[var(--acc)]" />
+              </label>
+            </span>
+            {post.noHead ? (
+              <p className="mt-1 text-[0.8125rem] text-mut">Başlık görselde yok; asıl yazı alt satırda ve açıklamada.</p>
+            ) : (
+              <textarea value={p.headline} onChange={(e) => put("headline", e.target.value)} maxLength={90} rows={2} className={area} placeholder="Yarışa Hazırız" aria-label="Başlık" />
+            )}
+          </div>
           <label className="block">
             <span className="text-[0.8125rem] font-medium text-mut">Alt satır</span>
             <textarea value={p.sub} onChange={(e) => put("sub", e.target.value)} maxLength={200} rows={3} className={area} placeholder="Sporcumuz Mete Ok, Foça'nın rüzgarlı sularında kulübümüzü temsil etmek üzere tüm hazırlıklarını tamamladı." />

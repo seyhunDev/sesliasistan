@@ -219,6 +219,10 @@ export function cleanPost(p = {}) {
     topic: L(p.topic, 1500),
     race: cleanRace(p.race),
     headline: L(p.headline, 90),
+    // Başlık kaldırılabilir; başlık ve alt yazı boyutu yüzde (100 = otomatik)
+    noHead: !!p.noHead,
+    headSize: Math.max(60, Math.min(150, Math.round(Number(p.headSize) / 5) * 5 || 100)),
+    subSize: Math.max(80, Math.min(150, Math.round(Number(p.subSize) / 5) * 5 || 100)),
     sub: S(p.sub, 200),
     people: cleanPeople(p.people),
     wish: S(p.wish, 60),
@@ -335,7 +339,8 @@ export function withClass(headline, race) {
   if (names.some((n) => low.includes(n.toLocaleLowerCase("tr-TR")))) return h;
   return `${andTr(names)} ${h}`.slice(0, 90);
 }
-export const raceHeadline = (race) => withClass(race?.name || "", race);
+// Yarış bağlıyken başlık yarışın adı değil, bizden kısa bir söz (yarışın adı ve yeri açıklamada ve yer · tarih satırında)
+export const raceHeadline = (race, kind) => (!race ? "" : kind === "sonuc" ? "Emeğinize Sağlık" : "Yarışa Hazırız");
 // Görseldeki yer · tarih satırı: "Foça · 7-11 Ekim 2026"
 export const raceMeta = (race) => (race ? [String(race.place || "").split(",")[0].trim(), race.dates].filter(Boolean).join(" · ") : "");
 
@@ -350,7 +355,7 @@ export const autoOf = (p) =>
   p.kind === "ozel"
     ? dayAuto(p)
     : {
-        headline: raceHeadline(p.race),
+        headline: raceHeadline(p.race, p.kind),
         sub: raceSub(p.race, p.kind),
         people: racePeople(p.race),
         wish: raceWish(p.race, p.kind),
@@ -399,3 +404,23 @@ export const wantsPostImage = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");
   return /(görsel|resim|fotoğraf|foto\b|arka ?plan)/.test(t) && /(üret|çiz|oluştur|yap|değiştir|yenile|hazırla|başka|koy)/.test(t);
 };
+
+// Asistana söylenen başlık/yazı boyu isteği ("başlığı kaldır", "başlığı biraz küçült", "alt yazıyı büyüt"); yapay zekaya gitmeden uygulanır
+export function sizeAsk(text, post = {}) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  const head = /başlı(k|ğ)/.test(t);
+  const sub = /alt ?(satır|yazı)|açıklama yazı|küçük yazı/.test(t);
+  // Yeni başlık yazdırma ("başlığı “Denizdeyiz” yap") yapay zekaya gider
+  if ((!head && !sub) || /["“”'‘’]/.test(t) || / yap$| olarak /.test(t.trim())) return null;
+  if (head && /(kaldır|olmasın|sil|gizle|çıkar|istemiyorum)/.test(t) && !/geri/.test(t)) return { noHead: true };
+  if (head && /(geri (getir|gelsin|ekle|koy|aç)|başlığı göster)/.test(t) && !/(küçük|büyük|küçült|büyüt)/.test(t)) return { noHead: false };
+  const down = /(küçült|küçük|ufalt)/.test(t);
+  const up = /(büyüt|büyük|iri)/.test(t);
+  if (down === up) return null;
+  const step = /(bir tık|biraz|azıcık|hafif)/.test(t) ? 10 : 20;
+  const k = sub && !head ? "subSize" : "headSize";
+  const clamp = (v) => Math.max(k === "subSize" ? 80 : 60, Math.min(150, v));
+  const out = { [k]: clamp((post[k] || 100) + (up ? step : -step)) };
+  if (k === "headSize") out.noHead = false;
+  return out;
+}
