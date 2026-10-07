@@ -101,7 +101,7 @@ function Composer({ cfg, onDone }) {
   };
 
   return (
-    <div className="flex h-12 min-w-0 flex-1 items-center gap-1 pl-1">
+    <div className="flex h-11 min-w-0 flex-1 items-center gap-1">
       {listening ? (
         <p className="min-w-0 flex-1 truncate text-[0.9375rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
       ) : (
@@ -190,18 +190,19 @@ function NavTab({ href, icon, label, active, badge }) {
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative flex h-full min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-[1.125rem] transition active:scale-95 ${active ? "bg-white/[.14] text-white" : "text-white/65"}`}
+      className={`relative flex h-full min-w-0 touch-manipulation flex-col items-center justify-center gap-1 transition active:scale-95 ${active ? "text-acc" : "text-mut"}`}
     >
       <span className="relative flex">
-        <Icon name={icon} className="size-[1.375rem]" />
-        {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white ring-2 ring-[#173f35]">{badge > 99 ? "99+" : badge}</span>}
+        <Icon name={icon} className="size-6" />
+        {badge > 0 && <span className="absolute -right-2.5 -top-1.5 grid h-[1.125rem] min-w-[1.125rem] place-items-center rounded-full bg-rec px-1 text-[0.625rem] font-bold tabular-nums text-white ring-2 ring-[var(--card)]">{badge > 99 ? "99+" : badge}</span>}
       </span>
       <span className={`text-[0.6875rem] ${active ? "font-bold" : "font-medium"}`}>{label}</span>
     </Link>
   );
 }
 
-// ASİSTAN ALANI ("Ada", 2026-10-06): altta yüzen koyu cam adalar (sohbet kartı, asistan çubuğu, sekmeler); eski adı kubbe.
+// ASİSTAN ALANI ("Merkez", 2026-10-07): açık renkli alt sekme çubuğu, ortada asistan düğmesi; asistan açılınca alttan sayfa.
+// Önceki: "Ada" (yüzen koyu cam adalar, PR #190).
 // Önceki düzen (Seyhun "Karışık" seçti): altta sabit, solda Oluştur,
 // ortada yazı kutusu, kutunun içinde küçük renkli ses ışığı; altında sekmeler (her sayfada aynı). Asistan açılınca sekmeler
 // çekilir, Oluştur yerine Kapat gelir; söylenen söz kutunun içine yazılır, cevaplar ve kartlar kutunun üstünde balon olarak
@@ -209,7 +210,6 @@ function NavTab({ href, icon, label, active, badge }) {
 // Yazarken kubbe klavyenin üstüne taşınır. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde sekmesiz ve
 // Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
-const ghost = "grid size-11 shrink-0 place-items-center rounded-full bg-white/[.08] text-white transition active:scale-90 active:bg-white/20";
 function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
@@ -401,6 +401,8 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   }, [active]);
   const open = active && (filled || !!live.status);
   // Yazı kutusunda görünen: dinlerken ve gönderilirken söylenen söz, değilse sayfanın ipucu
+  // Alttan açılan sayfa: asistan açıkken, yazarken ya da kayıt ekranında; değilse sekme çubuğu
+  const sheet = active || typing || rec;
   const said = heard || (active && state === "listening" ? "Dinliyorum…" : "");
   return (
     <div
@@ -412,72 +414,84 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
       aria-label="Asistan"
       className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
     >
-      {/* ADA (Seyhun: "tamamen değiştir, daha yaratıcı, profesyonel, modern", 2026-10-06): kenardan kenara kubbe yerine sayfanın
-          üstünde yüzen koyu cam adalar. Altta sekmeler, üstünde asistan çubuğu (solda Oluştur, ortada söz, sağda ses ışığı),
-          asistan açılınca çubuğun üstünde sohbet kartı. Çubuğun üst kenarındaki ince ışık çizgisi durumun rengini alır
-          (beyaz-yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor); hareket yok, yalnız renk geçişi.
-          Adaların arası boş: sayfa arkadan görünür ve oraya dokunulur. */}
+      {/* MERKEZ (Seyhun: "tasarım tamamen farklı olsun, popüler uygulamalardaki kullanıcı deneyimi ön planda", 2026-10-07):
+          Instagram, WhatsApp gibi açık renkli, kenardan kenara alt sekme çubuğu; ortada biraz yukarı taşan yuvarlak asistan
+          düğmesi (dokun: konuş, basılı tut: yaz). Asistan açılınca çubuğun yerine alttan beyaz bir sayfa (ChatGPT, Gemini
+          gibi) gelir: üstte tutamaç ve kapat, ortada sohbet balonları, altta Oluştur, yazı kutusu ve ses düğmesi. Durum
+          yalnız ses düğmesinin renginden anlaşılır (yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor). */}
       <div ref={inner} className="absolute inset-x-0 bottom-0">
-        <div className="mx-auto flex w-full max-w-[30rem] flex-col gap-2 px-3 pb-[max(0.625rem,calc(env(safe-area-inset-bottom)-0.5rem))] pt-3">
-          {active && (
-            <div className={`isle relative overflow-hidden ${open ? "" : "hidden"}`}>
-              {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
-              <span className="pointer-events-none absolute left-1/2 top-2 z-10 h-[5px] w-10 -translate-x-1/2 rounded-full bg-white/35" aria-hidden="true" />
+        {sheet ? (
+          <div className="asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))]">
+            {active && (
+              <div className="relative flex h-8 items-center justify-center">
+                {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
+                <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
+                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className="absolute right-3 top-2 grid size-8 place-items-center rounded-full bg-fg/[.06] text-mut transition active:scale-90">
+                  <Icon name="x" className="size-[1.125rem]" />
+                </button>
+              </div>
+            )}
+            {active && (
               <div
                 ref={pane}
-                // Sohbet kartı mesajlar geldikçe büyür, görünen ekranın %45'inde durur ve içeride kayar (Seyhun, 2026-10-06)
-                className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-10rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-3 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem)] [scrollbar-width:none]"
+                // Sohbet alanı mesajlar geldikçe büyür, görünen ekranın %45'inde durur ve içeride kayar (Seyhun, 2026-10-06)
+                className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-9rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,#000_1rem)] [scrollbar-width:none]"
               >
-                <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-5" : ""}`}>
+                <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-2" : ""}`}>
                   <div ref={setSlot} />
                 </div>
               </div>
-              {/* Durum şeridi: şu an yapılan iş, kartın altında kendi yerinde (yeri hep ayrılı, hiçbir şey zıplamaz) */}
-              <div className="flex h-8 items-center justify-center pb-1.5" role="status" aria-live="polite">
+            )}
+            {/* Durum: şu an yapılan iş, yazı kutusunun üstünde kendi yerinde (yeri hep ayrılı, hiçbir şey zıplamaz) */}
+            {open && (
+              <div className="flex h-8 items-center justify-center" role="status" aria-live="polite">
                 {live.status && (
                   <span key={live.status} className="dome-chip fade-in">
                     <span className="work-text truncate">{live.status}…</span>
                   </span>
                 )}
               </div>
-            </div>
-          )}
-          {/* Asistan çubuğu: solda Oluştur (asistan açıkken Kapat), ortada söylenen söz ya da sayfanın ipucu (dokununca klavye),
-              sağda ses ışığı. Boyu hiç değişmez. */}
-          <div className={`isle isle-bar flex h-[3.75rem] items-center gap-1.5 px-2 ${state === "listening" && active ? "isle-on" : ""}`}>
-            {active ? (
-              <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className={ghost}>
-                <Icon name="x" className="size-[1.375rem]" />
-              </button>
-            ) : !rec ? (
-              <button type="button" onClick={onMenu} aria-label="Oluştur" className={ghost}>
-                <Icon name="plus" className="size-6" />
-              </button>
-            ) : null}
-            {typing ? (
-              <Composer cfg={cfg} onDone={onTypingDone} />
-            ) : (
-              <>
-                <button type="button" onClick={typeNow} aria-label="Yazarak sor" className={`h-full min-w-0 flex-1 text-left ${rec ? "pl-3" : "pl-1"}`}>
-                  <span className={`line-clamp-1 text-[0.9375rem] ${said && said !== "Dinliyorum…" ? "text-white" : "text-white/60"}`}>
-                    {said || cfg.ph}
-                  </span>
-                </button>
-                <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size="size-11" compact />
-              </>
             )}
+            <div className={`flex h-[3.75rem] items-center gap-2 px-3 ${active ? "" : "pt-2"}`}>
+              {!rec && (
+                <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-10 shrink-0 place-items-center rounded-full bg-fg/[.06] text-fg transition active:scale-90">
+                  <Icon name="plus" className="size-[1.375rem]" />
+                </button>
+              )}
+              {typing ? (
+                <div className="asheet-input flex h-11 min-w-0 flex-1 items-center rounded-full pl-2 pr-1">
+                  <Composer cfg={cfg} onDone={onTypingDone} />
+                </div>
+              ) : (
+                <div className={`asheet-input flex h-11 min-w-0 flex-1 items-center gap-1 rounded-full pl-4 pr-1 ${state === "listening" && active ? "asheet-on" : ""}`}>
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="h-full min-w-0 flex-1 text-left">
+                    <span className={`line-clamp-1 text-[0.9375rem] ${said && said !== "Dinliyorum…" ? "text-fg" : "text-mut"}`}>
+                      {said || cfg.ph}
+                    </span>
+                  </button>
+                  <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
+                </div>
+              )}
+            </div>
           </div>
-          {/* Sekmeler: her sayfada aynı, ayrı bir ada; seçili sekmenin arkasında açık renkli hap. Asistan açıkken, yazarken ve
-              kayıt ekranında yok. */}
-          {!active && !typing && !rec && (
-            <nav aria-label="Sekmeler" className="isle flex h-[3.75rem] items-stretch p-1.5">
-              <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
-              <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-              <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
-              <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+        ) : (
+          // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
+          <div className="pt-4">
+            <nav aria-label="Sekmeler" className="atabbar relative pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
+              <div className="mx-auto grid h-14 max-w-[34rem] grid-cols-5 items-stretch">
+                <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
+                <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
+                <div className="relative">
+                  <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
+                    <VoiceLight state="idle" onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
+                  </span>
+                </div>
+                <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
+                <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+              </div>
             </nav>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
