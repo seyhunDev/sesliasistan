@@ -5,6 +5,9 @@
 //   unit "athlete": sporcu başına (kayıt ücreti) → tutar × adet × sporcu
 //   unit "person":  kişi başına, antrenör/refakatçi dahil (otel, yemek) → tutar × adet × (sporcu + antrenör)
 //   unit "shared":  ortak (minibüs, tekne taşıma) → tutar × adet; sporculara bölünür
+//   unit "room":    otel odası; amount = odanın gecelik TOPLAM fiyatı, cap = oda kaç kişilik, beds = odada bizden kalan kişi,
+//                   rooms = aynı odadan kaç tane, who = athlete|staff (odada kim kalıyor, yalnız bilgi) →
+//                   tutar ÷ cap × beds × rooms × gece. Ör. 3 kişilik oda gecelik 3200, bizden 1 sporcu, 4 gece → 3200/3 × 1 × 4.
 //   qty: adet ya da gece (otelde gece sayısı); club: kulüp karşılar (sporcu payına girmez)
 //   est: tutar yapay zekanın tahmini (kullanıcı kalemi kaydedince kalkar); amount 0 = tutar henüz girilmedi
 // Sporcu payı: sporcu başı kalemler + kişi başı kalemlerin tamamı (antrenör payı sporculara bölünür) + ortaklar / sporcu.
@@ -14,6 +17,11 @@ export const UNITS = [
   ["athlete", "Sporcu başı"],
   ["person", "Kişi başı"],
   ["shared", "Ortak"],
+  ["room", "Oda"],
+];
+export const WHO = [
+  ["athlete", "Sporcu"],
+  ["staff", "Antrenör"],
 ];
 const UNIT_KEYS = UNITS.map(([k]) => k);
 
@@ -27,14 +35,19 @@ export const newId = () => Math.random().toString(36).slice(2, 10);
 
 export function cleanItem(x) {
   const cat = CATS.includes(x?.cat) ? x.cat : "Diğer";
+  const unit = UNIT_KEYS.includes(x?.unit) ? x.unit : "athlete";
+  const cap = Math.max(1, int(x?.cap ?? 1, 10));
   return {
     id: /^[\w-]{1,20}$/.test(x?.id || "") ? x.id : newId(),
     cat,
     title: S(x?.title, 80) || cat,
     amount: num(x?.amount),
-    unit: UNIT_KEYS.includes(x?.unit) ? x.unit : "athlete",
+    unit,
     qty: Math.max(1, int(x?.qty ?? 1, 365)),
     club: !!x?.club,
+    ...(unit === "room"
+      ? { cap, beds: Math.min(cap, Math.max(1, int(x?.beds ?? cap, 10))), rooms: Math.max(1, int(x?.rooms ?? 1, 30)), who: x?.who === "staff" ? "staff" : "athlete" }
+      : {}),
     ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
   };
 }
@@ -83,7 +96,8 @@ export function totals(b, athletes) {
   const P = A + (b?.staff || 0);
   const lines = (b?.items || []).map((it) => {
     const each = it.amount * (it.qty || 1);
-    const total = it.unit === "athlete" ? each * A : it.unit === "person" ? each * P : each;
+    const total =
+      it.unit === "athlete" ? each * A : it.unit === "person" ? each * P : it.unit === "room" ? (each / (it.cap || 1)) * (it.beds || 1) * (it.rooms || 1) : each;
     const share = it.club || !A ? 0 : total / A;
     return { ...it, each, total, share };
   });
@@ -95,8 +109,30 @@ export function totals(b, athletes) {
 
 export const tl = (n) => `${(Math.round((n || 0) * 100) / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`;
 
-// Kalemin hesap açıklaması: "3.500 ₺ × 4 gece × 6 kişi"
+// Odalarda kalan kişiler (bizden): { athlete, staff }; oda kalemi yoksa null
+export function roomPeople(b) {
+  const rooms = (b?.items || []).filter((x) => x.unit === "room");
+  if (!rooms.length) return null;
+  const n = { athlete: 0, staff: 0 };
+  for (const x of rooms) n[x.who === "staff" ? "staff" : "athlete"] += (x.beds || 1) * (x.rooms || 1);
+  return n;
+}
+
+// Oda bilgisi: "3 kişilik oda · bizden 1 sporcu"
+export const roomText = (l) => {
+  const kind = l.cap === 1 ? "Tek kişilik oda" : `${l.cap} kişilik oda`;
+  const who = l.who === "staff" ? "antrenör" : "sporcu";
+  return `${l.rooms > 1 ? `${l.rooms} × ` : ""}${kind} · bizden ${l.beds === l.cap && l.cap > 1 ? `${l.beds} ${who} (tam)` : `${l.beds} ${who}`}`;
+};
+
+// Kalemin hesap açıklaması: "3.500 ₺ × 4 gece × 6 kişi"; oda: "3 kişilik oda · bizden 1 sporcu · 3.200 ₺ ÷ 3 × 1 × 4 gece"
 export function howText(l, t) {
+  if (l.unit === "room") {
+    const calc = [l.cap > 1 ? `${tl(l.amount)} ÷ ${l.cap} × ${l.beds}` : tl(l.amount)];
+    if (l.rooms > 1) calc.push(`${l.rooms} oda`);
+    if (l.qty > 1) calc.push(`${l.qty} gece`);
+    return `${roomText(l)} · ${calc.join(" × ")}`;
+  }
   const parts = [tl(l.amount)];
   if (l.qty > 1) parts.push(`${l.qty} ${l.cat === "Konaklama" ? "gece" : "adet"}`);
   if (l.unit === "athlete") parts.push(`${t.athletes} sporcu`);

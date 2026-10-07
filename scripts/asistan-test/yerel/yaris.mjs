@@ -66,6 +66,25 @@ group("Yarış bütçesi")([
   ["hesap yazısı", { desc: "3.500 ₺ × 3 gece × 5 kişi", fn: () => { const t = BU.totals(BUD, 4); return BU.howText(t.lines[1], t).replace(/ /g, " "); }, ok: (r) => r === "3.500 ₺ × 3 gece × 5 kişi" }],
 ]);
 
+// Otel odası (unit room): yalnız bizden kalanların payı
+const ROOMS = BU.cleanBudget({
+  staff: 1,
+  items: [
+    { id: "r1", cat: "Konaklama", title: "Otel odası", amount: 3200, unit: "room", cap: 3, beds: 3, qty: 4 },
+    { id: "r2", cat: "Konaklama", title: "Otel odası", amount: 3200, unit: "room", cap: 3, beds: 1, qty: 4 },
+    { id: "r3", cat: "Konaklama", title: "Antrenör odası", amount: 2500, unit: "room", cap: 1, who: "staff", qty: 4 },
+  ],
+});
+group("Yarış bütçesi: otel odası")([
+  ["tam oda", { desc: "3 kişilik 3200, bizden 3, 4 gece → 12800", fn: () => BU.totals(ROOMS, 4).lines[0].total, ok: (r) => r === 12800 }],
+  ["bir kişi", { desc: "3 kişilik 3200, bizden 1, 4 gece → 3200/3×4", fn: () => BU.totals(ROOMS, 4).lines[1].total, ok: (r) => Math.abs(r - 3200 / 3 * 4) < 0.01 }],
+  ["antrenör odası", { desc: "tek kişilik 2500 × 4 gece = 10000", fn: () => BU.totals(ROOMS, 4).lines[2].total, ok: (r) => r === 10000 }],
+  ["odadakiler", { desc: "4 sporcu, 1 antrenör", fn: () => BU.roomPeople(ROOMS), ok: (r) => r.athlete === 4 && r.staff === 1 }],
+  ["sınır", { desc: "bizden kalan oda kapasitesini geçmez", fn: () => BU.cleanItem({ unit: "room", cap: 2, beds: 5, amount: 1000 }), ok: (r) => r.beds === 2 && r.rooms === 1 && r.who === "athlete" }],
+  ["eski kalem", { desc: "oda olmayan kaleme oda alanı eklenmez", fn: () => BU.cleanItem({ unit: "person", cap: 3, amount: 100 }), ok: (r) => !("cap" in r) && !("beds" in r) }],
+  ["hesap yazısı", { desc: "3 kişilik oda · bizden 1 sporcu", fn: () => { const t = BU.totals(ROOMS, 4); return BU.howText(t.lines[1], t).replace(/ /g, " "); }, ok: (r) => r === "3 kişilik oda · bizden 1 sporcu · 3.200 ₺ ÷ 3 × 1 × 4 gece" }],
+]);
+
 // Yarış iş listesi (races.js): talimattaki işler + elle işler + evrak, tekrarsız
 const RS = await import("@/features/athletes/races");
 const RACE_T = { notice: { tasks: [{ title: "Online kayıt", date: "2026-10-01" }, { title: "Online kayıt" }] }, todos: [{ title: "Römork" }, { title: "römork" }, { title: "" }], checks: { docs: true, "m:römork": true } };

@@ -20,7 +20,8 @@ Her kalem:
 - cat: ${CATS.join(", ")} (otel/pansiyon/konaklama → Konaklama; kayıt/katılım/geç kayıt ücreti → Kayıt; yakıt, minibüs, otobüs, uçak → Ulaşım; tekne taşıma, römork, kiralık tekne → Tekne/Ekipman).
 - title: kısa ad ("Kayıt ücreti", "Otel (Phokaia)", "Minibüs", "Yemek").
 - amount: TL olarak birim tutar, sayı ("bin iki yüz elli" → 1250, "3,5 bin" → 3500). Döviz söylenirse olduğu gibi sayıyı yaz ve title'a para birimini ekle ("Kayıt ücreti (€80)" değil; amount 80, title "Kayıt ücreti (EUR)").
-- unit: athlete (her sporcu için: kayıt ücreti, lisans), person (antrenör dahil herkes için: otel, yemek), shared (toplam tutar, ortak: minibüs, yakıt, tekne taşıma). "Kişi başı" denirse person; "sporcu başı" denirse athlete; toplam bir tutar söylenirse shared.
+- unit: athlete (her sporcu için: kayıt ücreti, lisans), person (antrenör dahil herkes için: otel, yemek), shared (toplam tutar, ortak: minibüs, yakıt, tekne taşıma), room (otel odası). "Kişi başı" denirse person; "sporcu başı" denirse athlete; toplam bir tutar söylenirse shared.
+- Oda söylenirse ("3 kişilik oda gecelik 3200, bizden 1 sporcu kalıyor", "antrenöre tek kişilik oda 2500") unit room: amount = odanın gecelik TOPLAM fiyatı, cap = oda kaç kişilik, beds = odada bizden kalan kişi (söylenmezse cap), rooms = aynı odadan kaç tane (söylenmezse 1), who = athlete (sporcular) ya da staff (antrenör/refakatçi). Uygulama yalnız bizden kalanların payını hesaplar (amount ÷ cap × beds). Farklı odalar ayrı kalem: "3 kişilik odada 3 sporcu, başka 3 kişilik odada 1 sporcu, antrenöre tek oda" → üç kalem. Antrenörün odası için title "Antrenör odası".
 - qty: adet ya da gece; otel gecelik söylendiyse gece sayısı (söylenmediyse verilen gece sayısı). Diğerlerinde 1.
 - club: kulüp karşılayacaksa true ("kulüp ödüyor", "kulüpten").
 - est: tutarı sen tahmin ettiysen true; antrenör söylediyse ya da talimattan aldıysan false.
@@ -34,7 +35,7 @@ const SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared"] }, qty: { type: "number" }, club: { type: "boolean" }, est: { type: "boolean" } },
+        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared", "room"] }, qty: { type: "number" }, cap: { type: "number" }, beds: { type: "number" }, rooms: { type: "number" }, who: { type: "string", enum: ["athlete", "staff"] }, club: { type: "boolean" }, est: { type: "boolean" } },
         required: ["cat", "title", "amount", "unit"],
       },
     },
@@ -66,7 +67,7 @@ async function handle(request) {
   const r = body?.race || {};
   const fees = (Array.isArray(body?.fees) ? body.fees : []).slice(0, 12).map((f) => `- ${S(f?.title, 80)}: ${S(f?.amount, 40)} ${S(f?.note, 160)}`);
   const hotels = (Array.isArray(body?.hotels) ? body.hotels : []).slice(0, 8).map((h) => `- ${S(h?.name, 80)}: ${S(h?.note, 200)}`);
-  const items = (Array.isArray(body?.items) ? body.items : []).slice(0, 40).map((x) => `- ${S(x?.cat, 20)} | ${S(x?.title, 80)} | ${N(x?.amount, 1e7)} TL | ${S(x?.unit, 10)} | ${N(x?.qty, 365)}`);
+  const items = (Array.isArray(body?.items) ? body.items : []).slice(0, 40).map((x) => `- ${S(x?.cat, 20)} | ${S(x?.title, 80)} | ${N(x?.amount, 1e7)} TL | ${S(x?.unit, 10)} | ${N(x?.qty, 365)}${x?.unit === "room" ? ` | ${N(x?.cap, 10)} kişilik, bizden ${N(x?.beds, 10)} ${x?.who === "staff" ? "antrenör" : "sporcu"}, ${N(x?.rooms, 30) || 1} oda` : ""}`);
   const user = [
     `Yarış: ${S(r.name, 80) || "-"} | ${S(r.startDate, 10)} - ${S(r.endDate, 10)} | ${S(r.district, 40)} ${S(r.city, 40)}`,
     `Sporcu: ${N(body?.athletes, 300)}, antrenör/refakatçi: ${N(body?.staff, 50)}, gece: ${N(body?.nights, 60)}`,
