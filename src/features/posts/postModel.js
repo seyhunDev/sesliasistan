@@ -221,6 +221,8 @@ export function cleanPost(p = {}) {
     headline: L(p.headline, 90),
     // Başlık kaldırılabilir; başlık ve alt yazı boyutu yüzde (100 = otomatik)
     noHead: !!p.noHead,
+    // Üstteki logo ve "Dikili Yelken Spor Kulübü" yazısı kapatılabilir
+    noBrand: !!p.noBrand,
     headSize: Math.max(60, Math.min(150, Math.round(Number(p.headSize) / 5) * 5 || 100)),
     subSize: Math.max(80, Math.min(150, Math.round(Number(p.subSize) / 5) * 5 || 100)),
     sub: S(p.sub, 200),
@@ -410,6 +412,11 @@ export const wantsPostImage = (s) => {
 // Asistana söylenen başlık/yazı boyu isteği ("başlığı kaldır", "başlığı biraz küçült", "alt yazıyı büyüt"); yapay zekaya gitmeden uygulanır
 export function sizeAsk(text, post = {}) {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
+  // "Logoyu kaldır", "kulüp adını kaldır", "logoyu geri getir"
+  if (/logo|kulüp ?(ad|yazı|ism)/.test(t)) {
+    if (/geri|göster|olsun|ekle/.test(t) && !/olmasın/.test(t)) return { noBrand: false };
+    if (/(kaldır|olmasın|sil|gizle|çıkar|istemiyorum)/.test(t)) return { noBrand: true };
+  }
   const head = /başlı(k|ğ)/.test(t);
   const sub = /alt ?(satır|yazı)|açıklama yazı|küçük yazı/.test(t);
   // Yeni başlık yazdırma ("başlığı “Denizdeyiz” yap") yapay zekaya gider

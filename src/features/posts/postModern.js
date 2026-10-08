@@ -102,7 +102,9 @@ function darkBg(K, ctx, post, photo, W, H, p, top) {
 }
 
 // Logo + iki satır kulüp adı; yüksekliği 2R
-async function brand(K, ctx, x, y, R, ink, shadow) {
+async function brand(K, post, ctx, x, y, R, ink, shadow) {
+  // Logo ve kulüp adı kapatılabilir (noBrand)
+  if (post.noBrand) return;
   const logo = await K.loadLogo();
   ctx.save();
   if (shadow) {
@@ -389,7 +391,7 @@ async function drawRace(K, ctx, post, photo, W, H, p, S) {
     vertical: true,
     max: 230,
   });
-  await brand(K, ctx, S.x, hy, R, "#ffffff", !!photo);
+  await brand(K, post, ctx, S.x, hy, R, "#ffffff", !!photo);
   if (post.tag) {
     ctx.save();
     ctx.font = `800 26px ${K.FONT}`;
@@ -463,7 +465,7 @@ async function drawTraining(K, ctx, post, photo, W, H, p, S) {
     italic: true,
     max: 220,
   });
-  await brand(K, ctx, S.x, hy, R, "#ffffff", !!photo);
+  await brand(K, post, ctx, S.x, hy, R, "#ffffff", !!photo);
   const maxW = S.w;
   const headTop = hy + R * 2 + 80;
   const room = H - headTop - K.PAD - S.b;
@@ -508,7 +510,7 @@ async function drawSchool(K, ctx, post, photo, W, H, p, S) {
   grain(ctx, W, H, 0.06);
   const R = 44;
   const hy = PADY(S);
-  await brand(K, ctx, S.x, hy, R, p.b, true);
+  await brand(K, post, ctx, S.x, hy, R, p.b, true);
   const maxW = S.w;
   const free = H - hy - R * 2 - 50 - K.PAD - S.b;
   const room = photo ? free * 0.58 : free;
@@ -570,7 +572,7 @@ async function drawNews(K, ctx, post, photo, W, H, p, S) {
   grain(ctx, W, H, 0.07);
   const R = 34;
   const hy = PADY(S);
-  await brand(K, ctx, S.x, hy, R, INK, false);
+  await brand(K, post, ctx, S.x, hy, R, INK, false);
   const now = new Date().toLocaleDateString("tr-TR", { month: "long", year: "numeric" }).toLocaleUpperCase("tr-TR");
   ctx.save();
   ctx.fillStyle = INK;
