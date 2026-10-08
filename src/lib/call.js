@@ -111,3 +111,13 @@ export const talkMs = (c) => {
   const e = c?.endedAt ? Date.parse(c.endedAt) : 0;
   return a && e > a ? e - a : 0;
 };
+
+// Bir telefonun ağ durumu (bağlanamayan aramada nedeni görmek için, Ayarlar › Aramalar):
+// TURN bilgisi alınamadıysa ya da alındı ama TURN adresi bulunamadıysa kısa açıklama, sorun yoksa "".
+export function netNote(st) {
+  if (!st || st.turn === undefined) return "";
+  const types = st.types || [];
+  if (!st.turn) return "TURN alınamadı";
+  if (!types.includes("relay")) return "TURN adresi bulunamadı";
+  return "";
+}

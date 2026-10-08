@@ -20,19 +20,20 @@ import { routeSupported, setRoute } from "./route";
 const Ctx = createContext(null);
 const AUDIO = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
 
-// TURN bilgisi (/api/turn): 11 saat bellekte; alınamazsa yalnız STUN (Wi-Fi'de çoğu zaman yeter)
+// TURN bilgisi (/api/turn): 11 saat bellekte (yalnız TURN geldiyse); alınamazsa yalnız STUN (Wi-Fi'de çoğu zaman yeter).
+// Sunucu soğukken (ilk istek) yanıt birkaç saniye sürebilir; 9 sn beklenir. iceServers().turn: TURN alındı mı (tanı için).
 let ice = { at: 0, list: null };
 async function iceServers() {
-  if (ice.list && Date.now() - ice.at < 11 * 3600e3) return ice.list;
+  if (ice.list && Date.now() - ice.at < 11 * 3600e3) return { list: ice.list, turn: true };
   try {
-    const r = await authFetch("/api/turn", { method: "POST", signal: AbortSignal.timeout?.(4000) });
+    const r = await authFetch("/api/turn", { method: "POST", signal: AbortSignal.timeout?.(9000) });
     const j = r.ok ? await r.json() : null;
     if (Array.isArray(j?.iceServers) && j.iceServers.length) {
-      ice = { at: Date.now(), list: j.iceServers };
-      return ice.list;
+      if (j.turn) ice = { at: Date.now(), list: j.iceServers };
+      return { list: j.iceServers, turn: !!j.turn, full: !!j.full };
     }
   } catch {}
-  return ICE_SERVERS;
+  return { list: ICE_SERVERS, turn: false };
 }
 
 export function CallProvider({ children }) {
@@ -81,15 +82,17 @@ export function CallProvider({ children }) {
           x.pc?.close();
         } catch {}
       };
-      // Konuşulan aramada bu cihazın veri kullanımı kaydedilir (Ayarlar › Aramalar), sonra bağlantı kapanır
+      // Bağlantı kurulan her aramada bu cihazın veri kullanımı ve ağ bilgisi kaydedilir (Ayarlar › Aramalar;
+      // bağlanamayan aramada TURN alındı mı, hangi adresler bulundu: sorunun nedenini görmek için), sonra bağlantı kapanır
       const cur = callRef.current;
-      if (x.pc && cur?.startMs && !cur.done) {
-        const sec = Math.round((Date.now() - cur.startMs) / 1000);
+      if (x.pc && cur?.id && !cur.done) {
+        const sec = cur.startMs ? Math.round((Date.now() - cur.startMs) / 1000) : 0;
+        const net = { turn: !!x.turn, types: [...(x.types || [])], ok: !!cur.startMs };
         x.pc
           .getStats()
           .then((r) => {
             const st = pickStats(r.values());
-            return authFetch("/api/call-stats", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ id: cur.id, ...st, sec }) });
+            return authFetch("/api/call-stats", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ id: cur.id, ...st, sec, ...net }) });
           })
           .catch(() => {})
           .finally(closePc);
@@ -152,8 +155,9 @@ export function CallProvider({ children }) {
         micClosed();
         throw e;
       }
-      const pc = new RTCPeerConnection({ iceServers: await servers });
-      Object.assign(s.current, { stream, pc, pendingIce: [], ownIce: [], docReady: false });
+      const got = await servers;
+      const pc = new RTCPeerConnection({ iceServers: got.list });
+      Object.assign(s.current, { stream, pc, pendingIce: [], ownIce: [], docReady: false, turn: got.turn, types: new Set() });
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       pc.ontrack = (e) => {
         const el = audio.current;
@@ -165,6 +169,7 @@ export function CallProvider({ children }) {
       const sendIce = (c) => addDoc(candsCol, { by: uid, c }).catch((e) => console.warn("[call] aday yazılamadı:", e.code));
       pc.onicecandidate = (e) => {
         if (!e.candidate) return;
+        if (e.candidate.type) s.current.types?.add(e.candidate.type);
         const c = e.candidate.toJSON();
         if (s.current.docReady) sendIce(c);
         else s.current.ownIce?.push(c);

@@ -1,0 +1,8 @@
+## Nerede kaldım
+
+- Sesli arama mobil internette bağlanmadı (Seyhun: "bağlanıyor yazdı ama bağlanamadı"; Cloudflare TURN anahtarları Netlify'a eklendikten sonra; düzeltme telefonda denenmedi): olası neden telefonun TURN bilgisini (`/api/turn`) 4 sn beklemesiydi; sunucu soğukken (ilk istek, profil + kota okuma + Cloudflare) bu süre aşılınca arama yalnız STUN ile kuruluyordu, mobil hatta bağlanamıyordu. Artık 9 sn beklenir; yalnız TURN gelen yanıt 11 saat bellekte tutulur (`iceServers`, CallProvider.jsx). Tanı: bağlanamayan aramada da her telefon ağ durumunu gönderir (`turn` alındı mı, bulunan adres türleri `types`, `ok`; `/api/call-stats`, callUsage.js; bağlanmayan arama sayaca girmez); Ayarlar › Aramalar'da bağlanamayan aramanın altında kırmızı "Ad: TURN alınamadı" ya da "TURN adresi bulunamadı" (`netNote`, call.js).
+- Arama ekranında hoparlör düğmesi: açınca yazı "Hoparlör açık" olup iki satıra iniyor, düğme yukarı kayıyordu. Artık ad hep tek satır ("Hoparlör", "Sessize al"), açıkken düğme yeşil ve altında yeşil "Açık"; satır yeri her düğmede ayrılmış, düğmeler kaymaz (`Round` `on`, CallScreen.jsx). Testi `test:elle` › "Sesli arama".
+
+## Sıradaki işler
+
+- Mobil internetle yeniden ara. Bağlanmazsa Ayarlar › Aramalar'da o aramanın altındaki kırmızı yazıyı yeni mesajla ver: "TURN alınamadı" → Netlify değişkenleri ya da Cloudflare anahtarı; "TURN adresi bulunamadı" → ağ TURN'ü engelliyor.

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { authFetch } from "@/lib/authFetch";
 import { monthName } from "@/lib/aiUsage";
-import { durationText, mbText, talkMs } from "@/lib/call";
+import { durationText, mbText, netNote, talkMs } from "@/lib/call";
 import { useChat } from "@/features/chat/ChatProvider";
 import { Row } from "./ui";
 
@@ -70,6 +70,8 @@ export function CallsRow() {
                     const relay = st.some((s) => s.relay);
                     const ms = talkMs(c);
                     const at = c.at ? new Date(c.at) : null;
+                    // Bağlanamayan aramada her telefonun ağ durumu (TURN alındı mı)
+                    const notes = ms ? [] : Object.entries(c.stats || {}).map(([u, s]) => netNote(s) && `${name(u)}: ${netNote(s)}`).filter(Boolean);
                     return (
                       <li key={c.id} className="py-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -85,6 +87,7 @@ export function CallsRow() {
                             {relay ? " · TURN" : ""}
                           </span>
                         </div>
+                        {notes.length > 0 && <p className="text-[0.75rem] text-rec">{notes.join(" · ")}</p>}
                       </li>
                     );
                   })}
