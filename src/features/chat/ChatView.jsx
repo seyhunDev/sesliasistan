@@ -133,7 +133,20 @@ export function ChatView({ cid }) {
         el.style.height = `${h}px`;
         // Klavye açıkken ev çizgisi payı gerekmez (yazma alanı klavyeye yapışık)
         el.style.setProperty("--kb-pad", window.innerHeight - h > 120 ? "0.5rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
-        if (window.scrollY || (v && v.offsetTop)) window.scrollTo(0, 0);
+        if (window.scrollY || (v && v.offsetTop)) {
+          window.scrollTo(0, 0);
+          // iPhone sayfayı geri alınca yazı imlecini eski yerinde (mesajların üstünde) bırakıyor; imleç yeniden çizdirilir
+          const a = document.activeElement;
+          if (a && el.contains(a) && /^(TEXTAREA|INPUT)$/.test(a.tagName)) {
+            a.style.transform = "translateZ(0)";
+            requestAnimationFrame(() => {
+              a.style.transform = "";
+              try {
+                a.setSelectionRange(a.selectionStart, a.selectionEnd);
+              } catch {}
+            });
+          }
+        }
       });
     };
     fit();
@@ -487,7 +500,7 @@ export function ChatView({ cid }) {
                       <Avatar name={personName(m.by)} size="size-8" text="text-[0.75rem]" />
                     </span>
                   )}
-                  <SwipeReply className={`flex max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`} onReply={() => !m.deleted && startReply(m)}>
+                  <SwipeReply className={`flex min-w-0 max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`} onReply={() => !m.deleted && startReply(m)}>
                     <div
                       role="button"
                       tabIndex={0}
@@ -512,7 +525,7 @@ export function ChatView({ cid }) {
                           <Icon name="x" className="size-3.5" /> Bu mesaj silindi
                         </span>
                       ) : (
-                        <span className="whitespace-pre-wrap break-words">{linkify(m.text, mine)}</span>
+                        <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{linkify(m.text, mine)}</span>
                       )}
 {/* Saat sağ altta sabit; metnin son satırında onun kadar görünmez yer ayrılır (sığmazsa alt satıra geçer) */}
                       <span aria-hidden="true" className="invisible ml-2 inline-flex gap-1 text-[0.6875rem]">
