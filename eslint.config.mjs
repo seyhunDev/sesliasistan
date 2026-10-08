@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Android uygulaması (Capacitor kabuğu, kendi paketleri)
+    "mobil/**",
   ]),
 ]);
 

@@ -1,0 +1,13 @@
+{
+  "appId": "com.seyhunyildiz.sesliasistan",
+  "appName": "Asistan",
+  "webDir": "www",
+  "server": {
+    "url": "https://sesliasistan.netlify.app",
+    "androidScheme": "https",
+    "errorPath": "index.html"
+  },
+  "android": {
+    "backgroundColor": "#f4f3ef"
+  }
+}

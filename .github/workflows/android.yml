@@ -1,0 +1,56 @@
+# Android uygulamasını (mobil/) derler. main'e gelince APK "android" sürümüne konur:
+# https://github.com/seyhunDev/sesliasistan/releases/tag/android
+name: Android APK
+
+on:
+  push:
+    paths:
+      - "mobil/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npx cap sync android
+      # İsteğe bağlı: her derlemenin aynı imzayla çıkması için (telefonda üstüne kurulabilsin)
+      # Mac'teki ~/.android/debug.keystore dosyasının base64 hali ANDROID_DEBUG_KEYSTORE gizlisine konur.
+      - name: İmza anahtarı
+        env:
+          KS: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          if [ -n "$KS" ]; then mkdir -p ~/.android && echo "$KS" | base64 -d > ~/.android/debug.keystore; fi
+      - name: APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../asistan.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asistan-apk
+          path: mobil/asistan.apk
+      - name: Sürüme koy (yalnız main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android --yes --cleanup-tag || true
+          gh release create android asistan.apk --title "Android uygulaması" --latest=false \
+            --notes "Telefondan asistan.apk'ya dokun, indir, kur. Derleme: ${GITHUB_SHA::7}"

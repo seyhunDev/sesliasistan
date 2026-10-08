@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Asistan</string>
+    <string name="title_activity_main">Asistan</string>
+    <string name="package_name">com.seyhunyildiz.sesliasistan</string>
+    <string name="custom_url_scheme">com.seyhunyildiz.sesliasistan</string>
+</resources>
