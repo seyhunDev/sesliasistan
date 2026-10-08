@@ -1208,5 +1208,21 @@ group("Sesli arama")([
   ["TURN eski biçim", F("tek nesne de okunur", () => CL.hasTurn(CL.turnServers({ iceServers: { urls: ["turn:a:3478"], username: "u", credential: "p" } })))],
   ["TURN yok", F("yalnız STUN", () => { const l = CL.turnServers(null); return l.length === 1 && !CL.hasTurn(l); })],
   ["şifresiz TURN", F("alınmaz", () => !CL.hasTurn(CL.turnServers({ iceServers: [{ urls: ["turn:a:3478"] }] })))],
+  ["veri ölçümü (seçili çift)", F("bayt ve TURN", () => {
+    const r = CL.pickStats([
+      { id: "T", type: "transport", selectedCandidatePairId: "P" },
+      { id: "P", type: "candidate-pair", state: "succeeded", nominated: true, bytesSent: 1000, bytesReceived: 3000, localCandidateId: "L", remoteCandidateId: "R" },
+      { id: "L", type: "local-candidate", candidateType: "relay" },
+      { id: "R", type: "remote-candidate", candidateType: "srflx" },
+    ]);
+    return r.sent === 1000 && r.recv === 3000 && r.relay;
+  })],
+  ["veri ölçümü (çift yok)", F("ses paketlerinden, TURN değil", () => {
+    const r = CL.pickStats([{ id: "o", type: "outbound-rtp", bytesSent: 500 }, { id: "i", type: "inbound-rtp", bytesReceived: 700 }]);
+    return r.sent === 500 && r.recv === 700 && !r.relay;
+  })],
+  ["MB yazısı", F("1,2 MB, 45 MB, 1,5 GB", () => CL.mbText(1.234e6) === "1,2 MB" && CL.mbText(45.2e6) === "45 MB" && CL.mbText(1.5e9) === "1,5 GB")],
+  ["kota uyarısı", F("%80 ve %100 bir kez", () => CL.quotaStep(790, 810, 1000) === 80 && CL.quotaStep(810, 820, 1000) === null && CL.quotaStep(990, 1001, 1000) === 100 && CL.quotaStep(10, 20, 0) === null)],
+  ["konuşma süresi", F("açılıştan bitişe", () => CL.talkMs({ answeredAt: "2026-10-08T10:00:00Z", endedAt: "2026-10-08T10:03:12Z" }) === 192e3 && CL.talkMs({ endedAt: "2026-10-08T10:00:00Z" }) === 0)],
   ["sohbete satır: bağlanamadı", F("yazılmaz", () => CL.callLog("failed", 0) === null && CL.callLog("ended", 0) === null)],
 ]);

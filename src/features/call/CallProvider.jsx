@@ -7,7 +7,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/components/ui/ToastProvider";
 import { dmId, toMs, useChat } from "@/features/chat/ChatProvider";
 import { micClosed, micOpening } from "@/lib/speech/audioSession";
-import { ICE_SERVERS, LOST_MS, RETRY_MS, RING_MS, STATUS, callLog, isOver, micError, ringingFresh } from "@/lib/call";
+import { ICE_SERVERS, LOST_MS, RETRY_MS, RING_MS, STATUS, callLog, isOver, micError, pickStats, ringingFresh } from "@/lib/call";
 import { CallScreen } from "./CallScreen";
 import { endTone, startRing } from "./ring";
 import { routeSupported, setRoute } from "./route";
@@ -76,9 +76,24 @@ export function CallProvider({ children }) {
       clearTimeout(x.lost);
       clearTimeout(x.retry);
       x.stream?.getTracks().forEach((t) => t.stop());
-      try {
-        x.pc?.close();
-      } catch {}
+      const closePc = () => {
+        try {
+          x.pc?.close();
+        } catch {}
+      };
+      // Konuşulan aramada bu cihazın veri kullanımı kaydedilir (Ayarlar › Aramalar), sonra bağlantı kapanır
+      const cur = callRef.current;
+      if (x.pc && cur?.startMs && !cur.done) {
+        const sec = Math.round((Date.now() - cur.startMs) / 1000);
+        x.pc
+          .getStats()
+          .then((r) => {
+            const st = pickStats(r.values());
+            return authFetch("/api/call-stats", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ id: cur.id, ...st, sec }) });
+          })
+          .catch(() => {})
+          .finally(closePc);
+      } else closePc();
       x.wake?.release?.().catch(() => {});
       s.current = {};
       if (audio.current) audio.current.srcObject = null;
