@@ -1,13 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sesli Asistan">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Sesli Asistan">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#36907a"/>
-      <stop offset="1" stop-color="#1d5545"/>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f8f76"/>
+      <stop offset="1" stop-color="#174d40"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="30"/>
-  <path d="M256.0 106.0 A150 150 0 1 1 126.1 181.0" fill="none" stroke="#f6c445" stroke-width="30" stroke-linecap="round"/>
-  <circle cx="256" cy="256" r="104" fill="#ffffff"/>
-  <path d="M206 258 L242 292 L308 220" fill="none" stroke="#1f6b58" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#g)"/>
+  <path d="M160 560 C173 540 212 430 240 440 C268 450 301 615 330 620 C359 625 383 463 415 470 C447 477 502 628 520 660 L870 340" fill="none" stroke="#ffffff" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
