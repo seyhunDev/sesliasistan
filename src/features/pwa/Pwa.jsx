@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { syncPush } from "@/lib/push";
+import { wireNativePush } from "@/lib/nativePush";
 import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
 import { netText, netTone } from "@/lib/netSync";
 import { checkWrites, netState, subscribeNet } from "./netWatch";
@@ -25,6 +27,9 @@ export function ServiceWorkerSetup() {
 // ama abonelik kaybolmuşsa (ana ekrana yeniden ekleme, iPhone'un yenilemesi) sessizce yeniden kaydeder.
 export function PushSync({ profile }) {
   const uid = profile?.uid;
+  const router = useRouter();
+  // Android uygulaması: bildirime dokununca ilgili sayfa açılır
+  useEffect(() => wireNativePush((url) => router.push(url)), [router]);
   useEffect(() => {
     if (!uid) return;
     let last = 0;

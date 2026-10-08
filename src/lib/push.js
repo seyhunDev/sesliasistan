@@ -4,15 +4,17 @@ import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { isIOS } from "@/lib/speech/detect";
+import { isNativeApp, nativePermission, nativePushReady, nativeToken } from "@/lib/nativePush";
 
 const KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
+// Android uygulamasında (nativePush.js) Web Push yok, Firebase Cloud Messaging var
 export const pushSupported = () =>
-  typeof window !== "undefined" && window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  isNativeApp() || (typeof window !== "undefined" && window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
 // iPhone'da bildirim yalnızca ana ekrana eklenen uygulamada çalışır
 export const isStandalone = () => typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone === true);
 export const needsInstall = () => isIOS() && !isStandalone();
-export const pushConfigured = () => !!KEY;
+export const pushConfigured = () => isNativeApp() || !!KEY;
 
 const toKey = (s) => {
   const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
@@ -42,7 +44,10 @@ export async function loadReminders(uid) {
   const snap = await getDoc(doc(db, "users", uid)).catch(() => null);
   const data = snap?.exists() ? snap.data() : {};
   let here = false;
-  if (pushSupported() && Notification.permission === "granted") {
+  if (isNativeApp()) {
+    const tok = (await nativePushReady()) && (await nativePermission(false).catch(() => "")) === "granted" ? await nativeToken().catch(() => "") : "";
+    here = !!(tok && data.push?.[deviceKey(tok)]);
+  } else if (pushSupported() && Notification.permission === "granted") {
     const sub = await Promise.race([currentSub(), new Promise((r) => setTimeout(() => r(null), 3000))]).catch(() => null);
     here = !!(sub && data.push?.[deviceKey(sub.endpoint)]);
   }
@@ -70,6 +75,7 @@ const setOffHere = (v) => {
 };
 
 const subEntry = (j) => ({ endpoint: j.endpoint, keys: j.keys, at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
+const fcmEntry = (token) => ({ fcm: token, app: "android", at: new Date().toISOString(), ua: navigator.userAgent.slice(0, 120) });
 
 // Uygulama her açılışta: izin verilmişse bu cihazın aboneliğini kontrol eder; yoksa oluşturur, kayıtta yoksa ya da
 // değiştiyse yeniden yazar. Ana ekrana yeniden ekleme ya da iPhone'un aboneliği yenilemesi bildirimleri sessizce
@@ -83,8 +89,37 @@ function claimPush(j) {
   } catch {}
   authFetch("/api/push-claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: deviceKey(j.endpoint), endpoint: j.endpoint }) }).catch(() => {});
 }
+// Android uygulaması: aynı telefonun anahtarını başka hesaplardan siler
+function claimFcm(token) {
+  try {
+    if (sessionStorage.getItem(CLAIM) === token) return;
+    sessionStorage.setItem(CLAIM, token);
+  } catch {}
+  authFetch("/api/push-claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: deviceKey(token), fcm: token }) }).catch(() => {});
+}
+
+// Android uygulaması: izin verilmişse (ask: yoksa iste) anahtarı alıp kaydeder
+async function syncNative(p, ask, lead) {
+  if (!(await nativePushReady())) throw Object.assign(new Error("Bu uygulama sürümünde bildirim yok; yeni APK'yı kur."), { code: "unsupported" });
+  const perm = await nativePermission(ask);
+  if (perm !== "granted") {
+    if (ask) throw Object.assign(new Error("Bildirim izni verilmedi."), { code: "denied" });
+    return "skip";
+  }
+  const token = await nativeToken();
+  const key = deviceKey(token);
+  const data = (await getDoc(doc(db, "users", p.uid))).data() || {};
+  if (!ask && data.push?.[key]?.fcm === token && data.reminders?.on) {
+    claimFcm(token);
+    return "ok";
+  }
+  await setDoc(doc(db, "users", p.uid), { ...ids(p), reminders: { on: true, ...(lead ? { lead } : {}), tz: tz() }, push: { [key]: fcmEntry(token) } }, { merge: true });
+  claimFcm(token);
+  return "saved";
+}
 
 export async function syncPush(p) {
+  if (p?.uid && isNativeApp()) return offHere() ? "skip" : syncNative(p, false).catch(() => "skip");
   if (!p?.uid || !KEY || !pushSupported() || Notification.permission !== "granted" || offHere()) return "skip";
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(KEY) }));
@@ -103,6 +138,14 @@ export async function syncPush(p) {
 
 export async function enableReminders(p, lead) {
   const uid = p.uid;
+  if (isNativeApp()) {
+    setOffHere(false);
+    try {
+      sessionStorage.removeItem(CLAIM);
+    } catch {}
+    await syncNative(p, true, lead);
+    return;
+  }
   if (!pushSupported()) throw Object.assign(new Error("Bu tarayıcı bildirimleri desteklemiyor."), { code: "unsupported" });
   if (!KEY) throw Object.assign(new Error("Bildirim anahtarı tanımlı değil."), { code: "config" });
   const perm = await Notification.requestPermission();
@@ -132,10 +175,14 @@ export async function setLead(p, lead) {
 
 // Bu cihazda kapat (diğer cihazlar etkilenmez); hiç cihaz kalmazsa hatırlatma tamamen kapanır
 export async function disableReminders(p) {
-  const sub = pushSupported() ? await currentSub().catch(() => null) : null;
+  const native = isNativeApp();
+  const sub = !native && pushSupported() ? await currentSub().catch(() => null) : null;
   const ref = doc(db, "users", p.uid);
   setOffHere(true);
-  if (sub) {
+  if (native) {
+    const tok = (await nativePushReady()) ? await nativeToken().catch(() => "") : "";
+    if (tok) await updateDoc(ref, { [`push.${deviceKey(tok)}`]: deleteField() }).catch(() => {});
+  } else if (sub) {
     await updateDoc(ref, { [`push.${deviceKey(sub.endpoint)}`]: deleteField() }).catch(() => {});
     await sub.unsubscribe().catch(() => {});
   }
@@ -145,9 +192,17 @@ export async function disableReminders(p) {
 
 // Bu cihaza deneme bildirimi
 export async function testPush() {
-  const sub = await currentSub();
-  if (!sub) throw new Error("Bu cihaz abone değil.");
-  const res = await authFetch("/api/push-test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+  let body;
+  if (isNativeApp()) {
+    const tok = (await nativePushReady()) && (await nativePermission(false)) === "granted" ? await nativeToken().catch(() => "") : "";
+    if (!tok) throw new Error("Bu cihaz abone değil.");
+    body = { fcm: tok };
+  } else {
+    const sub = await currentSub();
+    if (!sub) throw new Error("Bu cihaz abone değil.");
+    body = { subscription: sub.toJSON() };
+  }
+  const res = await authFetch("/api/push-test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Deneme bildirimi gönderilemedi.");
 }

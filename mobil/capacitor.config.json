@@ -9,5 +9,11 @@
   },
   "android": {
     "backgroundColor": "#f4f3ef"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_asistan",
+      "iconColor": "#22705c"
+    }
   }
 }

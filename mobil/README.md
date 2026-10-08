@@ -30,7 +30,15 @@ Android Studio açılınca telefonu kabloyla bağla (Geliştirici seçenekleri �
 - İzinler: mikrofon, kamera, ekranın kararmaması (AndroidManifest.xml).
 - Simge ve açılış ekranı `public/logo.svg`'den üretildi (`res/mipmap-*`, `res/drawable*/splash.png`).
 
+## Bildirimler
+
+Firebase Cloud Messaging ile (`@capacitor/push-notifications`; açık uygulamada `@capacitor/local-notifications` gösterir).
+Firebase konsolunda Android uygulaması (paket `com.seyhunyildiz.sesliasistan`) kayıtlı olmalı; indirilen
+`google-services.json` depoya konmaz, GitHub gizlisi `GOOGLE_SERVICES_JSON`'dan derlemede yazılır (Mac'te elle
+`android/app/google-services.json`). Dosya yoksa APK bildirimsiz derlenir, uygulama çökmez (`pushReady`).
+Web tarafı: `src/lib/nativePush.js`, `src/lib/push.js`; sunucu: `src/lib/server/sendDevice.js` (kayıtta `fcm` varsa FCM).
+
 ## Henüz yok
 
-- Bildirimler (web push WebView'da çalışmıyor; sıradaki adım Firebase Cloud Messaging).
 - Arama sesinin ahize/hoparlör seçimi (yerel ses eklentisi), gelen aramada tam ekran zil.
+- Atama bildiriminin "iletildi" onayı Android'de yazılmaz (bildirim kodu arka planda çalışmıyor).

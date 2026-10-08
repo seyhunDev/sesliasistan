@@ -16,6 +16,7 @@ import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
 import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
+import { sendDevice } from "../../src/lib/server/sendDevice.js";
 
 // Bildirim kutusuna yazar (ana sayfadaki "Bildirimler") ve simgedeki sayıyı ekler (lib/inbox)
 const withBadge = async (db, uid, msg) => JSON.stringify({ ...msg, badge: await recordInbox(db, uid, msg) });
@@ -91,7 +92,7 @@ async function sendDueReminders() {
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
-            await webpush.sendNotification(sub, payload, { TTL: 3600 });
+            await sendDevice(sub, payload, { TTL: 3600 });
             sent++;
           } catch (e) {
             // Telefon aboneliği bitmiş (uygulama silinmiş / izin kaldırılmış): kaydı temizle
@@ -138,7 +139,7 @@ async function sendSummaries(db, all, q) {
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
-            await webpush.sendNotification(sub, payload, { TTL: 3 * 3600 });
+            await sendDevice(sub, payload, { TTL: 3 * 3600 });
             n++;
           } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
@@ -184,7 +185,7 @@ async function sendExtras(db, all, q) {
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
-            await webpush.sendNotification(sub, payload, { TTL: 3 * 3600 });
+            await sendDevice(sub, payload, { TTL: 3 * 3600 });
             n++;
           } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
@@ -252,7 +253,7 @@ async function sendDuesRemind(db, all) {
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
-            await webpush.sendNotification(sub, payload, { TTL: 6 * 3600 });
+            await sendDevice(sub, payload, { TTL: 6 * 3600 });
             n++;
           } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
@@ -306,7 +307,7 @@ async function sendMailDigests(db, all) {
       await Promise.all(
         Object.entries(d.push || {}).map(async ([key, sub]) => {
           try {
-            await webpush.sendNotification(sub, payload, { TTL: 6 * 3600 });
+            await sendDevice(sub, payload, { TTL: 6 * 3600 });
             n++;
           } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
