@@ -33,9 +33,10 @@ export async function recordCall(uid, body) {
   if (!/^[A-Za-z0-9]{10,40}$/.test(id)) return { error: "Geçersiz arama" };
   const db = adminDb();
   const callRef = db.collection("orgs").doc(org).collection("calls").doc(id);
-  // turn: bu telefon TURN bilgisi alabildi mi; types: bulduğu ağ adresi türleri (host, srflx, relay); ok: bağlandı mı
+  // turn: bu telefon TURN bilgisi alabildi mi; types: bulduğu ağ adresi türleri (host, srflx, relay); ok: bağlandı mı;
+  // rx: karşı telefondan aldığı ağ adresi sayısı
   const types = [].concat(body?.types || []).filter((t) => ["host", "srflx", "prflx", "relay"].includes(t));
-  const st = { sent: n(body.sent, 5e9), recv: n(body.recv, 5e9), relay: !!body.relay, sec: n(body.sec, 86400), turn: !!body.turn, types, ok: body.ok !== false };
+  const st = { sent: n(body.sent, 5e9), recv: n(body.recv, 5e9), relay: !!body.relay, sec: n(body.sec, 86400), turn: !!body.turn, types, ok: body.ok !== false, rx: n(body.rx, 500) };
   const bytes = st.sent + st.recv;
   const relayBytes = st.relay ? bytes : 0;
   const res = await db.runTransaction(async (tx) => {
