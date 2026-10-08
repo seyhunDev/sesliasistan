@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { modernPal } from "./postModern";
-import { afisTag, drawPost, drawSlide, loadImg, postFile, thumbOf } from "./postImage";
+import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { todayStr } from "@/lib/utils/format";
 
@@ -100,7 +100,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const file = useRef(null);
   const setFiles = useRef({});
   const fileInput = useRef(null);
-  const moreInput = useRef(null);
   const latest = useRef(null);
   const drag = useRef(null);
   // Önizlemenin altındaki ayarlar: seçili araç
@@ -116,8 +115,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
   // Yapay zekanın son yazdığı açıklama: elle değiştirilmediyse tür değişince yeni türe göre yeniden yazılır (kayıtlı gönderide elle sayılır)
   const autoCap = useRef(start.id ? null : start.caption);
-  // Kaydırmalı gönderi: ek fotoğraflar (en çok 9). Yalnız bu cihazda, bu ekran açıkken durur; kaydedilmez.
-  const [extras, setExtras] = useState([]); // [{ id, src, i }]
   const [set, setSet] = useState([]); // üç boyut: [{ f, thumb }]; dosyalar setFiles'ta
   const [pid, setPid] = useState(start.id || null);
 
@@ -304,42 +301,11 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   };
 
   const getFile = async () => file.current || (canvas.current && (await postFile(canvas.current, slug(p.headline))));
-  // Kapak + ek fotoğraflar (aynı boyutta, sırayla)
-  const getFiles = async () => {
-    const f = await getFile();
-    if (!f || !extras.length) return f ? [f] : [];
-    const c = document.createElement("canvas");
-    const out = [f];
-    for (const [k, x] of extras.entries()) {
-      await drawSlide(c, post.format, x.i);
-      out.push(await postFile(c, `${slug(p.headline)}-${k + 2}`));
-    }
-    return out;
-  };
-  const addExtras = async (e) => {
-    const list = [...(e.target.files || [])].slice(0, 9 - extras.length);
-    e.target.value = "";
-    if (!list.length) return;
-    setBusy("photo");
-    try {
-      const add = [];
-      for (const f of list) {
-        const { dataUrl } = await compressImage(f, 1440, 0.82);
-        add.push({ id: `${Date.now()}-${add.length}`, src: dataUrl, i: await loadImg(dataUrl) });
-      }
-      setExtras((x) => [...x, ...add].slice(0, 9));
-    } catch (x) {
-      setErr(x?.message || "Fotoğraf açılamadı");
-    } finally {
-      setBusy("");
-    }
-  };
-
   // Paylaş: açıklama panoya, görsel paylaşım menüsüne (Instagram açıklamayı almaz; yapıştırılır). Kayıt arkada.
   const share = async () => {
     const text = fullCaption(post);
     const copied = text ? copyText(text) : Promise.resolve(false);
-    const files = extras.length ? await getFiles() : [file.current || (await getFile())].filter(Boolean);
+    const files = [file.current || (await getFile())].filter(Boolean);
     if (files.length && navigator.canShare?.({ files })) {
       const sharing = navigator.share({ files }).catch((e) => e?.name === "NotAllowedError" && download());
       if (dirty) save(true);
@@ -395,7 +361,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     }
   };
   const download = async () => {
-    for (const f of await getFiles()) {
+    for (const f of [await getFile()].filter(Boolean)) {
       const url = URL.createObjectURL(f);
       const a = document.createElement("a");
       a.href = url;
@@ -833,37 +799,13 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right="isteğe bağlı">2 · KAYDIRMALI GÖNDERİ</Label>
-      <div>
-        <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
-        <input ref={moreInput} type="file" accept="image/*" multiple className="hidden" onChange={addExtras} />
-        <div>
-          <span className="text-[0.75rem] font-medium text-mut">{extras.length ? `${extras.length + 1} sayfa · ilk sayfa yukarıdaki tasarım` : "Ek fotoğraflar (ilk sayfa yukarıdaki tasarım)"}</span>
-          <div className="-mx-5 mt-1.5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
-            {extras.map((x, k) => (
-              <span key={x.id} className="relative shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={x.src} alt={`${k + 2}. sayfa`} className="h-20 w-16 rounded-lg object-cover" />
-                <button type="button" aria-label="Kaldır" onClick={() => setExtras((l) => l.filter((y) => y.id !== x.id))} className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-fg text-white">
-                  <Icon name="x" className="size-3.5" />
-                </button>
-              </span>
-            ))}
-            {extras.length < 9 && (
-              <button type="button" onClick={() => moreInput.current?.click()} disabled={busy === "photo"} className="grid h-20 w-16 shrink-0 place-items-center rounded-lg bg-bg text-mut ring-1 ring-line active:scale-95">
-                <Icon name="plus" className="size-5" />
-              </button>
-            )}
-          </div>
-          {extras.length > 0 && <p className="mt-1 text-[0.6875rem] leading-snug text-mut">Paylaş hepsini sırayla gönderir; ek fotoğraflar kaydedilmez, bu ekranda kalır.</p>}
-        </div>
-      </div>
+      <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={pick} />
 
       {/* Görseldeki yazılar: kendiliğinden dolar, istenirse elle düzenlenir */}
       <button id="post-texts" type="button" onClick={() => setTexts((v) => !v)} className={`${card} mt-6 scroll-mt-4 flex w-full items-center gap-3 px-4 py-3 text-left`}>
         <Icon name="edit" className="size-5 shrink-0 text-acc" />
         <span className="min-w-0 flex-1">
-          <b className="block text-[0.9375rem] font-semibold">3 · Görseldeki yazılar</b>
+          <b className="block text-[0.9375rem] font-semibold">2 · Görseldeki yazılar</b>
           <span className="block truncate text-[0.75rem] text-mut">{[post.noHead ? "" : post.headline, post.wish].filter(Boolean).join(" · ") || "Başlık, alt satır, sporcular, dilek"}</span>
         </span>
         <Icon name="chev" className={`size-5 shrink-0 text-mut transition ${texts ? "-rotate-90" : "rotate-90"}`} />
@@ -898,14 +840,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
       )}
 
-      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>4 · AÇIKLAMA</Label>
+      <Label right={post.caption ? `${fullCaption(post).length} / 2200` : null}>3 · AÇIKLAMA</Label>
       <textarea value={p.caption} onChange={(e) => put("caption", e.target.value)} maxLength={2200} rows={9} className={`${area} mt-0`} placeholder={aiBusy ? "Yapay zeka yazıyor…" : "Yarış seçince ya da asistana anlatınca yapay zeka yazar; kendin de yazabilirsin"} />
       <label className="mt-3 block">
         <span className="text-[0.8125rem] font-medium text-mut">Etiketler (#)</span>
         <textarea value={tags} onChange={(e) => setTags(e.target.value)} onBlur={() => setTags(cleanTags(tags).join(" "))} rows={2} className={area} placeholder="#dikiliyelken #yelken #sailing" />
       </label>
 
-      <Label>5 · PAYLAŞ</Label>
+      <Label>4 · PAYLAŞ</Label>
       <div>
         {/* Üç boyut birden: aynı tasarım gönderi, hikâye ve reels ölçüsünde; dokununca o boyut paylaşılır */}
         <div className="mb-3 grid grid-cols-3 items-end gap-2.5">
