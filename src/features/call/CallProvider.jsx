@@ -155,6 +155,10 @@ export function CallProvider({ children }) {
         micClosed();
         throw e;
       }
+      // Arama dışarıdan değil ahizeden: mikrofon açıldıktan sonra ses oturumu telefon görüşmesi kipine (hoparlör
+      // seçildiyse hoparlöre) alınır; çalma sesi de buradan duyulur. Kurulum sırasında sessize alındıysa uygulanır.
+      setRoute(!!callRef.current?.speaker);
+      if (callRef.current?.muted) stream.getAudioTracks().forEach((t) => (t.enabled = false));
       const got = await servers;
       const pc = new RTCPeerConnection({ iceServers: got.list });
       Object.assign(s.current, { stream, pc, pendingIce: [], ownIce: [], docReady: false, turn: got.turn, types: new Set() });
@@ -396,9 +400,10 @@ export function CallProvider({ children }) {
     patch({ muted });
   }, [patch]);
   // Hoparlör / ahize (iPhone'da ses oturumu türüyle; destek yoksa düğme görünmez)
+  // Mikrofon henüz açılmadıysa yalnız tercih saklanır, açılınca uygulanır (önce yazmak mikrofonu bozuyordu)
   const toggleSpeaker = useCallback(() => {
     const speaker = !callRef.current?.speaker;
-    setRoute(speaker);
+    if (s.current.stream) setRoute(speaker);
     patch({ speaker });
   }, [patch]);
   const setMini = useCallback((mini) => patch({ mini }), [patch]);
