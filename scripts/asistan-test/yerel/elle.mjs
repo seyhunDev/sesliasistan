@@ -1201,5 +1201,12 @@ group("Sesli arama")([
   ["sohbete satır: cevapsız", F("bildirimli", () => { const l = CL.callLog("missed", 0); return l.text === "📞 Cevapsız sesli arama" && l.notify; })],
   ["sohbete satır: reddedildi", F("cevapsız, bildirimsiz", () => { const l = CL.callLog("declined", 0); return l.text === "📞 Cevapsız sesli arama" && !l.notify; })],
   ["sohbete satır: konuşuldu", F("süreyle, bildirimsiz", () => { const l = CL.callLog("ended", 192e3); return l.text === "📞 Sesli arama · 3:12" && !l.notify; })],
+  ["TURN listesi (Cloudflare)", F("STUN başta, TURN şifreli, 53 portu atılır", () => {
+    const l = CL.turnServers({ iceServers: [{ urls: ["stun:stun.cloudflare.com:3478", "turn:turn.cloudflare.com:3478?transport=udp", "turn:turn.cloudflare.com:53?transport=udp", "turns:turn.cloudflare.com:443?transport=tcp"], username: "u", credential: "p" }] });
+    return l.length === 2 && l[0].urls[0].startsWith("stun:stun.l.google") && l[1].urls.length === 2 && !l[1].urls.some((u) => u.includes(":53")) && CL.hasTurn(l);
+  })],
+  ["TURN eski biçim", F("tek nesne de okunur", () => CL.hasTurn(CL.turnServers({ iceServers: { urls: ["turn:a:3478"], username: "u", credential: "p" } })))],
+  ["TURN yok", F("yalnız STUN", () => { const l = CL.turnServers(null); return l.length === 1 && !CL.hasTurn(l); })],
+  ["şifresiz TURN", F("alınmaz", () => !CL.hasTurn(CL.turnServers({ iceServers: [{ urls: ["turn:a:3478"] }] })))],
   ["sohbete satır: bağlanamadı", F("yazılmaz", () => CL.callLog("failed", 0) === null && CL.callLog("ended", 0) === null)],
 ]);

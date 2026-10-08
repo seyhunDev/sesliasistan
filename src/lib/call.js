@@ -8,8 +8,22 @@ export const STALE_MS = 40e3; // bundan eski "çalıyor" kaydı yok sayılır (k
 export const RETRY_MS = 3e3; // bağlantı kopunca bu kadar bekleyip yeniden kurmayı dene
 export const LOST_MS = 25e3; // kopan bağlantı bu sürede düzelmezse arama biter
 export const STATUS = { ringing: "ringing", active: "active", declined: "declined", missed: "missed", ended: "ended", failed: "failed" };
-// Şimdilik yalnız STUN (2. adımda TURN eklenecek; mobil hatta bazen bağlanamaz)
+// STUN: iki telefonun birbirini bulması (ücretsiz, Google). TURN: doğrudan bağlanamayınca (çoğu zaman mobil internet)
+// sesi aktaran sunucu; Cloudflare'den /api/turn ile kısa süreli alınır (turnServers).
 export const ICE_SERVERS = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
+
+const isStun = (u) => u.startsWith("stun");
+// Cloudflare yanıtını RTCPeerConnection'ın beklediği listeye çevirir; Google STUN her zaman başta.
+// Yanıt biçimleri: { iceServers: [{ urls, username, credential }, …] } ya da { iceServers: { urls, username, credential } }.
+// 53 numaralı porttaki adresler (bazı ağlarda engelli, iPhone'da yavaşlatır) atılır; şifresiz TURN alınmaz.
+export function turnServers(res) {
+  const raw = res?.iceServers;
+  const list = (Array.isArray(raw) ? raw : raw ? [raw] : [])
+    .map((s) => ({ ...s, urls: [].concat(s?.urls || []).filter((u) => typeof u === "string" && !/:53(\?|$)/.test(u) && !isStun(u)) }))
+    .filter((s) => s.urls.length && s.username && s.credential);
+  return [...ICE_SERVERS, ...list];
+}
+export const hasTurn = (servers) => (servers || []).some((s) => [].concat(s.urls || []).some((u) => /^turns?:/.test(u)));
 
 // Kimler arasında arama olur: yazışabilenler, sporcu/öğrenci/veli hariç (ilk sürüm: ana hesap, çalışan, aile)
 export const canCall = (a, b) => !!a && !!b && canTalk(a, b) && !isAthleteSide(a) && !isAthleteSide(b);

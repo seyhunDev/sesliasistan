@@ -1,0 +1,5 @@
+## Nerede kaldım
+- Sesli arama: Cloudflare TURN (Seyhun: "yap"; telefonda denenmedi): biri Wi-Fi'siz (telefonun mobil interneti) olunca iki telefon birbirini doğrudan bulamayabiliyor, arama "Bağlanıyor…"da kalıyordu. Artık arama başlarken `/api/turn` Cloudflare Realtime TURN'den 12 saat geçerli kullanıcı/şifre alır (telefonda 11 saat bellekte), ses gerekirse oradan aktarılır. Anahtarlar yalnız Netlify'da: `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`. Tanımlı değilse ya da Cloudflare cevap vermezse eskisi gibi yalnız Google STUN (Wi-Fi'de yeter). Ücret: ayda 1.000 GB ücretsiz (bir saatlik sesli arama ≈ 25-50 MB). `turnServers`, `hasTurn` (src/lib/call.js; 53 portu ve şifresiz TURN atılır). Kural değişikliği yok. Testleri `test:elle` › "Sesli arama".
+
+## Sıradaki işler
+0. Cloudflare'de ücretsiz hesap aç › Realtime › TURN Server › Create, "Turn Token ID" ve "API Token"ı Netlify › Site configuration › Environment variables'a `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` olarak ekle, yeniden yayınla. Sonra biri Wi-Fi'yi kapatıp mobil internetle arasın; bağlanmalı.
