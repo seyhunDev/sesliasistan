@@ -123,3 +123,10 @@ export function netNote(st) {
   if (st.ok === false) return "TURN vardı, yine bağlanamadı";
   return "";
 }
+
+// Android ses çıkışları listesinden ahize (speaker=false) ya da hoparlör (speaker=true) çıkışının kimliği
+export function pickSink(list, speaker) {
+  const re = speaker ? /speaker|hoparl/i : /earpiece|receiver|handset|ahize/i;
+  const d = (list || []).find((x) => re.test(x.label || ""));
+  return d?.deviceId || null;
+}
