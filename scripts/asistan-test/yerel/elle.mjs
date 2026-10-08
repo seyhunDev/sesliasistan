@@ -334,6 +334,7 @@ group("Instagram tasarım")([
     const b = PM.cleanPost({ headSize: 200, subSize: 40, noHead: true });
     return a.headSize === 100 && a.subSize === 100 && a.noHead === false && b.headSize === 150 && b.subSize === 80 && b.noHead === true && PM.cleanPost({ headSize: 87 }).headSize === 85;
   })],
+  ["logo kapatma", F("logo ve kulüp adı kapatılabilir; asistanla kaldır / geri getir", () => PM.cleanPost({ noBrand: true }).noBrand === true && PM.cleanPost({}).noBrand === false && PM.sizeAsk("logoyu kaldır").noBrand === true && PM.sizeAsk("logo ve kulüp adı olmasın").noBrand === true && PM.sizeAsk("logoyu geri getir").noBrand === false && PM.sizeAsk("kulüp adını kaldır").noBrand === true)],
   ["asistanla başlık", F("kaldır, geri getir, bir tık küçült, alt yazıyı büyüt; yeni başlık yazdırma yapay zekaya", () => {
     const p = { headSize: 100, subSize: 100 };
     const q = (t) => JSON.stringify(PM.sizeAsk(t, p));

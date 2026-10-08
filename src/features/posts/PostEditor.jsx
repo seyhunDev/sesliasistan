@@ -151,7 +151,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -249,6 +249,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       const size = sizeAsk(text, now);
       if (size) {
         setP((x) => ({ ...x, ...size }));
+        if ("noBrand" in size) return { say: size.noBrand ? "Logoyu ve kulüp adını görselden kaldırdım." : "Logo ve kulüp adı görselde yeniden görünüyor." };
         return { say: size.noHead ? "Başlığı görselden kaldırdım." : size.noHead === false && !size.headSize ? "Başlık görselde yeniden görünüyor." : size.headSize ? `Başlık boyu yüzde ${size.headSize}.` : `Alt satır boyu yüzde ${size.subSize}.` };
       }
       // Boş gönderide ilk cümle ne paylaşılacağıdır (konu); sonrakiler değişiklik
@@ -651,6 +652,10 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           {tool === "text" && (
             <>
               <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Yazı üstte"], ["bottom", "Yazı altta"]]} />
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-[0.8125rem]">Logo ve kulüp adı</span>
+                <input type="checkbox" checked={!post.noBrand} onChange={(e) => put("noBrand", !e.target.checked)} className="size-5 accent-[var(--acc)]" />
+              </label>
               <label className="flex items-center justify-between gap-3">
                 <span className="text-[0.8125rem]">Başlık görselde</span>
                 <input type="checkbox" checked={!post.noHead} onChange={(e) => put("noHead", !e.target.checked)} className="size-5 accent-[var(--acc)]" />

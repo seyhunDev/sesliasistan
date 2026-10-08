@@ -869,37 +869,39 @@ async function drawAfis(ctx, post, photo, W, H) {
     ctx.fillRect(0, 0, W, 420 + safeT);
   }
 
-  // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf)
-  const logo = await loadLogo();
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,.3)";
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.arc(lx + R, ly + R, R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  if (logo) {
-    ctx.clip();
-    ctx.drawImage(logo, lx + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+  // Üstte logo | kulüp adı (iki satır, aralıklı büyük harf); istenirse kapatılır (noBrand)
+  if (!post.noBrand) {
+    const logo = await loadLogo();
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.3)";
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(lx + R, ly + R, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    if (logo) {
+      ctx.clip();
+      ctx.drawImage(logo, lx + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+    }
+    ctx.restore();
+    const dx = lx + R * 2 + 36;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.fillRect(dx, ly + R - 44, 2, 88);
+    ctx.fillStyle = "#ffffff";
+    if (photo) {
+      ctx.shadowColor = "rgba(0,0,0,.4)";
+      ctx.shadowBlur = 10;
+    }
+    ctx.font = `700 37px ${FONT}`;
+    if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
+    ctx.textBaseline = "middle";
+    ctx.fillText("DİKİLİ YELKEN", dx + 34, ly + R - 23);
+    ctx.fillText("SPOR KULÜBÜ", dx + 34, ly + R + 25);
+    if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+    ctx.restore();
   }
-  ctx.restore();
-  const dx = lx + R * 2 + 36;
-  ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,.55)";
-  ctx.fillRect(dx, ly + R - 44, 2, 88);
-  ctx.fillStyle = "#ffffff";
-  if (photo) {
-    ctx.shadowColor = "rgba(0,0,0,.4)";
-    ctx.shadowBlur = 10;
-  }
-  ctx.font = `700 37px ${FONT}`;
-  if ("letterSpacing" in ctx) ctx.letterSpacing = "3px";
-  ctx.textBaseline = "middle";
-  ctx.fillText("DİKİLİ YELKEN", dx + 34, ly + R - 23);
-  ctx.fillText("SPOR KULÜBÜ", dx + 34, ly + R + 25);
-  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
-  ctx.restore();
 
   // Yazı bloğu
   const c = { tag: post.tag, ink: "#ffffff", accent: mood.accent, tagBg: mood.tagBg, tagInk: mood.tagInk };
@@ -960,35 +962,37 @@ export async function drawPost(canvas, post, photo) {
     decor(ctx, W, H, top, light ? "rgba(31,90,75,.1)" : "rgba(255,255,255,.08)", post.kind);
   }
 
-  // Logo + kulüp adı (yazının karşı köşesinde)
-  const logo = await loadLogo();
-  const ly = top ? H - PAD - 104 - safeB : PAD - 20 + safeT;
-  const R = 52;
-  ctx.save();
-  if (photo) {
-    ctx.shadowColor = "rgba(0,0,0,.35)";
-    ctx.shadowBlur = 14;
+  // Logo + kulüp adı (yazının karşı köşesinde); istenirse kapatılır (noBrand)
+  if (!post.noBrand) {
+    const logo = await loadLogo();
+    const ly = top ? H - PAD - 104 - safeB : PAD - 20 + safeT;
+    const R = 52;
+    ctx.save();
+    if (photo) {
+      ctx.shadowColor = "rgba(0,0,0,.35)";
+      ctx.shadowBlur = 14;
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(L + R, ly + R, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    if (logo) {
+      ctx.clip();
+      ctx.drawImage(logo, L + 6, ly + 6, R * 2 - 12, R * 2 - 12);
+    }
+    ctx.restore();
+    ctx.save();
+    if (photo) {
+      ctx.shadowColor = "rgba(0,0,0,.45)";
+      ctx.shadowBlur = 12;
+    }
+    ctx.fillStyle = light ? "#123c33" : "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.font = `700 30px ${FONT}`;
+    ctx.fillText(CLUB, L + R * 2 + 24, ly + R);
+    ctx.restore();
   }
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.arc(L + R, ly + R, R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  if (logo) {
-    ctx.clip();
-    ctx.drawImage(logo, L + 6, ly + 6, R * 2 - 12, R * 2 - 12);
-  }
-  ctx.restore();
-  ctx.save();
-  if (photo) {
-    ctx.shadowColor = "rgba(0,0,0,.45)";
-    ctx.shadowBlur = 12;
-  }
-  ctx.fillStyle = light ? "#123c33" : "#ffffff";
-  ctx.textBaseline = "middle";
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText(CLUB, L + R * 2 + 24, ly + R);
-  ctx.restore();
 
   // Yazı bloğu: Kart ve Bant'ta kutu/şerit içinde, Klasik'te doğrudan zeminde. Sığmazsa her şey birlikte küçülür.
   const inset = style === "kart" ? 52 : 0;
