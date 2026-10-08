@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { authFetch } from "@/lib/authFetch";
 import { useToast } from "@/components/ui/ToastProvider";
 import { dmId, toMs, useChat } from "@/features/chat/ChatProvider";
 import { micClosed, micOpening } from "@/lib/speech/audioSession";
@@ -18,6 +19,21 @@ import { routeSupported, setRoute } from "./route";
 
 const Ctx = createContext(null);
 const AUDIO = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
+
+// TURN bilgisi (/api/turn): 11 saat bellekte; alınamazsa yalnız STUN (Wi-Fi'de çoğu zaman yeter)
+let ice = { at: 0, list: null };
+async function iceServers() {
+  if (ice.list && Date.now() - ice.at < 11 * 3600e3) return ice.list;
+  try {
+    const r = await authFetch("/api/turn", { method: "POST", signal: AbortSignal.timeout?.(4000) });
+    const j = r.ok ? await r.json() : null;
+    if (Array.isArray(j?.iceServers) && j.iceServers.length) {
+      ice = { at: Date.now(), list: j.iceServers };
+      return ice.list;
+    }
+  } catch {}
+  return ICE_SERVERS;
+}
 
 export function CallProvider({ children }) {
   const toast = useToast();
@@ -113,6 +129,7 @@ export function CallProvider({ children }) {
   const connect = useCallback(
     async (id, peer) => {
       micOpening();
+      const servers = iceServers(); // mikrofon açılırken paralel
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia(AUDIO);
@@ -120,7 +137,7 @@ export function CallProvider({ children }) {
         micClosed();
         throw e;
       }
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const pc = new RTCPeerConnection({ iceServers: await servers });
       Object.assign(s.current, { stream, pc, pendingIce: [], ownIce: [], docReady: false });
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
       pc.ontrack = (e) => {
