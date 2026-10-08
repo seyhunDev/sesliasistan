@@ -242,6 +242,8 @@ export function cleanPost(p = {}) {
     zoom: Math.max(100, Math.min(250, Math.round(Number(p.zoom ?? 100)) || 100)),
     shade: Math.max(0, Math.min(100, Math.round(Number(p.shade ?? 55)))),
     hasPhoto: !!p.hasPhoto,
+    // Kullanılmış gönderi arşive kaldırılır: listeden çıkar, Arşiv sekmesinde durur
+    archived: !!p.archived,
     thumb,
   };
 }

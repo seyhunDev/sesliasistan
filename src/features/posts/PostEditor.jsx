@@ -71,7 +71,7 @@ function legacyCopy(t) {
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onRaces, onAthletes }) {
+export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onArchive, onRaces, onAthletes }) {
   const toast = useToast();
   // Yeni gönderi son seçilen tasarımla (Klasik / Modern) açılır
   const [start] = useState(() => {
@@ -476,6 +476,20 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     setP((x) => reauto(x, { ...x, day: d.id, year: d.year }));
     const mine = post.caption && post.caption !== autoCap.current;
     if (!mine) write({ ...next, caption: "" }).catch(() => {});
+  };
+
+  // Arşive kaldır / çıkar: değişiklikler de kaydedilir, sonra listeye dönülür
+  const arc = async () => {
+    if (!canvas.current) return;
+    setBusy("arc");
+    try {
+      const archived = !post.archived;
+      await onSave({ ...post, archived, id: pid, thumb: thumbOf(canvas.current) }, photoDirty ? photo : undefined);
+      onArchive(archived);
+    } catch {
+      setErr(post.archived ? "Arşivden çıkarılamadı" : "Arşive kaldırılamadı");
+      setBusy("");
+    }
   };
 
   const del = async () => {
@@ -937,6 +951,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           <Icon name="check" className="size-5" />
           {!dirty && pid ? "Kaydedildi" : "Kaydet"}
         </Button>
+        {pid && onArchive && (
+          <Button variant="ghost" onClick={arc} loading={busy === "arc"} disabled={!!busy}>
+            <Icon name="archive" className="size-5" />
+            {post.archived ? "Arşivden çıkar" : "Arşive kaldır"}
+          </Button>
+        )}
         {pid && (
           <Button variant="ghost" onClick={del} loading={busy === "del"} disabled={!!busy} className="text-rec">
             <Icon name="trash" className="size-5" />

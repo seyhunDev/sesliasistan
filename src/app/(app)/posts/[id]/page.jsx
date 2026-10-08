@@ -70,6 +70,11 @@ function Post({ orgId, uid }) {
     goBack(router, "/posts");
   };
 
+  const onArchive = (archived) => {
+    toast(archived ? "Gönderi arşive kaldırıldı" : "Gönderi arşivden çıkarıldı");
+    goBack(router, "/posts");
+  };
+
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title={id === "new" ? "Yeni gönderi" : "Gönderi"} back="/posts" />
@@ -78,7 +83,7 @@ function Post({ orgId, uid }) {
       ) : !state ? (
         <Loading label="Gönderi yükleniyor" />
       ) : (
-        <PostEditor start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
+        <PostEditor start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
       )}
     </main>
   );
