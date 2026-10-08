@@ -1179,3 +1179,22 @@ group("Plan detay işlemleri")([
   ["ertele", { desc: "tarih ve bitiş 1 gün ileri, ay sonu", fn: () => JSON.stringify(PA.postponePatch({ date: "2026-10-31", endDate: "2026-11-02" })), ok: (r) => r === '{"date":"2026-11-01","endDate":"2026-11-03"}' }],
   ["ertele tek gün", { desc: "bitiş eklenmez", fn: () => JSON.stringify(PA.postponePatch({ date: "2026-10-06" }, 7)), ok: (r) => r === '{"date":"2026-10-13"}' }],
 ]);
+
+// Sesli arama 1. adım (src/lib/call.js): kimler arayabilir, durum yazıları, süre
+const CL = await import("@/lib/call");
+group("Sesli arama")([
+  ["ana hesap ↔ çalışan", F("aranır", () => CL.canCall("owner", "staff") && CL.canCall("staff", "owner"))],
+  ["çalışan ↔ çalışan, aile ↔ aile", F("aranır", () => CL.canCall("staff", "staff") && CL.canCall("family", "family"))],
+  ["sporcu tarafı", F("şimdilik aranmaz", () => !CL.canCall("owner", "athlete") && !CL.canCall("staff", "parent") && !CL.canCall("student", "staff"))],
+  ["çalışan ↔ aile", F("yazışamadığı için aranmaz", () => !CL.canCall("staff", "family"))],
+  ["süre", F("0:07, 3:25, 1:02:09", () => CL.durationText(7e3) === "0:07" && CL.durationText(205e3) === "3:25" && CL.durationText(3729e3) === "1:02:09")],
+  ["arayan çalıyor", F("Aranıyor…", () => CL.callLabel({ status: "ringing", role: "caller" }) === "Aranıyor…")],
+  ["aranan çalıyor", F("Seni arıyor", () => CL.callLabel({ status: "ringing", role: "callee" }) === "Seni arıyor")],
+  ["bağlandı", F("süre yazar", () => CL.callLabel({ status: "active", conn: "connected", ms: 65e3 }) === "1:05")],
+  ["bağlanıyor", F("Bağlanıyor…", () => CL.callLabel({ status: "active", conn: "checking" }) === "Bağlanıyor…")],
+  ["reddedildi", F("arayana Meşgul", () => CL.callLabel({ status: "declined", role: "caller" }) === "Meşgul")],
+  ["açılmadı", F("arayana Cevap yok, arananan Cevapsız arama", () => CL.callLabel({ status: "missed", role: "caller" }) === "Cevap yok" && CL.callLabel({ status: "missed", role: "callee" }) === "Cevapsız arama")],
+  ["eski çalan kayıt", F("45 sn önceki çalmaz, 10 sn önceki çalar", () => !CL.ringingFresh({ status: "ringing", atMs: 1e6 }, 1e6 + 45e3) && CL.ringingFresh({ status: "ringing", atMs: 1e6 }, 1e6 + 10e3))],
+  ["bitmiş durumlar", F("declined/missed/ended/failed biter", () => ["declined", "missed", "ended", "failed"].every(CL.isOver) && !CL.isOver("active") && !CL.isOver("ringing"))],
+  ["mikrofon izni", F("izin açıklaması", () => /izni yok/.test(CL.micError({ name: "NotAllowedError" })))],
+]);

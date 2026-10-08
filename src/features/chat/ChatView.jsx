@@ -14,6 +14,8 @@ import { sendErrorText, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
+import { canCall } from "@/lib/call";
+import { useCall } from "@/features/call/CallProvider";
 import { authFetch } from "@/lib/authFetch";
 import { goBack } from "@/lib/navTrail";
 
@@ -75,8 +77,9 @@ const toneOf = (uid = "") => NAME_TONES[[...uid].reduce((a, c) => a + c.charCode
 export function ChatView({ cid }) {
   const router = useRouter();
   const toast = useToast();
-  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, edit, pin, ready } = useChat();
+  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, edit, pin, ready, myKind } = useChat();
   const { setViewing } = useData();
+  const { startCall, busy } = useCall() || {};
   const now = useNow(2000);
 
   // Sohbet: listede yoksa (henüz mesajlaşılmamış birebir sohbet) boş olarak açılır; ilk mesajla oluşur
@@ -400,6 +403,11 @@ export function ChatView({ cid }) {
               {sub && <small className={`block truncate text-[0.75rem] leading-tight ${typers.length || sub === "çevrimiçi" ? "font-medium text-acc" : "text-mut"}`}>{sub}</small>}
             </span>
           </button>
+          {chat.type === "dm" && otherP && startCall && canCall(myKind, otherP.role === "owner" ? "owner" : kindOf(otherP)) && (
+            <button type="button" onClick={() => startCall(chat.other)} disabled={busy} aria-label="Sesli ara" className="grid size-10 shrink-0 place-items-center rounded-full text-acc active:bg-line disabled:opacity-40">
+              <Icon name="phone" className="size-5" />
+            </button>
+          )}
           <button type="button" onClick={() => setInfo(true)} aria-label="Sohbet ayarları" className="grid size-10 shrink-0 place-items-center rounded-full text-mut active:bg-line">
             <Icon name="sliders" className="size-5" />
           </button>

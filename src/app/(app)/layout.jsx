@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { DataProvider } from "@/features/data/DataProvider";
 import { ChatProvider } from "@/features/chat/ChatProvider";
+import { CallProvider } from "@/features/call/CallProvider";
 import { AddProvider } from "@/features/add/AddProvider";
 import { BirthdayProvider } from "@/features/birthdays/BirthdayProvider";
 import { OpenFromUrl } from "@/features/add/OpenFromUrl";
@@ -52,6 +53,7 @@ export default function AppLayout({ children }) {
       <TtsProvider>
         <DataProvider>
          <ChatProvider>
+         <CallProvider>
           <ReceiptProvider>
             <AddProvider>
              <BirthdayProvider>
@@ -73,6 +75,7 @@ export default function AppLayout({ children }) {
              </BirthdayProvider>
             </AddProvider>
           </ReceiptProvider>
+         </CallProvider>
          </ChatProvider>
         </DataProvider>
       </TtsProvider>
