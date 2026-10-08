@@ -33,7 +33,9 @@ export async function recordCall(uid, body) {
   if (!/^[A-Za-z0-9]{10,40}$/.test(id)) return { error: "Geçersiz arama" };
   const db = adminDb();
   const callRef = db.collection("orgs").doc(org).collection("calls").doc(id);
-  const st = { sent: n(body.sent, 5e9), recv: n(body.recv, 5e9), relay: !!body.relay, sec: n(body.sec, 86400) };
+  // turn: bu telefon TURN bilgisi alabildi mi; types: bulduğu ağ adresi türleri (host, srflx, relay); ok: bağlandı mı
+  const types = [].concat(body?.types || []).filter((t) => ["host", "srflx", "prflx", "relay"].includes(t));
+  const st = { sent: n(body.sent, 5e9), recv: n(body.recv, 5e9), relay: !!body.relay, sec: n(body.sec, 86400), turn: !!body.turn, types, ok: body.ok !== false };
   const bytes = st.sent + st.recv;
   const relayBytes = st.relay ? bytes : 0;
   const res = await db.runTransaction(async (tx) => {
@@ -51,8 +53,8 @@ export async function recordCall(uid, body) {
       {
         month: monthIn(),
         org,
-        // Arama sayısı ve süre bir kez (arayanın ölçümüyle); bayt iki tarafın toplamı
-        ...(c.from === uid ? { calls: FieldValue.increment(1), sec: FieldValue.increment(st.sec) } : {}),
+        // Arama sayısı ve süre bir kez (arayanın ölçümüyle, yalnız bağlanan arama); bayt iki tarafın toplamı
+        ...(c.from === uid && st.ok ? { calls: FieldValue.increment(1), sec: FieldValue.increment(st.sec) } : {}),
         bytes: FieldValue.increment(bytes),
         relayBytes: FieldValue.increment(relayBytes),
         ...(step && !u[`warn${step}`] ? { [`warn${step}`]: true } : {}),

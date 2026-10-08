@@ -12,6 +12,8 @@ export function CallScreen({ call, name, canRoute, onAccept, onDecline, onHangup
   const ms = call.startMs ? Math.max(0, now.getTime() - call.startMs) : 0;
   const incoming = call.role === "callee" && call.status === STATUS.ringing && !call.done;
   const live = call.status === STATUS.active && !call.done;
+  // Arayan taraf çalarken de sessize alma ve hoparlör seçilebilir (cevap beklenmez)
+  const controls = live || (call.role === "caller" && call.status === STATUS.ringing && !call.done);
   const label = callLabel({ status: call.status, role: call.role, conn: call.conn, ms, retrying: call.retrying });
 
   if (call.mini && live)
@@ -42,7 +44,7 @@ export function CallScreen({ call, name, canRoute, onAccept, onDecline, onHangup
       </div>
       <h1 className="mt-6 max-w-full truncate text-[1.75rem] font-semibold tracking-tight">{name}</h1>
       <p className={`mt-1.5 text-[1rem] tabular-nums ${call.retrying ? "text-amber-200" : "text-white/75"}`}>{label}</p>
-      {live && call.muted && <p className="mt-3 rounded-full bg-white/10 px-3 py-1 text-[0.8125rem] text-white/80">Mikrofonun kapalı</p>}
+      {controls && call.muted && <p className="mt-3 rounded-full bg-white/10 px-3 py-1 text-[0.8125rem] text-white/80">Mikrofonun kapalı</p>}
 
       <div className="mt-auto flex w-full max-w-[21rem] items-end justify-around">
         {incoming ? (
@@ -52,8 +54,8 @@ export function CallScreen({ call, name, canRoute, onAccept, onDecline, onHangup
           </>
         ) : (
           <>
-            {live && <Round label={call.muted ? "Sesi aç" : "Sessize al"} onClick={onMute} className={call.muted ? "bg-white text-deep" : "bg-white/15"} icon={call.muted ? "mute" : "mic"} />}
-            {live && canRoute && <Round label={call.speaker ? "Hoparlör açık" : "Hoparlör"} onClick={onSpeaker} className={call.speaker ? "bg-white text-deep" : "bg-white/15"} icon="volume" />}
+            {controls && <Round label="Sessize al" on={call.muted} onClick={onMute} className={call.muted ? "bg-white text-deep" : "bg-white/15"} icon={call.muted ? "mute" : "mic"} />}
+            {controls && canRoute && <Round label="Hoparlör" on={call.speaker} onClick={onSpeaker} className={call.speaker ? "bg-[#30a46c]" : "bg-white/15"} icon="volume" />}
             <Round label={call.done ? "Kapat" : "Bitir"} onClick={onHangup} className="bg-[#e5484d]" icon={call.done ? "x" : "phone"} rotate={!call.done} />
           </>
         )}
@@ -62,13 +64,18 @@ export function CallScreen({ call, name, canRoute, onAccept, onDecline, onHangup
   );
 }
 
-function Round({ label, onClick, className, icon, rotate }) {
+// Düğme: yuvarlak, altında tek satır ad ve (açık/kapalı düğmelerde) "Açık" satırı. Satırlar her düğmede aynı yüksekliktedir,
+// açınca düğme yerinden kaymaz.
+function Round({ label, onClick, className, icon, rotate, on }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-20 flex-col items-center gap-2 text-[0.8125rem] font-medium text-white/85">
-      <span className={`grid size-[4.25rem] place-items-center rounded-full shadow-lg active:scale-95 ${className}`}>
+    <button type="button" onClick={onClick} aria-pressed={on === undefined ? undefined : !!on} className="flex w-20 flex-col items-center gap-2 text-[0.8125rem] font-medium text-white/85">
+      <span className={`grid size-[4.25rem] place-items-center rounded-full shadow-lg transition-colors active:scale-95 ${className}`}>
         <Icon name={icon} className={`size-7 ${rotate ? "rotate-[135deg]" : ""}`} />
       </span>
-      {label}
+      <span className="flex flex-col items-center leading-tight">
+        <span className="whitespace-nowrap">{label}</span>
+        <span className={`text-[0.75rem] font-semibold text-[#6ee7a8] ${on ? "" : "invisible"}`}>Açık</span>
+      </span>
     </button>
   );
 }
