@@ -59,3 +59,13 @@ export function startRing(kind = "in") {
     } catch {}
   };
 }
+
+// Arama bitince kısa iki ton
+export function endTone() {
+  const c = audioCtx();
+  if (!c) return;
+  c.resume?.().catch(() => {});
+  const t = c.currentTime + 0.05;
+  beep(c, [480], t, 0.18, 0.1);
+  beep(c, [360], t + 0.25, 0.25, 0.1);
+}

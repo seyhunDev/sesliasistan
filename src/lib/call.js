@@ -5,6 +5,8 @@ import { canTalk, isAthleteSide } from "@/lib/kinds";
 
 export const RING_MS = 30e3; // bu sürede açılmazsa cevapsız
 export const STALE_MS = 40e3; // bundan eski "çalıyor" kaydı yok sayılır (kapanmış uygulamadan kalan)
+export const RETRY_MS = 3e3; // bağlantı kopunca bu kadar bekleyip yeniden kurmayı dene
+export const LOST_MS = 25e3; // kopan bağlantı bu sürede düzelmezse arama biter
 export const STATUS = { ringing: "ringing", active: "active", declined: "declined", missed: "missed", ended: "ended", failed: "failed" };
 // Şimdilik yalnız STUN (2. adımda TURN eklenecek; mobil hatta bazen bağlanamaz)
 export const ICE_SERVERS = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
@@ -27,9 +29,9 @@ export function durationText(ms) {
 }
 
 // Arama ekranındaki durum yazısı
-export function callLabel({ status, role, conn, ms }) {
+export function callLabel({ status, role, conn, ms, retrying }) {
   if (status === STATUS.ringing) return role === "caller" ? "Aranıyor…" : "Seni arıyor";
-  if (status === STATUS.active) return conn === "connected" ? durationText(ms) : conn === "failed" ? "Bağlanamadı" : "Bağlanıyor…";
+  if (status === STATUS.active) return conn === "connected" ? durationText(ms) : retrying ? "Yeniden bağlanıyor…" : "Bağlanıyor…";
   if (status === STATUS.declined) return role === "caller" ? "Meşgul" : "Reddedildi";
   if (status === STATUS.missed) return role === "caller" ? "Cevap yok" : "Cevapsız arama";
   if (status === STATUS.failed) return "Bağlanamadı";
@@ -43,4 +45,11 @@ export function micError(e) {
   if (n === "NotFoundError") return "Mikrofon bulunamadı.";
   if (n === "NotReadableError") return "Mikrofon başka bir uygulamada kullanılıyor.";
   return "Mikrofon açılamadı.";
+}
+
+// Arama bitince sohbete yazılan satır (arayan yazar). notify: karşı tarafa bildirim gitsin mi (yalnız cevapsız)
+export function callLog(status, ms) {
+  if (status === STATUS.missed || status === STATUS.declined) return { text: "📞 Cevapsız sesli arama", notify: status === STATUS.missed };
+  if (status === STATUS.ended && ms > 0) return { text: `📞 Sesli arama · ${durationText(ms)}`, notify: false };
+  return null;
 }

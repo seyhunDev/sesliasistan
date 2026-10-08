@@ -93,7 +93,7 @@ service cloud.firestore {
 
       // ---- Sesli arama (src/lib/call.js) ----
       // Arama kaydını yalnız arayan ve aranan okur/yazar (ana hesap dahil başkası göremez). Arayan "çalıyor" olarak açar;
-      // sonra yalnız durum, cevap ve zaman alanları değişir. Sporcu/öğrenci/veli şimdilik arayamaz ve aranamaz.
+      // sonra yalnız durum, cevap, zaman ve yeniden bağlanma (offer, rev, arev) alanları değişir. Sporcu/öğrenci/veli şimdilik arayamaz ve aranamaz.
       match /calls/{callId} {
         function party(d) { return request.auth.uid == d.from || request.auth.uid == d.to; }
         function sameOrg(u) { return u == orgId || get(/databases/$(database)/documents/users/$(u)).data.get("orgId", "") == orgId; }
@@ -108,7 +108,7 @@ service cloud.firestore {
                       && sameOrg(request.resource.data.to)
                       && callOk(myKind(), kindOfUser(request.resource.data.to));
         allow update: if inOrg(orgId) && party(resource.data)
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "answer", "answeredAt", "endedAt", "endedBy"])
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "answer", "answeredAt", "endedAt", "endedBy", "offer", "rev", "arev"])
                       && request.resource.data.status in ["ringing", "active", "declined", "missed", "ended", "failed"];
         allow delete: if false;
         // Ağ adresleri (bağlantı kurulurken birkaç tane): yalnız aramanın iki tarafı, herkes kendi adına yazar

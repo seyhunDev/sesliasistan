@@ -4,23 +4,27 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { useToast } from "@/components/ui/ToastProvider";
-import { toMs, useChat } from "@/features/chat/ChatProvider";
-import { ICE_SERVERS, RING_MS, STATUS, isOver, micError, ringingFresh } from "@/lib/call";
+import { dmId, toMs, useChat } from "@/features/chat/ChatProvider";
+import { micClosed, micOpening } from "@/lib/speech/audioSession";
+import { ICE_SERVERS, LOST_MS, RETRY_MS, RING_MS, STATUS, callLog, isOver, micError, ringingFresh } from "@/lib/call";
 import { CallScreen } from "./CallScreen";
-import { startRing } from "./ring";
+import { endTone, startRing } from "./ring";
+import { routeSupported, setRoute } from "./route";
 
 // Uygulama içi sesli arama: gelen aramayı dinler (bana gelen ve çalan kayıt; boşken okuma yok), arama başlatır,
 // açar/reddeder/kapatır. Ses WebRTC ile doğrudan; kurulum Firestore'dan (src/lib/call.js'teki veri biçimi).
+// Bağlantı koparsa (Wi-Fi ↔ 4G, kısa kesinti) arayan taraf bağlantıyı yeniden kurar (ICE restart: yeni teklif rev ile,
+// cevap arev ile kayda yazılır); LOST_MS içinde düzelmezse arama biter. Arama bitince arayan sohbete satır yazar.
 
 const Ctx = createContext(null);
 const AUDIO = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
 
 export function CallProvider({ children }) {
   const toast = useToast();
-  const { orgId, uid, personName } = useChat() || {};
-  // call: { id, role: caller|callee, peer, status, conn, startMs (bağlandığı an), muted }
+  const { orgId, uid, personName, send } = useChat() || {};
+  // call: { id, role: caller|callee, peer, status, conn, startMs (bağlandığı an), muted, speaker, mini, retrying }
   const [call, setCall] = useState(null);
-  const s = useRef({}); // pc, stream, unsubs, timer, ring, wake, pendingIce
+  const s = useRef({}); // pc, stream, unsubs, timer, ring, wake, ice kuyrukları, rev/arev, kayıp zamanlayıcısı
   const audio = useRef(null);
   const callRef = useRef(null);
   // Durum hem ekrana (state) hem dinleyicilere (ref) aynı anda yazılır
@@ -32,27 +36,50 @@ export function CallProvider({ children }) {
 
   const callsCol = useMemo(() => (orgId ? collection(db, "orgs", orgId, "calls") : null), [orgId]);
 
-  // Her şeyi kapatır (mikrofon, bağlantı, dinleyiciler); ekran kısa süre son durumla kalır
-  const cleanup = useCallback((finalStatus) => {
-    const x = s.current;
-    x.ring?.();
-    x.unsubs?.forEach((u) => u());
-    clearTimeout(x.timer);
-    x.stream?.getTracks().forEach((t) => t.stop());
-    try {
-      x.pc?.close();
-    } catch {}
-    x.wake?.release?.().catch(() => {});
-    s.current = {};
-    if (audio.current) audio.current.srcObject = null;
-    if (finalStatus && callRef.current) {
-      const ended = { ...callRef.current, status: finalStatus, done: true };
-      put(ended);
-      setTimeout(() => callRef.current === ended && put(null), 1800);
-    } else put(null);
-  }, [put]);
+  // Arama bitince sohbete satır (yalnız arayan yazar): cevapsızda karşı tarafa bildirim de gider
+  const logToChat = useCallback(
+    (c, status) => {
+      if (!send || !c || c.role !== "caller" || c.logged) return;
+      const line = callLog(status, c.startMs ? Date.now() - c.startMs : 0);
+      if (!line) return;
+      c.logged = true;
+      const members = [uid, c.peer].sort();
+      send(dmId(uid, c.peer), line.text, { create: { type: "dm", members }, quiet: !line.notify }).catch?.(() => {});
+    },
+    [send, uid],
+  );
 
-  // Durum değişikliği yazar (kurallar yalnız durum ve cevap alanlarına izin verir)
+  // Her şeyi kapatır (mikrofon, bağlantı, dinleyiciler); ekran kısa süre son durumla kalır
+  const cleanup = useCallback(
+    (finalStatus) => {
+      const x = s.current;
+      const had = !!x.stream;
+      x.ring?.();
+      x.unsubs?.forEach((u) => u());
+      clearTimeout(x.timer);
+      clearTimeout(x.lost);
+      clearTimeout(x.retry);
+      x.stream?.getTracks().forEach((t) => t.stop());
+      try {
+        x.pc?.close();
+      } catch {}
+      x.wake?.release?.().catch(() => {});
+      s.current = {};
+      if (audio.current) audio.current.srcObject = null;
+      if (had) micClosed(); // ses oturumunu bırak (arka plandaki müzik devam edebilsin)
+      const c = callRef.current;
+      if (finalStatus && c) {
+        logToChat(c, finalStatus);
+        if (c.status === STATUS.active) endTone();
+        const ended = { ...c, status: finalStatus, done: true, mini: false };
+        put(ended);
+        setTimeout(() => callRef.current === ended && put(null), 1800);
+      } else put(null);
+    },
+    [put, logToChat],
+  );
+
+  // Durum değişikliği yazar (kurallar yalnız durum, cevap ve yeniden bağlanma alanlarına izin verir)
   const setStatus = useCallback(
     (id, status, extra = {}) => {
       if (!callsCol || !id) return Promise.resolve();
@@ -62,11 +89,37 @@ export function CallProvider({ children }) {
     },
     [callsCol, uid],
   );
+  const write = useCallback((id, p) => updateDoc(doc(callsCol, id), p).catch((e) => console.warn("[call] yazılamadı:", e.code)), [callsCol]);
+
+  // Arayan: bağlantıyı yeniden kur (yeni teklif, yeni ağ adresleri)
+  const restartIce = useCallback(
+    async (id) => {
+      const { pc } = s.current;
+      if (!pc || pc.signalingState !== "stable" || callRef.current?.role !== "caller") return;
+      try {
+        const rev = (s.current.rev || 0) + 1;
+        s.current.rev = rev;
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        await write(id, { offer: { type: offer.type, sdp: offer.sdp }, rev });
+      } catch (e) {
+        console.warn("[call] yeniden bağlanma başlatılamadı:", e);
+      }
+    },
+    [write],
+  );
 
   // Bağlantıyı kurar: mikrofon, eş bağlantısı, ağ adreslerinin alışverişi
   const connect = useCallback(
     async (id, peer) => {
-      const stream = await navigator.mediaDevices.getUserMedia(AUDIO);
+      micOpening();
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(AUDIO);
+      } catch (e) {
+        micClosed();
+        throw e;
+      }
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
       Object.assign(s.current, { stream, pc, pendingIce: [], ownIce: [], docReady: false });
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -90,12 +143,38 @@ export function CallProvider({ children }) {
       };
       pc.onconnectionstatechange = () => {
         const st = pc.connectionState;
-        if (st === "connected" && !callRef.current?.startMs) patch({ conn: st, startMs: Date.now() });
-        else patch({ conn: st });
-        if (st === "failed") {
-          setStatus(id, STATUS.failed);
-          cleanup(STATUS.failed);
+        const x = s.current;
+        if (st === "connected") {
+          clearTimeout(x.lost);
+          clearTimeout(x.retry);
+          x.lost = x.retry = null;
+          const first = !callRef.current?.startMs;
+          patch({ conn: st, retrying: false, ...(first ? { startMs: Date.now() } : {}) });
+          // İlk bağlantıda ses ahizeden (telefon görüşmesi gibi); hoparlör düğmeyle
+          if (first) setRoute(!!callRef.current?.speaker);
+          return;
         }
+        if (st === "disconnected" || st === "failed") {
+          if (!callRef.current?.startMs) {
+            // Hiç bağlanamadı (çoğu zaman mobil hat; TURN yok)
+            if (st === "failed") {
+              setStatus(id, STATUS.failed);
+              cleanup(STATUS.failed);
+            }
+            return;
+          }
+          patch({ conn: st, retrying: true });
+          // Arayan yeniden bağlanmayı başlatır: kopunca kısa bekleyip, çökünce hemen
+          if (!x.retry) x.retry = setTimeout(() => ((x.retry = null), restartIce(id)), st === "failed" ? 0 : RETRY_MS);
+          if (!x.lost)
+            x.lost = setTimeout(() => {
+              if (callRef.current?.id !== id || pc.connectionState === "connected") return;
+              setStatus(id, STATUS.failed);
+              cleanup(STATUS.failed);
+            }, LOST_MS);
+          return;
+        }
+        patch({ conn: st });
       };
       // Karşı tarafın ağ adresleri
       const un = onSnapshot(query(candsCol, where("by", "==", peer)), (snap) => {
@@ -113,34 +192,49 @@ export function CallProvider({ children }) {
       } catch {}
       return pc;
     },
-    [callsCol, uid, cleanup, setStatus, patch],
+    [callsCol, uid, cleanup, setStatus, patch, restartIce],
   );
 
-  // Arama kaydını izler (karşı taraf açtı, reddetti, kapattı)
+  // Arama kaydını izler (karşı taraf açtı, reddetti, kapattı, yeniden bağlanma)
   const watch = useCallback(
     (id) => {
       const un = onSnapshot(doc(callsCol, id), async (d) => {
         const c = d.data();
         if (!c) return;
-        const pc = s.current.pc;
-        if (c.answer && pc && !pc.currentRemoteDescription && callRef.current?.role === "caller") {
+        const x = s.current;
+        const pc = x.pc;
+        const role = callRef.current?.role;
+        // Arayan: cevap (ilk ya da yeniden bağlanmadaki)
+        if (role === "caller" && c.answer && pc && pc.signalingState === "have-local-offer" && (c.arev || 0) === (x.rev || 0)) {
           try {
             await pc.setRemoteDescription(c.answer);
-            s.current.addPending?.();
+            x.addPending?.();
           } catch (e) {
             console.warn("[call] cevap kurulamadı:", e);
           }
         }
+        // Aranan: yeniden bağlanma teklifi
+        if (role === "callee" && pc && (c.rev || 0) > (x.rev || 0) && c.offer) {
+          x.rev = c.rev;
+          try {
+            await pc.setRemoteDescription(c.offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await write(id, { answer: { type: answer.type, sdp: answer.sdp }, arev: c.rev });
+          } catch (e) {
+            console.warn("[call] yeniden bağlanma cevaplanamadı:", e);
+          }
+        }
         if (c.status === STATUS.active && callRef.current?.status === STATUS.ringing) {
-          s.current.ring?.();
-          clearTimeout(s.current.timer);
+          x.ring?.();
+          clearTimeout(x.timer);
           patch({ status: STATUS.active, conn: pc?.connectionState === "connected" ? "connected" : "connecting" });
         }
         if (isOver(c.status) && !callRef.current?.done) cleanup(c.status);
       });
       s.current.unsubs = [...(s.current.unsubs || []), un];
     },
-    [callsCol, cleanup, patch],
+    [callsCol, cleanup, patch, write],
   );
 
   // Ara
@@ -152,7 +246,7 @@ export function CallProvider({ children }) {
         return;
       }
       const ref = doc(callsCol);
-      put({ id: ref.id, role: "caller", peer, status: STATUS.ringing, conn: "new" });
+      put({ id: ref.id, role: "caller", peer, status: STATUS.ringing, conn: "new", speaker: false });
       // Kurulum sürerken "Bitir"e basıldıysa yarım kalanı kapat (karşı taraf boşuna çalmasın)
       const alive = () => callRef.current?.id === ref.id && !callRef.current.done;
       try {
@@ -205,7 +299,7 @@ export function CallProvider({ children }) {
             setStatus(c.id, STATUS.declined); // başka aramadayken gelen: meşgul
             continue;
           }
-          put({ id: c.id, role: "callee", peer: c.from, status: STATUS.ringing, conn: "new", offer: c.offer });
+          put({ id: c.id, role: "callee", peer: c.from, status: STATUS.ringing, conn: "new", offer: c.offer, speaker: false });
           s.current.ring = startRing("in");
           watch(c.id);
           s.current.timer = setTimeout(() => {
@@ -255,7 +349,7 @@ export function CallProvider({ children }) {
     if (c.done) return put(null);
     const st = c.status === STATUS.ringing && c.role === "caller" ? STATUS.missed : STATUS.ended;
     setStatus(c.id, st);
-    cleanup(STATUS.ended);
+    cleanup(st === STATUS.missed ? STATUS.missed : STATUS.ended);
   }, [setStatus, cleanup, put]);
 
   const toggleMute = useCallback(() => {
@@ -264,6 +358,28 @@ export function CallProvider({ children }) {
     if (t) t.enabled = !muted;
     patch({ muted });
   }, [patch]);
+  // Hoparlör / ahize (iPhone'da ses oturumu türüyle; destek yoksa düğme görünmez)
+  const toggleSpeaker = useCallback(() => {
+    const speaker = !callRef.current?.speaker;
+    setRoute(speaker);
+    patch({ speaker });
+  }, [patch]);
+  const setMini = useCallback((mini) => patch({ mini }), [patch]);
+
+  // Uygulamaya dönünce: ekran kilidi yeniden alınır, ses yeniden başlatılır (iPhone arka planda durdurabiliyor)
+  useEffect(() => {
+    const back = async () => {
+      if (document.visibilityState !== "visible" || !s.current.pc) return;
+      audio.current?.play?.().catch(() => {});
+      if (s.current.wake?.released !== false) {
+        try {
+          s.current.wake = await navigator.wakeLock?.request("screen");
+        } catch {}
+      }
+    };
+    document.addEventListener("visibilitychange", back);
+    return () => document.removeEventListener("visibilitychange", back);
+  }, []);
 
   // Uygulama kapanırken süren aramayı bitir (en iyi çaba)
   useEffect(() => {
@@ -280,7 +396,19 @@ export function CallProvider({ children }) {
     <Ctx.Provider value={value}>
       {children}
       <audio ref={audio} autoPlay playsInline className="hidden" />
-      {call && <CallScreen call={call} name={personName?.(call.peer) || "Kişi"} onAccept={accept} onDecline={decline} onHangup={hangup} onMute={toggleMute} />}
+      {call && (
+        <CallScreen
+          call={call}
+          name={personName?.(call.peer) || "Kişi"}
+          canRoute={routeSupported()}
+          onAccept={accept}
+          onDecline={decline}
+          onHangup={hangup}
+          onMute={toggleMute}
+          onSpeaker={toggleSpeaker}
+          onMini={setMini}
+        />
+      )}
     </Ctx.Provider>
   );
 }

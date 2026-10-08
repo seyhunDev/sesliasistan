@@ -1197,4 +1197,9 @@ group("Sesli arama")([
   ["eski çalan kayıt", F("45 sn önceki çalmaz, 10 sn önceki çalar", () => !CL.ringingFresh({ status: "ringing", atMs: 1e6 }, 1e6 + 45e3) && CL.ringingFresh({ status: "ringing", atMs: 1e6 }, 1e6 + 10e3))],
   ["bitmiş durumlar", F("declined/missed/ended/failed biter", () => ["declined", "missed", "ended", "failed"].every(CL.isOver) && !CL.isOver("active") && !CL.isOver("ringing"))],
   ["mikrofon izni", F("izin açıklaması", () => /izni yok/.test(CL.micError({ name: "NotAllowedError" })))],
+  ["kopan bağlantı", F("Yeniden bağlanıyor…", () => CL.callLabel({ status: "active", conn: "disconnected", retrying: true }) === "Yeniden bağlanıyor…")],
+  ["sohbete satır: cevapsız", F("bildirimli", () => { const l = CL.callLog("missed", 0); return l.text === "📞 Cevapsız sesli arama" && l.notify; })],
+  ["sohbete satır: reddedildi", F("cevapsız, bildirimsiz", () => { const l = CL.callLog("declined", 0); return l.text === "📞 Cevapsız sesli arama" && !l.notify; })],
+  ["sohbete satır: konuşuldu", F("süreyle, bildirimsiz", () => { const l = CL.callLog("ended", 192e3); return l.text === "📞 Sesli arama · 3:12" && !l.notify; })],
+  ["sohbete satır: bağlanamadı", F("yazılmaz", () => CL.callLog("failed", 0) === null && CL.callLog("ended", 0) === null)],
 ]);

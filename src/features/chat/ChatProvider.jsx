@@ -167,7 +167,7 @@ export function ChatProvider({ children }) {
 
   // Mesaj gönder: sohbet yoksa (ilk mesaj) oluşturulur; mesaj numarası (n) sayaçtan alınır, gönderen kendi mesajını okumuş sayılır
   const send = useCallback(
-    async (cid, text, { replyTo, create } = {}) => {
+    async (cid, text, { replyTo, create, quiet } = {}) => {
       const t = String(text || "").trim().slice(0, 4000);
       if (!t || !chatsCol) return false;
       const cref = chatRef(cid);
@@ -181,7 +181,7 @@ export function ChatProvider({ children }) {
           else tx.update(cref, { seq: n, last, [`read.${uid}`]: n, [`typing.${uid}`]: deleteField() });
           tx.set(mref, { by: uid, text: t, at: serverTimestamp(), n, ...(replyTo ? { replyTo: { id: replyTo.id, by: replyTo.by, text: String(replyTo.text || "").slice(0, 120) } } : {}) });
         });
-        authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "chat", chat: cid, mid: mref.id }) }).catch(() => {});
+        if (!quiet) authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "chat", chat: cid, mid: mref.id }) }).catch(() => {});
         return true;
       } catch (e) {
         lastErr = e.code || e.message || "";
