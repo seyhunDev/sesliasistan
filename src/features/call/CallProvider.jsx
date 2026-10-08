@@ -87,7 +87,7 @@ export function CallProvider({ children }) {
       const cur = callRef.current;
       if (x.pc && cur?.id && !cur.done) {
         const sec = cur.startMs ? Math.round((Date.now() - cur.startMs) / 1000) : 0;
-        const net = { turn: !!x.turn, types: [...(x.types || [])], ok: !!cur.startMs };
+        const net = { turn: !!x.turn, types: [...(x.types || [])], ok: !!cur.startMs, rx: x.rx || 0 };
         x.pc
           .getStats()
           .then((r) => {
@@ -178,9 +178,31 @@ export function CallProvider({ children }) {
         if (s.current.docReady) sendIce(c);
         else s.current.ownIce?.push(c);
       };
+      // Karşı tarafın ağ adresleri. Dinleme arama kaydı yazıldıktan sonra başlar: kurallar adres okumayı kayda bakarak
+      // izin verir; arayan kaydı yazmadan dinlemeye başlayınca izin reddediliyor ve dinleme sessizce kapanıyordu. Arayan
+      // karşının adreslerini hiç almayınca Wi-Fi'de yine bağlanıyor (karşı taraf ona ulaşabildiği için) ama mobil
+      // internette (TURN gereken her yerde) bağlanamıyordu.
+      const listen = () => {
+        const un = onSnapshot(
+          query(candsCol, where("by", "==", peer)),
+          (snap) => {
+            for (const ch of snap.docChanges()) {
+              if (ch.type !== "added") continue;
+              const c = ch.doc.data().c;
+              s.current.rx = (s.current.rx || 0) + 1;
+              if (pc.remoteDescription) pc.addIceCandidate(c).catch(() => {});
+              else s.current.pendingIce?.push(c);
+            }
+          },
+          (e) => console.warn("[call] karşı adresler okunamadı:", e.code),
+        );
+        s.current.unsubs = [...(s.current.unsubs || []), un];
+      };
       s.current.flushIce = () => {
+        if (s.current.docReady) return;
         s.current.docReady = true;
         (s.current.ownIce || []).splice(0).forEach(sendIce);
+        listen();
       };
       pc.onconnectionstatechange = () => {
         const st = pc.connectionState;
@@ -217,16 +239,6 @@ export function CallProvider({ children }) {
         }
         patch({ conn: st });
       };
-      // Karşı tarafın ağ adresleri
-      const un = onSnapshot(query(candsCol, where("by", "==", peer)), (snap) => {
-        for (const ch of snap.docChanges()) {
-          if (ch.type !== "added") continue;
-          const c = ch.doc.data().c;
-          if (pc.remoteDescription) pc.addIceCandidate(c).catch(() => {});
-          else s.current.pendingIce?.push(c);
-        }
-      });
-      s.current.unsubs = [...(s.current.unsubs || []), un];
       s.current.addPending = () => (s.current.pendingIce || []).splice(0).forEach((c) => pc.addIceCandidate(c).catch(() => {}));
       try {
         s.current.wake = await navigator.wakeLock?.request("screen"); // arama sürerken ekran kapanmasın
