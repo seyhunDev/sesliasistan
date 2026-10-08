@@ -2,6 +2,8 @@
 
 /* dark: önekli sınıflar koyu görünümde (html[data-theme="dark"]) çalışır, telefonun ayarına doğrudan bakmaz */
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+/* active: sınıfları kapalı: dokunma/kaydırma sırasında hiçbir öğe değişmez (kurala uymayan seçici) */
+@custom-variant active (&:where(.sa-no-active-variant));
 
 :root {
   /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı, deniz yeşili vurgu (koyusu: --deep) */
@@ -359,12 +361,10 @@ body[data-typing] [data-pagebar] {
   display: none;
 }
 
-/* Dokunma geri bildirimi: basılı tutulan düğme ve bağlantı hafifçe koyulaşır (her yerde; iPhone'da
-   NavProgress'teki touchstart dinleyicisiyle çalışır). Kendi büyüme/küçülme efekti olanlar da korunur. */
+/* Dokunma vurgusu yok (Seyhun: "kaydırırken elim nereye değerse onun arka planı değişiyor, gerek yok"):
+   basılıyken arka plan, renk, büyüklük değişmez. Tailwind'in active: sınıfları hiçbir öğede çalışmaz
+   (@custom-variant active aşağıda); düğmelerin geçiş süresi duruyor. */
 @layer base {
-  :where(button, a[href], [role="button"], summary):not(:disabled):active {
-    filter: brightness(0.92);
-  }
   :where(button, a[href], [role="button"], summary) {
     transition-property: filter, transform, background-color, color, opacity, box-shadow;
     transition-duration: 0.12s;

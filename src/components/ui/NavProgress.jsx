@@ -8,8 +8,8 @@ import { navArrived, navClick, navDone, navPhase, navPopped, navSubscribe, wrapR
 // başka sayfaya gidiyorsa hemen başlar, yeni sayfa açılınca dolup kaybolur; "gidiyor mu?" sorusu kalmaz.
 // Bütün geçişler kapsanır: bağlantılar (tıklama yakalanır) ve router.push/replace/back (navProgress.js).
 // Yeni açılan sayfa en üstten başlar (geri dönülen sayfa eski yerinde kalır).
-// Ayrıca iPhone'da :active (basılıyken koyulaşma, globals.css) her öğede çalışsın diye boş touchstart dinleyicisi.
-const noop = () => {};
+// Dokunma vurgusu yok: iPhone'da :active yalnız touchstart dinleyicisi varken çalıştığı için boş dinleyici eklenmez
+// (kaydırırken parmağın değdiği satır koyulaşıyordu).
 
 export function NavProgress() {
   const router = useRouter();
@@ -19,12 +19,10 @@ export function NavProgress() {
   useEffect(() => {
     wrapRouter(router);
     document.addEventListener("click", navClick, true);
-    document.addEventListener("touchstart", noop, { passive: true });
     window.addEventListener("popstate", navPopped);
     return () => {
       window.removeEventListener("popstate", navPopped);
       document.removeEventListener("click", navClick, true);
-      document.removeEventListener("touchstart", noop);
     };
   }, [router]);
 
