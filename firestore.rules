@@ -66,7 +66,7 @@ service cloud.firestore {
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
-        allow read, write: if isOwner(orgId) && col != "birthdays" && col != "chats";
+        allow read, write: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
       }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {
@@ -89,6 +89,37 @@ service cloud.firestore {
         // Çalışan silemez: kendi eklediği kayda silme isteği (deleteReq) yazar, ana hesap onaylarsa ana hesap siler.
         // İstisna: doğum günleri ve ders programı kişiye özel; çalışan kendi eklediğini kendisi siler.
         allow delete: if col in ["birthdays", "lessons"] && isStaff(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
+      }
+
+      // ---- Sesli arama (src/lib/call.js) ----
+      // Arama kaydını yalnız arayan ve aranan okur/yazar (ana hesap dahil başkası göremez). Arayan "çalıyor" olarak açar;
+      // sonra yalnız durum, cevap ve zaman alanları değişir. Sporcu/öğrenci/veli şimdilik arayamaz ve aranamaz.
+      match /calls/{callId} {
+        function party(d) { return request.auth.uid == d.from || request.auth.uid == d.to; }
+        function sameOrg(u) { return u == orgId || get(/databases/$(database)/documents/users/$(u)).data.get("orgId", "") == orgId; }
+        function callOk(a, b) { return talkOk(a, b) && !athleteSide(a) && !athleteSide(b); }
+        allow read: if inOrg(orgId) && party(resource.data);
+        allow create: if inOrg(orgId)
+                      && request.resource.data.keys().hasOnly(["from", "to", "kind", "status", "at", "offer"])
+                      && request.resource.data.from == request.auth.uid
+                      && request.resource.data.to is string && request.resource.data.to != request.auth.uid
+                      && request.resource.data.kind == "audio" && request.resource.data.status == "ringing"
+                      && request.resource.data.at == request.time
+                      && sameOrg(request.resource.data.to)
+                      && callOk(myKind(), kindOfUser(request.resource.data.to));
+        allow update: if inOrg(orgId) && party(resource.data)
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "answer", "answeredAt", "endedAt", "endedBy"])
+                      && request.resource.data.status in ["ringing", "active", "declined", "missed", "ended", "failed"];
+        allow delete: if false;
+        // Ağ adresleri (bağlantı kurulurken birkaç tane): yalnız aramanın iki tarafı, herkes kendi adına yazar
+        match /cands/{cand} {
+          function callNow() { return get(/databases/$(database)/documents/orgs/$(orgId)/calls/$(callId)).data; }
+          allow read: if inOrg(orgId) && party(callNow());
+          allow create: if inOrg(orgId) && party(callNow())
+                        && request.resource.data.keys().hasOnly(["by", "c"])
+                        && request.resource.data.by == request.auth.uid;
+          allow update, delete: if false;
+        }
       }
 
       // ---- Mesajlaşma ----
