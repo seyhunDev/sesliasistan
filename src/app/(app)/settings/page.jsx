@@ -11,6 +11,7 @@ import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
 import { UsageRow } from "@/features/settings/Usage";
+import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { TimingRow } from "@/features/settings/Timing";
 import { logout } from "@/lib/auth";
@@ -61,6 +62,7 @@ export default function SettingsPage() {
         <PasswordRow />
         <CalendarFeedRow />
         {owner && <UsageRow />}
+        {owner && <CallsRow />}
         {owner && <BackupRow />}
         <DeviceDataRow />
         <TimingRow />

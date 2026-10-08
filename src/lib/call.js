@@ -67,3 +67,47 @@ export function callLog(status, ms) {
   if (status === STATUS.ended && ms > 0) return { text: `📞 Sesli arama · ${durationText(ms)}`, notify: false };
   return null;
 }
+
+// ---- Kullanım takibi (Ayarlar › Aramalar) ----
+// Bir aramanın veri kullanımı RTCPeerConnection.getStats() listesinden: seçili bağlantı çiftinin gönderilen/alınan
+// baytı ve bu çiftte TURN (relay) kullanıldı mı. Çift bulunamazsa ses paketlerinin toplamı.
+export function pickStats(list) {
+  const all = Array.from(list || []);
+  const by = new Map(all.map((s) => [s.id, s]));
+  const tr = all.find((s) => s.type === "transport" && s.selectedCandidatePairId);
+  const pairs = all.filter((s) => s.type === "candidate-pair" && s.state === "succeeded");
+  const pair = (tr && by.get(tr.selectedCandidatePairId)) || pairs.filter((p) => p.nominated).sort((a, b) => (b.bytesSent || 0) + (b.bytesReceived || 0) - (a.bytesSent || 0) - (a.bytesReceived || 0))[0];
+  let sent = pair?.bytesSent || 0;
+  let recv = pair?.bytesReceived || 0;
+  if (!sent && !recv) {
+    for (const s of all) {
+      if (s.type === "outbound-rtp") sent += s.bytesSent || 0;
+      if (s.type === "inbound-rtp") recv += s.bytesReceived || 0;
+    }
+  }
+  const relay = !!pair && [by.get(pair.localCandidateId), by.get(pair.remoteCandidateId)].some((c) => c?.candidateType === "relay");
+  return { sent, recv, relay };
+}
+
+// 1.234.567 bayt → "1,2 MB"; 1 GB ve üstü GB
+export function mbText(bytes) {
+  const b = Math.max(0, bytes || 0);
+  if (b >= 1e9) return `${(b / 1e9).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} GB`;
+  return `${(b / 1e6).toLocaleString("tr-TR", { maximumFractionDigits: b < 1e7 ? 1 : 0 })} MB`;
+}
+
+// TURN kotası (ücretsiz kısım, varsayılan 1.000 GB): bu ekleme %80'i ya da sınırı geçirdi mi (bildirim için)
+export const TURN_LIMIT_GB = 1000;
+export function quotaStep(before, after, limitBytes) {
+  if (!(limitBytes > 0)) return null;
+  if (before < limitBytes && after >= limitBytes) return 100;
+  if (before < limitBytes * 0.8 && after >= limitBytes * 0.8) return 80;
+  return null;
+}
+
+// Aramanın konuşma süresi (açıldığı andan bittiği ana), ms
+export const talkMs = (c) => {
+  const a = c?.answeredAt ? Date.parse(c.answeredAt) : 0;
+  const e = c?.endedAt ? Date.parse(c.endedAt) : 0;
+  return a && e > a ? e - a : 0;
+};
