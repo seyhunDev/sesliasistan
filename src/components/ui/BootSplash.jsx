@@ -11,8 +11,8 @@ function setRoot(v) {
 }
 
 // Uygulamanın tek açılış ekranı: sunucu çiziminde de var (ilk karede boş ekran yok), yükleme aşamaları boyunca
-// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada sesle dalgalanan beş çubuk, altta yükselen ufuk;
-// bitince dalga büyüyüp ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
+// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada logo: sarı halka dolar, onay çizilir;
+// bitince halka tamamlanıp logo büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
 export function BootSplash() {
   const [phase, setPhase] = useState("on"); // on | out | off
 
@@ -46,19 +46,16 @@ export function BootSplash() {
   if (phase === "off") return null;
   return (
     <div className="boot" data-phase={phase} role="status" aria-label="Yükleniyor" aria-hidden={phase === "out" || undefined}>
-      {/* Ufuk: alttan yükselen deniz ve üstünde ses dalgası (logonun büyük, canlı hâli) */}
-      <svg className="boot-sea" viewBox="0 0 400 200" preserveAspectRatio="none" aria-hidden="true">
-        <path className="boot-sea-fill" d="M-20 120 Q200 30 420 120 L420 220 L-20 220 Z" />
-        <path className="boot-sea-line" d="M-20 120 Q200 30 420 120" pathLength="1" />
-      </svg>
       <div className="boot-mark">
-        <div className="boot-wave" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-          <i />
-        </div>
+        {/* Logo (public/logo.svg) zeminsiz: beyaz küre, dolan sarı halka, çizilen onay işareti */}
+        <svg className="boot-logo" viewBox="0 0 360 360" aria-hidden="true">
+          <circle className="boot-track" cx="180" cy="180" r="150" />
+          <g className="boot-spin">
+            <circle className="boot-ring" cx="180" cy="180" r="150" pathLength="1" />
+          </g>
+          <circle className="boot-disc" cx="180" cy="180" r="104" />
+          <path className="boot-check" d="M130 182 L166 216 L232 144" pathLength="1" />
+        </svg>
         <p className="boot-name">Sesli Asistan</p>
         <p className="boot-sub">Hazırlanıyor</p>
       </div>

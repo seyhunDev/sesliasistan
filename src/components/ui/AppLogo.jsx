@@ -1,4 +1,4 @@
-/** Uygulama logosu: deniz yeşili zeminde ufuk yayı ve üstünde ses dalgası (public/logo.svg) */
+/** Uygulama logosu: yeşil zeminde beyaz küre, çevresinde dolan sarı halka, ortada onay işareti (public/logo.svg) */
 export function AppLogo({ size = 56, className = "" }) {
   return (
     <img
