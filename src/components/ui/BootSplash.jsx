@@ -11,8 +11,8 @@ function setRoot(v) {
 }
 
 // Uygulamanın tek açılış ekranı: sunucu çiziminde de var (ilk karede boş ekran yok), yükleme aşamaları boyunca
-// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada logo: sarı halka dolar, onay çizilir;
-// bitince halka tamamlanıp logo büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
+// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada logo çizilir: ses dalgası onay işaretine döner;
+// yükleme sürerken hafifçe nefes alır, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
 export function BootSplash() {
   const [phase, setPhase] = useState("on"); // on | out | off
 
@@ -47,14 +47,13 @@ export function BootSplash() {
   return (
     <div className="boot" data-phase={phase} role="status" aria-label="Yükleniyor" aria-hidden={phase === "out" || undefined}>
       <div className="boot-mark">
-        {/* Logo (public/logo.svg) zeminsiz: beyaz küre, dolan sarı halka, çizilen onay işareti */}
-        <svg className="boot-logo" viewBox="0 0 360 360" aria-hidden="true">
-          <circle className="boot-track" cx="180" cy="180" r="150" />
-          <g className="boot-spin">
-            <circle className="boot-ring" cx="180" cy="180" r="150" pathLength="1" />
-          </g>
-          <circle className="boot-disc" cx="180" cy="180" r="104" />
-          <path className="boot-check" d="M130 182 L166 216 L232 144" pathLength="1" />
+        {/* Logo (public/logo.svg) zeminsiz: tek çizgi önce ses dalgası, sonra onay işareti; çizilerek gelir */}
+        <svg className="boot-logo" viewBox="120 300 790 400" aria-hidden="true">
+          <path
+            className="boot-line"
+            d="M160 560 C173 540 212 430 240 440 C268 450 301 615 330 620 C359 625 383 463 415 470 C447 477 502 628 520 660 L870 340"
+            pathLength="1"
+          />
         </svg>
         <p className="boot-name">Sesli Asistan</p>
         <p className="boot-sub">Hazırlanıyor</p>
