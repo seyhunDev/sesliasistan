@@ -4,18 +4,10 @@
       <stop offset="0" stop-color="#36907a"/>
       <stop offset="1" stop-color="#1d5545"/>
     </linearGradient>
-    <clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <g clip-path="url(#c)">
-    <path d="M-40 452 Q256 300 552 452 L552 560 L-40 560 Z" fill="#ffffff" fill-opacity=".13"/>
-    <path d="M-40 452 Q256 300 552 452" fill="none" stroke="#d4f7e9" stroke-width="8" stroke-opacity=".85"/>
-  </g>
-  <g fill="#ffffff">
-    <rect x="140" y="194" width="32" height="64" rx="16"/>
-    <rect x="190" y="166" width="32" height="120" rx="16"/>
-    <rect x="240" y="138" width="32" height="176" rx="16"/>
-    <rect x="290" y="166" width="32" height="120" rx="16"/>
-    <rect x="340" y="194" width="32" height="64" rx="16"/>
-  </g>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="30"/>
+  <path d="M256.0 106.0 A150 150 0 1 1 126.1 181.0" fill="none" stroke="#f6c445" stroke-width="30" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="104" fill="#ffffff"/>
+  <path d="M206 258 L242 292 L308 220" fill="none" stroke="#1f6b58" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
