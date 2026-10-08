@@ -8,3 +8,4 @@
 ## Sıradaki işler
 
 - Mobil internetle yeniden ara. Bağlanmazsa Ayarlar › Aramalar'da o aramanın altındaki kırmızı yazıyı yeni mesajla ver: "TURN alınamadı" → Netlify değişkenleri ya da Cloudflare anahtarı; "TURN adresi bulunamadı" → ağ TURN'ü engelliyor.
+- Ayarlar › Aramalar: açılıp ses bağlanmayan arama süreyle ("0:18 · veri yok") görünüyordu, çünkü süre açma-kapama arasından hesaplanıyor. Artık iki telefon da "bağlanmadı" bildirdiyse kırmızı "Ses bağlanamadı" ve altında her telefonun ağ durumu yazar; TURN alınıp adres bulunduğu hâlde bağlanamadıysa "TURN vardı, yine bağlanamadı" (`netNote`).

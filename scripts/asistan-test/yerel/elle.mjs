@@ -1224,6 +1224,6 @@ group("Sesli arama")([
   ["MB yazısı", F("1,2 MB, 45 MB, 1,5 GB", () => CL.mbText(1.234e6) === "1,2 MB" && CL.mbText(45.2e6) === "45 MB" && CL.mbText(1.5e9) === "1,5 GB")],
   ["kota uyarısı", F("%80 ve %100 bir kez", () => CL.quotaStep(790, 810, 1000) === 80 && CL.quotaStep(810, 820, 1000) === null && CL.quotaStep(990, 1001, 1000) === 100 && CL.quotaStep(10, 20, 0) === null)],
   ["konuşma süresi", F("açılıştan bitişe", () => CL.talkMs({ answeredAt: "2026-10-08T10:00:00Z", endedAt: "2026-10-08T10:03:12Z" }) === 192e3 && CL.talkMs({ endedAt: "2026-10-08T10:00:00Z" }) === 0)],
-  ["ağ durumu (bağlanamayan arama)", F("TURN yok / adres yok / sorun yok", () => CL.netNote({ turn: false, types: ["host"] }) === "TURN alınamadı" && CL.netNote({ turn: true, types: ["host", "srflx"] }) === "TURN adresi bulunamadı" && CL.netNote({ turn: true, types: ["relay"] }) === "" && CL.netNote({ sent: 1 }) === "")],
+  ["ağ durumu (bağlanamayan arama)", F("TURN yok / adres yok / sorun yok", () => CL.netNote({ turn: false, types: ["host"] }) === "TURN alınamadı" && CL.netNote({ turn: true, types: ["host", "srflx"] }) === "TURN adresi bulunamadı" && CL.netNote({ turn: true, types: ["relay"] }) === "" && CL.netNote({ turn: true, types: ["relay"], ok: false }) === "TURN vardı, yine bağlanamadı" && CL.netNote({ sent: 1 }) === "")],
   ["sohbete satır: bağlanamadı", F("yazılmaz", () => CL.callLog("failed", 0) === null && CL.callLog("ended", 0) === null)],
 ]);
