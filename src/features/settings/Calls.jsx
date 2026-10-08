@@ -70,20 +70,22 @@ export function CallsRow() {
                     const relay = st.some((s) => s.relay);
                     const ms = talkMs(c);
                     const at = c.at ? new Date(c.at) : null;
+                    // Açıldı ama ses bağlanmadı: iki telefon da "bağlanmadı" bildirdi (süre yalnız açma-kapama arası)
+                    const noSound = st.length > 0 && st.every((s) => s.ok === false);
                     // Bağlanamayan aramada her telefonun ağ durumu (TURN alındı mı)
-                    const notes = ms ? [] : Object.entries(c.stats || {}).map(([u, s]) => netNote(s) && `${name(u)}: ${netNote(s)}`).filter(Boolean);
+                    const notes = ms && !noSound ? [] : Object.entries(c.stats || {}).map(([u, s]) => netNote(s) && `${name(u)}: ${netNote(s)}`).filter(Boolean);
                     return (
                       <li key={c.id} className="py-2">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="min-w-0 truncate">
                             {name(c.from)} → {name(c.to)}
                           </span>
-                          <b className="shrink-0 tabular-nums">{ms ? durationText(ms) : STATUS_TEXT[c.status] || "—"}</b>
+                          <b className={`shrink-0 tabular-nums ${noSound ? "text-rec" : ""}`}>{noSound ? "Ses bağlanamadı" : ms ? durationText(ms) : STATUS_TEXT[c.status] || "—"}</b>
                         </div>
                         <div className="flex justify-between gap-2 text-[0.75rem] text-mut">
                           <span>{at ? at.toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</span>
                           <span className="tabular-nums">
-                            {bytes ? mbText(bytes) : ms ? "veri yok" : ""}
+                            {bytes ? mbText(bytes) : ms && !noSound ? "veri yok" : ""}
                             {relay ? " · TURN" : ""}
                           </span>
                         </div>

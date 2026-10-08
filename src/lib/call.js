@@ -119,5 +119,6 @@ export function netNote(st) {
   const types = st.types || [];
   if (!st.turn) return "TURN alınamadı";
   if (!types.includes("relay")) return "TURN adresi bulunamadı";
+  if (st.ok === false) return "TURN vardı, yine bağlanamadı";
   return "";
 }
