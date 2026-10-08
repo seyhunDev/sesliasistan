@@ -29,6 +29,12 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npx cap sync android
+      # Bildirimler: Firebase'den indirilen google-services.json, GOOGLE_SERVICES_JSON gizlisinde (depoya konmaz)
+      - name: Firebase ayarı
+        env:
+          GS: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GS" ]; then printf '%s' "$GS" > android/app/google-services.json; echo "bildirimler açık"; else echo "GOOGLE_SERVICES_JSON yok: bildirimsiz derleniyor"; fi
       # İsteğe bağlı: her derlemenin aynı imzayla çıkması için (telefonda üstüne kurulabilsin)
       # Mac'teki ~/.android/debug.keystore dosyasının base64 hali ANDROID_DEBUG_KEYSTORE gizlisine konur.
       - name: İmza anahtarı

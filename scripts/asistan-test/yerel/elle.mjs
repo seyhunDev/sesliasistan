@@ -32,6 +32,19 @@ group("Kendi bildirimi")([
   ["yalnız ortak telefon", F("hiç cihaz kalmaz", () => Object.keys(PD.otherDevices({ dA: {} }, new Set(["dA"]))).length === 0)],
 ]);
 
+// Android uygulaması bildirimi (fcmMessage.js): Web Push yükünden Firebase Cloud Messaging iletisi
+const FM = await import("@/lib/fcmMessage");
+group("Android bildirimi")([
+  ["başlık ve ayrıntı", F("başlık + gövde, sayfa adresi, kanal", () => {
+    const m = FM.fcmMessage("tok", JSON.stringify({ title: "Yeni görev: Motor yağı", body: "Son gün yarın\nAli verdi", tag: "t1", url: "/tasks", badge: 3 }), 3600);
+    return m.token === "tok" && m.notification.title === "Yeni görev: Motor yağı" && m.notification.body === "Son gün yarın · Ali verdi" && m.data.url === "/tasks" && m.data.tag === "t1" && m.android.ttl === 3600000 && m.android.notification.channelId === "genel" && m.android.notification.tag === "t1" && m.android.notification.notificationCount === 3 && m.android.collapseKey === "t1";
+  })],
+  ["yalnız gövde", F("gövde başlık olur", () => { const m = FM.fcmMessage("t", { body: "Bugün doğum günü: Ayşe" }); return m.notification.title === "Bugün doğum günü: Ayşe" && !m.notification.body && m.data.url === "/"; })],
+  ["bozuk yük", F("düz metin gövde sayılır", () => FM.fcmMessage("t", "merhaba").notification.title === "merhaba")],
+  ["boş yük", F("yedek metin, etiket yok", () => { const m = FM.fcmMessage("t", "{}"); return m.notification.title === "Yeni bildirimin var" && !m.data.tag && !m.android.notification.tag && !m.android.notification.notificationCount; })],
+  ["veri alanları metin", F("FCM data yalnız metin kabul eder", () => Object.values(FM.fcmMessage("t", { url: "/x", tag: 5 }).data).every((v) => typeof v === "string"))],
+]);
+
 // Yoklama ay raporu (attendanceReport.js)
 const AR = await import("@/features/athletes/attendanceReport");
 const ATH = [

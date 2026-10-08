@@ -195,6 +195,17 @@ public class DosyaPlugin extends Plugin {
         }
     }
 
+    // Bildirimler kurulu mu: google-services.json ile derlendiyse Firebase uygulama kimliği vardır.
+    // Yoksa bildirim eklentisi çağrılmaz (Firebase başlatılmadan kayıt olmaya çalışmak uygulamayı çökertir).
+    @PluginMethod
+    public void pushReady(PluginCall call) {
+        Context c = getContext();
+        boolean ok = c.getResources().getIdentifier("google_app_id", "string", c.getPackageName()) != 0;
+        JSObject r = new JSObject();
+        r.put("ready", ok);
+        call.resolve(r);
+    }
+
     // HTML'i Android'in yazdırma ekranına verir (PDF olarak kaydet de buradan)
     @PluginMethod
     public void print(PluginCall call) {

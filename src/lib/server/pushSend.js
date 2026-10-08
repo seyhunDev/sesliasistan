@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/server/admin";
 import { recordInbox } from "@/lib/inbox";
 import { otherDevices } from "@/lib/pushDevices";
+import { sendDevice } from "@/lib/server/sendDevice";
 
 export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
@@ -12,6 +13,7 @@ export const pushReady = () => !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && pr
 export function pushError(e) {
   const c = e?.statusCode;
   const b = String(e?.body || "");
+  if (b.startsWith("FCM")) return c === 410 ? "Bu telefonun bildirim kaydı bitmiş; uygulamada bildirimleri kapatıp yeniden aç." : `Android bildirimi gönderilemedi (${b.slice(4, 120)}).`;
   if (c === 404 || c === 410) return "Bu cihazın aboneliği bitmiş; bildirimleri bu cihazda kapatıp yeniden aç.";
   if (c === 403 || c === 401 || /vapid|jwt|BadJwtToken|VapidPkHashMismatch/i.test(b))
     return "Bildirim anahtarı uyuşmuyor: Netlify'daki VAPID anahtarları ile uygulamanın derlendiği anahtar aynı olmalı.";
@@ -42,7 +44,7 @@ export async function sendTo(uid, payload, skip) {
   await Promise.all(
     Object.entries(push).map(async ([key, sub]) => {
       try {
-        await webpush.sendNotification(sub, body, { TTL: 86400 });
+        await sendDevice(sub, body, { TTL: 86400 });
         if (sub.err) await ref.update({ [`push.${key}.err`]: FieldValue.delete() }).catch(() => {});
         sent++;
       } catch (e) {

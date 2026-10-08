@@ -7,6 +7,7 @@ import { duesText, runAutoDues } from "@/lib/duesAuto";
 import { invoiceText, runAutoInvoices } from "@/lib/invoices";
 import { movementsOf } from "@/lib/mailBoard";
 import { inboxAdd, inboxBadge } from "@/lib/inbox";
+import { deviceOk, sendDevice } from "@/lib/server/sendDevice";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,7 @@ export async function POST(request) {
   // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
   const inv = invoiceText(await runAutoInvoices(io, uid, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
 
-  const subs = Object.values(user.data.push || {}).filter((s) => s?.endpoint);
+  const subs = Object.values(user.data.push || {}).filter(deviceOk);
   let sent = 0;
   const errors = [];
   const msg = dues
@@ -74,7 +75,7 @@ export async function POST(request) {
     const payload = JSON.stringify({ ...msg, badge });
     await Promise.all(
       subs.map((s) =>
-        webpush.sendNotification(s, payload, { TTL: 6 * 3600 }).then(
+        sendDevice(s, payload, { TTL: 6 * 3600 }).then(
           () => sent++,
           (e) => errors.push(e.statusCode || String(e.message || e).slice(0, 80)), // geçersiz abonelikleri zamanlanmış görev temizler
         ),
