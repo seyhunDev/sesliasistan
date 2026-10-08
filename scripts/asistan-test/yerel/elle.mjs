@@ -328,6 +328,7 @@ group("Instagram tasarım")([
     PM.raceHeadline(null) === "" &&
     PM.autoOf({ kind: "duyuru", race: ONE }).headline.split(" ").length <= 4 &&
     !/TYF/.test(PM.autoOf({ kind: "duyuru", race: ONE }).headline))],
+  ["arşiv", F("gönderi arşivlenebilir, kayıtta kalır; eski gönderi arşivde değil", () => PM.cleanPost({ archived: true }).archived === true && PM.cleanPost({}).archived === false && PM.cleanPost({ archived: "x" }).archived === true)],
   ["başlık ve yazı boyu", F("varsayılan 100; başlık 60-150, alt satır 80-150, 5'er; başlık kaldırılabilir", () => {
     const a = PM.cleanPost({});
     const b = PM.cleanPost({ headSize: 200, subSize: 40, noHead: true });
