@@ -135,6 +135,8 @@ export function stepsOf(r) {
   const list = allSteps(r).filter((s) => !gone(r, s));
   return [...list.filter((s) => s.date).sort((a, b) => a.date.localeCompare(b.date)), ...list.filter((s) => !s.date)];
 }
+// Bütün iş sayısı (yapılan/çıkarılan dahil): yarış listesindeki hazırlık çubuğu için
+export const stepTotal = (r) => allSteps(r).length;
 // Listeden çıkarılan (ya da eskiden işaretlenen) iş sayısı ("geri getir" için)
 export const hiddenCount = (r) => allSteps(r).filter((s) => gone(r, s)).length;
 
