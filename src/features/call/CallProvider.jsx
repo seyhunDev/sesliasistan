@@ -10,7 +10,7 @@ import { micClosed, micOpening } from "@/lib/speech/audioSession";
 import { ICE_SERVERS, LOST_MS, RETRY_MS, RING_MS, STATUS, callLog, isOver, micError, pickStats, ringingFresh } from "@/lib/call";
 import { CallScreen } from "./CallScreen";
 import { endTone, startRing } from "./ring";
-import { routeSupported, setRoute } from "./route";
+import { routeSupported, setRoute, sinks } from "./route";
 
 // Uygulama içi sesli arama: gelen aramayı dinler (bana gelen ve çalan kayıt; boşken okuma yok), arama başlatır,
 // açar/reddeder/kapatır. Ses WebRTC ile doğrudan; kurulum Firestore'dan (src/lib/call.js'teki veri biçimi).
@@ -157,7 +157,9 @@ export function CallProvider({ children }) {
       }
       // Arama dışarıdan değil ahizeden: mikrofon açıldıktan sonra ses oturumu telefon görüşmesi kipine (hoparlör
       // seçildiyse hoparlöre) alınır; çalma sesi de buradan duyulur. Kurulum sırasında sessize alındıysa uygulanır.
-      setRoute(!!callRef.current?.speaker);
+      setRoute(!!callRef.current?.speaker, audio.current);
+      // Android: ahize/hoparlör ayrı çıkışsa düğme görünsün
+      sinks(audio.current).then((o) => o && patch({ canRoute: true }));
       if (callRef.current?.muted) stream.getAudioTracks().forEach((t) => (t.enabled = false));
       const got = await servers;
       const pc = new RTCPeerConnection({ iceServers: got.list });
@@ -214,7 +216,7 @@ export function CallProvider({ children }) {
           const first = !callRef.current?.startMs;
           patch({ conn: st, retrying: false, ...(first ? { startMs: Date.now() } : {}) });
           // İlk bağlantıda ses ahizeden (telefon görüşmesi gibi); hoparlör düğmeyle
-          if (first) setRoute(!!callRef.current?.speaker);
+          if (first) setRoute(!!callRef.current?.speaker, audio.current);
           return;
         }
         if (st === "disconnected" || st === "failed") {
@@ -415,7 +417,7 @@ export function CallProvider({ children }) {
   // Mikrofon henüz açılmadıysa yalnız tercih saklanır, açılınca uygulanır (önce yazmak mikrofonu bozuyordu)
   const toggleSpeaker = useCallback(() => {
     const speaker = !callRef.current?.speaker;
-    if (s.current.stream) setRoute(speaker);
+    if (s.current.stream) setRoute(speaker, audio.current);
     patch({ speaker });
   }, [patch]);
   const setMini = useCallback((mini) => patch({ mini }), [patch]);
@@ -454,7 +456,7 @@ export function CallProvider({ children }) {
         <CallScreen
           call={call}
           name={personName?.(call.peer) || "Kişi"}
-          canRoute={routeSupported()}
+          canRoute={routeSupported() || !!call.canRoute}
           onAccept={accept}
           onDecline={decline}
           onHangup={hangup}
