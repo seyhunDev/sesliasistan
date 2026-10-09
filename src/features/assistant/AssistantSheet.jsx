@@ -69,6 +69,7 @@ import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
 import { soon } from "@/lib/soon";
+import { fixVerbs } from "@/lib/speech/normalize";
 import { attRetry } from "@/lib/attAsk";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
@@ -959,7 +960,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
 
   async function run(t, viaVoice = false, fresh = false) {
-    const s = t.trim();
+    const s = fixVerbs(t.trim()); // ses tanımanın bozduğu iş fiilleri ("hazirla", "yarışı oluru")
     if (!s) return toast("Yaz veya mikrofona bas");
     timingStart(s, viaVoice);
     if (viaVoice) {
@@ -2753,8 +2754,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, lastReply, tts.speaking, booting, turns.length, workNow]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, text, lastReply, tts.speaking, booting, turns.length, workNow]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
@@ -2766,7 +2767,23 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     onAct?.({
       listen: stageListen,
       stop: () => sp.stop("send"),
-      cancel: () => sp.cancel(),
+      // Konuşma kutusu (Seyhun'un örneği): ■ dinlemeyi durdurur, söylenen kutuda kalır (gönderilmez); ↑ kutudakini gönderir;
+      // × dinlemeyi de kutudakini de siler. draft: kutuda bekleyen söz (yeniden konuşulursa başına eklenir)
+      edit: () => sp.stop("edit"),
+      send: () => {
+        const t = text.trim();
+        setText("");
+        if (t) run(t, true);
+      },
+      takeDraft: () => {
+        const t = text;
+        setText("");
+        return t;
+      },
+      cancel: () => {
+        sp.cancel();
+        setText("");
+      },
       abort: () => {
         sp.cancel();
         cancelRun();

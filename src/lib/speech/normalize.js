@@ -108,3 +108,23 @@ export function normalizeSpeech(text) {
   t = canonicalTime(t);
   return t.replace(/\s+/g, " ").replace(/\s+([.,!?])/g, "$1").trim();
 }
+
+// Ses tanımanın iş fiillerini bozması (Türkçe harfsiz ya da yanlış duyulmuş): "hazirla", "olustur", "gonder", "yarışı oluru"
+// (oluştur). Yalnız fiil kökleri ve kesin kalıplar düzelir; adlara ve başka kelimelere dokunulmaz. Görev listesi denetimi ve
+// yönlendirme bu düzeltilmiş metinle çalışır (Seyhun: "Atatürk Kupası yarışı oluru afişini hazirla ve … yoklamaya ekle"
+// yalnız yoklama yaptı, 2026-10-09).
+const VERB_FIX = [
+  [/(?<![\p{L}])hazirla(?=\p{L}*)/giu, "hazırla"],
+  [/(?<![\p{L}])olustur(?=\p{L}*)/giu, "oluştur"],
+  [/(?<![\p{L}])gonder(?=\p{L}*)/giu, "gönder"],
+  [/(?<![\p{L}])hatirlat(?=\p{L}*)/giu, "hatırlat"],
+  [/(?<![\p{L}])odedi(?=\p{L}*)/giu, "ödedi"],
+  [/(?<![\p{L}])katildi(?![\p{L}])/giu, "katıldı"],
+  // "yarışı oluru", "yarış oluşru", "kupası olustu": yarış/kupa adından sonra gelen bozuk "oluştur"
+  [/((?:yarış|yarışı|kupa|kupası|ayağı|regatta|regattası))\s+(?:oluru|oluşru|olusru|oluştu|olusturu|oluşturu)(?![\p{L}])/giu, "$1 oluştur"],
+];
+export function fixVerbs(text) {
+  let t = String(text || "");
+  for (const [re, to] of VERB_FIX) t = t.replace(re, to);
+  return t;
+}

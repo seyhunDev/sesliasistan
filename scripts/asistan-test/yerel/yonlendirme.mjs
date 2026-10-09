@@ -376,3 +376,18 @@ group("Sohbetteki yarış")([
     ["hızlı hata", { desc: "hata fırlatılır", fn: () => soon(Promise.reject(new Error("x")), 200).then(() => "ok", () => "err"), ok: (r) => r === "err" }],
   ]);
 }
+
+// Yanlış duyulmuş fiillerle çok işli cümle (Seyhun 2026-10-09: yalnız yoklama yapıldı)
+{
+  const { fixVerbs } = await import("@/lib/speech/normalize");
+  const { actCount } = await import("@/lib/taskPlan");
+  const { wantsPost } = await import("@/features/posts/postModel");
+  const ILAY = "Atatürk Kupası yarışı oluru afişini hazirla ve bugün İlay antrenmana katıldı. onu yoklamaya ekle";
+  group("Yanlış duyulan fiiller")([
+    [ILAY, { desc: "düzeltilir", fn: fixVerbs, ok: (r) => r.startsWith("Atatürk Kupası yarışı oluştur afişini hazırla") }],
+    [ILAY, { desc: "üç iş (yarış, afiş, yoklama)", fn: (s) => actCount(fixVerbs(s)), ok: (n) => n === 3 }],
+    [ILAY, { desc: "görev listesi: yarış, yoklama, gönderi", fn: (s) => localPlan(fixVerbs(s), flowOf)?.map((t) => t.kind).join(","), ok: (k) => ["race", "attendance", "post"].every((x) => k?.includes(x)) }],
+    ["afişini hazırla", { desc: "afiş gönderidir", fn: wantsPost, ok: (r) => r === true }],
+    ["GSİM oluru alındı", { desc: "yarış dışında 'oluru' değişmez", fn: fixVerbs, ok: (r) => r === "GSİM oluru alındı" }],
+  ]);
+}
