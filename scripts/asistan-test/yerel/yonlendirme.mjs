@@ -412,3 +412,12 @@ group("Sohbetteki yarış")([
     ["mustafa geldi mi antrenmana", { desc: "soru yoklama değil", fn: (s) => wantsAttendance(s), ok: (r) => r === false }],
   ]);
 }
+
+// Gerçek yapay zekanın yanlış türü (tam test 2026-10-09: "Yarın 10da antrenman planla" event geldi)
+{
+  const { cleanPlan } = await import("@/lib/taskPlan");
+  group("Görev listesi: yanlış tür düzeltmesi")([
+    ["Yarın 10da antrenman planla", { desc: "etkinlik değil, plan (other)", fn: (s) => cleanPlan({ tasks: [{ kind: "invoice", say: "Turkcell faturası ödendi" }, { kind: "event", say: s }] }).map((t) => t.kind).join(","), ok: (k) => k === "invoice,other" }],
+    ["Cumartesi kamp planla", { desc: "kamp etkinliktir", fn: (s) => cleanPlan({ tasks: [{ kind: "event", say: s }] })[0].kind, ok: (k) => k === "event" }],
+  ]);
+}

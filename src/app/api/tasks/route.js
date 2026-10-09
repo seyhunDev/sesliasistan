@@ -20,7 +20,8 @@ Aynı türden işler söylendiği sırada kalır. Bir iş başka bir işin sonuc
 Her iş için:
 - kind: işin türü (aşağıdaki listeden).
 - say: uygulamaya verilecek, TEK BAŞINA anlaşılır kısa Türkçe komut, verilen kalıba uygun. Öncekine gönderme yapma; "bunun için", "o yarış" yerine adını yaz ("Atatürk Kupası için Instagram gönderisi hazırla"). Kullanıcının söylemediği bilgiyi (tarih, tutar, ad) uydurma; söylenen her bilgiyi (renk, boyut, gün, tutar, adlar) koru. Gün söylenmediyse yoklamada "bugün" yaz. Ay söylenmediyse aidatta ay yazma.
-- from: kullanıcının bu işe ait sözleri, söylediği gibi (düzeltmeden, kısaltmadan; birleştirdiğin cümleleri ". " ile). Uygulama bunlardan öğrenir.
+- from: kullanıcının bu işe ait sözleri, söylediği gibi (düzeltmeden; birleştirdiğin cümleleri ". " ile; en çok 20 kelime). Uygulama bunlardan öğrenir.
+Yanıt kısa olsun: yalnız istenen JSON, aynı işi tekrarlama.
 - label: kontrol listesinde görünecek çok kısa ad (2-5 kelime): "Atatürk Kupası yarışı", "Yoklama: Mustafa", "Enes aidatı (nakit)", "Instagram yarış görseli".
 Tek iş varsa tek eleman döndür.
 Sohbetteki yarış verildiyse: "yarış görseli", "bunun için", "o yarışa", "yarışa" gibi ad söylenmeyen gönderme o yarıştır; say içinde adını yaz. Kullanıcı başka bir yarışın adını söylerse o yarışı yaz.
@@ -59,7 +60,7 @@ async function handle(request) {
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1200, timeoutMs: 12000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     return NextResponse.json({ tasks, cut: planCut(raw) });
