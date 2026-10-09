@@ -260,3 +260,27 @@ group("Sıralı görev zinciri")([
   ["antrenmandan sonra Ali'ye yaz", { desc: "zaman sözü bölmez", fn: (s) => splitChain(s).length, ok: (n) => n === 1 }],
   ["Foça yarışını aç, ardından Ali'yi ara", { desc: "virgül + ardından böler", fn: (s) => splitChain(s).join(" | "), ok: (r) => r === "Foça yarışını aç | Ali'yi ara" }],
 ]);
+
+// Görev listesi (lib/taskPlan.js): tek cümlede birden çok iş yapay zekaya görev listesi için sorulur mu?
+// flowOf'un taklidi: route() uygulamanın kendi akışına gidiyorsa o akış; ödeme sözü ("ödemesini yaptı", "nakit verdi") ödeme sayılır
+const { looksMulti, clausesOf, cleanPlan, failed } = await import("@/lib/taskPlan");
+const OWN = ["race", "attendance", "post", "income", "athlete", "dues", "invoice", "inventory", "event", "log", "schedule", "shopping", "call", "navigate", "raceOpen"];
+const flowOf = (x) => { const r = route(x); return OWN.includes(r) ? r : /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x) ? "income" : null; };
+const ATA = "Atatürk Kupası adında bir yarış oluştur. Bugün antrenmana Mustafa geldi. Enes ödemesini yaptı. Aidat ödemesini yaptı. Nakit verdi. Ve Atatürk Kupası için Instagram görseli hazırla. Yarış görseli olacak.";
+const M = (want) => ({ desc: want ? "görev listesi sorulur" : "tek iş, sorulmaz", fn: (s) => looksMulti(s, flowOf), ok: (r) => r === want });
+group("Görev listesi: birden çok iş mi")([
+  [ATA, M(true)],
+  ["Foça Kupası adında yarış oluştur, Ali ve Ayşe katılacak", M(false)],
+  ["Bir yarış oluştur. Adı Foça Kupası, 26-31 Ekim", M(false)],
+  ["yarın 10'da antrenman ekle", M(false)],
+  ["Ali'ye yaz yarın gelsin. Takvime de ekle.", M(false)],
+  ["Bugün antrenmana Ali ve Ayşe geldi. Ali'nin ekim aidatı nakit 1500 alındı.", M(true)],
+  ["Yoklama al, Mustafa geldi. Yarın 10'da toplantı ekle.", M(true)],
+  [ATA, { desc: "cümlecikler", fn: (s) => clausesOf(s).length, ok: (n) => n >= 6 }],
+]);
+group("Görev listesi: yapay zeka yanıtı")([
+  ["iki plan", { desc: "ardışık diğer işler birleşir", fn: () => cleanPlan({ tasks: [{ kind: "race", say: "X adında yarış oluştur", label: "X yarışı" }, { kind: "other", say: "yarın 10'da toplantı ekle", label: "Toplantı" }, { kind: "other", say: "Ali'ye yaz", label: "Ali'ye mesaj" }] }).length, ok: (n) => n === 2 }],
+  ["bilinmeyen tür", { desc: "diğer sayılır", fn: () => cleanPlan({ tasks: [{ kind: "zzz", say: "a b", label: "" }] })[0], ok: (x) => x.kind === "other" && x.label === "İş" }],
+  ["Mustafa'yı sporcularda bulamadım.", { desc: "başarısız", fn: failed, ok: (r) => r === true }],
+  ["Kaydettim: Atatürk Kupası. Tarihleri ne?", { desc: "başarılı", fn: failed, ok: (r) => r === false }],
+]);
