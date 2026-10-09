@@ -180,7 +180,7 @@ function Payments() {
                 <ul className="divide-y divide-line">
                   {sum.byMonth.map((mo) => (
                     <li key={mo.ym}>
-                      <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                      <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} className="flex w-full items-center gap-3 px-4 py-3 text-left">
                         <span className="min-w-0 flex-1">
                           <b className="block truncate text-[0.9375rem] font-semibold first-letter:uppercase">{monthName(mo.ym)}</b>
                           <small className="block text-[0.75rem] text-mut">{mo.count} ödeme</small>
