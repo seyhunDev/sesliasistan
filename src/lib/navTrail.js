@@ -26,7 +26,7 @@ export function stepTrail(trail, kind, url) {
 let trail = [];
 let installed = false;
 
-const here = () => window.location.pathname + window.location.search;
+const here = () => (typeof window === "undefined" ? "" : window.location.pathname + window.location.search);
 function keyOf(url) {
   try {
     const u = new URL(url, window.location.href);
@@ -89,7 +89,7 @@ export function goBack(router, href = "/") {
   router.back();
   setTimeout(() => {
     pending = 0;
-    if (here() !== from) return;
+    if (typeof window === "undefined" || here() !== from) return; // sayfa kapandıysa (ya da testte pencere kalktıysa) bir şey yapma
     trail = [from];
     save();
     router.replace(href);

@@ -75,5 +75,6 @@ export const authErrorMessage = (e) => {
   if (code === "auth/network-request-failed") return "İnternet bağlantısı yok. Bağlantını kontrol edip tekrar dene.";
   if (code === "auth/admin-restricted-operation" || code === "auth/operation-not-allowed") return "Yeni kayıt şu an kapalı.";
   if (code === "auth/user-disabled") return "Bu hesap devre dışı bırakılmış.";
-  return "Bir sorun oluştu. Tekrar dene.";
+  if (code.startsWith("auth/api-key") || code === "auth/invalid-api-key") return "Uygulamanın bağlantı ayarı hatalı, işlem yapılamadı.";
+  return "Bir hata oluştu, işlem yapılamadı. Tekrar dene.";
 };

@@ -14,13 +14,15 @@ export const PLAN_KINDS = {
   inventory: { label: "Envanter", how: "envantere ekleme/çıkarma/değiştirme", say: "envantere <ne> ekle" },
   invoice: { label: "Fatura", how: "faturayı ödendi işaretleme", say: "<firma> faturası ödendi" },
   log: { label: "Antrenman günlüğü", how: "antrenmanın nasıl geçtiğini günlüğe yazma (rüzgâr, çalışılanlar)", say: "antrenman günlüğüne yaz: <anlatım>" },
-  event: { label: "Etkinlik", how: "kamp, gezi gibi etkinlik planı", say: "<etkinlik> planla" },
+  event: { label: "Etkinlik", how: "kamp, gezi, piknik, balık gibi organizasyon planı (antrenman, toplantı, ders planı değil: onlar other)", say: "<etkinlik> planla" },
   shopping: { label: "Alışveriş", how: "alışveriş listesine ekleme", say: "listeye <şeyler> ekle" },
   call: { label: "Arama", how: "birini arama", say: "<Ad>'ı ara" },
   nav: { label: "Sayfa", how: "bir sayfayı açma", say: "<sayfa> sayfasını aç" },
   other: { label: "İş", how: "plan/takvim, görev, not, mesaj, soru gibi diğer her şey", say: "kullanıcının sözleri (o işe ait kısım)" },
 };
 
+const CAL_PLAN = /(antre?n?man|idman|toplantı|ders|görüşme|buluşma|bakım|saat|\d{1,2}[:.']?\d{0,2}\s*(da|de|ta|te)(?![\p{L}]))/iu;
+const EVENT_WORD = /(kamp|gezi|piknik|balık|konser|festival|organizasyon|tatil|yürüyüş|etkinlik)/iu;
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
 // Bir görev listesinde en çok kaç iş yapılır; fazlası yapılmaz ve kullanıcıya söylenir (planCut; denetim B18)
@@ -30,6 +32,8 @@ export const planCut = (raw) => Math.max(0, (Array.isArray(raw?.tasks) ? raw.tas
 export function cleanPlan(raw) {
   const list = (Array.isArray(raw?.tasks) ? raw.tasks : [])
     .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) }))
+    // Yapay zeka "yarın 10'da antrenman planla"yı etkinlik sanabiliyor: takvim planı ana yapay zekanın işidir (other)
+    .map((x) => (x.kind === "event" && CAL_PLAN.test(x.say) && !EVENT_WORD.test(x.say) ? { ...x, kind: "other" } : x))
     .filter((x) => x.say)
     .slice(0, PLAN_MAX);
   const out = [];

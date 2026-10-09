@@ -947,10 +947,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return (id && races.current.find((r) => r.id === id)?.name) || "";
   }
   // Görev listesini yapay zekaya sordurur. Adı askTasks: etkinlik planının askPlan'ı (events.js) ile karışmasın
-  // (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 15 sn (denetim B1).
+  // (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 18 sn: sunucu 16 sn
+// içinde takılan isteği bir kez yeniler; cevap yoksa liste yerelde kurulur (localPlan).
   async function askTasks(s) {
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", timeout: 15000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
+      const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
       const d = await res.json().catch(() => ({}));
       planCutN.current = res.ok && d.cut > 0 ? d.cut : 0;
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;

@@ -134,7 +134,9 @@ async function once(model, body, ms) {
 // 503 (yoğunluk): aynı model artan aralıklarla 2 kez daha denenir.
 // 404 (model kapalı): 24 saat atlanır. 429 (kota): kota süresi boyunca atlanır.
 // Başarısız olursa hata nesnesinde status (503 yoğun | 429 kota) ve retryAfter (sn) bulunur.
-export async function callGemini({ model, system, user, schema, images = [], maxTokens = 4096, timeoutMs = 22000 }) {
+// attemptMs: tek denemenin en uzun süresi (verilmezse toplam sürenin çoğu). Kısa tutulursa takılan istek bırakılıp
+// kalan sürede yeniden denenir (Google bazen aynı isteği 10+ sn bekletiyor, ikinci deneme 2-3 sn sürüyor).
+export async function callGemini({ model, system, user, schema, images = [], maxTokens = 4096, timeoutMs = 22000, attemptMs = 0 }) {
   // Güçlü sürüm açıksa önce güçlü model; kotası doluysa ya da hata verirse normal modellere düşer
   const all = [...new Set([strongModel("gemini"), model, ...(process.env.GEMINI_FALLBACK_MODELS || "").split(",").map((s) => s.trim())].filter(Boolean))];
   const now = Date.now();
@@ -194,7 +196,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
       if (left < 2000) break outer;
       try {
         const t0 = Date.now();
-        const { status, text } = await once(m, mkBody(noThink, useSchema, m), Math.min(left, Math.max(12000, timeoutMs - 8000)));
+        const { status, text } = await once(m, mkBody(noThink, useSchema, m), Math.min(left, attemptMs || Math.max(12000, timeoutMs - 8000)));
 
         if (status === 200) {
           const data = JSON.parse(text);
@@ -271,6 +273,12 @@ export async function callGemini({ model, system, user, schema, images = [], max
         console.warn(`[gemini] ${m} ${status} · ${shortErr(text)}`);
         break;
       } catch (e) {
+        // Zaman aşımı: yeterli süre kaldıysa aynı model bir kez daha (takılan istek çoğu zaman ikincide hızlı döner)
+        if (e.name === "AbortError" && attemptMs && retries < 1 && deadline - Date.now() > 4000) {
+          retries += 1;
+          tried.push(`${m}:zaman aşımı`);
+          continue;
+        }
         last = `Gemini (${m}): ${e.name === "AbortError" ? "zaman aşımı" : e.message}`;
         tried.push(`${m}:${e.name === "AbortError" ? "zaman aşımı" : "hata"}`);
         break;
