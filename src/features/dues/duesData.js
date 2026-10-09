@@ -4,7 +4,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, qu
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
-import { filedMoves, rangeOf } from "@/lib/dues";
+import { cashMoves, filedMoves, rangeOf } from "@/lib/dues";
 import { addFileMoves, dropFileMoves, loadLedger } from "@/features/bank/ledgerData";
 
 // Aidat verisi (yalnız ana hesap; kurallar ana hesaba orgs altındaki her koleksiyonu açıyor). Okuma sayfa açılınca bir kez.
@@ -65,6 +65,12 @@ export async function deleteStatement(uid, f) {
 export async function loadDuesRange(orgId, yms) {
   const [c, ...ms] = await Promise.all([getDoc(dues(orgId, "settings")), ...yms.map((ym) => getDoc(dues(orgId, ym)))]);
   return { cfg: c.data() || {}, months: Object.fromEntries(yms.map((ym, i) => [ym, ms[i].data() || {}])) };
+}
+// Nakit aidatlar (Hesaplar'da gelir): aidat kayıtlarının hepsi tek sorguda (ay sayısı kadar okuma) → hareket listesi
+export async function loadCashMoves(orgId) {
+  const snap = await getDocs(collection(db, "orgs", orgId, "dues"));
+  const all = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
+  return cashMoves(all, all.settings?.roster || []);
 }
 // Aralığın banka hareketleri (banka defterinden): Excel'in getirdikleri + günlük mailler, aynı hareket bir kez
 export const loadMovementsRange = (uid, fromYm, toYm) => loadLedger(uid, fromYm, toYm);

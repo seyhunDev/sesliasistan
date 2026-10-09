@@ -8,7 +8,7 @@ import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { loadMovementsRange } from "@/features/dues/duesData";
+import { loadCashMoves, loadMovementsRange } from "@/features/dues/duesData";
 import { ledgerStart, rebuildLedger } from "@/features/bank/ledgerData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
@@ -50,14 +50,14 @@ function Payments() {
   useEffect(() => {
     if (!owner) return;
     let live = true;
-    ledgerStart(profile.uid, ym)
-      .then((first) => loadMovementsRange(profile.uid, first, ym))
-      .then((r) => live && setData(r))
+    // Eklenen ad sayfasında nakit aidatlar da (Aidatlar'da yazılan) gelir olarak
+    Promise.all([ledgerStart(profile.uid, ym).then((first) => loadMovementsRange(profile.uid, first, ym)), named ? loadCashMoves(profile.uid).catch(() => []) : []])
+      .then(([r, cashList]) => live && setData({ ...r, movements: [...r.movements, ...cashList] }))
       .catch(() => live && setData({ error: true, movements: [] }));
     return () => {
       live = false;
     };
-  }, [owner, profile?.uid, ym, tick]);
+  }, [owner, profile?.uid, ym, tick, named]);
 
   const payee = payeeOf(profile);
   const movements = data?.movements;
@@ -205,7 +205,7 @@ function Payments() {
                               </span>
                               <span className="min-w-0 flex-1 break-words text-[0.875rem] leading-snug">
                                 <b className="block font-semibold">{m.note || (m.out ? "Hesaptan gönderildi" : whoIn(m) || m.desc)}</b>
-                                <span className="block text-[0.8125rem] text-mut">{[m.out || m.amount < 0 ? "Giden" : "Gelen", m.accountLabel, m.out || named ? "" : whoIn(m)].filter(Boolean).join(" · ")}</span>
+                                <span className="block text-[0.8125rem] text-mut">{m.cash ? "Nakit ödendi" : [m.out || m.amount < 0 ? "Giden" : "Gelen", m.accountLabel, m.out || named ? "" : whoIn(m)].filter(Boolean).join(" · ")}</span>
                               </span>
                               <b className={`shrink-0 text-[0.875rem] font-semibold tabular-nums ${m.amount < 0 ? "" : "text-ok"}`}>{m.amount < 0 ? `−${money(-m.amount)}` : `+${money(m.amount)}`}</b>
                             </li>
