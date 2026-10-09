@@ -9,3 +9,4 @@
 ## Tasarım
 
 - Asistan açıkken alt alan her durumda tek kutu: üstte yazı, altta × · dalga/noktalar · durum düğmesi · ↑ (2026-10-09).
+- İşler yapılırken söylenen cümle yalnız alttaki kutuda yazar; üstteki balon o sırada gizlenir, iş bitince akışta geri görünür (`hideSaid`, AssistantSheet; Seyhun'un seçimi).

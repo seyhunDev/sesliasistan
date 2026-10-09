@@ -2944,6 +2944,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       .join(" · ");
 
   // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
+  // İşler yapılırken söylenen cümle alttaki kutuda yazar; üstte ayrıca balon olarak gösterilmez (Seyhun'un seçimi, 2026-10-09)
+  const hideSaid = docked && busy && turns.at(-1)?.role === "user" && !turns.at(-1)?.chip;
   const convoView = (embedded) => (
     <>
         {!embedded && turns.length === 0 && !listening && !busy && !transcribing && (
@@ -2957,7 +2959,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
+        <Thread turns={hideSaid ? turns.slice(0, -1) : turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
         {/* Cevabın yeri: gelene kadar sıralı durum yazıları (Seyhun: "hızlıysa hemen göster, uzun sürerse hazır yazıları
             sırayla göster; sade, hafif soluk, parlayan", 2026-10-09). Yanıt akmaya başlayınca ya da adımlar görünürken yok */}
