@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { pastTense, waitLines } from "@/lib/assistTasks";
+import { waitLines } from "@/lib/assistTasks";
 
 // Yapay zeka (ya da yazıya çevirme) beklenirken sıralı durum yazıları. Hızlı yanıtta yalnız işin adı görünür; gecikince
 // hazır yazılar sırayla eklenir (lib/assistTasks.js `waitLines`). Yanıt gelince bileşen kaybolur, cevap hemen gösterilir.
@@ -19,21 +19,15 @@ export function useWaitLines(active, work, transcribing) {
   return waitLines(work, t.key === key ? t.ms : 0, { transcribing });
 }
 
-// Sade görünüm: biten yazılar soluk (ilki işin adı, olduğu gibi; sonrakiler geçmiş zamanla), şimdiki yazı parlayarak
+// Tek satır: yalnız şu an ne yapıldığı (parlayarak). Bitti denen sahte satırlar gösterilmez: bekleme sırasında gerçekte
+// tamamlanmış bir adım yok, "Takvim kontrol edildi" yazmak yanlış olurdu (inceleme 2026-10-09).
 export function WaitLines({ lines, onCancel }) {
   if (!lines) return null;
-  const done = lines.done.slice(-3);
-  const skip = lines.done.length - done.length;
   return (
     <div className="fade-in mt-3 flex items-end gap-3" role="status" aria-live="polite">
-      <ol className="min-w-0 flex-1 space-y-1 text-[0.875rem]">
-        {done.map((x, i) => (
-          <li key={`${skip + i}`} className="wait-done truncate">{skip + i === 0 ? x : pastTense(x)}</li>
-        ))}
-        <li key={lines.now} className="wait-now truncate font-medium">
-          <span className="work-text">{lines.now}…</span>
-        </li>
-      </ol>
+      <p key={lines.now} className="wait-now min-w-0 flex-1 truncate text-[0.875rem] font-medium">
+        <span className="work-text">{lines.now}…</span>
+      </p>
       {onCancel && (
         <button type="button" onClick={onCancel} className="shrink-0 text-[0.75rem] font-semibold text-acc">
           Vazgeç

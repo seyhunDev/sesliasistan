@@ -136,7 +136,7 @@ const BY_WORK = Object.fromEntries(TASKS.filter((x) => x.work).map((x) => [x.wor
 // İşin yazısından ("Plan hazırlanıyor") sıralı yazılar: ["Plan hazırlanıyor", "Takvim kontrol ediliyor", …]
 export function waitStages(work, { transcribing = false } = {}) {
   if (transcribing) return ["Sesin yazıya çevriliyor", "Söylediğin okunuyor"];
-  if (!work) return ["Anlaşılıyor", ...GENERIC];
+  if (!work) return GENERIC;
   const id = BY_WORK[work] || (/^Envanter/.test(work) ? "inventory" : /hava/i.test(work) ? "weather" : work === "Bakıyorum" ? "query" : "");
   return [work, ...(MORE[id] || GENERIC)];
 }
