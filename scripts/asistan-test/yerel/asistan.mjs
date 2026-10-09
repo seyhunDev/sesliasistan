@@ -876,3 +876,23 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["boş", C("veri yoksa blok yok", () => CD.clubDigest({}), (t) => t === "")],
   ]);
 }
+
+// Sohbet hafızası ve tek bekleyen soru (lib/convoContext.js; inceleme adım 4)
+{
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  let m = CX.remember({}, "race", "Atatürk Kupası");
+  m = CX.remember(m, "athlete", "Ali Kaya");
+  group("Sohbet hafızası (tek yer)")([
+    ["hafıza", C("yarış ve sporcu tutulur, en son sporcu", () => CX.memoFor(m), (r) => r.race === "Atatürk Kupası" && r.athlete === "Ali Kaya" && r.last === "athlete")],
+    ["bilinmeyen alan", C("tanınmayan alan yazılmaz", () => CX.remember({}, "tc", "123"), (r) => !Object.keys(r).length)],
+    ["boş", C("hafıza boşsa gönderilmez", () => CX.memoFor({}), (r) => r === null)],
+    ["istem bölümü", C("göndermeler için yapay zekaya gider, temizlenir", () => CX.memoBlock({ race: 'Atatürk "Kupası"\n## X', last: "race" }), (t) => /SOHBETTE AZ ÖNCE/.test(t) && /Yarış: Atatürk Kupası/.test(t) && /en son bu/.test(t) && !/## X/.test(t))],
+    ["onu", C("gönderme sözü", () => ["onu", "bunu", "o sporcu", "bu kişiyi", "Onu."].every(CX.isPronoun), (r) => r === true)],
+    ["ad", C("gerçek ad gönderme değil", () => ["Ali", "Onur Kaya", "Ozan"].some(CX.isPronoun), (r) => r === false)],
+  ]);
+  group("Tek bekleyen soru")([
+    ["yeni soru", C("yeni soru sorulunca diğer bütün sorular kapanır", () => CX.asksToClear("ok"), (r) => !r.includes("ok") && r.includes("person") && r.includes("raceChoice") && r.includes("to") && r.length === Object.keys(CX.ASK_EMPTY).length - 1)],
+    ["sohbet bitti", C("hepsi kapanır", () => CX.asksToClear(), (r) => r.length === Object.keys(CX.ASK_EMPTY).length)],
+    ["boş hâller", C("yarış seçimi boş liste, sporcu sorusu false", () => CX.ASK_EMPTY, (r) => Array.isArray(r.raceChoice) && r.athlete === false && r.ok === null)],
+  ]);
+}

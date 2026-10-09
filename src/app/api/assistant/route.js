@@ -6,7 +6,7 @@ import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/l
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
-import { draftBlock, historyBlock } from "@/lib/convoContext";
+import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -68,6 +68,7 @@ async function handle(request) {
   const contacts = [...new Set((Array.isArray(body?.contacts) ? body.contacts : []).slice(0, 150).map((n) => String(n ?? "").replace(/[^\p{L}\p{N} .'()-]/gu, "").trim().slice(0, 60)).filter(Boolean))];
   // Açık sohbetin kısa bağlamı: son turlar (toplam ~1500 karakter) ve bu sohbette hazırlanan mesaj taslağı (lib/convoContext.js)
   const history = historyBlock(body?.history);
+  const memo = memoBlock(body?.memo);
   const draft = draftBlock(body?.draft);
 
   // Ön cevap: telefon kullanıcıya hemen kısa bir giriş söyledi; yanıt onun devamı olmalı (tekrar etmemeli)
@@ -80,7 +81,7 @@ async function handle(request) {
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
   const forPeople = contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, ""));
