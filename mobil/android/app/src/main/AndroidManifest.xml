@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -35,6 +36,17 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="genel" />
 
+        <!-- Firebase mesajları: gelen arama bildirimi AramaMesaj'da (eklentinin kendi hizmetinin yerine, onu genişletir) -->
+        <service
+            android:name="com.capacitorjs.plugins.pushnotifications.MessagingService"
+            tools:node="remove" />
+        <service android:name=".AramaMesaj" android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <receiver android:name=".AramaReddet" android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -56,6 +68,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Toplantı ve aramada ekran kararmasın -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Gelen arama: kilit ekranında tam ekran -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 </manifest>

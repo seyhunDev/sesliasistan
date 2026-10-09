@@ -38,7 +38,15 @@ Firebase konsolunda Android uygulaması (paket `com.seyhunyildiz.sesliasistan`) 
 `android/app/google-services.json`). Dosya yoksa APK bildirimsiz derlenir, uygulama çökmez (`pushReady`).
 Web tarafı: `src/lib/nativePush.js`, `src/lib/push.js`; sunucu: `src/lib/server/sendDevice.js` (kayıtta `fcm` varsa FCM).
 
+## Aramalar
+
+- Ses yönü: `AsistanDosya.audioRoute` (telefon görüşmesi kipi; ahize, kulaklık/Bluetooth ya da hoparlör; yakınlıkta
+  ekran kararır). Web: `src/lib/nativeCall.js`, `src/features/call/route.js`.
+- Gelen arama: sunucu (`/api/call-ring`, `src/lib/server/callPush.js`) yalnız veri taşıyan FCM mesajı gönderir;
+  `AramaMesaj.java` (eklentinin MessagingService'ini genişletir) "arama" kanalında zil çalan, tam ekran bildirim
+  gösterir. Aç: `MainActivity` → `DosyaPlugin.answer` → web `takeAnswer`/"answer". Reddet: `AramaReddet.java`.
+
 ## Henüz yok
 
-- Arama sesinin ahize/hoparlör seçimi (yerel ses eklentisi), gelen aramada tam ekran zil.
+- Arama sürerken uygulama arka plana geçince mikrofonun kesilmemesi (ön plan hizmeti).
 - Atama bildiriminin "iletildi" onayı Android'de yazılmaz (bildirim kodu arka planda çalışmıyor).
