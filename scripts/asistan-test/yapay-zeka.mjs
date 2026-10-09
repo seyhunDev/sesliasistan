@@ -140,7 +140,7 @@ export default async function run(log, cases = CASES, { pause = 0, group = "" } 
     const t0 = Date.now();
     let row;
     try {
-      const r = parseAssistant(await ask(provider, user), people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")).concat(focus === recordFocus ? ["Bu kaydın konuşması"] : []));
+      const r = parseAssistant(await ask(provider, user), people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")).concat(focus === recordFocus ? ["Bu kaydın konuşması"] : []), say);
       const pass = !!ok(r);
       const what = [r.intent, r.navigate && `sayfa=${r.navigate}`, r.openChat && `sohbet=${r.openChat}`, r.send && `mesaj→${r.send.to}: ${r.send.text}`, r.items.length && `kayıt=${r.items.map((i) => `${i.type}:${i.title}${i.time ? " " + i.time : ""}`).join(", ")}`, r.actions.length && `işlem=${r.actions.map((a) => `${a.op}:${a.id}`).join(", ")}`].filter(Boolean).join(" · ");
       const g = group || (focus ? (focus === chatFocus ? "Yapay zeka · sohbet bağlamı" : "Yapay zeka · kayıt bağlamı") : hist ? "Yapay zeka · konuşma geçmişi" : "Yapay zeka");

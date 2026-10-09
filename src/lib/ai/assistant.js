@@ -1,5 +1,6 @@
 import { TOOL as CREATE_TOOL, toDrafts } from "./schema";
 import { matchPerson } from "../names.js";
+import { applyRepeat } from "../repeat.js";
 
 const KIND = ["plan", "task", "note"];
 import { PAGE_KEYS as PAGES, PAGES as PAGE_INFO } from "../nav.js";
@@ -98,7 +99,7 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 - Plan başlığına yer, saat veya "oluştur" gibi komut kelimesi ekleme; yer place'e gider. category: Antrenman, Toplantı, Kamp, Yarış, Ekipman veya Genel.
 - Bilgisi tamam kayıt (planın günü ve saati belli, görev/notun başlığı var) uygulamada SORMADAN hemen kaydedilir ve uygulama ne eklediğini kendisi söyler. Bu durumda message'da kaydı yeniden anlatma, "ekledim/kaydettim/kaydedeyim mi" deme; yalnız ek bilgi varsa kısaca yaz (çakışan plan, rüzgâr, sorumlu), yoksa message boş kalabilir. Onay sorusu ("onaylıyor musun?", "kaydedeyim mi?") ve "oluşturuyorum/ekliyorum" gibi cümleler YAZMA; kayıt zaten yapılır.
 - Kayıt başlığı konunun kendisidir, kısa ve temiz: kullanıcının hitap ve dolgu sözleri ("bana", "benim için", "lütfen", "bir", "planla", "ekle") ve gün/saat sözleri başlığa girmez. "Bana yarın akşam için bir akşam yemeği planla" -> title "Akşam yemeği".
-- Haftalık tekrar ("her salı 16:00 antrenman", "cumartesileri yarış antrenmanı", "her hafta pazartesi toplantı"): TEK plan yaz, weekly true, date ilk günün tarihi (bugün ya da sonrası). Bitiş söylenirse repeatUntil'e yaz; söylenmezse boş bırak (uygulama 3 ay oluşturur). Birden çok gün söylenirse ("her salı ve perşembe") her gün için ayrı plan yaz. message'da "her hafta" olduğunu söyle.
+- Haftalık tekrar ("her salı 16:00 antrenman", "cumartesileri yarış antrenmanı", "her hafta pazartesi toplantı"): TEK plan yaz, weekly MUTLAKA true (yazmazsan plan tek seferlik kaydedilir), date ilk günün tarihi (bugün ya da sonrası). Bitiş söylenirse repeatUntil'e yaz; söylenmezse boş bırak (uygulama 3 ay oluşturur). Birden çok gün söylenirse ("her salı ve perşembe") her gün için ayrı plan yaz. message'da "her hafta" olduğunu söyle.
 - Tek günlük bir planın günü belli ama saati yoksa saati kısa bir soruyla sor ("Saat kaçta olsun?"), time boş kalsın. Kullanıcı "tüm gün" veya "fark etmez" derse allDay true. Günü yoksa günü sor. Soru sorduysan expectReply true.
 - Özette aynı gün ve aynı başlıkta kayıt zaten varsa yeni oluşturmak yerine bunu söyle ve sor.
 - KİŞİLER bölümü varsa: kullanıcı işi birine VERİYORSA ("Sanver tekneleri yıkasın", "Ali'nin benzin alma görevi var") o kişiyi listedeki TAM adıyla (ör. "Sanver Kaya") assignTo'ya yaz ve adı başlıktan çıkar. Kişiyle yapılan etkinlikte ("Sanver ile toplantı") atama yapma. Listede olmayan kişiyi yazma.
@@ -248,7 +249,9 @@ function parseSend(raw, contacts, one = raw?.send) {
 const JOB_INTENT = /"intent"\s*:\s*"(create|action|message)"/;
 export const isJobJson = (acc) => JOB_INTENT.test(String(acc || ""));
 
-export function parseAssistant(raw, people = [], contacts = []) {
+// said: kullanıcının cümlesi. Yapay zeka "her salı" gibi haftalık tekrarı kaçırırsa (weekly yazmazsa) plan cümleden
+// haftalık yapılır; böylece "her hafta ekledim" deyip tek seferlik plan kaydedilmez (applyRepeat, repeat.js)
+export function parseAssistant(raw, people = [], contacts = [], said = "") {
   const arr = (v) => (Array.isArray(v) ? v : []);
   const send = parseSend(raw, contacts);
   // Birden çok mesaj: send + sends, aynı alıcıya aynı metin bir kez; en çok 5
@@ -273,6 +276,7 @@ export function parseAssistant(raw, people = [], contacts = []) {
       .filter((a) => OPS.includes(a?.op) && KIND.includes(a?.kind) && txt(a?.id, 60))
       .slice(0, 10)
       .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) })),
-    items: toDrafts(raw?.items, people, raw?.message),
+    items: said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message),
   };
 }
+const trToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
