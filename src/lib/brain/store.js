@@ -1,6 +1,6 @@
 import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
-import { predict, train } from "./model";
+import { knownLesson, lessonKey, predict, train } from "./model";
 
 // Öğrenme verisi: önce bu cihazda (localStorage) birikir, Firebase'e toplu yazılır.
 //   Firestore: orgs/{işletme}/learn/{uid}_{YYYY-MM} = { uid, month, items: [{ x, l, s, t }], n, bytes, v }
@@ -54,7 +54,7 @@ function save() {
   index = null; // dizin yeniden kurulsun
   listeners.forEach((f) => f());
 }
-const key = (e) => `${e.t}|${e.x}`;
+const key = (e) => lessonKey(e.x, e.l); // aynı söz + aynı sonuç bir kez
 
 // Oturum açılınca: kullanıcı ya da işletme değiştiyse yerel veriyi sıfırla, gerekiyorsa Firebase'den yükle
 // profile: { uid, orgId, role: "owner" | "staff", brainOff, brainResetAt }
@@ -118,7 +118,7 @@ export function record(text, label, src) {
   const x = String(text || "").replace(/\s+/g, " ").trim().slice(0, 160);
   if (!x || !label) return;
   const s = load();
-  if (s.off) return;
+  if (s.off || knownLesson(s.items, x, label)) return; // zaten biliniyor: yeniden eklenmez (yazma da olmaz)
   const e = { x, l: label, s: src, t: Math.floor(Date.now() / 1000) };
   s.items.push(e);
   s.pending.push(e);

@@ -10,11 +10,17 @@ const words = (s) => low(s).split(" ").filter(Boolean).length;
 
 // Bekleyen taslak için sesli/yazılı onay ve ret ("evet gönder", "tamam", "vazgeç", "hayır gönderme")
 // "onayladım", "onay veriyorum", "gönderelim", "evet yolla" da onaydır; "onaylamıyorum", "yollama" ret
-const YES = new RegExp(`^(evet|gönder|gönderebilirsin|gönderelim|gönderiver|yolla|yollayabilirsin|yollayalım|at|atabilirsin|tamam|tamamdır|olur|onay|onayla|onayladım|onaylıyorum|onaylandı|onaylı|onay veriyorum|doğru|aynen|kabul|uygun|tabii|tabi|kesinlikle|süper|harika)${END}`);
-const NO = new RegExp(`^(hayır|vazgeç|vazgeçtim|iptal|gönderme|yollama|onaylamıyorum|onaylama|boş ?ver|istemiyorum|dur|kalsın)${END}`);
+const YES = new RegExp(`^(he|hı hı|hıhı|hı|evt|evet|gönder|gönderebilirsin|gönderelim|gönderiver|yolla|yollayabilirsin|yollayalım|at|atabilirsin|tamam|tamamdır|olur|onay|onayla|onayladım|onaylıyorum|onaylandı|onaylı|onay veriyorum|doğru|aynen|kabul|uygun|tabii|tabi|kesinlikle|süper|harika)${END}`);
+const NO = new RegExp(`^(hayır|vazgeç|vazgeçtim|iptal|gönderme|yollama|onaylamıyorum|onaylama|boş ?ver|istemiyorum|dur|kalsın|yok|bekle)${END}`);
+// Onay ya da ret sözünün ardından değişiklik isteniyorsa ("evet ama saati 11 yap", "hayır yarın değil cuma yaz",
+// "olur da biraz kibar yaz") ne gönderilir ne vazgeçilir: taslak değişir
+export const isEdit = (text) => {
+  const t = low(text);
+  return words(t) >= 3 && /(^|\s)(ama|fakat|ancak|yalnız|değil)(\s|$)|\s(da|de)\s/.test(t);
+};
 export function confirmWord(text) {
   const t = low(text).replace(/[.!?,]+$/g, "");
-  if (!t || words(t) > 4) return "";
+  if (!t || words(t) > 4 || isEdit(t)) return "";
   if (NO.test(t) || /(^|\s)(gönderme|yollama|onaylamıyorum)($|\s)/.test(t)) return "no";
   if (YES.test(t)) return "yes";
   return "";

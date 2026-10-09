@@ -155,14 +155,23 @@ const PHRASE_FIX = [
   [/(?<![\p{L}])yok\s+lama(\p{L}*)/giu, "yoklama$1"],
 ];
 const FILLER = /^(?:(?:şey|sey|ııı+|ıı|iii+|eee+|ee|ıhm|hmm+|hım|aa+|yani)[\s,.…]+)+/iu;
+// Baştaki düzeltme sözü: "yanlış söyledim kapat", "pardon yoklamaya Ali'yi ekle" (asıl istek ardından gelir)
+const OOPS = /^(?:yanlış söyledim|pardon|neyse|özür dilerim)[\s,.…]+(?=\S)/iu;
+// "-iver" kipi ("ekleyiver", "yazıver", "arayıver"): asıl fiile çevrilir
+const IVER = /(?<![\p{L}])(\p{L}+?)y?[ıiuü]ver(?![\p{L}])/gu;
+const IVER_ROOT = { ekle: "ekle", yaz: "yaz", ara: "ara", sil: "sil", aç: "aç", kaydet: "kaydet", kayded: "kaydet", gönder: "gönder", yolla: "yolla", gör: "göster", göster: "göster", bak: "bak" };
 const keyOf = (w) => w.toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]/gu, "");
 // Söylenen cümleyi komut kurallarına hazırlar: baştaki dolgu sözler ("şey ııı"), kekemelik ("Tamam, tamam, kapat",
 // "Yoklama yoklama al"), Türkçe harfsiz yazım ("foca yarisini ac") ve bozuk iş fiilleri (fixVerbs). Anlam değişmez.
 export function cleanSay(text) {
-  let t = String(text || "").trim().replace(FILLER, "");
+  let t = String(text || "").trim().replace(FILLER, "").replace(OOPS, "");
   const words = t.split(/\s+/);
   while (words.length > 1 && keyOf(words[0]) && keyOf(words[0]) === keyOf(words[1])) words.shift();
-  t = words.join(" ");
+  // Bütün söz iki kez söylendiyse ("listeye süt ekle listeye süt ekle") bir kez
+  const h = words.length / 2;
+  if (words.length >= 4 && Number.isInteger(h) && words.slice(0, h).map(keyOf).join(" ") === words.slice(h).map(keyOf).join(" ")) words.length = h;
+  t = words.join(" ").replace(/[\s,]+lütfen[.!?]*$/iu, "");
+  t = t.replace(IVER, (w, root) => IVER_ROOT[root.toLocaleLowerCase("tr-TR")] ?? w);
   t = t.replace(ASCII_RE, (w) => {
     const f = ASCII_FIX[w.toLocaleLowerCase("tr-TR")] ?? ASCII_FIX[w.toLowerCase()];
     if (!f) return w;

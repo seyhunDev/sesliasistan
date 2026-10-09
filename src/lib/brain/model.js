@@ -1,4 +1,4 @@
-import { normalizeSpeech } from "@/lib/speech/normalize";
+import { cleanSay, normalizeSpeech } from "@/lib/speech/normalize";
 
 // Küçük yerel "yapay zeka": kullanıcının geçmiş komutlarından öğrenir.
 // Yöntem: kelime kökleri (+ ikili kök grupları) ile TF-IDF vektörü, kosinüs benzerliği,
@@ -31,12 +31,22 @@ export const LABELS = {
 export const WEIGHT = { user: 2, ai: 1.5, local: 1 };
 
 const STOP = new Set("ve ile bir bu şu o da de mi mı mu mü ki için gibi daha çok bana beni benim bizim lütfen şey olarak diye".split(" "));
-const stem = (w) => (w.length <= 5 ? w : w.slice(0, 5));
+// Kök: yaygın ekler atılır ("silelim" → sil, "neler" → ne), aynı anlamlı sözler tek köke ("işini" → görev), sonra ilk 5 harf
+const SUFFIX = /(?:elim|alım|eyim|ayım|iyorum|ıyorum|uyorum|üyorum|iyor|ıyor|uyor|üyor|ecek|acak|sene|sana|lerin|ların|leri|ları|ler|lar)$/u;
+const SAME = { iş: "görev", işi: "görev", işin: "görev", işini: "görev", görevi: "görev", görevin: "görev", görevini: "görev" };
+const stem = (w) => {
+  if (SAME[w]) return SAME[w];
+  const b = w.length > 4 ? w.replace(SUFFIX, "") : w;
+  const r = b.length >= 2 ? b : w;
+  return r.length <= 5 ? r : r.slice(0, 5);
+};
 
 // Metni özelliklere çevirir: saat/tarih/sayılar tek işarete, kelimeler köke, ardışık kökler ikili gruba
 export function tokens(text) {
-  const t = normalizeSpeech(text)
+  // Dolgu sözler ("şey", "ııı") ve Türkçe harfsiz yazım (yarin) temizlenir; kesme işareti kelimeyi bölmez (Ali'ye = aliye)
+  const t = normalizeSpeech(cleanSay(text))
     .toLocaleLowerCase("tr-TR")
+    .replace(/['’]/g, "")
     .replace(/saat \d{1,2}:\d{2}/g, " #saat ")
     .replace(/\d+/g, " #sayı ")
     .replace(/(^|\s)(pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar|bugün|yarın|öbür gün|haftaya)\S*/gu, " #gün ")
@@ -48,8 +58,19 @@ export function tokens(text) {
 }
 
 // Örneklerden arama dizini kurar. examples: [{ x: metin, l: etiket, s: kaynak }]
+// Aynı söze (küçük harf, noktalamasız) birden çok sonuç öğrenildiyse en yenisi geçerli (Seyhun: "farklı bir durumda
+// farklı bir şey çıkabilir", 2026-10-09); aynı söz + aynı sonuç bir kez sayılır
+export function newestOnly(examples) {
+  const by = new Map();
+  for (const e of examples || []) {
+    const k = lessonKey(e.x, "");
+    const o = by.get(k);
+    if (!o || (e.t || 0) >= (o.t || 0)) by.set(k, e);
+  }
+  return [...by.values()];
+}
 export function train(examples) {
-  const docs = examples.map((e) => ({ e, tf: count(tokens(e.x)) }));
+  const docs = newestOnly(examples).map((e) => ({ e, tf: count(tokens(e.x)) }));
   const df = new Map();
   docs.forEach((d) => d.tf.forEach((_, k) => df.set(k, (df.get(k) || 0) + 1)));
   const N = docs.length || 1;
@@ -140,3 +161,15 @@ export function labelFromAI(r) {
   if (r.intent === "chat") return "chat";
   return "";
 }
+
+// Öğrenme deposunda aynı örnek bir kez (Seyhun: "daha önce aynı şey gelmişse aynı kalsın, farklıysa eklensin", 2026-10-09):
+// söz (küçük harf, noktalamasız) ve sonuç (etiket) aynıysa yeni örnek eklenmez; aynı söze farklı sonuç yeni örnektir.
+export const lessonKey = (x, l) =>
+  `${l}|${String(x || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()}`;
+export const knownLesson = (items, x, l) => {
+  const k = lessonKey(x, l);
+  return (items || []).some((e) => lessonKey(e.x, e.l) === k);
+};

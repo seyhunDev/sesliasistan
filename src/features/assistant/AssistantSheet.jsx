@@ -140,12 +140,15 @@ const groupOf = (t, mine = []) => {
 const MORE = "Başka bir isteğin var mı?";
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 // Taslak varken kaydetme / vazgeçme
-const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
-const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
+const SAVE = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin|aynen|he|hı hı)(?=$|[\s.,!?])/i;
+const DROP = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(vazgeç|vazgeçtim|iptal|hayır|kaydetme|sil|boş ?ver|yok)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
 // Soru mu ("kaç görev var", "haftayı özetle"): \b Türkçe harfle biten kelimede çalışmadığı için isQuestion (steps.js) kullanılır
 const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
+
+// Kullanıcı vazgeçti ya da iş yapılmadan bırakıldı: öğrenme deposuna yazılmaz
+const DROPPED = /vazgeç|bıraktım|silmedim|göndermedim/iu;
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const router = useRouter();
@@ -332,6 +335,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function cancelRun() {
     runId.current += 1;
+    aiLesson.current = null; // vazgeçilen ya da kapatılan iş öğrenilmez
+    planLearn.current = null;
     ctrl.current?.abort();
     setPhase("idle");
   }
@@ -404,6 +409,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const planKind = useRef(""); // şu an yapılan işin türü (race, post…)
   const raceFailed = useRef(false); // listede yarış oluşturulamadı: ona bağlı gönderi yapılmaz (denetim B15)
   const planFails = useRef([]); // yapılamayan işler (listenin sonunda "elle yap" denir)
+  // Yerelde öğrenme yalnız başarılı işten (Seyhun, 2026-10-09): yapay zekanın görev listesi ({ say, tasks, ok }) ve ana
+  // yapay zekanın sonucu ({ x, l }) iş ✓ bitince öğrenme deposuna yazılır; ✗, vazgeç ya da kapatmada yazılmaz
+  const planLearn = useRef(null);
+  const aiLesson = useRef(null);
   const chainRace = useRef(""); // zincirde açılan / değişen yarış: "bunun için gönderi hazırla"
   const [plan, setPlan] = useState([]); // görev listesi: [{ label, st: wait | run | done | fail }]
   const planOn = useRef(false); // görev listesi sürüyor
@@ -486,6 +495,22 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const planEnd = !awaiting && planOn.current && !chain.current.length;
     // Liste sürerken adımlar arasında mikrofon açılmaz: bir "tamam" ya da gürültü süren işi kesmesin (denetim B8)
     const midPlan = !awaiting && planOn.current && chain.current.length > 0;
+    // Öğrenme: iş bitti (soru sormadı). Başarılıysa yapay zekanın sonucu depoya yazılır (aynısı varsa eklenmez)
+    if (!awaiting && aiLesson.current) {
+      const ls = aiLesson.current;
+      aiLesson.current = null;
+      if (!(extra.fail ?? failed(message)) && !DROPPED.test(message)) record(ls.x, ls.l, "ai");
+    }
+    if (!awaiting && planOn.current && planLearn.current) {
+      const pl = planLearn.current;
+      const t = pl.tasks[planIdx.current];
+      if (badStep || DROPPED.test(message)) pl.ok = false;
+      else if (t) planLessons([t]).forEach((e) => record(e.x, e.l, "ai")); // her işin sözü öğrenilir
+      if (planEnd) {
+        if (pl.ok) rememberPlan(pl.say, pl.tasks); // hepsi ✓: aynı cümle yeniden söylenince yapay zekaya gidilmez
+        planLearn.current = null;
+      }
+    }
     if (!awaiting && planOn.current) {
       const bad = badStep;
       const at = planIdx.current;
@@ -775,7 +800,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Not açıkça istenmediyse yapay zekanın başka işin yanına eklediği not atılır (öğrenme verisine de girmez)
     if (r.items?.length) r = { ...r, items: keepNotes(r.items, s) };
     const msg = (r.message || "").trim();
-    record(s, labelFromAI(r), "ai"); // öğrenme verisi
+    aiLesson.current = { x: s, l: labelFromAI(r) }; // öğrenme verisi: iş ✓ bitince yazılır (reply)
     const held = heldQ.current;
     heldQ.current = null;
 
@@ -936,6 +961,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     raceFailed.current = false;
     planNow.current = tasks[0].label || "";
     planFails.current = [];
+    if (planLearn.current) planLearn.current.tasks = tasks; // listenin son sırası (yapılış sırası)
     setPlan(tasks.map((x, i) => ({ label: x.label, st: i ? "wait" : "run" })));
     chainStep.current = true;
     setWork(tasks[0].label);
@@ -988,11 +1014,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Tek cümlede birden çok iş ("Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit
     // verdi. Atatürk Kupası için Instagram görseli hazırla"): yapay zeka sıralı görev listesi çıkarır (/api/tasks), işler
     // sırayla kendi akışlarında yapılır. Bir soruya cevap beklenirken (taslak, kart, yarış sorusu…) bakılmaz.
-    if (!chained && !msgFirst && !cards.awaiting && !drafts.length && !raceFollow.current) {
+    // Günlüğün eksik bilgisi beklenirken söylenen yeni çoklu istek ("… geldi, yoklamaya ekle, notu sil") de listeye girer
+    const logWait = cards.awaiting && logFlow.current?.date && !logFlow.current.ask && !logFlow.current.collect;
+    if (!chained && !msgFirst && (!cards.awaiting || logWait) && !drafts.length && !raceFollow.current) {
       const parts = splitChain(s);
       // Noktalamasız söylense de ("…yarış oluştur yarış için görsel hazırla bugün Mustafa geldi") iki ve fazla iş fiili varsa
       // ve uygulamanın kendi akışlarından biri işin içindeyse düzeni yapay zeka kurar (yoksa cümlenin tamamı tek akışa giderdi)
       if ((parts.length > 1 && parts.some(flowOf)) || looksMulti(s, flowOf) || (actCount(s) > 1 && (flowOf(s) || clausesOf(s).some(flowOf)))) {
+        logFlow.current = null; // yeni istek: günlüğün eksik bilgisi beklenmiyor
         setTurns((p) => [...p, { role: "user", text: s }]);
         setText("");
         setHeard(s);
@@ -1009,10 +1038,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         if (pid !== runId.current) return;
         setPhase("idle");
         countHit(known ? "brain" : "ai");
-        if (tasks && !known) {
-          planLessons(tasks).forEach((e) => record(e.x, e.l, "ai")); // her işin sözü öğrenilir
-          rememberPlan(s, tasks);
-        }
+        // Yapay zekanın listesi işler ✓ bittikçe öğrenilir (reply), hepsi ✓ ise aynı cümle için saklanır
+        planLearn.current = tasks?.length > 1 && !known ? { say: s, tasks, ok: true } : null;
         const split = parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
         const list = tasks?.length > 1 ? tasks : !tasks ? split || localPlan(s, flowOf) : null;
         // Sıra yapay zekanın kurduğu düzen; yapay zekasız (yerel) listede aynı kural uygulamada (orderPlan)

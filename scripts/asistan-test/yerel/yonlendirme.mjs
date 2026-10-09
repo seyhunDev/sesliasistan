@@ -229,10 +229,14 @@ group("Görev listesi: yapay zeka yanıtı")([
 
 // Yerelde öğrenme: yapay zekanın görev listesi cihazda saklanır, işlerin sözü öğrenilir, yapay zekasız liste kurulur
 const { cachedPlan, rememberPlan, planKey, planLessons, learnedKind, localPlan } = await import("@/lib/taskPlan");
+const { knownLesson } = await import("@/lib/brain/model");
 const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
 const TWO = [{ kind: "race", say: "Atatürk Kupası adında yarış oluştur", label: "Atatürk Kupası yarışı", from: "Atatürk Kupası adında bir yarış oluştur" }, { kind: "attendance", say: "yoklama: bugün Mustafa geldi", label: "Yoklama: Mustafa", from: "Bugün antrenmana Mustafa geldi" }];
 group("Görev listesi: yerelde öğrenme")([
   ["aynı cümle", { desc: "ikinci kez yapay zekasız", fn: () => { const st = mem(); rememberPlan("Atatürk Kupası oluştur. Mustafa geldi!", TWO, st); return cachedPlan("atatürk kupası oluştur mustafa geldi", st); }, ok: (t) => t?.length === 2 && t[0].kind === "race" }],
+  ["aynı söz, aynı sonuç", { desc: "depoya ikinci kez eklenmez", fn: () => knownLesson([{ x: "Bugün antrenmana Mustafa geldi.", l: "plan:attendance" }], "bugün ANTRENMANA mustafa geldi", "plan:attendance"), ok: (r) => r === true }],
+  ["aynı söz, farklı sonuç", { desc: "yeni örnek olarak eklenir", fn: () => knownLesson([{ x: "Bugün antrenmana Mustafa geldi.", l: "plan:attendance" }], "bugün antrenmana mustafa geldi", "plan:log"), ok: (r) => r === false }],
+  ["farklı söz", { desc: "eklenir", fn: () => knownLesson([{ x: "Mustafa geldi", l: "plan:attendance" }], "Ali geldi", "plan:attendance"), ok: (r) => r === false }],
   ["başka cümle", { desc: "kopya yok", fn: () => { const st = mem(); rememberPlan("a b c", TWO, st); return cachedPlan("x y z", st); }, ok: (t) => t === null }],
   ["tek iş", { desc: "saklanmaz", fn: () => { const st = mem(); rememberPlan("a b", TWO.slice(0, 1), st); return cachedPlan("a b", st); }, ok: (t) => t === null }],
   ["Bugün, ANTRENMANA   Mustafa geldi.", { desc: "anahtar", fn: planKey, ok: (k) => k === "bugün antrenmana mustafa geldi" }],
@@ -419,5 +423,23 @@ group("Sohbetteki yarış")([
   group("Görev listesi: yanlış tür düzeltmesi")([
     ["Yarın 10da antrenman planla", { desc: "etkinlik değil, plan (other)", fn: (s) => cleanPlan({ tasks: [{ kind: "invoice", say: "Turkcell faturası ödendi" }, { kind: "event", say: s }] }).map((t) => t.kind).join(","), ok: (k) => k === "invoice,other" }],
     ["Cumartesi kamp planla", { desc: "kamp etkinliktir", fn: (s) => cleanPlan({ tasks: [{ kind: "event", say: s }] })[0].kind, ok: (k) => k === "event" }],
+  ]);
+  // Seyhun'un cümlesi (2026-10-09): günlük değil yoklama + not silme; "Uğraz" = Uraz
+  const { isLogAnswer, matchNames } = await import("@/lib/trainingLog");
+  const { cleanSay: clean2 } = await import("@/lib/speech/normalize");
+  const SEY2 = "Uğraz, Efes, Duru antrenmana geldi. Bugün yoklamaya ekle onları. Onlarla ilgili oluşturduğun notu sil.";
+  const ROS = [{ id: "u", studentName: "Uraz Kaya", status: "active" }, { id: "e", studentName: "Efes Duran", status: "active" }, { id: "g", studentName: "Gökhan Arslan", status: "active" }];
+  group("Yoklama + not silme (günlük değil)")([
+    [SEY2, { desc: "günlüğün eksik bilgisi sayılmaz", fn: isLogAnswer, ok: (r) => r === false }],
+    [SEY2, { desc: "iki iş: yoklama + diğer (not silme)", fn: (s) => localPlan(s, () => null)?.map((t) => t.kind).join(","), ok: (k) => k === "attendance,other" }],
+    ["Uğraz, Efes antrenmana geldi, yoklamaya ekle", { desc: "yapay zeka günlük dese de yoklama", fn: (s) => cleanPlan({ tasks: [{ kind: "log", say: s }, { kind: "other", say: "notu sil" }] })[0].kind, ok: (k) => k === "attendance" }],
+    ["Uğraz", { desc: "Uraz Kaya (ğ duyuldu)", fn: (s) => matchNames([s], ROS).names[0], ok: (n) => n === "Uraz Kaya" }],
+    ["Gökan", { desc: "Gökhan Arslan (h düştü)", fn: (s) => matchNames([s], ROS).names[0], ok: (n) => n === "Gökhan Arslan" }],
+  ]);
+  group("Söylenenin temizlenmesi (insan davranışı)")([
+    ["yanlış söyledim kapat", { desc: "baştaki düzeltme sözü", fn: clean2, ok: (r) => r === "kapat" }],
+    ["listeye süt ekle listeye süt ekle", { desc: "iki kez söylenen bir kez", fn: clean2, ok: (r) => r === "listeye süt ekle" }],
+    ["listeye süt ekleyiver", { desc: "-iver kipi", fn: clean2, ok: (r) => r === "listeye süt ekle" }],
+    ["Ali'yi arar mısın lütfen", { desc: "sondaki lütfen", fn: clean2, ok: (r) => r === "Ali'yi arar mısın" }],
   ]);
 }
