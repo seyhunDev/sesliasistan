@@ -241,6 +241,8 @@ group("Velilere duyuru ve iptal")([
   ["velilere yaz", Fa("Sporcular grubuna gider", () => AIA.parseAssistant({ intent: "message", message: "Göndereyim mi?", send: { to: "velilere", text: "Cumartesi kamp 9'da." } }).send?.to === "Sporcular")],
   ["iptal işlemi", Fa("op cancel geçerli", () => AIA.parseAssistant({ intent: "action", message: "Açtım", actions: [{ op: "cancel", kind: "plan", id: "p1" }] }).actions[0]?.op === "cancel")],
   ["haftalık plan", Fa("weekly → repeat week", () => AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00", weekly: true }] }).items[0]?.repeat === "week")],
+  ["haftalık plan (yapay zeka kaçırdı)", Fa("cümlede 'her salı' varsa weekly yazılmasa da haftalık, salıya denk", () => { const it = AIA.parseAssistant({ intent: "create", message: "Her hafta salı ekledim.", items: [{ type: "plan", title: "Optimist antrenmanı", date: "", time: "16:00" }] }, [], [], "her salı 16:00 Optimist antrenmanı ekle").items[0]; return it?.repeat === "week" && it.time === "16:00" && new Date(`${it.date}T12:00:00`).getDay() === 2; })],
+  ["tek seferlik plan", Fa("tekrar söylenmediyse haftalık olmaz", () => !AIA.parseAssistant({ intent: "create", message: "", items: [{ type: "plan", title: "Antrenman", date: "2026-10-06", time: "16:00" }] }, [], [], "salı 16:00 antrenman ekle").items[0]?.repeat)],
 ]);
 // ---- Tek mesajda sıralı işler (mesaj + takvim + not): hiçbiri atlanmaz, söylenen sırayla ----
 const ST = await import("@/lib/steps");
