@@ -519,14 +519,13 @@ group("Göreve göre ara yazı")([
   ["cumartesi tekne yıkama ekle", PC("tür belli değilse kayıt", (r) => !/Plan|Görev/.test(r?.work || "") || r?.kind === "plan")],
 ]);
 {
-  const { TASKS, inventoryWork, tasksPrompt, waitText } = await import("@/lib/assistTasks");
+  const { TASKS, inventoryWork, tasksPrompt } = await import("@/lib/assistTasks");
   group("Asistanın iş listesi")([
     ["kimlikler tekrarsız", { desc: "her iş bir kez", fn: () => TASKS.map((x) => x.id), ok: (ids) => new Set(ids).size === ids.length }],
     ["yapay zekalı işlerin yazısı var", { desc: "doing ve work dolu", fn: () => TASKS.filter((x) => x.by !== "yerel" && !(x.doing && x.work)).map((x) => x.id), ok: (xs) => !xs.length }],
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["yazıya çevirme", { desc: "beklerken ne olduğu yazar", fn: () => [waitText({ transcribing: true }), waitText({})], ok: ([a, b]) => a === "Sesin yazıya çevriliyor" && b === "Anlaşılıyor" }],
     ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2600 && /envanter/i.test(p) }],
   ]);
 }
@@ -540,7 +539,10 @@ group("Göreve göre ara yazı")([
     ["çok gecikince", { desc: "10 sn'de bekliyorum yazısı", fn: () => waitLines("Mesaj hazırlanıyor", 11000), ok: (r) => /uzun sürdü/.test(r.now) && r.done.length === 3 }],
     ["sırayla, döngüsüz", { desc: "son yazıda durur", fn: () => waitLines("Görev tamamlanıyor", 8000), ok: (r) => r.now === "Görev aranıyor" }],
     ["iş belli değil", { desc: "İstek inceleniyor ile başlar (\"anladım\" denmez)", fn: () => waitStages(""), ok: (r) => r[0] === "İstek inceleniyor" && !r.some((x) => /anla/i.test(x)) }],
-    ["yazıya çevirme", { desc: "ses yazıya çevriliyor", fn: () => waitStages("", { transcribing: true }), ok: (r) => r[0] === "Sesin yazıya çevriliyor" }],
+    ["yazıya çevirme", { desc: "teknik yazı yok (\"ses yazıya çevriliyor\" denmez)", fn: () => waitLines("", 3000, { transcribing: true }), ok: (r) => r === null }],
+    ["29 Ekim Cumhuriyet yarışı oluştur. Yarış için görsel oluştur", { desc: "istekten yazı", fn: (s) => waitStages("", { text: s })[0], ok: (r) => r === "29 Ekim Cumhuriyet yarışı oluşturuluyor" }],
+    ["yarın 10'da antrenman ekle", { desc: "istekten yazı", fn: (s) => waitStages("Plan hazırlanıyor", { text: s }), ok: (r) => r[0] === "Yarın 10'da antrenman ekleniyor" && r[1] === "Takvim kontrol ediliyor" }],
+    ["bugün hava nasıl", { desc: "soru: işin yazısı kalır", fn: (s) => waitStages("Bakıyorum", { text: s })[0], ok: (r) => r === "Bakıyorum" }],
     ["envanter", { desc: "envanterin kendi yazıları", fn: () => waitStages("Envanterden çıkarılıyor"), ok: (r) => r.includes("Ürünler eşleştiriliyor") }],
     ["geçmiş zaman", { desc: "biten yazı", fn: () => ["Takvim kontrol ediliyor", "Alıcı bulunuyor", "İşler sıraya konuyor"].map(pastTense), ok: (r) => r.join("|") === "Takvim kontrol edildi|Alıcı bulundu|İşler sıraya kondu" }],
   ]);
@@ -894,5 +896,20 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["yeni soru", C("yeni soru sorulunca diğer bütün sorular kapanır", () => CX.asksToClear("ok"), (r) => !r.includes("ok") && r.includes("person") && r.includes("raceChoice") && r.includes("to") && r.length === Object.keys(CX.ASK_EMPTY).length - 1)],
     ["sohbet bitti", C("hepsi kapanır", () => CX.asksToClear(), (r) => r.length === Object.keys(CX.ASK_EMPTY).length)],
     ["boş hâller", C("yarış seçimi boş liste, sporcu sorusu false", () => CX.ASK_EMPTY, (r) => Array.isArray(r.raceChoice) && r.athlete === false && r.ok === null)],
+  ]);
+}
+
+// Yoklamada ad yok ya da yanlış duyuldu: "Kimi ekleyeyim?" (lib/names.js closeNames, lib/attAsk.js)
+{
+  const { closeNames } = await import("@/lib/names");
+  const { attRetry } = await import("@/lib/attAsk");
+  const ATH = ["İlayda Kaya", "İlker Ak", "Mustafa Öz", "Enes Demir", "Zeynep Ak"];
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Yoklama: ad sorusu")([
+    ["bugün antrenmana ilave katıldı, yoklamaya onu ekle", C("yanlış duyulan ada en yakınlar seçenek", (s) => closeNames(s, ATH), (r) => r[0] === "İlayda Kaya" && !r.includes("Mustafa Öz"))],
+    ["yoklamaya onu ekle", C("ad yoksa seçenek yok", (s) => closeNames(s, ATH), (r) => r.length === 0)],
+    ["Mustfa", C("harf kaçsa da", (s) => closeNames(s, ATH), (r) => r[0] === "Mustafa Öz")],
+    ["cevap", C("ilk cümlenin günü ve durumu", () => attRetry("dün antrenmana ilave katılmadı", "İlayda"), (r) => r === "yoklama: dün İlayda gelmedi")],
+    ["cevap (gün yok)", C("geldi", () => attRetry("antrenmana ilave katıldı, yoklamaya onu ekle", "Mustafa"), (r) => r === "yoklama: Mustafa geldi")],
   ]);
 }

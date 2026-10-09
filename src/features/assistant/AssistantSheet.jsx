@@ -66,7 +66,8 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
-import { matchPerson } from "@/lib/names";
+import { closeNames, matchPerson } from "@/lib/names";
+import { attRetry } from "@/lib/attAsk";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
 import { money } from "@/lib/bankSheet";
@@ -238,6 +239,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Asistanla etkinlik planı: yer/zaman sorulduysa { text, turns } (sonraki cümle cevap; sessiz kalınırsa genel plan)
   const eventFlow = useRef(null);
   const invFlow = useRef(null); // envanter: silme onayı bekleniyor { org, id, name, kind, ask: [ürün] }
+  const attAsk = useRef(null); // yoklamada "Kimi ekleyeyim?" soruldu: { text } (ilk cümle; cevap yalnız ad)
   const athAsk = useRef(false); // "Yeni sporcunun adı soyadı ne?" soruldu: sonraki cümle ad
   const okFlow = useRef(null); // geri alınamayan iş onay bekliyor (arama, sporcu silme, aidat hatırlatması): { yes(viaVoice) }
   const logFlow = useRef(null); // antrenman günlüğü: { ask, text } tarih soruldu · { date, time } az önce yazıldı, eksikler söylenebilir
@@ -309,6 +311,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     HANDS_FREE &&
     setTimeout(() => {
       if (live.current.open && !live.current.text) sp.start({ autoStop: SILENCE_MS, auto: true, quiet: true, endpoint: ENDPOINT, handsFree: true });
+    }, 150);
+  // Kısa cevap beklenen soru (yoklamada "Kimi ekleyeyim?"): soru sesle sorulduysa okununca mikrofon bir kez kendiliğinden
+  // açılır, ad söylenip susunca gönderilir (dokunmak gerekmez); 8 sn konuşulmazsa kapanır
+  const listenOnce = () =>
+    setTimeout(() => {
+      if (live.current.open && !live.current.text && live.current.spStatus === "idle") sp.start({ auto: true, quiet: true, autoStop: 8000, endpoint: 1500, handsFree: true });
     }, 150);
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>
@@ -395,7 +403,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const memo = useRef({});
   const memoSet = (key, value) => (memo.current = remember(memo.current, key, value));
   // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
-  const ASK_REFS = { raceChoice: raceChoices, to: askTo, log: logFlow, person: personFlow, invoice: invAsk, ok: okFlow, athlete: athAsk, raceFollow, event: eventFlow, inv: invFlow };
+  const ASK_REFS = { attName: attAsk, raceChoice: raceChoices, to: askTo, log: logFlow, person: personFlow, invoice: invAsk, ok: okFlow, athlete: athAsk, raceFollow, event: eventFlow, inv: invFlow };
   function waitFor(kind = "") {
     asksToClear(kind).forEach((k) => (ASK_REFS[k].current = ASK_EMPTY[k]));
   }
@@ -426,7 +434,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null } = extra;
+    const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null, picks = [], listen = false } = extra;
     const awaiting = expect || !!pending || !!ok;
     // Görev listesinin son işi: yapılamayanlar elle yapılsın diye söylenir
     // İşin sonucu: akış açıkça "olmadı" dediyse (fail) ya da cevapta başarısızlık sözü varsa ✗
@@ -445,7 +453,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
     const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
     setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
-    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok });
+    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks });
     if (races?.length) waitFor("raceChoice");
     raceChoices.current = races;
     // Görev listesi: iş bitti (soru sormadıysa) → ✓ ya da ✗, sıradaki başlar
@@ -464,7 +472,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const said = streamSaid.current;
     streamSaid.current = "";
     const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
-    enqueueSay(rest, viaVoice || convo.current ? startAuto : undefined);
+    enqueueSay(rest, listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
   }
 
   // Başka bir tam ekran açılırken (fiş kamerası, kayıt, toplantı…) mikrofon kapanır; kubbe altta kalır, sohbet sürer
@@ -1022,6 +1030,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       athAsk.current = false;
       if (isDrop(s) || isNo(s)) return done("Tamam, eklemedim.", { engine: "local" }, viaVoice);
       if (s.split(/\s+/).length <= 6 && !QUESTION.test(s) && (await runMore(`yeni sporcu ekle: ${s}`, viaVoice))) return;
+    }
+    // Yoklamada "Kimi ekleyeyim?" soruldu: kısa cevap addır, ilk cümlenin günü ve durumuyla yoklamaya yazılır
+    const aa = !fresh ? attAsk.current : null;
+    attAsk.current = null;
+    if (aa) {
+      if (isDrop(s) || isNo(s)) return done("Tamam, yoklamaya eklemedim.", { engine: "local" }, viaVoice);
+      if (s.split(/\s+/).length <= 6 && !QUESTION.test(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runAttendance(attRetry(aa.text, s), viaVoice);
     }
     // Antrenman günlüğü sürüyor: tarih soruldu (cevap gün) ya da günlük az önce yazıldı (eksik bilgi: "çok iyi geçti", "90 dakika")
     const lf = !fresh ? logFlow.current : null;
@@ -2257,7 +2272,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         stepsEnd(false);
         // Cümle yoklama değil de başka işmiş (yoklama sayfasında "Ali'ye geldi mi diye sor"): yapay zekaya gider
         if (rest) return void askAI(rest.s, rest.s, viaVoice, rest.history, false);
-        return reply(r.message || (r.unknown.length ? `Şu adları sporcularda bulamadım: ${r.unknown.join(", ")}.` : "Kimseyi eşleştiremedim. Adları bir daha söyler misin?"), { engine: "ai", nav: "attendance", expect: true }, viaVoice);
+        // Ad söylenmedi ya da bulunamadı: kısa soru, yanlış duyulmuş ada en yakın sporcular seçenek, sesle sorulduysa mikrofon açılır
+        const picks = closeNames(r.unknown.length ? r.unknown.join(" ") : s, Object.values(r.names));
+        waitFor("attName");
+        attAsk.current = { text: s };
+        return reply(`${r.unknown.length ? `${r.unknown.join(", ")} adında sporcu bulamadım. ` : ""}Kimi ekleyeyim? ${picks.length ? "Adını söyle ya da seç." : "Adını söyle."}`, { engine: "local", expect: true, picks, listen: true }, viaVoice);
       }
       // Bulunamayan ad varsa kaydetmeden sor
       if (r.unknown.length) {
@@ -2626,13 +2645,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
   // Şu an yapılan iş (kubbede kürenin altında, ortada): sürmekte olan adım, işin yazısı ("WhatsApp mesajı hazırlanıyor")
-  // ya da iş belli olana kadar "Sesin yazıya çevriliyor" / "Anlaşılıyor". Yanıt akarken ya da Chrome'da söz görünürken yok.
+  // ya da isteğin kendisinden yazı ("Cumhuriyet yarışı oluşturuluyor"); ses yazıya çevrilirken yazı yok. Yanıt akarken yok.
   const stepNow = steps.find((x) => x.st === "run")?.label || "";
   // Beklerken sıralı yazılar (adım sürmüyorsa): işin adı hemen, yanıt gecikirse hazır yazılar sırayla (WaitLines.jsx)
   const waiting = (busy || transcribing) && !streamText && !(transcribing && heardNow); // ara adımlar (stepTo) görünmez, yerine sıralı yazılar
   // Görev listesi sürerken süren iş listede parlıyor: aynı ad bilgi alanında ikinci kez yazılmaz
   const planRun = plan.some((x) => x.st === "run");
-  const wait = useWaitLines(waiting && !(planRun && busy), busy ? work : "", !busy && transcribing);
+  const wait = useWaitLines(waiting && !(planRun && busy), busy ? work : "", !busy && transcribing, busy && !planRun ? heard : "");
   const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || wait?.now || "" : "";
   // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
   useEffect(() => {
@@ -2794,7 +2813,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   };
   const askObj = cards.awaiting
     ? {
-      chips: cards.pending?.actions || cards.pending?.att ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : [], // mesaj kartının kendi düğmeleri var
+      chips: cards.pending?.actions || cards.pending?.att ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : (cards.picks || []).map((n) => ({ label: n, onPick: () => (sp.cancel(), say(n)) })), // mesaj kartının kendi düğmeleri var
       onMic: () => sp.start({ autoStop: SILENCE_MS }),
       hint: "",
     }

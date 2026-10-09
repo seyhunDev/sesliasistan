@@ -95,9 +95,30 @@ export function tasksPrompt() {
   return `- Senin işlerin: ${mine.map((x) => `${x.name} ("${x.say}")`).join("; ")}\n- Uygulamanın kendi yaptıkları (sana gelmez): ${app.map((x) => x.name).join("; ")}`;
 }
 
-// İş belli olmadan beklerken görünen yazı: ses sunucuda yazıya çevriliyorsa "Sesin yazıya çevriliyor", sonra (ön cevap ya da
-// adım gelene kadar) "Anlaşılıyor". İş belli olunca yerini işin kendi yazısı alır ("WhatsApp mesajı hazırlanıyor").
-export const waitText = ({ transcribing }) => (transcribing ? "Sesin yazıya çevriliyor" : "Anlaşılıyor");
+// İsteğin kendisinden bekleme yazısı (Seyhun: "ses analiz ediliyor, anlaşılıyor gibi yazılar olmasın; bekleme yazıları
+// istekle ilgili olsun", 2026-10-09): "29 Ekim Cumhuriyet yarışı oluştur" → "29 Ekim Cumhuriyet yarışı oluşturuluyor",
+// "yarın 10'da antrenman ekle" → "Yarın 10'da antrenman ekleniyor". İlk iş cümleciği alınır, fiil edilgen olur; en çok 6 kelime.
+const PASSIVE = [
+  [/^ekle\p{L}*$/u, "ekleniyor"], [/^oluştur\p{L}*$/u, "oluşturuluyor"], [/^hazırla\p{L}*$/u, "hazırlanıyor"], [/^planla\p{L}*$/u, "planlanıyor"],
+  [/^yaz(sana|ar mısın|abilir misin)?$/u, "yazılıyor"], [/^gönder\p{L}*$/u, "gönderiliyor"], [/^sil\p{L}*$/u, "siliniyor"], [/^kaydet\p{L}*$/u, "kaydediliyor"],
+  [/^değiştir\p{L}*$/u, "değiştiriliyor"], [/^tamamla\p{L}*$/u, "tamamlanıyor"], [/^ertele\p{L}*$/u, "erteleniyor"], [/^hatırlat\p{L}*$/u, "hatırlatılıyor"],
+  [/^işaretle\p{L}*$/u, "işaretleniyor"], [/^çıkar\p{L}*$/u, "çıkarılıyor"], [/^tasarla\p{L}*$/u, "tasarlanıyor"], [/^yap(alım|ar mısın)?$/u, "yapılıyor"],
+];
+const LEAD_W = /^(lütfen|şimdi|hemen|bir|ve|bana|şunu|bunu|sonra|ayrıca)\s+/iu;
+export function aboutLine(text) {
+  const parts = String(text || "").split(/[.;!?]+|,\s*|\s+ve\s+/u).map((x) => x.trim()).filter(Boolean);
+  for (const p of parts) {
+    const w = p.replace(LEAD_W, "").split(/\s+/);
+    for (let i = w.length - 1; i > 0; i--) {
+      const v = PASSIVE.find(([re]) => re.test(w[i].toLocaleLowerCase("tr-TR").replace(/[^\p{L}]/gu, "")));
+      if (!v) continue;
+      const obj = w.slice(Math.max(0, i - 6), i).join(" ").replace(/[“”"]/g, "");
+      if (!obj) break;
+      return `${obj.charAt(0).toLocaleUpperCase("tr-TR")}${obj.slice(1)} ${v[1]}`;
+    }
+  }
+  return "";
+}
 
 // Beklerken sıralı durum yazıları (Seyhun: "cevap hızlıysa hemen göster; uzun sürüyorsa hazır yazıları sırayla göster,
 // kullanıcı oyalansın; sade, hafif soluk, parlayan", 2026-10-09). İlk satır işin kendi yazısıdır (work); yanıt gecikirse
@@ -135,11 +156,15 @@ const TAIL = "Biraz uzun sürdü, bekliyorum"; // en sonda: yanıt hâlâ gelmed
 const BY_WORK = Object.fromEntries(TASKS.filter((x) => x.work).map((x) => [x.work, x.id]));
 
 // İşin yazısından ("Plan hazırlanıyor") sıralı yazılar: ["Plan hazırlanıyor", "Takvim kontrol ediliyor", …]
-export function waitStages(work, { transcribing = false } = {}) {
-  if (transcribing) return ["Sesin yazıya çevriliyor", "Söylediğin okunuyor"];
-  if (!work) return GENERIC;
-  const id = BY_WORK[work] || (/^Envanter/.test(work) ? "inventory" : /hava/i.test(work) ? "weather" : work === "Bakıyorum" ? "query" : "");
-  return [work, ...(MORE[id] || GENERIC)];
+// text: kullanıcının isteği (varsa ilk satır ondan: "Cumhuriyet yarışı oluşturuluyor"). Ses yazıya çevrilirken (istek henüz
+// bilinmiyor) yazı yok: "ses analiz ediliyor" gibi teknik yazılar gösterilmez, küre rengi bekleniyor der.
+export function waitStages(work, { transcribing = false, text = "" } = {}) {
+  if (transcribing) return [];
+  const about = aboutLine(text);
+  const id = BY_WORK[work] || (/^Envanter/.test(work || "") ? "inventory" : /hava/i.test(work || "") ? "weather" : work === "Bakıyorum" ? "query" : "");
+  const more = MORE[id] || GENERIC;
+  if (about) return [about, ...more];
+  return work ? [work, ...more] : GENERIC;
 }
 
 // Ne zaman hangi yazı: ilk yazı hemen (işin adı), sonrakiler gecikince (1,8 sn, 3,8 sn, 6,2 sn…); son yazıda durur,
@@ -148,6 +173,7 @@ export const STAGE_AT = [0, 1800, 3800, 6200];
 export const TAIL_MS = 10000;
 export function waitLines(work, ms, opts = {}) {
   const all = waitStages(work, opts);
+  if (!all.length) return null;
   let i = 0;
   while (i + 1 < all.length && i + 1 < STAGE_AT.length && ms >= STAGE_AT[i + 1]) i++;
   if (ms >= TAIL_MS) return { done: all, now: TAIL };
