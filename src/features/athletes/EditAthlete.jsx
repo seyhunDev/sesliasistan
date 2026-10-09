@@ -87,7 +87,7 @@ function Form({ a, names, onClose, onSaved }) {
       <div className="grid grid-cols-2 gap-2">
         {Sel({ k: "currentClassId", label: "Yelken sınıfı", children: [<option key="" value="">Atanmamış</option>, ...names.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)] })}
         {Sel({ k: "currentCoachId", label: "Antrenör", children: [<option key="" value="">Atanmamış</option>, ...names.coaches.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)] })}
-        {Sel({ k: "status", label: "Durum", children: [<option key="a" value="active">Aktif</option>, <option key="p" value="passive">Pasif</option>] })}
+        {Sel({ k: "status", label: "Durum", children: [<option key="a" value="active">Aktif</option>, <option key="p" value="passive">Arşivde</option>] })}
         <label className="block">
           <span className="mb-1 block text-[0.75rem] text-mut">Doğum tarihi</span>
           <input type="date" value={f.studentBirthDate} onChange={set("studentBirthDate")} className={field} />

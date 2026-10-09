@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FieldPath, Timestamp, addDoc, collection, deleteField, doc, getDoc, getDocs, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
+import { FieldPath, Timestamp, addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
 import { dikiliAuth, dikiliDb } from "./dikili";
 import { EXPIRY_KEYS } from "@/lib/expiry";
 
@@ -108,6 +108,32 @@ export async function updateAthlete(id, before, patch, names) {
     logs.push({ type: "status_change", from: lab(before.status), to: lab(patch.status), note: `Durum: ${lab(before.status)} → ${lab(patch.status)}` });
   }
   for (const l of logs) await addDoc(collection(db, "athletes", id, "history"), { ...l, date: new Date() });
+  forget();
+}
+
+// Yeni sporcu (kulüp projesine, kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.
+// Dönüş: yeni sporcunun kimliği
+export async function createAthlete(fields) {
+  await ready();
+  const db = dikiliDb();
+  const data = { status: "active", currentClassId: "", currentCoachId: "", ...fields, createdAt: new Date() };
+  const d = data.studentBirthDate;
+  data.studentBirthDate = d ? Timestamp.fromDate(new Date(`${String(d).slice(0, 10)}T12:00:00`)) : null;
+  const ref = await addDoc(collection(db, "athletes"), data);
+  forget();
+  return ref.id;
+}
+
+// Arşiv: kulüp uygulamasındaki "Pasif" durumu (listede gizlenir, yoklama ve aidat listesine girmez; geçmişi kalır)
+export const setArchived = (a, on, names) => updateAthlete(a.id, a, { status: on ? "passive" : "active" }, names);
+
+// Sporcuyu kulüp projesinden tamamen siler (geçmiş kayıtları dahil). Geri alınamaz.
+export async function deleteAthlete(id) {
+  await ready();
+  const db = dikiliDb();
+  const hist = await getDocs(collection(db, "athletes", id, "history"));
+  for (const h of hist.docs) await deleteDoc(h.ref);
+  await deleteDoc(doc(db, "athletes", id));
   forget();
 }
 

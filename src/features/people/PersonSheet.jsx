@@ -8,6 +8,9 @@ import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { clubAthleteFor } from "@/features/athletes/memberSync";
 import { authFetch } from "@/lib/authFetch";
 import { db } from "@/lib/firebase/clientApp";
 import { KINDS, KIND_LABEL, RELATIONS, kindOf, shownLogin, suggestUsername, validUsername } from "@/lib/kinds";
@@ -38,7 +41,8 @@ const randomPw = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n
 // person: düzenlenecek kişi (null = yeni). Doğum günü girilirse ana hesabın takvimine kişiye bağlı eklenir.
 // prefill: yeni kişi için asistanın topladığı bilgiler (form dolu açılır, kaydetmek yine "Ekle" ile)
 export function PersonSheet({ open, onClose, person, defaultKind = "staff", initialStep = "edit", prefill = null }) {
-  const { birthdays, saveBirthday, deleteRecord, updateRecord, plans, tasks, notes, receipts, myUid } = useData();
+  const { birthdays, saveBirthday, deleteRecord, updateRecord, plans, tasks, notes, receipts, myUid, members } = useData();
+  const { profile } = useAuth();
   const toast = useToast();
   const isNew = !person;
   const [f, setF] = useState(() => {
@@ -89,7 +93,17 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
         const ref = await addDoc(collection(db, "orgs", myUid, "members"), { ...data, account: false, status: "active", createdAt: data.updatedAt });
         await updateDoc(ref, { uid: ref.id });
         await syncBirthday(ref.id, name);
-        toast(`${name} eklendi`);
+        // Sporcu kulüp listesine de (diğer Firebase projesi) eklenir ya da aynı adlı kulüp sporcusuna bağlanır
+        let club = "";
+        if (f.kind === "athlete" && canSeeAthletes(profile?.email)) {
+          try {
+            const athleteId = await clubAthleteFor({ name, birth: f.birth, phone: data.phone }, members);
+            await updateDoc(ref, { athleteId });
+          } catch {
+            club = " (kulüp listesine eklenemedi; Sporcular'dan ekle)";
+          }
+        }
+        toast(`${name} eklendi${club}`);
         onClose(ref.id);
       } else {
         await updateDoc(doc(db, "orgs", myUid, "members", person.uid), data);

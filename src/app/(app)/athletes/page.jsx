@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { AccessSheet } from "@/features/athletes/AccessSheet";
 import { syncAthleteAtt } from "@/features/athletes/mirror";
+import { NewAthlete } from "@/features/athletes/NewAthlete";
 
 // Arama ve karşılaştırma için: küçük harf, Türkçe
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
@@ -27,7 +28,7 @@ function birthParts(iso) {
   return Number.isNaN(d.getTime()) ? null : { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
 }
 
-// Sporcular (kulübün diğer projesinden, salt okunur). Yalnızca izinli hesap görür.
+// Sporcular (kulübün diğer projesinden). Ekleme burada, arşiv ve silme sporcunun sayfasında. Yalnızca izinli hesap görür.
 export default function AthletesPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -49,6 +50,7 @@ function AthleteList() {
   const toast = useToast();
   const [sel, setSel] = useState(null); // toplu seçim: Set(sporcu kimliği) | null
   const [access, setAccess] = useState(null); // hesap açılacak sporcular
+  const [adding, setAdding] = useState(false);
   // Uygulamada kişisi olan sporcular (kulüp kimliği → kişi)
   const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m]));
   // Liste yüklenince hesabı olan sporcuların yoklama kopyası güncellenir (kulüp uygulamasından girilenler de gelsin)
@@ -92,7 +94,12 @@ function AthleteList() {
 
   return (
     <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
-      <PageHeader title="Sporcular" sub={err ? "Kulüp verisi" : data ? `${activeCount} aktif${all.length > activeCount ? ` · ${all.length - activeCount} pasif` : ""}` : "Yükleniyor…"}>
+      <PageHeader title="Sporcular" sub={err ? "Kulüp verisi" : data ? `${activeCount} aktif${all.length > activeCount ? ` · ${all.length - activeCount} arşivde` : ""}` : "Yükleniyor…"}>
+        {data && !err && (
+          <button type="button" onClick={() => setAdding(true)} aria-label="Sporcu ekle" title="Sporcu ekle" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
+            <Icon name="plus" className="size-5" />
+          </button>
+        )}
         <Link href="/athletes/races" aria-label="Yarış evrakı" title="Yarış evrakı" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
           <Icon name="flag" className="size-5" />
         </Link>
@@ -136,7 +143,7 @@ function AthleteList() {
               onClick={() => setPassive((v) => !v)}
               className={`h-8 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-medium transition active:scale-95 ${passive ? "border-fg text-fg" : "border-line text-mut"}`}
             >
-              Pasifler {passive ? "görünür" : "gizli"}
+              Arşiv ({all.length - activeCount}) {passive ? "görünür" : "gizli"}
             </button>
           )}
         </div>
@@ -207,7 +214,7 @@ function AthleteList() {
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-[0.9375rem] font-semibold ${isActive(a) ? "" : "text-mut"}`}>{a.studentName}</span>
                       <span className="block truncate text-[0.8125rem] text-mut">
-                        {[classes[a.currentClassId], coaches[a.currentCoachId], !isActive(a) && "Pasif"].filter(Boolean).join(" · ") || "Sınıf atanmamış"}
+                        {[classes[a.currentClassId], coaches[a.currentCoachId], !isActive(a) && "Arşivde"].filter(Boolean).join(" · ") || "Sınıf atanmamış"}
                       </span>
                       {inApp && <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-px text-[0.6875rem] font-semibold text-ok">Uygulamada</span>}
                       {isActive(a) && alertsOf(a, todayStr()).some((x) => x.state === "expired") && (
@@ -264,6 +271,16 @@ function AthleteList() {
               }}
             />
           )}
+          <NewAthlete
+            open={adding}
+            onClose={() => setAdding(false)}
+            onSaved={() => {
+              setAdding(false);
+              reload();
+            }}
+            names={{ classes: data.classes || [], coaches: data.coaches || [] }}
+            athletes={all}
+          />
           {user && (
             <p className="mt-6 text-center text-[0.75rem] text-mut">
               Kulüp hesabı: {user.email} ·{" "}
