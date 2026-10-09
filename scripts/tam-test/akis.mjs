@@ -3,7 +3,7 @@
 // lib/speech/normalize.js cleanSay). AssistantSheet.jsx `run()` başındaki görev listesi kararı ve `flowOf` burada aynı sırayla
 // yazılıdır (bileşen tarayıcı modülleri yüklediği için Node'da çalışmaz). run() değişirse buradaki `decide` de güncellenir.
 import { routeOf } from "@/lib/assistRoute";
-import { isEnd } from "@/lib/assistantLocal";
+import { isEnd, isNoMore } from "@/lib/assistantLocal";
 import { messageFirst } from "@/lib/steps";
 import { cleanSay } from "@/lib/speech/normalize";
 import { actCount, looksMulti, localPlan, orderPlan, clausesOf, PLAN_MAX } from "@/lib/taskPlan";
@@ -84,6 +84,7 @@ export function decide(raw, o = {}) {
   const s = cleanSay(String(raw || ""));
   const msgFirst = messageFirst(s);
   if (isEnd(s) && !msgFirst) return { s, multi: false, route: "close" };
+  if (o.askedMore && isNoMore(s)) return { s, multi: false, route: "close" }; // "Başka bir isteğin var mı?" → "yok"
   if (!msgFirst && !o.askedMore && !o.chained) { // chained: görev listesindeki bir iş (uygulamada yeniden bölünmez)
     const parts = splitChain(s);
     const multi = (parts.length > 1 && parts.some(flowOf)) || looksMulti(s, flowOf) || (actCount(s) > 1 && (flowOf(s) || clausesOf(s).some(flowOf)));
