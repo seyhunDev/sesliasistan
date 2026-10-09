@@ -399,7 +399,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
       setFilled(false);
     };
   }, [active]);
-  const open = active && (filled || !!live.status);
+  const open = active && filled;
   // Yazı kutusunda görünen: dinlerken ve gönderilirken söylenen söz, değilse sayfanın ipucu
   // Alttan açılan sayfa: asistan açıkken, yazarken ya da kayıt ekranında; değilse sekme çubuğu
   const sheet = active || typing || rec;
@@ -437,16 +437,6 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-2" : ""}`}>
                   <div ref={setSlot} />
                 </div>
-              </div>
-            )}
-            {/* Durum: şu an yapılan iş, yazı kutusunun üstünde kendi yerinde (yeri hep ayrılı, hiçbir şey zıplamaz) */}
-            {open && (
-              <div className="flex h-8 items-center justify-center" role="status" aria-live="polite">
-                {live.status && (
-                  <span key={live.status} className="dome-chip fade-in">
-                    <span className="work-text truncate">{live.status}…</span>
-                  </span>
-                )}
               </div>
             )}
             <div className={`flex h-[3.75rem] items-center gap-2 px-3 ${active ? "" : "pt-2"}`}>

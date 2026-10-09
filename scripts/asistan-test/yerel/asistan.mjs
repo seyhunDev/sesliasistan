@@ -602,6 +602,19 @@ group("Göreve göre ara yazı")([
     ["Ali ve Ayşe ile Yelken Ekibi adında grup kur", C("grup adı", M.groupCreateCommand, (r) => r?.name === "Yelken Ekibi")],
     ["Ayşe Yılmaz'ı kişilerden sil", C("kişi silme", M.personDeleteCommand, (r) => /ayşe/i.test(r?.name || ""))],
   ]);
+  const PM = await import("@/features/posts/postModel");
+  const { followAsk } = await import("@/features/athletes/raceNav");
+  group("Gönderi tasarımı sesle ve yarışın eksikleri")([
+    ["gönderi hazırla, mavi olsun, hikâye boyutunda, modern", C("renk, boyut, tasarım", PM.designFrom, (r) => r.theme === "gece" && r.format === "story" && r.style === "modern")],
+    ["kırmızı renkli kare gönderi", C("kırmızı, kare", PM.designFrom, (r) => r.theme === "al" && r.format === "square")],
+    ["yarış sonucu gönderisi, bordo olsun", C("tür ve renk", PM.designFrom, (r) => r.kind === "sonuc" && r.theme === "bordo")],
+    ["moral verici bir yazı", C("moral mor değil", PM.designFrom, (r) => !r.theme)],
+    ["rengi yeşil yap", C("yalnız tasarım", PM.askBeyondLook, (r) => r === false)],
+    ["daha kısa yaz, rengi yeşil yap", C("yazı da değişir", PM.askBeyondLook, (r) => r === true)],
+    ["yarış", C("tarih ve sporcu yok", () => followAsk({ startDate: "", athleteIds: [] }), (r) => /tarih/i.test(r) && /sporcu/i.test(r))],
+    ["yarış", C("yalnız sporcu yok", () => followAsk({ startDate: "2026-10-26", athleteIds: [] }), (r) => r === "Hangi sporcular katılacak?")],
+    ["yarış", C("eksik yok", () => followAsk({ startDate: "2026-10-26", athleteIds: ["a"] }), (r) => r === "")],
+  ]);
 }
 
 // ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----

@@ -433,3 +433,32 @@ export function sizeAsk(text, post = {}) {
   if (k === "headSize") out.noHead = false;
   return out;
 }
+
+// Söylenen tasarım isteği → gönderi alanları (Seyhun: "renk, şablon falan söylediklerimi uygulamadaki seçeneklerle eşleştirip
+// hazırlasın", 2026-10-09). "mavi, hikâye boyutunda, modern" → { theme: "gece", format: "story", style: "modern" }.
+// Yalnız açıkça söylenen alanlar döner; boşsa {}.
+const LOOK_THEME = [
+  [/turkuaz|camgöbeği/u, "turkuaz"], [/bordo|şarap/u, "bordo"], [/kırmızı|al bayrak|bayrak rengi/u, "al"], [/lacivert|mavi/u, "gece"],
+  [/yeşil|deniz rengi/u, "deniz"], [/turuncu|pembe|gün ?batımı|somon/u, "gun"], [/bej|krem|kum|açık renk/u, "kum"], [/ mor(?:[ ,]|u |a | renk)|lila/u, "mor"], [/ gri |siyah|antrasit|koyu renk/u, "antrasit"],
+];
+export function designFrom(text) {
+  const t = ` ${String(text || "").toLocaleLowerCase("tr-TR").replace(/[.,!?;:]/g, " ")} `;
+  const out = {};
+  const th = LOOK_THEME.find(([re]) => re.test(t));
+  if (th) out.theme = th[1];
+  if (/hik[aâ]?ye|story/u.test(t)) out.format = "story";
+  else if (/reels/u.test(t)) out.format = "reels";
+  else if (/ kare /u.test(t) || /kare (boyut|olsun|format)/u.test(t)) out.format = "square";
+  else if (/dikey/u.test(t)) out.format = "portrait";
+  if (/modern/u.test(t)) out.style = "modern";
+  else if (/afiş/u.test(t)) out.style = "afis";
+  else if (/klasik/u.test(t)) out.style = "afis";
+  else if (/ bant /u.test(t)) out.style = "bant";
+  else if (/kart şablon|şablonu kart/u.test(t)) out.style = "kart";
+  if (/sonu[çc]|kazandı|derece|birinci oldu|ikinci oldu|üçüncü oldu/u.test(t)) out.kind = "sonuc";
+  else if (/kayıt|yelken okulu|yaz okulu/u.test(t)) out.kind = "kayit";
+  else if (/kutlama|tebrik/u.test(t)) out.kind = "kutlama";
+  return out;
+}
+// Tasarım dışında bir yazı isteği de var mı ("daha kısa yaz", "Mete'yi ekle")
+export const askBeyondLook = (text) => /(yaz|ekle|kısalt|uzat|kısa|uzun|başlık|açıklama|görsel|fotoğraf|çıkar|değiştir(?!.*(renk|şablon|boyut)))/iu.test(text);
