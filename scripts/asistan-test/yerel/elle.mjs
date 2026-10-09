@@ -1289,3 +1289,11 @@ group("Yayın bilgisi")([
   ["asistan cevabı", F("tarih ve değişiklik", () => BI.buildSpeech({ at: "2026-10-09T15:15:00Z", msg: BMSG }) === "Son güncelleme 9 Ekim 18:15 tarihinde yayınlandı. Değişiklik: Ayarlar'da sürüm satırı.")],
   ["soru değil", F("başka cümleler sürüm sorusu sayılmaz", () => !BI.versionAsk("yarın 10'da antrenman ekle") && !BI.versionAsk("son kaydı geri al") && BI.versionAsk("son güncelleme ne"))],
 ]);
+
+// Yeni sürüm denetimi (newVersion.js): yayındaki sürüm farklıysa Güncelle düğmesi
+const NV = await import("@/lib/newVersion");
+group("Yeni sürüm")([
+  ["farklı sürüm", F("yeni sayılır", () => NV.isNewer({ sha: "bbb" }, "aaa") && !NV.isNewer({ sha: "aaa" }, "aaa"))],
+  ["bilgi yok", F("geliştirmede ya da yanıtsızda yeni sayılmaz", () => !NV.isNewer({ sha: "bbb" }, "") && !NV.isNewer(null, "aaa") && !NV.isNewer({ sha: "" }, "aaa"))],
+  ["güncelleme isteği", F("başka işler sayılmaz", () => NV.updateAsk("uygulamayı güncelle") && NV.updateAsk("güncelle") && !NV.updateAsk("antrenman planını güncelle") && !NV.updateAsk("yarın 10'da antrenman ekle"))],
+]);

@@ -33,6 +33,7 @@ export const TASKS = [
   { id: "query", group: "Sorular", name: "Plan, görev, not, fiş soruları ve özet", say: "bu hafta neler var", who: "herkes", by: "yz", doing: "Bakıyorum.", work: "Bakıyorum" },
   { id: "weather", group: "Sorular", name: "Hava ve rüzgâr", say: "yarın rüzgâr kaç knot", who: "herkes", by: "yz", doing: "Bakıyorum.", work: "Hava durumuna bakılıyor" },
   { id: "version", group: "Sorular", name: "Son güncelleme (yayın tarihi ve son değişiklik)", say: "son güncelleme ne", who: "herkes", by: "yerel" },
+  { id: "appUpdate", group: "Sorular", name: "Uygulamayı yeni sürüme güncelleme", say: "uygulamayı güncelle", who: "herkes", by: "yerel" },
   { id: "payee", group: "Sorular", name: "Gelen ödemeler sorusu", say: "bu ay ne kadar ödeme aldım", who: "ana", by: "yerel" },
 
   // Arama
