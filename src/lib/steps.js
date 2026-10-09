@@ -53,12 +53,20 @@ export function jobsText(kinds) {
 // "Ali'ye yaz, faturayı ödedim", "ekibe yaz, kamp planı yapıyoruz", "Ayşe'ye söyle ders programını göndersin".
 // Böyle cümleler yerel akışlara (yoklama, envanter, etkinlik, fatura, doğum günü, günlük…) girmez; ana yapay zekaya gider.
 // "Emre gelmedi, velisine haber ver" mesajla başlamaz: önce yoklama, sonra mesaj (eskisi gibi).
-const TO_GROUP = new RegExp(`${W}(ekibe|ekiptekilere|sporculara|velilere|ailelere|aileye|herkese|gruba|grubuna|çalışanlara|antrenörlere|öğrencilere)(?![\\p{L}])`, "u");
+const TO_GROUP = new RegExp(`${W}(ekibe|ekiptekilere|sporculara|velilere|ailelere|aileye|herkese|gruba|grubuna|çalışanlara|antrenörlere|öğrencilere|velisine|annesine|babasına|ailesine)(?![\\p{L}])`, "u");
 const TO_PERSON = /(?<![\p{L}])\p{L}+['’](?:y?[ae])(?![\p{L}])/u;
 const MSG_VERB = new RegExp(`${W}(yaz(?:sana|ar mısın|alım|ın)?|söyle\\p{L}*|haber ver\\p{L}*|ilet\\p{L}*|gönder(?!il)\\p{L}*|mesaj (?:at|gönder|yaz)\\p{L}*|de ki)(?![\\p{L}])`, "u");
+// Ses tanıma kesme işareti yazmaz: cümle başındaki "aliye yaz", "mustafaya mesaj at", "enese söyle" de alıcıdır
+// (kayıt yerleri sayılmaz: "günlüğe yaz", "listeye ekle", "nota yaz"…)
+const TO_BARE = /^\s*(\p{L}{2,}?(?:y?[ae]))\s+(?:yaz|söyle|mesaj|haber ver|ilet|de ki)/u;
+const NOT_PERSON = /^(günlüğ[e]|günlüğüne|nota|notlara|listeye|takvime|envantere|deftere|yoklamaya|plana|planlara|bütçeye|açıklamaya|göreve|görevlere|forma|kenara|buraya|şuraya|oraya|bana|sana|ona|bize|size|onlara|whatsapp'?a|mail'?e|maile)$/u;
 export function messageFirst(raw) {
-  const head = lower(String(raw || "")).split(/[,;:]|(?<![\p{L}])(?:ve|sonra|ardından)(?![\p{L}])/u)[0];
-  return MSG_VERB.test(head) && (TO_PERSON.test(head) || TO_GROUP.test(head));
+  // İlk cümle/bölüm: nokta da ayırır ("Gönderi hazırla. Ali'ye yaz …" mesajla başlamaz)
+  const head = lower(String(raw || "")).split(/[,;:.!?]\s|[,;:]|(?<![\p{L}])(?:ve|sonra|ardından)(?![\p{L}])/u)[0];
+  if (!MSG_VERB.test(head)) return false;
+  if (TO_PERSON.test(head) || TO_GROUP.test(head)) return true;
+  const m = TO_BARE.exec(head);
+  return !!m && !NOT_PERSON.test(m[1]);
 }
 
 // Soru mu? Soru işareti, sonda "mi/mı/mu/mü" ya da soru sözü (kim, kaç, hangi, ne zaman, nerede, neydi, nasıl).

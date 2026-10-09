@@ -18,6 +18,6 @@ const AHEAD = /\d{1,2}[:.]\d{2}|(?<![\p{L}])(yarın|haftaya|gelecek hafta|derse|
 export const wantsAttendance = (text, here = false) => {
   const t = String(text || "").toLocaleLowerCase("tr-TR");
   if (ASK.test(t.trim()) || AHEAD.test(t)) return false;
-  if (t.includes("yoklama") || (/(antrenman|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu|katıldı|katılmadı|katılmayan|vardı|yoktu|gelmiş|gelmemiş)/.test(t))) return true;
+  if (t.includes("yoklama") || (/(antre?n?man|idman|sporcu|çalışma)/.test(t) && /(geldi|gelmedi|gelmeyen|izinli|raporlu|katıldı|katılmadı|katılmayan|vardı|yoktu|gelmiş|gelmemiş)/.test(t))) return true;
   return here && HERE.test(t) && !/(\?|(?<![\p{L}])m[ıiuü](\p{L}*)?)\s*$/u.test(t.trim());
 };
