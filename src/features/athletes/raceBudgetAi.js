@@ -4,6 +4,7 @@
 // Yalnız yarış bilgisi ve sayılar gider; sporcu adı gitmez.
 import { authFetch } from "@/lib/authFetch";
 import { cleanBudget, emptyBudget } from "./budget";
+import { raceHotels } from "./races";
 
 export async function askBudget(r, athletes, text) {
   const b = r.budget || emptyBudget(r);
@@ -17,7 +18,7 @@ export async function askBudget(r, athletes, text) {
       staff: b.staff,
       nights: b.nights,
       fees: r.notice?.fees || [],
-      hotels: r.notice?.hotels || [],
+      hotels: raceHotels(r),
       items: b.items,
     }),
   });

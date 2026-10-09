@@ -9,6 +9,7 @@ import { authFetch } from "@/lib/authFetch";
 import { AroundMap } from "./AroundMap";
 import { RaceWeather } from "./RaceWeather";
 import { KINDS, cleanAround, distText, gatherAround, isApple, minText, placeLink, routeLink } from "./raceAround";
+import { raceHotels } from "./races";
 
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -38,7 +39,7 @@ export function AroundView({ r, onChange, onWeather }) {
   const toast = useToast();
   const a = cleanAround(r.around);
   const [venueName, setVenueName] = useState(a?.venue.q || r.notice?.venue || "");
-  const [hotelName, setHotelName] = useState(a ? a.hotel?.q || "" : r.hotelName || r.notice?.hotels?.[0]?.name || "");
+  const [hotelName, setHotelName] = useState(a ? a.hotel?.q || "" : r.hotelName || raceHotels(r)[0]?.name || "");
   const [busy, setBusy] = useState("");
   const [show, setShow] = useState("all");
   const [focus, setFocus] = useState(null);

@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
-import { cleanRooms, roomLine } from "./budget";
 
 const day = (s) => new Date(`${s}T12:00:00`);
 const short = (s) => day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -76,9 +75,9 @@ export function NoticeUpload({ busy, onFile, onText, title = "Yarış talimatın
 const List = ({ children }) => <ul className={`${card} divide-y divide-line overflow-hidden`}>{children}</ul>;
 
 
-// Talimattan okunanlar: özet, program, ücretler, konaklama, iletişim, önemli notlar.
+// Talimattan okunanlar: özet, program, ücretler, iletişim, önemli notlar (oteller Özet › Konaklama'da, RaceHotels).
 // Talimat dosyası (aç, değiştir, kaldır) yarış sayfasının en üstünde (RaceEditor).
-export function NoticeDetails({ n, onRooms, roomsBusy }) {
+export function NoticeDetails({ n }) {
   if (!n) return null;
   const days = [];
   for (const s of n.schedule || []) {
@@ -141,50 +140,6 @@ export function NoticeDetails({ n, onRooms, roomsBusy }) {
               </li>
             ))}
           </List>
-        </>
-      )}
-
-      {n.hotels?.length > 0 && (
-        <>
-          <Label>KONAKLAMA</Label>
-          <List>
-            {n.hotels.map((h, i) => (
-              <li key={i} className="px-4 py-2.5">
-                <span className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1">
-                    <b className="block text-[0.9375rem] font-semibold">{h.name}</b>
-                    {h.note && <span className="block select-text break-words text-[0.8125rem] text-mut">{h.note}</span>}
-                  </span>
-                  {h.phone && (
-                    <a href={tel(h.phone)} aria-label={`${h.name} ara`} className="grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-                      <Icon name="phone" className="size-[1.125rem]" />
-                    </a>
-                  )}
-                </span>
-                {cleanRooms(h.rooms).length > 0 && (
-                  <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl bg-bg">
-                    {cleanRooms(h.rooms).map((x, j) => (
-                      <li key={j} className="flex items-baseline gap-3 px-3 py-2">
-                        <span className="min-w-0 flex-1 text-[0.875rem]">
-                          {x.label || (x.cap === 1 ? "Tek kişilik" : `${x.cap} kişilik`)}
-                          {x.board && <span className="block text-[0.75rem] text-mut">{x.board}</span>}
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <b className="block text-[0.875rem] font-semibold tabular-nums">{x.price || roomLine(x)}</b>
-                          {x.amount > 0 && x.cap > 1 && <span className="block text-[0.75rem] tabular-nums text-mut">{roomLine(x).split(" · ").slice(1, 3).join(" · ")}</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </List>
-          {onRooms && !n.hotels.some((h) => cleanRooms(h.rooms).length) && (
-            <button type="button" disabled={roomsBusy} onClick={onRooms} className="mt-2 w-full rounded-xl px-4 py-2.5 text-left text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
-              {roomsBusy ? "Talimat yeniden okunuyor…" : "Oda fiyatlarını talimattan yeniden oku"}
-            </button>
-          )}
         </>
       )}
 

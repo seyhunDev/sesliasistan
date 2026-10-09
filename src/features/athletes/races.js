@@ -4,7 +4,7 @@ import { cleanResults } from "@/lib/raceResults";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanDocs, nextNo } from "./raceDocs";
-import { cleanBudget } from "./budget";
+import { cleanBudget, cleanRooms } from "./budget";
 import { rememberRaceNames } from "./raceNames";
 import { cleanAround } from "./raceAround";
 import { cleanWeather } from "./raceWeather";
@@ -22,6 +22,8 @@ export const RACE_FIELDS = [
   "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle",
   // Otel konaklama izni (otel adı boşsa belgede elle yazılacak yer kalır)
   "hotelName", "hotelFrom", "hotelTo",
+  // Oteller [{ name, phone, note, rooms }]: elle düzenlenince burada; düzenlenmediyse talimattakiler (raceHotels)
+  "hotels",
   // TYF antrenör ve katılım formlarında sınıf (boşsa sporcuların sınıfına göre ayrı formlar)
   "entryClass",
   // Yarış talimatından okunanlar (program, son tarihler, ücretler, oteller, iletişim; raceNotice.js)
@@ -55,6 +57,37 @@ export function cleanNotice(n) {
     else out[k] = String(v ?? "");
   }
   return out;
+}
+
+// Oteller: talimattan gelir, elle eklenir/düzeltilir (ad, telefon, not; oda fiyatları talimattan)
+const T = (v, n) => String(v ?? "").trim().slice(0, n);
+export const cleanHotel = (h) =>
+  h && typeof h === "object" && T(h.name, 100) ? { name: T(h.name, 100), phone: T(h.phone, 40), note: T(h.note, 240), rooms: cleanRooms(h.rooms) } : null;
+export const cleanHotels = (a) => (Array.isArray(a) ? a.map(cleanHotel).filter(Boolean).slice(0, 12) : null);
+// Yarışın otelleri: elle düzenlendiyse onlar, yoksa talimattakiler
+export const raceHotels = (r) => (Array.isArray(r?.hotels) ? r.hotels : r?.notice?.hotels || []).filter((h) => h?.name);
+// Telefonla aranabilir mi (en az 7 rakam)
+export const telOf = (p) => {
+  const t = String(p || "").replace(/[^\d+]/g, "");
+  return t.replace(/\D/g, "").length >= 7 ? `tel:${t}` : "";
+};
+// Yeni talimatın otelleri elle düzenlenmiş listeye katılır: aynı adlı otelin oda fiyatları yenilenir,
+// boş telefon/not talimattan dolar; yeni otel eklenir, elle eklenen ya da düzeltilen silinmez.
+const hk = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
+export function mergeHotels(own, incoming) {
+  if (!Array.isArray(own)) return null;
+  const out = own.map((h) => ({ ...h }));
+  for (const n of incoming || []) {
+    if (!n?.name) continue;
+    const h = out.find((x) => hk(x.name) === hk(n.name));
+    if (!h) out.push(n);
+    else {
+      if (cleanRooms(n.rooms).length) h.rooms = n.rooms;
+      if (!h.phone && n.phone) h.phone = n.phone;
+      if (!h.note && n.note) h.note = n.note;
+    }
+  }
+  return cleanHotels(out);
 }
 
 export const cleanNoticeFile = (f) =>
@@ -169,6 +202,8 @@ const clean = (r) =>
               ? cleanResults(r[k])
             : k === "docs"
               ? cleanDocs(r[k])
+            : k === "hotels"
+              ? cleanHotels(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
@@ -184,7 +219,7 @@ export function freshRace(last = {}, today = "") {
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", entryClass: "", docs: null, notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 
