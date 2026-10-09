@@ -11,6 +11,7 @@ import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf,
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
+import { postArchiveCommand } from "@/lib/assistMore";
 import { todayStr } from "@/lib/utils/format";
 
 const area =
@@ -101,6 +102,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const setFiles = useRef({});
   const fileInput = useRef(null);
   const latest = useRef(null);
+  const arcRef = useRef(null); // asistanın "arşive kaldır" demesi için (arc aşağıda)
   const drag = useRef(null);
   // Önizlemenin altındaki ayarlar: seçili araç
   const [tool, setTool] = useState(startPhoto ? "fit" : "photo");
@@ -236,11 +238,19 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
   // Ana asistan bu ekrana söyleneni buraya verir (yalnız ekran açıkken)
   useEffect(() => {
-    latest.current = { post, write, makeImage };
+    latest.current = { post, write, makeImage, pid };
   });
   useEffect(() => {
     const ask = async (text) => {
-      const { post: now, write: w, makeImage: mk } = latest.current;
+      const { post: now, write: w, makeImage: mk, pid: id } = latest.current;
+      // "Arşive kaldır", "arşivden çıkar": gönderi silinmez (lib/assistMore.js)
+      const ac = postArchiveCommand(text);
+      if (ac) {
+        if (!id) return { say: "Gönderi henüz kaydedilmedi; önce kaydet, sonra arşive kaldırabilirim." };
+        if (!!now.archived === ac.archived) return { say: ac.archived ? "Gönderi zaten arşivde." : "Gönderi arşivde değil." };
+        await arcRef.current?.();
+        return { say: ac.archived ? "Gönderiyi arşive kaldırdım." : "Gönderiyi arşivden çıkardım." };
+      }
       if (wantsPostImage(text)) {
         const u = await mk(text);
         return { say: `Yeni görseli ekledim, başlık ve logo üstünde.${u ? ` Bugün ${u.today}/${u.limit} görsel.` : ""}` };
@@ -458,6 +468,10 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       setBusy("");
     }
   };
+
+  useEffect(() => {
+    arcRef.current = arc;
+  });
 
   const del = async () => {
     if (!confirm("Bu gönderi silinsin mi?")) return;

@@ -33,6 +33,9 @@ export const TASKS = [
   { id: "weather", group: "Sorular", name: "Hava ve rüzgâr", say: "yarın rüzgâr kaç knot", who: "herkes", by: "yz", doing: "Bakıyorum.", work: "Hava durumuna bakılıyor" },
   { id: "payee", group: "Sorular", name: "Gelen ödemeler sorusu", say: "bu ay ne kadar ödeme aldım", who: "ana", by: "yerel" },
 
+  // Arama
+  { id: "call", group: "Mesaj", name: "Uygulama içi sesli arama; yarışta otelin telefonunu arama (onayla)", say: "Ali'yi ara; oteli ara", who: "herkes", by: "yerel", confirm: true },
+
   // Sayfalar
   { id: "navigate", group: "Sayfalar", name: "Sayfa ya da sohbet açma, geri dönme", say: "yoklamayı aç, ekip grubunu aç, geri dön", who: "herkes", by: "yerel" },
   { id: "receiptCam", group: "Sayfalar", name: "Fiş yükleme (kamera)", say: "fiş yükle", who: "herkes", by: "yerel" },
@@ -46,9 +49,12 @@ export const TASKS = [
   { id: "race", group: "Kulüp", name: "Yarış ekleme, yarışa sporcu / not / bütçe", say: "Çeşme'de 7-11 Ekim yarış ekle, Ali ve Ayşe katılacak", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yarışı hazırlıyorum.", work: "Yarış hazırlanıyor" },
   { id: "inventory", group: "Kulüp", name: "Envanter (ekle, çıkar, değiştir, sil, sor)", say: "envantere 3 Optimist teknesi ekle", who: "ana", by: "yz-ayrı", doing: "Tamam, envantere ekliyorum.", work: "Envantere ekleniyor" },
   { id: "invoice", group: "Kulüp", name: "Fatura ödendi işaretleme", say: "Turkcell faturası ödendi", who: "ana", by: "yerel" },
+  { id: "athlete", group: "Kulüp", name: "Sporcu ekleme, arşive alma, silme (silme onayla)", say: "yeni sporcu ekle: Ali Kaya, 2014 doğumlu; Ali Kaya'yı arşive al", who: "ana", by: "yerel", confirm: true },
+  { id: "income", group: "Kulüp", name: "Hesaplar'a nakit gelir (aidat, bağış, eğitim)", say: "Ali Kaya'nın ekim aidatı nakit 1500 alındı", who: "ana", by: "yerel" },
+  { id: "dues", group: "Kulüp", name: "Aidat: kim ödemedi, velilere hatırlatma (onayla)", say: "bu ay kim aidat ödemedi; aidat hatırlatması gönder", who: "ana", by: "yerel", confirm: true },
 
   // Diğer
-  { id: "post", group: "Diğer", name: "Instagram gönderisi hazırlama ve değiştirme", say: "Foça yarışı için Instagram gönderisi hazırla", who: "ana", by: "yz-ayrı", doing: "Tamam, gönderiyi hazırlıyorum.", work: "Gönderi hazırlanıyor" },
+  { id: "post", group: "Diğer", name: "Instagram gönderisi hazırlama, değiştirme, arşive kaldırma", say: "Foça yarışı için Instagram gönderisi hazırla", who: "ana", by: "yz-ayrı", doing: "Tamam, gönderiyi hazırlıyorum.", work: "Gönderi hazırlanıyor" },
   { id: "event", group: "Diğer", name: "Etkinlik planı (kamp, gezi…)", say: "kamp planı yapmak istiyorum", who: "ana", by: "yz-ayrı", doing: "Tamam, etkinlik planını hazırlıyorum.", work: "Etkinlik planı hazırlanıyor" },
   { id: "schedule", group: "Diğer", name: "Ders programı", say: "salı 13:00 fizik B-204", who: "herkes", by: "yz-ayrı", doing: "Tamam, ders programını hazırlıyorum.", work: "Ders programı hazırlanıyor" },
   { id: "person", group: "Diğer", name: "Kişi ekleme (ve hesap açma)", say: "Kişi ekle: Ayşe Yılmaz, eşim, 0532…", who: "ana", by: "yz-ayrı", confirm: true, doing: "Tamam, kişiyi hazırlıyorum.", work: "Kişi hazırlanıyor" },
@@ -81,3 +87,62 @@ export function tasksPrompt() {
 // İş belli olmadan beklerken görünen yazı: ses sunucuda yazıya çevriliyorsa "Sesin yazıya çevriliyor", sonra (ön cevap ya da
 // adım gelene kadar) "Anlaşılıyor". İş belli olunca yerini işin kendi yazısı alır ("WhatsApp mesajı hazırlanıyor").
 export const waitText = ({ transcribing }) => (transcribing ? "Sesin yazıya çevriliyor" : "Anlaşılıyor");
+
+// Beklerken sıralı durum yazıları (Seyhun: "cevap hızlıysa hemen göster; uzun sürüyorsa hazır yazıları sırayla göster,
+// kullanıcı oyalansın; sade, hafif soluk, parlayan", 2026-10-09). İlk satır işin kendi yazısıdır (work); yanıt gecikirse
+// her birkaç saniyede bir sonraki gelir, biten satır soluklaşır. Son satırda durur (döngü yok). Yanıt gelince hepsi silinir,
+// cevap hemen gösterilir: hızlı yanıtta ek yazı hiç görünmez.
+const MORE = {
+  plan: ["Takvim kontrol ediliyor", "Gün ve saat yerleştiriliyor"],
+  repeat: ["Haftalar hesaplanıyor", "Takvim kontrol ediliyor"],
+  task: ["Kişiler kontrol ediliyor", "Son gün ayarlanıyor"],
+  note: ["Not düzenleniyor"],
+  record: ["Kaydın türü belirleniyor", "Ayrıntılar yerleştiriliyor"],
+  complete: ["Görev aranıyor"],
+  reopen: ["Görev aranıyor"],
+  noteDone: ["Not aranıyor"],
+  update: ["Kayıt aranıyor", "Değişiklik hazırlanıyor"],
+  delete: ["Kayıtlar karşılaştırılıyor"],
+  cancel: ["Plan aranıyor", "Haber metni hazırlanıyor"],
+  multi: ["İşler sıraya konuyor", "Her iş ayrı hazırlanıyor"],
+  send: ["Alıcı bulunuyor", "Mesaj yazılıyor"],
+  group: ["Grup bulunuyor", "Mesaj yazılıyor"],
+  whatsapp: ["Alıcı bulunuyor", "Mesaj yazılıyor"],
+  query: ["Planlar, görevler ve notlar okunuyor", "Cevap hazırlanıyor"],
+  weather: ["Tahmin okunuyor", "Rüzgâr hesaplanıyor", "Cevap hazırlanıyor"],
+  attendance: ["Sporcular eşleştiriliyor", "Yoklama işaretleniyor"],
+  log: ["Rüzgâr ve konular ayrılıyor", "Günlük düzenleniyor"],
+  race: ["Tarih ve yer okunuyor", "Sporcular eşleştiriliyor"],
+  inventory: ["Ürünler eşleştiriliyor", "Adetler hesaplanıyor"],
+  post: ["Yazılar yazılıyor", "Görsel düzenleniyor"],
+  event: ["İhtiyaçlar listeleniyor", "Bütçe hesaplanıyor", "İşler sıralanıyor"],
+  schedule: ["Dersler ayrılıyor", "Program düzenleniyor"],
+  person: ["Bilgiler ayrılıyor", "Kişiler kontrol ediliyor"],
+};
+const GENERIC = ["İstek inceleniyor", "Cevap hazırlanıyor"];
+const TAIL = "Biraz uzun sürdü, bekliyorum"; // en sonda: yanıt hâlâ gelmediyse (25 sn'de vazgeçilir)
+const BY_WORK = Object.fromEntries(TASKS.filter((x) => x.work).map((x) => [x.work, x.id]));
+
+// İşin yazısından ("Plan hazırlanıyor") sıralı yazılar: ["Plan hazırlanıyor", "Takvim kontrol ediliyor", …]
+export function waitStages(work, { transcribing = false } = {}) {
+  if (transcribing) return ["Sesin yazıya çevriliyor", "Söylediğin okunuyor"];
+  if (!work) return ["Anlaşılıyor", ...GENERIC];
+  const id = BY_WORK[work] || (/^Envanter/.test(work) ? "inventory" : /hava/i.test(work) ? "weather" : work === "Bakıyorum" ? "query" : "");
+  return [work, ...(MORE[id] || GENERIC)];
+}
+
+// Ne zaman hangi yazı: ilk yazı hemen (işin adı), sonrakiler gecikince (1,8 sn, 3,8 sn, 6,2 sn…); son yazıda durur,
+// 10 sn'yi geçerse en sona "Biraz uzun sürdü, bekliyorum" gelir. { done: biten yazılar, now: şimdiki yazı }
+export const STAGE_AT = [0, 1800, 3800, 6200];
+export const TAIL_MS = 10000;
+export function waitLines(work, ms, opts = {}) {
+  const all = waitStages(work, opts);
+  let i = 0;
+  while (i + 1 < all.length && i + 1 < STAGE_AT.length && ms >= STAGE_AT[i + 1]) i++;
+  if (ms >= TAIL_MS) return { done: all, now: TAIL };
+  return { done: all.slice(0, i), now: all[i] };
+}
+
+// Biten yazı geçmiş zamanla: "Takvim kontrol ediliyor" → "Takvim kontrol edildi", "Alıcı bulunuyor" → "Alıcı bulundu"
+// (edilgen fiil -ıl/-il/-un… ile biter, ek hep -dı/-di/-du/-dü)
+export const pastTense = (s) => String(s || "").replace(/([ıiuü])yor$/u, (_, v) => `d${v}`);

@@ -293,6 +293,10 @@ select {
   -webkit-background-clip: text; background-clip: text; color: transparent; animation: worksheen 1.6s linear infinite; }
 @keyframes worksheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
 @media (prefers-reduced-motion: reduce) { .work-ring, .work-text { animation-duration: 3s; } }
+/* Beklerken sıralı yazılar (WaitLines.jsx): biten satır soluk, yeni satır yumuşakça belirir, şimdiki satırın üstünden ışık geçer */
+.wait-done { color: var(--mut); opacity: .55; transition: opacity .4s ease; }
+.wait-now { animation: waitin .45s ease-out both; }
+@keyframes waitin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 /* Kubbedeki durum şeridi: kürenin üstünde ince buzlu cam kapsül ("Plan hazırlanıyor…"); yeri hep ayrılı, boyu sabit */
 .dome-chip { display: inline-flex; max-width: 86%; align-items: center; gap: .5rem; height: 1.75rem; padding: 0 .875rem; border-radius: 9999px;
   background: var(--bg); box-shadow: inset 0 0 0 1px var(--line);

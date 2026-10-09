@@ -529,6 +529,57 @@ group("Göreve göre ara yazı")([
   ]);
 }
 
+// Beklerken sıralı yazılar (Seyhun: "hızlıysa hemen göster, uzun sürerse hazır yazıları sırayla göster", 2026-10-09)
+{
+  const { waitLines, waitStages, pastTense } = await import("@/lib/assistTasks");
+  group("Bekleme yazıları")([
+    ["hızlı yanıt", { desc: "ilk anda yalnız işin adı", fn: () => waitLines("Plan hazırlanıyor", 500), ok: (r) => r.now === "Plan hazırlanıyor" && !r.done.length }],
+    ["gecikince", { desc: "2 sn'de ikinci yazı, ilki soluk listede", fn: () => waitLines("Plan hazırlanıyor", 2000), ok: (r) => r.now === "Takvim kontrol ediliyor" && r.done[0] === "Plan hazırlanıyor" }],
+    ["çok gecikince", { desc: "10 sn'de bekliyorum yazısı", fn: () => waitLines("Mesaj hazırlanıyor", 11000), ok: (r) => /uzun sürdü/.test(r.now) && r.done.length === 3 }],
+    ["sırayla, döngüsüz", { desc: "son yazıda durur", fn: () => waitLines("Görev tamamlanıyor", 8000), ok: (r) => r.now === "Görev aranıyor" }],
+    ["iş belli değil", { desc: "Anlaşılıyor ile başlar", fn: () => waitStages(""), ok: (r) => r[0] === "Anlaşılıyor" && r.length >= 2 }],
+    ["yazıya çevirme", { desc: "ses yazıya çevriliyor", fn: () => waitStages("", { transcribing: true }), ok: (r) => r[0] === "Sesin yazıya çevriliyor" }],
+    ["envanter", { desc: "envanterin kendi yazıları", fn: () => waitStages("Envanterden çıkarılıyor"), ok: (r) => r.includes("Ürünler eşleştiriliyor") }],
+    ["geçmiş zaman", { desc: "biten yazı", fn: () => ["Takvim kontrol ediliyor", "Alıcı bulunuyor", "İşler sıraya konuyor"].map(pastTense), ok: (r) => r.join("|") === "Takvim kontrol edildi|Alıcı bulundu|İşler sıraya kondu" }],
+  ]);
+}
+
+// Son eklenen özellikler asistanla (lib/assistMore.js): arama, sporcu, nakit gelir, aidat, gönderi arşivi
+{
+  const { athleteCommand, callCommand, duesCommand, incomeCommand, postArchiveCommand, amountOf } = await import("@/lib/assistMore");
+  const IN = (desc, ok) => ({ desc, fn: (x) => incomeCommand(x, "2026-10-09"), ok });
+  group("Yeni görevler: arama")([
+    ["Ali'yi ara", { desc: "kişi", fn: callCommand, ok: (r) => r && !r.hotel && /ali/.test(r.who) }],
+    ["Zeynep'e arama yap", { desc: "arama yap", fn: callCommand, ok: (r) => r?.who === "zeynep" }],
+    ["Foça otelini ara", { desc: "otel", fn: callCommand, ok: (r) => r?.hotel }],
+    ["faturayı ara", { desc: "arama değil", fn: callCommand, ok: (r) => r === null }],
+    ["yarın Ali'yi ara diye görev ekle", { desc: "görev, arama değil", fn: callCommand, ok: (r) => r === null }],
+  ]);
+  group("Yeni görevler: sporcu")([
+    ["yeni sporcu ekle: Ali Kaya, 2014 doğumlu", { desc: "ad ve doğum yılı", fn: athleteCommand, ok: (r) => r?.op === "add" && r.name === "Ali Kaya" && r.birth === "2014-01-01" }],
+    ["Ali Kaya'yı sporculara ekle, 12.03.2015 doğumlu", { desc: "doğum tarihi", fn: athleteCommand, ok: (r) => r?.name === "Ali Kaya" && r.birth === "2015-03-12" }],
+    ["Ali Kaya'yı arşive al", { desc: "arşiv", fn: athleteCommand, ok: (r) => r?.op === "archive" && r.name === "Ali Kaya" && !r.explicit }],
+    ["Ali'yi arşivden çıkar", { desc: "arşivden çıkar", fn: athleteCommand, ok: (r) => r?.op === "unarchive" }],
+    ["sporculardan Zeynep Ak'ı sil", { desc: "silme", fn: athleteCommand, ok: (r) => r?.op === "delete" && r.name === "Zeynep Ak" }],
+    ["malzeme notunu arşive al", { desc: "not arşivi değil", fn: athleteCommand, ok: (r) => r === null }],
+    ["Ali'nin görevini sil", { desc: "sporcu sözü yoksa silme değil", fn: athleteCommand, ok: (r) => r === null }],
+  ]);
+  group("Yeni görevler: nakit gelir ve aidat")([
+    ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", IN("aidat, ay, kişi", (r) => r?.cat === "Aidat" && r.amount === 1500 && r.who === "Ali Kaya" && r.ym === "2026-10")],
+    ["Ahmet Yılmaz'dan 2000 lira bağış geldi", IN("bağış", (r) => r?.cat === "Bağış" && r.who === "Ahmet Yılmaz")],
+    ["kano eğitimi için 3 bin lira nakit aldım", IN("bin", (r) => r?.cat === "Kano eğitimi" && r.amount === 3000)],
+    ["Deniz Şahin aidatını nakit 1.500 TL ödedi", IN("noktalı tutar", (r) => r?.amount === 1500 && r.who === "Deniz Şahin")],
+    ["bu ay ne kadar ödeme aldım", IN("soru, gelir değil", (r) => r === null)],
+    ["eylül aidatı nakit 1500 alındı Ali Kaya", IN("geçmiş ay", (r) => r?.ym === "2026-09")],
+    ["2.500,50 TL", { desc: "tutar", fn: amountOf, ok: (n) => n === 2500.5 }],
+    ["aidat hatırlatması gönder", { desc: "hatırlatma", fn: duesCommand, ok: (r) => r?.op === "remind" }],
+    ["bu ay kim aidat ödemedi", { desc: "soru", fn: duesCommand, ok: (r) => r?.op === "ask" }],
+    ["aidatları aç", { desc: "sayfa açma", fn: duesCommand, ok: (r) => r === null }],
+    ["gönderiyi arşive kaldır", { desc: "gönderi arşivi", fn: postArchiveCommand, ok: (r) => r?.archived === true }],
+    ["arşivden çıkar", { desc: "gönderi arşivden", fn: postArchiveCommand, ok: (r) => r?.archived === false }],
+  ]);
+}
+
 // ---- Asistan akışı: cümlenin hangi yoldan gittiği, yapay zeka yanıtının telefona dönüşü (NDJSON akışı) ----
 // Kural: sayfa açma (ve fiş kamerası, toplantı, yardım) yerelde; kayıt, tamamlama, özet, mesaj yapay zekaya (aiFirst).
 const AF = (desc, ok) => ({ desc, fn: (s) => localCommand(s, data, today, { aiFirst: true }), ok });

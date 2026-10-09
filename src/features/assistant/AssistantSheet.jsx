@@ -21,7 +21,8 @@ import { applyRepeat, seriesDates } from "@/lib/repeat";
 import { shareGroup } from "@/lib/cancelPlan";
 import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
-import { inventoryWork, taskOf, waitText } from "@/lib/assistTasks";
+import { inventoryWork, pastTense, taskOf } from "@/lib/assistTasks";
+import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
 import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
@@ -31,7 +32,13 @@ import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/featu
 import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
-import { loadAthletes } from "@/features/athletes/data";
+import { createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
+import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
+import { athleteCommand, callCommand, duesCommand, incomeCommand } from "@/lib/assistMore";
+import { useCall } from "@/features/call/CallProvider";
+import { canCall } from "@/lib/call";
+import { unpaidRoster } from "@/lib/duesRemind";
+import { raceHotels, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
 import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
@@ -39,7 +46,7 @@ import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
 import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
@@ -53,7 +60,9 @@ import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { matchPerson } from "@/lib/names";
-import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, validUsername, waPhone } from "@/lib/kinds";
+import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
+import { authFetch } from "@/lib/authFetch";
+import { money } from "@/lib/bankSheet";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
 import { quickAnswer } from "@/lib/ai/rules";
@@ -75,7 +84,7 @@ import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeAsk, payeeMoves, payeeOf } from "@/lib/payee";
-import { loadMovementsRange } from "@/features/dues/duesData";
+import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
@@ -109,7 +118,7 @@ const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(
 const EMPTY = { show: [], pending: null, nav: "", chat: "", share: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
-const pastOf = (s) => PAST.reduce((t, [re, to]) => t.replace(re, to), s);
+const pastOf = (s) => pastTense(PAST.reduce((t, [re, to]) => t.replace(re, to), s));
 const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara|veli|veliler|velilere)/i;
 // Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
 const groupOf = (t, mine = []) => {
@@ -203,6 +212,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Asistanla etkinlik planı: yer/zaman sorulduysa { text, turns } (sonraki cümle cevap; sessiz kalınırsa genel plan)
   const eventFlow = useRef(null);
   const invFlow = useRef(null); // envanter: silme onayı bekleniyor { org, id, name, kind, ask: [ürün] }
+  const athAsk = useRef(false); // "Yeni sporcunun adı soyadı ne?" soruldu: sonraki cümle ad
+  const okFlow = useRef(null); // geri alınamayan iş onay bekliyor (arama, sporcu silme, aidat hatırlatması): { yes(viaVoice) }
   const logFlow = useRef(null); // antrenman günlüğü: { ask, text } tarih soruldu · { date, time } az önce yazıldı, eksikler söylenebilir
   const turnCount = useRef(0);
   const raceChoices = useRef([]); // "Hangisi?" diye sorulan yarışlar: sonraki cümle "ikincisi", "Foça olan" olabilir
@@ -213,6 +224,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   // Mesaj alıcıları: sohbet rehberindeki kişiler (ana hesap "ana hesap" adıyla da bulunur)
   const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [], chats = [] } = useChat() || {};
+  const { startCall, busy: callBusy } = useCall() || {}; // "Ali'yi ara": uygulama içi sesli arama
   const contacts = chatPeople.map((p) => ({ name: p.name || "", aliases: p.role === "owner" ? ["ana hesap", "patron"] : [], p })).filter((c) => c.name);
   // Mesajlar'da kurulan gruplar (üyesi olduklarım) da alıcıdır
   const myGroups = chats.filter((c) => c.type === "group" && c.name).map((c) => ({ id: c.id, name: c.name }));
@@ -348,8 +360,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
-    const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null } = extra;
-    const awaiting = expect || !!pending;
+    const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null } = extra;
+    const awaiting = expect || !!pending || !!ok;
+    if (!ok) okFlow.current = null; // onay kartı kalktıysa onay da biter
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
     if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
     if (!inv?.ask?.length) invFlow.current = null; // silme sorusu kalktıysa onay da biter
@@ -357,7 +370,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
     const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
     setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
-    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv });
+    setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok });
     raceChoices.current = races;
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
@@ -801,6 +814,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       invFlow.current = null;
     }
+    // Onay bekleyen iş (arama, sporcu silme, aidat hatırlatması): "evet/ara/sil/gönder" yapar, "hayır/vazgeç" bırakır;
+    // başka bir istekse soru düşer, aşağıdan devam
+    if (okFlow.current && !fresh) {
+      const f = okFlow.current;
+      okFlow.current = null;
+      const cw = confirmWord(s);
+      if (cw === "yes" || isYes(s) || f.word?.test(s.trim())) return f.yes(viaVoice);
+      if (cw === "no" || isNo(s) || isDrop(s)) return done("Tamam, vazgeçtim.", { engine: "local" }, viaVoice);
+    }
+    // Yeni sporcunun adı soruldu: kısa cevap addır
+    if (athAsk.current && !fresh) {
+      athAsk.current = false;
+      if (isDrop(s) || isNo(s)) return done("Tamam, eklemedim.", { engine: "local" }, viaVoice);
+      if (s.split(/\s+/).length <= 6 && !QUESTION.test(s) && (await runMore(`yeni sporcu ekle: ${s}`, viaVoice))) return;
+    }
     // Antrenman günlüğü sürüyor: tarih soruldu (cevap gün) ya da günlük az önce yazıldı (eksik bilgi: "çok iyi geçti", "90 dakika")
     const lf = !fresh ? logFlow.current : null;
     logFlow.current = null;
@@ -871,7 +899,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return openRace(s, viaVoice);
     }
     // Kişi ekleme ("Kişi ekle: Ayşe Yılmaz, eşim, 0532…", "Annem Fatma'yı aileye ekle"): yalnız ana hesap, onayla
-    if (wantsPerson(s)) return startPerson(s, viaVoice);
+    // "Can Tekin'i sporcu olarak ekle" kulübe sporcu açar (aşağıda, runMore); kişi kartı değil
+    if (wantsPerson(s) && !(profile?.role === "owner" && !isStaff && racer && athleteCommand(s)?.op === "add")) return startPerson(s, viaVoice);
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
     const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
     if (nav) {
@@ -921,6 +950,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Gelen ödemeler: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi" (yalnız ana hesap; banka özetinden, payee.js)
     const pq = !isStaff && profile?.role === "owner" && !drafts.length ? payeeAsk(s, todayStr()) : null;
     if (pq) return runPayee(pq, viaVoice);
+    // Son eklenen işler (lib/assistMore.js): arama, sporcu ekleme/arşiv/silme, Hesaplar'a nakit gelir, aidat hatırlatması
+    if (!msgFirst && !drafts.length && (await runMore(s, viaVoice))) return;
     // Alışveriş listesi: ekle / aldım / sil / oku (yapay zekaya gitmeden; shopWords.js)
     const shopLists = listsFor(myKind, members);
     const sc = shopLists.length ? shopCommand(s) : null;
@@ -1506,6 +1537,192 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     return true;
   }
 
+  // ---- Son eklenen işler (lib/assistMore.js). Geri alınamayanlar önce sorar (okFlow + onay kartı) ----
+  function askOk(text, label, yes, viaVoice, word) {
+    okFlow.current = { yes, word };
+    reply(text, { engine: "local", ok: { label } }, viaVoice);
+  }
+  const owner = profile?.role === "owner" && !isStaff;
+  async function runMore(s, viaVoice) {
+    // Arama: "Ali'yi ara" (uygulama içi sesli arama), yarış sayfasında "oteli ara" (telefon)
+    const cc = callCommand(s);
+    if (cc?.hotel && curRace) {
+      const r = races.current.find((x) => x.id === curRace);
+      const hs = raceHotels(r).filter((h) => telOf(h.phone));
+      const words = cc.who.split(" ").filter((w) => !/^otel/u.test(w));
+      const h = hs.find((x) => words.some((w) => x.name.toLocaleLowerCase("tr-TR").includes(w))) || (hs.length === 1 ? hs[0] : null);
+      if (!h) {
+        reply(hs.length ? `Hangi otel? ${hs.map((x) => x.name).join(", ")}.` : "Bu yarışta telefonu kayıtlı otel yok. Özet › Konaklama'dan ekleyebilirsin.", { engine: "local", expect: hs.length > 1 }, viaVoice);
+        return true;
+      }
+      askOk(`${h.name} aransın mı? ${h.phone}`, "Ara", () => {
+        window.location.href = telOf(h.phone);
+        done(`${h.name} aranıyor.`, { engine: "local" });
+      }, viaVoice, /^ara\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    if (cc && !cc.hotel) {
+      const name = matchPerson(cc.who, contacts);
+      const p = name ? contacts.find((c) => c.name === name)?.p : null;
+      if (!p) return false; // kişi değil ("Turkcell'i ara"): yapay zekaya
+      const peerKind = p.role === "owner" ? "owner" : kindOf(p);
+      if (!startCall || !canCall(myKind, peerKind)) {
+        reply(`${p.name} ile uygulamadan arama yapılamıyor.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (callBusy) {
+        reply("Şu an başka bir arama sürüyor.", { engine: "local" }, viaVoice);
+        return true;
+      }
+      askOk(`${p.name} aransın mı?`, "Ara", () => {
+        sp.cancel();
+        tts.stop();
+        startCall(p.uid);
+        finish(true);
+      }, viaVoice, /^ara\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Aidat: "aidat hatırlatması gönder" (onayla velilere bildirim), "bu ay kim aidat ödemedi"
+    const dc = owner && canSeeAthletes(profile?.email) ? duesCommand(s) : null;
+    if (dc) {
+      setPhase("thinking");
+      const ym = todayStr().slice(0, 7);
+      const month = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
+      let list;
+      try {
+        const { cfg, months } = await loadDuesRange(profile.orgId, [ym]);
+        list = unpaidRoster(cfg, months[ym]);
+      } catch {
+        reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (dc.op === "ask" || !list.length) {
+        const names = list.map((x) => x.a.studentName);
+        reply(
+          !list.length ? `${month} aidatını ödemeyen sporcu görünmüyor.` : `${month} aidatını ${names.length} sporcu ödemedi: ${names.slice(0, 10).join(", ")}${names.length > 10 ? " ve diğerleri" : ""}.`,
+          { engine: "local", nav: "dues" },
+          viaVoice,
+        );
+        return true;
+      }
+      const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m.uid]));
+      const inApp = list.filter((x) => linked.has(x.a.id));
+      if (!inApp.length) {
+        reply(`${list.length} sporcu ödemedi ama velileri uygulamada değil. Aidatlar sayfasından WhatsApp ile hatırlatabilirsin.`, { engine: "local", nav: "dues" }, viaVoice);
+        return true;
+      }
+      askOk(`${month} aidatını ödemeyen ${inApp.length} sporcunun velisine uygulamadan hatırlatma gitsin mi?`, "Gönder", async (v) => {
+        setPhase("thinking");
+        try {
+          const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "dues", ym, ids: inApp.map((x) => linked.get(x.a.id)) }) });
+          const d = await res.json().catch(() => ({}));
+          const at = new Date().toISOString();
+          await setDoc(doc(db, "orgs", profile.orgId, "dues", ym), { reminded: Object.fromEntries(inApp.map((x) => [x.a.id, at])) }, { merge: true }).catch(() => {});
+          done(d.parents ? `Hatırlatma ${d.parents} veliye gitti.` : "Bu ay hatırlatılmamış, uygulamada bağlı veli kalmadı.", { engine: "local", nav: "dues" }, v);
+        } catch {
+          reply("Hatırlatma gönderilemedi.", { engine: "local" }, v);
+        }
+      }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Nakit gelir (Hesaplar): "Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet'ten 2000 lira bağış geldi"
+    const ic = owner ? incomeCommand(s, todayStr()) : null;
+    if (ic) {
+      setPhase("thinking");
+      const date = todayStr();
+      try {
+        if (ic.cat === "Aidat") {
+          const { roster } = await loadCash(profile.orgId);
+          const name = ic.who ? matchPerson(ic.who, roster.map((a) => a.studentName)) : "";
+          const a = name ? roster.find((x) => x.studentName === name) : null;
+          if (!a) {
+            reply(ic.who ? `${ic.who} aidat listesinde yok. Hangi sporcunun aidatı?` : "Hangi sporcunun aidatı? Adını söyler misin?", { engine: "local" }, viaVoice);
+            return true;
+          }
+          await addIncome(profile.orgId, { cat: "Aidat", who: a.studentName, athleteId: a.id, ym: ic.ym, amount: ic.amount, date });
+          const m = new Date(`${ic.ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
+          done(`Ekledim: ${a.studentName}, ${m} aidatı, nakit ${money(ic.amount).replace(/,00$/, "")} TL. Aidatlar'da ödendi görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
+          return true;
+        }
+        await addIncome(profile.orgId, { cat: ic.cat, who: ic.who, amount: ic.amount, date, note: ic.note });
+        done(`Ekledim: ${ic.cat} geliri${ic.who ? `, ${ic.who}` : ""}, ${money(ic.amount).replace(/,00$/, "")} TL. Hesaplar'da görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
+      } catch {
+        reply("Geliri kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    // Sporcu: ekle (hemen), arşive al / çıkar (hemen), sil (onayla)
+    const ac = owner && canSeeAthletes(profile?.email) ? athleteCommand(s) : null;
+    if (!ac) return false;
+    if (ac.op === "add" && !ac.name) {
+      reply("Yeni sporcunun adı soyadı ne?", { engine: "local", expect: true }, viaVoice);
+      athAsk.current = true;
+      return true;
+    }
+    setPhase("thinking");
+    let athletes;
+    try {
+      ({ athletes } = await loadAthletes({ fresh: true }));
+    } catch {
+      reply("Sporcu listesini okuyamadım.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    const low = (x) => String(x || "").toLocaleLowerCase("tr-TR");
+    const hit = matchPerson(ac.name, athletes.map((a) => a.studentName));
+    const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+    if (ac.op === "add") {
+      const same = athletes.find((x) => low(x.studentName) === low(ac.name));
+      if (same) {
+        reply(`${same.studentName} zaten sporcularda${isActive(same) ? "" : " (arşivde; “arşivden çıkar” diyebilirsin)"}.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      stepTo("Sporcu ekleniyor");
+      try {
+        const id = await createAthlete({ studentName: ac.name, studentBirthDate: ac.birth });
+        await linkMember(dataUid || profile.uid, members, { id, name: ac.name, birth: ac.birth }).catch(() => {});
+        stepsEnd();
+        done(`Ekledim: ${ac.name}${ac.birth ? `, ${ac.birth.slice(0, 4)} doğumlu` : ""}. Sınıfını ve veli bilgisini sporcu kartından tamamlayabilirsin.`, { engine: "local", nav: "athletes" }, viaVoice);
+      } catch (e) {
+        stepsEnd(false);
+        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    if (!a) {
+      if (!ac.explicit) return false; // sporcu adı değil: başka iş (yapay zekaya)
+      reply(`${ac.name} adında sporcu bulamadım.`, { engine: "local" }, viaVoice);
+      return true;
+    }
+    if (ac.op === "archive" || ac.op === "unarchive") {
+      const on = ac.op === "archive";
+      if (isActive(a) !== on) {
+        reply(on ? `${a.studentName} zaten arşivde.` : `${a.studentName} arşivde değil.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      try {
+        await setArchived(a, on, { classes: [], coaches: [] });
+        done(on ? `${a.studentName} arşive alındı; yoklama ve aidat listesinde görünmez.` : `${a.studentName} arşivden çıkarıldı.`, { engine: "local", nav: "athletes" }, viaVoice);
+      } catch {
+        reply("Kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    askOk(`${a.studentName} sporculardan tamamen silinsin mi? Geçmişiyle birlikte silinir, geri alınamaz. İstersen arşive de alabilirim.`, "Sil", async (v) => {
+      setPhase("thinking");
+      try {
+        await deleteAthlete(a.id);
+        try {
+          await unlinkMembers(dataUid || profile.uid, members, a.id);
+          birthdays.filter((b) => b.athleteId === a.id).forEach((b) => deleteRecord("birthday", b.id));
+        } catch {}
+        done(`${a.studentName} silindi.`, { engine: "local", nav: "athletes" }, v);
+      } catch (e) {
+        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : "Silemedim, tekrar dene.", { engine: "local" }, v);
+      }
+    }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+    return true;
+  }
+
   async function runPayee(pq, viaVoice) {
     setPhase("thinking");
     try {
@@ -1892,7 +2109,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Şu an yapılan iş (kubbede kürenin altında, ortada): sürmekte olan adım, işin yazısı ("WhatsApp mesajı hazırlanıyor")
   // ya da iş belli olana kadar "Sesin yazıya çevriliyor" / "Anlaşılıyor". Yanıt akarken ya da Chrome'da söz görünürken yok.
   const stepNow = steps.find((x) => x.st === "run")?.label || "";
-  const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || (busy && work) || waitText({ transcribing }) : "";
+  // Beklerken sıralı yazılar (adım sürmüyorsa): işin adı hemen, yanıt gecikirse hazır yazılar sırayla (WaitLines.jsx)
+  const waiting = (busy || transcribing) && !streamText && !(transcribing && heardNow) && !stepNow;
+  const wait = useWaitLines(waiting, busy ? work : "", !busy && transcribing);
+  const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || wait?.now || "" : "";
   // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
   useEffect(() => {
     if (open && listening && isCloseNow(heardNow)) finish();
@@ -2087,15 +2307,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
-        {/* Cevabın yeri: gelene kadar yanıp sönen iskelet satırlar (Seyhun: "önden modern loading, yazı gelince tık çıksın",
-            2026-10-06); yanıt akmaya başlayınca ya da adımlar görünürken yok */}
-        {busy && !streamText && steps.every((x) => x.st !== "run") && (
-          <div className="fade-in mt-3.5 space-y-2 pr-6" aria-hidden="true">
-            <span className="shimmer block h-3.5 w-[88%] rounded-full" />
-            <span className="shimmer block h-3.5 w-[72%] rounded-full [animation-delay:.2s]" />
-            <span className="shimmer block h-3.5 w-[46%] rounded-full [animation-delay:.4s]" />
-          </div>
-        )}
+        {/* Cevabın yeri: gelene kadar sıralı durum yazıları (Seyhun: "hızlıysa hemen göster, uzun sürerse hazır yazıları
+            sırayla göster; sade, hafif soluk, parlayan", 2026-10-09). Yanıt akmaya başlayınca ya da adımlar görünürken yok */}
+        {wait && <WaitLines lines={wait} onCancel={embedded ? null : transcribing && !busy ? sp.cancel : abort} />}
 
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (
@@ -2107,26 +2321,46 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {/* Yapılan işlem adım adım (yoklama, mesaj gönderme…) */}
+        {/* Yapılan işlem adım adım (yoklama, mesaj gönderme…): sade, biten adım soluk ve geçmiş zamanla, süren adım parlayarak */}
         {steps.length > 0 && (
-          <ol className="fade-in mt-2 space-y-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.875rem]" aria-live="polite">
+          <ol className="fade-in mt-3 space-y-1 text-[0.875rem]" aria-live="polite">
             {steps.map((x, i) => (
-              <li key={i} className="flex items-center gap-2.5">
-                {x.st === "run" ? (
-                  <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-acc/25 border-t-acc" />
-                ) : x.st === "done" ? (
-                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-ok text-white">
-                    <Icon name="check" className="size-3 [stroke-width:3]" />
-                  </span>
-                ) : (
-                  <span className="grid size-4 shrink-0 place-items-center rounded-full bg-rec text-white">
-                    <Icon name="x" className="size-3 [stroke-width:3]" />
-                  </span>
-                )}
-                <span className={x.st === "run" ? "font-semibold" : "text-mut"}>{x.st === "done" ? pastOf(x.label) : x.label}{x.st === "run" ? "…" : ""}</span>
+              <li key={i} className={`flex items-center gap-2 ${x.st === "run" ? "wait-now font-medium" : x.st === "done" ? "wait-done" : "text-rec"}`}>
+                {x.st === "done" && <Icon name="check" className="size-3.5 shrink-0 [stroke-width:2.5]" />}
+                {x.st === "fail" && <Icon name="x" className="size-3.5 shrink-0 [stroke-width:2.5]" />}
+                <span className={`min-w-0 truncate ${x.st === "run" ? "work-text" : ""}`}>{x.st === "done" ? pastOf(x.label) : x.label}{x.st === "run" ? "…" : ""}</span>
               </li>
             ))}
           </ol>
+        )}
+
+        {/* Onay: geri alınamayan iş (arama, sporcu silme, aidat hatırlatması); sesle "evet / vazgeç" de olur */}
+        {cards.ok && (
+          <div className="fade-in mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const f = okFlow.current;
+                okFlow.current = null;
+                setTurns((p) => [...p, { role: "user", text: cards.ok.label, chip: true }]);
+                f?.yes(voice);
+              }}
+              className="h-10 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]"
+            >
+              {cards.ok.label}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                okFlow.current = null;
+                setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
+                done("Tamam, vazgeçtim.", { engine: "local" }, voice);
+              }}
+              className="h-10 flex-1 rounded-xl bg-card text-[0.875rem] font-semibold ring-1 ring-line active:scale-[.98]"
+            >
+              Vazgeç
+            </button>
+          </div>
         )}
 
         {/* Yoklama sonucu: kimler ne işaretlendi; kaydedildiyse Geri al */}
@@ -2200,33 +2434,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               done("Tamam, silmedim.", { engine: "local" });
             }}
           />
-        )}
-
-        {/* Hazırlanıyor: ön cevaptan sonra yapay zeka çalışırken ne yapıldığı, akan ışıkla (sahnede de) */}
-        {!embedded && busy && work && !streamText && steps.every((x) => x.st !== "run") && (
-          <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
-            <span className="work-ring" aria-hidden="true" />
-            <span className="work-text text-[0.875rem] font-medium">{work}…</span>
-            {!embedded && (
-              <button type="button" onClick={abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
-                Vazgeç
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Yazıya çeviriyor / anlaşılıyor: işin adı (work) ya da adım gelene kadar beklerken ne olduğu yazar (sahnede de).
-            iPhone'da konuşma kaydedilip sunucuda yazıya çevrilir; bu sırada söylenen henüz görünmez, "Sesin yazıya çevriliyor…" */}
-        {!embedded && (busy || transcribing) && !(busy && work) && !streamText && steps.every((x) => x.st !== "run") && !(transcribing && heardNow) && (
-          <div className="fade-in mt-2.5 flex items-center gap-2.5" role="status" aria-live="polite">
-            <span className="work-ring" aria-hidden="true" />
-            <span className="work-text text-[0.875rem] font-medium">{waitText({ transcribing })}…</span>
-            {!embedded && (
-              <button type="button" onClick={transcribing ? sp.cancel : abort} className="ml-auto text-[0.75rem] font-semibold text-acc">
-                Vazgeç
-              </button>
-            )}
-          </div>
         )}
 
         {error && (
