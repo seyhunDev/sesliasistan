@@ -1277,3 +1277,15 @@ group("Sesli arama")([
   ["Android ses çıkışı", F("ahize ve hoparlör seçilir", () => { const l = [{ deviceId: "a", label: "Earpiece" }, { deviceId: "b", label: "Speakerphone" }]; return CL.pickSink(l, false) === "a" && CL.pickSink(l, true) === "b" && CL.pickSink([{ deviceId: "d", label: "" }], false) === null; })],
   ["sohbete satır: bağlanamadı", F("yazılmaz", () => CL.callLog("failed", 0) === null && CL.callLog("ended", 0) === null)],
 ]);
+
+// Yayın bilgisi (buildInfo.js): commit başlığından açıklama ve PR, Ayarlar › Sürüm satırı, asistan cevabı
+const BI = await import("@/lib/buildInfo");
+const BMSG = "Ayarlar'da sürüm satırı (#247)\n\nGövde";
+group("Yayın bilgisi")([
+  ["sıkıştırılmış birleştirme", F("açıklama ve PR", () => { const c = BI.parseCommit("Asistan: yönlendirme tek tabloda (#246)"); return c.pr === "246" && c.text === "Asistan: yönlendirme tek tabloda"; })],
+  ["Merge pull request", F("gövdenin ilk satırı", () => { const c = BI.commitOf("Merge pull request #243 from seyhunDev/claude/x\n\nAsistan: tek bilgi kanalı"); return c.pr === "243" && c.text === "Asistan: tek bilgi kanalı"; })],
+  ["Sürüm satırı", F("tarih · #PR · açıklama (İstanbul saati)", () => BI.buildLine({ at: "2026-10-09T15:15:00Z", sha: "abc1234", msg: BMSG }) === "9 Ekim 18:15 · #247 · Ayarlar'da sürüm satırı")],
+  ["bilgi yok", F("geliştirme sürümü", () => BI.buildLine({ at: "", msg: "" }) === "Sürüm bilgisi yok" && /bilgisi yok/.test(BI.buildSpeech({ at: "" })))],
+  ["asistan cevabı", F("tarih ve değişiklik", () => BI.buildSpeech({ at: "2026-10-09T15:15:00Z", msg: BMSG }) === "Son güncelleme 9 Ekim 18:15 tarihinde yayınlandı. Değişiklik: Ayarlar'da sürüm satırı.")],
+  ["soru değil", F("başka cümleler sürüm sorusu sayılmaz", () => !BI.versionAsk("yarın 10'da antrenman ekle") && !BI.versionAsk("son kaydı geri al") && BI.versionAsk("son güncelleme ne"))],
+]);
