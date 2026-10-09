@@ -65,7 +65,7 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   const sendOnly = jobs.includes("send") && jobs.every((k) => k === "send") && (to || /mesaj|whats|vatsap/u.test(rawLow) || SEND.test(rawLow)) && !CREATE.test(rawLow);
   if (sendOnly) {
     const id = wantsWhatsApp(raw) ? "whatsapp" : to === "group" ? "group" : "send";
-    return pcOf(id, { kind: "send", hint: hintOf(cueOf(id).line, { kind: id === "whatsapp" ? "WhatsApp mesajı" : "mesaj" }) });
+    return pcOf(id, { kind: "send", hint: hintOf("", { kind: id === "whatsapp" ? "WhatsApp mesajı" : "mesaj" }) });
   }
   // Soru: yalnızca genel giriş (cevabı yapay zeka verir); bugün/yarın soruluyorsa kaç kayıt olduğu söylenir
   if (QUESTION.test(t) && !CREATE.test(t)) {
@@ -77,7 +77,7 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
       const n = plans.filter((p) => p.date <= d && (p.endDate || p.date) >= d).length;
       line = n ? `Bakıyorum, ${day} ${n} plan görüyorum.` : `Bakıyorum, ${day} için takvim boş görünüyor.`;
     }
-    return { kind: "query", line, work: wx ? cueOf("weather").work : cueOf("query").work, hint: hintOf(line, { kind: "soru" }) };
+    return { kind: "query", line, work: wx ? cueOf("weather").work : cueOf("query").work, hint: hintOf("", { kind: "soru" }) };
   }
 
   // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle
@@ -85,14 +85,14 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
     const list = jobsText(jobs);
     // Ne yapıldığı kısaca söylenir ("Tamam, sırayla yapıyorum: mesaj, takvim ve not."); sonucu yine uygulama söyler
     const line = `Tamam, sırayla yapıyorum: ${list}.`;
-    return { kind: "multi", line, work: cueOf("multi").work, hint: hintOf(line, { kind: `birden çok iş (sırayla: ${list})` }) };
+    return { kind: "multi", line, work: cueOf("multi").work, hint: hintOf("", { kind: `birden çok iş (sırayla: ${list})` }) };
   }
 
   // Var olan kayıtta işlem ("motor yağı görevini tamamla", "antrenmanı 11'e al", "yarınki toplantıyı sil"): plan hazırlanmaz
   const act = !CREATE.test(rawLow) && ACTIONS.find(([, re]) => re.test(rawLow))?.[0];
   if (act) {
     const c = cueOf(act);
-    return { kind: "action", line: c.line, work: c.work, hint: hintOf(c.line, { kind: `işlem (${act})` }) };
+    return { kind: "action", line: c.line, work: c.work, hint: hintOf("", { kind: `işlem (${act})` }) };
   }
 
   // Yeni kayıt: tür ve alanlar kurallarla
@@ -106,13 +106,13 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   if (!wantsCreate) {
     if (t.split(/\s+/).length <= 3) return null; // "teşekkürler", "tamam sağ ol": ön cevaba gerek yok
     const line = "Bir bakayım.";
-    return { kind: "other", line, work: "Bakıyorum", hint: hintOf(line, {}) };
+    return { kind: "other", line, work: "Bakıyorum", hint: hintOf("", {}) };
   }
   const item = interpretRules(text, today)[0] || {};
   const type = byWord || byGuess || (item.type === "note" && !wantsNote(text) ? "" : item.type) || "";
   if (!type) {
     const c = cueOf("record");
-    return { kind: "create", line: c.line, work: c.work, hint: hintOf(c.line, { kind: "yeni kayıt" }) };
+    return { kind: "create", line: c.line, work: c.work, hint: hintOf("", { kind: "yeni kayıt" }) };
   }
   const date = item.date || "";
   const time = type === "plan" ? hm(item.time) : "";
@@ -122,14 +122,16 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Ayrıntıyı ("Ekledim: Antrenman, yarın, 10:00") sonuçta uygulama söyler; aynı şey iki kez okunmaz.
   // Planda veriden tek yardımcı bilgi kalır (aynı saatte plan, o saatte rüzgâr).
   const cue = cueOf(type === "plan" && /(^| )(her|haftada bir) /u.test(t) ? "repeat" : type);
-  const line = `${cue.line}${type === "plan" ? facts({ date, time, plans, weatherRows }) : ""}`;
+  const info = type === "plan" ? facts({ date, time, plans, weatherRows }).trim() : "";
+  const line = `${cue.line}${info ? ` ${info}` : ""}`;
 
   return {
     kind: KIND_LINE[type] ? type : "create",
     line,
+    info, // veriden yardımcı bilgi (aynı saatte plan, rüzgâr): sohbete yalnız bu yazılır
     work: cue.work,
     slots,
-    hint: hintOf(line, { kind: KIND_LINE[type] || "yeni kayıt", date, time }),
+    hint: hintOf(info, { kind: KIND_LINE[type] || "yeni kayıt", date, time }),
   };
 }
 
@@ -150,9 +152,9 @@ function facts({ date, time, plans, weatherRows }) {
 }
 
 // Yapay zekaya: kullanıcıya ne söylendiği ve telefonun ne anladığı (doğruysa tamamlasın, yanlışsa düzeltsin)
-function hintOf(line, { kind = "", date = "", time = "" }) {
+function hintOf(said, { kind = "", date = "", time = "" }) {
   const got = [kind && `tür=${kind}`, date && `tarih=${date}`, time && `saat=${time}`].filter(Boolean).join(", ");
-  return `Kullanıcıya az önce şu söylendi: "${line}"${got ? `\nTelefonun ilk anladığı: ${got}` : ""}`;
+  return [said && `Kullanıcıya az önce şu söylendi: "${said}"`, got && `Telefonun ilk anladığı: ${got}`].filter(Boolean).join("\n");
 }
 
 function addDays(date, n) {

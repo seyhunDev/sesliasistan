@@ -112,7 +112,7 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line) && /^O saatlerde/.test(r.info) && /söylendi: "O saatlerde/.test(r.hint))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
   ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
@@ -497,6 +497,8 @@ group("Kısa ön cevap")([
   ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda ne yaptığını söyler", (r) => r?.line === "Tamam, mesajı hazırlıyorum." && r.work === "Mesaj hazırlanıyor")],
   ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
   ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
+  ["Ali'ye yaz yarın 9'da gelsin", PC("tek bilgi kanalı: sohbete yazılacak bilgi yok", (r) => !r?.info)],
+  ["tekneleri hazırla görevi ekle", PC("yapay zekaya söylenmemiş giriş anlatılmaz", (r) => !/söylendi/.test(r?.hint || "") && /tür=görev/.test(r?.hint || ""))],
 ]);
 
 // Her işin kendi ara yazısı (Seyhun: "hepsinde plan hazırlanıyor diyor"; assistTasks.js)
@@ -537,7 +539,7 @@ group("Göreve göre ara yazı")([
     ["gecikince", { desc: "2 sn'de ikinci yazı, ilki soluk listede", fn: () => waitLines("Plan hazırlanıyor", 2000), ok: (r) => r.now === "Takvim kontrol ediliyor" && r.done[0] === "Plan hazırlanıyor" }],
     ["çok gecikince", { desc: "10 sn'de bekliyorum yazısı", fn: () => waitLines("Mesaj hazırlanıyor", 11000), ok: (r) => /uzun sürdü/.test(r.now) && r.done.length === 3 }],
     ["sırayla, döngüsüz", { desc: "son yazıda durur", fn: () => waitLines("Görev tamamlanıyor", 8000), ok: (r) => r.now === "Görev aranıyor" }],
-    ["iş belli değil", { desc: "Anlaşılıyor ile başlar", fn: () => waitStages(""), ok: (r) => r[0] === "Anlaşılıyor" && r.length >= 2 }],
+    ["iş belli değil", { desc: "İstek inceleniyor ile başlar (\"anladım\" denmez)", fn: () => waitStages(""), ok: (r) => r[0] === "İstek inceleniyor" && !r.some((x) => /anla/i.test(x)) }],
     ["yazıya çevirme", { desc: "ses yazıya çevriliyor", fn: () => waitStages("", { transcribing: true }), ok: (r) => r[0] === "Sesin yazıya çevriliyor" }],
     ["envanter", { desc: "envanterin kendi yazıları", fn: () => waitStages("Envanterden çıkarılıyor"), ok: (r) => r.includes("Ürünler eşleştiriliyor") }],
     ["geçmiş zaman", { desc: "biten yazı", fn: () => ["Takvim kontrol ediliyor", "Alıcı bulunuyor", "İşler sıraya konuyor"].map(pastTense), ok: (r) => r.join("|") === "Takvim kontrol edildi|Alıcı bulundu|İşler sıraya kondu" }],

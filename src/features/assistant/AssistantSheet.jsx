@@ -402,7 +402,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null } = extra;
     const awaiting = expect || !!pending || !!ok;
     // Görev listesinin son işi: yapılamayanlar elle yapılsın diye söylenir
-    const badStep = !awaiting && planOn.current && failed(message);
+    // İşin sonucu: akış açıkça "olmadı" dediyse (fail) ya da cevapta başarısızlık sözü varsa ✗
+    const badStep = !awaiting && planOn.current && (extra.fail ?? failed(message));
     if (badStep && planNow.current) planFails.current.push(planNow.current);
     if (!awaiting && planOn.current && !chain.current.length && planFails.current.length) {
       const f = planFails.current;
@@ -1183,12 +1184,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setStreamText("");
     if (viaVoice) inflight.current = s;
     setWork(pc?.work || "");
-    if (pc) {
-      timingMark("pre");
-      setTurns((p) => [...p, { role: "assistant", text: pc.line, pre: true }]);
-      // Yanıtın okunması bunun ardından (kuyruk). Ön cevap okunurken mikrofon açılmaz (kendi sesini duymasın);
+    // Tek bilgi kanalı (Seyhun: "yapay zeka anladım diyor, bilgi kısmında da anladım yazıyor", 2026-10-09): beklerken ne
+    // yapıldığını yalnız bilgi alanı söyler ("Plan hazırlanıyor…"); sohbete ve sese "Tamam / Bakıyorum" yazılmaz, yalnız asıl
+    // cevap gelir. Ön cevapta veriden yardımcı bilgi varsa ("O saatlerde “Toplantı” planı da var.") yalnız o yazılır ve okunur.
+    if (pc) timingMark("pre");
+    if (pc?.info) {
+      setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
+      // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
       // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
-      enqueueSay(pc.line, viaVoice ? listenWhileThinking : undefined);
+      enqueueSay(pc.info, viaVoice ? listenWhileThinking : undefined);
     } else if (viaVoice) listenWhileThinking();
     // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
     const onText = (m) => {
@@ -1360,7 +1364,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         if (pend.rest) restAfterAtt(pend.rest, fromText && convo.current, `Yoklama kaydedildi (${attSummary(pend.att)}).`);
       } catch (e) {
         stepsEnd(false);
-        reply(e.message || "Kaydedemedim.", { engine: "local" });
+        reply(e.message || "Kaydedemedim.", { fail: true, engine: "local" });
       }
       return;
     }
@@ -1456,7 +1460,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       r = await readPerson(s);
     } catch (e) {
       if (id === runId.current) setPhase("idle");
-      return reply(e.message || "Kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
+      return reply(e.message || "Kişi eklemeyi yalnız ana hesap yapabilir.", { fail: true, engine: "local" }, viaVoice);
     }
     if (id !== runId.current) return;
     setPhase("idle");
@@ -2130,7 +2134,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         done(`Ekledim: ${ac.name}${ac.birth ? `, ${ac.birth.slice(0, 4)} doğumlu` : ""}. Sınıfını ve veli bilgisini sporcu kartından tamamlayabilirsin.`, { engine: "local", nav: "athletes" }, viaVoice);
       } catch (e) {
         stepsEnd(false);
-        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.", { engine: "local" }, viaVoice);
+        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.", { fail: true, engine: "local" }, viaVoice);
       }
       return true;
     }
@@ -2163,7 +2167,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         } catch {}
         done(`${a.studentName} silindi.`, { engine: "local", nav: "athletes" }, v);
       } catch (e) {
-        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : "Silemedim, tekrar dene.", { engine: "local" }, v);
+        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : "Silemedim, tekrar dene.", { fail: true, engine: "local" }, v);
       }
     }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
     return true;
@@ -2217,7 +2221,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       stepsEnd(false);
       const denied = e.code === "permission-denied";
-      reply(denied ? "Kulüp hesabına bağlı değilsin. Yoklama sayfasından bir kez bağlanman gerekiyor." : e.message || "Yoklama yapılamadı.", { engine: "local", nav: "attendance" }, viaVoice);
+      reply(denied ? "Kulüp hesabına bağlı değilsin. Yoklama sayfasından bir kez bağlanman gerekiyor." : e.message || "Yoklama yapılamadı.", { fail: true, engine: "local", nav: "attendance" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2255,7 +2259,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       stepsEnd(false);
       const denied = e.code === "permission-denied";
-      reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { engine: "local", nav: "races" }, viaVoice);
+      reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { fail: true, engine: "local", nav: "races" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2305,7 +2309,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
-      reply(e?.message || "Gönderiyi değiştiremedim.", { engine: "local" }, viaVoice);
+      reply(e?.message || "Gönderiyi değiştiremedim.", { fail: true, engine: "local" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2356,7 +2360,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
-      reply(`${e.message || "Günlük yazılamadı."} Antrenman günlüğü sayfasından elle de yazabilirsin.`, { engine: "local", nav: "training" }, viaVoice);
+      reply(`${e.message || "Günlük yazılamadı."} Antrenman günlüğü sayfasından elle de yazabilirsin.`, { fail: true, engine: "local", nav: "training" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2387,7 +2391,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
-      reply(`${e.message || "Plan hazırlanamadı."} Etkinlikler sayfasından elle de ekleyebilirsin.`, { engine: "local", nav: "events" }, viaVoice);
+      reply(`${e.message || "Plan hazırlanamadı."} Etkinlikler sayfasından elle de ekleyebilirsin.`, { fail: true, engine: "local", nav: "events" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2433,7 +2437,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
-      reply(`${e.message || "Envanter işlenemedi."} Envanter sayfasından elle de ekleyebilirsin.`, { engine: "local", nav: "inventory" }, viaVoice);
+      reply(`${e.message || "Envanter işlenemedi."} Envanter sayfasından elle de ekleyebilirsin.`, { fail: true, engine: "local", nav: "inventory" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2499,7 +2503,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       stepsEnd(false);
-      reply(e.message || "Ders programı hazırlanamadı.", { engine: "ai" }, viaVoice);
+      reply(e.message || "Ders programı hazırlanamadı.", { fail: true, engine: "ai" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -2570,7 +2574,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const stepNow = steps.find((x) => x.st === "run")?.label || "";
   // Beklerken sıralı yazılar (adım sürmüyorsa): işin adı hemen, yanıt gecikirse hazır yazılar sırayla (WaitLines.jsx)
   const waiting = (busy || transcribing) && !streamText && !(transcribing && heardNow); // ara adımlar (stepTo) görünmez, yerine sıralı yazılar
-  const wait = useWaitLines(waiting, busy ? work : "", !busy && transcribing);
+  // Görev listesi sürerken süren iş listede parlıyor: aynı ad bilgi alanında ikinci kez yazılmaz
+  const planRun = plan.some((x) => x.st === "run");
+  const wait = useWaitLines(waiting && !(planRun && busy), busy ? work : "", !busy && transcribing);
   const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || wait?.now || "" : "";
   // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
   useEffect(() => {
