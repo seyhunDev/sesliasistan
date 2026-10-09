@@ -70,12 +70,30 @@ export function speechMark(name, at) {
   else if (speech && speech[name] == null && t) speech[name] = t;
 }
 
+// Dinlerken gelen ara yazı (canlı yazı): her parçanın gecikmesi (ms, istek gidişinden yazının gelişine) ve servis
+export function speechLive(ms, by) {
+  if (!speech || !(ms >= 0)) return;
+  speech.live = [...(speech.live || []), { ms: Math.round(ms), by: String(by || "") }].slice(-30);
+}
+
+// Canlı yazı özeti: parça sayısı, ortalama ve en uzun gecikme, servis ("Gemini", "Whisper")
+const LIVE_BY = { gtranscribe: "Gemini", groq: "Whisper", openai: "Whisper" };
+export function liveOf(r) {
+  const l = Array.isArray(r?.live) ? r.live : [];
+  if (!l.length) return null;
+  const avg = l.reduce((a, x) => a + x.ms, 0) / l.length;
+  const by = [...new Set(l.map((x) => LIVE_BY[x.by] || x.by).filter(Boolean))].join(", ");
+  return { n: l.length, avg: Math.round(avg), max: Math.max(...l.map((x) => x.ms)), by };
+}
+export const liveText = (v) => (v ? `canlı yazı ${v.n} parça, ortalama ${msText(v.avg)}, en uzun ${msText(v.max)}${v.by ? ` (${v.by})` : ""}` : "");
+
 // Yeni komut: önceki bitmemişse kaydedilir. Sesliyse az önceki dinlemenin anları da eklenir
 export function timingStart(text, viaVoice) {
   flush();
   const t = clock();
   const sp = viaVoice && speech?.text && t - speech.text < 10000 ? speech : null;
-  cur = { at: t, text: String(text || "").slice(0, 90), voice: !!viaVoice, engine: "", marks: { ...(sp || {}), run: t } };
+  const { live, ...marks } = sp || {};
+  cur = { at: t, text: String(text || "").slice(0, 90), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}) };
   speech = null;
 }
 
@@ -140,7 +158,8 @@ export function timingText(list = timingList()) {
     .map((r) => {
       const { steps, total } = timingSteps(r);
       const head = `${new Date(r.at).toLocaleString("tr-TR")} · ${r.voice ? "sesli" : "yazılı"}${r.engine ? ` · ${engineName(r.engine)}` : ""} · toplam ${secText(total)} · “${r.text}”`;
-      return [head, ...steps.map((s) => `  ${s.label}: ${msText(s.ms)}`)].join("\n");
+      const lv = liveText(liveOf(r));
+      return [head, ...steps.map((s) => `  ${s.label}: ${msText(s.ms)}`), ...(lv ? [`  ${lv[0].toLocaleUpperCase("tr-TR")}${lv.slice(1)}`] : [])].join("\n");
     })
     .join("\n\n");
 }

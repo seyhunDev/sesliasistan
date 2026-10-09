@@ -732,6 +732,7 @@ function scene(steps) {
     t = ms;
     if (what === "speech") TM.speechMark(arg[0], arg[1]);
     else if (what === "start") TM.timingStart(arg, true);
+    else if (what === "live") TM.speechLive(...arg);
     else if (what === "startText") TM.timingStart(arg, false);
     else if (what === "reply") TM.timingReply(arg);
     else if (what === "speak") TM.timingSpeak();
@@ -761,6 +762,8 @@ group("Süre kaydı")([
   ["cevapsız komut kaydedilmez", { desc: "kullanıcı devam etti, yeniden soruldu", fn: () => scene([["start", 0, "yarın 10'da"], ["ai", 5], ["start", 900, "yarın 10'da antrenman, Ali de gelsin"], ["reply", 3000], ["speak", 3100]]), ok: (l) => l.length === 1 && /Ali/.test(l[0].text) }],
   ["eski dinleme yazılı komuta karışmaz", { desc: "yazılı komutta dinleme anı yok", fn: () => scene([["speech", 0, ["listen"]], ["speech", 500, ["text"]], ["startText", 800, "planları aç"], ["reply", 801], ["speak", 900]])[0].marks, ok: (m) => m.listen == null && m.text == null }],
   ["en çok 20 komut", { desc: "25 komuttan son 20 kalır, en yenisi önce", fn: () => scene(Array.from({ length: 25 }, (_, i) => [["startText", i * 100, `k${i}`], ["reply", i * 100 + 50]]).flat()), ok: (l) => l.length === 20 && l[0].text === "k24" }],
+  ["canlı yazı gecikmesi", { desc: "2 parça, ortalama 1,2 sn, en uzun 1,4 sn (Gemini); adım sayılmaz", fn: () => { const l = scene([["speech", 0, ["listen"]], ["live", 2000, [1000, "gtranscribe"]], ["live", 4000, [1400, "gtranscribe"]], ...voiceAdd.slice(1)]); return [TM.liveText(TM.liveOf(l[0])), TM.timingSteps(l[0]).total, TM.timingText(l)]; }, ok: (r) => r[0] === "canlı yazı 2 parça, ortalama 1,2 sn, en uzun 1,4 sn (Gemini)" && r[1] === 5700 && /Canlı yazı 2 parça/.test(r[2]) }],
+  ["canlı yazı yoksa satır yok", { desc: "liveOf null", fn: () => TM.liveOf(scene(voiceAdd)[0]), ok: (r) => r === null }],
   ["kopyalanan metin", { desc: "toplam ve adımlar yazılı", fn: () => TM.timingText(scene(voiceAdd)), ok: (s) => /toplam 5,7 sn/.test(s) && /Susmanın beklenmesi: 1,6 sn/.test(s) && /Kaydetme: 300 ms/.test(s) }],
 ]);
 TM.timingTest({});

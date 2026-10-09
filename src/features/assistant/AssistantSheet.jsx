@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -27,7 +27,7 @@ import { askAssistant } from "@/services/assistantService";
 import { EARLY, routesOf } from "@/lib/assistRoute";
 import { buildSpeech } from "@/lib/buildInfo";
 import { applyUpdate, checkVersion } from "@/lib/newVersion";
-import { ASK_EMPTY, DRAFT_AGE, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
+import { ASK_EMPTY, DRAFT_AGE, PAST_MS, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
@@ -36,7 +36,7 @@ import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/featu
 import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
-import { byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
+import { athleteNames, byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
 import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { cleanResults } from "@/lib/raceResults";
@@ -148,6 +148,9 @@ const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
 // Kullanıcı vazgeçti ya da iş yapılmadan bırakıldı: öğrenme deposuna yazılmaz
+// Ekrandan kalkan konuşma (keepPast): son 12 tur, taslak ve hafızayla birlikte, saklandığı an
+const recentPast = (p) => Date.now() - p.at < PAST_MS;
+const pastSnap = (prev, list, msgDraft, memo) => ({ turns: [...prev, ...list.filter((t) => t && !t.pre)].slice(-12), at: Date.now(), msgDraft, memo });
 const DROPPED = /vazgeç|bıraktım|silmedim|göndermedim/iu;
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
@@ -281,9 +284,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const find = (kind, id) => ({ plan: plans, task: tasks, note: notes }[kind] || []).find((x) => x.id === id);
   const busy = phase !== "idle";
 
+  // Ses çevirisinin kelime listesi: çalışanlar, mesaj kişileri, sporcular (sporcu adları bu cihazda saklı, ek okuma yok).
+  // Canlı yazı ve son yazı bu adları doğru yazar ("Uğraz" → "Uraz"; Seyhun: "kelimeler düzeltilmiş gösterilsin", 2026-10-09)
+  const athNames = useMemo(() => (open && racer ? athleteNames() : []), [open, racer]);
+  const sttNames = [...new Set([...staffNames, ...contacts.map((c) => c.name), ...athNames])].slice(0, 60);
   const sp = useSpeech({
     noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
-    names: staffNames,
+    names: sttNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
       const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
@@ -420,6 +427,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sohbet hafızası: az önce konuşulan yarış, kişi, sporcu, gönderi, kayıt (convoContext `remember`); sohbet kapanınca sıfırlanır
   const memo = useRef({});
   const memoSet = (key, value) => (memo.current = remember(memo.current, key, value));
+  // Önceki konuşma: küreye yeniden basınca ya da kapatıp açınca ekran temiz başlar, yapay zekanın bağlamı sürer
+  // (Seyhun: "önceki sohbeti de göndermemiz gerekiyor ki ona göre devamını getirelim", 2026-10-09). Ekrandan kalkan turlar,
+  // açık mesaj taslağı ve sohbet hafızası PAST_MS boyunca saklanır; her istekte geçmişin başına eklenir
+  const past = useRef({ turns: [], at: 0, msgDraft: null, memo: {} });
+  const pastOn = () => recentPast(past.current);
+  const pastTurns = () => (pastOn() ? past.current.turns : []);
+  function keepPast(list) {
+    past.current = pastSnap(pastTurns(), list, msgDraft.current, memo.current);
+  }
   // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
   const ASK_REFS = { attName: attAsk, raceChoice: raceChoices, to: askTo, log: logFlow, person: personFlow, invoice: invAsk, ok: okFlow, athlete: athAsk, raceFollow, event: eventFlow, inv: invFlow };
   function waitFor(kind = "") {
@@ -975,9 +991,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Görev listesini yapay zekaya sordurur. Adı askTasks: etkinlik planının askPlan'ı (events.js) ile karışmasın
   // (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 18 sn: sunucu 16 sn
 // içinde takılan isteği bir kez yeniler; cevap yoksa liste yerelde kurulur (localPlan).
-  async function askTasks(s) {
+  // Önceki konuşma ve açık mesaj taslağı da gider: "onu da ekle", "Ali'yi çıkar" önceki konuşmaya göre bölünür
+  async function askTasks(s, fresh) {
+    const history = historyFor([...pastTurns(), ...(fresh ? [] : turns)]);
+    const draft = draftFor(msgDraft.current || (fresh && pastOn() ? past.current.msgDraft : null));
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
+      const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current), history, ...(draft ? { draft } : {}) }) });
       const d = await res.json().catch(() => ({}));
       planCutN.current = res.ok && d.cut > 0 ? d.cut : 0;
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;
@@ -1033,7 +1052,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Aynı cümle daha önce söylendiyse görev listesi cihazdaki kopyadan gelir (yapay zekaya gidilmez)
         const known = cachedPlan(s);
         const pid = ++runId.current;
-        const tasks = known || (await askTasks(s));
+        const tasks = known || (await askTasks(s, fresh));
         // Beklerken Vazgeç ya da kapat denildiyse liste hiç başlamaz (denetim B1)
         if (pid !== runId.current) return;
         setPhase("idle");
@@ -1049,9 +1068,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
       }
     }
-    const history = fresh ? [] : historyFor(turns);
-    // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti); yeni sohbette hiç yok
-    if (fresh) (msgDraft.current = null), (chainRace.current = ""), (memo.current = {});
+    const history = historyFor([...pastTurns(), ...(fresh ? [] : turns)]);
+    // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti). Yeni sohbette az önceki sohbetin taslağı ve hafızası
+    // (PAST_MS içinde) sürer: "onu da ekle", "saati değiştir" önceki konuşmaya göre anlaşılır
+    if (fresh) (msgDraft.current = pastOn() ? past.current.msgDraft : null), (chainRace.current = ""), (memo.current = pastOn() ? past.current.memo || {} : {});
     else if (msgDraft.current && ++msgDraft.current.age > DRAFT_AGE) msgDraft.current = null;
     // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
     if (fresh || !(drafts.length || cards.pending)) queue.current = [];
@@ -1291,7 +1311,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Sıralı işte mesajın içeriği soruldu: cevap, tüm istekle birlikte doğrudan yapay zekaya (yerel kurallar onu plan sanmasın)
     if (all && !DROP.test(s) && !QUESTION.test(s)) return askAI(s, `${all}\nMesajın içeriği: ${s}`, viaVoice, history, false);
     // Az önce hazırlanan mesaja değişiklik ("şunu da ekle", "saati 10 yap"): taslakla birlikte doğrudan yapay zekaya
-    if (!fresh && msgDraft.current && isDraftEdit(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return askAI(s, s, viaVoice, history, false, { edit: true });
+    if (msgDraft.current && isDraftEdit(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return askAI(s, s, viaVoice, history, false, { edit: true });
     // Önceki turda sorulan yarış seçenekleri: "ikincisi", "sonuncu", "Foça olan"
     const choices = raceChoices.current;
     raceChoices.current = [];
@@ -2787,6 +2807,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
+    // Küreye yeniden basınca ekran temiz başlar (eski konuşma bir an görünüp kaybolmasın); bir soruya cevap beklenmiyorsa.
+    // Kalkan konuşma yapay zekaya geçmiş olarak gitmeye devam eder (keepPast)
+    const lastAsk = [...turns].reverse().find((t) => t.role === "assistant" && !t.pre)?.text || "";
+    const asking = cards.awaiting || cards.pending || drafts.length || planOn.current || (!askedMore.current && /\?\s*$/.test(lastAsk));
+    if (!asking && turns.length && phase === "idle") {
+      keepPast(turns);
+      setTurns([]);
+      setCards(EMPTY);
+      setSteps([]);
+      setPlan([]);
+      setError("");
+    }
+    setHeard("");
     clearSay();
     tts.stop();
     sp.start(listenOpts(false));
@@ -2841,7 +2874,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       sp.cancel();
       startedFor.current = null;
       setBooting(false);
-      // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin
+      // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin (yapay zekanın bağlamında kalır)
+      keepPast(turns);
       msgDraft.current = null;
       const t = setTimeout(() => {
         setTurns([]);

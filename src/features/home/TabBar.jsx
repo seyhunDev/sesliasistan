@@ -474,7 +474,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   const mode = state === "listening" ? "listening" : live.transcribing ? "sending" : state === "busy" ? "busy" : state === "speaking" ? "speaking" : "idle";
   const boxText =
     mode === "listening" ? [draft, heard].filter(Boolean).join(" ")
-    : mode === "sending" ? heard || live.said || ""
+    : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "idle" ? draft
     : live.said || "";
   const boxPh = mode === "listening" ? "Dinliyorum…" : mode === "sending" ? "Yazıya çevriliyor…" : mode === "busy" ? live.status || "Çalışıyorum…" : mode === "speaking" ? "" : "Yaz ya da konuş…";
