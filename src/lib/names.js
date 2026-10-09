@@ -188,3 +188,26 @@ function scan(text, people = []) {
 export const assigneesInText = (text, people = []) => scan(text, people).found;
 // Sorumlular + belirsiz adlar (kullanıcıya "Hangi Ali?" diye sorulur)
 export const assigneeHints = (text, people = []) => scan(text, people);
+
+// ---- Yanlış duyulan ada en yakın adlar (yoklamada "ilave katıldı": İlayda? İlker?) ----
+// Cümledeki her kelime (yoklama sözleri hariç) adların ilk adıyla karşılaştırılır: düzeltme uzaklığı en çok 2 ya da
+// baştaki en az 3 harf aynı. En yakınlar önce, en çok n ad.
+const NOT_NAME = new Set(["bugun", "dun", "dunku", "antrenman", "antrenmana", "antrenmanda", "yoklama", "yoklamaya", "yoklamada", "geldi", "gelmedi", "katildi", "katilmadi", "izinli", "raporlu", "ekle", "onu", "bunu", "sporcu", "sporcuyu", "kisi", "kim", "yaz", "isaretle", "ilk", "olarak"]);
+export function closeNames(text, names = [], n = 4) {
+  const words = String(text || "").split(/[\s,.;:!?]+/).map((w) => plain(w.replace(/['’].*$/, ""))).filter((w) => w.length >= 3 && !NOT_NAME.has(w));
+  const scored = [];
+  for (const name of names) {
+    const first = plain(String(name).split(/\s+/)[0] || "");
+    if (!first) continue;
+    let best = 9;
+    for (const w of words) {
+      let p = 0;
+      while (p < w.length && p < first.length && w[p] === first[p]) p++;
+      const d = dist(w, first);
+      const s = d <= 2 ? d : p >= 3 ? 3 - Math.min(p, 5) / 10 : 9;
+      if (s < best) best = s;
+    }
+    if (best < 9) scored.push([best, name]);
+  }
+  return scored.sort((a, b) => a[0] - b[0]).slice(0, n).map((x) => x[1]);
+}

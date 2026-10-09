@@ -5,8 +5,8 @@ import { waitLines } from "@/lib/assistTasks";
 
 // Yapay zeka (ya da yazıya çevirme) beklenirken sıralı durum yazıları. Hızlı yanıtta yalnız işin adı görünür; gecikince
 // hazır yazılar sırayla eklenir (lib/assistTasks.js `waitLines`). Yanıt gelince bileşen kaybolur, cevap hemen gösterilir.
-export function useWaitLines(active, work, transcribing) {
-  const key = active ? `${transcribing ? 1 : 0}|${work || ""}` : "";
+export function useWaitLines(active, work, transcribing, text = "") {
+  const key = active ? `${transcribing ? 1 : 0}|${work || ""}|${text}` : "";
   const [t, setT] = useState({ key: "", ms: 0 });
   useEffect(() => {
     if (!key) return;
@@ -16,7 +16,7 @@ export function useWaitLines(active, work, transcribing) {
     return () => clearInterval(iv);
   }, [key]);
   if (!key) return null;
-  return waitLines(work, t.key === key ? t.ms : 0, { transcribing });
+  return waitLines(work, t.key === key ? t.ms : 0, { transcribing, text });
 }
 
 // Tek satır: yalnız şu an ne yapıldığı (parlayarak). Bitti denen sahte satırlar gösterilmez: bekleme sırasında gerçekte

@@ -122,7 +122,7 @@ export function isPronoun(name) {
 
 // ---- Tek bekleyen soru: asistan bir soru sorunca (yarış seçimi, alıcı, onay, kişi, günlük tarihi…) öncekiler kapanır ----
 // Böylece sonraki cümle yalnız EN SON sorulan soruya cevap sayılır. Bekleyen sorunun boş hâli:
-export const ASK_EMPTY = { raceChoice: [], to: null, log: null, person: null, invoice: null, ok: null, athlete: false, raceFollow: null, event: null, inv: null };
+export const ASK_EMPTY = { attName: null, raceChoice: [], to: null, log: null, person: null, invoice: null, ok: null, athlete: false, raceFollow: null, event: null, inv: null };
 // kind dışındaki bütün soruların sıfırlanacak listesi (kind boşsa hepsi)
 export function asksToClear(kind = "") {
   return Object.keys(ASK_EMPTY).filter((k) => k !== kind);
