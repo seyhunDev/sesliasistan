@@ -1036,7 +1036,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Görev listesindeki iş kullanıcının sözü değil: balon olarak yazılmaz (listede adı görünür)
     if (!chained) setTurns((p) => [...p, { role: "user", text: s }]);
     setText("");
-    setHeard(s);
+    if (!chained) setHeard(s); // asistan kutusunda kullanıcının cümlesi kalır (listedeki iş değil)
     setError("");
     setSteps([]);
     setSaved([]);
@@ -2755,8 +2755,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, text, lastReply, tts.speaking, booting, turns.length, workNow]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
@@ -2944,6 +2944,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       .join(" · ");
 
   // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
+  // İşler yapılırken söylenen cümle alttaki kutuda yazar; üstte ayrıca balon olarak gösterilmez (Seyhun'un seçimi, 2026-10-09)
+  const hideSaid = docked && busy && turns.at(-1)?.role === "user" && !turns.at(-1)?.chip;
   const convoView = (embedded) => (
     <>
         {!embedded && turns.length === 0 && !listening && !busy && !transcribing && (
@@ -2957,7 +2959,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
+        <Thread turns={hideSaid ? turns.slice(0, -1) : turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
         {/* Cevabın yeri: gelene kadar sıralı durum yazıları (Seyhun: "hızlıysa hemen göster, uzun sürerse hazır yazıları
             sırayla göster; sade, hafif soluk, parlayan", 2026-10-09). Yanıt akmaya başlayınca ya da adımlar görünürken yok */}

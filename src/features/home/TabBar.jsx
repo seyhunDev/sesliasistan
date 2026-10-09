@@ -201,49 +201,60 @@ function NavTab({ href, icon, label, active, badge }) {
   );
 }
 
-// KONUŞMA KUTUSU (Seyhun'un örneği, 2026-10-09): dinlerken söylenen yazı geniş, yuvarlak bir kutunun üstünde bütünüyle
-// görünür (uzarsa son kısmı); altında × (dinlemeyi ve yazıyı sil), noktalı ses dalgası, ■ (dinlemeyi durdur, yazı kutuda
-// kalsın, gönderilmesin) ve ↑ (gönder). Durdurulan söz kutuda bekler: ↑ gönderir, yazıya dokununca klavyeyle düzenlenir,
-// yeniden konuşulursa sonuna eklenir.
-function VoiceBox({ text, listening, sending, onCancel, onStop, onListen, onSend, onType }) {
+// Asistan kutusu (Seyhun'un örneği, 2026-10-09: "bastıktan sonra bütün asistan alanı yeni tasarımda olmalı"): asistan
+// açıkken her durumda aynı geniş yuvarlak kutu. Üstte söylenen yazı (dinlerken canlı, gönderilince ve iş yapılırken
+// söylenen cümle), altta × · noktalı dalga · durum düğmesi · ↑. mode: listening | sending | busy | speaking | idle.
+//   listening: × sözü siler, dalga sesle oynar, ■ durdurur (göndermez), ↑ gönderir
+//   sending / busy: noktalar yavaşça parlar, ■ işi durdurur; speaking: ■ okumayı keser ve dinler
+//   idle (iş bitti): kutuya dokun yaz, 🎤 konuş, + Oluştur; × asistanı kapatır
+const DOTS = "mx-1 h-7 min-w-0 flex-1 bg-[length:7px_7px] bg-[position:center] bg-repeat-x";
+function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, sendOn, onType }) {
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
     if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
   }, [text]);
+  const listening = mode === "listening";
+  const working = mode === "busy" || mode === "sending";
+  const round = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
   return (
     <div className="px-3 pb-1 pt-2">
-      <div className={`asheet-input rounded-[1.625rem] ${listening ? "asheet-on" : ""}`}>
+      <div data-mode={mode} className={`asheet-input rounded-[1.625rem] ${listening ? "asheet-on" : ""}`}>
         <div
           ref={box}
           onClick={onType}
           className={`max-h-[7.5rem] min-h-[3.25rem] overflow-hidden px-[1.125rem] pb-1 pt-3.5 text-[1.0625rem] leading-snug ${onType ? "cursor-text" : ""}`}
         >
-          {text ? <span className="text-fg">{text}</span> : <span className="text-mut">Dinliyorum…</span>}
+          {text ? <span className="text-fg">{text}</span> : <span className="text-mut">{ph}</span>}
         </div>
         <div className="flex items-center gap-2 px-2 pb-2">
-          <button type="button" onClick={onCancel} aria-label="Sil ve dinlemeyi bırak" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
+          <button type="button" onClick={onX} aria-label={listening ? "Sil ve dinlemeyi bırak" : "Konuşmayı bitir"} className={`${round} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
+          {mode === "idle" && !rec && (
+            <button type="button" onClick={onMenu} aria-label="Oluştur" className={`${round} bg-fg/[.07] text-fg`}>
+              <Icon name="plus" className="size-[1.375rem]" />
+            </button>
+          )}
           {listening ? (
             <ListenWave line className="mx-1 text-mut" />
           ) : (
-            // Dinleme durdu: dalga sessiz noktalar; gönderilirken yavaşça parlar
-            <span className={`mx-1 h-7 min-w-0 flex-1 bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] bg-[length:7px_7px] bg-[position:center] bg-repeat-x opacity-50 ${sending ? "animate-pulse" : ""}`} aria-hidden="true" />
+            // Dinlemiyor: dalga noktalara iner; iş yapılırken yavaşça parlar, konuşurken yeşil
+            <span
+              className={`${DOTS} ${mode === "speaking" ? "animate-pulse bg-[radial-gradient(circle,var(--acc)_1.75px,transparent_1.85px)]" : `bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] ${working ? "animate-pulse opacity-70" : "opacity-50"}`}`}
+              aria-hidden="true"
+            />
           )}
-          {listening ? (
-            <button type="button" onClick={onStop} aria-label="Dinlemeyi durdur, gönderme" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] transition active:scale-90">
-              <span className="size-4 rounded-[3px] bg-fg" aria-hidden="true" />
+          {mode === "idle" ? (
+            <button type="button" onClick={onTalk} aria-label="Konuş" className={`${round} bg-fg/[.07] text-fg`}>
+              <Icon name="mic" className="size-[1.25rem]" />
             </button>
           ) : (
-            !sending && (
-              // Durdurulan söze devam: yeniden dinler, yeni söylenen sonuna eklenir
-              <button type="button" onClick={onListen} aria-label="Konuşmaya devam et" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
-                <Icon name="mic" className="size-[1.25rem]" />
-              </button>
-            )
+            <button type="button" onClick={onStop} aria-label={listening ? "Dinlemeyi durdur, gönderme" : mode === "speaking" ? "Okumayı kes" : "Durdur"} className={`${round} bg-fg/[.07]`}>
+              <span className="size-4 rounded-[3px] bg-fg" aria-hidden="true" />
+            </button>
           )}
-          <button type="button" onClick={onSend} disabled={sending || (!listening && !text)} aria-label="Gönder" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-acc text-white transition active:scale-90 disabled:opacity-50">
+          <button type="button" onClick={onSend} disabled={!sendOn} aria-label="Gönder" className={`${round} bg-acc text-white disabled:opacity-40`}>
             <Icon name="up" className="size-5" />
           </button>
         </div>
@@ -458,7 +469,15 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   // Konuşma kutusu (Seyhun'un örneği, 2026-10-09): dinlerken, çevrilirken ve durdurulup bekleyen sözde satırın yerine
   // geniş yuvarlak kutu: üstte söylenen yazı, altta × (sil) · noktalı ses dalgası · ■ (durdur, gönderme) · ↑ (gönder)
   const draft = active && !typing && live.draft ? live.draft : "";
-  const voiceBox = active && !typing && (state === "listening" || (live.transcribing && !!heard) || !!draft);
+  // Asistan açıkken (yazı klavyesi açık değilse) alan hep asistan kutusu; boştaki yuvarlak düğme ve sekmeler aynı kalır
+  const box2 = active && !typing;
+  const mode = state === "listening" ? "listening" : live.transcribing ? "sending" : state === "busy" ? "busy" : state === "speaking" ? "speaking" : "idle";
+  const boxText =
+    mode === "listening" ? [draft, heard].filter(Boolean).join(" ")
+    : mode === "sending" ? heard || live.said || ""
+    : mode === "idle" ? draft
+    : live.said || "";
+  const boxPh = mode === "listening" ? "Dinliyorum…" : mode === "sending" ? "Yazıya çevriliyor…" : mode === "busy" ? live.status || "Çalışıyorum…" : mode === "speaking" ? "" : "Yaz ya da konuş…";
   return (
     <div
       ref={box}
@@ -494,16 +513,19 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 </div>
               </div>
             )}
-            {voiceBox ? (
-              <VoiceBox
-                text={[draft, heard].filter(Boolean).join(" ")}
-                listening={state === "listening"}
-                sending={!!live.transcribing}
-                onCancel={voice.cancel}
-                onStop={voice.edit}
-                onListen={voice.listen}
-                onSend={state === "listening" ? voice.stop : voice.send}
-                onType={draft && state !== "listening" ? voice.type : undefined}
+            {box2 ? (
+              <AssistBox
+                mode={mode}
+                text={boxText}
+                ph={boxPh}
+                rec={rec}
+                onX={mode === "listening" || draft ? voice.cancel : onClose}
+                onMenu={onMenu}
+                onStop={mode === "listening" ? voice.edit : talk}
+                onTalk={talk}
+                onSend={mode === "listening" ? voice.stop : voice.send}
+                sendOn={mode === "listening" || (mode === "idle" && !!draft)}
+                onType={mode === "idle" ? (draft ? voice.type : typeNow) : undefined}
               />
             ) : (
             <div className={`flex min-h-[3.75rem] items-end gap-2 px-3 py-2 ${active ? "" : "pt-2"}`}>
