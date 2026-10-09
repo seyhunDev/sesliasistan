@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const Ctx = createContext(() => {});
 
@@ -16,6 +16,13 @@ export function ToastProvider({ children }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setShow(false), opts.duration || (opts.action ? 5000 : 2200));
   }, []);
+
+  // Arkada gönderilen kayıt sunucuda reddedildi (lib/soon.js)
+  useEffect(() => {
+    const on = (e) => toast(`${e.detail?.what || "Kayıt"} sunucuya kaydedilemedi, yeniden dene`, { duration: 5000 });
+    window.addEventListener("sa-save-failed", on);
+    return () => window.removeEventListener("sa-save-failed", on);
+  }, [toast]);
 
   const act = () => {
     clearTimeout(timer.current);

@@ -44,10 +44,16 @@ export async function authFetch(url, options = {}) {
     const cool = readCool();
     if (Object.keys(cool).length) headers.set("x-ai-cool", JSON.stringify(cool));
 
-    const res = await fetch(url, {
-        ...options,
-        headers,
-    });
+    // Süre sınırı (denetim B12): kendi iptali olmayan her istek en çok 30 sn bekler (sunucu işlevi zaten daha uzun yaşamaz).
+    // timeout: 0 ile kapatılır. Ağ hataları Türkçe anlaşılır yazıya çevrilir (Safari "Load failed"; denetim B13).
+    const { timeout = 30000, ...opts } = options;
+    const signal = opts.signal || (timeout > 0 && typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(timeout) : undefined);
+    let res;
+    try {
+        res = await fetch(url, { ...opts, headers, signal });
+    } catch (e) {
+        throw netError(e, !opts.signal);
+    }
     saveCool(res.headers.get("x-ai-cool"));
     // Kişilerde günlük kalan hak (asistan, fiş)
     try {
@@ -55,6 +61,23 @@ export async function authFetch(url, options = {}) {
         if (q) saveQuota(JSON.parse(q));
     } catch {}
     return res;
+}
+
+// Ağ hatasını anlaşılır yazıya çevirir. Kullanıcının kendi iptali (AbortError, kendi sinyali) olduğu gibi kalır.
+export function netError(e, ownTimeout = true) {
+  const name = e?.name || "";
+  if (name === "TimeoutError" || (ownTimeout && name === "AbortError")) {
+    const err = new Error("Sunucu zamanında yanıt vermedi, tekrar dene");
+    err.name = "TimeoutError";
+    return err;
+  }
+  if (name === "AbortError") return e;
+  if (e instanceof TypeError || /load failed|failed to fetch|network/i.test(e?.message || "")) {
+    const err = new Error("İnternete ulaşılamadı, bağlantını kontrol edip tekrar dene");
+    err.name = "NetworkError";
+    return err;
+  }
+  return e;
 }
 
 // Yanıtı JSON olarak okur; sunucu HTML ya da boş dönerse (çökme, zaman aşımı) anlaşılır bir hata üretir

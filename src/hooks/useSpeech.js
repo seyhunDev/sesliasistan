@@ -1,5 +1,5 @@
 "use client";
-import { authFetch } from "@/lib/authFetch";
+import { authFetch, jsonOf } from "@/lib/authFetch";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
@@ -407,7 +407,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (!upload) {
           finish();
           if (s.partial) cb.current.onFinal?.(s.partial, mode);
-          else fail("Ses alınamadı, tekrar dene.");
+          // Mikrofon hazır olmadan bırakıldıysa (izin ekranı, hızlı ikinci dokunuş) kayıt hiç yapılmadı (denetim A2)
+          else fail(s.early ? "Çok kısa kaldı. Mikrofona dokunup konuş, sonra bırak." : "Ses alınamadı, tekrar dene.");
           return;
         }
       }
@@ -428,10 +429,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
         if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
         speechMark("upload");
-        let res = await authFetch("/api/transcribe", { method: "POST", body: fd });
-        // Servis bir anlık hata verdiyse (kota değil) bir kez daha denenir
-        if (!res.ok && res.status >= 500 && alive()) res = await authFetch("/api/transcribe", { method: "POST", body: fd });
-        const data = await res.json().catch(() => ({}));
+        // En çok 15 sn beklenir (zayıf bağlantıda "Çeviriyorum" sonsuz kalmasın; denetim A8). Servis hızlıca bir anlık
+        // hata verdiyse (kota ya da zaman aşımı değil) kalan sürede bir kez daha denenir (denetim A3)
+        const t0 = Date.now();
+        let res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: 15000 });
+        if (!res.ok && res.status >= 500 && res.status !== 502 && res.status !== 504 && Date.now() - t0 < 4000 && alive()) res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: 15000 - (Date.now() - t0) });
+        const data = await jsonOf(res);
         if (!alive()) return;
         if (!res.ok) throw new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
         finish();
@@ -448,6 +451,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         else fail(e.message);
       }
     };
+    s.early = s.stopReq;
     mr.start();
     if (s.stopReq) mr.stop(); // parmak izin ekranı sırasında kalktıysa
   };

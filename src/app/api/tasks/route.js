@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { PLAN_KINDS, cleanPlan } from "@/lib/taskPlan";
+import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
 import { memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
@@ -61,7 +61,7 @@ async function handle(request) {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1200, timeoutMs: 12000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
-    return NextResponse.json({ tasks });
+    return NextResponse.json({ tasks, cut: planCut(raw) });
   } catch (e) {
     logAiError("tasks", "gemini", e);
     return bad("Görev listesi çıkarılamadı.", e.status === 429 ? 429 : 502);

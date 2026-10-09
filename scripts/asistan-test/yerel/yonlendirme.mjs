@@ -351,3 +351,27 @@ group("Sohbetteki yarış")([
     ["türsüz", { desc: "türsüz iş sırası değişmez", fn: () => orderPlan([{ say: "a" }, { say: "b" }]).map((t) => t.say).join(""), ok: (r) => r === "ab" }],
   ]);
 }
+
+// Denetim düzeltmeleri (2026-10-09): ✓/✗, sıra, önbellek, aynı ad, sığmayan işler
+{
+  const { failed, lastPagesPlan, cachedPlan, rememberPlan, cleanPlan, planCut, PLAN_MAX } = await import("@/lib/taskPlan");
+  const { sameNamed } = await import("@/lib/names");
+  const { soon } = await import("@/lib/soon");
+  const store = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
+  const TWO = [{ kind: "race", say: "a" }, { kind: "post", say: "b" }];
+  const DAY = 24 * 3600 * 1000;
+  group("Denetim düzeltmeleri")([
+    ["Kaydettim: Atatürk Kupası. Mustafa'yı sporcularda bulamadım.", { desc: "başarıyla başlayan cevap ✓", fn: failed, ok: (r) => r === false }],
+    ["Tamam, yoklamaya eklemedim.", { desc: "olumsuz fiil ✗", fn: failed, ok: (r) => r === true }],
+    ["Enes aidat listesinde yok, kaydetmedim.", { desc: "kaydetmedim ✗", fn: failed, ok: (r) => r === true }],
+    ["gönderi, yoklama, sayfa, yarış", { desc: "yapay zeka sırası korunur, gönderi ve sayfa sonda", fn: () => lastPagesPlan(["post", "attendance", "nav", "race"].map((kind) => ({ kind }))).map((t) => t.kind).join(","), ok: (r) => r === "attendance,race,nav,post" }],
+    ["ertesi gün", { desc: "kopya yalnız aynı gün", fn: () => { const st = store(); rememberPlan("yarış oluştur gönderi hazırla", TWO, st); return cachedPlan("yarış oluştur gönderi hazırla", st, Date.now() + 2 * DAY); }, ok: (r) => r === null }],
+    ["bunun için gönderi hazırla", { desc: "gönderme yapan cümle saklanmaz", fn: (s) => { const st = store(); rememberPlan(`yarış oluştur ${s}`, TWO, st); return cachedPlan(`yarış oluştur ${s}`, st); }, ok: (r) => r === null }],
+    ["12 iş", { desc: `en çok ${PLAN_MAX}, fazlası sayılır`, fn: () => { const raw = { tasks: Array.from({ length: 12 }, (_, i) => ({ kind: i % 2 ? "race" : "post", say: `iş ${i}` })) }; return [cleanPlan(raw).length, planCut(raw)].join("/"); }, ok: (r) => r === `${PLAN_MAX}/2` }],
+    ["Mustafa", { desc: "iki Mustafa: ikisi de", fn: (s) => sameNamed(s, ["Mustafa Ak", "Mustafa Kaya", "Enes Ay"]).join(","), ok: (r) => r === "Mustafa Ak,Mustafa Kaya" }],
+    ["Mustafa Ak", { desc: "tek kişi: belirsiz değil", fn: (s) => sameNamed(s, ["Mustafa Ak", "Mustafa Kaya"]).length, ok: (n) => n === 0 }],
+    ["yavaş yazma", { desc: "en çok bekleme süresi", fn: () => soon(new Promise((r) => setTimeout(r, 200)), 20), ok: (r) => r === "late" }],
+    ["hızlı yazma", { desc: "onay", fn: () => soon(Promise.resolve(1), 200), ok: (r) => r === "ok" }],
+    ["hızlı hata", { desc: "hata fırlatılır", fn: () => soon(Promise.reject(new Error("x")), 200).then(() => "ok", () => "err"), ok: (r) => r === "err" }],
+  ]);
+}
