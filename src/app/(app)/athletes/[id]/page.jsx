@@ -7,7 +7,10 @@ import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { age, byId, fmtDate, isActive, loadAthlete, useDikili } from "@/features/athletes/data";
+import { age, byId, deleteAthlete, fmtDate, isActive, loadAthlete, message, setArchived, useDikili } from "@/features/athletes/data";
+import { unlinkMembers } from "@/features/athletes/memberSync";
+import { useData } from "@/features/data/DataProvider";
+import { useToast } from "@/components/ui/ToastProvider";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { EditAthlete } from "@/features/athletes/EditAthlete";
 import { alertText, expiryOf } from "@/lib/expiry";
@@ -24,7 +27,7 @@ const STATE = {
 };
 const LOG = { class_change: "Sınıf", coach_change: "Antrenör", status_change: "Durum" };
 
-// Tek sporcu (salt okunur). Yalnızca izinli hesap görür.
+// Tek sporcu: bilgiler, düzenle, arşive al, sil. Yalnızca izinli hesap görür.
 export default function AthletePage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -123,7 +126,7 @@ function Detail() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={a.studentName} sub={[isActive(a) ? "Aktif" : "Pasif", cls, coach].filter(Boolean).join(" · ")} back="/athletes">
+      <PageHeader title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")} back="/athletes">
         <button onClick={() => setEdit(true)} aria-label="Düzenle" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
           <Icon name="edit" className="size-5" />
         </button>
@@ -215,7 +218,79 @@ function Detail() {
       <RaceHistory athleteId={a.id} />
       <Attendance a={a} />
       <History items={data.history} />
+      <Manage a={a} names={{ classes: data.classes, coaches: data.coaches }} onChanged={reload} />
     </main>
+  );
+}
+
+// Arşive al / arşivden çıkar / sil. Arşiv kulüp uygulamasındaki "Pasif" durumudur: listede gizlenir,
+// yoklamaya ve aidat listesine girmez; yoklama geçmişi ve ödenmiş aidatlar kalır. Silme geri alınamaz, onay ister.
+function Manage({ a, names, onChanged }) {
+  const router = useRouter();
+  const toast = useToast();
+  const { members, birthdays, deleteRecord, myUid } = useData();
+  const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const active = isActive(a);
+  const withAcc = members.filter((m) => m.athleteId === a.id && m.account !== false);
+
+  const archive = async () => {
+    setBusy(true);
+    try {
+      await setArchived(a, active, names);
+      toast(active ? `${a.studentName} arşive alındı` : `${a.studentName} arşivden çıkarıldı`);
+      onChanged();
+    } catch (e) {
+      toast(message(e));
+    }
+    setBusy(false);
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await deleteAthlete(a.id);
+      let kept = [];
+      try {
+        kept = await unlinkMembers(myUid, members, a.id);
+        birthdays.filter((b) => b.athleteId === a.id).forEach((b) => deleteRecord("birthday", b.id));
+      } catch {}
+      toast(kept.length ? `${a.studentName} silindi. Uygulama hesabı Kişiler'de duruyor.` : `${a.studentName} silindi`);
+      router.replace("/athletes");
+    } catch (e) {
+      toast(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : message(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="mt-6 space-y-2">
+      <button type="button" disabled={busy} onClick={archive} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.9375rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50 active:scale-[.98]">
+        <Icon name="archive" className="size-5" /> {active ? "Arşive al" : "Arşivden çıkar"}
+      </button>
+      <p className="px-1 text-[0.75rem] text-mut">
+        {active ? "Arşivdeki sporcu listede, yoklamada ve aidat listesinde görünmez; geçmişi kalır. Sonra arşivden çıkarabilirsin." : "Arşivden çıkınca listede, yoklamada ve aidatta yeniden görünür."}
+      </p>
+      {ask ? (
+        <div className="rounded-2xl bg-rec/10 p-3.5">
+          <p className="text-[0.875rem] font-semibold text-rec">{a.studentName} silinsin mi?</p>
+          <p className="mt-1 text-[0.8125rem] leading-snug text-fg">
+            Kulüp listesinden ve Kişiler’den silinir; yoklama geçmişi ve kartındaki bilgiler gider, geri alınamaz.
+            {withAcc.length ? " Uygulama hesabı kalır, istersen Kişiler'den ayrıca silersin." : ""} Ödenmiş aidat kayıtları kalır. Sadece listede görmek istemiyorsan arşive al.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setAsk(false)} className="h-11 rounded-xl bg-card text-[0.9375rem] font-semibold">Vazgeç</button>
+            <button type="button" disabled={busy} onClick={remove} className="h-11 rounded-xl bg-rec text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+              {busy ? "Siliniyor…" : "Sil"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setAsk(true)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[0.9375rem] font-semibold text-rec active:scale-[.98]">
+          <Icon name="trash" className="size-5" /> Sporcuyu sil
+        </button>
+      )}
+    </section>
   );
 }
 
