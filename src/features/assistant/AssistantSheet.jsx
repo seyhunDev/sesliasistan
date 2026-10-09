@@ -965,7 +965,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         }
         const split = parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
         const list = tasks?.length > 1 ? tasks : !tasks ? split || localPlan(s, flowOf) : null;
-        if (list) return startPlan(orderPlan(list), viaVoice, fresh);
+        // Sıra yapay zekanın kurduğu düzen; yapay zekasız (yerel) listede aynı kural uygulamada (orderPlan)
+        if (list) return startPlan(list === tasks ? list : orderPlan(list), viaVoice, fresh);
         chainStep.current = true; // tek iş: cümle kendi yoluna (kullanıcının sözü zaten yazıldı)
         return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
       }

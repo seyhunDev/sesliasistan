@@ -396,10 +396,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
         if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
         speechMark("upload");
-        const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
+        let res = await authFetch("/api/transcribe", { method: "POST", body: fd });
+        // Servis bir anlık hata verdiyse (kota değil) bir kez daha denenir
+        if (!res.ok && res.status >= 500 && alive()) res = await authFetch("/api/transcribe", { method: "POST", body: fd });
         const data = await res.json().catch(() => ({}));
         if (!alive()) return;
-        if (!res.ok) throw new Error(data.error || "Ses çevrilemedi");
+        if (!res.ok) throw new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
         finish();
         const text = data.text || s.partial;
         if (text) {
