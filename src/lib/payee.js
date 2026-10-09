@@ -46,29 +46,79 @@ export const otherIncoming = (movements, payee) =>
 
 const round = (n) => Math.round(n * 100) / 100;
 
-// Ay ay toplamlar (en yeni ay önce) ve genel toplam
+// Hesaplar'da eklenen diğer adlar (users/{uid}.payeeNames): her biri ayrı satır, o adla ilgili bütün hareketler
+export const namesOf = (profile) => {
+  const seen = new Set();
+  return (Array.isArray(profile?.payeeNames) ? profile.payeeNames : [])
+    .map((n) => String(n || "").trim())
+    .filter((n) => {
+      const k = words(n).join(" ");
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+};
+// Bir adla ilgili TL hareketler (gelen ve giden, tutar işaretli), en yeni önce. Hesap adı (gönderen/alıcı) okunmuşsa
+// yalnız ona bakılır; okunamamışsa açıklamada ve satırın diğer hücrelerinde aranır.
+export function nameMoves(movements, name) {
+  if (!words(name).length) return [];
+  return movements
+    .filter((m) => {
+      if (typeof m.amount !== "number" || (m.currency && m.currency !== "TL")) return false;
+      const who = whoIn(m);
+      return who ? hasName(who, name) : hasName(`${m.desc || ""} ${m.text || ""}`, name);
+    })
+    .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+}
+// Gelen ve giden toplamları ayrı (giden artı yazılır)
+export const inOut = (list) => ({
+  in: round(list.reduce((s, m) => s + (m.amount > 0 ? m.amount : 0), 0)),
+  out: round(list.reduce((s, m) => s + (m.amount < 0 ? -m.amount : 0), 0)),
+});
+
+// Arama (Hesaplar › Son hareketler): yazılan her kelime hesap adında, açıklamada, notta ya da türde geçmeli.
+// Türkçe harfsiz ve büyük/küçük harf fark etmez; kelimenin başı yeter ("ahm" → AHMET).
+export function moveHas(m, q) {
+  const want = String(q || "")
+    .toLocaleUpperCase("tr-TR")
+    .replace(/[ÇĞİIÖŞÜÂÎÛ]/g, (c) => ({ Ç: "C", Ğ: "G", İ: "I", I: "I", Ö: "O", Ş: "S", Ü: "U", Â: "A", Î: "I", Û: "U" })[c] || c)
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  if (!want.length) return true;
+  const hay = words([whoIn(m), m.note, m.desc, m.text, m.cat, m.kind, m.accountLabel].filter(Boolean).join(" "));
+  const all = hay.join("");
+  return want.every((w) => hay.some((h) => h.startsWith(w)) || (w.length > 2 && all.includes(w)));
+}
+export const searchMoves = (list, q) => list.filter((m) => moveHas(m, q));
+
+// Ay ay toplamlar (en yeni ay önce) ve genel toplam; işaretli listede gelen (in) ve giden (out) ayrıca
 export function payeeSummary(list, ym) {
   const months = new Map();
+  const blank = (k) => ({ ym: k, total: 0, count: 0, in: 0, out: 0, list: [] });
   for (const m of list) {
     const k = monthOf(m);
     if (!k) continue;
-    const x = months.get(k) || { ym: k, total: 0, count: 0, list: [] };
+    const x = months.get(k) || blank(k);
     x.total = round(x.total + m.amount);
+    if (m.amount > 0) x.in = round(x.in + m.amount);
+    else x.out = round(x.out - m.amount);
     x.count++;
     x.list.push(m);
     months.set(k, x);
   }
   const byMonth = [...months.values()].sort((a, b) => b.ym.localeCompare(a.ym));
-  const now = months.get(ym) || { ym, total: 0, count: 0, list: [] };
-  return { byMonth, month: now, total: round(list.reduce((s, m) => s + m.amount, 0)), count: list.length };
+  const now = months.get(ym) || blank(ym);
+  return { byMonth, month: now, total: round(list.reduce((s, m) => s + m.amount, 0)), count: list.length, ...inOut(list) };
 }
 
 // Excel'in açtığı CSV (noktalı virgül, Türkçe ondalık)
-export function payeeCsv(list, name) {
+export function payeeCsv(list, name, label = "gelen ödemeler") {
   const q = (s) => `"${String(s ?? "").replace(/"/g, '""')}"`;
   const amt = (n) => String(round(n)).replace(".", ",");
   const rows = list.map((m) => [m.date, whoIn(m), m.desc, amt(m.amount), m.accountLabel || ""].map(q).join(";"));
-  return "﻿" + [[`${name || "Kişisel hesap"} · gelen ödemeler`].map(q).join(";"), ["Tarih", "Gönderen / hesap adı", "Açıklama", "Tutar (TL)", "Hesap"].map(q).join(";"), ...rows].join("\n");
+  return "﻿" + [[`${name || "Kişisel hesap"} · ${label}`].map(q).join(";"), ["Tarih", "Gönderen / hesap adı", "Açıklama", "Tutar (TL)", "Hesap"].map(q).join(";"), ...rows].join("\n");
 }
 
 // Asistan sorusu: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi", "ekimde ne kadar para aldım"
