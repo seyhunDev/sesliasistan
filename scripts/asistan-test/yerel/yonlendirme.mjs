@@ -1,29 +1,13 @@
-// Asistan yönlendirmesi: söylenen cümle hangi işe gidiyor? AssistantSheet.jsx içindeki run() sırası (boş sohbet, taslak/kart yok)
-// burada birebir taklit edilir: kapatma → günlük → etkinlik → envanter → gönderi → yarış açma → kişi → sayfa → ders programı →
+// Asistan yönlendirmesi: söylenen cümle hangi işe gidiyor? (boş sohbet, taslak/kart yok). Uygulamanın kendi yönlendirme
+// tablosu sınanır (lib/assistRoute.js `routesOf`; önceden run() burada elle taklit ediliyordu). Sıra: kapatma → günlük → etkinlik → envanter → gönderi → yarış açma → kişi → sayfa → ders programı →
 // doğum günü → geri al → fatura → ödeme sorusu → son eklenenler (arama, aidat, nakit gelir, sporcu) → alışveriş → yoklama → yarış → yerel komut → ana yapay zeka.
-// run() sırası değişirse bu dosya da değişir. Yapay zekaya gidenlerde ön cevabın (precue) doğru işi söylemesi de sınanır.
+// Yapay zekaya gidenlerde ön cevabın (precue) doğru işi söylemesi de sınanır.
 // Tek tek parçaların testleri asistan.mjs'te; burası parçaların birbirini yutmadığını (karışma) sınar. 2026-10-06 denetimi.
-import { isEnd, isNoMore, undoLast } from "@/lib/assistantLocal";
-import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
-import { wantsEvent } from "@/features/events/eventWords";
-import { wantsInventory } from "@/features/inventory/invWords";
 import { wantsPost } from "@/features/posts/postModel";
-import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText as wantsRace } from "@/features/athletes/raceNav";
-import { wantsPerson } from "@/features/people/assistPerson";
-import { localNavigate } from "@/lib/nav";
-import { wantsSchedule } from "@/features/schedule/scheduleWords";
-import { parseBirthday } from "@/lib/birthdayParse";
-import { invoiceCommand } from "@/lib/invoices";
-import { payeeAsk } from "@/lib/payee";
-import { shopCommand } from "@/features/shop/shopWords";
-import { wantsAttendance } from "@/features/athletes/access";
-import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
-import { localCommand } from "@/lib/commands";
 import { precue } from "@/lib/precue";
 import { TASKS } from "@/lib/assistTasks";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
-import { matchPerson } from "@/lib/names";
 import { todayStr } from "@/lib/utils/format";
+import { routeOf } from "@/lib/assistRoute";
 import { suite } from "./ortak.mjs";
 
 const today = todayStr();
@@ -33,66 +17,19 @@ const races = [
   { id: "r3", name: "Çeşme Optimist Kupası", district: "Çeşme", startDate: "2026-11-07", endDate: "2026-11-11" },
 ];
 const names = ["Ali Kaya", "Ayşe Yılmaz", "Gökhan Demir", "Zeynep Ak", "Emre Şahin", "Mehmet Öz"];
-const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
-const FOCUS_MSG = /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i;
 
 // ctx: { owner: true (ana hesap) | false (çalışan), athlete: sporcu/veli/öğrenci, path }
+// Uygulamanın kendi yönlendirmesi (lib/assistRoute.js `routeOf`; AssistantSheet run() aynı adayları sırayla dener)
 function route(s, ctx = {}) {
   const owner = ctx.owner !== false && !ctx.athlete;
-  const isStaff = !owner;
-  const racer = owner; // yarış/yoklama yetkisi yalnız Seyhun'un e-postasında (NEXT_PUBLIC_SPORCU_EMAILS)
   const path = ctx.path || "/";
-  const athleteSide = !!ctx.athlete;
-  const nav = (x) => localNavigate(x, { names });
-  const mf = messageFirst(s);
-  if (isEnd(s) && !mf) return "close";
-  if (ctx.askedMore && isNoMore(s)) return "close";
-  if (!mf && !athleteSide && wantsLog(s) && bareLog(s)) return "log";
-  if (!mf && !athleteSide && (wantsLog(s) || (path === "/training" && isLogAnswer(s)))) return "log";
-  if (!mf && !isStaff && wantsEvent(s)) return "event";
-  if (!mf && !isStaff && wantsInventory(s, path.startsWith("/inventory")) && !nav(s)) return "inventory";
-  if (BARE_SAVE.test(s)) return "bareSave";
-  if (!mf && !isStaff && !path.startsWith("/posts/") && wantsPost(s)) return "post";
-  if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races, today)))) return "raceOpen";
-  if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) return owner ? "person" : "person(yetkisiz)";
-  const n = !(racer && athleteOpenCommand(s)) && nav(s);
-  if (n) return "navigate";
-  if (!mf && wantsSchedule(s, path === "/schedule")) return "schedule";
-  const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
-  if (bday) return "birthday";
-  if (undoLast(s)) return "undo";
-  if (!isStaff && !mf && !isQuestion(s) && invoiceCommand(s)) return "invoice";
-  if (!isStaff && owner && payeeAsk(s, today)) return "payee";
-  // runMore (assistMore.js): kişi adları burada sporcu adı yerine de geçer
-  if (!mf) {
-    const onRace = /^\/athletes\/races\/r/.test(path);
-    if (onRace && racer && raceHereCommand(s)) return "raceHere";
-    if (owner && receiptPayCommand(s)) return "receiptPay";
-    if (owner && racer && absentNotifyCommand(s)) return "absent";
-    if (shopClearCommand(s)) return "shopClear";
-    if (birthdayDeleteCommand(s)) return "bdayDelete";
-    if (owner && personDeleteCommand(s)) return "personDelete";
-    if (groupCreateCommand(s)) return "groupCreate";
-    if (onRace && racer && hotelAddCommand(s)) return "hotel";
-    if (racer && athleteOpenCommand(s) && matchPerson(athleteOpenCommand(s).name, names)) return "athleteOpen";
-    if (owner && invoiceTaskCommand(s)) return "invoiceTask";
-    const cc = callCommand(s);
-    if (cc?.hotel && /^\/athletes\/races\/r/.test(path)) return "call";
-    if (cc && !cc.hotel && matchPerson(cc.who, names)) return "call";
-    if (owner && racer && duesCommand(s)) return "dues";
-    if (owner && incomeCommand(s, today)) return "income";
-    const ac = owner && racer ? athleteCommand(s) : null;
-    if (ac && (ac.op === "add" || ac.explicit || matchPerson(ac.name, names))) return "athlete";
-  }
-  const sc = shopCommand(s);
-  if (sc) return sc.op === "add" || sc.op === "read" ? "shopping" : "shopping(mark)";
-  if (!mf && racer && wantsAttendance(s, path === "/athletes/attendance")) return "attendance";
   const curRace = /^\/athletes\/races\/([\w-]+)$/.exec(path)?.[1];
-  if (racer && !mf && (wantsRace(s, races.map((r) => r.name)) || (curRace && curRace !== "new" && raceJobHere(s)))) return "race";
-  const toFocus = false && FOCUS_MSG.test(s);
-  const cmd = !toFocus && localCommand(s, { plans: [], tasks: [], notes: [] }, undefined, { aiFirst: true });
-  if (cmd) return cmd.type === "receipt" ? "receiptCam" : cmd.type === "meeting" ? "meeting" : cmd.type === "navigate" ? "navigate" : `local:${cmd.type}`;
-  return "ai";
+  const got = routeOf(s, {
+    owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
+    logHere: path === "/training", invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
+    curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
+  });
+  return got === "person" && !owner ? "person(yetkisiz)" : got;
 }
 
 // Ön cevabın hangi işe ait olduğu (söylenen cümleden)
@@ -326,3 +263,37 @@ group("Sohbetteki yarış")([
   ["29 Ekim gönderisi hazırla", R("ata", null)],
   ["Atatürk Kupası için Instagram görseli hazırla", R("", "ata")],
 ]);
+
+// Konuşma testleri (inceleme adım 5): tek cümle değil, birkaç adımlık konuşma. Her adımda asistanın bekleyen sorusu ve
+// sohbet hafızası bir sonraki cümlenin yolunu değiştirir (uygulamadaki gibi: lib/assistRoute.js + lib/convoContext.js).
+{
+  const CX = await import("@/lib/convoContext");
+  const base = { owner: true, isStaff: false, racer: true, att: true, path: "/", today, races, raceNames: races.map((r) => r.name), names, shop: true };
+  // adımlar: [cümle, beklenen yol, bu cümleden sonra asistanın sorduğu soru / hafızaya yazdığı { ask, memo }]
+  const talk = (steps) => () => {
+    let ask = {};
+    let memo = {};
+    const got = [];
+    for (const [s, , after = {}] of steps) {
+      got.push(routeOf(s, { ...base, ...ask, memo }));
+      ask = {};
+      if (after.askTo) ask.askTo = after.askTo;
+      if (after.invAsk) ask.invAsk = after.invAsk;
+      if (after.drafts) ask.drafts = true;
+      if (after.askedMore) ask.askedMore = true;
+      if (after.memo) memo = CX.remember(memo, ...after.memo);
+    }
+    return got.join(" › ");
+  };
+  const T = (steps) => ({ desc: steps.map((x) => x[1]).join(" › "), fn: talk(steps), ok: (r) => r === steps.map((x) => x[1]).join(" › ") });
+  group("Konuşma testleri")([
+    ["alıcı sorusu", T([["ekibe mesaj gönder", "ai", { askTo: "ekip" }], ["yarın 10'da iskelede olun", "askTo"], ["yarın 10'da iskelede olun", "ai"]])],
+    ["hangi fatura", T([["faturayı ödendi işaretle", "invoice", { invAsk: { op: "paid" } }], ["Turkcell", "invoice"], ["Turkcell", "ai"]])],
+    ["sporcu ve gönderme", T([["Ali Kaya'yı sporcu olarak ekle", "athlete", { memo: ["athlete", "Ali Kaya"] }], ["onu arşive al", "athlete"]])],
+    ["gönderme hafızasız", T([["onu arşive al", "ai"]])],
+    ["bitiş", T([["yarın 10'da antrenman ekle", "ai", { askedMore: true }], ["yok", "close"]])],
+    ["soru kapanır", T([["yarın 10'da antrenman ekle", "ai", { askedMore: true }], ["planlara git", "navigate"], ["yok", "ai"]])],
+    ["taslak varken kaydet", T([["cumartesi tekne yıkama", "ai", { drafts: true }], ["kaydet", "ai"], ["kaydet", "bareSave"]])],
+    ["yarış, sonra sayfa", T([["Çeşme Optimist Kupası yarışını aç", "raceOpen", { memo: ["race", "Çeşme Optimist Kupası"] }], ["planlara git", "navigate"], ["kapat", "close"]])],
+  ]);
+}
