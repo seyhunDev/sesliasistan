@@ -22,7 +22,8 @@ const told = (r) => window.dispatchEvent(new CustomEvent("sa-race-saved", { deta
 
 // onStep(label): panelde görünen adım. current: açık yarış sayfasının kimliği (ad söylenmezse o yarış)
 // follow: yeni yarıştan sonra kaçıncı kez eksik soruluyor (tarih, sporcular); 2'den sonra sorulmaz
-export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "", follow = 0 }, onStep = () => {}) {
+// noAsk: görev listesinde sıradaki iş varken eksikler sorulmaz (liste durmasın; tarih/sporcu sonra eklenir)
+export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "", follow = 0, noAsk = false }, onStep = () => {}) {
   onStep("Sporcular ve yarışlar yükleniyor");
   const [data, races] = await Promise.all([loadAthletes(), loadRaces(orgId)]);
   const classes = byId(data.classes);
@@ -72,7 +73,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
       if (planned) await saveRace(orgId, uid, { ...r, id, planAdded: true });
     }
     const who = p.athleteIds.length ? ` ${p.athleteIds.length} sporcu: ${first(p.athleteIds)}.` : "";
-    const ask = followAsk(r);
+    const ask = noAsk ? "" : followAsk(r);
     return {
       said: `Kaydettim: ${r.name}${r.startDate ? `, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}` : ""}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${r.abroad ? " Yurt dışı yarışı: Özet'te Türkiye'de yapılacaklar listesi hazır." : ""}${p.note ? " Notunu yazdım." : ""}${missed}${ask ? ` ${ask}` : ""}`,
       id,
@@ -131,7 +132,7 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     p.note && "not yazıldı",
     r.startDate !== old.startDate && `tarih ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")} oldu`,
   ].filter(Boolean);
-  const ask = follow && follow < 2 ? followAsk(r) : "";
+  const ask = follow && follow < 2 && !noAsk ? followAsk(r) : "";
   return { said: `Kaydettim. ${old.name}: ${parts.join(", ") || "yer güncellendi"}${r.planAdded && !old.planAdded ? ", planlara da eklendi" : ""}.${missed}${ask ? ` ${ask}` : ""}`, id: old.id, ...(ask ? { expect: true, follow: true } : {}) };
 }
 

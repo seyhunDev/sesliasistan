@@ -162,3 +162,16 @@ export function localPlan(text, kindOf) {
   if (out.length < 2) return null;
   return out.map(({ k, say }) => ({ kind: PLAN_KINDS[k] ? k : "other", say, label: S(say.split(/\s+/).slice(0, 5).join(" "), 60), from: S(say, 160) }));
 }
+
+// Görev listesinin sırası (Seyhun: "illa kullanıcının sıralamasına göre olmak zorunda değil, bizim için en kolayı neyse",
+// 2026-10-09): önce başka işlerin dayandığı kayıtlar (yarış, sporcu), sonra sayfada kalan hızlı işler (yoklama, günlük,
+// ödeme…), sonra onay isteyebilen diğer işler (mesaj, plan), en sonda sayfa değiştiren işler. Gönderi en son: gönderi
+// ekranı açılınca o ekranda kalınır ve yarışın gönderisi yarış kaydedildikten sonra hazırlanır. Aynı türler söylendiği sırada.
+const ORDER = ["race", "athlete", "attendance", "log", "income", "dues", "invoice", "inventory", "shopping", "event", "other", "call", "nav", "post"];
+export function orderPlan(tasks) {
+  const rank = (t) => {
+    const i = ORDER.indexOf(t?.kind || "other");
+    return i < 0 ? ORDER.indexOf("other") : i;
+  };
+  return (tasks || []).map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t);
+}

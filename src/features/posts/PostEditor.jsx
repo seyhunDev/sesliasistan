@@ -99,6 +99,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const [texts, setTexts] = useState(true);
   const canvas = useRef(null);
   const file = useRef(null);
+  const [autoSave, setAutoSave] = useState(false); // asistanla açılan gönderi hazır olunca kaydedilsin
   const setFiles = useRef({});
   const fileInput = useRef(null);
   const latest = useRef(null);
@@ -306,7 +307,10 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     const t = setTimeout(() => {
       if (d || lk || Object.keys(look).length) setP(dress);
       if (said && !start.race) put("topic", said);
-      write({ ...first, topic: start.topic || said }).catch(() => {});
+      const w = write({ ...first, topic: start.topic || said }).catch(() => {});
+      // Asistanla hazırlanan gönderi kendiliğinden kaydedilir (Seyhun: "gönderiyi kaydetsin, düzeltmeleri sonra yaparım"):
+      // yazılar gelince görsel yeniden çizilsin diye kısa beklenir, sonra kaydedilir
+      if (said) w.then(() => setAutoSave(true));
     }, 50);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -330,6 +334,17 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       setBusy((b) => (b === "save" ? "" : b));
     }
   };
+
+  // Asistanla hazırlanan gönderi yazıları gelince bir kez kaydedilir (yukarıdaki açılış)
+  useEffect(() => {
+    if (!autoSave) return;
+    const t = setTimeout(() => {
+      setAutoSave(false);
+      save(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSave]);
 
   const getFile = async () => file.current || (canvas.current && (await postFile(canvas.current, slug(p.headline))));
   // Paylaş: açıklama panoya, görsel paylaşım menüsüne (Instagram açıklamayı almaz; yapıştırılır). Kayıt arkada.
