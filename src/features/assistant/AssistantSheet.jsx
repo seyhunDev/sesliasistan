@@ -93,6 +93,7 @@ import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
+import { refersBack, splitChain } from "@/lib/chain";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -353,8 +354,34 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // "şunu da ekle", "saati 10 yap" onu değiştirir (lib/convoContext.js). Sohbet kapanınca sıfırlanır.
   const msgDraft = useRef(null);
   function done(message, extra = {}, viaVoice = false) {
+    // Sırada iş varsa (zincir) "Başka bir isteğin var mı?" sorulmaz; sıradaki işe geçilir
+    if (chain.current.length) return reply(message.trim(), extra, viaVoice);
     reply(`${message.trim()} ${MORE}`, extra, viaVoice);
     askedMore.current = true;
+  }
+  // Sıralı görev zinciri (lib/chain.js): "yarışı oluştur, sonra Instagram'da gönderi hazırla, sonra aidata nakit yaz…".
+  // Her iş kendi akışında yapılır; soru sorulursa cevap beklenir, iş bitince (cevap okunduktan sonra) sıradakine geçilir.
+  const chain = useRef([]); // sırada bekleyen cümleler
+  const chainGen = useRef(0); // sohbet kapanınca bekleyen geçiş iptal olur
+  const chainStep = useRef(false); // şu an çalışan cümle zincirden geldi (açık sayfa onu yutmasın)
+  const chainRace = useRef(""); // zincirde açılan / değişen yarış: "bunun için gönderi hazırla"
+  const raceFollow = useRef(null); // yeni yarışta tarih / sporcu soruldu: { id, n }
+  const speaking = useRef(false);
+  useEffect(() => {
+    speaking.current = tts.speaking;
+  });
+  function nextInChain(viaVoice) {
+    const next = chain.current.shift();
+    if (!next) return;
+    const gen = chainGen.current;
+    // Cevap okunurken araya girilmez: okuma bitince (en çok ~15 sn) sıradaki iş başlar
+    const go = (n = 0) => {
+      if (gen !== chainGen.current) return;
+      if (speaking.current && n < 60) return setTimeout(() => go(n + 1), 250);
+      chainStep.current = true;
+      run(next, viaVoice);
+    };
+    setTimeout(go, 700);
   }
 
   function reply(message, extra = {}, viaVoice = false) {
@@ -376,6 +403,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
     setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok });
     raceChoices.current = races;
+    if (!awaiting && chain.current.length) nextInChain(viaVoice);
     navigator.vibrate?.([8, 30, 8]);
     // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
     const said = streamSaid.current;
@@ -774,6 +802,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     openAdd({ edit: { kind: a.kind, id: a.id, ...(a.op === "cancel" ? { cancel: true } : {}) } });
   }
 
+  // Zincirde uygulamanın kendi akışına giden iş (yapay zeka görev listesine değil)
+  function ownFlow(x) {
+    return !!(
+      (racer && (wantsRace(x) || wantsAttendance(x, false) || athleteCommand(x) || duesCommand(x))) ||
+      wantsPost(x) || incomeCommand(x, todayStr()) || invoiceCommand(x) || wantsInventory(x, false) || wantsEvent(x) || wantsLog(x) ||
+      wantsSchedule(x, false) || shopCommand(x) || receiptPayCommand(x) || callCommand(x) || localNavigate(x, { names: contacts.map((c) => c.name) })
+    );
+  }
+
   async function run(t, viaVoice = false, fresh = false) {
     const s = t.trim();
     if (!s) return toast("Yaz veya mikrofona bas");
@@ -797,6 +834,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       finish();
       return;
     }
+    const chained = chainStep.current;
+    chainStep.current = false;
+    // Birden çok iş "sonra" ile sıralandıysa ve en az biri uygulamanın kendi akışıysa (yarış, gönderi, aidat, yoklama…)
+    // işler sırayla yapılır. Hepsi kayıt/mesaj gibi yapay zeka işiyse görev listesi zaten tek istekte yapar.
+    const parts = !chained && !msgFirst ? splitChain(s) : [];
+    if (parts.length > 1 && parts.some(ownFlow)) {
+      chain.current = parts.slice(1);
+      chainGen.current++;
+      chainRace.current = "";
+      raceFollow.current = null;
+      chainStep.current = true;
+      return run(parts[0], viaVoice, fresh);
+    }
     const history = fresh ? [] : historyFor(turns);
     // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti); yeni sohbette hiç yok
     if (fresh) msgDraft.current = null;
@@ -814,6 +864,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSaved([]);
     tts.stop();
 
+    // Yeni yarışta tarih / sporcular soruldu: cevap o yarışa yazılır; "bilmiyorum", "sonra", "geç" bırakır
+    const rf = raceFollow.current;
+    raceFollow.current = null;
+    if (rf && !fresh) {
+      if (isNo(s) || isDrop(s) || /^(bilmiyorum|sonra|daha sonra|geç|atla|şimdilik yok|belli değil)[\s.!]*$/iu.test(s)) return done("Tamam, sonra Yarışlar'dan eklersin.", { engine: "local" }, viaVoice);
+      if (!QUESTION.test(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runRace(s, viaVoice, rf);
+    }
     // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
     if (personFlow.current && !fresh && !["saving", "opening"].includes(personFlow.current.step) && (await continuePerson(s, viaVoice))) return;
     // Etkinlik için yer/zaman soruldu: bu cümle cevaptır (vazgeç, sayfa açma ya da kişi ekleme değilse); plan hazırlanır
@@ -908,7 +965,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const picked = choices.length ? pickChoice(s, choices, todayStr()) : null;
     if (picked) return goRace(picked, viaVoice);
     // Instagram gönderisi ("Foça yarışı için Instagram gönderisi hazırla"): yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
-    const onPost = !isStaff && path.startsWith("/posts/") && postHandler();
+    const onPost = !chained && !isStaff && path.startsWith("/posts/") && postHandler();
     if (!msgFirst && !isStaff && !onPost && wantsPost(s)) return startPost(s, viaVoice);
     // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
     if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races.current, todayStr())))) {
@@ -2073,13 +2130,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id === runId.current) setPhase("idle");
     }
   }
-  async function runRace(s, viaVoice) {
+  // follow: yeni yarışın tarih/sporcu sorusuna cevap ({ id, n }): o yarışa yazılır
+  async function runRace(s, viaVoice, follow = null) {
     const id = ++runId.current;
     setPhase("thinking");
     setSteps([]);
     try {
       const orgId = profile?.orgId || myUid;
-      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: curRace }, stepTo);
+      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace, follow: follow ? follow.n + 1 : 0 }, stepTo);
       if (id !== runId.current) return;
       // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
       if (r.none) {
@@ -2089,11 +2147,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         skipRace.current = true;
         return run(s, viaVoice);
       }
-      stepsEnd(!r.expect);
-      if (!r.expect) {
+      stepsEnd(!r.expect || r.follow);
+      if (!r.expect || r.follow) {
         navigator.vibrate?.([10, 40, 10]);
         toast("Yarış kaydedildi");
       }
+      if (r.id) {
+        chainRace.current = r.id;
+        if (raceOrg) races.current = await loadRaces(raceOrg).catch(() => races.current);
+      }
+      if (r.follow) raceFollow.current = { id: r.id, n: follow ? follow.n + 1 : 0 };
       reply(r.said, { engine: "ai", nav: curRace ? "" : "races", expect: !!r.expect }, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
@@ -2114,7 +2177,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (racer) {
         stepTo("Yarış aranıyor");
         if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-        r = findRace(s, races.current, todayStr());
+        r = findRace(s, races.current, todayStr()) || (chainRace.current && refersBack(s) ? races.current.find((x) => x.id === chainRace.current) : null);
         if (r) {
           stepTo("Sporcular alınıyor");
           const data = await loadAthletes().catch(() => null);
@@ -2395,6 +2458,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     convo.current = false;
     queue.current = [];
     askAll.current = "";
+    chain.current = [];
+    chainGen.current++;
+    raceFollow.current = null;
     msgDraft.current = null; // sohbet bitti: bağlam sıfırlanır
     onClose();
   }

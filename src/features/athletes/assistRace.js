@@ -12,7 +12,7 @@ import { raceNames } from "./raceNames";
 import { tl, totals } from "./budget";
 import { askBudget, mergeBudget } from "./raceBudgetAi";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
-import { wantsRaceText } from "./raceNav";
+import { followAsk, wantsRaceText } from "./raceNav";
 
 // Yarış kaydı isteği mi? Saf kural raceNav.js'te (testlenir); burada kayıtlı yarış adları da verilir
 export const wantsRace = (text, known = raceNames()) => wantsRaceText(text, known);
@@ -21,7 +21,8 @@ export const wantsRace = (text, known = raceNames()) => wantsRaceText(text, know
 const told = (r) => window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: r }));
 
 // onStep(label): panelde görünen adım. current: açık yarış sayfasının kimliği (ad söylenmezse o yarış)
-export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "" }, onStep = () => {}) {
+// follow: yeni yarıştan sonra kaçıncı kez eksik soruluyor (tarih, sporcular); 2'den sonra sorulmaz
+export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "", follow = 0 }, onStep = () => {}) {
   onStep("Sporcular ve yarışlar yükleniyor");
   const [data, races] = await Promise.all([loadAthletes(), loadRaces(orgId)]);
   const classes = byId(data.classes);
@@ -51,24 +52,31 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
   if (p.op === "none") return { said: p.message || "Hangi yarış olduğunu anlayamadım. Yarışın adını ve tarihini söyler misin?", expect: true };
 
   if (p.op === "create") {
-    if (!p.name || !p.startDate) return { said: p.message || "Yarışın adını ve tarihini söyler misin?", expect: true };
+    if (!p.name) return { said: p.message || "Yarışın adı ne?", expect: true };
+    // Tarih söylenmese de yarış hemen açılır, tarih ve sporcular sonra sorulur (Seyhun: "yarışı oluştursun, tarihleri,
+    // hangi sporcuların katılacağını sorabilir; cevap verirsem ekler", 2026-10-09)
     const r = {
       ...freshRace(races[0], todayStr()),
       abroad: !!p.abroad,
       name: p.name, city: p.city || (p.abroad ? "" : races[0]?.city || ""), district: p.district,
       startDate: p.startDate, endDate: p.endDate || p.startDate,
-      leaveStart: shiftDay(p.startDate, -1), leaveEnd: shiftDay(p.endDate || p.startDate, 1),
+      leaveStart: p.startDate ? shiftDay(p.startDate, -1) : "", leaveEnd: p.startDate ? shiftDay(p.endDate || p.startDate, 1) : "",
       athleteIds: p.athleteIds, note: p.note,
     };
     onStep("Yarış kaydediliyor");
     const id = await saveRace(orgId, uid, r);
-    onStep("Planlara ekleniyor");
-    const planned = await addRacePlan(saveDrafts, r, by).catch(() => false);
-    if (planned) await saveRace(orgId, uid, { ...r, id, planAdded: true });
-    const who = p.athleteIds.length ? ` ${p.athleteIds.length} sporcu: ${first(p.athleteIds)}.` : " Sporcuları sayfadan seçebilirsin.";
+    let planned = false;
+    if (r.startDate) {
+      onStep("Planlara ekleniyor");
+      planned = await addRacePlan(saveDrafts, r, by).catch(() => false);
+      if (planned) await saveRace(orgId, uid, { ...r, id, planAdded: true });
+    }
+    const who = p.athleteIds.length ? ` ${p.athleteIds.length} sporcu: ${first(p.athleteIds)}.` : "";
+    const ask = followAsk(r);
     return {
-      said: `Kaydettim: ${r.name}, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${r.abroad ? " Yurt dışı yarışı: Özet'te Türkiye'de yapılacaklar listesi hazır." : ""}${p.note ? " Notunu yazdım." : ""}${missed}`,
+      said: `Kaydettim: ${r.name}${r.startDate ? `, ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")}` : ""}${r.district ? `, ${r.district}` : ""}.${who}${planned ? " Planlara da ekledim." : ""}${r.abroad ? " Yurt dışı yarışı: Özet'te Türkiye'de yapılacaklar listesi hazır." : ""}${p.note ? " Notunu yazdım." : ""}${missed}${ask ? ` ${ask}` : ""}`,
       id,
+      ...(ask ? { expect: true, follow: true } : {}),
     };
   }
 
@@ -111,6 +119,11 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
   const changed = added.length || p.note || r.startDate !== old.startDate || r.district !== old.district || r.city !== old.city;
   if (!changed) return { said: `${old.name} yarışında değişecek bir şey bulamadım.${missed}`, id: old.id, expect: !!missed };
   onStep("Yarış güncelleniyor");
+  // Tarihi sonradan yazılan yarış planlara da eklenir (bir kez)
+  if (r.startDate && !old.planAdded) {
+    onStep("Planlara ekleniyor");
+    if (await addRacePlan(saveDrafts, r, by).catch(() => false)) r.planAdded = true;
+  }
   await saveRace(orgId, uid, r);
   told(r);
   const parts = [
@@ -118,8 +131,10 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     p.note && "not yazıldı",
     r.startDate !== old.startDate && `tarih ${rangeText(r.startDate, r.endDate).toLocaleLowerCase("tr-TR")} oldu`,
   ].filter(Boolean);
-  return { said: `Kaydettim. ${old.name}: ${parts.join(", ") || "yer güncellendi"}.${missed}`, id: old.id };
+  const ask = follow && follow < 2 ? followAsk(r) : "";
+  return { said: `Kaydettim. ${old.name}: ${parts.join(", ") || "yer güncellendi"}${r.planAdded && !old.planAdded ? ", planlara da eklendi" : ""}.${missed}${ask ? ` ${ask}` : ""}`, id: old.id, ...(ask ? { expect: true, follow: true } : {}) };
 }
+
 
 // Açılacak yarışı yapay zekayla bul (yerel eşleştirme emin olamadığında): { raceId, candidates, message }
 export async function findRaceAi(text, races) {

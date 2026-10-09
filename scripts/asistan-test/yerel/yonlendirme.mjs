@@ -244,3 +244,19 @@ group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s,
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
 const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen"].includes(r) };
 group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil"].map((s) => [s, STAFF]));
+
+// Sıralı görev zinciri (lib/chain.js): "sonra" ile sıralanan işler bölünür, her parça kendi akışına gider
+const { splitChain, refersBack } = await import("@/lib/chain");
+const EX = "Bir yarış oluştur, yarışın adı Foça Kupası. Sonra git Instagram'da bunun için bir tane gönderi hazırla, mavi olsun. Sonra git aidatlara Ali Kaya'nın ekim aidatı nakit 1500 alındı yaz. Sonra da yoklamaya bugün Ali ve Ayşe katıldı.";
+const seg = (i, want) => ({ desc: `${i + 1}. iş → ${want}`, fn: (s) => { const p = splitChain(s)[i]; return `${p} → ${p ? route(p) : "-"}`; }, ok: (r) => r.endsWith(`→ ${want}`) });
+group("Sıralı görev zinciri")([
+  [EX, { desc: "dört iş", fn: (s) => splitChain(s).length, ok: (n) => n === 4 }],
+  [EX, seg(0, "race")],
+  [EX, seg(1, "post")],
+  [EX, seg(2, "income")],
+  [EX, seg(3, "attendance")],
+  ["Instagram'da bunun için gönderi hazırla", { desc: "önceki yarışa gönderme", fn: refersBack, ok: (r) => r === true }],
+  ["yarın 10'dan sonra antrenman ekle", { desc: "saat sözü bölmez", fn: (s) => splitChain(s).length, ok: (n) => n === 1 }],
+  ["antrenmandan sonra Ali'ye yaz", { desc: "zaman sözü bölmez", fn: (s) => splitChain(s).length, ok: (n) => n === 1 }],
+  ["Foça yarışını aç, ardından Ali'yi ara", { desc: "virgül + ardından böler", fn: (s) => splitChain(s).join(" | "), ok: (r) => r === "Foça yarışını aç | Ali'yi ara" }],
+]);

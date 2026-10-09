@@ -19,7 +19,7 @@ op:
 - budget: kayıtlı bir yarışın bütçesine masraf ekleniyor ("Ege Kupası bütçesine otel kişi başı 3500 TL 4 gece ekle", "D'Azur için kayıt ücreti sporcu başı 1250"). raceId kayıtlı listeden; kalemleri ayrı bir adım çıkarır, sen yalnız yarışı bul.
 - none: yarışla ilgili bir kayıt isteği değil.
 
-"Açık yarış" verildiyse antrenör o yarışın sayfasındadır: başka bir yarışın adı söylenmedikçe update/budget o yarışa yapılır (raceId = açık yarış). Yarış adı geçmeyen "Mehmet'i de ekle", "not al: …", "bütçeye otel ekle" gibi cümleler de açık yarış içindir. Yarışla ilgisi olmayan cümle (plan, görev, mesaj, soru…) none.
+"Açık yarış" verildiyse antrenör o yarışın sayfasındadır: başka bir yarışın adı söylenmedikçe update/budget o yarışa yapılır (raceId = açık yarış). Yarış adı geçmeyen "Mehmet'i de ekle", "not al: …", "bütçeye otel ekle" gibi cümleler de, tarih ya da sporcu sorusuna verilen cevaplar da ("26-31 Ekim", "Ali ve Ayşe katılacak", "26 Ekim'de başlıyor, Mete gidecek") açık yarış için update'tir. Yarışla ilgisi olmayan cümle (plan, görev, mesaj, soru…) none.
 
 Alanlar:
 - name: yarışın adı, söylendiği gibi ama düzgün yazımla ("D'Azur Optimist Regatta"). Ses tanıma yabancı adları bozar ("dazur", "d azur", "daz ur optimist regata"): söylenen ad bilinen yarış adlarından birine benziyorsa O YAZIMI aynen kullan. update'te boş bırakabilirsin.
@@ -29,7 +29,7 @@ Alanlar:
 - athleteIds: katılacak sporcular ("katılımcılar", "katılımcıları", "kafile", "gidecekler", "sporcular: …" hep bu alandır). Adı listedeki bir sporcuyla eşleştir (yalnızca ad, soyad, lakap ya da ses tanıma hatası olabilir). Her sporcunun "söylenişler" listesi önceden hazırlanmış eşleştirme dizinidir, önce ona bak. Tek başına söylenen ad önce ADI o olan sporcuya aittir. Aynı ada birden çok sporcu uyuyorsa işaretleme, unknown'a "Ali (2 kişi)" yaz. "Optimist grubu" gibi sınıf adı geçerse o sınıftaki herkes.
 - unknown: listede bulunamayan adlar.
 - note: yalnızca kullanıcının açıkça not olarak kaydedilmesini istediği bilgi (konaklama, ulaşım, ücret…). Yoksa boş. Katılımcı/sporcu adları, "yarış katılımcıları" gibi başlıklar ve bulunamayan adlar ASLA nota yazılmaz.
-- message: 1 kısa Türkçe cümle; ne anladığını söyle. Eksik bilgi varsa (create'te ad ya da tarih yoksa) onu sor.`;
+- message: 1 kısa Türkçe cümle; ne anladığını söyle. Eksik bilgi varsa onu sor. create'te ad yeterlidir: tarih söylenmediyse yine op create ver (startDate boş), uygulama tarihi sonra sorar.`;
 
 const SCHEMA = {
   type: "object",

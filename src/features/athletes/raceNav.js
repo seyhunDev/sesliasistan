@@ -167,3 +167,10 @@ export const wantsRaceText = (text, known = []) => {
   return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);
 };
 
+
+// Yeni yarışta eksik kalan: tarih ve katılan sporcular (tek soru)
+export function followAsk(r) {
+  const date = !r.startDate;
+  const who = !r.athleteIds?.length;
+  return date && who ? "Tarihleri ne, hangi sporcular katılacak?" : date ? "Tarihleri ne?" : who ? "Hangi sporcular katılacak?" : "";
+}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, autoOf, cleanPost, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
@@ -258,6 +258,11 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         await delRef.current?.();
         return { say: "Silmeyi onaylarsan gönderi silinir." };
       }
+      // "Rengi mavi yap", "hikâye boyutunda olsun", "modern şablon": yalnız tasarım; başka yazı isteği yoksa yazılar değişmez
+      const look = designFrom(text);
+      const lookOnly = Object.keys(look).length && !askBeyondLook(text);
+      if (Object.keys(look).length) setP((x) => ({ ...(look.kind ? reauto(x, { ...x, kind: look.kind }) : x), ...look, kind: look.kind || x.kind }));
+      if (lookOnly) return { say: "Tasarımı değiştirdim." };
       if (wantsPostImage(text)) {
         const u = await mk(text);
         return { say: `Yeni görseli ekledim, başlık ve logo üstünde.${u ? ` Bugün ${u.today}/${u.limit} görsel.` : ""}` };
@@ -289,9 +294,15 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     if (start.caption || (!start.race && !said)) return;
     // "29 Ekim gönderisi hazırla": özel gün şablonu hazır gelir
     const d = !start.race && said ? dayIn(said, todayStr()) : null;
-    const first = d ? reauto(start, { ...start, kind: "ozel", day: d.id, year: d.year }) : start;
+    // Söylenen renk, boyut, şablon, tür ("mavi, hikâye boyutunda, modern"): uygulamadaki seçeneklerle eşleşir
+    const { kind: lk, ...look } = said ? designFrom(said) : {};
+    const dress = (x) => {
+      const k = d ? reauto(x, { ...x, kind: "ozel", day: d.id, year: d.year }) : lk ? reauto(x, { ...x, kind: lk }) : x;
+      return { ...k, ...look };
+    };
+    const first = dress(start);
     const t = setTimeout(() => {
-      if (d) setP((x) => reauto(x, { ...x, kind: "ozel", day: d.id, year: d.year }));
+      if (d || lk || Object.keys(look).length) setP(dress);
       if (said && !start.race) put("topic", said);
       write({ ...first, topic: start.topic || said }).catch(() => {});
     }, 50);
