@@ -401,7 +401,10 @@ export function raceWithAthletes(r, data) {
 // Ana asistan: "Foça yarışı için Instagram gönderisi hazırla" (her sayfada; sayfa açma değil, gönderi hazırlama)
 export const wantsPost = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");
-  return /([iı]nstagram|[iı]nsta\b|gönderi(?!l)|gönderisi|paylaşım|\bpost)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|yaz\b|yazalım|çıkar|tasarla)/.test(t) && !/mesaj/.test(t);
+  if (/mesaj/.test(t)) return false;
+  if (/([iı]nstagram|[iı]nsta\b|gönderi(?!l)|gönderisi|paylaşım|\bpost)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|yaz\b|yazalım|çıkar|tasarla)/.test(t)) return true;
+  // "Yarış için görsel oluştur", "Cumhuriyet yarışının afişini hazırla": Instagram denmese de yarış/duyuru görseli gönderidir
+  return /(görsel|afiş|poster)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|çıkar|tasarla|üret)/.test(t) && /(yarış|kupa|için|duyuru|tebrik|bayram|kutlama|29 ekim|10 kasım|19 mayıs|23 nisan|30 ağustos)/.test(t);
 };
 // Gönderi ekranında görsel isteği: "gün batımında teknelerle görsel üret", "başka resim yap"
 export const wantsPostImage = (s) => {
