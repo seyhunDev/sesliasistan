@@ -14,6 +14,7 @@ import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { TimingRow } from "@/features/settings/Timing";
+import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
 import { initials } from "@/lib/utils/format";
@@ -77,6 +78,7 @@ export default function SettingsPage() {
       </Group>
 
       <Group>
+        <Row icon="clock" tone="slate" title="Sürüm" sub={buildLine()} />
         <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
       </Group>
 

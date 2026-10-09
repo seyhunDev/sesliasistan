@@ -20,6 +20,7 @@ import { BrainSync } from "@/features/brain/BrainSync";
 import { MeetingProvider } from "@/features/meeting/MeetingProvider";
 import { logout } from "@/lib/auth";
 import { OfflineBanner, PushSync } from "@/features/pwa/Pwa";
+import { UpdateNote } from "@/features/pwa/UpdateNote";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { installTrail } from "@/lib/navTrail";
@@ -62,6 +63,7 @@ export default function AppLayout({ children }) {
                  <DockProvider>
                   <NavProgress />
                   <OfflineBanner />
+                  <UpdateNote />
                   <PushSync profile={profile} />
                   {children}
                   <TabBarHost />

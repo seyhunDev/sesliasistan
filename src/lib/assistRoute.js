@@ -22,6 +22,7 @@ import { localCommand } from "@/lib/commands";
 import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
+import { versionAsk } from "@/lib/buildInfo";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -68,6 +69,7 @@ export function routesOf(s, c = {}) {
   const { owner, isStaff, racer, athleteSide, path = "", today = "" } = c;
   const nav = (x) => localNavigate(x, { names: c.names || [] });
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
+  if (!mf && versionAsk(s)) add("version");
   if (!mf && !athleteSide && wantsLog(s) && bareLog(s)) add("logBare");
   if (!mf && !athleteSide && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
   if (!mf && !isStaff && wantsEvent(s)) add("event");

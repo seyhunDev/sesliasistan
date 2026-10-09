@@ -25,6 +25,7 @@ import { inventoryWork, pastTense, taskOf } from "@/lib/assistTasks";
 import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
 import { EARLY, routesOf } from "@/lib/assistRoute";
+import { buildSpeech } from "@/lib/buildInfo";
 import { ASK_EMPTY, DRAFT_AGE, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
@@ -1054,6 +1055,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       switch (r.id) {
         case "close":
           return finish(), true;
+        // "Son güncelleme ne?": derlemede gömülen yayın bilgisi (lib/buildInfo.js)
+        case "version":
+          return reply(buildSpeech(), { engine: "local" }, viaVoice), true;
         case "logBare":
           reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
           waitFor("log");
