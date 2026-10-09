@@ -24,6 +24,7 @@ import { precue } from "@/lib/precue";
 import { inventoryWork, pastTense, taskOf } from "@/lib/assistTasks";
 import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
+import { EARLY, routesOf } from "@/lib/assistRoute";
 import { ASK_EMPTY, DRAFT_AGE, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
@@ -47,7 +48,7 @@ import { feeOf } from "@/lib/dues";
 import { addRacePlan, cleanHotels, deleteRace, raceHotels, saveRace, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
-import { findRace, nearest, pickChoice, raceAsk, raceJobHere, raceRef, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
+import { findRace, nearest, pickChoice, raceRef, rankRaces, sure } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
 import { matchShop, shopCommand } from "@/features/shop/shopWords";
@@ -56,11 +57,10 @@ import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase
 import { db } from "@/lib/firebase/clientApp";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
-import { brainCommand, localCommand } from "@/lib/commands";
+import { brainCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
-import { parseBirthday } from "@/lib/birthdayParse";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
@@ -77,7 +77,7 @@ import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestio
 import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
 import { PersonCard } from "@/features/people/PersonCard";
 import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { attLine, bareLog, canLog, isLogAnswer, logReply, looksLikeLog, missingOf, wantsLog } from "@/lib/trainingLog";
+import { attLine, canLog, isLogAnswer, logReply, looksLikeLog, missingOf, wantsLog } from "@/lib/trainingLog";
 import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
 import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
 import { countsText } from "@/features/events/eventModel";
@@ -89,7 +89,7 @@ import { askInventory, changeInventory, createInventory, lastInv, loadInventorie
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
-import { payeeAnswer, payeeAsk, payeeMoves, payeeOf } from "@/lib/payee";
+import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
@@ -111,8 +111,6 @@ const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
 const ASKED = /\?|\s(m[ıiuü])(\s|$)|gönderdin mi|gitti mi/i;
 const SENT_CLAIM = /(^|\s)(gönderdim|ilettim|yolladım|haber verdim|mesaj(ı|ınız)? gönderildi)/i;
-// Açık konuşmaya mesaj isteği: "yarın geliyorum diye yaz", "yaz: tamam", "cevap ver …", "haber ver …"
-const FOCUS_MSG = /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i;
 // Yapay zeka yokken mesaj metni: komut sözcükleri atılır, baş harf büyür
 const focusBody = (s) => {
   const t = s
@@ -138,7 +136,6 @@ const MORE = "Başka bir isteğin var mı?";
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
-const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
 // Soru mu ("kaç görev var", "haftayı özetle"): \b Türkçe harfle biten kelimede çalışmadığı için isQuestion (steps.js) kullanılır
@@ -1035,25 +1032,137 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (lf.ask && !wantsPerson(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runLog(`${lf.text}\nGün: ${s}`, viaVoice, { retry: true });
       if (lf.date && isLogAnswer(s)) return runLog(s, viaVoice, lf);
     }
-    // Antrenman günlüğü ("dünkü antrenmanda 12 knot poyraz vardı, start çalıştık", "antrenman günlüğüne yaz: …"):
-    // yapay zeka alanlara ayırır, günün antrenman planına yazılır (yoksa plan açılır). Tarih yoksa sorulur, diğer eksikler söylenir.
-    // Açık antrenman planı ekranında ya da Antrenman günlüğü sayfasında antrenman anlatımı ("14 knot poyraz, start çalıştık") da günlüktür
+    // Yönlendirme (lib/assistRoute.js `routesOf`): cümle + bağlam → sıralı aday işler; her aday kendi akışında denenir,
+    // "bu benim değil" derse (false) sonrakine geçilir. Son aday ana yapay zeka. Testler aynı tabloyu sınar (yonlendirme.mjs).
+    // Açık antrenman planı ekranında ya da Antrenman günlüğü sayfasında antrenman anlatımı da günlüktür
     const fp = focusRef.current?.rec?.kind === "plan" ? plans.find((p) => p.id === focusRef.current.rec.id) : null;
     const logPlan = fp && canLog(fp, todayStr()) ? fp : null;
     const at = logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {};
-    if (!msgFirst && !isAthleteSide(myKind) && wantsLog(s) && bareLog(s)) {
-      reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
-      waitFor("log");
-      logFlow.current = { collect: true, text: s, ...at };
-      return;
-    }
-    if (!msgFirst && !isAthleteSide(myKind) && (wantsLog(s) || ((logPlan || path === "/training") && isLogAnswer(s)))) return runLog(s, viaVoice, at);
-    // Etkinlik planı ("kamp planı yapmak istiyorum, tavsiye ver", "İç Anadolu gezisi planla"): yalnız ana hesap.
-    // Yer/zaman yoksa önce sorulur; cevap gelmezse genel plan. İhtiyaç listesi, bütçe, yapılacaklar Etkinlikler'e kaydedilir.
-    if (!msgFirst && !isStaff && wantsEvent(s)) return runEvent(s, viaVoice, false);
-    // Envanter ("envantere 3 Optimist teknesi ekle", "envanterden 2 şamandıra çıkar", envanter sayfasında "Optimist 4 bakımda"):
-    // yapay zeka işlem listesi çıkarır; ekleme, çıkarma, değiştirme hemen yapılır, silme onay ister. Yalnız ana hesap.
-    if (!msgFirst && !isStaff && wantsInventory(s, invPage) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runInventory(s, viaVoice);
+    const onPost = !chained && !isStaff && path.startsWith("/posts/") && postHandler();
+    const ia = invAsk.current;
+    invAsk.current = null;
+    const toWho = askTo.current;
+    const shopLists = listsFor(myKind, members);
+    const routes = routesOf(s, {
+      owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
+      races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
+      invPage, attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
+      prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
+    });
+    // Her aday: true → iş yapıldı (ya da soru soruldu), false → sonraki aday
+    const go = async (r) => {
+      switch (r.id) {
+        case "close":
+          return finish(), true;
+        case "logBare":
+          reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
+          waitFor("log");
+          logFlow.current = { collect: true, text: s, ...at };
+          return true;
+        // Antrenman günlüğü: yapay zeka alanlara ayırır, günün antrenman planına yazılır. Tarih yoksa sorulur
+        case "log":
+          return runLog(s, viaVoice, at), true;
+        // Etkinlik planı ("kamp planı yapmak istiyorum"): yer/zaman yoksa sorulur, cevap gelmezse genel plan
+        case "event":
+          return runEvent(s, viaVoice, false), true;
+        // Envanter: ekleme, çıkarma, değiştirme hemen; silme onayla
+        case "inventory":
+          return runInventory(s, viaVoice), true;
+        case "bareSave":
+          return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice), true;
+        // Instagram gönderisi: yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
+        case "post":
+          return startPost(s, viaVoice), true;
+        // Tek yarışı açma: yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
+        case "raceOpen":
+          if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
+          record(s, "nav:race", "local");
+          return openRace(s, viaVoice), true;
+        // Kişi ekleme (yalnız ana hesap, onayla); "… sporcu olarak ekle" sporcudur (aşağıda, more)
+        case "person":
+          return startPerson(s, viaVoice), true;
+        // Sayfa ya da sohbet açma: yapay zekaya gitmeden
+        case "navigate":
+          record(s, `nav:${r.nav.page || (r.nav.back ? "back" : "messages")}`, "local");
+          countHit("local");
+          return openNav(r.nav, viaVoice), true;
+        // Açık gönderi ekranında söylenen gönderiyi değiştirir
+        case "postEdit":
+          return runPost(s, viaVoice), true;
+        // Ders programı: önizleme açılır, kaydetmeyi kullanıcı seçer
+        case "schedule":
+          return runSchedule(s, viaVoice), true;
+        // Doğum günü: ad ve tarih belliyse hemen kaydedilir, eksikse form dolu açılır
+        case "birthday": {
+          const bday = r.bday;
+          if (bday.name && bday.month) {
+            saveBirthday(bday);
+            const d = new Date(2024, bday.month - 1, bday.day).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+            toast(`${bday.name} · doğum günü eklendi`);
+            reply(`Kaydettim: ${bday.name}, ${d}. Takviminde görünür, o gün ana sayfada hatırlatırım.`, { engine: "local" }, viaVoice);
+            return true;
+          }
+          park();
+          openBirthday({ prefill: bday });
+          return true;
+        }
+        // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir
+        case "undo": {
+          const undo = r.undo;
+          const last = lastCreated({ plans, tasks, notes }, profile?.uid, undo.kind);
+          if (!last) return reply(`Silinecek ${undo.kind ? KIND[undo.kind].toLocaleLowerCase("tr-TR") : "kayıt"} bulamadım; senin eklediğin bir kayıt görünmüyor.`, { engine: "local" }, viaVoice), true;
+          const when = rel(String(last.rec.createdAt).slice(0, 10)).toLocaleLowerCase("tr-TR");
+          reply(`En son eklediğin ${KIND[last.kind].toLocaleLowerCase("tr-TR")}: “${last.rec.title}” (${when} eklendi). Silmemi onaylıyor musun?`, {
+            show: [{ kind: last.kind, id: last.rec.id }],
+            pending: { actions: [{ op: "delete", kind: last.kind, id: last.rec.id }] },
+            engine: "local",
+            expect: true,
+          }, viaVoice);
+          return true;
+        }
+        // Fatura: "Turkcell faturası ödendi"; "Hangi fatura?" sorulduysa bu cümle firma adı
+        case "invoice":
+          return runInvoice(r.ic, viaVoice, r.asked);
+        // Gelen ödemeler: "bu ay ne kadar ödeme aldım"
+        case "payee":
+          return runPayee(r.pq, viaVoice), true;
+        // Son eklenen işler (lib/assistMore.js): arama, sporcu, nakit gelir, aidat hatırlatması…
+        case "more":
+          return runMore(s, viaVoice);
+        // Alışveriş listesi: ekle / aldım / sil / oku ("ekmek aldım" listede yoksa alışveriş değildir)
+        case "shopping": {
+          const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];
+          if (r.sc.op === "add") return runShopAdd(r.sc.what, list, viaVoice), true;
+          if (r.sc.op === "read") return runShopRead(list, viaVoice), true;
+          return runShopMark(r.sc, list, viaVoice);
+        }
+        // Önceki turda "Ekibe ne yazayım?" diye sorulduysa bu cümle mesajın kendisidir
+        case "askTo":
+          return prepareSend(toWho, focusBody(s), "", "local", viaVoice, "", waMode(s)), true;
+        // Sporcu yoklaması; cümlede başka iş de varsa yoklamadan sonra yapay zekaya gider
+        case "attendance":
+          return runAttendance(s, viaVoice, jobsIn(s).length ? { s, history } : null), true;
+        // Yarış ekleme / yarışa sporcu ya da not; yarış sayfasında ad gerekmez
+        case "race":
+          return runRace(s, viaVoice), true;
+        // Tür sayfasından gelen ilk cümle: o türde taslak
+        case "prefer": {
+          const kind = preferRef.current;
+          preferRef.current = "";
+          setPrefer("");
+          return createAs(s, kind, viaVoice), true;
+        }
+        // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
+        case "local":
+          record(s, labelFromCommand(r.cmd), "local");
+          countHit("local");
+          return runLocal(r.cmd, s, viaVoice), true;
+        default:
+          return askAI(s, s, viaVoice, history, r.toFocus), true;
+      }
+    };
+    // Önce: kapatma, günlük, etkinlik, envanter (bekleyen taslak/karttan önce kendi akışlarında)
+    for (const r of routes) if (EARLY.has(r.id) && (await go(r))) return;
     // Panelde bekleyen taslak: "kaydet" / "vazgeç"; soru değilse söylenen taslağı tamamlar/değiştirir
     if (drafts.length && !fresh) {
       if (SAVE.test(s)) return saveDraftsNow(viaVoice);
@@ -1061,9 +1170,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       // Yoklama cümlesi taslağa eklenmez (not olarak taslağa düşüyordu); aşağıda yoklama olarak yapılır
       if (!QUESTION.test(s) && !(canSeeAthletes(profile?.email) && wantsAttendance(s, attHere))) return refineDrafts(s, viaVoice);
     }
-    // Taslak yokken yalnızca "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
-    if (!drafts.length && !cards.pending && BARE_SAVE.test(s))
-      return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice);
     // Onay bekleyen işlem varsa "evet / hayır" yerelde çözülür
     if (!fresh && cards.pending) {
       const cw = cards.pending.send ? confirmWord(s) : "";
@@ -1076,122 +1182,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     // Sıralı işte mesajın içeriği soruldu: cevap, tüm istekle birlikte doğrudan yapay zekaya (yerel kurallar onu plan sanmasın)
     if (all && !DROP.test(s) && !QUESTION.test(s)) return askAI(s, `${all}\nMesajın içeriği: ${s}`, viaVoice, history, false);
-    // Az önce hazırlanan mesaja değişiklik ("şunu da ekle", "saati 10 yap", "sonuna teşekkürler yaz"): yerel kurallar
-    // (plan, alışveriş…) araya girmez, ön cevap "plan hazırlıyorum" demez; taslakla birlikte doğrudan yapay zekaya
+    // Az önce hazırlanan mesaja değişiklik ("şunu da ekle", "saati 10 yap"): taslakla birlikte doğrudan yapay zekaya
     if (!fresh && msgDraft.current && isDraftEdit(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return askAI(s, s, viaVoice, history, false, { edit: true });
-    // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): adı kayıtlı yarışlarla eşleşirse o yarışın sayfası
     // Önceki turda sorulan yarış seçenekleri: "ikincisi", "sonuncu", "Foça olan"
     const choices = raceChoices.current;
     raceChoices.current = [];
     const picked = choices.length ? pickChoice(s, choices, todayStr()) : null;
     if (picked) return goRace(picked, viaVoice);
-    // Instagram gönderisi ("Foça yarışı için Instagram gönderisi hazırla"): yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
-    const onPost = !chained && !isStaff && path.startsWith("/posts/") && postHandler();
-    if (!msgFirst && !isStaff && !onPost && wantsPost(s)) return startPost(s, viaVoice);
-    // Tek yarışı açma ("D'Azur yarışına git", "sıradaki yarışı aç"): yerel eşleştirme, emin değilse yapay zeka, yine olmazsa seçenekler
-    if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races.current, todayStr())))) {
-      // Yarışlar henüz yüklenmediyse (asistan yeni açıldı) önce yüklenir
-      if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-      record(s, "nav:race", "local");
-      return openRace(s, viaVoice);
-    }
-    // Kişi ekleme ("Kişi ekle: Ayşe Yılmaz, eşim, 0532…", "Annem Fatma'yı aileye ekle"): yalnız ana hesap, onayla
-    // "Can Tekin'i sporcu olarak ekle" kulübe sporcu açar (aşağıda, runMore); kişi kartı değil
-    if (wantsPerson(s) && !(profile?.role === "owner" && !isStaff && racer && athleteCommand(s)?.op === "add")) return startPerson(s, viaVoice);
-    // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
-    // "Ali Kaya'nın sporcu kartını aç" sohbet açma değil, sporcu kartı (runMore)
-    const nav = !(racer && athleteOpenCommand(s)) && localNavigate(s, { names: contacts.map((c) => c.name) });
-    if (nav) {
-      record(s, `nav:${nav.page || (nav.back ? "back" : "messages")}`, "local");
-      countHit("local");
-      return openNav(nav, viaVoice);
-    }
-    // Açık gönderi ekranında söylenen gönderiyi değiştirir: "daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında görsel üret"
-    if (onPost) return runPost(s, viaVoice);
-    // Ders programı ("salı 13:00 fizik B-204", "salı fiziği 14'e al"): sayfada her cümle, başka yerde "ders programı" denince.
-    // Yapay zeka programı çıkarır, Ders programı sayfasında önizleme açılır; kaydetmeyi (ekle / değiştir) kullanıcı seçer
-    if (!msgFirst && wantsSchedule(s, path === "/schedule")) return runSchedule(s, viaVoice);
-    // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
-    // "Not al: Ali'nin doğum günü …" nottur, doğum günü kaydı değil
-    const bday = !msgFirst && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
-    if (bday) {
-      // Ad ve tarih belliyse hemen kaydedilir (kişiye özel takvime); eksikse form dolu açılır
-      if (bday.name && bday.month) {
-        saveBirthday(bday);
-        const d = new Date(2024, bday.month - 1, bday.day).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-        toast(`${bday.name} · doğum günü eklendi`);
-        return reply(`Kaydettim: ${bday.name}, ${d}. Takviminde görünür, o gün ana sayfada hatırlatırım.`, { engine: "local" }, viaVoice);
-      }
-      park();
-      openBirthday({ prefill: bday });
-      return;
-    }
-    // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir (yapay zekaya gitmeden)
-    const undo = !drafts.length && undoLast(s);
-    if (undo) {
-      const last = lastCreated({ plans, tasks, notes }, profile?.uid, undo.kind);
-      if (!last) return reply(`Silinecek ${undo.kind ? KIND[undo.kind].toLocaleLowerCase("tr-TR") : "kayıt"} bulamadım; senin eklediğin bir kayıt görünmüyor.`, { engine: "local" }, viaVoice);
-      const when = rel(String(last.rec.createdAt).slice(0, 10)).toLocaleLowerCase("tr-TR");
-      return reply(`En son eklediğin ${KIND[last.kind].toLocaleLowerCase("tr-TR")}: “${last.rec.title}” (${when} eklendi). Silmemi onaylıyor musun?`, {
-        show: [{ kind: last.kind, id: last.rec.id }],
-        pending: { actions: [{ op: "delete", kind: last.kind, id: last.rec.id }] },
-        engine: "local",
-        expect: true,
-      }, viaVoice);
-    }
-    // Fatura: "Turkcell faturası ödendi", "faturayı ödendi işaretle" (yalnız ana hesap; invoices.js). Hangisi diye
-    // sorulduysa sonraki cümle firma adıdır.
-    const ia = invAsk.current;
-    invAsk.current = null;
-    const ic = !isStaff && !drafts.length && !msgFirst && !isQuestion(s) ? invoiceCommand(s) || (ia && !QUESTION.test(s) && s.split(" ").length <= 6 ? { ...ia, t: s } : null) : null;
-    if (ic && (await runInvoice(ic, viaVoice, !!ia))) return;
-    // Gelen ödemeler: "bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi" (yalnız ana hesap; banka özetinden, payee.js)
-    const pq = !isStaff && profile?.role === "owner" && !drafts.length ? payeeAsk(s, todayStr()) : null;
-    if (pq) return runPayee(pq, viaVoice);
-    // Son eklenen işler (lib/assistMore.js): arama, sporcu ekleme/arşiv/silme, Hesaplar'a nakit gelir, aidat hatırlatması
-    if (!msgFirst && !drafts.length && (await runMore(s, viaVoice))) return;
-    // Alışveriş listesi: ekle / aldım / sil / oku (yapay zekaya gitmeden; shopWords.js)
-    const shopLists = listsFor(myKind, members);
-    const sc = shopLists.length ? shopCommand(s) : null;
-    if (sc) {
-      const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];
-      if (sc.op === "add") return runShopAdd(sc.what, list, viaVoice);
-      if (sc.op === "read") return runShopRead(list, viaVoice);
-      // "ekmek aldım": listede eşleşen yoksa alışveriş değildir, aşağıya (yapay zekaya) devam eder
-      if (await runShopMark(sc, list, viaVoice)) return;
-    }
-    // Önceki turda "Ekibe ne yazayım?" diye sorulduysa bu cümle mesajın kendisidir
-    if (askTo.current && !QUESTION.test(s)) {
-      const to = askTo.current;
-      askTo.current = null;
-      return prepareSend(to, focusBody(s), "", "local", viaVoice, "", waMode(s));
-    }
-    askTo.current = null;
-    // Sporcu yoklaması: sayfa değiştirmeden panelde yapılır (adımlar görünür); adlar net eşleşirse kaydedilir, geri alınabilir.
-    // Yoklama sayfasında "yoklama" denmeden de ("Ali ve Zeynep geldi"). Cümlede başka iş de varsa (mesaj, plan, görev)
-    // yoklamadan sonra cümle yapay zekaya gider, kalan işler görev listesiyle yapılır.
-    if (!msgFirst && canSeeAthletes(profile?.email) && wantsAttendance(s, attHere)) return runAttendance(s, viaVoice, jobsIn(s).length ? { s, history } : null);
-    // Yarış ekleme / yarışa sporcu ya da not ekleme: yarış evrakı sayfasındaki kayda yazılır, yeni yarış planlara da düşer
-    // Yarış sayfasındayken yarış adı gerekmez: "Mehmet'i de ekle", "not al: …" o yarışa yazılır
-    if (racer && !msgFirst && !skipRace.current && (wantsRace(s) || (curRace && raceJobHere(s)))) return runRace(s, viaVoice);
+    askTo.current = null; // alıcı sorusu yalnız bu cümleye: cevabı "askTo" adayı alır
     skipRace.current = false;
-    // Tür sayfasından gelen ilk cümle (soru değilse): o türde taslak
-    if (preferRef.current && !drafts.length && !QUESTION.test(s)) {
-      const kind = preferRef.current;
-      preferRef.current = "";
-      setPrefer("");
-      return createAs(s, kind, viaVoice);
-    }
-    // Kısa, kalıba uyan komutlar yapay zekaya gitmeden anında çalışır
-    // Açık sohbette/kayıtta "… diye yaz", "cevap ver: …" yerel komutlara düşmez (plan sanılmasın); mesaj olarak hazırlanır
-    const toFocus = !!focusRef.current && FOCUS_MSG.test(s);
-    const cmd = !toFocus && localCommand(s, { plans, tasks, notes }, undefined, { aiFirst: true });
-    if (cmd) {
-      record(s, labelFromCommand(cmd), "local");
-      countHit("local");
-      return runLocal(cmd, s, viaVoice);
-    }
-    return askAI(s, s, viaVoice, history, toFocus);
+    for (const r of routes) if (!EARLY.has(r.id) && (await go(r))) return;
   }
 
   // Yapay zekaya sorar. s: kullanıcının bu cümlesi, ask: yapay zekaya giden istek (sıralı işte önceki istekle birleşik)
