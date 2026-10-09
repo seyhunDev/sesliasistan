@@ -267,9 +267,12 @@ const { looksMulti, clausesOf, cleanPlan, failed } = await import("@/lib/taskPla
 const OWN = ["race", "attendance", "post", "income", "athlete", "dues", "invoice", "inventory", "event", "log", "schedule", "shopping", "call", "navigate", "raceOpen"];
 const flowOf = (x) => { const r = route(x); return OWN.includes(r) ? r : /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x) ? "income" : null; };
 const ATA = "Atatürk Kupası adında bir yarış oluştur. Bugün antrenmana Mustafa geldi. Enes ödemesini yaptı. Aidat ödemesini yaptı. Nakit verdi. Ve Atatürk Kupası için Instagram görseli hazırla. Yarış görseli olacak.";
+const SEY = "10 Kasım'dan önceki hafta sonuna, cumartesi pazara, Atatürk Kupası ekle. Bunun için Instagram gönderisi hazırla ve tüm sporcular katılıyor. Yarışı biz düzenliyoruz. O yüzden bu bir kulüp duyurusu olacak. Kulüp yarış duyurusu olacak. Ve bugün Mustafa Kemal antrenmana katıldı. Yoklamayı ona ekle.";
 const M = (want) => ({ desc: want ? "görev listesi sorulur" : "tek iş, sorulmaz", fn: (s) => looksMulti(s, flowOf), ok: (r) => r === want });
 group("Görev listesi: birden çok iş mi")([
   [ATA, M(true)],
+  [SEY, M(true)],
+  ["Atatürk Kupası için Instagram görseli hazırla", { desc: "büyük I ile Instagram gönderidir", fn: wantsPost, ok: (r) => r === true }],
   ["Foça Kupası adında yarış oluştur, Ali ve Ayşe katılacak", M(false)],
   ["Bir yarış oluştur. Adı Foça Kupası, 26-31 Ekim", M(false)],
   ["yarın 10'da antrenman ekle", M(false)],
@@ -283,4 +286,43 @@ group("Görev listesi: yapay zeka yanıtı")([
   ["bilinmeyen tür", { desc: "diğer sayılır", fn: () => cleanPlan({ tasks: [{ kind: "zzz", say: "a b", label: "" }] })[0], ok: (x) => x.kind === "other" && x.label === "İş" }],
   ["Mustafa'yı sporcularda bulamadım.", { desc: "başarısız", fn: failed, ok: (r) => r === true }],
   ["Kaydettim: Atatürk Kupası. Tarihleri ne?", { desc: "başarılı", fn: failed, ok: (r) => r === false }],
+]);
+
+// Yerelde öğrenme: yapay zekanın görev listesi cihazda saklanır, işlerin sözü öğrenilir, yapay zekasız liste kurulur
+const { cachedPlan, rememberPlan, planKey, planLessons, learnedKind, localPlan } = await import("@/lib/taskPlan");
+const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
+const TWO = [{ kind: "race", say: "Atatürk Kupası adında yarış oluştur", label: "Atatürk Kupası yarışı", from: "Atatürk Kupası adında bir yarış oluştur" }, { kind: "attendance", say: "yoklama: bugün Mustafa geldi", label: "Yoklama: Mustafa", from: "Bugün antrenmana Mustafa geldi" }];
+group("Görev listesi: yerelde öğrenme")([
+  ["aynı cümle", { desc: "ikinci kez yapay zekasız", fn: () => { const st = mem(); rememberPlan("Atatürk Kupası oluştur. Mustafa geldi!", TWO, st); return cachedPlan("atatürk kupası oluştur mustafa geldi", st); }, ok: (t) => t?.length === 2 && t[0].kind === "race" }],
+  ["başka cümle", { desc: "kopya yok", fn: () => { const st = mem(); rememberPlan("a b c", TWO, st); return cachedPlan("x y z", st); }, ok: (t) => t === null }],
+  ["tek iş", { desc: "saklanmaz", fn: () => { const st = mem(); rememberPlan("a b", TWO.slice(0, 1), st); return cachedPlan("a b", st); }, ok: (t) => t === null }],
+  ["Bugün, ANTRENMANA   Mustafa geldi.", { desc: "anahtar", fn: planKey, ok: (k) => k === "bugün antrenmana mustafa geldi" }],
+  ["dersler", { desc: "öğrenilecek sözler", fn: () => planLessons(TWO), ok: (l) => l.length === 2 && l[1].l === "plan:attendance" && l[1].x.includes("Mustafa") }],
+  ["güvenli tahmin", { desc: "tür", fn: () => learnedKind({ label: "plan:post", score: 0.9, sim: 0.7 }), ok: (k) => k === "post" }],
+  ["zayıf tahmin", { desc: "yok", fn: () => learnedKind({ label: "plan:post", score: 0.5, sim: 0.7 }), ok: (k) => k === null }],
+  ["başka etiket", { desc: "yok", fn: () => learnedKind({ label: "create:plan", score: 0.9, sim: 0.9 }), ok: (k) => k === null }],
+  [ATA, { desc: "yapay zekasız liste: yarış, yoklama, ödeme, gönderi", fn: (s) => localPlan(s, flowOf)?.map((t) => t.kind).join(","), ok: (k) => k === "race,attendance,income,post" }],
+  ["yarın 10'da antrenman ekle", { desc: "tek iş: liste yok", fn: (s) => localPlan(s, flowOf), ok: (r) => r === null }],
+  [SEY, { desc: "Seyhun'un cümlesi yapay zekasız: yarış, gönderi, yoklama", fn: (s) => localPlan(s, flowOf)?.map((t) => t.kind).join(","), ok: (k) => k === "race,post,attendance" }],
+]);
+
+// Sohbetteki yarış (raceNav.raceRef): ad > "son/geçen yarış" > "sıradaki yarış" > bu sohbette oluşturulan/açılan
+const { raceRef } = await import("@/features/athletes/raceNav");
+const RACES = [
+  { id: "foca", name: "TYF Ligi Foça Ayağı", district: "Foça", startDate: "2026-09-20", endDate: "2026-09-22" },
+  { id: "cesme", name: "Çeşme Optimist Kupası", district: "Çeşme", startDate: "2026-10-01", endDate: "2026-10-03" },
+  { id: "ata", name: "Atatürk Kupası", district: "", startDate: "", endDate: "" },
+  { id: "bodrum", name: "Bodrum Regatta", district: "Bodrum", startDate: "2026-11-05", endDate: "2026-11-08" },
+];
+const R = (ctx, want) => ({ desc: want ? `→ ${want}` : "yarış yok", fn: (s) => raceRef(s, RACES, "2026-10-09", ctx)?.race.id || null, ok: (id) => id === want });
+group("Sohbetteki yarış")([
+  ["son yarış için Instagram gönderisi hazırla", R("", "cesme")],
+  ["geçen yarışın görselini hazırla", R("", "cesme")],
+  ["sıradaki yarış için gönderi hazırla", R("", "bodrum")],
+  ["Foça yarışı için gönderi hazırla", R("ata", "foca")],
+  ["yarış görseli hazırla", R("ata", "ata")],
+  ["bunun için Instagram gönderisi hazırla", R("ata", "ata")],
+  ["Instagram'da yarış gönderisi hazırla", R("", null)],
+  ["29 Ekim gönderisi hazırla", R("ata", null)],
+  ["Atatürk Kupası için Instagram görseli hazırla", R("", "ata")],
 ]);

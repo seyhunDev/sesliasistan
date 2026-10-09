@@ -401,7 +401,7 @@ export function raceWithAthletes(r, data) {
 // Ana asistan: "Foça yarışı için Instagram gönderisi hazırla" (her sayfada; sayfa açma değil, gönderi hazırlama)
 export const wantsPost = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");
-  return /(instagram|insta\b|gönderi(?!l)|gönderisi|paylaşım|\bpost)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|yaz\b|yazalım|çıkar|tasarla)/.test(t) && !/mesaj/.test(t);
+  return /([iı]nstagram|[iı]nsta\b|gönderi(?!l)|gönderisi|paylaşım|\bpost)/.test(t) && /(hazırla|oluştur|yap\b|yapalım|yaz\b|yazalım|çıkar|tasarla)/.test(t) && !/mesaj/.test(t);
 };
 // Gönderi ekranında görsel isteği: "gün batımında teknelerle görsel üret", "başka resim yap"
 export const wantsPostImage = (s) => {

@@ -8,7 +8,7 @@ const INV = /(^|\s)(envanter\S*|demirbaş\S*|stok(ta|tan|a|u|lar\S*|umuz\S*|lara
 // Yalnız sayfa açma: "envanteri aç", "envanter sayfasına git", "envanter"
 const NAV = /^(?:(?:hadi|şimdi|bir)\s+)?(?:yelken kulübü |kulüp |normal )?(?:envanter|demirbaş)\S*(?: sayfa\S*| ekran\S*)?(?: (?:aç|git|göster|gel|geç)\S*)?(?: lütfen)?$/;
 // Sayfadayken başka işler (envanter sözcüğü yoksa): plan, görev, mesaj, not, yoklama…
-const OTHER = /(^|\s)(antrenman\S*|toplantı\S*|takvim\S*|plan|planı|planla\S*|planlara|görev\S*|hatırlat\S*|mesaj\S*|whatsapp\S*|yaz|yazar mısın|yazsana|notlara|notlar|yoklama\S*|aidat\S*|instagram\S*|gönderi\S*|doğum günü\S*|alışveriş\S*|listeye)(?=\s|$)|not (al|düş)|kişi ekle/;
+const OTHER = /(^|\s)(antrenman\S*|toplantı\S*|takvim\S*|plan|planı|planla\S*|planlara|görev\S*|hatırlat\S*|mesaj\S*|whatsapp\S*|yaz|yazar mısın|yazsana|notlara|notlar|yoklama\S*|aidat\S*|[iı]nstagram\S*|gönderi\S*|doğum günü\S*|alışveriş\S*|listeye)(?=\s|$)|not (al|düş)|kişi ekle/;
 
 export const isInvNav = (text) => NAV.test(lower(text));
 

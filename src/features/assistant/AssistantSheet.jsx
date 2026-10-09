@@ -46,7 +46,7 @@ import { feeOf } from "@/lib/dues";
 import { addRacePlan, cleanHotels, deleteRace, raceHotels, saveRace, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
-import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
+import { findRace, nearest, pickChoice, raceAsk, raceJobHere, raceRef, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
 import { matchShop, shopCommand } from "@/features/shop/shopWords";
@@ -94,8 +94,8 @@ import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
-import { refersBack, splitChain } from "@/lib/chain";
-import { failed, looksMulti } from "@/lib/taskPlan";
+import { splitChain } from "@/lib/chain";
+import { cachedPlan, failed, learnedKind, localPlan, looksMulti, planLessons, rememberPlan } from "@/lib/taskPlan";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -650,6 +650,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   function goRace(r, viaVoice) {
     navigator.vibrate?.(8);
+    chainRace.current = r.id; // sohbetin yarışı: "bunun için gönderi hazırla", "yarışa Ali'yi de ekle"
     if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
     leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
   }
@@ -833,13 +834,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (receiptPayCommand(x)) return "receipt";
     if (callCommand(x)) return "call";
     if (localNavigate(x, { names: contacts.map((c) => c.name) })) return "nav";
-    return null;
+    // Kurallar tanımadı: daha önce yapay zekanın görev listesinde öğrenilen benzer söz (lib/brain, "plan:<tür>")
+    return learnedKind(brainGuess(x));
   }
   // Görev listesini başlat: işler sırayla, her biri kendi akışında; listede yalnız işlerin adı ve sonucu görünür
   function startPlan(tasks, viaVoice, fresh) {
     chain.current = tasks.slice(1);
     chainGen.current++;
-    chainRace.current = "";
     raceFollow.current = null;
     planOn.current = true;
     setPlan(tasks.map((x, i) => ({ label: x.label, st: i ? "wait" : "run" })));
@@ -847,9 +848,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setWork(tasks[0].label);
     return run(tasks[0].say, viaVoice, fresh);
   }
+  // Sohbetteki yarışın adı (görev listesinde "yarış görseli", "bunun için" o yarış sayılsın)
+  function sayRace() {
+    const id = chainRace.current || curRace;
+    return (id && races.current.find((r) => r.id === id)?.name) || "";
+  }
   async function askPlan(s) {
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr() }) });
+      const res = await authFetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace() }) });
       const d = await res.json().catch(() => ({}));
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;
     } catch {
@@ -896,9 +902,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         tts.stop();
         setWork("Görev listesi hazırlanıyor");
         setPhase("thinking");
-        const tasks = await askPlan(s);
+        // Aynı cümle daha önce söylendiyse görev listesi cihazdaki kopyadan gelir (yapay zekaya gidilmez)
+        const known = cachedPlan(s);
+        const tasks = known || (await askPlan(s));
         setPhase("idle");
-        const list = tasks?.length > 1 ? tasks : !tasks && parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
+        countHit(known ? "brain" : "ai");
+        if (tasks && !known) {
+          planLessons(tasks).forEach((e) => record(e.x, e.l, "ai")); // her işin sözü öğrenilir
+          rememberPlan(s, tasks);
+        }
+        const split = parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
+        const list = tasks?.length > 1 ? tasks : !tasks ? split || localPlan(s, flowOf) : null;
         if (list) return startPlan(list, viaVoice, fresh);
         chainStep.current = true; // tek iş: cümle kendi yoluna (kullanıcının sözü zaten yazıldı)
         return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
@@ -906,7 +920,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     const history = fresh ? [] : historyFor(turns);
     // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti); yeni sohbette hiç yok
-    if (fresh) msgDraft.current = null;
+    if (fresh) (msgDraft.current = null), (chainRace.current = "");
     else if (msgDraft.current && ++msgDraft.current.age > DRAFT_AGE) msgDraft.current = null;
     // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
     if (fresh || !(drafts.length || cards.pending)) queue.current = [];
@@ -2202,7 +2216,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSteps([]);
     try {
       const orgId = profile?.orgId || myUid;
-      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace, follow: follow ? follow.n + 1 : 0 }, stepTo);
+      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0 }, stepTo);
       if (id !== runId.current) return;
       // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
       if (r.none) {
@@ -2243,7 +2257,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (racer) {
         stepTo("Yarış aranıyor");
         if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-        r = findRace(s, races.current, todayStr()) || (chainRace.current && refersBack(s) ? races.current.find((x) => x.id === chainRace.current) : null);
+        r = raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race || null;
         if (r) {
           stepTo("Sporcular alınıyor");
           const data = await loadAthletes().catch(() => null);
@@ -2527,6 +2541,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     chain.current = [];
     chainGen.current++;
     raceFollow.current = null;
+    chainRace.current = ""; // sohbet bitti: yeni sohbette yarış adla, "son yarış" ya da "sıradaki yarış" diye söylenir
     planOn.current = false;
     setPlan([]);
     msgDraft.current = null; // sohbet bitti: bağlam sıfırlanır
