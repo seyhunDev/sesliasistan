@@ -245,6 +245,17 @@ export function tripText(r) {
   return [(go || from) && `Çıkış: ${[go, from].filter(Boolean).join(" · ")}`, back && `Dönüş: ${back}`].filter(Boolean);
 }
 
+// Bütçe çıktısındaki "Tahmini plan" satırları: [etiket, değer]; boş olanlar yazılmaz
+export function tripRows(r) {
+  const at = (d, t) => [d && tripDay(d), t].filter(Boolean).join(" · ");
+  return [
+    ["Çıkış", at(r?.departDate, r?.departTime)],
+    ["Çıkış yeri", r?.departFrom],
+    ["Buluşma noktası", r?.meetPoint !== r?.departFrom && r?.meetPoint],
+    ["Dönüş", at(r?.returnDate, r?.returnTime)],
+  ].filter(([, v]) => v && String(v).trim());
+}
+
 export async function loadRaces(orgId) {
   const snap = await getDocs(col(orgId));
   const list = snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));

@@ -2,7 +2,7 @@
 // pdf-lib yalnızca çıktı alınırken yüklenir. Yazı tipleri ve logo raceDocs.loadFonts'tan.
 import { CLUB, rangeText } from "./raceDocs.js";
 import { UNITS, howText, tl, totals } from "./budget.js";
-import { tripText } from "./races.js";
+import { tripRows } from "./races.js";
 
 const W = 595.28;
 const H = 841.89;
@@ -59,19 +59,34 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   text([rangeText(r.startDate, r.endDate), [r.district, r.city].filter(Boolean).join(", ")].filter(Boolean).join(" · "), L, y, f.r, 10.5, { color: MUT });
   y += 16;
   text(`${t.athletes} sporcu · ${b.staff} antrenör/refakatçi`, L, y, f.r, 10.5, { color: MUT });
-  for (const line of tripText(r)) {
-    y += 16;
-    text(line, L, y, f.r, 10.5, { color: MUT, max: R - L });
-  }
   y += 26;
 
-  // Özet kutuları
+  // Tahmini plan: yolculuk ayrı kutuda, etiket solda değer sağda
+  const plan = tripRows(r);
+  if (plan.length) {
+    text("TAHMİNİ PLAN", L, y, f.b, 9, { color: NAVY });
+    text("Gün ve saatler değişebilir", R, y, f.r, 8, { color: MUT, align: "right" });
+    y += 10;
+    const ph = plan.length * 20 + 12;
+    page.drawRectangle({ x: L, y: H - y - ph, width: R - L, height: ph, color: SOFT, borderColor: LINE, borderWidth: 0.6 });
+    page.drawRectangle({ x: L, y: H - y - ph, width: 3, height: ph, color: NAVY });
+    y += 6;
+    plan.forEach(([k, v], i) => {
+      text(k, L + 14, y + 14, f.r, 9.5, { color: MUT });
+      text(v, L + 120, y + 14, f.b, 10.5, { max: R - L - 134 });
+      y += 20;
+      if (i < plan.length - 1) page.drawLine({ start: { x: L + 14, y: H - y }, end: { x: R - 12, y: H - y }, thickness: 0.5, color: LINE });
+    });
+    y += 32;
+  }
+
+  // Özet kutuları (kulüp payı yoksa kulüp kutusu çıkmaz)
   const boxes = [
     ["Toplam bütçe", tl(t.total)],
     ["Sporcu başı ödeme", t.athletes ? tl(t.perAthlete) : "-"],
-    ["Kulüp karşılar", tl(t.club)],
-  ];
-  const bw = (R - L - 16) / 3;
+    t.club > 0 && ["Kulüp karşılar", tl(t.club)],
+  ].filter(Boolean);
+  const bw = (R - L - 8 * (boxes.length - 1)) / boxes.length;
   boxes.forEach(([k, v], i) => {
     const x = L + i * (bw + 8);
     page.drawRectangle({ x, y: H - y - 46, width: bw, height: 46, color: SOFT });
@@ -135,6 +150,6 @@ export async function buildBudgetPdf(r, athletes, fonts) {
 
   need(40);
   text("Kişi başı kalemlere antrenör/refakatçi payı da dahildir; bu pay ve ortak masraflar sporculara eşit bölünür.", L, y, f.r, 8, { color: MUT });
-  text("Kulübün karşıladığı kalemler sporcu payına girmez.", L, y + 11, f.r, 8, { color: MUT });
+  if (t.club > 0) text("Kulübün karşıladığı kalemler sporcu payına girmez.", L, y + 11, f.r, 8, { color: MUT });
   return pdf.save();
 }
