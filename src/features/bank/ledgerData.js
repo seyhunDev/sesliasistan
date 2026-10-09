@@ -108,12 +108,17 @@ export async function dropFileMoves(uid, fileId, fromYm, toYm) {
   }
 }
 
-// Defterin başladığı ay: meta.first; yoksa defterdeki en eski ay belgesi (tek okuma); defter boşsa 12 ay önce
+// Defterin başladığı ay: meta.first ile defterdeki en eski ay belgesinden (tek okuma) hangisi önceyse; defter boşsa 12 ay önce.
+// Böylece Excel'in ve maillerin getirdiği bütün aylar okunur, meta eksik ya da geç kalmış olsa da.
 export async function ledgerStart(uid, ym) {
-  const first = (await getDoc(bank(uid, "meta"))).data()?.first;
-  if (first && first <= ym) return first;
-  const low = (await getDocs(query(collection(db, "orgs", uid, "bank"), orderBy(documentId()), limit(1))).catch(() => null))?.docs[0]?.id;
-  if (low && /^\d{4}-\d{2}$/.test(low) && low <= ym) return low;
+  const [meta, low] = await Promise.all([
+    getDoc(bank(uid, "meta")).then((d) => d.data()?.first || ""),
+    getDocs(query(collection(db, "orgs", uid, "bank"), orderBy(documentId()), limit(1)))
+      .then((s) => s.docs[0]?.id || "")
+      .catch(() => ""),
+  ]);
+  const first = [meta, low].filter((x) => /^\d{4}-\d{2}$/.test(x) && x <= ym).sort()[0];
+  if (first) return first;
   const [y, m] = ym.split("-").map(Number);
   return new Date(Date.UTC(y, m - 12, 15)).toISOString().slice(0, 7);
 }

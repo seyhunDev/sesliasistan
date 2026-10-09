@@ -85,6 +85,10 @@ export function AuthProvider({ children }) {
             mailSeen: doc_?.mailSeen || "", // mail: Gmail betiğinin son kontrolü (ISO; betik yazar)
             mailOutbox: doc_?.mailOutbox === true ? 1 : Number(doc_?.mailOutbox) || 0, // mail: betik sürümü (1: kendine mail, 2: başka adreslere de)
             mailTo: Array.isArray(doc_?.mailTo) ? doc_.mailTo : [], // mail: kayıtlı alıcı adresleri
+            payee: doc_?.payee && typeof doc_.payee === "object" ? doc_.payee : null, // Hesaplar: kişisel hesap ayarı { name, account } (payee.js)
+            payeeNames: Array.isArray(doc_?.payeeNames) ? doc_.payeeNames : [], // Hesaplar › Kişiler: eklenen adlar
+            ledgerCard: !!doc_?.ledgerCard, // ayarlar: Hesaplar'da Banka defteri kartı
+            coach: doc_?.coach && typeof doc_.coach === "object" ? doc_.coach : null, // yarış evrakı: antrenör ve destek botu bilgisi
             races: doc_?.races === "on" || doc_?.races === "off" ? doc_.races : "", // ayarlar: ana sayfada Yarışlar düğmesi (raceHome.js)
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)

@@ -58,17 +58,30 @@ export const namesOf = (profile) => {
       return true;
     });
 };
-// Bir adla ilgili TL hareketler (gelen ve giden, tutar işaretli), en yeni önce. Hesap adı (gönderen/alıcı) okunmuşsa
-// yalnız ona bakılır; okunamamışsa açıklamada ve satırın diğer hücrelerinde aranır.
+// Bir adla ilgili TL hareketler (gelen ve giden, tutar işaretli), en yeni önce. Ad hesap adında (gönderen/alıcı) YA DA
+// açıklamada, notta, satırın diğer hücrelerinde geçebilir; ikisine de bakılır.
 export function nameMoves(movements, name) {
   if (!words(name).length) return [];
   return movements
-    .filter((m) => {
-      if (typeof m.amount !== "number" || (m.currency && m.currency !== "TL")) return false;
-      const who = whoIn(m);
-      return who ? hasName(who, name) : hasName(`${m.desc || ""} ${m.text || ""}`, name);
-    })
+    .filter((m) => typeof m.amount === "number" && (!m.currency || m.currency === "TL") && hasName([whoIn(m), m.note, m.desc, m.text].filter(Boolean).join(" "), name))
     .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+}
+// En çok ödeyenler: bütün gelen TL paralar, gönderen adına göre (ad okunamamışsa açıklamadan), en çok toplam önce
+export function topPayers(movements) {
+  const map = new Map();
+  for (const m of movements) {
+    if (typeof m.amount !== "number" || m.amount <= 0 || (m.currency && m.currency !== "TL")) continue;
+    const who = whoIn(m);
+    if (!who) continue;
+    const k = words(who).join(" ");
+    if (!k) continue;
+    const x = map.get(k) || { who, n: 0, sum: 0, last: 0 };
+    x.n++;
+    x.sum = round(x.sum + m.amount);
+    x.last = Math.max(x.last, m.ts || 0);
+    map.set(k, x);
+  }
+  return [...map.values()].sort((a, b) => b.sum - a.sum);
 }
 // Gelen ve giden toplamları ayrı (giden artı yazılır)
 export const inOut = (list) => ({
