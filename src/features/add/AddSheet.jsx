@@ -413,7 +413,7 @@ export function AddSheet({ open, onClose, seed }) {
               />
             )}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
-            {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} owner={!isStaff} />}
+            {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} />}
             {/* Mesajlar (atananlar ve ana hesap) */}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
             {/* Plan ve not: işlemler içerikten ayrı, mesajların altında; Sil en altta */}
