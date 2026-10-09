@@ -56,7 +56,7 @@ export async function archivePost(orgId, id, archived) {
 // Yapay zekayla görsel yazıları + açıklama + etiketler. Yalnız konu, tür, yarış bilgisi ve mevcut yazılar gider (fotoğraf gitmez).
 // ask: ana asistana söylenen değişiklik ("daha kısa yaz", "Mete 2. oldu diye ekle")
 export async function askCaption(post, ask = "") {
-  const current = { headline: post.headline, sub: post.sub, people: post.people, wish: post.wish, tag: post.tag };
+  const current = { headline: post.headline, sub: post.sub, people: post.people, wish: post.wish, tag: post.tag, info: post.info };
   const res = await authFetch("/api/post-caption", {
     method: "POST",
     headers: { "content-type": "application/json" },

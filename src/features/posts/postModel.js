@@ -233,7 +233,7 @@ export function cleanPost(p = {}) {
     meta: p.meta !== false,
     style: p.style === "modern" ? "modern" : styleOf(p.style)[0],
     // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
-    tag: p.tag === "YARIŞ DUYURUSU" ? "YARIŞ" : S(p.tag, 18),
+    tag: S(p.tag, 24),
     caption: L(p.caption, 2200),
     hashtags: cleanTags(p.hashtags),
     format: formatOf(p.format)[0],
@@ -458,7 +458,32 @@ export function designFrom(text) {
   if (/sonu[çc]|kazandı|derece|birinci oldu|ikinci oldu|üçüncü oldu/u.test(t)) out.kind = "sonuc";
   else if (/kayıt|yelken okulu|yaz okulu/u.test(t)) out.kind = "kayit";
   else if (/kutlama|tebrik/u.test(t)) out.kind = "kutlama";
+  // "Yarış duyurusu yap", "kulüp yarış duyurusu olacak", "kulüp haberi olsun": türü ve görseldeki etiketi
+  const tg = TAG_ASK.find(([re]) => re.test(t));
+  if (tg && FORM.test(t)) {
+    if (tg[1]) out.kind = tg[1];
+    out.tag = tg[2];
+  }
   return out;
 }
+// [söz, tür (boşsa tür değişmez), görseldeki etiket]
+const TAG_ASK = [
+  [/kulüp yarış duyuru/u, "duyuru", "KULÜP YARIŞ DUYURUSU"],
+  [/yarış duyuru/u, "duyuru", "YARIŞ DUYURUSU"],
+  [/kulüp duyuru/u, "", "KULÜP DUYURUSU"],
+  [/yarış sonu[çc]/u, "sonuc", "YARIŞ SONUCU"],
+  [/kulüp haber/u, "kulup", "KULÜP HABERİ"],
+  [/ duyuru/u, "", "DUYURU"],
+];
+const FORM = /(yap|olsun|olacak|olarak|çevir|değiştir|türü|etiket|şeklinde)/u;
 // Tasarım dışında bir yazı isteği de var mı ("daha kısa yaz", "Mete'yi ekle")
-export const askBeyondLook = (text) => /(yaz|ekle|kısalt|uzat|kısa|uzun|başlık|açıklama|görsel|fotoğraf|çıkar|değiştir(?!.*(renk|şablon|boyut)))/iu.test(text);
+export const askBeyondLook = (text) => /(yaz|ekle|kısalt|uzat|kısa|uzun|başlık|açıklama|görsel|fotoğraf|çıkar|tarih|(^|\s)yer(i|ini)?(\s|$)|(^|\s)ad(ı|ını)\s|ism|değiştir(?!.*(renk|şablon|boyut|duyuru|haber|tür|etiket)))/iu.test(text);
+
+// Asistanın değişiklikten sonra söyleyeceği: gerçekten neyin değiştiği ("Değiştirdim: başlık, açıklama.")
+const FIELD_NAMES = [["headline", "başlık"], ["sub", "alt satır"], ["info", "yer ve tarih"], ["tag", "etiket"], ["wish", "dilek satırı"], ["people", "sporcu satırları"], ["caption", "açıklama"]];
+export function changedText(before, after) {
+  const ch = FIELD_NAMES.filter(([k]) => after?.[k] != null && String(after[k] || "").trim() !== String(before?.[k] || "").trim()).map(([, n]) => n);
+  return ch.length
+    ? `Değiştirdim: ${ch.join(", ")}.`
+    : "Gönderide bir şey değişmedi. İstediğini Görseldeki yazılar ya da Açıklama bölümünden elle değiştirmen gerekiyor.";
+}
