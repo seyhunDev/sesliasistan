@@ -139,6 +139,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       }
       // Kayıt yolu: söylenen ara ara yazıya çevrilip gösterilir (gönderme yine kullanıcının dokunuşuyla)
       if (s.kind === "server" && s.pcmLen && segmentDue(s, now)) liveSegment(s.sid);
+      // Ses ölçer çalışmıyorsa (iPhone'da askıda kalan ses motoru) konuşma anlaşılamaz: yazı yine 3 sn'de bir gelsin
+      else if (s.kind === "server" && s.pcmLen && !s.meterLive && (s.segBusy || 0) < 2 && now - (s.segFrom || s.t0 || now) >= 3000) liveSegment(s.sid);
       // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
       // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
       if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {

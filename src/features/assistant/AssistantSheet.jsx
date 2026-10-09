@@ -1036,7 +1036,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Görev listesindeki iş kullanıcının sözü değil: balon olarak yazılmaz (listede adı görünür)
     if (!chained) setTurns((p) => [...p, { role: "user", text: s }]);
     setText("");
-    setHeard(s);
+    if (!chained) setHeard(s); // asistan kutusunda kullanıcının cümlesi kalır (listedeki iş değil)
     setError("");
     setSteps([]);
     setSaved([]);
@@ -2755,8 +2755,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, text, lastReply, tts.speaking, booting, turns.length, workNow]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
