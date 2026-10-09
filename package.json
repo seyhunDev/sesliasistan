@@ -16,7 +16,8 @@
     "test:elle": "node --no-warnings scripts/asistan-test/calistir.mjs elle",
     "test:yaris": "node --no-warnings scripts/asistan-test/calistir.mjs yaris",
     "test:yz": "node --no-warnings scripts/asistan-test/calistir.mjs asistan --yz",
-    "test:canli": "node --no-warnings scripts/uygulama-test/calistir.mjs"
+    "test:canli": "node --no-warnings scripts/uygulama-test/calistir.mjs",
+    "test:hepsi": "node --no-warnings scripts/tam-test/calistir.mjs"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
@@ -35,6 +36,7 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "playwright-core": "1.56.1",
     "tailwindcss": "^4"
   }
 }
