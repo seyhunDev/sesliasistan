@@ -6,9 +6,11 @@
 //   3. Akış                çok işli cümlede görev listesi kuruluyor mu, sıra doğru mu, bir iş asistanı kapatıp listeyi
 //                          yarıda bırakıyor mu, saçma girdide çöküyor/takılıyor mu; uygulama bu bilgisayarda açılır,
 //                          tarayıcıyla bütün sayfalar açılır (sahte Firebase: gerçek veriye dokunulmaz)
-//   4. Gerçek yapay zeka   .env.local'da GEMINI_API_KEY varsa: görev listesi ve ana asistan cümleleri (~40 istek kotadan düşer)
+//   4. Gerçek yapay zeka   .env.local'da GEMINI_API_KEY varsa: görev listesi ve ana asistan cümleleri. Varsayılan küçük örnek
+//                          (~16 istek, ~120 bin token); --yz-tam ile bütün set (~65 istek, ~500 bin token). Kota dolarsa (429)
+//                          kalan cümleler "atlandı" sayılır, hata sayılmaz.
 //
-// Seçenekler: --yzsiz (yapay zekaya sorma)  --tarayicisiz (uygulamayı açma)  --ayrinti (geçenleri de yaz)
+// Seçenekler: --yzsiz (yapay zekaya sorma)  --yz-tam (bütün yapay zeka seti)  --tarayicisiz (uygulamayı açma)  --ayrinti (geçenleri de yaz)
 // Sonuç ekrana ve ~/Downloads/tam-test-<tarih>.txt dosyasına yazılır (bu dosyayı sohbete yükleyebilirsin).
 // Veritabanına yazmaz, mesaj göndermez, gerçek hesaba girmez. Kalan (✗) testler hatayı gösterir; düzeltilince yeşile döner.
 import { register } from "node:module";
@@ -24,6 +26,7 @@ const args = process.argv.slice(2);
 const withAI = !args.includes("--yzsiz");
 const withBrowser = !args.includes("--tarayicisiz");
 const detail = args.includes("--ayrinti");
+const fullAI = args.includes("--yz-tam"); // gerçek yapay zekada bütün set (varsayılan: seçilmiş küçük örnek, kota az gider)
 
 // .env.local: yalnız yapay zeka değişkenleri (değerler hiçbir yere yazılmaz)
 const envFile = join(ROOT, ".env.local");
@@ -66,6 +69,8 @@ out("2/4 Anlama ve görev listesi (hatalı girdilerle)…");
 {
   const { run } = await import("./anlama.mjs");
   rows.push(...run());
+  const davranis = await import("./davranis.mjs");
+  rows.push(...davranis.run());
 }
 
 // ---------------------------------------------------------------- 3b-4. Uygulama açılır: tarayıcı + gerçek yapay zeka
@@ -87,17 +92,18 @@ try {
     rows.push(...(await run(server, out)));
   } else if (!withBrowser) rows.push({ katman: "tarayıcı", grup: "Tarayıcı", say: "sayfalar", expect: "", ok: null, got: "ATLANDI (--tarayicisiz)" });
 
-  out("4/4 Gerçek yapay zeka…");
+  out(`4/4 Gerçek yapay zeka${fullAI ? " (tam set, ~65 istek)" : " (küçük örnek, ~16 istek)"}…`);
   if (!withAI) rows.push({ katman: "yapay zeka", grup: "Gerçek yapay zeka", say: "", expect: "", ok: null, got: "ATLANDI (--yzsiz)" });
   else if (!keyAI) rows.push({ katman: "yapay zeka", grup: "Gerçek yapay zeka", say: "", expect: "", ok: null, got: "ATLANDI: .env.local'da GEMINI_API_KEY ya da GEMINI_MODEL yok (Mac'teki proje klasöründe çalıştır)" });
   else {
     const yz = await import("./yz.mjs");
     if (server) {
       out("    Görev listesi (/api/tasks)…");
-      rows.push(...(await yz.runTasks(server, out)));
+      rows.push(...(await yz.runTasks(server, out, fullAI)));
     }
     out("    Ana asistan…");
-    rows.push(...(await yz.runAssistant(out)));
+    rows.push(...(await yz.runAssistant(out, fullAI)));
+    out(`    ${yz.used()} yapay zeka isteği gönderildi${fullAI ? " (tam set)" : " (küçük örnek; tam set: npm run test:hepsi -- --yz-tam)"}`);
   }
 } finally {
   if (server) await server.stop();
@@ -108,6 +114,7 @@ const KATMAN = [
   ["birim", "1. BİRİM TESTLERİ"],
   ["anlama", "2. ANLAMA: temiz cümleler"],
   ["hatalı girdi", "2. ANLAMA: insan ve ses tanıma hataları"],
+  ["davranış", "2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme)"],
   ["akış", "3. AKIŞ: görev listesi, takılma, çökme"],
   ["tarayıcı", "3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları"],
   ["yapay zeka", "4. GERÇEK YAPAY ZEKA"],

@@ -18,13 +18,30 @@ const TASKS = [
   ["şey ııı turkcell faturası ödendi yarın 10da antrenman ekle", ["invoice", "other"]],
   ["listeye çay şeker ekle envanterden 1 şamandıra çıkar", ["shopping", "inventory"]],
   ["yoklama al ali ve ayşe geldi", ["attendance"]], // tek iş: listede tek iş olmalı
+  // İnsan davranışları: düzeltme, vazgeçme, soru içinde iş, uzun anlatım. Üçüncü öğe: dönen işlerin cümlesinde olması / olmaması gereken
+  ["yoklamaya Ali'yi ekle pardon Ayşe'yi bir de listeye süt ekle", ["attendance", "shopping"], { has: /Ayşe/, not: /Ali/ }],
+  ["Atatürk Kupası yarışı oluştur ve görselini hazırla yok görseli sonra yaparız", ["race"]],
+  ["Turkcell faturası ödendi mi bilmiyorum ama yarın 10'da antrenman ekle", ["other"]],
+  ["şimdi şöyle bugün hava çok güzeldi çocuklar erken geldi neyse uzatmayayım Mustafa ve Zeynep geldi yoklamaya ekle sonra da Foça yarışını aç bakayım", ["attendance", "race"]],
+  ["Enes aidatını nakit verdi 1500 yok yok 1000 verdi Mehmet de geldi yoklamaya ekle", ["income", "attendance"], { has: /1000|1\.000|bin/, not: /1500|1\.500/ }],
+  ["listeye süt ekle listeye süt ekle envanterden şamandıra çıkar", ["shopping", "inventory"], { once: "shopping" }],
 ];
+// Küçük örnek (varsayılan): eski bozuk çok işli 2 + insan davranışı 2
+const SAMPLE = [TASKS[0], TASKS[3], TASKS[11], TASKS[15]];
+let USED = 0;
+export const used = () => USED;
 const norm = (k) => (k === "dues" ? "athlete" : k);
 const set = (a) => [...new Set(a.map(norm))].sort().join(",");
 
-export async function runTasks(server, log = () => {}) {
+export async function runTasks(server, log = () => {}, full = false) {
   const rows = [];
-  for (const [s, want] of TASKS) {
+  let quota = false;
+  for (const [s, want, must] of full ? TASKS : SAMPLE) {
+    if (quota) {
+      rows.push({ katman: "yapay zeka", grup: "Görev listesi (gerçek yapay zeka)", say: s, expect: want.map(tr).join(" + "), ok: null, got: "ATLANDI: yapay zeka kotası doldu" });
+      continue;
+    }
+    USED++;
     const t0 = Date.now();
     let row;
     try {
@@ -37,6 +54,11 @@ export async function runTasks(server, log = () => {}) {
       const d = await r.json().catch(() => ({}));
       const ms = Date.now() - t0;
       if (r.status === 503) return [{ katman: "yapay zeka", grup: "Görev listesi (gerçek yapay zeka)", say: "anahtar", expect: "", ok: null, got: "ATLANDI: .env.local'da GEMINI_API_KEY ve GEMINI_MODEL yok" }];
+      if (r.status === 429) {
+        quota = true;
+        rows.push({ katman: "yapay zeka", grup: "Görev listesi (gerçek yapay zeka)", say: s, expect: want.map(tr).join(" + "), ok: null, got: "ATLANDI: yapay zeka kotası doldu (429)" });
+        continue;
+      }
       if (!r.ok) throw new Error(`${r.status} ${d.error || ""}`);
       const tasks = d.tasks || [];
       // Her işin cümlesi uygulamada tek iş olarak hangi akışa gider (yapay zekanın türüyle uyuşmalı)
@@ -44,9 +66,16 @@ export async function runTasks(server, log = () => {}) {
       const wrong = steps.filter((x) => norm(kindOfRoute(x.route)) !== norm(x.kind) && !(x.kind === "other" && x.route === "ai"));
       const kindsOk = set(tasks.map((t) => t.kind)) === set(want);
       const slow = ms > 15000;
-      const ok = kindsOk && !wrong.length && !slow;
+      // Düzeltme / vazgeçme: işlerin cümlesinde düzeltilen bilgi olmalı, eskisi olmamalı; tekrar: aynı iş bir kez
+      const said = tasks.map((t) => t.say).join(" | ");
+      const miss = [];
+      if (must?.has && !must.has.test(said)) miss.push(`düzeltilen bilgi yok (${must.has.source})`);
+      if (must?.not && must.not.test(said)) miss.push(`vazgeçilen bilgi kaldı (${must.not.source})`);
+      if (must?.once && tasks.filter((t) => t.kind === must.once).length > 1) miss.push(`${tr(must.once)} iki kez`);
+      const ok = kindsOk && !wrong.length && !slow && !miss.length;
       const got = [
         tasks.map((t) => `${t.kind}: “${t.say}”`).join(" | ") || "(liste boş)",
+        miss.length ? miss.join(", ") : "",
         wrong.length ? `YANLIŞ AKIŞ: ${wrong.map((x) => `“${x.say}” → ${tr(x.route)}`).join(", ")}` : "",
         `${(ms / 1000).toFixed(1)} sn${slow ? " (telefon 15 sn'de vazgeçer)" : ""}`,
       ].filter(Boolean).join(" · ");
@@ -61,8 +90,12 @@ export async function runTasks(server, log = () => {}) {
   return rows;
 }
 
-export async function runAssistant(log = () => {}) {
-  const { default: run } = await import("../asistan-test/yapay-zeka.mjs");
-  const out = await run((s) => log(`  ${s}`));
-  return out.map((r) => ({ katman: "yapay zeka", grup: `Ana asistan: ${r.group}`, say: r.say, expect: r.expect, ok: r.ok, got: `${r.got} · ${(r.ms / 1000).toFixed(1)} sn` }));
+export async function runAssistant(log = () => {}, full = false) {
+  const { default: run, CASES, HUMAN, SAMPLE: PICK } = await import("../asistan-test/yapay-zeka.mjs");
+  const cases = full ? [...CASES, ...HUMAN] : PICK;
+  // Ana asistan isteği ~9 bin token: dakikalık token sınırına takılmamak için istekler arası bekleme
+  const out = await run((s) => log(`  ${s}`), cases, { pause: full ? 2500 : 1500 });
+  USED += out.filter((r) => r.ms > 0).length;
+  const human = new Set(HUMAN.map((c) => c[0]));
+  return out.map((r) => ({ katman: "yapay zeka", grup: `Ana asistan: ${human.has(r.say) ? "insan davranışı" : r.group}`, say: r.say, expect: r.expect, ok: r.ok, got: `${r.got}${r.ms ? ` · ${(r.ms / 1000).toFixed(1)} sn` : ""}` }));
 }
