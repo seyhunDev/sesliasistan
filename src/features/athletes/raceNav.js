@@ -30,9 +30,8 @@ const soonest = (list, today) => {
   return up[0] || past[0] || null;
 };
 
-// races: [{ id, name, district, startDate, endDate }] → eşleşen yarış ya da null
-export function findRace(text, races, today = "") {
-  if (!races?.length) return null;
+// Adla eşleşen yarış (birden çok uyarsa en yakın tarihli) ya da null
+function byName(text, races, today) {
   const t = low(text);
   const words = t.split(/\s+/).map(bare).filter(Boolean);
   let best = [];
@@ -44,8 +43,42 @@ export function findRace(text, races, today = "") {
     else if (score === top) best.push(r);
   }
   // "yarış" kelimesi geçmiyorsa ad en az iki kelimeyle eşleşmeli ("Dikili hava durumunu göster" yarış açmasın)
-  if (best.length && (RACE_W.test(t) || top >= 2)) return soonest(best, today);
-  if (NEXT.test(t)) return soonest(races, today);
+  return best.length && (RACE_W.test(t) || top >= 2) ? soonest(best, today) : null;
+}
+
+// races: [{ id, name, district, startDate, endDate }] → eşleşen yarış ya da null
+export function findRace(text, races, today = "") {
+  if (!races?.length) return null;
+  const t = low(text);
+  return byName(text, races, today) || (LAST.test(t) ? lastRace(races, today) : null) || (NEXT.test(t) ? soonest(races, today) : null);
+}
+
+// "son yarış", "geçen yarış", "en son yarış", "bir önceki yarış": tarihi geçmiş en yeni yarış
+const LAST = /(^|\s)(en son|son|geçen|geçtiğimiz|önceki|bir önceki|biten|geçmiş) yarış/;
+const BACK = /(^|\s)(bunun|onun|bunu|onu|bu|o|aynı|oluşturduğun|açtığın|eklediğin|az önceki) (yarış|kupa|regat|için|ile)|(^|\s)(bunun|onun) için|(^|\s)yarış(?:ı|ın)? için/;
+export function lastRace(races, today = "") {
+  const past = (races || []).filter((r) => r.startDate && r.startDate <= today).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  return past[0] || null;
+}
+
+// Sohbetteki yarışı çözer. Sıra: söylenen ad > "son/geçen yarış" > "sıradaki yarış" > bu sohbette oluşturulan,
+// açılan ya da değişen yarış (ctxId; cümlede "yarış", "bunun için", "o yarış" gibi bir gönderme varsa).
+// Dönüş: { race, by: "name" | "last" | "next" | "context" } ya da null
+export function raceRef(text, races, today = "", ctxId = "") {
+  if (!races?.length) return null;
+  const t = low(text);
+  const named = byName(text, races, today);
+  if (named) return { race: named, by: "name" };
+  if (LAST.test(t)) {
+    const r = lastRace(races, today);
+    if (r) return { race: r, by: "last" };
+  }
+  if (NEXT.test(t)) {
+    const r = soonest(races, today);
+    if (r) return { race: r, by: "next" };
+  }
+  const ctx = ctxId && races.find((r) => r.id === ctxId);
+  if (ctx && (RACE_W.test(t) || BACK.test(t))) return { race: ctx, by: "context" };
   return null;
 }
 
@@ -161,7 +194,8 @@ const knownIn = (t, known) => {
 };
 export const wantsRaceText = (text, known = []) => {
   const t = low(text).trim();
-  if (!(/yarış|regat/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
+  // "Atatürk Kupası ekle", "Dikili Trofesi oluştur": kupa/trofe/şampiyona adı da yarıştır
+  if (!(/yarış|regat|kupa|trofe|şampiyona/.test(t) || knownIn(t, known)) || /\?$/.test(t)) return false;
   // "yarın 10'da Foça yarışı için toplantı ekle": yarış için plan/görev/mesaj, yarışın kendisi değil
   if (/(toplantı|buluşma|görev|hatırlat|takvim|mesaj|\d{1,2}[:.]\d{2}|\d{1,2}['’](d|t)[ae](?![\p{L}]))/u.test(t)) return false;
   return /(ekle|oluştur|kaydet|planla|yeni yarış|katıl\S*cak|katılımcı|katılıyor|kafile|gid\S*cek|gidiyor|not al|not ekle|not düş|notu|bütçe|masraf)/.test(t);

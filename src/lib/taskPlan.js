@@ -26,7 +26,7 @@ const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 // Yapay zeka yanıtı → [{ kind, say, label }]; ardışık "other" işler tek işte birleşir (ana yapay zeka hepsini birlikte yapar)
 export function cleanPlan(raw) {
   const list = (Array.isArray(raw?.tasks) ? raw.tasks : [])
-    .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60) }))
+    .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) }))
     .filter((x) => x.say)
     .slice(0, 8);
   const out = [];
@@ -35,6 +35,7 @@ export function cleanPlan(raw) {
     if (last && last.kind === "other" && x.kind === "other") {
       last.say = `${last.say}. ${x.say}`;
       last.label = [last.label, x.label].filter(Boolean).join(", ").slice(0, 60);
+      last.from = [last.from, x.from].filter(Boolean).join(". ").slice(0, 160);
     } else out.push({ ...x, label: x.label || PLAN_KINDS[x.kind].label });
   }
   return out;
@@ -61,3 +62,76 @@ export function looksMulti(text, kindOf) {
 
 // İşin sonucu: cevapta başarısızlık sözü varsa ✗
 export const failed = (msg) => /(bulamadım|edemedim|kaydedemedim|yapamadım|anlayamadım|okuyamadım|gönderilemedi|silemedim|ekleyemedim|izni yok|yetkin yok|hata|bağlı değilsin|tekrar dene)/iu.test(String(msg || ""));
+
+// ---- Yerelde öğrenme (Seyhun: "bir dahaki sefere yapay zekadan çok içeride hızlıca halletmeye çalışabiliriz", 2026-10-09) ----
+// 1) Yapay zekanın çıkardığı her iş, kullanıcının o işe ait sözüyle ("from") cihazdaki öğrenme kaydına "plan:<tür>"
+//    olarak yazılır (lib/brain). Sonra benzer cümlecikler kurallar tanımasa da uygulamanın akışı sayılır.
+// 2) Aynı cümle yeniden söylenirse görev listesi yapay zekaya sorulmadan cihazdaki kopyadan gelir (planCache).
+// 3) Yapay zekaya ulaşılamazsa görev listesi yerelde kurulur (localPlan).
+
+// Cümleyi anahtar yapar: küçük harf, noktalama ve fazla boşluk yok
+export const planKey = (text) =>
+  String(text || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+const CACHE = "sa-plan-cache";
+const CACHE_MAX = 60;
+const store = () => {
+  try {
+    return globalThis.localStorage || null;
+  } catch {
+    return null;
+  }
+};
+function readCache(st) {
+  try {
+    const v = JSON.parse(st?.getItem(CACHE) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+// Daha önce yapay zekanın çıkardığı görev listesi (aynı cümle) ya da null
+export function cachedPlan(text, st = store()) {
+  const k = planKey(text);
+  const hit = k && readCache(st).find((e) => e.k === k);
+  return hit?.tasks?.length > 1 ? hit.tasks : null;
+}
+export function rememberPlan(text, tasks, st = store()) {
+  const k = planKey(text);
+  if (!k || !st || !(tasks?.length > 1)) return;
+  const list = [{ k, tasks: tasks.map(({ kind, say, label }) => ({ kind, say, label })), t: Date.now() }, ...readCache(st).filter((e) => e.k !== k)].slice(0, CACHE_MAX);
+  try {
+    st.setItem(CACHE, JSON.stringify(list));
+  } catch {}
+}
+
+// Öğrenme kaydına yazılacak örnekler: [{ x: kullanıcının sözü, l: "plan:<tür>" }] (sözü olmayan iş öğrenilmez)
+export function planLessons(tasks) {
+  return (tasks || []).filter((t) => t.from && t.kind).map((t) => ({ x: t.from, l: `plan:${t.kind}` }));
+}
+// Öğrenilen tahmin güvenilir mi? guess: { label, score, sim } (lib/brain/model predict)
+export function learnedKind(guess) {
+  if (!guess?.label?.startsWith("plan:") || guess.score < 0.7 || guess.sim < 0.5) return null;
+  const k = guess.label.slice(5);
+  return k === "other" ? null : k;
+}
+
+// Yapay zekasız görev listesi: cümlecikler kendi akışına göre (kindOf), fiilsiz cümlecik öncekine eklenir,
+// aynı akıştaki ardışık cümlecikler tek iş olur. İş 2'den azsa null.
+export function localPlan(text, kindOf) {
+  const out = [];
+  for (const p of clausesOf(text)) {
+    const k = kindOf(p) || (ACT.test(p) || !out.length ? "other" : null);
+    const last = out[out.length - 1];
+    if (!k || (last && last.k === k)) {
+      last.say = `${last.say}, ${p}`;
+      continue;
+    }
+    out.push({ k, say: p });
+  }
+  if (out.length < 2) return null;
+  return out.map(({ k, say }) => ({ kind: PLAN_KINDS[k] ? k : "other", say, label: S(say.split(/\s+/).slice(0, 5).join(" "), 60), from: S(say, 160) }));
+}
