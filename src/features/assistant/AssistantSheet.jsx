@@ -861,9 +861,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   // Cümleciğin gittiği uygulama akışı (görev listesi gerekir mi diye bakılır); yapay zeka işi (plan, görev, mesaj…) null
   function flowOf(x) {
+    if (wantsPost(x)) return "post"; // "yarış için görsel oluştur" yarış değil gönderi
     if (racer && wantsRace(x)) return "race";
     if (racer && wantsAttendance(x, false)) return "attendance";
-    if (wantsPost(x)) return "post";
     if (incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
     if (racer && (athleteCommand(x) || duesCommand(x))) return "athlete";
     if (invoiceCommand(x)) return "invoice";

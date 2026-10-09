@@ -297,3 +297,17 @@ group("Sohbetteki yarış")([
     ["yarış, sonra sayfa", T([["Çeşme Optimist Kupası yarışını aç", "raceOpen", { memo: ["race", "Çeşme Optimist Kupası"] }], ["planlara git", "navigate"], ["kapat", "close"]])],
   ]);
 }
+
+// Sesle söylenen, noktalaması az sıralı cümle (Seyhun'un ekran görüntüsü, 2026-10-09): tamamı yoklamaya gidiyordu
+{
+  const { clausesOf, looksMulti, localPlan } = await import("@/lib/taskPlan");
+  const CUM = "29 Ekim Cumhuriyet yarışı oluştur. Yarış için görsel oluştur ve bugün antrenmana Mustafa katıldı, yoklamaya onu ekle.";
+  group("Sıralı iş: fiilden sonra ve/virgül")([
+    [CUM, { desc: "görev listesine gider", fn: (s) => looksMulti(s, flowOf), ok: (r) => r === true }],
+    [CUM, { desc: "yapay zekasız liste: yarış, gönderi, yoklama", fn: (s) => localPlan(s, flowOf)?.map((t) => t.kind).join(","), ok: (k) => k === "race,post,attendance" }],
+    ["Ali ve Ayşe geldi", { desc: "adlar bölünmez", fn: clausesOf, ok: (r) => r.length === 1 }],
+    ["Ali geldi, Ayşe gelmedi", { desc: "yoklama iki cümlecik ama tek iş", fn: (s) => localPlan(s, flowOf), ok: (r) => r === null }],
+    ["Yarış için görsel oluştur", { desc: "gönderi", fn: wantsPost, ok: (r) => r === true }],
+    ["fişin fotoğrafını çek", { desc: "gönderi değil", fn: wantsPost, ok: (r) => r === false }],
+  ]);
+}

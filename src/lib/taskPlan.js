@@ -44,14 +44,41 @@ export function cleanPlan(raw) {
 // Cümle birden çok işe benziyor mu (yapay zekaya görev listesi için sormaya değer mi)?
 // kindOf(cümlecik): uygulamanın kendi akışı ("race", "post"…) ya da null. En az bir cümlecik uygulamanın akışıysa ve
 // cümlecikler farklı işlere aitse evet. Cümlecikler nokta, soru/ünlem, noktalı virgül ve "ve/sonra"lı virgülle ayrılır.
+// Sesle söylenen cümlede noktalama az: "görsel oluştur ve bugün Ali katıldı, yoklamaya onu ekle". Bir fiille biten
+// cümleciğin ardındaki "ve" ya da virgül de ayırır, ardından gelen de bir iş ise ("Ali ve Ayşe geldi", "yarış oluştur,
+// Ali ve Ayşe katılacak" bölünmez).
+const VERB_END = /(?:^|\s)(?:ekle|oluştur|hazırla|yaz|gönder|sil|aç|planla|kaydet|tamamla|ertele|hatırlat|yap|ver|ara|geldi|gelmedi|katıldı|katılmadı|verdi|ödedi|aldı)$/iu;
+const NEXT_ACT = /(^|\s)(ekle|oluştur|yaz|gönder|hatırlat|sil|hazırla|planla|kaydet|tamamla|ertele|iptal|söyle|haber ver|aç|geldi|gelmedi|katıldı|katılmadı|öde|ver)\p{L}*(\s|$|[,.])/iu;
+function splitAtVerbs(part) {
+  const out = [];
+  let rest = part;
+  for (;;) {
+    const re = /(?:,\s*|\s+ve\s+)/giu;
+    let m;
+    let cut = -1;
+    while ((m = re.exec(rest))) {
+      const next = rest.slice(m.index + m[0].length).trim();
+      if (VERB_END.test(rest.slice(0, m.index).trim()) && next.split(/\s+/).length >= 2 && NEXT_ACT.test(next)) {
+        cut = m.index;
+        break;
+      }
+    }
+    if (cut < 0) break;
+    out.push(rest.slice(0, cut));
+    rest = rest.slice(cut).replace(/^(?:,\s*|\s+ve\s+)/iu, "");
+  }
+  out.push(rest);
+  return out;
+}
 export function clausesOf(text) {
   return String(text || "")
     .split(/[.!?;]+\s*|,\s*(?=(?:ve|sonra|ardından|daha sonra|bir de|ayrıca)\s)|\s+(?:ve sonra|ardından|ayrıca)\s+/iu)
+    .flatMap(splitAtVerbs)
     .map((x) => x.trim().replace(/^(ve|sonra|daha sonra|ardından|bir de|ayrıca)\s+/iu, ""))
     .filter((x) => x.split(/\s+/).length >= 2);
 }
 // Fiilsiz cümlecik ("Adı Foça Kupası", "Yarış görseli olacak") ayrı iş sayılmaz, öncekinin ayrıntısıdır
-const ACT = /(^|\s)(ekle\p{L}*|oluştur\p{L}*|yaz\p{L}*|gönder\p{L}*|hatırlat\p{L}*|sil\p{L}*|ara|arar|hazırla\p{L}*|planla\p{L}*|kaydet\p{L}*|tamamla\p{L}*|ertele\p{L}*|iptal|söyle\p{L}*|haber ver\p{L}*|koy|al\p{L}*|aç|gel(di|medi)|öde\p{L}*|ver\p{L}*)(\s|$|[,.])/iu;
+const ACT = /(^|\s)(ekle\p{L}*|oluştur\p{L}*|yaz\p{L}*|gönder\p{L}*|hatırlat\p{L}*|sil\p{L}*|ara|arar|hazırla\p{L}*|planla\p{L}*|kaydet\p{L}*|tamamla\p{L}*|ertele\p{L}*|iptal|söyle\p{L}*|haber ver\p{L}*|koy|al\p{L}*|aç|gel(di|medi)|katıl(dı|madı)|öde\p{L}*|ver\p{L}*)(\s|$|[,.])/iu;
 export function looksMulti(text, kindOf) {
   const parts = clausesOf(text);
   if (parts.length < 2) return false;
