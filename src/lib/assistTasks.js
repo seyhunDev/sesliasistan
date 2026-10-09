@@ -104,6 +104,12 @@ const PASSIVE = [
   [/^değiştir\p{L}*$/u, "değiştiriliyor"], [/^tamamla\p{L}*$/u, "tamamlanıyor"], [/^ertele\p{L}*$/u, "erteleniyor"], [/^hatırlat\p{L}*$/u, "hatırlatılıyor"],
   [/^işaretle\p{L}*$/u, "işaretleniyor"], [/^çıkar\p{L}*$/u, "çıkarılıyor"], [/^tasarla\p{L}*$/u, "tasarlanıyor"], [/^yap(alım|ar mısın)?$/u, "yapılıyor"],
 ];
+// Belirtme eki düşer: "toplantıyı" → "toplantı", "görevini" → "görevi", "Enes'i" → "Enes"
+const noAcc = (x) =>
+  x
+    .replace(/['’]y?[ıiuü]$/u, "")
+    .replace(/([aeıioöuü])y[ıiuü]$/u, "$1")
+    .replace(/([ıiuü])n[ıiuü]$/u, "$1");
 const LEAD_W = /^(lütfen|şimdi|hemen|bir|ve|bana|şunu|bunu|sonra|ayrıca)\s+/iu;
 export function aboutLine(text) {
   const parts = String(text || "").split(/[.;!?]+|,\s*|\s+ve\s+/u).map((x) => x.trim()).filter(Boolean);
@@ -112,7 +118,12 @@ export function aboutLine(text) {
     for (let i = w.length - 1; i > 0; i--) {
       const v = PASSIVE.find(([re]) => re.test(w[i].toLocaleLowerCase("tr-TR").replace(/[^\p{L}]/gu, "")));
       if (!v) continue;
-      const obj = w.slice(Math.max(0, i - 6), i).join(" ").replace(/[“”"]/g, "");
+      const ws = w.slice(Math.max(0, i - 6), i);
+      // Mesaj: "Ayşe'ye söyle ders programını gönder" → "Ayşe'ye yazılıyor" (içerik değil, alıcı)
+      const to = ws.findIndex((x) => /['’]y?[ae]$/u.test(x));
+      if (/^(yazılıyor|gönderiliyor)$/.test(v[1]) && to >= 0) return `${ws[to].charAt(0).toLocaleUpperCase("tr-TR")}${ws[to].slice(1)} mesaj yazılıyor`;
+      if (ws.length) ws[ws.length - 1] = noAcc(ws[ws.length - 1]);
+      const obj = ws.join(" ").replace(/[“”"]/g, "");
       if (!obj) break;
       return `${obj.charAt(0).toLocaleUpperCase("tr-TR")}${obj.slice(1)} ${v[1]}`;
     }

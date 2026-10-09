@@ -47,32 +47,36 @@ export function cleanPlan(raw) {
 // Sesle söylenen cümlede noktalama az: "görsel oluştur ve bugün Ali katıldı, yoklamaya onu ekle". Bir fiille biten
 // cümleciğin ardındaki "ve" ya da virgül de ayırır, ardından gelen de bir iş ise ("Ali ve Ayşe geldi", "yarış oluştur,
 // Ali ve Ayşe katılacak" bölünmez).
-const VERB_END = /(?:^|\s)(?:ekle|oluştur|hazırla|yaz|gönder|sil|aç|planla|kaydet|tamamla|ertele|hatırlat|yap|ver|ara|geldi|gelmedi|katıldı|katılmadı|verdi|ödedi|aldı)$/iu;
-const NEXT_ACT = /(^|\s)(ekle|oluştur|yaz|gönder|hatırlat|sil|hazırla|planla|kaydet|tamamla|ertele|iptal|söyle|haber ver|aç|geldi|gelmedi|katıldı|katılmadı|öde|ver)\p{L}*(\s|$|[,.])/iu;
+const VERB_END = /(?:^|\s)(?:ekle|oluştur|hazırla|yaz|gönder|sil|aç|planla|kaydet|tamamla|ertele|hatırlat|yap|ver|ara|geldi|gelmedi|katıldı|katılmadı|verdi|getirdi|ödedi|ödendi|ödedim|aldı|aldım|alındı|al|çıkar|kaldır)$/iu;
+const NEXT_ACT = /(^|\s)(ekle|oluştur|yaz|gönder|hatırlat|sil|hazırla|planla|kaydet|tamamla|ertele|iptal|söyle|haber ver|aç|geldi|gelmedi|katıldı|katılmadı|öde|ver|çıkar|kaldır|arşiv)\p{L}*(\s|$|[,.])/iu;
 function splitAtVerbs(part) {
   const out = [];
   let rest = part;
   for (;;) {
-    const re = /(?:,\s*|\s+ve\s+)/giu;
+    const re = /(?:,\s*|\s+ve\s+|\s+)/giu;
     let m;
     let cut = -1;
     while ((m = re.exec(rest))) {
       const next = rest.slice(m.index + m[0].length).trim();
-      if (VERB_END.test(rest.slice(0, m.index).trim()) && next.split(/\s+/).length >= 2 && NEXT_ACT.test(next)) {
+      const prev = rest.slice(0, m.index).trim();
+      // Yalnız boşlukla ayrılmışsa (noktalamasız konuşma): yoklamanın iki yarısı ("yoklama al Ali geldi") bölünmez
+      const bare = !/[,]|\sve\s/u.test(m[0]);
+      if (bare && /yoklama/iu.test(`${prev} ${next}`) && /(?<![\p{L}])(geldi|gelmedi|katıldı|katılmadı|izinli|raporlu)(?![\p{L}])/iu.test(`${prev} ${next}`) && !/(?<![\p{L}])(oluştur|hazırla|yaz|gönder|planla|nakit|aidat)/iu.test(next)) continue;
+      if (VERB_END.test(prev) && next.split(/\s+/).length >= 2 && NEXT_ACT.test(next) && !/^(diye|deyip|demek|dersen)(\s|$)/iu.test(next)) {
         cut = m.index;
         break;
       }
     }
     if (cut < 0) break;
     out.push(rest.slice(0, cut));
-    rest = rest.slice(cut).replace(/^(?:,\s*|\s+ve\s+)/iu, "");
+    rest = rest.slice(cut).replace(/^(?:,\s*|\s+ve\s+|\s+)/iu, "");
   }
   out.push(rest);
   return out;
 }
 export function clausesOf(text) {
   return String(text || "")
-    .split(/[.!?;]+\s*|,\s*(?=(?:ve|sonra|ardından|daha sonra|bir de|ayrıca)\s)|\s+(?:ve sonra|ardından|ayrıca)\s+/iu)
+    .split(/[.!?;]+\s*|,\s*(?=(?:ve|sonra|ardından|daha sonra|bir de|ayrıca)\s)|\s+(?:ve sonra|daha sonra|sonra da|sonra|ardından|ayrıca)\s+(?=\S+\s+\S)/iu)
     .flatMap(splitAtVerbs)
     .map((x) => x.trim().replace(/^(ve|sonra|daha sonra|ardından|bir de|ayrıca)\s+/iu, ""))
     .filter((x) => x.split(/\s+/).length >= 2);
@@ -174,4 +178,25 @@ export function orderPlan(tasks) {
     return i < 0 ? ORDER.indexOf("other") : i;
   };
   return (tasks || []).map((t, i) => ({ t, i })).sort((a, b) => rank(a.t) - rank(b.t) || a.i - b.i).map((x) => x.t);
+}
+
+// Cümlede kaç ayrı iş fiili var (noktalama olmasa da): "yarış oluştur görsel hazırla Mustafa geldi" → 3. Yoklama fiilleri
+// (geldi, gelmedi, katıldı, izinli) tek iş sayılır ("Ali geldi Ayşe gelmedi" tek yoklama). 2 ve üstü: görev listesi yapay
+// zekaya sorulmaya değer (Seyhun: "yapay zeka sırayla isteklerimi yerine getirebilecek bir düzen hazırlasın", 2026-10-09).
+const V = [
+  "ekle(?:r misin|yelim|dim|di|ndi|yin|sene)?", "oluştur(?:ur musun|alım|dum|du|uldu|un)?", "hazırla(?:r mısın|yalım|dım|dı|ndı|yın)?",
+  "planla(?:r mısın|yalım|dım|dı|ndı)?", "kaydet(?:er misin|elim|tim|ti)?", "yaz(?:ar mısın|alım|dım|dı|ın|sana)?", "gönder(?:ir misin|elim|dim|di|in)?",
+  "söyle(?:r misin|yelim|din)?", "haber ver(?:ir misin|elim|in)?", "ilet(?:ir misin|elim)?", "sil(?:er misin|elim|dim|in)?", "çıkar(?:ır mısın|alım|dım|dı)?",
+  "kaldır(?:ır mısın|alım|dım|dı)?", "tamamla(?:r mısın|dım|dı|ndı)?", "ertele(?:r misin|dim|di)?", "hatırlat(?:ır mısın|alım|tım)?", "iptal et(?:tim|ti)?",
+  "aç(?:ar mısın|alım)?", "ara(?:r mısın|yalım)?", "ödendi", "ödedi(?:m|k)?", "verdi(?:m|k)?", "getirdi", "yatırdı", "alındı", "aldı(?:m|k)?", "arşive al(?:dım|alım)?",
+];
+const ACTS_G = new RegExp(`(?<![\\p{L}])(?:${V.join("|")})(?![\\p{L}])`, "giu");
+const ATT_G = /(?<![\p{L}])(geldi|gelmedi|katıldı|katılmadı|izinli|raporlu)(?![\p{L}])/iu;
+// "yoklamaya ekle", "yoklama al" yoklamanın kendisidir, ayrı iş değil
+const ATT_DO = /(?<![\p{L}])yoklama\p{L}*\s+(ekle|yaz|al|gir|işle)\p{L}*/giu;
+export function actCount(text) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  const att = ATT_G.test(t) || new RegExp(ATT_DO.source, "iu").test(t);
+  const rest = t.replace(ATT_DO, " ");
+  return (rest.match(ACTS_G) || []).length + (att ? 1 : 0);
 }

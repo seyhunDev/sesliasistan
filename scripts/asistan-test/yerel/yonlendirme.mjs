@@ -313,6 +313,32 @@ group("Sohbetteki yarış")([
   ]);
 }
 
+// Genel taramada bulunanlar (2026-10-09): noktalamasız sıralı işler, kesmesiz mesaj, "antreman", tek kişiye aidat hatırlatma
+{
+  const { actCount } = await import("@/lib/taskPlan");
+  const { messageFirst } = await import("@/lib/steps");
+  const { duesCommand } = await import("@/lib/assistMore");
+  const { wantsAttendance } = await import("@/features/athletes/access");
+  const { aboutLine } = await import("@/lib/assistTasks");
+  group("Genel tarama düzeltmeleri")([
+    ["29 Ekim Cumhuriyet yarışı oluştur yarış için görsel hazırla bugün antrenmana Mustafa katıldı", { desc: "noktalamasız: 3 iş fiili", fn: actCount, ok: (n) => n === 3 }],
+    ["Enes aidatını nakit verdi Mehmet de geldi yoklamaya ekle", { desc: "ödeme + yoklama: 2 iş", fn: actCount, ok: (n) => n === 2 }],
+    ["Mustafa geldi yoklamaya ekle", { desc: "yoklama tek iş", fn: actCount, ok: (n) => n === 1 }],
+    ["Foça yarışı için Instagram gönderisi hazırla", { desc: "gönderisi isim, tek iş", fn: actCount, ok: (n) => n === 1 }],
+    ["aidat hatırlatması gönder", { desc: "hatırlatması isim, tek iş", fn: actCount, ok: (n) => n === 1 }],
+    ["aliye yaz faturayı ödedim", { desc: "kesmesiz mesaj", fn: messageFirst, ok: (r) => r === true }],
+    ["mustafaya mesaj at antrenmana gelmedi diye merak ettim", { desc: "kesmesiz mesaj", fn: messageFirst, ok: (r) => r === true }],
+    ["günlüğe yaz 12 knot imbat vardı", { desc: "günlük mesaj değil", fn: messageFirst, ok: (r) => r === false }],
+    ["Gönderi hazırla. Ali'ye yaz yarın gelsin", { desc: "ilk cümle mesaj değil", fn: messageFirst, ok: (r) => r === false }],
+    ["Mustafa'nın velisine yaz bugün gelmedi", { desc: "veliye mesaj", fn: messageFirst, ok: (r) => r === true }],
+    ["bugün antremana Mustafa geldi", { desc: "antreman yazımı yoklama", fn: (s) => wantsAttendance(s, false), ok: (r) => r === true }],
+    ["Enes aidatını ödemedi ona hatırlat", { desc: "tek kişi: toplu hatırlatma değil", fn: duesCommand, ok: (r) => r === null }],
+    ["aidat hatırlatması gönder", { desc: "toplu hatırlatma", fn: duesCommand, ok: (r) => r?.op === "remind" }],
+    ["yarınki toplantıyı sil", { desc: "bekleme yazısı düzgün", fn: aboutLine, ok: (r) => r === "Yarınki toplantı siliniyor" }],
+    ["Ayşe'ye söyle ders programını göndersin", { desc: "mesajda alıcı", fn: aboutLine, ok: (r) => r === "Ayşe'ye mesaj yazılıyor" }],
+  ]);
+}
+
 // Görev listesinin sırası: en kolayı (Seyhun: "illa kullanıcının sıralamasına göre olmak zorunda değil", 2026-10-09)
 {
   const { orderPlan } = await import("@/lib/taskPlan");

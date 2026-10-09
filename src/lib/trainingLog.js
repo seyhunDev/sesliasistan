@@ -107,7 +107,7 @@ export function pickPlan(plans, date, time = "") {
 // "dünkü antrenmanda start çalıştık". Sayfa açma ("antrenman günlüğünü aç") ve yeni plan ("yarın 10'da antrenman") değil.
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.,!?;:"“”()]/g, " ").replace(/\s+/g, " ").trim();
 const LOG_W = /(^|\s)(günlü(k|ğ)\S*)(?=\s|$)/;
-const TRAIN_W = /(^|\s)antre?nman\S*|(^|\s)idman\S*/; // ses tanıma "antreman" da yazar
+const TRAIN_W = /(^|\s)antre?n?man\S*|(^|\s)idman\S*/; // ses tanıma "antreman" da yazar
 // geldi/gelmedi tek başına yoklamadır ("Ali antrenmana gelmedi"); günlük sözcüğüyle birlikteyse günlüğe yazılır
 const PAST = /(geçti|çalıştık|çalıştı|yaptık|vardı|esti|çıktık|bitti|sürdü|tamamladık|zorlandı|zorlandık|döndük)(?=\s|$)/;
 const OPEN_ONLY = /^(antrenman )?günlü\S* (sayfa\S* )?(aç|göster|getir|gir|git|bak)\S*$/;

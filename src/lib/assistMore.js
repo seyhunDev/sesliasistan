@@ -85,7 +85,7 @@ export function incomeCommand(raw, today = "") {
   const t = low(raw);
   if (QUESTION.test(t) || /(^| )(fatura\p{L}*|fiş\p{L}*|ödemedi|ödemeyen\p{L}*|kim|kimler|kaç|ne kadar|hatırlat\p{L}*|gider\p{L}*|harca\p{L}*)( |$)/u.test(t)) return null;
   if (!/(nakit|gelir|bağış|aidat|eğitim)/u.test(t)) return null;
-  if (!/(aldım|aldık|alındı|geldi|ödedi|verdi|yatırdı|ekle|yaz|kaydet|gelir olarak)/u.test(t)) return null;
+  if (!/(aldım|aldık|alındı|geldi|ödedi|verdi|getirdi|yatırdı|ekle|yaz|kaydet|gelir olarak)/u.test(t)) return null;
   const amount = amountOf(t.replace(/(19|20)\d{2} yılı/gu, ""));
   // Aidatta tutar söylenmeyebilir ("Enes'in aidatı nakit alındı"): sporcunun aidat tutarı yazılır (amount 0)
   if (!(amount > 0) && !/aidat/u.test(t)) return null;
@@ -119,7 +119,9 @@ export function incomeCommand(raw, today = "") {
 export function duesCommand(raw) {
   const t = low(raw);
   if (!/aidat/u.test(t)) return null;
-  if (/(hatırlat|hatırlatma)/u.test(t) && !/(hatırlattın mı|hatırlatıldı mı)/u.test(t)) return { op: "remind" };
+  // Tek kişiye hatırlatma ("Enes aidatını ödemedi ona hatırlat"): toplu hatırlatma değil, mesaj (yapay zeka)
+  const one = /(^| )(ona|kendisine|velisine|annesine|babasına)( |$)/u.test(t) || /^\p{Lu}\p{Ll}+(\s\p{Lu}\p{Ll}+)?['’]?\p{L}*\s+aidat/u.test(String(raw || "").trim());
+  if (/(hatırlat|hatırlatma)/u.test(t) && !/(hatırlattın mı|hatırlatıldı mı)/u.test(t)) return one ? null : { op: "remind" };
   if (/(kim|kimler|kaç kişi|kaç sporcu|hangi sporcu|kimin)/u.test(t) && /(ödemedi|ödemeyen|ödemiş|ödedi|eksik|borç)/u.test(t)) return { op: "ask", paid: /(ödedi|ödemiş)/u.test(t) && !/ödemedi|ödemeyen/u.test(t) };
   return null;
 }

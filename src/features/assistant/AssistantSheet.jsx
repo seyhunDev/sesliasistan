@@ -98,7 +98,7 @@ import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 import { splitChain } from "@/lib/chain";
-import { cachedPlan, failed, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
+import { actCount, cachedPlan, clausesOf, failed, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -873,6 +873,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (wantsPost(x)) return "post"; // "yarış için görsel oluştur" yarış değil gönderi
     if (racer && wantsRace(x)) return "race";
     if (racer && wantsAttendance(x, false)) return "attendance";
+    if (racer && absentNotifyCommand(x)) return "absent"; // gelmeyenlerin velilerine haber
     if (incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
     if (racer && (athleteCommand(x) || duesCommand(x))) return "athlete";
     if (invoiceCommand(x)) return "invoice";
@@ -945,7 +946,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // sırayla kendi akışlarında yapılır. Bir soruya cevap beklenirken (taslak, kart, yarış sorusu…) bakılmaz.
     if (!chained && !msgFirst && !cards.awaiting && !drafts.length && !raceFollow.current) {
       const parts = splitChain(s);
-      if ((parts.length > 1 && parts.some(flowOf)) || looksMulti(s, flowOf)) {
+      // Noktalamasız söylense de ("…yarış oluştur yarış için görsel hazırla bugün Mustafa geldi") iki ve fazla iş fiili varsa
+      // ve uygulamanın kendi akışlarından biri işin içindeyse düzeni yapay zeka kurar (yoksa cümlenin tamamı tek akışa giderdi)
+      if ((parts.length > 1 && parts.some(flowOf)) || looksMulti(s, flowOf) || (actCount(s) > 1 && (flowOf(s) || clausesOf(s).some(flowOf)))) {
         setTurns((p) => [...p, { role: "user", text: s }]);
         setText("");
         setHeard(s);
