@@ -122,7 +122,7 @@ async function handle(request) {
             raw = await ask(provider, user, Math.max(6000, 22000 - (Date.now() - t0)));
           }
           const ms = Date.now() - t0;
-          const r = parseAssistant(raw, people, forPeople);
+          const r = parseAssistant(raw, people, forPeople, text);
           console.log(`[assistant:${provider}] akış ${ms} ms, intent=${r.intent}, items=${r.items.length}`);
           if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
           const q = await spend(au, "assistant");
@@ -141,7 +141,7 @@ async function handle(request) {
     const t0 = Date.now();
     const raw = await ask(provider, user);
     const ms = Date.now() - t0;
-    const r = parseAssistant(raw, people, forPeople);
+    const r = parseAssistant(raw, people, forPeople, text);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
     if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
     return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));

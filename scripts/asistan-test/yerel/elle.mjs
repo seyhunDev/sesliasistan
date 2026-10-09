@@ -1143,7 +1143,10 @@ group("Açılış ekranı")([
 
 // Geri düğmesi dokunuşu (navTrail.js goBack): arka arkaya basış tek geri; geri gidilemezse üst sayfaya.
 // Tarayıcı benzeri küçük bir pencere kurulur; diğer testleri etkilemesin diye en sonda ve kendi içinde kaldırılır.
+let backDone = Promise.resolve();
 const backTaps = async () => {
+  let done;
+  backDone = new Promise((r) => (done = r));
   await wait(0);
   const loc = { pathname: "/inventory", search: "", href: "https://x.app/inventory" };
   const store = {};
@@ -1165,6 +1168,7 @@ const backTaps = async () => {
   } finally {
     delete globalThis.window;
     delete globalThis.sessionStorage;
+    done();
   }
 };
 group("Geri düğmesi dokunuşu")([
@@ -1173,8 +1177,10 @@ group("Geri düğmesi dokunuşu")([
 
 // Sayfa geçişinde kaydırma (navProgress.js): yeni sayfa en üstten, geri dönülen sayfa yerinde
 const NP = await import("@/lib/navProgress");
+// Geri düğmesi testi de pencere kurar; o bitmeden başlarsa pencereyi siler (yavaş makinede, Node 24)
 const scrollTops = async () => {
-  await wait(800);
+  await wait(0);
+  await backDone;
   const tops = [];
   globalThis.window = { scrollY: 600, scrollTo: (x, y) => tops.push(y) };
   try {
