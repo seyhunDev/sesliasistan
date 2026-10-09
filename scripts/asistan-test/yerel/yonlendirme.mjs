@@ -312,3 +312,16 @@ group("Sohbetteki yarış")([
     ["fişin fotoğrafını çek", { desc: "gönderi değil", fn: wantsPost, ok: (r) => r === false }],
   ]);
 }
+
+// Görev listesinin sırası: en kolayı (Seyhun: "illa kullanıcının sıralamasına göre olmak zorunda değil", 2026-10-09)
+{
+  const { orderPlan } = await import("@/lib/taskPlan");
+  const kinds = (list) => orderPlan(list.map((kind, i) => ({ kind, say: `iş ${i}` }))).map((t) => t.kind).join(",");
+  const says = (list) => orderPlan(list.map((kind, i) => ({ kind, say: `iş ${i}` }))).map((t) => t.say).join(",");
+  group("Görev listesi sırası")([
+    ["gönderi, yarış, yoklama", { desc: "yarış önce, gönderi en son", fn: () => kinds(["post", "race", "attendance"]), ok: (r) => r === "race,attendance,post" }],
+    ["mesaj, yoklama, sayfa", { desc: "yoklama mesajdan önce, sayfa sonda", fn: () => kinds(["other", "nav", "attendance"]), ok: (r) => r === "attendance,other,nav" }],
+    ["iki iş aynı tür", { desc: "aynı tür söylendiği sırada", fn: () => says(["other", "race", "other"]), ok: (r) => r === "iş 1,iş 0,iş 2" }],
+    ["türsüz", { desc: "türsüz iş sırası değişmez", fn: () => orderPlan([{ say: "a" }, { say: "b" }]).map((t) => t.say).join(""), ok: (r) => r === "ab" }],
+  ]);
+}

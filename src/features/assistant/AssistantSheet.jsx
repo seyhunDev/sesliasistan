@@ -98,7 +98,7 @@ import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 import { splitChain } from "@/lib/chain";
-import { cachedPlan, failed, learnedKind, localPlan, looksMulti, planLessons, rememberPlan } from "@/lib/taskPlan";
+import { cachedPlan, failed, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -965,7 +965,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         }
         const split = parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
         const list = tasks?.length > 1 ? tasks : !tasks ? split || localPlan(s, flowOf) : null;
-        if (list) return startPlan(list, viaVoice, fresh);
+        if (list) return startPlan(orderPlan(list), viaVoice, fresh);
         chainStep.current = true; // tek iş: cümle kendi yoluna (kullanıcının sözü zaten yazıldı)
         return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
       }
@@ -2301,7 +2301,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setSteps([]);
     try {
       const orgId = profile?.orgId || myUid;
-      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0 }, stepTo);
+      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0, noAsk: planOn.current && chain.current.length > 0 }, stepTo);
       if (id !== runId.current) return;
       // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
       if (r.none) {
@@ -2359,7 +2359,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       record(s, "nav:posts", "local");
       memoSet("post", r ? `${r.name} gönderisi` : "yeni gönderi");
       router.push("/posts/new");
-      leave(r ? `${r.name} için gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.` : "Gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.", viaVoice);
+      leave(r ? `${r.name} için gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.` : "Gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.", viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
