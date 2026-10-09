@@ -23,6 +23,7 @@ import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDelete
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
+import { updateAsk } from "@/lib/newVersion";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -69,6 +70,7 @@ export function routesOf(s, c = {}) {
   const { owner, isStaff, racer, athleteSide, path = "", today = "" } = c;
   const nav = (x) => localNavigate(x, { names: c.names || [] });
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
+  if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
   if (!mf && !athleteSide && wantsLog(s) && bareLog(s)) add("logBare");
   if (!mf && !athleteSide && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");

@@ -46,7 +46,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"],
@@ -83,6 +83,7 @@ const CASES = {
   whatsapp: ["Ali'ye WhatsApp'tan yaz, yarın gelsin", "Gökhan'a vatsaptan mesaj at, motoru getirsin", "velilere WhatsApp'tan yaz, kayıtlar başladı"],
   query: ["bu hafta neler var", "yarın ne var?", "bugün hangi görevler var", "kaç görevim var", "Ali'nin görevleri neler", "bu ay ne kadar fiş harcadım?", "geciken görev var mı", "haftayı özetle"],
   weather: ["yarın rüzgar kaç knot", "hava nasıl olacak cumartesi?", "bugün öğleden sonra rüzgar ne durumda", "pazar yağmur yağacak mı"],
+  appUpdate: ["uygulamayı güncelle", "güncellemeyi yükle", "yeni sürüme geç", "sayfayı yenile"],
   version: ["son güncelleme ne", "en son ne değişti?", "uygulama güncellendi mi", "hangi sürümdeyim"],
   payee: ["bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi", "eylülde ne kadar para geldi"],
   navigate: ["ders programını aç", "yoklamayı aç", "ekip grubunu aç", "geri dön", "ayarlara git", "fişlerimi göster", "aidatlar sayfasını aç", "envanter sayfasını aç", "Ali ile mesajlaşmayı aç", "faturaları aç", "hesaplarımı aç"],

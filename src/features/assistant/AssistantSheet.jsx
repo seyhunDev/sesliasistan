@@ -26,6 +26,7 @@ import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
 import { EARLY, routesOf } from "@/lib/assistRoute";
 import { buildSpeech } from "@/lib/buildInfo";
+import { applyUpdate, checkVersion } from "@/lib/newVersion";
 import { ASK_EMPTY, DRAFT_AGE, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
@@ -1120,8 +1121,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         case "close":
           return finish(), true;
         // "Son güncelleme ne?": derlemede gömülen yayın bilgisi (lib/buildInfo.js)
-        case "version":
-          return reply(buildSpeech(), { engine: "local" }, viaVoice), true;
+        case "version": {
+          const nv = await checkVersion();
+          return reply(`${buildSpeech()}${nv ? " Yayında daha yeni bir sürüm var; “uygulamayı güncelle” de." : ""}`, { engine: "local" }, viaVoice), true;
+        }
+        // "Uygulamayı güncelle": yayında yeni sürüm varsa sayfa yenilenir (lib/newVersion.js)
+        case "appUpdate": {
+          const nv = await checkVersion(true);
+          if (!nv) return reply(`Uygulama zaten güncel. ${buildSpeech()}`, { engine: "local" }, viaVoice), true;
+          reply("Yeni sürüm var, güncelliyorum.", { engine: "local" }, viaVoice);
+          setTimeout(applyUpdate, 1800);
+          return true;
+        }
         case "logBare":
           reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
           waitFor("log");
