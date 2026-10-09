@@ -376,7 +376,7 @@ group("Instagram tasarım")([
     PM.imagePeople("A\nB\nC") === "")],
   ["ayrıntılı türler", F("yarış duyurusu/sonucu etiketleri, her türün ayrı rengi", () => {
     const tags = Object.fromEntries(PM.KINDS.map(([k, , , t]) => [k, t]));
-    return tags.duyuru === "YARIŞ" && PM.cleanPost({ tag: "YARIŞ DUYURUSU" }).tag === "YARIŞ" && tags.sonuc === "YARIŞ SONUCU" && tags.kayit === "KAYITLAR AÇIK" && PM.KINDS.length >= 8 && PM.cleanPost({ kind: "kutlama" }).kind === "kutlama" && PM.freshPost("kutlama").theme === "bordo" && PM.RACE_KINDS.includes("sonuc");
+    return tags.duyuru === "YARIŞ" && PM.cleanPost({ tag: "YARIŞ DUYURUSU" }).tag === "YARIŞ DUYURUSU" && tags.sonuc === "YARIŞ SONUCU" && tags.kayit === "KAYITLAR AÇIK" && PM.KINDS.length >= 8 && PM.cleanPost({ kind: "kutlama" }).kind === "kutlama" && PM.freshPost("kutlama").theme === "bordo" && PM.RACE_KINDS.includes("sonuc");
   })],
   ["asistan: gönderi hazırla", F("gönderi isteği tanınır, sayfa açma ve mesaj değil", () => PM.wantsPost("Foça yarışı için Instagram gönderisi hazırla") && PM.wantsPost("yelken okulu kayıtları için gönderi hazırla") && PM.wantsPost("insta postu yap") && !PM.wantsPost("Instagram'ı aç") && !PM.wantsPost("gönderileri aç") && !PM.wantsPost("Ali'ye mesaj gönder"))],
   ["asistan: görsel", F("görsel isteği tanınır", () => PM.wantsPostImage("gün batımında teknelerle görsel üret") && PM.wantsPostImage("başka bir resim yap") && !PM.wantsPostImage("daha kısa yaz"))],

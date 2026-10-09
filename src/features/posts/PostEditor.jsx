@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
@@ -261,8 +261,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       // "Rengi mavi yap", "hikâye boyutunda olsun", "modern şablon": yalnız tasarım; başka yazı isteği yoksa yazılar değişmez
       const look = designFrom(text);
       const lookOnly = Object.keys(look).length && !askBeyondLook(text);
-      if (Object.keys(look).length) setP((x) => ({ ...(look.kind ? reauto(x, { ...x, kind: look.kind }) : x), ...look, kind: look.kind || x.kind }));
-      if (lookOnly) return { say: "Tasarımı değiştirdim." };
+      const dressed = (x) => ({ ...(look.kind ? reauto(x, { ...x, kind: look.kind }) : x), ...look, kind: look.kind || x.kind });
+      if (Object.keys(look).length) setP(dressed);
+      if (lookOnly) return { say: look.tag ? `Gönderiyi “${look.tag}” yaptım.` : "Tasarımı değiştirdim." };
       if (wantsPostImage(text)) {
         const u = await mk(text);
         return { say: `Yeni görseli ekledim, başlık ve logo üstünde.${u ? ` Bugün ${u.today}/${u.limit} görsel.` : ""}` };
@@ -277,8 +278,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       // Boş gönderide ilk cümle ne paylaşılacağıdır (konu); sonrakiler değişiklik
       const first = !now.caption && !now.race && !now.topic.trim();
       if (first) put("topic", text);
-      await w(first ? { ...now, topic: text } : now, first ? "" : text);
-      return { say: first ? "Gönderiyi hazırladım: başlık, açıklama ve etiketler hazır. Değiştirmek istediğini söyle." : "Gönderiyi güncelledim." };
+      const base = Object.keys(look).length ? dressed(now) : now;
+      const r = await w(first ? { ...base, topic: text } : base, first ? "" : text);
+      return { say: first ? "Gönderiyi hazırladım: başlık, açıklama ve etiketler hazır. Değiştirmek istediğini söyle." : changedText(now, r) };
     };
     setPostHandler({ ask });
     return () => setPostHandler(null);
@@ -876,7 +878,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           </label>
           <Field label="Dilek satırı" value={p.wish} onChange={(e) => put("wish", e.target.value)} maxLength={60} placeholder="Sporcularımıza başarılar!" hint="Boş bırakılırsa görselde çıkmaz." />
           {post.meta && <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />}
-          <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={18} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
+          <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={24} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
         </div>
       )}
 

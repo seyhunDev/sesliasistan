@@ -615,6 +615,15 @@ group("Göreve göre ara yazı")([
     ["yarış", C("tarih ve sporcu yok", () => followAsk({ startDate: "", athleteIds: [] }), (r) => /tarih/i.test(r) && /sporcu/i.test(r))],
     ["yarış", C("yalnız sporcu yok", () => followAsk({ startDate: "2026-10-26", athleteIds: [] }), (r) => r === "Hangi sporcular katılacak?")],
     ["yarış", C("eksik yok", () => followAsk({ startDate: "2026-10-26", athleteIds: ["a"] }), (r) => r === "")],
+    ["onu yarış duyurusu yap", C("tür ve etiket", PM.designFrom, (r) => r.kind === "duyuru" && r.tag === "YARIŞ DUYURUSU")],
+    ["Kulüp yarış duyurusu olacak", C("kulüp yarış duyurusu", PM.designFrom, (r) => r.tag === "KULÜP YARIŞ DUYURUSU")],
+    ["kulüp haberi olsun", C("kulüp haberi", PM.designFrom, (r) => r.kind === "kulup" && r.tag === "KULÜP HABERİ")],
+    ["duyurular hakkında bilgi", C("istek yok", PM.designFrom, (r) => !r.tag)],
+    ["onu yarış duyurusu yap", C("yalnız tür", PM.askBeyondLook, (r) => r === false)],
+    ["yarışın adını ve açıklamasını değiştir", C("yazı da değişir", PM.askBeyondLook, (r) => r === true)],
+    ["tarihi 7-8 Kasım yap", C("yer/tarih değişir", PM.askBeyondLook, (r) => r === true)],
+    ["değişen", C("başlık ve açıklama", () => PM.changedText({ headline: "A", caption: "x", tag: "YARIŞ" }, { headline: "B", caption: "y", tag: "YARIŞ" }), (r) => r === "Değiştirdim: başlık, açıklama.")],
+    ["değişmeyen", C("elle yap denir", () => PM.changedText({ headline: "A", caption: "x" }, { headline: "A", caption: "x" }), (r) => /elle/.test(r))],
   ]);
 }
 

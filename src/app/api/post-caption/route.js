@@ -31,7 +31,8 @@ Yaz:
 - caption: Instagram açıklaması; profesyonel bir kulüp iletişimcisinin kaleminden: akıcı, doğru Türkçe, sıcak ama ölçülü (abartı, klişe ve ünlem yığını yok). Yapı: ilk satır dikkat çeken tek cümle; ardından 1-2 kısa paragrafta bilgi (ne, nerede, ne zaman, kimler); son satırda kısa kapanış/çağrı. Toplam 300-650 karakter, paragraflar arasında boş satır. En çok 2-3 emoji, yalnız yerinde (⛵🌊🏆). Gerçek olmayan bilgi, sıralama, puan, isim UYDURMA; yalnız anlatılanı ve verileni kullan. Sporcu adı verilmişse kullan, verilmemişse "sporcularımız" de. 3 ve daha çok sporcu varsa açıklamada TÜM sporcuların adı (sınıfıyla) geçsin: ayrı bir paragrafta, her sporcu bir satırda "⛵ Ad Soyad (Sınıf)" ya da sonucu verildiyse "🏆 Ad Soyad (Sınıf) · 2." (bu satırlardaki işaretler emoji sınırına sayılmaz). Hashtag'leri caption'a yazma.
 - hashtags: 8-12 Türkçe/İngilizce etiket, # olmadan: dikiliyelken, dikili, yelken, sailing ve konuya uygun olanlar (optimist, ilca, foça, izmir, yelkenligi gibi).
 - Yarış türünde açıklamada yarışın adı, yeri, tarihi, katılan sınıflar ve sporcular geçsin, sonunda sporculara başarı dileği olsun ("Sporcularımıza başarılar dileriz! ⛵"). Sonuçta tebrik ve teşekkür.
-- "İstenen değişiklik" verilirse yalnız onu uygula, gerisini mevcut haliyle koru: "daha kısa", "emoji olmasın" açıklamayı; "başlığı … yap" başlığı; "Mete 2. oldu diye ekle" ilgili yazıları değiştirir. Değişiklikte verilen bilgi yeni gerçektir, kullan.`;
+- "İstenen değişiklik" verilirse yalnız onu uygula, gerisini mevcut haliyle koru: "daha kısa", "emoji olmasın" açıklamayı; "başlığı … yap" başlığı; "Mete 2. oldu diye ekle" ilgili yazıları değiştirir. Değişiklikte verilen bilgi yeni gerçektir, kullan. İstenen değişikliği MUTLAKA uygula: "açıklamayı değiştir", "yenile", "başka yaz" denirse açıklamayı öncekinden belirgin farklı yeniden yaz; "başlığı değiştir" denirse farklı bir başlık yaz. Yarışın adı, yeri ya da tarihi değişirse yenisini açıklamada, başlıkta (adı istenirse) ve info'da kullan.
+- info: görseldeki yer · tarih satırı ("Dikili · 7-8 Kasım"); YALNIZ değişiklikte yer, tarih ya da yarışın adı istenirse yaz, yoksa boş bırak.`;
 
 const SCHEMA = {
   type: "object",
@@ -40,6 +41,7 @@ const SCHEMA = {
     sub: { type: "string" },
     people: { type: "string", description: "Satırlar \\n ile ayrılır" },
     tag: { type: "string" },
+    info: { type: "string" },
     wish: { type: "string" },
     caption: { type: "string" },
     hashtags: { type: "array", items: { type: "string" } },
@@ -47,6 +49,9 @@ const SCHEMA = {
   required: ["headline", "caption", "hashtags"],
 };
 
+// Değişiklikte başlık yalnız istenirse değişir: "başlığı …", "adını değiştir", "ismini … yap"
+const HEAD = /başlı|(^|\s)ad(ı|ını|i|ini)\s|(^|\s)ism(i|ini)\s|adını değiştir|ismini değiştir/i;
+const INFO = /tarih|(^|\s)yer(i|ini)?(\s|$)|konum|(^|\s)(yarışın|gönderinin) ad|ismini/i;
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
@@ -68,7 +73,7 @@ async function handle(request) {
   const old = L(body?.caption, 2200);
   const ask = L(body?.ask, 600);
   const cur = body?.current && typeof body.current === "object" ? body.current : {};
-  const now = [["Başlık", L(cur.headline, 90)], ["Alt satır", S(cur.sub, 200)], ["Sporcu satırları", cleanPeople(cur.people)], ["Dilek satırı", S(cur.wish, 60)], ["Etiket", S(cur.tag, 18)]].filter(([, v]) => v);
+  const now = [["Başlık", L(cur.headline, 90)], ["Alt satır", S(cur.sub, 200)], ["Sporcu satırları", cleanPeople(cur.people)], ["Dilek satırı", S(cur.wish, 60)], ["Etiket", S(cur.tag, 24)], ["Yer · tarih", S(cur.info, 80)]].filter(([, v]) => v);
   // Özel gün: hazır şablonun günü (yıl dönümü sayısı bu yıla göre)
   const day = kind === "ozel" ? dayOf(body?.day) : null;
   const year = Math.round(Number(body?.year)) || new Date().getFullYear();
@@ -91,7 +96,7 @@ async function handle(request) {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 2500, timeoutMs: 22000 });
     const out = {
       // Başlık kısa ve bize dair (yarışın adı değil); değişiklik isteğinde başlık yalnız açıkça istenirse değişir
-      headline: ask && !/başlık/i.test(ask) && cur.headline ? L(cur.headline, 90) : L(raw?.headline, 90),
+      headline: ask && !HEAD.test(ask) && cur.headline ? L(cur.headline, 90) : L(raw?.headline, 90),
       // Yarış bağlıysa alt satır kalıp cümle (sporcumuz/sporcularımız + yer); 1-2 sporcunun adı orada geçtiği için ayrı satır yok
       // Değişiklik isteğinde (yarış bağlıyken) alt satır ve dilek yalnız açıkça istenirse değişir
       sub: race && (!ask || !/alt ?(satır|yazı)|cümle/i.test(ask)) ? (ask && S(cur.sub, 200)) || raceSub(race, kind) : S(raw?.sub, 200),
@@ -100,17 +105,19 @@ async function handle(request) {
       // Yarış bağlıysa dilek kalıp (sporcumuza/sporcularımıza başarılar, sonuçta tebrik)
       wish: race && (!ask || !/dilek|başarı|tebrik|son satır/i.test(ask)) ? (ask && S(cur.wish, 60)) || raceWish(race, kind) : S(raw?.wish, 60),
       // Etiket türün etiketi (YARIŞ DUYURUSU…); asistana "etiketi … yap" denirse yapay zekanınki
-      tag: (/etiket/i.test(ask) && S(raw?.tag, 18)) || kindOf(kind)[3] || S(raw?.tag, 18),
+      tag: (/etiket/i.test(ask) && S(raw?.tag, 24)) || (ask && S(cur.tag, 24)) || kindOf(kind)[3] || S(raw?.tag, 24),
+      // Yer · tarih satırı yalnız istenirse değişir ("tarihi 7-8 Kasım yap", "yeri Dikili olsun")
+      ...(ask && INFO.test(ask) && S(raw?.info, 80) ? { info: S(raw.info, 80) } : {}),
       caption: L(raw?.caption, 2200),
       hashtags: cleanTags(raw?.hashtags),
     };
     // Özel günde görsel yazıları hazır şablon (ya da mevcut hali); yalnız açıkça istenen değişir
     if (day) {
       const keep = (k, re, auto) => (ask && re.test(ask) ? out[k] : (ask && S(cur[k], 200)) || auto);
-      out.headline = keep("headline", /başlık/i, day.head(year));
+      out.headline = keep("headline", HEAD, day.head(year));
       out.sub = keep("sub", /alt ?(satır|yazı)|cümle/i, day.sub(year));
       out.wish = keep("wish", /dilek|son satır/i, day.wish(year));
-      out.tag = (/etiket/i.test(ask) && S(raw?.tag, 18)) || (ask && S(cur.tag, 18)) || day.tag;
+      out.tag = (/etiket/i.test(ask) && S(raw?.tag, 24)) || (ask && S(cur.tag, 24)) || day.tag;
       out.people = "";
     }
     if (!out.caption) throw new Error("boş cevap");

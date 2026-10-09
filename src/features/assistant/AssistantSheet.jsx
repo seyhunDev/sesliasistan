@@ -366,6 +366,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const chain = useRef([]); // sırada bekleyen cümleler
   const chainGen = useRef(0); // sohbet kapanınca bekleyen geçiş iptal olur
   const chainStep = useRef(false); // şu an çalışan cümle zincirden geldi (açık sayfa onu yutmasın)
+  const planNow = useRef(""); // görev listesinde şu an yapılan işin adı
+  const planFails = useRef([]); // yapılamayan işler (listenin sonunda "elle yap" denir)
   const chainRace = useRef(""); // zincirde açılan / değişen yarış: "bunun için gönderi hazırla"
   const [plan, setPlan] = useState([]); // görev listesi: [{ label, st: wait | run | done | fail }]
   const planOn = useRef(false); // görev listesi sürüyor
@@ -383,6 +385,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (gen !== chainGen.current) return;
       if (speaking.current && n < 60) return setTimeout(() => go(n + 1), 250);
       chainStep.current = true;
+      planNow.current = next.label || "";
       if (next.label) setWork(next.label);
       run(typeof next === "string" ? next : next.say, viaVoice);
     };
@@ -398,6 +401,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
     const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null } = extra;
     const awaiting = expect || !!pending || !!ok;
+    // Görev listesinin son işi: yapılamayanlar elle yapılsın diye söylenir
+    const badStep = !awaiting && planOn.current && failed(message);
+    if (badStep && planNow.current) planFails.current.push(planNow.current);
+    if (!awaiting && planOn.current && !chain.current.length && planFails.current.length) {
+      const f = planFails.current;
+      message = `${message} Yapamadığım: ${f.join(", ")}. ${f.length > 1 ? "Bunları" : "Bunu"} elle yapman gerekiyor.`;
+      planFails.current = [];
+    }
     if (!ok) okFlow.current = null; // onay kartı kalktıysa onay da biter
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
     if (!event?.asking) eventFlow.current = null; // soru kartı kalktıysa etkinlik sorusu da biter
@@ -410,7 +421,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     raceChoices.current = races;
     // Görev listesi: iş bitti (soru sormadıysa) → ✓ ya da ✗, sıradaki başlar
     if (!awaiting && planOn.current) {
-      const bad = failed(message);
+      const bad = badStep;
       setPlan((p) => {
         const i = p.findIndex((x) => x.st === "run");
         if (i < 0) return p;
@@ -843,6 +854,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     chainGen.current++;
     raceFollow.current = null;
     planOn.current = true;
+    planNow.current = tasks[0].label || "";
+    planFails.current = [];
     setPlan(tasks.map((x, i) => ({ label: x.label, st: i ? "wait" : "run" })));
     chainStep.current = true;
     setWork(tasks[0].label);
