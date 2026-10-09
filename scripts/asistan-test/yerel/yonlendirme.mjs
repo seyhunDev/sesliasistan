@@ -21,7 +21,7 @@ import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
 import { localCommand } from "@/lib/commands";
 import { precue } from "@/lib/precue";
 import { TASKS } from "@/lib/assistTasks";
-import { athleteCommand, callCommand, duesCommand, incomeCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { todayStr } from "@/lib/utils/format";
 import { suite } from "./ortak.mjs";
@@ -55,16 +55,27 @@ function route(s, ctx = {}) {
   if (!mf && !isStaff && !path.startsWith("/posts/") && wantsPost(s)) return "post";
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, races, today)))) return "raceOpen";
   if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) return owner ? "person" : "person(yetkisiz)";
-  const n = nav(s);
+  const n = !(racer && athleteOpenCommand(s)) && nav(s);
   if (n) return "navigate";
   if (!mf && wantsSchedule(s, path === "/schedule")) return "schedule";
-  const bday = !mf && !wantsNote(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
+  const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
   if (bday) return "birthday";
   if (undoLast(s)) return "undo";
   if (!isStaff && !mf && !isQuestion(s) && invoiceCommand(s)) return "invoice";
   if (!isStaff && owner && payeeAsk(s, today)) return "payee";
   // runMore (assistMore.js): kişi adları burada sporcu adı yerine de geçer
   if (!mf) {
+    const onRace = /^\/athletes\/races\/r/.test(path);
+    if (onRace && racer && raceHereCommand(s)) return "raceHere";
+    if (owner && receiptPayCommand(s)) return "receiptPay";
+    if (owner && racer && absentNotifyCommand(s)) return "absent";
+    if (shopClearCommand(s)) return "shopClear";
+    if (birthdayDeleteCommand(s)) return "bdayDelete";
+    if (owner && personDeleteCommand(s)) return "personDelete";
+    if (groupCreateCommand(s)) return "groupCreate";
+    if (onRace && racer && hotelAddCommand(s)) return "hotel";
+    if (racer && athleteOpenCommand(s) && matchPerson(athleteOpenCommand(s).name, names)) return "athleteOpen";
+    if (owner && invoiceTaskCommand(s)) return "invoiceTask";
     const cc = callCommand(s);
     if (cc?.hotel && /^\/athletes\/races\/r/.test(path)) return "call";
     if (cc && !cc.hotel && matchPerson(cc.who, names)) return "call";
@@ -98,7 +109,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"],
@@ -154,6 +165,16 @@ const CASES = {
   dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi"],
   income: ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "kano eğitimi için 3 bin lira nakit aldım", "hesaplara 500 lira gelir ekle"],
   athlete: ["yeni sporcu ekle: Can Tekin, 2014 doğumlu", "Can Tekin'i sporcu olarak ekle", "Ali Kaya'yı arşive al", "Zeynep'i arşivden çıkar", "Emre Şahin sporcusunu sil"],
+  raceHere: [["Ali 3. oldu", { path: "/athletes/races/r1" }], ["Ali'yi yarıştan çıkar", { path: "/athletes/races/r1" }], ["24 tekne yarıştı", { path: "/athletes/races/r1" }], ["Ayşe ödedi", { path: "/athletes/races/r1" }], ["yarışı planlara ekle", { path: "/athletes/races/r1" }], ["yarışı sil", { path: "/athletes/races/r1" }], ["Zeynep ikinci oldu", { path: "/athletes/races/r1" }]],
+  hotel: [["otel ekle: Foça Palas, 0232 812 34 56", { path: "/athletes/races/r1" }]],
+  receiptPay: ["F-0012 fişini ödendi yap", "Ali'nin fişlerini ödedim", "fişi ödendi işaretle", "F-3 fişi ödenmedi"],
+  absent: ["gelmeyenlerin velilerine haber ver", "dün gelmeyenlerin velilerine bildir", ["gelmeyenlerin velilerine haber ver", { path: "/athletes/attendance" }]],
+  shopClear: ["alınanları temizle", "alınanları listeden sil"],
+  bdayDelete: ["Ayşe'nin doğum gününü sil", "Ali Kaya'nın doğum gününü kaldır"],
+  personDelete: ["Ayşe Yılmaz'ı kişilerden sil", "Mehmet Öz'ü rehberden çıkar"],
+  groupCreate: ["Ali ve Ayşe ile Yelken Ekibi adında grup kur", "Gökhan ve Emre ile Bakım diye grup oluştur"],
+  athleteOpen: ["Ali Kaya'nın sporcu kartını aç"],
+  invoiceTask: ["Turkcell faturasını Ali'ye ver", "elektrik faturasını sil"],
   shopping: ["listeye süt ekle", "alışveriş listesine ekmek ve yumurta ekle", "alışveriş listesini oku", "listeden sütü sil"],
 };
 
@@ -195,6 +216,10 @@ const CROSS = [
   ["noteDone", "malzeme odası notunu arşive al", "not arşivi, sporcu arşivi değil"],
   ["send", "velilere yaz, aidat son günü 10 Ekim", "mesaj, aidat hatırlatması değil"],
   ["query", "kaç sporcu var", "soru, sporcu ekleme değil"],
+  ["send", "Ali'ye yaz, fişini ödedim", "mesaj, fiş ödemesi değil"],
+  ["query", "dün gelmeyenler kimdi?", "soru, veliye haber değil"],
+  ["send", "velilere yaz, gelmeyenler cumartesi telafi yapacak", "mesaj, gelmeyen bildirimi değil"],
+  ["delete", "Ali'nin doğum günü planını sil", "plan silme"],
 ];
 
 const { group } = suite("asistan");
@@ -217,5 +242,5 @@ for (const [task, list] of Object.entries(CASES)) {
 }
 group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s, why]) => [s, wrap(task, {}, true), why]));
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
-const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete"].includes(r) };
-group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al"].map((s) => [s, STAFF]));
+const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen"].includes(r) };
+group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil"].map((s) => [s, STAFF]));

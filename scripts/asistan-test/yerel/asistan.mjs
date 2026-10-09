@@ -525,7 +525,7 @@ group("Göreve göre ara yazı")([
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
     ["yazıya çevirme", { desc: "beklerken ne olduğu yazar", fn: () => [waitText({ transcribing: true }), waitText({})], ok: ([a, b]) => a === "Sesin yazıya çevriliyor" && b === "Anlaşılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2600 && /envanter/.test(p) }],
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2600 && /envanter/i.test(p) }],
   ]);
 }
 
@@ -577,6 +577,30 @@ group("Göreve göre ara yazı")([
     ["aidatları aç", { desc: "sayfa açma", fn: duesCommand, ok: (r) => r === null }],
     ["gönderiyi arşive kaldır", { desc: "gönderi arşivi", fn: postArchiveCommand, ok: (r) => r?.archived === true }],
     ["arşivden çıkar", { desc: "gönderi arşivden", fn: postArchiveCommand, ok: (r) => r?.archived === false }],
+  ]);
+  const M = await import("@/lib/assistMore");
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Elle yapılanlar asistanla (2026-10-09)")([
+    ["F-0012 fişini ödendi yap", C("fiş numarası", M.receiptPayCommand, (r) => r?.paid && r.no === 12)],
+    ["Ali'nin fişlerini ödedim", C("kişinin fişleri", M.receiptPayCommand, (r) => r?.paid && r.who === "Ali")],
+    ["F-3 fişi ödenmedi", C("geri al", M.receiptPayCommand, (r) => r?.paid === false && r.no === 3)],
+    ["fiş yükle", C("fiş kamerası değil", M.receiptPayCommand, (r) => r === null)],
+    ["gelmeyenlerin velilerine haber ver", C("bugün", M.absentNotifyCommand, (r) => r?.day === 0)],
+    ["dün gelmeyenlerin velilerine bildir", C("dün", M.absentNotifyCommand, (r) => r?.day === -1)],
+    ["dün gelmeyenler kimdi?", C("soru değil", M.absentNotifyCommand, (r) => r === null)],
+    ["alınanları temizle", C("temizle", M.shopClearCommand, (r) => r === true)],
+    ["Ayşe'nin doğum gününü sil", C("doğum günü silme", M.birthdayDeleteCommand, (r) => /ayşe/i.test(r?.name || ""))],
+    ["gönderiyi sil", C("gönderi silme", M.postDeleteCommand, (r) => r === true)],
+    ["yarışı sil", C("yarış silme", M.raceHereCommand, (r) => r?.op === "delete")],
+    ["yarışı planlara ekle", C("planlara", M.raceHereCommand, (r) => r?.op === "plan")],
+    ["24 tekne yarıştı", C("tekne sayısı", M.raceHereCommand, (r) => r?.op === "fleet" && r.n === 24)],
+    ["Ali 3. oldu", C("sonuç", M.raceHereCommand, (r) => r?.op === "result" && r.place === 3)],
+    ["Zeynep ikinci oldu", C("sonuç yazıyla", M.raceHereCommand, (r) => r?.op === "result" && r.place === 2)],
+    ["Ali'yi yarıştan çıkar", C("sporcu çıkar", M.raceHereCommand, (r) => r?.op === "remove")],
+    ["Ayşe ödedi", C("ücret ödendi", M.raceHereCommand, (r) => r?.op === "paid" && r.paid)],
+    ["Mehmet'i de ekle", C("ekleme yarış akışında", M.raceHereCommand, (r) => r === null)],
+    ["Ali ve Ayşe ile Yelken Ekibi adında grup kur", C("grup adı", M.groupCreateCommand, (r) => r?.name === "Yelken Ekibi")],
+    ["Ayşe Yılmaz'ı kişilerden sil", C("kişi silme", M.personDeleteCommand, (r) => /ayşe/i.test(r?.name || ""))],
   ]);
 }
 

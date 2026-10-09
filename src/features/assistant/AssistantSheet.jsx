@@ -34,16 +34,20 @@ import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
 import { createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
-import { athleteCommand, callCommand, duesCommand, incomeCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { cleanResults } from "@/lib/raceResults";
+import { emptyBudget } from "@/features/athletes/budget";
+import { totalTL } from "@/lib/receipts";
+import { addDays } from "@/lib/utils/format";
 import { useCall } from "@/features/call/CallProvider";
 import { canCall } from "@/lib/call";
 import { unpaidRoster } from "@/lib/duesRemind";
-import { raceHotels, telOf } from "@/features/athletes/races";
+import { addRacePlan, cleanHotels, deleteRace, raceHotels, saveRace, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
 import { findRace, nearest, pickChoice, raceAsk, raceJobHere, rankRaces, sure, wantsRaceOpen } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
-import { LISTS, addItems, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
+import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
 import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
 import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
@@ -82,7 +86,7 @@ import { applyOps, dropItem, itemLabel, statsText, pickInv } from "@/features/in
 import { askInventory, changeInventory, createInventory, lastInv, loadInventories, setLastInv } from "@/features/inventory/inventory";
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
-import { loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
+import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeAsk, payeeMoves, payeeOf } from "@/lib/payee";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
@@ -144,7 +148,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const tts = useTts();
   const { profile } = useAuth();
   const { openBirthday } = useBirthday();
-  const { plans, tasks, notes, receipts, birthdays, lessons = [], myUid: dataUid, toggleTask, updateRecord, deleteRecord, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply, isLocked } = useData();
+  const { plans, tasks, notes, receipts, birthdays, lessons = [], myUid: dataUid, toggleTask, updateRecord, deleteRecord, deleteSeries, rejectDelete, markPaid, members, allMembers, isStaff, saveDrafts, saveBirthday, addReply, isLocked } = useData();
   // Çalışan adları (ana hesap): ses çevirisine ipucu, yapay zekaya sorumlu atama ve "kimde ne iş var" soruları için
   const staff = isStaff ? [] : members;
   const staffNames = staff.map((m) => m.name).filter(Boolean);
@@ -223,7 +227,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const live = useRef({});
 
   // Mesaj alıcıları: sohbet rehberindeki kişiler (ana hesap "ana hesap" adıyla da bulunur)
-  const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [], chats = [] } = useChat() || {};
+  const { people: chatPeople = [], send: chatSend, uid: myUid, groupIds = [], chats = [], createGroup } = useChat() || {};
   const { startCall, busy: callBusy } = useCall() || {}; // "Ali'yi ara": uygulama içi sesli arama
   const contacts = chatPeople.map((p) => ({ name: p.name || "", aliases: p.role === "owner" ? ["ana hesap", "patron"] : [], p })).filter((c) => c.name);
   // Mesajlar'da kurulan gruplar (üyesi olduklarım) da alıcıdır
@@ -709,10 +713,20 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         out.missing++;
         continue;
       }
-      if (a.op === "delete") {
+      if (a.op === "delete" || a.op === "delete_series" || a.op === "approve_delete") {
         out.deletes.push(a);
         continue;
       }
+      if (a.op === "reject_delete" && rec.deleteReq) {
+        rejectDelete(a.kind, a.id);
+        changed.push(`${rec.title}, silme isteği reddedildi`);
+      } else if (a.kind === "plan" && a.op === "uncancel") {
+        if (rec.status === "cancelled") updateRecord("plan", a.id, { status: "planned", cancelReason: "", cancelledAt: null }, by);
+        changed.push(`${rec.title}, iptal geri alındı`);
+      } else if (a.kind === "note" && (a.op === "pin_note" || a.op === "unpin_note")) {
+        updateRecord("note", a.id, { pinned: a.op === "pin_note" }, by);
+        changed.push(`${rec.title}, ${a.op === "pin_note" ? "sabitlendi" : "sabitleme kaldırıldı"}`);
+      } else
       if (a.kind === "task" && (a.op === "complete_task" || a.op === "reopen_task")) {
         if (rec.done !== (a.op === "complete_task")) toggleTask(a.id);
         (a.op === "complete_task" ? ticked : opened2).push(rec.title);
@@ -723,6 +737,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         (on ? notesDone : notesBack).push(rec.title);
       } else if (a.op === "update") {
         const patch = buildPatch(a.kind, a.patch, rec);
+        // Sorumlu değişikliği ("motor görevini Ali'ye ver"): adlar kişi kimliklerine
+        if (canAssign && Array.isArray(a.patch?.assignTo)) patch.assignees = namesToUids(a.patch.assignTo, members);
         if (!Object.keys(patch).length) continue;
         updateRecord(a.kind, a.id, patch, by);
         changed.push(describeAction(a, rec).replace(/^Güncelle: /, "").replace(" → ", ", "));
@@ -744,7 +760,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
   // Silme onayı (görev listesinin onay adımı): kayıtlar kartta görünür, "evet / onayladım" ile silinir
   function askDelete(actions, viaVoice, lead = "", msg = "") {
-    const names = actions.map((a) => find(a.kind, a.id)).filter(Boolean).map((x) => `“${x.title || "Başlıksız"}”`);
+    const names = actions
+      .map((a) => [a, find(a.kind, a.id)])
+      .filter(([, x]) => x)
+      .map(([a, x]) => `“${x.title || "Başlıksız"}”${a.op === "delete_series" ? " (bu ve sonraki haftalar)" : a.op === "approve_delete" ? " (silme isteği)" : ""}`);
     const said = msg || `${lead}${names.length > 1 ? `${names.slice(0, -1).join(", ")} ve ${names.at(-1)}` : names[0] || "Bu kayıt"} silinsin mi?`;
     reply(said, { show: actions.map((a) => ({ kind: a.kind, id: a.id })), pending: { actions }, engine: "local", expect: true }, viaVoice);
   }
@@ -902,7 +921,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // "Can Tekin'i sporcu olarak ekle" kulübe sporcu açar (aşağıda, runMore); kişi kartı değil
     if (wantsPerson(s) && !(profile?.role === "owner" && !isStaff && racer && athleteCommand(s)?.op === "add")) return startPerson(s, viaVoice);
     // Sayfa ya da sohbet açma ("yoklamayı aç", "ana sayfaya dön", "ekip ile mesaj sayfamı aç"): yapay zekaya gitmeden
-    const nav = localNavigate(s, { names: contacts.map((c) => c.name) });
+    // "Ali Kaya'nın sporcu kartını aç" sohbet açma değil, sporcu kartı (runMore)
+    const nav = !(racer && athleteOpenCommand(s)) && localNavigate(s, { names: contacts.map((c) => c.name) });
     if (nav) {
       record(s, `nav:${nav.page || (nav.back ? "back" : "messages")}`, "local");
       countHit("local");
@@ -915,7 +935,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!msgFirst && wantsSchedule(s, path === "/schedule")) return runSchedule(s, viaVoice);
     // Doğum günü cümlesi ("Annemin doğum günü 12 Mart"): doğum günü formu dolu açılır, sen kaydedersin (her yıl tekrar eder)
     // "Not al: Ali'nin doğum günü …" nottur, doğum günü kaydı değil
-    const bday = !msgFirst && !wantsNote(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
+    const bday = !msgFirst && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
     if (bday) {
       // Ad ve tarih belliyse hemen kaydedilir (kişiye özel takvime); eksikse form dolu açılır
       if (bday.name && bday.month) {
@@ -1246,9 +1266,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     for (const a of pend.actions) {
       const rec = find(a.kind, a.id);
       if (!rec) continue;
-      if (a.op === "delete") {
+      if (a.op === "delete" || a.op === "approve_delete") {
         deleteRecord(a.kind, a.id);
         n++;
+      } else if (a.op === "delete_series" && rec.seriesId) {
+        n += (await deleteSeries(rec.seriesId, rec.date).catch(() => 0)) || 1;
       } else if (a.op === "update") {
         const patch = buildPatch(a.kind, a.patch, rec);
         if (Object.keys(patch).length) {
@@ -1257,7 +1279,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         }
       }
     }
-    const del = pend.actions.every((a) => a.op === "delete");
+    const del = pend.actions.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op));
     toast(n ? (del ? "Silindi" : "Yapıldı") : "Kayıt bulunamadı");
     navigator.vibrate?.([10, 40, 10]);
     setCards((c) => ({ ...c, pending: null, awaiting: false }));
@@ -1275,7 +1297,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
     queue.current = [];
-    done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => a.op === "delete") ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+    done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
   }
 
   // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
@@ -1543,7 +1565,282 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     reply(text, { engine: "local", ok: { label } }, viaVoice);
   }
   const owner = profile?.role === "owner" && !isStaff;
+  // ---- Elle yapılan diğer işler (lib/assistMore.js): fiş ödendi, gelmeyenlerin velilerine haber, alınanları temizle,
+  // doğum günü / kişi silme, açık yarışta sporcu çıkarma, sonuç, ödeme, yarışı silme ve planlara ekleme, mesaj grubu kurma ----
+  async function saveHereRace(r, next) {
+    await saveRace(raceOrg, myUid || profile.uid, next);
+    races.current = races.current.map((x) => (x.id === r.id ? next : x));
+    window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+  }
+  async function runExtra(s, viaVoice) {
+    // Yarış sayfasında: "Ali'yi yarıştan çıkar", "Ali 3. oldu", "24 tekne yarıştı", "Ali ödedi", "yarışı planlara ekle", "yarışı sil"
+    const rh = curRace && racer ? raceHereCommand(s) : null;
+    const r = rh ? races.current.find((x) => x.id === curRace) : null;
+    if (rh && r) {
+      if (rh.op === "delete") {
+        askOk(`“${r.name}” yarışı silinsin mi? Bütçesi, evrak bilgisi ve notları da silinir, geri alınamaz.`, "Sil", async (v) => {
+          try {
+            await deleteRace(raceOrg, r.id);
+            races.current = races.current.filter((x) => x.id !== r.id);
+            park();
+            router.push("/athletes/races");
+            done(`${r.name} yarışını sildim.`, { engine: "local" }, v);
+          } catch {
+            reply("Yarışı silemedim.", { engine: "local" }, v);
+          }
+        }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+        return true;
+      }
+      if (rh.op === "plan") {
+        const ok = await addRacePlan(saveDrafts, r, { uid: profile.uid, name: profile.name || "" }).catch(() => false);
+        if (ok) await saveHereRace(r, { ...r, planAdded: true }).catch(() => {});
+        if (ok) done(`${r.name} planlara eklendi.`, { engine: "local" }, viaVoice);
+        else reply("Planlara ekleyemedim; yarışın tarihi yazılı mı?", { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (rh.op === "fleet") {
+        await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), fleet: rh.n }) });
+        done(`Tekne sayısı ${rh.n} olarak yazıldı.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+      const mine = athletes.filter((a) => (r.athleteIds || []).includes(a.id));
+      const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
+      const a = hit ? mine.find((x) => x.studentName === hit) : null;
+      if (!a) {
+        reply(`${rh.name} bu yarışın sporcuları arasında yok.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      try {
+        if (rh.op === "remove") {
+          await saveHereRace(r, { ...r, athleteIds: r.athleteIds.filter((x) => x !== a.id) });
+          done(`${a.studentName} yarıştan çıkarıldı.`, { engine: "local" }, viaVoice);
+        } else if (rh.op === "result") {
+          const rows = { ...(r.results?.rows || {}), [a.id]: { ...(r.results?.rows?.[a.id] || {}), place: rh.place } };
+          await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), rows }) });
+          done(`Yazdım: ${a.studentName} ${rh.place}.${r.results?.fleet ? ` / ${r.results.fleet}` : ""}.`, { engine: "local" }, viaVoice);
+        } else {
+          const b = r.budget || emptyBudget(r);
+          const paid = { ...(b.paid || {}) };
+          if (rh.paid) paid[a.id] = true;
+          else delete paid[a.id];
+          await saveHereRace(r, { ...r, budget: { ...b, paid } });
+          done(rh.paid ? `${a.studentName} ödedi olarak işaretlendi.` : `${a.studentName} ödemedi olarak işaretlendi.`, { engine: "local" }, viaVoice);
+        }
+      } catch {
+        reply("Yarışa kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    // Fiş ödendi (ana hesap, çalışanın fişi): "F-0012 fişini ödendi yap", "Ali'nin fişlerini ödedim"
+    const rp = owner ? receiptPayCommand(s) : null;
+    if (rp) {
+      const want = rp.paid ? "pending" : "paid";
+      let list = receipts.filter((x) => x.payStatus === want);
+      if (rp.no) list = receipts.filter((x) => Number(x.no) === rp.no);
+      else if (rp.who) {
+        const m = matchPerson(rp.who, members);
+        const u = m ? members.find((x) => x.name === m)?.uid : "";
+        list = u ? list.filter((x) => x.createdByUid === u) : [];
+      }
+      if (!list.length) {
+        reply(rp.no ? `F-${String(rp.no).padStart(4, "0")} numaralı fiş bulamadım.` : rp.paid ? "Ödeme bekleyen fiş görünmüyor." : "Ödendi işaretli fiş bulamadım.", { engine: "local", nav: "receipts" }, viaVoice);
+        return true;
+      }
+      if (!rp.no && !rp.who && list.length > 1) {
+        reply(`${list.length} fiş ödeme bekliyor. Fiş numarasıyla ya da kimin fişi olduğunu söyle (ör. “Ali'nin fişlerini ödedim”).`, { engine: "local", nav: "receipts" }, viaVoice);
+        return true;
+      }
+      await Promise.all(list.map((x) => markPaid(x.id, rp.paid)));
+      const sum = list.reduce((t, x) => t + totalTL(x), 0);
+      done(`${list.length === 1 ? "Fiş" : `${list.length} fiş`} ${rp.paid ? "ödendi" : "ödeme bekliyor"} olarak işaretlendi${sum ? `, toplam ${money(sum).replace(/,00$/, "")} TL` : ""}.${rp.paid ? " Ekleyene bildirim gitti." : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
+      return true;
+    }
+    // Gelmeyenlerin velilerine haber (yoklama): uygulamadaki velilere bildirim, onayla
+    const an = owner && racer ? absentNotifyCommand(s) : null;
+    if (an) {
+      setPhase("thinking");
+      const day = an.day ? addDays(an.day) : todayStr();
+      let absent;
+      try {
+        const { athletes } = await loadAthletes({ fresh: true });
+        absent = athletes.filter((a) => isActive(a) && a.att?.[day.slice(0, 4)]?.[day.slice(5)] === "absent");
+      } catch {
+        reply("Yoklamayı okuyamadım.", { engine: "local" }, viaVoice);
+        return true;
+      }
+      const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m.uid]));
+      const ids = absent.map((a) => linked.get(a.id)).filter(Boolean);
+      const when = an.day ? "Dün" : "Bugün";
+      if (!absent.length) {
+        reply(`${when} yoklamada gelmedi yazılan sporcu yok.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (!ids.length) {
+        reply(`${when} ${absent.length} sporcu gelmedi ama velileri uygulamada değil. Yoklama sayfasındaki WhatsApp düğmeleriyle haber verebilirsin.`, { engine: "local", nav: "attendance" }, viaVoice);
+        return true;
+      }
+      askOk(`${when} gelmeyen ${absent.length} sporcudan ${ids.length} tanesinin velisine uygulamadan bildirim gitsin mi? (${absent.map((a) => a.studentName).slice(0, 6).join(", ")})`, "Gönder", async (v) => {
+        try {
+          const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "absent", date: day, ids }) });
+          const d = await res.json().catch(() => ({}));
+          done(res.ok ? `Haber verdim${d.parents ? `: ${d.parents} veli` : ""}.` : "Bildirim gönderilemedi (bugün zaten gönderilmiş olabilir).", { engine: "local" }, v);
+        } catch {
+          reply("Bildirim gönderilemedi.", { engine: "local" }, v);
+        }
+      }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Alışveriş: "alınanları temizle"
+    const shopLs = listsFor(myKind, members);
+    if (shopLs.length && shopClearCommand(s)) {
+      const list = /ekip|kulüp/iu.test(s) && shopLs.includes("team") ? "team" : shopLs[0];
+      try {
+        const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const n = items.filter((i) => i.done).length;
+        if (n) await clearDone(profile.orgId, items);
+        done(n ? `${LISTS[list].name} listesinden alınan ${n} şeyi temizledim.` : `${LISTS[list].name} listesinde alınmış işaretli bir şey yok.`, { engine: "local", nav: "shopping" }, viaVoice);
+      } catch {
+        reply("Listeyi temizleyemedim.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    // Doğum günü silme: "Ayşe'nin doğum gününü sil" (onayla)
+    const bd = birthdayDeleteCommand(s);
+    if (bd) {
+      const hit = matchPerson(bd.name, birthdays.map((b) => b.name || ""));
+      const b = hit ? birthdays.find((x) => x.name === hit) : null;
+      if (!b) {
+        reply(`${bd.name} için kayıtlı doğum günü bulamadım.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      askOk(`${b.name} doğum günü silinsin mi?`, "Sil", (v) => {
+        deleteRecord("birthday", b.id);
+        done(`${b.name} doğum gününü sildim.`, { engine: "local" }, v);
+      }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Kişi silme (ana hesap, hesabı olmayan kişi): "Ayşe Yılmaz'ı kişilerden sil" (onayla)
+    const pd = owner ? personDeleteCommand(s) : null;
+    if (pd) {
+      const live = members.filter((m) => m.status !== "left");
+      const hit = matchPerson(pd.name, live);
+      const m = hit ? live.find((x) => x.name === hit) : null;
+      if (!m) {
+        reply(`${pd.name} kişilerde yok.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (m.account !== false) {
+        reply(`${m.name} uygulamada hesabı olan biri; hesabı kapatmayı Kişiler sayfasından onun kartında yap.`, { engine: "local", nav: "people" }, viaVoice);
+        return true;
+      }
+      askOk(`${m.name} kişilerden silinsin mi?`, "Sil", async (v) => {
+        try {
+          await setDoc(doc(db, "orgs", dataUid || profile.uid, "members", m.uid), { status: "left", leftAt: new Date().toISOString() }, { merge: true });
+          done(`${m.name} kişilerden silindi.`, { engine: "local" }, v);
+        } catch {
+          reply("Kişiyi silemedim.", { engine: "local" }, v);
+        }
+      }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Mesaj grubu kurma: "Ali, Ayşe ve Mehmet ile Yelken Ekibi adında grup kur"
+    const gc = createGroup ? groupCreateCommand(s) : null;
+    if (gc) {
+      const words = gc.t.replace(/['’]\p{L}*/gu, " ");
+      const picked = contacts.filter((c) => c.p.uid !== myUid && c.name.split(" ")[0].length > 1 && new RegExp(`(^|\\s)${c.name.split(" ")[0].toLocaleLowerCase("tr-TR")}(\\s|$|,)`, "u").test(words));
+      if (!gc.name || !picked.length) {
+        reply(!gc.name ? "Grubun adı ne olsun? Örnek: “Ali ve Ayşe ile Yelken Ekibi adında grup kur”." : "Gruba kimleri ekleyeyim? Adlarını söyle.", { engine: "local" }, viaVoice);
+        return true;
+      }
+      try {
+        const id = await createGroup(gc.name, picked.map((c) => c.p.uid));
+        park();
+        router.push(`/messages?c=${encodeURIComponent(id)}`);
+        leave(`${gc.name} grubunu kurdum: ${picked.map((c) => c.name).join(", ")}.`, viaVoice);
+      } catch {
+        reply("Grubu kuramadım.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    return false;
+  }
   async function runMore(s, viaVoice) {
+    if (await runExtra(s, viaVoice)) return true;
+    // Yarış sayfasında otel ekleme: "otel ekle: Foça Palas, 0232 812 34 56"
+    const hc = curRace && racer ? hotelAddCommand(s) : null;
+    if (hc) {
+      const r = races.current.find((x) => x.id === curRace);
+      if (!r) return false;
+      try {
+        const hotels = cleanHotels([...raceHotels(r), { name: hc.name, phone: hc.phone }]);
+        const next = { ...r, hotels };
+        await saveRace(raceOrg, myUid || profile.uid, next);
+        races.current = races.current.map((x) => (x.id === r.id ? next : x));
+        window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+        done(`Ekledim: ${hc.name}${hc.phone ? `, ${hc.phone}` : ""}. Özet › Konaklama'da görünür.`, { engine: "local" }, viaVoice);
+      } catch {
+        reply("Oteli kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+    // Sporcu kartı: "Ali Kaya'nın sporcu kartını aç"
+    const ao = racer ? athleteOpenCommand(s) : null;
+    if (ao) {
+      const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+      const hit = matchPerson(ao.name, athletes.map((a) => a.studentName));
+      const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+      if (!a) return false;
+      park();
+      router.push(`/athletes/${a.id}`);
+      leave(`${a.studentName} kartını açtım.`, viaVoice);
+      return true;
+    }
+    // Fatura: "Turkcell faturasını Ali'ye ver" (görevliye bildirim gider), "Turkcell faturasını sil" (onayla)
+    const it = owner ? invoiceTaskCommand(s) : null;
+    if (it) {
+      let list;
+      try {
+        list = await loadInvoices(profile.orgId);
+      } catch {
+        reply("Faturaları okuyamadım.", { engine: "local" }, viaVoice);
+        return true;
+      }
+      const { pick, list: many } = pickInvoice(it.t, list, it.op === "assign" ? "paid" : "any");
+      if (!pick) {
+        reply(many.length ? `Hangi fatura? ${many.slice(0, 4).map((x) => x.seller).join(", ")}. Firmanın adıyla söyle.` : "Fatura bulamadım.", { engine: "local", nav: "invoices" }, viaVoice);
+        return true;
+      }
+      if (it.op === "delete") {
+        askOk(`${pick.seller} faturası (${amountText(pick)}) dosyası ve görevi ile silinsin mi? Geri alınamaz.`, "Sil", async (v) => {
+          try {
+            await deleteInvoice(profile.orgId, pick);
+            window.dispatchEvent(new Event("sa-invoices-saved"));
+            done(`${pick.seller} faturasını sildim.`, { engine: "local", nav: "invoices" }, v);
+          } catch {
+            reply("Faturayı silemedim.", { engine: "local" }, v);
+          }
+        }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+        return true;
+      }
+      const who = matchPerson(it.who, members.filter((m) => m.account !== false && m.status !== "left"));
+      const m = who ? members.find((x) => x.name === who && x.account !== false) : null;
+      if (!m) {
+        reply(`${it.who} görev verilebilecek kişiler arasında yok.`, { engine: "local" }, viaVoice);
+        return true;
+      }
+      try {
+        let inv = pick;
+        if (!inv.taskId || !tasks.some((x) => x.id === inv.taskId)) inv = await ensureTask(profile.orgId, inv, { uid: profile.uid, name: profile.name || "" });
+        await updateRecord("task", inv.taskId, { assignees: [m.uid] }, { name: profile.name || "" });
+        window.dispatchEvent(new Event("sa-invoices-saved"));
+        done(`${pick.seller} faturasının ödeme görevi ${m.name} kişisine verildi, bildirim gitti.`, { engine: "local", nav: "invoices" }, viaVoice);
+      } catch {
+        reply("Görevi veremedim, tekrar dene.", { engine: "local" }, viaVoice);
+      }
+      return true;
+    }
     // Arama: "Ali'yi ara" (uygulama içi sesli arama), yarış sayfasında "oteli ara" (telefon)
     const cc = callCommand(s);
     if (cc?.hotel && curRace) {

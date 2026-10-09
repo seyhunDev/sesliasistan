@@ -52,6 +52,7 @@ export function describeAction(a, rec) {
   else if (p.allDay) parts.push("tüm gün");
   if (p.place) parts.push(`yer ${p.place}`);
   if (p.body) parts.push("not metni");
+  if (Array.isArray(p.assignTo)) parts.push(p.assignTo.length ? `sorumlu ${p.assignTo.join(", ")}` : "sorumlu yok");
   return `Güncelle: ${name} → ${parts.join(", ") || "değişiklik"}`;
 }
 

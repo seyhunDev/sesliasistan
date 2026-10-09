@@ -141,7 +141,7 @@ export function invoiceCommand(text) {
 }
 // Cümledeki firma adına göre fatura seçer (yoksa tek açık fatura) → { pick, list }
 export function pickInvoice(t, invoices, op = "paid") {
-  const pool = invoices.filter((x) => (op === "paid" ? x.status !== "paid" : x.status === "paid"));
+  const pool = op === "any" ? invoices : invoices.filter((x) => (op === "paid" ? x.status !== "paid" : x.status === "paid"));
   const said = new Set(words(t));
   const scored = pool
     .map((x) => ({ x, n: sellerWords(x.seller).filter((w) => said.has(w) || [...said].some((s) => s.length >= 4 && w.startsWith(s))).length }))
