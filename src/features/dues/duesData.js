@@ -1,10 +1,10 @@
 "use client";
 
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
-import { cashMoves, filedMoves, rangeOf } from "@/lib/dues";
+import { cashMoves, filedMoves, incomeMoves, rangeOf } from "@/lib/dues";
 import { addFileMoves, dropFileMoves, loadLedger } from "@/features/bank/ledgerData";
 
 // Aidat verisi (yalnız ana hesap; kurallar ana hesaba orgs altındaki her koleksiyonu açıyor). Okuma sayfa açılınca bir kez.
@@ -66,11 +66,28 @@ export async function loadDuesRange(orgId, yms) {
   const [c, ...ms] = await Promise.all([getDoc(dues(orgId, "settings")), ...yms.map((ym) => getDoc(dues(orgId, ym)))]);
   return { cfg: c.data() || {}, months: Object.fromEntries(yms.map((ym, i) => [ym, ms[i].data() || {}])) };
 }
-// Nakit aidatlar (Hesaplar'da gelir): aidat kayıtlarının hepsi tek sorguda (ay sayısı kadar okuma) → hareket listesi
-export async function loadCashMoves(orgId) {
-  const snap = await getDocs(collection(db, "orgs", orgId, "dues"));
+// Hesaplar'daki nakit gelirler: Aidatlar'da yazılan nakit aidatlar + elle girilen gelirler (incomes).
+// Aidat kayıtları ve gelirler iki sorguda (belge sayısı kadar okuma) → { moves, roster, cfg }
+export async function loadCash(orgId) {
+  const [snap, inc] = await Promise.all([getDocs(collection(db, "orgs", orgId, "dues")), getDocs(collection(db, "orgs", orgId, "incomes")).catch(() => null)]);
   const all = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
-  return cashMoves(all, all.settings?.roster || []);
+  const cfg = all.settings || {};
+  const moves = [...cashMoves(all, cfg.roster || []), ...incomeMoves((inc?.docs || []).map((d) => ({ id: d.id, ...d.data() })))].sort((a, b) => b.ts - a.ts);
+  return { moves, roster: cfg.roster || [], cfg };
 }
+export const loadCashMoves = (orgId) => loadCash(orgId).then((r) => r.moves);
+
+// Hesaplar › Gelir ekle. Aidat: o ayın aidat kaydına nakit ödeme olarak (Aidatlar'da o ay ödendi görünür);
+// diğer türler: incomes koleksiyonuna.
+export async function addIncome(orgId, { cat, who, athleteId, ym, amount, date, note }) {
+  const at = new Date().toISOString();
+  if (cat === "Aidat" && athleteId && ym) {
+    const entry = { amt: amount, via: "cash", date, at, by: "hesaplar", ...(note ? { desc: note } : {}) };
+    return setDoc(dues(orgId, ym), { paid: { [athleteId]: arrayUnion(entry) } }, { merge: true });
+  }
+  return addDoc(collection(db, "orgs", orgId, "incomes"), clean({ cat, who, amount, date, note, at }));
+}
+export const deleteIncome = (orgId, id) => deleteDoc(doc(db, "orgs", orgId, "incomes", id));
+
 // Aralığın banka hareketleri (banka defterinden): Excel'in getirdikleri + günlük mailler, aynı hareket bir kez
 export const loadMovementsRange = (uid, fromYm, toYm) => loadLedger(uid, fromYm, toYm);

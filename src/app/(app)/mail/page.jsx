@@ -17,7 +17,10 @@ import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { loadCashMoves } from "@/features/dues/duesData";
+import { addIncome, deleteIncome, loadCash } from "@/features/dues/duesData";
+import { AddIncome } from "@/features/bank/AddIncome";
+import { Sheet } from "@/components/ui/Sheet";
+import { useToast } from "@/components/ui/ToastProvider";
 import { report } from "@/lib/bankAnalyze";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
@@ -60,7 +63,12 @@ export default function MailPage() {
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
   const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
-  const [cashList, setCashList] = useState([]); // Aidatlar'da yazılan nakit ödemeler (gelir, "Nakit" etiketiyle)
+  const [cashData, setCashData] = useState({ moves: [], roster: [], cfg: {} }); // nakit aidatlar + elle girilen gelirler
+  const cashList = cashData.moves;
+  const [addOpen, setAddOpen] = useState(false); // "+": nakit gelir ekle
+  const [manual, setManual] = useState(null); // dokunulan elle girilmiş gelir (sil)
+  const [cashTick, setCashTick] = useState(0);
+  const toast = useToast();
   const [inboxOpen, setInboxOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const [q, setQ] = useState(""); // Son hareketler'de arama
@@ -100,14 +108,14 @@ export default function MailPage() {
   useEffect(() => {
     if (!owner) return;
     let live = true;
-    loadCashMoves(profile.uid).then(
-      (l) => live && setCashList(l),
+    loadCash(profile.uid).then(
+      (r) => live && setCashData(r),
       () => {},
     );
     return () => {
       live = false;
     };
-  }, [owner, profile?.uid, tick]);
+  }, [owner, profile?.uid, tick, cashTick]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
   const pending = (mails || [])
@@ -170,6 +178,16 @@ export default function MailPage() {
   const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashList.length, cashSum: cashList.reduce((n, x) => n + x.amount, 0) } : null;
   // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
   const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
+  const saveIncome = (x) =>
+    addIncome(profile.uid, x).then(
+      () => (setAddOpen(false), setCashTick((n) => n + 1), toast(x.cat === "Aidat" ? "Aidat yazıldı, Aidatlar'da da ödendi görünür" : "Nakit gelir eklendi")),
+      () => (toast("Kaydedilemedi, internet bağlantını kontrol et"), false),
+    );
+  const dropIncome = (x) =>
+    deleteIncome(profile.uid, x.incomeId).then(
+      () => (setManual(null), setCashTick((n) => n + 1), toast("Silindi")),
+      () => toast("Silinemedi"),
+    );
   const addName = (name) => {
     const n = name.trim();
     if (!n) return setAdding(false);
@@ -181,6 +199,9 @@ export default function MailPage() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Hesaplar" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
+        <button type="button" onClick={() => setAddOpen(true)} aria-label="Nakit gelir ekle" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_1px_3px_rgba(38,40,44,.12)] active:scale-95">
+          <Icon name="plus" className="size-5" />
+        </button>
         <Link href="/mail/setup" aria-label="Mail ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
           <Icon name="wrench" className="size-5" />
         </Link>
@@ -324,7 +345,7 @@ export default function MailPage() {
                   </p>
                   {shown.length > 0 && (
                     <div className={card}>
-                      <Moves list={shown.slice(0, shownMax)} today={today} />
+                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} />
                       {shown.length > shownMax && (
                         <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
                           Daha fazla göster ({shown.length - shownMax} kaldı)
@@ -425,6 +446,20 @@ export default function MailPage() {
           </div>
         </>
       )}
+      <AddIncome open={addOpen} onClose={() => setAddOpen(false)} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
+      <Sheet open={!!manual} onClose={() => setManual(null)} title="Nakit gelir">
+        {manual && (
+          <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            <p className="text-[1.5rem] font-bold tabular-nums text-ok">+{money(manual.amount)} TL</p>
+            <p className="text-[0.9375rem]">
+              <b className="font-semibold">{manual.who}</b> · {manual.note} · {manual.date}
+            </p>
+            <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
+              Bu geliri sil
+            </button>
+          </div>
+        )}
+      </Sheet>
     </main>
   );
 }
@@ -531,7 +566,7 @@ function AddName({ onAdd, onClose }) {
 }
 
 // Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
-function Moves({ list, today }) {
+function Moves({ list, today, onManual }) {
   const dayOf = (x) => localDate(new Date(x.ts).toISOString());
   return (
     <ul>
@@ -542,7 +577,7 @@ function Moves({ list, today }) {
         return (
           <li key={x.id}>
             {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-            <div className="flex h-14 items-center gap-3 px-4">
+            <div onClick={x.manual && onManual ? () => onManual(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${x.manual && onManual ? "cursor-pointer" : ""}`}>
               <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
                 {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
               </span>
@@ -551,7 +586,7 @@ function Moves({ list, today }) {
                   <b className="truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
                   {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">Nakit ödendi</span>}
                 </span>
-                <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), x.cat || x.kind].filter(Boolean).join(" · ")}</small>
+                <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), !x.cash && (x.cat || x.kind)].filter(Boolean).join(" · ")}</small>
               </span>
               <span className="shrink-0 text-right">
                 <b className={`block text-[0.9375rem] font-semibold tabular-nums ${x.amount > 0 ? "text-ok" : ""}`}>{signed(x.amount, x.currency)}</b>

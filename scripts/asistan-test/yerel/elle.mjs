@@ -984,6 +984,10 @@ group("Hesaplar arama ve eklenen adlar")([
     const l = D.cashMoves({ settings: { roster: [] }, "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05" }, { amt: 1500, via: "eft", mov: "m1" }] } }, "2026-09": { paid: { a1: [{ amt: 1000, via: "cash", at: "2026-09-03T10:00:00Z" }] } } }, [{ id: "a1", studentName: "Deniz Şahin" }]);
     return l.length === 2 && l[0].cash && l[0].who === "Deniz Şahin" && l[0].amount === 1500 && l[0].date === "05.10.2026" && D.monthOf(l[0]) === "2026-10" && l[1].note === "Eylül 2026 aidatı" && PY.nameMoves(l, "Deniz Şahin").length === 2 && PY.topPayers(l)[0].sum === 2500;
   })],
+  ["elle nakit gelir", F("tür, kişi, tarih; Hesaplar'da hareket", () => {
+    const [m] = D.incomeMoves([{ id: "x1", who: "Ali Kaya", amount: 2500, cat: "Kano eğitimi", note: "2 ders", date: "2026-10-08" }, { id: "x2", amount: 0 }]);
+    return m && m.manual && m.cash && m.who === "Ali Kaya" && m.cat === "Kano eğitimi" && m.note === "Kano eğitimi · 2 ders" && D.monthOf(m) === "2026-10" && D.INCOME_CATS.includes("Bağış") && PY.searchMoves([m], "kano").length === 1;
+  })],
   ["ad listesi", F("boşlar ve tekrarlar atılır", () => { const n = PY.namesOf({ payeeNames: [" Ali Kaya ", "", "ALI KAYA", "Ayşe Demir"] }); return n.length === 2 && n[0] === "Ali Kaya"; })],
 ]);
 
