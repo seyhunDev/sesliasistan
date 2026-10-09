@@ -159,7 +159,8 @@ const BY_WORK = Object.fromEntries(TASKS.filter((x) => x.work).map((x) => [x.wor
 // text: kullanıcının isteği (varsa ilk satır ondan: "Cumhuriyet yarışı oluşturuluyor"). Ses yazıya çevrilirken (istek henüz
 // bilinmiyor) yazı yok: "ses analiz ediliyor" gibi teknik yazılar gösterilmez, küre rengi bekleniyor der.
 export function waitStages(work, { transcribing = false, text = "" } = {}) {
-  if (transcribing) return [];
+  // Söylenen yazıya geçerken: teknik değil, kısa bilgi (sonra istekten gelen yazılar)
+  if (transcribing) return ["Hazırlıyorum"];
   const about = aboutLine(text);
   const id = BY_WORK[work] || (/^Envanter/.test(work || "") ? "inventory" : /hava/i.test(work || "") ? "weather" : work === "Bakıyorum" ? "query" : "");
   const more = MORE[id] || GENERIC;

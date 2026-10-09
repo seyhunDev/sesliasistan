@@ -539,7 +539,7 @@ group("Göreve göre ara yazı")([
     ["çok gecikince", { desc: "10 sn'de bekliyorum yazısı", fn: () => waitLines("Mesaj hazırlanıyor", 11000), ok: (r) => /uzun sürdü/.test(r.now) && r.done.length === 3 }],
     ["sırayla, döngüsüz", { desc: "son yazıda durur", fn: () => waitLines("Görev tamamlanıyor", 8000), ok: (r) => r.now === "Görev aranıyor" }],
     ["iş belli değil", { desc: "İstek inceleniyor ile başlar (\"anladım\" denmez)", fn: () => waitStages(""), ok: (r) => r[0] === "İstek inceleniyor" && !r.some((x) => /anla/i.test(x)) }],
-    ["yazıya çevirme", { desc: "teknik yazı yok (\"ses yazıya çevriliyor\" denmez)", fn: () => waitLines("", 3000, { transcribing: true }), ok: (r) => r === null }],
+    ["yazıya çevirme", { desc: "teknik yazı yok, yalnız \"Hazırlıyorum\"", fn: () => waitLines("", 3000, { transcribing: true })?.now, ok: (r) => r === "Hazırlıyorum" }],
     ["29 Ekim Cumhuriyet yarışı oluştur. Yarış için görsel oluştur", { desc: "istekten yazı", fn: (s) => waitStages("", { text: s })[0], ok: (r) => r === "29 Ekim Cumhuriyet yarışı oluşturuluyor" }],
     ["yarın 10'da antrenman ekle", { desc: "istekten yazı", fn: (s) => waitStages("Plan hazırlanıyor", { text: s }), ok: (r) => r[0] === "Yarın 10'da antrenman ekleniyor" && r[1] === "Takvim kontrol ediliyor" }],
     ["bugün hava nasıl", { desc: "soru: işin yazısı kalır", fn: (s) => waitStages("Bakıyorum", { text: s })[0], ok: (r) => r === "Bakıyorum" }],

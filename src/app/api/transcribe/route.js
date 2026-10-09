@@ -31,7 +31,8 @@ async function viaWhisper(name, file, names, terms, partial = false) {
     fd.append("file", file, file.name || "kayit.webm");
     fd.append("model", model);
     fd.append("language", "tr");
-    fd.append("prompt", HINT + namesHint(names, terms));
+    // Whisper ipucu en çok 224 token (Groq uzununu reddediyor): uzun ad listesi kesilir
+    fd.append("prompt", (HINT + namesHint(names, terms)).slice(0, 600));
     // Groq: parça başına "konuşma yok" olasılığı gelir; sessiz parçalar (uydurma metin) atılır
     if (name === "groq") fd.append("response_format", "verbose_json");
     return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(partial ? 8000 : 20000) });
@@ -56,16 +57,18 @@ const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcr
 async function viaTranscribe(file, names, terms) {
   const buf = Buffer.from(await file.arrayBuffer());
   const mimeType = (file.type || "audio/wav").split(";")[0];
+  // Uzun konuşma (sıralı işler) daha uzun sürer: süre sesin uzunluğuyla artar (8-14 sn)
+  const wait = Math.min(14000, 8000 + audioSecs(buf, mimeType) * 250);
   let res;
   try {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
       body: JSON.stringify(sttBody(buf.toString("base64"), mimeType, sttVocab(HINT, names, terms))),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(wait),
     });
   } catch (e) {
-    markCool("stt:gtranscribe", 30 * MIN); // yanıt gelmedi: bir süre doğrudan Whisper
+    markCool("stt:gtranscribe", 3 * MIN); // yanıt gelmedi: kısa bir süre doğrudan Whisper
     throw e;
   }
   const body = await res.text();
@@ -178,7 +181,7 @@ async function handle(request) {
     {
       error: quota
         ? "Ses yazıya çevrilemedi: çeviri servislerinin kotası dolu. Şimdilik klavyedeki mikrofonla yazabilirsin."
-        : "Ses yazıya çevrilemedi, tekrar dene.",
+        : `Ses yazıya çevrilemedi, tekrar dene. (${tried.join(", ")})`,
       tried,
     },
     { status: 502 },
