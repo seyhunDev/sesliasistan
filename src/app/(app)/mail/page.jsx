@@ -35,7 +35,8 @@ const shortDay = (d) =>
 const cash = (n, cur) => `${money(n)}${cur ? ` ${cur}` : ""}`;
 const signed = (n, cur) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${cash(Math.abs(n), cur)}`;
 const PAGE = 40;
-const MOVES = 6; // kapalıyken gösterilen hareket sayısı
+const SHOW = 20; // hareketler ilk açılışta
+const MORE = 50; // "Daha fazla göster" her basışta
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 
@@ -52,7 +53,8 @@ export default function MailPage() {
   const [max, setMax] = useState(PAGE);
   const [now] = useState(() => Date.now());
   const [acct, setAcct] = useState(""); // hareketleri tek hesaba süz
-  const [allMoves, setAllMoves] = useState(false);
+  const [dir, setDir] = useState(""); // hareketler: "" hepsi, "in" gelen, "out" giden
+  const [shownMax, setShownMax] = useState(SHOW); // hareketler sayfa sayfa (sınır yok)
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
   const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
@@ -134,10 +136,8 @@ export default function MailPage() {
   const moves = ledger || movementsOf(list);
   const picked = accounts.find((a) => a.key === acct);
   const acctMoves = picked ? moves.filter((x) => x.account === acct) : moves;
-  const found = q.trim() ? searchMoves(acctMoves, q) : null; // arama: defterin tamamında
-  const foundSum = found && inOut(found);
-  const shownMoves = (found || acctMoves).slice(0, found || allMoves ? 200 : MOVES);
-  const moveTotal = acctMoves.length;
+  const shown = (q.trim() ? searchMoves(acctMoves, q) : acctMoves).filter((x) => (dir === "in" ? x.amount > 0 : dir === "out" ? x.amount < 0 : true));
+  const shownSum = inOut(shown);
   // Kişisel hesap (/payments): bu ayın toplamı yalnız yüklü mailler ayın başını kapsıyorsa yazılır (eksik sayı göstermesin)
   const payee = payeeOf(profile);
   const ym = today.slice(0, 7);
@@ -169,121 +169,99 @@ export default function MailPage() {
         <Loading />
       ) : (
         <>
-          {/* Hesaplar: toplam bakiye ve her hesabın son bakiyesi */}
+          {/* Bakiye: toplam ve her hesap; hesaba dokununca hareketler o hesaba süzülür */}
           {accounts.length > 0 && (
-            <section className="mt-5">
-              <h2 className={title}>Hesaplar</h2>
-              <div className={card}>
-                <div className="bg-acc px-4 py-4 text-white">
-                  <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">TOPLAM BAKİYE</p>
-                  {totals.map((t, i) => (
-                    <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.75rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
-                      {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
-                    </p>
-                  ))}
-                  <p className="mt-1.5 text-[0.75rem] text-white/75">
-                    {accounts.length} hesap · son özet{" "}
-                    {when(
-                      accounts
-                        .map((a) => a.at)
-                        .sort()
-                        .at(-1),
-                      today,
-                    )}
+            <section className={`${card} mt-4`}>
+              <div className="bg-acc px-4 pb-4 pt-3.5 text-white">
+                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">TOPLAM BAKİYE</p>
+                {totals.map((t, i) => (
+                  <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.875rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
+                    {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
                   </p>
-                </div>
-                <ul className="divide-y divide-line">
-                  {accounts.map((a) => (
-                    <li key={a.key}>
-                      <button
-                        type="button"
-                        onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setAllMoves(false))}
-                        aria-pressed={acct === a.key}
-                        className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${acct === a.key ? "bg-acc/5" : ""}`}
-                      >
-                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.75rem] font-bold text-acc">{a.currency || "₺"}</span>
-                        <span className="min-w-0 flex-1">
-                          <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
-                          <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}</small>
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <b className="block text-[0.9375rem] font-semibold tabular-nums">{cash(a.balance, a.currency)}</b>
-                          {a.change !== null && a.change !== 0 && <small className={`block text-[0.75rem] font-semibold tabular-nums ${a.change > 0 ? "text-ok" : "text-rec"}`}>{signed(a.change, "")}</small>}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                  <li>
-                    <Link href="/payments" className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ok/10 text-ok">
-                        <Icon name="user" className="size-[1.125rem]" />
-                      </span>
+                ))}
+                <p className="mt-1 text-[0.75rem] text-white/75">
+                  {accounts.length} hesap · son özet{" "}
+                  {when(
+                    accounts
+                      .map((a) => a.at)
+                      .sort()
+                      .at(-1),
+                    today,
+                  )}
+                </p>
+              </div>
+              <ul className="divide-y divide-line">
+                {accounts.map((a) => (
+                  <li key={a.key}>
+                    <button type="button" onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setShownMax(SHOW))} aria-pressed={acct === a.key} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                      <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold ${acct === a.key ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>{a.currency || "₺"}</span>
                       <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{payee.name || "Kişisel hesap"}</b>
-                        <small className="block truncate text-[0.75rem] text-mut">
-                          {payeeAll.length ? `Aldığı ödemeler · toplam ${money(payeeAll.reduce((n, x) => n + x.amount, 0))} TL` : "Aldığı ödemeler · tarih tarih"}
-                        </small>
+                        <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                        <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}</small>
                       </span>
                       <span className="shrink-0 text-right">
-                        {covered && payeeMonth.length > 0 ? (
-                          <>
-                            <b className="block text-[0.9375rem] font-semibold tabular-nums text-ok">+{cash(payeeSum, "TL")}</b>
-                            <small className="block text-[0.75rem] text-mut">bu ay · {payeeMonth.length} ödeme</small>
-                          </>
-                        ) : (
-                          <Icon name="chev" className="size-4 text-mut" />
-                        )}
+                        <b className="block text-[0.9375rem] font-semibold tabular-nums">{cash(a.balance, a.currency)}</b>
+                        {a.change !== null && a.change !== 0 && <small className={`block text-[0.75rem] font-semibold tabular-nums ${a.change > 0 ? "text-ok" : "text-rec"}`}>{signed(a.change, "")}</small>}
                       </span>
-                    </Link>
-                  </li>
-                  {others.map((o) => (
-                    <li key={o.name}>
-                      <Link href={`/payments?ad=${encodeURIComponent(o.name)}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-                          <Icon name="user" className="size-[1.125rem]" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <b className="block truncate text-[0.9375rem] font-semibold">{o.name}</b>
-                          <small className="block truncate text-[0.75rem] text-mut">{o.in || o.out ? [o.in && `Gelen +${money(o.in)}`, o.out && `Giden −${money(o.out)}`].filter(Boolean).join(" · ") + " TL" : "Bu adla hareket yok"}</small>
-                        </span>
-                        <Icon name="chev" className="size-4 shrink-0 text-mut" />
-                      </Link>
-                    </li>
-                  ))}
-                  <li>{adding ? <AddName onAdd={addName} onClose={() => setAdding(false)} /> : (
-                    <button type="button" onClick={() => setAdding(true)} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[0.875rem] font-semibold text-acc">
-                      <span className="grid size-10 shrink-0 place-items-center">
-                        <Icon name="plus" className="size-[1.125rem]" />
-                      </span>
-                      İsim ekle
                     </button>
-                  )}</li>
-                </ul>
-              </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
+
+          {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}
+          <section className="mt-6">
+            <h2 className={title}>Kişiler</h2>
+            <ul className={`${card} divide-y divide-line`}>
+              <li>
+                <Person href="/payments" name={payee.name || "Kişisel hesap"} sub={covered && payeeMonth.length ? `Bu ay ${payeeMonth.length} ödeme · +${money(payeeSum)} TL` : `${payeeAll.length} ödeme aldı`} amount={payeeAll.length ? `+${money(payeeAll.reduce((n, x) => n + x.amount, 0))}` : ""} main />
+              </li>
+              {others.map((o) => (
+                <li key={o.name}>
+                  <Person
+                    href={`/payments?ad=${encodeURIComponent(o.name)}`}
+                    name={o.name}
+                    sub={o.in || o.out ? [o.in && `Gelen +${money(o.in)}`, o.out && `Giden −${money(o.out)}`].filter(Boolean).join(" · ") : "Bu adla hareket yok"}
+                  />
+                </li>
+              ))}
+              <li>
+                {adding ? (
+                  <AddName onAdd={addName} onClose={() => setAdding(false)} />
+                ) : (
+                  <button type="button" onClick={() => setAdding(true)} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[0.875rem] font-semibold text-acc">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full border border-dashed border-acc/40">
+                      <Icon name="plus" className="size-4" />
+                    </span>
+                    Kişi ekle
+                  </button>
+                )}
+              </li>
+            </ul>
+          </section>
 
           {ledgerBusy && !ledger ? <SummarySkeleton /> : rep && <Summary rep={rep} />}
 
           {profile.ledgerCard && <LedgerCard uid={profile.uid} self={payee.name} payee={payee} onSaved={() => (setLedger(null), setLedgerBusy(true), setTick((n) => n + 1))} />}
 
-          {/* Son hareketler: banka defterinden (Excel + günlük mailler), günlere göre */}
+          {/* Hareketler: banka defterinin tamamı (sınır yok), arama ve Gelen/Giden süzgeci, sayfa sayfa */}
           {moves.length > 0 && (
-            <section className="mt-5">
+            <section className="mt-6">
               <div className="flex items-center gap-2 px-1 pb-2">
-                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{found ? "Arama sonucu" : picked ? `Hareketler · ${picked.label}` : "Son hareketler"}</h2>
+                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{picked ? `Hareketler · ${picked.label}` : "Hareketler"}</h2>
                 {picked && (
                   <button type="button" onClick={() => setAcct("")} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc">
-                    Tümü <Icon name="x" className="size-3.5" />
+                    Tüm hesaplar <Icon name="x" className="size-3.5" />
                   </button>
                 )}
               </div>
-              <label className="mb-2 flex h-11 items-center gap-2 rounded-2xl bg-card px-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+              <label className="flex h-11 items-center gap-2 rounded-2xl bg-card px-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
                 <Icon name="search" className="size-4 shrink-0 text-mut" />
                 <input
                   type="search"
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={(e) => (setQ(e.target.value), setShownMax(SHOW))}
                   placeholder="İsim ya da açıklama ara"
                   enterKeyHint="search"
                   className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden"
@@ -294,24 +272,37 @@ export default function MailPage() {
                   </button>
                 )}
               </label>
-              {found && (
-                <p className="px-1 pb-2 text-[0.75rem] text-mut">
-                  {found.length ? `${found.length} hareket · gelen +${money(foundSum.in)} · giden −${money(foundSum.out)} TL` : "Bu aramayla hareket bulunamadı."}
-                </p>
-              )}
-              <div className={shownMoves.length ? card : "hidden"}>
-                <Moves list={shownMoves} today={today} />
-                {!found && moveTotal > MOVES && (
-                  <button type="button" onClick={() => setAllMoves((v) => !v)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
-                    {allMoves ? "Daha az göster" : `Tümünü gör (${moveTotal})`}
+              <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-line/50 p-1">
+                {[
+                  ["", "Tümü"],
+                  ["in", "Gelen"],
+                  ["out", "Giden"],
+                ].map(([k, l]) => (
+                  <button key={k} type="button" onClick={() => (setDir(k), setShownMax(SHOW))} aria-pressed={dir === k} className={`h-8 rounded-lg text-[0.8125rem] font-semibold ${dir === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
+                    {l}
                   </button>
-                )}
+                ))}
               </div>
+              <p className="px-1 pb-2 pt-2.5 text-[0.75rem] text-mut">
+                {shown.length
+                  ? `${shown.length} hareket${shownSum.in ? ` · gelen +${money(shownSum.in)}` : ""}${shownSum.out ? ` · giden −${money(shownSum.out)}` : ""} TL`
+                  : "Bu aramayla hareket bulunamadı."}
+              </p>
+              {shown.length > 0 && (
+                <div className={card}>
+                  <Moves list={shown.slice(0, shownMax)} today={today} />
+                  {shown.length > shownMax && (
+                    <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
+                      Daha fazla göster ({shown.length - shownMax} kaldı)
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
           )}
 
           {/* Gelen kutusu: gönderene göre süz; dokununca mail açılır */}
-          <section className="mt-5">
+          <section className="mt-6">
             <button type="button" onClick={() => setInboxOpen((v) => !v)} aria-expanded={inboxOpen} className="flex w-full items-center gap-2 px-1 pb-2 text-left">
               <h2 className="min-w-0 flex-1 text-[0.8125rem] font-semibold text-mut">Gelen mailler ({list.length})</h2>
               <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${inboxOpen ? "rotate-90" : ""}`} />
@@ -332,7 +323,7 @@ export default function MailPage() {
                       ))}
                     </ul>
                     {list.length >= max && (
-                      <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
+                      <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
                         Daha eski mailler
                       </button>
                     )}
@@ -369,76 +360,76 @@ export default function MailPage() {
   );
 }
 
-// Özet (banka defterinin başından bugüne): gelen/giden, kişisel hesabın aldığı, kim ne kadar ödedi
+// Özet: banka defterinin tamamı (tarih sınırı yok): gelen/giden toplam, en çok ödeyenler (ilk 5, istenirse herkes)
 function Summary({ rep }) {
   const [all, setAll] = useState(false);
-  const day = (d) =>
-    d
-      ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "";
   const list = all ? rep.top : rep.top.slice(0, 5);
   return (
-    <section className="mt-5">
-      <h2 className={title}>
-        Özet · {day(rep.from)} – {day(rep.to)}
-      </h2>
+    <section className="mt-6">
+      <h2 className={title}>Özet · bütün kayıtlar</h2>
       <div className={card}>
-        <div className="grid grid-cols-2 gap-2 px-4 pt-3.5">
-          <div className="rounded-xl bg-ok/10 px-3 py-2">
-            <p className="text-[0.6875rem] font-semibold text-ok">GELEN · {rep.inN}</p>
-            <p className="truncate text-[1.0625rem] font-bold tabular-nums text-ok">+{money(rep.inSum)} TL</p>
+        <div className="grid grid-cols-2 divide-x divide-line border-b border-line">
+          <div className="px-4 py-3">
+            <p className="text-[0.75rem] font-semibold text-mut">Gelen · {rep.inN}</p>
+            <p className="mt-0.5 truncate text-[1.125rem] font-bold tabular-nums text-ok">+{money(rep.inSum)}</p>
           </div>
-          <div className="rounded-xl bg-rec/10 px-3 py-2">
-            <p className="text-[0.6875rem] font-semibold text-rec">GİDEN · {rep.outN}</p>
-            <p className="truncate text-[1.0625rem] font-bold tabular-nums text-rec">−{money(-rep.outSum)} TL</p>
+          <div className="px-4 py-3">
+            <p className="text-[0.75rem] font-semibold text-mut">Giden · {rep.outN}</p>
+            <p className="mt-0.5 truncate text-[1.125rem] font-bold tabular-nums">−{money(-rep.outSum)}</p>
           </div>
         </div>
-        {rep.got && (
-          <Link href="/payments" className="mx-4 mt-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-2.5 active:scale-[.99]">
-            <Icon name="user" className="size-[1.125rem] shrink-0 text-acc" />
-            <span className="min-w-0 flex-1">
-              <b className="block truncate text-[0.875rem] font-semibold">{rep.got.name || "Kişisel hesap"} aldı</b>
-              <small className="block text-[0.75rem] text-mut">{rep.got.n} ödeme</small>
-            </span>
-            <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{money(rep.got.sum)} TL</b>
-            <Icon name="chev" className="size-4 shrink-0 text-mut" />
-          </Link>
-        )}
         {rep.top.length > 0 && (
           <>
             <p className="px-4 pt-3 text-[0.75rem] font-semibold text-mut">En çok ödeyenler</p>
-            <ol className="px-4 pb-1 pt-1">
+            <ol className="px-4 pb-1.5 pt-1">
               {list.map((w, i) => (
-                <li key={w.who} className="flex items-center gap-2 py-1.5 text-[0.875rem]">
-                  <span className="w-5 shrink-0 text-right text-[0.75rem] tabular-nums text-mut">{i + 1}</span>
+                <li key={w.who} className="flex items-center gap-2.5 py-1.5 text-[0.875rem]">
+                  <span className="w-4 shrink-0 text-right text-[0.75rem] tabular-nums text-mut">{i + 1}</span>
                   <span className="min-w-0 flex-1 truncate">{w.who}</span>
-                  <span className="shrink-0 text-[0.75rem] text-mut">{w.n} ödeme</span>
-                  <span className="w-24 shrink-0 text-right font-semibold tabular-nums text-ok">{money(w.sum)}</span>
+                  <span className="shrink-0 text-[0.75rem] text-mut">{w.n}×</span>
+                  <span className="w-24 shrink-0 text-right font-semibold tabular-nums">{money(w.sum)}</span>
                 </li>
               ))}
             </ol>
             {rep.top.length > 5 && (
-              <button type="button" onClick={() => setAll((v) => !v)} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-acc active:bg-bg">
-                {all ? "Daha az göster" : `Kim ne kadar ödedi · herkes (${rep.top.length})`}
+              <button type="button" onClick={() => setAll((v) => !v)} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-acc">
+                {all ? "Daha az göster" : `Herkesi göster (${rep.top.length})`}
               </button>
             )}
           </>
         )}
-        {!rep.top.length && <div className="h-3.5" />}
       </div>
     </section>
   );
 }
 
+// Kişiler satırı
+function Person({ href, name, sub, amount, main }) {
+  return (
+    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.8125rem] font-bold ${main ? "bg-ok/10 text-ok" : "bg-acc/10 text-acc"}`}>{initials(name)}</span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[0.9375rem] font-semibold">{name}</b>
+        <small className="block truncate text-[0.75rem] text-mut">{sub}</small>
+      </span>
+      {amount && <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-ok">{amount}</b>}
+      <Icon name="chev" className="size-4 shrink-0 text-mut" />
+    </Link>
+  );
+}
+const initials = (name) =>
+  String(name || "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toLocaleUpperCase("tr-TR") || "")
+    .join("") || "?";
+
 // Özet okunurken: aynı düzende yanıp sönen iskelet (sayfa bir anda kaymasın)
 function SummarySkeleton() {
   const bar = (w, h = "h-3") => <span className={`shimmer block rounded-full ${h} ${w}`} />;
   return (
-    <section className="mt-5" aria-busy="true" aria-label="Özet yükleniyor">
+    <section className="mt-6" aria-busy="true" aria-label="Özet yükleniyor">
       <h2 className={`${title} flex items-center gap-2`}>
         Özet <span className="text-[0.75rem] font-medium">hesaplanıyor…</span>
       </h2>
@@ -450,14 +441,6 @@ function SummarySkeleton() {
               {bar("w-24", "h-4")}
             </div>
           ))}
-        </div>
-        <div className="mt-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-3">
-          <span className="shimmer size-[1.125rem] shrink-0 rounded-full" />
-          <span className="flex-1 space-y-1.5">
-            {bar("w-32")}
-            {bar("w-16", "h-2.5")}
-          </span>
-          {bar("w-20", "h-4")}
         </div>
         <div className="mt-3 space-y-3 pb-1">
           {bar("w-24", "h-2.5")}
@@ -552,7 +535,7 @@ function MailRow({ m, today, head }) {
   return (
     <li>
       {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-start gap-3 px-4 py-3 text-left active:bg-bg">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-start gap-3 px-4 py-3 text-left">
         <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${sheets.length ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
           <Icon name={sheets.length ? "wallet" : "mail"} className="size-[1.125rem]" />
         </span>

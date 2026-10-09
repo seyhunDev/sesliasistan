@@ -1,6 +1,6 @@
 "use client";
 
-import { collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, deleteField, doc, documentId, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
@@ -108,10 +108,12 @@ export async function dropFileMoves(uid, fileId, fromYm, toYm) {
   }
 }
 
-// Defterin başladığı ay (yoksa 12 ay önce)
+// Defterin başladığı ay: meta.first; yoksa defterdeki en eski ay belgesi (tek okuma); defter boşsa 12 ay önce
 export async function ledgerStart(uid, ym) {
   const first = (await getDoc(bank(uid, "meta"))).data()?.first;
   if (first && first <= ym) return first;
+  const low = (await getDocs(query(collection(db, "orgs", uid, "bank"), orderBy(documentId()), limit(1))).catch(() => null))?.docs[0]?.id;
+  if (low && /^\d{4}-\d{2}$/.test(low) && low <= ym) return low;
   const [y, m] = ym.split("-").map(Number);
   return new Date(Date.UTC(y, m - 12, 15)).toISOString().slice(0, 7);
 }
