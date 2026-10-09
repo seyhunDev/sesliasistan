@@ -961,6 +961,25 @@ group("Gelen ödemeler (kişisel hesap)")([
   ["açıklamadaki gönderen", F("GÖNDEREN: AD SOYAD", () => MBX.whoOf("FAST GÖNDEREN: SEYHUN YILDIZ aidat ekim") === "SEYHUN YILDIZ" && MBX.whoOf("POS SATIS MIGROS") === "")],
 ]);
 
+// Hesaplar: arama ve eklenen adlar (payee.js moveHas, searchMoves, nameMoves, namesOf)
+const HMOV = [
+  { ...inc("X*0062*Ekim aidat*1*FAST", 1500, "03.10.2026 12:00"), who: "AHMET KAYA", note: "Ekim aidat" },
+  { ...inc(`MARINA LTD*${"TR" + "0".repeat(24)}*baglama*1*FAST`, -2000, "04.10.2026 10:00"), who: "AHMET KAYA" },
+  inc("HAVALE MEHMET OZ AIDAT", 1200, "02.10.2026 10:00"),
+  { ...inc("EFT AHMET KAYA DOLAR", 50, "05.10.2026 10:00", "USD|9999|Vadesiz"), currency: "USD" },
+];
+group("Hesaplar arama ve eklenen adlar")([
+  ["isimle arama", F("ahmet → 3 hareket (Türkçe harfsiz, kelime başı)", () => PY.searchMoves(HMOV, "ahm").length === 3 && PY.searchMoves(HMOV, "Ahmet Kaya").length === 3)],
+  ["açıklamada arama", F("aidat → 2", () => PY.searchMoves(HMOV, "aidat").length === 2)],
+  ["Türkçe harf", F("Öz → MEHMET OZ", () => PY.searchMoves(HMOV, "mehmet öz").length === 1)],
+  ["bulunamaz", F("ayşe → 0, boş → hepsi", () => PY.searchMoves(HMOV, "ayşe").length === 0 && PY.searchMoves(HMOV, "  ").length === 4)],
+  ["eklenen ad", F("gelen ve giden, yalnız TL, en yeni önce", () => { const l = PY.nameMoves(HMOV, "Ahmet Kaya"); return l.length === 2 && l[0].amount === -2000 && l[1].amount === 1500; })],
+  ["gelen/giden toplam", F("1.500 / 2.000", () => { const t = PY.inOut(PY.nameMoves(HMOV, "Ahmet Kaya")); return t.in === 1500 && t.out === 2000; })],
+  ["ay özeti işaretli", F("ekim gelen 1.500 giden 2.000", () => { const r = PY.payeeSummary(PY.nameMoves(HMOV, "Ahmet Kaya"), "2026-10"); return r.month.in === 1500 && r.month.out === 2000 && r.in === 1500 && r.out === 2000; })],
+  ["ad açıklamada", F("hesap adı yoksa açıklamaya bakar", () => PY.nameMoves(HMOV, "Mehmet Öz").length === 1)],
+  ["ad listesi", F("boşlar ve tekrarlar atılır", () => { const n = PY.namesOf({ payeeNames: [" Ali Kaya ", "", "ALI KAYA", "Ayşe Demir"] }); return n.length === 2 && n[0] === "Ali Kaya"; })],
+]);
+
 // Banka defteri (bankLedger.js): Excel bir kez doldurur, mailler ekler, aynı hareket bir kez
 const BL = await import("@/lib/bankLedger");
 const mv = (date, amount, desc, extra = {}) => ({ date, desc, amount, currency: "TL", account: "TL|1234|", ts: Date.parse(`${date.slice(6, 10)}-${date.slice(3, 5)}-${date.slice(0, 2)}T09:00:00Z`), ...extra });

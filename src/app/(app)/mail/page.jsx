@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -14,7 +14,7 @@ import { accountsOf, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/m
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { dayLabel, todayIn } from "@/lib/notifyText";
 import { monthOf } from "@/lib/dues";
-import { payeeMoves, payeeOf, whoIn } from "@/lib/payee";
+import { inOut, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
 import { report } from "@/lib/bankAnalyze";
@@ -58,6 +58,8 @@ export default function MailPage() {
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
   const [inboxOpen, setInboxOpen] = useState(false);
   const [tick, setTick] = useState(0);
+  const [q, setQ] = useState(""); // Son hareketler'de arama
+  const [adding, setAdding] = useState(false); // Hesaplar › "İsim ekle"
 
   useEffect(() => {
     if (profile && !owner) router.replace("/");
@@ -131,8 +133,11 @@ export default function MailPage() {
   const totals = totalsOf(accounts);
   const moves = ledger || movementsOf(list);
   const picked = accounts.find((a) => a.key === acct);
-  const shownMoves = (picked ? moves.filter((x) => x.account === acct) : moves).slice(0, allMoves ? 200 : MOVES);
-  const moveTotal = picked ? moves.filter((x) => x.account === acct).length : moves.length;
+  const acctMoves = picked ? moves.filter((x) => x.account === acct) : moves;
+  const found = q.trim() ? searchMoves(acctMoves, q) : null; // arama: defterin tamamında
+  const foundSum = found && inOut(found);
+  const shownMoves = (found || acctMoves).slice(0, found || allMoves ? 200 : MOVES);
+  const moveTotal = acctMoves.length;
   // Kişisel hesap (/payments): bu ayın toplamı yalnız yüklü mailler ayın başını kapsıyorsa yazılır (eksik sayı göstermesin)
   const payee = payeeOf(profile);
   const ym = today.slice(0, 7);
@@ -142,6 +147,15 @@ export default function MailPage() {
   const payeeAll = payeeMoves(moves, payee);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
   const rep = ledger?.length ? report(ledger, payee, 1000) : null;
+  // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
+  const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
+  const addName = (name) => {
+    const n = name.trim();
+    if (!n) return setAdding(false);
+    updateDoc(doc(db, "users", profile.uid), { payeeNames: arrayUnion(n) })
+      .then(() => setAdding(false))
+      .catch(() => {});
+  };
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
@@ -222,6 +236,28 @@ export default function MailPage() {
                       </span>
                     </Link>
                   </li>
+                  {others.map((o) => (
+                    <li key={o.name}>
+                      <Link href={`/payments?ad=${encodeURIComponent(o.name)}`} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
+                          <Icon name="user" className="size-[1.125rem]" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <b className="block truncate text-[0.9375rem] font-semibold">{o.name}</b>
+                          <small className="block truncate text-[0.75rem] text-mut">{o.in || o.out ? [o.in && `Gelen +${money(o.in)}`, o.out && `Giden −${money(o.out)}`].filter(Boolean).join(" · ") + " TL" : "Bu adla hareket yok"}</small>
+                        </span>
+                        <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                      </Link>
+                    </li>
+                  ))}
+                  <li>{adding ? <AddName onAdd={addName} onClose={() => setAdding(false)} /> : (
+                    <button type="button" onClick={() => setAdding(true)} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[0.875rem] font-semibold text-acc">
+                      <span className="grid size-10 shrink-0 place-items-center">
+                        <Icon name="plus" className="size-[1.125rem]" />
+                      </span>
+                      İsim ekle
+                    </button>
+                  )}</li>
                 </ul>
               </div>
             </section>
@@ -235,16 +271,37 @@ export default function MailPage() {
           {moves.length > 0 && (
             <section className="mt-5">
               <div className="flex items-center gap-2 px-1 pb-2">
-                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{picked ? `Hareketler · ${picked.label}` : "Son hareketler"}</h2>
+                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{found ? "Arama sonucu" : picked ? `Hareketler · ${picked.label}` : "Son hareketler"}</h2>
                 {picked && (
                   <button type="button" onClick={() => setAcct("")} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc">
                     Tümü <Icon name="x" className="size-3.5" />
                   </button>
                 )}
               </div>
-              <div className={card}>
+              <label className="mb-2 flex h-11 items-center gap-2 rounded-2xl bg-card px-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+                <Icon name="search" className="size-4 shrink-0 text-mut" />
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="İsim ya da açıklama ara"
+                  enterKeyHint="search"
+                  className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden"
+                />
+                {q && (
+                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" className="grid size-7 shrink-0 place-items-center rounded-full bg-bg text-mut">
+                    <Icon name="x" className="size-3.5" />
+                  </button>
+                )}
+              </label>
+              {found && (
+                <p className="px-1 pb-2 text-[0.75rem] text-mut">
+                  {found.length ? `${found.length} hareket · gelen +${money(foundSum.in)} · giden −${money(foundSum.out)} TL` : "Bu aramayla hareket bulunamadı."}
+                </p>
+              )}
+              <div className={shownMoves.length ? card : "hidden"}>
                 <Moves list={shownMoves} today={today} />
-                {moveTotal > MOVES && (
+                {!found && moveTotal > MOVES && (
                   <button type="button" onClick={() => setAllMoves((v) => !v)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc active:bg-bg">
                     {allMoves ? "Daha az göster" : `Tümünü gör (${moveTotal})`}
                   </button>
@@ -428,6 +485,29 @@ function Chip({ on, onClick, label, n }) {
       {label}
       <span className={`tabular-nums ${on ? "text-card/70" : "text-mut"}`}>{n}</span>
     </button>
+  );
+}
+
+// Hesaplar › "İsim ekle": yazılan adla ilgili ödemeler ayrı satırda görünür (users/{uid}.payeeNames)
+function AddName({ onAdd, onClose }) {
+  const [name, setName] = useState("");
+  return (
+    <form onSubmit={(e) => (e.preventDefault(), onAdd(name))} className="flex items-center gap-2 px-4 py-2.5">
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Ad Soyad (bankadaki gibi)"
+        enterKeyHint="done"
+        className="h-10 min-w-0 flex-1 rounded-xl bg-bg px-3 text-[1rem] outline-none"
+      />
+      <button type="button" onClick={onClose} className="h-10 shrink-0 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold">
+        Vazgeç
+      </button>
+      <button type="submit" disabled={!name.trim()} className="h-10 shrink-0 rounded-xl bg-acc px-3.5 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
+        Ekle
+      </button>
+    </form>
   );
 }
 
