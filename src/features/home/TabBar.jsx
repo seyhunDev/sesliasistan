@@ -439,7 +439,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 </div>
               </div>
             )}
-            <div className={`flex h-[3.75rem] items-center gap-2 px-3 ${active ? "" : "pt-2"}`}>
+            <div className={`flex min-h-[3.75rem] items-end gap-2 px-3 py-2 ${active ? "" : "pt-2"}`}>
               {!rec && (
                 <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
                   <Icon name="plus" className="size-[1.375rem]" />
@@ -450,9 +450,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                   <Composer cfg={cfg} onDone={onTypingDone} />
                 </div>
               ) : (
-                <div className={`asheet-input flex h-11 min-w-0 flex-1 items-center gap-1 rounded-full pl-4 pr-1 ${state === "listening" && active ? "asheet-on" : ""}`}>
-                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="h-full min-w-0 flex-1 text-left">
-                    <span className={`line-clamp-1 text-[0.9375rem] ${said && said !== "Dinliyorum…" ? "text-fg" : "text-mut"}`}>
+                <div className={`asheet-input flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-[1.375rem] pl-4 pr-1 ${state === "listening" && active ? "asheet-on" : ""}`}>
+                  {/* Söylenen yazı kutusunda bütünüyle görünür (en çok 4 satır; uzarsa son kısmı görünür) */}
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="flex max-h-[5.75rem] min-h-11 min-w-0 flex-1 flex-col justify-end overflow-hidden py-2.5 text-left">
+                    <span className={`block text-[0.9375rem] leading-snug ${said && said !== "Dinliyorum…" ? "text-fg" : "line-clamp-1 text-mut"}`}>
                       {said || cfg.ph}
                     </span>
                   </button>

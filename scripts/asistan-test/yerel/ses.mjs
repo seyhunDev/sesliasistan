@@ -95,6 +95,23 @@ group("Dinlerken ara yazı")([
   ["yeniden konuşuldu, 2 sn doldu", PD({ t0: 0, voiceSeen: true, lastSpeech: 3800, partAt: 2000, partFrom: 1800 }, 4000, true)],
 ]);
 
+// Parça parça yazı: duraksamada ya da uzun konuşmada yeni ses ayrı parça olarak çevrilir, dinleme sürer (vad.js segmentDue)
+const { segmentDue, bestText, SEG_PAUSE, SEG_MAX } = await import("@/lib/speech/vad");
+const SD = (s, now, want) => ({ desc: want ? "parça gider" : "beklenir", fn: () => segmentDue(s, now), ok: (r) => r === want });
+group("Dinlerken parça yazı")([
+  ["konuştu, kısa duraksadı", SD({ t0: 0, voiceSeen: true, voiceFrom: 500, lastSpeech: 2000 }, 2000 + SEG_PAUSE, true)],
+  ["hâlâ konuşuyor (duraksama yok)", SD({ t0: 0, voiceSeen: true, voiceFrom: 500, lastSpeech: 2900 }, 3000, false)],
+  ["aralıksız uzun konuşma", SD({ t0: 0, voiceSeen: true, voiceFrom: 500, lastSpeech: 8900 }, 500 + SEG_MAX, true)],
+  ["son parçadan beri konuşmadı", SD({ t0: 0, voiceSeen: true, lastSpeech: 2000, segFrom: 2800 }, 6000, false)],
+  ["iki parça hâlâ çevriliyor", SD({ t0: 0, voiceSeen: true, lastSpeech: 4000, segFrom: 2800, segBusy: 2 }, 5000, false)],
+  ["hiç konuşulmadı", SD({ t0: 0, voiceSeen: false, lastSpeech: 0 }, 5000, false)],
+]);
+group("Son yazı: tam çeviri mi parçalar mı")([
+  ["tam çeviri var", { desc: "tam çeviri", fn: () => bestText("Yarın onda antrenman ekle", "yarın 10 antrenman ekle"), ok: (r) => r === "Yarın onda antrenman ekle" }],
+  ["tam çeviri yok", { desc: "parçalar", fn: () => bestText("", "yarın 10 antrenman ekle"), ok: (r) => r === "yarın 10 antrenman ekle" }],
+  ["tam çeviri kısa kalmış", { desc: "parçalar (söylenen kaybolmaz)", fn: () => bestText("Yarış oluştur", "Cumhuriyet yarışı oluştur, yarış için görsel hazırla, Mustafa geldi"), ok: (r) => r.startsWith("Cumhuriyet") }],
+]);
+
 // Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)
 const { spokenText } = await import("@/lib/speech/hallucination");
 const SPK = (desc, data, exp) => [desc, { desc: exp ? `“${exp}”` : "boş", fn: () => spokenText(data), ok: (r) => r === exp }];

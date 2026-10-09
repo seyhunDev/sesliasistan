@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
-import { makeVad, partialDue, speechEnded } from "@/lib/speech/vad";
+import { bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
 import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
@@ -138,7 +138,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         return;
       }
       // Kayıt yolu: söylenen ara ara yazıya çevrilip gösterilir (gönderme yine kullanıcının dokunuşuyla)
-      if (s.kind === "server" && s.pcmLen && partialDue(s, now)) livePartial(s.sid);
+      if (s.kind === "server" && s.pcmLen && segmentDue(s, now)) liveSegment(s.sid);
       // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
       // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
       if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {
@@ -252,23 +252,41 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     begin();
   };
 
-  // Kayıt yolunda ara yazı: şimdiye kadarki ses sunucuda yazıya çevrilir, ekranda gösterilir (gönderilmez)
-  const livePartial = async (sid) => {
-    const s = R.current;
-    s.partBusy = true;
-    s.partAt = Date.now();
-    s.partFrom = s.lastSpeech;
-    try {
-      const all = new Float32Array(s.pcmLen);
-      let o = 0;
-      for (const c of s.pcm) {
-        all.set(c, o);
-        o += c.length;
+  // Kayıt yolunun ham sesi (Float32 parçaları) → [from, to) aralığı tek dizi
+  const pcmRange = (s, from, to) => {
+    const out = new Float32Array(Math.max(0, to - from));
+    let pos = 0;
+    for (const c of s.pcm) {
+      const end = pos + c.length;
+      if (end > from && pos < to) {
+        const a = Math.max(from, pos);
+        const b = Math.min(to, end);
+        out.set(c.subarray(a - pos, b - pos), a - from);
       }
-      const wav = await pcmToWav16k(all, s.rate);
+      pos = end;
+      if (pos >= to) break;
+    }
+    return out;
+  };
+  const segText = (s) => s.segs.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+
+  // Kayıt yolunda parça yazı: son kesimden bu yana söylenen yeni ses yazıya çevrilir ve öncekilere eklenir (yazı kutusunda
+  // görünür, gönderilmez). Mikrofon dinlemeye devam eder; parçalar sırayla dizilir, geç gelen öncekinin yerini almaz.
+  const liveSegment = async (sid) => {
+    const s = R.current;
+    const from = s.segPos || 0;
+    const to = s.pcmLen;
+    s.segFrom = Date.now();
+    if (to - from < (s.rate || 16000) * 0.4) return; // yarım saniyeden kısa: sonrakiyle birlikte gider
+    const i = s.segs.length;
+    s.segs.push("");
+    s.segPos = to;
+    s.segBusy = (s.segBusy || 0) + 1;
+    try {
+      const wav = await pcmToWav16k(pcmRange(s, from, to), s.rate);
       if (s.sid !== sid || s.status !== "listening") return;
       const fd = new FormData();
-      fd.append("audio", wav, "ara.wav");
+      fd.append("audio", wav, "parca.wav");
       fd.append("partial", "1");
       if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
       if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
@@ -276,12 +294,13 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const data = await res.json().catch(() => ({}));
       if (s.sid !== sid || s.status === "idle") return;
       if (res.ok && data.text) {
-        s.partial = data.text;
-        setFinalText(data.text);
+        s.segs[i] = data.text;
+        s.partial = segText(s);
+        setFinalText(s.partial);
       }
     } catch {
     } finally {
-      if (s.sid === sid) s.partBusy = false;
+      if (s.sid === sid) s.segBusy = Math.max(0, (s.segBusy || 1) - 1);
     }
   };
 
@@ -334,7 +353,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       lp.frequency.value = 4000;
       const src = ctx.createMediaStreamSource(stream);
       src.connect(hp);
-      // Ham ses de toplanır: dinlerken ara ara yazıya çevrilip gösterilsin (livePartial)
+      // Ham ses de toplanır: dinlerken parça parça yazıya çevrilsin (liveSegment), kayıt boş gelirse son çeviri bundan
       try {
         const proc = ctx.createScriptProcessor(4096, 1, 1);
         s.pcm = [];
@@ -377,19 +396,32 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         fail(NO_SPEECH);
         return;
       }
+      // iPhone'da kayıt (MediaRecorder) bazen boş ya da bozuk gelir: aynı anda toplanan ham sesten WAV yapılır
+      const fromPcm = async () => (s.pcmLen > (s.rate || 16000) * 0.3 ? pcmToWav16k(pcmRange(s, 0, s.pcmLen), s.rate) : null);
+      let upload = blob;
+      let name = `kayit.${type.includes("mp4") ? "m4a" : "webm"}`;
       if (blob.size < 1500) {
-        finish();
-        fail("Ses alınamadı, tekrar dene.");
-        return;
+        upload = await fromPcm().catch(() => null);
+        name = "kayit.wav";
+        if (!alive()) return;
+        if (!upload) {
+          finish();
+          if (s.partial) cb.current.onFinal?.(s.partial, mode);
+          else fail("Ses alınamadı, tekrar dene.");
+          return;
+        }
       }
       try {
-        // WAV'a çevir (her sağlayıcı tanır); olmazsa özgün kaydı gönder
-        let upload = blob;
-        let name = `kayit.${type.includes("mp4") ? "m4a" : "webm"}`;
-        try {
-          upload = await toWav16k(blob);
-          name = "kayit.wav";
-        } catch {}
+        // WAV'a çevir (her sağlayıcı tanır); olmazsa ham sesten, o da olmazsa özgün kaydı gönder
+        if (upload === blob) {
+          try {
+            upload = await toWav16k(blob);
+            name = "kayit.wav";
+          } catch {
+            const w = await fromPcm().catch(() => null);
+            if (w) (upload = w), (name = "kayit.wav");
+          }
+        }
         if (!alive()) return;
         const fd = new FormData();
         fd.append("audio", upload, name);
@@ -403,7 +435,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (!alive()) return;
         if (!res.ok) throw new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
         finish();
-        const text = data.text || s.partial;
+        const text = bestText(data.text, s.partial);
         if (text) {
           speechMark("text");
           cb.current.onFinal?.(text, mode);
@@ -454,7 +486,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
-      endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, proc: null, partial: "", partBusy: false, partAt: 0, partFrom: 0,
+      endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
     });
     setFinalText("");
     setInterim("");
