@@ -385,6 +385,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   function done(message, extra = {}, viaVoice = false) {
     // Sırada iş varsa (zincir) "Başka bir isteğin var mı?" sorulmaz; sıradaki işe geçilir
     if (chain.current.length) return reply(message.trim(), extra, viaVoice);
+    // Görev listesinin son işi: soru sorulmaz, liste ✓ ile biter ve çalışma durur
+    if (planOn.current) return reply(message.trim(), extra, viaVoice);
     reply(`${message.trim()} ${MORE}`, extra, viaVoice);
     askedMore.current = true;
   }
@@ -457,6 +459,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (races?.length) waitFor("raceChoice");
     raceChoices.current = races;
     // Görev listesi: iş bitti (soru sormadıysa) → ✓ ya da ✗, sıradaki başlar
+    // Görev listesinin son işi bitti: liste ✓ ile kalır, mikrofon yeniden açılmaz, çalışma durur
+    // (Seyhun: "o tik işaretini de almalı, sonra çalışmayı durdurmalı", 2026-10-09)
+    const planEnd = !awaiting && planOn.current && !chain.current.length;
     if (!awaiting && planOn.current) {
       const bad = badStep;
       setPlan((p) => {
@@ -472,7 +477,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const said = streamSaid.current;
     streamSaid.current = "";
     const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
-    enqueueSay(rest, listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
+    enqueueSay(rest, planEnd ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
   }
 
   // Başka bir tam ekran açılırken (fiş kamerası, kayıt, toplantı…) mikrofon kapanır; kubbe altta kalır, sohbet sürer
@@ -2362,7 +2367,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       } catch {}
       record(s, "nav:posts", "local");
       memoSet("post", r ? `${r.name} gönderisi` : "yeni gönderi");
-      router.push("/posts/new");
+      // Önce cevap (görev listesinde ✓ ve "Başka bir isteğin var mı?"), sayfa kısa süre sonra açılır: sayfa geçişi
+      // cevabın ve işaretin önüne geçmesin (Seyhun: "en son gönderiyi oluşturdu ama tik işareti çıkmadı", 2026-10-09)
+      setTimeout(() => router.push("/posts/new"), 400);
       leave(r ? `${r.name} için gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.` : "Gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.", viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
