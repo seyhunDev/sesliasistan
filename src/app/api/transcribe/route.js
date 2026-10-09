@@ -133,9 +133,15 @@ async function handle(request) {
   const terms = [...new Set(String(form.get("terms") || "").split("|").map((n) => n.replace(/[^\p{L}\p{N} .'’&-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 50)).filter(Boolean))].slice(0, 12);
 
   if (partial) {
-    const p = list.find((x) => WHISPER[x] && !isCooling(`stt:${x}`));
+    // Parça yazı (dinlerken): hızlı Whisper; yoksa Gemini Transcribe (önceden Whisper yoksa canlı yazı hiç görünmüyordu)
+    const p = list.find((x) => WHISPER[x] && !isCooling(`stt:${x}`)) || (list.includes("gtranscribe") && !isCooling("stt:gtranscribe") ? "gtranscribe" : "");
     if (!p) return NextResponse.json({ text: "" });
     try {
+      if (p === "gtranscribe") {
+        const r = await viaTranscribe(file, names, terms);
+        countAi(au, "stt-sec", r.secs);
+        return NextResponse.json({ text: dropHallucination(r.text, HINT), provider: p });
+      }
       return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p });
     } catch (e) {
       console.warn(`[transcribe:ara:${p}]`, e.message.slice(0, 200));

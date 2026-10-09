@@ -21,6 +21,22 @@ export const speechEnded = (v, now) => !!v.voiceSeen && now - v.lastSpeech >= en
 export const PART_MS = 2000;
 export const partialDue = (s, now) => !s.partBusy && !!s.voiceSeen && s.lastSpeech > (s.partFrom || 0) && now - (s.partAt || s.t0 || 0) >= PART_MS;
 
+// Parça parça yazı (Seyhun: "kullanıcı bir şey söyledi, biraz bekledi, gönderelim ama mikrofon dinlemeye devam etsin;
+// bütün metin kalmalı, yeni söylenenler gitmesin", 2026-10-09): kısa bir duraksamada (SEG_PAUSE) ya da uzun aralıksız
+// konuşmada (SEG_MAX) o ana kadarki YENİ ses ayrı parça olarak yazıya çevrilir, parçalar sırayla eklenir. Dinleme sürer.
+// Durdurunca bütün kayıt bir kez daha çevrilir (düzeltilmiş tam metin); o olmazsa parçalar gönderilir.
+export const SEG_PAUSE = 700;
+export const SEG_MAX = 8000;
+export const segmentDue = (s, now) =>
+  !!s.voiceSeen && (s.segBusy || 0) < 2 && s.lastSpeech > (s.segFrom || 0) && (now - s.lastSpeech >= SEG_PAUSE || now - (s.segFrom || s.voiceFrom || s.t0 || 0) >= SEG_MAX);
+// Son yazı: tam kaydın çevirisi, ama parçaların toplamından belirgin kısaysa (bir kısmı düşmüş) parçalar
+export const bestText = (full, parts) => {
+  const f = String(full || "").trim();
+  const p = String(parts || "").trim();
+  if (!f) return p;
+  return p && f.length < p.length * 0.6 ? p : f;
+};
+
 const median = (a) => {
   const s = [...a].sort((x, y) => x - y);
   return s[Math.floor(s.length / 2)] || 0;
