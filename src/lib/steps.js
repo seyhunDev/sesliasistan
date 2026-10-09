@@ -92,12 +92,13 @@ export function waMode(raw) {
 // Görev listesi: yapay zekanın yanıtındaki işler, onay gerekip gerekmediğine göre.
 // now: hemen yapılan işlemler (görev tamamlama/yeniden açma, güncelleme); items: yeni kayıtlar (bilgisi tamamsa hemen kaydedilir);
 // confirm: onay isteyen adımlar sırayla (önce silmeler tek kartta, sonra her mesaj ayrı kartta); open: düzenleme/iptal ekranı.
-const NOW_OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "update"];
+const NOW_OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "update", "uncancel", "pin_note", "unpin_note", "reject_delete"];
+const DEL_OPS = ["delete", "delete_series", "approve_delete"]; // onay ister
 export function taskList(r = {}) {
   const acts = Array.isArray(r.actions) ? r.actions : [];
   const sends = r.sends?.length ? r.sends : r.send?.text ? [r.send] : [];
   const items = ["create", "message", "action"].includes(r.intent) && Array.isArray(r.items) ? r.items : [];
-  const deletes = acts.filter((a) => a.op === "delete");
+  const deletes = acts.filter((a) => DEL_OPS.includes(a.op));
   return {
     now: acts.filter((a) => NOW_OPS.includes(a.op)),
     items,

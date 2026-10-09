@@ -130,3 +130,108 @@ export function postArchiveCommand(raw) {
   if (/(arşive (al|kaldır|koy|taşı)|arşivle)/u.test(t)) return { archived: true };
   return null;
 }
+
+// ---- Sporcu kartı: "Ali Kaya'nın sporcu kartını aç", "Zeynep'in kartını göster" ----
+export function athleteOpenCommand(raw) {
+  const t = low(raw);
+  const m = t.match(/^(.+?)['’]?(?:n?[ıiuü]n)? (?:sporcu )?(?:kartını|kartı|sayfasını|profilini|bilgilerini) (?:aç|göster|getir)$/u);
+  if (!m || QUESTION.test(t)) return null;
+  const name = nameOf(m[1].replace(/^sporcu /u, ""));
+  return name && name.split(" ").length <= 3 ? { name } : null;
+}
+
+// ---- Yarışa otel (yarış sayfasında): "otel ekle: Foça Palas, 0232 812 34 56", "Foça Palas otelini ekle, telefonu 0532…" ----
+export function hotelAddCommand(raw) {
+  const t = low(raw);
+  if (!/otel/u.test(t) || !/(^| )ekle(?=[\s,:]|$)/u.test(t) || QUESTION.test(t) || /bütçe|kişi başı|gece/u.test(t)) return null;
+  const ph = String(raw || "").match(/(\+?\d[\d\s()-]{6,}\d)/);
+  const phone = ph ? ph[1].replace(/\s+/g, " ").trim() : "";
+  const rest = String(raw || "")
+    .replace(ph ? ph[1] : /$^/, " ")
+    .replace(/[,:;.]+/g, " ")
+    .replace(/(^|\s)(yeni\s+)?otel(i|ini|ler\p{L}*)?(?=\s|$)/giu, " ")
+    .replace(/(^|\s)(ekle|telefonu|telefon|numarası|numara|yarışa|yarışına|konaklama\p{L}*|olarak|de|da)(?=\s|$)/giu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!rest) return null;
+  const name = rest.split(" ").map((w) => cap(w.replace(/['’].*$/u, ""))).join(" ");
+  return { name, phone };
+}
+
+// ---- Fatura: "Turkcell faturasını Ali'ye ver", "elektrik faturasını Gökhan ödesin", "Turkcell faturasını sil" ----
+export function invoiceTaskCommand(raw) {
+  const t = low(raw);
+  if (!/fatura/u.test(t) || QUESTION.test(t)) return null;
+  if (/(^| )sil(?:\p{L}*)?( |$)/u.test(t) && !/ödendi/u.test(t)) return { op: "delete", t };
+  const m = String(raw || "").match(/(\p{L}+(?:\s\p{L}+)?)['’]?(?:y?[ae])\s+(?:ver|ata|devret|görev olarak ver|yönlendir)\p{L}*\s*$/iu) || String(raw || "").match(/(\p{L}+(?:\s\p{L}+)?)\s+(?:ödesin|halletsin|yatırsın)\s*$/iu);
+  if (!m) return null;
+  const who = m[1].replace(/^(faturayı|faturasını|faturası)\s+/iu, "").replace(/\s*fatura\p{L}*$/iu, "");
+  return who ? { op: "assign", who: who.replace(/['’].*$/u, ""), t } : null;
+}
+
+// ---- Fiş ödemesi (çalışanın fişi): "F-0012 fişini ödendi yap", "Ali'nin fişlerini ödedim", "fişi ödendi işaretle" ----
+export function receiptPayCommand(raw) {
+  const t = low(raw);
+  if (!/(^| )fiş/u.test(t) || QUESTION.test(t) || /(yükle|fotoğraf|çek|excel|mail|aç)( |$)/u.test(t)) return null;
+  const unpaid = /(ödenmedi|ödenmemiş|geri al)/u.test(t);
+  if (!unpaid && !/(ödendi|ödedim|ödedik|öde|ödeme yapıldı|parasını verdim)( |$)/u.test(t)) return null;
+  const no = t.match(/(?:^| )f[- ]?(\d{1,5})(?: |$|['’])|(\d{1,5}) (?:numaralı|nolu|no'?lu) fiş/u);
+  const w = String(raw || "").match(/(\p{Lu}\p{Ll}+(?:\s\p{Lu}\p{Ll}+)?)['’](?:n?[ıiuü]n)\s+fiş/u);
+  return { paid: !unpaid, no: no ? Number(no[1] || no[2]) : 0, who: w ? w[1] : "" };
+}
+
+// ---- Yoklama sonrası: "gelmeyenlerin velilerine haber ver", "devamsızların velilerine bildir" (bugün; "dün" denirse dün) ----
+export function absentNotifyCommand(raw) {
+  const t = low(raw);
+  if (!/(gelmeyenler|gelmeyenlerin|gelmeyen sporcu|devamsız)/u.test(t) || !/veli/u.test(t) || !/(haber|bildir|bildirim|hatırlat)/u.test(t) || QUESTION.test(t)) return null;
+  return { day: /(^| )dün/u.test(t) ? -1 : 0 };
+}
+
+// ---- Alışveriş: "alınanları temizle", "alınmışları listeden sil" ----
+export const shopClearCommand = (raw) => /(alınanları|alınmışları|alınanlar|işaretlileri|aldıklarımı) (temizle|sil|kaldır|listeden sil)/u.test(low(raw));
+
+// ---- Doğum günü silme: "Ayşe'nin doğum gününü sil" ----
+export function birthdayDeleteCommand(raw) {
+  const t = low(raw);
+  const m = t.match(/^(.+?) doğum gün(?:ü|ünü|leri) (?:sil|kaldır|takvimden sil)$/u);
+  if (!m || /not/u.test(t)) return null;
+  const name = nameOf(m[1]);
+  return name ? { name } : null;
+}
+
+// ---- Gönderi ekranında: "gönderiyi sil" ----
+export const postDeleteCommand = (raw) => /^(bu )?(gönderiyi|postu|paylaşımı) sil(\p{L}*)?$/u.test(low(raw));
+
+// ---- Yarış sayfasında (açık yarış): sporcu çıkar, sonuç, ödeme, sil, planlara ekle ----
+const ORD = { birinci: 1, ikinci: 2, üçüncü: 3, dördüncü: 4, beşinci: 5, altıncı: 6, yedinci: 7, sekizinci: 8, dokuzuncu: 9, onuncu: 10 };
+export function raceHereCommand(raw) {
+  const t = low(raw);
+  if (QUESTION.test(t)) return null;
+  if (/^(bu )?(yarışı|yarış kaydını) sil\p{L}*$/u.test(t)) return { op: "delete" };
+  if (/(yarışı )?(planlara|takvime|planlarıma) ekle/u.test(t) && !/\d/.test(t) && t.split(" ").length <= 5) return { op: "plan" };
+  const fleet = t.match(/tekne sayısı (\d{1,3})|(\d{1,3}) tekne (yarıştı|katıldı|vardı)/u);
+  if (fleet) return { op: "fleet", n: Number(fleet[1] || fleet[2]) };
+  let m = t.match(/^(.+?)['’]?(?:y?[ıiuü])? (?:yarıştan |listeden |kafileden )?çıkar\p{L}*$/u);
+  if (m && /(yarıştan|listeden|kafileden)/u.test(t)) return { op: "remove", name: nameOf(m[1]) };
+  m = t.match(/^(.+?) (\d{1,3})\.? ?(?:oldu|sırada|olarak bitirdi|bitirdi)$/u) || t.match(/^(.+?) (birinci|ikinci|üçüncü|dördüncü|beşinci|altıncı|yedinci|sekizinci|dokuzuncu|onuncu) (?:oldu|bitirdi)$/u);
+  if (m) return { op: "result", name: nameOf(m[1]), place: Number(m[2]) || ORD[m[2]] };
+  m = t.match(/^(.+?) (?:yarış ücretini |ücretini |bütçesini |payını )?(ödedi|ödemedi)$/u);
+  if (m && !/aidat|fatura|fiş/u.test(t)) return { op: "paid", name: nameOf(m[1].replace(/['’].*$/u, "")), paid: m[2] === "ödedi" };
+  return null;
+}
+
+// ---- Mesaj grubu: "Ali, Ayşe ve Mehmet ile Yelken Ekibi adında grup kur", "Yelken Ekibi diye grup oluştur" ----
+export function groupCreateCommand(raw) {
+  const t = low(raw);
+  if (!/(grup|grubu) (kur|oluştur|aç)/u.test(t) || QUESTION.test(t)) return null;
+  const m = String(raw || "").match(/([\p{L}\d][\p{L}\d ]{1,40}?)\s+(?:adında|adlı|isimli|diye)\s+(?:bir\s+)?(?:yeni\s+)?grub?u?/iu);
+  return { name: m ? m[1].trim().replace(/^.*\s(ile|ve)\s/iu, "").trim() : "", t };
+}
+
+// ---- Kişi silme (hesabı olmayan kişi): "Ayşe Yılmaz'ı kişilerden sil" ----
+export function personDeleteCommand(raw) {
+  const t = low(raw);
+  const m = t.match(/^(.+?) (?:kişilerden|rehberden|kişi listesinden) (?:sil|çıkar|kaldır)\p{L}*$/u) || t.match(/^(?:kişilerden|rehberden) (.+?) (?:sil|çıkar|kaldır)\p{L}*$/u);
+  const name = m ? nameOf(m[1]) : "";
+  return name ? { name } : null;
+}

@@ -20,6 +20,7 @@ export const TASKS = [
   { id: "delete", group: "Kayıtlar", name: "Silme", say: "yarınki toplantıyı sil", who: "herkes", by: "yz", confirm: true, doing: "Tamam, silinecek kaydı buluyorum.", work: "Silinecek kayıt aranıyor" },
   { id: "cancel", group: "Kayıtlar", name: "Plan iptali ve haber verme", say: "yarınki antrenmanı iptal et", who: "herkes", by: "yz", confirm: true, doing: "Tamam, iptali hazırlıyorum.", work: "İptal hazırlanıyor" },
   { id: "undo", group: "Kayıtlar", name: "Son kaydı geri alma", say: "son kaydı geri al", who: "herkes", by: "yerel", confirm: true },
+  { id: "bdayDelete", group: "Kayıtlar", name: "Doğum günü silme (onayla)", say: "Ayşe'nin doğum gününü sil", who: "herkes", by: "yerel", confirm: true },
   { id: "birthday", group: "Kayıtlar", name: "Doğum günü ekleme", say: "annemin doğum günü 12 Mart", who: "herkes", by: "yerel" },
   { id: "multi", group: "Kayıtlar", name: "Tek cümlede sıralı işler", say: "Gökhan'a yarın bakım var diye yaz, takvime ekle ve not al", who: "herkes", by: "yz", doing: "Tamam, sırayla yapıyorum.", work: "İşler sırayla yapılıyor" },
 
@@ -34,6 +35,7 @@ export const TASKS = [
   { id: "payee", group: "Sorular", name: "Gelen ödemeler sorusu", say: "bu ay ne kadar ödeme aldım", who: "ana", by: "yerel" },
 
   // Arama
+  { id: "groupCreate", group: "Mesaj", name: "Mesaj grubu kurma", say: "Ali ve Ayşe ile Yelken Ekibi adında grup kur", who: "herkes", by: "yerel" },
   { id: "call", group: "Mesaj", name: "Uygulama içi sesli arama; yarışta otelin telefonunu arama (onayla)", say: "Ali'yi ara; oteli ara", who: "herkes", by: "yerel", confirm: true },
 
   // Sayfalar
@@ -50,6 +52,12 @@ export const TASKS = [
   { id: "inventory", group: "Kulüp", name: "Envanter (ekle, çıkar, değiştir, sil, sor)", say: "envantere 3 Optimist teknesi ekle", who: "ana", by: "yz-ayrı", doing: "Tamam, envantere ekliyorum.", work: "Envantere ekleniyor" },
   { id: "invoice", group: "Kulüp", name: "Fatura ödendi işaretleme", say: "Turkcell faturası ödendi", who: "ana", by: "yerel" },
   { id: "athlete", group: "Kulüp", name: "Sporcu ekleme, arşive alma, silme (silme onayla)", say: "yeni sporcu ekle: Ali Kaya, 2014 doğumlu; Ali Kaya'yı arşive al", who: "ana", by: "yerel", confirm: true },
+  { id: "athleteOpen", group: "Kulüp", name: "Sporcu kartını açma", say: "Ali Kaya'nın sporcu kartını aç", who: "sporcu", by: "yerel" },
+  { id: "raceHere", group: "Kulüp", name: "Açık yarışta: sporcu çıkarma, sonuç, ücret ödendi, planlara ekleme, yarışı silme (onayla)", say: "Ali 3. oldu; Ali'yi yarıştan çıkar; yarışı sil", who: "sporcu", by: "yerel", confirm: true },
+  { id: "hotel", group: "Kulüp", name: "Açık yarışa otel ekleme", say: "otel ekle: Foça Palas, 0232 812 34 56", who: "sporcu", by: "yerel" },
+  { id: "absent", group: "Kulüp", name: "Gelmeyenlerin velilerine haber (onayla)", say: "gelmeyenlerin velilerine haber ver", who: "ana", by: "yerel", confirm: true },
+  { id: "invoiceTask", group: "Kulüp", name: "Faturayı görevliye verme, fatura silme (onayla)", say: "Turkcell faturasını Ali'ye ver; Turkcell faturasını sil", who: "ana", by: "yerel", confirm: true },
+  { id: "receiptPay", group: "Kulüp", name: "Çalışanın fişini ödendi yapma", say: "F-0012 fişini ödendi yap; Ali'nin fişlerini ödedim", who: "ana", by: "yerel" },
   { id: "income", group: "Kulüp", name: "Hesaplar'a nakit gelir (aidat, bağış, eğitim)", say: "Ali Kaya'nın ekim aidatı nakit 1500 alındı", who: "ana", by: "yerel" },
   { id: "dues", group: "Kulüp", name: "Aidat: kim ödemedi, velilere hatırlatma (onayla)", say: "bu ay kim aidat ödemedi; aidat hatırlatması gönder", who: "ana", by: "yerel", confirm: true },
 
@@ -57,6 +65,8 @@ export const TASKS = [
   { id: "post", group: "Diğer", name: "Instagram gönderisi hazırlama, değiştirme, arşive kaldırma", say: "Foça yarışı için Instagram gönderisi hazırla", who: "ana", by: "yz-ayrı", doing: "Tamam, gönderiyi hazırlıyorum.", work: "Gönderi hazırlanıyor" },
   { id: "event", group: "Diğer", name: "Etkinlik planı (kamp, gezi…)", say: "kamp planı yapmak istiyorum", who: "ana", by: "yz-ayrı", doing: "Tamam, etkinlik planını hazırlıyorum.", work: "Etkinlik planı hazırlanıyor" },
   { id: "schedule", group: "Diğer", name: "Ders programı", say: "salı 13:00 fizik B-204", who: "herkes", by: "yz-ayrı", doing: "Tamam, ders programını hazırlıyorum.", work: "Ders programı hazırlanıyor" },
+  { id: "personDelete", group: "Diğer", name: "Kişi silme (hesabı olmayan; onayla)", say: "Ayşe Yılmaz'ı kişilerden sil", who: "ana", by: "yerel", confirm: true },
+  { id: "shopClear", group: "Diğer", name: "Alışveriş listesinden alınanları temizleme", say: "alınanları temizle", who: "herkes", by: "yerel" },
   { id: "person", group: "Diğer", name: "Kişi ekleme (ve hesap açma)", say: "Kişi ekle: Ayşe Yılmaz, eşim, 0532…", who: "ana", by: "yz-ayrı", confirm: true, doing: "Tamam, kişiyi hazırlıyorum.", work: "Kişi hazırlanıyor" },
   { id: "shopping", group: "Diğer", name: "Alışveriş listesi (ekle, alındı, sil, oku)", say: "listeye süt ekle, ekmek alındı", who: "herkes", by: "yerel" },
 ];
@@ -81,7 +91,7 @@ export function inventoryWork(raw) {
 export function tasksPrompt() {
   const mine = TASKS.filter((x) => x.by === "yz" && x.id !== "record");
   const app = TASKS.filter((x) => x.by !== "yz");
-  return `- Senin işlerin: ${mine.map((x) => `${x.name} ("${x.say}")`).join("; ")}\n- Uygulamanın kendi yaptıkları: ${app.map((x) => `${x.name} ("${x.say}")`).join("; ")}`;
+  return `- Senin işlerin: ${mine.map((x) => `${x.name} ("${x.say}")`).join("; ")}\n- Uygulamanın kendi yaptıkları (sana gelmez): ${app.map((x) => x.name).join("; ")}`;
 }
 
 // İş belli olmadan beklerken görünen yazı: ses sunucuda yazıya çevriliyorsa "Sesin yazıya çevriliyor", sonra (ön cevap ya da

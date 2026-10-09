@@ -8,7 +8,7 @@ import { tasksPrompt } from "../assistTasks.js";
 // navigate için sayfalar: "home (Ana sayfa), calendar (Takvim), …" (nav.js'teki tüm sayfalar)
 const PAGE_LIST = PAGES.map((k) => `${k} (${PAGE_INFO[k].label.toLocaleLowerCase("tr-TR")})`).join(", ");
 const INTENTS = ["create", "query", "navigate", "action", "message", "chat"];
-const OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "delete", "update", "open", "cancel"];
+const OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "delete", "update", "open", "cancel", "uncancel", "pin_note", "unpin_note", "delete_series", "approve_delete", "reject_delete"];
 
 export const ASSISTANT_SYSTEM = `Sen "Sesli Asistan" uygulamasının akıllı asistanısın. Bir spor kulübünün (yelken) yöneticisine ve ekibine günlük işlerinde yardım edersin: plan/etkinlik, görev, not ve fişleri takip etmek. Kullanıcı seninle konuşur (ses tanıma metni) veya yazar. Yanıtın sesli okunacak; bu yüzden doğal, kısa ve konuşma diliyle olmalı.
 
@@ -58,6 +58,11 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - op: complete_task, reopen_task ve update (onaysız hemen uygulanır), delete (uygulama onay ister), open (kaydı düzenleme ekranında açar).
 - Not için: "şu not yapıldı", "notu yapıldı yap", "notu arşivle", "bu notun işi bitti" → op done_note (kind note; not silinmez, Arşiv'e gider). "Notu geri al", "notu arşivden çıkar", "not yapılmadı" → op reopen_note. Notu göreve ÇEVİRME, notu silme (silme yalnız "sil" denirse). Arşivdeki notlar özette "| yapıldı" ya da "| arşivde" ile biter.
 - Plan "iptal et", "iptal oldu", "yapılmayacak" denirse (silmek istenmedikçe) op cancel: uygulama planı iptal ekranıyla açar, kullanıcı nedeni ve haber metnini görüp onaylar (plan silinmez, kişilere ve istenirse Sporcular grubuna haber gider). message kısa olsun ("Antrenmanı iptal ekranında açtım, haber metnine bakıp onayla.").
+- "İptali geri al", "antrenman yapılacak, iptal etme" (özette "(İPTAL)" yazan plan) → op uncancel.
+- "Notu sabitle / başa al" → op pin_note; "sabitlemeyi kaldır" → op unpin_note (özette sabit not "| sabit" ile biter).
+- Tekrarlayan plan (özette "| tekrarlı") için "bu ve sonraki haftaları sil", "her haftaki antrenmanı sil", "seriyi sil" → op delete_series (uygulama onay ister); yalnız o hafta denirse delete.
+- Özette "| silme isteği: Ad" yazan kayıt için "silme isteğini onayla / sil" → op approve_delete (uygulama onay ister), "silme isteğini reddet / silmesin" → op reject_delete.
+- Var olan kaydın sorumlusunu değiştirmek ("motor görevini Ali'ye ver", "toplantıya Ayşe'yi de ekle", "görevden Ali'yi çıkar") → op update, patch.assignTo: kaydın YENİ sorumlularının tam listesi (KİŞİLER bölümündeki tam adlar; çıkarılan yazılmaz, hepsi çıkarılırsa boş liste).
 - message: yalnız "Tamam." yaz (uygulama ne yaptığını ve silme onayını kendisi söyler). Kayıt belirsizse işlem yapma, tek kısa soru sor.
 - update için patch'e yalnızca DEĞİŞEN alanları yaz. "Ertele", "öne al" gibi göreli ifadelerde yeni tarihi ŞİMDİ bilgisine göre hesapla. Saati kaldırmak için allDay true.
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
@@ -164,6 +169,7 @@ export const ASSISTANT_TOOL = {
                 time: { type: "string", description: "HH:MM" },
                 place: { type: "string" },
                 allDay: { type: "boolean" },
+                assignTo: { type: "array", items: { type: "string" }, description: "Sorumluları değiştirirken: yeni sorumluların tam listesi (KİŞİLER bölümündeki tam adlar)" },
               },
             },
           },
@@ -204,6 +210,7 @@ function cleanPatch(p) {
   if (okT(p?.time)) o.time = okT(p.time);
   if (txt(p?.place, 80)) o.place = txt(p.place, 80);
   if (p?.allDay === true) o.allDay = true;
+  if (Array.isArray(p?.assignTo)) o.assignTo = p.assignTo.map((x) => txt(x, 60)).filter(Boolean).slice(0, 10);
   return o;
 }
 

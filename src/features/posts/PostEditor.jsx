@@ -11,7 +11,7 @@ import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf,
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
-import { postArchiveCommand } from "@/lib/assistMore";
+import { postArchiveCommand, postDeleteCommand } from "@/lib/assistMore";
 import { todayStr } from "@/lib/utils/format";
 
 const area =
@@ -103,6 +103,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const fileInput = useRef(null);
   const latest = useRef(null);
   const arcRef = useRef(null); // asistanın "arşive kaldır" demesi için (arc aşağıda)
+  const delRef = useRef(null); // asistanın "gönderiyi sil" demesi için (del aşağıda, onay sorar)
   const drag = useRef(null);
   // Önizlemenin altındaki ayarlar: seçili araç
   const [tool, setTool] = useState(startPhoto ? "fit" : "photo");
@@ -250,6 +251,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         if (!!now.archived === ac.archived) return { say: ac.archived ? "Gönderi zaten arşivde." : "Gönderi arşivde değil." };
         await arcRef.current?.();
         return { say: ac.archived ? "Gönderiyi arşive kaldırdım." : "Gönderiyi arşivden çıkardım." };
+      }
+      // "Gönderiyi sil": silme onayı sorulur (geri alınamaz)
+      if (postDeleteCommand(text)) {
+        if (!id) return { say: "Gönderi henüz kaydedilmedi, silinecek bir şey yok." };
+        await delRef.current?.();
+        return { say: "Silmeyi onaylarsan gönderi silinir." };
       }
       if (wantsPostImage(text)) {
         const u = await mk(text);
@@ -483,6 +490,9 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       setBusy("");
     }
   };
+  useEffect(() => {
+    delRef.current = del;
+  });
 
   // Önizlemede parmakla sürükleyince fotoğraf kayar (büyütülmüşse iki yönde); sürüklerken doğrudan çizilir
   const dragStart = (e) => {
