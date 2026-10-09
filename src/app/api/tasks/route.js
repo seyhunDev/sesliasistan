@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 
 // Tek cümlede birden çok iş → sıralı görev listesi (lib/taskPlan.js). Kaydetmez; telefon işleri sırayla kendi akışlarında yapar.
 const SYSTEM = `Sen bir yelken kulübü uygulamasının sesli asistanında görev planlayıcısısın. Kullanıcı tek seferde birden çok iş söyler (ses tanıma metni olabilir, noktalama ve yazım bozuk olabilir).
+Ses tanıma kelimeleri bozabilir: anlamı bağlamdan çıkar ("yarışı oluru" = yarışı oluştur, "hazirla" = hazırla, "afiş" = Instagram gönderisi/görseli, yanlış yazılmış kişi adı olduğu gibi kalır). Yanlış duyulmuş bir fiil yüzünden bir işi atlama.
 Söyleneni uygulamanın sırayla, kullanıcıya dokunmadan yapabileceği işlere böl ve bir iş düzeni (sıra) hazırla. Sırayı söylenme sırasına göre değil, uygulama için en kolay ve doğru olana göre kur:
 1) Başka işlerin dayandığı kayıtlar önce: yarış (race), sporcu (athlete). Örn. bir yarışın görseli ya da yarışa sporcu eklemek, yarış oluşturulduktan sonra.
 2) Sonra bulunduğu sayfada hızlıca biten işler: yoklama, antrenman günlüğü, nakit ödeme, aidat, fatura, envanter, alışveriş, etkinlik.
