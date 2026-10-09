@@ -81,10 +81,10 @@ export function useDock(cfg) {
 }
 
 // Yazma satırı (sahnenin içinde, koyu): yazı alanı · mikrofon (söyleneni kutuya yazar) · gönder
-function Composer({ cfg, onDone }) {
+function Composer({ cfg, onDone, init = "" }) {
   const { openAssistant } = useAssistant();
   const toast = useToast();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(init);
   const input = useRef(null);
   const sp = useSpeech({ onFinal: (t) => setText((p) => (p ? `${p} ${t}` : t)), onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
@@ -201,6 +201,57 @@ function NavTab({ href, icon, label, active, badge }) {
   );
 }
 
+// KONUŞMA KUTUSU (Seyhun'un örneği, 2026-10-09): dinlerken söylenen yazı geniş, yuvarlak bir kutunun üstünde bütünüyle
+// görünür (uzarsa son kısmı); altında × (dinlemeyi ve yazıyı sil), noktalı ses dalgası, ■ (dinlemeyi durdur, yazı kutuda
+// kalsın, gönderilmesin) ve ↑ (gönder). Durdurulan söz kutuda bekler: ↑ gönderir, yazıya dokununca klavyeyle düzenlenir,
+// yeniden konuşulursa sonuna eklenir.
+function VoiceBox({ text, listening, sending, onCancel, onStop, onListen, onSend, onType }) {
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
+  }, [text]);
+  return (
+    <div className="px-3 pb-1 pt-2">
+      <div className={`asheet-input rounded-[1.625rem] ${listening ? "asheet-on" : ""}`}>
+        <div
+          ref={box}
+          onClick={onType}
+          className={`max-h-[7.5rem] min-h-[3.25rem] overflow-hidden px-[1.125rem] pb-1 pt-3.5 text-[1.0625rem] leading-snug ${onType ? "cursor-text" : ""}`}
+        >
+          {text ? <span className="text-fg">{text}</span> : <span className="text-mut">Dinliyorum…</span>}
+        </div>
+        <div className="flex items-center gap-2 px-2 pb-2">
+          <button type="button" onClick={onCancel} aria-label="Sil ve dinlemeyi bırak" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
+            <Icon name="x" className="size-[1.375rem]" />
+          </button>
+          {listening ? (
+            <ListenWave line className="mx-1 text-mut" />
+          ) : (
+            // Dinleme durdu: dalga sessiz noktalar; gönderilirken yavaşça parlar
+            <span className={`mx-1 h-7 min-w-0 flex-1 bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] bg-[length:7px_7px] bg-[position:center] bg-repeat-x opacity-50 ${sending ? "animate-pulse" : ""}`} aria-hidden="true" />
+          )}
+          {listening ? (
+            <button type="button" onClick={onStop} aria-label="Dinlemeyi durdur, gönderme" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] transition active:scale-90">
+              <span className="size-4 rounded-[3px] bg-fg" aria-hidden="true" />
+            </button>
+          ) : (
+            !sending && (
+              // Durdurulan söze devam: yeniden dinler, yeni söylenen sonuna eklenir
+              <button type="button" onClick={onListen} aria-label="Konuşmaya devam et" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
+                <Icon name="mic" className="size-[1.25rem]" />
+              </button>
+            )
+          )}
+          <button type="button" onClick={onSend} disabled={sending || (!listening && !text)} aria-label="Gönder" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-acc text-white transition active:scale-90 disabled:opacity-50">
+            <Icon name="up" className="size-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ASİSTAN ALANI ("Merkez", 2026-10-07): açık renkli alt sekme çubuğu, ortada asistan düğmesi; asistan açılınca alttan sayfa.
 // Önceki: "Ada" (yüzen koyu cam adalar, PR #190).
 // Önceki düzen (Seyhun "Karışık" seçti): altta sabit, solda Oluştur,
@@ -210,7 +261,7 @@ function NavTab({ href, icon, label, active, badge }) {
 // Yazarken kubbe klavyenin üstüne taşınır. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde sekmesiz ve
 // Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
-function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread }) {
+function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -404,6 +455,10 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   // Alttan açılan sayfa: asistan açıkken, yazarken ya da kayıt ekranında; değilse sekme çubuğu
   const sheet = active || typing || rec;
   const said = heard || (active && state === "listening" ? "Dinliyorum…" : "");
+  // Konuşma kutusu (Seyhun'un örneği, 2026-10-09): dinlerken, çevrilirken ve durdurulup bekleyen sözde satırın yerine
+  // geniş yuvarlak kutu: üstte söylenen yazı, altta × (sil) · noktalı ses dalgası · ■ (durdur, gönderme) · ↑ (gönder)
+  const draft = active && !typing && live.draft ? live.draft : "";
+  const voiceBox = active && !typing && (state === "listening" || (live.transcribing && !!heard) || !!draft);
   return (
     <div
       ref={box}
@@ -439,6 +494,18 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 </div>
               </div>
             )}
+            {voiceBox ? (
+              <VoiceBox
+                text={[draft, heard].filter(Boolean).join(" ")}
+                listening={state === "listening"}
+                sending={!!live.transcribing}
+                onCancel={voice.cancel}
+                onStop={voice.edit}
+                onListen={voice.listen}
+                onSend={state === "listening" ? voice.stop : voice.send}
+                onType={draft && state !== "listening" ? voice.type : undefined}
+              />
+            ) : (
             <div className={`flex min-h-[3.75rem] items-end gap-2 px-3 py-2 ${active ? "" : "pt-2"}`}>
               {!rec && (
                 <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
@@ -447,7 +514,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
               )}
               {typing ? (
                 <div className="asheet-input flex h-11 min-w-0 flex-1 items-center rounded-full pl-2 pr-1">
-                  <Composer cfg={cfg} onDone={onTypingDone} />
+                  <Composer cfg={cfg} onDone={onTypingDone} init={typeInit} />
                 </div>
               ) : (
                 <div className={`asheet-input flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-[1.375rem] pl-4 pr-1 ${state === "listening" && active ? "asheet-on" : ""}`}>
@@ -468,6 +535,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 </button>
               )}
             </div>
+            )}
           </div>
         ) : (
           // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
@@ -503,6 +571,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const { unreadTotal } = useChat();
   const [menu, setMenu] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [typeInit, setTypeInit] = useState(""); // yazı kutusu açılırken içinde olacak söz (konuşma kutusundan)
   // Yazarken de sayfanın alt düğme çubuğu gizlenir (globals.css)
   useEffect(() => {
     if (!typing) return;
@@ -588,9 +657,22 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         talk={talk}
         typeNow={typeNow}
         typing={typing}
-        onTypingDone={() => setTyping(false)}
+        onTypingDone={() => (setTyping(false), setTypeInit(""))}
         cfg={cfg}
         onClose={() => act.current.close?.()}
+        voice={{
+          cancel: () => act.current.cancel?.(),
+          edit: () => act.current.edit?.(),
+          stop: () => act.current.stop?.(),
+          send: () => act.current.send?.(),
+          listen: () => act.current.listen?.(),
+          // Bekleyen söze dokununca yazı kutusunda düzenlenir
+          type: () => {
+            setTypeInit(act.current.takeDraft?.() || "");
+            typeNow();
+          },
+        }}
+        typeInit={typeInit}
         onMenu={() => {
           act.current.close?.(); // Oluştur menüsü açılınca konuşma kapanır
           setMenu(true);
