@@ -977,6 +977,8 @@ group("Hesaplar arama ve eklenen adlar")([
   ["gelen/giden toplam", F("1.500 / 2.000", () => { const t = PY.inOut(PY.nameMoves(HMOV, "Ahmet Kaya")); return t.in === 1500 && t.out === 2000; })],
   ["ay özeti işaretli", F("ekim gelen 1.500 giden 2.000", () => { const r = PY.payeeSummary(PY.nameMoves(HMOV, "Ahmet Kaya"), "2026-10"); return r.month.in === 1500 && r.month.out === 2000 && r.in === 1500 && r.out === 2000; })],
   ["ad açıklamada", F("hesap adı yoksa açıklamaya bakar", () => PY.nameMoves(HMOV, "Mehmet Öz").length === 1)],
+  ["eklenen ad: hesap adı ya da açıklama", F("ikisinden biri yeter", () => PY.nameMoves([{ ...inc("FAST*ALI VELI*Seyhun Yıldız için kira", 900, "06.10.2026 10:00"), who: "ALI VELI" }, { ...inc("x", 50, "07.10.2026 10:00"), who: "SEYHUN YILDIZ" }], "Seyhun Yıldız").length === 2)],
+  ["en çok ödeyenler", F("bütün gelen TL paralar, gönderene göre, toplam büyükten", () => { const t = PY.topPayers([...HMOV, { ...inc("y", 700, "08.10.2026 10:00"), who: "Ahmet Kaya" }, { ...inc("z", 5000, "01.01.2025 10:00"), who: "ZEYNEP AK" }]); return t.length === 2 && t[0].who === "ZEYNEP AK" && t[1].sum === 2200 && t[1].n === 2; })],
   ["ad listesi", F("boşlar ve tekrarlar atılır", () => { const n = PY.namesOf({ payeeNames: [" Ali Kaya ", "", "ALI KAYA", "Ayşe Demir"] }); return n.length === 2 && n[0] === "Ali Kaya"; })],
 ]);
 
