@@ -30,3 +30,19 @@ export function fcmMessage(token, payload, ttlSec = 86400) {
     },
   };
 }
+
+// Gelen arama (Android uygulaması): yalnız veri taşıyan, hemen iletilen mesaj. Bildirimi uygulamanın kendi kodu gösterir
+// (mobil/…/AramaMesaj.java): zil çalan, kilit ekranında tam ekran açılan arama bildirimi, Aç / Reddet düğmeleri.
+// sig: Reddet düğmesinin oturumsuz gönderdiği imza (lib/server/callPush.js). Çalma süresinden sonra iletilmez.
+export function callMessage(token, { id, name, org, sig }, ttlSec = 35) {
+  return {
+    token,
+    data: { type: "call", id: String(id), name: flat(name).slice(0, 80) || "Biri", org: String(org || ""), sig: String(sig || "") },
+    android: { priority: "high", ttl: Math.max(0, Math.round(ttlSec)) * 1000, collapseKey: `call-${id}` },
+  };
+}
+
+// Arayan kapattı ya da arama cevapsız kaldı: çalan bildirim susar
+export function callEndMessage(token, id) {
+  return { token, data: { type: "call-end", id: String(id) }, android: { priority: "high", ttl: 60000 } };
+}

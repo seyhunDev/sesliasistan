@@ -3,9 +3,12 @@ package com.seyhunyildiz.sesliasistan;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.PowerManager;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
@@ -31,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 // Web uygulamasının Android WebView'da olmayan tarayıcı işleri: paylaşım menüsü (navigator.share),
 // dosya indirme (<a download>), dosyayı açma (window.open ile PDF/fotoğraf), yazdırma (window.print).
@@ -40,9 +44,25 @@ public class DosyaPlugin extends Plugin {
 
     private static final String SITE = "https://sesliasistan.netlify.app";
     private WebView printView; // yazdırma bitene kadar tutulur
+    private PowerManager.WakeLock proximity; // ahizedeyken telefon kulağa gelince ekran kapanır
+
+    // Bildirimdeki "Aç" ile açılan arama (web takeAnswer ile alır)
+    private static DosyaPlugin instance;
+    private static String pendingAnswer = "";
+
+    static void answer(String id) {
+        pendingAnswer = id == null ? "" : id;
+        DosyaPlugin p = instance;
+        if (p != null && !pendingAnswer.isEmpty()) {
+            JSObject o = new JSObject();
+            o.put("id", pendingAnswer);
+            p.notifyListeners("answer", o);
+        }
+    }
 
     @Override
     public void load() {
+        instance = this;
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return;
         try {
             String url = getBridge().getConfig().getServerUrl();
@@ -204,6 +224,90 @@ public class DosyaPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("ready", ok);
         call.resolve(r);
+    }
+
+    // Bildirimdeki "Aç"a basılarak açıldıysa aramanın kimliği (bir kez)
+    @PluginMethod
+    public void takeAnswer(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("id", pendingAnswer);
+        pendingAnswer = "";
+        call.resolve(r);
+    }
+
+    // Aramada sesin yönü. on: arama sürüyor (telefon görüşmesi kipi), speaker: hoparlör; değilse kulaklık/Bluetooth
+    // bağlıysa o, yoksa ahize. on false: normal kipe dönüş. WebView sesi kendisi hoparlöre verdiği için web bunu
+    // mikrofon açıldıktan sonra çağırır.
+    @PluginMethod
+    public void audioRoute(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        boolean speaker = Boolean.TRUE.equals(call.getBoolean("speaker", false));
+        getActivity()
+            .runOnUiThread(() -> {
+                try {
+                    AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+                    if (on) {
+                        am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                        boolean ear = route(am, speaker);
+                        getActivity().setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+                        nearScreen(ear);
+                    } else {
+                        if (Build.VERSION.SDK_INT >= 31) am.clearCommunicationDevice();
+                        am.setSpeakerphoneOn(false);
+                        am.setMode(AudioManager.MODE_NORMAL);
+                        getActivity().setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
+                        nearScreen(false);
+                        MainActivity.overLock(getActivity(), false);
+                    }
+                    call.resolve();
+                } catch (Exception e) {
+                    call.reject("Ses yönü değişmedi: " + e.getMessage());
+                }
+            });
+    }
+
+    // Ses çıkışını seçer; ahize seçildiyse true
+    private boolean route(AudioManager am, boolean speaker) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            List<AudioDeviceInfo> list = am.getAvailableCommunicationDevices();
+            AudioDeviceInfo pick = null;
+            int[] order = speaker
+                ? new int[] { AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                : new int[] {
+                      AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                      AudioDeviceInfo.TYPE_BLE_HEADSET,
+                      AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                      AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                      AudioDeviceInfo.TYPE_USB_HEADSET,
+                      AudioDeviceInfo.TYPE_BUILTIN_EARPIECE,
+                  };
+            for (int t : order) {
+                for (AudioDeviceInfo d : list) if (d.getType() == t) {
+                    pick = d;
+                    break;
+                }
+                if (pick != null) break;
+            }
+            if (pick != null) {
+                am.setCommunicationDevice(pick);
+                return pick.getType() == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
+            }
+        }
+        am.setSpeakerphoneOn(speaker);
+        return !speaker && !am.isWiredHeadsetOn() && !am.isBluetoothScoOn();
+    }
+
+    private void nearScreen(boolean on) {
+        try {
+            if (on) {
+                if (proximity == null) {
+                    PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+                    if (pm == null || !pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) return;
+                    proximity = pm.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "asistan:arama");
+                }
+                if (!proximity.isHeld()) proximity.acquire(4 * 3600 * 1000L);
+            } else if (proximity != null && proximity.isHeld()) proximity.release();
+        } catch (Exception ignored) {}
     }
 
     // HTML'i Android'in yazdırma ekranına verir (PDF olarak kaydet de buradan)

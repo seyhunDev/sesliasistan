@@ -6,15 +6,17 @@
 // Android (Chrome): ses çıkışı <audio>.setSinkId ile seçilir; telefon ahize ve hoparlörü ayrı çıkış olarak veriyorsa
 // (cihaz adında earpiece/receiver/handset ya da speaker) düğme görünür. Vermiyorsa Chrome'un kendi seçimi kalır
 // (çoğu telefonda hoparlör); web'den başka yolu yok.
+// Android uygulaması (mobil/): ses yönü yerel kodla (AudioManager) seçilir: önce ahize, düğmeyle hoparlör.
 import { pickSink } from "@/lib/call";
+import { nativeRoute, nativeRouteOff, nativeRouting } from "@/lib/nativeCall";
 
 const session = () => (typeof navigator !== "undefined" ? navigator.audioSession : null);
 
-export const routeSupported = () => !!session();
+export const routeSupported = () => !!session() || nativeRouting();
 
 // Android: ahize ve hoparlör çıkışları { ear, spk } (mikrofon izni verildikten sonra adlar okunur)
 export async function sinks(el) {
-  if (session() || !el?.setSinkId || !navigator.mediaDevices?.enumerateDevices) return null;
+  if (session() || nativeRouting() || !el?.setSinkId || !navigator.mediaDevices?.enumerateDevices) return null;
   try {
     const list = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audiooutput");
     const ear = pickSink(list, false);
@@ -26,6 +28,7 @@ export async function sinks(el) {
 }
 
 export function setRoute(speaker, el) {
+  if (nativeRoute(speaker)) return true;
   const s = session();
   if (!s) {
     if (el?.setSinkId)
@@ -42,3 +45,6 @@ export function setRoute(speaker, el) {
     return false;
   }
 }
+
+// Arama bitti (Android uygulamasında telefon normal ses kipine döner)
+export const endRoute = () => nativeRouteOff();

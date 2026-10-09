@@ -26,12 +26,17 @@ export const isFcm = (sub) => !!sub?.fcm;
 // Gönderilebilir kayıt mı (eski/bozuk kayıtlar atlanır)
 export const deviceOk = (sub) => !!(sub?.fcm || sub?.endpoint);
 
-export async function sendDevice(sub, payload, opts = {}) {
-  if (!isFcm(sub)) return webpush.sendNotification(sub, payload, opts);
+// Hazır FCM mesajı (arama bildirimi gibi); hatası sendDevice'taki gibi statusCode taşır
+export async function sendFcm(msg) {
   try {
-    return await getMessaging(app()).send(fcmMessage(sub.fcm, payload, opts.TTL ?? 86400));
+    return await getMessaging(app()).send(msg);
   } catch (e) {
     const code = e?.code || e?.errorInfo?.code || "";
     throw Object.assign(new Error(e?.message || "FCM gönderilemedi"), { statusCode: GONE.has(code) ? 410 : 502, body: `FCM ${code} ${e?.message || ""}`.trim() });
   }
+}
+
+export async function sendDevice(sub, payload, opts = {}) {
+  if (!isFcm(sub)) return webpush.sendNotification(sub, payload, opts);
+  return sendFcm(fcmMessage(sub.fcm, payload, opts.TTL ?? 86400));
 }

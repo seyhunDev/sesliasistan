@@ -10,12 +10,15 @@ import { micClosed, micOpening } from "@/lib/speech/audioSession";
 import { ICE_SERVERS, LOST_MS, RETRY_MS, RING_MS, STATUS, callLog, isOver, micError, pickStats, ringingFresh } from "@/lib/call";
 import { CallScreen } from "./CallScreen";
 import { endTone, startRing } from "./ring";
-import { routeSupported, setRoute, sinks } from "./route";
+import { endRoute, routeSupported, setRoute, sinks } from "./route";
+import { onAnswer, takeAnswer } from "@/lib/nativeCall";
 
 // Uygulama içi sesli arama: gelen aramayı dinler (bana gelen ve çalan kayıt; boşken okuma yok), arama başlatır,
 // açar/reddeder/kapatır. Ses WebRTC ile doğrudan; kurulum Firestore'dan (src/lib/call.js'teki veri biçimi).
 // Bağlantı koparsa (Wi-Fi ↔ 4G, kısa kesinti) arayan taraf bağlantıyı yeniden kurar (ICE restart: yeni teklif rev ile,
 // cevap arev ile kayda yazılır); LOST_MS içinde düzelmezse arama biter. Arama bitince arayan sohbete satır yazar.
+// Android uygulaması: arayan /api/call-ring ile arananın telefonunu uygulama kapalıyken de çaldırır, kapatınca susturur;
+// bildirimdeki "Aç" ile açılan uygulama aramayı kendiliğinden açar (lib/nativeCall.js).
 
 const Ctx = createContext(null);
 const AUDIO = { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
@@ -36,6 +39,11 @@ async function iceServers() {
   return { list: ICE_SERVERS, turn: false };
 }
 
+// Arananın Android telefonunu çaldır (end: sustur); en iyi çaba
+function ringPush(id, end) {
+  authFetch("/api/call-ring", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ id, ...(end ? { end: true } : {}) }) }).catch(() => {});
+}
+
 export function CallProvider({ children }) {
   const toast = useToast();
   const { orgId, uid, personName, send } = useChat() || {};
@@ -44,6 +52,7 @@ export function CallProvider({ children }) {
   const s = useRef({}); // pc, stream, unsubs, timer, ring, wake, ice kuyrukları, rev/arev, kayıp zamanlayıcısı
   const audio = useRef(null);
   const callRef = useRef(null);
+  const acceptRef = useRef(null); // gelen aramayı aç (bildirimdeki "Aç" için)
   // Durum hem ekrana (state) hem dinleyicilere (ref) aynı anda yazılır
   const put = useCallback((next) => {
     callRef.current = next;
@@ -71,6 +80,12 @@ export function CallProvider({ children }) {
     (finalStatus) => {
       const x = s.current;
       const had = !!x.stream;
+      // Arayan çalarken kapattı ya da cevap gelmedi: arananın telefonundaki zil sussun
+      const r0 = callRef.current;
+      if (r0?.pushed && r0.role === "caller" && r0.status === STATUS.ringing) {
+        r0.pushed = false;
+        ringPush(r0.id, true);
+      }
       x.ring?.();
       x.unsubs?.forEach((u) => u());
       clearTimeout(x.timer);
@@ -100,7 +115,10 @@ export function CallProvider({ children }) {
       x.wake?.release?.().catch(() => {});
       s.current = {};
       if (audio.current) audio.current.srcObject = null;
-      if (had) micClosed(); // ses oturumunu bırak (arka plandaki müzik devam edebilsin)
+      if (had) {
+        micClosed(); // ses oturumunu bırak (arka plandaki müzik devam edebilsin)
+        endRoute();
+      }
       const c = callRef.current;
       if (finalStatus && c) {
         logToChat(c, finalStatus);
@@ -316,6 +334,8 @@ export function CallProvider({ children }) {
         }
         s.current.flushIce();
         watch(ref.id);
+        callRef.current.pushed = true;
+        ringPush(ref.id);
         s.current.ring = startRing("back");
         s.current.timer = setTimeout(() => {
           if (callRef.current?.status !== STATUS.ringing) return;
@@ -356,6 +376,8 @@ export function CallProvider({ children }) {
           }
           put({ id: c.id, role: "callee", peer: c.from, status: STATUS.ringing, conn: "new", offer: c.offer, speaker: false });
           s.current.ring = startRing("in");
+          // Uygulama bildirimdeki "Aç" ile açıldıysa aramayı hemen aç
+          takeAnswer().then((aid) => aid === c.id && acceptRef.current?.());
           watch(c.id);
           s.current.timer = setTimeout(() => {
             if (callRef.current?.id === c.id && callRef.current.status === STATUS.ringing) cleanup(STATUS.missed);
@@ -390,6 +412,19 @@ export function CallProvider({ children }) {
       cleanup(STATUS.failed);
     }
   }, [connect, setStatus, cleanup, toast, patch]);
+
+  useEffect(() => {
+    acceptRef.current = accept;
+  }, [accept]);
+  // Uygulama açıkken bildirimdeki "Aç"
+  useEffect(
+    () =>
+      onAnswer((aid) => {
+        const c = callRef.current;
+        if (c?.id === aid && c.role === "callee" && c.status === STATUS.ringing) acceptRef.current?.();
+      }),
+    [],
+  );
 
   // Reddet / kapat
   const decline = useCallback(() => {

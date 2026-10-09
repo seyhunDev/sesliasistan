@@ -43,6 +43,12 @@ group("Android bildirimi")([
   ["bozuk yük", F("düz metin gövde sayılır", () => FM.fcmMessage("t", "merhaba").notification.title === "merhaba")],
   ["boş yük", F("yedek metin, etiket yok", () => { const m = FM.fcmMessage("t", "{}"); return m.notification.title === "Yeni bildirimin var" && !m.data.tag && !m.android.notification.tag && !m.android.notification.notificationCount; })],
   ["veri alanları metin", F("FCM data yalnız metin kabul eder", () => Object.values(FM.fcmMessage("t", { url: "/x", tag: 5 }).data).every((v) => typeof v === "string"))],
+  ["gelen arama", F("yalnız veri, hemen, kısa ömürlü", () => {
+    const m = FM.callMessage("tok", { id: "abc123DEF456", name: "Ali\nKaya", org: "o1", sig: "s1" });
+    return !m.notification && m.data.type === "call" && m.data.id === "abc123DEF456" && m.data.name === "Ali · Kaya" && m.data.org === "o1" && m.data.sig === "s1" && m.android.priority === "high" && m.android.ttl === 35000 && Object.values(m.data).every((v) => typeof v === "string");
+  })],
+  ["adsız arama", F("ad yoksa Biri", () => FM.callMessage("t", { id: "x" }).data.name === "Biri")],
+  ["arama bitti", F("zili susturan mesaj", () => { const m = FM.callEndMessage("t", "abc"); return !m.notification && m.data.type === "call-end" && m.data.id === "abc"; })],
 ]);
 
 // Yoklama ay raporu (attendanceReport.js)
