@@ -12,6 +12,7 @@ const HINT =
   "Spor kulübü, yelken, antrenman, yarış, regat, ayak, Optimist, ILCA, Laser, 420, 470, Techno 293, iQFoil, Finn, Nacra, ıskota, fiş, fatura, KDV, " +
   "plan, görev, not, yoklama, takvim, planlar, görevler, notlar, fişler, yarışlar, sporcular, mesajlar, ayarlar, ana sayfa, aç, git, göster.";
 const MIN = 60 * 1000;
+const BUDGET = 9500; // işlevin toplam süresi (Netlify eşzamanlı işlev sınırı ~10 sn): yedek servisler kalan süreyle denenir
 
 // OpenAI uyumlu ses çeviri servisleri (aynı istek biçimi). Groq: Türkçede tam model (whisper-large-v3) "turbo"dan daha doğru yazar
 const WHISPER = {
@@ -24,7 +25,7 @@ const WHISPER = {
 const namesHint = (names, terms = []) =>
   (names.length ? ` Kişi adları (bu yazımla, bitişik yaz): ${names.join(", ")}.` : "") + (terms.length ? ` Yarış adları (bu yazımla): ${terms.join(", ")}.` : "");
 
-async function viaWhisper(name, file, names, terms, partial = false) {
+async function viaWhisper(name, file, names, terms, partial = false, ms = 0) {
   const s = WHISPER[name];
   const send = (model) => {
     const fd = new FormData();
@@ -35,7 +36,7 @@ async function viaWhisper(name, file, names, terms, partial = false) {
     fd.append("prompt", (HINT + namesHint(names, terms)).slice(0, 600));
     // Groq: parça başına "konuşma yok" olasılığı gelir; sessiz parçalar (uydurma metin) atılır
     if (name === "groq") fd.append("response_format", "verbose_json");
-    return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(partial ? 8000 : 20000) });
+    return fetch(s.url, { method: "POST", headers: { Authorization: `Bearer ${s.key()}` }, body: fd, signal: AbortSignal.timeout(ms || (partial ? 8000 : 20000)) });
   };
   let res = await send(s.model());
   // OpenAI'da model adı hesapta yoksa eski, yaygın modele düş
@@ -57,8 +58,9 @@ const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcr
 async function viaTranscribe(file, names, terms) {
   const buf = Buffer.from(await file.arrayBuffer());
   const mimeType = (file.type || "audio/wav").split(";")[0];
-  // Uzun konuşma (sıralı işler) daha uzun sürer: süre sesin uzunluğuyla artar (8-14 sn)
-  const wait = Math.min(14000, 8000 + audioSecs(buf, mimeType) * 250);
+  // Uzun konuşma (sıralı işler) daha uzun sürer: süre sesin uzunluğuyla artar (6-9 sn). Üst sınır kısa: yedek Whisper'a
+  // da süre kalsın, toplam işlev süresi (Netlify ~10 sn) aşılmasın
+  const wait = Math.min(9000, 6000 + audioSecs(buf, mimeType) * 150);
   let res;
   try {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
@@ -151,8 +153,14 @@ async function handle(request) {
   countAi(au, "transcribe");
 
   const tried = [];
+  const start = Date.now();
   let quota = false;
   for (const p of list) {
+    // Süre bitmek üzere: işlev kesilmeden hata dönülür (telefon bir kez daha dener)
+    if (Date.now() - start > BUDGET - 2500) {
+      tried.push(`${p}:süre`);
+      break;
+    }
     if (p !== "gemini" && isCooling(`stt:${p}`)) {
       tried.push(`${p}:beklemede`);
       quota = true;
@@ -171,7 +179,7 @@ async function handle(request) {
           continue;
         }
         raw = r.text;
-      } else raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms);
+      } else raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms, false, Math.max(3000, BUDGET - (Date.now() - start)));
       const text = dropHallucination(raw, HINT);
       if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);
       console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
