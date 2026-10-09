@@ -66,7 +66,8 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
-import { closeNames, matchPerson } from "@/lib/names";
+import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
+import { soon } from "@/lib/soon";
 import { attRetry } from "@/lib/attAsk";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
@@ -98,7 +99,7 @@ import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 import { splitChain } from "@/lib/chain";
-import { actCount, cachedPlan, clausesOf, failed, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
+import { PLAN_MAX, actCount, cachedPlan, clausesOf, failed, lastPagesPlan, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -396,6 +397,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const chainGen = useRef(0); // sohbet kapanınca bekleyen geçiş iptal olur
   const chainStep = useRef(false); // şu an çalışan cümle zincirden geldi (açık sayfa onu yutmasın)
   const planNow = useRef(""); // görev listesinde şu an yapılan işin adı
+  const planCutN = useRef(0); // listeye sığmayan iş sayısı (en çok PLAN_MAX iş yapılır; sonda söylenir)
+  const planIdx = useRef(-1); // görev listesinde şu an yapılan işin sırası (✓/✗ bu satıra konur)
+  const planKind = useRef(""); // şu an yapılan işin türü (race, post…)
+  const raceFailed = useRef(false); // listede yarış oluşturulamadı: ona bağlı gönderi yapılmaz (denetim B15)
   const planFails = useRef([]); // yapılamayan işler (listenin sonunda "elle yap" denir)
   const chainRace = useRef(""); // zincirde açılan / değişen yarış: "bunun için gönderi hazırla"
   const [plan, setPlan] = useState([]); // görev listesi: [{ label, st: wait | run | done | fail }]
@@ -423,7 +428,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (speaking.current && n < 60) return setTimeout(() => go(n + 1), 250);
       chainStep.current = true;
       planNow.current = next.label || "";
+      planKind.current = next.kind || "";
+      // Satır işi başlatırken açıkça "sürüyor" olur: işaret bir önceki cevabın zamanlamasına bağlı kalmaz
+      // (önceden son iş hiç "sürüyor" olmayınca ✓ konacak satır bulunamıyordu; denetim D, 2026-10-09)
+      if (Number.isInteger(next.i)) {
+        planIdx.current = next.i;
+        setPlan((p) => p.map((x, j) => (j === next.i ? { ...x, st: "run" } : x)));
+      }
       if (next.label) setWork(next.label);
+      if (raceFailed.current && next.kind === "post") return reply("Yarış oluşturulamadığı için gönderiyi hazırlamadım.", { fail: true, engine: "local" }, viaVoice);
       run(typeof next === "string" ? next : next.say, viaVoice);
     };
     setTimeout(go, 700);
@@ -435,6 +448,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
     timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
     inflight.current = null;
+    // Cevap geldi: iş bitti, "çalışıyor" durumu kalkar (yerel akışların bir kısmı kendisi kaldırmıyordu; denetim B3)
+    setPhase("idle");
     if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
     const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null, picks = [], listen = false } = extra;
     const awaiting = expect || !!pending || !!ok;
@@ -442,10 +457,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // İşin sonucu: akış açıkça "olmadı" dediyse (fail) ya da cevapta başarısızlık sözü varsa ✗
     const badStep = !awaiting && planOn.current && (extra.fail ?? failed(message));
     if (badStep && planNow.current) planFails.current.push(planNow.current);
+    if (badStep && planKind.current === "race") raceFailed.current = true;
     if (!awaiting && planOn.current && !chain.current.length && planFails.current.length) {
       const f = planFails.current;
       message = `${message} Yapamadığım: ${f.join(", ")}. ${f.length > 1 ? "Bunları" : "Bunu"} elle yapman gerekiyor.`;
       planFails.current = [];
+    }
+    if (!awaiting && planOn.current && !chain.current.length && planCutN.current) {
+      message = `${message} Çok iş vardı, ilk ${PLAN_MAX} işi yaptım; kalanını yeniden söyler misin?`;
+      planCutN.current = 0;
     }
     if (!ok) okFlow.current = null; // onay kartı kalktıysa onay da biter
     if (!person) personFlow.current = null; // kişi kartı kalktıysa kişi ekleme de biter
@@ -462,12 +482,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Görev listesinin son işi bitti: liste ✓ ile kalır, mikrofon yeniden açılmaz, çalışma durur
     // (Seyhun: "o tik işaretini de almalı, sonra çalışmayı durdurmalı", 2026-10-09)
     const planEnd = !awaiting && planOn.current && !chain.current.length;
+    // Liste sürerken adımlar arasında mikrofon açılmaz: bir "tamam" ya da gürültü süren işi kesmesin (denetim B8)
+    const midPlan = !awaiting && planOn.current && chain.current.length > 0;
     if (!awaiting && planOn.current) {
       const bad = badStep;
+      const at = planIdx.current;
       setPlan((p) => {
-        const i = p.findIndex((x) => x.st === "run");
+        const i = at >= 0 && at < p.length ? at : p.findIndex((x) => x.st === "run");
         if (i < 0) return p;
-        return p.map((x, j) => (j === i ? { ...x, st: bad ? "fail" : "done" } : j === i + 1 && chain.current.length ? { ...x, st: "run" } : x));
+        return p.map((x, j) => (j === i ? { ...x, st: bad ? "fail" : "done" } : x));
       });
       if (!chain.current.length) planOn.current = false;
     }
@@ -477,7 +500,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const said = streamSaid.current;
     streamSaid.current = "";
     const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
-    enqueueSay(rest, planEnd ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
+    enqueueSay(rest, planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
   }
 
   // Başka bir tam ekran açılırken (fiş kamerası, kayıt, toplantı…) mikrofon kapanır; kubbe altta kalır, sohbet sürer
@@ -548,7 +571,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       reply(draftSay(r.message, next), { engine: r.source }, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
-      setError(e.message || "Yapay zeka yanıt vermedi");
+      inflight.current = null; // hata: sonraki sözlü istek bu cümleyle birleşmesin (denetim B14)
+      failNow(e.message || "Yapay zeka yanıt vermedi", viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -573,7 +597,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } catch (e) {
       if (id !== runId.current) return;
       inflight.current = null;
-      setError(e.message || "Yapay zeka yanıt vermedi");
+      failNow(e.message || "Yapay zeka yanıt vermedi", viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
@@ -664,6 +688,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   // Başka sayfaya geçince asistan açık kalır: ne yapıldığı söylenir ve gösterilir, sohbet kullanıcı kapatana kadar sürer
   function leave(message, viaVoice) {
     reply(message, { engine: "local" }, viaVoice);
+  }
+  // Yapay zeka hatası: görev listesi sürüyorsa iş ✗ sayılır ve liste kalan işlerle sürer (önceden liste donuyordu;
+  // denetim B5), değilse hata kutusu çıkar
+  function failNow(message, viaVoice) {
+    if (planOn.current) return reply(message, { fail: true, engine: "local" }, viaVoice);
+    setError(message);
   }
 
   // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
@@ -895,10 +925,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
   // Görev listesini başlat: işler sırayla, her biri kendi akışında; listede yalnız işlerin adı ve sonucu görünür
   function startPlan(tasks, viaVoice, fresh) {
-    chain.current = tasks.slice(1);
+    chain.current = tasks.slice(1).map((x, k) => ({ ...x, i: k + 1 }));
     chainGen.current++;
     raceFollow.current = null;
     planOn.current = true;
+    planIdx.current = 0;
+    planKind.current = tasks[0].kind || "";
+    raceFailed.current = false;
     planNow.current = tasks[0].label || "";
     planFails.current = [];
     setPlan(tasks.map((x, i) => ({ label: x.label, st: i ? "wait" : "run" })));
@@ -911,10 +944,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const id = chainRace.current || curRace;
     return (id && races.current.find((r) => r.id === id)?.name) || "";
   }
-  async function askPlan(s) {
+  // Görev listesini yapay zekaya sordurur. Adı askTasks: etkinlik planının askPlan'ı (events.js) ile karışmasın
+  // (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 15 sn (denetim B1).
+  async function askTasks(s) {
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
+      const res = await authFetch("/api/tasks", { method: "POST", timeout: 15000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
       const d = await res.json().catch(() => ({}));
+      planCutN.current = res.ok && d.cut > 0 ? d.cut : 0;
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;
     } catch {
       return null;
@@ -964,7 +1000,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         setPhase("thinking");
         // Aynı cümle daha önce söylendiyse görev listesi cihazdaki kopyadan gelir (yapay zekaya gidilmez)
         const known = cachedPlan(s);
-        const tasks = known || (await askPlan(s));
+        const pid = ++runId.current;
+        const tasks = known || (await askTasks(s));
+        // Beklerken Vazgeç ya da kapat denildiyse liste hiç başlamaz (denetim B1)
+        if (pid !== runId.current) return;
         setPhase("idle");
         countHit(known ? "brain" : "ai");
         if (tasks && !known) {
@@ -974,7 +1013,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         const split = parts.length > 1 ? parts.map((p) => ({ say: p, label: p.split(/\s+/).slice(0, 5).join(" ") })) : null;
         const list = tasks?.length > 1 ? tasks : !tasks ? split || localPlan(s, flowOf) : null;
         // Sıra yapay zekanın kurduğu düzen; yapay zekasız (yerel) listede aynı kural uygulamada (orderPlan)
-        if (list) return startPlan(list === tasks ? list : orderPlan(list), viaVoice, fresh);
+        if (!tasks || known) planCutN.current = 0;
+        if (list) return startPlan(list === tasks ? lastPagesPlan(list) : orderPlan(list), viaVoice, fresh);
         chainStep.current = true; // tek iş: cümle kendi yoluna (kullanıcının sözü zaten yazıldı)
         return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
       }
@@ -1331,7 +1371,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       const lq = localQuery(s, { plans, tasks });
       if (lq) reply(lq.show.length ? lq.message : `Yapay zekaya şu an ulaşamadım. ${lq.message}`, { show: lq.show, engine: "rules" }, viaVoice);
-      else setError(e.message || "Asistan şu an yanıt vermedi");
+      else failNow(e.message || "Asistan şu an yanıt vermedi", viaVoice);
     } finally {
       clearTimeout(limit);
       if (id === runId.current) {
@@ -2148,21 +2188,24 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           const { roster, cfg } = await loadCash(profile.orgId);
           const name = ic.who ? matchPerson(ic.who, roster.map((a) => a.studentName)) : "";
           const a = name ? roster.find((x) => x.studentName === name) : null;
+          // Bulunamadı / birden çok aynı ad / tutar yok: kaydedilmedi, iş ✗ (önceden ✓ görünüyordu; denetim B4, B17)
           if (!a) {
-            reply(ic.who ? `${ic.who} aidat listesinde yok. Hangi sporcunun aidatı?` : "Hangi sporcunun aidatı? Adını söyler misin?", { engine: "local" }, viaVoice);
+            const many = ic.who ? sameNamed(ic.who, roster.map((x) => x.studentName)) : [];
+            const msg = many.length ? `${many.length} ${ic.who} var: ${many.join(", ")}. Hangisinin aidatı? Soyadıyla yeniden söyler misin?` : ic.who ? `${ic.who} aidat listesinde yok, kaydetmedim. Adını soyadıyla yeniden söyler misin?` : "Hangi sporcunun aidatı? Adını söyler misin?";
+            reply(msg, { fail: true, engine: "local" }, viaVoice);
             return true;
           }
           const amount = ic.amount || feeOf(a, cfg);
           if (!amount) {
-            reply(`${a.studentName} ne kadar ödedi? Aidat tutarı ayarlı değil.`, { engine: "local" }, viaVoice);
+            reply(`${a.studentName} ne kadar ödedi? Aidat tutarı ayarlı değil, kaydetmedim. Tutarla yeniden söyler misin?`, { fail: true, engine: "local" }, viaVoice);
             return true;
           }
-          await addIncome(profile.orgId, { cat: "Aidat", who: a.studentName, athleteId: a.id, ym: ic.ym, amount, date });
+          await soon(addIncome(profile.orgId, { cat: "Aidat", who: a.studentName, athleteId: a.id, ym: ic.ym, amount, date }), 2500, "Aidat");
           const m = new Date(`${ic.ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
           done(`Ekledim: ${a.studentName}, ${m} aidatı, nakit ${money(amount).replace(/,00$/, "")} TL. Aidatlar'da ödendi görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
           return true;
         }
-        await addIncome(profile.orgId, { cat: ic.cat, who: ic.who, amount: ic.amount, date, note: ic.note });
+        await soon(addIncome(profile.orgId, { cat: ic.cat, who: ic.who, amount: ic.amount, date, note: ic.note }), 2500, "Gelir");
         done(`Ekledim: ${ic.cat} geliri${ic.who ? `, ${ic.who}` : ""}, ${money(ic.amount).replace(/,00$/, "")} TL. Hesaplar'da görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
       } catch {
         reply("Geliri kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
@@ -2282,15 +2325,19 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Cümle yoklama değil de başka işmiş (yoklama sayfasında "Ali'ye geldi mi diye sor"): yapay zekaya gider
         if (rest) return void askAI(rest.s, rest.s, viaVoice, rest.history, false);
         // Ad söylenmedi ya da bulunamadı: kısa soru, yanlış duyulmuş ada en yakın sporcular seçenek, sesle sorulduysa mikrofon açılır
-        const picks = closeNames(r.unknown.length ? r.unknown.join(" ") : s, Object.values(r.names));
+        const amb = sameIn(r.unknown, Object.values(r.names));
+        const picks = amb.picks.length ? amb.picks : closeNames(r.unknown.length ? r.unknown.join(" ") : s, Object.values(r.names));
         waitFor("attName");
         attAsk.current = { text: s };
+        if (amb.text) return reply(`${amb.text} Adını söyle ya da seç.`, { engine: "local", expect: true, picks, listen: true }, viaVoice);
         return reply(`${r.unknown.length ? `${r.unknown.join(", ")} adında sporcu bulamadım. ` : ""}Kimi ekleyeyim? ${picks.length ? "Adını söyle ya da seç." : "Adını söyle."}`, { engine: "local", expect: true, picks, listen: true }, viaVoice);
       }
       // Bulunamayan ad varsa kaydetmeden sor
       if (r.unknown.length) {
         stepsEnd();
-        return reply(`${r.unknown.join(", ")} adını bulamadım. ${attSummary(r)}. Bunları kaydedeyim mi?`, { pending: { att: r, rest }, att: { ...r, saved: false }, engine: "ai", expect: true }, viaVoice);
+        const amb = sameIn(r.unknown, Object.values(r.names));
+        const lost = r.unknown.filter((u) => !AMB.test(u));
+        return reply(`${amb.text ? `${amb.text} ` : ""}${lost.length ? `${lost.join(", ")} adını bulamadım. ` : ""}${attSummary(r)}. Bunları kaydedeyim mi?`, { pending: { att: r, rest }, att: { ...r, saved: false }, engine: "ai", expect: true }, viaVoice);
       }
       await saveAtt(r, viaVoice);
       if (rest) restAfterAtt(rest, viaVoice, `Yoklama kaydedildi (${attSummary(r)}).`);
@@ -2302,6 +2349,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } finally {
       if (id === runId.current) setPhase("idle");
     }
+  }
+  // Yapay zekanın "Mustafa (2 kişi)" diye yazdığı belirsiz adlar: "2 Mustafa var: … Hangisi?" ve seçenekler (denetim B17)
+  const AMB = /\(\d+\s*kişi\)/u;
+  function sameIn(unknown, names) {
+    const amb = (unknown || []).filter((u) => AMB.test(u)).map((u) => u.replace(AMB, "").trim());
+    const picks = amb.flatMap((n) => sameNamed(n, names));
+    const text = amb.map((n) => {
+      const many = sameNamed(n, names);
+      return many.length ? `${many.length} ${n} var: ${many.join(", ")}. Hangisi?` : `Birden çok ${n} var, hangisi?`;
+    }).join(" ");
+    return { text, picks: [...new Set(picks)].slice(0, 4) };
   }
   // follow: yeni yarışın tarih/sporcu sorusuna cevap ({ id, n }): o yarışa yazılır
   async function runRace(s, viaVoice, follow = null) {
@@ -2352,7 +2410,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (racer) {
         stepTo("Yarış aranıyor");
         if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-        r = raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race || null;
+        // Bu sohbette az önce oluşturulan / açılan yarış adla uyuşuyorsa önce o: aynı adlı eski yarış seçilmesin (denetim B7)
+        const near = chainRace.current && races.current.find((x) => x.id === chainRace.current);
+        const words = near ? near.name.split(/\s+/).map(plain).filter((w) => w.length > 2 && !/^(yaris|kupasi|kupa|ayak|ligi)$/.test(w)) : [];
+        r = (near && words.length && words.every((w) => plain(s).includes(w)) ? near : null) || raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race || null;
         if (r) {
           stepTo("Sporcular alınıyor");
           const data = await loadAthletes().catch(() => null);
@@ -2603,7 +2664,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   async function saveAtt(r, viaVoice) {
     stepTo("Yoklama kaydediliyor");
-    await applyAttendance(myUid, members, r.date, r.changes);
+    await soon(applyAttendance(myUid, members, r.date, r.changes), 4000, "Yoklama");
     stepsEnd();
     navigator.vibrate?.([10, 40, 10]);
     toast("Yoklama kaydedildi");
@@ -2624,9 +2685,20 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
 
   // Bekleyen isteği bırak, metni geri getir
+  // Görev listesini durdur: kalan işler yapılmaz, listede "yapılmadı" görünür (Vazgeç; denetim B2)
+  function stopPlan() {
+    if (!planOn.current && !chain.current.length) return;
+    chain.current = [];
+    chainGen.current++;
+    planOn.current = false;
+    planIdx.current = -1;
+    planFails.current = [];
+    setPlan((p) => p.map((x) => (x.st === "run" || x.st === "wait" ? { ...x, st: "skip" } : x)));
+  }
   function abort() {
     const t = heard;
     cancelRun();
+    stopPlan();
     setTurns((p) => p.slice(0, -1));
     setText(t);
   }
@@ -2877,9 +2949,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {plan.length > 0 && (
           <ol className="fade-in mt-3 space-y-1.5 text-[0.9375rem]" aria-label="Görev listesi">
             {plan.map((x, i) => (
-              <li key={i} className={`flex items-center gap-2 ${x.st === "run" ? "font-medium" : x.st === "done" ? "text-mut" : x.st === "fail" ? "text-rec" : "text-mut/50"}`}>
+              <li key={i} className={`flex items-center gap-2 ${x.st === "run" ? "font-medium" : x.st === "done" ? "text-mut" : x.st === "fail" ? "text-rec" : x.st === "skip" ? "text-mut/60 line-through" : "text-mut/50"}`}>
                 <span className="grid size-4 shrink-0 place-items-center">
-                  {x.st === "done" ? <Icon name="check" className="size-4 text-acc [stroke-width:2.5]" /> : x.st === "fail" ? <Icon name="x" className="size-4 [stroke-width:2.5]" /> : <span className={`size-1.5 rounded-full ${x.st === "run" ? "bg-acc" : "bg-mut/40"}`} />}
+                  {x.st === "done" ? <Icon name="check" className="size-4 text-acc [stroke-width:2.5]" /> : x.st === "skip" ? <Icon name="x" className="size-3.5 text-mut/60 [stroke-width:2.5]" /> : x.st === "fail" ? <Icon name="x" className="size-4 [stroke-width:2.5]" /> : <span className={`size-1.5 rounded-full ${x.st === "run" ? "bg-acc" : "bg-mut/40"}`} />}
                 </span>
                 <span className={`min-w-0 truncate ${x.st === "run" ? "work-text" : ""}`}>{x.label}</span>
               </li>

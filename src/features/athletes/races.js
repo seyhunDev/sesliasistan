@@ -1,8 +1,9 @@
 "use client";
 
 import { cleanResults } from "@/lib/raceResults";
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { soon } from "@/lib/soon";
 import { cleanDocs, nextNo } from "./raceDocs";
 import { cleanBudget, cleanRooms } from "./budget";
 import { rememberRaceNames } from "./raceNames";
@@ -267,11 +268,13 @@ export async function loadRaces(orgId) {
 export async function saveRace(orgId, uid, r) {
   const data = { ...clean(r), updatedAt: serverTimestamp() };
   rememberRaceNames([data.name]);
+  // Sunucu onayı en çok 2,5 sn beklenir; yazma cihazda yapılmıştır, arkada gider (lib/soon.js, denetim B11)
   if (r.id) {
-    await updateDoc(doc(col(orgId), r.id), data);
+    await soon(updateDoc(doc(col(orgId), r.id), data), 2500, "Yarış");
     return r.id;
   }
-  const ref = await addDoc(col(orgId), { ...data, createdByUid: uid, createdAt: serverTimestamp() });
+  const ref = doc(col(orgId));
+  await soon(setDoc(ref, { ...data, createdByUid: uid, createdAt: serverTimestamp() }), 2500, "Yarış");
   return ref.id;
 }
 

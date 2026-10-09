@@ -211,3 +211,18 @@ export function closeNames(text, names = [], n = 4) {
   }
   return scored.sort((a, b) => a[0] - b[0]).slice(0, n).map((x) => x[1]);
 }
+
+// Söylenen ad birden çok kişiye uyuyorsa ("Mustafa", iki Mustafa var) o kişiler; uymuyorsa ya da tek kişiyse []
+// (bulunamadı yerine "İki Mustafa var, hangisi?" denebilsin; denetim B4, B17)
+export function sameNamed(raw, people = []) {
+  if (matchPerson(raw, people)) return [];
+  const names = people.map((p) => (typeof p === "string" ? p : p?.name)).filter(Boolean);
+  for (const f of forms(raw)) {
+    const hit = names.filter((n) => {
+      const w = n.split(/\s+/).filter(Boolean);
+      return plain(w[0]) === f || plain(n) === f || (w.length > 1 && plain(w[w.length - 1]) === f);
+    });
+    if (hit.length > 1) return hit.slice(0, 4);
+  }
+  return [];
+}

@@ -15,6 +15,10 @@ export const isChromium = () =>
 export const webSpeechAvailable = () =>
   typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
+// Mağaza/APK uygulaması içinde mi (mobil/, Capacitor; Android WebView "; wv)" yazar)
+export const isNativeApp = () =>
+  typeof window !== "undefined" && (!!window.Capacitor?.isNativePlatform?.() || window.__asistanApp === "android" || /; wv\)/.test(navigator.userAgent || ""));
+
 export const recorderAvailable = () =>
   typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
@@ -25,6 +29,8 @@ const MODE = process.env.NEXT_PUBLIC_STT_MODE || "auto";
 export function pickProvider() {
   if (MODE === "server" && recorderAvailable()) return "server";
   if (MODE === "browser") return webSpeechAvailable() ? "webspeech" : "none";
+  // Android uygulaması (Capacitor WebView): tarayıcı ses tanıması nesnesi görünür ama WebView'da çalışmaz; kayıt yolu (denetim A5)
+  if (isNativeApp() && recorderAvailable()) return "server";
   // iPhone/iPad: Safari'nin ses tanıması dokunuş dışında başlatılınca sessizce çalışmıyor; kayıt yolu daha güvenilir
   if (isIOS() && recorderAvailable()) return "server";
   // Tarayıcı ses tanıması yalnızca Türkçeyi güvenle uygulayan tarayıcılarda (Chrome/Edge); diğerlerinde kayıt + sunucu (her zaman Türkçe)

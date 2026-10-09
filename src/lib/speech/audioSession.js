@@ -10,7 +10,8 @@
 // - "transient" yalnız hiçbir mikrofon açık değilken ve en çok RELEASE_MS sürer,
 // - bir hata olursa sessizce eski davranışa düşer (kip "auto"da kalır).
 // Destek yoksa (Chrome, eski iOS) hiçbir şey yapmaz. Sorun çıkarsa SESSION_SWITCH = false: yalnız sıfırlama kalır.
-export const SESSION_SWITCH = true;
+// Kapatıldı (2026-10-09, denetim A1): "Ses alınamadı" hatasının en güçlü şüphelisi. Bedeli: YouTube mikrofondan sonra kendiliğinden devam etmez.
+export const SESSION_SWITCH = false;
 export const CLOSE_WAIT_MS = 300; // izlerin gerçekten kapanması için bekleme
 export const RELEASE_MS = 600; // "transient"te kalma süresi
 

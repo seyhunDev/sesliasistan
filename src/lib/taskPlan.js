@@ -23,12 +23,15 @@ export const PLAN_KINDS = {
 
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
+// Bir görev listesinde en çok kaç iş yapılır; fazlası yapılmaz ve kullanıcıya söylenir (planCut; denetim B18)
+export const PLAN_MAX = 10;
+export const planCut = (raw) => Math.max(0, (Array.isArray(raw?.tasks) ? raw.tasks.filter((x) => S(x?.say, 400)).length : 0) - PLAN_MAX);
 // Yapay zeka yanıtı → [{ kind, say, label }]; ardışık "other" işler tek işte birleşir (ana yapay zeka hepsini birlikte yapar)
 export function cleanPlan(raw) {
   const list = (Array.isArray(raw?.tasks) ? raw.tasks : [])
     .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) }))
     .filter((x) => x.say)
-    .slice(0, 8);
+    .slice(0, PLAN_MAX);
   const out = [];
   for (const x of list) {
     const last = out[out.length - 1];
@@ -91,8 +94,14 @@ export function looksMulti(text, kindOf) {
   return own.length > 0 && new Set(kinds).size > 1;
 }
 
-// İşin sonucu: cevapta başarısızlık sözü varsa ✗
-export const failed = (msg) => /(bulamadım|edemedim|kaydedemedim|yapamadım|anlayamadım|okuyamadım|gönderilemedi|silemedim|ekleyemedim|izni yok|yetkin yok|hata|bağlı değilsin|tekrar dene)/iu.test(String(msg || ""));
+// İşin sonucu (akış açıkça fail vermediyse): cevapta başarısızlık sözü varsa ✗. Cevap bir başarıyla başlıyorsa
+// ("Kaydettim: Atatürk Kupası. Mustafa'yı bulamadım.") iş yapılmıştır, ✓; olumsuz fiil ("eklemedim", "yapılmadı") ✗ (denetim B6)
+const DONE_START = /^\s*(tamam[,.]?\s+)?(kaydettim|ekledim|oluşturdum|yazdım|tamamladım|değiştirdim|gönderdim|hazırladım|hazırlıyorum|açtım|sildim|işaretledim|güncelledim|arşive aldım)/iu;
+const FAIL_WORD = /(bulamadım|bulunamadı|edemedim|kaydedemedim|yapamadım|anlayamadım|okuyamadım|gönderilemedi|silemedim|ekleyemedim|açamadım|izni yok|yetkin yok|hata|bağlı değilsin|tekrar dene|(?:ekle|kaydet|yaz|yap|gönder|oluştur|işaretle)(?:me|ma)dim|yapılmadı|kaydedilmedi|eklenmedi)/iu;
+export const failed = (msg) => {
+  const m = String(msg || "");
+  return !DONE_START.test(m) && FAIL_WORD.test(m);
+};
 
 // ---- Yerelde öğrenme (Seyhun: "bir dahaki sefere yapay zekadan çok içeride hızlıca halletmeye çalışabiliriz", 2026-10-09) ----
 // 1) Yapay zekanın çıkardığı her iş, kullanıcının o işe ait sözüyle ("from") cihazdaki öğrenme kaydına "plan:<tür>"
@@ -125,14 +134,19 @@ function readCache(st) {
   }
 }
 // Daha önce yapay zekanın çıkardığı görev listesi (aynı cümle) ya da null
-export function cachedPlan(text, st = store()) {
+// Kopya yalnız aynı gün kullanılır ve sohbete gönderme yapan cümle ("bunun için", "o yarışa") saklanmaz: yapay zekanın
+// yazdığı tarih ya da çözdüğü yarış bir hafta sonra aynı cümlede yanlış olur (denetim B9)
+const REFERS = /(?<![\p{L}])(bunun|buna|bunu|bu yarış\p{L}*|o yarış\p{L}*|yarışa|yarışın|ona|onu|onun|şuna|şunu|aynı)(?![\p{L}])/iu;
+const dayOf = (t) => new Date(t).toDateString();
+export function cachedPlan(text, st = store(), now = Date.now()) {
   const k = planKey(text);
   const hit = k && readCache(st).find((e) => e.k === k);
-  return hit?.tasks?.length > 1 ? hit.tasks : null;
+  if (!hit || !(hit.tasks?.length > 1) || !hit.t || dayOf(hit.t) !== dayOf(now) || REFERS.test(text)) return null;
+  return hit.tasks;
 }
 export function rememberPlan(text, tasks, st = store()) {
   const k = planKey(text);
-  if (!k || !st || !(tasks?.length > 1)) return;
+  if (!k || !st || !(tasks?.length > 1) || REFERS.test(text)) return;
   const list = [{ k, tasks: tasks.map(({ kind, say, label }) => ({ kind, say, label })), t: Date.now() }, ...readCache(st).filter((e) => e.k !== k)].slice(0, CACHE_MAX);
   try {
     st.setItem(CACHE, JSON.stringify(list));
@@ -172,6 +186,11 @@ export function localPlan(text, kindOf) {
 // ödeme…), sonra onay isteyebilen diğer işler (mesaj, plan), en sonda sayfa değiştiren işler. Gönderi en son: gönderi
 // ekranı açılınca o ekranda kalınır ve yarışın gönderisi yarış kaydedildikten sonra hazırlanır. Aynı türler söylendiği sırada.
 const ORDER = ["race", "athlete", "attendance", "log", "income", "dues", "invoice", "inventory", "shopping", "event", "other", "call", "nav", "post"];
+// Yapay zekanın sırası korunur, yalnız gönderi ve sayfa açma sona alınır: sayfa listenin ortasında değişmesin (denetim B10)
+export function lastPagesPlan(tasks) {
+  const end = (t) => (t?.kind === "post" ? 2 : t?.kind === "nav" ? 1 : 0);
+  return (tasks || []).map((t, i) => ({ t, i })).sort((a, b) => end(a.t) - end(b.t) || a.i - b.i).map((x) => x.t);
+}
 export function orderPlan(tasks) {
   const rank = (t) => {
     const i = ORDER.indexOf(t?.kind || "other");

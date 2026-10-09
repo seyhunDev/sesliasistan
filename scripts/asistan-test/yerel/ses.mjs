@@ -184,18 +184,21 @@ const W = as.CLOSE_WAIT_MS, RL = as.RELEASE_MS;
 const sessionRun = await (async () => {
   const out = {};
   // takılı "transient" mikrofon açılırken "auto"ya döner
-  { const sess = fakeSession(); sess.type = "transient"; out.reset = await onSession(sess, async () => { as.micOpening(); const t = sess.type; as.micClosed(); await sleep(W + RL + 100); return t; }); }
+  { const sess = fakeSession(); sess.type = "transient"; out.reset = await onSession(sess, async () => { as.micOpening(true); const t = sess.type; as.micClosed(true); await sleep(W + RL + 100); return t; }); }
   // açılırken kayıt kipi yazılmaz
-  { const sess = fakeSession(); out.openSeen = await onSession(sess, async () => { as.micOpening(); const n = sess.seen.slice(); as.micClosed(); await sleep(W + RL + 100); return n; }); }
+  { const sess = fakeSession(); out.openSeen = await onSession(sess, async () => { as.micOpening(true); const n = sess.seen.slice(); as.micClosed(true); await sleep(W + RL + 100); return n; }); }
   // kapanınca kısa süre transient, sonra auto
-  { const sess = fakeSession(); out.cycle = await onSession(sess, async () => { as.micOpening(); as.micClosed(); const early = sess.type; await sleep(W + 100); const mid = sess.type; await sleep(RL + 100); return { early, mid, end: sess.type }; }); }
+  { const sess = fakeSession(); out.cycle = await onSession(sess, async () => { as.micOpening(true); as.micClosed(true); const early = sess.type; await sleep(W + 100); const mid = sess.type; await sleep(RL + 100); return { early, mid, end: sess.type }; }); }
   // iki mikrofondan biri kapanınca bırakılmaz
-  { const sess = fakeSession(); out.two = await onSession(sess, async () => { as.micOpening(); as.micOpening(); as.micClosed(); await sleep(W + 100); const t = sess.seen.includes("transient"); as.micClosed(); await sleep(W + RL + 100); return t; }); }
+  { const sess = fakeSession(); out.two = await onSession(sess, async () => { as.micOpening(true); as.micOpening(true); as.micClosed(true); await sleep(W + 100); const t = sess.seen.includes("transient"); as.micClosed(true); await sleep(W + RL + 100); return t; }); }
   // bırakma sırasında mikrofon yeniden açılırsa hemen auto, transient'e dönülmez
-  { const sess = fakeSession(); out.reopen = await onSession(sess, async () => { as.micOpening(); as.micClosed(); await sleep(W + 100); as.micOpening(); const t = sess.type; await sleep(RL + 100); const after = sess.type; as.micClosed(); await sleep(W + RL + 100); return { t, after }; }); }
+  { const sess = fakeSession(); out.reopen = await onSession(sess, async () => { as.micOpening(true); as.micClosed(true); await sleep(W + 100); as.micOpening(true); const t = sess.type; await sleep(RL + 100); const after = sess.type; as.micClosed(true); await sleep(W + RL + 100); return { t, after }; }); }
   // kip yazılamazsa (hata) auto'da kalır
-  { const sess = { get type() { return "auto"; }, set type(v) { if (v === "transient") throw new Error("x"); } }; out.err = await onSession(sess, async () => { as.micOpening(); as.micClosed(); await sleep(W + 100); return sess.type; }); }
-  try { as.micOpening(); as.micClosed(); out.none = true; } catch { out.none = false; }
+  { const sess = { get type() { return "auto"; }, set type(v) { if (v === "transient") throw new Error("x"); } }; out.err = await onSession(sess, async () => { as.micOpening(true); as.micClosed(true); await sleep(W + 100); return sess.type; }); }
+  try { as.micOpening(true); as.micClosed(true); out.none = true; } catch { out.none = false; }
+  // Varsayılan kapalı (denetim A1, "Ses alınamadı"): mikrofon kapanınca kip hiç değişmez
+  await sleep(W + RL + 200);
+  { const sess = fakeSession(); out.off = await onSession(sess, async () => { as.micOpening(); as.micClosed(); await sleep(W + 100); return sess.seen.includes("transient"); }); }
   await sleep(W + RL + 100);
   return out;
 })();
@@ -207,4 +210,5 @@ group("Ses oturumu (arka plan sesi)")([
   ["bırakırken mikrofon açılırsa hemen auto", { desc: "auto, auto", fn: () => sessionRun.reopen, ok: (r) => r.t === "auto" && r.after === "auto" }],
   ["kip yazılamazsa auto'da kalır", { desc: "auto", fn: () => sessionRun.err, ok: (r) => r === "auto" }],
   ["destek yoksa hata vermez", { desc: "sorunsuz", fn: () => sessionRun.none, ok: (r) => r === true }],
+  ["varsayılan: kip değiştirme kapalı", { desc: "transient yok", fn: () => sessionRun.off, ok: (r) => r === false }],
 ]);

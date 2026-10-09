@@ -528,7 +528,7 @@ export function WeatherPlaceRow() {
 
 // ---- Örnek veri (yalnızca ana hesap): önce tüm verileri sil, sonra örnek kişi ve kayıtlar oluştur ----
 async function demoCall(body) {
-  const res = await authFetch("/api/demo", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const res = await authFetch("/api/demo", { method: "POST", timeout: 65000, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "İşlem yapılamadı");
   return data;

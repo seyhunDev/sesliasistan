@@ -78,7 +78,9 @@ async function viaTranscribe(file, names, terms) {
   const err = new Error(`gtranscribe ${res.status}: ${body.slice(0, 300)}`);
   err.status = res.status;
   // Model yok/istek biçimi kabul edilmedi ya da anahtar geçersiz: bir süre deneme, Whisper çalışsın. Kota: söylenen süre kadar
-  if ([400, 401, 403, 404].includes(res.status)) markCool("stt:gtranscribe", 6 * 60 * MIN);
+  // 400 yalnız istek biçimi/model hatasıysa; bozuk ya da kısa ses (tek kayıt) Google'ı 6 saat kapatmasın (denetim A7)
+  const badReq = res.status === 400 && /model|field|unknown name|not found|invalid json|cannot find/i.test(body) && !/audio|duration|too short|decode|empty/i.test(body);
+  if ([401, 403, 404].includes(res.status) || badReq) markCool("stt:gtranscribe", 6 * 60 * MIN);
   else if (res.status === 429) markCool("stt:gtranscribe", (Number(res.headers.get("retry-after")) || 60) * 1000);
   throw err;
 }
@@ -154,7 +156,10 @@ async function handle(request) {
 
   const tried = [];
   const start = Date.now();
-  let quota = false;
+  // Kota yazısı yalnız gerçekten kota/izin hatası (429/401/403) ya da kota yüzünden beklemedeki servisler kaldıysa;
+  // başka bir hata (400, 500, süre) varsa genel yazı ve denenenler (denetim A6)
+  let quota = 0;
+  let other = 0;
   for (const p of list) {
     // Süre bitmek üzere: işlev kesilmeden hata dönülür (telefon bir kez daha dener)
     if (Date.now() - start > BUDGET - 2500) {
@@ -163,7 +168,7 @@ async function handle(request) {
     }
     if (p !== "gemini" && isCooling(`stt:${p}`)) {
       tried.push(`${p}:beklemede`);
-      quota = true;
+      quota++;
       continue;
     }
     try {
@@ -185,7 +190,8 @@ async function handle(request) {
       console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
       return NextResponse.json({ text, provider: p });
     } catch (e) {
-      if (e.status === 429 || e.status === 401 || e.status === 403) quota = true;
+      if (e.status === 429 || e.status === 401 || e.status === 403) quota++;
+      else other++;
       tried.push(`${p}:${e.status || "hata"}`);
       console.error(`[transcribe:${p}]`, e.message.slice(0, 300));
     }
@@ -193,7 +199,7 @@ async function handle(request) {
   console.warn(`[transcribe] başarısız · ${tried.join(", ")}`);
   return NextResponse.json(
     {
-      error: quota
+      error: quota && !other
         ? "Ses yazıya çevrilemedi: çeviri servislerinin kotası dolu. Şimdilik klavyedeki mikrofonla yazabilirsin."
         : `Ses yazıya çevrilemedi, tekrar dene. (${tried.join(", ")})`,
       tried,
