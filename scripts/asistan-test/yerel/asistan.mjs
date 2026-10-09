@@ -569,6 +569,7 @@ group("Göreve göre ara yazı")([
     ["Ahmet Yılmaz'dan 2000 lira bağış geldi", IN("bağış", (r) => r?.cat === "Bağış" && r.who === "Ahmet Yılmaz")],
     ["kano eğitimi için 3 bin lira nakit aldım", IN("bin", (r) => r?.cat === "Kano eğitimi" && r.amount === 3000)],
     ["Deniz Şahin aidatını nakit 1.500 TL ödedi", IN("noktalı tutar", (r) => r?.amount === 1500 && r.who === "Deniz Şahin")],
+    ["Enes'in aidatı nakit alındı", IN("tutarsız aidat (sporcunun aidatı yazılır)", (r) => r?.cat === "Aidat" && r.amount === 0 && r.who === "Enes")],
     ["bu ay ne kadar ödeme aldım", IN("soru, gelir değil", (r) => r === null)],
     ["eylül aidatı nakit 1500 alındı Ali Kaya", IN("geçmiş ay", (r) => r?.ym === "2026-09")],
     ["2.500,50 TL", { desc: "tutar", fn: amountOf, ok: (n) => n === 2500.5 }],

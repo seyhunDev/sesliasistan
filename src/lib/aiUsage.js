@@ -11,6 +11,7 @@ export const AI_LABELS = {
   race: "Yarış (asistan)",
   "race-notice": "Yarış talimatı",
   "race-budget": "Yarış bütçesi",
+  tasks: "Görev listesi (çoklu iş)",
   "race-around": "Yarış çevresi",
   "event-plan": "Etkinlik planı",
   inventory: "Envanter",

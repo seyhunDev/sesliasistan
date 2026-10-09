@@ -87,7 +87,8 @@ export function incomeCommand(raw, today = "") {
   if (!/(nakit|gelir|bağış|aidat|eğitim)/u.test(t)) return null;
   if (!/(aldım|aldık|alındı|geldi|ödedi|verdi|yatırdı|ekle|yaz|kaydet|gelir olarak)/u.test(t)) return null;
   const amount = amountOf(t.replace(/(19|20)\d{2} yılı/gu, ""));
-  if (!(amount > 0)) return null;
+  // Aidatta tutar söylenmeyebilir ("Enes'in aidatı nakit alındı"): sporcunun aidat tutarı yazılır (amount 0)
+  if (!(amount > 0) && !/aidat/u.test(t)) return null;
   const cat = (CAT.find(([re]) => re.test(t)) || [null, "Diğer"])[1];
   // Kimden: "Ahmet'ten", "Ali Kaya'dan", "Ali Kaya'nın", "Ali Kaya ödedi"
   const words = String(raw || "").replace(/[,.;:!]/g, " ").split(/\s+/).filter(Boolean);
