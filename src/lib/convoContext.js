@@ -90,3 +90,40 @@ export function sameTo(a, b) {
   const n = (x) => low(x).replace(/\s*\(.*\)\s*$/, "").replace(/\s+(grubu|grubuna)$/, "").trim();
   return !!n(a) && n(a) === n(b);
 }
+
+// ---- Sohbet hafızası (inceleme adım 4): bu sohbette az önce konuşulan yarış, kişi, sporcu, gönderi, kayıt ----
+// Akışlar ayrı yapay zeka istekleri kullandığı için "o yarış", "ona yaz", "onu arşive al" gibi göndermeler tek yerden
+// çözülür: telefon hafızayı tutar, ana yapay zekaya ve görev listesi planlayıcısına küçük bir blok olarak gider.
+export const MEMO_KEYS = { race: "Yarış", person: "Kişi", athlete: "Sporcu", post: "Gönderi", record: "Kayıt" };
+export const newMemo = () => ({});
+export function remember(memo, key, value) {
+  const v = cut(value, 80);
+  if (!MEMO_KEYS[key] || !v) return memo || {};
+  return { ...(memo || {}), [key]: v, last: key };
+}
+// Telefon → sunucu: yalnız bilinen alanlar, kısaltılmış
+export function memoFor(memo) {
+  const out = {};
+  for (const k of Object.keys(MEMO_KEYS)) if (memo?.[k]) out[k] = cut(memo[k], 80);
+  if (memo?.last && out[memo.last]) out.last = memo.last;
+  return Object.keys(out).length ? out : null;
+}
+// Sunucu: istem bölümü (yoksa "")
+export function memoBlock(raw) {
+  if (!raw || typeof raw !== "object") return "";
+  const clean = (v) => String(v ?? "").replace(/["`#\n\r]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  const rows = Object.entries(MEMO_KEYS).filter(([k]) => clean(raw[k])).map(([k, label]) => `- ${label}: ${clean(raw[k])}${raw.last === k ? " (en son bu)" : ""}`);
+  return rows.length ? `## SOHBETTE AZ ÖNCE KONUŞULANLAR\n"o", "onu", "ona", "bunun için", "aynı yarış" gibi göndermeler bunlardır (en son konuşulan önce).\n${rows.join("\n")}` : "";
+}
+// "onu arşive al", "bunu sil": ad yerine gönderme sözü
+export function isPronoun(name) {
+  return /^(o|bu|şu|onu|bunu|şunu|ona|buna|onun|bunun|o kişi\p{L}*|bu kişi\p{L}*|o sporcu\p{L}*|bu sporcu\p{L}*|aynı kişi\p{L}*|aynı sporcu\p{L}*)$/u.test(String(name ?? "").toLocaleLowerCase("tr-TR").replace(/[.,!?'’]/g, "").trim());
+}
+
+// ---- Tek bekleyen soru: asistan bir soru sorunca (yarış seçimi, alıcı, onay, kişi, günlük tarihi…) öncekiler kapanır ----
+// Böylece sonraki cümle yalnız EN SON sorulan soruya cevap sayılır. Bekleyen sorunun boş hâli:
+export const ASK_EMPTY = { raceChoice: [], to: null, log: null, person: null, invoice: null, ok: null, athlete: false, raceFollow: null, event: null, inv: null };
+// kind dışındaki bütün soruların sıfırlanacak listesi (kind boşsa hepsi)
+export function asksToClear(kind = "") {
+  return Object.keys(ASK_EMPTY).filter((k) => k !== kind);
+}

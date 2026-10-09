@@ -24,7 +24,7 @@ import { precue } from "@/lib/precue";
 import { inventoryWork, pastTense, taskOf } from "@/lib/assistTasks";
 import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
-import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
+import { ASK_EMPTY, DRAFT_AGE, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
@@ -393,6 +393,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const [plan, setPlan] = useState([]); // görev listesi: [{ label, st: wait | run | done | fail }]
   const planOn = useRef(false); // görev listesi sürüyor
   const raceFollow = useRef(null); // yeni yarışta tarih / sporcu soruldu: { id, n }
+  // Sohbet hafızası: az önce konuşulan yarış, kişi, sporcu, gönderi, kayıt (convoContext `remember`); sohbet kapanınca sıfırlanır
+  const memo = useRef({});
+  const memoSet = (key, value) => (memo.current = remember(memo.current, key, value));
+  // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
+  const ASK_REFS = { raceChoice: raceChoices, to: askTo, log: logFlow, person: personFlow, invoice: invAsk, ok: okFlow, athlete: athAsk, raceFollow, event: eventFlow, inv: invFlow };
+  function waitFor(kind = "") {
+    asksToClear(kind).forEach((k) => (ASK_REFS[k].current = ASK_EMPTY[k]));
+  }
   const speaking = useRef(false);
   useEffect(() => {
     speaking.current = tts.speaking;
@@ -440,6 +448,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
     setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
     setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok });
+    if (races?.length) waitFor("raceChoice");
     raceChoices.current = races;
     // Görev listesi: iş bitti (soru sormadıysa) → ✓ ya da ✗, sıradaki başlar
     if (!awaiting && planOn.current) {
@@ -588,6 +597,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}`);
     navigator.vibrate?.([10, 40, 10]);
     // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
+    if (list.length === 1) memoSet("record", `${{ plan: "plan", task: "görev", note: "not" }[list[0].type] || ""} ${list[0].title || list[0].body || ""}`.trim());
     const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
     const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
     if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} kaydedildi, bağlantı gelince gönderilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
@@ -684,6 +694,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   function goRace(r, viaVoice) {
     navigator.vibrate?.(8);
     chainRace.current = r.id; // sohbetin yarışı: "bunun için gönderi hazırla", "yarışa Ali'yi de ekle"
+    memoSet("race", r.name);
     if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
     leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
   }
@@ -754,7 +765,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // ("gönderdin mi?" sorusuna, gerçekten gönderildiyse "gönderdim" demesi doğrudur)
     if (r.intent === "message" || (SENT_CLAIM.test(msg) && !(sentOk.current && ASKED.test(s)))) {
       const to = r.send?.to || "";
-      if (to && resolveTo(to)) askTo.current = to;
+      if (to && resolveTo(to)) waitFor("to"), (askTo.current = to);
       if (r.intent === "message" && isMulti(s)) askAll.current = s; // sıralı iş: cevapla birlikte hepsi yeniden
       return reply(SENT_CLAIM.test(msg) || !msg || /^tamam\.?$/i.test(msg) ? `Mesajı henüz göndermedim. ${to ? "Ne yazayım?" : "Kime ve ne yazayım?"}` : msg, { engine: r.source, expect: true }, viaVoice);
     }
@@ -890,7 +901,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
   async function askPlan(s) {
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace() }) });
+      const res = await authFetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current) }) });
       const d = await res.json().catch(() => ({}));
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;
     } catch {
@@ -955,7 +966,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     }
     const history = fresh ? [] : historyFor(turns);
     // Mesaj taslağı birkaç cümle sonra bağlamdan düşer (konu değişti); yeni sohbette hiç yok
-    if (fresh) (msgDraft.current = null), (chainRace.current = "");
+    if (fresh) (msgDraft.current = null), (chainRace.current = ""), (memo.current = {});
     else if (msgDraft.current && ++msgDraft.current.age > DRAFT_AGE) msgDraft.current = null;
     // Sıralı işler yalnız bekleyen taslak ya da mesaj kartı varken sürer; başka bir istekte biter
     if (fresh || !(drafts.length || cards.pending)) queue.current = [];
@@ -1032,6 +1043,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const at = logPlan ? { date: logPlan.date, time: logPlan.time || "", planId: logPlan.id } : {};
     if (!msgFirst && !isAthleteSide(myKind) && wantsLog(s) && bareLog(s)) {
       reply("Anlat, günlüğe yazayım: hangi gün, rüzgâr kaç knot ve yönü, neler çalıştınız, ne kadar sürdü, nasıl geçti.", { engine: "local", expect: true }, viaVoice);
+      waitFor("log");
       logFlow.current = { collect: true, text: s, ...at };
       return;
     }
@@ -1238,7 +1250,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       countHit("ai");
       timingMark("ai");
-      const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
+      const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
       if (id !== runId.current) return;
       timingMark("aiDone");
       setPhase("preparing");
@@ -1270,6 +1282,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         const to = toTeam ? s.split(/\s+/)[0] : mi.to;
         const dest = resolveTo(to);
         if (dest) {
+          waitFor("to");
           askTo.current = to;
           return reply(`${dest.team ? `${dest.label} grubuna` : dest.label === "kaydın konuşması" ? "Kayda" : `${dest.label} için`} ne yazayım?`, { engine: "rules", expect: true }, viaVoice);
         }
@@ -1494,10 +1507,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   function stepPerson(draft, viaVoice, engine = "local", lead = "") {
     const q = nextQuestion(draft);
     if (q) {
+      waitFor("person");
       personFlow.current = { draft, step: "ask", ask: q.field };
       return reply(`${lead}${q.ask}`, { person: personCard(personFlow.current), engine, expect: true }, viaVoice);
     }
     const dups = findDuplicates(draft, allMembers || members);
+    waitFor("person");
     personFlow.current = { draft, step: "confirm", ask: "", dups };
     const warn = dups.length
       ? ` Dikkat, listede benzer kişi var: ${dups.map((d) => `${d.person.name} (${d.why}${d.left ? ", silinmiş" : ""})`).join("; ")}. Yine de eklemek için “yine de ekle” de.`
@@ -1574,6 +1589,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       navigator.vibrate?.([10, 40, 10]);
       toast(`${draft.name} eklendi`);
       personFlow.current = { draft, step: "saved", uid };
+      memoSet("person", draft.name);
       reply(`Kaydettim, ${draft.name} kişilere eklendi. Uygulamaya girebilmesi için hesap da açalım mı?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
     } catch {
       stepsEnd(false);
@@ -1709,6 +1725,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         reply(ic.op === "paid" ? "Ödenmemiş fatura yok." : "Ödendi işaretli fatura yok.", { engine: "local", nav: "invoices" }, viaVoice);
         return true;
       }
+      waitFor("invoice");
       invAsk.current = { op: ic.op };
       const names = many.slice(0, 4).map((x) => `${x.seller} ${amountText(x)}`);
       reply(`Hangi fatura? ${names.join(", ")}${many.length > 4 ? " ve diğerleri" : ""}. Firmanın adını söyle.`, { engine: "local", expect: true }, viaVoice);
@@ -1732,6 +1749,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   // ---- Son eklenen işler (lib/assistMore.js). Geri alınamayanlar önce sorar (okFlow + onay kartı) ----
   function askOk(text, label, yes, viaVoice, word) {
+    waitFor("ok");
     okFlow.current = { yes, word };
     reply(text, { engine: "local", ok: { label } }, viaVoice);
   }
@@ -2128,6 +2146,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (!ac) return false;
     if (ac.op === "add" && !ac.name) {
       reply("Yeni sporcunun adı soyadı ne?", { engine: "local", expect: true }, viaVoice);
+      waitFor("athlete");
       athAsk.current = true;
       return true;
     }
@@ -2140,8 +2159,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       return true;
     }
     const low = (x) => String(x || "").toLocaleLowerCase("tr-TR");
-    const hit = matchPerson(ac.name, athletes.map((a) => a.studentName));
+    // "onu arşive al", "bunu sil": sohbette az önce konuşulan sporcu
+    const name = isPronoun(ac.name) ? memo.current.athlete || "" : ac.name;
+    const hit = name ? matchPerson(name, athletes.map((a) => a.studentName)) : "";
     const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+    if (a) memoSet("athlete", a.studentName);
     if (ac.op === "add") {
       const same = athletes.find((x) => low(x.studentName) === low(ac.name));
       if (same) {
@@ -2151,6 +2173,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       stepTo("Sporcu ekleniyor");
       try {
         const id = await createAthlete({ studentName: ac.name, studentBirthDate: ac.birth });
+        memoSet("athlete", ac.name);
         await linkMember(dataUid || profile.uid, members, { id, name: ac.name, birth: ac.birth }).catch(() => {});
         stepsEnd();
         done(`Ekledim: ${ac.name}${ac.birth ? `, ${ac.birth.slice(0, 4)} doğumlu` : ""}. Sınıfını ve veli bilgisini sporcu kartından tamamlayabilirsin.`, { engine: "local", nav: "athletes" }, viaVoice);
@@ -2274,8 +2297,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (r.id) {
         chainRace.current = r.id;
         if (raceOrg) races.current = await loadRaces(raceOrg).catch(() => races.current);
+        memoSet("race", races.current.find((x) => x.id === r.id)?.name);
       }
-      if (r.follow) raceFollow.current = { id: r.id, n: follow ? follow.n + 1 : 0 };
+      if (r.follow) waitFor("raceFollow"), (raceFollow.current = { id: r.id, n: follow ? follow.n + 1 : 0 });
       reply(r.said, { engine: "ai", nav: curRace ? "" : "races", expect: !!r.expect }, viaVoice);
     } catch (e) {
       if (id !== runId.current) return;
@@ -2310,6 +2334,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         sessionStorage.setItem(POST_ASK_KEY, s);
       } catch {}
       record(s, "nav:posts", "local");
+      memoSet("post", r ? `${r.name} gönderisi` : "yeni gönderi");
       router.push("/posts/new");
       leave(r ? `${r.name} için gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.` : "Gönderiyi açtım, yazıları yapay zeka yazıyor. Değiştirmek istediğini söyle.", viaVoice);
     } finally {
@@ -2348,12 +2373,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (!r.log) {
         setSteps([]);
         reply("Günlüğe yazılacak bilgi duymadım. Rüzgârı, çalışılanları ya da nasıl geçtiğini söyler misin?", { engine: "ai", expect: true }, viaVoice);
+        waitFor("log");
         logFlow.current = { collect: true, text, date, time, planId };
         return;
       }
       if (!r.date) {
         setSteps([]);
         reply(retry ? "Günü anlayamadım. “Bugün”, “dün” ya da “3 Ekim” gibi söyler misin?" : "Hangi günün antrenmanı? Bugün, dün ya da gün adını söyle.", { engine: "ai", expect: true }, viaVoice);
+        waitFor("log");
         logFlow.current = { ask: true, text };
         return;
       }
@@ -2398,6 +2425,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       if (p.ask?.length) {
         setSteps([]);
+        waitFor("event");
         eventFlow.current = { text, turns: null };
         return reply(`${p.question} Bilmiyorsan “genel plan yap” de.`, { event: { asking: true, kind: p.event?.kind || kindFromText(text), text }, engine: "ai", expect: true }, viaVoice);
       }
@@ -2450,6 +2478,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         toast("Envanter kaydedildi");
       }
       if (plan.deletes.length) {
+        waitFor("inv");
         invFlow.current = { org, id: inv.id, name: inv.name, kind: inv.kind, ask: plan.deletes };
         const q = `${plan.deletes.map((x) => `“${itemLabel(x)}”`).join(", ")} envanterden silinsin mi?`;
         return reply(`${said} ${q}`.trim(), { inv: { ...card, ask: plan.deletes }, engine: "ai", expect: true }, viaVoice);
@@ -2579,7 +2608,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     askAll.current = "";
     chain.current = [];
     chainGen.current++;
-    raceFollow.current = null;
+    waitFor(); // sohbet bitti: bekleyen soru kalmaz (yeni sohbetteki ilk cümle eski soruya cevap sayılmasın)
+    memo.current = {};
     chainRace.current = ""; // sohbet bitti: yeni sohbette yarış adla, "son yarış" ya da "sıradaki yarış" diye söylenir
     planOn.current = false;
     setPlan([]);

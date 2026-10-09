@@ -4,6 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan } from "@/lib/taskPlan";
+import { memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -47,11 +48,12 @@ async function handle(request) {
   const text = String(body?.text ?? "").replace(/\s+/g, " ").trim().slice(0, 2000);
   if (!text) return bad("Boş istek");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
+  const memo = memoBlock(body?.memo);
   const race = String(body?.race ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1200, timeoutMs: 12000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1200, timeoutMs: 12000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     return NextResponse.json({ tasks });
