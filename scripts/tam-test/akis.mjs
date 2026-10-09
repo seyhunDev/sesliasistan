@@ -1,11 +1,11 @@
 // Asistanın karar akışı (yapay zekasız): söylenen cümle → tek iş mi, görev listesi mi → her iş hangi akışa gider.
 // Uygulamanın kendi saf işlevleri kullanılır (lib/assistRoute.js routeOf, lib/taskPlan.js, lib/chain.js, lib/steps.js,
-// lib/speech/normalize.js fixVerbs). AssistantSheet.jsx `run()` başındaki görev listesi kararı ve `flowOf` burada aynı sırayla
+// lib/speech/normalize.js cleanSay). AssistantSheet.jsx `run()` başındaki görev listesi kararı ve `flowOf` burada aynı sırayla
 // yazılıdır (bileşen tarayıcı modülleri yüklediği için Node'da çalışmaz). run() değişirse buradaki `decide` de güncellenir.
 import { routeOf } from "@/lib/assistRoute";
 import { isEnd } from "@/lib/assistantLocal";
 import { messageFirst } from "@/lib/steps";
-import { fixVerbs } from "@/lib/speech/normalize";
+import { cleanSay } from "@/lib/speech/normalize";
 import { actCount, looksMulti, localPlan, orderPlan, clausesOf, PLAN_MAX } from "@/lib/taskPlan";
 import { splitChain } from "@/lib/chain";
 import { wantsPost } from "@/features/posts/postModel";
@@ -81,7 +81,7 @@ export function kindOfRoute(r) {
 // run(): cümle → karar. multi: görev listesi; steps: yapay zekasız listedeki işler ve her birinin gittiği yol.
 // Not: uygulamada görev listesini önce yapay zeka (/api/tasks) kurar; burada yapay zekanın ulaşılamadığı durumdaki yerel liste var.
 export function decide(raw, o = {}) {
-  const s = fixVerbs(String(raw || "").trim());
+  const s = cleanSay(String(raw || ""));
   const msgFirst = messageFirst(s);
   if (isEnd(s) && !msgFirst) return { s, multi: false, route: "close" };
   if (!msgFirst && !o.askedMore && !o.chained) { // chained: görev listesindeki bir iş (uygulamada yeniden bölünmez)
@@ -98,7 +98,7 @@ export function decide(raw, o = {}) {
       }
       // Listedeki her iş run() ile kendi yoluna gider (tek iş olarak; yeniden bölünmez)
       steps = steps.map((t) => {
-        const r = route(fixVerbs(t.say), o);
+        const r = route(cleanSay(t.say), o);
         return { say: t.say, kind: t.kind || kindOfRoute(r), route: r };
       });
       return { s, multi: true, how, steps, route: "görev listesi" };

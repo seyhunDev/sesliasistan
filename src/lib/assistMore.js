@@ -23,7 +23,7 @@ const CALL = /^(?:hemen |şimdi |bir )?(.+?)\s+(?:telefonla |sesli )?(?:ara|arar
 const CALL2 = /^(?:hemen |şimdi )?(.+?)['’]?(?:y?[ae])? (?:sesli )?arama (?:yap|başlat)$/u;
 const NOT_CALL = /(fatura|fiş|not|görev|plan|kayıt|mail|dosya|internette|google|sayfa|listede|listesinde|takvimde|mesajlarda)/u;
 export function callCommand(raw) {
-  const t = low(raw);
+  const t = low(String(raw || "").replace(/[?]+\s*$/u, ""));
   const m = t.match(CALL2) || t.match(CALL);
   if (!m) return null;
   const who = m[1].replace(/^(beni|bana) /u, "").trim();
@@ -122,7 +122,7 @@ export function duesCommand(raw) {
   // Tek kişiye hatırlatma ("Enes aidatını ödemedi ona hatırlat"): toplu hatırlatma değil, mesaj (yapay zeka)
   const one = /(^| )(ona|kendisine|velisine|annesine|babasına)( |$)/u.test(t) || /^\p{Lu}\p{Ll}+(\s\p{Lu}\p{Ll}+)?['’]?\p{L}*\s+aidat/u.test(String(raw || "").trim());
   if (/(hatırlat|hatırlatma)/u.test(t) && !/(hatırlattın mı|hatırlatıldı mı)/u.test(t)) return one ? null : { op: "remind" };
-  if (/(kim|kimler|kaç kişi|kaç sporcu|hangi sporcu|kimin)/u.test(t) && /(ödemedi|ödemeyen|ödemiş|ödedi|eksik|borç)/u.test(t)) return { op: "ask", paid: /(ödedi|ödemiş)/u.test(t) && !/ödemedi|ödemeyen/u.test(t) };
+  if (/(kim|kimler|kaç kişi|kaç sporcu|hangi sporcu|kimin)/u.test(t) && /(ödemedi|ödemeyen|ödemiş|ödedi|vermedi|vermeyen|eksik|borç)/u.test(t)) return { op: "ask", paid: /(ödedi|ödemiş)/u.test(t) && !/ödemedi|ödemeyen|vermedi|vermeyen/u.test(t) };
   return null;
 }
 

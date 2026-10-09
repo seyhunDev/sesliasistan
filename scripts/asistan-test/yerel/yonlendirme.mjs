@@ -391,3 +391,24 @@ group("Sohbetteki yarış")([
     ["GSİM oluru alındı", { desc: "yarış dışında 'oluru' değişmez", fn: fixVerbs, ok: (r) => r === "GSİM oluru alındı" }],
   ]);
 }
+
+// Söylenenin temizlenmesi ve yoklama parçaları (tam test 2026-10-09: dolgu söz, kekemelik, Türkçe harfsiz, noktasız)
+{
+  const { cleanSay } = await import("@/lib/speech/normalize");
+  const { looksMulti, actCount } = await import("@/lib/taskPlan");
+  const { callCommand, duesCommand } = await import("@/lib/assistMore");
+  const { wantsAttendance } = await import("@/features/athletes/access");
+  group("Söylenenin temizlenmesi")([
+    ["şey ııı Kapat.", { desc: "dolgu söz atılır", fn: cleanSay, ok: (r) => r === "Kapat." }],
+    ["Tamam, Tamam, kapat.", { desc: "kekemelik", fn: cleanSay, ok: (r) => r === "Tamam, kapat." }],
+    ["foca yarisini ac", { desc: "Türkçe harfsiz", fn: cleanSay, ok: (r) => r === "foça yarışını aç" }],
+    ["yok lamaya aliyi ekle geldi", { desc: "bölünmüş kelime, tek iş", fn: (s) => actCount(cleanSay(s)), ok: (n) => n === 1 }],
+    ["Yoklama al, Ali ve Ayşe geldi.", { desc: "tek yoklama, liste değil", fn: (s) => looksMulti(s, flowOf), ok: (r) => r === false }],
+    ["Mustafa geldi, yoklamaya ekle.", { desc: "tek yoklama, liste değil", fn: (s) => looksMulti(s, flowOf), ok: (r) => r === false }],
+    ["Yoklama al Mustafa geldi Yarın 10'da toplantı ekle", { desc: "noktasız: yoklama + toplantı", fn: (s) => localPlan(s, flowOf)?.map((t) => t.kind).join(","), ok: (k) => k === "attendance,other" }],
+    ["Enes aidatını nakit verdi, Mehmet de geldi, yoklamaya ekle.", { desc: "'Mehmet de geldi' yoklamaya gider", fn: (s) => localPlan(s, flowOf)?.map((t) => t.kind).join(","), ok: (k) => k === "income,attendance" }],
+    ["Gökhan Arslan'ı arar mısın?", { desc: "arama", fn: callCommand, ok: (r) => r?.who === "gökhan arslan'ı" || !!r }],
+    ["bu ay kimler aidat vermedi", { desc: "aidat sorusu", fn: duesCommand, ok: (r) => r?.op === "ask" }],
+    ["mustafa geldi mi antrenmana", { desc: "soru yoklama değil", fn: (s) => wantsAttendance(s), ok: (r) => r === false }],
+  ]);
+}

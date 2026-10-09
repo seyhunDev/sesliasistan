@@ -128,3 +128,47 @@ export function fixVerbs(text) {
   for (const [re, to] of VERB_FIX) t = t.replace(re, to);
   return t;
 }
+
+// Türkçe harfsiz yazılmış (klavye ya da ses tanıma) sık komut kelimeleri; yalnız tam kelime ve Türkçede başka anlamı olmayanlar
+const ASCII_FIX = {
+  dun: "dün", dunku: "dünkü", bugun: "bugün", yarin: "yarın", calistik: "çalıştık", calistim: "çalıştım", calistiniz: "çalıştınız",
+  surdu: "sürdü", gunluk: "günlük", gunlugu: "günlüğü", gunlugune: "günlüğüne", gunluge: "günlüğe", gunlugunu: "günlüğünü",
+  antremana: "antrenmana", antremanda: "antrenmanda", antremani: "antrenmanı", antrenmani: "antrenmanı", vardi: "vardı",
+  yaris: "yarış", yarisi: "yarışı", yarisa: "yarışa", yarisina: "yarışına", yarisini: "yarışını", yarisinin: "yarışının",
+  yarisinda: "yarışında", yarislar: "yarışlar", yarislara: "yarışlara", yarislari: "yarışları", yaristi: "yarıştı",
+  kupasi: "kupası", kupasina: "kupasına", kupasinin: "kupasının", katilacak: "katılacak", katilacaklar: "katılacaklar",
+  cesme: "çeşme", cesmede: "çeşmede", foca: "foça", focada: "foçada", kasim: "kasım", ataturk: "atatürk", ayse: "ayşe", gokhan: "gökhan", ilay: "ilay",
+  butce: "bütçe", butcesine: "bütçesine", butceye: "bütçeye", kisi: "kişi", basi: "başı", siradaki: "sıradaki", ucuncu: "üçüncü",
+  ac: "aç", goster: "göster", icin: "için", gorsel: "görsel", gorseli: "görseli", gorselini: "görselini", afis: "afiş", afisi: "afişi",
+  afisini: "afişini", gonderi: "gönderi", gonderisi: "gönderisi", gonderisini: "gönderisini", aidati: "aidatı", aidatini: "aidatını",
+  alindi: "alındı", bagis: "bağış", odemedi: "ödemedi", odemeyen: "ödemeyen", odendi: "ödendi", faturasi: "faturası", faturasini: "faturasını",
+  turkcel: "turkcell", fis: "fiş", fisi: "fişi", yukle: "yükle", fotografi: "fotoğrafı", cek: "çek", arsive: "arşive", arsivden: "arşivden",
+  esim: "eşim", alisveris: "alışveriş", sut: "süt", cay: "çay", seker: "şeker", samandira: "şamandıra", cikar: "çıkar", baliga: "balığa",
+  gidecegiz: "gideceğiz", lazim: "lazım", yoklamayi: "yoklamayı", hesaplarimi: "hesaplarımı", hesaplari: "hesapları", sayfasina: "sayfasına",
+  sayfasini: "sayfasını", planlari: "planları", tesekkurler: "teşekkürler", tesekkur: "teşekkür", hayir: "hayır", baska: "başka",
+  ardindan: "ardından", ayarlandi: "ayarlandı", dogum: "doğum", gunu: "günü", dogumlu: "doğumlu", gorusme: "görüşme", guncelle: "güncelle",
+};
+const ASCII_RE = new RegExp(`(?<![\\p{L}])(?:${Object.keys(ASCII_FIX).join("|")})(?![\\p{L}])`, "giu");
+const PHRASE_FIX = [
+  [/(?<![\p{L}])geri don(?![\p{L}])/giu, "geri dön"],
+  [/(?<![\p{L}])(arar|açar|ekler|yazar|hazırlar|gönderir|oluşturur|siler)\s?m[ıi]s[ıi]n(?![\p{L}])/giu, (m, v) => `${v} ${/[ei]/.test(v.replace(/[^aeıioöuü]/g, "").slice(-1)) ? "misin" : /[öü]/.test(v.replace(/[^aeıioöuü]/g, "").slice(-1)) ? "müsün" : /[ou]/.test(v.replace(/[^aeıioöuü]/g, "").slice(-1)) ? "musun" : "mısın"}`],
+  [/(?<![\p{L}])yok\s+lama(\p{L}*)/giu, "yoklama$1"],
+];
+const FILLER = /^(?:(?:şey|sey|ııı+|ıı|iii+|eee+|ee|ıhm|hmm+|hım|aa+|yani)[\s,.…]+)+/iu;
+const keyOf = (w) => w.toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]/gu, "");
+// Söylenen cümleyi komut kurallarına hazırlar: baştaki dolgu sözler ("şey ııı"), kekemelik ("Tamam, tamam, kapat",
+// "Yoklama yoklama al"), Türkçe harfsiz yazım ("foca yarisini ac") ve bozuk iş fiilleri (fixVerbs). Anlam değişmez.
+export function cleanSay(text) {
+  let t = String(text || "").trim().replace(FILLER, "");
+  const words = t.split(/\s+/);
+  while (words.length > 1 && keyOf(words[0]) && keyOf(words[0]) === keyOf(words[1])) words.shift();
+  t = words.join(" ");
+  t = t.replace(ASCII_RE, (w) => {
+    const f = ASCII_FIX[w.toLocaleLowerCase("tr-TR")] ?? ASCII_FIX[w.toLowerCase()];
+    if (!f) return w;
+    const up = w[0] !== w[0].toLocaleLowerCase("tr-TR");
+    return up ? f[0].toLocaleUpperCase("tr-TR") + f.slice(1) : f;
+  });
+  for (const [re, to] of PHRASE_FIX) t = t.replace(re, to);
+  return fixVerbs(t);
+}
