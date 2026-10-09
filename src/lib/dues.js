@@ -72,6 +72,35 @@ export function cashMoves(months = {}, roster = []) {
   return out.sort((a, b) => b.ts - a.ts);
 }
 
+// Hesaplar › "+ Gelir ekle" türleri (Diğer seçilince tür elle yazılır). Aidat seçilirse ödeme aidat kaydına yazılır.
+export const INCOME_CATS = ["Aidat", "Bağış", "Yetişkin eğitimi", "Kano eğitimi", "SUP eğitimi", "Amatör denizcilik eğitimi", "Diğer"];
+// Elle girilen gelirler (orgs/{orgId}/incomes/{id} = { who, amount, cat, note, date "YYYY-MM-DD", at }) → hareket biçimi
+export function incomeMoves(docs = []) {
+  return docs
+    .filter((x) => Number(x?.amount) > 0)
+    .map((x) => {
+      const day = /^\d{4}-\d{2}-\d{2}/.test(x.date || "") ? x.date.slice(0, 10) : String(x.at || "").slice(0, 10);
+      const [y, m, d] = day.split("-");
+      return {
+        id: `inc-${x.id}`,
+        incomeId: x.id,
+        manual: true,
+        cash: true,
+        amount: Number(x.amount),
+        currency: "TL",
+        account: "cash",
+        accountLabel: "Nakit",
+        kind: "Nakit",
+        cat: x.cat || "Diğer",
+        who: x.who || "",
+        note: x.note ? `${x.cat || "Gelir"} · ${x.note}` : x.cat || "Gelir",
+        desc: "Nakit giriş",
+        date: d ? `${d}.${m}.${y}` : "",
+        ts: Date.parse(`${day}T09:00:00Z`) || 0,
+      };
+    });
+}
+
 export const feeOf = (a, cfg) => Number(cfg?.fees?.[a.id]) || Number(cfg?.fee) || 0;
 
 // Hareketi sporcularla eşleştirir → { picks: [sporcu], sure, why, list: [{ a, score, why }] }
