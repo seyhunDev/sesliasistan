@@ -17,6 +17,7 @@ import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
+import { loadCashMoves } from "@/features/dues/duesData";
 import { report } from "@/lib/bankAnalyze";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
@@ -59,6 +60,7 @@ export default function MailPage() {
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
   const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
+  const [cashList, setCashList] = useState([]); // Aidatlar'da yazılan nakit ödemeler (gelir, "Nakit" etiketiyle)
   const [inboxOpen, setInboxOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const [q, setQ] = useState(""); // Son hareketler'de arama
@@ -94,6 +96,18 @@ export default function MailPage() {
       live = false;
     };
   }, [owner, loaded, profile?.uid, newest, tick]);
+  // Nakit aidatlar: sayfa açılınca bir kez (aidat ay kayıtları, ay sayısı kadar okuma)
+  useEffect(() => {
+    if (!owner) return;
+    let live = true;
+    loadCashMoves(profile.uid).then(
+      (l) => live && setCashList(l),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [owner, profile?.uid, tick]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
   const pending = (mails || [])
@@ -134,7 +148,8 @@ export default function MailPage() {
 
   const accounts = accountsOf(list);
   const totals = totalsOf(accounts);
-  const moves = ledger || movementsOf(list);
+  const bankMoves = ledger || movementsOf(list);
+  const moves = cashList.length ? [...bankMoves, ...cashList].sort((a, b) => (b.ts || 0) - (a.ts || 0)) : bankMoves;
   const picked = accounts.find((a) => a.key === acct);
   const acctMoves = picked ? moves.filter((x) => x.account === acct) : moves;
   const shown = (q.trim() ? searchMoves(acctMoves, q) : acctMoves).filter((x) => (dir === "in" ? x.amount > 0 : dir === "out" ? x.amount < 0 : true));
@@ -152,7 +167,7 @@ export default function MailPage() {
   const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
   const payeeAll = payeeMoves(moves, payee);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
-  const rep = ledger?.length ? report(ledger, payee, 1000) : null;
+  const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashList.length, cashSum: cashList.reduce((n, x) => n + x.amount, 0) } : null;
   // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
   const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
   const addName = (name) => {
@@ -423,6 +438,7 @@ function Summary({ rep }) {
         <div className="px-4 py-3">
           <p className="text-[0.75rem] font-semibold text-mut">Gelen · {rep.inN}</p>
           <p className="mt-0.5 truncate text-[1.125rem] font-bold tabular-nums text-ok">+{money(rep.inSum)}</p>
+          {rep.cashN > 0 && <p className="mt-0.5 truncate text-[0.75rem] text-mut">nakit {rep.cashN} · +{money(rep.cashSum)}</p>}
         </div>
         <div className="px-4 py-3">
           <p className="text-[0.75rem] font-semibold text-mut">Giden · {rep.outN}</p>
@@ -527,11 +543,14 @@ function Moves({ list, today }) {
           <li key={x.id}>
             {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
             <div className="flex h-14 items-center gap-3 px-4">
-              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
-                <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />
+              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
+                {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
               </span>
               <span className="min-w-0 flex-1">
-                <b className="block truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <b className="truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
+                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">Nakit ödendi</span>}
+                </span>
                 <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), x.cat || x.kind].filter(Boolean).join(" · ")}</small>
               </span>
               <span className="shrink-0 text-right">

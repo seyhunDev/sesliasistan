@@ -37,6 +37,41 @@ export function incomingOf(movements, ym, used = new Set(), ignored = []) {
   return movements.filter((m) => m.amount > 0 && (!m.currency || m.currency === "TL") && monthOf(m) === ym && !used.has(movKey(m)) && !ignored.includes(movKey(m)));
 }
 
+// Aidatlar'da elle yazılan nakit ödemeler, banka hareketi biçiminde (Hesaplar'da gelir olarak, "Nakit" etiketiyle).
+// months: { "YYYY-MM": ay kaydı }, roster: dues/settings.roster (sporcu adları). Banka defterine yazılmaz, aidat eşleştirmesine girmez.
+const AY = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+export function cashMoves(months = {}, roster = []) {
+  const names = new Map((roster || []).map((a) => [a.id, a.studentName]));
+  const out = [];
+  for (const [ym, month] of Object.entries(months || {})) {
+    if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+    for (const [id, list] of Object.entries(month?.paid || {})) {
+      (Array.isArray(list) ? list : []).forEach((p, i) => {
+        const amt = Number(p?.amt);
+        if (p?.via !== "cash" || !(amt > 0)) return;
+        const day = /^\d{4}-\d{2}-\d{2}/.test(p.date || "") ? p.date.slice(0, 10) : /^\d{4}-\d{2}-\d{2}/.test(p.at || "") ? p.at.slice(0, 10) : `${ym}-01`;
+        const [y, m, d] = day.split("-");
+        out.push({
+          id: `cash-${ym}-${id}-${i}`,
+          cash: true,
+          amount: amt,
+          currency: "TL",
+          account: "cash",
+          accountLabel: "Nakit",
+          kind: "Nakit",
+          cat: "Aidat",
+          who: names.get(id) || "Sporcu",
+          note: `${AY[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)} aidatı`,
+          desc: "Nakit aidat",
+          date: `${d}.${m}.${y}`,
+          ts: Date.parse(`${day}T09:00:00Z`) || 0,
+        });
+      });
+    }
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}
+
 export const feeOf = (a, cfg) => Number(cfg?.fees?.[a.id]) || Number(cfg?.fee) || 0;
 
 // Hareketi sporcularla eşleştirir → { picks: [sporcu], sure, why, list: [{ a, score, why }] }

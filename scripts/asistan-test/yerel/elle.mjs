@@ -968,6 +968,7 @@ const HMOV = [
   inc("HAVALE MEHMET OZ AIDAT", 1200, "02.10.2026 10:00"),
   { ...inc("EFT AHMET KAYA DOLAR", 50, "05.10.2026 10:00", "USD|9999|Vadesiz"), currency: "USD" },
 ];
+const D = await import("@/lib/dues");
 group("Hesaplar arama ve eklenen adlar")([
   ["isimle arama", F("ahmet → 3 hareket (Türkçe harfsiz, kelime başı)", () => PY.searchMoves(HMOV, "ahm").length === 3 && PY.searchMoves(HMOV, "Ahmet Kaya").length === 3)],
   ["açıklamada arama", F("aidat → 2", () => PY.searchMoves(HMOV, "aidat").length === 2)],
@@ -979,6 +980,10 @@ group("Hesaplar arama ve eklenen adlar")([
   ["ad açıklamada", F("hesap adı yoksa açıklamaya bakar", () => PY.nameMoves(HMOV, "Mehmet Öz").length === 1)],
   ["eklenen ad: hesap adı ya da açıklama", F("ikisinden biri yeter", () => PY.nameMoves([{ ...inc("FAST*ALI VELI*Seyhun Yıldız için kira", 900, "06.10.2026 10:00"), who: "ALI VELI" }, { ...inc("x", 50, "07.10.2026 10:00"), who: "SEYHUN YILDIZ" }], "Seyhun Yıldız").length === 2)],
   ["en çok ödeyenler", F("bütün gelen TL paralar, gönderene göre, toplam büyükten", () => { const t = PY.topPayers([...HMOV, { ...inc("y", 700, "08.10.2026 10:00"), who: "Ahmet Kaya" }, { ...inc("z", 5000, "01.01.2025 10:00"), who: "ZEYNEP AK" }]); return t.length === 2 && t[0].who === "ZEYNEP AK" && t[1].sum === 2200 && t[1].n === 2; })],
+  ["nakit aidat gelir", F("nakitler hareket olur, EFT'ler girmez", () => {
+    const l = D.cashMoves({ settings: { roster: [] }, "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05" }, { amt: 1500, via: "eft", mov: "m1" }] } }, "2026-09": { paid: { a1: [{ amt: 1000, via: "cash", at: "2026-09-03T10:00:00Z" }] } } }, [{ id: "a1", studentName: "Deniz Şahin" }]);
+    return l.length === 2 && l[0].cash && l[0].who === "Deniz Şahin" && l[0].amount === 1500 && l[0].date === "05.10.2026" && D.monthOf(l[0]) === "2026-10" && l[1].note === "Eylül 2026 aidatı" && PY.nameMoves(l, "Deniz Şahin").length === 2 && PY.topPayers(l)[0].sum === 2500;
+  })],
   ["ad listesi", F("boşlar ve tekrarlar atılır", () => { const n = PY.namesOf({ payeeNames: [" Ali Kaya ", "", "ALI KAYA", "Ayşe Demir"] }); return n.length === 2 && n[0] === "Ali Kaya"; })],
 ]);
 
