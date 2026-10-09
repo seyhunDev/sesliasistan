@@ -13,7 +13,7 @@ export const canSeeAthletes = (email) => !!email && list().includes(String(email
 // (soru ve "geldiğinde" gibi sözler değil)
 const HERE = /(?<![\p{L}])(geldi(ler)?|gelmedi(ler)?|gelmeyen\p{L}*|gelmiş(ler)?|gelmemiş(ler)?|izinli\p{L}*|raporlu\p{L}*|katıldı(lar)?|katılmadı(lar)?|katılmayan\p{L}*|yoktu|vardı|kalanlar\p{L}*)(?![\p{L}])/u;
 // Soru ("antrenmana Ali geldi mi", "dün kimler geldi?") ve ileriye dönük cümle ("yarın 17:00 antrenman var, gelmedi derse…") yoklama değildir
-const ASK = /\?\s*$|(?<![\p{L}])m[ıiuü][.!\s]*$|(?<![\p{L}])(kim|kimler|kaç|hangi|hangisi|nerede|neydi)(?![\p{L}])/u;
+const ASK = /\?\s*$|(?<![\p{L}])m[ıiuü][.!\s]*$|(?<![\p{L}])(geldi|gelmedi|katıldı|katılmadı)(ler)?\s+m[ıi](?![\p{L}])|(?<![\p{L}])(kim|kimler|kaç|hangi|hangisi|nerede|neydi)(?![\p{L}])/u;
 const AHEAD = /\d{1,2}[:.]\d{2}|(?<![\p{L}])(yarın|haftaya|gelecek hafta|derse|gelmezse|gelirse)(?![\p{L}])/u;
 export const wantsAttendance = (text, here = false) => {
   const t = String(text || "").toLocaleLowerCase("tr-TR");

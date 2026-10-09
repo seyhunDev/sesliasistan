@@ -69,7 +69,7 @@ import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
 import { soon } from "@/lib/soon";
-import { fixVerbs } from "@/lib/speech/normalize";
+import { cleanSay } from "@/lib/speech/normalize";
 import { attRetry } from "@/lib/attAsk";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
@@ -960,7 +960,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }
 
   async function run(t, viaVoice = false, fresh = false) {
-    const s = fixVerbs(t.trim()); // ses tanımanın bozduğu iş fiilleri ("hazirla", "yarışı oluru")
+    const s = cleanSay(t); // dolgu söz, kekemelik, Türkçe harfsiz yazım, bozuk iş fiilleri ("şey ııı", "foca yarisini ac", "yarışı oluru")
     if (!s) return toast("Yaz veya mikrofona bas");
     timingStart(s, viaVoice);
     if (viaVoice) {
