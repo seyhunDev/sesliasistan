@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { amountText, payText, shortDay } from "@/lib/invoices";
 
 // "Fatura öde" görevinde ödeme bilgisi (görevli de görür; fatura dosyası yalnız ana hesapta)
-export function TaskInvoice({ inv, owner }) {
+export function TaskInvoice({ inv }) {
   const toast = useToast();
   const rows = [
     ["Tutar", amountText(inv)],
@@ -37,11 +36,6 @@ export function TaskInvoice({ inv, owner }) {
         >
           <Icon name="copy" className="size-4" /> Kopyala
         </button>
-        {owner && (
-          <Link href="/invoices" className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.8125rem] font-semibold active:scale-[.98]">
-            <Icon name="note" className="size-4" /> Faturalar
-          </Link>
-        )}
       </div>
     </div>
   );
