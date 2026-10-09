@@ -15,6 +15,7 @@ import { shareFile } from "./fileActions";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { loadFonts } from "./raceDocs";
 import { askBudget, mergeBudget } from "./raceBudgetAi";
+import { raceHotels } from "./races";
 
 const CAT_ICON = { Kayıt: "receipt", Konaklama: "home", Ulaşım: "nav", Yemek: "utensils", "Tekne/Ekipman": "anchor", Diğer: "wallet" };
 
@@ -92,7 +93,7 @@ export function BudgetView({ r, athletes, onChange }) {
   const groups = CATS.map((c) => [c, t.lines.filter((l) => l.cat === c)]).filter(([, l]) => l.length);
   const inRooms = roomPeople(b);
   const roomGap = inRooms && (inRooms.athlete !== athletes.length || inRooms.staff !== b.staff);
-  const hasNoticeFees = !!(r.notice?.fees?.length || r.notice?.hotels?.length);
+  const hasNoticeFees = !!(r.notice?.fees?.length || raceHotels(r).length);
 
   return (
     <>
@@ -245,7 +246,7 @@ export function BudgetView({ r, athletes, onChange }) {
       {view && <PdfViewer title="Bütçe çıktısı" load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
-        {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} hotels={r.notice?.hotels || []} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
+        {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} hotels={raceHotels(r)} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
       </Sheet>
     </>
   );

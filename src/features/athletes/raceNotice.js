@@ -6,7 +6,7 @@
 import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
-import { cleanNotice, shiftDay } from "./races";
+import { cleanNotice, mergeHotels, shiftDay } from "./races";
 
 const MAX = 4 * 1024 * 1024;
 
@@ -87,6 +87,8 @@ export function applyNotice(r, n, force = false) {
     startDate: take("startDate"),
     endDate: n.endDate && (fresh || !r.endDate) ? n.endDate : r.endDate || n.endDate || r.startDate,
     notice: cleanNotice({ ...n, at: todayStr(), planned: false }),
+    // Elle düzenlenen oteller kalır, talimattakiler katılır
+    hotels: mergeHotels(r.hotels, n.hotels),
   };
   // İzin aralığı varsayılanı: yarıştan bir gün önce, bir gün sonra (elle değiştirilmediyse)
   if (next.startDate !== r.startDate && (!r.leaveStart || r.leaveStart === shiftDay(r.startDate, -1))) next.leaveStart = shiftDay(next.startDate, -1);

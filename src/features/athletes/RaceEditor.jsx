@@ -19,16 +19,17 @@ import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
 import { NoticeDetails, NoticeUpload } from "./NoticeView";
+import { RaceHotels } from "./RaceHotels";
 import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, shiftDay, stepsOf, todoKey } from "./races";
+import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey } from "./races";
 import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
-const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }) } : p);
+const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -163,7 +164,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const club = clubInfo(r);
   const hotel = hotelInfo(r);
   // Talimattaki oteller öneri olarak çıkar (dokununca otel adı olur)
-  const hotels = [...new Set((r.notice?.hotels || []).map((h) => String(h?.name || "").trim()).filter(Boolean))].slice(0, 4);
+  const hotels = [...new Set(raceHotels(r).map((h) => String(h?.name || "").trim()).filter(Boolean))].slice(0, 4);
   const clubDate = (k, v) => <input type="date" value={r[k] || v || ""} onChange={(e) => set(k)(e.target.value)} className={input} />;
 
   const byId = new Map(athletes.map((a) => [a.id, a]));
@@ -588,6 +589,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           </Group>
           <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.planAdded ? "Yarış planlarda. Yolculuğu sonradan değiştirirsen planı da Planlar’dan güncelle." : "Planlara eklerken yarış çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası olur."}</p>
 
+          <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+
           <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {steps.map((s) => {
@@ -669,7 +672,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             )}
           </div>
 
-          <NoticeDetails n={r.notice} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+          <NoticeDetails n={r.notice} />
 
           {start.id && (
             <div className="mt-8 flex justify-center">
