@@ -229,10 +229,14 @@ group("Görev listesi: yapay zeka yanıtı")([
 
 // Yerelde öğrenme: yapay zekanın görev listesi cihazda saklanır, işlerin sözü öğrenilir, yapay zekasız liste kurulur
 const { cachedPlan, rememberPlan, planKey, planLessons, learnedKind, localPlan } = await import("@/lib/taskPlan");
+const { knownLesson } = await import("@/lib/brain/model");
 const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }; };
 const TWO = [{ kind: "race", say: "Atatürk Kupası adında yarış oluştur", label: "Atatürk Kupası yarışı", from: "Atatürk Kupası adında bir yarış oluştur" }, { kind: "attendance", say: "yoklama: bugün Mustafa geldi", label: "Yoklama: Mustafa", from: "Bugün antrenmana Mustafa geldi" }];
 group("Görev listesi: yerelde öğrenme")([
   ["aynı cümle", { desc: "ikinci kez yapay zekasız", fn: () => { const st = mem(); rememberPlan("Atatürk Kupası oluştur. Mustafa geldi!", TWO, st); return cachedPlan("atatürk kupası oluştur mustafa geldi", st); }, ok: (t) => t?.length === 2 && t[0].kind === "race" }],
+  ["aynı söz, aynı sonuç", { desc: "depoya ikinci kez eklenmez", fn: () => knownLesson([{ x: "Bugün antrenmana Mustafa geldi.", l: "plan:attendance" }], "bugün ANTRENMANA mustafa geldi", "plan:attendance"), ok: (r) => r === true }],
+  ["aynı söz, farklı sonuç", { desc: "yeni örnek olarak eklenir", fn: () => knownLesson([{ x: "Bugün antrenmana Mustafa geldi.", l: "plan:attendance" }], "bugün antrenmana mustafa geldi", "plan:log"), ok: (r) => r === false }],
+  ["farklı söz", { desc: "eklenir", fn: () => knownLesson([{ x: "Mustafa geldi", l: "plan:attendance" }], "Ali geldi", "plan:attendance"), ok: (r) => r === false }],
   ["başka cümle", { desc: "kopya yok", fn: () => { const st = mem(); rememberPlan("a b c", TWO, st); return cachedPlan("x y z", st); }, ok: (t) => t === null }],
   ["tek iş", { desc: "saklanmaz", fn: () => { const st = mem(); rememberPlan("a b", TWO.slice(0, 1), st); return cachedPlan("a b", st); }, ok: (t) => t === null }],
   ["Bugün, ANTRENMANA   Mustafa geldi.", { desc: "anahtar", fn: planKey, ok: (k) => k === "bugün antrenmana mustafa geldi" }],
