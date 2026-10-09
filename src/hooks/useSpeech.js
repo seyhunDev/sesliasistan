@@ -6,7 +6,7 @@ import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
-import { speechMark } from "@/lib/assistTiming";
+import { speechLive, speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 
@@ -295,10 +295,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       fd.append("partial", "1");
       if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
       if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
+      const t0 = Date.now();
       const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
       if (s.sid !== sid || s.status === "idle") return;
       if (res.ok && data.text) {
+        speechLive(Date.now() - t0, data.provider); // süre kaydı: canlı yazının gecikmesi
         s.segs[i] = data.text;
         s.partial = segText(s);
         setFinalText(s.partial);
@@ -322,10 +324,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       fd.append("partial", "1");
       if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
       if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
+      const t0 = Date.now();
       const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
       if (s.sid !== sid || s.status !== "listening" || s.pcmLen) return;
       if (res.ok && data.text) {
+        speechLive(Date.now() - t0, data.provider);
         s.partial = String(data.text).trim();
         setFinalText(s.partial);
       }

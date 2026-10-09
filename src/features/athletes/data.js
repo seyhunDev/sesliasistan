@@ -59,7 +59,25 @@ async function fetchAthletes() {
       att: Object.fromEntries(Object.entries(a).filter(([k]) => /^attendance_\d{4}$/.test(k)).map(([k, v]) => [k.slice(11), v || {}])),
     });
   });
+  rememberNames(athletes);
   return { athletes, ...n };
+}
+
+// Etkin sporcuların adları bu cihazda (asistanın ses çevirisine kelime listesi; ek okuma olmasın). Yalnız ad, başka bilgi yok
+export const ATH_NAMES_KEY = "sa-ath-names";
+function rememberNames(list) {
+  try {
+    const names = list.filter((a) => a.status === "active" && a.studentName).map((a) => a.studentName.trim()).slice(0, 80);
+    localStorage.setItem(ATH_NAMES_KEY, JSON.stringify(names));
+  } catch {}
+}
+export function athleteNames() {
+  try {
+    const l = JSON.parse(localStorage.getItem(ATH_NAMES_KEY) || "[]");
+    return Array.isArray(l) ? l.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 // ---- Yazma (kulüp uygulamasıyla aynı yapı) ----

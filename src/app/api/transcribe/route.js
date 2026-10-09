@@ -55,12 +55,13 @@ async function viaWhisper(name, file, names, terms, partial = false, ms = 0) {
 // Gemini 3.5 Transcribe: Google'ın konuşma modeli, SMART kipte dolguları ve "yok, şöyle olsun" düzeltmelerini temizler.
 // Son yazı önce bununla denenir; olmazsa Whisper (Groq, OpenAI). GEMINI_TRANSCRIBE_MODEL=off ile kapatılır.
 const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcribe";
-async function viaTranscribe(file, names, terms) {
+// live: dinlerken ara yazı (kısa süre; hatası son çeviriyi beklemeye almaz, kendi beklemesi "stt:gtlive")
+async function viaTranscribe(file, names, terms, live = false) {
   const buf = Buffer.from(await file.arrayBuffer());
   const mimeType = (file.type || "audio/wav").split(";")[0];
   // Uzun konuşma (sıralı işler) daha uzun sürer: süre sesin uzunluğuyla artar (6-9 sn). Üst sınır kısa: yedek Whisper'a
   // da süre kalsın, toplam işlev süresi (Netlify ~10 sn) aşılmasın
-  const wait = Math.min(9000, 6000 + audioSecs(buf, mimeType) * 150);
+  const wait = live ? 5000 : Math.min(9000, 6000 + audioSecs(buf, mimeType) * 150);
   let res;
   try {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
@@ -70,7 +71,7 @@ async function viaTranscribe(file, names, terms) {
       signal: AbortSignal.timeout(wait),
     });
   } catch (e) {
-    markCool("stt:gtranscribe", 3 * MIN); // yanıt gelmedi: kısa bir süre doğrudan Whisper
+    markCool(live ? "stt:gtlive" : "stt:gtranscribe", live ? MIN : 3 * MIN); // yanıt gelmedi: kısa bir süre doğrudan Whisper
     throw e;
   }
   const body = await res.text();
@@ -81,7 +82,7 @@ async function viaTranscribe(file, names, terms) {
   // 400 yalnız istek biçimi/model hatasıysa; bozuk ya da kısa ses (tek kayıt) Google'ı 6 saat kapatmasın (denetim A7)
   const badReq = res.status === 400 && /model|field|unknown name|not found|invalid json|cannot find/i.test(body) && !/audio|duration|too short|decode|empty/i.test(body);
   if ([401, 403, 404].includes(res.status) || badReq) markCool("stt:gtranscribe", 6 * 60 * MIN);
-  else if (res.status === 429) markCool("stt:gtranscribe", (Number(res.headers.get("retry-after")) || 60) * 1000);
+  else if (res.status === 429) markCool(live ? "stt:gtlive" : "stt:gtranscribe", (Number(res.headers.get("retry-after")) || 60) * 1000);
   throw err;
 }
 
@@ -137,20 +138,27 @@ async function handle(request) {
   const terms = [...new Set(String(form.get("terms") || "").split("|").map((n) => n.replace(/[^\p{L}\p{N} .'’&-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 50)).filter(Boolean))].slice(0, 12);
 
   if (partial) {
-    // Parça yazı (dinlerken): hızlı Whisper; yoksa Gemini Transcribe (önceden Whisper yoksa canlı yazı hiç görünmüyordu)
-    const p = list.find((x) => WHISPER[x] && !isCooling(`stt:${x}`)) || (list.includes("gtranscribe") && !isCooling("stt:gtranscribe") ? "gtranscribe" : "");
-    if (!p) return NextResponse.json({ text: "" });
-    try {
-      if (p === "gtranscribe") {
-        const r = await viaTranscribe(file, names, terms);
-        countAi(au, "stt-sec", r.secs);
-        return NextResponse.json({ text: dropHallucination(r.text, HINT), provider: p });
+    // Parça yazı (dinlerken): önce Gemini Transcribe (SMART kip, kişi/sporcu/yarış adları kelime listesinde: düzeltilmiş yazı;
+    // Seyhun: "kelimeler düzeltilmiş olarak gösterilsin", 2026-10-09), olmazsa hızlı Whisper. LIVE_STT=whisper ile eski sıra.
+    // ms: sunucudaki çeviri süresi (süre kaydında canlı yazı gecikmesi)
+    const gOk = list.includes("gtranscribe") && !isCooling("stt:gtranscribe") && !isCooling("stt:gtlive");
+    const wh = list.filter((x) => WHISPER[x] && !isCooling(`stt:${x}`));
+    const order = process.env.LIVE_STT === "whisper" ? [...wh, ...(gOk ? ["gtranscribe"] : [])] : [...(gOk ? ["gtranscribe"] : []), ...wh];
+    const t0 = Date.now();
+    for (const p of order.slice(0, 2)) {
+      try {
+        if (p === "gtranscribe") {
+          const r = await viaTranscribe(file, names, terms, true);
+          countAi(au, "stt-sec", r.secs);
+          return NextResponse.json({ text: dropHallucination(r.text, HINT), provider: p, ms: Date.now() - t0 });
+        }
+        return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p, ms: Date.now() - t0 });
+      } catch (e) {
+        console.warn(`[transcribe:ara:${p}]`, e.message.slice(0, 200));
+        if (Date.now() - t0 > 6000) break; // ara yazı geç kaldı: sonraki parça gelir
       }
-      return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p });
-    } catch (e) {
-      console.warn(`[transcribe:ara:${p}]`, e.message.slice(0, 200));
-      return NextResponse.json({ text: "" });
     }
+    return NextResponse.json({ text: "" });
   }
   countAi(au, "transcribe");
 

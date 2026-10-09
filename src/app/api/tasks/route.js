@@ -4,7 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
-import { memoBlock } from "@/lib/convoContext";
+import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -24,6 +24,8 @@ Her iş için:
 Yanıt kısa olsun: yalnız istenen JSON, aynı işi tekrarlama.
 - label: kontrol listesinde görünecek çok kısa ad (2-5 kelime): "Atatürk Kupası yarışı", "Yoklama: Mustafa", "Enes aidatı (nakit)", "Instagram yarış görseli".
 Tek iş varsa tek eleman döndür.
+Önceki konuşma verildiyse yeni söz onun devamı olabilir: ekleme ("onu da ekle", "Ali de gelsin"), değişiklik ("saati 11 yap", "yok cuma olsun"), vazgeçme. Gönderme yapılan şeyi (kişi, yarış, kayıt, mesaj) konuşmadan bul ve say içinde açıkça yaz ("Yarınki antrenmanın saatini 11 yap"). Konuşmada zaten yapılmış bir işi yeniden listeye koyma; yalnız yeni sözün istediği işler.
+Açık mesaj taslağı verildiyse ve yeni söz o mesajı değiştiriyorsa ("şunu da ekle", "daha kısa yaz") tek iş: other, say "Mesajı değiştir: <istenen>".
 Sohbetteki yarış verildiyse: "yarış görseli", "bunun için", "o yarışa", "yarışa" gibi ad söylenmeyen gönderme o yarıştır; say içinde adını yaz. Kullanıcı başka bir yarışın adını söylerse o yarışı yaz.
 
 Türler:
@@ -56,11 +58,13 @@ async function handle(request) {
   if (!text) return bad("Boş istek");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   const memo = memoBlock(body?.memo);
+  const history = historyBlock(body?.history);
+  const draft = draftBlock(body?.draft);
   const race = String(body?.race ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}\n\nKullanıcının söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     return NextResponse.json({ tasks, cut: planCut(raw) });

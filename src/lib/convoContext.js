@@ -4,6 +4,8 @@
 // Sohbet kapanınca (kapat, panel kapanır) uygulama bunları sıfırlar.
 
 export const HISTORY_MAX = 1500;
+// Ekrandan kalkan konuşma (küreye yeniden basınca, kapatıp açınca) bu süre yapay zekaya geçmiş olarak gitmeye devam eder
+export const PAST_MS = 15 * 60e3;
 const TURN_MAX = 300;
 export const DRAFT_TEXT_MAX = 1000;
 // Taslak bu kadar kullanıcı cümlesinden sonra bağlamdan düşer (konu değişmiştir)

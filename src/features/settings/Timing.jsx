@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
-import { engineName, msText, secText, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
+import { engineName, liveOf, liveText, msText, secText, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
 import { Row } from "./ui";
 
 // Ayarlar › Asistan süre kaydı: son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
@@ -78,6 +78,7 @@ export function TimingRow() {
                               )}
                             </li>
                           ))}
+                          {liveOf(r) && <li className="text-[0.8125rem] text-mut">{liveText(liveOf(r)).replace(/^c/, "C")}</li>}
                         </ul>
                       )}
                     </li>
