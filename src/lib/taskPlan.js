@@ -13,7 +13,7 @@ export const PLAN_KINDS = {
   athlete: { label: "Sporcu", how: "sporcu ekleme, arşive alma, silme", say: "yeni sporcu ekle: <Ad Soyad>[, doğum yılı]" },
   inventory: { label: "Envanter", how: "envantere ekleme/çıkarma/değiştirme", say: "envantere <ne> ekle" },
   invoice: { label: "Fatura", how: "faturayı ödendi işaretleme", say: "<firma> faturası ödendi" },
-  log: { label: "Antrenman günlüğü", how: "antrenmanın nasıl geçtiğini günlüğe yazma (rüzgâr, çalışılanlar)", say: "antrenman günlüğüne yaz: <anlatım>" },
+  log: { label: "Antrenman günlüğü", how: "antrenmanın nasıl geçtiğini günlüğe yazma (rüzgâr, çalışılanlar); yalnız kimin geldiği söylendiyse ya da yoklama denildiyse attendance", say: "antrenman günlüğüne yaz: <anlatım>" },
   event: { label: "Etkinlik", how: "kamp, gezi, piknik, balık gibi organizasyon planı (antrenman, toplantı, ders planı değil: onlar other)", say: "<etkinlik> planla" },
   shopping: { label: "Alışveriş", how: "alışveriş listesine ekleme", say: "listeye <şeyler> ekle" },
   call: { label: "Arama", how: "birini arama", say: "<Ad>'ı ara" },
@@ -23,6 +23,7 @@ export const PLAN_KINDS = {
 
 const CAL_PLAN = /(antre?n?man|idman|toplantı|ders|görüşme|buluşma|bakım|saat|\d{1,2}[:.']?\d{0,2}\s*(da|de|ta|te)(?![\p{L}]))/iu;
 const EVENT_WORD = /(kamp|gezi|piknik|balık|konser|festival|organizasyon|tatil|yürüyüş|etkinlik)/iu;
+const LOG_WORD = /(günlü|rüzg|knot|çalıştık|nasıl geçti)/iu;
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 
 // Bir görev listesinde en çok kaç iş yapılır; fazlası yapılmaz ve kullanıcıya söylenir (planCut; denetim B18)
@@ -34,6 +35,8 @@ export function cleanPlan(raw) {
     .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) }))
     // Yapay zeka "yarın 10'da antrenman planla"yı etkinlik sanabiliyor: takvim planı ana yapay zekanın işidir (other)
     .map((x) => (x.kind === "event" && CAL_PLAN.test(x.say) && !EVENT_WORD.test(x.say) ? { ...x, kind: "other" } : x))
+    // "… geldi, yoklamaya ekle" günlük değil yoklamadır (notsa nottur, yoklamaysa yoklamadır)
+    .map((x) => (x.kind === "log" && /yoklama/iu.test(x.say) && !LOG_WORD.test(x.say) ? { ...x, kind: "attendance" } : x))
     .filter((x) => x.say)
     .slice(0, PLAN_MAX);
   const out = [];
@@ -85,7 +88,7 @@ function splitAtVerbs(part) {
 }
 export function clausesOf(text) {
   return String(text || "")
-    .split(/[.!?;]+\s*|,\s*(?=(?:ve|sonra|ardından|daha sonra|bir de|ayrıca)\s)|\s+(?:ve sonra|daha sonra|sonra da|sonra|ardından|ayrıca)\s+(?=\S+\s+\S)/iu)
+    .split(/[.!?;]+\s*|,\s*(?=(?:ve|sonra|ardından|daha sonra|bir de|ayrıca)\s)|\s+(?:ve sonra|daha sonra|sonra da|sonra|ardından|ayrıca|bir de)\s+(?=\S+\s+\S)/iu)
     .flatMap(splitAtVerbs)
     .map((x) => x.trim().replace(/^(ve|sonra|daha sonra|ardından|bir de|ayrıca)\s+/iu, ""))
     .filter((x) => x.split(/\s+/).length >= 2);
@@ -94,7 +97,7 @@ export function clausesOf(text) {
 const ACT = /(^|\s)(ekle\p{L}*|oluştur\p{L}*|yaz\p{L}*|gönder\p{L}*|hatırlat\p{L}*|sil\p{L}*|ara|arar|hazırla\p{L}*|planla\p{L}*|kaydet\p{L}*|tamamla\p{L}*|ertele\p{L}*|iptal|söyle\p{L}*|haber ver\p{L}*|koy|al\p{L}*|aç|gel(di|medi)|katıl(dı|madı)|öde\p{L}*|ver\p{L}*)(\s|$|[,.])/iu;
 // Yoklama cümlesinin parçası ("Yoklama al, Ali ve Ayşe geldi", "Mehmet de geldi, yoklamaya ekle"): cümlede yoklama/antrenman
 // geçiyorsa yalnız "geldi/gelmedi/izinli" diyen cümlecik de yoklamadır (ayrı bir iş ya da ana yapay zekaya giden iş değil)
-const ATT_TEXT = /(yoklama|antre?n?man|idman)/iu;
+const ATT_TEXT = /(yoklama|antre?n?man|idman|aidat)/iu;
 export const attPart = (text) => (p) => ATT_TEXT.test(text) && ATT_G.test(p) && !otherAct(p) && !/\?|(?<![\p{L}])m[ıi](?![\p{L}])/u.test(p);
 const kindIn = (text, kindOf) => {
   const att = attPart(text);
@@ -194,7 +197,9 @@ export function localPlan(text, kindOf0) {
     out.push({ k, say: p });
   }
   if (out.length < 2) return null;
-  return out.map(({ k, say }) => ({ kind: PLAN_KINDS[k] ? k : "other", say, label: S(say.split(/\s+/).slice(0, 5).join(" "), 60), from: S(say, 160) }));
+  // Yoklama işi kendi sözüyle gider ("Enes geldi" tek başına yoklama sayılmazdı)
+  const sayOf = (k, say) => (k === "attendance" && !/yoklama/iu.test(say) ? `yoklama: ${say}` : say);
+  return out.map(({ k, say }) => ({ kind: PLAN_KINDS[k] ? k : "other", say: sayOf(k, say), label: S(say.split(/\s+/).slice(0, 5).join(" "), 60), from: S(say, 160) }));
 }
 
 // Görev listesinin sırası (Seyhun: "illa kullanıcının sıralamasına göre olmak zorunda değil, bizim için en kolayı neyse",

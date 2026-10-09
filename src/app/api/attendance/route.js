@@ -16,7 +16,7 @@ Sana sporcu listesi (id | ad soyad | sınıf) ve bugünün tarihi verilir. Söyl
 Durumlar: present = geldi / burada / var / katıldı, absent = gelmedi / yok / katılmadı, excused = izinli / raporlu / hasta / mazeretli, clear = işareti kaldır / sil / yanlış girdim.
 
 Kurallar:
-- Yalnızca listedeki sporcular. Adı listedeki bir sporcuyla eşleştir: yalnızca ad, yalnızca soyad, lakap ya da ses tanıma hatası ("Ali yılmas" -> "Ali Yılmaz") olabilir. Aynı ada birden çok sporcu uyuyorsa ve soyad/sınıf söylenmediyse işaretleme; unknown'a "Ali (2 kişi)" diye yaz.
+- Yalnızca listedeki sporcular. Adı listedeki bir sporcuyla eşleştir: yalnızca ad, yalnızca soyad, lakap ya da ses tanıma hatası ("Ali yılmas" -> "Ali Yılmaz"; ses tanıma ğ ve h ekleyip düşürebilir: "Uğraz" -> "Uraz", "Gökan" -> "Gökhan") olabilir. Aynı ada birden çok sporcu uyuyorsa ve soyad/sınıf söylenmediyse işaretleme; unknown'a "Ali (2 kişi)" diye yaz.
 - Her sporcunun "söylenişler" listesi (varsa) önceden hazırlanmış eşleştirme dizinidir: söylenen ad ya da ses tanıma hatası bunlardan birine uyuyorsa o sporcudur. Önce bu listeye bak.
 - Tek başına söylenen ad önce ADI o olan sporcuya aittir; soyadı o olan sporcu yalnızca o ada sahip kimse yoksa. ("Deniz" = Deniz Yılmaz; Aren Deniz için "Aren" denir.) "Karışabilecek adlar" notlarına uy.
 - Listede karşılığı olmayan adları unknown'a yaz.

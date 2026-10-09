@@ -424,4 +424,22 @@ group("Sohbetteki yarış")([
     ["Yarın 10da antrenman planla", { desc: "etkinlik değil, plan (other)", fn: (s) => cleanPlan({ tasks: [{ kind: "invoice", say: "Turkcell faturası ödendi" }, { kind: "event", say: s }] }).map((t) => t.kind).join(","), ok: (k) => k === "invoice,other" }],
     ["Cumartesi kamp planla", { desc: "kamp etkinliktir", fn: (s) => cleanPlan({ tasks: [{ kind: "event", say: s }] })[0].kind, ok: (k) => k === "event" }],
   ]);
+  // Seyhun'un cümlesi (2026-10-09): günlük değil yoklama + not silme; "Uğraz" = Uraz
+  const { isLogAnswer, matchNames } = await import("@/lib/trainingLog");
+  const { cleanSay: clean2 } = await import("@/lib/speech/normalize");
+  const SEY2 = "Uğraz, Efes, Duru antrenmana geldi. Bugün yoklamaya ekle onları. Onlarla ilgili oluşturduğun notu sil.";
+  const ROS = [{ id: "u", studentName: "Uraz Kaya", status: "active" }, { id: "e", studentName: "Efes Duran", status: "active" }, { id: "g", studentName: "Gökhan Arslan", status: "active" }];
+  group("Yoklama + not silme (günlük değil)")([
+    [SEY2, { desc: "günlüğün eksik bilgisi sayılmaz", fn: isLogAnswer, ok: (r) => r === false }],
+    [SEY2, { desc: "iki iş: yoklama + diğer (not silme)", fn: (s) => localPlan(s, () => null)?.map((t) => t.kind).join(","), ok: (k) => k === "attendance,other" }],
+    ["Uğraz, Efes antrenmana geldi, yoklamaya ekle", { desc: "yapay zeka günlük dese de yoklama", fn: (s) => cleanPlan({ tasks: [{ kind: "log", say: s }, { kind: "other", say: "notu sil" }] })[0].kind, ok: (k) => k === "attendance" }],
+    ["Uğraz", { desc: "Uraz Kaya (ğ duyuldu)", fn: (s) => matchNames([s], ROS).names[0], ok: (n) => n === "Uraz Kaya" }],
+    ["Gökan", { desc: "Gökhan Arslan (h düştü)", fn: (s) => matchNames([s], ROS).names[0], ok: (n) => n === "Gökhan Arslan" }],
+  ]);
+  group("Söylenenin temizlenmesi (insan davranışı)")([
+    ["yanlış söyledim kapat", { desc: "baştaki düzeltme sözü", fn: clean2, ok: (r) => r === "kapat" }],
+    ["listeye süt ekle listeye süt ekle", { desc: "iki kez söylenen bir kez", fn: clean2, ok: (r) => r === "listeye süt ekle" }],
+    ["listeye süt ekleyiver", { desc: "-iver kipi", fn: clean2, ok: (r) => r === "listeye süt ekle" }],
+    ["Ali'yi arar mısın lütfen", { desc: "sondaki lütfen", fn: clean2, ok: (r) => r === "Ali'yi arar mısın" }],
+  ]);
 }

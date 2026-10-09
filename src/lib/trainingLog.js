@@ -201,7 +201,8 @@ export function monthLog(plans, month) {
 export function isLogAnswer(text) {
   const t = low(text);
   if (!t || t.split(" ").length > 60) return false;
-  if (FUTURE.test(t) || /(mesaj|görev|hatırlat|not al|sayfa|aç$|göster)/.test(t)) return false;
+  // Yoklama, silme ya da not işi günlüğe eklenmez: yeni istektir ("… geldi, yoklamaya ekle, notu sil")
+  if (FUTURE.test(t) || /(mesaj|görev|hatırlat|not al|sayfa|aç$|göster|yoklama|(^|\s)sil|notu|notlar)/.test(t)) return false;
   return INFO.test(t);
 }
 
@@ -221,6 +222,8 @@ export const presentOn = (athletes, date) => (athletes || []).filter((a) => stat
 
 // Söylenen adları etkin sporculara eşler: tam ad, ya da her sözcük sporcunun adında sözcük başı olarak geçiyorsa ve tek sporcu uyuyorsa
 // ("Ali" → Ali Kaya, iki Ali varsa bulunamadı sayılır). Sonuç { ids, names (tam adlar), unknown }
+// İlk harf dışındaki g ve h atılır (ğ harfsiz yazımda g olur): ugraz → uraz, gokhan → gokan
+const looseName = (w) => (w.length < 3 ? w : w[0] + w.slice(1).replace(/[gh]/g, ""));
 export function matchNames(names, athletes) {
   const list = (athletes || []).filter((a) => a.status === "active" && a.studentName);
   const ids = [];
@@ -235,7 +238,12 @@ export function matchNames(names, athletes) {
           const parts = plainName(a.studentName).split(" ");
           return q.every((w) => parts.some((p) => p === w || (w.length >= 3 && p.startsWith(w))));
         });
-    if (hits.length === 1) !ids.includes(hits[0].id) && ids.push(hits[0].id);
+    // Bulunamadıysa gevşek eşleşme: ses tanıma ğ ve h'yi ekler ya da düşürür ("Uğraz" = Uraz, "Gökan" = Gökhan)
+    const loose = hits.length ? hits : list.filter((a) => {
+      const parts = plainName(a.studentName).split(" ").map(looseName);
+      return q.every((w) => parts.some((p) => p === looseName(w)));
+    });
+    if (loose.length === 1) !ids.includes(loose[0].id) && ids.push(loose[0].id);
     else unknown.push(String(raw));
   }
   return { ids, names: ids.map((id) => list.find((a) => a.id === id).studentName), unknown };

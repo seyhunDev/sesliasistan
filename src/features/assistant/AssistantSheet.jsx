@@ -140,8 +140,8 @@ const groupOf = (t, mine = []) => {
 const MORE = "Başka bir isteğin var mı?";
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 // Taslak varken kaydetme / vazgeçme
-const SAVE = /^(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin)(?=$|[\s.,!?])/i;
-const DROP = /^(vazgeç|iptal|hayır|kaydetme|sil|boş ?ver)(?=$|[\s.,!?])/i;
+const SAVE = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin|aynen|he|hı hı)(?=$|[\s.,!?])/i;
+const DROP = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(vazgeç|vazgeçtim|iptal|hayır|kaydetme|sil|boş ?ver|yok)(?=$|[\s.,!?])/i;
 // Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
 // Soru mu ("kaç görev var", "haftayı özetle"): \b Türkçe harfle biten kelimede çalışmadığı için isQuestion (steps.js) kullanılır
 const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -1014,11 +1014,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // Tek cümlede birden çok iş ("Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit
     // verdi. Atatürk Kupası için Instagram görseli hazırla"): yapay zeka sıralı görev listesi çıkarır (/api/tasks), işler
     // sırayla kendi akışlarında yapılır. Bir soruya cevap beklenirken (taslak, kart, yarış sorusu…) bakılmaz.
-    if (!chained && !msgFirst && !cards.awaiting && !drafts.length && !raceFollow.current) {
+    // Günlüğün eksik bilgisi beklenirken söylenen yeni çoklu istek ("… geldi, yoklamaya ekle, notu sil") de listeye girer
+    const logWait = cards.awaiting && logFlow.current?.date && !logFlow.current.ask && !logFlow.current.collect;
+    if (!chained && !msgFirst && (!cards.awaiting || logWait) && !drafts.length && !raceFollow.current) {
       const parts = splitChain(s);
       // Noktalamasız söylense de ("…yarış oluştur yarış için görsel hazırla bugün Mustafa geldi") iki ve fazla iş fiili varsa
       // ve uygulamanın kendi akışlarından biri işin içindeyse düzeni yapay zeka kurar (yoksa cümlenin tamamı tek akışa giderdi)
       if ((parts.length > 1 && parts.some(flowOf)) || looksMulti(s, flowOf) || (actCount(s) > 1 && (flowOf(s) || clausesOf(s).some(flowOf)))) {
+        logFlow.current = null; // yeni istek: günlüğün eksik bilgisi beklenmiyor
         setTurns((p) => [...p, { role: "user", text: s }]);
         setText("");
         setHeard(s);

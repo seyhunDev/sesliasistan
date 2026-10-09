@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
-import { bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
+import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
 import { speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
@@ -139,8 +139,11 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       }
       // Kayıt yolu: söylenen ara ara yazıya çevrilip gösterilir (gönderme yine kullanıcının dokunuşuyla)
       if (s.kind === "server" && s.pcmLen && segmentDue(s, now)) liveSegment(s.sid);
-      // Ses ölçer çalışmıyorsa (iPhone'da askıda kalan ses motoru) konuşma anlaşılamaz: yazı yine 3 sn'de bir gelsin
-      else if (s.kind === "server" && s.pcmLen && !s.meterLive && (s.segBusy || 0) < 2 && now - (s.segFrom || s.t0 || now) >= 3000) liveSegment(s.sid);
+      // Konuşma bitişi anlaşılamasa da (ses ölçer askıda ya da gürültüde konuşma algılanmadı) yazı 2,5 sn'de bir gelsin
+      // (Seyhun: "neden Dinliyorum yazıyor, kullanıcının dediklerini anlık göstermeliyiz", 2026-10-09)
+      else if (s.kind === "server" && s.pcmLen && (s.segBusy || 0) < 2 && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveSegment(s.sid);
+      // Ham ses hiç toplanamıyorsa (iPhone'da ses motoru askıda): kaydın o ana kadarki tamamı yazıya çevrilir, yazı yenilenir
+      else if (s.kind === "server" && !s.pcmLen && s.chunks?.length && !s.segBusy && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveWhole(s.sid);
       // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
       // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
       if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {
@@ -306,6 +309,32 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
   };
 
+  // Ham ses yokken ara yazı: kaydın başından bu yana tamamı (parçalı kayıt, başından birleşince geçerli dosya)
+  const liveWhole = async (sid) => {
+    const s = R.current;
+    s.segFrom = Date.now();
+    s.segBusy = 1;
+    try {
+      const blob = new Blob(s.chunks, { type: s.mrType || "audio/mp4" });
+      if (blob.size < 3000) return;
+      const fd = new FormData();
+      fd.append("audio", blob, `parca.${(s.mrType || "").includes("mp4") ? "m4a" : "webm"}`);
+      fd.append("partial", "1");
+      if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
+      if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
+      const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (s.sid !== sid || s.status !== "listening" || s.pcmLen) return;
+      if (res.ok && data.text) {
+        s.partial = String(data.text).trim();
+        setFinalText(s.partial);
+      }
+    } catch {
+    } finally {
+      if (s.sid === sid) s.segBusy = 0;
+    }
+  };
+
   // ---- Yol 2: kayıt + sunucuda çeviri ----
   const startServer = async (sid) => {
     const s = R.current;
@@ -384,6 +413,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     const type = mr.mimeType || mime || "audio/webm";
     const chunks = [];
+    s.chunks = chunks;
+    s.mrType = type;
     s.mr = mr;
     mr.ondataavailable = (e) => e.data?.size && chunks.push(e.data);
     mr.onstop = async () => {
@@ -454,7 +485,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       }
     };
     s.early = s.stopReq;
-    mr.start();
+    mr.start(1000); // saniyede bir parça: ham ses toplanamazsa dinlerken de yazıya çevrilebilsin (liveWhole)
     if (s.stopReq) mr.stop(); // parmak izin ekranı sırasında kalktıysa
   };
 
@@ -492,7 +523,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
-      endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
+      endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, chunks: null, mrType: "", proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
     });
     setFinalText("");
     setInterim("");

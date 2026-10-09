@@ -26,6 +26,7 @@ export const partialDue = (s, now) => !s.partBusy && !!s.voiceSeen && s.lastSpee
 // konuşmada (SEG_MAX) o ana kadarki YENİ ses ayrı parça olarak yazıya çevrilir, parçalar sırayla eklenir. Dinleme sürer.
 // Durdurunca bütün kayıt bir kez daha çevrilir (düzeltilmiş tam metin); o olmazsa parçalar gönderilir.
 export const SEG_PAUSE = 700;
+export const LIVE_EVERY = 2500; // konuşma algılanmasa da ara yazı bu sürede bir (useSpeech)
 export const SEG_MAX = 3000; // aralıksız konuşmada da yazı 3 sn'de bir kutuya gelsin (Seyhun: "söylediklerim yazılmıyor", 2026-10-09)
 export const segmentDue = (s, now) =>
   !!s.voiceSeen && (s.segBusy || 0) < 2 && s.lastSpeech > (s.segFrom || 0) && (now - s.lastSpeech >= SEG_PAUSE || now - (s.segFrom || s.voiceFrom || s.t0 || 0) >= SEG_MAX);

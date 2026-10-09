@@ -21,8 +21,13 @@ export function localReceipt(text) {
   return !/^(ler|lar)/.test(m[3]) && RECEIPT_OPEN.test(t);
 }
 
-export const isYes =(s) => /^(evet|tamam|olur|onayla|onayladım|onaylıyorum|onay veriyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
-export const isNo = (s) => /^(hayır|hayir|vazgeç|iptal|yapma|olmasın|istemiyorum|dur)(?=$|[\s.,!?])/.test(lower(s).trim());
+// Evet/hayırdan sonra değişiklik isteniyorsa ("evet ama saati 11 yap", "hayır yarın değil cuma") onay ya da ret değildir
+const EDIT_TAIL = (s) => {
+  const t = lower(String(s || "")).trim();
+  return t.split(/\s+/).length >= 3 && /(^|\s)(ama|fakat|ancak|değil)(\s|$)|\s(da|de)\s/.test(t);
+};
+export const isYes = (s) => !EDIT_TAIL(s) && /^(he|hı hı|evt|evet|tamam|olur|onayla|onayladım|onaylıyorum|onay veriyorum|sil|yap|aynen|kesinlikle|tabii|tabi)(?=$|[\s.,!?])/.test(lower(s).trim());
+export const isNo = (s) => !EDIT_TAIL(s) && /^(hayır|hayir|vazgeç|iptal|yapma|olmasın|istemiyorum|dur)(?=$|[\s.,!?])/.test(lower(s).trim());
 
 // Yapay zekanın önerdiği değişikliği kayda uygulanacak alanlara çevirir (takvim uyumlu alanlar dahil)
 export function buildPatch(kind, p = {}, rec = {}) {
@@ -108,7 +113,7 @@ export function isCloseNow(text) {
 // "Başka bir isteğin var mı?" sorusuna olumsuz kısa cevap ("yok", "hayır", "başka yok", "gerek yok", "yok sağ ol"): asistan kapanır.
 // Yalnız bu soru sorulduysa bakılır; kısa cümle (en çok 4 kelime), içinde iş isteyen söz yoksa.
 const NO_MORE = /^(?:yok|hayır|başka (?:bir şey |bir isteğim )?yok|gerek yok|istemiyorum|olmaz|şimdilik yok|yok yok)(?=$|[\s.,!?])/;
-const NO_MORE_NOT = /(ekle|yaz|gönder|sil|kaydet|aç|planla|hatırlat|ama|fakat)/;
+const NO_MORE_NOT = /(ekle|yaz|gönder|sil|kaydet|aç|planla|hatırlat|ama|fakat|olsun|yap|değil|\d|saat|yarın|bugün|pazartesi|salı|çarşamba|perşembe|cuma|pazar)/;
 export function isNoMore(text) {
   const t = lower(String(text || "")).replace(/[.,!?…]+/g, " ").replace(/\s+/g, " ").trim();
   if (!t || t.split(" ").length > 4 || NO_MORE_NOT.test(t)) return false;
