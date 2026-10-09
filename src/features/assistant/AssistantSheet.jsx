@@ -26,13 +26,14 @@ import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
 import { DRAFT_AGE, draftFor, editPrecue, historyFor, isDraftEdit, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
+import { clubDigest } from "@/lib/ai/clubDigest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
 import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
-import { createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
+import { byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
 import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { cleanResults } from "@/lib/raceResults";
@@ -51,7 +52,7 @@ import { useNameIndex } from "@/features/athletes/names";
 import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
 import { matchShop, shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
-import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
@@ -163,6 +164,26 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   useEffect(() => {
     if (raceOrg && open) loadRaces(raceOrg).then((l) => (races.current = l), () => {});
   }, [raceOrg, open]);
+  // Kulüp özeti (ana yapay zekaya; lib/ai/clubDigest.js): sporcular, bu ayın aidatı, açık faturalar, envanter. Asistan
+  // açılınca en çok 3 dakikada bir okunur (aidat 2, fatura 1 belge, envanter 1 sorgu; sporcular zaten bellekte)
+  const club = useRef({ at: 0 });
+  const owner = !isStaff && profile?.role === "owner";
+  useEffect(() => {
+    const org = profile?.orgId;
+    if (!open || !org || isStaff || Date.now() - club.current.at < 3 * 60e3) return;
+    const ym = todayStr().slice(0, 7);
+    const at = Date.now();
+    club.current.at = at;
+    const data = (r) => (r.exists() ? r.data() : null);
+    Promise.all([
+      racer ? loadAthletes().then((d) => { const cls = byId(d.classes); return d.athletes.filter(isActive).map((a) => ({ studentName: a.studentName, cls: cls[a.currentClassId] || "" })); }).catch(() => []) : [],
+      owner ? Promise.all([getDoc(doc(db, "orgs", org, "dues", "settings")), getDoc(doc(db, "orgs", org, "dues", ym))]).then(([c, m]) => ({ cfg: data(c), month: data(m), ym })).catch(() => null) : null,
+      owner ? getDoc(doc(db, "orgs", org, "invoiceIndex", "open")).then((r) => data(r)?.list || []).catch(() => []) : [],
+      owner ? getDocs(collection(db, "orgs", org, "inventories")).then((q) => q.docs.map((d) => d.data())).catch(() => []) : [],
+    ]).then(([athletes, dues, invoices, inventories]) => {
+      if (club.current.at === at) club.current = { at, athletes, dues, invoices, inventories };
+    });
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   // Açık yarış sayfası (/athletes/races/<id>): yarış adı söylenmeden yapılan işler bu yarışa yazılır
   const hereRace = /^\/athletes\/races\/([\w-]+)$/.exec(path || "")?.[1];
   const curRace = hereRace && hereRace !== "new" ? hereRace : "";
@@ -1211,7 +1232,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       // Hava sorusuysa (ya da önceki soru havaysa, "peki pazar?" gibi) güncel hava verisi de gider
       const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
       const weather = wx ? weatherDigest(await loadWeather().catch(() => cachedWeather())) : "";
-      const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
+      const { athletes: clubAth, dues: clubDues, invoices: clubInv, inventories: clubInvs } = club.current;
+      const clubText = clubDigest({ races: races.current, athletes: clubAth, dues: clubDues, invoices: clubInv, inventories: clubInvs, today: todayStr() });
+      const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), clubText, weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
       if (id !== runId.current) return;
       countHit("ai");
       timingMark("ai");
@@ -1712,7 +1735,6 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     okFlow.current = { yes, word };
     reply(text, { engine: "local", ok: { label } }, viaVoice);
   }
-  const owner = profile?.role === "owner" && !isStaff;
   // ---- Elle yapılan diğer işler (lib/assistMore.js): fiş ödendi, gelmeyenlerin velilerine haber, alınanları temizle,
   // doğum günü / kişi silme, açık yarışta sporcu çıkarma, sonuç, ödeme, yarışı silme ve planlara ekleme, mesaj grubu kurma ----
   async function saveHereRace(r, next) {

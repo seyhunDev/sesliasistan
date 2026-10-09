@@ -857,3 +857,22 @@ group("Temiz başlık ve sorusuz ekleme")([
   ["O saatte Antrenman planı da var. Kaydedeyim mi?", Y("ek bilgi kalır", extraNote, "O saatte Antrenman planı da var. ")],
   ["Rüzgâr 22 knot olacak.", Y("rüzgâr bilgisi kalır", extraNote, "Rüzgâr 22 knot olacak. ")],
 ]);
+
+// Kulüp özeti (ana yapay zekaya giden; lib/ai/clubDigest.js)
+{
+  const CD = await import("@/lib/ai/clubDigest");
+  const races = [
+    { id: "a", name: "Atatürk Kupası", district: "Dikili", city: "İzmir", startDate: "2026-11-07", endDate: "2026-11-08", athleteIds: ["1", "2"] },
+    { id: "b", name: "Foça Ayağı", district: "Foça", startDate: "2026-09-20", athleteIds: [] },
+  ];
+  const cfg = { fee: 1500, roster: [{ id: "1", studentName: "Ali Kaya" }, { id: "2", studentName: "Ayşe Ak" }] };
+  const month = { paid: { 1: [{ amt: 1500, via: "cash" }] } };
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Kulüp özeti (ana yapay zeka)")([
+    ["yarışlar", C("yaklaşan önce, geçmiş işaretli", () => CD.racesBlock(races, "2026-10-09"), (t) => t.indexOf("Atatürk") < t.indexOf("Foça") && /Foça Ayağı.*\| geçti/.test(t) && /2 sporcu/.test(t))],
+    ["aidat", C("ödeyen sayısı ve ödemeyenler", () => CD.duesBlock(cfg, month, "2026-10"), (t) => /1\/2 sporcu ödedi/.test(t) && /Ödemeyenler: Ayşe Ak/.test(t))],
+    ["sporcular", C("ad ve sınıf, kişisel bilgi yok", () => CD.athletesBlock([{ studentName: "Ali Kaya", cls: "Optimist", tc: "123" }]), (t) => /Ali Kaya \(Optimist\)/.test(t) && !/123/.test(t))],
+    ["envanter", C("kategori adetleri", () => CD.inventoryBlock([{ name: "Yelken Kulübü", items: [{ cat: "Tekne", qty: 3 }, { cat: "Tekne", qty: 1 }, { cat: "Telsiz", qty: 2, state: "Arızalı" }] }]), (t) => /Tekne 4/.test(t) && /Telsiz 2/.test(t) && /sorunlu 1/.test(t))],
+    ["boş", C("veri yoksa blok yok", () => CD.clubDigest({}), (t) => t === "")],
+  ]);
+}
