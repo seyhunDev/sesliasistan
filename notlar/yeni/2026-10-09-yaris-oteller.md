@@ -1,7 +1,0 @@
-## Nerede kaldım
-
-- Yarışta birden çok otel ve arama (Seyhun: "talimattan aldığımız otel bir tane de olabilir, farklı farklı oteller de olabilir; telefon numaraları varsa tutalım, arama butonumuz olsun"; telefonda denenmedi): Özet'te Yolculuk'un altında yeni "KONAKLAMA" bölümü (`RaceHotels.jsx`). Talimattaki bütün oteller ayrı satır: ad, telefon, not, oda fiyatları; telefonu olan otelde yeşil "Ara" düğmesi (`telOf`, races.js). Otele dokununca ad, telefon, not düzeltilir ya da otel silinir; "Otel ekle" ile talimatta olmayan otel eklenir. Talimat bilgilerinin altındaki eski Konaklama listesi kaldırıldı (aynısı iki kez görünmesin). Kayıt: yarışta yeni alan `hotels` [{name, phone, note, rooms}]; elle hiç dokunulmadıysa talimattaki oteller kullanılır (`raceHotels`). Yeni talimat yüklenince elle düzenlenen liste korunur: aynı adlı otelin oda fiyatları yenilenir, boş telefon/not talimattan dolar, yeni otel eklenir, elle eklenen silinmez (`mergeHotels`). Bütçedeki oda seçimi, yapay zekayla bütçe, Çevre'deki otel ve otel konaklama izni önerileri de bu listeden. Talimat okuma istemi her oteli ayrı satır ve telefonunu yazsın diye güncellendi. Kural değişikliği yok. Testleri `test:yaris` › "oteller: …".
-
-## Sıradaki işler
-
-- Talimatı olan bir yarışın Özet'inde Konaklama'ya bak: bütün oteller var mı, "Ara" aranıyor mu. Telefonu olmayan otele dokunup numara yaz; "Otel ekle" ile bir otel ekle; Bütçe › Otel odası ekle'de yeni otel görünüyor mu.

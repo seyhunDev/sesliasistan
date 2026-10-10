@@ -1,8 +1,0 @@
-## Nerede kaldım
-- Karanlık mod (Seyhun öneri listesinden 8'i seçti; telefonda denenmedi): Ayarlar › Yazı boyutu'nun altında "Görünüm": Otomatik / Açık / Koyu. Otomatik (varsayılan) telefonun açık/koyu ayarını izler, telefon gece moduna geçince uygulama da hemen döner (`watchTheme`). Seçim yalnız bu cihazda (localStorage `sa-theme`), Firestore'a gitmez; sayfa çizilmeden `<html data-theme>` kurulur, beyaz parlama olmaz (`THEME_SCRIPT`, layout.jsx; `src/lib/theme.js`). Renkler değişkenlerden geldiği için (globals.css `--bg`, `--card`, `--fg`, `--mut`, `--line`, `--acc`…) koyu değerler `html[data-theme="dark"]` altında tanımlandı; kubbe ve koyu yeşil kartlar aynı kalır. Açık zemine göre yazılmış sarı uyarı kutuları ve renkli yazılar (amber, rose, sky, violet, emerald…) koyuda okunur tonlara çevrilir; sohbet adı ve kişi simgesi renklerinin koyu karşılıkları (`dark:` öneki, `@custom-variant dark`). Durum çubuğu rengi (theme-color) temaya göre. Instagram görselleri ve PDF'ler kendi renkleriyle çizilir, değişmez. Testleri `test:elle` › "Karanlık mod". Kural değişikliği yok.
-
-## Sıradaki işler
-0. Karanlık modu dene: Ayarlar › Görünüm › Koyu; ana sayfa, Planlar, Mesajlar, Fişler, Aidatlar, Yarışlar, Envanter, Instagram sayfalarına bak. Okunmayan ya da beyaz kalan yer olursa sayfanın adını yeni threade yaz. Sonra Otomatik'e al, telefonu koyu moda geçir, uygulama da dönmeli.
-
-## Tasarım
-- Koyu görünümde yeni renk eklerken sabit renk (`bg-[#…]`, `text-amber-800`) yerine değişken (`bg-card`, `text-mut`, `text-acc`) kullan; sabit renk gerekiyorsa yanına `dark:` karşılığını yaz (2026-10-05).

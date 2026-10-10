@@ -1,7 +1,0 @@
-## Nerede kaldım
-
-- Söylenen yazı kutusunda canlı ve parça parça (Seyhun: "kullanıcının söylediklerini input'un içinde gösterelim, gönderince onu göndersin; arka planda düzeltilsin; bütün metin kalmalı, yeni söylenenler gitmesin"; telefonda denenmedi): iPhone/Safari kayıt yolunda konuşurken her kısa duraksamada (0,7 sn) ya da 8 sn aralıksız konuşmada, son kesimden beri söylenen YENİ ses ayrı parça olarak yazıya çevrilir ve öncekilerin arkasına eklenir; mikrofon dinlemeye devam eder (`segmentDue`, vad.js; `liveSegment`, useSpeech). Önceden her 2 sn'de bütün kayıt baştan çevriliyordu ve yalnız Whisper (Groq) varsa çalışıyordu; Whisper yoksa canlı yazı hiç görünmüyordu. Parça çevirisi artık Whisper yoksa Gemini Transcribe'la yapılır (`/api/transcribe` partial). Durdurunca bütün kayıt bir kez daha çevrilir (düzeltilmiş tam metin); o olmazsa ya da belirgin kısa kalırsa parçalar gönderilir (`bestText`). iPhone'un kaydı (MediaRecorder) boş gelirse ("Ses alınamadı") aynı anda toplanan ham sesten WAV yapılıp gönderilir. Yazı kutusu söyleneni tek satır değil en çok 4 satır gösterir, uzarsa son kısmı görünür (TabBar). Testleri `test:ses` › "Dinlerken parça yazı", "Son yazı: tam çeviri mi parçalar mı".
-
-## Sıradaki işler
-
-- iPhone'da uzun bir cümleyi duraksayarak söyle: yazı kutusunda parça parça eklenmeli, hiçbir parça kaybolmamalı; dokununca tam metin gitmeli. "Ses alınamadı" çıkarsa hangi cümlede olduğunu yaz.

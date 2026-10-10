@@ -1,7 +1,0 @@
-## Nerede kaldım
-
-- Ayarlar › Diğer ayarlar › "WhatsApp grupları" (Seyhun: "WhatsApp sporcular grubumun bağlantısını bağlayabilir miyiz, ayarlarda Sporcular, Aileler gibi ekleyebilelim"; telefonda denenmedi): grup adı (hazır Sporcular, Aileler, Ekip ya da elle) + davet bağlantısı (chat.whatsapp.com/…; sondaki ?mode=… atılır) kaydedilir, listeden Aç / sil; en çok 10. Kayıt `users/{uid}.waGroups [{name, link}]` (kendi profili, kural değişikliği yok; bağlantı depoya yazılmadı). Asistan uygulamadaki bir gruba (Sporcular, Aile, Ekip, kurulan grup) mesaj hazırlayınca WhatsApp düğmeleri ("Gönder + WhatsApp", yeşil düğme, "WhatsApp grubuna da gönder") adı eşleşen WhatsApp grubunu doğrudan açar ve metni panoya kopyalar; grupta yazı alanına basılı tutup Yapıştır, Gönder. Ad eşleşmesi Türkçe harfsiz, çoğul eki ve "grubu" atılarak (Aile = Aileler, Sporcular = Sporcu grubu; `waGroupFor`, src/lib/waGroups.js). WhatsApp'ta gruba metinle açılan bağlantı olmadığı için metin kendiliğinden yazılamaz. Bağlantısı kayıtlı olmayan grupta eskisi gibi paylaşım menüsü (`shareGroup`, cancelPlan.js). Testleri `test:asistan` › "Mesaj ve WhatsApp".
-
-## Sıradaki işler
-
-- Ayarlar › Diğer ayarlar › WhatsApp grupları › Sporcular'ı seç, grup bağlantısını yapıştır, Grubu ekle; "Aç" WhatsApp'ta grubu açıyor mu bak. Sonra asistana "sporculara ve WhatsApp grubuna yaz: perşembe 9.30 antrenman" de, "Gönder + WhatsApp"a bas; grup açılmalı, yazı alanına basılı tutup Yapıştır. Grup açılmıyor da "gruba katıl" ekranı çıkıyorsa yeni threade yaz.
