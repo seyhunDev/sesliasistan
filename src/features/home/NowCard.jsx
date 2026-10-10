@@ -15,8 +15,9 @@ import { todayStr } from "@/lib/utils/format";
 // Ana sayfa › ŞU AN: tek büyük koyu yeşil kart. Bugünün süren ya da sıradaki planı (saat, yer; antrenman/yarışta o saatlerin
 // en sert rüzgârı, eşik geçilirse kırmızımsı), altında "Sonra" ile bir sonraki plan. Bugün kalan plan yoksa yarının ilki.
 // Hiç plan yoksa "Plan yok · Plan ekle". Karta dokununca plan açılır; sağ üstte Planlar sayfası. Görevler bu kartta değil,
-// "Seni bekleyen" satırında (Inbox.jsx). weather: useWeather() sonucu (OwnerHome).
-export function NowCard({ weather }) {
+// kartın altındaki "N şey seni bekliyor" şeridinde (dokununca zil ile aynı pencere; yalnız bekleyen varsa).
+// weather: useWeather() sonucu, inbox: useInbox(), onInbox: pencereyi açar (OwnerHome).
+export function NowCard({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -68,6 +69,26 @@ export function NowCard({ weather }) {
           </b>
         </button>
       )}
+      <WaitBar inbox={inbox} onAll={onInbox} />
     </section>
+  );
+}
+
+// Kartın altındaki şerit: "3 şey seni bekliyor · Motor yağı, Turkcell…" (bekleyen yoksa çizilmez)
+function WaitBar({ inbox, onAll }) {
+  const list = inbox?.list || [];
+  if (!list.length) return null;
+  const names = list
+    .slice(0, 3)
+    .map((x) => (typeof x.title === "string" ? x.title : x.short))
+    .filter(Boolean);
+  return (
+    <button type="button" onClick={onAll} aria-label={`${list.length} şey seni bekliyor`} className="flex w-full items-center gap-2 bg-white/[.08] px-5 py-3 text-left text-[0.9375rem]">
+      <span className="min-w-0 flex-1 truncate">
+        <b className="font-semibold">{list.length} şey seni bekliyor</b>
+        {names.length > 0 && <span className="text-white/80"> · {names.join(", ")}</span>}
+      </span>
+      <Icon name="chev" className="size-4 shrink-0 text-white/75" />
+    </button>
   );
 }

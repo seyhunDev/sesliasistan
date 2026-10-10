@@ -11,7 +11,7 @@ import { TLk, totalOf } from "@/lib/receipts";
 
 // Ana sayfa özet kartları için para: banka (hesap özetlerinden, yalnız ana hesap) ve bu ayın fişleri.
 // Banka Mailler sayfasıyla aynı hesabı gösterir: aynı mailler (son 40), aynı hesaplar (accountsOf), TL toplamı;
-// değişim son 7 özetteki toplam bakiyeye göre. Dönüş: { bank: {big, sub, warn} | null, receipts: {big, sub}, loading (banka okunuyor) }
+// değişim son 7 özetteki toplam bakiyeye göre. Dönüş: { bank: {big, sub, warn} | null, receipts: {big, sub} | false (bu ay fiş yok), loading (banka okunuyor) }
 export function useMoney() {
   const { profile } = useAuth();
   const { receipts, isStaff } = useData();
@@ -63,8 +63,8 @@ export function useMoney() {
   const sign = `${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%`;
 
   return {
-    bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `Bakiye · ${sign} son ${spark.length} özette` : tot.n > 1 ? `${tot.n} hesabın bakiyesi` : "Hesap bakiyesi", warn: spark.length > 1 && pct < 0 } : null,
+    bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `Bakiye · ${sign}` : tot.n > 1 ? `${tot.n} hesabın bakiyesi` : "Hesap bakiyesi", warn: spark.length > 1 && pct < 0 } : null,
     loading: owner && !got,
-    receipts: { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} harcaması${isStaff ? " (senin)" : ""}` },
+    receipts: spend > 0 && { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} harcaması${isStaff ? " (senin)" : ""}` },
   };
 }

@@ -532,6 +532,27 @@ group("Ana sayfa kartları")([
     const c = HT.duesTile({ ym: "2026-09", paidCount: 5, count: 30 }, "2026-10");
     return a.bar === 0.4 && b.bar === 1 && c.bar === undefined;
   })],
+  ["kulüp kartları", F("yalnız bilgisi olan görünür: herkes ödeyince aidat, fatura ve fiş yokken Fiş / Fatura gizli", () => {
+    const ym = "2026-10";
+    const a = HT.clubDues({ ym, paidCount: 12, count: 30, pending: 3 }, ym);
+    const b = HT.clubDues({ ym, paidCount: 30, count: 30, pending: 0 }, ym);
+    const c = HT.clubDues({ ym: "2026-09", paidCount: 5, count: 30 }, ym);
+    const f = HT.clubFis({ big: "3.420 TL", sub: "2 ödenmedi · son gün yarın", warn: false }, { big: "900 ₺", sub: "Ekim harcaması" });
+    const g = HT.clubFis({ big: "500 TL", sub: "1 ödenmedi · 1 gecikti" }, false);
+    return a.big === "12/30" && a.sub === "3 onay bekliyor" && a.warn && b === null && c === null
+      && f.big === "2 fatura" && f.sub === "3.420 TL ödenecek" && f.warn && g.sub === "1 gecikti · 500 TL"
+      && HT.clubFis(null, { big: "900 ₺" }).big === "900 ₺" && HT.clubFis(null, false) === null && HT.clubPosts(null) === null;
+  })],
+  ["kulüp kartları", F("sıradaki yarış: tam ad, kısa tarih, sporcu, kalan gün; yarış yoksa kart yok", () => {
+    const r = HT.clubRace({ name: "Foça", when: "5 gün", left: 2, title: "Foça Kupası", dates: "17-19 Ekim", count: 6, days: 5 });
+    const t = HT.clubRace({ name: "Çeşme", when: "yarın", left: 0 });
+    return r.title === "Foça Kupası" && r.sub === "17-19 Ekim · 6 sporcu" && r.days === 5 && r.left === 2
+      && t.title === "Çeşme yarışı" && t.days === null && t.when === "Yarın" && HT.clubRace(null) === null;
+  })],
+  ["kulüp kartları", F("antrenman bu ay yoksa gizli, varsa sayı", () => {
+    const today = "2026-10-10";
+    return HT.clubTraining([], today) === null && HT.clubTraining([{ cat: "Antrenman", date: "2026-10-01", log: { wind: 10 } }], today)?.big === "1";
+  })],
   ["yarış", F("5 gün kaldı · Foça yarışı · 2 iş eksik", () => {
     const a = HT.raceTile({ name: "Foça", when: "5 gün", left: 2 }, 1);
     const b = HT.raceTile({ name: "Çeşme", when: "yarın", left: 0 }, 1);
