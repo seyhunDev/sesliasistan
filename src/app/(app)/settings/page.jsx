@@ -67,6 +67,7 @@ export default function SettingsPage() {
         {owner && <BackupRow />}
         <DeviceDataRow />
         <TimingRow />
+        <Row icon="mic" tone="rec" title="Ses testi" sub="Konuşmayı yazıya çeviren yolları yan yana dene" href="/settings/voice-test" />
         {owner && <DemoDataRow />}
         <LedgerRow />
         {owner && <Row icon="mail" tone="sky" title="Gmail bağlantısı" sub="Gönderenler ve kurulum" href="/mail/setup" />}
