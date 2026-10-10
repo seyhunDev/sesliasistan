@@ -28,7 +28,7 @@ export function shortRange(a, b) {
 const gap = (s) => Math.round((Date.parse(`${s}T12:00:00`) - Date.parse(`${todayStr()}T12:00:00`)) / 864e5);
 
 // Sıradaki yarış: henüz başlamamış en yakın yarış. Bugün başlayan ya da süren yarış "şu an"dır (Şu an kartında plan olarak görünür),
-// sıradaki ondan sonraki yarıştır (Seyhun: "sıradaki bir sonraki olmalı"). { name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
+// sıradaki ondan sonraki yarıştır (Seyhun: "sıradaki bir sonraki olmalı"). { id, name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
 // title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün) } (ana sayfa yarış kartı)
 export function nextInfo(list) {
   const r = list.filter((x) => x.startDate && gap(x.startDate) > 0).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
@@ -36,6 +36,7 @@ export function nextInfo(list) {
   const a = gap(r.startDate);
   const when = a > 1 ? `${a} gün` : "yarın";
   return {
+    id: r.id,
     name: r.district || String(r.name || "").split(" ")[0] || "Yarış",
     when,
     left: stepsOf(r).length,
@@ -49,7 +50,10 @@ export function nextInfo(list) {
 function countRaces(orgId) {
   if (!cache || cache.orgId !== orgId || Date.now() - cache.at > 5 * 60e3) {
     const p = loadRaces(orgId)
-      .then((list) => ({ all: list.length, up: list.filter((r) => !isPast(r)).length, next: nextInfo(list) }))
+      .then((list) => {
+        const up = list.filter((r) => r.startDate && !isPast(r));
+        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate })) };
+      })
       .catch(() => null)
       .then((c) => {
         if (!c?.all && cache?.p === p) cache = null;
@@ -87,6 +91,7 @@ export function useRaceHome() {
     on,
     up: on ? n?.up || 0 : 0,
     next: on ? n?.next || null : null,
+    open: on ? n?.open || [] : [],
     loading: on && n === null,
     set: (on) => updateDoc(doc(db, "users", profile.uid), { races: on ? "on" : "off" }),
   };
