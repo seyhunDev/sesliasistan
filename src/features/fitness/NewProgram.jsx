@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { EQUIP } from "@/lib/fitness/exercises";
 import { DOWS, DOW_LONG, GOALS, LEVELS, PLACES, labelOf } from "@/lib/fitness/model";
+import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { todayStr } from "@/lib/utils/format";
 
 // Seçenek kartlarının simgesi ve kısa açıklaması (yazı model.js'teki listelerden)
@@ -58,10 +59,10 @@ function Option({ on, icon, title, sub, onClick, tall }) {
   );
 }
 // Seviye simgesi: 1-3 yükselen çubuk
-const Bars = ({ n }) => (
-  <span className="flex h-5 items-end gap-[3px]">
+const Bars = ({ n, big }) => (
+  <span className={`flex items-end gap-[3px] ${big ? "h-7" : "h-5"}`}>
     {[1, 2, 3].map((k) => (
-      <span key={k} className={`w-[5px] rounded-sm bg-current ${k > n ? "opacity-25" : ""}`} style={{ height: `${k * 6 + 2}px` }} />
+      <span key={k} className={`rounded-sm bg-current ${big ? "w-[7px]" : "w-[5px]"} ${k > n ? "opacity-25" : ""}`} style={{ height: `${k * (big ? 8 : 6) + 2}px` }} />
     ))}
   </span>
 );
@@ -79,12 +80,39 @@ function Segment({ list, value, onChange, unit }) {
   );
 }
 
-// Profil alanları (Program hazırla 2. adım ve Profil penceresi): seviye, yer, ekipman, boy, kilo, yaş, kaçınılacaklar.
+// Sakatlık bölgeleri: seçilenler kaçınılacaklar yazısının başına "Diz, Bel" diye yazılır, kalan serbest not "·" ile ayrılır
+const AREAS = ["Diz", "Bel", "Omuz", "Bilek", "Boyun", "Dirsek"];
+const avoidOf = (s) => {
+  const parts = String(s || "").split(/[,·]/).map((x) => x.trim()).filter(Boolean);
+  const areas = AREAS.filter((a) => parts.some((p) => p.toLocaleLowerCase("tr") === a.toLocaleLowerCase("tr")));
+  const rest = parts.filter((p) => !areas.some((a) => a.toLocaleLowerCase("tr") === p.toLocaleLowerCase("tr"))).join(", ");
+  return { areas, rest };
+};
+const avoidText = (areas, rest) => [areas.join(", "), rest.trim()].filter(Boolean).join(" · ");
+const PLACE_BG = { salon: "linear-gradient(135deg,#2f8f76,#174d40)", ev: "linear-gradient(135deg,#d98a4e,#a4512a)", dis: "linear-gradient(135deg,#4f9bd1,#22618f)" };
+const EQUIP_KEYS = ["dumbbell", "band", "kettlebell", "bar", "bench", "barbell"];
+
+// Bölüm kartı: başlık + sağda kısa durum, içerik altında
+const Box = ({ title, note, children }) => (
+  <section className="mt-3 rounded-[1.25rem] border border-line bg-card p-3.5">
+    <div className="mb-3 flex items-baseline justify-between gap-2">
+      <h4 className="text-[0.9375rem] font-bold">{title}</h4>
+      {note && <small className="truncate text-[0.75rem] font-medium text-mut">{note}</small>}
+    </div>
+    {children}
+  </section>
+);
+// Profil alanları (Program hazırla 2. adım ve Profil penceresi): seviye, yer, ekipman, ölçüler, sakatlık.
 // withGoal: hedef de gösterilir (Profil penceresi; Program hazırla'da hedef ayrı adım).
 export function ProfileFields({ f, set, withGoal = true }) {
   const eq = f.equip || [];
+  const hasBody = Number(f.height) > 0 && Number(f.weight) > 0;
+  const [bodyOpen, setBodyOpen] = useState(!hasBody);
+  const { areas, rest } = avoidOf(f.avoid);
+  const lvl = LEVELS.find(([k]) => k === f.level);
+  const b = hasBody ? bmiOf({ height: Number(f.height), weight: Number(f.weight) }) : 0;
   const num = (k, label, unit) => (
-    <label className="block min-w-0 rounded-2xl bg-bg px-3 pb-2 pt-1.5">
+    <label className="block min-w-0 rounded-xl bg-bg px-3 pb-2 pt-1.5">
       <small className="block text-[0.6875rem] font-semibold text-mut">{label}</small>
       <span className="flex items-baseline gap-1">
         <input inputMode="decimal" value={f[k] || ""} onChange={(e) => set(k, e.target.value.replace(",", "."))} placeholder="–" className="h-7 w-full min-w-0 bg-transparent text-[1.125rem] font-semibold outline-none" />
@@ -95,48 +123,110 @@ export function ProfileFields({ f, set, withGoal = true }) {
   return (
     <>
       {withGoal && (
-        <>
-          <H>HEDEF</H>
+        <Box title="Hedef">
           <div className="space-y-2">
             {GOALS.map(([k, l]) => (
               <Option key={k} on={f.goal === k} icon={GOAL_UI[k][0]} title={l} sub={GOAL_UI[k][1]} onClick={() => set("goal", k)} />
             ))}
           </div>
-        </>
+        </Box>
       )}
-      <H>SEVİYE</H>
-      <div className="space-y-2">
-        {LEVELS.map(([k, l]) => (
-          <Option key={k} on={f.level === k} icon={LEVEL_UI[k][0]} title={l} sub={LEVEL_UI[k][1]} onClick={() => set("level", k)} />
-        ))}
-      </div>
-      <H>NEREDE ÇALIŞACAKSIN</H>
-      <div className="grid grid-cols-3 gap-2">
-        {PLACES.map(([k, l]) => (
-          <Option key={k} tall on={f.place === k} icon={PLACE_UI[k]} title={l} onClick={() => set("place", k)} />
-        ))}
-      </div>
-      {f.place !== "salon" && (
-        <>
-          <H>ELİNDEKİ EKİPMAN</H>
-          <div className="flex flex-wrap gap-2">
-            {["dumbbell", "band", "kettlebell", "bar", "bench", "barbell"].map((k) => (
-              <button key={k} type="button" aria-pressed={eq.includes(k)} onClick={() => set("equip", eq.includes(k) ? eq.filter((x) => x !== k) : [...eq, k])} className={pill(eq.includes(k))}>
-                {eq.includes(k) && <Icon name="check" className="-ml-1 mr-1 inline size-3.5" />}
-                {EQUIP[k]}
+
+      <Box title="Seviyen" note={lvl ? LEVEL_UI[lvl[0]][1] : "Birini seç"}>
+        <div className="grid grid-cols-3 gap-2">
+          {LEVELS.map(([k, l]) => {
+            const on = f.level === k;
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => set("level", k)} className={`relative flex h-[5.5rem] flex-col items-center justify-center gap-2 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg text-acc"}`}>
+                <Bars n={LEVEL_UI[k][0]} big />
+                <b className={`text-[0.8125rem] font-semibold leading-tight ${on ? "text-white" : "text-fg"}`}>{l}</b>
               </button>
-            ))}
+            );
+          })}
+        </div>
+      </Box>
+
+      <Box title="Nerede çalışacaksın">
+        <div className="grid grid-cols-3 gap-2">
+          {PLACES.map(([k, l]) => {
+            const on = f.place === k;
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => set("place", k)} className={`relative overflow-hidden rounded-2xl text-left text-white transition active:scale-[.97] ${on ? "ring-[3px] ring-acc ring-offset-2 ring-offset-card" : "opacity-80"}`} style={{ background: PLACE_BG[k] }}>
+                <Icon name={PLACE_UI[k]} className="absolute -bottom-4 -right-4 size-14 opacity-[.12]" />
+                <span className="flex h-[5.5rem] flex-col justify-between p-2.5">
+                  <Icon name={PLACE_UI[k]} className="size-5" />
+                  <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
+                </span>
+                {on && <span className="absolute right-2 top-2 grid size-5 place-items-center rounded-full bg-white text-acc"><Icon name="check" className="size-3" /></span>}
+              </button>
+            );
+          })}
+        </div>
+      </Box>
+
+      {f.place && f.place !== "salon" && (
+        <Box title="Ekipman" note={eq.length ? `${eq.length} seçili` : "Vücut ağırlığı"}>
+          <div className="grid grid-cols-2 gap-2">
+            {[["", "Hiçbiri"], ...EQUIP_KEYS.map((k) => [k, EQUIP[k]])].map(([k, l]) => {
+              const on = k ? eq.includes(k) : !eq.length;
+              return (
+                <button key={k || "yok"} type="button" aria-pressed={on} onClick={() => set("equip", !k ? [] : on ? eq.filter((x) => x !== k) : [...eq, k])} className={`flex h-12 items-center gap-2.5 rounded-xl border-2 px-3 text-left text-[0.875rem] font-semibold transition active:scale-[.98] ${on ? "border-acc bg-acc/[.07]" : "border-transparent bg-bg"}`}>
+                  <span className={`grid size-5 shrink-0 place-items-center rounded-md border-2 ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-3" />}</span>
+                  <span className="min-w-0 truncate">{l}</span>
+                </button>
+              );
+            })}
           </div>
-          {!eq.length && <p className="mt-2 text-[0.8125rem] text-mut">Seçmezsen yalnız vücut ağırlığıyla hazırlanır.</p>}
-        </>
+        </Box>
       )}
-      <H>SEN</H>
-      <div className="grid grid-cols-3 gap-2">
-        {num("height", "Boy", "cm")}
-        {num("weight", "Kilo", "kg")}
-        {num("age", "Yaş", "")}
-      </div>
-      <input value={f.avoid || ""} onChange={(e) => set("avoid", e.target.value)} placeholder="Sakatlık, kaçınılacak hareket (isteğe bağlı)" className="mt-2 h-12 w-full min-w-0 rounded-2xl bg-bg px-4 text-[0.9375rem] outline-none" />
+
+      <Box title="Ölçülerin" note={hasBody && !bodyOpen ? "" : "Kalori ve yükler buna göre"}>
+        {hasBody && !bodyOpen ? (
+          <button type="button" onClick={() => setBodyOpen(true)} className="flex w-full items-center gap-2 text-left">
+            {[
+              [f.height, "cm", "Boy"],
+              [f.weight, "kg", "Kilo"],
+              [f.age || "–", "", "Yaş"],
+            ].map(([v, u, l]) => (
+              <span key={l} className="flex-1 rounded-xl bg-bg px-3 py-2">
+                <small className="block text-[0.6875rem] font-semibold text-mut">{l}</small>
+                <b className="text-[1.0625rem] font-semibold">{v}</b>
+                <small className="ml-0.5 text-[0.75rem] text-mut">{u}</small>
+              </span>
+            ))}
+            <Icon name="edit" className="ml-1 size-4 shrink-0 text-mut" />
+          </button>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 rounded-xl bg-bg p-1">
+              {[["k", "Kadın"], ["e", "Erkek"]].map(([k, l]) => (
+                <button key={k} type="button" aria-pressed={f.sex === k} onClick={() => set("sex", k)} className={`h-9 rounded-lg text-[0.875rem] font-semibold ${f.sex === k ? "bg-card text-acc shadow-[0_2px_8px_-4px_rgba(0,0,0,.25)]" : "text-mut"}`}>{l}</button>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {num("height", "Boy", "cm")}
+              {num("weight", "Kilo", "kg")}
+              {num("age", "Yaş", "")}
+            </div>
+          </>
+        )}
+        {b > 0 && <p className="mt-2 text-[0.75rem] text-mut">VKİ {String(Math.round(b * 10) / 10).replace(".", ",")} · {bmiText(b)}</p>}
+      </Box>
+
+      <Box title="Sakatlık ya da ağrı" note="İsteğe bağlı">
+        <div className="flex flex-wrap gap-2">
+          {AREAS.map((a) => {
+            const on = areas.includes(a);
+            return (
+              <button key={a} type="button" aria-pressed={on} onClick={() => set("avoid", avoidText(on ? areas.filter((x) => x !== a) : [...areas, a], rest))} className={pill(on)}>
+                {on && <Icon name="check" className="-ml-1 mr-1 inline size-3.5" />}
+                {a}
+              </button>
+            );
+          })}
+        </div>
+        <input value={rest} onChange={(e) => set("avoid", avoidText(areas, e.target.value))} placeholder="Başka bir not: ör. sırt üstü yatamıyorum" className="mt-2 h-11 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.875rem] outline-none" />
+      </Box>
     </>
   );
 }
@@ -210,7 +300,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
 
       {step === 1 && (
         <>
-          <Q title="Seni tanıyalım" sub="Hareketler seviyene, yerine ve ekipmanına göre seçilir." />
+          <Q title="Seni tanıyalım" sub="Hareketler ve yükler bunlara göre seçilir." />
           <ProfileFields f={f} set={set} withGoal={false} />
         </>
       )}
