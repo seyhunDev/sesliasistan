@@ -81,6 +81,9 @@ export function AuthProvider({ children }) {
             fit: doc_?.fit && typeof doc_.fit === "object" ? doc_.fit : null, // fitness profili (hedef, seviye, yer, ekipman, boy, kilo; Fitness sayfası)
             weeklyAt: doc_?.weeklyAt || "", // ayarlar: pazartesi haftalık özet saati
             duesAt: typeof doc_?.duesAt === "string" ? doc_.duesAt : null, // aidat: ödemeyenler bildirimi saati ("" kapalı, null henüz yazılmadı; duesRemind.js)
+            homeLinks: Array.isArray(doc_?.homeLinks) ? doc_.homeLinks : null, // ana sayfa kısayolları (Tümü › Kısayolları düzenle; homeTiles.js shortcutsOf)
+            inbox: Array.isArray(doc_?.inbox) ? doc_.inbox : [], // bildirim kutusu (sunucu yazar, lib/inbox; ana sayfa zili ve Senin için)
+            inboxSeen: doc_?.inboxSeen || "", // bildirim kutusunun okunduğu an (ISO; ana sayfa yazar)
             summaryHidden: doc_?.summaryHidden || "", // ana ekranda kapatılan özet ("YYYY-MM-DD:morning|evening")
             mailFrom: Array.isArray(doc_?.mailFrom) ? doc_.mailFrom : [], // mail: izlenen gönderenler [{ name, from }]
             mailSeen: doc_?.mailSeen || "", // mail: Gmail betiğinin son kontrolü (ISO; betik yazar)
