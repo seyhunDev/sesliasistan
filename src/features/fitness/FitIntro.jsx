@@ -48,7 +48,7 @@ export function BodyAsk({ fit, onSave, onLater, laterText = "Şimdi değil", cla
         </span>
         <span className="min-w-0">
           <b className="block text-[1rem] font-semibold leading-snug">Boy ve kilonu girer misin?</b>
-          <small className="block text-[0.8125rem] leading-snug text-mut">Sana gerçekçi sonuçlar gösteririm, programını da buna göre hazırlarım.</small>
+          <small className="block text-[0.8125rem] leading-snug text-mut">Sana uygun antrenmanı buna göre hazırlarım.</small>
         </span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -188,6 +188,7 @@ function Preparing({ first }) {
 export function FitIntro({ name, fit, onStart, onSaveBody }) {
   const first = (name || "").trim().split(/\s+/)[0];
   const [skip, setSkip] = useState(false);
+  const [hi, setHi] = useState(true); // önce yalnız karşılama, "Devam" ile sonraki adım
   // res.key bugünkü profilden farklıysa hazırlanıyor; data null: yapay zekasız · {headline, cards}
   const [res, setRes] = useState({ key: "", data: null });
   const rail = useRef(null);
@@ -210,14 +211,26 @@ export function FitIntro({ name, fit, onStart, onSaveBody }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  if (hi) {
+    return (
+      <div className="pb-4">
+        <section className="mt-2 flex min-h-[26rem] flex-col items-center justify-center rounded-[1.75rem] bg-deep px-6 py-8 text-center text-white">
+          <span className="grid size-20 place-items-center rounded-full bg-white/10">
+            <Icon name="dumbbell" className="size-9" />
+          </span>
+          <h2 className="mt-7 text-[1.875rem] font-bold leading-[1.15] tracking-tight">{first ? `${first}, hoş geldin.` : "Hoş geldin."}</h2>
+          <p className="mt-2 text-[1.0625rem] text-white/75">Her antrenman seni hedefine biraz daha yaklaştırır.</p>
+        </section>
+        <Button onClick={() => setHi(false)} className="mt-4 w-full">
+          Devam
+        </Button>
+      </div>
+    );
+  }
   if (!body && !skip) {
     return (
       <div className="pb-4">
-        <section className="mt-2 rounded-[1.75rem] bg-deep px-5 py-5 text-white">
-          <h2 className="text-[1.75rem] font-bold leading-[1.15] tracking-tight">{first ? `${first}, önce seni tanıyalım.` : "Önce seni tanıyalım."}</h2>
-          <p className="mt-1.5 text-[0.9375rem] text-white/75">Boyuna ve kilona göre sana özel bir başlangıç hazırlayacağım.</p>
-        </section>
-        <BodyAsk fit={fit} onSave={onSaveBody} onLater={() => setSkip(true)} laterText="Atla" className="mt-3" />
+        <BodyAsk fit={fit} onSave={onSaveBody} onLater={() => setSkip(true)} laterText="Atla" className="mt-2" />
       </div>
     );
   }
