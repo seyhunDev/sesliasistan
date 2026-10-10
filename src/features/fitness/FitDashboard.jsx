@@ -234,12 +234,11 @@ export function ProgressCard({ recs: list, plans }) {
 }
 
 // Program: başlık, hafta ilerlemesi, günler (yalnız ad ve saat), işlemler
-export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan, onDrop }) {
+export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan, onDrop, bare }) {
   const wk = progWeek(prog, today);
   const k = wk ? Math.min(Math.max(wk.n, 0), wk.of) / wk.of : 0;
-  return (
-    <Section title="Programım">
-      <div className={`${card} p-4`}>
+  const body = (
+      <div className={bare ? "" : `${card} p-4`}>
         <b className="block text-[1.0625rem] font-semibold">{prog.title}</b>
         {wk && (
           <>
@@ -283,8 +282,53 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
           Programı sil
         </button>
       </div>
-    </Section>
   );
+  return bare ? body : <Section title="Programım">{body}</Section>;
+}
+
+// Sade hafta: başlık ("Bu hafta 2/3 antrenman") ve 7 gün; ayrıntılı sayılar Gelişim ve geçmiş'te
+export function WeekStrip({ week, strip, today, onOpen }) {
+  return (
+    <div className={`${card} mt-3 p-4`}>
+      <div className="flex items-baseline justify-between">
+        <b className="text-[1rem] font-semibold">Bu hafta</b>
+        <span className="text-[0.875rem] tabular-nums text-mut">{week.planned ? `${week.done}/${week.planned} antrenman` : "Antrenman yok"}</span>
+      </div>
+      <div className="mt-3 grid grid-cols-7 gap-1 text-center">
+        {strip.map((d) => (
+          <button key={d.date} type="button" disabled={!d.id} onClick={() => d.id && onOpen({ id: d.id })} className="flex flex-col items-center gap-1.5">
+            <span className={`text-[0.6875rem] font-semibold ${d.date === today ? "text-acc" : "text-mut"}`}>{DOWS[d.dow]}</span>
+            <span className={`grid size-9 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${d.st ? CIRCLE[d.st] : "text-mut/50"}`}>
+              {d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st ? +d.date.slice(8) : "·"}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Tek satır kart düğmesi (Programım, Gelişim ve geçmiş)
+export function RowButton({ icon, title, sub, onClick, open }) {
+  return (
+    <button type="button" onClick={onClick} className={`${card} mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
+        <Icon name={icon} className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
+        {sub && <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>}
+      </span>
+      <Icon name="chev" className={`size-4 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />
+    </button>
+  );
+}
+
+// Programım satırının alt yazısı: "3. hafta / 8 · takvimde"
+export function progSub(prog, today, onCal) {
+  const wk = progWeek(prog, today);
+  const w = !wk ? "" : wk.n === 0 ? `${dayText(prog.start)} başlıyor` : wk.n > wk.of ? "Program bitti" : `${wk.n}. hafta / ${wk.of}`;
+  return [w, onCal ? "takvimde" : "takvimde değil"].filter(Boolean).join(" · ");
 }
 
 // Bu ay: üç sayı

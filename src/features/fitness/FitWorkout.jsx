@@ -13,6 +13,7 @@ import { todayStr } from "@/lib/utils/format";
 // önerilen değer hazır gelir (geçen sefer bütün setler tamamsa biraz artırılmış; targetFor). Set işaretlenince dinlenme sayacı.
 // Sonuç planın fit.res alanına yazılır (her işaretlemede); "Antrenmanı bitir" yapıldı, "Atladım" atlandı yapar.
 // Sesle de: "squat 3 set 10 tekrar 60 kilo yaptım", "bugünkü antrenmanı yaptım" (ana asistan, bu plana yazar).
+// Sade görünüm: set satırında değer yazı olarak durur (dokununca düzenlenir); süre ve not "Süre ve not ekle" altında.
 const box = "rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const inp = "h-9 w-full min-w-0 rounded-lg bg-bg px-1 text-center text-[0.9375rem] tabular-nums outline-none";
 const n = (v) => (v === "" || v == null ? "" : String(v).replace(",", "."));
@@ -40,6 +41,8 @@ export function FitWorkout({ rec, by }) {
   const [rest, setRest] = useState(null); // { end, total }
   const [now, setNow] = useState(0);
   const [edit, setEdit] = useState(!fit.res?.st);
+  const [cell, setCell] = useState(""); // düzenlenen set "i-k"
+  const [extra, setExtra] = useState(!!(fit.res?.note || fit.res?.min));
   const tick = useRef(null);
 
   // Dinlenme sayacı: süre dolunca titreşir ve kapanır
@@ -135,7 +138,7 @@ export function FitWorkout({ rec, by }) {
                   Hedef {itemLine(it)}
                   {t.up && <span className="ml-1 font-semibold text-acc">↑ geçen sefere göre artırıldı</span>}
                 </small>
-                {ex?.how && <small className="mt-0.5 block text-[0.75rem] leading-snug text-mut/80">{ex.how}</small>}
+                {ex?.how && <small className="mt-0.5 line-clamp-1 block text-[0.75rem] leading-snug text-mut/80">{ex.how}</small>}
               </span>
               {all && <Icon name="check" className="mt-0.5 size-5 text-acc" />}
             </div>
@@ -143,21 +146,32 @@ export function FitWorkout({ rec, by }) {
               {s.map((x, k) => (
                 <div key={k} className="flex items-center gap-2">
                   <span className="w-9 shrink-0 text-[0.75rem] font-semibold text-mut">Set {k + 1}</span>
-                  <label className="flex min-w-0 flex-1 items-center gap-1">
-                    <input inputMode="numeric" aria-label={unit} value={x[key]} onChange={(e) => setVal(i, k, key, e.target.value)} className={inp} />
-                    <span className="w-10 shrink-0 text-[0.75rem] text-mut">{unit}</span>
-                  </label>
-                  {it.kind === "reps" && (
-                    <label className="flex min-w-0 flex-1 items-center gap-1">
-                      <input inputMode="decimal" aria-label="kilo" value={x.kg} onChange={(e) => setVal(i, k, "kg", e.target.value)} placeholder="–" className={inp} />
-                      <span className="w-5 shrink-0 text-[0.75rem] text-mut">kg</span>
-                    </label>
+                  {cell === `${i}-${k}` ? (
+                    <>
+                      <label className="flex min-w-0 flex-1 items-center gap-1">
+                        <input autoFocus inputMode="numeric" aria-label={unit} value={x[key]} onChange={(e) => setVal(i, k, key, e.target.value)} onBlur={() => it.kind !== "reps" && setCell("")} className={inp} />
+                        <span className="w-10 shrink-0 text-[0.75rem] text-mut">{unit}</span>
+                      </label>
+                      {it.kind === "reps" && (
+                        <label className="flex min-w-0 flex-1 items-center gap-1">
+                          <input inputMode="decimal" aria-label="kilo" value={x.kg} onChange={(e) => setVal(i, k, "kg", e.target.value)} placeholder="–" className={inp} />
+                          <span className="w-5 shrink-0 text-[0.75rem] text-mut">kg</span>
+                        </label>
+                      )}
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => setCell(`${i}-${k}`)} className={`h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
+                      {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "Değer yaz"}
+                    </button>
                   )}
                   <button
                     type="button"
                     aria-label={x.ok ? "Yapılmadı" : "Yapıldı"}
                     aria-pressed={x.ok}
-                    onClick={() => toggle(i, k)}
+                    onClick={() => {
+                      setCell("");
+                      toggle(i, k);
+                    }}
                     className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-90 ${x.ok ? "bg-acc text-white" : "border-2 border-line text-transparent"}`}
                   >
                     <Icon name="check" className="size-4" />
@@ -191,20 +205,27 @@ export function FitWorkout({ rec, by }) {
       )}
 
       <section className={`${box} mt-3 p-3.5`}>
-        <div className="flex items-center gap-2">
-          <label className="flex w-28 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
-            <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
-            <span className="text-[0.8125rem] text-mut">dk</span>
-          </label>
-          <div className="flex flex-1 gap-1.5">
-            {FEELS.map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-10 flex-1 rounded-xl text-[0.8125rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-bg"}`}>
-                {l}
-              </button>
-            ))}
-          </div>
+        <small className="block px-1 text-[0.8125rem] font-semibold text-mut">Nasıl geçti?</small>
+        <div className="mt-1.5 flex gap-1.5">
+          {FEELS.map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-10 flex-1 rounded-xl text-[0.8125rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-bg"}`}>
+              {l}
+            </button>
+          ))}
         </div>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="mt-2 h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
+        {extra ? (
+          <div className="mt-2 flex gap-2">
+            <label className="flex w-24 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
+              <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
+              <span className="text-[0.8125rem] text-mut">dk</span>
+            </label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
+          </div>
+        ) : (
+          <button type="button" onClick={() => setExtra(true)} className="mt-1.5 px-1 text-[0.8125rem] font-semibold text-acc">
+            + Süre ve not ekle
+          </button>
+        )}
         <div className="mt-3 flex gap-2">
           <button type="button" onClick={() => finish("skip")} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut">
             Atladım

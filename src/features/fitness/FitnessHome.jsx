@@ -12,19 +12,18 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  STATUS, addDays, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, programLine, progWeek, records, statusOf, weekStats,
+  STATUS, addDays, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
 import { BodyStep, FitIntro } from "./FitIntro";
-import { hasBody } from "@/lib/fitness/forecast";
-import { HistoryCard, MonthCard, ProgramCard, ProgressCard, TodayCard, WeekCard } from "./FitDashboard";
+import { HistoryCard, MonthCard, ProgramCard, ProgressCard, RowButton, TodayCard, WeekCard, WeekStrip, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// Fitness sayfası (yalnız ana hesap): bugünkü antrenman (Başla), bu hafta (halka, 7 gün, seri), gelişim (en iyi değer, küçük grafik),
-// program (hafta ilerlemesi, düzenle, planlara ekle), bu ay, geçmiş (parçalar FitDashboard.jsx). Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
+// Fitness sayfası (yalnız ana hesap), sade: bugünkü antrenman (Başla), bu hafta (7 gün), "Programım" satırı (pencerede günler, düzenle,
+// planlara ekle, profil) ve kapalı "Gelişim ve geçmiş" (halka, seri, gelişim, bu ay, geçmiş; parçalar FitDashboard.jsx). Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
 // Program yapay zekayla hazırlanır (Program hazırla: günler, saat, hafta, süre, profil) ya da asistana söylenir; önizlemede açılır.
 // İlk antrenman: başlangıçtan sonraki ilk seçili gün (yeni programda başlangıç geçmişteyse bugün)
 const fixStart = (p) => ({ ...p, start: p.start && (p.id || p.start >= todayStr()) ? p.start : todayStr() });
@@ -47,7 +46,8 @@ export function FitnessHome() {
   const [newOpen, setNewOpen] = useState(false);
   const [newGoal, setNewGoal] = useState("");
   const [profOpen, setProfOpen] = useState(false);
-  const [bodyLater, setBodyLater] = useState(false);
+  const [progOpen, setProgOpen] = useState(false);
+  const [more, setMore] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
   const [fitProf, setFitProf] = useState(profile.fit || {});
   const router = useRouter();
@@ -192,16 +192,19 @@ export function FitnessHome() {
     );
   }
 
-  // Hiç programı ve fitness antrenmanı yoksa: tanıtım (kısa mesaj, boy/kilo, hedef kartları, adımlar)
+  // Hiç programı ve fitness antrenmanı yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
   if (list && !list.length && !all.length) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
         <Tabs tab={tab} setTab={setTab} />
-        <FitIntro name={profile.name} fit={fitProf} onStart={(g) => {
+        <FitIntro
+          name={profile.name}
+          onStart={(g) => {
             setNewGoal(g);
             setNewOpen(true);
-          }} onSaveBody={saveBody} />
+          }}
+        />
         <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
     );
@@ -216,33 +219,13 @@ export function FitnessHome() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <PageHeader title="Fitness" sub={prog ? programLine(prog) : "Antrenman programın ve takibin"}>
-        <button type="button" onClick={() => setProfOpen(true)} aria-label="Profil" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90">
-          <Icon name="user" className="size-5" />
-        </button>
+      <PageHeader title="Fitness" sub="Antrenman programın ve takibin">
         <button type="button" onClick={() => setNewOpen(true)} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)] active:scale-90">
           <Icon name="plus" className="size-5" />
         </button>
       </PageHeader>
       <Tabs tab={tab} setTab={setTab} />
 
-      {!hasBody(fitProf) && !bodyLater && (
-        <div className="mt-2 flex items-center gap-1 rounded-[1.25rem] bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
-          <button type="button" onClick={() => setBodyOpen(true)} className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pl-4 text-left">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-              <Icon name="user" className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <b className="block text-[0.9375rem] font-semibold leading-snug">Boy ve kilonu ekle</b>
-              <small className="block text-[0.8125rem] leading-snug text-mut">Antrenmanın sana göre hazırlansın.</small>
-            </span>
-            <Icon name="chev" className="size-4 shrink-0 text-mut" />
-          </button>
-          <button type="button" onClick={() => setBodyLater(true)} aria-label="Şimdi değil" className="grid size-11 shrink-0 place-items-center text-[1.25rem] text-mut">
-            ×
-          </button>
-        </div>
-      )}
       {bodySheet}
 
       <TodayCard plan={todays[0]} next={nextOne} week={prog && progWeek(prog, today)} today={today} onOpen={open} />
@@ -264,22 +247,49 @@ export function FitnessHome() {
         </div>
       )}
 
-      <WeekCard week={week} strip={strip} today={today} onOpen={open} />
-      <ProgressCard recs={recs} plans={plans} />
-      {prog && (
-        <ProgramCard
-          prog={prog}
-          today={today}
-          onCal={onCal}
-          busy={!!busy}
-          onEdit={() => setEdit({ prog, fresh: false, k: Date.now() })}
-          onPlan={() => save(prog, true)}
-          onUnplan={unplan}
-          onDrop={drop}
-        />
+      <WeekStrip week={week} strip={strip} today={today} onOpen={open} />
+      {prog && <RowButton icon="cal" title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} onClick={() => setProgOpen(true)} />}
+      {(week.planned > 0 || recs.length > 0 || history.length > 0) && <RowButton icon="trend" title="Gelişim ve geçmiş" sub="Seri, en iyi değerler, bu ay" open={more} onClick={() => setMore(!more)} />}
+      {more && (
+        <>
+          <WeekCard week={week} strip={strip} today={today} onOpen={open} />
+          <ProgressCard recs={recs} plans={plans} />
+          <MonthCard month={month} today={today} />
+          <HistoryCard list={history} today={today} onOpen={open} />
+        </>
       )}
-      <MonthCard month={month} today={today} />
-      <HistoryCard list={history} today={today} onOpen={open} />
+      {prog && (
+        <Sheet open={progOpen} onClose={() => setProgOpen(false)} title="Programım">
+          <ProgramCard
+            bare
+            prog={prog}
+            today={today}
+            onCal={onCal}
+            busy={!!busy}
+            onEdit={() => {
+              setProgOpen(false);
+              setEdit({ prog, fresh: false, k: Date.now() });
+            }}
+            onPlan={() => save(prog, true)}
+            onUnplan={unplan}
+            onDrop={async () => {
+              await drop();
+              setProgOpen(false);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setProgOpen(false);
+              setProfOpen(true);
+            }}
+            className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold"
+          >
+            <Icon name="user" className="size-4" />
+            Profilim (boy, kilo, seviye)
+          </button>
+        </Sheet>
+      )}
 
       <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />

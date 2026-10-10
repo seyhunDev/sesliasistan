@@ -1,23 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { bmiOf, bmiText, hasBody, introCards, introKey } from "@/lib/fitness/forecast";
-import { askIntro } from "./fitnessData";
+import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 
-// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tanıtım: kısa mesaj, boy/kilo yoksa sorulur,
-// hedef başına kaydırmalı kartlar (düzenli çalışınca haftalar içinde ne değişir; boy ve kilo varsa kişiye göre tahmin),
-// kartın altındaki düğmeyle o hedefle program hazırlamaya geçilir.
-const GOAL_CARDS = [
-  { key: "kilo", icon: "flame", color: "#f97316", title: "Yağ yakmak" },
-  { key: "kas", icon: "dumbbell", color: "var(--acc)", title: "Kas kütlesi" },
-  { key: "guc", icon: "zap", color: "#8b5cf6", title: "Güç" },
-  { key: "kondisyon", icon: "trend", color: "#3b82f6", title: "Kondisyon" },
-  { key: "saglik", icon: "sun", color: "#10b981", title: "Sağlık ve zindelik" },
-];
-
+// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tek ekran: kısa karşılama ve "Programımı hazırla".
+// Hedef ve hafta Program hazırla penceresinde sorulur; boy, kilo ve diğer ayrıntılar sonra (profil) eklenir.
 
 // Boy-kilo adımı (tanıtımda tam ekran, Fitness sayfasında pencerede): tam ekran, cinsiyet kutuları, büyük sayılar ve − / + (basılı tutunca hızlanır),
 // altta canlı VKİ. Sayıya dokununca klavyeyle de yazılır. Yaş isteğe bağlı (boşken "—").
@@ -164,191 +154,30 @@ export function BodyStep({ fit, onSave, onLater, laterText = "Şimdi değil" }) 
   );
 }
 
-function GoalCard({ g, c, onAsk, onPick }) {
-  const fc = c.box;
+const STEPS = ["Hedefini seç", "Haftada kaç gün çalışacağını söyle", "Programın hazır, ilk antrenmanına başla"];
+
+export function FitIntro({ name, onStart }) {
+  const first = (name || "").trim().split(/\s+/)[0];
   return (
-    <article className={`${card} flex w-[82%] shrink-0 snap-center flex-col p-5`}>
-      <div className="flex items-center gap-3">
-        <span className="grid size-12 place-items-center rounded-2xl" style={{ background: `color-mix(in srgb, ${g.color} 14%, transparent)`, color: g.color }}>
-          <Icon name={g.icon} className="size-6" />
+    <div className="pb-4">
+      <section className="mt-2 flex min-h-[18rem] flex-col items-center justify-center rounded-[1.75rem] bg-deep px-6 py-8 text-center text-white">
+        <span className="grid size-16 place-items-center rounded-full bg-white/10">
+          <Icon name="dumbbell" className="size-8" />
         </span>
-        <span className="min-w-0">
-          <small className="block text-[0.6875rem] font-bold tracking-[.06em] text-mut">HEDEFİN</small>
-          <b className="block text-[1.25rem] font-bold leading-tight">{g.title}</b>
-        </span>
-      </div>
-      {fc ? (
-        <div className="mt-4 rounded-2xl px-3.5 py-3" style={{ background: `color-mix(in srgb, ${g.color} 9%, transparent)` }}>
-          <div className="flex items-center gap-2 text-[0.8125rem] text-mut">
-            <span className="truncate">{fc.now}</span>
-            <Icon name="chev" className="size-3.5 shrink-0" />
-            <span className="shrink-0">8 hafta sonra</span>
-          </div>
-          <b className="mt-0.5 block text-[1.375rem] font-bold leading-tight" style={{ color: g.color }}>
-            {fc.then}
-          </b>
-          <small className="mt-0.5 block text-[0.75rem] leading-snug text-mut">{fc.sub}</small>
-        </div>
-      ) : (
-        <button type="button" onClick={onAsk} className="mt-4 flex w-full items-center gap-2 rounded-2xl bg-bg px-3.5 py-3 text-left text-[0.8125rem] leading-snug text-mut">
-          <span className="shrink-0" style={{ color: g.color }}>
-            <Icon name="user" className="size-4" />
-          </span>
-          <span className="flex-1">Boy ve kilonu girersen sana özel sonucu gösteririm.</span>
-          <Icon name="chev" className="size-4 shrink-0" />
-        </button>
-      )}
-      <ol className="mt-4">
-        {c.weeks.map(([w, t], i) => (
-          <li key={w} className="relative flex gap-3 pb-3.5 last:pb-0">
-            {i < c.weeks.length - 1 && <span className="absolute left-[0.4375rem] top-4 h-full w-0.5 rounded-full" style={{ background: `color-mix(in srgb, ${g.color} 22%, transparent)` }} />}
-            <span className="relative mt-1 size-4 shrink-0 rounded-full border-[3px] bg-card" style={{ borderColor: g.color, opacity: 0.55 + i * 0.22 }} />
-            <span className="min-w-0">
-              <small className="block text-[0.75rem] font-bold" style={{ color: g.color }}>
-                {w}
-              </small>
-              <span className="block text-[0.9375rem] leading-snug">{t}</span>
-            </span>
+        <h2 className="mt-5 text-[1.75rem] font-bold leading-[1.15] tracking-tight">{first ? `${first}, hoş geldin.` : "Hoş geldin."}</h2>
+        <p className="mt-2 text-[1rem] text-white/75">Programını birlikte hazırlayalım. Bir dakika sürer.</p>
+      </section>
+      <ol className="mt-4 space-y-2 px-1">
+        {STEPS.map((t, i) => (
+          <li key={t} className="flex items-center gap-3 text-[0.9375rem]">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc">{i + 1}</span>
+            {t}
           </li>
         ))}
       </ol>
-      <p className="mt-4 rounded-xl bg-bg px-3 py-2 text-[0.8125rem] leading-snug text-mut">{c.tip}</p>
-      <span className="flex-1" />
-      <button type="button" onClick={onPick} className="mt-4 flex h-12 shrink-0 w-full items-center justify-center gap-2 rounded-2xl text-[0.9375rem] font-semibold text-white active:scale-[.98]" style={{ background: g.color }}>
-        Bu hedefle başla
-        <Icon name="chev" className="size-4" />
-      </button>
-    </article>
-  );
-}
-
-// Kartlar hazırlanırken: ortada dönen ışık halkası, içinde hedeflerin simgeleri sırayla, altında değişen yazı
-const LOAD_LINES = ["Boyun ve kilon inceleniyor", "Hedeflerine göre hesaplanıyor", "Sana özel kartlar hazırlanıyor"];
-function Preparing({ first }) {
-  const [i, setI] = useState(0);
-  const [line, setLine] = useState(0);
-  useEffect(() => {
-    const a = setInterval(() => setI((x) => (x + 1) % GOAL_CARDS.length), 700);
-    const b = setInterval(() => setLine((x) => Math.min(LOAD_LINES.length - 1, x + 1)), 1300);
-    return () => {
-      clearInterval(a);
-      clearInterval(b);
-    };
-  }, []);
-  const g = GOAL_CARDS[i];
-  return (
-    <section className="mt-2 flex min-h-[28rem] flex-col items-center justify-center rounded-[1.75rem] bg-deep px-6 py-10 text-center text-white">
-      <div className="relative grid size-40 place-items-center">
-        <span className="absolute inset-0 rounded-full motion-safe:animate-spin" style={{ background: `conic-gradient(from 0deg, transparent 0 55%, ${g.color} 100%)`, animationDuration: "1.4s", transition: "background .5s" }} />
-        <span className="absolute inset-[6px] rounded-full bg-deep" />
-        <span className="absolute inset-6 rounded-full motion-safe:animate-ping" style={{ background: g.color, opacity: 0.12, animationDuration: "1.8s" }} />
-        <span key={g.key} className="relative grid size-20 place-items-center rounded-full bg-white/10 motion-safe:animate-[fadein_.35s_ease-out]" style={{ color: g.color }}>
-          <Icon name={g.icon} className="size-10" />
-        </span>
-      </div>
-      <h2 className="mt-8 text-[1.5rem] font-bold leading-tight">{first ? `${first}, sana özel hazırlıyorum` : "Sana özel hazırlıyorum"}</h2>
-      <p key={line} className="mt-2 text-[0.9375rem] text-white/70 motion-safe:animate-[fadein_.4s_ease-out]">
-        {LOAD_LINES[line]}…
-      </p>
-      <div className="mt-5 flex gap-1.5">
-        {LOAD_LINES.map((_, k) => (
-          <span key={k} className={`h-1.5 rounded-full transition-all duration-500 ${k <= line ? "w-6 bg-white" : "w-1.5 bg-white/25"}`} />
-        ))}
-      </div>
-      <style>{`@keyframes fadein{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:none}}`}</style>
-    </section>
-  );
-}
-
-// Akış: boy/kilo yoksa önce yalnız onlar sorulur → kaydedince "hazırlıyorum" → yapay zekanın kişiye özel kartları.
-// "Atla" denirse genel kartlar. Yapay zekaya ulaşılamazsa kartlar yerel hesapla (introCards).
-export function FitIntro({ name, fit, onStart, onSaveBody }) {
-  const first = (name || "").trim().split(/\s+/)[0];
-  const [skip, setSkip] = useState(false);
-  const [hi, setHi] = useState(true); // önce yalnız karşılama, "Devam" ile sonraki adım
-  // res.key bugünkü profilden farklıysa hazırlanıyor; data null: yapay zekasız · {headline, cards}
-  const [res, setRes] = useState({ key: "", data: null });
-  const rail = useRef(null);
-  const [at, setAt] = useState(0);
-  const body = hasBody(fit);
-  const key = body ? introKey(fit) : "";
-  useEffect(() => {
-    if (!key) return;
-    let live = true;
-    const t0 = Date.now();
-    askIntro(fit).then(async (r) => {
-      const took = Date.now() - t0;
-      // Önbellekten geldiyse beklemeden; yoksa animasyon en az 2,4 sn görünür
-      if (took > 200 && took < 2400) await new Promise((ok) => setTimeout(ok, 2400 - took));
-      if (live) setRes({ key, data: r });
-    });
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  if (hi) {
-    return (
-      <div className="pb-4">
-        <section className="mt-2 flex min-h-[26rem] flex-col items-center justify-center rounded-[1.75rem] bg-deep px-6 py-8 text-center text-white">
-          <span className="grid size-20 place-items-center rounded-full bg-white/10">
-            <Icon name="dumbbell" className="size-9" />
-          </span>
-          <h2 className="mt-7 text-[1.875rem] font-bold leading-[1.15] tracking-tight">{first ? `${first}, hoş geldin.` : "Hoş geldin."}</h2>
-          <p className="mt-2 text-[1.0625rem] text-white/75">Her antrenman seni hedefine biraz daha yaklaştırır.</p>
-        </section>
-        <Button onClick={() => setHi(false)} className="mt-4 w-full">
-          Devam
-        </Button>
-      </div>
-    );
-  }
-  if (!body && !skip) {
-    return (
-      <div className="pb-4">
-        <BodyStep fit={fit} onSave={onSaveBody} onLater={() => setSkip(true)} />
-      </div>
-    );
-  }
-  if (body && res.key !== key) return <Preparing first={first} />;
-
-  const data = introCards(body ? res.data : null, body ? fit : {});
-  const byKey = new Map(data.cards.map((c) => [c.key, c]));
-  // Kullanıcının seçtiği hedef varsa onun kartı önde
-  const cards = fit?.goal ? [...GOAL_CARDS].sort((a, b) => (b.key === fit.goal) - (a.key === fit.goal)) : GOAL_CARDS;
-  const toAsk = () => setSkip(false);
-  const onScroll = () => {
-    const el = rail.current;
-    if (!el) return;
-    const w = el.firstElementChild?.getBoundingClientRect().width || 1;
-    setAt(Math.min(cards.length - 1, Math.max(0, Math.round(el.scrollLeft / (w + 12)))));
-  };
-  const go = (i) => {
-    const el = rail.current;
-    const c = el?.children[i];
-    if (c) el.scrollTo({ left: c.offsetLeft - (el.clientWidth - c.clientWidth) / 2, behavior: "smooth" });
-  };
-  return (
-    <div className="pb-4">
-      <section className="mt-2 rounded-[1.75rem] bg-deep px-5 py-5 text-white">
-        <h2 className="text-[1.75rem] font-bold leading-[1.15] tracking-tight">{first ? `${first}, hadi başlayalım.` : "Hadi başlayalım."}</h2>
-        <p className="mt-1.5 text-[0.9375rem] text-white/75">{data.headline || "Düzenli çalış, farkı haftalar içinde gör."}</p>
-      </section>
-
-      <h3 className="mb-2 mt-5 px-1 text-[0.8125rem] font-bold tracking-[.06em] text-mut">HEDEFİNİ SEÇ</h3>
-      <div ref={rail} onScroll={onScroll} className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[9%] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {cards.map((g) => (
-          <GoalCard key={g.key} g={g} c={byKey.get(g.key)} onAsk={toAsk} onPick={() => onStart(g.key)} />
-        ))}
-      </div>
-      <div className="mt-3 flex justify-center gap-1.5">
-        {cards.map((g, i) => (
-          <button key={g.key} type="button" aria-label={g.title} onClick={() => go(i)} className={`h-1.5 rounded-full transition-all ${i === at ? "w-5 bg-acc" : "w-1.5 bg-line"}`} />
-        ))}
-      </div>
-
-      <p className="mt-3 text-center text-[0.75rem] text-mut">Kaydırıp hedefini seç · program yaklaşık 1 dakikada hazır.</p>
+      <Button onClick={() => onStart("")} className="mt-5 w-full">
+        Programımı hazırla
+      </Button>
     </div>
   );
 }
