@@ -17,7 +17,8 @@ import {
 import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
-import { FitIntro } from "./FitIntro";
+import { BodyAsk, FitIntro } from "./FitIntro";
+import { hasBody } from "@/lib/fitness/forecast";
 
 // Fitness sayfası (yalnız ana hesap): bu hafta (yapılan/kalan, seri, süre), bugünkü antrenman, program (düzenle, planlara ekle),
 // gelişim (hareket başına en iyi değer), bu ay, geçmiş. Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
@@ -45,6 +46,7 @@ export function FitnessHome() {
   const [busy, setBusy] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [profOpen, setProfOpen] = useState(false);
+  const [bodyLater, setBodyLater] = useState(false);
   const [fitProf, setFitProf] = useState(profile.fit || {});
 
   const reload = useCallback(
@@ -123,6 +125,15 @@ export function FitnessHome() {
     setEdit({ prog: cleanProgram({ title: "Fitness programım", weeks: pre.weeks, start: pre.start, days }), fresh: true, k: Date.now() });
   }
 
+  async function saveBody(f) {
+    try {
+      setFitProf(await saveProfile(uid, f));
+      toast("Kaydedildi");
+    } catch (e) {
+      toast(e.message || "Kaydedilemedi");
+    }
+  }
+
   async function unplan() {
     setBusy("unplan");
     try {
@@ -153,12 +164,12 @@ export function FitnessHome() {
     );
   }
 
-  // Hiç programı ve fitness antrenmanı yoksa: tanıtım (motivasyon, şınav animasyonu, adımlar)
+  // Hiç programı ve fitness antrenmanı yoksa: tanıtım (kısa mesaj, boy/kilo, hedef kartları, adımlar)
   if (list && !list.length && !all.length) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
-        <FitIntro name={profile.name} onStart={() => setNewOpen(true)} />
+        <FitIntro name={profile.name} fit={fitProf} onStart={() => setNewOpen(true)} onSaveBody={saveBody} />
         <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
     );
@@ -181,6 +192,8 @@ export function FitnessHome() {
           <Icon name="plus" className="size-5" />
         </button>
       </PageHeader>
+
+      {!hasBody(fitProf) && !bodyLater && <BodyAsk fit={fitProf} onSave={saveBody} onLater={() => setBodyLater(true)} className="mt-2" />}
 
       <Hero className="mt-2">
         <HeroLabel>BU HAFTA</HeroLabel>

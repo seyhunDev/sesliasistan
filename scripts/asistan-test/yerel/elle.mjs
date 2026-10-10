@@ -1377,4 +1377,11 @@ group("Fitness")([
     const has = (o) => HT.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness"));
     return has({ owner: true }) && !has({ staff: true });
   })],
+  ["tanıtım tahmini", F("boy/kilo yoksa yok; 82 kg 175 cm: 8 haftada 78-80 kg, VKİ 26,8, yeni erkek +1-1,5 kg kas", async () => {
+    const FC = await import("@/lib/fitness/forecast");
+    const me = { height: 175, weight: 82, sex: "e", level: "yeni" };
+    const k = FC.forecast("kilo", me), m = FC.forecast("kas", me), s = FC.forecast("saglik", me);
+    return FC.forecast("kilo", { weight: 82 }) === null && k.then === "≈ 78-80 kg" && FC.bmiOf(me) === 26.8 && s.now === "Şu an VKİ 26,8 · Fazla kilolu" && m.then === "+1-1,5 kg kas" &&
+      FC.forecast("kilo", { height: 175, weight: 60 }).then === "Kilon sağlıklı";
+  })],
 ]);

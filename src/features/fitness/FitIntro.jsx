@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { forecast, hasBody } from "@/lib/fitness/forecast";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 
-// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tanıtım: kısa mesaj, hedef başına
-// kaydırmalı kartlar (düzenli çalışınca haftalar içinde ne değişir), 3 adımda nasıl işler, "Programımı oluştur".
+// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tanıtım: kısa mesaj, boy/kilo yoksa sorulur,
+// hedef başına kaydırmalı kartlar (düzenli çalışınca haftalar içinde ne değişir; boy ve kilo varsa kişiye göre tahmin),
+// 3 adımda nasıl işler, "Programımı oluştur".
 const GOAL_CARDS = [
   {
     key: "kilo",
@@ -76,7 +78,76 @@ const HOW = [
   ["check", "İşaretle", "Gelişimini gör"],
 ];
 
-function GoalCard({ g }) {
+// Boy ve kilo yoksa: kısa form (yaş ve cinsiyet isteğe bağlı). Tanıtımda ve Fitness sayfasında.
+export function BodyAsk({ fit, onSave, onLater, className = "" }) {
+  const [f, setF] = useState({ height: fit?.height || "", weight: fit?.weight || "", age: fit?.age || "", sex: fit?.sex || "" });
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const ok = Number(f.height) >= 100 && Number(f.weight) >= 30;
+  const box = "h-12 w-full min-w-0 rounded-xl bg-bg px-3 text-[1rem] font-semibold outline-none placeholder:font-normal placeholder:text-mut";
+  const field = (k, label, unit) => (
+    <label className="min-w-0">
+      <small className="mb-1 block text-[0.75rem] font-semibold text-mut">{label}</small>
+      <span className="relative block">
+        <input inputMode="decimal" value={f[k]} onChange={(e) => set(k, e.target.value.replace(",", ".").replace(/[^\d.]/g, ""))} className={box} />
+        {unit && <small className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.8125rem] text-mut">{unit}</small>}
+      </span>
+    </label>
+  );
+  return (
+    <section data-body-ask className={`${card} p-4 ${className}`}>
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
+          <Icon name="user" className="size-5" />
+        </span>
+        <span className="min-w-0">
+          <b className="block text-[1rem] font-semibold leading-snug">Boy ve kilonu girer misin?</b>
+          <small className="block text-[0.8125rem] leading-snug text-mut">Sana gerçekçi sonuçlar gösteririm, programını da buna göre hazırlarım.</small>
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {field("height", "Boy", "cm")}
+        {field("weight", "Kilo", "kg")}
+        {field("age", "Yaş (isteğe bağlı)", "")}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {[
+          ["k", "Kadın"],
+          ["e", "Erkek"],
+        ].map(([k, l]) => (
+          <button key={k} type="button" onClick={() => set("sex", f.sex === k ? "" : k)} className={`h-10 rounded-xl text-[0.875rem] font-semibold ${f.sex === k ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        {onLater && (
+          <button type="button" onClick={onLater} className="h-11 px-3 text-[0.875rem] font-semibold text-mut">
+            Şimdi değil
+          </button>
+        )}
+        <Button
+          className="flex-1"
+          disabled={!ok}
+          loading={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onSave({ ...fit, height: Number(f.height), weight: Number(f.weight), age: Number(f.age) || "", sex: f.sex });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Kaydet
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function GoalCard({ g, fit, onAsk }) {
+  const fc = forecast(g.key, fit);
   return (
     <article className={`${card} w-[82%] shrink-0 snap-center p-5`}>
       <div className="flex items-center gap-3">
@@ -88,6 +159,27 @@ function GoalCard({ g }) {
           <b className="block text-[1.25rem] font-bold leading-tight">{g.title}</b>
         </span>
       </div>
+      {fc ? (
+        <div className="mt-4 rounded-2xl px-3.5 py-3" style={{ background: `color-mix(in srgb, ${g.color} 9%, transparent)` }}>
+          <div className="flex items-center gap-2 text-[0.8125rem] text-mut">
+            <span className="truncate">{fc.now}</span>
+            <Icon name="chev" className="size-3.5 shrink-0" />
+            <span>8 hafta sonra</span>
+          </div>
+          <b className="mt-0.5 block text-[1.375rem] font-bold leading-tight" style={{ color: g.color }}>
+            {fc.then}
+          </b>
+          <small className="mt-0.5 block text-[0.75rem] leading-snug text-mut">{fc.sub}</small>
+        </div>
+      ) : (
+        <button type="button" onClick={onAsk} className="mt-4 flex w-full items-center gap-2 rounded-2xl bg-bg px-3.5 py-3 text-left text-[0.8125rem] leading-snug text-mut">
+          <span className="shrink-0" style={{ color: g.color }}>
+            <Icon name="user" className="size-4" />
+          </span>
+          <span className="flex-1">Boy ve kilonu girersen sana özel sonucu gösteririm.</span>
+          <Icon name="chev" className="size-4 shrink-0" />
+        </button>
+      )}
       <ol className="mt-4">
         {g.weeks.map(([w, t], i) => (
           <li key={w} className="relative flex gap-3 pb-3.5 last:pb-0">
@@ -107,15 +199,24 @@ function GoalCard({ g }) {
   );
 }
 
-export function FitIntro({ name, onStart }) {
+export function FitIntro({ name, fit, onStart, onSaveBody }) {
   const first = (name || "").trim().split(/\s+/)[0];
+  const [later, setLater] = useState(false);
+  const askRef = useRef(null);
+  const need = !hasBody(fit) && !later;
+  // Kullanıcının seçtiği hedef varsa onun kartı önde
+  const cards = fit?.goal ? [...GOAL_CARDS].sort((a, b) => (b.key === fit.goal) - (a.key === fit.goal)) : GOAL_CARDS;
+  const toAsk = () => {
+    setLater(false);
+    requestAnimationFrame(() => askRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
   const rail = useRef(null);
   const [at, setAt] = useState(0);
   const onScroll = () => {
     const el = rail.current;
     if (!el) return;
     const w = el.firstElementChild?.getBoundingClientRect().width || 1;
-    setAt(Math.min(GOAL_CARDS.length - 1, Math.max(0, Math.round(el.scrollLeft / (w + 12)))));
+    setAt(Math.min(cards.length - 1, Math.max(0, Math.round(el.scrollLeft / (w + 12)))));
   };
   const go = (i) => {
     const el = rail.current;
@@ -129,14 +230,20 @@ export function FitIntro({ name, onStart }) {
         <p className="mt-1.5 text-[0.9375rem] text-white/75">Düzenli çalış, farkı haftalar içinde gör.</p>
       </section>
 
+      {need && (
+        <div ref={askRef}>
+          <BodyAsk fit={fit} onSave={onSaveBody} onLater={() => setLater(true)} className="mt-3" />
+        </div>
+      )}
+
       <h3 className="mb-2 mt-5 px-1 text-[0.8125rem] font-bold tracking-[.06em] text-mut">DÜZENLİ ÇALIŞINCA NE DEĞİŞİR?</h3>
       <div ref={rail} onScroll={onScroll} className="-mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[9%] pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {GOAL_CARDS.map((g) => (
-          <GoalCard key={g.key} g={g} />
+        {cards.map((g) => (
+          <GoalCard key={g.key} g={g} fit={fit} onAsk={toAsk} />
         ))}
       </div>
       <div className="mt-3 flex justify-center gap-1.5">
-        {GOAL_CARDS.map((g, i) => (
+        {cards.map((g, i) => (
           <button key={g.key} type="button" aria-label={g.title} onClick={() => go(i)} className={`h-1.5 rounded-full transition-all ${i === at ? "w-5 bg-acc" : "w-1.5 bg-line"}`} />
         ))}
       </div>
