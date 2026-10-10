@@ -578,6 +578,17 @@ group("Ana sayfa kartları")([
     const full = ["a", "b", "c", "d", "e", "f", "g"];
     return s.length === Math.min(7, sg.flatMap((x) => x.items).length) && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(full, "h") === null && HT.toggleShortcut(full, "a").length === 6 && HT.toggleShortcut(["a"], "b").join() === "a,b";
   })],
+  ["kısayollar: düzenleme", F("varsayılandan Envanter çıkar, Fitness ekle → ana sayfada Fitness; seçim profilde okunur (homeLinks, inbox)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const start = HT.shortcutsOf(g).map(HT.linkKey);
+    const less = HT.toggleShortcut(start, "/inventory");
+    const more = HT.toggleShortcut(less, "/fitness");
+    const shown = HT.shortcutsOf(g, more).map(HT.linkKey);
+    const auth = readFileSync(new URL("../../../src/features/auth/AuthProvider.jsx", import.meta.url), "utf8");
+    return HT.toggleShortcut(start, "/fitness") === null && less.length === 6 && shown.length === 7 && shown.includes("/fitness") && !shown.includes("/inventory") &&
+      /homeLinks:/.test(auth) && /inbox:/.test(auth) && /inboxSeen:/.test(auth);
+  })],
   ["şu an kartı", F("süren plan önce, sonra sıradaki; bugün kalmadıysa yarının ilki; iptal ve geçen sayılmaz", () => {
     const now = new Date("2026-10-07T14:20:00");
     const ps = [
