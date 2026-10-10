@@ -1,6 +1,7 @@
 import { BackLink } from "./BackLink";
 import { Icon } from "./Icon";
 
+// Geri düğmesi 44 px, dokunma alanı çevresiyle birlikte daha geniş (küçük düğme zor tutturuluyordu).
 // Sayfa başlığı: solda geri (gelinen sayfaya; uygulama burada açıldıysa `back` sayfasına), başlık ve kısa alt satır, sağda isteğe bağlı düğmeler
 export function PageHeader({ title, sub, back = "/", children }) {
   return (
@@ -8,7 +9,7 @@ export function PageHeader({ title, sub, back = "/", children }) {
       <BackLink
         href={back}
         aria-label="Geri"
-        className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] transition active:scale-90"
+        className="relative -my-0.5 grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] transition before:absolute before:-inset-x-3 before:-inset-y-2 before:content-[''] active:scale-90"
       >
         <Icon name="back" className="size-5" />
       </BackLink>

@@ -15,8 +15,8 @@ export function NewVersionBar() {
   if (!v || hid === v.sha) return null;
   const when = buildWhen(v.at);
   return (
-    <div role="status" className="fade-in fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-[47] flex justify-center px-4">
-      <div className="flex w-full max-w-[26.25rem] items-center gap-2.5 rounded-2xl bg-card py-2 pl-3.5 pr-2 shadow-[0_4px_16px_rgba(38,40,44,.14)]">
+    <div role="status" className="fade-in pointer-events-none fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.5rem)] z-[47] flex justify-center px-4">
+      <div className="pointer-events-auto flex w-full max-w-[26.25rem] items-center gap-2.5 rounded-2xl bg-card py-2 pl-3.5 pr-2 shadow-[0_4px_16px_rgba(38,40,44,.14)]">
         <span className="size-2 shrink-0 rounded-full bg-acc" />
         <span className="min-w-0 flex-1 text-[0.8125rem] leading-snug">
           <span className="block font-semibold">Yeni sürüm var</span>

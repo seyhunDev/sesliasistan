@@ -64,7 +64,12 @@ export function installTrail() {
     if (url != null) { trail = stepTrail(trail, "replace", keyOf(url)); save(); }
     return r;
   };
-  window.addEventListener("popstate", () => { trail = stepTrail(trail, "pop", here()); save(); });
+  window.addEventListener("popstate", () => {
+    trail = stepTrail(trail, "pop", here());
+    save();
+    // Geri gerçekleşti: kilit hemen kalkar, yeni sayfadaki geri düğmesi beklemeden çalışır
+    if (pending) (pending = 0), clearTimeout(timer);
+  });
 }
 
 // Uygulama içinde dönülecek önceki sayfa var mı
@@ -72,22 +77,26 @@ export const canGoBack = () => trail.length > 1;
 
 // Önceki sayfaya dön; yoksa verilen sayfaya git (silinen kayıttan çıkarken de). Gidilen sayfa
 // bu sayfanın yerine geçer (replace), push olsaydı oradan geri basınca buraya dönülür, döngü olurdu.
-// Arka arkaya basışlar tek geri sayılır (ikinci basış iki sayfa geri götürmesin). Geri gidilemediyse
-// (iz tarayıcı geçmişiyle uyuşmuyor: iPhone uygulamayı yeniden açınca geçmiş boş olabilir) kısa süre
-// sonra adres hâlâ aynıysa üst sayfaya gidilir; böylece düğme hiçbir zaman "tepkisiz" kalmaz.
+// Arka arkaya basışlar tek geri sayılır (ikinci basış iki sayfa geri götürmesin); kilit geri
+// gerçekleşince (popstate) hemen kalkar. Önceden 0,6 sn hep kilitli kalıyordu: geri dönülen sayfada
+// hemen yeniden geri basınca hiçbir şey olmuyordu. Geri gidilemediyse (iz tarayıcı geçmişiyle
+// uyuşmuyor: iPhone uygulamayı yeniden açınca geçmiş boş olabilir) kısa süre sonra adres hâlâ
+// aynıysa üst sayfaya gidilir; böylece düğme hiçbir zaman "tepkisiz" kalmaz.
 const WAIT = 600;
 let pending = 0;
+let timer = 0;
 export function goBack(router, href = "/") {
   if (typeof window === "undefined") return;
-  if (Date.now() - pending < WAIT) return;
-  pending = Date.now();
+  if (pending && Date.now() - pending < WAIT) return;
   if (!canGoBack()) {
     router.replace(href);
     return;
   }
+  pending = Date.now();
   const from = here();
   router.back();
-  setTimeout(() => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
     pending = 0;
     if (typeof window === "undefined" || here() !== from) return; // sayfa kapandıysa (ya da testte pencere kalktıysa) bir şey yapma
     trail = [from];
