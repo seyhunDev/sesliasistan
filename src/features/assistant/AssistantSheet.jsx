@@ -2794,7 +2794,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const waiting = (busy || transcribing) && !streamText && !(transcribing && heardNow); // ara adımlar (stepTo) görünmez, yerine sıralı yazılar
   // Görev listesi sürerken süren iş listede parlıyor: aynı ad bilgi alanında ikinci kez yazılmaz
   const planRun = plan.some((x) => x.st === "run");
-  const wait = useWaitLines(waiting && !(planRun && busy), busy ? work : "", !busy && transcribing, busy && !planRun ? heard : "");
+  // Durum satırı işin adından; kullanıcının sözünden kelime almaz (söz alttaki kutuda zaten yazıyor, iki yerde görünmesin)
+  const wait = useWaitLines(waiting && !(planRun && busy), busy ? work : "", !busy && transcribing);
   const workNow = (busy || transcribing) && !streamText && !(transcribing && heardNow) ? stepNow || wait?.now || "" : "";
   // Canlı yazıda (Chrome) "kapat" duyulunca konuşma bitişi beklenmez: dinleme hemen durur, asistan sessizce kapanır
   useEffect(() => {

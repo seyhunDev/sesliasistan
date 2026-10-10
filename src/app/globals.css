@@ -371,3 +371,8 @@ body[data-typing] [data-pagebar] {
 @keyframes navgrow { from { transform: scaleX(0); } 15% { transform: scaleX(.45); } to { transform: scaleX(.9); } }
 @media (prefers-reduced-motion: reduce) { .navbar-run { animation: none; transform: scaleX(.6); } }
 /* Kubbedeki sohbette senin mesajın: sağda belirgin buzlu balon (mesajlaşma uygulamaları gibi) */
+
+/* Konuşma kutusunda dinlerken yanıp sönen imleç (durum yazısı yerine; Seyhun, 2026-10-10) */
+.box-caret { display: inline-block; width: 2px; height: 1.15em; margin-left: 2px; vertical-align: -0.2em; border-radius: 1px; background: var(--rec); animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .box-caret { animation: none; } }

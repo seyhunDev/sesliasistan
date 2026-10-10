@@ -225,7 +225,16 @@ function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, s
           onClick={onType}
           className={`max-h-[7.5rem] min-h-[3.25rem] overflow-hidden px-[1.125rem] pb-1 pt-3.5 text-[1.0625rem] leading-snug ${onType ? "cursor-text" : ""}`}
         >
-          {text ? <span className="text-fg">{text}</span> : <span className="text-mut">{ph}</span>}
+          {text ? (
+            <span className={mode === "busy" ? "text-fg/60" : "text-fg"}>
+              {text}
+              {listening && <i className="box-caret" aria-hidden="true" />}
+            </span>
+          ) : listening ? (
+            <i className="box-caret" aria-label="Dinliyor" />
+          ) : (
+            <span className="text-mut">{ph}</span>
+          )}
         </div>
         <div className="flex items-center gap-2 px-2 pb-2">
           <button type="button" onClick={onX} aria-label={listening ? "Sil ve dinlemeyi bırak" : "Konuşmayı bitir"} className={`${round} bg-fg/[.07] text-fg`}>
@@ -471,13 +480,18 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
   const draft = active && !typing && live.draft ? live.draft : "";
   // Asistan açıkken (yazı klavyesi açık değilse) alan hep asistan kutusu; boştaki yuvarlak düğme ve sekmeler aynı kalır
   const box2 = active && !typing;
-  const mode = state === "listening" ? "listening" : live.transcribing ? "sending" : state === "busy" ? "busy" : state === "speaking" ? "speaking" : "idle";
+  // Kutu yalnız kullanıcının sözü (Seyhun: "input'un içinde kullanıcının söylediklerini gösterecektik; hem orada dinliyorum
+  // hem üstteki cevap alanında aynı şeyler çıkıyor", 2026-10-10): dinlerken canlı söz, gönderilirken ve iş yapılırken
+  // gönderilen söz; "Dinliyorum", "Çalışıyorum" gibi durum yazısı kutuda yok (durum dalgada ve üstteki tek satırda).
+  // Cevap gelince söz üstte balon olur, kutu boşalır: aynı yazı iki yerde görünmez. İş sürerken arkada açılan mikrofon
+  // (kullanıcı devam ederse diye) kutuyu "dinliyor"a çevirmez; yalnız yeni söz duyulunca
+  const mode = live.listening && (!live.busy || heard) ? "listening" : live.transcribing ? "sending" : state === "busy" || live.busy ? "busy" : state === "speaking" ? "speaking" : "idle";
   const boxText =
     mode === "listening" ? [draft, heard].filter(Boolean).join(" ")
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
-    : mode === "idle" ? draft
-    : live.said || "";
-  const boxPh = mode === "listening" ? "Dinliyorum…" : mode === "sending" ? "Yazıya çevriliyor…" : mode === "busy" ? live.status || "Çalışıyorum…" : mode === "speaking" ? "" : "Yaz ya da konuş…";
+    : mode === "busy" ? live.said || ""
+    : draft;
+  const boxPh = mode === "idle" ? "Yaz ya da konuş…" : "";
   return (
     <div
       ref={box}
@@ -521,7 +535,7 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
                 rec={rec}
                 onX={mode === "listening" || draft ? voice.cancel : onClose}
                 onMenu={onMenu}
-                onStop={mode === "listening" ? voice.edit : talk}
+                onStop={mode === "listening" ? voice.edit : mode === "busy" ? voice.abort : talk}
                 onTalk={talk}
                 onSend={mode === "listening" ? voice.stop : voice.send}
                 sendOn={mode === "listening" || (mode === "idle" && !!draft)}
@@ -686,6 +700,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
           cancel: () => act.current.cancel?.(),
           edit: () => act.current.edit?.(),
           stop: () => act.current.stop?.(),
+          abort: () => act.current.abort?.(),
           send: () => act.current.send?.(),
           listen: () => act.current.listen?.(),
           // Bekleyen söze dokununca yazı kutusunda düzenlenir
