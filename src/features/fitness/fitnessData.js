@@ -21,7 +21,26 @@ export async function loadPrograms(orgId, { force = false } = {}) {
   const snap = await getDocs(col(orgId));
   const list = snap.docs.map((d) => ({ id: d.id, ...d.data(), ...cleanProgram(d.data()) })).sort(byNew);
   cache = { org: orgId, at: Date.now(), list };
+  keep(orgId, list);
   return list;
+}
+
+// Son okunan program listesi bu cihazda da saklanır: sayfa açılınca hemen çizilir (önce boş sonra dolu,
+// ya da önce tanıtım sonra program gibi zıplama olmaz); okuma bitince güncellenir. Ek okuma yok.
+const LS = (orgId) => `sa-fit-progs:${orgId}`;
+function keep(orgId, list) {
+  try {
+    localStorage.setItem(LS(orgId), JSON.stringify(list));
+  } catch {}
+}
+export function peekPrograms(orgId) {
+  if (cache.org === orgId && cache.list) return cache.list;
+  try {
+    const v = JSON.parse(localStorage.getItem(LS(orgId)) || "null");
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
 }
 // Etkin program: en son güncellenen etkin program
 export const activeOf = (list) => list?.find((p) => p.active) || null;
@@ -35,14 +54,20 @@ export async function saveProgram(orgId, uid, prog) {
   const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active);
   await Promise.all([setDoc(ref, rec), ...(rec.active ? others.map((p) => updateDoc(doc(col(orgId), p.id), { active: false })) : [])]);
   const out = { id: ref.id, ...rec };
-  if (cache.org === orgId && cache.list) cache.list = [out, ...cache.list.filter((p) => p.id !== out.id).map((p) => (rec.active ? { ...p, active: false } : p))].sort(byNew);
+  if (cache.org === orgId && cache.list) {
+    cache.list = [out, ...cache.list.filter((p) => p.id !== out.id).map((p) => (rec.active ? { ...p, active: false } : p))].sort(byNew);
+    keep(orgId, cache.list);
+  }
   told();
   return out;
 }
 
 export async function deleteProgram(orgId, id) {
   await deleteDoc(doc(col(orgId), id));
-  if (cache.org === orgId && cache.list) cache.list = cache.list.filter((p) => p.id !== id);
+  if (cache.org === orgId && cache.list) {
+    cache.list = cache.list.filter((p) => p.id !== id);
+    keep(orgId, cache.list);
+  }
   told();
 }
 
@@ -82,7 +107,10 @@ export async function syncPlans(orgId, uid, prog, plans, by = {}) {
     await b.commit();
   }
   await updateDoc(doc(col(orgId), prog.id), { plansAt: now }).catch(() => {});
-  if (cache.org === orgId && cache.list) cache.list = cache.list.map((p) => (p.id === prog.id ? { ...p, plansAt: now } : p));
+  if (cache.org === orgId && cache.list) {
+    cache.list = cache.list.map((p) => (p.id === prog.id ? { ...p, plansAt: now } : p));
+    keep(orgId, cache.list);
+  }
   told();
   return { added: drafts.length, removed: old.length };
 }
@@ -97,7 +125,10 @@ export async function removePlans(orgId, prog, plans) {
     await b.commit();
   }
   await updateDoc(doc(col(orgId), prog.id), { plansAt: "" }).catch(() => {});
-  if (cache.org === orgId && cache.list) cache.list = cache.list.map((p) => (p.id === prog.id ? { ...p, plansAt: "" } : p));
+  if (cache.org === orgId && cache.list) {
+    cache.list = cache.list.map((p) => (p.id === prog.id ? { ...p, plansAt: "" } : p));
+    keep(orgId, cache.list);
+  }
   told();
   return old.length;
 }

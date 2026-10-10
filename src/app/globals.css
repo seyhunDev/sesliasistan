@@ -195,9 +195,20 @@ select {
 @keyframes stagein { from { opacity: 0; } }
 .stage-in { animation: stagein .26s ease-out .06s both; }
 
-/* Sayfa geçişi (app/(app)/template.jsx): yalnız saydamlık, bitince iz bırakmaz (backwards) */
+/* SAYFA GEÇİŞİ (app/(app)/template.jsx): kısa ve sakin. İleri: sağdan 24 px kayarak belirir; geri: soldan;
+   alt sekmeler arası ve ilk açılış: yalnız solma. Bitince iz bırakmaz (backwards). İçinde sabit (fixed) çubuk olan
+   sayfada kaydırma yok (transform sabit öğeleri sayfaya bağlar, zıplarlardı), yalnız solma.
+   overflow-x: clip: kayarken yatay kaydırma çubuğu çıkmasın (yapışkan başlıkları bozmaz). */
 @keyframes pagein { from { opacity: 0; } }
-.page-in { animation: pagein .2s ease-out backwards; }
+@keyframes pagefwd { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
+@keyframes pageback { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
+.page-in { overflow-x: clip; animation: pagein .2s ease-out backwards; }
+html[data-boot] .page-in { animation: none; }
+.page-in[data-dir="fwd"]:not(:has(.fixed)) { animation: pagefwd .3s cubic-bezier(.22, .8, .24, 1) backwards; }
+.page-in[data-dir="back"]:not(:has(.fixed)) { animation: pageback .3s cubic-bezier(.22, .8, .24, 1) backwards; }
+@media (prefers-reduced-motion: reduce) {
+  .page-in[data-dir] { animation: pagein .2s ease-out backwards !important; }
+}
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
 
