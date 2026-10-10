@@ -76,24 +76,40 @@ export function speechLive(ms, by) {
   speech.live = [...(speech.live || []), { ms: Math.round(ms), by: String(by || "") }].slice(-30);
 }
 
+// Canlı yazı denemesi: path "pcm" (ham ses parçası) / "whole" (kaydın tamamı) bir istek; path boşsa istek yazı getirmedi (why)
+export function speechLiveTry(path, why = "") {
+  if (!speech) return;
+  const t = speech.tries || { pcm: 0, whole: 0, miss: 0, why: "" };
+  if (path) t[path] = (t[path] || 0) + 1;
+  else (t.miss += 1), (t.why = String(why || "").slice(0, 40));
+  speech.tries = t;
+}
+
 // Canlı yazı özeti: parça sayısı, ortalama ve en uzun gecikme, servis ("Gemini", "Whisper")
 const LIVE_BY = { gtranscribe: "Gemini", groq: "Whisper", openai: "Whisper" };
 export function liveOf(r) {
   const l = Array.isArray(r?.live) ? r.live : [];
-  if (!l.length) return null;
-  const avg = l.reduce((a, x) => a + x.ms, 0) / l.length;
+  const t = r?.tries || null;
+  const req = t ? (t.pcm || 0) + (t.whole || 0) : 0;
+  if (!l.length && !req && !(r?.voice && r?.marks?.listen != null)) return null;
+  const avg = l.length ? l.reduce((a, x) => a + x.ms, 0) / l.length : 0;
   const by = [...new Set(l.map((x) => LIVE_BY[x.by] || x.by).filter(Boolean))].join(", ");
-  return { n: l.length, avg: Math.round(avg), max: Math.max(...l.map((x) => x.ms)), by };
+  return { n: l.length, avg: Math.round(avg), max: l.length ? Math.max(...l.map((x) => x.ms)) : 0, by, req, miss: t?.miss || 0, why: t?.why || "", path: t?.whole && !t?.pcm ? "whole" : t?.pcm ? "pcm" : "" };
 }
-export const liveText = (v) => (v ? `canlı yazı ${v.n} parça, ortalama ${msText(v.avg)}, en uzun ${msText(v.max)}${v.by ? ` (${v.by})` : ""}` : "");
+// Canlı yazı satırı: gecikme; hiç yazı gelmediyse neden (istek gitmedi: ham ses toplanmadı; gitti ama boş/hata döndü)
+export const liveText = (v) => {
+  if (!v) return "";
+  if (!v.n) return v.req ? `canlı yazı gelmedi: ${v.req} istek, ${v.miss} boş${v.why ? ` (${v.why})` : ""}${v.path === "whole" ? ", ham ses yok" : ""}` : "canlı yazı istenmedi (ses parçası toplanmadı)";
+  return `canlı yazı ${v.n} parça, ortalama ${msText(v.avg)}, en uzun ${msText(v.max)}${v.by ? ` (${v.by})` : ""}${v.miss ? `, ${v.miss} boş${v.why ? ` (${v.why})` : ""}` : ""}${v.path === "whole" ? ", ham ses yok" : ""}`;
+};
 
 // Yeni komut: önceki bitmemişse kaydedilir. Sesliyse az önceki dinlemenin anları da eklenir
 export function timingStart(text, viaVoice) {
   flush();
   const t = clock();
   const sp = viaVoice && speech?.text && t - speech.text < 10000 ? speech : null;
-  const { live, ...marks } = sp || {};
-  cur = { at: t, text: String(text || "").slice(0, 90), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}) };
+  const { live, tries, ...marks } = sp || {};
+  cur = { at: t, text: String(text || "").slice(0, 90), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}), ...(tries ? { tries } : {}) };
   speech = null;
 }
 

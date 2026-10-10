@@ -145,6 +145,7 @@ async function handle(request) {
     const wh = list.filter((x) => WHISPER[x] && !isCooling(`stt:${x}`));
     const order = process.env.LIVE_STT === "whisper" ? [...wh, ...(gOk ? ["gtranscribe"] : [])] : [...(gOk ? ["gtranscribe"] : []), ...wh];
     const t0 = Date.now();
+    let why = order.length ? "" : "servis yok";
     for (const p of order.slice(0, 2)) {
       try {
         if (p === "gtranscribe") {
@@ -155,10 +156,11 @@ async function handle(request) {
         return NextResponse.json({ text: dropHallucination(await viaWhisper(p, file, names, terms, true), HINT), provider: p, ms: Date.now() - t0 });
       } catch (e) {
         console.warn(`[transcribe:ara:${p}]`, e.message.slice(0, 200));
+        why = `${p === "gtranscribe" ? "Gemini" : "Whisper"} ${e.status || "süre"}`;
         if (Date.now() - t0 > 6000) break; // ara yazı geç kaldı: sonraki parça gelir
       }
     }
-    return NextResponse.json({ text: "" });
+    return NextResponse.json({ text: "", why });
   }
   countAi(au, "transcribe");
 
