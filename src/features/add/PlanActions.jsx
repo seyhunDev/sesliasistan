@@ -5,8 +5,8 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canCancel } from "@/lib/cancelPlan";
-import { planText, postponePatch } from "@/lib/planActions";
-import { todayStr } from "@/lib/utils/format";
+import { planDonePatch, planReopenPatch, planText, postponePatch } from "@/lib/planActions";
+import { rel, todayStr } from "@/lib/utils/format";
 import { CancelPlan } from "./CancelPlan";
 
 const card = "rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
@@ -23,15 +23,17 @@ function Act({ icon, label, tone = "text-acc bg-acc/10", on, onClick }) {
   );
 }
 
-// Plan ekranının işlemleri, içerikten ayrı: Ertele (1 gün), İptal et (haber ver formu açılır), Kopyala, Paylaş.
+// Plan ekranının işlemleri, içerikten ayrı: Bitti (Arşiv'e gider, ekran kapanır), Ertele (1 gün), İptal et (haber ver formu açılır), Kopyala, Paylaş.
+// Biten planda durum + "Planlara al".
 // Takvime ekle düğmesi yok: plan zaten uygulamanın takvimidir; iPhone Takvim'e Ayarlar › iPhone takvimi aboneliğiyle kendiliğinden gider.
 // İptal edilmiş planda durum + "Geri al". Sil en altta ayrı: "Planı sil", haftalık seride "Bu ve sonrakileri sil" (ana hesap).
-export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSeries }) {
+export function PlanActions({ rec, by, cancelStart = false, onDone, onDelete, onDeleteSeries }) {
   const { updateRecord } = useData();
   const toast = useToast();
   const [cancelOpen, setCancelOpen] = useState(cancelStart);
   const [seriesAsk, setSeriesAsk] = useState(false);
   const cancelled = rec.status === "cancelled";
+  const finished = !!rec.done;
   const text = planText(rec);
 
   const copy = async () => {
@@ -62,9 +64,23 @@ export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSe
     toast("İptal geri alındı");
   };
 
-  const acts = cancelled
+  const done = () => {
+    updateRecord("plan", rec.id, planDonePatch(), by);
+    navigator.vibrate?.(10);
+    toast("Bitti, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("plan", rec.id, planReopenPatch(), by) } });
+    onDone?.();
+  };
+  const reopen = () => {
+    updateRecord("plan", rec.id, planReopenPatch(), by);
+    toast("Plan, Planlar'a geri alındı");
+  };
+
+  const acts = finished
+    ? [<Act key="r" icon="back" label="Planlara al" onClick={reopen} />]
+    : cancelled
     ? [<Act key="u" icon="back" label="Geri al" onClick={uncancel} />]
     : [
+      <Act key="d" icon="check" label="Bitti" tone="bg-ok text-white" onClick={done} />,
       rec.date && <Act key="p" icon="clock" label="Ertele" onClick={postpone} />,
       canCancel(rec, todayStr()) && <Act key="c" icon="x" label="İptal et" on={cancelOpen} tone={cancelOpen ? "bg-rec text-white" : "bg-rec/10 text-rec"} onClick={() => setCancelOpen((o) => !o)} />,
     ].filter(Boolean);
@@ -77,7 +93,16 @@ export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSe
   return (
     <section className="mt-6">
       <h3 className="px-1 text-[0.75rem] font-semibold tracking-wide text-mut">İŞLEMLER</h3>
-      {cancelled && (
+      {finished && (
+        <div className={`mt-2 flex items-center gap-3 px-4 py-3 ${card}`}>
+          <Icon name="check" className="size-5 shrink-0 text-ok" />
+          <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
+            <b className="block font-semibold">Bitti{rec.doneAt ? ` · ${rel(rec.doneAt.slice(0, 10))}` : ""}</b>
+            <span className="text-mut">Plan Arşiv’de duruyor.</span>
+          </span>
+        </div>
+      )}
+      {cancelled && !finished && (
         <div className="mt-2 flex items-center gap-3 rounded-2xl bg-rec/10 px-4 py-3 text-rec">
           <Icon name="x" className="size-5 shrink-0" />
           <span className="min-w-0 flex-1 text-[0.875rem] font-semibold">Bu plan iptal edildi</span>
@@ -86,7 +111,7 @@ export function PlanActions({ rec, by, cancelStart = false, onDelete, onDeleteSe
       <div className={`mt-2 grid gap-1 p-1.5 ${card}`} style={{ gridTemplateColumns: `repeat(${list.length}, minmax(0, 1fr))` }}>
         {list}
       </div>
-      {cancelOpen && !cancelled && <CancelPlan rec={rec} by={by} onClose={() => setCancelOpen(false)} />}
+      {cancelOpen && !cancelled && !finished && <CancelPlan rec={rec} by={by} onClose={() => setCancelOpen(false)} />}
       <div className="mt-6 flex flex-col items-center gap-1">
         {onDelete && (
           <button type="button" onClick={onDelete} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.875rem] font-medium text-rec transition active:scale-95 active:bg-rec/10">

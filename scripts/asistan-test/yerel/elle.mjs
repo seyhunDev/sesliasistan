@@ -1459,3 +1459,35 @@ group("Beslenme")([
   })],
   ["özet cümlesi", F("kalan kalori ve su", () => FD.dayLine({ meals: [{ kcal: 1500, p: 80 }], water: 4 }, { kcal: 2000, p: 140 }) === "Bugün 1500 kalori (hedef 2000, 500 kaldı), 80 g protein / 140, 4 bardak su.")],
 ]);
+
+// Plan bitti (Arşiv'e gider) ve İngilizce kelime kartı
+const HTP = await import("@/lib/homeTiles");
+const EW = await import("@/lib/englishWords");
+group("Plan bitti ve kelime kartı", [
+  ["bitti yaması", F("done + doneAt, geri al temizler", () => {
+    const d = PA.planDonePatch("2026-10-10T10:00:00Z");
+    const r = PA.planReopenPatch();
+    return d.done === true && d.doneAt === "2026-10-10T10:00:00Z" && r.done === false && r.doneAt === null && PA.isPlanDone(d) && !PA.isPlanDone(r);
+  })],
+  ["Şu an kartı bitenleri saymaz", F("biten plan atlanır", () => {
+    const ps = [{ id: "a", title: "Bitti", date: "2026-10-10", time: "23:00", done: true }, { id: "b", title: "Açık", date: "2026-10-10", time: "23:30" }];
+    return HTP.nowPlans(ps, "2026-10-10", "2026-10-11", new Date("2026-10-10T20:00:00")).main?.p.id === "b";
+  })],
+  ["hatırlatma bitenleri atlar", F("biten plana hatırlatma yok", () => RM.dueReminders([{ ...RP, done: true }], { lead: 30, now: new Date("2026-10-05T09:31:00") }).length === 0)],
+  ["kelime listesi", F("en az 150, alanlar dolu, tekrar yok", () => {
+    const ws = EW.WORDS.map((x) => x[0].toLowerCase());
+    return EW.WORDS.length >= 150 && EW.WORDS.every((x) => x.length === 5 && x.every((v) => typeof v === "string" && v.trim())) && new Set(ws).size === ws.length;
+  })],
+  ["kelime sırası", F("karışık sıra her kelimeyi bir kez verir, liste bitene kadar tekrar yok", () => {
+    const o = EW.wordOrder();
+    const seen = new Set(Array.from({ length: o.length }, (_, i) => EW.wordAt(i, o).w));
+    return new Set(o).size === EW.WORDS.length && seen.size === EW.WORDS.length && EW.wordAt(o.length, o).w === EW.wordAt(0, o).w;
+  })],
+  ["sıradaki kelime saklanır", F("her okumada bir ilerler", () => {
+    const m = new Map();
+    const st = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) };
+    const a = EW.nextWordIndex(st);
+    const b = EW.nextWordIndex(st);
+    return b === a + 1;
+  })],
+]);

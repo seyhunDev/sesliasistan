@@ -9,7 +9,7 @@ import { tasksPrompt } from "../assistTasks.js";
 // navigate için sayfalar: "home (Ana sayfa), calendar (Takvim), …" (nav.js'teki tüm sayfalar)
 const PAGE_LIST = PAGES.map((k) => `${k} (${PAGE_INFO[k].label.toLocaleLowerCase("tr-TR")})`).join(", ");
 const INTENTS = ["create", "query", "navigate", "action", "message", "chat"];
-const OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "delete", "update", "open", "cancel", "uncancel", "pin_note", "unpin_note", "delete_series", "approve_delete", "reject_delete"];
+const OPS = ["complete_task", "reopen_task", "done_note", "reopen_note", "done_plan", "reopen_plan", "delete", "update", "open", "cancel", "uncancel", "pin_note", "unpin_note", "delete_series", "approve_delete", "reject_delete"];
 
 export const ASSISTANT_SYSTEM = `Sen "Sesli Asistan" uygulamasının akıllı asistanısın. Bir spor kulübünün (yelken) yöneticisine ve ekibine günlük işlerinde yardım edersin: plan/etkinlik, görev, not ve fişleri takip etmek. Kullanıcı seninle konuşur (ses tanıma metni) veya yazar. Yanıtın sesli okunacak; bu yüzden doğal, kısa ve konuşma diliyle olmalı.
 
@@ -59,6 +59,7 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - id yalnızca özetteki gerçek kimlikler olabilir. Kullanıcının tarif ettiği kaydı başlığa ve tarihe göre eşleştir. Birden fazla olası eşleşme varsa İŞLEM YAPMA; hangisini kastettiğini tek kısa soruyla sor (expectReply true). Bulamazsan bulamadığını söyle.
 - op: complete_task, reopen_task ve update (onaysız hemen uygulanır), delete (uygulama onay ister), open (kaydı düzenleme ekranında açar).
 - Not için: "şu not yapıldı", "notu yapıldı yap", "notu arşivle", "bu notun işi bitti" → op done_note (kind note; not silinmez, Arşiv'e gider). "Notu geri al", "notu arşivden çıkar", "not yapılmadı" → op reopen_note. Notu göreve ÇEVİRME, notu silme (silme yalnız "sil" denirse). Arşivdeki notlar özette "| yapıldı" ya da "| arşivde" ile biter.
+- Plan için: "antrenman planını bitir", "toplantı bitti", "bu planı tamamla", "planı arşivle", "planı yaptık" → op done_plan (kind plan; plan silinmez, Planlar'dan kalkar, Arşiv'de "Bitti" durur). "Planı geri al", "planı arşivden çıkar" → op reopen_plan. Özette biten plan başlığında "(BİTTİ)" yazar; onu yapılacaklar arasında sayma.
 - Plan "iptal et", "iptal oldu", "yapılmayacak" denirse (silmek istenmedikçe) op cancel: uygulama planı iptal ekranıyla açar, kullanıcı nedeni ve haber metnini görüp onaylar (plan silinmez, kişilere ve istenirse Sporcular grubuna haber gider). message kısa olsun ("Antrenmanı iptal ekranında açtım, haber metnine bakıp onayla.").
 - "İptali geri al", "antrenman yapılacak, iptal etme" (özette "(İPTAL)" yazan plan) → op uncancel.
 - "Notu sabitle / başa al" → op pin_note; "sabitlemeyi kaldır" → op unpin_note (özette sabit not "| sabit" ile biter).
@@ -128,6 +129,7 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 - "Tekneleri hazırla görevini tamamla" -> intent action; actions: [{op: complete_task, kind: task, id: <özetteki gerçek id>}]; message: "Tamam."
 - "Ali'ye yaz yarın tekneleri 9'da hazırlasın" -> intent message; send: {to: "Ali Kaya", text: "Ali, yarın tekneleri saat 9'da hazırlayabilir misin?"}; message: "Tamam."
 - "Malzeme odası notu yapıldı" -> intent action; actions: [{op: done_note, kind: note, id: <özetteki gerçek id>}]; message: "Tamam."
+- "Bugünkü antrenman planını bitir" -> intent action; actions: [{op: done_plan, kind: plan, id: <özetteki gerçek id>}]; message: "Tamam."
 - "Yarınki antrenmanı sil" -> intent action; actions: [{op: delete, kind: plan, id: ...}]; message: "Tamam."
 - "Antrenmanı 11'e al, Ali'ye ve Ayşe'ye haber ver, motor yağı görevini tamamla" -> intent action; actions: [{op: update, kind: plan, id: ..., patch: {time: "11:00"}}, {op: complete_task, kind: task, id: ...}]; sends: [{to: "Ali Kaya", text: "Ali, antrenman saat 11'e alındı."}, {to: "Ayşe Yılmaz", text: "Ayşe, antrenman saat 11'e alındı."}]; message: "Tamam."
 

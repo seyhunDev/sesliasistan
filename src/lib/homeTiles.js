@@ -182,7 +182,7 @@ export function homeNotes(notes = [], n = 5) {
 export function nowPlans(plans = [], today, tomorrow, now = new Date()) {
   const on = (d) =>
     plans
-      .filter((p) => p && p.date && p.status !== "cancelled" && p.date <= d && (p.endDate || p.date) >= d)
+      .filter((p) => p && p.date && p.status !== "cancelled" && !p.done && p.date <= d && (p.endDate || p.date) >= d)
       .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const left = on(today).filter((p) => planState(p, now) !== "past");
   const next = on(tomorrow);

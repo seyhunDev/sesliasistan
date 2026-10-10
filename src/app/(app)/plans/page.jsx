@@ -8,7 +8,11 @@ import { ArchiveLink, Chips, DelBadge, Empty, catStyle } from "@/components/ui/P
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useToast } from "@/components/ui/ToastProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { useNow } from "@/hooks/useNow";
+import { planDonePatch, planReopenPatch } from "@/lib/planActions";
+import { WordCard } from "@/features/words/WordCard";
 import { addDate } from "@/lib/ai/digest";
 import { groupByDay, nextPlan, planState, remainLabel, soonLabel, dayLabel, weekdayShort } from "@/lib/agenda";
 import { short, todayStr } from "@/lib/utils/format";
@@ -33,18 +37,28 @@ const monday = (d) => addDate(d, -((new Date(`${d}T00:00`).getDay() + 6) % 7));
 
 // Planlar: ajanda düzeni. Üstte ana sayfadaki gibi koyu "Şu an / Sıradaki" kartı ve "Sonra" satırı; ana hesapta kişiye göre süzme;
 // altında Bu hafta / Gelecek hafta / Daha sonra bölümleri, solda gün numarası (bugün yeşil daire), sağda her plan ayrı kart
-// (kategori simgesi, saat, süre, yer, görevli; çakışan saat turuncu, iptal üstü çizili). Geçmiş planlar arşivde.
+// (kategori simgesi, saat, süre, yer, görevli; çakışan saat turuncu, iptal üstü çizili). Sola kaydırınca Bitti / Sil;
+// biten ve saati geçmiş planlar arşivde. En altta İngilizce kelime kartı.
 export default function PlansPage() {
-  const { plans: allPlans, removeWithUndo, myUid, nameOf, members, isStaff } = useData();
+  const { plans: allPlans, removeWithUndo, updateRecord, myUid, nameOf, members, isStaff } = useData();
+  const { profile } = useAuth();
+  const toast = useToast();
+  const by = { name: profile?.name ?? "Kullanıcı" };
   const [who, setWho] = useState("all"); // all | me | uid
   const mine = (p) => (who === "all" ? true : who === "me" ? !assigneesOf(p).length || assigneesOf(p).includes(myUid) : assigneesOf(p).includes(who));
-  const plans = allPlans.filter(mine);
+  // Bitti denen plan listede görünmez, Arşiv'de "Bitti" olarak durur
+  const plans = allPlans.filter((p) => !p.done && mine(p));
   const people = !isStaff && members.length > 0 ? [["all", "Herkes"], ["me", "Benim"], ...members.map((m) => [m.uid, (m.name || "").split(" ")[0]])] : [];
   const pillOf = useWho();
   const { openAdd } = useAdd();
   const now = useNow();
   const today = todayStr();
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
+  const markDone = (p) => {
+    updateRecord("plan", p.id, planDonePatch(), by);
+    navigator.vibrate?.(10);
+    toast("Bitti, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("plan", p.id, planReopenPatch(), by) } });
+  };
 
   // Saati geçmiş planlar listede görünmez (arşive geçer)
   const days = groupByDay(plans, today, true)
@@ -108,7 +122,7 @@ export default function PlansPage() {
 
       {people.length > 0 && <Chips value={who} onChange={setWho} options={people} className="mt-4" />}
 
-      {days.length === 0 && <Empty icon="cal" title="Yaklaşan plan yok" sub="Aşağıdan söyle, yaz ya da + ile ekle. Geçmiş planlar arşivde." />}
+      {days.length === 0 && <Empty icon="cal" title="Yaklaşan plan yok" sub="Aşağıdan söyle, yaz ya da + ile ekle. Biten ve geçmiş planlar arşivde." />}
 
       {parts.map(([title, groups]) => (
         <section key={title}>
@@ -148,7 +162,12 @@ export default function PlansPage() {
                     ].filter(Boolean);
                     return (
                       <div key={p.id} className="overflow-hidden rounded-[1.125rem] shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]">
-                      <SwipeRow actions={[{ label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("plan", p.id) }]}>
+                      <SwipeRow
+                        actions={[
+                          { label: "Bitti", icon: "check", tone: "neutral", onAction: () => markDone(p) },
+                          { label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("plan", p.id) },
+                        ]}
+                      >
                         <button
                           type="button"
                           onClick={() => open(p)}
@@ -187,9 +206,11 @@ export default function PlansPage() {
 
       {days.length > 0 && (
         <Link href="/archive?t=plan" className="mt-6 block text-center text-[0.875rem] font-semibold text-acc active:opacity-70">
-          Geçmiş planlar arşivde ›
+          Biten ve geçmiş planlar arşivde ›
         </Link>
       )}
+
+      <WordCard />
     </main>
   );
 }

@@ -11,6 +11,7 @@ import { useNow } from "@/hooks/useNow";
 import { planState } from "@/lib/agenda";
 import { assigneesOf } from "@/lib/people";
 import { noteReopenPatch, noteStateText } from "@/lib/noteState";
+import { planReopenPatch } from "@/lib/planActions";
 
 const KIND = { plan: "Plan", task: "Görev", note: "Not" };
 const ICON = { plan: "cal", task: "task", note: "note" };
@@ -29,7 +30,7 @@ export default function ArchivePage() {
   );
 }
 
-// Arşiv: tamamlanan görevler, geçmiş planlar ve arşivlenen notlar tek tabloda. Hiçbir kayıt silinmez;
+// Arşiv: tamamlanan görevler, biten ("Bitti") ve geçmiş planlar ve arşivlenen notlar tek tabloda. Hiçbir kayıt silinmez;
 // yalnızca ana listelerden kalkar. Tür süzgeci, arama, Excel'e (CSV) aktarma; satıra dokun → kayıt açılır.
 function Archive() {
   const initial = useSearchParams().get("t") || "all";
@@ -45,8 +46,8 @@ function Archive() {
 
   const rows = [
     ...plans
-      .filter((p) => planState(p, now) === "past")
-      .map((p) => ({ kind: "plan", r: p, date: `${p.endDate || p.date}${p.time ? `T${p.time}` : ""}`, when: `${fmt(p.date)}${p.time ? ` ${p.time}` : ""}`, status: "Geçti", detail: p.place || "" })),
+      .filter((p) => p.done || planState(p, now) === "past")
+      .map((p) => ({ kind: "plan", r: p, date: p.done && p.doneAt ? p.doneAt : `${p.endDate || p.date}${p.time ? `T${p.time}` : ""}`, when: `${fmt(p.date)}${p.time ? ` ${p.time}` : ""}`, status: p.done ? "Bitti" : "Geçti", detail: p.place || "" })),
     ...tasks
       .filter((t) => t.done)
       .map((t) => {
@@ -155,6 +156,11 @@ function Archive() {
                         Yeniden aç
                       </button>
                     )}
+                    {x.kind === "plan" && x.r.done && (
+                      <button type="button" onClick={() => updateRecord("plan", x.r.id, planReopenPatch(), by)} className="text-[0.8125rem] font-semibold text-acc">
+                        Planlara geri al
+                      </button>
+                    )}
                     {x.kind === "note" && (
                       <button type="button" onClick={() => updateRecord("note", x.r.id, noteReopenPatch(), by)} className="text-[0.8125rem] font-semibold text-acc">
                         Notlara geri al
@@ -172,7 +178,7 @@ function Archive() {
             <Icon name="archive" className="size-7" />
           </span>
           <p className="mt-3 max-w-[18rem] text-[0.9375rem] leading-snug text-mut">
-            {q ? `“${q}” bulunamadı.` : "Arşiv boş. Tamamlanan görevler, geçmiş planlar ve “Yapıldı” dediğin ya da arşivlediğin notlar burada toplanır."}
+            {q ? `“${q}” bulunamadı.` : "Arşiv boş. Tamamlanan görevler, biten ve geçmiş planlar ve “Yapıldı” dediğin ya da arşivlediğin notlar burada toplanır."}
           </p>
         </div>
       )}

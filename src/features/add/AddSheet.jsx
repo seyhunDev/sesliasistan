@@ -425,6 +425,7 @@ export function AddSheet({ open, onClose, seed }) {
                 rec={rec}
                 by={by}
                 cancelStart={!!edit.cancel}
+                onDone={onClose}
                 onDelete={removeRecord}
                 onDeleteSeries={
                   rec.seriesId && !isStaff
