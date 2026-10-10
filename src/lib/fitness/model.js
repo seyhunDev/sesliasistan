@@ -371,3 +371,11 @@ export function planOf(plans, date) {
 
 export const EXERCISE_COUNT = EXERCISES.length;
 export { addDays };
+
+// Programın kaçıncı haftası: { n, of } (başlamadıysa n 0, bittiyse n = of + 1)
+export function progWeek(prog, today) {
+  if (!prog?.start || !prog.weeks) return null;
+  const ms = new Date(`${mondayOf(today)}T12:00:00`) - new Date(`${mondayOf(prog.start)}T12:00:00`);
+  const n = Math.floor(Math.round(ms / 864e5) / 7) + 1;
+  return { n: today < prog.start ? 0 : Math.min(n, prog.weeks + 1), of: prog.weeks };
+}
