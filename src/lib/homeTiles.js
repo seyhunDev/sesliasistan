@@ -105,7 +105,45 @@ export function homeActions(o) {
     ]],
     ["Sosyal", [!o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" }, !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" }]],
   ];
-  return groups.map(([title, items]) => ({ title, items: items.filter(Boolean) })).filter((g) => g.items.length);
+  return groups
+    .map(([title, items]) => ({ title, items: items.filter(Boolean).map((a) => ({ ...a, sub: ACTION_SUBS[a.href || a.id] || "" })) }))
+    .filter((g) => g.items.length);
+}
+
+// Tüm sayfalar penceresinde her sayfanın altındaki kısa açıklama (anahtar = href ya da id)
+export const ACTION_SUBS = {
+  "/plans": "Takvim ve yaklaşan planlar",
+  "/notes": "Notlar ve sabitlenenler",
+  meeting: "Konuşmayı kaydet, özet çıkar",
+  "/my-attendance": "Bugün kim geldi",
+  "/birthdays": "Yaklaşan doğum günleri",
+  "/shopping": "Alınacaklar listesi",
+  "/fitness": "Antrenman programın",
+  "/schedule": "Ders programı",
+  "/archive": "Yapılan ve kaldırılanlar",
+  "/athletes": "Sporcu kartları ve veliler",
+  "/athletes/attendance": "Bugün kim geldi",
+  "/athletes/races": "Yarış, evrak ve bütçe",
+  "/training": "Antrenman günlüğü",
+  "/dues": "Kim ödedi, kim ödemedi",
+  "/inventory": "Tekne, malzeme, demirbaş",
+  "/wind": "Saat saat rüzgâr haritası",
+  "/receipts": "Harcamalar ve ödenecekler",
+  "/mail": "Banka ve gelen ödemeler",
+  "/people/staff": "Çalışanlar, aile, sporcular",
+  "/posts": "Gönderi hazırla",
+  "/events": "Kamp, gezi, organizasyon",
+};
+
+// Tüm sayfalar › arama: adında ya da açıklamasında yazılan her kelime geçen sayfalar (Türkçe harfsiz, büyük/küçük fark etmez)
+const fold = (t) => (t || "").toLocaleLowerCase("tr").replace(/[çğıöşüâî]/g, (c) => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i" })[c]);
+export function findActions(groups, q) {
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return groups.flatMap((g) => g.items.map((a) => ({ ...a, group: g.title }))).filter((a) => {
+    const hay = fold(`${a.label} ${a.sub}`);
+    return words.every((w) => hay.includes(w));
+  });
 }
 
 // Ana sayfa › Kısayollar: İşlemler'in hepsi yerine en çok SHORTCUT_MAX düğme; kalanlar "Tümü" penceresinde (gruplu).
