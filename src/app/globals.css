@@ -79,6 +79,7 @@ html { height: 100%; color-scheme: light; }
 html[data-size="l"] { font-size: 112.5%; }
 html[data-size="xl"] { font-size: 125%; }
 body {
+  overflow-x: clip; /* kenardan kaydırarak geride sayfa yana kayarken yatay kaydırma çıkmasın */
   min-height: 100%;
   /* Sayfa kısa olsa da en az ekran boyu (Mesajlar listesindeki gibi). Ana ekrana eklenen uygulamada iPhone, sayfa ekrandan
      kısaysa alttaki sabit kubbeyi (asistan + sekmeler) yukarıda bırakıp altta boşluk açıyordu. */

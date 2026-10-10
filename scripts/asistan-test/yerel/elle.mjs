@@ -1195,7 +1195,8 @@ const backTaps = async () => {
   await wait(0);
   const loc = { pathname: "/inventory", search: "", href: "https://x.app/inventory" };
   const store = {};
-  globalThis.window = { location: loc, history: { pushState() {}, replaceState() {} }, addEventListener() {} };
+  const on = {};
+  globalThis.window = { location: loc, history: { pushState() {}, replaceState() {} }, addEventListener: (k, f) => (on[k] = f) };
   globalThis.sessionStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) };
   try {
     NAV.installTrail();
@@ -1209,7 +1210,19 @@ const backTaps = async () => {
     const once = calls.join() === "back";
     await wait(700); // adres değişmedi: geçmiş boştu, üst sayfaya gidilir
     const fell = calls.join() === "back,replace /inventory";
-    return (once && fell && !NAV.canGoBack()) || calls.join();
+    const firstOk = once && fell && !NAV.canGoBack();
+    // Geri gerçekleşince (popstate) kilit hemen kalkar: dönülen sayfada hemen yeniden geri basılabilir
+    calls.length = 0;
+    window.history.pushState(null, "", "/inventory/k2");
+    window.history.pushState(null, "", "/inventory/k3");
+    loc.pathname = "/inventory/k3";
+    NAV.goBack(router, "/inventory");
+    loc.pathname = "/inventory/k2";
+    on.popstate?.();
+    NAV.goBack(router, "/inventory");
+    const again = calls.join() === "back,back";
+    await wait(700);
+    return (firstOk && again) || calls.join();
   } finally {
     delete globalThis.window;
     delete globalThis.sessionStorage;
@@ -1217,7 +1230,16 @@ const backTaps = async () => {
   }
 };
 group("Geri düğmesi dokunuşu")([
-  ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa", backTaps)],
+  ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa; geri olunca hemen yeniden basılır", backTaps)],
+]);
+
+// Kenardan kaydırarak geri (swipeBack.js): yalnız sol kenardan, yana çekişte; yeterince çekilince geri
+const SW = await import("@/lib/swipeBack");
+group("Kenardan kaydırarak geri")([
+  ["kenardan başlar", F("sol kenarda evet, ortada hayır", () => SW.edgeStart(10, "/plans") && !SW.edgeStart(120, "/plans"))],
+  ["alt sekme sayfası", F("ana sayfa, takvim, mesajlar, görevlerde çalışmaz", () => !SW.edgeStart(5, "/") && !SW.edgeStart(5, "/messages"))],
+  ["yön", F("aşağı kaydırma kaydırmadır, sağa çekiş geridir", () => SW.swipeAxis(3, 30) === "scroll" && SW.swipeAxis(25, 4) === "swipe" && SW.swipeAxis(4, 3) === "")],
+  ["bırakınca", F("ekranın üçte biri ya da hızlı çekiş geri; az çekiş geri dönmez", () => SW.swipeDone(150, 400, 430) && SW.swipeDone(60, 80, 430) && !SW.swipeDone(50, 600, 430))],
 ]);
 
 // Sayfa geçişinde kaydırma (navProgress.js): yeni sayfa en üstten, geri dönülen sayfa yerinde
