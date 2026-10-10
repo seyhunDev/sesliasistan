@@ -31,7 +31,6 @@ const Q = ({ title, sub }) => (
     {sub && <p className="mt-1 text-[0.875rem] text-mut">{sub}</p>}
   </div>
 );
-const H = ({ children }) => <p className="mb-2 mt-5 text-[0.75rem] font-bold tracking-[.08em] text-mut">{children}</p>;
 const pill = (on) => `h-10 rounded-full px-4 text-[0.875rem] font-semibold transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
 
 // Büyük seçenek kartı: simge + başlık + açıklama, seçilince yeşil çerçeve ve tik
@@ -265,11 +264,16 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
   const last = step === STEPS.length - 1;
   const canNext = step !== 2 || sorted.length > 0;
   const startText = start === todayStr() ? "Bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-  const row = (label, value, to) => (
-    <button type="button" onClick={() => setStep(to)} className="flex w-full items-center gap-3 py-3 text-left active:opacity-70">
-      <span className="w-20 shrink-0 text-[0.8125rem] text-mut">{label}</span>
-      <b className="min-w-0 flex-1 text-[0.9375rem] font-semibold">{value}</b>
-      <Icon name="edit" className="size-4 text-mut" />
+  const row = (icon, label, value, to) => (
+    <button type="button" onClick={() => setStep(to)} className="flex w-full items-center gap-3 py-2.5 text-left">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+        <Icon name={icon} className="size-[1.125rem]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <small className="block text-[0.75rem] text-mut">{label}</small>
+        <b className="block truncate text-[0.9375rem] font-semibold">{value}</b>
+      </span>
+      <Icon name="chev" className="size-4 shrink-0 text-mut" />
     </button>
   );
 
@@ -308,69 +312,62 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
       {step === 2 && (
         <>
           <Q title="Haftan nasıl?" sub="Seçtiğin günler ve saat takvimine plan olarak eklenir." />
-          <div className="flex items-baseline justify-between">
-            <H>HANGİ GÜNLER</H>
-            <span className="text-[0.8125rem] font-semibold text-acc">{sorted.length ? `Haftada ${sorted.length} gün` : "Gün seç"}</span>
-          </div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {DOWS.slice(1).map((d, i) => {
-              const on = days.includes(i + 1);
-              return (
-                <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]" : "bg-bg text-mut"}`}>
-                  {d}
-                </button>
-              );
-            })}
-          </div>
-          <H>SAAT</H>
-          <div className="grid grid-cols-3 gap-2">
-            {SLOTS.map((s) => (
-              <Option key={s[0]} tall on={slot === s[0]} icon={s[2]} title={s[1]} sub={s[3]} onClick={() => pickSlot(s)} />
-            ))}
-          </div>
-          <label className="mt-2 flex h-12 items-center justify-between rounded-2xl bg-bg px-4">
-            <span className="text-[0.875rem] text-mut">Başka saat</span>
-            <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[1rem] font-semibold outline-none" />
-          </label>
-          <H>HER ANTRENMAN</H>
-          <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
-          <H>PROGRAM SÜRESİ</H>
-          <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
-          <label className="mt-2 flex h-12 items-center justify-between rounded-2xl bg-bg px-4">
-            <span className="text-[0.875rem] text-mut">Başlangıç</span>
-            <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[1rem] font-semibold outline-none" />
-          </label>
+          <Box title="Günler" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
+            <div className="grid grid-cols-7 gap-1.5">
+              {DOWS.slice(1).map((d, i) => {
+                const on = days.includes(i + 1);
+                return (
+                  <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </Box>
+          <Box title="Saat" note={time}>
+            <div className="grid grid-cols-3 gap-2">
+              {SLOTS.map(([k, l, ic, t]) => {
+                const on = slot === k;
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => pickSlot([k, l, ic, t])} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg"}`}>
+                    <Icon name={ic} className={`size-5 ${on ? "" : "text-acc"}`} />
+                    <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
+                    <small className={`text-[0.6875rem] ${on ? "text-white/80" : "text-mut"}`}>{t}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <label className={`mt-2 flex h-11 items-center justify-between rounded-xl border-2 px-3 ${slot ? "border-transparent bg-bg" : "border-acc bg-acc/[.07]"}`}>
+              <span className="text-[0.875rem] text-mut">Başka saat</span>
+              <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+            </label>
+          </Box>
+          <Box title="Süre">
+            <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Her antrenman</small>
+            <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
+            <small className="mb-1.5 mt-3 block text-[0.75rem] font-semibold text-mut">Program</small>
+            <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
+            <label className="mt-3 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+              <span className="text-[0.875rem] text-mut">Başlangıç</span>
+              <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+            </label>
+          </Box>
         </>
       )}
 
       {step === 3 && (
         <>
-          <Q title="Hazır" sub="Kontrol et; yapay zeka programını birkaç saniyede hazırlar, sonra istediğin gibi düzenlersin." />
-          <section className="rounded-[1.5rem] bg-deep px-5 py-4 text-white">
-            <span className="flex items-center gap-2 text-[0.75rem] font-bold tracking-[.08em] text-white/70">
-              <Icon name={GOAL_UI[f.goal]?.[0] || "dumbbell"} className="size-4" />
-              {labelOf(GOALS, f.goal).toLocaleUpperCase("tr")}
-            </span>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {[
-                [sorted.length, "gün / hafta"],
-                [min, "dakika"],
-                [weeks, "hafta"],
-              ].map(([n, l]) => (
-                <div key={l} className="rounded-xl bg-white/10 px-3 py-2">
-                  <b className="block text-[1.5rem] font-bold leading-none">{n}</b>
-                  <small className="mt-1 block text-[0.75rem] text-white/75">{l}</small>
-                </div>
-              ))}
+          <Q title="Her şey hazır" sub="Kontrol et, değiştirmek istediğine dokun." />
+          <Box title="Programın">
+            <div className="-my-1 divide-y divide-line">
+              {row(GOAL_UI[f.goal]?.[0] || "dumbbell", "Hedef", labelOf(GOALS, f.goal), 0)}
+              {row("trend", "Seviye", labelOf(LEVELS, f.level), 1)}
+              {row(PLACE_UI[f.place] || "home", "Yer", f.place !== "salon" && f.equip?.length ? `${labelOf(PLACES, f.place)} · ${f.equip.map((k) => EQUIP[k]).join(", ")}` : labelOf(PLACES, f.place), 1)}
+              {row("cal", "Günler", `${sorted.map((d) => DOWS[d]).join(", ")} · ${time}`, 2)}
+              {row("clock", "Süre", `${min} dk · ${weeks} hafta · ${startText}`, 2)}
             </div>
-            <p className="mt-3 text-[0.875rem] text-white/85">{sorted.map((d) => DOWS[d]).join(", ")} · {time}</p>
-          </section>
-          <div className="mt-3 divide-y divide-line rounded-2xl bg-bg px-4">
-            {row("Hedef", labelOf(GOALS, f.goal), 0)}
-            {row("Seviye", labelOf(LEVELS, f.level), 1)}
-            {row("Yer", f.place !== "salon" && f.equip?.length ? `${labelOf(PLACES, f.place)} · ${f.equip.map((k) => EQUIP[k]).join(", ")}` : labelOf(PLACES, f.place), 1)}
-            {row("Başlangıç", startText, 2)}
-          </div>
+          </Box>
+          <p className="mt-3 px-1 text-[0.8125rem] leading-snug text-mut">Yapay zeka programını birkaç saniyede hazırlar, sonra istediğin gibi düzenlersin.</p>
         </>
       )}
 
