@@ -63,6 +63,20 @@ let popped = false;
 export const navPopped = () => {
   popped = true;
 };
+
+// Sayfa geçişinin yönü (app/(app)/template.jsx): "back" (geri), "tab" (alt sekmeler arası), "fwd" (ileri), "" (ilk açılış)
+const TAB_ROOTS = ["/", "/calendar", "/messages", "/tasks"];
+let lastPath = "";
+let lastDir = "";
+export function pageDir() {
+  if (typeof window === "undefined") return "";
+  const path = window.location.pathname;
+  if (path === lastPath) return lastDir; // aynı geçişte ikinci çağrı (React geliştirme kipi) aynı yönü alır
+  const prev = lastPath;
+  lastPath = path;
+  lastDir = !prev ? "" : popped ? "back" : TAB_ROOTS.includes(prev) && TAB_ROOTS.includes(path) ? "tab" : "fwd";
+  return lastDir;
+}
 export function navArrived() {
   const back = popped;
   popped = false;

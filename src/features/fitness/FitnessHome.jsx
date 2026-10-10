@@ -14,7 +14,7 @@ import { todayStr } from "@/lib/utils/format";
 import {
   STATUS, addDays, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram } from "./fitnessData";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
 import { BodyStep, FitIntro } from "./FitIntro";
@@ -36,7 +36,7 @@ export function FitnessHome() {
   const orgId = profile.orgId;
   const uid = profile.uid;
   const today = todayStr();
-  const [list, setList] = useState(null);
+  const [list, setList] = useState(() => peekPrograms(orgId));
   // Asistanın hazırladığı ve sayfa açılmadan önce bekleyen program: önizlemede açılır
   const [edit, setEdit] = useState(() => {
     const p = peekProgram();
@@ -188,6 +188,22 @@ export function FitnessHome() {
         <Tabs tab={tab} setTab={setTab} />
         <FoodView orgId={orgId} uid={uid} fit={fitProf} fitW={profile.fitW} trainDays={prog?.days?.length || 3} onBody={() => setBodyOpen(true)} />
         {bodySheet}
+      </main>
+    );
+  }
+
+  // Program listesi ilk kez okunuyor ve takvimde fitness antrenmanı yok: tanıtım mı program mı belli değil,
+  // ikisinden birini çizip sonra değiştirmek yerine aynı yerde sakin bir iskelet (zıplama olmasın)
+  if (!list && !all.length) {
+    return (
+      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+        <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
+        <Tabs tab={tab} setTab={setTab} />
+        <div aria-hidden="true" className="grid gap-3">
+          <div className="shimmer h-36 rounded-2xl" />
+          <div className="shimmer h-20 rounded-2xl" />
+          <div className="shimmer h-14 rounded-2xl" />
+        </div>
       </main>
     );
   }
