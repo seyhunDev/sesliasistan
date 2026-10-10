@@ -1,0 +1,44 @@
+# Netlify'a yayın: derleme GitHub'da yapılır, Netlify'a hazır dosyalar gider (Netlify'ın derleme dakikası harcanmaz).
+# Mac'teki `netlify deploy --build --prod` ile aynı. Ortam değişkenleri Netlify'daki site ayarlarından gelir.
+# Gerekenler (Settings › Secrets and variables › Actions): NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID. Yoksa adım atlanır.
+name: Netlify yayın
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "mobil/**"
+      - "notlar/**"
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: netlify-prod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+      - name: Gizli bilgiler var mı
+        id: ok
+        run: |
+          if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then echo "go=1" >> "$GITHUB_OUTPUT"; else echo "NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID yok: yayın atlandı"; fi
+      - uses: actions/checkout@v4
+        if: steps.ok.outputs.go == '1'
+      - uses: actions/setup-node@v4
+        if: steps.ok.outputs.go == '1'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Paketler
+        if: steps.ok.outputs.go == '1'
+        run: npm install --no-audit --no-fund
+      - name: Derle ve yayınla
+        if: steps.ok.outputs.go == '1'
+        env:
+          COMMIT_REF: ${{ github.sha }}
+        run: npx --yes netlify-cli@latest deploy --build --prod --message "GitHub ${GITHUB_SHA::7}"
