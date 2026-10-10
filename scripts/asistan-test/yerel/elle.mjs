@@ -553,6 +553,13 @@ group("Ana sayfa kartları")([
     const today = "2026-10-10";
     return HT.clubTraining([], today) === null && HT.clubTraining([{ cat: "Antrenman", date: "2026-10-01", log: { wind: 10 } }], today)?.big === "1";
   })],
+  ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
+    const open = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-09" }, { id: "r2", name: "Çeşme Ligi", startDate: "2026-10-20" }];
+    const t = "2026-10-10";
+    return HT.raceForPlan({ cat: "Yarış", title: "Çeşme Ligi" }, open, t) === "r2" && HT.raceForPlan({ cat: "Yarış", title: "Yarış günü" }, open, t) === "r1"
+      && HT.raceForPlan({ cat: "Antrenman", title: "Foça Kupası" }, open, t) === null && HT.raceForPlan({ cat: "Yarış", title: "X" }, [], t) === null
+      && HT.clubRace({ id: "r2", name: "Çeşme", when: "10 gün", left: 0 }).id === "r2";
+  })],
   ["yarış", F("5 gün kaldı · Foça yarışı · 2 iş eksik", () => {
     const a = HT.raceTile({ name: "Foça", when: "5 gün", left: 2 }, 1);
     const b = HT.raceTile({ name: "Çeşme", when: "yarın", left: 0 }, 1);

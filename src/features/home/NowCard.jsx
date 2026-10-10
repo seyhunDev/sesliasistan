@@ -1,20 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRaceHome } from "@/features/athletes/raceHome";
 import { Icon } from "@/components/ui/Icon";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { nowPlans } from "@/lib/homeTiles";
+import { nowPlans, raceForPlan } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { addDay } from "@/lib/summary";
 import { todayStr } from "@/lib/utils/format";
 
 // Ana sayfa › ŞU AN: tek büyük koyu yeşil kart. Bugünün süren ya da sıradaki planı (saat, yer; antrenman/yarışta o saatlerin
 // en sert rüzgârı, eşik geçilirse kırmızımsı), altında "Sonra" ile bir sonraki plan. Bugün kalan plan yoksa yarının ilki.
-// Hiç plan yoksa "Plan yok · Plan ekle". Karta dokununca plan açılır; sağ üstte Planlar sayfası. Görevler bu kartta değil,
+// Hiç plan yoksa "Plan yok · Plan ekle". Karta dokununca plan açılır (Yarış planında o yarışın sayfası, raceForPlan); sağ üstte Planlar sayfası. Görevler bu kartta değil,
 // kartın altındaki "N şey seni bekliyor" şeridinde (dokununca zil ile aynı pencere; yalnız bekleyen varsa).
 // weather: useWeather() sonucu, inbox: useInbox(), onInbox: pencereyi açar (OwnerHome).
 export function NowCard({ weather, inbox, onInbox }) {
@@ -22,11 +24,18 @@ export function NowCard({ weather, inbox, onInbox }) {
   const { plans } = useData();
   const { openAdd } = useAdd();
   const now = useNow();
+  const router = useRouter();
+  const races = useRaceHome();
   if (!profile) return null;
   const today = todayStr();
   const tomorrow = addDay(today);
   const { main, after } = nowPlans(plans, today, tomorrow, now);
-  const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
+  // Yarış planı (süren ya da adı aynı yarış) yarışın sayfasını açar, diğer planlar plan ekranını
+  const open = (p) => {
+    const race = raceForPlan(p, races.open, today);
+    if (race) router.push(`/athletes/races/${race}`);
+    else openAdd({ edit: { kind: "plan", id: p.id } });
+  };
   const hours = dayHours(weather?.w, today)?.map(({ hh, wind, gust }) => ({ hh, wind, gust })) || [];
   const p = main?.p;
   const wx = p && main.when !== "tomorrow" && WIND_CATS.includes(p.cat || p.category) ? planWind(hours, p) : null;

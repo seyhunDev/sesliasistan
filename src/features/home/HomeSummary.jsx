@@ -139,11 +139,11 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
   );
 }
 
-// Sıradaki yarış: tam genişlik kart; solda bayrak, ortada ad ve "tarih · sporcu · eksik iş", sağda büyük kalan gün
+// Sıradaki yarış: tam genişlik kart, dokununca o yarışın sayfası (eski önbellekte id yoksa Yarışlar); solda bayrak, ortada ad ve "tarih · sporcu · eksik iş", sağda büyük kalan gün
 function RaceCard({ r, fade }) {
   return (
     <Link
-      href="/athletes/races"
+      href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"}
       aria-label={`Sıradaki yarış: ${r.title}, ${r.days != null ? `${r.days} gün kaldı` : r.when}`}
       className={`flex items-center gap-3.5 py-3.5 pl-4 pr-5 ${CARD} ${fade ? "fade-in" : ""}`}
     >
