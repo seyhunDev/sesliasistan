@@ -10,7 +10,8 @@ export const runtime = "nodejs";
 
 // Tek cümlede birden çok iş → sıralı görev listesi (lib/taskPlan.js). Kaydetmez; telefon işleri sırayla kendi akışlarında yapar.
 const SYSTEM = `Sen bir yelken kulübü uygulamasının sesli asistanında görev planlayıcısısın. Kullanıcı tek seferde birden çok iş söyler (ses tanıma metni olabilir, noktalama ve yazım bozuk olabilir).
-Ses tanıma kelimeleri bozabilir: anlamı bağlamdan çıkar ("yarışı oluru" = yarışı oluştur, "hazirla" = hazırla, "afiş" = Instagram gönderisi/görseli, yanlış yazılmış kişi adı olduğu gibi kalır). Yanlış duyulmuş bir fiil yüzünden bir işi atlama.
+Ses tanıma kelimeleri bozabilir: anlamı bağlamdan çıkar ("yarışı oluru" = yarışı oluştur, "hazirla" = hazırla, "afiş" = Instagram gönderisi/görseli). Yanlış duyulmuş bir fiil yüzünden bir işi atlama.
+Metni telefonun kendi ses tanıması yazdı; kişi adları sık bozulur ("Samver" → "Samet", "San ver"). "Bilinen adlar" verildiyse: söylenen ad listedeki bir ada sesçe benziyorsa (bitişik/ayrık yazım, harf farkı) say içinde listedeki doğru adı yaz ve bu düzeltmeyi fixes içine ekle: heard = metinde yazılan hali (eksiz), meant = listedeki ad (eksiz). Emin değilsen adı olduğu gibi bırak, fixes'e ekleme. Ad dışında kelime düzeltmelerini fixes'e koyma. "Bilinen düzeltmeler" verildiyse onları uygula.
 Söyleneni uygulamanın sırayla, kullanıcıya dokunmadan yapabileceği işlere böl ve bir iş düzeni (sıra) hazırla. Sırayı söylenme sırasına göre değil, uygulama için en kolay ve doğru olana göre kur:
 1) Başka işlerin dayandığı kayıtlar önce: yarış (race), sporcu (athlete). Örn. bir yarışın görseli ya da yarışa sporcu eklemek, yarış oluşturulduktan sonra.
 2) Sonra bulunduğu sayfada hızlıca biten işler: yoklama, antrenman günlüğü, nakit ödeme, aidat, fatura, envanter, alışveriş, etkinlik.
@@ -38,9 +39,18 @@ const SCHEMA = {
       type: "array",
       items: { type: "object", properties: { kind: { type: "string", enum: Object.keys(PLAN_KINDS) }, say: { type: "string" }, label: { type: "string" }, from: { type: "string" } }, required: ["kind", "say", "label", "from"] },
     },
+    fixes: { type: "array", items: { type: "object", properties: { heard: { type: "string" }, meant: { type: "string" } }, required: ["heard", "meant"] } },
   },
   required: ["tasks"],
 };
+
+const line = (v) => String(v ?? "").replace(/[\n\r"]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+// Ses tanıma ipuçları: bilinen adlar (sporcu, çalışan, kişi) ve bu cihazın öğrendiği düzeltmeler
+function hintBlock(body) {
+  const names = [...new Set((Array.isArray(body?.names) ? body.names : []).map(line).filter(Boolean))].slice(0, 150);
+  const fixes = (Array.isArray(body?.fixes) ? body.fixes : []).map((f) => [line(f?.heard), line(f?.meant)]).filter(([a, b]) => a && b).slice(0, 40);
+  return [names.length && `Bilinen adlar: ${names.join(", ")}`, fixes.length && `Bilinen düzeltmeler: ${fixes.map(([a, b]) => `"${a}" → "${b}"`).join(", ")}`].filter(Boolean).join("\n");
+}
 
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 
@@ -61,13 +71,15 @@ async function handle(request) {
   const history = historyBlock(body?.history);
   const draft = draftBlock(body?.draft);
   const race = String(body?.race ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const hints = hintBlock(body);
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
-    return NextResponse.json({ tasks, cut: planCut(raw) });
+    const fixes = (Array.isArray(raw?.fixes) ? raw.fixes : []).map((f) => ({ heard: line(f?.heard), meant: line(f?.meant) })).filter((f) => f.heard && f.meant).slice(0, 10);
+    return NextResponse.json({ tasks, cut: planCut(raw), fixes });
   } catch (e) {
     logAiError("tasks", "gemini", e);
     return bad("Görev listesi çıkarılamadı.", e.status === 429 ? 429 : 502);

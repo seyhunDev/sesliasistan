@@ -1,5 +1,6 @@
 "use client";
 
+import { applyFixes, learnFixes, loadFixes } from "@/lib/sttFixes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
@@ -296,7 +297,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     names: sttNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
-      const tx = fixNames(raw, staffNames); // "san ver" → "Sanver"
+      const tx = applyFixes(fixNames(raw, staffNames), loadFixes()); // "san ver" → "Sanver"; yapay zekanın önceki düzeltmeleri (sttFixes)
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx));
       else if (isEnd(tx)) finish(); // "kapat", "tamam kapat": bekleyen istekle birleşmez, sessizce kapanır
       else if (inflight.current) {
@@ -999,9 +1000,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   async function askTasks(s, fresh) {
     const history = historyFor([...pastTurns(), ...(fresh ? [] : turns)]);
     const draft = draftFor(msgDraft.current || (fresh && pastOn() ? past.current.msgDraft : null));
+    // Ses tanıma ipuçları: bilinen adlar ve öğrenilen düzeltmeler; yapay zeka düzelttiği adları geri verir, saklanır
+    const names = [...new Set([...staffNames, ...contacts.map((c) => c.name), ...athleteNames()])].slice(0, 150);
     try {
-      const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current), history, ...(draft ? { draft } : {}) }) });
+      const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current), history, names, fixes: loadFixes().slice(0, 40), ...(draft ? { draft } : {}) }) });
       const d = await res.json().catch(() => ({}));
+      if (res.ok) learnFixes(d.fixes, names);
       planCutN.current = res.ok && d.cut > 0 ? d.cut : 0;
       return res.ok && Array.isArray(d.tasks) ? d.tasks : null;
     } catch {
