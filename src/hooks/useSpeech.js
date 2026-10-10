@@ -6,7 +6,7 @@ import { isIOS, pickProvider } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
-import { speechLive, speechMark } from "@/lib/assistTiming";
+import { speechLive, speechLiveTry, speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 
@@ -74,6 +74,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
+    try { s.preCtx?.close(); } catch {}
+    s.preCtx = null;
     if (s.analyser) setMeter(null, s.analyser);
     s.analyser = null;
     if (s.micOn) {
@@ -296,8 +298,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
       if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
       const t0 = Date.now();
+      speechLiveTry("pcm");
       const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
+      if (!data.text) speechLiveTry("", res.ok ? data.why || "boş" : `hata ${res.status}`);
       if (s.sid !== sid || s.status === "idle") return;
       if (res.ok && data.text) {
         speechLive(Date.now() - t0, data.provider); // süre kaydı: canlı yazının gecikmesi
@@ -319,14 +323,20 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     try {
       const blob = new Blob(s.chunks, { type: s.mrType || "audio/mp4" });
       if (blob.size < 3000) return;
+      // WAV'a çevrilir: Gemini m4a/webm parçayı her zaman kabul etmiyor (son çeviri de WAV gider)
+      const wav = await toWav16k(blob).catch(() => null);
+      if (s.sid !== sid || s.status !== "listening") return;
       const fd = new FormData();
-      fd.append("audio", blob, `parca.${(s.mrType || "").includes("mp4") ? "m4a" : "webm"}`);
+      if (wav) fd.append("audio", wav, "parca.wav");
+      else fd.append("audio", blob, `parca.${(s.mrType || "").includes("mp4") ? "m4a" : "webm"}`);
       fd.append("partial", "1");
       if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
       if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
       const t0 = Date.now();
+      speechLiveTry("whole");
       const res = await authFetch("/api/transcribe", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({}));
+      if (!data.text) speechLiveTry("", res.ok ? data.why || "boş" : `hata ${res.status}`);
       if (s.sid !== sid || s.status !== "listening" || s.pcmLen) return;
       if (res.ok && data.text) {
         speechLive(Date.now() - t0, data.provider);
@@ -375,7 +385,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     s.stream = stream;
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
+      // Dokunuş anında açılan ses motoru (start): iPhone'da dokunuştan sonra (izin beklenince) açılan motor askıda kalıyor,
+      // ham ses hiç toplanmıyor ve dinlerken yazı gelmiyordu
+      const ctx = s.preCtx || new AC();
+      s.preCtx = null;
       ctx.resume?.().catch(() => {}); // iPhone'da askıda başlayabilir: seviye ölçümü için uyandır
       const an = ctx.createAnalyser();
       an.fftSize = 2048; // ~45 ms'lik pencere: tek bir an değil, hece boyu ölçülür
@@ -529,6 +542,17 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, chunks: null, mrType: "", proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
     });
+    // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
+    if (kind === "server") {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        try { s.preCtx?.close(); } catch {}
+        s.preCtx = AC ? new AC() : null;
+        s.preCtx?.resume?.().catch(() => {});
+      } catch {
+        s.preCtx = null;
+      }
+    }
     setFinalText("");
     setInterim("");
     setLevel(0);
