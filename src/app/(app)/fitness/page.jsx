@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { FitnessHome } from "@/features/fitness/FitnessHome";
@@ -14,5 +14,9 @@ export default function FitnessPage() {
     if (profile && !owner) router.replace("/");
   }, [profile, owner, router]);
   if (!owner || !profile?.orgId) return null;
-  return <FitnessHome />;
+  return (
+    <Suspense fallback={null}>
+      <FitnessHome />
+    </Suspense>
+  );
 }

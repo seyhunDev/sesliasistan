@@ -19,6 +19,7 @@ export const AI_LABELS = {
   "training-log": "Antrenman günlüğü",
   fitness: "Fitness",
   "fitness-intro": "Fitness tanıtım kartları",
+  food: "Beslenme (yemek okuma)",
   "bank-analyze": "Banka Excel incelemesi",
   "post-caption": "Instagram yazısı",
   person: "Kişi ekleme",

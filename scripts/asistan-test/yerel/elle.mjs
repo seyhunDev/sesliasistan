@@ -1402,3 +1402,39 @@ group("Fitness")([
       FC.forecast("kilo", { height: 175, weight: 60 }).then === "Kilon sağlıklı";
   })],
 ]);
+
+// Beslenme (lib/fitness/food.js): hedef, su/kilo/özet sözleri, yemek cümlesi, kilo eğilimi, gün temizliği
+const FD = await import("@/lib/fitness/food");
+group("Beslenme")([
+  ["günlük hedef", F("82 kg 178 cm 40 yaş erkek kilo vermek: 2070 kcal, 148 g protein, 11 bardak; boy yoksa yok", () => {
+    const t = FD.targets({ weight: 82, height: 178, age: 40, sex: "e", goal: "kilo" }, 3);
+    return t.kcal === 2070 && t.p === 148 && t.water === 11 && t.c > 50 && FD.targets({ weight: 82 }) === null;
+  })],
+  ["kadında alt sınır", F("çok düşük kalori 1300'ün altına inmez", () => FD.targets({ weight: 40, height: 140, age: 70, sex: "k", goal: "kilo" }, 0).kcal === 1300)],
+  ["su sözleri", F("2 bardak, yarım litre, 1,5 litre, bir şişe, sade 'su içtim'", () =>
+    FD.foodLocal("2 bardak su içtim")?.n === 2 && FD.foodLocal("yarım litre su içtim")?.n === 2 && FD.foodLocal("1,5 litre su içtim")?.n === 6 && FD.foodLocal("bir şişe su içtim")?.n === 2 && FD.foodLocal("su içtim")?.n === 1)],
+  ["kilo sözleri", F("kilom 82, tartıldım 81,5, 80 kilo geldim; 'kilo vermek istiyorum' değil", () =>
+    FD.foodLocal("kilom 82")?.kg === 82 && FD.foodLocal("tartıldım 81,5")?.kg === 81.5 && FD.foodLocal("80 kilo geldim")?.kg === 80 && !FD.weightSaid("5 kilo vermek istiyorum"))],
+  ["gün özeti sorusu", F("bugün kaç kalori / protein aldım", () => FD.foodLocal("bugün kaç kalori aldım")?.op === "stats" && FD.foodLocal("bugün kaç protein aldım")?.op === "stats")],
+  ["yemek cümlesi", F("yedim/içtim beslenme; yemek planlamak, mesaj, alışveriş değil; yemek + su yapay zekaya", () =>
+    FD.wantsFood("öğlen tavuk pilav ve ayran içtim") && FD.wantsFood("kahvaltıda 2 yumurta yedim") && !FD.wantsFood("yarın akşam yemeği planla") &&
+    !FD.wantsFood("Ali'ye mesaj at öğlen yemeği yedin mi") && !FD.wantsFood("listeye ayran ekle") && FD.foodLocal("tavuk yedim, 2 bardak su içtim") === null)],
+  ["Beslenme sekmesinde", F("öğün + yemek adı yeterli", () => FD.wantsFood("öğle mercimek çorbası", true) && !FD.wantsFood("öğle mercimek çorbası"))],
+  ["öğün", F("saate göre ve cümleden", () => FD.slotOf("08:30") === "kahvalti" && FD.slotOf("13:00") === "ogle" && FD.slotOf("20:00") === "aksam" && FD.slotOf("16:30") === "ara" && FD.slotFromText("akşam köfte yedim") === "aksam")],
+  ["temizlik ve toplam", F("adsız yemek atılır, kalori sınırı, toplam", () => {
+    const d = FD.cleanDay({ meals: [{ name: "Pilav", kcal: "520", p: "12,4" }, { name: "" }, { name: "Ayran", kcal: 99999 }], water: 3 });
+    const t = FD.totals(d.meals);
+    return d.meals.length === 2 && d.meals[1].kcal === 4000 && t.kcal === 4520 && t.p === 12.4 && d.water === 3;
+  })],
+  ["kilo eğilimi", F("aynı gün sonuncusu kalır; 30 günlük fark", () => {
+    const w = FD.addWeight([{ d: "2026-09-12", kg: 84 }, { d: "2026-10-10", kg: 83 }], "2026-10-10", 82.4);
+    const t = FD.weightTrend(w, "2026-10-10");
+    return w.length === 2 && t.last.kg === 82.4 && t.diff === -1.6;
+  })],
+  ["hafta ve sık yenenler", F("7 gün, ay sınırını aşar; en sık yenen önce", () => {
+    const months = { "2026-09": { days: { 30: { meals: [{ name: "Pilav", kcal: 500 }] } } }, "2026-10": { days: { 1: { meals: [{ name: "Pilav", kcal: 500 }, { name: "Elma", kcal: 80 }] } } } };
+    const w = FD.weekKcal(months, "2026-10-03");
+    return w.length === 7 && w[3].kcal === 500 && w[4].kcal === 580 && FD.frequent(months)[0].name === "Pilav";
+  })],
+  ["özet cümlesi", F("kalan kalori ve su", () => FD.dayLine({ meals: [{ kcal: 1500, p: 80 }], water: 4 }, { kcal: 2000, p: 140 }) === "Bugün 1500 kalori (hedef 2000, 500 kaldı), 80 g protein / 140, 4 bardak su.")],
+]);

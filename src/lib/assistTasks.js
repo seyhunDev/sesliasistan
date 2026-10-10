@@ -50,6 +50,7 @@ export const TASKS = [
   { id: "fitProgram", group: "Fitness", name: "Fitness programı hazırlama ya da değiştirme (önizlemede açılır)", say: "pazartesi çarşamba cuma sabah 7'de 4 haftalık fitness programı hazırla; çarşambayı bacak günü yap", who: "ana", by: "yz-ayrı", doing: "Tamam, programı hazırlıyorum.", work: "Fitness isteğin hazırlanıyor" },
   { id: "fitLog", group: "Fitness", name: "Yapılan fitness antrenmanını yazma (set, tekrar, kilo, koşu)", say: "squat 3 set 10 tekrar 60 kilo yaptım; bugün 30 dakika koştum", who: "ana", by: "yz-ayrı", doing: "Tamam, antrenmanı yazıyorum.", work: "Antrenman yazılıyor" },
   { id: "fitPlans", group: "Fitness", name: "Fitness programını planlara ekleme ya da takvimden kaldırma", say: "fitness programını planlara ekle", who: "ana", by: "yerel" },
+  { id: "foodLog", group: "Fitness", name: "Beslenme: yemek, su, kilo yazma; bugün kaç kalori", say: "öğlen tavuk pilav ve ayran içtim; 2 bardak su içtim; kilom 82", who: "ana", by: "yz-ayrı", doing: "Tamam, yazıyorum.", work: "Yemekler okunuyor" },
   { id: "fitDone", group: "Fitness", name: "Bugünkü fitness antrenmanı yapıldı / atlandı; bu hafta kaç antrenman", say: "bugünkü fitness antrenmanını yaptım; bu hafta kaç fitness antrenmanı yaptım", who: "ana", by: "yerel" },
 
   // Kulüp

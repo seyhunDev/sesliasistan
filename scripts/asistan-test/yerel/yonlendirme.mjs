@@ -26,7 +26,7 @@ function route(s, ctx = {}) {
   const curRace = /^\/athletes\/races\/([\w-]+)$/.exec(path)?.[1];
   const got = routeOf(s, {
     owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
-    logHere: path === "/training", fitHere: path === "/fitness", invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
+    logHere: path === "/training", fitHere: path === "/fitness", foodHere: !!ctx.food, invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
     curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
   });
   return got === "person" && !owner ? "person(yetkisiz)" : got;
@@ -46,7 +46,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"],
@@ -118,6 +118,10 @@ const CASES = {
   groupCreate: ["Ali ve Ayşe ile Yelken Ekibi adında grup kur", "Gökhan ve Emre ile Bakım diye grup oluştur"],
   athleteOpen: ["Ali Kaya'nın sporcu kartını aç"],
   invoiceTask: ["Turkcell faturasını Ali'ye ver", "elektrik faturasını sil"],
+  foodLog: ["öğlen tavuk pilav ve ayran içtim", "kahvaltıda 2 yumurta ve peynir yedim", "akşam mercimek çorbası yedim", ["öğlen tavuk pilav ve ayran içtim", { path: "/fitness" }], ["öğle mercimek çorbası", { path: "/fitness", food: true }]],
+  "Beslenme: su": ["2 bardak su içtim", "yarım litre su içtim", ["bir şişe su içtim", { path: "/fitness" }]],
+  "Beslenme: kilo": ["kilom 82", "tartıldım 81,5", ["kilom 81.5", { path: "/fitness" }]],
+  "Beslenme: kaç kalori": ["bugün kaç kalori aldım", "bugün kaç protein aldım"],
   shopping: ["listeye süt ekle", "alışveriş listesine ekmek ve yumurta ekle", "alışveriş listesini oku", "listeden sütü sil"],
 };
 
@@ -126,6 +130,9 @@ const CROSS = [
   ["log", "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", "yelken antrenmanı, fitness değil"],
   ["plan", "yarın 10'da antrenman ekle", "takvim planı, fitness değil"],
   ["navigate", "fitness sayfasını aç", "sayfa açma, fitness isteği değil"],
+  ["plan", "yarın akşam yemeği planla", "plan, beslenme değil"],
+  ["send", "Ali'ye yaz, öğlen yemeği birlikte yiyelim", "mesaj, beslenme değil"],
+  ["navigate", "beslenmeyi aç", "sayfa açma, yemek kaydı değil"],
   ["send", "Ali'ye fitness programımı yarın göstereceğimi yaz", "mesaj, fitness değil"],
   ["send", "Ali'ye mesaj at, antrenmana gelmedi diye merak ettim", "mesaj, yoklama değil"],
   ["send", "velilere yaz, antrenmana gelmeyenler cumartesi telafi yapacak", "mesaj, yoklama değil"],
@@ -189,8 +196,8 @@ for (const [task, list] of Object.entries(CASES)) {
 }
 group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s, why]) => [s, wrap(task, {}, true), why]));
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
-const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness"].includes(r) };
-group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "squat 3 set 10 tekrar 60 kilo yaptım"].map((s) => [s, STAFF]));
+const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness", "food"].includes(r) };
+group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "squat 3 set 10 tekrar 60 kilo yaptım", "öğlen tavuk pilav yedim"].map((s) => [s, STAFF]));
 
 // Sıralı görev zinciri (lib/chain.js): "sonra" ile sıralanan işler bölünür, her parça kendi akışına gider
 const { splitChain, refersBack } = await import("@/lib/chain");
