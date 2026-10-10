@@ -15,15 +15,34 @@ import { todayStr } from "@/lib/utils/format";
 // Yaklaşan yarış sayısı oturumda 5 dakika saklanır; yarış yoksa saklanmaz (ilk yarış eklenince sayı hemen gelsin)
 let cache = null; // { orgId, at, p }
 
+const AY = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+// "2026-10-17", "2026-10-19" → "17-19 Ekim" (yılsız, kısa; ay farklıysa "30 Eylül-2 Ekim")
+export function shortRange(a, b) {
+  const x = /^\d{4}-\d{2}-\d{2}$/.test(a || "") ? a.split("-").map(Number) : null;
+  if (!x) return "";
+  const y = /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b.split("-").map(Number) : x;
+  if (x[1] !== y[1] || x[0] !== y[0]) return `${x[2]} ${AY[x[1] - 1]}-${y[2]} ${AY[y[1] - 1]}`;
+  return x[2] === y[2] ? `${x[2]} ${AY[x[1] - 1]}` : `${x[2]}-${y[2]} ${AY[x[1] - 1]}`;
+}
+
 const gap = (s) => Math.round((Date.parse(`${s}T12:00:00`) - Date.parse(`${todayStr()}T12:00:00`)) / 864e5);
 
-// Tarihi en yakın yaklaşan (ya da süren) yarış: { name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş) }
+// Tarihi en yakın yaklaşan (ya da süren) yarış: { name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
+// title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün; süren yarışta 0) } (ana sayfa yarış kartı)
 export function nextInfo(list) {
   const r = list.filter((x) => x.startDate && !isPast(x)).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   if (!r) return null;
   const a = gap(r.startDate);
   const when = a > 1 ? `${a} gün` : a === 1 ? "yarın" : a === 0 ? "bugün" : "sürüyor";
-  return { name: r.district || String(r.name || "").split(" ")[0] || "Yarış", when, left: stepsOf(r).length };
+  return {
+    name: r.district || String(r.name || "").split(" ")[0] || "Yarış",
+    when,
+    left: stepsOf(r).length,
+    title: String(r.name || "").trim() || "Yarış",
+    dates: shortRange(r.startDate, r.endDate),
+    count: r.athleteIds?.length || 0,
+    days: Math.max(0, a),
+  };
 }
 
 function countRaces(orgId) {

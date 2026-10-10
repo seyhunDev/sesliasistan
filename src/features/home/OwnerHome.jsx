@@ -12,7 +12,7 @@ import { homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
-import { InboxBell, InboxSheet, WaitRow, useInbox } from "./Inbox";
+import { InboxBell, InboxSheet, useInbox } from "./Inbox";
 import { NowCard } from "./NowCard";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
@@ -71,7 +71,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Şu an + Seni bekleyen › doğum günü › Yoklamam › Kulüp/Özet › Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra: Şu an (altında "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet › Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
@@ -100,10 +100,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <NowCard weather={weather} />
-        <WaitRow inbox={inbox} onAll={onInbox} />
-      </div>
+      <NowCard weather={weather} inbox={inbox} onInbox={onInbox} />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>

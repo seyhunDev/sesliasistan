@@ -73,6 +73,43 @@ export function trainingTile(plans, today) {
   };
 }
 
+// Ana sayfa › KULÜP: yalnız bilgisi olan kart görünür (Seyhun: "ne varsa onlar gösterilsin, yoksa gösterilmesin").
+// Her işlev yarım genişlik kartın bilgisini { big, sub, warn, bar } ya da gösterilmeyecekse null verir.
+// Aidat: bu ayın özeti varsa ve ödemeyen ya da onay bekleyen varsa (herkes ödeyince gizlenir).
+export function clubDues(sum, ym) {
+  if (!sum || sum.ym !== ym || !sum.count) return null;
+  const left = Math.max(0, sum.count - sum.paidCount);
+  if (!left && !(sum.pending > 0)) return null;
+  return {
+    big: `${sum.paidCount}/${sum.count}`,
+    sub: sum.pending > 0 ? `${sum.pending} onay bekliyor` : `${left} kişi ödemedi`,
+    warn: sum.pending > 0,
+    bar: Math.min(1, sum.paidCount / sum.count),
+  };
+}
+// Fiş / Fatura: ödenmemiş fatura varsa o (invoiceTile: big toplam, sub "2 ödenmedi · …"), yoksa ayın fiş harcaması; ikisi de yoksa null
+export function clubFis(inv, receipts) {
+  if (inv) {
+    const n = parseInt(inv.sub, 10) || 1;
+    const late = /(\d+) gecikti/.exec(inv.sub || "");
+    return { big: `${n} fatura`, sub: late ? `${late[1]} gecikti · ${inv.big}` : `${inv.big} ödenecek`, warn: true };
+  }
+  return receipts || null;
+}
+// Antrenman: bu ay antrenman ya da yazılmamış günlük varsa
+export function clubTraining(plans, today) {
+  const t = trainingTile(plans, today);
+  return /^0 /.test(t.big) && !t.warn ? null : { ...t, big: t.big.replace(/ antrenman$/, "") };
+}
+// Instagram: kayıtlı gönderi varsa
+export const clubPosts = (sum, now) => (sum?.count ? postsTile(sum, now) : null);
+// Sıradaki yarış kartı (tam genişlik): nextInfo (raceHome.js) varsa { title, sub, left, days, when }; yoksa null
+export function clubRace(next) {
+  if (!next) return null;
+  const sub = [next.dates, next.count ? `${next.count} sporcu` : ""].filter(Boolean).join(" · ");
+  return { title: next.title || `${next.name} yarışı`, sub, left: next.left || 0, days: /^\d/.test(next.when) ? parseInt(next.when, 10) : null, when: cap(next.when) };
+}
+
 // Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
 // races (Yarışlar ana sayfada), training, receipts, shop, lessons }. Toplantı bir sayfa değil: { id: "meeting" } döner.
 // Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
