@@ -103,11 +103,22 @@ export function clubTraining(plans, today) {
 }
 // Instagram: kayıtlı gönderi varsa
 export const clubPosts = (sum, now) => (sum?.count ? postsTile(sum, now) : null);
-// Sıradaki yarış kartı (tam genişlik): nextInfo (raceHome.js) varsa { title, sub, left, days, when }; yoksa null
+// Sıradaki yarış kartı (tam genişlik): nextInfo (raceHome.js) varsa { id (dokununca o yarışın sayfası), title, sub, left, days, when }; yoksa null
 export function clubRace(next) {
   if (!next) return null;
   const sub = [next.dates, next.count ? `${next.count} sporcu` : ""].filter(Boolean).join(" · ");
-  return { title: next.title || `${next.name} yarışı`, sub, left: next.left || 0, days: /^\d/.test(next.when) ? parseInt(next.when, 10) : null, when: cap(next.when) };
+  return { id: next.id || "", title: next.title || `${next.name} yarışı`, sub, left: next.left || 0, days: /^\d/.test(next.when) ? parseInt(next.when, 10) : null, when: cap(next.when) };
+}
+
+// Ana sayfa › Şu an kartındaki Yarış planına ait yarış (dokununca yarışın sayfası açılsın): plan adı yarışın adıyla aynıysa o,
+// değilse bugün süren tek yarış. open: useRaceHome().open (bitmemiş yarışlar, ek okuma yok). Bulunamazsa null.
+const norm = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
+export function raceForPlan(plan, open, today) {
+  if (!plan || (plan.cat || plan.category) !== "Yarış" || !open?.length) return null;
+  const same = open.find((r) => norm(r.name) && norm(r.name) === norm(plan.title));
+  if (same) return same.id;
+  const now = open.filter((r) => r.startDate <= today);
+  return now.length === 1 ? now[0].id : null;
 }
 
 // Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
