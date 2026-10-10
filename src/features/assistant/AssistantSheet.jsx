@@ -70,7 +70,7 @@ import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
 import { soon } from "@/lib/soon";
-import { cleanSay } from "@/lib/speech/normalize";
+import { cleanSay, unglue } from "@/lib/speech/normalize";
 import { attRetry } from "@/lib/attAsk";
 import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
@@ -297,7 +297,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     names: sttNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
-      const tx = applyFixes(fixNames(raw, staffNames), loadFixes()); // "san ver" → "Sanver"; yapay zekanın önceki düzeltmeleri (sttFixes)
+      const tx = applyFixes(fixNames(unglue(raw), staffNames), loadFixes()); // "san ver" → "Sanver"; yapay zekanın önceki düzeltmeleri (sttFixes)
       if (mode === "edit") setText((p) => (p ? `${p} ${tx}` : tx));
       else if (isEnd(tx)) finish(); // "kapat", "tamam kapat": bekleyen istekle birleşmez, sessizce kapanır
       else if (inflight.current) {

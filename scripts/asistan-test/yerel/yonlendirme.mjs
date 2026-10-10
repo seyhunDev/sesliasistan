@@ -451,3 +451,17 @@ group("Sohbetteki yarış")([
     ["Ali'yi arar mısın lütfen", { desc: "sondaki lütfen", fn: clean2, ok: (r) => r === "Ali'yi arar mısın" }],
   ]);
 }
+
+// Seyhun'un cümlesi (2026-10-10): iPhone'un tanıması parçaları boşluksuz birleştirdi ("hazırlaGörevlere deSaner"), istek
+// tek iş (gönderi) sanıldı; yarış ve görev yapılmadı, afiş başka yarışa hazırlandı. Parçalar artık boşlukla birleşir (joinParts),
+// eski birleşik yazım da ayrılır (unglue)
+{
+  const { joinParts, unglue, cleanSay } = await import("@/lib/speech/normalize");
+  const ATK = "Bana bir yarış oluşturmanı istiyorum yarışın adı Atatürk kupası bu önümüzdeki hafta sonu için olsun ve bu yarış için de bir Instagram posteri hazırlaGörevlere deSaner yarın saat 10:00'da yola çıkacak İzmir Çeşme'ye gidecek bunu ekle";
+  group("Birleşik söz (iPhone tanıması)")([
+    ["parçalar", { desc: "boşlukla birleşir", fn: () => joinParts(["bir Instagram posteri hazırla", "Görevlere de", " Saner yarın"]), ok: (r) => r === "bir Instagram posteri hazırla Görevlere de Saner yarın" }],
+    ["hazırlaGörevlere deSaner", { desc: "ayrılır", fn: unglue, ok: (r) => r === "hazırla Görevlere de Saner" }],
+    ["WhatsApp'tan iPhone YouTube", { desc: "markalar kalır", fn: unglue, ok: (r) => r === "WhatsApp'tan iPhone YouTube" }],
+    [ATK, { desc: "görev listesi sorulur (yarış + afiş + görev)", fn: (s) => looksMulti(cleanSay(unglue(s)), flowOf), ok: (r) => r === true }],
+  ]);
+}

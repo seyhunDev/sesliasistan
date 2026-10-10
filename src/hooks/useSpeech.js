@@ -2,6 +2,7 @@
 import { authFetch, jsonOf } from "@/lib/authFetch";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { joinParts } from "@/lib/speech/normalize";
 import { isIOS, pickProvider, recorderAvailable, setNative } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
@@ -204,22 +205,25 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
       rec.onresult = (e) => {
         if (s.sid !== sid || s.rec !== rec) return;
-        let f = "";
-        let i = "";
+        // Parçalar boşlukla birleşir: iPhone her parçayı boşluksuz verir ("hazırlaGörevlere deSaner"; 2026-10-10 hatası,
+        // birleşik kelimeler yüzünden çoklu istek tek iş sanıldı)
+        const fs = [];
+        const is = [];
         for (let k = 0; k < e.results.length; k++) {
           const res = e.results[k];
-          if (res.isFinal) f += res[0].transcript;
-          else i += res[0].transcript;
+          (res.isFinal ? fs : is).push(res[0].transcript.trim());
         }
+        const f = joinParts(fs);
+        const i = joinParts(is);
         s.gotResult = true;
         s.emptyEnds = 0;
         const pre = s.base ? `${s.base} ` : "";
-        const full = `${pre}${f}${i}`.trim();
+        const full = joinParts([pre + f, i]);
         if (full !== s.text) s.lastSpeech = Date.now();
         s.text = full;
         s.lastAct = Date.now();
         setFinalText(`${pre}${f}`);
-        setInterim(i);
+        setInterim(f && i ? ` ${i}` : i);
       };
       rec.onerror = (e) => {
         if (s.sid === sid && s.rec === rec) s.error = e.error;
