@@ -46,6 +46,12 @@ export const TASKS = [
   { id: "meeting", group: "Sayfalar", name: "Toplantı modu", say: "toplantı modunu aç", who: "yönetici", by: "yerel" },
   { id: "close", group: "Sayfalar", name: "Asistanı kapatma (sessiz)", say: "tamam kapat, teşekkürler", who: "herkes", by: "yerel" },
 
+  // Fitness (yalnız ana hesap)
+  { id: "fitProgram", group: "Fitness", name: "Fitness programı hazırlama ya da değiştirme (önizlemede açılır)", say: "pazartesi çarşamba cuma sabah 7'de 4 haftalık fitness programı hazırla; çarşambayı bacak günü yap", who: "ana", by: "yz-ayrı", doing: "Tamam, programı hazırlıyorum.", work: "Fitness isteğin hazırlanıyor" },
+  { id: "fitLog", group: "Fitness", name: "Yapılan fitness antrenmanını yazma (set, tekrar, kilo, koşu)", say: "squat 3 set 10 tekrar 60 kilo yaptım; bugün 30 dakika koştum", who: "ana", by: "yz-ayrı", doing: "Tamam, antrenmanı yazıyorum.", work: "Antrenman yazılıyor" },
+  { id: "fitPlans", group: "Fitness", name: "Fitness programını planlara ekleme ya da takvimden kaldırma", say: "fitness programını planlara ekle", who: "ana", by: "yerel" },
+  { id: "fitDone", group: "Fitness", name: "Bugünkü fitness antrenmanı yapıldı / atlandı; bu hafta kaç antrenman", say: "bugünkü fitness antrenmanını yaptım; bu hafta kaç fitness antrenmanı yaptım", who: "ana", by: "yerel" },
+
   // Kulüp
   { id: "attendance", group: "Kulüp", name: "Yoklama", say: "Ali ve Zeynep geldi, Emre izinli", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yoklamayı alıyorum.", work: "Yoklama alınıyor" },
   { id: "log", group: "Kulüp", name: "Antrenman günlüğü", say: "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", who: "yönetici", by: "yz-ayrı", doing: "Tamam, antrenman günlüğünü yazıyorum.", work: "Antrenman günlüğü yazılıyor" },

@@ -6,10 +6,10 @@ import { existsSync } from "node:fs";
 // Ana sayfalar (her sayfa ilk açılışta derlenir; liste uzadıkça test uzar)
 const PAGES = [
   "/", "/mail", "/payments", "/athletes", "/athletes/attendance", "/athletes/races", "/athletes/races/new", "/dues", "/posts", "/posts/new",
-  "/plans", "/notes", "/tasks", "/messages", "/receipts", "/inventory", "/training", "/settings",
+  "/plans", "/notes", "/tasks", "/messages", "/receipts", "/inventory", "/training", "/fitness", "/settings",
 ];
 // Sunucu uçları: girişsiz istek reddedilmeli (401/403), çökmemeli (500)
-const APIS = ["assistant", "tasks", "attendance", "race", "post-caption", "training-log", "inventory", "invoice", "person", "event-plan", "schedule", "interpret", "transcribe", "notify", "staff", "receipt-no"];
+const APIS = ["assistant", "tasks", "attendance", "race", "post-caption", "training-log", "fitness", "inventory", "invoice", "person", "event-plan", "schedule", "interpret", "transcribe", "notify", "staff", "receipt-no"];
 
 // Tarayıcı: önce bu bilgisayardaki Google Chrome, yoksa Playwright'ın kendi Chromium'u (bulutta /opt/pw-browsers)
 async function launch() {

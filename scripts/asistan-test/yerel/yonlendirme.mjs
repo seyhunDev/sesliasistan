@@ -26,7 +26,7 @@ function route(s, ctx = {}) {
   const curRace = /^\/athletes\/races\/([\w-]+)$/.exec(path)?.[1];
   const got = routeOf(s, {
     owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
-    logHere: path === "/training", invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
+    logHere: path === "/training", fitHere: path === "/fitness", invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
     curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
   });
   return got === "person" && !owner ? "person(yetkisiz)" : got;
@@ -46,7 +46,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"],
@@ -64,6 +64,10 @@ function check(task, s, ctx = {}) {
 }
 
 const CASES = {
+  fitProgram: ["pazartesi çarşamba cuma sabah 7'de 4 haftalık fitness programı hazırla", "spor salonu için haftada 3 gün program hazırla", ["çarşambayı bacak günü yap", { path: "/fitness" }], ["programa plank ekle", { path: "/fitness" }], ["45 dakikaya indir", { path: "/fitness" }]],
+  fitLog: ["squat 3 set 10 tekrar 60 kilo yaptım", "bugün fitness'ta 30 dakika koşu yaptım", "şınav 3 set 15 tekrar yaptım", ["bench press 4 set 8 tekrar 50 kilo", { path: "/fitness" }]],
+  fitPlans: ["fitness programını planlara ekle", ["programı planlara ekle", { path: "/fitness" }], ["programı takvimden kaldır", { path: "/fitness" }]],
+  fitDone: ["bugünkü fitness antrenmanını yaptım", ["bugünkü antrenmanı yaptım", { path: "/fitness" }], ["bugün antrenmanı atladım", { path: "/fitness" }], "bu hafta kaç fitness antrenmanı yaptım"],
   plan: ["yarın 10'da antrenman ekle", "Cumartesi saat 14:00'te tekne yıkama planla.", "takvime ekle perşembe 16:30 yönetim toplantısı", "yarın sabah 9'da iskelede buluşma var, takvime koy", "haftaya salı 18:00 veli toplantısı ekle", "12 Ekim'de saat 11'de bakım planla", "bugün akşam 6'da antrenman ekler misin", "pazar günü Foça'ya gidiyoruz takvime yaz"],
   repeat: ["her salı 16:00 antrenman", "her cumartesi saat 10'da Optimist antrenmanı ekle", "her salı ve perşembe 17:00 antrenman planla", "haftada bir pazartesi 9'da toplantı ekle"],
   task: ["Ali'ye motoru kontrol etmesini hatırlat", "görev ekle: römork lastiklerini kontrol et", "yarına kadar yelkenleri katla görevi oluştur", "Gökhan'a görev ver, şamandıraları say", "bana hatırlat cuma günü sigortayı yenile", "yapılacaklara ekle can yeleklerini yıka"],
@@ -119,6 +123,10 @@ const CASES = {
 
 // Görevler arası karışma ihtimali olan cümleler: beklenen görev ve neden
 const CROSS = [
+  ["log", "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", "yelken antrenmanı, fitness değil"],
+  ["plan", "yarın 10'da antrenman ekle", "takvim planı, fitness değil"],
+  ["navigate", "fitness sayfasını aç", "sayfa açma, fitness isteği değil"],
+  ["send", "Ali'ye fitness programımı yarın göstereceğimi yaz", "mesaj, fitness değil"],
   ["send", "Ali'ye mesaj at, antrenmana gelmedi diye merak ettim", "mesaj, yoklama değil"],
   ["send", "velilere yaz, antrenmana gelmeyenler cumartesi telafi yapacak", "mesaj, yoklama değil"],
   ["plan", "yarın 17:00 antrenman var, sporcular gelmedi derse ararım", "plan, yoklama değil"],
@@ -181,8 +189,8 @@ for (const [task, list] of Object.entries(CASES)) {
 }
 group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s, why]) => [s, wrap(task, {}, true), why]));
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
-const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen"].includes(r) };
-group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil"].map((s) => [s, STAFF]));
+const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness"].includes(r) };
+group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "squat 3 set 10 tekrar 60 kilo yaptım"].map((s) => [s, STAFF]));
 
 // Sıralı görev zinciri (lib/chain.js): "sonra" ile sıralanan işler bölünür, her parça kendi akışına gider
 const { splitChain, refersBack } = await import("@/lib/chain");

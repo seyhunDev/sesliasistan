@@ -98,6 +98,7 @@ export const CAT_STYLE = {
   Yarış: { bar: "bg-rose-500", chip: "bg-rose-500/10 text-rose-700", icon: "flag" },
   Kamp: { bar: "bg-amber-500", chip: "bg-amber-500/10 text-amber-700", icon: "pin" },
   Toplantı: { bar: "bg-violet-500", chip: "bg-violet-500/10 text-violet-700", icon: "users" },
+  Fitness: { bar: "bg-orange-500", chip: "bg-orange-500/10 text-orange-700", icon: "dumbbell" },
   Ekipman: { bar: "bg-slate-500", chip: "bg-slate-500/10 text-slate-700", icon: "wrench" },
   Genel: { bar: "bg-acc", chip: "bg-acc/10 text-acc", icon: "cal" },
 };
