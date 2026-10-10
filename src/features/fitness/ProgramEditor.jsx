@@ -186,9 +186,80 @@ function DayPanel({ d, onChange, onDrop }) {
   );
 }
 
+// İlk antrenmanın günü: başlangıçtan itibaren programdaki ilk gün
+function firstOf(p) {
+  const d = new Date(`${p.start || new Date().toISOString().slice(0, 10)}T12:00`);
+  for (let k = 0; k < 7; k++) {
+    const dow = d.getDay() || 7;
+    const day = p.days.find((x) => x.dow === dow);
+    if (day) return { day, date: d };
+    d.setDate(d.getDate() + 1);
+  }
+  return { day: p.days[0], date: null };
+}
+const dateText = (d) => {
+  if (!d) return "";
+  const t = new Date();
+  t.setHours(12, 0, 0, 0);
+  const diff = Math.round((d - t) / 864e5);
+  if (diff === 0) return "Bugün";
+  if (diff === 1) return "Yarın";
+  return d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+};
+
+// Yapay zekanın hazırladığı yeni programın ilk görüntüsü: çok sade. Yalnız ilk antrenman ve tek düğme;
+// bütün program (günler, düzenleme) "Tüm programı gör"de.
+function Ready({ p, busy, onStart, onAll, onCancel }) {
+  const { day, date } = firstOf(p);
+  const items = day?.items || [];
+  return (
+    <div>
+      <p className="mt-1 text-[0.9375rem] text-mut">
+        Haftada {p.days.length} gün · {n(p.weeks)} hafta
+      </p>
+
+      {day && (
+        <section className={`${card} mt-4 p-5`}>
+          <small className="block text-[0.75rem] font-bold tracking-[.06em] text-acc">İLK ANTRENMANIN</small>
+          <h3 className="mt-1 text-[1.5rem] font-bold leading-tight tracking-tight">{day.name}</h3>
+          <p className="mt-1 flex items-center gap-1.5 text-[0.875rem] text-mut">
+            <Icon name="cal" className="size-4" />
+            {[dateText(date), day.time, `${n(day.min)} dk`].filter(Boolean).join(" · ")}
+          </p>
+          <ul className="mt-4 divide-y divide-line">
+            {items.map((it, i) => (
+              <li key={`${it.ex || it.name}-${i}`} className="flex items-center gap-3 py-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                  <Icon name={iconOf(it)} className="size-[1.125rem]" />
+                </span>
+                <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{it.name}</b>
+                <small className="shrink-0 text-[0.875rem] font-semibold tabular-nums text-mut">{itemLine(it).split(" · ")[0]}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className="mt-5 flex flex-col gap-1">
+        <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={onStart}>
+          <Icon name="check" className="size-5" />
+          Tamam, başlayalım
+        </Button>
+        <button type="button" disabled={!!busy} onClick={onAll} className="h-11 text-[0.9375rem] font-semibold text-acc">
+          Tüm programı gör
+        </button>
+        <button type="button" disabled={!!busy} onClick={onCancel} className="h-9 text-[0.8125rem] font-semibold text-mut">
+          Vazgeç
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // prog: { id?, title, weeks, start, days, note, plansAt }. onSave(prog, addPlans)
-export function ProgramEditor({ prog, onSave, onCancel, busy, fresh }) {
+export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
   const [p, setP] = useState(prog);
+  const [all, setAll] = useState(!simple);
   const [sel, setSel] = useState(prog.days[0]?.dow || 0);
   const set = (k, v) => setP((x) => ({ ...x, [k]: v }));
   const used = p.days.map((d) => d.dow);
@@ -206,6 +277,7 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh }) {
   const avgMin = p.days.length ? Math.round(p.days.reduce((s, d) => s + n(d.min), 0) / p.days.length) : 0;
   const total = p.days.length * n(p.weeks);
   const onCal = !!p.plansAt;
+  if (!all) return <Ready p={p} busy={busy} onStart={() => onSave(p, true)} onAll={() => setAll(true)} onCancel={onCancel} />;
   return (
     <div>
       <section className="mt-2 overflow-hidden rounded-[1.75rem] bg-deep px-5 pb-5 pt-4 text-white">

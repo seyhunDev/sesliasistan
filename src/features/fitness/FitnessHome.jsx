@@ -67,7 +67,7 @@ export function FitnessHome() {
     // Asistanın hazırladığı program: önizlemede açılır
     const onPreview = (e) => {
       takeProgram();
-      if (e.detail) setEdit({ prog: fixStart(e.detail), fresh: !e.detail.id, k: Date.now() });
+      if (e.detail) setEdit({ prog: fixStart(e.detail), fresh: !e.detail.id, simple: !e.detail.id, k: Date.now() });
     };
     takeProgram();
     window.addEventListener(FIT_SAVED, onSaved);
@@ -115,7 +115,7 @@ export function FitnessHome() {
       // Seçilenler kesin: gün ve saatler formdakiyle aynı olsun
       const days = r.program.days.map((d) => ({ ...d, time: d.time || pre.time, min: d.min || pre.min }));
       setNewOpen(false);
-      setEdit({ prog: fixStart({ ...r.program, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, k: Date.now() });
+      setEdit({ prog: fixStart({ ...r.program, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
     } catch (e) {
       toast(e.message || "Program hazırlanamadı");
     } finally {
@@ -163,8 +163,8 @@ export function FitnessHome() {
   if (edit) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <PageHeader title={edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
-        <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} busy={busy} onSave={save} onCancel={() => setEdit(null)} />
+        <PageHeader title={edit.simple ? "Programın hazır" : edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
+        <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} simple={edit.simple} busy={busy} onSave={save} onCancel={() => setEdit(null)} />
       </main>
     );
   }
