@@ -18,6 +18,7 @@ export const AI_LABELS = {
   invoice: "Fatura okuma",
   "training-log": "Antrenman günlüğü",
   fitness: "Fitness",
+  "fitness-intro": "Fitness tanıtım kartları",
   "bank-analyze": "Banka Excel incelemesi",
   "post-caption": "Instagram yazısı",
   person: "Kişi ekleme",

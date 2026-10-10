@@ -60,3 +60,48 @@ export function forecast(goal, p = {}, weeks = 8) {
     sub: "Haftada 150 dakika hareket, sağlık için önerilen hedef.",
   };
 }
+
+// Kartların genel yazıları (yapay zeka cevap vermezse ya da boy/kilo yoksa)
+export const GOAL_TEXT = {
+  kilo: {
+    weeks: [["2. hafta", "Enerjin artar, uykun düzelir."], ["4. hafta", "Kıyafetlerin daha rahat oturur."], ["8. hafta", "Bel çevren incelir, tartı da bunu gösterir."]],
+    tip: "Beslenmeyle birlikte etkisi katlanır.",
+  },
+  kas: {
+    weeks: [["2. hafta", "Hareketleri doğru yapmayı öğrenirsin."], ["4. hafta", "Kaldırdığın kilolar artmaya başlar."], ["8. hafta", "Kasların belirginleşir, duruşun düzelir."]],
+    tip: "Yeterli protein ve uyku büyümeyi hızlandırır.",
+  },
+  guc: {
+    weeks: [["2. hafta", "Aynı ağırlık daha hafif gelir."], ["4. hafta", "Temel hareketlerde ilk rekorların gelir."], ["8. hafta", "Taşımak, kaldırmak günlük hayatta kolaylaşır."]],
+    tip: "Uygulama her hafta hedefini biraz artırır.",
+  },
+  kondisyon: {
+    weeks: [["2. hafta", "Merdivende daha az nefes nefese kalırsın."], ["4. hafta", "Daha uzun süre yorulmadan çalışırsın."], ["8. hafta", "Nabzın daha sakin, toparlanman daha hızlı."]],
+    tip: "Kısa ama düzenli antrenman en iyisidir.",
+  },
+  saglik: {
+    weeks: [["2. hafta", "Daha dinç uyanır, daha iyi uyursun."], ["4. hafta", "Bel ve sırt tutulmaların azalır."], ["8. hafta", "Stresin azalır, hareket alışkanlığın olur."]],
+    tip: "Haftada 2-3 gün yeter.",
+  },
+};
+export const GOAL_KEYS = Object.keys(GOAL_TEXT);
+
+const T = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+
+// Tanıtım kartları: yapay zekanın kişiye özel yazdıkları + eksik kalan alanlarda yerel tahmin ve genel yazı.
+// ai: { headline, cards: [{ goal, now, then, sub, weeks: [{ w, text }], tip }] } (yoksa yalnız yerel)
+export function introCards(ai, p = {}) {
+  const got = new Map((Array.isArray(ai?.cards) ? ai.cards : []).map((c) => [c?.goal, c]));
+  const cards = GOAL_KEYS.map((key) => {
+    const a = got.get(key) || {};
+    const base = GOAL_TEXT[key];
+    const fc = forecast(key, p);
+    const aw = Array.isArray(a.weeks) ? a.weeks.map((x) => [T(x?.w, 16), T(x?.text, 90)]).filter(([w, t]) => w && t).slice(0, 3) : [];
+    const box = fc && (T(a.then, 32) ? { now: T(a.now, 40) || fc.now, then: T(a.then, 32), sub: T(a.sub, 110) || fc.sub } : fc);
+    return { key, box: box || null, weeks: aw.length === 3 ? aw : base.weeks, tip: T(a.tip, 90) || base.tip };
+  });
+  return { headline: T(ai?.headline, 70), cards };
+}
+
+// Yapay zeka sonucu bu cihazda saklanır: aynı boy/kilo/yaş/cinsiyet/seviye/hedefle ikinci kez istenmez
+export const introKey = (p = {}) => [p.height, p.weight, p.age, p.sex, p.level, p.goal].map((x) => x || "").join("|");

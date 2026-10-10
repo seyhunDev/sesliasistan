@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/model";
+import { introKey } from "@/lib/fitness/forecast";
 
 // Fitness programları: orgs/{orgId}/fitPrograms/{id} (yalnız ana hesap; kural ana hesaba orgs altını zaten açıyor).
 // Programlar tek sorguda okunur, 3 dakika bellekte kalır (sayfa ve asistan paylaşır). Antrenmanlar plan kaydıdır.
@@ -147,6 +148,29 @@ export function takeProgram() {
     const raw = sessionStorage.getItem(FIT_PREVIEW);
     sessionStorage.removeItem(FIT_PREVIEW);
     return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Tanıtım kartları (/api/fitness-intro): kişiye özel; bu cihazda aynı bilgilerle saklanır, yeniden istenmez.
+// Yapay zekaya ulaşılamazsa null (kartlar yerel hesapla gösterilir).
+const INTRO = "sa-fit-intro";
+export async function askIntro(profile) {
+  const key = introKey(profile);
+  try {
+    const c = JSON.parse(localStorage.getItem(INTRO) || "null");
+    if (c?.key === key && c.data?.cards?.length) return c.data;
+  } catch {}
+  try {
+    const res = await authFetch("/api/fitness-intro", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ profile }), timeout: 25000 });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.cards?.length) return null;
+    try {
+      localStorage.setItem(INTRO, JSON.stringify({ key, data }));
+    } catch {}
+    return data;
   } catch {
     return null;
   }
