@@ -17,7 +17,7 @@ import {
 import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
-import { BodyAsk, FitIntro } from "./FitIntro";
+import { BodyStep, FitIntro } from "./FitIntro";
 import { hasBody } from "@/lib/fitness/forecast";
 
 // Fitness sayfası (yalnız ana hesap): bu hafta (yapılan/kalan, seri, süre), bugünkü antrenman, program (düzenle, planlara ekle),
@@ -47,6 +47,7 @@ export function FitnessHome() {
   const [newOpen, setNewOpen] = useState(false);
   const [profOpen, setProfOpen] = useState(false);
   const [bodyLater, setBodyLater] = useState(false);
+  const [bodyOpen, setBodyOpen] = useState(false);
   const [fitProf, setFitProf] = useState(profile.fit || {});
 
   const reload = useCallback(
@@ -193,7 +194,32 @@ export function FitnessHome() {
         </button>
       </PageHeader>
 
-      {!hasBody(fitProf) && !bodyLater && <BodyAsk fit={fitProf} onSave={saveBody} onLater={() => setBodyLater(true)} className="mt-2" />}
+      {!hasBody(fitProf) && !bodyLater && (
+        <div className="mt-2 flex items-center gap-1 rounded-[1.25rem] bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
+          <button type="button" onClick={() => setBodyOpen(true)} className="flex min-w-0 flex-1 items-center gap-3 py-3.5 pl-4 text-left">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
+              <Icon name="user" className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-[0.9375rem] font-semibold leading-snug">Boy ve kilonu ekle</b>
+              <small className="block text-[0.8125rem] leading-snug text-mut">Antrenmanın sana göre hazırlansın.</small>
+            </span>
+            <Icon name="chev" className="size-4 shrink-0 text-mut" />
+          </button>
+          <button type="button" onClick={() => setBodyLater(true)} aria-label="Şimdi değil" className="grid size-11 shrink-0 place-items-center text-[1.25rem] text-mut">
+            ×
+          </button>
+        </div>
+      )}
+      <Sheet open={bodyOpen} onClose={() => setBodyOpen(false)}>
+        <BodyStep
+          fit={fitProf}
+          onSave={async (f) => {
+            await saveBody(f);
+            setBodyOpen(false);
+          }}
+        />
+      </Sheet>
 
       <Hero className="mt-2">
         <HeroLabel>BU HAFTA</HeroLabel>

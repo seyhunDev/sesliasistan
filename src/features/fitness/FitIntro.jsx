@@ -24,75 +24,7 @@ const HOW = [
   ["check", "İşaretle", "Gelişimini gör"],
 ];
 
-// Boy ve kilo yoksa: kısa form (yaş ve cinsiyet isteğe bağlı). Tanıtımda ve Fitness sayfasında.
-export function BodyAsk({ fit, onSave, onLater, laterText = "Şimdi değil", className = "" }) {
-  const [f, setF] = useState({ height: fit?.height || "", weight: fit?.weight || "", age: fit?.age || "", sex: fit?.sex || "" });
-  const [busy, setBusy] = useState(false);
-  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
-  const ok = Number(f.height) >= 100 && Number(f.weight) >= 30;
-  const box = "h-12 w-full min-w-0 rounded-xl bg-bg px-3 text-[1rem] font-semibold outline-none placeholder:font-normal placeholder:text-mut";
-  const field = (k, label, unit) => (
-    <label className="min-w-0">
-      <small className="mb-1 block text-[0.75rem] font-semibold text-mut">{label}</small>
-      <span className="relative block">
-        <input inputMode="decimal" value={f[k]} onChange={(e) => set(k, e.target.value.replace(",", ".").replace(/[^\d.]/g, ""))} className={box} />
-        {unit && <small className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.8125rem] text-mut">{unit}</small>}
-      </span>
-    </label>
-  );
-  return (
-    <section data-body-ask className={`${card} p-4 ${className}`}>
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-          <Icon name="user" className="size-5" />
-        </span>
-        <span className="min-w-0">
-          <b className="block text-[1rem] font-semibold leading-snug">Boy ve kilonu girer misin?</b>
-          <small className="block text-[0.8125rem] leading-snug text-mut">Sana uygun antrenmanı buna göre hazırlarım.</small>
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {field("height", "Boy", "cm")}
-        {field("weight", "Kilo", "kg")}
-        {field("age", "Yaş (isteğe bağlı)", "")}
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {[
-          ["k", "Kadın"],
-          ["e", "Erkek"],
-        ].map(([k, l]) => (
-          <button key={k} type="button" onClick={() => set("sex", f.sex === k ? "" : k)} className={`h-10 rounded-xl text-[0.875rem] font-semibold ${f.sex === k ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-            {l}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 flex items-center gap-2">
-        {onLater && (
-          <button type="button" onClick={onLater} className="h-11 px-3 text-[0.875rem] font-semibold text-mut">
-            {laterText}
-          </button>
-        )}
-        <Button
-          className="flex-1"
-          disabled={!ok}
-          loading={busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await onSave({ ...fit, height: Number(f.height), weight: Number(f.weight), age: Number(f.age) || "", sex: f.sex });
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Kaydet
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-// Tanıtımdaki boy-kilo adımı: tam ekran, cinsiyet kutuları, büyük sayılar ve − / + (basılı tutunca hızlanır),
+// Boy-kilo adımı (tanıtımda tam ekran, Fitness sayfasında pencerede): tam ekran, cinsiyet kutuları, büyük sayılar ve − / + (basılı tutunca hızlanır),
 // altta canlı VKİ. Sayıya dokununca klavyeyle de yazılır. Yaş isteğe bağlı (boşken "—").
 const START = { e: [176, 78], k: [163, 62], "": [170, 70] };
 // Basılı tutunca hızlanan − / + düğmesi
@@ -154,7 +86,7 @@ function Stepper({ label, value, unit, min, max, onChange, empty }) {
   );
 }
 
-function BodyStep({ fit, onSave, onLater }) {
+export function BodyStep({ fit, onSave, onLater, laterText = "Şimdi değil" }) {
   const sex0 = fit?.sex || "";
   const [sex, setSex] = useState(sex0);
   const [h, setH] = useState(fit?.height || START[sex0][0]);
@@ -228,9 +160,11 @@ function BodyStep({ fit, onSave, onLater }) {
       >
         Devam
       </Button>
-      <button type="button" onClick={onLater} className="mt-1 h-11 w-full text-[0.875rem] font-semibold text-mut">
-        Şimdi değil
-      </button>
+      {onLater && (
+        <button type="button" onClick={onLater} className="mt-1 h-11 w-full text-[0.875rem] font-semibold text-mut">
+          {laterText}
+        </button>
+      )}
     </div>
   );
 }
