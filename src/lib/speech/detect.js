@@ -22,6 +22,23 @@ export const isNativeApp = () =>
 export const recorderAvailable = () =>
   typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
+// iPhone'da telefonun kendi ses tanıması (Safari Web Speech) kullanılsın mı: varsayılan evet; çalışmazsa (hata, hiç başlamadı)
+// kendiliğinden "off" yazılır ve kayıt + sunucu yoluna dönülür; Ayarlar › Ses testi'nden değiştirilir
+// (Seyhun: "sesi telefonda anında yazıya çevirelim, sunucuya göndermeyelim", 2026-10-10)
+const NATIVE_KEY = "sa-stt-native";
+export const nativeOn = () => {
+  try {
+    return localStorage.getItem(NATIVE_KEY) !== "off";
+  } catch {
+    return true;
+  }
+};
+export const setNative = (on) => {
+  try {
+    localStorage.setItem(NATIVE_KEY, on ? "on" : "off");
+  } catch {}
+};
+
 // "webspeech": canlı yazı  |  "server": kayıt + sunucuda çeviri  |  "none": destek yok
 // NEXT_PUBLIC_STT_MODE: "auto" (varsayılan) | "server" (her yerde kayıt + sunucu; iPhone'da en güvenilir,
 // OPENAI_API_KEY gerekir) | "browser" (yalnızca tarayıcı ses tanıma)
@@ -31,7 +48,8 @@ export function pickProvider() {
   if (MODE === "browser") return webSpeechAvailable() ? "webspeech" : "none";
   // Android uygulaması (Capacitor WebView): tarayıcı ses tanıması nesnesi görünür ama WebView'da çalışmaz; kayıt yolu (denetim A5)
   if (isNativeApp() && recorderAvailable()) return "server";
-  // iPhone/iPad: Safari'nin ses tanıması dokunuş dışında başlatılınca sessizce çalışmıyor; kayıt yolu daha güvenilir
+  // iPhone/iPad: telefonun kendi tanıması (dokunuşla başlar, yazı anında gelir); kapatıldıysa ya da yoksa kayıt yolu
+  if (isIOS() && webSpeechAvailable() && nativeOn()) return "webspeech";
   if (isIOS() && recorderAvailable()) return "server";
   // Tarayıcı ses tanıması yalnızca Türkçeyi güvenle uygulayan tarayıcılarda (Chrome/Edge); diğerlerinde kayıt + sunucu (her zaman Türkçe)
   if (webSpeechAvailable() && !isStandalone() && isChromium()) return "webspeech";

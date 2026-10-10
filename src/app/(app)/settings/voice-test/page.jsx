@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { athleteNames } from "@/features/athletes/data";
 import { useSpeech } from "@/hooks/useSpeech";
 import { authFetch } from "@/lib/authFetch";
-import { isIOS, isStandalone, webSpeechAvailable } from "@/lib/speech/detect";
+import { isIOS, isStandalone, nativeOn, setNative, webSpeechAvailable } from "@/lib/speech/detect";
+import { loadFixes } from "@/lib/sttFixes";
 import { toWav16k } from "@/lib/speech/wav";
 
 // Ses testi: telefonda konuşmayı yazıya çeviren üç yolu yan yana dener (Ayarlar › Diğer ayarlar › Ses testi).
@@ -13,6 +14,48 @@ import { toWav16k } from "@/lib/speech/wav";
 // (+ isteğe bağlı aynı anda kayıt ve tek seferde Gemini düzeltmesi). Hiçbir şey kaydedilmez, sonuç kopyalanır.
 
 const sec = (ms) => (ms == null ? "–" : `${(ms / 1000).toFixed(1)} sn`);
+
+// Asistanda hangi yol: telefonun kendi tanıması (açık) ya da kayıt + sunucu; öğrenilen ad düzeltmeleri
+function Choice() {
+  const [on, setOn] = useState(() => nativeOn());
+  const [fixes, setFixes] = useState(() => loadFixes());
+  return (
+    <section className="mt-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <label className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <b className="block text-[1rem] font-semibold">Asistanda telefonun kendi tanıması</b>
+          <span className="mt-0.5 block text-[0.8125rem] leading-snug text-mut">Açıkken söylediğin anında yazılır, sunucuya ses gitmez. Çalışmazsa kendiliğinden kapanır.</span>
+        </span>
+        <input
+          type="checkbox"
+          className="size-5"
+          checked={on}
+          onChange={(e) => {
+            setNative(e.target.checked);
+            setOn(e.target.checked);
+          }}
+        />
+      </label>
+      {fixes.length > 0 && (
+        <div className="mt-3 text-[0.8125rem]">
+          <span className="text-mut">Öğrenilen ad düzeltmeleri:</span> {fixes.slice(0, 20).map((f) => `${f.heard} → ${f.meant}`).join(", ")}
+          <button
+            type="button"
+            className="ml-2 text-rec"
+            onClick={() => {
+              try {
+                localStorage.removeItem("sa-stt-fixes");
+              } catch {}
+              setFixes([]);
+            }}
+          >
+            Temizle
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function Card({ title, sub, on, onStart, onStop, first, text, extra, err, note }) {
   return (
@@ -54,8 +97,8 @@ function Current({ report }) {
   const on = sp.status !== "idle";
   return (
     <Card
-      title="A · Şimdiki yöntem"
-      sub="Kayıt + sunucu (iPhone'da canlı parçalar Gemini/Whisper ile)."
+      title="A · Asistanın yöntemi"
+      sub="Asistan ne kullanıyorsa o (webspeech = telefonun kendi tanıması, server = kayıt + sunucu)."
       on={on}
       onStart={() => {
         t.current = { t0: Date.now(), first: null };
@@ -408,6 +451,7 @@ export default function VoiceTestPage() {
       <PageHeader title="Ses testi" />
       <p className="text-[0.875rem] leading-snug text-mut">Her yöntemde aynı cümleyi söyle (içinde bir sporcu adı olsun), sonra Durdur. En altta sonuçları kopyalayıp bana gönder.</p>
       <p className="mt-1 text-[0.75rem] text-mut">{env}</p>
+      <Choice />
       <Current report={report} />
       <Live report={report} />
       <Native report={report} />

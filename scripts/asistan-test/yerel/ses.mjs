@@ -212,3 +212,17 @@ group("Ses oturumu (arka plan sesi)")([
   ["destek yoksa hata vermez", { desc: "sorunsuz", fn: () => sessionRun.none, ok: (r) => r === true }],
   ["varsayılan: kip değiştirme kapalı", { desc: "transient yok", fn: () => sessionRun.off, ok: (r) => r === false }],
 ]);
+
+// Telefonun yanlış yazdığı adlar: yapay zekanın düzeltmeleri saklanır, sonraki sözde telefonda uygulanır (sttFixes.js)
+const { applyFixes, cleanFix, mergeFixes } = await import("@/lib/sttFixes");
+const AD = ["Samver Kaya", "Uraz Demir", "Ali Kök"];
+group("Ad düzeltmeleri (öğrenilen)")([
+  ["bilinen ada giden düzeltme alınır", { desc: "Samet → Samver", fn: () => cleanFix({ heard: "Samet", meant: "Samver" }, AD), ok: (r) => r?.heard === "Samet" && r.meant === "Samver" }],
+  ["listede olmayan ada giden alınmaz", { desc: "null", fn: () => cleanFix({ heard: "ver", meant: "Veli" }, AD), ok: (r) => r === null }],
+  ["gerçek bir ad değiştirilmez", { desc: "null", fn: () => cleanFix({ heard: "Ali", meant: "Uraz" }, AD), ok: (r) => r === null }],
+  ["iki harfli söz değiştirilmez", { desc: "null", fn: () => cleanFix({ heard: "Sa", meant: "Samver" }, AD), ok: (r) => r === null }],
+  ["yenisi eskisinin yerine geçer", { desc: "tek kayıt, Uraz", fn: () => mergeFixes([{ heard: "Uğraz", meant: "Samver" }], [{ heard: "uğraz", meant: "Uraz" }], AD), ok: (r) => r.length === 1 && r[0].meant === "Uraz" }],
+  ["ayrık yazım düzelir, ek kalır", { desc: "Samver'e mesaj at", fn: () => applyFixes("san ver'e mesaj at", [{ heard: "San ver", meant: "Samver" }]), ok: (r) => r === "Samver'e mesaj at" }],
+  ["kelime içinde değişmez", { desc: "Sametçik kalır", fn: () => applyFixes("Sametçik geldi, Samet gelmedi", [{ heard: "Samet", meant: "Samver" }]), ok: (r) => r === "Sametçik geldi, Samver gelmedi" }],
+  ["düzeltme yoksa metin aynı", { desc: "aynı", fn: () => applyFixes("yarın antrenman", []), ok: (r) => r === "yarın antrenman" }],
+]);

@@ -2,7 +2,7 @@
 import { authFetch, jsonOf } from "@/lib/authFetch";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isIOS, pickProvider } from "@/lib/speech/detect";
+import { isIOS, pickProvider, recorderAvailable, setNative } from "@/lib/speech/detect";
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
@@ -197,7 +197,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const rec = new SR();
       rec.lang = lang;
       rec.interimResults = true;
-      rec.continuous = !isIOS(); // iOS'ta sürekli mod güvenilmez, cümle sonunda kendiliğinden biter
+      rec.continuous = true; // kullanıcı durdurana kadar; motor yine de biterse aşağıda yeniden başlar
       rec.maxAlternatives = 1;
       s.rec = rec;
       s.error = null;
@@ -229,6 +229,18 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         if (s.sid !== sid || s.rec !== rec) return;
         // Hiç sonuç vermeden hemen biten oturumlar (iPhone'da tanıma başlamadıysa): sonsuz döngüde "Dinliyorum"da kalma
         if (!s.gotResult && Date.now() - s.begunAt < 1500) s.emptyEnds = (s.emptyEnds || 0) + 1;
+        // iPhone'da telefonun tanıması çalışmadı (izin/hizmet kapalı ya da hiç başlamadı): bir daha denenmez, bu dinleme
+        // kayıt + sunucu yoluyla sürer (Ayarlar › Ses testi'nden yeniden açılır)
+        if (isIOS() && !s.text && (FATAL.includes(s.error) || s.emptyEnds >= 2) && recorderAvailable()) {
+          s.rec = null;
+          // Kalıcı kapatma yalnız dokunuşla başlayan dinlemede (kendiliğinden açılanda iPhone dokunuş istediği için başlamayabilir);
+          // internet kesintisi de kalıcı sayılmaz
+          if (!s.auto && s.error !== "network") setNative(false);
+          s.kind = "server";
+          setProvider("server");
+          startServer(sid);
+          return;
+        }
         if (s.emptyEnds >= 3 && !s.text) {
           s.rec = null;
           finish();
