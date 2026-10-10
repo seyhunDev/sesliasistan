@@ -5,129 +5,70 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 
-// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tanıtım: adıyla motivasyon, şınav çeken ve her
-// tekrarda biraz kilo veren kişi animasyonu, adım adım ne olacağı, "Programımı oluştur" (Program hazırla açılır).
-const FLOOR = 150;
-const FEET = [262, 146];
-const HAND = [118, FLOOR];
-const BODY = 150; // ayaktan omza
-const ARM = 31; // üst kol ve ön kol
-const REP = 1.5; // bir şınav (sn)
-const REPS = 10; // sonra baştan
-const START_KG = 85;
+// İlk kez gelen (hiç programı ve fitness antrenmanı olmayan) kullanıcıya tanıtım: adıyla motivasyon, dolan halkalar
+// (antrenman, dakika, seri), adım adım ne olacağı, "Programımı oluştur" (Program hazırla açılır).
+const RINGS = [
+  { label: "Antrenman", to: 12, unit: "", color: "var(--acc)", r: 62 },
+  { label: "Dakika", to: 540, unit: "", color: "#f59e0b", r: 46 },
+  { label: "Hafta seri", to: 4, unit: "", color: "#3b82f6", r: 30 },
+];
+const FILL = 1.8; // halkaların dolma süresi (sn)
+const LOOP = 7; // sonra baştan
 
-// Dirsek: omuz ve el arasında iki parçalı kol (dirsek ayak tarafına bükülür)
-function elbow(s, h) {
-  const dx = h[0] - s[0];
-  const dy = h[1] - s[1];
-  const d = Math.min(Math.hypot(dx, dy), ARM * 2 - 0.01);
-  const a = d / 2;
-  const t = Math.sqrt(Math.max(0, ARM * ARM - a * a));
-  const mx = s[0] + (dx * a) / d;
-  const my = s[1] + (dy * a) / d;
-  const ex = [mx - (dy * t) / d, my + (dx * t) / d];
-  const ey = [mx + (dy * t) / d, my - (dx * t) / d];
-  return ex[0] > ey[0] ? ex : ey;
-}
-
-// Tekrar ilerlemesi (0 yukarıda, 1 aşağıda) ve kaçıncı tekrar → çizim noktaları
-export function pose(down, rep) {
-  const y = FEET[1] - (54 - 38 * down); // omuz yüksekliği
-  const sin = (FEET[1] - y) / BODY;
-  const cos = Math.sqrt(1 - sin * sin);
-  const s = [FEET[0] - BODY * cos, y];
-  const hip = [FEET[0] - BODY * 0.55 * cos, FEET[1] - BODY * 0.55 * sin];
-  const mid = [(s[0] + hip[0]) / 2, (s[1] + hip[1]) / 2];
-  const belly = 15 - rep * 1.3; // her tekrarda göbek küçülür
-  const n = [-sin, cos]; // gövdenin altı
-  return {
-    s,
-    hip,
-    e: elbow(s, HAND),
-    head: [s[0] - 17 * cos, s[1] - 17 * sin - 3],
-    belly: [mid[0] + n[0] * (belly * 0.55), mid[1] + n[1] * (belly * 0.55)],
-    bellyR: Math.max(4, belly),
-    kg: START_KG - rep * 0.1,
-  };
-}
-
-function PushUp() {
+// Apple Saat'teki gibi dolan halkalar: 4 haftalık programda seni bekleyenler (antrenman, dakika, seri); sayılar birlikte artar.
+function Rings() {
   const ref = useRef(null);
   useEffect(() => {
-    const svg = ref.current;
-    if (!svg) return;
-    const $ = (id) => svg.querySelector(`[data-p="${id}"]`);
-    const torso = $("torso");
-    const legs = $("legs");
-    const upper = $("upper");
-    const fore = $("fore");
-    const head = $("head");
-    const belly = $("belly");
-    const kg = $("kg");
-    const rep = $("rep");
-    const minus = $("minus");
-    const draw = (sec) => {
-      const t = sec % (REP * REPS);
-      const r = Math.floor(t / REP);
-      const ph = (t % REP) / REP;
-      const p = pose((1 - Math.cos(ph * Math.PI * 2)) / 2, r);
-      torso.setAttribute("d", `M${p.s[0]} ${p.s[1]}L${p.hip[0]} ${p.hip[1]}`);
-      legs.setAttribute("d", `M${p.hip[0]} ${p.hip[1]}L${FEET[0]} ${FEET[1]}`);
-      upper.setAttribute("d", `M${p.s[0]} ${p.s[1]}L${p.e[0]} ${p.e[1]}`);
-      fore.setAttribute("d", `M${p.e[0]} ${p.e[1]}L${HAND[0]} ${HAND[1]}`);
-      head.setAttribute("cx", p.head[0]);
-      head.setAttribute("cy", p.head[1]);
-      belly.setAttribute("cx", p.belly[0]);
-      belly.setAttribute("cy", p.belly[1]);
-      belly.setAttribute("r", p.bellyR);
-      kg.textContent = `${p.kg.toFixed(1).replace(".", ",")} kg`;
-      rep.textContent = `${r + 1}. şınav`;
-      // Her tekrarın sonunda "−0,1 kg" yukarı süzülür
-      const f = ph > 0.6 ? (ph - 0.6) / 0.4 : -1;
-      minus.setAttribute("opacity", f < 0 ? 0 : String(1 - f));
-      minus.setAttribute("transform", `translate(0 ${f < 0 ? 0 : -12 * f})`);
+    const el = ref.current;
+    if (!el) return;
+    const arcs = [...el.querySelectorAll("[data-arc]")];
+    const nums = [...el.querySelectorAll("[data-num]")];
+    const draw = (k) => {
+      const e = 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);
+      arcs.forEach((a, i) => {
+        const len = 2 * Math.PI * RINGS[i].r;
+        a.setAttribute("stroke-dashoffset", String(len * (1 - e)));
+      });
+      nums.forEach((n, i) => (n.textContent = String(Math.round(RINGS[i].to * e))));
     };
-    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (still) {
-      draw(REP * 0.25);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      draw(1);
       return;
     }
     let raf = 0;
     const t0 = performance.now();
     const loop = (now) => {
-      draw((now - t0) / 1000);
+      const t = ((now - t0) / 1000) % LOOP;
+      draw(t < LOOP - 0.6 ? (t - 0.3) / FILL : 1 - (t - (LOOP - 0.6)) / 0.6);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, []);
   return (
-    <svg ref={ref} viewBox="0 0 320 172" className="block w-full" role="img" aria-label="Şınav çeken ve kilo veren kişi">
-      <defs>
-        <linearGradient id="fit-floor" x1="0" x2="1">
-          <stop offset="0" stopColor="var(--acc)" stopOpacity="0" />
-          <stop offset=".5" stopColor="var(--acc)" stopOpacity=".35" />
-          <stop offset="1" stopColor="var(--acc)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect x="20" y={FLOOR + 1} width="280" height="3" rx="1.5" fill="url(#fit-floor)" />
-      <ellipse cx="190" cy={FLOOR + 6} rx="88" ry="4" fill="var(--acc)" opacity=".08" />
-      <g stroke="var(--acc)" strokeLinecap="round" strokeLinejoin="round" fill="none">
-        <path data-p="legs" strokeWidth="11" />
-        <path data-p="fore" strokeWidth="8" />
-        <path data-p="torso" strokeWidth="17" />
-        <path data-p="upper" strokeWidth="9" />
-      </g>
-      <circle data-p="belly" fill="var(--acc)" />
-      <circle data-p="head" r="11" fill="var(--acc)" />
-      <g fontFamily="inherit" textAnchor="end">
-        <text data-p="kg" x="300" y="34" fontSize="22" fontWeight="700" fill="currentColor" />
-        <text data-p="rep" x="300" y="52" fontSize="11" fill="var(--mut)" />
-      </g>
-      <text data-p="minus" x="300" y="80" textAnchor="end" fontSize="13" fontWeight="700" fill="var(--acc)">
-        −0,1 kg
-      </text>
-    </svg>
+    <div ref={ref} className="flex items-center gap-4">
+      <svg viewBox="0 0 150 150" className="size-36 shrink-0 -rotate-90" role="img" aria-label="4 haftada 12 antrenman, 540 dakika, 4 hafta seri">
+        {RINGS.map((g) => (
+          <g key={g.label}>
+            <circle cx="75" cy="75" r={g.r} fill="none" stroke={g.color} strokeOpacity=".15" strokeWidth="13" />
+            <circle data-arc cx="75" cy="75" r={g.r} fill="none" stroke={g.color} strokeWidth="13" strokeLinecap="round" strokeDasharray={2 * Math.PI * g.r} strokeDashoffset={2 * Math.PI * g.r} />
+          </g>
+        ))}
+      </svg>
+      <ul className="min-w-0 flex-1 space-y-2.5">
+        {RINGS.map((g) => (
+          <li key={g.label}>
+            <small className="flex items-center gap-1.5 text-[0.75rem] font-semibold text-mut">
+              <span className="size-2 rounded-full" style={{ background: g.color }} />
+              {g.label}
+            </small>
+            <b data-num className="block text-[1.5rem] font-bold leading-none tabular-nums" style={{ color: g.color }}>
+              0
+            </b>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -154,8 +95,10 @@ export function FitIntro({ name, onStart }) {
         <p className="mt-2 text-[0.9375rem] leading-snug text-white/75">Bugün başla; programını birlikte hazırlayalım, her antrenmanı birlikte takip edelim.</p>
       </section>
 
-      <section className={`${card} mt-3 px-3 pb-2 pt-3 text-fg`}>
-        <PushUp />
+      <section className={`${card} mt-3 p-4 text-fg`}>
+        <small className="block pb-3 text-[0.75rem] font-bold tracking-[.06em] text-mut">4 HAFTADA SENİ BEKLEYENLER</small>
+        <Rings />
+        <p className="mt-3 text-[0.8125rem] leading-snug text-mut">Haftada 3 antrenmanla. Programına uydukça bu sayılar senin olur.</p>
       </section>
 
       <h3 className="mb-2 mt-5 px-1 text-[0.8125rem] font-bold tracking-[.06em] text-mut">NASIL İŞLER</h3>
