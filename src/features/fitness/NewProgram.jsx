@@ -102,8 +102,8 @@ const Box = ({ title, note, children }) => (
   </section>
 );
 // Profil alanları (Program hazırla 2. adım ve Profil penceresi): seviye, yer, ekipman, ölçüler, sakatlık.
-// withGoal: hedef de gösterilir (Profil penceresi; Program hazırla'da hedef ayrı adım).
-export function ProfileFields({ f, set, withGoal = true }) {
+// withPlace: yer kutusu (Program hazırla'da ayrı soru). withGoal: hedef de gösterilir (Profil penceresi; Program hazırla'da hedef ayrı adım).
+export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
   const eq = f.equip || [];
   const hasBody = Number(f.height) > 0 && Number(f.weight) > 0;
   const [bodyOpen, setBodyOpen] = useState(!hasBody);
@@ -145,6 +145,7 @@ export function ProfileFields({ f, set, withGoal = true }) {
         </div>
       </Box>
 
+      {withPlace && (
       <Box title="Nerede çalışacaksın">
         <div className="grid grid-cols-3 gap-2">
           {PLACES.map(([k, l]) => {
@@ -162,6 +163,7 @@ export function ProfileFields({ f, set, withGoal = true }) {
           })}
         </div>
       </Box>
+      )}
 
       {f.place && f.place !== "salon" && (
         <Box title="Ekipman" note={eq.length ? `${eq.length} seçili` : "Vücut ağırlığı"}>
@@ -229,12 +231,13 @@ export function ProfileFields({ f, set, withGoal = true }) {
     </>
   );
 }
-
-// Program hazırla: 4 adım (Hedef › Sen › Haftan › Özet). Sonunda yapay zekaya giden cümle ya da boş program.
-// Serbest yazı kutusu yok (tek asistan kuralı): özel istekler alttaki asistana söylenir.
-const STEPS = ["Hedef", "Sen", "Haftan", "Özet"];
+// Program hazırla: 2 kısa soru (Hedef › Haftan). Gün sayısı, saat dilimi ve yer seçilir; gerisi varsayılanla
+// (günler gün sayısına göre, 45 dk, 4 hafta, bugün başlar, seviye profilden). Ayrıntılar kapalı "Ayrıntıları ayarla"da.
+// Sonunda yapay zekaya giden cümle ya da boş program. Serbest yazı kutusu yok (tek asistan kuralı).
+const STEPS = ["Hedef", "Haftan"];
+const DAY_SETS = { 2: [2, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
 export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal }) {
-  // Tanıtımda hedef kartından gelindiyse hedef seçili, sihirbaz 2. adımdan başlar
+  // Tanıtımda hedef kartından gelindiyse hedef seçili, doğrudan 2. soru
   const [step, setStep] = useState(goal ? 1 : 0);
   const [days, setDays] = useState([1, 3, 5]);
   const [slot, setSlot] = useState("sabah");
@@ -242,6 +245,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
   const [weeks, setWeeks] = useState(4);
   const [min, setMin] = useState(45);
   const [start, setStart] = useState(todayStr());
+  const [more, setMore] = useState(false);
   const [f, setF] = useState(() => ({ goal: "saglik", level: "yeni", place: "salon", equip: [], ...profile, ...(goal ? { goal } : {}) }));
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const pickSlot = ([k, , , t]) => {
@@ -249,7 +253,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
     setTime(t);
   };
   const sorted = [...days].sort((a, b) => a - b);
-  // Yapay zekaya giden cümle: seçilenler açıkça yazılır
+  // Yapay zekaya giden cümle: seçilenler (ve varsayılanlar) açıkça yazılır
   const text = () =>
     [
       `Haftada ${sorted.length} gün fitness programı hazırla: ${sorted.map((d) => `${DOW_LONG[d]} ${time}`).join(", ")}.`,
@@ -262,38 +266,23 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
       .join(" ");
   const pre = { days: sorted, time, weeks, min, start };
   const last = step === STEPS.length - 1;
-  const canNext = step !== 2 || sorted.length > 0;
-  const startText = start === todayStr() ? "Bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-  const row = (icon, label, value, to) => (
-    <button type="button" onClick={() => setStep(to)} className="flex w-full items-center gap-3 py-2.5 text-left">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
-        <Icon name={icon} className="size-[1.125rem]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <small className="block text-[0.75rem] text-mut">{label}</small>
-        <b className="block truncate text-[0.9375rem] font-semibold">{value}</b>
-      </span>
-      <Icon name="chev" className="size-4 shrink-0 text-mut" />
-    </button>
-  );
+  const startText = start === todayStr() ? "bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
 
   return (
     <Sheet open={open} onClose={onClose} title="Program hazırla">
-      {/* İlerleme: 4 parça */}
-      <div className="sticky top-0 z-10 -mx-5 bg-card px-5 pb-3">
-        <div className="flex gap-1.5">
-          {STEPS.map((s, i) => (
-            <button key={s} type="button" aria-label={s} onClick={() => i < step && setStep(i)} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? "bg-acc" : "bg-line"}`} />
-          ))}
+      {!goal && (
+        <div className="sticky top-0 z-10 -mx-5 bg-card px-5 pb-3">
+          <div className="flex gap-1.5">
+            {STEPS.map((s, i) => (
+              <button key={s} type="button" aria-label={s} onClick={() => i < step && setStep(i)} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? "bg-acc" : "bg-line"}`} />
+            ))}
+          </div>
         </div>
-        <p className="mt-2 text-[0.75rem] font-semibold text-mut">
-          Adım {step + 1}/{STEPS.length} · {STEPS[step]}
-        </p>
-      </div>
+      )}
 
       {step === 0 && (
         <>
-          <Q title="Hedefin ne?" sub="Program buna göre kurulur; set ve tekrarlar değişir." />
+          <Q title="Hedefin ne?" sub="Program buna göre kurulur." />
           <div className="space-y-2">
             {GOALS.map(([k, l]) => (
               <Option key={k} on={f.goal === k} icon={GOAL_UI[k][0]} title={l} sub={GOAL_UI[k][1]} onClick={() => set("goal", k)} />
@@ -304,27 +293,12 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
 
       {step === 1 && (
         <>
-          <Q title="Seni tanıyalım" sub="Hareketler ve yükler bunlara göre seçilir." />
-          <ProfileFields f={f} set={set} withGoal={false} />
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <Q title="Haftan nasıl?" sub="Seçtiğin günler ve saat takvimine plan olarak eklenir." />
-          <Box title="Günler" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
-            <div className="grid grid-cols-7 gap-1.5">
-              {DOWS.slice(1).map((d, i) => {
-                const on = days.includes(i + 1);
-                return (
-                  <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-                    {d}
-                  </button>
-                );
-              })}
-            </div>
+          <Q title="Haftan nasıl?" sub="Üç kısa seçim yeter, gerisini biz ayarlarız." />
+          <Box title="Haftada kaç gün">
+            <Segment list={[2, 3, 4, 5]} value={sorted.length} onChange={(n) => setDays(DAY_SETS[n])} unit="gün" />
+            <small className="mt-2 block text-[0.75rem] text-mut">{sorted.map((d) => DOWS[d]).join(", ")}</small>
           </Box>
-          <Box title="Saat" note={time}>
+          <Box title="Ne zaman">
             <div className="grid grid-cols-3 gap-2">
               {SLOTS.map(([k, l, ic, t]) => {
                 const on = slot === k;
@@ -332,74 +306,91 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
                   <button key={k} type="button" aria-pressed={on} onClick={() => pickSlot([k, l, ic, t])} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg"}`}>
                     <Icon name={ic} className={`size-5 ${on ? "" : "text-acc"}`} />
                     <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
-                    <small className={`text-[0.6875rem] ${on ? "text-white/80" : "text-mut"}`}>{t}</small>
                   </button>
                 );
               })}
             </div>
-            <label className={`mt-2 flex h-11 items-center justify-between rounded-xl border-2 px-3 ${slot ? "border-transparent bg-bg" : "border-acc bg-acc/[.07]"}`}>
-              <span className="text-[0.875rem] text-mut">Başka saat</span>
-              <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
-            </label>
           </Box>
-          <Box title="Süre">
-            <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Her antrenman</small>
-            <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
-            <small className="mb-1.5 mt-3 block text-[0.75rem] font-semibold text-mut">Program</small>
-            <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
-            <label className="mt-3 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
-              <span className="text-[0.875rem] text-mut">Başlangıç</span>
-              <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
-            </label>
-          </Box>
-        </>
-      )}
-
-      {step === 3 && (
-        <>
-          <Q title="Her şey hazır" sub="Kontrol et, değiştirmek istediğine dokun." />
-          <Box title="Programın">
-            <div className="-my-1 divide-y divide-line">
-              {row(GOAL_UI[f.goal]?.[0] || "dumbbell", "Hedef", labelOf(GOALS, f.goal), 0)}
-              {row("trend", "Seviye", labelOf(LEVELS, f.level), 1)}
-              {row(PLACE_UI[f.place] || "home", "Yer", f.place !== "salon" && f.equip?.length ? `${labelOf(PLACES, f.place)} · ${f.equip.map((k) => EQUIP[k]).join(", ")}` : labelOf(PLACES, f.place), 1)}
-              {row("cal", "Günler", `${sorted.map((d) => DOWS[d]).join(", ")} · ${time}`, 2)}
-              {row("clock", "Süre", `${min} dk · ${weeks} hafta · ${startText}`, 2)}
+          <Box title="Nerede">
+            <div className="grid grid-cols-3 gap-2">
+              {PLACES.map(([k, l]) => {
+                const on = f.place === k;
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => set("place", k)} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg"}`}>
+                    <Icon name={PLACE_UI[k]} className={`size-5 ${on ? "" : "text-acc"}`} />
+                    <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
+                  </button>
+                );
+              })}
             </div>
           </Box>
-          <p className="mt-3 px-1 text-[0.8125rem] leading-snug text-mut">Yapay zeka programını birkaç saniyede hazırlar, sonra istediğin gibi düzenlersin.</p>
+
+          {/* Ayrıntılar: varsayılanlar yazılı, istenirse açılır */}
+          <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="mt-3 flex w-full items-center gap-2 rounded-2xl px-1 py-2 text-left">
+            <span className="min-w-0 flex-1">
+              <b className="block text-[0.875rem] font-semibold text-acc">Ayrıntıları ayarla</b>
+              {!more && <small className="block truncate text-[0.75rem] text-mut">{`${min} dk · ${weeks} hafta · ${startText} başlar · ${labelOf(LEVELS, f.level)}`}</small>}
+            </span>
+            <Icon name="chev" className={`size-4 shrink-0 text-acc transition-transform ${more ? "-rotate-90" : "rotate-90"}`} />
+          </button>
+          {more && (
+            <>
+              <Box title="Günler" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {DOWS.slice(1).map((d, i) => {
+                    const on = days.includes(i + 1);
+                    return (
+                      <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+                        {d}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="mt-2 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+                  <span className="text-[0.875rem] text-mut">Saat</span>
+                  <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+                </label>
+              </Box>
+              <Box title="Süre">
+                <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Her antrenman</small>
+                <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
+                <small className="mb-1.5 mt-3 block text-[0.75rem] font-semibold text-mut">Program</small>
+                <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
+                <label className="mt-3 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+                  <span className="text-[0.875rem] text-mut">Başlangıç</span>
+                  <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+                </label>
+              </Box>
+              <ProfileFields f={f} set={set} withGoal={!!goal} withPlace={false} />
+            </>
+          )}
         </>
       )}
 
       {/* Alt düğmeler */}
       <div className="sticky bottom-0 -mx-5 mt-5 bg-card px-5 pt-3">
         {last ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             <Button loading={busy} disabled={!sorted.length} onClick={() => onAsk(text(), f, pre)}>
               <Icon name="spark" className="size-5" />
-              Yapay zekayla hazırla
+              Programımı hazırla
             </Button>
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" disabled={busy} onClick={() => setStep(step - 1)}>
-                Geri
-              </Button>
-              <Button variant="ghost" className="flex-[2]" disabled={busy || !sorted.length} onClick={() => onBlank(pre, f)}>
+            <div className="flex items-center justify-between">
+              {!goal ? (
+                <button type="button" disabled={busy} onClick={() => setStep(0)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
+                  Geri
+                </button>
+              ) : <span />}
+              <button type="button" disabled={busy || !sorted.length} onClick={() => onBlank(pre, f)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
                 Kendim hazırlayacağım
-              </Button>
+              </button>
             </div>
           </div>
         ) : (
-          <div className="flex gap-2">
-            {step > 0 && (
-              <Button variant="ghost" className="flex-1" onClick={() => setStep(step - 1)}>
-                Geri
-              </Button>
-            )}
-            <Button className="flex-[2]" disabled={!canNext} onClick={() => setStep(step + 1)}>
-              Devam
-              <Icon name="chev" className="size-4" />
-            </Button>
-          </div>
+          <Button onClick={() => setStep(1)}>
+            Devam
+            <Icon name="chev" className="size-4" />
+          </Button>
         )}
       </div>
     </Sheet>
