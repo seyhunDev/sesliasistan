@@ -589,12 +589,11 @@ group("Ana sayfa kartları")([
     return HT.toggleShortcut(start, "/fitness") === null && less.length === 6 && shown.length === 7 && shown.includes("/fitness") && !shown.includes("/inventory") &&
       /homeLinks:/.test(auth) && /inbox:/.test(auth) && /inboxSeen:/.test(auth);
   })],
-  ["tüm sayfalar: açıklama ve arama", F("her sayfanın kısa açıklaması var; 'aidat', 'ruzgar', 'banka' aramada bulunur", () => {
-    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true, shop: true, lessons: true });
-    const all = g.flatMap((x) => x.items);
-    const one = (q) => HT.findActions(g, q).map(HT.linkKey);
-    return all.every((a) => a.sub) && one("aidat").includes("/dues") && one("ruzgar").join() === "/wind" && one("banka").join() === "/mail" &&
-      one("").length === 0 && one("yokboylebirsey").length === 0 && HT.findActions(g, "inst")[0].group === "Sosyal";
+  ["tüm sayfalar: düğme sayfası", F("ana sayfadakiler ayrı bölümde, diğer sayfalarda tekrar etmez", () => {
+    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
+    const keys = HT.shortcutsOf(g).map(HT.linkKey);
+    const rest = g.flatMap((x) => x.items).map(HT.linkKey).filter((k) => !keys.includes(k));
+    return keys.length === 7 && rest.length > 0 && rest.every((k) => !keys.includes(k)) && keys.length + rest.length === g.flatMap((x) => x.items).length;
   })],
   ["şu an kartı", F("süren plan önce, sonra sıradaki; bugün kalmadıysa yarının ilki; iptal ve geçen sayılmaz", () => {
     const now = new Date("2026-10-07T14:20:00");
