@@ -27,13 +27,14 @@ export function shortRange(a, b) {
 
 const gap = (s) => Math.round((Date.parse(`${s}T12:00:00`) - Date.parse(`${todayStr()}T12:00:00`)) / 864e5);
 
-// Tarihi en yakın yaklaşan (ya da süren) yarış: { name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
-// title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün; süren yarışta 0) } (ana sayfa yarış kartı)
+// Sıradaki yarış: henüz başlamamış en yakın yarış. Bugün başlayan ya da süren yarış "şu an"dır (Şu an kartında plan olarak görünür),
+// sıradaki ondan sonraki yarıştır (Seyhun: "sıradaki bir sonraki olmalı"). { name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
+// title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün) } (ana sayfa yarış kartı)
 export function nextInfo(list) {
-  const r = list.filter((x) => x.startDate && !isPast(x)).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  const r = list.filter((x) => x.startDate && gap(x.startDate) > 0).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   if (!r) return null;
   const a = gap(r.startDate);
-  const when = a > 1 ? `${a} gün` : a === 1 ? "yarın" : a === 0 ? "bugün" : "sürüyor";
+  const when = a > 1 ? `${a} gün` : "yarın";
   return {
     name: r.district || String(r.name || "").split(" ")[0] || "Yarış",
     when,
@@ -41,7 +42,7 @@ export function nextInfo(list) {
     title: String(r.name || "").trim() || "Yarış",
     dates: shortRange(r.startDate, r.endDate),
     count: r.athleteIds?.length || 0,
-    days: Math.max(0, a),
+    days: a,
   };
 }
 
