@@ -24,3 +24,9 @@ export function planText(p) {
 // Ertele: tarih (ve varsa bitiş) n gün ileri; saat ve süre aynı kalır
 export const postponePatch = (p, n = 1) => ({ date: shift(p.date, n), ...(p.endDate ? { endDate: shift(p.endDate, n) } : {}) });
 
+
+// Plan bitti: yapılan plan silinmez, Planlar listesinden kalkar ve Arşiv'de "Bitti" olarak durur
+// ("Planlara geri al" ile döner). Hatırlatma ve "Şu an" kartı biten planı saymaz. Sayfa ve asistan aynı alanları yazar.
+export const planDonePatch = (at = new Date().toISOString()) => ({ done: true, doneAt: at });
+export const planReopenPatch = () => ({ done: false, doneAt: null });
+export const isPlanDone = (p) => !!p?.done;

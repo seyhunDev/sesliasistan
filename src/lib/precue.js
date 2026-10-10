@@ -33,6 +33,8 @@ function recipientIn(t) {
 // Var olan kayıtta işlem (yeni kayıt değil): tamamla, yeniden aç, iptal, sil, değiştir/ertele
 const ACTIONS = [
   ["reopen", /(yeniden|tekrar|geri) aç\p{L}*/u],
+  // Plan: "antrenman planını bitir", "toplantı planı bitti", "planı arşivle" (not ve görevden önce bakılır)
+  ["planDone", /(?<![\p{L}\d])plan(ı|ını|lar\p{L}*)?(?![\p{L}]).*(bitir\p{L}*|bitti|tamamla\p{L}*|yapıldı|arşiv\p{L}*|geri al)/u],
   // Not: "notu yapıldı yap", "şu not yapıldı", "notu arşivle", "notu arşive at" (görev tamamlamadan önce bakılır)
   ["noteDone", /(?<![\p{L}\d])not(u|un|unu|lar\p{L}*)?(?![\p{L}]).*(yapıldı|bitti|tamamlandı|arşiv\p{L}*)|arşivle\p{L}*|arşive (at|kaldır|taşı)\p{L}*/u],
   ["complete", /(tamamla\p{L}*|(^| )bitti(?![\p{L}])|yapıldı olarak|tamamlandı)/u],

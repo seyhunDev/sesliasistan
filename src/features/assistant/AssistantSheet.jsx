@@ -59,6 +59,7 @@ import { useKind } from "@/features/auth/useKind";
 import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
+import { planDonePatch, planReopenPatch } from "@/lib/planActions";
 import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
 import { brainCommand } from "@/lib/commands";
 import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
@@ -885,6 +886,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const changed = [];
     const notesDone = [];
     const notesBack = [];
+    const plansDone = [];
+    const plansBack = [];
     for (const a of acts) {
       const rec = find(a.kind, a.id);
       if (!rec) {
@@ -913,6 +916,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         const on = a.op === "done_note";
         if (!!rec.archived !== on || !!rec.done !== on) updateRecord("note", a.id, on ? noteDonePatch() : noteReopenPatch(), by);
         (on ? notesDone : notesBack).push(rec.title);
+      } else if (a.kind === "plan" && (a.op === "done_plan" || a.op === "reopen_plan")) {
+        // Plan silinmez: "bitti" Planlar'dan kaldırıp Arşiv'e koyar, "geri al" döndürür
+        const on = a.op === "done_plan";
+        if (!!rec.done !== on) updateRecord("plan", a.id, on ? planDonePatch() : planReopenPatch(), by);
+        (on ? plansDone : plansBack).push(rec.title);
       } else if (a.op === "update") {
         const patch = buildPatch(a.kind, a.patch, rec);
         // Sorumlu değişikliği ("motor görevini Ali'ye ver"): adlar kişi kimliklerine
@@ -930,6 +938,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (changed.length) out.said += `Değiştirdim: ${changed.join("; ")}. `;
     if (notesDone.length) out.said += `Yapıldı, Arşiv'e kaldırdım: ${list(notesDone)}. `;
     if (notesBack.length) out.said += `Notlara geri aldım: ${list(notesBack)}. `;
+    if (plansDone.length) out.said += `Bitti, Arşiv'e kaldırdım: ${list(plansDone)}. `;
+    if (plansBack.length) out.said += `Planlara geri aldım: ${list(plansBack)}. `;
     if (out.done) {
       toast(`${out.done} kayıt güncellendi`);
       navigator.vibrate?.([10, 40, 10]);

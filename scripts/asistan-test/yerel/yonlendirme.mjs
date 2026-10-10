@@ -49,7 +49,7 @@ function cue(s) {
 const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
-  plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"],
+  plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
   update: ["update"], delete: ["delete"], cancel: ["cancel"], multi: ["multi"], send: ["send", "group", "whatsapp"], group: ["group"], whatsapp: ["whatsapp"], query: ["query", "-"], weather: ["weather"],
 };
 
@@ -76,6 +76,7 @@ const CASES = {
   complete: ["motor yağı görevini tamamla", "tekneleri hazırla görevi bitti", "römork lastikleri görevini tamamlandı olarak işaretle", "yelken onarımı tamamlandı"],
   reopen: ["motor yağı görevini yeniden aç", "tekneleri hazırla görevini tekrar aç"],
   noteDone: ["malzeme odası notu yapıldı", "iskele lambası notunu arşivle", "telsiz notunu arşive at"],
+  planDone: ["bugünkü antrenman planını bitir", "yelken kampı planı bitti", "toplantı planını arşivle", "dünkü kamp planını geri al"],
   update: ["antrenmanı 11'e al", "yarınki toplantıyı cumaya ertele", "yönetim kurulu toplantısının saatini 15:00 yap", "Optimist antrenmanını 18'e çek", "bölge yarışı planının tarihini değiştir 14 Ekim olsun"],
   delete: ["yarınki toplantıyı sil", "motor yağı görevini sil", "malzeme odası notunu kaldır", "Optimist antrenmanını siler misin"],
   cancel: ["yarınki antrenmanı iptal et", "bugünkü antrenman iptal oldu, rüzgar çok sert", "cumartesi antrenmanını iptal edelim"],

@@ -13,6 +13,8 @@ import { groupTasks } from "@/lib/agenda";
 import { todayStr } from "@/lib/utils/format";
 import { assigneesOf, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
+import Link from "next/link";
+import { WordCard } from "@/features/words/WordCard";
 
 
 // Görevler: üstte durum (açık, geciken, bugün, bu hafta; dağılım çubuğu), ana hesapta kişiye göre süzme,
@@ -47,7 +49,13 @@ export default function TasksPage() {
   const list = (items) => (
     <div className={`${card} divide-y divide-line overflow-hidden`}>
       {items.map((t) => (
-        <SwipeRow key={t.id} actions={[{ label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("task", t.id) }]}>
+        <SwipeRow
+          key={t.id}
+          actions={[
+            { label: "Yapıldı", icon: "check", tone: "neutral", onAction: () => done(t) },
+            { label: "Sil", icon: "trash", tone: "danger", onAction: () => removeWithUndo("task", t.id) },
+          ]}
+        >
           <TaskRow
             task={t}
             planTitle={planTitle(t.planId)}
@@ -108,7 +116,13 @@ export default function TasksPage() {
         </section>
       ))}
 
-      {tasks.length > 0 && <p className="mt-8 text-center text-[0.75rem] text-mut">İpucu: silmek için satırı sola kaydır.</p>}
+      {tasks.length > 0 && (
+        <Link href="/archive?t=task" className="mt-6 block text-center text-[0.875rem] font-semibold text-acc active:opacity-70">
+          Yapılan görevler arşivde ›
+        </Link>
+      )}
+
+      <WordCard />
     </main>
   );
 }

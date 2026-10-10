@@ -11,6 +11,8 @@ import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { rel } from "@/lib/utils/format";
+import Link from "next/link";
+import { WordCard } from "@/features/words/WordCard";
 import { assigneesOf, unseenNotes, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
 import { isLogNote } from "@/lib/trainingLog";
@@ -183,6 +185,14 @@ export default function NotesPage() {
 
       {section("SABİTLİ", pinned)}
       {section(pinned.length ? "SON NOTLAR" : "NOTLAR", rest)}
+
+      {notes.length > 0 && (
+        <Link href="/archive?t=note" className="mt-6 block text-center text-[0.875rem] font-semibold text-acc active:opacity-70">
+          Yapılan notlar arşivde ›
+        </Link>
+      )}
+
+      <WordCard />
     </main>
   );
 }

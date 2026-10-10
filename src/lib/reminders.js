@@ -42,7 +42,7 @@ export function dueReminders(plans, { lead, tz = DEFAULT_TZ, now = new Date(), w
   const n = localNow(tz, now).min;
   return plans.filter((p) => {
     const sent = uid ? p.reminded?.[uid] : p.remindedKey;
-    if (!p.date || p.status === "cancelled" || sent === remindKey(p, lead)) return false;
+    if (!p.date || p.status === "cancelled" || p.done || sent === remindKey(p, lead)) return false;
     const at = reminderAt(p, lead);
     return at <= n && at > n - windowMin;
   });
