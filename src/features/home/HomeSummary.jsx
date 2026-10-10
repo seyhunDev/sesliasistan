@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { duesLive, duesTile, postsTile, raceTile, readSum, saveSum, trainingTile } from "@/lib/homeTiles";
+import { clubDues, clubFis, clubPosts, clubRace, clubTraining, duesLive, readSum, saveSum } from "@/lib/homeTiles";
 import { todayStr } from "@/lib/utils/format";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
@@ -14,16 +14,17 @@ import { CARD, SectionHead } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › KULÜP / ÖZET: tek kartta satırlar (simge, ad, tek satır açıklama, sağda değer). Dokununca ilgili sayfa açılır.
-// Dikkat isteyen satır (warn: bekleyen ödeme, eksik iş, yazılmamış günlük, geciken fatura) kehribar simge ve yazıyla öne çıkar;
-// aidat satırında ödeyenlerin doluluk çubuğu (bar). Yalnız kişinin görebildiği kartlar çizilir; hiç kart yoksa bölüm görünmez.
+// Ana sayfa › KULÜP / ÖZET: yalnız bilgisi olan kartlar görünür (Seyhun: "ne varsa onlar gösterilsin, yoksa gösterilmesin").
+// Üstte tam genişlik "Sıradaki yarış" kartı (ad, tarih, sporcu, eksik iş, kalan gün); altında iki sütun küçük kartlar:
+// Aidat (ödemeyen/onay bekleyen varsa), Fiş / Fatura (ödenmemiş fatura ya da bu ay fiş varsa), Banka, Antrenman (bu ay varsa),
+// Instagram (gönderi varsa). Bilgisi biten kart kendiliğinden gizlenir (clubDues, clubFis… homeTiles.js). Dikkat isteyen kart (warn)
+// kehribar simge ve yazıyla öne çıkar. Hiç kart yoksa bölüm görünmez.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
 // Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
-const fisTile = (r, inv) => (!inv ? r : !r ? inv : { big: r.big, sub: `Fatura: ${inv.sub}`, warn: inv.warn });
 export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
@@ -86,62 +87,112 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
     const t = setTimeout(() => setLate(true), WAIT);
     return () => clearTimeout(t);
   }, [busy]);
-  const skel = (k) => busy && wait[k] && [k, null];
-  // Sıra: dikkat isteyebilenler (aidat, yarış) önce
-  const cards = [
-    skel("dues") || (dues && ["/dues", "wallet", "Aidat", duesTile(sum.dues, ym), null, "dues"]),
-    skel("race") || (race && ["/athletes/races", "flag", "Sıradaki yarış", raceTile(raceInfo.next, raceInfo.up), null, "race"]),
-    skel("bank") || (money && m.bank && ["/mail", "chart", "Banka", m.bank, null, "bank"]),
-    // Fiş ve fatura tek satır (sayfası da tek, sekmeli): değer ayın fiş harcaması, açık fatura varsa alt satır onu söyler
-    skel("inv") || ((money || inv) && ["/receipts", "receipt", "Fiş / Fatura", fisTile(money && m.receipts, inv), null, "inv"]),
-    training && ["/training", "trend", "Antrenman", trainingTile(plans, today)],
-    posts && ["/posts", "instagram", "Instagram", postsTile(sum.posts), "instagram"],
-  ].filter(Boolean);
-  if (!cards.length) return null;
+  const skel = (k) => busy && wait[k];
+  const raceCard = race && !skel("race") && clubRace(raceInfo.next);
+  // Sıra: dikkat isteyebilenler (aidat, fatura) önce
+  const tiles = [
+    skel("dues") ? ["dues"] : dues && ["/dues", "wallet", "Aidat", clubDues(sum.dues, ym), "dues"],
+    skel("inv") ? ["inv"] : (money || invoices) && ["/receipts", "receipt", "Fiş / Fatura", clubFis(inv, money && m.receipts), "inv"],
+    skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Banka", m.bank, "bank"],
+    training && ["/training", "trend", "Antrenman", clubTraining(plans, today)],
+    posts && ["/posts", "instagram", "Instagram", clubPosts(sum.posts), null, "instagram"],
+  ].filter((x) => x && (x.length === 1 || x[3]));
+  const raceWait = skel("race");
+  if (!raceCard && !raceWait && !tiles.length) return null;
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
       <SectionHead id="home-sum" title={title} />
-      <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
-        {cards.map(([href, icon, label, t, brand, k]) =>
-          !icon ? (
-            <Skeleton key={`s-${href}`} />
-          ) : (
-            <li key={href} className={fade.has(k) ? "fade-in" : undefined}>
-              <Link href={href} aria-label={`${label}: ${t.big}, ${t.sub}`} className="flex items-center gap-3 py-3 pl-4 pr-3 transition active:bg-bg">
-                <span className={`grid size-[2.375rem] shrink-0 place-items-center rounded-xl ${brand ? BRAND[brand] : t.warn ? "bg-amber-500/12 text-amber-700" : "bg-acc/10 text-acc"}`}>
-                  <Icon name={icon} className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold leading-snug">{label}</b>
-                  <small className={`block truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700" : "text-mut"}`}>{t.sub}</small>
-                  {t.bar != null && (
-                    <span className="mt-1.5 block h-1.5 w-[90%] overflow-hidden rounded-full bg-line" aria-hidden="true">
-                      <span className={`block h-full rounded-full ${t.bar >= 1 ? "bg-ok" : "bg-acc"}`} style={{ width: `${Math.round(t.bar * 100)}%` }} />
+      <div className="space-y-3">
+        {raceWait ? <Skeleton wide /> : raceCard && <RaceCard r={raceCard} fade={fade.has("race")} />}
+        {tiles.length > 0 && (
+          <ul className="grid grid-cols-2 gap-3">
+            {tiles.map(([href, icon, label, t, k, brand], i) => {
+              const wide = tiles.length % 2 === 1 && i === tiles.length - 1 ? "col-span-2" : "";
+              if (!icon) return <Skeleton key={`s-${href}`} className={wide} />;
+              return (
+                <li key={href} className={`${wide} ${fade.has(k) ? "fade-in" : ""}`}>
+                  <Link href={href} aria-label={`${label}: ${t.big}, ${t.sub}`} className={`flex h-full flex-col px-4 pb-3.5 pt-3.5 ${CARD}`}>
+                    <span className="flex items-center gap-2.5">
+                      <span
+                        className={`grid size-8 shrink-0 place-items-center rounded-[0.625rem] ${brand ? BRAND[brand] : t.warn ? "bg-amber-500/12 text-amber-700 dark:text-amber-300" : "bg-acc/10 text-acc"}`}
+                      >
+                        <Icon name={icon} className="size-[1.125rem]" />
+                      </span>
+                      <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{label}</b>
                     </span>
-                  )}
-                </span>
-                <b className="max-w-[45%] shrink-0 truncate text-right text-[1rem] font-bold tabular-nums tracking-tight">{t.big}</b>
-                <Icon name="chev" className="size-4 shrink-0 text-mut" />
-              </Link>
-            </li>
-          ),
+                    <b className="mt-2.5 block truncate text-[1.375rem] font-bold leading-tight tabular-nums tracking-tight">{t.big}</b>
+                    <small className={`mt-0.5 block truncate text-[0.8125rem] leading-snug ${t.warn ? "font-semibold text-amber-700 dark:text-amber-300" : "text-mut"}`}>{t.sub}</small>
+                    {t.bar != null && (
+                      <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-line" aria-hidden="true">
+                        <span className="block h-full rounded-full bg-acc" style={{ width: `${Math.round(t.bar * 100)}%` }} />
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </ul>
+      </div>
     </section>
   );
 }
 
-// Satırla aynı boy ve düzende iskelet: simge, ad, açıklama, sağda değer (renkler temaya göre, .shimmer globals.css)
-function Skeleton() {
+// Sıradaki yarış: tam genişlik kart; solda bayrak, ortada ad ve "tarih · sporcu · eksik iş", sağda büyük kalan gün
+function RaceCard({ r, fade }) {
   return (
-    <li aria-hidden="true" className="flex items-center gap-3 py-3 pl-4 pr-3">
-      <span className="shimmer size-[2.375rem] shrink-0 rounded-xl" />
-      <span className="min-w-0 flex-1">
-        <span className="shimmer block h-3.5 w-20 rounded-full" />
-        <span className="shimmer mt-2 block h-3 w-32 max-w-full rounded-full" />
+    <Link
+      href="/athletes/races"
+      aria-label={`Sıradaki yarış: ${r.title}, ${r.days != null ? `${r.days} gün kaldı` : r.when}`}
+      className={`flex items-center gap-3.5 py-3.5 pl-4 pr-5 ${CARD} ${fade ? "fade-in" : ""}`}
+    >
+      <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${r.left ? "bg-amber-500/12 text-amber-700 dark:text-amber-300" : "bg-acc/10 text-acc"}`}>
+        <Icon name="flag" className="size-5" />
       </span>
-      <span className="shimmer block h-4 w-14 rounded-full" />
+      <span className="min-w-0 flex-1">
+        <small className="block text-[0.6875rem] font-bold tracking-[.08em] text-acc">SIRADAKİ YARIŞ</small>
+        <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{r.title}</b>
+        <small className="block truncate text-[0.8125rem] leading-snug text-mut">
+          {r.sub}
+          {r.sub && " · "}
+          <span className={r.left ? "font-semibold text-amber-700 dark:text-amber-300" : ""}>{r.left ? `${r.left} iş eksik` : "hazır"}</span>
+        </small>
+      </span>
+      {r.days != null ? (
+        <span className="shrink-0 text-center leading-none">
+          <b className="block text-[1.875rem] font-bold tabular-nums tracking-tight">{r.days}</b>
+          <small className="text-[0.75rem] font-semibold text-mut">gün</small>
+        </span>
+      ) : (
+        <b className="shrink-0 text-[1.0625rem] font-bold text-acc">{r.when}</b>
+      )}
+    </Link>
+  );
+}
+
+// Kartla aynı boy ve düzende iskelet (renkler temaya göre, .shimmer globals.css); wide: yarış kartı
+function Skeleton({ wide, className = "" }) {
+  if (wide)
+    return (
+      <div aria-hidden="true" className={`flex items-center gap-3.5 py-3.5 pl-4 pr-5 ${CARD}`}>
+        <span className="shimmer size-11 shrink-0 rounded-xl" />
+        <span className="min-w-0 flex-1">
+          <span className="shimmer block h-3 w-24 rounded-full" />
+          <span className="shimmer mt-2 block h-4 w-36 max-w-full rounded-full" />
+          <span className="shimmer mt-2 block h-3 w-44 max-w-full rounded-full" />
+        </span>
+        <span className="shimmer block h-8 w-8 rounded-lg" />
+      </div>
+    );
+  return (
+    <li aria-hidden="true" className={`px-4 py-3.5 ${CARD} ${className}`}>
+      <span className="flex items-center gap-2.5">
+        <span className="shimmer size-8 shrink-0 rounded-[0.625rem]" />
+        <span className="shimmer block h-3.5 w-16 rounded-full" />
+      </span>
+      <span className="shimmer mt-3 block h-5 w-20 rounded-full" />
+      <span className="shimmer mt-2 block h-3 w-28 max-w-full rounded-full" />
     </li>
   );
 }
