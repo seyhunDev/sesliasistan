@@ -45,6 +45,7 @@ export function FitnessHome() {
   }); // { prog, fresh, k }
   const [busy, setBusy] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [newGoal, setNewGoal] = useState("");
   const [profOpen, setProfOpen] = useState(false);
   const [bodyLater, setBodyLater] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
@@ -197,8 +198,11 @@ export function FitnessHome() {
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
         <Tabs tab={tab} setTab={setTab} />
-        <FitIntro name={profile.name} fit={fitProf} onStart={() => setNewOpen(true)} onSaveBody={saveBody} />
-        <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
+        <FitIntro name={profile.name} fit={fitProf} onStart={(g) => {
+            setNewGoal(g);
+            setNewOpen(true);
+          }} onSaveBody={saveBody} />
+        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
     );
   }

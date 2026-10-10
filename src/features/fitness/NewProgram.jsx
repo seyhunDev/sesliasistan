@@ -144,15 +144,16 @@ export function ProfileFields({ f, set, withGoal = true }) {
 // Program hazırla: 4 adım (Hedef › Sen › Haftan › Özet). Sonunda yapay zekaya giden cümle ya da boş program.
 // Serbest yazı kutusu yok (tek asistan kuralı): özel istekler alttaki asistana söylenir.
 const STEPS = ["Hedef", "Sen", "Haftan", "Özet"];
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy }) {
-  const [step, setStep] = useState(0);
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal }) {
+  // Tanıtımda hedef kartından gelindiyse hedef seçili, sihirbaz 2. adımdan başlar
+  const [step, setStep] = useState(goal ? 1 : 0);
   const [days, setDays] = useState([1, 3, 5]);
   const [slot, setSlot] = useState("sabah");
   const [time, setTime] = useState("07:00");
   const [weeks, setWeeks] = useState(4);
   const [min, setMin] = useState(45);
   const [start, setStart] = useState(todayStr());
-  const [f, setF] = useState(() => ({ goal: "saglik", level: "yeni", place: "salon", equip: [], ...profile }));
+  const [f, setF] = useState(() => ({ goal: "saglik", level: "yeni", place: "salon", equip: [], ...profile, ...(goal ? { goal } : {}) }));
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const pickSlot = ([k, , , t]) => {
     setSlot(k);
