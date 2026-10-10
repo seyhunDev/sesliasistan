@@ -15,6 +15,7 @@ export const PLAN_KINDS = {
   invoice: { label: "Fatura", how: "faturayı ödendi işaretleme", say: "<firma> faturası ödendi" },
   log: { label: "Antrenman günlüğü", how: "antrenmanın nasıl geçtiğini günlüğe yazma (rüzgâr, çalışılanlar); yalnız kimin geldiği söylendiyse ya da yoklama denildiyse attendance", say: "antrenman günlüğüne yaz: <anlatım>" },
   fitness: { label: "Fitness", how: "fitness / spor salonu programı hazırlama ya da değiştirme, yapılan fitness antrenmanını (set, tekrar, kilo, koşu) yazma; yelken antrenmanı değil", say: "fitness: <anlatım>" },
+  food: { label: "Beslenme", how: "yenilen/içilen yemeği, içilen suyu ya da tartılan kiloyu yazma (geçmiş zaman); yemek planlama değil", say: "<öğün> <yenilenler> yedim  |  <n> bardak su içtim  |  kilom <kg>" },
   event: { label: "Etkinlik", how: "kamp, gezi, piknik, balık gibi organizasyon planı (antrenman, toplantı, ders planı değil: onlar other)", say: "<etkinlik> planla" },
   shopping: { label: "Alışveriş", how: "alışveriş listesine ekleme", say: "listeye <şeyler> ekle" },
   call: { label: "Arama", how: "birini arama", say: "<Ad>'ı ara" },
@@ -207,7 +208,7 @@ export function localPlan(text, kindOf0) {
 // 2026-10-09): önce başka işlerin dayandığı kayıtlar (yarış, sporcu), sonra sayfada kalan hızlı işler (yoklama, günlük,
 // ödeme…), sonra onay isteyebilen diğer işler (mesaj, plan), en sonda sayfa değiştiren işler. Gönderi en son: gönderi
 // ekranı açılınca o ekranda kalınır ve yarışın gönderisi yarış kaydedildikten sonra hazırlanır. Aynı türler söylendiği sırada.
-const ORDER = ["race", "athlete", "attendance", "log", "fitness", "income", "dues", "invoice", "inventory", "shopping", "event", "other", "call", "nav", "post"];
+const ORDER = ["race", "athlete", "attendance", "log", "food", "fitness", "income", "dues", "invoice", "inventory", "shopping", "event", "other", "call", "nav", "post"];
 // Yapay zekanın sırası korunur, yalnız gönderi ve sayfa açma sona alınır: sayfa listenin ortasında değişmesin (denetim B10)
 export function lastPagesPlan(tasks) {
   const end = (t) => (t?.kind === "post" ? 2 : t?.kind === "nav" ? 1 : 0);

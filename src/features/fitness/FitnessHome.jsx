@@ -20,6 +20,8 @@ import { ProgramEditor } from "./ProgramEditor";
 import { BodyStep, FitIntro } from "./FitIntro";
 import { hasBody } from "@/lib/fitness/forecast";
 import { HistoryCard, MonthCard, ProgramCard, ProgressCard, TodayCard, WeekCard } from "./FitDashboard";
+import { FoodView } from "./FoodView";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Fitness sayfası (yalnız ana hesap): bugünkü antrenman (Başla), bu hafta (halka, 7 gün, seri), gelişim (en iyi değer, küçük grafik),
 // program (hafta ilerlemesi, düzenle, planlara ekle), bu ay, geçmiş (parçalar FitDashboard.jsx). Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
@@ -47,6 +49,9 @@ export function FitnessHome() {
   const [bodyLater, setBodyLater] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
   const [fitProf, setFitProf] = useState(profile.fit || {});
+  const router = useRouter();
+  const tab = useSearchParams().get("tab") === "food" ? "food" : "train";
+  const setTab = (t) => router.replace(t === "food" ? "/fitness?tab=food" : "/fitness", { scroll: false });
 
   const reload = useCallback(
     (force) =>
@@ -163,11 +168,35 @@ export function FitnessHome() {
     );
   }
 
+  const bodySheet = (
+    <Sheet open={bodyOpen} onClose={() => setBodyOpen(false)}>
+      <BodyStep
+        fit={fitProf}
+        onSave={async (f) => {
+          await saveBody(f);
+          setBodyOpen(false);
+        }}
+      />
+    </Sheet>
+  );
+
+  if (tab === "food") {
+    return (
+      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+        <PageHeader title="Fitness" sub="Beslenme ve kilo takibin" />
+        <Tabs tab={tab} setTab={setTab} />
+        <FoodView orgId={orgId} uid={uid} fit={fitProf} fitW={profile.fitW} trainDays={prog?.days?.length || 3} onBody={() => setBodyOpen(true)} />
+        {bodySheet}
+      </main>
+    );
+  }
+
   // Hiç programı ve fitness antrenmanı yoksa: tanıtım (kısa mesaj, boy/kilo, hedef kartları, adımlar)
   if (list && !list.length && !all.length) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
+        <Tabs tab={tab} setTab={setTab} />
         <FitIntro name={profile.name} fit={fitProf} onStart={() => setNewOpen(true)} onSaveBody={saveBody} />
         <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
@@ -191,6 +220,7 @@ export function FitnessHome() {
           <Icon name="plus" className="size-5" />
         </button>
       </PageHeader>
+      <Tabs tab={tab} setTab={setTab} />
 
       {!hasBody(fitProf) && !bodyLater && (
         <div className="mt-2 flex items-center gap-1 rounded-[1.25rem] bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
@@ -209,15 +239,7 @@ export function FitnessHome() {
           </button>
         </div>
       )}
-      <Sheet open={bodyOpen} onClose={() => setBodyOpen(false)}>
-        <BodyStep
-          fit={fitProf}
-          onSave={async (f) => {
-            await saveBody(f);
-            setBodyOpen(false);
-          }}
-        />
-      </Sheet>
+      {bodySheet}
 
       <TodayCard plan={todays[0]} next={nextOne} week={prog && progWeek(prog, today)} today={today} onOpen={open} />
       {todays.slice(1).map((p) => (
@@ -258,6 +280,23 @@ export function FitnessHome() {
       <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </main>
+  );
+}
+
+// Antrenman | Beslenme seçimi (adres ?tab=food; asistan "beslenmeyi aç" ile de gelir)
+function Tabs({ tab, setTab }) {
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-1 rounded-full bg-card p-1 shadow-[0_1px_3px_rgba(38,40,44,.08)]">
+      {[
+        ["train", "Antrenman", "dumbbell"],
+        ["food", "Beslenme", "utensils"],
+      ].map(([k, n, ic]) => (
+        <button key={k} type="button" onClick={() => setTab(k)} className={`flex h-10 items-center justify-center gap-2 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? "bg-acc text-white" : "text-mut"}`}>
+          <Icon name={ic} className="size-4" />
+          {n}
+        </button>
+      ))}
+    </div>
   );
 }
 

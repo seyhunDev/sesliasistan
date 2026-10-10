@@ -99,6 +99,8 @@ import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
+import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
+import { addMeals as foodAddMeals, addWater as foodAddWater, askFood, loadMonth as loadFoodMonth, saveWeight as saveFoodWeight } from "@/features/fitness/foodData";
 import { applyLog, planOf as fitPlanOf, recentText as fitRecent, resLine as fitResLine, weekStats as fitWeek, monthStats as fitMonth, programLine as fitProgLine } from "@/lib/fitness/model";
 import { activeOf as fitActive, addSession as fitAddSession, askFitness, loadPrograms as loadFitPrograms, removePlans as fitRemovePlans, saveProfile as saveFitProfile, showProgram as showFitProgram, syncPlans as fitSyncPlans } from "@/features/fitness/fitnessData";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
@@ -962,6 +964,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (wantsInventory(x, false)) return "inventory";
     if (wantsEvent(x)) return "event";
     if (wantsLog(x)) return "log";
+    if (owner && wantsFood(x, false)) return "food";
     if (owner && wantsFitness(x, false)) return "fitness";
     if (wantsSchedule(x, false)) return "schedule";
     if (shopCommand(x)) return "shopping";
@@ -1169,7 +1172,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const routes = routesOf(s, {
       owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
       races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
-      invPage, fitHere: path === "/fitness" || !!fp?.fit, attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
+      invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
       prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
     });
     // Her aday: true → iş yapıldı (ya da soru soruldu), false → sonraki aday
@@ -1207,6 +1210,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Fitness: program (önizlemede açılır), yapılan antrenman (günün fitness planına), sorular
         case "fitness":
           return runFitness(s, viaVoice, fp?.fit ? fp : null), true;
+        // Beslenme: yemek (yapay zeka kaloriyi tahmin eder, hemen yazılır), su, kilo, "bugün kaç kalori aldım"
+        case "food":
+          return runFood(s, viaVoice), true;
         case "bareSave":
           return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice), true;
         // Instagram gönderisi: yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
@@ -2784,6 +2790,58 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       if (id !== runId.current) return;
       stepsEnd(false);
       reply(`${e.message || "Fitness isteği işlenemedi."} Fitness sayfasından elle de yapabilirsin.`, { fail: true, engine: "ai" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+
+  // Beslenme (Fitness › Beslenme): su, kilo ve gün özeti yerelde; yemek yapay zekayla (/api/food) okunup hemen yazılır,
+  // düzeltme Fitness › Beslenme'de yemeğe dokunarak
+  async function runFood(s, viaVoice) {
+    const id = ++runId.current;
+    const org = profile?.orgId || myUid;
+    const uid = profile?.uid || myUid;
+    const today = todayStr();
+    const loc = foodLocal(s);
+    const tg = () => foodTargets(profile?.fit || {}, 3);
+    setPhase("thinking");
+    setSteps([]);
+    try {
+      if (loc?.op === "weight") {
+        const list = await saveFoodWeight(uid, profile?.fitW || [], loc.kg);
+        const prev = list.length > 1 ? list[list.length - 2].kg : 0;
+        const d = prev ? Math.round((loc.kg - prev) * 10) / 10 : 0;
+        return reply(`Yazdım: ${String(loc.kg).replace(".", ",")} kg.${d ? ` Öncekine göre ${d > 0 ? "+" : ""}${String(d).replace(".", ",")} kg.` : ""}`, { engine: "local" }, viaVoice);
+      }
+      if (loc?.op === "stats") {
+        const day = foodDayOf(await loadFoodMonth(org, uid, foodMonth(today)), today);
+        return reply(foodDayLine(day, tg()), { engine: "local" }, viaVoice);
+      }
+      if (loc?.op === "water") {
+        const day = await foodAddWater(org, uid, today, loc.n);
+        const goal = tg()?.water;
+        return reply(`Yazdım: ${loc.n} bardak su. Bugün ${day.water}${goal ? `/${goal}` : ""} bardak.`, { engine: "local" }, viaVoice);
+      }
+      stepTo("Yemekler okunuyor");
+      const r = await askFood({ text: s });
+      if (id !== runId.current) return;
+      if (!r.isFood) {
+        stepsEnd(false);
+        return reply("Ne yediğini anlayamadım. Örneğin “öğlen tavuk pilav ve ayran içtim” de.", { engine: "ai", expect: true, fail: true }, viaVoice);
+      }
+      const date = r.date || today;
+      let day = r.items.length ? await foodAddMeals(org, uid, date, r.items) : null;
+      if (r.water) day = await foodAddWater(org, uid, date, r.water);
+      stepsEnd(true);
+      const what = r.items.map((m) => `${m.name} (${m.kcal} kcal)`).join(", ");
+      const t = day ? foodTotals(day.meals).kcal : 0;
+      const goal = tg()?.kcal;
+      const sum = date === today && t ? ` Bugün ${t}${goal ? ` / ${goal}` : ""} kalori.` : "";
+      return reply(`Yazdım: ${[what, r.water ? `${r.water} bardak su` : ""].filter(Boolean).join(", ")}.${sum}`, { engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(`${e.message || "Yazamadım."} Fitness › Beslenme'den elle ekleyebilirsin.`, { fail: true, engine: "ai" }, viaVoice);
     } finally {
       if (id === runId.current) setPhase("idle");
     }
