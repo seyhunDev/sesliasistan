@@ -181,3 +181,14 @@ export function cleanSay(text) {
   for (const [re, to] of PHRASE_FIX) t = t.replace(re, to);
   return fixVerbs(t);
 }
+
+// Telefonun ses tanımasının parçalarını tek boşlukla birleştirir (iPhone parçaları boşluksuz verir: "hazırlaGörevlere deSaner")
+export const joinParts = (parts) => parts.map((x) => String(x || "").trim()).filter(Boolean).join(" ");
+
+// Sesten gelen metinde boşluksuz birleşmiş kelimeleri ayırır: "hazırlaGörevlere deSaner" → "hazırla Görevlere de Saner".
+// Küçük harfle biten kelimenin hemen ardından büyük harfle başlayan kelime gelirse araya boşluk girer; bilinen marka
+// yazımları (WhatsApp, YouTube, iPhone…) dokunulmaz.
+const CAMEL = /^(whatsapp|youtube|tiktok|iphone|ipad|imac|macbook|linkedin|paypal|playstation|powerpoint|onedrive|airdrop|facetime|icloud)$/i;
+export function unglue(text) {
+  return String(text || "").replace(/[\p{L}]+/gu, (w) => (CAMEL.test(w) ? w : w.replace(/(\p{Ll}{2})(?=\p{Lu}\p{Ll})/gu, "$1 ")));
+}
