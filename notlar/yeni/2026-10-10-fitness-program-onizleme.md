@@ -5,3 +5,4 @@
 ## Sıradaki işler
 
 - Seyhun onaylayınca birleştir; sonra kaydettikten sonraki ekranlar (Fitness ana sayfası, program görünümü).
+- Fitness tanıtımı (Seyhun: "daha önce hiç antrenman oluşturmamışsa tanıtım sayfası, adıyla motivasyon, şınav çeken ve kilo veren animasyon, adım adım anlatım, sonra program oluşturma"; onay bekliyor, telefonda denenmedi): hiç programı ve fitness antrenmanı olmayan kullanıcıda Fitness sayfası tanıtımla açılır: "Seyhun, her tekrar seni hedefine biraz daha yaklaştırır.", şınav çeken kişi animasyonu (her tekrarda göbek küçülür, kilo 85,0'dan 0,1 düşer, "−0,1 kg" süzülür; 10 tekrarda baştan; "hareketi azalt" açıksa durağan), 5 adım (hedef, kendini anlat, haftanı planla, program hazır, yap ve işaretle), "Programımı oluştur" adımlı Program hazırla'yı açar. Program kaydedilince tanıtım bir daha görünmez (ek kayıt yok). `FitIntro.jsx`, FitnessHome. Örnek: `/mnt/project-files/fitness/tanitim.png`, `tanitim.mp4`.

@@ -17,6 +17,7 @@ import {
 import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
+import { FitIntro } from "./FitIntro";
 
 // Fitness sayfası (yalnız ana hesap): bu hafta (yapılan/kalan, seri, süre), bugünkü antrenman, program (düzenle, planlara ekle),
 // gelişim (hareket başına en iyi değer), bu ay, geçmiş. Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
@@ -148,6 +149,17 @@ export function FitnessHome() {
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title={edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
         <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} busy={busy} onSave={save} onCancel={() => setEdit(null)} />
+      </main>
+    );
+  }
+
+  // Hiç programı ve fitness antrenmanı yoksa: tanıtım (motivasyon, şınav animasyonu, adımlar)
+  if (list && !list.length && !all.length) {
+    return (
+      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+        <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
+        <FitIntro name={profile.name} onStart={() => setNewOpen(true)} />
+        <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
     );
   }
