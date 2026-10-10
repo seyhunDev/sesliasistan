@@ -490,5 +490,5 @@ export function changedText(before, after) {
   const ch = FIELD_NAMES.filter(([k]) => after?.[k] != null && String(after[k] || "").trim() !== String(before?.[k] || "").trim()).map(([, n]) => n);
   return ch.length
     ? `Değiştirdim: ${ch.join(", ")}.`
-    : "Gönderide bir şey değişmedi. İstediğini Görseldeki yazılar ya da Açıklama bölümünden elle değiştirmen gerekiyor.";
+    : "Gönderide bir şey değişmedi. İstediğini Yazı ya da Paylaş › Açıklamayı düzenle bölümünden elle değiştirmen gerekiyor.";
 }
