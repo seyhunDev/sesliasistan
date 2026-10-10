@@ -115,6 +115,23 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const toast = useToast();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "home" : "info"); // home: yarışın özeti ve bölümler; diğerleri tek bölüm ekranı
+  // Bölüm açılınca tarayıcı geçmişine kayıt eklenir: telefonun geri hareketi yarış listesine değil özete döner
+  const openTab = useCallback((k) => {
+    const h = window.history;
+    const st = { ...h.state, raceTab: k };
+    if (h.state?.raceTab) h.replaceState(st, "");
+    else if (k !== "home") h.pushState(st, "");
+    setTab(k);
+  }, []);
+  const goHome = useCallback(() => {
+    if (window.history.state?.raceTab) window.history.back();
+    else setTab("home");
+  }, []);
+  useEffect(() => {
+    const onPop = () => setTab(window.history.state?.raceTab || "home");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
   // Seçili belgeler yarışta saklanır (yeni yarışta hepsi, kulüp izin yazısı kapalı)
@@ -276,7 +293,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const make = async () => {
     const bad = ready.find(([, ok, , soft]) => !ok && !soft);
     if (bad) {
-      setTab(bad[2]);
+      openTab(bad[2]);
       return toast(bad[2] === "people" ? "En az bir sporcu seç" : `Eksik: ${bad[0].toLocaleLowerCase("tr-TR")}`);
     }
     if (!docs.length) return toast("En az bir belge seç");
@@ -316,7 +333,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       setParts(each.map((x) => ({ ...x, file: new File([x.blob], partName(name, x.title), { type: "application/pdf" }) })));
       await queue.current.catch(() => {});
       if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
-      setTab("docs");
+      openTab("docs");
       if (!r.checks?.docs) put("checks", { ...r.checks, docs: true });
     } catch (e) {
       toast(e?.message || "Belgeler hazırlanamadı");
@@ -401,7 +418,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     if (mode === "new" || mode === "update") {
       dropFile();
       setR((p) => applyNotice(p, n, mode === "update"));
-      setTab("home");
+      goHome();
     } else if (n.hotels?.length) setR((p) => withHotels(p, n)); // bilgiler aynı olsa da oteller (oda fiyatları) yenilenir
     const saved = pdf ? await keepNoticeFile(pdf, n.name) : false;
     const msg = {
@@ -614,7 +631,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   </li>
                 ))}
                 <li>
-                  <button type="button" onClick={() => setTab("todo")} className="flex w-full items-center justify-between px-4 py-3 text-[0.875rem] font-semibold text-acc">
+                  <button type="button" onClick={() => openTab("todo")} className="flex w-full items-center justify-between px-4 py-3 text-[0.875rem] font-semibold text-acc">
                     {steps.length > 3 ? `Tümünü gör (${steps.length})` : "İş ekle ya da çıkar"}
                     <Icon name="chev" className="size-4" />
                   </button>
@@ -628,7 +645,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {sections.filter(([k]) => k !== "todo" || !steps.length).map(([k, title, icon, sub, warn]) => (
               <li key={k}>
-                <button type="button" onClick={() => setTab(k)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-bg">
+                <button type="button" onClick={() => openTab(k)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-bg">
                   <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${warn ? "bg-amber-500/15 text-amber-700" : "bg-acc/10 text-acc"}`}>
                     <Icon name={icon} className="size-[1.125rem]" />
                   </span>
@@ -654,7 +671,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       ) : (
         // Bölüm ekranı: üstte geri (yarışa dön) ve bölümün adı
         <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] -mx-5 mt-1 flex items-center gap-3 bg-bg/90 px-5 py-2 backdrop-blur">
-          <button type="button" onClick={() => setTab("home")} aria-label="Yarışa dön" className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-card pl-2 pr-3.5 text-[0.875rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
+          <button type="button" onClick={goHome} aria-label="Yarışa dön" className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-card pl-2 pr-3.5 text-[0.875rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
             <Icon name="back" className="size-4" />
             Yarış
           </button>
@@ -896,7 +913,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <ul className={`${card} space-y-2.5 px-4 py-3.5`}>
             {ready.map(([label, ok, to, soft]) => (
               <li key={label}>
-                <button type="button" onClick={() => !ok && setTab(to)} className="flex w-full items-center gap-2.5 text-left">
+                <button type="button" onClick={() => !ok && openTab(to)} className="flex w-full items-center gap-2.5 text-left">
                   <Icon name={ok ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${ok ? "text-ok" : soft ? "text-amber-600" : "text-rec"}`} />
                   <span className={`flex-1 text-[0.875rem] ${ok ? "text-mut" : "font-medium"}`}>{label}</span>
                   {!ok && <Icon name="chev" className="size-4 text-mut" />}
