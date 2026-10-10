@@ -17,6 +17,7 @@ export const AI_LABELS = {
   inventory: "Envanter",
   invoice: "Fatura okuma",
   "training-log": "Antrenman günlüğü",
+  fitness: "Fitness",
   "bank-analyze": "Banka Excel incelemesi",
   "post-caption": "Instagram yazısı",
   person: "Kişi ekleme",

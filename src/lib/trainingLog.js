@@ -12,7 +12,7 @@ export const RATINGS = [
 ];
 
 // Kategorisi Antrenman ya da başlığında antrenman/idman geçen plan (elle "Genel" kategoride açılmış antrenmanlar da)
-export const isTraining = (p) => (p?.cat || p?.category) === "Antrenman" || /antre?nman|idman/i.test(p?.title || "");
+export const isTraining = (p) => !p?.fit && (p?.cat || p?.category) !== "Fitness" && ((p?.cat || p?.category) === "Antrenman" || /antre?nman|idman/i.test(p?.title || ""));
 // Günlük, antrenmanın günü ya da sonrasında yazılır (iptal edilen hariç)
 export const canLog = (p, today) => isTraining(p) && p.status !== "cancelled" && !!p.date && p.date <= today;
 

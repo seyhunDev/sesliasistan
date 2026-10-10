@@ -7,6 +7,7 @@ import { isEnd, isNoMore, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
+import { wantsFitness } from "@/lib/fitness/words";
 import { wantsPost } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
 import { wantsPerson } from "@/features/people/assistPerson";
@@ -32,7 +33,7 @@ export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|gö
 export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 
 // Bekleyen taslak/kart cevabından ÖNCE denenen işler (antrenman günlüğü, etkinlik, envanter kendi akışlarında kalır)
-export const EARLY = new Set(["close", "logBare", "log", "event", "inventory"]);
+export const EARLY = new Set(["close", "logBare", "log", "event", "inventory", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
 export function moreKind(s, c = {}) {
@@ -60,7 +61,7 @@ export function moreKind(s, c = {}) {
 }
 
 // c: { owner (ana hesap), isStaff, racer (sporcu/yarış yetkisi), athleteSide (sporcu/veli/öğrenci), att (yoklama yetkisi),
-//      path, today, races, raceNames, names (kişi adları), logHere, invPage, attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
+//      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
 //      askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
 // Dönen: [{ id, ...veri }] uygulanacak sırayla; son aday her zaman { id: "ai" }
 export function routesOf(s, c = {}) {
@@ -72,10 +73,13 @@ export function routesOf(s, c = {}) {
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
   if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
-  if (!mf && !athleteSide && wantsLog(s) && bareLog(s)) add("logBare");
-  if (!mf && !athleteSide && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
+  // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
+  const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
+  if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");
+  if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
   if (!mf && !isStaff && wantsEvent(s)) add("event");
   if (!mf && !isStaff && wantsInventory(s, !!c.invPage) && !nav(s)) add("inventory");
+  if (!mf && owner && !isStaff && wantsFitness(s, !!c.fitHere) && !nav(s)) add("fitness");
   if (!c.drafts && !c.pending && BARE_SAVE.test(s)) add("bareSave");
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");

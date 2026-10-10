@@ -1303,3 +1303,78 @@ group("Yeni sürüm")([
   ["bilgi yok", F("geliştirmede ya da yanıtsızda yeni sayılmaz", () => !NV.isNewer({ sha: "bbb" }, "") && !NV.isNewer(null, "aaa") && !NV.isNewer({ sha: "" }, "aaa"))],
   ["güncelleme isteği", F("başka işler sayılmaz", () => NV.updateAsk("uygulamayı güncelle") && NV.updateAsk("güncelle") && !NV.updateAsk("antrenman planını güncelle") && !NV.updateAsk("yarın 10'da antrenman ekle"))],
 ]);
+
+// Fitness (lib/fitness): hareket listesi, program, takvime yazılacak günler, sonuç, takip, otomatik ilerleme, sözler
+const FX = await import("@/lib/fitness/exercises");
+const FM2 = await import("@/lib/fitness/model");
+const FW = await import("@/lib/fitness/words");
+const PROG = FM2.cleanProgram({
+  title: "3 günlük", weeks: 2, start: "2026-10-12",
+  days: [
+    { dow: 1, time: "7:00", min: 45, name: "Üst vücut", items: [{ ex: "warmup", min: 5 }, { ex: "pushup", sets: 3, reps: 12 }, { ex: "db-row", sets: 3, reps: 10, kg: 12 }] },
+    { dow: 3, time: "07:00", name: "Alt vücut", items: [{ ex: "squat", sets: 3, reps: 10, kg: 40 }, { ex: "plank", sets: 3, sec: 30 }] },
+    { dow: 5, time: "07:00", name: "Tüm vücut", items: [{ name: "Koşu", min: 20 }, { ex: "uydurma-hareket", name: "" }] },
+    { dow: 3, name: "Aynı gün ikinci" },
+  ],
+});
+const FPL = (date, items, res, extra = {}) => ({ id: `${date}-${extra.id || "p"}`, date, cat: "Fitness", title: "Fitness · x", durationMin: 45, fit: { prog: "p1", name: "x", items, ...(res ? { res } : {}) }, ...extra });
+const SQ = [{ ex: "squat", name: "Squat", kind: "reps", sets: 3, reps: 10, kg: 40 }];
+const okSets = (n, reps, kg) => Array.from({ length: n }, () => ({ reps, kg, ok: true }));
+group("Fitness")([
+  ["hareket listesi", F("kimlikler tekrarsız, her grup dolu", () => new Set(FX.EXERCISES.map((e) => e.id)).size === FX.EXERCISES.length && FX.GROUPS.every((g) => FX.EXERCISES.some((e) => e.group === g)))],
+  ["söylenen hareket", F("şınav, sınav (ses), squat, plank, mekik, dambıl lunge", () => FX.findExercise("şınav")?.id === "pushup" && FX.findExercise("sınavlar")?.id === "pushup" && FX.findExercise("Squat")?.id === "squat" && FX.findExercise("plank")?.id === "plank" && FX.findExercise("mekik")?.id === "crunch" && FX.findExercise("dambıl lunge")?.id === "db-lunge" && FX.findExercise("asdf") === null)],
+  ["program temizliği", F("aynı gün bir kez, saat 07:00, koşu dakika, adsız hareket atılır", () => PROG.days.length === 3 && PROG.days[0].time === "07:00" && PROG.days[2].items.length === 1 && PROG.days[2].items[0].kind === "cardio" && PROG.days[2].items[0].min === 20 && PROG.days[1].items[1].sec === 30)],
+  ["takvim günleri", F("2 hafta × 3 gün = 6 antrenman, ilki Pzt 12 Ekim", () => { const s = FM2.sessionsOf(PROG); return s.length === 6 && s[0].date === "2026-10-12" && s[1].date === "2026-10-14" && s[5].date === "2026-10-23" && s[5].w === 2; })],
+  ["planlar", F("bugünden sonrası; başlık, saat, süre, hareketler", () => { const d = FM2.planDrafts({ ...PROG, id: "p1" }, "2026-10-15"); return d.length === 4 && d[0].date === "2026-10-16" && d[0].title === "Fitness · Tüm vücut" && d[0].time === "07:00" && d[0].fit.prog === "p1" && d[0].fit.items.length === 1; })],
+  ["program satırı", F("Pzt 07:00, Çar 07:00, Cum 07:00 · 2 hafta", () => FM2.programLine(PROG) === "Pzt 07:00, Çar 07:00, Cum 07:00 · 2 hafta")],
+  ["hareket satırı", F("3 × 10 · 40 kg, 3 × 30 sn, 20 dk", () => FM2.itemLine(PROG.days[1].items[0]) === "3 × 10 · 40 kg" && FM2.itemLine(PROG.days[1].items[1]) === "3 × 30 sn" && FM2.itemLine(PROG.days[2].items[0]) === "20 dk")],
+  ["durum", F("yapıldı, atlandı, kaçırıldı, bugün, sırada", () => { const t = "2026-10-14"; return FM2.statusOf(FPL("2026-10-12", SQ, { st: "done" }), t) === "done" && FM2.statusOf(FPL("2026-10-12", SQ, { st: "skip" }), t) === "skip" && FM2.statusOf(FPL("2026-10-12", SQ), t) === "missed" && FM2.statusOf(FPL(t, SQ), t) === "today" && FM2.statusOf(FPL("2026-10-16", SQ), t) === "next"; })],
+  ["yelken antrenmanı değil", F("fitness planı antrenman günlüğüne girmez", async () => { const TL = await import("@/lib/trainingLog"); return !TL.isTraining(FPL("2026-10-12", SQ, null, { title: "Fitness · antrenman" })) && TL.isTraining({ cat: "Antrenman", title: "Optimist" }); })],
+  ["hafta özeti", F("3 plandan 1 yapıldı, 1 kaçırıldı, 1 kaldı, 45 dk, seri 1", () => {
+    const pl = [FPL("2026-10-12", SQ, { st: "done", min: 45, ex: [{ sets: okSets(3, 10, 40) }] }), FPL("2026-10-14", SQ, null, { id: "b" }), FPL("2026-10-16", SQ, null, { id: "c" }), FPL("2026-10-02", SQ, null, { id: "d", status: "cancelled" })];
+    const w = FM2.weekStats(pl, "2026-10-15");
+    return w.planned === 3 && w.done === 1 && w.missed === 1 && w.left === 1 && w.minutes === 45 && w.streak === 1;
+  })],
+  ["seri", F("üç hafta aralıksız yapıldı → 3", () => FM2.weekStats([FPL("2026-09-29", SQ, { st: "done" }, { id: "a" }), FPL("2026-10-06", SQ, { st: "done" }, { id: "b" }), FPL("2026-10-12", SQ, { st: "done" }, { id: "c" })], "2026-10-15").streak === 3)],
+  ["ay özeti", F("2 yapıldı, 1 kaçırıldı, %67, hacim 2400 kg", () => {
+    const pl = [FPL("2026-10-05", SQ, { st: "done", ex: [{ sets: okSets(3, 10, 40) }] }, { id: "a" }), FPL("2026-10-07", SQ, { st: "done", ex: [{ sets: okSets(2, 10, 60) }] }, { id: "b" }), FPL("2026-10-09", SQ, null, { id: "c" })];
+    const m = FM2.monthStats(pl, "2026-10", "2026-10-15");
+    return m.done === 2 && m.missed === 1 && m.rate === 67 && m.volume === 2400;
+  })],
+  ["otomatik ilerleme", F("bütün setler tamam → +2,5 kg; eksik → aynı kilo", () => {
+    const full = [FPL("2026-10-05", SQ, { st: "done", ex: [{ sets: okSets(3, 10, 40) }] })];
+    const part = [FPL("2026-10-05", SQ, { st: "done", ex: [{ sets: [...okSets(2, 10, 40), { reps: 7, kg: 40, ok: true }] }] })];
+    const a = FM2.targetFor(SQ[0], full, "2026-10-07");
+    const b = FM2.targetFor(SQ[0], part, "2026-10-07");
+    return a.kg === 42.5 && a.up && b.kg === 40 && !b.up && FM2.targetFor(SQ[0], [], "2026-10-07").kg === 40;
+  })],
+  ["kilosuz ilerleme", F("şınav 3 × 12 tamam → 13 tekrar; plank → +5 sn", () => {
+    const PU = { ex: "pushup", name: "Şınav", kind: "reps", sets: 3, reps: 12 };
+    const PL = { ex: "plank", name: "Plank", kind: "time", sets: 3, sec: 30 };
+    const pl = [FPL("2026-10-05", [PU, PL], { st: "done", ex: [{ sets: okSets(3, 12) }, { sets: Array.from({ length: 3 }, () => ({ sec: 30, ok: true })) }] })];
+    return FM2.targetFor(PU, pl, "2026-10-07").reps === 13 && FM2.targetFor(PL, pl, "2026-10-07").sec === 35;
+  })],
+  ["rekorlar", F("squat en iyi 60 kg × 10, 2 kez", () => {
+    const pl = [FPL("2026-10-05", SQ, { st: "done", ex: [{ sets: okSets(3, 10, 40) }] }, { id: "a" }), FPL("2026-10-07", SQ, { st: "done", ex: [{ sets: okSets(3, 10, 60) }] }, { id: "b" })];
+    const r = FM2.records(pl)[0];
+    return r.key === "squat" && r.best.kg === 60 && r.first.kg === 40 && r.times === 2 && FM2.bestText(r) === "60 kg × 10";
+  })],
+  ["söylenen sonuç", F("squat 3 × 10 · 60 kg yazılır, programda olmayan koşu eklenir", () => {
+    const fit = FM2.applyLog({ items: SQ }, { items: [{ ex: "squat", sets: [{ reps: 10, kg: 60 }, { reps: 10, kg: 60 }, { reps: 10, kg: 60 }] }, { name: "koşu", sets: [{ min: 20 }] }] });
+    return fit.res.st === "done" && fit.items.length === 2 && fit.items[1].ex === "run" && FM2.resLine(fit) === "Squat 3 × 10 · 60 kg, Koşu 20 dk";
+  })],
+  ["atlandı", F("yapamadım → atlandı", () => FM2.applyLog({ items: SQ }, { st: "skip" }).res.st === "skip")],
+  ["profil", F("bilinmeyen hedef atılır, kilo 82,5", () => { const p = FM2.cleanProfile({ goal: "uçmak", level: "orta", weight: "82,5", place: "ev", equip: ["dumbbell"] }); return p.goal === "" && p.level === "orta" && p.weight === 82.5 && !FM2.profileReady(p); })],
+  ["fitness cümlesi", F("fitness, squat + set; yelken antrenmanı ve takvim planı değil", () =>
+    FW.wantsFitness("haftada 3 gün fitness programı hazırla") && FW.wantsFitness("squat 3 set 10 tekrar 60 kilo yaptım") && FW.wantsFitness("şınav 3 set 15 tekrar") &&
+    !FW.wantsFitness("dün 14 knot poyrazda start çalıştık") && !FW.wantsFitness("yarın 10'da antrenman ekle") && !FW.wantsFitness("fitness sayfasını aç"))],
+  ["fitness sayfasında", F("başka iş olmayan her cümle; mesaj değil", () => FW.wantsFitness("çarşambayı bacak günü yap", true) && !FW.wantsFitness("Ali'ye mesaj at yarın gelsin", true))],
+  ["yerel komutlar", F("planlara ekle, kaldır, yaptım, atladım, kaç antrenman; ayrıntı yapay zekaya", () =>
+    FW.fitLocal("programı planlara ekle")?.op === "plans" && FW.fitLocal("fitness programını takvimden kaldır")?.op === "unplan" && FW.fitLocal("bugünkü antrenmanı yaptım")?.op === "done" &&
+    FW.fitLocal("bugün antrenmanı atladım")?.op === "skip" && FW.fitLocal("bu hafta kaç antrenman yaptım")?.op === "stats" && FW.fitLocal("squat 3 set yaptım") === null && FW.fitLocal("çarşambayı bacak günü yap") === null)],
+  ["ana sayfa düğmesi", F("ana hesapta Fitness var, çalışanda yok", async () => {
+    const HT = await import("@/lib/homeTiles");
+    const has = (o) => HT.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness"));
+    return has({ owner: true }) && !has({ staff: true });
+  })],
+]);

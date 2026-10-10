@@ -25,6 +25,7 @@ import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { PlanActions } from "./PlanActions";
 import { TrainingLog } from "./TrainingLog";
+import { FitWorkout } from "@/features/fitness/FitWorkout";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { canLog } from "@/lib/trainingLog";
@@ -413,6 +414,7 @@ export function AddSheet({ open, onClose, seed }) {
               />
             )}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
+            {edit.kind === "plan" && rec?.fit && !locked && <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}-${rec.fit.items?.length || 0}`} rec={rec} by={by} />}
             {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} />}
             {/* Mesajlar (atananlar ve ana hesap) */}
             {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}

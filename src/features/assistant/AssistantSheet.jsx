@@ -97,6 +97,9 @@ import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } fr
 import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
+import { wantsFitness, fitLocal } from "@/lib/fitness/words";
+import { applyLog, planOf as fitPlanOf, recentText as fitRecent, resLine as fitResLine, weekStats as fitWeek, monthStats as fitMonth, programLine as fitProgLine } from "@/lib/fitness/model";
+import { activeOf as fitActive, addSession as fitAddSession, askFitness, loadPrograms as loadFitPrograms, removePlans as fitRemovePlans, saveProfile as saveFitProfile, showProgram as showFitProgram, syncPlans as fitSyncPlans } from "@/features/fitness/fitnessData";
 import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
@@ -958,6 +961,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (wantsInventory(x, false)) return "inventory";
     if (wantsEvent(x)) return "event";
     if (wantsLog(x)) return "log";
+    if (owner && wantsFitness(x, false)) return "fitness";
     if (wantsSchedule(x, false)) return "schedule";
     if (shopCommand(x)) return "shopping";
     if (receiptPayCommand(x)) return "receipt";
@@ -1161,7 +1165,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const routes = routesOf(s, {
       owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
       races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
-      invPage, attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
+      invPage, fitHere: path === "/fitness" || !!fp?.fit, attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
       prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
     });
     // Her aday: true → iş yapıldı (ya da soru soruldu), false → sonraki aday
@@ -1196,6 +1200,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Envanter: ekleme, çıkarma, değiştirme hemen; silme onayla
         case "inventory":
           return runInventory(s, viaVoice), true;
+        // Fitness: program (önizlemede açılır), yapılan antrenman (günün fitness planına), sorular
+        case "fitness":
+          return runFitness(s, viaVoice, fp?.fit ? fp : null), true;
         case "bareSave":
           return reply("Kaydedecek bir taslak görmüyorum. Ne eklememi istersin?", { engine: "local", expect: true }, viaVoice), true;
         // Instagram gönderisi: yeni gönderi açılır, yarış ve sporcular bağlanır, yazıları yapay zeka yazar
@@ -2691,6 +2698,93 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   }, [listening, transcribing, busy, open]);
 
   // Yoklamadan sonra cümledeki diğer işler: yoklama cevabı okunup bitince yapay zekaya (görev listesi) gider
+  // Fitness (yalnız ana hesap). Yerelde: "programı planlara ekle / takvimden kaldır", "bugünkü antrenmanı yaptım / atladım",
+  // "bu hafta kaç antrenman yaptım". Diğerleri /api/fitness: program hazırlama ya da değiştirme Fitness sayfasında önizlemede
+  // açılır (kaydetmeyi kullanıcı seçer); yapılan antrenman (set, tekrar, kilo) o günün fitness planına yazılır, plan yoksa açılır.
+  async function runFitness(s, viaVoice, focusFit) {
+    const id = ++runId.current;
+    const org = profile?.orgId || myUid;
+    const uid = profile?.uid || myUid;
+    const today = todayStr();
+    const by = { name: profile?.name || "" };
+    const loc = fitLocal(s);
+    setPhase("thinking");
+    setSteps([]);
+    try {
+      const prog = fitActive(await loadFitPrograms(org).catch(() => []));
+      if (loc?.op === "stats") {
+        const w = fitWeek(plans, today);
+        const m = fitMonth(plans, today.slice(0, 7), today);
+        const msg = w.planned || m.done
+          ? `Bu hafta ${w.planned} antrenmandan ${w.done} tanesini yaptın${w.left ? `, ${w.left} tane kaldı` : ""}${w.missed ? `, ${w.missed} tanesini kaçırdın` : ""}.${w.minutes ? ` Toplam ${w.minutes} dakika.` : ""} Bu ay ${m.done} antrenman${w.streak > 1 ? `, ${w.streak} haftadır aralıksız` : ""}.`
+          : "Henüz fitness antrenmanın yok. “Pazartesi, çarşamba, cuma sabah 7'de program hazırla” diyebilirsin.";
+        return reply(msg, { engine: "local" }, viaVoice);
+      }
+      if (loc?.op === "plans" || loc?.op === "unplan") {
+        if (!prog) return reply("Kayıtlı bir fitness programın yok. Önce program hazırlayalım: günlerini ve saatini söyle.", { engine: "local", expect: true }, viaVoice);
+        stepTo(loc.op === "plans" ? "Antrenmanlar takvime yazılıyor" : "Antrenmanlar takvimden kaldırılıyor");
+        if (loc.op === "plans") {
+          const r = await fitSyncPlans(org, uid, prog, plans, by);
+          stepsEnd(true);
+          return reply(`Ekledim: ${r.added} antrenman takvimde (${fitProgLine(prog)}).`, { engine: "local" }, viaVoice);
+        }
+        const n = await fitRemovePlans(org, prog, plans);
+        stepsEnd(true);
+        return reply(`Takvimden ${n} antrenmanı kaldırdım. Yapılanlar duruyor.`, { engine: "local" }, viaVoice);
+      }
+      if (loc?.op === "done" || loc?.op === "skip") {
+        const p = focusFit || fitPlanOf(plans, today);
+        if (!p) return reply("Bugün için fitness antrenmanı bulamadım. Ne yaptığını söylersen yazarım, ör. “30 dakika koştum”.", { engine: "local", expect: true }, viaVoice);
+        stepTo("Antrenman yazılıyor");
+        const fit = applyLog(p.fit || { items: [] }, { st: loc.op });
+        await updateRecord("plan", p.id, { fit }, by);
+        stepsEnd(true);
+        return reply(loc.op === "done" ? `Yazdım: ${p.fit?.name || p.title} yapıldı.` : `Yazdım: ${p.fit?.name || p.title} atlandı.`, { engine: "local", show: [{ kind: "plan", id: p.id }] }, viaVoice);
+      }
+      stepTo("Fitness isteğin hazırlanıyor");
+      const r = await askFitness({ text: s, profile: profile?.fit || {}, program: prog || null, recent: fitRecent(plans, today) });
+      if (id !== runId.current) return;
+      // Söylenen kişisel bilgi (kilo, hedef…) profile yazılır
+      const pf = Object.fromEntries(Object.entries(r.profile || {}).filter(([, v]) => (Array.isArray(v) ? v.length : !!v)));
+      if (Object.keys(pf).length) await saveFitProfile(uid, { ...(profile?.fit || {}), ...pf }).catch(() => {});
+      if (r.op === "program" && r.program) {
+        // "yeni program hazırla" yeni programdır; diğer cümleler açık programı değiştirir
+        const fresh = !prog || /(yeni|baştan|sıfırdan)/iu.test(s);
+        const next = fresh ? r.program : { ...prog, ...r.program, id: prog.id, plansAt: prog.plansAt, createdAt: prog.createdAt };
+        stepsEnd(true);
+        showFitProgram(next);
+        if (path !== "/fitness") router.push("/fitness");
+        return reply(`${(r.message || "Programı hazırladım.").trim()} Önizlemeyi açtım; kontrol edip ${next.plansAt ? "kaydet, takvim de güncellenir" : "“Kaydet ve planlara ekle”ye bas"}.`, { engine: "ai" }, viaVoice);
+      }
+      if (r.op === "log" && r.log) {
+        const date = r.log.date || today;
+        const p = focusFit && focusFit.date === date ? focusFit : plans.find((x) => x.fit && x.status !== "cancelled" && x.date === date);
+        stepTo("Antrenman yazılıyor");
+        let fit;
+        let pid;
+        if (p) {
+          fit = applyLog(p.fit, r.log);
+          pid = p.id;
+          await updateRecord("plan", p.id, { fit }, by);
+        } else {
+          fit = applyLog({ name: "Fitness", items: [] }, r.log);
+          pid = await fitAddSession(org, uid, { date, title: "Fitness", fit }, by);
+        }
+        stepsEnd(true);
+        const line = fitResLine(fit);
+        return reply(r.log.st === "skip" ? "Yazdım: antrenman atlandı." : `Yazdım${line ? `: ${line}` : ""}.`, { engine: "ai", show: pid ? [{ kind: "plan", id: pid }] : undefined }, viaVoice);
+      }
+      stepsEnd(true);
+      return reply(r.message || (Object.keys(pf).length ? "Profiline yazdım." : "Anlayamadım, tekrar söyler misin?"), { engine: "ai" }, viaVoice);
+    } catch (e) {
+      if (id !== runId.current) return;
+      stepsEnd(false);
+      reply(`${e.message || "Fitness isteği işlenemedi."} Fitness sayfasından elle de yapabilirsin.`, { fail: true, engine: "ai" }, viaVoice);
+    } finally {
+      if (id === runId.current) setPhase("idle");
+    }
+  }
+
   async function runSchedule(s, viaVoice) {
     const id = ++runId.current;
     ctrl.current?.abort();

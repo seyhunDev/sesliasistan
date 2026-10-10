@@ -78,6 +78,7 @@ export function AuthProvider({ children }) {
             birthdayAt: doc_?.birthdayAt || "", // ayarlar: doğum günü bildirimi saati ("HH:MM", boş = kapalı)
             windAt: doc_?.windAt || "", // ayarlar: rüzgâr uyarısı saati
             windKn: Number(doc_?.windKn) || 0, // ayarlar: rüzgâr uyarısı eşiği (knot; 0 = varsayılan, notifyExtra.js)
+            fit: doc_?.fit && typeof doc_.fit === "object" ? doc_.fit : null, // fitness profili (hedef, seviye, yer, ekipman, boy, kilo; Fitness sayfası)
             weeklyAt: doc_?.weeklyAt || "", // ayarlar: pazartesi haftalık özet saati
             duesAt: typeof doc_?.duesAt === "string" ? doc_.duesAt : null, // aidat: ödemeyenler bildirimi saati ("" kapalı, null henüz yazılmadı; duesRemind.js)
             summaryHidden: doc_?.summaryHidden || "", // ana ekranda kapatılan özet ("YYYY-MM-DD:morning|evening")

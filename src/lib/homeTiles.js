@@ -85,6 +85,7 @@ export function homeActions(o) {
       o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
       { href: "/birthdays", icon: "cake", label: "Doğum günü" },
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
+      !o.staff && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
       o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
       { href: "/archive", icon: "archive", label: "Arşiv" },
     ]],
