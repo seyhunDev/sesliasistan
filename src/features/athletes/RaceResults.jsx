@@ -83,7 +83,7 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
           </span>
           <span className="min-w-0 flex-1">
             <b className="block text-[0.9375rem] font-semibold">{busy ? "Sonuçlar okunuyor…" : files.length ? "Başka sonuç ekle" : "Sonuç PDF'i yükle"}</b>
-            <span className="block text-[0.8125rem] text-mut">{busy ? "Yarım dakika kadar sürebilir" : "Sporcularımızı bulur, kategori ve kızlar sırasını yazar"}</span>
+            <span className="block text-[0.8125rem] text-mut">{busy ? "Yarım dakika kadar sürebilir" : "Sporcularımızı bulur, genel, Junior ve kızlar sırasını yazar"}</span>
           </span>
         </button>
         <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" className="hidden" onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
@@ -116,7 +116,7 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
           </label>
         )}
       </section>
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Junior ve Bambino yazmayanlar Senior sayılır. Kızlar sırası için sporcu kartındaki cinsiyet kullanılır. Sonuçlar sporcu kartında da görünür.</p>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">Önce genel sıra; Junior ve Bambino ayrıca kendi içinde, kızlar da kendi içinde sıralanır. Kızlar sırası için sporcu kartındaki cinsiyet kullanılır. Sonuçlar sporcu kartında da görünür.</p>
     </>
   );
 }
