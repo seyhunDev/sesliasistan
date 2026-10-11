@@ -1267,6 +1267,19 @@ group("Sayfa geçişinde kaydırma")([
 // Bildirim kutusu (lib/inbox): ana sayfadaki "Bildirimler" ile simgedeki sayı aynı listeden
 const NB = await import("@/lib/inbox");
 group("Bildirim kutusu")([
+  ["temizleme", F("tek silinir, kalanlar durur; hepsi boşalır", () => {
+    let l = NB.inboxAdd([], { title: "A", tag: "task-1", url: "/?open=task:1" }, "2026-10-06T10:00:00.000Z");
+    l = NB.inboxAdd(l, { title: "B", tag: "chat-x", url: "/messages?c=x" }, "2026-10-06T11:00:00.000Z");
+    const one = NB.inboxDrop(l, [l[0].id]);
+    return one.length === 1 && one[0].title === "A" && NB.inboxDrop(l).length === 0;
+  })],
+  ["dokununca gidilen yer", F("günün özeti Planlar'a, haftalık Takvim'e, adresli olan kendi yerine, yeri olmayan boş", () =>
+    NB.inboxLink({ tag: "summary-2026-10-11", url: "/" }) === "/plans" && NB.inboxLink({ tag: "evening-2026-10-11", url: "/" }) === "/plans" &&
+    NB.inboxLink({ tag: "weekly-2026-10-12", url: "/calendar" }) === "/calendar" && NB.inboxLink({ tag: "plan-1", url: "/?open=plan:1" }) === "/?open=plan:1" &&
+    NB.inboxLink({ tag: "dues-a-2026-10", url: "/" }) === "")],
+  ["asistan: temizle", F("temizleme cümleleri; açma/kapatma ve soru değil", () =>
+    ["bildirimleri temizle", "bildirimleri sil", "zildeki bildirimleri kaldır", "tüm bildirimleri temizle"].every(NB.inboxClearAsk) &&
+    !["bildirimleri aç", "bildirimleri kapat", "bildirimleri sildin mi", "yarın 10'da antrenman ekle"].some(NB.inboxClearAsk))],
   ["eklenir, en yeni önde", F("iki bildirim, sayı 2", () => {
     let l = NB.inboxAdd([], { title: "Yeni görev: Motor yağı", body: "Ali verdi", tag: "task-1", url: "/?open=task:1" }, "2026-10-06T10:00:00.000Z");
     l = NB.inboxAdd(l, { title: "Ali", body: "Merhaba", tag: "chat-x", url: "/messages?c=x" }, "2026-10-06T11:00:00.000Z");

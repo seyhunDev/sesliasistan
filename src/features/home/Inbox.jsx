@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, runTransaction, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { listTime } from "@/features/chat/bits";
-import { isUnread } from "@/lib/inbox";
+import { inboxDrop, inboxLink, isUnread } from "@/lib/inbox";
 import { IconDot, useForYou } from "./ForYou";
 import { CARD, SectionHead } from "./ui";
 
@@ -22,6 +22,17 @@ function iconOf(tag = "") {
   if (/note/.test(tag)) return "note";
   if (/pay|paid|inv|dues|mail/.test(tag)) return "receipt";
   return "bell";
+}
+
+// Bildirimleri listeden çıkarır (ids yoksa hepsi). Okuma + yazma tek işlemde: aynı anda gelen bildirim kaybolmasın.
+export async function clearInbox(uid, ids) {
+  if (!uid) return;
+  const ref = doc(db, "users", uid);
+  await runTransaction(db, async (t) => {
+    const u = (await t.get(ref)).data() || {};
+    const inbox = inboxDrop(u.inbox, ids);
+    t.update(ref, { inbox, ...(ids ? {} : { inboxSeen: new Date().toISOString() }) });
+  });
 }
 
 // "Senin için" (tek kutu): bakman gereken her şey bir listede. Önce yapılacaklar (useForYou: silme isteği, mesaj, fatura,
@@ -37,7 +48,8 @@ export function useInbox() {
   const seen = profile?.inboxSeen || "";
   // Bu ziyarette "yeni" sayılanlar: sayfa açıldığında okunmamış olanlar (okundu yazılınca kaybolmasın)
   const [since, setSince] = useState(null);
-  const [gone, setGone] = useState(() => new Set()); // bu ziyarette kaydırılıp gizlenen bildirimler
+  const [gone, setGone] = useState(() => new Set()); // bu ziyarette kaydırılıp silinen bildirimler (sunucu yazana kadar gizli)
+  const [wide, setWide] = useState(""); // gidilecek yeri olmayan, tam metni açılan bildirim
   if (profile && since === null) setSince(seen); // ilk çizimde bir kez (React: çizim sırasında durum düzeltme)
   const seenRef = useRef(seen);
   useEffect(() => {
@@ -63,6 +75,7 @@ export function useInbox() {
   const note = (x) => {
     const isNew = since !== null && isUnread(x, since);
     const key = x.id || `${x.tag}-${x.at}`;
+    const link = inboxLink(x);
     return {
       id: `n:${key}`,
       lead: <IconDot icon={iconOf(x.tag)} tone={isNew ? "acc" : "mut"} />,
@@ -71,18 +84,31 @@ export function useInbox() {
       time: listTime(x.at),
       dot: isNew,
       old: !isNew,
-      onOpen: () => x.url && x.url !== "/" && router.push(x.url),
+      wrap: wide === key,
+      stay: !link, // dokununca pencere kapanmaz, tam metin açılır
+      onOpen: () => (link ? router.push(link) : setWide((w) => (w === key ? "" : key))),
     };
   };
   const actions = todo;
-  const fresh = since === null ? [] : inbox.filter((x) => isUnread(x, since)).map(note).filter((x) => !gone.has(x.id));
+  const kept = inbox.filter((x) => !gone.has(`n:${x.id || `${x.tag}-${x.at}`}`));
+  const fresh = since === null ? [] : kept.filter((x) => isUnread(x, since)).map(note);
   const list = [...actions, ...fresh];
-  const hide = (id) => (id.startsWith("n:") ? setGone((g) => new Set(g).add(id)) : hideTodo(id));
-  return { list, actions, history: inbox.map(note), hide };
+  // Bildirim satırı: listeden kalıcı silinir (users/{uid}.inbox); yapılacak satırı: bu cihazda gizlenir (ForYou)
+  const hide = (id) => {
+    if (!id.startsWith("n:")) return hideTodo(id);
+    setGone((g) => new Set(g).add(id));
+    const x = inbox.find((y) => `n:${y.id || `${y.tag}-${y.at}`}` === id);
+    if (x?.id) clearInbox(uid, [x.id]).catch(() => {});
+  };
+  const clearAll = () => {
+    setGone(new Set(inbox.map((x) => `n:${x.id || `${x.tag}-${x.at}`}`)));
+    return clearInbox(uid).catch(() => {});
+  };
+  return { list, actions, history: kept.map(note), hide, clearAll };
 }
 
 // Satır: solda simge/kişi, tek satır başlık + zaman, tek satır açıklama, sağda tek eylem. Dokun → ilgili yer açılır.
-function Row({ x, first, onHide }) {
+function Row({ x, first, onHide, hideLabel = "Gizle" }) {
   const body = (
     <div
       role="button"
@@ -99,7 +125,7 @@ function Row({ x, first, onHide }) {
             {x.time && <time className={`shrink-0 text-[0.75rem] tabular-nums ${x.badge ? "font-semibold text-acc" : "text-mut"}`}>{x.time}</time>}
           </span>
           <span className="mt-0.5 flex items-center gap-2">
-            <span className={`min-w-0 flex-1 truncate text-[0.8125rem] leading-snug ${x.subTone || "text-mut"}`}>{x.sub}</span>
+            <span className={`min-w-0 flex-1 text-[0.8125rem] leading-snug ${x.wrap ? "whitespace-pre-line break-words" : "truncate"} ${x.subTone || "text-mut"}`}>{x.sub}</span>
             {x.badge > 0 && (
               <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-acc px-1.5 text-[0.6875rem] font-bold tabular-nums text-white">{x.badge > 99 ? "99+" : x.badge}</span>
             )}
@@ -110,14 +136,14 @@ function Row({ x, first, onHide }) {
       </span>
     </div>
   );
-  return <li>{onHide ? <SwipeRow actions={[{ label: "Gizle", icon: "x", tone: "neutral", onAction: () => onHide(x.id) }]}>{body}</SwipeRow> : body}</li>;
+  return <li>{onHide ? <SwipeRow actions={[{ label: hideLabel, icon: "x", tone: "neutral", onAction: () => onHide(x.id) }]}>{body}</SwipeRow> : body}</li>;
 }
 
-function List({ rows, onHide }) {
+function List({ rows, onHide, hideLabel }) {
   return (
     <ul className={`overflow-hidden ${CARD}`}>
       {rows.map((x, i) => (
-        <Row key={x.id} x={x} first={!i} onHide={onHide} />
+        <Row key={x.id} x={x} first={!i} onHide={onHide} hideLabel={hideLabel} />
       ))}
     </ul>
   );
@@ -143,10 +169,10 @@ export function InboxBell({ inbox, onOpen }) {
   );
 }
 
-// Pencere: yapılacakların hepsi, altında son bildirimler (okunanlar soluk)
+// Pencere: yapılacakların hepsi, altında son bildirimler (okunanlar soluk; sola kaydır › Sil, ya da Tümünü temizle)
 export function InboxSheet({ inbox, open, onClose }) {
-  const { actions, history, hide } = inbox;
-  const go = (x) => ({ ...x, onOpen: () => (onClose(), x.onOpen()) });
+  const { actions, history, hide, clearAll } = inbox;
+  const go = (x) => (x.stay ? x : { ...x, onOpen: () => (onClose(), x.onOpen()) });
   return (
     <Sheet open={open} onClose={onClose} title="Senin için">
       <div className="space-y-5">
@@ -159,8 +185,12 @@ export function InboxSheet({ inbox, open, onClose }) {
         )}
         {history.length > 0 && (
           <section aria-label="Bildirimler">
-            <SectionHead title="BİLDİRİMLER" />
-            <List rows={history.map(go)} />
+            <SectionHead title="BİLDİRİMLER">
+              <button type="button" onClick={clearAll} className="font-semibold text-acc">
+                Tümünü temizle
+              </button>
+            </SectionHead>
+            <List rows={history.map(go)} onHide={hide} hideLabel="Sil" />
           </section>
         )}
       </div>
