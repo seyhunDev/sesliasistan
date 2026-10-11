@@ -192,6 +192,43 @@ group("Yarış sonuçları")([
   ["Instagram sırası", RF("dereceli önce, sonuç satırda", () => { const l = RR.withResults([{ name: "Ali" }, { name: "Ece" }], ["a1", "a2"], { fleet: 0, rows: { a2: { place: 1 } } }); return l[0].name === "Ece" && l[0].res === "1." && !l[1].res; })],
 ]);
 
+// Sonuç belgesi (resultSheet.js): kategori, kızlar sırası, bizim sporcuları bulma
+const SH = await import("@/lib/resultSheet");
+const SHEET = SH.cleanSheet([
+  { cls: "OPTİMİST", rows: [
+    { rank: 1, name: "Can Demir", club: "Foça YK", sex: "E" },
+    { rank: 2, name: "Ela Su", cat: "J", sex: "K" },
+    { rank: 3, name: "KAYA Ali", sail: "TUR 1204", club: "Dikili Yelken", cat: "Junior" },
+    { rank: 4, name: "Defne Ak", cat: "", sex: "Kız" },
+    { rank: 5, name: "Zeynep Yıldız", club: "Dikili Yelken", sex: "" },
+    { rank: 6, name: "Ece Tan", cat: "Bambino", sex: "F" },
+    { rank: 7, name: "Ali Kaya", sail: "TUR 999", club: "Ayvalık", cat: "J" },
+  ] },
+  { cls: "ilca4", rows: [{ rank: 2, name: "Ayşe Şahin", sex: "W" }, { rank: 1, name: "Mert Öz" }] },
+]);
+const OURS = [
+  { id: "a1", studentName: "Ali Kaya", sailNo: "1204" },
+  { id: "a2", studentName: "Zeynep Yıldız", studentGender: "Kız" },
+  { id: "a3", studentName: "Ayse Sahin", studentGender: "Kız" },
+  { id: "a4", studentName: "Ozan Yok" },
+];
+const RANK = SH.rankOurs(SHEET, OURS);
+group("Yarış sonuç belgesi")([
+  ["kategori", RF("J/Junior → Junior, B → Bambino, boş → Senior; ILCA'da kategori yok", () => SH.catOf("Optimist", "J") === "Junior" && SH.catOf("Optimist", "Bambino") === "Bambino" && SH.catOf("Optimist", "") === "Senior" && SH.catOf("ILCA 4", "J") === "")],
+  ["cinsiyet", RF("K/F/W/Kız → K, E/M/Erkek → E", () => ["K", "F", "W", "Kız", "Female"].every((x) => SH.sexOf(x) === "K") && ["E", "M", "Erkek", "Boy"].every((x) => SH.sexOf(x) === "E") && SH.sexOf("") === "")],
+  ["sınıf adı ve sıra", RF("OPTİMİST → Optimist, ilca4 → ILCA 4, sıraya dizilir", () => SHEET[0].cls === "Optimist" && SHEET[1].cls === "ILCA 4" && SHEET[1].rows[0].name === "Mert Öz")],
+  ["ters yazılmış ad + yelken no", RF("KAYA Ali bulunur; iki Ali Kaya'dan yelken no 1204 olan", () => RANK.a1?.cls === "Optimist" && RANK.a1.cat === "Junior" && RANK.a1.place === 2 && RANK.a1.n === 3 && RANK.a1.ov === 3 && RANK.a1.ovN === 7)],
+  ["Senior ve kızlar", RF("Zeynep Senior'da 3./3, kızlarda 2./2 (karttaki cinsiyet)", () => RANK.a2?.cat === "Senior" && RANK.a2.place === 3 && RANK.a2.n === 3 && RANK.a2.gp === 2 && RANK.a2.gn === 2)],
+  ["ILCA 4 ve Türkçe harfsiz ad", RF("Ayşe Şahin ILCA 4'te 2./2, kızlarda 1./1, kategori yok", () => RANK.a3?.cls === "ILCA 4" && RANK.a3.cat === "" && RANK.a3.place === 2 && RANK.a3.gp === 1 && RANK.a3.ov === "")],
+  ["listede olmayan", RF("bulunmayan sporcuya sonuç yazılmaz", () => !RANK.a4)],
+  ["sonuç satırı", RF("Optimist Senior 3. / 3 · Kızlar 2. / 2", () => SH.resultLine(RANK.a2) === "Optimist Senior 3. / 3 · Kızlar 2. / 2" && SH.resultLine(RANK.a3) === "ILCA 4 2. / 2 · Kızlar 1. / 1")],
+  ["birleştirme ve silme", RF("not kalır, belge silinince satırları gider", () => { const m = SH.mergeSheet({ fleet: 0, rows: { a2: { place: 9, note: "OCS" }, a5: { place: 4 } } }, RANK, { id: "f1", name: "s.pdf" }); const d = SH.dropSheet(m, "f1"); return m.rows.a2.place === 3 && m.rows.a2.note === "OCS" && m.rows.a2.f === "f1" && m.files.length === 1 && d.rows.a5 && !d.rows.a2 && !d.files.length; })],
+  ["kayıt temizliği (belgeli)", RF("kategori, kızlar sırası, belge künyesi saklanır", () => { const c = RR.cleanResults(SH.mergeSheet(null, RANK, { id: "f1", name: "s.pdf", size: 10, parts: 1, at: "2026-10-11" })); return c.rows.a2.gp === 2 && c.rows.a2.cat === "Senior" && c.rows.a2.f === "f1" && c.files[0].id === "f1" && RR.placeText(c, "a1") === "Optimist Junior 2. / 3"; })],
+  ["sporcu geçmişi (seçilmemiş)", RF("listede bulunan sporcu yarış geçmişine girer", () => RR.historyOf([{ id: "r1", name: "A", startDate: "2026-05-01", athleteIds: [], results: { rows: { a1: { place: 2, cls: "Optimist", cat: "Junior", n: 3 } } } }], "a1").length === 1)],
+  ["asistan cevabı", RF("Ali'nin sonucu kategoriyle söylenir", () => /Optimist Junior kategorisinde 3 sporcu içinde 2\./.test(SH.resultsAnswer([{ name: "Foça Kupası", results: { rows: { a1: RANK.a1 } } }], { id: "a1", studentName: "Ali Kaya" })))],
+  ["asistan sorusu", RF("ad ve yarış ayrılır; sonuç yükleme sorulmaz", () => { const a = SH.resultsAsk("Ali Kaya'nın sonuçları"); const b = SH.resultsAsk("Foça yarışında Zeynep kaçıncı oldu?"); return a?.name === "ali kaya" && b?.name === "zeynep" && b.race === "foça" && SH.resultsAsk("sonuç pdf yükle") === null; })],
+]);
+
 // Bütçe: gerçekleşen harcama (bağlı fişler)
 const BG = await import("@/features/athletes/budget");
 const RC = await import("@/lib/receipts");

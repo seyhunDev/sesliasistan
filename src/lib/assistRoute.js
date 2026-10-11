@@ -27,6 +27,7 @@ import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
 import { updateAsk } from "@/lib/newVersion";
 import { inboxClearAsk } from "@/lib/inbox";
+import { resultsAsk } from "@/lib/resultSheet";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -87,6 +88,8 @@ export function routesOf(s, c = {}) {
   if (!mf && owner && !isStaff && wantsFitness(s, !!c.fitHere) && !nav(s)) add("fitness");
   if (!c.drafts && !c.pending && BARE_SAVE.test(s)) add("bareSave");
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
+  const ra = !mf && owner && racer ? resultsAsk(s) : null;
+  if (ra) add("results", { ra });
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
   if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
   const n = !(racer && athleteOpenCommand(s)) && nav(s);

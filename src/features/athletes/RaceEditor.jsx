@@ -246,7 +246,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       const p = latest.current;
       if (n.startDate !== p.startDate || n.endDate !== p.endDate || n.athleteIds.join() !== p.athleteIds.join()) dropFile();
       first.current = !dirty.current; // asistanın değişikliği kaydedildi; sayfada bekleyen değişiklik varsa birlikte yazılır
-      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget });
+      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results });
     };
     window.addEventListener("sa-race-saved", on);
     return () => window.removeEventListener("sa-race-saved", on);
@@ -460,6 +460,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     dropRaceFile(id.current);
     dropExtras(id.current);
     dropNoticeFile(orgId, latest.current.noticeFile);
+    for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
     await onDelete(id.current);
   };
 
@@ -726,7 +727,17 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
           {chosen.length > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">Sporcuya dokunup eksik bilgileri gir; sporcu kartına kaydolur, sonraki yarışlarda hazır gelir.</p>}
-          {chosen.length > 0 && resultsOpen(r, todayStr()) && <RaceResults results={r.results} athletes={chosen} onChange={(v) => put("results", v)} />}
+          {athletes.length > 0 && resultsOpen(r, todayStr()) && (
+            <RaceResults
+              orgId={orgId}
+              race={r}
+              athletes={chosen}
+              club={athletes.filter(isActive)}
+              onChange={(v) => put("results", v)}
+              onAddAthletes={(ids) => set("athleteIds")([...new Set([...latest.current.athleteIds, ...ids])])}
+              onOpen={(f) => openPdf(f)}
+            />
+          )}
         </>
       )}
 

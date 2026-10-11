@@ -10,6 +10,7 @@ export const AI_LABELS = {
   attendance: "Sesli yoklama",
   race: "Yarış (asistan)",
   "race-notice": "Yarış talimatı",
+  "race-results": "Yarış sonuçları",
   "race-budget": "Yarış bütçesi",
   tasks: "Görev listesi (çoklu iş)",
   "race-around": "Yarış çevresi",

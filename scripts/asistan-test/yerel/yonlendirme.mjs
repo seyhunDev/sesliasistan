@@ -46,7 +46,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -91,6 +91,7 @@ const CASES = {
   appUpdate: ["uygulamayı güncelle", "güncellemeyi yükle", "yeni sürüme geç", "sayfayı yenile"],
   inboxClear: ["bildirimleri temizle", "bildirimleri sil", "zildeki bildirimleri kaldır", "tüm bildirimleri temizle"],
   version: ["son güncelleme ne", "en son ne değişti?", "uygulama güncellendi mi", "hangi sürümdeyim"],
+  results: ["Ali'nin sonuçları", "Ali Kaya'nın yarış sonuçları neler", "Ali kaçıncı oldu", "Foça yarışında Zeynep kaçıncı oldu", "Ayşe'nin dereceleri"],
   payee: ["bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi", "eylülde ne kadar para geldi"],
   navigate: ["ders programını aç", "yoklamayı aç", "ekip grubunu aç", "geri dön", "ayarlara git", "fişlerimi göster", "aidatlar sayfasını aç", "envanter sayfasını aç", "Ali ile mesajlaşmayı aç", "faturaları aç", "hesaplarımı aç"],
   receiptCam: ["fiş yükle", "fiş fotoğrafı çek", "yeni fiş ekle"],
@@ -198,7 +199,7 @@ for (const [task, list] of Object.entries(CASES)) {
 }
 group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s, why]) => [s, wrap(task, {}, true), why]));
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
-const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness", "food"].includes(r) };
+const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "results", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness", "food"].includes(r) };
 group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "squat 3 set 10 tekrar 60 kilo yaptım", "öğlen tavuk pilav yedim"].map((s) => [s, STAFF]));
 
 // Sıralı görev zinciri (lib/chain.js): "sonra" ile sıralanan işler bölünür, her parça kendi akışına gider
