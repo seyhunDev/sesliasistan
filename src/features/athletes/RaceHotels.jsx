@@ -55,7 +55,7 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
                       </span>
                       <span className="shrink-0 text-right">
                         <b className="block text-[0.875rem] font-semibold tabular-nums">{x.price || roomLine(x)}</b>
-                        {x.amount > 0 && x.cap > 1 && <span className="block text-[0.75rem] tabular-nums text-mut">{roomLine(x).split(" · ").slice(1, 3).join(" · ")}</span>}
+                        {x.amount > 0 && x.cap > 1 && <span className="block text-[0.75rem] tabular-nums text-mut">{roomLine(x).split(" · ").find((t) => t.startsWith("kişi başı"))}</span>}
                       </span>
                     </li>
                   ))}
