@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, runTransaction, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -36,45 +36,41 @@ export async function clearInbox(uid, ids) {
 }
 
 // "Senin için" (tek kutu): bakman gereken her şey bir listede. Önce yapılacaklar (useForYou: silme isteği, mesaj, fatura,
-// geciken ve bugünkü görev, yeni verilen, ödenecek fiş), sonra telefona gelen okunmamış bildirimler (users/{uid}.inbox, lib/inbox). Başlıktaki zilin sayısı bu listenin uzunluğu; zil (ve "Tümü") pencereyi açar, pencerede
-// yapılacakların hepsi ve son 30 bildirim. Ana sayfa görülünce bildirimler okundu yazılır (inboxSeen, simgedeki sayı sıfırlanır),
-// ama bu ziyaret boyunca listede kalır. Bir kez çağrılır (OwnerHome), sonuç zile ve kutuya verilir.
+// geciken ve bugünkü görev, yeni verilen, ödenecek fiş), sonra telefona gelen bildirimler (users/{uid}.inbox, lib/inbox).
+// Zilin sayısı = GÖRMEDİĞİN bildirimler (uygulama simgesindeki sayıyla aynı). Zile dokunup pencere açılınca hepsi görüldü yazılır
+// (inboxSeen), sayı hemen düşer; pencere açıkken gelen yeni bildirim de görüldü sayılır. Pencere açılmadan sayı düşmez.
+// Pencerede o açılışta yeni olanlar noktalı ve koyu, eskiler soluk. Bir kez çağrılır (OwnerHome), sonuç zile, şeride ve pencereye verilir.
 export function useInbox() {
   const { profile } = useAuth();
   const router = useRouter();
   const { list: todo, hide: hideTodo } = useForYou();
   const uid = profile?.uid;
-  const inbox = Array.isArray(profile?.inbox) ? profile.inbox : [];
+  const all = Array.isArray(profile?.inbox) ? profile.inbox : [];
   const seen = profile?.inboxSeen || "";
-  // Bu ziyarette "yeni" sayılanlar: sayfa açıldığında okunmamış olanlar (okundu yazılınca kaybolmasın)
-  const [since, setSince] = useState(null);
-  const [gone, setGone] = useState(() => new Set()); // bu ziyarette kaydırılıp silinen bildirimler (sunucu yazana kadar gizli)
+  const [gone, setGone] = useState(() => new Set()); // silinen bildirimler (sunucu yazana kadar gizli)
   const [wide, setWide] = useState(""); // gidilecek yeri olmayan, tam metni açılan bildirim
-  if (profile && since === null) setSince(seen); // ilk çizimde bir kez (React: çizim sırasında durum düzeltme)
-  const seenRef = useRef(seen);
+  const [open, setOpenState] = useState(false);
+  const [mark, setMark] = useState(""); // pencere açıldığında görülmüş sayılan an: bundan yenileri pencerede "yeni"
+  const keyOf = (x) => `n:${x.id || `${x.tag}-${x.at}`}`;
+  const inbox = all.filter((x) => !gone.has(keyOf(x)));
+  const newest = all[0]?.at || "";
+  // Pencere açıkken en yenisi de görülmüş sayılır: sayı yazmayı beklemeden hemen düşer
+  const lastSeen = open && newest > seen ? newest : seen;
+  const unread = inbox.filter((x) => isUnread(x, lastSeen));
+
+  const setOpen = (v) => {
+    if (v) setMark(lastSeen);
+    setOpenState(v);
+  };
+  // Pencere açıkken: okunmamış varsa hemen görüldü yaz (açıkken gelen de)
   useEffect(() => {
-    seenRef.current = seen;
-  }, [seen]);
-  // Uygulama arka plana geçince: döndüğünde yalnız bu arada gelenler yeni görünsün
-  useEffect(() => {
-    const on = () => document.visibilityState === "hidden" && setSince(seenRef.current);
-    document.addEventListener("visibilitychange", on);
-    return () => document.removeEventListener("visibilitychange", on);
-  }, []);
-  // Görüldü: okunmamış varsa ve sayfa ekrandaysa kısa süre sonra okundu yazılır
-  const newest = inbox[0]?.at || "";
-  const unread = !!newest && isUnread(inbox[0], seen);
-  useEffect(() => {
-    if (!uid || !unread) return;
-    const t = setTimeout(() => {
-      if (document.visibilityState === "visible") updateDoc(doc(db, "users", uid), { inboxSeen: newest }).catch(() => {});
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [uid, unread, newest]);
+    if (!open || !uid || !newest || newest <= seen) return;
+    updateDoc(doc(db, "users", uid), { inboxSeen: newest }).catch(() => {});
+  }, [open, uid, newest, seen]);
 
   const note = (x) => {
-    const isNew = since !== null && isUnread(x, since);
-    const key = x.id || `${x.tag}-${x.at}`;
+    const isNew = isUnread(x, open ? mark : lastSeen);
+    const key = keyOf(x).slice(2);
     const link = inboxLink(x);
     return {
       id: `n:${key}`,
@@ -90,21 +86,20 @@ export function useInbox() {
     };
   };
   const actions = todo;
-  const kept = inbox.filter((x) => !gone.has(`n:${x.id || `${x.tag}-${x.at}`}`));
-  const fresh = since === null ? [] : kept.filter((x) => isUnread(x, since)).map(note);
-  const list = [...actions, ...fresh];
+  const fresh = unread.map(note);
+  const list = [...actions, ...fresh]; // "N şey seni bekliyor" şeridi
   // Bildirim satırı: listeden kalıcı silinir (users/{uid}.inbox); yapılacak satırı: bu cihazda gizlenir (ForYou)
   const hide = (id) => {
     if (!id.startsWith("n:")) return hideTodo(id);
     setGone((g) => new Set(g).add(id));
-    const x = inbox.find((y) => `n:${y.id || `${y.tag}-${y.at}`}` === id);
+    const x = all.find((y) => keyOf(y) === id);
     if (x?.id) clearInbox(uid, [x.id]).catch(() => {});
   };
   const clearAll = () => {
-    setGone(new Set(inbox.map((x) => `n:${x.id || `${x.tag}-${x.at}`}`)));
+    setGone(new Set(all.map(keyOf)));
     return clearInbox(uid).catch(() => {});
   };
-  return { list, actions, history: kept.map(note), hide, clearAll };
+  return { list, actions, count: unread.length, history: inbox.map(note), hide, clearAll, open, setOpen };
 }
 
 // Satır: solda simge/kişi, tek satır başlık + zaman, tek satır açıklama, sağda tek eylem. Dokun → ilgili yer açılır.
@@ -149,9 +144,9 @@ function List({ rows, onHide, hideLabel }) {
   );
 }
 
-// Başlıktaki zil: sayı = Senin için'deki satır sayısı; dokununca pencere
+// Başlıktaki zil: sayı = görülmemiş bildirimler; dokununca pencere (açılınca sayı düşer)
 export function InboxBell({ inbox, onOpen }) {
-  const n = inbox.list.length;
+  const n = inbox.count;
   return (
     <button
       type="button"
