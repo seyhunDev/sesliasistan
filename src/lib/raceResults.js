@@ -1,6 +1,6 @@
 // Yarış sonuçları: yarışın results alanı { fleet: tekne sayısı, rows: { sporcuId: { place, note, … } }, files: [künye] }.
 // Satırda sonuç belgesinden gelenler de durur (resultSheet.js): cls sınıf, cat kategori (Senior/Junior/Bambino),
-// n kategorideki sporcu sayısı, gp/gn kızlar sırası ve sayısı, ov/ovN sınıfın genelindeki sıra, f belgenin kimliği.
+// place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
 // files: yüklenen sonuç PDF'leri { id, name, size, parts, at } (noticeFile.js ile parçalı saklanır).
 // Sporcu kartında yarış geçmişi ve Instagram "sonuç" gönderisi buradan beslenir (saf fonksiyonlar, test edilir).
 import { resultLine } from "./resultSheet";
@@ -21,7 +21,7 @@ export function cleanResults(v) {
     const row = { place, note };
     const cls = S(x?.cls, 30);
     if (cls) {
-      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000), ov: int(x?.ov, 1000), ovN: int(x?.ovN, 1000) });
+      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000) });
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
     }
     rows[id] = row;
