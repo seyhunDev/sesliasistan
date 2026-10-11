@@ -71,6 +71,7 @@ import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
 import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
 import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
+import { resultsAnswer } from "@/lib/resultSheet";
 import { soon } from "@/lib/soon";
 import { cleanSay, unglue } from "@/lib/speech/normalize";
 import { attRetry } from "@/lib/attAsk";
@@ -1289,6 +1290,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Gelen ödemeler: "bu ay ne kadar ödeme aldım"
         case "payee":
           return runPayee(r.pq, viaVoice), true;
+        // Sporcunun yarış sonuçları: "Ali'nin sonuçları", "Foça yarışında Ali kaçıncı oldu" (sporcu bulunamazsa sıradaki aday)
+        case "results":
+          return runResults(r.ra, viaVoice);
         // Son eklenen işler (lib/assistMore.js): arama, sporcu, nakit gelir, aidat hatırlatması…
         case "more":
           return runMore(s, viaVoice);
@@ -2381,6 +2385,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : "Silemedim, tekrar dene.", { fail: true, engine: "local" }, v);
       }
     }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
+    return true;
+  }
+
+  async function runResults(ra, viaVoice) {
+    const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+    const hit = matchPerson(ra.name, athletes.map((a) => a.studentName));
+    const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+    if (!a) return false;
+    if (raceOrg) races.current = await loadRaces(raceOrg).catch(() => races.current);
+    const list = [...races.current].sort((x, y) => String(y.startDate || "").localeCompare(String(x.startDate || "")));
+    reply(resultsAnswer(list, a, ra.race), { engine: "local" }, viaVoice);
     return true;
   }
 

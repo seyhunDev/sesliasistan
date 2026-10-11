@@ -82,11 +82,16 @@ function RaceHistory({ athleteId }) {
   return (
     <Card title="Yarışlar" icon="flag">
       {rows.map((x) => (
-        <Link key={x.id} href={`/athletes/races/${x.id}`} className="flex items-baseline justify-between gap-4 py-1.5 active:opacity-60">
-          <span className="min-w-0 truncate text-[0.875rem]">
-            {x.name} <small className="text-mut">{x.date ? fmtDate(x.date) : ""}</small>
+        <Link key={x.id} href={`/athletes/races/${x.id}`} className="flex items-center gap-3 py-2">
+          <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.875rem] font-bold tabular-nums ${x.place && x.place <= 3 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" : x.place ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
+            {x.place ? `${x.place}.` : "–"}
           </span>
-          <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.place && x.place <= 3 ? "font-semibold text-acc" : "text-mut"}`}>{x.text || "—"}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[0.875rem] font-medium">
+              {x.name} <small className="font-normal text-mut">{x.date ? fmtDate(x.date) : ""}</small>
+            </span>
+            <span className="block truncate text-[0.8125rem] text-mut">{x.text || "Sonuç yok"}</span>
+          </span>
         </Link>
       ))}
     </Card>
