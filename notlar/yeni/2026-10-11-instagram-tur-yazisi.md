@@ -5,9 +5,10 @@
   - Gönderi ekranında Yazı › Diğer yazılar ve ayarlar › "Tür yazısı" anahtarıyla açılır (`noTag`, `cleanPost`). Çizimde `drawPost` etiketi boşaltır; Afiş, Klasik ve Modern'in hepsinde geçerli.
   - Asistan: "etiketi kaldır", "yarış sonucu yazısı olmasın", "etiketi geri getir" (`sizeAsk`). "Yarış duyurusu yap" etiketi açar (`designFrom`).
   - Yarış › Sporcular › SONUÇLAR'da sıra yazılmış sporcu varsa "Instagram görseli hazırla" düğmesi çıkar. Gönderi yarış sonucu türünde, sporcular ve sonuçlarıyla açılır (`postFromRace` `kind: "sonuc"`).
-  - Örnek: `/mnt/project-files/instagram/tur-yazisi-kapali.png`.
+  - Sonuçta ilk üçe giren sporcu varsa (genel, Junior/Bambino ya da kızlar sırasında) gönderi dereceyle açılır: üstte "ÜÇÜNCÜLÜK" (birden çok sporcuda "DERECELERİMİZ"), başlık "Tebrikler Ece Yılmaz", alt satır "Sporcumuz Ece Yılmaz, Foça'da Optimist Junior sıralamasında üçüncü oldu.", dilek "Seninle gurur duyuyoruz!" (`podiumOf`, raceResults.js; `podiums`, `podiumTag`, `locative`, postModel.js; yapay zeka bu başlığı ve dereceyi değiştirmez, /api/post-caption). Derece yoksa eskisi gibi "Emeğinize Sağlık", tür yazısı kapalı.
+  - Örnekler: `/mnt/project-files/instagram/tur-yazisi-kapali.png`, `/mnt/project-files/instagram/sonuc-derece.png`.
   - Kural değişikliği yok.
-  - Testleri `test:elle` › "Instagram tasarım" › "tür yazısı kapalı", "sonuçtan gönderi".
+  - Testleri `test:elle` › "Instagram tasarım" › "tür yazısı kapalı", "sonuçtan gönderi", "sonuçta derece".
 
 ## Sıradaki işler
 

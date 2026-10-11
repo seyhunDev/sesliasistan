@@ -176,7 +176,13 @@ export function cleanTags(v) {
 
 const cleanAthletes = (a) =>
   (Array.isArray(a) ? a : [])
-    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30), ...(S(x?.res, 30) ? { res: S(x.res, 30) } : {}) }))
+    .map((x) => ({
+      name: S(x?.name, 60),
+      cls: S(x?.cls, 30),
+      ...(S(x?.res, 80) ? { res: S(x.res, 80) } : {}),
+      // İlk üç derecesi: 1-3 ve "Optimist Junior sıralamasında üçüncü" (sonuç gönderisinin başlığı ve alt satırı)
+      ...(x?.pod >= 1 && x?.pod <= 3 && S(x?.top, 60) ? { pod: Math.round(x.pod), top: S(x.top, 60) } : {}),
+    }))
     .filter((x) => x.name)
     .slice(0, 20);
 
@@ -296,6 +302,14 @@ export function genitive(word) {
 // 3 ve fazlası yalnız "Sporcularımız" (ad ve sayı yok). Yer yarışın ilçesi (yoksa ili).
 export function raceSub(race, kind = "duyuru") {
   if (!race) return "";
+  const pod = kind === "sonuc" ? podiums(race) : [];
+  if (pod.length) {
+    const town = String(race.place || "").split(",")[0].trim();
+    const at = town ? `${locative(town)} ` : "";
+    if (pod.length === 1) return `Sporcumuz ${pod[0].name}, ${at}${pod[0].top} oldu.`;
+    if (pod.length === 2) return `${pod[0].name} ${pod[0].top}, ${pod[1].name} ${pod[1].top} oldu.`.slice(0, 200);
+    return `Sporcularımız ${at}${pod.length} derece kazandı: ${pod.map((a) => a.name).join(", ")}.`.slice(0, 200);
+  }
   const a = race.athletes || [];
   const who = a.length === 1 ? `Sporcumuz ${a[0].name}` : a.length === 2 ? `Sporcularımız ${a[0].name} ve ${a[1].name}` : "Sporcularımız";
   const town = String(race.place || "").split(",")[0].trim();
@@ -314,6 +328,7 @@ export const imagePeople = (v) => {
 export function raceWish(race, kind = "duyuru") {
   if (!race) return "";
   const one = (race.athletes?.length || race.count || 0) === 1;
+  if (kind === "sonuc" && podiums(race).length) return podiums(race).length === 1 ? "Seninle gurur duyuyoruz!" : "Sizinle gurur duyuyoruz!";
   if (kind === "sonuc") return one ? "Sporcumuzu tebrik ederiz!" : "Sporcularımızı tebrik ederiz!";
   return one ? "Sporcumuza başarılar!" : "Sporcularımıza başarılar!";
 }
@@ -346,7 +361,33 @@ export function withClass(headline, race) {
   return `${andTr(names)} ${h}`.slice(0, 90);
 }
 // Yarış bağlıyken başlık yarışın adı değil, bizden kısa bir söz (yarışın adı ve yeri açıklamada ve yer · tarih satırında)
-export const raceHeadline = (race, kind) => (!race ? "" : kind === "sonuc" ? "Emeğinize Sağlık" : "Yarışa Hazırız");
+// Sonuçta ilk üçe giren varsa başlık tebrik + ad: "Tebrikler Ece Yılmaz" (Seyhun, 2026-10-11)
+export function raceHeadline(race, kind) {
+  if (!race) return "";
+  if (kind !== "sonuc") return "Yarışa Hazırız";
+  const p = podiums(race);
+  const first = (n) => n.split(" ")[0];
+  if (p.length === 1) return `Tebrikler ${p[0].name}`;
+  if (p.length === 2) return `Tebrikler ${first(p[0].name)} ve ${first(p[1].name)}`;
+  return p.length ? "Tebrikler Sporcularımız" : "Emeğinize Sağlık";
+}
+// İlk üçe giren sporcular (derecesi iyi olan önce)
+export const podiums = (race) => (race?.athletes || []).filter((a) => a.pod).sort((a, b) => a.pod - b.pod);
+const DEGREE = ["", "BİRİNCİLİK", "İKİNCİLİK", "ÜÇÜNCÜLÜK"];
+// Sonuç gönderisinde görselin üstündeki derece: tek sporcu "ÜÇÜNCÜLÜK", birden çok "DERECELERİMİZ"
+export function podiumTag(race) {
+  const p = podiums(race);
+  return !p.length ? "" : p.length === 1 ? DEGREE[p[0].pod] : "DERECELERİMİZ";
+}
+// Türkçe bulunma eki: Foça → Foça'da, Çeşme → Çeşme'de, Göcek → Göcek'te, Bodrum → Bodrum'da
+export function locative(word) {
+  const w = String(word || "").trim();
+  const low = w.toLocaleLowerCase("tr-TR");
+  const v = low.match(/[aıoueiöü](?=[^aıoueiöü]*$)/)?.[0];
+  if (!v) return w;
+  const a = /[aıou]/.test(v) ? "a" : "e";
+  return `${w}'${/[çfhkpsşt]$/.test(low) ? "t" : "d"}${a}`;
+}
 // Görseldeki yer · tarih satırı: "Foça · 7-11 Ekim 2026"
 export const raceMeta = (race) => (race ? [String(race.place || "").split(",")[0].trim(), race.dates].filter(Boolean).join(" · ") : "");
 
@@ -367,7 +408,7 @@ export const autoOf = (p) =>
         wish: raceWish(p.race, p.kind),
         info: raceMeta(p.race),
         classes: raceClasses(p.race).join(", "),
-        tag: kindOf(p.kind)[3],
+        tag: (p.kind === "sonuc" && podiumTag(p.race)) || kindOf(p.kind)[3],
         theme: kindTheme(p.kind),
       };
 // Görseldeki sınıf etiketleri (düzenlenen alandan; en çok 4)
@@ -388,7 +429,8 @@ export function postFromRace(r, today) {
   // Sonuçlardaki "Instagram görseli hazırla" türü "sonuc" verir
   const kind = r?.kind === "sonuc" ? "sonuc" : r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
   const race = raceBrief(r, r?.athletes);
-  return cleanPost({ kind, race, ...autoOf({ kind, race }) });
+  // Derece varsa üstteki yazı tür değil derecedir ("ÜÇÜNCÜLÜK"): görünür açılır
+  return cleanPost({ kind, race, ...autoOf({ kind, race }), noTag: !(kind === "sonuc" && podiumTag(race)) });
 }
 
 // Yarış kaydı + sporcu listesi (kulüp projesi) → gönderiye giden yarış: seçili sporcuların yalnız adı, sınıfı ve sonucu
