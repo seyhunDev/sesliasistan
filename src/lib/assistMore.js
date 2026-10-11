@@ -123,6 +123,12 @@ export function duesCommand(raw) {
   const one = /(^| )(ona|kendisine|velisine|annesine|babasına)( |$)/u.test(t) || /^\p{Lu}\p{Ll}+(\s\p{Lu}\p{Ll}+)?['’]?\p{L}*\s+aidat/u.test(String(raw || "").trim());
   if (/(hatırlat|hatırlatma)/u.test(t) && !/(hatırlattın mı|hatırlatıldı mı)/u.test(t)) return one ? null : { op: "remind" };
   if (/(kim|kimler|kaç kişi|kaç sporcu|hangi sporcu|kimin)/u.test(t) && /(ödemedi|ödemeyen|ödemiş|ödedi|vermedi|vermeyen|eksik|borç)/u.test(t)) return { op: "ask", paid: /(ödedi|ödemiş)/u.test(t) && !/ödemedi|ödemeyen|vermedi|vermeyen/u.test(t) };
+  // Tek sporcu: "Ahmet'in aidat durumu ne", "Ali Kaya aidatını ödedi mi", "Zeynep'in aidat borcu var mı"
+  const m = t.match(/^(.+?) (?:kaç aylık )?aidat\p{L}*(?: (.*))?$/u);
+  if (m && (/(durum|borc|borç|ne alemde|nasıl)/u.test(m[2] || "") || (QUESTION.test(t) && /(ödendi|ödedi|ödemiş|yatırdı|yatırmış|yatırıldı|verdi|vermiş|geldi|var|yok)/u.test(m[2] || "")))) {
+    const name = nameOf(m[1].replace(/(^| )(bu ay(ki)?|geçen ay(ki)?|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|sporcu|sporcunun|ayın|ayki)(?= |$)/gu, " "));
+    if (name && name.split(" ").length <= 3 && !/^(Bu|Benim|Kimin|Hangi)$/u.test(name)) return { op: "one", name };
+  }
   return null;
 }
 
