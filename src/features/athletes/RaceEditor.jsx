@@ -475,11 +475,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const money = totals(r.budget, chosen.length);
   const hotelCount = raceHotels(r).length;
   const stat = [
-    ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, !chosen.length || incomplete.length > 0],
-    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : chosen.length ? "Hazırlanmadı" : "Önce sporcu seç", !file],
-    ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", !trip.length],
-    ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `Sporcu başı ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", false],
+    ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : "Hazırlanmadı", !!file, "Evrakı hazırla"],
+    ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
+    ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `Sporcu başı ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
+  // Sıradaki adım: sırayla ilk bitmeyen (sporcu → evrak → yolculuk → bütçe)
+  const nextStep = stat.find((x) => !x[4])?.[0];
   const hidden = hiddenCount(r);
   // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
   const setAbroad = (on) =>
@@ -645,20 +647,25 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "sum" && (
         <>
-          <Label>DURUM</Label>
+          <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>HAZIRLIK</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {stat.map(([to, icon, title, sub, warn]) => (
-              <li key={to}>
-                <button type="button" onClick={() => setTab(to)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${warn ? "bg-amber-500/15 text-amber-700" : "bg-acc/10 text-acc"}`}>
-                    <Icon name={icon} className="size-[1.125rem]" />
-                  </span>
-                  <span className="w-[4.5rem] shrink-0 text-[0.9375rem] font-semibold">{title}</span>
-                  <span className={`min-w-0 flex-1 truncate text-right text-[0.8125rem] ${warn ? "font-medium text-amber-700" : "text-mut"}`}>{sub}</span>
-                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                </button>
-              </li>
-            ))}
+            {stat.map(([to, icon, title, sub, done, ask]) => {
+              const now = to === nextStep;
+              return (
+                <li key={to}>
+                  <button type="button" onClick={() => setTab(to)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${now ? "bg-acc/[.07]" : ""}`}>
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-ok/15 text-ok" : now ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+                      <Icon name={done ? "check" : icon} className="size-[1.125rem]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <b className={`block text-[0.9375rem] font-semibold ${done ? "text-mut" : ""}`}>{now ? ask : title}</b>
+                      <span className={`block truncate text-[0.8125rem] ${now ? "text-acc" : "text-mut"}`}>{now ? `Sıradaki · ${sub}` : sub}</span>
+                    </span>
+                    <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
 
           <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
@@ -768,13 +775,25 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </button>
           ) : !athletes.length ? (
             <Loading label="Sporcular yükleniyor" className="py-8" />
+          ) : !chosen.length ? (
+            <div className={`${card} flex flex-col items-center px-6 py-8 text-center`}>
+              <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
+                <Icon name="users" className="size-7" />
+              </span>
+              <b className="mt-3 text-[1.0625rem] font-semibold">Katılacak sporcuları ekle</b>
+              <span className="mt-1 text-[0.8125rem] text-mut">Evrak için önce sporcuları seç</span>
+              <button type="button" onClick={() => setPick(true)} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white">
+                <Icon name="plus" className="size-5" />
+                Sporcu ekle
+              </button>
+            </div>
           ) : (
             <div className={`${card} divide-y divide-line overflow-hidden`}>
               <button type="button" onClick={() => setPick(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc active:bg-bg">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
                   <Icon name="plus" className="size-5" />
                 </span>
-                <b className="text-[0.9375rem] font-semibold">{chosen.length ? "Sporcu ekle ya da çıkar" : "Sporcu seç"}</b>
+                <b className="text-[0.9375rem] font-semibold">Sporcu ekle ya da çıkar</b>
               </button>
               {chosen.map((a) => {
                 const miss = missing(a, docs);
