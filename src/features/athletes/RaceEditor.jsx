@@ -23,10 +23,11 @@ import { RaceHotels } from "./RaceHotels";
 import { MailTo } from "@/features/mail/MailTo";
 import { openFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
+import { tl, totals } from "./budget";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey } from "./races";
+import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
@@ -466,6 +467,16 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   };
 
   const steps = stepsOf(r);
+  // Özet'teki durum satırları: [sekme, simge, ad, kısa durum, uyarı mı]
+  const trip = tripRows(r);
+  const money = totals(r.budget, chosen.length);
+  const hotelCount = raceHotels(r).length;
+  const stat = [
+    ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, !chosen.length || incomplete.length > 0],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : chosen.length ? "Hazırlanmadı" : "Önce sporcu seç", !file],
+    ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", !trip.length],
+    ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `Sporcu başı ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", false],
+  ];
   const hidden = hiddenCount(r);
   // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
   const setAbroad = (on) =>
@@ -569,27 +580,27 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       <Seg
         value={tab}
         onChange={setTab}
-        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["info", "Bilgi"], ["budget", "Bütçe"], ["docs", "Evrak"], ["around", "Çevre"]]}
+        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["docs", "Evrak"], ["trip", "Yolculuk"], ["budget", "Bütçe"], ["info", "Bilgi"]]}
         className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-3"
       />
 
       {tab === "sum" && (
         <>
-          <Label>YOLCULUK</Label>
-          <Group>
-            <Pair>
-              <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
-              <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
-            </Pair>
-            <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
-            <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
-            <Pair>
-              <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
-              <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
-            </Pair>
-          </Group>
-
-          <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+          <Label>DURUM</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {stat.map(([to, icon, title, sub, warn]) => (
+              <li key={to}>
+                <button type="button" onClick={() => setTab(to)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${warn ? "bg-amber-500/15 text-amber-700" : "bg-acc/10 text-acc"}`}>
+                    <Icon name={icon} className="size-[1.125rem]" />
+                  </span>
+                  <span className="w-[4.5rem] shrink-0 text-[0.9375rem] font-semibold">{title}</span>
+                  <span className={`min-w-0 flex-1 truncate text-right text-[0.8125rem] ${warn ? "font-medium text-amber-700" : "text-mut"}`}>{sub}</span>
+                  <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+                </button>
+              </li>
+            ))}
+          </ul>
 
           <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
@@ -726,6 +737,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </div>
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
+          {chosen.length > 0 && (
+            <button type="button" onClick={() => setTab("docs")} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white">
+              {file ? "Evraka git" : "Evrakı hazırla"}
+              <Icon name="chev" className="size-4" />
+            </button>
+          )}
           {athletes.length > 0 && resultsOpen(r, todayStr()) && (
             <RaceResults
               orgId={orgId}
@@ -797,7 +814,27 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
 
-      {tab === "around" && <AroundView r={r} onChange={(a) => put("around", a)} onWeather={(w) => put("weather", w)} />}
+      {tab === "trip" && (
+        <>
+          <Label>YOLCULUK</Label>
+          <Group>
+            <Pair>
+              <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
+              <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
+            </Pair>
+            <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
+            <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
+            <Pair>
+              <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
+              <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
+            </Pair>
+          </Group>
+
+          <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+
+          <AroundView r={r} onChange={(a) => put("around", a)} onWeather={(w) => put("weather", w)} />
+        </>
+      )}
 
       {tab === "docs" && (
         <>
