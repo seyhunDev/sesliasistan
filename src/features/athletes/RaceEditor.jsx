@@ -87,7 +87,7 @@ function Row({ label, children, className = "" }) {
     </label>
   );
 }
-const Group = ({ children }) => <div className={`${card} divide-y divide-line overflow-hidden`}>{children}</div>;
+const Group = ({ children, className = "" }) => <div className={`${card} divide-y divide-line overflow-hidden ${className}`}>{children}</div>;
 const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-line">{children}</div>;
 
 function Check({ on, tone = "ok" }) {
@@ -106,6 +106,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const toast = useToast();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
+  // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
+  const [begun, setBegun] = useState(!!start.id);
+  const [manual, setManual] = useState(false);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
@@ -522,27 +525,75 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       <span className="w-full truncate text-center text-[0.8125rem] font-medium">{a.label}</span>
     </>
   );
+  if (!begun) {
+    const form = r.notice || manual;
+    return (
+      <>
+        {!form ? (
+          <>
+            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Yarış talimatın var mı?</h2>
+            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">Varsa yükle, bilgileri ben doldurayım.</p>
+            <div className="mt-4">
+              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title="Talimatı yükle" sub="PDF, fotoğraf ya da metin. Ad, tarih, yer, program, son tarihler, ücret ve oteller dolar." />
+            </div>
+            {!reading && (
+              <button type="button" onClick={() => setManual(true)} className={`${card} mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-bg text-mut">
+                  <Icon name="edit" className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[0.9375rem] font-semibold">Talimat yok, elle başla</b>
+                  <span className="block text-[0.8125rem] text-mut">Adı, tarihi ve yeri yaz; talimatı sonra da ekleyebilirsin.</span>
+                </span>
+                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">{r.notice ? "Talimattan okundu" : "Yarışın bilgileri"}</h2>
+            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">{r.notice ? "Kontrol et, yanlış varsa düzelt." : "Gerisini sonra eklersin."}</p>
+            <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
+            <Group className="mt-3">
+              <Row label="Yarış adı">
+                <input value={r.name} onChange={(e) => set("name")(e.target.value)} placeholder="D’Azur Optimist Regatta" list="race-names" autoComplete="off" className={input} />
+                <datalist id="race-names">
+                  {known.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </Row>
+              <Pair>
+                <Row label="Başlangıç">{field("startDate", "", "date")}</Row>
+                <Row label="Bitiş">{field("endDate", "", "date")}</Row>
+              </Pair>
+              <Pair>
+                <Row label={r.abroad ? "Ülke" : "İl"}>{field("city", r.abroad ? "Fransa" : "İzmir")}</Row>
+                <Row label={r.abroad ? "Şehir" : "İlçe"}>{field("district", r.abroad ? "Cannes" : "Çeşme")}</Row>
+              </Pair>
+            </Group>
+            <button
+              type="button"
+              disabled={!r.name.trim()}
+              onClick={() => (setBegun(true), setTab("sum"))}
+              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-40"
+            >
+              Devam
+              <Icon name="chev" className="size-4" />
+            </button>
+            {!r.notice && (
+              <button type="button" onClick={() => setManual(false)} className="mt-2 h-10 w-full text-[0.8125rem] font-semibold text-acc">
+                Talimatla başla
+              </button>
+            )}
+          </>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
-      {/* Yarış talimatı en üstte: yoksa yükle (yeni yarış talimattan oluşur), varsa aç; ayar düğmesiyle değiştir ya da kaldır */}
-      {!r.notice || reading ? (
-        <div className="mt-2">
-          <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title={r.name ? "Yarış talimatını yükle" : "Talimattan oluştur"} sub={r.name ? undefined : "Talimatı yükle; ad, tarih, yer, program, son tarihler, ücret ve oteller kendiliğinden dolar. Talimat yoksa aşağıdan elle yaz."} />
-        </div>
-      ) : (
-        <div className={`${card} mt-2 flex items-center gap-1 pl-4 pr-1.5`}>
-          <button type="button" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
-            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[0.625rem] font-bold ${r.noticeFile ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>{r.noticeFile ? "PDF" : <Icon name="alert" className="size-4" />}</span>
-            <span className="min-w-0 flex-1">
-              <b className="block truncate text-[0.9375rem] font-semibold">Yarış talimatı</b>
-              {!r.noticeFile && <span className="block truncate text-[0.8125rem] text-mut">Dosya kayıtlı değil · yüklemek için dokun</span>}
-            </span>
-          </button>
-          <button type="button" onClick={() => setNoticeMenu(true)} aria-label="Talimat ayarları" className="grid size-10 shrink-0 place-items-center text-mut">
-            <Icon name="sliders" className="size-5" />
-          </button>
-        </div>
-      )}
       <Sheet open={noticeMenu} onClose={() => setNoticeMenu(false)} title="Yarış talimatı">
         <div className="space-y-2">
           {r.noticeFile && (
@@ -555,13 +606,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             busy={reading}
             onFile={(f) => (setNoticeMenu(false), loadNotice(f))}
             onText={(t) => (setNoticeMenu(false), loadNotice(t))}
-            title={r.noticeFile ? "Yeni talimat yükle" : "Talimat dosyasını yükle"}
-            sub={r.noticeFile ? "Güncellenen talimatı yükle; okunanla karşılaştırırım, fark varsa söylerim." : "Bilgiler daha önce okundu ama dosya saklanmamıştı. Aynı talimatı yükle; saklarım, fark varsa söylerim."}
+            title={!r.notice ? "Talimat yükle" : r.noticeFile ? "Değiştir" : "Talimat dosyasını yükle"}
+            sub={!r.notice ? "Ad, tarih, program, son tarihler, ücret ve oteller kendiliğinden dolar." : r.noticeFile ? "Yeni talimatı yükle; fark varsa gösteririm." : "Bilgiler okundu ama dosya saklanmamış. Aynı talimatı yükle, saklayayım."}
           />
-          <button type="button" onClick={dropNotice} className="flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-medium text-rec">
+          {r.notice && <button type="button" onClick={dropNotice} className="flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-medium text-rec">
             <Icon name="trash" className="size-4" />
-            Talimatı kaldır
-          </button>
+            Talimatı sil
+          </button>}
         </div>
       </Sheet>
 
@@ -574,6 +625,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             {!r.startDate && <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">Tarih girilmedi</span>}
             <span className="mt-1.5 block truncate text-[0.8125rem] font-medium text-white/90">{[leftText(r), `${chosen.length} sporcu`, r.abroad && "Yurt dışı"].filter(Boolean).join(" · ")}</span>
           </div>
+          <button
+            type="button"
+            onClick={() => setNoticeMenu(true)}
+            className={`flex h-8 shrink-0 items-center gap-1 self-start rounded-full px-2.5 text-[0.75rem] font-semibold ${r.notice ? "bg-white/15 text-white" : "bg-white text-deep"}`}
+          >
+            <Icon name={r.notice ? (r.noticeFile ? "check" : "alert") : "plus"} className="size-3.5" />
+            Talimat
+          </button>
         </div>
       </Hero>
 
