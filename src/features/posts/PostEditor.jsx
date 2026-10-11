@@ -163,7 +163,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.noTag, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -265,6 +265,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         if (!id) return { say: "Gönderi henüz kaydedilmedi, silinecek bir şey yok." };
         await delRef.current?.();
         return { say: "Silmeyi onaylarsan gönderi silinir." };
+      }
+      // "Etiketi kaldır", "yarış sonucu yazısı olmasın": türü değiştirmeden yalnız tür yazısı
+      const tagAsk = sizeAsk(text, now);
+      if (tagAsk && "noTag" in tagAsk) {
+        setP((x) => ({ ...x, noTag: tagAsk.noTag }));
+        return { say: tagAsk.noTag ? "Tür yazısını görselden kaldırdım." : `Tür yazısı görselde: ${now.tag || "etiket"}.` };
       }
       // "Rengi mavi yap", "hikâye boyutunda olsun", "modern şablon": yalnız tasarım; başka yazı isteği yoksa yazılar değişmez
       const look = designFrom(text);
@@ -829,9 +835,10 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
               <div className="space-y-3 border-t border-line pt-3">
                 <Seg value={post.pos} onChange={(v) => put("pos", v)} options={[["top", "Yazı üstte"], ["bottom", "Yazı altta"]]} />
                 {toggle("Logo ve kulüp adı", !post.noBrand, (v) => put("noBrand", !v))}
+                {toggle("Tür yazısı (ör. YARIŞ SONUCU)", !post.noTag, (v) => put("noTag", !v))}
                 {race && toggle("Yer ve tarih görselde", post.meta, (v) => put("meta", v))}
                 {post.meta && <Field label="Yer · tarih" value={p.info} onChange={(e) => put("info", e.target.value)} maxLength={60} placeholder="Foça · 7-11 Ekim 2026" />}
-                <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={24} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />
+                {!post.noTag && <Field label="Etiket" value={p.tag} onChange={(e) => put("tag", e.target.value)} maxLength={24} placeholder={kindOf(post.kind)[3] || "DUYURU"} hint="Boş bırakılırsa küçük renkli çizgi görünür." />}
                 <label className="block">
                   <span className="text-[0.8125rem] font-medium text-mut">Sporcular (en çok 2 satır)</span>
                   <textarea value={p.people} onChange={(e) => put("people", e.target.value.split("\n").slice(0, 2).join("\n"))} rows={2} className={area} placeholder={"Ali Yılmaz · Optimist · ilk yarışı\nAyşe Kaya · ILCA 4 · 2. oldu"} />

@@ -918,6 +918,8 @@ export async function drawPost(canvas, post, photo) {
   await loadFonts();
   // Başlık kaldırıldıysa görselde başlık yok (yazısı saklı kalır, geri açılınca gelir)
   if (post.noHead) post = { ...post, headline: "" };
+  // Tür yazısı kapalıysa görselde etiket yok (yazısı saklı kalır)
+  if (post.noTag) post = { ...post, tag: "" };
   const [, , W, H] = formatOf(post.format);
   canvas.width = W;
   canvas.height = H;

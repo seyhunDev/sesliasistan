@@ -223,6 +223,8 @@ export function cleanPost(p = {}) {
     noHead: !!p.noHead,
     // Üstteki logo ve "Dikili Yelken Spor Kulübü" yazısı kapatılabilir
     noBrand: !!p.noBrand,
+    // Görseldeki tür yazısı ("YARIŞ SONUCU", "ANTRENMAN") isteğe bağlı, varsayılan kapalı (Seyhun, 2026-10-11)
+    noTag: p.noTag !== false,
     headSize: Math.max(60, Math.min(150, Math.round(Number(p.headSize) / 5) * 5 || 100)),
     subSize: Math.max(80, Math.min(150, Math.round(Number(p.subSize) / 5) * 5 || 100)),
     sub: S(p.sub, 200),
@@ -383,7 +385,8 @@ export function reauto(prev, next) {
 
 // Yarıştan gönderinin ilk hali: yarış bitmediyse duyuru, bittiyse sonuç
 export function postFromRace(r, today) {
-  const kind = r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
+  // Sonuçlardaki "Instagram görseli hazırla" türü "sonuc" verir
+  const kind = r?.kind === "sonuc" ? "sonuc" : r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
   const race = raceBrief(r, r?.athletes);
   return cleanPost({ kind, race, ...autoOf({ kind, race }) });
 }
@@ -421,6 +424,11 @@ export function sizeAsk(text, post = {}) {
   if (/logo|kulüp ?(ad|yazı|ism)/.test(t)) {
     if (/geri|göster|olsun|ekle/.test(t) && !/olmasın/.test(t)) return { noBrand: false };
     if (/(kaldır|olmasın|sil|gizle|çıkar|istemiyorum)/.test(t)) return { noBrand: true };
+  }
+  // "Etiketi kaldır", "tür yazısını göster", "yarış sonucu yazısı olmasın" (görseldeki tür yazısı)
+  if (/etiket|tür yazı|(sonucu|antrenman|duyuru) yazısı/.test(t) && !/["“”'‘’]/.test(t)) {
+    if (/(kaldır|olmasın|sil|gizle|çıkar|istemiyorum|kapat)/.test(t) && !/geri/.test(t)) return { noTag: true };
+    if (/(geri|göster|olsun|ekle|aç\b|koy)/.test(t)) return { noTag: false };
   }
   const head = /başlı(k|ğ)/.test(t);
   const sub = /alt ?(satır|yazı)|açıklama yazı|küçük yazı/.test(t);
@@ -468,6 +476,8 @@ export function designFrom(text) {
   if (tg && FORM.test(t)) {
     if (tg[1]) out.kind = tg[1];
     out.tag = tg[2];
+    // İstenen etiket görselde görünsün
+    out.noTag = false;
   }
   return out;
 }

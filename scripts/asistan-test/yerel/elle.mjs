@@ -354,6 +354,12 @@ group("Instagram tasarım")([
     return a.headSize === 100 && a.subSize === 100 && a.noHead === false && b.headSize === 150 && b.subSize === 80 && b.noHead === true && PM.cleanPost({ headSize: 87 }).headSize === 85;
   })],
   ["logo kapatma", F("logo ve kulüp adı kapatılabilir; asistanla kaldır / geri getir", () => PM.cleanPost({ noBrand: true }).noBrand === true && PM.cleanPost({}).noBrand === false && PM.sizeAsk("logoyu kaldır").noBrand === true && PM.sizeAsk("logo ve kulüp adı olmasın").noBrand === true && PM.sizeAsk("logoyu geri getir").noBrand === false && PM.sizeAsk("kulüp adını kaldır").noBrand === true)],
+  ["tür yazısı kapalı", F("YARIŞ SONUCU gibi tür yazısı varsayılan kapalı; açılır, asistanla kaldır / göster", () =>
+    PM.cleanPost({}).noTag === true && PM.freshPost("sonuc").noTag === true && PM.cleanPost({ noTag: false }).noTag === false &&
+    PM.sizeAsk("etiketi kaldır").noTag === true && PM.sizeAsk("yarış sonucu yazısı olmasın").noTag === true && PM.sizeAsk("etiketi geri getir").noTag === false &&
+    PM.sizeAsk("tür yazısını göster").noTag === false && PM.designFrom("yarış duyurusu yap").noTag === false && PM.designFrom("rengi mavi yap").noTag === undefined)],
+  ["sonuçtan gönderi", F("sonuçlardaki düğme gönderiyi yarış sonucu türünde açar (yarış henüz bitmese de)", () =>
+    PM.postFromRace({ kind: "sonuc", name: "X", startDate: "2026-12-01" }, "2026-10-03").kind === "sonuc" && PM.postFromRace({ name: "X", startDate: "2026-12-01" }, "2026-10-03").kind === "duyuru")],
   ["asistanla başlık", F("kaldır, geri getir, bir tık küçült, alt yazıyı büyüt; yeni başlık yazdırma yapay zekaya", () => {
     const p = { headSize: 100, subSize: 100 };
     const q = (t) => JSON.stringify(PM.sizeAsk(t, p));
