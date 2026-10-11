@@ -117,6 +117,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [docs, setDocs] = useState(() => startDocs || DOC_DEFAULT);
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState(null); // hazırlanan PDF
+  const [stale, setStale] = useState(false); // hazır evrak bir bilgi değişince geçersiz oldu (yeniden hazırlanmalı)
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
   const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
   const [parts, setParts] = useState([]); // her belge ayrı PDF: [{ key, title, file, pages }]
@@ -139,6 +140,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
   // Belgeyi değiştiren alanlar hazır PDF'i geçersiz kılar (cihazdaki kopya da silinir)
   const dropFile = () => {
+    if (file) setStale(true);
     setFile(null);
     setMade(null);
     setParts([]);
@@ -215,6 +217,10 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [coachOpen, setCoachOpen] = useState(() => coachMissing(cleanCoach(savedCoach), startDocs || DOC_DEFAULT).length > 0);
   const coachLackKeys = coachOn ? COACH_FIELDS.map(([k]) => k).filter((k) => coachMissing({ ...coach, [k]: "" }, docs).length > coachLack.length) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
+  const fixList = chosen.filter((a) => incomplete.includes(a) || expired.includes(a));
+  const coachRef = useRef(null);
+  // Yetkili adı eksikken Eksikler'de yazılır; yazarken kutu yer değiştirmesin diye bu açılışta orada kalır
+  const [signerAsk] = useState(() => !(start.signer || "").trim());
 
   // Değişiklikler kendiliğinden kaydedilir (yarış adı yazıldıktan sonra); kayıtlar sırayla gider, çift kayıt olmaz.
   // Sayfadan çıkarken bekleyen değişiklik de yazılır.
@@ -261,12 +267,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     (docs.includes("school") ? 1 : 0) + (docs.includes("kafile") ? 1 : 0) + (docs.includes("travel") ? 1 : 0) + (docs.includes("parent") ? chosen.length : 0) + (docs.includes("adult") ? 1 : 0) + (docs.includes("club") ? chosen.length : 0) + (docs.includes("hotel") ? 1 : 0) + (docs.includes("coach") ? groupCount : 0) + (docs.includes("entry") ? groupCount : 0);
   const ready = [
     [r.abroad ? "Yarış adı, ülke, şehir, başlangıç tarihi" : "Yarış adı, il, ilçe, başlangıç tarihi", !!(r.name.trim() && r.city.trim() && r.district.trim() && r.startDate), "info"],
-    ["Kulüp yetkilisinin adı", !!r.signer.trim(), "info"],
+    ["Kulüp yetkilisinin adı", !!r.signer.trim(), "docs"],
     [chosen.length ? `${chosen.length} sporcu seçildi` : "Sporcu seçilmedi", chosen.length > 0, "people"],
     [incomplete.length ? `${incomplete.length} sporcunun bilgisi eksik (belgede boş kalır)` : "Sporcu bilgileri tamam", !incomplete.length, "people", true],
     ...(expired.length ? [[`${expired.length} sporcunun lisans, sağlık raporu ya da sigortası yarışta geçersiz`, false, "people", true]] : []),
     ...(coachLack.length ? [[`Antrenör bilgisi eksik: ${coachLack.join(", ")} (formda boş kalır)`, false, "docs", true]] : []),
   ];
+
+  const lacks = (ready[0][1] ? 0 : 1) + (chosen.length ? 0 : 1) + (r.signer.trim() ? 0 : 1) + fixList.length + (coachLack.length ? 1 : 0);
 
   const make = async () => {
     const bad = ready.find(([, ok, , soft]) => !ok && !soft);
@@ -306,6 +314,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       }
       const at = new Date().toISOString();
       setFile(new File([bytes], name, { type: "application/pdf" }));
+      setStale(false);
       setMailText(text);
       setMade({ at, pages });
       setParts(each.map((x) => ({ ...x, file: new File([x.blob], partName(name, x.title), { type: "application/pdf" }) })));
@@ -476,7 +485,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const hotelCount = raceHotels(r).length;
   const stat = [
     ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
-    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : "Hazırlanmadı", !!file, "Evrakı hazırla"],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale || r.docsAt ? "Eski, yenilenmeli" : "Hazırlanmadı", !!file, stale || r.docsAt ? "Evrakı yenile" : "Evrakı hazırla"],
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
     ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `Sporcu başı ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
@@ -799,17 +808,21 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 const miss = missing(a, docs);
                 const gone = raceExpired(a, r);
                 return (
-                  <button key={a.id} type="button" onClick={() => setFix(a)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc">{initials(a.studentName)}</span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[0.9375rem] font-semibold">{a.studentName}</b>
-                      <span className={`block truncate text-[0.8125rem] ${miss.length ? "text-amber-700" : "text-mut"}`}>
-                        {miss.length ? `${miss.length} bilgi eksik: ${miss.join(", ")}` : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ")}
+                  <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                    <Link href={`/athletes/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3 active:opacity-60">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc">{initials(a.studentName)}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[0.9375rem] font-semibold">{a.studentName}</b>
+                        <span className={`block truncate text-[0.8125rem] ${miss.length ? "text-amber-700" : "text-mut"}`}>
+                          {miss.length ? `${miss.length} bilgi eksik: ${miss.join(", ")}` : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ")}
+                        </span>
+                        {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
                       </span>
-                      {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
-                    </span>
-                    <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                  </button>
+                    </Link>
+                    <button type="button" onClick={() => setFix(a)} className={`h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold ring-1 ${miss.length || gone.length ? "bg-amber-500/10 text-amber-700 ring-amber-500/30" : "text-acc ring-line"}`}>
+                      {miss.length || gone.length ? "Tamamla" : "Bilgi"}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -870,23 +883,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           </Group>
           <p className="mt-2 px-1 text-[0.75rem] text-mut">Boş bırakılan tarihler yarıştan gelir.</p>
 
-          <Label>KULÜP YETKİLİSİ</Label>
-          <Group>
-            <Pair>
-              <Row label="Ad soyad (imzalayan)">{field("signer", "Ad Soyad")}</Row>
-              <Row label="Görevi">{field("signerTitle", "Başkan")}</Row>
-            </Pair>
-          </Group>
-
-          <Label>SEYAHAT · İZİN BELGELERİNDE</Label>
-          <Group>
-            <Row label="Seyahat türü">{field("travel", "Kendi İmkanları İle")}</Row>
-            <Pair>
-              <Row label="Araç plaka / model">{field("vehicle", "-")}</Row>
-              <Row label="Şoför / ehliyet">{field("drivers", "-")}</Row>
-            </Pair>
-          </Group>
-
         </>
       )}
 
@@ -916,27 +912,23 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "docs" && (
         <>
-          {/* Önce eksikler: belge hazırlamayı ne engelliyor */}
-          {!(file && ready.every(([, ok]) => ok)) && (
-            <>
-          <Label right={ready.every(([, ok]) => ok) ? "hazır" : ""}>HAZIRLIK</Label>
-          <ul className={`${card} space-y-2.5 px-4 py-3.5`}>
-            {ready.map(([label, ok, to, soft]) => (
-              <li key={label}>
-                <button type="button" onClick={() => !ok && setTab(to)} className="flex w-full items-center gap-2.5 text-left">
-                  <Icon name={ok ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${ok ? "text-ok" : soft ? "text-amber-600" : "text-rec"}`} />
-                  <span className={`flex-1 text-[0.875rem] ${ok ? "text-mut" : "font-medium"}`}>{label}</span>
-                  {!ok && <Icon name="chev" className="size-4 text-mut" />}
-                </button>
-              </li>
-            ))}
-          </ul>
-            </>
+          {/* Hazır evrak bir bilgi değişince ya da bu telefonda yoksa: yenile uyarısı */}
+          {!file && (stale || r.docsAt) && chosen.length > 0 && (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 ring-1 ring-amber-500/30">
+              <Icon name="alert" className="size-5 shrink-0 text-amber-600" />
+              <span className="min-w-0 flex-1">
+                <b className="block text-[0.9375rem] font-semibold">Evrak eski, yenile</b>
+                <span className="block text-[0.8125rem] text-mut">{stale ? "Bir bilgi değişti, önceki evrak geçersiz." : "Daha önce hazırlanmıştı; bu telefonda yok ya da bir bilgi değişti."}</span>
+              </span>
+              <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full bg-amber-600 px-4 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
+                {busy ? "Hazırlanıyor…" : "Yenile"}
+              </button>
+            </div>
           )}
 
           {file && (
             <>
-              <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIRLANAN EVRAK</Label>
+              <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIR EVRAK</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
                 <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf()} onShare={() => share()} />
                 {parts.map((x) => (
@@ -950,6 +942,212 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 </button>
               </div>
             </>
+          )}
+
+
+          {/* Eksikler tek yerde; çoğu burada doldurulur */}
+          {(lacks > 0 || signerAsk) && (
+            <>
+              <Label right={lacks ? `${lacks}` : "tamam"}>EKSİKLER</Label>
+              <div className={`${card} divide-y divide-line overflow-hidden`}>
+                {!ready[0][1] && (
+                  <button type="button" onClick={() => setTab("info")} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
+                    <span className="flex-1 text-[0.875rem] font-medium">{ready[0][0]}</span>
+                    <span className="text-[0.8125rem] font-semibold text-acc">Bilgi</span>
+                  </button>
+                )}
+                {!chosen.length && (
+                  <button type="button" onClick={() => setTab("people")} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
+                    <span className="flex-1 text-[0.875rem] font-medium">Sporcu seçilmedi</span>
+                    <span className="text-[0.8125rem] font-semibold text-acc">Sporcu ekle</span>
+                  </button>
+                )}
+                {signerAsk && (
+                  <div className={r.signer.trim() ? "" : "bg-amber-500/5"}>
+                    <p className="flex items-center gap-3 px-4 pt-3 text-[0.875rem] font-medium">
+                      <Icon name={r.signer.trim() ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${r.signer.trim() ? "text-ok" : "text-rec"}`} />
+                      Belgeleri imzalayan kulüp yetkilisi
+                    </p>
+                    <Pair>
+                      <Row label="Ad soyad">{field("signer", "Ad Soyad")}</Row>
+                      <Row label="Görevi">{field("signerTitle", "Başkan")}</Row>
+                    </Pair>
+                  </div>
+                )}
+                {fixList.map((a) => {
+                  const miss = missing(a, docs);
+                  const gone = raceExpired(a, r);
+                  return (
+                    <button key={a.id} type="button" onClick={() => setFix(a)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                      <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
+                        <span className="block truncate text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
+                    </button>
+                  );
+                })}
+                {coachLack.length > 0 && (
+                  <button type="button" onClick={() => (setCoachOpen(true), setTimeout(() => coachRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
+                    <span className="min-w-0 flex-1">
+                      <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
+                      <span className="block truncate text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
+                    </span>
+                    <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
+                  </button>
+                )}
+              </div>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Kırmızılar olmadan evrak hazırlanmaz; diğerleri belgede boş kalır.</p>
+            </>
+          )}
+
+          <Label right={`${docs.length}/${DOCS.length} seçili`}>BELGELER</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {DOCS.map(([k, label]) => {
+              const on = docs.includes(k);
+              const [icon, sub] = DOC_INFO[k];
+              return (
+                <li key={k}>
+                  <button
+                    type="button"
+                    onClick={() => pickDoc(k, !on)}
+                    aria-pressed={on}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                  >
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
+                      <Icon name={icon} className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
+                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : (k === "coach" || k === "entry") && groupCount > 1 ? `${groupCount} form · her sınıfa ayrı` : sub}</span>
+                    </span>
+                    <Check on={on} tone="acc" />
+                  </button>
+                  {on && k === "travel" && (
+                    <div className="mx-4 mb-3 divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
+                      <Row label="Seyahat türü">{field("travel", "Kendi İmkanları İle")}</Row>
+                      <Pair>
+                        <Row label="Araç plaka / model">{field("vehicle", "-")}</Row>
+                        <Row label="Şoför / ehliyet">{field("drivers", "-")}</Row>
+                      </Pair>
+                    </div>
+                  )}
+                  {on && k === "club" && (
+                    <div className="mx-4 mb-3">
+                      <div className="divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
+                        <Row label="Sayı (ilk sporcu)">{field("clubNo", "GID-2026-14")}</Row>
+                        <Pair>
+                          <Row label="İzin başlangıcı">{clubDate("clubFrom", r.startDate)}</Row>
+                          <Row label="İzin bitişi">{clubDate("clubTo", r.endDate || r.startDate)}</Row>
+                        </Pair>
+                        <Row label="Etkinlik adı">{field("clubEvent", r.name || "Optimist Gelişim Kampı")}</Row>
+                        <Row label="Yeri">{field("clubPlace", club.place || "Çeşme-İzmir")}</Row>
+                        <Pair>
+                          <Row label="İmzalayan">{field("clubSigner", "Ad SOYAD")}</Row>
+                          <Row label="Görevi">{field("clubTitle", "Antrenör")}</Row>
+                        </Pair>
+                      </div>
+                      <p className="mt-1.5 px-1 text-[0.75rem] text-mut">
+                        {[club.no && chosen.length > 1 && `Sayı sporcu başına artar: ${club.no} … ${nextNo(club.no, chosen.length - 1)}.`, "Boşlar yarış bilgisinden gelir."].filter(Boolean).join(" ")}
+                      </p>
+                      {(r.clubFrom || r.clubTo || r.clubEvent || r.clubPlace) && (
+                        <button
+                          type="button"
+                          onClick={() => (dropFile(), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
+                          className="mt-1 px-1 text-[0.8125rem] font-semibold text-acc"
+                        >
+                          Yarışın tarih, ad ve yerine dön
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {on && k === "hotel" && (
+                    <div className="mx-4 mb-3">
+                      <div className="divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
+                        <Row label="Otel adı">{field("hotelName", "Boş kalırsa elle yazılır")}</Row>
+                        <Pair>
+                          <Row label="Giriş">{clubDate("hotelFrom", hotel.from)}</Row>
+                          <Row label="Çıkış">{clubDate("hotelTo", hotel.to)}</Row>
+                        </Pair>
+                      </div>
+                      {!(r.hotelName || "").trim() && hotels.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {hotels.map((n) => (
+                            <button key={n} type="button" onClick={() => set("hotelName")(n)} className="rounded-full bg-acc/10 px-3 py-1 text-[0.8125rem] font-semibold text-acc">
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {on && k === (docs.includes("entry") ? "entry" : "coach") && (
+                    <div className="mx-4 mb-3">
+                      <div className="overflow-hidden rounded-xl bg-bg ring-1 ring-line">
+                        <Row label="Sınıf (formda)">
+                          <input value={r.entryClass || ""} onChange={(e) => set("entryClass")(e.target.value)} placeholder={autoClasses.join(", ") || "ILCA 4"} className={input} />
+                        </Row>
+                      </div>
+                      <p className="mt-1.5 px-1 text-[0.75rem] text-mut">
+                        {autoClasses.length > 1 && !(r.entryClass || "").trim()
+                          ? `Sporcular ${autoClasses.length} sınıfta; her sınıfa ayrı form. Tek form için sınıfı yaz.`
+                          : "Boşsa sporcuların sınıfı yazılır."}
+                      </p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {!signerAsk && (
+            <>
+              <Label>İMZALAYAN</Label>
+              <Group>
+                <Pair>
+                  <Row label="Ad soyad (kulüp yetkilisi)">{field("signer", "Ad Soyad")}</Row>
+                  <Row label="Görevi">{field("signerTitle", "Başkan")}</Row>
+                </Pair>
+              </Group>
+            </>
+          )}
+
+          {coachOn && (
+            <div ref={coachRef} className="scroll-mt-4">
+              <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
+              {!coachOpen ? (
+                <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
+                  <Icon name="user" className="size-5 shrink-0 text-acc" />
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
+                    <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
+                  </span>
+                  <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
+                </button>
+              ) : (
+              <>
+              <Group>
+                {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
+                  <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
+                    <input
+                      value={coach[k]}
+                      onChange={(e) => setCoachField(k)(e.target.value)}
+                      type={mode === "date" ? "date" : undefined}
+                      inputMode={mode && mode !== "date" ? mode : undefined}
+                      maxLength={k === "tc" ? 11 : 120}
+                      className={input}
+                    />
+                  </Row>
+                ))}
+              </Group>
+              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, hesabına kaydedilir; sonraki yarışlarda ve diğer cihazlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
+              </>
+              )}
+            </div>
           )}
 
           <Label right={extras.length ? `${extras.length}` : ""}>EKLENEN EVRAK</Label>
@@ -990,143 +1188,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               />
             </li>
           </ul>
-
-          <Label right={`${docs.length}/${DOCS.length} seçili`}>{file ? "BELGELERİ DEĞİŞTİR" : "BELGELER"}</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {DOCS.map(([k, label]) => {
-              const on = docs.includes(k);
-              const [icon, sub] = DOC_INFO[k];
-              return (
-                <li key={k}>
-                  <button
-                    type="button"
-                    onClick={() => pickDoc(k, !on)}
-                    aria-pressed={on}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg"
-                  >
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
-                      <Icon name={icon} className="size-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : (k === "coach" || k === "entry") && groupCount > 1 ? `${groupCount} form · her sınıfa ayrı` : sub}</span>
-                    </span>
-                    <Check on={on} tone="acc" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          {docs.includes("club") && (
-            <>
-              <Label>KULÜP İZİN YAZISI</Label>
-              <Group>
-                <Row label="Sayı (ilk sporcu)">{field("clubNo", "GID-2026-14")}</Row>
-                <Pair>
-                  <Row label="İzin başlangıcı">{clubDate("clubFrom", r.startDate)}</Row>
-                  <Row label="İzin bitişi">{clubDate("clubTo", r.endDate || r.startDate)}</Row>
-                </Pair>
-                <Row label="Etkinlik adı">{field("clubEvent", r.name || "Optimist Gelişim Kampı")}</Row>
-                <Row label="Yeri">{field("clubPlace", club.place || "Çeşme-İzmir")}</Row>
-                <Pair>
-                  <Row label="İmzalayan">{field("clubSigner", "Ad SOYAD")}</Row>
-                  <Row label="Görevi">{field("clubTitle", "Antrenör")}</Row>
-                </Pair>
-              </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">
-                {[
-                  club.no && chosen.length > 1 && `Sayı sporcu başına artar: ${club.no} … ${nextNo(club.no, chosen.length - 1)}.`,
-                  "Boş bırakılanlar yarış bilgisinden gelir; kamp gibi farklı tarih ve ad için burayı değiştir.",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              </p>
-              {(r.clubFrom || r.clubTo || r.clubEvent || r.clubPlace) && (
-                <button
-                  type="button"
-                  onClick={() => (dropFile(), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
-                  className="mt-1 px-1 text-[0.8125rem] font-semibold text-acc"
-                >
-                  Yarışın tarih, ad ve yerine dön
-                </button>
-              )}
-            </>
-          )}
-
-          {docs.includes("hotel") && (
-            <>
-              <Label>OTEL KONAKLAMA İZNİ</Label>
-              <Group>
-                <Row label="Otel adı">{field("hotelName", "Boş kalırsa elle yazılır")}</Row>
-                <Pair>
-                  <Row label="Giriş">{clubDate("hotelFrom", hotel.from)}</Row>
-                  <Row label="Çıkış">{clubDate("hotelTo", hotel.to)}</Row>
-                </Pair>
-              </Group>
-              {!r.hotelName.trim() && hotels.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5 px-1">
-                  {hotels.map((n) => (
-                    <button key={n} type="button" onClick={() => set("hotelName")(n)} className="rounded-full bg-acc/10 px-3 py-1 text-[0.8125rem] font-semibold text-acc">
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Veli adı ve telefonu sporcu kartından gelir; eksikse tabloda boş kalır. Etkinlik adı, yer ve imzalayan kulüp izin yazısıyla aynı.</p>
-            </>
-          )}
-
-          {tyf && (
-            <>
-              <Label>TYF FORMLARI</Label>
-              <Group>
-                <Row label="Sınıf (formda)">
-                  <input value={r.entryClass || ""} onChange={(e) => set("entryClass")(e.target.value)} placeholder={autoClasses.join(", ") || "ILCA 4"} className={input} />
-                </Row>
-              </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">
-                {autoClasses.length > 1 && !(r.entryClass || "").trim()
-                  ? `Sporcular ${autoClasses.length} sınıfta; her sınıfa ayrı form hazırlanır. Tek form için sınıfı yaz.`
-                  : "Boşsa sporcuların sınıfı yazılır. Sicil no, yelken no ve cinsiyet sporcu kartından gelir."}
-              </p>
-            </>
-          )}
-
-          {coachOn && (
-            <>
-              <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
-              {!coachOpen ? (
-                <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
-                  <Icon name="user" className="size-5 shrink-0 text-acc" />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
-                    <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
-                  </span>
-                  <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
-                </button>
-              ) : (
-              <>
-              <Group>
-                {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
-                  <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
-                    <input
-                      value={coach[k]}
-                      onChange={(e) => setCoachField(k)(e.target.value)}
-                      type={mode === "date" ? "date" : undefined}
-                      inputMode={mode && mode !== "date" ? mode : undefined}
-                      maxLength={k === "tc" ? 11 : 120}
-                      className={input}
-                    />
-                  </Row>
-                ))}
-              </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, hesabına kaydedilir; sonraki yarışlarda ve diğer cihazlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
-              </>
-              )}
-            </>
-          )}
-
 
         </>
       )}
