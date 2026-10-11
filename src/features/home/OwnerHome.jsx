@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -34,7 +33,7 @@ export function OwnerHome() {
   const qa = useQuota("assistant");
   const qr = useQuota("receipt");
   const inbox = useInbox();
-  const [sheet, setSheet] = useState(false);
+  const setSheet = inbox.setOpen;
 
   const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
   const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
@@ -66,7 +65,7 @@ export function OwnerHome() {
       <div className="mt-5">
         <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
       </div>
-      <InboxSheet inbox={inbox} open={sheet} onClose={() => setSheet(false)} />
+      <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </main>
   );
 }
