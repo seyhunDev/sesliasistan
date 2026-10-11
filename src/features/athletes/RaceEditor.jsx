@@ -104,6 +104,7 @@ function Check({ on, tone = "ok" }) {
 export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
+  const [noticeInfo, setNoticeInfo] = useState(false);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
   const [pick, setPick] = useState(false);
   const [fix, setFix] = useState(null); // bilgisi tamamlanacak sporcu
@@ -465,7 +466,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   };
 
   const steps = stepsOf(r);
-  const fromNotice = (r.notice?.tasks || r.notice?.deadlines || []).length > 0;
   const hidden = hiddenCount(r);
   // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
   const setAbroad = (on) =>
@@ -524,7 +524,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-[0.625rem] font-bold ${r.noticeFile ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>{r.noticeFile ? "PDF" : <Icon name="alert" className="size-4" />}</span>
             <span className="min-w-0 flex-1">
               <b className="block truncate text-[0.9375rem] font-semibold">Yarış talimatı</b>
-              <span className="block truncate text-[0.8125rem] text-mut">{r.noticeFile ? "Ekli · açmak için dokun" : "Dosya kayıtlı değil · yüklemek için dokun"}</span>
+              {!r.noticeFile && <span className="block truncate text-[0.8125rem] text-mut">Dosya kayıtlı değil · yüklemek için dokun</span>}
             </span>
           </button>
           <button type="button" onClick={() => setNoticeMenu(true)} aria-label="Talimat ayarları" className="grid size-10 shrink-0 place-items-center text-mut">
@@ -560,7 +560,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <DateBadge r={r} light />
           <div className="min-w-0 flex-1">
             <b className="block truncate text-[1.0625rem] font-semibold leading-tight">{placeText(r) || "Yer girilmedi"}</b>
-            <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">{rangeText(r.startDate, r.endDate) || "Tarih girilmedi"}</span>
+            {!r.startDate && <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">Tarih girilmedi</span>}
             <span className="mt-1.5 block truncate text-[0.8125rem] font-medium text-white/90">{[leftText(r), `${chosen.length} sporcu`, r.abroad && "Yurt dışı"].filter(Boolean).join(" · ")}</span>
           </div>
         </div>
@@ -588,7 +588,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
             </Pair>
           </Group>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">{r.planAdded ? "Yarış planlarda. Yolculuğu sonradan değiştirirsen planı da Planlar’dan güncelle." : "Planlara eklerken yarış çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası olur."}</p>
 
           <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
 
@@ -634,18 +633,11 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               )}
             </li>
           </ul>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">
-            {fromNotice ? "Talimattaki işler son tarihleriyle listede." : r.notice ? "Talimatta iş bulunamadı." : "Talimatı yüklersen kayıt, ödeme, konaklama işleri son tarihleriyle gelir."}
-            {r.abroad && " Yurt dışı hazırlıkları da listede."} Yapılan ya da gerekmeyen işi × ile çıkar.
-            {hidden > 0 && (
-              <>
-                {" "}
-                <button type="button" onClick={restoreSteps} className="font-semibold text-acc">
-                  Çıkarılanları geri getir ({hidden})
-                </button>
-              </>
-            )}
-          </p>
+          {hidden > 0 && (
+            <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
+              Çıkarılanları geri getir ({hidden})
+            </button>
+          )}
 
           <Label>NOT</Label>
           <div className={`${card} px-4 py-3`}>
@@ -673,7 +665,17 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             )}
           </div>
 
-          <NoticeDetails n={r.notice} />
+          {r.notice && (
+            <>
+              <button type="button" onClick={() => setNoticeInfo((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
+                <Icon name="book" className="size-5 shrink-0 text-acc" />
+                <span className="shrink-0 text-[0.9375rem] font-semibold">Talimat bilgileri</span>
+                <span className="min-w-0 flex-1 truncate text-right text-[0.8125rem] text-mut">program, ücret, iletişim</span>
+                <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${noticeInfo ? "rotate-90" : ""}`} />
+              </button>
+              {noticeInfo && <NoticeDetails n={r.notice} />}
+            </>
+          )}
 
           {start.id && (
             <div className="mt-8 flex justify-center">
@@ -717,16 +719,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                       </span>
                       {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
                     </span>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${miss.length ? "bg-amber-500/15 text-amber-700" : "bg-ok/10 text-ok"}`}>
-                      {miss.length ? "Eksik" : "Tamam"}
-                    </span>
+                    <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
                   </button>
                 );
               })}
             </div>
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
-          {chosen.length > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">Sporcuya dokunup eksik bilgileri gir; sporcu kartına kaydolur, sonraki yarışlarda hazır gelir.</p>}
           {athletes.length > 0 && resultsOpen(r, todayStr()) && (
             <RaceResults
               orgId={orgId}
@@ -774,7 +773,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </Pair>
             <Row label="Evrak tarihi">{field("letterDate", "", "date")}</Row>
           </Group>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">İzin aralığı kendiliğinden yarıştan bir gün önce başlar, bir gün sonra biter. Evrak tarihi tüm belgelerde aynıdır; belgeler ilk hazırlandığı gün yazılır, Yenile’de değişmez. Sonra buradan değiştirilebilir.</p>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">Boş bırakılan tarihler yarıştan gelir.</p>
 
           <Label>KULÜP YETKİLİSİ</Label>
           <Group>
