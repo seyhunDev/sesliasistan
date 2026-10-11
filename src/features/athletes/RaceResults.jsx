@@ -16,7 +16,7 @@ const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*
 // Belge yarışta saklanır (her cihazdan açılır). Belge yoksa sıra elle de yazılır (tekne sayısı + sıra).
 // Sporcu kartında yarış geçmişi, asistan ("Ali'nin sonuçları") ve Instagram sonuç gönderisi buradan beslenir.
 // athletes: yarıştaki sporcular; club: kulübün bütün etkin sporcuları (yarışta seçili olmayan bulunursa yarışa eklenir)
-export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddAthletes, onOpen }) {
+export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddAthletes, onOpen, onPost }) {
   const toast = useToast();
   const res = race.results || { fleet: "", rows: {} };
   const files = res.files || [];
@@ -114,6 +114,18 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
             <span className="flex-1">Belge yoksa sırayı elle yaz · tekne sayısı</span>
             <input inputMode="numeric" value={res.fleet || ""} onChange={(e) => onChange({ ...res, fleet: e.target.value.replace(/\D/g, "") })} className={box} aria-label="Tekne sayısı" />
           </label>
+        )}
+        {onPost && sorted.some((a) => res.rows?.[a.id]?.place) && (
+          <button type="button" onClick={onPost} className="flex w-full items-center gap-3 border-t border-line px-4 py-3 text-left">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white">
+              <Icon name="instagram" className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-[0.9375rem] font-semibold">Instagram görseli hazırla</b>
+              <span className="block truncate text-[0.8125rem] text-mut">Sonuçlarla gönderi açılır, yazılar hazır gelir</span>
+            </span>
+            <Icon name="chev" className="size-5 shrink-0 text-mut" />
+          </button>
         )}
       </section>
       <p className="mt-2 px-1 text-[0.75rem] text-mut">Önce genel sıra; Junior ve Bambino ayrıca kendi içinde, kızlar da kendi içinde sıralanır. Kızlar sırası için sporcu kartındaki cinsiyet kullanılır. Sonuçlar sporcu kartında da görünür.</p>

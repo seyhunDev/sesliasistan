@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Hero, Label, Seg, card } from "@/components/ui/Page";
@@ -103,6 +104,7 @@ function Check({ on, tone = "ok" }) {
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
 export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
+  const router = useRouter();
   const [r, setR] = useState(start);
   const [tab, setTab] = useState(start.name ? "sum" : "info");
   const [pick, setPick] = useState(false);
@@ -351,11 +353,11 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     await saveExtras(id.current, next);
   };
   // Instagram gönderisi: yarış bilgisi ve seçili sporcuların yalnız adı ve sınıfı gönderi sayfasına cihaz içinde geçer (ek okuma yok)
-  const toPost = () => {
+  const toPost = (kind) => {
     const cls = Object.fromEntries(classes.map((c) => [c.id, c.name]));
     const list = withResults(chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" })), chosen.map((a) => a.id), r.results);
     try {
-      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [] } }));
+      sessionStorage.setItem(RACE_KEY, JSON.stringify({ kind: kind === "sonuc" ? "sonuc" : "", name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [] } }));
     } catch {}
   };
   const toPlan = async () => {
@@ -500,7 +502,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       ? { icon: "check", label: "Planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Yarış planlarda") }
       : { icon: "cal", label: "Planlara ekle", onClick: toPlan },
     dueOpen > 0 && (r.notice?.planned ? { icon: "check", label: "Tarihler planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Son tarihler planlarda") } : { icon: "clock", label: "Son tarihler", onClick: noticePlan }),
-    start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: toPost },
+    start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: () => toPost() },
   ].filter(Boolean);
   const actCls = "flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition active:scale-95 active:bg-bg";
   const actBody = (a) => (
@@ -736,6 +738,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               onChange={(v) => put("results", v)}
               onAddAthletes={(ids) => set("athleteIds")([...new Set([...latest.current.athleteIds, ...ids])])}
               onOpen={(f) => openPdf(f)}
+              onPost={() => (toPost("sonuc"), router.push("/posts/new"))}
             />
           )}
         </>

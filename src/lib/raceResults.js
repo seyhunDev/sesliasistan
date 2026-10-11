@@ -56,9 +56,27 @@ export function historyOf(races, athleteId) {
 }
 
 // Instagram için: sporculara sonuç eklenir, dereceliler önce
+// En iyi ilk üç derecesi (genel, Junior/Bambino, kızlar): { pod: 1-3, top: "Optimist Junior sıralamasında üçüncü" } ya da null
+const ORD = ["", "birinci", "ikinci", "üçüncü"];
+export function podiumOf(x) {
+  if (!x?.place && !x?.cp && !x?.gp) return null;
+  const c = x.cls || "";
+  const opts = [
+    [x.place, c ? `${c} genel sıralamasında` : "yarışta"],
+    [x.cat && x.cat !== "Senior" ? x.cp : 0, `${c} ${x.cat} sıralamasında`.trim()],
+    [x.gp, `${c} kızlar sıralamasında`.trim()],
+  ].filter(([n]) => n >= 1 && n <= 3);
+  if (!opts.length) return null;
+  const [n, where] = opts.reduce((a, b) => (b[0] < a[0] ? b : a));
+  return { pod: n, top: `${where} ${ORD[n]}` };
+}
+
 export function withResults(list, ids, res) {
   return list
-    .map((a, i) => ({ ...a, res: placeText(res, ids[i]), _p: res?.rows?.[ids[i]]?.place || 999 }))
+    .map((a, i) => {
+      const p = podiumOf(res?.rows?.[ids[i]]);
+      return { ...a, res: placeText(res, ids[i]), ...(p || {}), _p: p ? p.pod - 1000 : res?.rows?.[ids[i]]?.place || 999 };
+    })
     .sort((a, b) => a._p - b._p)
     .map(({ _p, ...a }) => a);
 }

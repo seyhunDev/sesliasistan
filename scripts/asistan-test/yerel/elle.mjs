@@ -4,6 +4,7 @@ import { suite } from "./ortak.mjs";
 const { group } = suite("elle");
 const F = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 // Ek bildirimler (notifyExtra.js): doğum günü, rüzgâr, haftalık özet
+const { withResults } = await import("@/lib/raceResults");
 const NX = await import("@/lib/notifyExtra");
 const WROWS = Array.from({ length: 24 }, (_, i) => ({ hh: String(i).padStart(2, "0"), wind: i >= 14 && i <= 18 ? 23 : 10, gust: i >= 14 && i <= 18 ? 30 : 14 }));
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];
@@ -354,6 +355,21 @@ group("Instagram tasarım")([
     return a.headSize === 100 && a.subSize === 100 && a.noHead === false && b.headSize === 150 && b.subSize === 80 && b.noHead === true && PM.cleanPost({ headSize: 87 }).headSize === 85;
   })],
   ["logo kapatma", F("logo ve kulüp adı kapatılabilir; asistanla kaldır / geri getir", () => PM.cleanPost({ noBrand: true }).noBrand === true && PM.cleanPost({}).noBrand === false && PM.sizeAsk("logoyu kaldır").noBrand === true && PM.sizeAsk("logo ve kulüp adı olmasın").noBrand === true && PM.sizeAsk("logoyu geri getir").noBrand === false && PM.sizeAsk("kulüp adını kaldır").noBrand === true)],
+  ["tür yazısı kapalı", F("YARIŞ SONUCU gibi tür yazısı varsayılan kapalı; açılır, asistanla kaldır / göster", () =>
+    PM.cleanPost({}).noTag === true && PM.freshPost("sonuc").noTag === true && PM.cleanPost({ noTag: false }).noTag === false &&
+    PM.sizeAsk("etiketi kaldır").noTag === true && PM.sizeAsk("yarış sonucu yazısı olmasın").noTag === true && PM.sizeAsk("etiketi geri getir").noTag === false &&
+    PM.sizeAsk("tür yazısını göster").noTag === false && PM.designFrom("yarış duyurusu yap").noTag === false && PM.designFrom("rengi mavi yap").noTag === undefined)],
+  ["sonuçtan gönderi", F("sonuçlardaki düğme gönderiyi yarış sonucu türünde açar (yarış henüz bitmese de)", () =>
+    PM.postFromRace({ kind: "sonuc", name: "X", startDate: "2026-12-01" }, "2026-10-03").kind === "sonuc" && PM.postFromRace({ name: "X", startDate: "2026-12-01" }, "2026-10-03").kind === "duyuru")],
+  ["sonuçta derece", F("ilk üçe giren: üstte ÜÇÜNCÜLÜK, başlık Tebrikler + ad, altında nerede kaçıncı", () => {
+    const row = { place: 56, cls: "Optimist", cat: "Junior", n: 120, cp: 3, cn: 38, gp: 7, gn: 30 };
+    const ath = withResults([{ name: "Ece Yılmaz", cls: "Optimist" }, { name: "Mete Ok", cls: "Optimist" }], ["e", "m"], { rows: { e: row, m: { place: 40, cls: "Optimist", cat: "Senior", n: 120 } } });
+    const p = PM.postFromRace({ kind: "sonuc", name: "TYF Ligi", district: "Foça", startDate: "2026-10-03", athletes: ath }, "2026-10-11");
+    const none = PM.postFromRace({ kind: "sonuc", name: "TYF Ligi", district: "Foça", startDate: "2026-10-03", athletes: [{ name: "Mete Ok", cls: "Optimist", res: "40." }] }, "2026-10-11");
+    return p.tag === "ÜÇÜNCÜLÜK" && p.noTag === false && p.headline === "Tebrikler Ece Yılmaz" && p.sub === "Sporcumuz Ece Yılmaz, Foça'da Optimist Junior sıralamasında üçüncü oldu." &&
+      none.headline === "Emeğinize Sağlık" && none.noTag === true && PM.locative("Göcek") === "Göcek'te" && PM.locative("Çeşme") === "Çeşme'de" &&
+      withResults([{ name: "A" }], ["a"], { rows: { a: { place: 2, cls: "ILCA 4", n: 20 } } })[0].top === "ILCA 4 genel sıralamasında ikinci";
+  })],
   ["asistanla başlık", F("kaldır, geri getir, bir tık küçült, alt yazıyı büyüt; yeni başlık yazdırma yapay zekaya", () => {
     const p = { headSize: 100, subSize: 100 };
     const q = (t) => JSON.stringify(PM.sizeAsk(t, p));

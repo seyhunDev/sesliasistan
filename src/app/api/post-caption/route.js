@@ -3,7 +3,7 @@ import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
-import { KINDS, cleanPeople, dayOf, cleanRace, cleanTags, imagePeople, kindOf, raceSub, raceWish } from "@/features/posts/postModel";
+import { KINDS, cleanPeople, dayOf, cleanRace, cleanTags, imagePeople, kindOf, podiumTag, raceHeadline, raceSub, raceWish } from "@/features/posts/postModel";
 
 export const runtime = "nodejs";
 
@@ -84,7 +84,7 @@ async function handle(request) {
     `Tür: ${kind} (${kindOf(kind)[1]})`,
     day && `Özel gün: ${day.name} (${year}), ${{ milli: "milli bayram", anma: "anma günü", dini: "dini bayram", deniz: "denizcilik bayramı", genel: "belirli gün" }[day.mood]}. Hazır görsel yazıları: başlık "${day.head(year)}"${day.sub(year) ? `, alt satır "${day.sub(year)}"` : ""}${day.wish(year) ? `, dilek "${day.wish(year)}"` : ""}.`,
     race &&
-      `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`, race.athletes?.length > 0 && `Katılan sporcular: ${race.athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" (") + (a.cls ? ")" : "")).join(", ")}`].filter(Boolean).join("\n")}`,
+      `Yarış:\n${[`Ad: ${race.name}`, race.place && `Yer: ${race.place}`, race.dates && `Tarih: ${race.dates}`, race.classes && `Sınıflar: ${race.classes}`, race.count > 0 && `Katılan sporcu sayısı: ${race.count}`, race.athletes?.length > 0 && `Katılan sporcular: ${race.athletes.map((a) => [a.name, a.cls].filter(Boolean).join(" (") + (a.cls ? ")" : "") + (a.top ? `: ${a.top} oldu` : a.res ? `: ${a.res}` : "")).join(", ")}`].filter(Boolean).join("\n")}`,
     topic && `Kullanıcının anlattığı:\n"""\n${topic}\n"""`,
     now.length > 0 && `Görseldeki mevcut yazılar:\n${now.map(([k, v]) => `${k}: ${v.replace(/\n/g, " / ")}`).join("\n")}`,
     old && `Mevcut açıklama:\n"""\n${old}\n"""`,
@@ -119,6 +119,11 @@ async function handle(request) {
       out.wish = keep("wish", /dilek|son satır/i, day.wish(year));
       out.tag = (/etiket/i.test(ask) && S(raw?.tag, 24)) || (ask && S(cur.tag, 24)) || day.tag;
       out.people = "";
+    }
+    // Sonuçta ilk üçe giren varsa başlık "Tebrikler Ad", üstteki yazı derece ("ÜÇÜNCÜLÜK"); yalnız açıkça istenirse değişir
+    if (race && kind === "sonuc" && podiumTag(race)) {
+      if (!ask || !HEAD.test(ask)) out.headline = (ask && L(cur.headline, 90)) || raceHeadline(race, kind);
+      if (!/etiket/i.test(ask)) out.tag = (ask && S(cur.tag, 24)) || podiumTag(race);
     }
     if (!out.caption) throw new Error("boş cevap");
     console.log(`[post-caption] ${Date.now() - t0} ms, tür=${kind}, ${out.caption.length} karakter, ${out.hashtags.length} etiket`);
