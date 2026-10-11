@@ -1,0 +1,7 @@
+## Nerede kaldım
+
+- Aidat başlangıcı ve sayılmayan ay (Seyhun: "yeni bir sporcu geldi, önceki aylarının borcu olmaması gerekiyor; önceki aylardan borcu olan olursa o ay sayılmasın"; "1, 2 ve 3" seçildi; telefonda denenmedi): sporcunun aidatı kulübe eklendiği aydan başlar (createdAt), önceki aylar borç sayılmaz. Aidatlar'da bir kutuya dokununca iki yeni düğme var. "Aidatı bu aydan başlat" o sporcunun başlangıcını o aya çeker (`dues/settings.start[sporcuId]`) ve önceki aylar sayılmaz. "Bu ay sayılmasın / sayılsın" yalnız o ayı muaf yapar (`dues/{ay}.free[sporcuId]`). Tabloda başlamamış ay soluk nokta, muaf ay "–" olarak görünür. Bu aylar "Ödeyen" sayısına, beklenen tutara, "Bu ay ödemeyenler"e, hatırlatma listesine, sunucunun hatırlatma bildirimine, asistanın "kim ödemedi" ve "X'in aidat durumu" cevabına, sporcu sayfasındaki aidat kartına ve ana sayfa aidat kartına girmez (`startOf`, `offOf`, `ymOfTime`, dues.js; `monthRows(…, ym)`, `unpaidRoster(…, ym)`; sunucu listesine `from`). Asistan: "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın / sayılsın" (`duesCommand` op start/free, `monthYm`). Kural değişikliği yok. Testleri `test:asistan` › "Sporcu aidat durumu".
+
+## Sıradaki işler
+
+- Aidatlar'da eski borçlu görünen bir sporcunun kutusuna dokun, "Aidatı bu aydan başlat"; önceki aylar ve borç kaybolmalı. Bir ayda "Bu ay sayılmasın" de, "–" görünmeli.

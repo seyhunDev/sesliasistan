@@ -116,6 +116,26 @@ export function incomeCommand(raw, today = "") {
 }
 
 // ---- Aidat: "aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat" · soru: "bu ay kim aidat ödemedi" ----
+const MONTH_WORDS = new RegExp(`(^| )(bu ay\\p{L}*|geçen ay\\p{L}*|gelecek ay\\p{L}*|(?:${MONTHS.join("|")})\\p{L}*|sporcu|sporcunun|ayın|ayki|ayından|ayından itibaren|itibaren)(?= |$)`, "gu");
+// Cümledeki ay: "bu ay" → 0, "geçen ay" → -1, "gelecek ay" → 1, ay adı → "m:<0-11>"; yoksa 0 (bu ay)
+function monthWord(t) {
+  if (/geçen ay/u.test(t)) return -1;
+  if (/gelecek ay|önümüzdeki ay/u.test(t)) return 1;
+  const i = MONTHS.findIndex((m) => new RegExp(`(^| )${m}\\p{L}*( |$)`, "u").test(t));
+  return i >= 0 ? `m:${i}` : 0;
+}
+// monthWord sonucu → "YYYY-MM" (ay adı: en yakın geçmiş ya da en çok 2 ay sonraki)
+export function monthYm(mon, today) {
+  const [y, m] = today.slice(0, 7).split("-").map(Number);
+  if (typeof mon === "string" && mon.startsWith("m:")) {
+    const i = Number(mon.slice(2)) + 1;
+    const yy = i > m + 2 ? y - 1 : y;
+    return `${yy}-${String(i).padStart(2, "0")}`;
+  }
+  const d = new Date(Date.UTC(y, m - 1 + (Number(mon) || 0), 15));
+  return d.toISOString().slice(0, 7);
+}
+
 export function duesCommand(raw) {
   const t = low(raw);
   if (!/aidat/u.test(t)) return null;
@@ -123,10 +143,19 @@ export function duesCommand(raw) {
   const one = /(^| )(ona|kendisine|velisine|annesine|babasına)( |$)/u.test(t) || /^\p{Lu}\p{Ll}+(\s\p{Lu}\p{Ll}+)?['’]?\p{L}*\s+aidat/u.test(String(raw || "").trim());
   if (/(hatırlat|hatırlatma)/u.test(t) && !/(hatırlattın mı|hatırlatıldı mı)/u.test(t)) return one ? null : { op: "remind" };
   if (/(kim|kimler|kaç kişi|kaç sporcu|hangi sporcu|kimin)/u.test(t) && /(ödemedi|ödemeyen|ödemiş|ödedi|vermedi|vermeyen|eksik|borç)/u.test(t)) return { op: "ask", paid: /(ödedi|ödemiş)/u.test(t) && !/ödemedi|ödemeyen|vermedi|vermeyen/u.test(t) };
+  // Başlangıç ve muafiyet: "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın"
+  const start = /(^| )başla(sın|t|tın|tır|yacak|yor)?( |$)/u.test(t) && !/(sayılmasın|sayılsın|muaf)/u.test(t);
+  const free = /(sayılmasın|sayma|sayılmayacak|muaf|sayılsın)/u.test(t);
+  if ((start || free) && !QUESTION.test(t)) {
+    const who = t.match(/^(.+?) (?:aidat|muaf)/u);
+    const name = who ? nameOf(who[1].replace(MONTH_WORDS, " ")) : "";
+    const mon = monthWord(t);
+    if (name && name.split(" ").length <= 3) return { op: start ? "start" : "free", name, mon, undo: free && /(sayılsın|geri al|muaf değil)/u.test(t) };
+  }
   // Tek sporcu: "Ahmet'in aidat durumu ne", "Ali Kaya aidatını ödedi mi", "Zeynep'in aidat borcu var mı"
   const m = t.match(/^(.+?) (?:kaç aylık )?aidat\p{L}*(?: (.*))?$/u);
   if (m && (/(durum|borc|borç|ne alemde|nasıl)/u.test(m[2] || "") || (QUESTION.test(t) && /(ödendi|ödedi|ödemiş|yatırdı|yatırmış|yatırıldı|verdi|vermiş|geldi|var|yok)/u.test(m[2] || "")))) {
-    const name = nameOf(m[1].replace(/(^| )(bu ay(ki)?|geçen ay(ki)?|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|sporcu|sporcunun|ayın|ayki)(?= |$)/gu, " "));
+    const name = nameOf(m[1].replace(MONTH_WORDS, " "));
     if (name && name.split(" ").length <= 3 && !/^(Bu|Benim|Kimin|Hangi)$/u.test(name)) return { op: "one", name };
   }
   return null;

@@ -71,7 +71,7 @@ export const TASKS = [
   { id: "invoiceTask", group: "Kulüp", name: "Faturayı görevliye verme, fatura silme (onayla)", say: "Turkcell faturasını Ali'ye ver; Turkcell faturasını sil", who: "ana", by: "yerel", confirm: true },
   { id: "receiptPay", group: "Kulüp", name: "Çalışanın fişini ödendi yapma", say: "F-0012 fişini ödendi yap; Ali'nin fişlerini ödedim", who: "ana", by: "yerel" },
   { id: "income", group: "Kulüp", name: "Hesaplar'a nakit gelir (aidat, bağış, eğitim)", say: "Ali Kaya'nın ekim aidatı nakit 1500 alındı", who: "ana", by: "yerel" },
-  { id: "dues", group: "Kulüp", name: "Aidat: kim ödemedi, velilere hatırlatma (onayla)", say: "bu ay kim aidat ödemedi; aidat hatırlatması gönder", who: "ana", by: "yerel", confirm: true },
+  { id: "dues", group: "Kulüp", name: "Aidat: kim ödemedi, hatırlatma, başlangıç, muaf ay", say: "bu ay kim aidat ödemedi; aidat hatırlatması gönder; Ali'nin aidatı kasımdan başlasın; Ali bu ay aidattan muaf", who: "ana", by: "yerel", confirm: true },
 
   // Diğer
   { id: "post", group: "Diğer", name: "Instagram gönderisi hazırlama, değiştirme, arşive kaldırma", say: "Foça yarışı için Instagram gönderisi hazırla", who: "ana", by: "yz-ayrı", doing: "Tamam, gönderiyi hazırlıyorum.", work: "Gönderi hazırlanıyor" },

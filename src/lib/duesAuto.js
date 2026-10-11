@@ -4,14 +4,17 @@
 // Kendiliğinden yazılan: eşleşmesi emin (öğrenilmiş gönderen, soyadı + veli adı ya da sporcu adı) VE tutarı sporcunun
 // (kardeşlerde toplam) aidatına eşit olan para. Gerisi Aidatlar › "eşleşmeyi bekliyor"da onaya kalır.
 import { movementsOf } from "./mailBoard.js";
-import { feeOf, matchMovement, monthOf, movKey, payerOf, splitAmount, usedKeys } from "./dues.js";
+import { feeOf, matchMovement, startOf, monthOf, movKey, payerOf, splitAmount, usedKeys } from "./dues.js";
 import { money } from "./bankSheet.js";
 
 const TL = (n) => `${money(n).replace(/,00$/, "")} TL`;
 
 // Etkin sporculardan eşleştirme listesi (Aidatlar sayfası yazar; boş alanlar atılır)
-export const rosterOf = (athletes) =>
-  athletes.map((a) => Object.fromEntries(Object.entries({ id: a.id, studentName: a.studentName, parentName: a.parentName, motherName: a.motherName, fatherName: a.fatherName }).filter(([, v]) => v)));
+// from: aidat başlangıç ayı (sunucu hatırlatmasında önceki aylar sayılmasın)
+export const rosterOf = (athletes, cfg = {}) =>
+  athletes.map((a) =>
+    Object.fromEntries(Object.entries({ id: a.id, studentName: a.studentName, parentName: a.parentName, motherName: a.motherName, fatherName: a.fatherName, from: startOf(a, cfg) }).filter(([, v]) => v)),
+  );
 
 // movements: yeni maillerin hareketleri; months: { "YYYY-MM": ay kaydı } → { months (değişen aylar), payers | null, paid [{ names, amount, date }], open }
 export function autoDues(movements, cfg = {}, months = {}, now = new Date().toISOString()) {

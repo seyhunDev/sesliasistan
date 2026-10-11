@@ -108,7 +108,7 @@ export async function POST(request) {
     const ids = (Array.isArray(body.ids) ? body.ids : []).map(String).filter((x) => /^[\w-]{1,128}$/.test(x)).slice(0, 80);
     const dues = org.collection("dues");
     const [c, m] = await Promise.all([dues.doc("settings").get(), dues.doc(ym).get()]);
-    const owe = new Map(unpaidRoster(c.data() || {}, m.data() || {}).map((x) => [x.a.id, x]));
+    const owe = new Map(unpaidRoster(c.data() || {}, m.data() || {}, ym).map((x) => [x.a.id, x]));
     let sent = 0;
     let parents = 0;
     for (const mid of ids) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { addDoc, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
+import { addDoc, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
@@ -19,6 +19,9 @@ export const saveCfg = (orgId, cfg) => setDoc(dues(orgId, "settings"), clean(cfg
 // Sunucunun maildeki ödemeleri eşleştirebilmesi için etkin sporcuların adları (duesAuto.js); diğer ayarlara dokunmaz
 export const saveRoster = (orgId, roster) => setDoc(dues(orgId, "settings"), { roster: clean(roster) }, { merge: true });
 export const saveMonth = (orgId, ym, month) => setDoc(dues(orgId, ym), clean(month));
+// Asistandan: aidat başlangıç ayı ve "bu ay sayılmasın" (yalnız o alan yazılır, diğerlerine dokunmaz)
+export const saveStart = (orgId, id, ym) => setDoc(dues(orgId, "settings"), { start: { [id]: ym } }, { merge: true });
+export const saveFree = (orgId, ym, id, on) => setDoc(dues(orgId, ym), { free: { [id]: on ? true : deleteField() } }, { merge: true });
 
 // Ayın banka hareketleri (banka defterinden; ledgerData.js)
 export async function loadMovements(uid, ym) {

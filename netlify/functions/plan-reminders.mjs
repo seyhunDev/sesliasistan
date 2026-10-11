@@ -247,7 +247,7 @@ async function sendDuesRemind(db, all) {
     const dues = db.collection("orgs").doc(u.id).collection("dues");
     const cfg = (await dues.doc("settings").get()).data();
     if (!cfg?.fee || !pastDue(today, cfg)) continue;
-    const msg = ownerText(unpaidRoster(cfg, (await dues.doc(ym).get()).data() || {}), ym);
+    const msg = ownerText(unpaidRoster(cfg, (await dues.doc(ym).get()).data() || {}, ym), ym);
     if (msg) {
       const payload = await withBadge(db, u.id, { ...msg, tag: `dues-remind-${ym}`, url: "/dues" });
       await Promise.all(
