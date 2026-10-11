@@ -26,6 +26,7 @@ import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
 import { updateAsk } from "@/lib/newVersion";
+import { inboxClearAsk } from "@/lib/inbox";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -74,6 +75,7 @@ export function routesOf(s, c = {}) {
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
   if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
+  if (!mf && inboxClearAsk(s)) add("inboxClear");
   // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
   const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
   if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");

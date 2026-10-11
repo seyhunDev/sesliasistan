@@ -135,7 +135,7 @@ async function sendSummaries(db, all, q) {
     ]);
     const data = { plans: p.docs.map((x) => x.data()).filter((x) => mine(x) && x.status !== "cancelled" && !x.done), tasks: t.docs.map((x) => x.data()).filter(mine), today, uid: u.id, name: d.name };
     const send = async (msg, tag) => {
-      const payload = await withBadge(db, u.id, { ...msg, tag, url: "/" });
+      const payload = await withBadge(db, u.id, { ...msg, tag, url: "/plans" });
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {
@@ -216,7 +216,7 @@ async function sendExtras(db, all, q) {
         const rows = winds.get(key);
         if (rows) {
           const msg = windAlert({ rows, plans, today, kn: Number(d.windKn) || WIND_KN });
-          if (msg) await send(msg, `wind-${today}`, msg.url || "/");
+          if (msg) await send(msg, `wind-${today}`, msg.url || "/plans");
           await u.ref.update({ windSent: today });
         }
       }

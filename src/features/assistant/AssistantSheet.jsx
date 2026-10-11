@@ -28,6 +28,7 @@ import { askAssistant } from "@/services/assistantService";
 import { EARLY, routesOf } from "@/lib/assistRoute";
 import { buildSpeech } from "@/lib/buildInfo";
 import { applyUpdate, checkVersion } from "@/lib/newVersion";
+import { clearInbox } from "@/features/home/Inbox";
 import { ASK_EMPTY, DRAFT_AGE, PAST_MS, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
@@ -1191,6 +1192,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         case "close":
           return finish(), true;
         // "Son güncelleme ne?": derlemede gömülen yayın bilgisi (lib/buildInfo.js)
+        // "Bildirimleri temizle": zildeki bildirim listesi boşalır (yapılacaklar kalır)
+        case "inboxClear": {
+          const n = (profile?.inbox || []).length;
+          if (!n) return reply("Temizlenecek bildirim yok.", { engine: "local" }, viaVoice), true;
+          const ok = await clearInbox(profile?.uid).then(() => true, () => false);
+          return reply(ok ? `${n} bildirimi temizledim.` : "Bildirimleri temizleyemedim, bağlantıyı kontrol et.", { engine: "local", ...(ok ? {} : { fail: true }) }, viaVoice), true;
+        }
         case "version": {
           const nv = await checkVersion();
           return reply(`${buildSpeech()}${nv ? " Yayında daha yeni bir sürüm var; “uygulamayı güncelle” de." : ""}`, { engine: "local" }, viaVoice), true;
