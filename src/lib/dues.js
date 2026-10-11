@@ -61,6 +61,7 @@ export function cashMoves(months = {}, roster = []) {
           kind: "Nakit",
           cat: "Aidat",
           who: names.get(id) || "Sporcu",
+          athleteId: id,
           note: `${AY[Number(ym.slice(5)) - 1]} ${ym.slice(0, 4)} aidatı`,
           desc: "Nakit aidat",
           date: `${d}.${m}.${y}`,
@@ -260,4 +261,41 @@ export function pendingOf(movements, months, athletes, cfg, yms) {
     for (const m of incomingOf(movements, ym, usedKeys(month), month.ignored || [])) out.push({ ym, m, r: matchMovement(m, athletes, cfg) });
   }
   return out;
+}
+
+// "03.10.2026 14:22" ya da "2026-10-03…" → "2026-10-03"
+const isoDay = (v) => {
+  const s = String(v || "");
+  const m = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : "";
+};
+
+// Tek sporcunun aidat durumu (sporcu sayfası ve asistan): yms en eskiden yeniye, months { ym: ay kaydı }.
+// since (YYYY-MM): sporcunun kaydolduğu ay; önceki aylar borç sayılmaz. Tutar ayarlı değilse borç hesaplanmaz.
+// → { fee, now: { state paid|part|due, paid }, cells [{ ym, state, paid }], debt, dueMonths [ym], last [{ ym, amt, via, date }] }
+export function athleteDues(a, cfg = {}, months = {}, yms = [], since = "") {
+  const fee = feeOf(a, cfg);
+  const cells = yms.map((ym) => {
+    const list = months[ym]?.paid?.[a.id] || [];
+    const paid = Math.round(list.reduce((s, p) => s + (Number(p.amt) || 0), 0) * 100) / 100;
+    const before = since && ym < since;
+    const state = paid <= 0 ? (before ? "none" : "due") : fee && paid < fee ? "part" : "paid";
+    return { ym, state, paid, rest: state === "due" ? fee : state === "part" ? fee - paid : 0 };
+  });
+  const owe = fee ? cells.filter((c) => c.state === "due" || c.state === "part") : [];
+  const last = yms
+    .flatMap((ym) => (months[ym]?.paid?.[a.id] || []).map((p) => ({ ym, amt: Number(p.amt) || 0, via: p.via === "cash" ? "cash" : "eft", date: isoDay(p.date || p.at) })))
+    .sort((x, y) => (y.date || y.ym).localeCompare(x.date || x.ym))
+    .slice(0, 3);
+  return { fee, now: cells.at(-1) || { state: "due", paid: 0 }, cells, debt: Math.round(owe.reduce((s, c) => s + c.rest, 0) * 100) / 100, dueMonths: owe.map((c) => c.ym), last };
+}
+
+// Asistanın söyleyeceği kısa cümle: "Ali Kaya'nın Ekim aidatı ödendi. Borcu yok." / "… ödenmedi. Borç: 2 ay, 3.000 TL."
+export function athleteDuesText(name, d) {
+  const tl = (n) => `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(n)} TL`;
+  const ay = (ym) => AY[Number(ym.slice(5)) - 1];
+  const ym = d.now.ym || "";
+  const now = d.now.state === "paid" ? "ödendi" : d.now.state === "part" ? `eksik ödendi (${tl(d.now.paid)})` : "henüz ödenmedi";
+  const debt = !d.fee ? "Aidat tutarı ayarlı değil, borç hesaplanmadı." : d.debt ? `Son 6 ayda borç: ${d.dueMonths.length} ay, ${tl(d.debt)}.` : "Borcu yok.";
+  return `${name} · ${ay(ym)} aidatı ${now}. ${debt}`;
 }

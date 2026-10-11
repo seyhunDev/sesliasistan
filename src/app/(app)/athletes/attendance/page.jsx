@@ -215,7 +215,7 @@ function Roll() {
               return (
                 <li key={a.id} className="flex items-center gap-2 py-2 pl-4 pr-2">
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-medium">{a.studentName}</b>
+                    <Link href={`/athletes/${a.id}`} className="block truncate text-[0.9375rem] font-medium active:opacity-60">{a.studentName}</Link>
                     {!cls && classes[a.currentClassId] && <small className="block truncate text-[0.75rem] text-mut">{classes[a.currentClassId]}</small>}
                   </span>
                   <span className="flex shrink-0 gap-1">

@@ -48,7 +48,7 @@ import { addDays } from "@/lib/utils/format";
 import { useCall } from "@/features/call/CallProvider";
 import { canCall } from "@/lib/call";
 import { unpaidRoster } from "@/lib/duesRemind";
-import { feeOf } from "@/lib/dues";
+import { athleteDues, athleteDuesText, feeOf, lastMonths } from "@/lib/dues";
 import { addRacePlan, cleanHotels, deleteRace, raceHotels, saveRace, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
@@ -2240,6 +2240,24 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setPhase("thinking");
       const ym = todayStr().slice(0, 7);
       const month = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
+      // Tek sporcu: "Ahmet'in aidat durumu ne" → bu ay, son 6 aydaki borç; sporcu sayfası açılır
+      if (dc.op === "one") {
+        const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+        const hit = matchPerson(dc.name, athletes.map((a) => a.studentName));
+        const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+        if (!a) return false;
+        try {
+          const yms = lastMonths(ym, 6);
+          const { cfg, months } = await loadDuesRange(profile.orgId, yms);
+          const since = a.createdAt?.toDate ? a.createdAt.toDate().toISOString().slice(0, 7) : "";
+          park();
+          router.push(`/athletes/${a.id}`);
+          leave(athleteDuesText(a.studentName, athleteDues(a, cfg, months, yms, since)), viaVoice);
+        } catch {
+          reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
+        }
+        return true;
+      }
       let list;
       try {
         const { cfg, months } = await loadDuesRange(profile.orgId, [ym]);

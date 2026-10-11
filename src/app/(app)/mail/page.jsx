@@ -345,7 +345,7 @@ export default function MailPage() {
                   </p>
                   {shown.length > 0 && (
                     <div className={card}>
-                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} />
+                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} onAthlete={(id) => router.push(`/athletes/${id}`)} />
                       {shown.length > shownMax && (
                         <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
                           Daha fazla göster ({shown.length - shownMax} kaldı)
@@ -566,7 +566,7 @@ function AddName({ onAdd, onClose }) {
 }
 
 // Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
-function Moves({ list, today, onManual }) {
+function Moves({ list, today, onManual, onAthlete }) {
   const dayOf = (x) => localDate(new Date(x.ts).toISOString());
   return (
     <ul>
@@ -577,7 +577,7 @@ function Moves({ list, today, onManual }) {
         return (
           <li key={x.id}>
             {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-            <div onClick={x.manual && onManual ? () => onManual(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${x.manual && onManual ? "cursor-pointer" : ""}`}>
+            <div onClick={x.manual && onManual ? () => onManual(x) : x.athleteId && onAthlete ? () => onAthlete(x.athleteId) : undefined} className={`flex h-14 items-center gap-3 px-4 ${(x.manual && onManual) || (x.athleteId && onAthlete) ? "cursor-pointer" : ""}`}>
               <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
                 {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
               </span>

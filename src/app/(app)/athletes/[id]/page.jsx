@@ -18,6 +18,8 @@ import { todayStr } from "@/lib/utils/format";
 import { loadRaces } from "@/features/athletes/races";
 import { historyOf } from "@/lib/raceResults";
 import { Loading } from "@/components/ui/Loader";
+import { athleteDues, lastMonths } from "@/lib/dues";
+import { loadDuesRange } from "@/features/dues/duesData";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const STATE = {
@@ -62,6 +64,60 @@ function Row({ label, value, href, mono }) {
       <span className="shrink-0 text-[0.8125rem] text-mut">{label}</span>
       {href ? <a href={href} className="min-w-0 break-words text-right">{v}</a> : v}
     </div>
+  );
+}
+
+// Aidat (yalnız ana hesap): son 6 ay noktaları, bu ay, borç, son ödemeler. Okuma: ayar + 6 ay belgesi (7 okuma)
+const TLx = (n) => `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(n)} TL`;
+const ymOf = (v) => {
+  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
+  return d && !isNaN(d) ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "";
+};
+function DuesCard({ a }) {
+  const { profile } = useAuth();
+  const owner = profile?.role === "owner";
+  const [d, setD] = useState(null);
+  useEffect(() => {
+    if (!owner) return;
+    let on = true;
+    const yms = lastMonths(todayStr().slice(0, 7), 6);
+    loadDuesRange(profile.orgId || profile.uid, yms)
+      .then((x) => on && setD(athleteDues(a, x.cfg, x.months, yms, ymOf(a.createdAt))))
+      .catch(() => on && setD({ error: true }));
+    return () => void (on = false);
+  }, [owner, profile?.orgId, profile?.uid, a]);
+  if (!owner || !d || d.error) return null;
+  const now = d.now.state === "paid" ? ["Ödendi", "text-ok"] : d.now.state === "part" ? [`Eksik · ${TLx(d.now.paid)}`, "text-amber-700"] : ["Ödenmedi", "text-rec"];
+  const mon = (ym, f = "long") => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: f }).replace(".", "");
+  return (
+    <Card title="Aidat" icon="wallet">
+      <Link href="/dues" className="block active:opacity-70">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className="text-[0.875rem] capitalize">{mon(d.now.ym)}</span>
+          <b className={`text-[0.9375rem] font-semibold ${now[1]}`}>{now[0]}</b>
+        </div>
+        <div className="mt-2 flex justify-between">
+          {d.cells.map((c) => (
+            <span key={c.ym} className="flex w-9 flex-col items-center gap-1">
+              <span className={`grid size-6 place-items-center rounded-full ${c.state === "paid" ? "bg-ok text-white" : c.state === "part" ? "bg-amber-500/20 text-[0.625rem] font-bold text-amber-700" : ""}`}>
+                {c.state === "paid" ? <Icon name="check" className="size-3.5" /> : c.state === "part" ? "½" : <span className={`size-2 rounded-full ${c.state === "due" ? "bg-rec/50" : "bg-line"}`} />}
+              </span>
+              <small className="text-[0.6875rem] capitalize text-mut">{mon(c.ym, "short")}</small>
+            </span>
+          ))}
+        </div>
+        {d.fee > 0 && (
+          <p className={`mt-2 text-[0.8125rem] ${d.debt ? "font-medium text-rec" : "text-mut"}`}>
+            {d.debt ? `Borç: ${d.dueMonths.length} ay · ${TLx(d.debt)}` : `Borcu yok · aylık ${TLx(d.fee)}`}
+          </p>
+        )}
+        {d.last.length > 0 && (
+          <p className="mt-1 truncate text-[0.75rem] text-mut">
+            Son: {d.last.map((p) => `${TLx(p.amt)} ${p.via === "cash" ? "nakit" : "EFT"}${p.date ? ` ${fmtDate(p.date, { day: "numeric", month: "short" })}` : ""}`).join(" · ")}
+          </p>
+        )}
+      </Link>
+    </Card>
   );
 }
 
@@ -220,6 +276,7 @@ function Detail() {
         </Card>
       )}
 
+      <DuesCard a={a} />
       <RaceHistory athleteId={a.id} />
       <Attendance a={a} />
       <History items={data.history} />

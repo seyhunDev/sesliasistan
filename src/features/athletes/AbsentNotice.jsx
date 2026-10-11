@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -53,7 +54,7 @@ export function AbsentNotice({ absent, date, today, members }) {
               return (
                 <li key={a.id} className="flex items-center gap-2 py-2">
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
+                    <Link href={`/athletes/${a.id}`} className="block truncate text-[0.875rem] font-medium active:opacity-60">{a.studentName}</Link>
                     <small className="block truncate text-[0.75rem] text-mut">{[a.parentName, linked.has(a.id) ? "uygulamada" : ""].filter(Boolean).join(" · ") || "Veli bilgisi yok"}</small>
                   </span>
                   {phone ? (

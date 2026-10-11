@@ -582,6 +582,10 @@ group("Göreve göre ara yazı")([
     ["aidat hatırlatması gönder", { desc: "hatırlatma", fn: duesCommand, ok: (r) => r?.op === "remind" }],
     ["bu ay kim aidat ödemedi", { desc: "soru", fn: duesCommand, ok: (r) => r?.op === "ask" }],
     ["aidatları aç", { desc: "sayfa açma", fn: duesCommand, ok: (r) => r === null }],
+    ["Ahmet'in aidat durumu ne", { desc: "tek sporcu", fn: duesCommand, ok: (r) => r?.op === "one" && r.name === "Ahmet" }],
+    ["Ali Kaya'nın ekim aidatı ödendi mi", { desc: "tek sporcu, ay adı atılır", fn: duesCommand, ok: (r) => r?.op === "one" && r.name === "Ali Kaya" }],
+    ["Zeynep aidatını ödedi mi", { desc: "tek sporcu", fn: duesCommand, ok: (r) => r?.op === "one" && r.name === "Zeynep" }],
+    ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", { desc: "nakit gelir, soru değil", fn: duesCommand, ok: (r) => r === null }],
     ["gönderiyi arşive kaldır", { desc: "gönderi arşivi", fn: postArchiveCommand, ok: (r) => r?.archived === true }],
     ["arşivden çıkar", { desc: "gönderi arşivden", fn: postArchiveCommand, ok: (r) => r?.archived === false }],
   ]);
@@ -919,5 +923,23 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["Mustfa", C("harf kaçsa da", (s) => closeNames(s, ATH), (r) => r[0] === "Mustafa Öz")],
     ["cevap", C("ilk cümlenin günü ve durumu", () => attRetry("dün antrenmana ilave katılmadı", "İlayda"), (r) => r === "yoklama: dün İlayda gelmedi")],
     ["cevap (gün yok)", C("geldi", () => attRetry("antrenmana ilave katıldı, yoklamaya onu ekle", "Mustafa"), (r) => r === "yoklama: Mustafa geldi")],
+  ]);
+}
+
+// Sporcu sayfasındaki aidat bölümü ve "Ahmet'in aidat durumu ne" cevabı (lib/dues.js athleteDues, athleteDuesText)
+{
+  const { athleteDues, athleteDuesText } = await import("@/lib/dues");
+  const a = { id: "a1", studentName: "Ali Kaya" };
+  const yms = ["2026-08", "2026-09", "2026-10"];
+  const months = { "2026-08": { paid: { a1: [{ amt: 1500, via: "eft", date: "03.08.2026 14:22" }] } }, "2026-09": {}, "2026-10": { paid: { a1: [{ amt: 500, via: "cash", date: "2026-10-05" }] } } };
+  const d = athleteDues(a, { fee: 1500 }, months, yms);
+  const late = athleteDues(a, { fee: 1500 }, months, yms, "2026-09");
+  group("Sporcu aidat durumu")([
+    ["bu ay eksik", { desc: "bu ay", fn: () => d.now, ok: (r) => r.state === "part" && r.paid === 500 }],
+    ["borç", { desc: "eylül tam + ekim 1000 eksik", fn: () => d, ok: (r) => r.debt === 2500 && r.dueMonths.join() === "2026-09,2026-10" }],
+    ["son ödemeler", { desc: "en yeni önce, banka tarihi okunur", fn: () => d.last, ok: (r) => r[0].date === "2026-10-05" && r[1].date === "2026-08-03" }],
+    ["kayıttan önce", { desc: "kaydolmadan önceki ay borç sayılmaz", fn: () => athleteDues(a, { fee: 1500 }, {}, yms, "2026-10"), ok: (r) => r.debt === 1500 && r.cells[0].state === "none" }],
+    ["tutar yok", { desc: "aidat tutarı ayarlı değilse borç yok", fn: () => athleteDues(a, {}, months, yms), ok: (r) => r.debt === 0 }],
+    ["cümle", { desc: "asistan cevabı", fn: () => athleteDuesText("Ali Kaya", late), ok: (r) => /Ekim aidatı eksik ödendi/.test(r) && /2 ay/.test(r) }],
   ]);
 }

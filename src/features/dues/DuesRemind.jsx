@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -61,7 +62,7 @@ export function DuesRemind({ list, ym, dueDay, members, reminded = {}, onMark })
               return (
                 <li key={x.a.id} className="flex items-center gap-2 py-2">
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.875rem] font-medium">{x.a.studentName}</b>
+                    <Link href={`/athletes/${x.a.id}`} className="block truncate text-[0.875rem] font-medium active:opacity-60">{x.a.studentName}</Link>
                     <small className="block truncate text-[0.75rem] text-mut">
                       {[x.state === "part" ? `${TL(x.rest)} eksik` : TL(x.fee), x.a.parentName, linked.has(x.a.id) ? "uygulamada" : "", at ? `hatırlatıldı ${when(at)}` : ""].filter(Boolean).join(" · ")}
                     </small>

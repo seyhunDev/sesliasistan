@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -250,7 +251,7 @@ function Dues({ uid, duesAt }) {
         <ul className="divide-y divide-line">
           {rows.map(({ a, cells }) => (
             <li key={a.id} className="flex items-center px-3 py-1.5">
-              <span className="min-w-0 flex-1 truncate pr-2 text-[0.875rem]">{a.studentName}</span>
+              <Link href={`/athletes/${a.id}`} className="min-w-0 flex-1 truncate pr-2 text-[0.875rem] active:opacity-60">{a.studentName}</Link>
               {yms.map((ym) => {
                 const c = cells[ym];
                 return (
@@ -388,6 +389,7 @@ function CellView({ c, cfg, onCash, onRemove, onFee }) {
         {` · ${TL(c.paid)}${c.fee ? ` / ${TL(c.fee)}` : ""}`}
         {c.a.parentName ? ` · Veli: ${c.a.parentName}` : ""}
       </p>
+      <Link href={`/athletes/${c.a.id}`} className="mt-1 inline-block text-[0.8125rem] font-semibold text-acc">Sporcu sayfası ›</Link>
       {c.list.length > 0 && (
         <ul className="mt-3 divide-y divide-line rounded-xl bg-bg px-3">
           {c.list.map((p, i) => (
