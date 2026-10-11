@@ -15,7 +15,7 @@ import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
 import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
 import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
-import { feeOf, gridOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
+import { feeOf, gridOf, startOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
@@ -99,7 +99,7 @@ function Dues({ uid, duesAt }) {
   // Sunucunun eşleştirme listesi (yalnız adlar): sporcular değişince yazılır
   useEffect(() => {
     if (!data?.athletes || !d || d.error) return;
-    const roster = rosterOf(data.athletes.filter(isActive));
+    const roster = rosterOf(data.athletes.filter(isActive), d.cfg);
     if (roster.length && JSON.stringify(roster) !== JSON.stringify(d.cfg.roster || [])) {
       saveRoster(uid, roster).then(() => setD((p) => ({ ...p, cfg: { ...p.cfg, roster } })), () => {});
     }
@@ -132,7 +132,7 @@ function Dues({ uid, duesAt }) {
   const pending = mv && !mv.error ? pendingOf(mv.movements, months, active, cfg, yms) : [];
   const now = grid.totals[thisMonth];
   const qw = words(q).join(" ");
-  const rows = grid.rows.filter((r) => (!qw || words(`${r.a.studentName} ${r.a.parentName}`).join(" ").includes(qw)) && (!onlyDue || r.cells[thisMonth].state !== "paid"));
+  const rows = grid.rows.filter((r) => (!qw || words(`${r.a.studentName} ${r.a.parentName}`).join(" ").includes(qw)) && (!onlyDue || ["due", "part"].includes(r.cells[thisMonth].state)));
 
   async function writeMonth(ym, next, msg) {
     setD((p) => ({ ...p, months: { ...p.months, [ym]: next } }));
@@ -260,6 +260,10 @@ function Dues({ uid, duesAt }) {
                       <span className="grid size-6 place-items-center rounded-full bg-ok text-white"><Icon name="check" className="size-3.5" /></span>
                     ) : c.state === "part" ? (
                       <span className="grid size-6 place-items-center rounded-full bg-amber-500/20 text-[0.625rem] font-bold text-amber-700">½</span>
+                    ) : c.state === "free" ? (
+                      <span className="text-[0.8125rem] text-mut">–</span>
+                    ) : c.state === "none" ? (
+                      <span className="size-1.5 rounded-full bg-line/60" />
                     ) : (
                       <span className={`size-2 rounded-full ${ym === thisMonth ? "bg-rec/50" : "bg-line"}`} />
                     )}
@@ -277,7 +281,7 @@ function Dues({ uid, duesAt }) {
           ))}
         </div>
       </div>
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Kutuya dokun: o ayın ödemeleri ve nakit ekle. Ay adına dokun: ayın tüm ödemeleri.</p>
+      <p className="mt-2 px-1 text-[0.75rem] text-mut">Kutuya dokun: o ayın ödemeleri ve nakit ekle. Ay adına dokun: ayın tüm ödemeleri. Çizgi: o ay sayılmıyor.</p>
 
       {/* Hücre: sporcunun o ayı */}
       <Sheet open={!!open} onClose={() => setCell(null)} title={open ? `${open.a.studentName} · ${monthLabel(cell.ym)}` : ""}>
@@ -286,6 +290,14 @@ function Dues({ uid, duesAt }) {
             key={`${cell.id}-${cell.ym}`}
             c={open.cells[cell.ym]}
             cfg={cfg}
+            ym={cell.ym}
+            onStart={() => (writeCfg({ ...cfg, start: { ...(cfg.start || {}), [open.a.id]: cell.ym } }), toast(`${open.a.studentName}: aidat ${monthLabel(cell.ym)} ayından başlıyor`))}
+            onFree={(on) => {
+              const free = { ...(months[cell.ym]?.free || {}) };
+              if (on) free[open.a.id] = true;
+              else delete free[open.a.id];
+              writeMonth(cell.ym, { ...(months[cell.ym] || {}), free }, on ? `${monthLabel(cell.ym)} sayılmayacak` : `${monthLabel(cell.ym)} yeniden sayılıyor`);
+            }}
             onCash={(amt) => writeMonth(cell.ym, { ...(months[cell.ym] || {}), paid: addPay(months[cell.ym]?.paid || {}, open.a, { amt, via: "cash", date: todayStr() }) }, `Nakit ${TL(amt)} yazıldı`)}
             onRemove={(i) => writeMonth(cell.ym, { ...months[cell.ym], paid: { ...months[cell.ym].paid, [open.a.id]: (months[cell.ym].paid?.[open.a.id] || []).filter((_, k) => k !== i) } }, "Ödeme silindi")}
             onFee={(v) => writeCfg({ ...cfg, fees: { ...(cfg.fees || {}), [open.a.id]: v || null } })}
@@ -378,10 +390,12 @@ function RemindBox({ cfg, notifyAt, onDay, onNotify }) {
 }
 
 // Sporcunun bir ayı: ödemeler (tarih, tutar, EFT/nakit, banka açıklaması), sil, nakit ekle, sporcuya özel aidat
-function CellView({ c, cfg, onCash, onRemove, onFee }) {
+// Aidat başlangıcı ve "bu ay sayılmasın": borç olmayan ayları tek dokunuşla düzeltmek için
+function CellView({ c, cfg, ym, onCash, onRemove, onFee, onStart, onFree }) {
   const [cash, setCash] = useState("");
   const [own, setOwn] = useState(cfg.fees?.[c.a.id] ? String(cfg.fees[c.a.id]) : "");
-  const label = { paid: "Ödedi", part: "Eksik ödedi", due: "Ödeme yok" }[c.state];
+  const label = { paid: "Ödedi", part: "Eksik ödedi", due: "Ödeme yok", free: "Bu ay sayılmıyor", none: "Aidatı henüz başlamamıştı" }[c.state];
+  const start = startOf(c.a, cfg);
   return (
     <div className="overflow-y-auto px-5 pb-2 text-[0.875rem]">
       <p className="text-mut">
@@ -390,6 +404,15 @@ function CellView({ c, cfg, onCash, onRemove, onFee }) {
         {c.a.parentName ? ` · Veli: ${c.a.parentName}` : ""}
       </p>
       <Link href={`/athletes/${c.a.id}`} className="mt-1 inline-block text-[0.8125rem] font-semibold text-acc">Sporcu sayfası ›</Link>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={onStart} disabled={start === ym} className="min-h-11 rounded-xl bg-bg px-3 py-2 text-[0.8125rem] font-semibold active:scale-[.98] disabled:opacity-50">
+          {start === ym ? "Aidat bu ay başlıyor" : "Aidatı bu aydan başlat"}
+        </button>
+        <button type="button" onClick={() => onFree(c.state !== "free")} disabled={c.state === "none"} className="min-h-11 rounded-xl bg-bg px-3 py-2 text-[0.8125rem] font-semibold active:scale-[.98] disabled:opacity-50">
+          {c.state === "free" ? "Bu ay sayılsın" : "Bu ay sayılmasın"}
+        </button>
+      </div>
+      {start && <p className="mt-1.5 text-[0.75rem] text-mut">Aidat başlangıcı: {monthLabel(start)}. Önceki aylar borç sayılmaz.</p>}
       {c.list.length > 0 && (
         <ul className="mt-3 divide-y divide-line rounded-xl bg-bg px-3">
           {c.list.map((p, i) => (

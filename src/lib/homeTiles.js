@@ -43,8 +43,8 @@ export function duesTile(sum, ym) {
 export function duesLive(cfg, month, ym, prev) {
   const roster = cfg?.roster || [];
   if (!roster.length) return prev;
-  const t = monthRows(roster.filter((a) => a.id && a.studentName), month || {}, cfg);
-  return { ym, paidCount: t.paidCount, count: t.rows.length, pending: prev?.ym === ym ? prev.pending || 0 : 0 };
+  const t = monthRows(roster.filter((a) => a.id && a.studentName), month || {}, cfg, ym);
+  return { ym, paidCount: t.paidCount, count: t.count, pending: prev?.ym === ym ? prev.pending || 0 : 0 };
 }
 
 // Yarış: nextInfo (raceHome.js) { name (ilçe ya da adın ilk kelimesi), when ("5 gün", "yarın", "bugün", "sürüyor"), left } ve yaklaşan sayısı

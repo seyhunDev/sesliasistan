@@ -1,7 +1,11 @@
 // Aidat takibi (saf fonksiyonlar, test edilir). Ekran: /dues (DuesPage).
 // Kayıt (kulüp verisi, sporcu projesine yazılmaz):
-//   orgs/{orgId}/dues/settings = { fee (aylık aidat TL), fees { sporcuId: TL } (kardeş indirimi vb.), payers { sporcuId: ["AYSE YILMAZ"] } }
-//   orgs/{orgId}/dues/{YYYY-MM} = { paid { sporcuId: [{ amt, via "eft"|"cash", date, mov, by, at }] }, ignored [hareket anahtarı] }
+//   orgs/{orgId}/dues/settings = { fee (aylık aidat TL), fees { sporcuId: TL } (kardeş indirimi vb.), payers { sporcuId: ["AYSE YILMAZ"] },
+//     start { sporcuId: "YYYY-MM" } (elle "Aidatı bu aydan başlat") }
+//   orgs/{orgId}/dues/{YYYY-MM} = { paid { sporcuId: [{ amt, via "eft"|"cash", date, mov, by, at }] }, ignored [hareket anahtarı],
+//     free { sporcuId: true } ("Bu ay sayılmasın") }
+// Aidat başlangıcı: elle seçilen ay, yoksa sporcunun kulübe eklendiği ay (createdAt; sunucu listesinde from). Önceki aylar ve
+// "sayılmasın" denen aylar ödenmemişse borç sayılmaz (state "none" / "free").
 // EFT'ler İş Bankası hesap özeti maillerinden gelir (movementsOf, mailBoard.js). Gönderen çoğu zaman anne ya da baba;
 // soyadı sporcuyla aynıdır. Eşleştirme: öğrenilmiş gönderen > soyadı + veli adı > soyadı + sporcu adı > yalnız soyadı.
 import { parseTrDate } from "./mailBoard.js";
@@ -102,6 +106,20 @@ export function incomeMoves(docs = []) {
     });
 }
 
+// Kayıt zamanından ay: Firestore Timestamp, Date ya da tarih yazısı → "YYYY-MM"
+export const ymOfTime = (v) => {
+  const d = v?.toDate ? v.toDate() : Number.isFinite(v?.seconds) ? new Date(v.seconds * 1000) : v ? new Date(v) : null;
+  return d && !isNaN(d) ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "";
+};
+// Sporcunun aidat başlangıç ayı: elle seçilen > sunucu listesindeki (from) > kulübe eklendiği ay
+export const startOf = (a, cfg = {}) => cfg.start?.[a.id] || a.from || ymOfTime(a.createdAt) || "";
+// O ay aidat sayılmıyor mu: "none" (başlangıçtan önce), "free" (sayılmasın denmiş), "" (sayılıyor)
+export function offOf(a, cfg = {}, ym = "", month = {}) {
+  if (month.free?.[a.id]) return "free";
+  const st = ym && startOf(a, cfg);
+  return st && ym < st ? "none" : "";
+}
+
 export const feeOf = (a, cfg) => Number(cfg?.fees?.[a.id]) || Number(cfg?.fee) || 0;
 
 // Hareketi sporcularla eşleştirir → { picks: [sporcu], sure, why, list: [{ a, score, why }] }
@@ -150,18 +168,21 @@ export function payerOf(desc, a) {
 }
 
 // Ay tablosu: her sporcunun ödediği, beklenen, durum (paid | part | due)
-export function monthRows(athletes, month = {}, cfg = {}) {
+// ym verilirse başlangıçtan önceki ve "sayılmasın" denen aylar ödenmemişse state "none"/"free" olur, beklenene girmez.
+export function monthRows(athletes, month = {}, cfg = {}, ym = "") {
   const rows = athletes.map((a) => {
     const list = month.paid?.[a.id] || [];
     const paid = Math.round(list.reduce((s, p) => s + (Number(p.amt) || 0), 0) * 100) / 100;
     const fee = feeOf(a, cfg);
-    const state = paid <= 0 ? "due" : fee && paid < fee ? "part" : "paid";
-    return { a, list, paid, fee, state };
+    const off = offOf(a, cfg, ym, month);
+    const state = paid <= 0 ? off || "due" : fee && paid < fee && !off ? "part" : "paid";
+    return { a, list, paid, fee, state, off };
   });
-  const order = { due: 0, part: 1, paid: 2 };
+  const order = { due: 0, part: 1, paid: 2, free: 3, none: 4 };
   rows.sort((x, y) => order[x.state] - order[y.state] || x.a.studentName.localeCompare(y.a.studentName, "tr"));
-  const sum = (k) => rows.reduce((s, r) => s + r[k], 0);
-  return { rows, paidCount: rows.filter((r) => r.state === "paid").length, paid: sum("paid"), expected: sum("fee"), eft: rows.flatMap((r) => r.list).filter((p) => p.via === "eft").length };
+  const on = rows.filter((r) => !r.off || r.paid > 0);
+  const sum = (k) => on.reduce((s, r) => s + r[k], 0);
+  return { rows, count: on.length, paidCount: rows.filter((r) => r.state === "paid").length, paid: sum("paid"), expected: on.filter((r) => !r.off).reduce((s, r) => s + r.fee, 0), eft: rows.flatMap((r) => r.list).filter((p) => p.via === "eft").length };
 }
 
 // Bir sporcuya yazılmış EFT hareketlerinin anahtarları (aynı hareket iki kez sayılmasın)
@@ -245,11 +266,11 @@ export function lastMonths(ym, n = 6) {
 
 // Tablo: sporcu × ay. months: { ym: ay kaydı }. Her hücre { state paid|part|due, paid, fee, list }.
 export function gridOf(athletes, months, cfg, yms) {
-  const per = Object.fromEntries(yms.map((ym) => [ym, monthRows(athletes, months[ym] || {}, cfg)]));
+  const per = Object.fromEntries(yms.map((ym) => [ym, monthRows(athletes, months[ym] || {}, cfg, ym)]));
   const rows = [...athletes]
     .sort((a, b) => a.studentName.localeCompare(b.studentName, "tr"))
     .map((a) => ({ a, cells: Object.fromEntries(yms.map((ym) => [ym, per[ym].rows.find((r) => r.a.id === a.id)])) }));
-  const totals = Object.fromEntries(yms.map((ym) => [ym, { paidCount: per[ym].paidCount, paid: per[ym].paid, expected: per[ym].expected, count: athletes.length }]));
+  const totals = Object.fromEntries(yms.map((ym) => [ym, { paidCount: per[ym].paidCount, paid: per[ym].paid, expected: per[ym].expected, count: per[ym].count }]));
   return { rows, totals };
 }
 
@@ -271,15 +292,15 @@ const isoDay = (v) => {
 };
 
 // Tek sporcunun aidat durumu (sporcu sayfası ve asistan): yms en eskiden yeniye, months { ym: ay kaydı }.
-// since (YYYY-MM): sporcunun kaydolduğu ay; önceki aylar borç sayılmaz. Tutar ayarlı değilse borç hesaplanmaz.
-// → { fee, now: { state paid|part|due, paid }, cells [{ ym, state, paid }], debt, dueMonths [ym], last [{ ym, amt, via, date }] }
-export function athleteDues(a, cfg = {}, months = {}, yms = [], since = "") {
+// Başlangıç ayı (startOf) öncesi ve "sayılmasın" denen aylar borç sayılmaz. Tutar ayarlı değilse borç hesaplanmaz.
+// → { fee, start, now: { state paid|part|due|none|free, paid }, cells [{ ym, state, paid }], debt, dueMonths [ym], last [{ ym, amt, via, date }] }
+export function athleteDues(a, cfg = {}, months = {}, yms = []) {
   const fee = feeOf(a, cfg);
   const cells = yms.map((ym) => {
     const list = months[ym]?.paid?.[a.id] || [];
     const paid = Math.round(list.reduce((s, p) => s + (Number(p.amt) || 0), 0) * 100) / 100;
-    const before = since && ym < since;
-    const state = paid <= 0 ? (before ? "none" : "due") : fee && paid < fee ? "part" : "paid";
+    const off = offOf(a, cfg, ym, months[ym] || {});
+    const state = paid <= 0 ? off || "due" : fee && paid < fee && !off ? "part" : "paid";
     return { ym, state, paid, rest: state === "due" ? fee : state === "part" ? fee - paid : 0 };
   });
   const owe = fee ? cells.filter((c) => c.state === "due" || c.state === "part") : [];
@@ -287,7 +308,7 @@ export function athleteDues(a, cfg = {}, months = {}, yms = [], since = "") {
     .flatMap((ym) => (months[ym]?.paid?.[a.id] || []).map((p) => ({ ym, amt: Number(p.amt) || 0, via: p.via === "cash" ? "cash" : "eft", date: isoDay(p.date || p.at) })))
     .sort((x, y) => (y.date || y.ym).localeCompare(x.date || x.ym))
     .slice(0, 3);
-  return { fee, now: cells.at(-1) || { state: "due", paid: 0 }, cells, debt: Math.round(owe.reduce((s, c) => s + c.rest, 0) * 100) / 100, dueMonths: owe.map((c) => c.ym), last };
+  return { fee, start: startOf(a, cfg), now: cells.at(-1) || { state: "due", paid: 0 }, cells, debt: Math.round(owe.reduce((s, c) => s + c.rest, 0) * 100) / 100, dueMonths: owe.map((c) => c.ym), last };
 }
 
 // Asistanın söyleyeceği kısa cümle: "Ali Kaya'nın Ekim aidatı ödendi. Borcu yok." / "… ödenmedi. Borç: 2 ay, 3.000 TL."
@@ -295,7 +316,7 @@ export function athleteDuesText(name, d) {
   const tl = (n) => `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(n)} TL`;
   const ay = (ym) => AY[Number(ym.slice(5)) - 1];
   const ym = d.now.ym || "";
-  const now = d.now.state === "paid" ? "ödendi" : d.now.state === "part" ? `eksik ödendi (${tl(d.now.paid)})` : "henüz ödenmedi";
+  const now = d.now.state === "paid" ? "ödendi" : d.now.state === "part" ? `eksik ödendi (${tl(d.now.paid)})` : d.now.state === "free" ? "sayılmıyor (muaf)" : d.now.state === "none" ? `sayılmıyor (aidatı ${ay(d.start)} ayından başlıyor)` : "henüz ödenmedi";
   const debt = !d.fee ? "Aidat tutarı ayarlı değil, borç hesaplanmadı." : d.debt ? `Son 6 ayda borç: ${d.dueMonths.length} ay, ${tl(d.debt)}.` : "Borcu yok.";
   return `${name} · ${ay(ym)} aidatı ${now}. ${debt}`;
 }

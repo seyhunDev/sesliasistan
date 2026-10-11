@@ -4,7 +4,7 @@
 // Ana hesaba ayın 11'inde (son gün + 1) bir kez "Aidat: N sporcu ödemedi" bildirimi gider (plan-reminders.mjs).
 // Kayıt: dues/settings.dueDay (son gün), dues/{YYYY-MM}.reminded { sporcuId: ISO } (kim hatırlatıldı, cihazlar arası),
 // athleteAtt/{kişi}.duesSent { YYYY-MM: ISO } (uygulamadaki veliye bir ayda bir bildirim), users/{uid}.duesAt (ana hesap bildirimi saati).
-import { feeOf } from "./dues.js";
+import { feeOf, offOf } from "./dues.js";
 import { money } from "./bankSheet.js";
 
 export const DUE_DAY = 10;
@@ -23,11 +23,13 @@ const cap = (s) => s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1);
 
 // Bu ay ödemeyenler: monthRows satırlarından (aidatı tanımlı, ödenmemiş ya da eksik) → [{ a, fee, paid, rest, state }]
 export const unpaidOf = (rows) =>
-  rows.filter((r) => r.fee > 0 && r.state !== "paid").map((r) => ({ a: r.a, fee: r.fee, paid: r.paid, rest: Math.round((r.fee - r.paid) * 100) / 100, state: r.state }));
+  rows.filter((r) => r.fee > 0 && (r.state === "due" || r.state === "part")).map((r) => ({ a: r.a, fee: r.fee, paid: r.paid, rest: Math.round((r.fee - r.paid) * 100) / 100, state: r.state }));
 
 // Sunucu için (dues/settings.roster yalnız adlar): roster + ay kaydı → aynı biçim
-export function unpaidRoster(cfg = {}, month = {}) {
+// ym verilirse aidatı o aydan sonra başlayan ve o ay "sayılmasın" denen sporcular çıkar
+export function unpaidRoster(cfg = {}, month = {}, ym = "") {
   return (cfg.roster || [])
+    .filter((a) => !offOf(a, cfg, ym, month))
     .map((a) => {
       const fee = feeOf(a, cfg);
       const paid = (month.paid?.[a.id] || []).reduce((s, p) => s + (Number(p.amt) || 0), 0);

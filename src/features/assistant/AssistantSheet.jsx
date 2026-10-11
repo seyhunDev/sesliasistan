@@ -40,7 +40,7 @@ import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
 import { athleteNames, byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { cleanResults } from "@/lib/raceResults";
 import { emptyBudget } from "@/features/athletes/budget";
 import { totalTL } from "@/lib/receipts";
@@ -99,7 +99,7 @@ import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
-import { addIncome, loadCash, loadDuesRange, loadMovementsRange } from "@/features/dues/duesData";
+import { addIncome, loadCash, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
 import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
@@ -2240,6 +2240,31 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setPhase("thinking");
       const ym = todayStr().slice(0, 7);
       const month = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
+      // Başlangıç ayı ve muafiyet: "Ali'nin aidatı kasımdan başlasın", "Ali bu ay aidattan muaf"
+      if (dc.op === "start" || dc.op === "free") {
+        const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+        const hit = matchPerson(dc.name, athletes.map((a) => a.studentName));
+        const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+        if (!a) return false;
+        const at = monthYm(dc.mon, todayStr());
+        const label = new Date(`${at}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
+        try {
+          if (dc.op === "start") await saveStart(profile.orgId, a.id, at);
+          else await saveFree(profile.orgId, at, a.id, !dc.undo);
+        } catch {
+          reply("Aidat kaydını yazamadım.", { engine: "local", fail: true }, viaVoice);
+          return true;
+        }
+        leave(
+          dc.op === "start"
+            ? `${a.studentName}: aidat ${label} ayından başlıyor, önceki aylar borç sayılmaz.`
+            : dc.undo
+              ? `${a.studentName}: ${label} aidatı yeniden sayılıyor.`
+              : `${a.studentName}: ${label} aidatı sayılmayacak.`,
+          viaVoice,
+        );
+        return true;
+      }
       // Tek sporcu: "Ahmet'in aidat durumu ne" → bu ay, son 6 aydaki borç; sporcu sayfası açılır
       if (dc.op === "one") {
         const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
@@ -2249,10 +2274,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         try {
           const yms = lastMonths(ym, 6);
           const { cfg, months } = await loadDuesRange(profile.orgId, yms);
-          const since = a.createdAt?.toDate ? a.createdAt.toDate().toISOString().slice(0, 7) : "";
           park();
           router.push(`/athletes/${a.id}`);
-          leave(athleteDuesText(a.studentName, athleteDues(a, cfg, months, yms, since)), viaVoice);
+          leave(athleteDuesText(a.studentName, athleteDues(a, cfg, months, yms)), viaVoice);
         } catch {
           reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
         }
@@ -2261,7 +2285,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       let list;
       try {
         const { cfg, months } = await loadDuesRange(profile.orgId, [ym]);
-        list = unpaidRoster(cfg, months[ym]);
+        list = unpaidRoster(cfg, months[ym], ym);
       } catch {
         reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
         return true;
