@@ -2,13 +2,11 @@
 // söyler, uzun uzun anlatır, kibar ya da sokak ağzıyla konuşur, soruyla komutu karıştırır. Asistanın bunlara verdiği ilk karar
 // (yerelde, telefonda) burada uygulamanın kendi işlevleriyle sınanır:
 //   a) Mesaj kartı onay bekliyor: cevap gönder mi, vazgeç mi, değiştir mi (AssistantSheet: confirmWord, isYes, isNo)
-//   b) Kayıt taslağı onay bekliyor: kaydet mi, vazgeç mi, değiştir mi (AssistantSheet SAVE / DROP; kaynaktan okunur)
+//   b) Kayıt taslağı onay bekliyor: kaydet mi, vazgeç mi, değiştir mi (beyin/ortak.js SAVE / DROP)
 //   c) "Başka bir isteğin var mı?" sorusuna cevap: kapat mı, devam mı (isNoMore)
 //   d) "Saat kaçta olsun?" sorusuna cevap: yerelde doğru saat ya da yapay zekaya bırakma; yanlış saat asla (quickAnswer)
 //   e-j) Yeni komut: düzeltme, vazgeçme, gönderme ("onu"), soru mu komut mu, tekrar, kibarlık/sokak ağzı, uzun anlatım
 // Sonuç satırları: { katman: "davranış", grup, say, expect, ok, got }
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { confirmWord } from "@/lib/ai/messageRules";
 import { isYes, isNo, isNoMore } from "@/lib/assistantLocal";
 import { quickAnswer } from "@/lib/ai/rules";
@@ -17,15 +15,8 @@ import { matchNames } from "@/lib/trainingLog";
 import { cleanSay } from "@/lib/speech/normalize";
 import { train, predict, labelFromAI } from "@/lib/brain/model";
 import { decide, kindOfRoute, tr, TODAY, NAMES } from "./akis.mjs";
-
-// AssistantSheet.jsx'teki taslak cevap kuralları (bileşen Node'da yüklenmez; aynı satır kaynaktan okunur, kod değişirse test de değişir)
-const SHEET = readFileSync(fileURLToPath(new URL("../../src/features/assistant/AssistantSheet.jsx", import.meta.url)), "utf8");
-const grab = (name) => {
-  const m = new RegExp(`^const ${name} = /(.+)/([a-z]*);$`, "m").exec(SHEET);
-  return m ? new RegExp(m[1], m[2]) : null;
-};
-const SAVE = grab("SAVE");
-const DROP = grab("DROP");
+// Taslak cevap kuralları: asistanın kendi dosyasından (beyin/ortak.js)
+import { SAVE, DROP } from "@/features/assistant/beyin/ortak";
 
 // a) Mesaj kartı: AssistantSheet `cards.pending.send` iken
 function cardAnswer(raw) {
@@ -208,7 +199,7 @@ export function run() {
     const got = cardAnswer(s);
     push("Mesaj kartına cevap (gönder / vazgeç / değiştir)", s, want, got === want, got);
   }
-  if (!SAVE || !DROP) push("Kayıt taslağına cevap", "SAVE/DROP", "AssistantSheet.jsx'te bulunur", false, "kural satırı bulunamadı (test güncellenmeli)");
+  if (!SAVE || !DROP) push("Kayıt taslağına cevap", "SAVE/DROP", "beyin/ortak.js'te bulunur", false, "kural satırı bulunamadı (test güncellenmeli)");
   else
     for (const [s, want] of DRAFT) {
       const got = draftAnswer(s);
