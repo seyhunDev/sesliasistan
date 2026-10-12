@@ -515,6 +515,17 @@ group("Ana sayfa kartları")([
     const r = HT.homeNotes(ns, 5);
     return r.total === 7 && r.list.map((n) => n.id).join() === "c,e,b,a,x3" && HT.homeNotes([], 5).list.length === 0;
   })],
+  ["kulüpte notlar", F("Kulüp kartında en çok 3 not, sabitli önce; yapılan (arşivdeki) not yok", () => {
+    const ns = [
+      { id: "a", title: "A", createdAt: "2026-10-01T10:00" },
+      { id: "b", title: "B", createdAt: "2026-10-05T10:00" },
+      { id: "c", title: "C", createdAt: "2026-09-01T10:00", pinned: true },
+      { id: "d", title: "D", createdAt: "2026-10-06T10:00", done: true, archived: true },
+      { id: "e", title: "E", createdAt: "2026-10-04T10:00" },
+    ];
+    const r = HT.homeNotes(ns, 3);
+    return r.total === 4 && r.list.map((n) => n.id).join() === "c,b,e";
+  })],
   ["aidat canlı", F("sunucunun yazdığı ödeme sayılır, bekleyen sayısı kalır", () => {
     const cfg = { fee: 1500, roster: [{ id: "a", studentName: "Ali Kaya" }, { id: "b", studentName: "Ayşe Ok" }] };
     const r = HT.duesLive(cfg, { paid: { a: [{ amt: 1500, via: "eft", by: "auto" }] } }, "2026-10", { ym: "2026-10", paidCount: 0, count: 2, pending: 1 });
