@@ -11,7 +11,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { EXPIRY, raceExpired } from "@/lib/expiry";
-import { resultsOpen, withResults } from "@/lib/raceResults";
+import { placeText as resPlace, resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
 import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
@@ -550,6 +550,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   // Sıradaki adım: sırayla ilk bitmeyen (sporcu → evrak → yolculuk → bütçe)
   const nextStep = stat.find((x) => !x[4])?.[0];
   const hidden = hiddenCount(r);
+  // Yarış bitti mi: Özet'te hazırlık yerine yarışın özeti (süre, katılanlar, sonuçlar, bütçe) görünür
+  const over = !!(r.endDate || r.startDate) && (r.endDate || r.startDate) < todayStr();
   // Yurt içi ↔ yurt dışı: yurt dışında il yerine ülke, ilçe yerine şehir yazılır
   const setAbroad = (on) =>
     setR((p) => (!!p.abroad === on ? p : { ...p, abroad: on, city: on && !p.district.trim() ? "" : !on && !p.city.trim() ? "İzmir" : p.city }));
@@ -748,6 +750,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "sum" && (
         <>
+          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
+          {!over && (
+            <>
           <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>HAZIRLIK</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {stat.map(([to, icon, title, sub, done, ask]) => {
@@ -828,6 +833,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
               Çıkarılanları geri getir ({hidden})
             </button>
+          )}
+            </>
           )}
 
           <Label>NOT</Label>
@@ -1510,5 +1517,94 @@ function DocFields({ a, onSave, onClose, onSaved }) {
         </button>
       </div>
     </div>
+  );
+}
+
+// Biten yarışın özeti (Seyhun: "tamamlanan yarışta hazırlıkları göstermeye gerek yok; kaç gün sürdü, kimler katıldı,
+// sonuçları, bütçe durumu"; yapılmadan kalan işler bilgi olarak, istenirse yine yapıldı işaretlenir)
+function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
+  const from = r.startDate, to = r.endDate || r.startDate;
+  const days = from ? Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 864e5) + 1 : 0;
+  const rows = r.results?.rows || {};
+  const ranked = [...chosen].sort((a, b) => (rows[a.id]?.place || 999) - (rows[b.id]?.place || 999));
+  const anyResult = chosen.some((a) => rows[a.id]);
+  const paid = chosen.filter((a) => r.budget?.paid?.[a.id]).length;
+  const stats = [
+    [days ? `${days} gün` : "–", from ? rangeText(from, to) : "Tarih yok"],
+    [String(chosen.length), "sporcu katıldı"],
+    [money.lines.length ? tl(money.total) : "–", "bütçe"],
+  ];
+  return (
+    <>
+      <Label>YARIŞ BİTTİ</Label>
+      <div className={`${card} grid grid-cols-3 divide-x divide-line`}>
+        {stats.map(([big, small]) => (
+          <div key={small} className="min-w-0 px-2 py-3 text-center">
+            <b className="block truncate text-[1.0625rem] font-semibold tabular-nums">{big}</b>
+            <span className="block truncate text-[0.75rem] text-mut">{small}</span>
+          </div>
+        ))}
+      </div>
+
+      <Label right={anyResult && r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>
+      <ul className={`${card} divide-y divide-line overflow-hidden`}>
+        {!chosen.length && <li className="px-4 py-3 text-[0.875rem] text-mut">Bu yarışa sporcu eklenmemiş.</li>}
+        {ranked.map((a) => {
+          const t = resPlace(r.results, a.id);
+          return (
+            <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
+              <span className={`shrink-0 text-[0.8125rem] ${t ? "font-semibold" : "text-mut"}`}>{t || "Sonuç yok"}</span>
+            </li>
+          );
+        })}
+        {chosen.length > 0 && (
+          <li>
+            <button type="button" onClick={() => onTab("people")} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.875rem] font-semibold text-acc">
+              <Icon name={anyResult ? "edit" : "plus"} className="size-4" />
+              {anyResult ? "Sonuçları düzenle" : "Sonuçları ekle"}
+            </button>
+          </li>
+        )}
+      </ul>
+
+      <Label>BÜTÇE</Label>
+      <button type="button" onClick={() => onTab("budget")} className={`${card} block w-full divide-y divide-line overflow-hidden text-left`}>
+        {money.lines.length ? (
+          [
+            ["Toplam", tl(money.total)],
+            chosen.length > 0 && [money.varies ? "Ortak pay" : "Sporcu başı", tl(money.perAthlete)],
+            chosen.length > 0 && ["Ödeyen", `${paid} / ${chosen.length} sporcu`, paid < chosen.length],
+          ]
+            .filter(Boolean)
+            .map(([k, v, warn]) => (
+              <span key={k} className="flex items-center justify-between px-4 py-2.5 text-[0.9375rem]">
+                <span className="text-mut">{k}</span>
+                <b className={`font-semibold tabular-nums ${warn ? "text-amber-700" : ""}`}>{v}</b>
+              </span>
+            ))
+        ) : (
+          <span className="block px-4 py-3 text-[0.875rem] text-mut">Bütçe çıkarılmamış.</span>
+        )}
+      </button>
+
+      {steps.length > 0 && (
+        <>
+          <Label right={doneCount ? `${doneCount} yapıldı` : ""}>YAPILMADAN KALANLAR</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {steps.map((s) => (
+              <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
+                <button type="button" onClick={() => onMark(s)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
+                  <span className="size-[1.375rem] rounded-full border-2 border-line" />
+                </button>
+                <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut">{s.label}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">Yarış bitti, bunlar bilgi için duruyor. Yaptıysan daireye dokun.</p>
+        </>
+      )}
+    </>
   );
 }
