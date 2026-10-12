@@ -220,10 +220,10 @@ export async function invoiceTaskCmd(ctx, s, viaVoice) {
   }
 }
 
-export async function duesCmd(ctx, s, viaVoice) {
+export async function duesCmd(ctx, s, viaVoice, pre = null) {
   const { askOk, done, leave, members, owner, park, profile, reply, router, setPhase } = ctx;
   // Aidat: "aidat hatırlatması gönder" (onayla velilere bildirim), "bu ay kim aidat ödemedi"
-  const dc = owner && canSeeAthletes(profile?.email) ? duesCommand(s) : null;
+  const dc = owner && canSeeAthletes(profile?.email) ? pre || duesCommand(s) : null;
   if (dc) {
     setPhase("thinking");
     const ym = todayStr().slice(0, 7);
@@ -372,10 +372,10 @@ export async function cashCmd(ctx, s, viaVoice) {
   }
 }
 
-export async function incomeCmd(ctx, s, viaVoice) {
+export async function incomeCmd(ctx, s, viaVoice, pre = null) {
   const { done, owner, profile, reply, setPhase } = ctx;
   // Nakit gelir (Hesaplar): "Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet'ten 2000 lira bağış geldi"
-  const ic = owner ? incomeCommand(s, todayStr()) : null;
+  const ic = owner ? pre || incomeCommand(s, todayStr()) : null;
   if (ic) {
     setPhase("thinking");
     const date = todayStr();

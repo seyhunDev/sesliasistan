@@ -19,6 +19,8 @@ import { todayStr, rel } from "@/lib/utils/format";
 import { postHandler } from "@/features/posts/posts";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
+import { routeFromAct, withAct } from "@/lib/actRun";
+import { takeAct } from "./gorevListesi";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
 import { isAthleteSide, GROUPS } from "@/lib/kinds";
 import { raceNames } from "@/features/athletes/raceNames";
@@ -30,6 +32,9 @@ import { labelFromCommand } from "@/lib/brain/model";
 import { pickChoice } from "@/features/athletes/raceNav";
 import { goBack } from "@/lib/navTrail";
 import { DROP, SAVE, focusBody } from "./ortak";
+
+// Numaralı işlerden doğrudan yola gidenler (1-3 kendi akışlarında alınır: yaris.js, yoklama.js)
+const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
 
 export async function run(ctx, t, viaVoice = false, fresh = false) {
   const { askAI, askAll, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
@@ -57,6 +62,8 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   }
   const chained = chainStep.current;
   chainStep.current = false;
+  // Kullanıcının yeni sözü: görev listesindeki numaralı iş artık geçerli değil
+  if (!chained && ctx.actNow) ctx.actNow.current = null;
   // Tek cümlede birden çok iş ("Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit
   // verdi. Atatürk Kupası için Instagram görseli hazırla"): yapay zeka sıralı görev listesi çıkarır (/api/tasks), işler
   // sırayla kendi akışlarında yapılır. Bir soruya cevap beklenirken (taslak, kart, yarış sorusu…) bakılmaz.
@@ -92,7 +99,9 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       if (!tasks || known) planCutN.current = 0;
       if (list) return startPlan(list === tasks ? lastPagesPlan(list) : orderPlan(list), viaVoice, fresh);
       chainStep.current = true; // tek iş: cümle kendi yoluna (kullanıcının sözü zaten yazıldı)
-      return run(tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0].say : s, viaVoice, fresh);
+      const one = tasks?.length === 1 && tasks[0].kind !== "other" ? tasks[0] : null;
+      if (ctx.actNow) ctx.actNow.current = one?.act && one.args ? { act: one.act, args: one.args, say: one.say } : null;
+      return run(one ? one.say : s, viaVoice, fresh);
     }
   }
   const history = historyFor([...pastTurns(), ...(fresh ? [] : turns)]);
@@ -185,12 +194,14 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   invAsk.current = null;
   const toWho = askTo.current;
   const shopLists = listsFor(myKind, members);
-  const routes = routesOf(s, {
+  const found = routesOf(s, {
     owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
   });
+  // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
+  const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;
   // Her aday: true → iş yapıldı (ya da soru soruldu), false → sonraki aday
   const go = async (r) => {
     switch (r.id) {
@@ -302,7 +313,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         return runResults(r.ra, viaVoice);
       // Son eklenen işler (lib/assistMore.js): arama, sporcu, nakit gelir, aidat hatırlatması…
       case "more":
-        return runMore(s, viaVoice);
+        return runMore(s, viaVoice, r.pre);
       // Alışveriş listesi: ekle / aldım / sil / oku ("ekmek aldım" listede yoksa alışveriş değildir)
       case "shopping": {
         const list = /ekip|kulüp|kulup/i.test(s) && shopLists.includes("team") ? "team" : shopLists[0];

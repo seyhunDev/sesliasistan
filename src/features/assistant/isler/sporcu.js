@@ -22,10 +22,10 @@ export async function athleteOpenCmd(ctx, s, viaVoice) {
   }
 }
 
-export async function athleteCmd(ctx, s, viaVoice) {
+export async function athleteCmd(ctx, s, viaVoice, pre = null) {
   const { askOk, athAsk, birthdays, dataUid, deleteRecord, done, members, memo, memoSet, owner, profile, reply, setPhase, stepTo, stepsEnd, waitFor } = ctx;
   // Sporcu: ekle (hemen), arşive al / çıkar (hemen), sil (onayla)
-  const ac = owner && canSeeAthletes(profile?.email) ? athleteCommand(s) : null;
+  const ac = owner && canSeeAthletes(profile?.email) ? pre || athleteCommand(s) : null;
   if (!ac) return false;
   if (ac.op === "add" && !ac.name) {
     reply("Yeni sporcunun adı soyadı ne?", { engine: "local", expect: true }, viaVoice);

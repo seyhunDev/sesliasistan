@@ -29,8 +29,9 @@ const actOf = (t) => (t && typeof t === "object" && t.act && t.args ? { act: t.a
 // Numara bu akışın değilse null: akış eski yoldan (cümle → yapay zeka) gider
 export function takeAct(ctx, nos) {
   const a = ctx.actNow?.current;
-  if (ctx.actNow) ctx.actNow.current = null;
-  return a && nos.includes(a.act) ? a : null;
+  if (!a || !nos.includes(a.act)) return null;
+  ctx.actNow.current = null;
+  return a;
 }
 
 export function nextInChain(ctx, viaVoice) {

@@ -26,8 +26,15 @@ export function runExtra(ctx, s, viaVoice) {
   return first(EXTRA, ctx, s, viaVoice);
 }
 
-export async function runMore(ctx, s, viaVoice) {
+// Görev listesindeki numaralı iş (actRun.js routeFromAct): komut alanlardan hazır gelir, cümle yeniden okunmaz
+const PRE = { income: para.incomeCmd, dues: para.duesCmd, call: arama.callCmd, athlete: sporcu.athleteCmd };
+
+export async function runMore(ctx, s, viaVoice, pre = null) {
   const { runExtra } = ctx;
+  if (pre && PRE[pre.kind]) {
+    const r = await PRE[pre.kind](ctx, s, viaVoice, pre.cmd);
+    if (r !== undefined) return r;
+  }
   if (await runExtra(s, viaVoice)) return true;
   return first(MORE, ctx, s, viaVoice);
 }

@@ -5,10 +5,10 @@ import { matchPerson } from "@/lib/names";
 import { kindOf } from "@/lib/kinds";
 import { canCall } from "@/lib/call";
 
-export async function callCmd(ctx, s, viaVoice) {
+export async function callCmd(ctx, s, viaVoice, pre = null) {
   const { askOk, callBusy, contacts, curRace, done, finish, myKind, races, reply, sp, startCall, tts } = ctx;
   // Arama: "Ali'yi ara" (uygulama içi sesli arama), yarış sayfasında "oteli ara" (telefon)
-  const cc = callCommand(s);
+  const cc = pre || callCommand(s);
   if (cc?.hotel && curRace) {
     const r = races.current.find((x) => x.id === curRace);
     const hs = raceHotels(r).filter((h) => telOf(h.phone));
