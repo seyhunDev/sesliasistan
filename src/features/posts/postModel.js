@@ -246,6 +246,8 @@ export function cleanPost(p = {}) {
     hasPhoto: !!p.hasPhoto,
     // Kullanılmış gönderi arşive kaldırılır: listeden çıkar, Arşiv sekmesinde durur
     archived: !!p.archived,
+    // Dikili Yelken sitesindeki "Kulüpten haberler" kaydı (clubNews.js)
+    newsId: typeof p.newsId === "string" ? p.newsId.slice(0, 64) : "",
     thumb,
   };
 }

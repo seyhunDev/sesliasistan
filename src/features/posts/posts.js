@@ -53,6 +53,9 @@ export async function archivePost(orgId, id, archived) {
   await updateDoc(doc(col(orgId), id), { archived: !!archived, archivedAt: archived ? serverTimestamp() : null });
 }
 
+// "Kulüpten haberler" bağlantısı (sırası değişmesin diye updatedAt'a dokunulmaz)
+export const setPostNews = (orgId, id, newsId) => updateDoc(doc(col(orgId), id), { newsId: newsId || "" });
+
 // Yapay zekayla görsel yazıları + açıklama + etiketler. Yalnız konu, tür, yarış bilgisi ve mevcut yazılar gider (fotoğraf gitmez).
 // ask: ana asistana söylenen değişiklik ("daha kısa yaz", "Mete 2. oldu diye ekle")
 export async function askCaption(post, ask = "") {
