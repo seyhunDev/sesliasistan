@@ -97,8 +97,8 @@ export function cleanRooms(a) {
 }
 // Odanın gecelik toplam fiyatı (kişi başı yazılmışsa × kapasite)
 export const roomNight = (x) => (x.per === "person" ? x.amount * x.cap : x.amount);
-const capName = (n) => (n === 1 ? "Tek kişilik" : `${n} kişilik`);
-const money = (n, cur) => (cur && cur !== "TL" ? `${(Math.round(n * 100) / 100).toLocaleString("tr-TR")} ${cur}` : tl(n));
+export const capName = (n) => (n === 1 ? "Tek kişilik" : `${n} kişilik`);
+export const money = (n, cur) => (cur && cur !== "TL" ? `${(Math.round(n * 100) / 100).toLocaleString("tr-TR")} ${cur}` : tl(n));
 // Satır: "3 kişilik · 3.200 ₺/gece oda · kişi başı 1.067 ₺"
 export function roomLine(x) {
   const name = x.label || capName(x.cap);

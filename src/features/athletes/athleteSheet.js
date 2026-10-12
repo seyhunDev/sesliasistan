@@ -2,7 +2,7 @@
 // İçinde: yolculuk (tahmini plan), talimattaki program, konaklama, yalnız o sporcunun bütçe payı kalem kalem.
 // sheetData saf (testlenir); buildAthleteSheet pdf-lib'i yalnız çıktı alınırken yükler.
 import { CLUB, hotelInfo, rangeText } from "./raceDocs.js";
-import { linesFor, tl, totals } from "./budget.js";
+import { capName, cleanRooms, linesFor, money as cash, roomNight, tl, totals } from "./budget.js";
 import { cleanTodos, noticeTasks, raceHotels, tripRows } from "./races.js";
 import { todayStr } from "@/lib/utils/format";
 
@@ -23,12 +23,18 @@ export function programDays(r) {
   return days;
 }
 
-// Konaklama: evrakta yazılan otel varsa yalnız o, yoksa yarışın otelleri (en çok 3); giriş-çıkış ve gece
+// Konaklama: evrakta yazılan otel varsa yalnız o, yoksa yarışın otelleri (en çok 3); giriş-çıkış, gece ve talimattaki oda fiyatları
+// rooms: [{ name: "2 kişilik", night: "3.000 TL", each: "1.500 TL", board }]
 export function stayOf(r) {
   const h = hotelInfo(r);
   const all = raceHotels(r);
   const pick = h.hotel ? [all.find((x) => low(x.name) === low(h.hotel)) || { name: h.hotel }] : all.slice(0, 3);
-  return { hotels: pick.map((x) => ({ name: x.name, phone: x.phone || "", note: x.note || "" })), from: h.from || "", to: h.to || "", nights: nightsBetween(h.from, h.to) };
+  const rooms = (x) =>
+    cleanRooms(x.rooms).map((o) => {
+      const night = roomNight(o);
+      return { name: o.label || capName(o.cap), night: o.amount ? cash(night, o.cur) : o.price, each: o.amount && o.cap > 1 ? cash(night / o.cap, o.cur) : "", board: o.board };
+    });
+  return { hotels: pick.map((x) => ({ name: x.name, phone: x.phone || "", note: x.note || "", rooms: rooms(x) })), from: h.from || "", to: h.to || "", nights: nightsBetween(h.from, h.to) };
 }
 
 // Notta seçilebilen bölümler (anahtar, ad); hepsi varsayılan açık
@@ -87,7 +93,7 @@ export function sheetParts(r, count) {
   return [
     ["Yolculuk", d.trip.length ? d.trip[0][1] : "Çıkış girilmedi", d.trip.length > 0, "trip", "trip"],
     ["Program", d.days.length ? `Talimattan ${d.days.length} gün, ${items} madde` : "Talimatta program yok", d.days.length > 0, "notice", "program"],
-    ["Konaklama", d.stay.hotels.length ? [d.stay.hotels.map((h) => h.name).join(", "), d.stay.nights && `${d.stay.nights} gece`].filter(Boolean).join(" · ") : "Otel girilmedi", d.stay.hotels.length > 0, "trip", "stay"],
+    ["Konaklama", d.stay.hotels.length ? [d.stay.hotels.map((h) => h.name).join(", "), d.stay.nights && `${d.stay.nights} gece`, d.stay.hotels.some((h) => h.rooms.length) && "oda fiyatları"].filter(Boolean).join(" · ") : "Otel girilmedi", d.stay.hotels.length > 0, "trip", "stay"],
     ["Son tarihler", d.deadlines.length ? `${d.deadlines[0].title} · ${leftText(d.deadlines[0].left)}${d.deadlines.length > 1 ? ` · +${d.deadlines.length - 1}` : ""}` : "Yaklaşan son tarih yok", d.deadlines.length > 0, "sum", "dates"],
     ["Bütçe", d.money.lines.length ? `Sporcu payı ${tl(d.money.total)} · ${d.money.lines.length} kalem` : "Sporcu payı olan kalem yok", d.money.lines.length > 0, "budget", "budget"],
   ];
@@ -200,9 +206,9 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
     y += 24;
 
     // Bütçe ve konaklama sabit yer kaplar; program kalan yere sığdırılır
-    const moneyH = d.money.lines.length ? 40 + d.money.lines.length * 16 + 26 + (d.money.club.length ? 14 : 0) : 0;
-    const stayH = d.stay.hotels.length ? 36 + d.stay.hotels.length * 28 : 0;
-    const datesH = d.deadlines.length ? 34 + d.deadlines.length * 16 : 0;
+    const moneyH = d.money.lines.length ? 20 + d.money.lines.length * 16 + 26 + (d.money.club.length ? 14 : 0) : 0;
+    const stayH = d.stay.hotels.length ? 28 + d.stay.hotels.reduce((n, h) => n + 28 + (h.rooms.length ? 16 + Math.ceil(h.rooms.length / (h.rooms.length > 2 ? 2 : 1)) * 12.5 : 0), 0) : 0;
+    const datesH = d.deadlines.length ? 30 + d.deadlines.length * 16 : 0;
 
     // Yolculuk
     if (d.trip.length) {
@@ -220,7 +226,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
     if (d.days.length) {
       head("PROGRAM", y);
       y += 20;
-      const bottom = H - 56 - moneyH - stayH - datesH - 8;
+      const bottom = H - 54 - moneyH - stayH - datesH;
       const lay = programLayout(d.days, bottom - y, R - L, (s, size) => w(s, f.r, size));
       for (const col of lay.cols) {
         let cy = y;
@@ -251,6 +257,27 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
         y += 13;
         text([when, h.note].filter(Boolean).join(" · "), L, y, f.r, 9, { color: MUT, max: R - L });
         y += 15;
+        // Talimattaki odalar iki sütunda: oda (pansiyon), gecelik oda fiyatı, kişi başı. Pansiyon hepsinde aynıysa başlıkta bir kez
+        if (h.rooms.length) {
+          const boards = [...new Set(h.rooms.map((o) => o.board).filter(Boolean))];
+          const one = boards.length === 1 && h.rooms.every((o) => o.board === boards[0]);
+          const half = Math.ceil(h.rooms.length / 2);
+          const cw = (R - L - 16) / 2;
+          const cols = h.rooms.length > 2 ? [h.rooms.slice(0, half), h.rooms.slice(half)] : [h.rooms];
+          cols.forEach((list, ci) => {
+            const x = L + ci * (cw + 16);
+            text(one ? `Oda · ${boards[0]}` : "Oda", x, y, f.b, 8, { color: MUT, max: cw - 130 });
+            text("Gecelik", x + cw - 70, y, f.b, 8, { color: MUT, align: "right" });
+            text("Kişi başı", x + cw, y, f.b, 8, { color: MUT, align: "right" });
+            list.forEach((o, i) => {
+              const ry = y + 12.5 * (i + 1);
+              text(one || !o.board ? o.name : `${o.name} · ${o.board}`, x, ry, f.r, 9, { max: cw - 140 });
+              text(o.night, x + cw - 70, ry, f.b, 9, { align: "right" });
+              text(o.each || "-", x + cw, ry, f.r, 9, { align: "right", color: o.each ? INK : MUT });
+            });
+          });
+          y += 12.5 * (cols[0].length + 1) + 3.5;
+        }
       }
       y += 8;
     }
