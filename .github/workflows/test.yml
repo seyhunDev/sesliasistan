@@ -1,0 +1,104 @@
+# Testler GitHub'da: main'e her birleştirmede (ve elle) `npm run test:hepsi` çalışır.
+# Sonuç bilgisayara inmez; depodaki "test-sonuclari" dalına yazılır: son.txt (en son çalıştırma) ve gecmis/ (eskiler).
+# Ayrıca iş akışının özet sayfasında görünür.
+# Gerçek yapay zeka bölümü için (isteğe bağlı) Settings › Secrets and variables › Actions: GEMINI_API_KEY, GEMINI_MODEL.
+# Yoksa o bölüm "atlandı" yazar. Birleştirmede yapay zekaya sorulmaz (kota); elle çalıştırırken seçilir.
+name: Testler
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "mobil/**"
+      - "notlar/**"
+      - "**.md"
+  workflow_dispatch:
+    inputs:
+      yapay_zeka:
+        description: "Gerçek yapay zeka testi"
+        type: choice
+        options: [kucuk, tam, yok]
+        default: kucuk
+
+concurrency:
+  group: testler
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Paketler
+        run: npm install --no-audit --no-fund
+      - name: Testleri çalıştır
+        id: run
+        env:
+          TEST_SONUC_DIR: ${{ runner.temp }}/sonuc
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          YZ: ${{ github.event_name == 'workflow_dispatch' && inputs.yapay_zeka || 'yok' }}
+        run: |
+          case "$YZ" in
+            tam) FLAG="--yz-tam" ;;
+            yok) FLAG="--yzsiz" ;;
+            *) FLAG="" ;;
+          esac
+          set +e
+          npm run test:hepsi -- $FLAG
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Sonucu test-sonuclari dalına yaz
+        if: always()
+        env:
+          SONUC: ${{ runner.temp }}/sonuc
+          CODE: ${{ steps.run.outputs.code }}
+        run: |
+          FILE=$(ls "$SONUC"/tam-test-*.txt 2>/dev/null | head -1)
+          if [ -z "$FILE" ]; then echo "Sonuç dosyası yok"; exit 0; fi
+          STAMP=$(TZ=Europe/Istanbul date +%Y-%m-%d-%H%M)
+          SHORT=${GITHUB_SHA::7}
+          MSG=$(git log -1 --format=%s)
+          {
+            echo "## Test sonucu"
+            echo
+            echo "Commit \`$SHORT\` · $MSG · $STAMP · $([ "$CODE" = "0" ] && echo "hepsi geçti" || echo "kalan var")"
+            echo
+            echo '```'
+            cat "$FILE"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          OUT="$RUNNER_TEMP/dal"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code origin test-sonuclari >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch test-sonuclari "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" "$OUT"
+          else
+            mkdir -p "$OUT" && cd "$OUT" && git init --quiet -b test-sonuclari && git remote add origin "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" && cd - >/dev/null
+          fi
+          mkdir -p "$OUT/gecmis"
+          {
+            echo "Commit: $SHORT · $MSG"
+            echo "Zaman: $STAMP (İstanbul)"
+            echo "Çalıştırma: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            cat "$FILE"
+          } > "$OUT/son.txt"
+          cp "$OUT/son.txt" "$OUT/gecmis/$STAMP-$SHORT.txt"
+          ls -1 "$OUT/gecmis" | sort -r | tail -n +61 | while read f; do rm -f "$OUT/gecmis/$f"; done
+          cd "$OUT"
+          git add -A
+          git commit --quiet -m "Test sonucu $STAMP ($SHORT)"
+          git push --quiet origin test-sonuclari
+      - name: Kalan test varsa işaretle
+        if: always()
+        run: |
+          if [ "${{ steps.run.outputs.code }}" != "0" ]; then echo "Kalan (✗) test var: test-sonuclari dalındaki son.txt"; exit 1; fi

@@ -78,7 +78,7 @@ if (process.argv.includes("--yz")) {
   log("Gerçek yapay zeka testi için: node scripts/asistan-test/calistir.mjs --yz");
 }
 
-const dir = join(homedir(), "Downloads");
+const dir = process.env.TEST_SONUC_DIR || join(homedir(), "Downloads");
 if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 const file = join(dir, `yerel-test-${new Date().toISOString().slice(0, 10)}.txt`);
 writeFileSync(file, lines.join("\n") + "\n");
