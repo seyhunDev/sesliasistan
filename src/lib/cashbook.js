@@ -94,3 +94,26 @@ export function convPick(moves = [], amount, conv) {
   const ok = moves.filter((m) => canConv(m) && !conv?.has(m.id) && Math.abs(Math.abs(m.amount) - amount) < 0.01).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   return ok.find((m) => m.amount > 0) || ok[0] || null;
 }
+
+// Kasada "Kime verildi / Kimden" seçenekleri: Kişiler'deki kişiler (sporcu ve öğrenci hariç) + elle yazılıp saklanan adlar
+// (cash/meta.names; seçeneklerden silinebilir). Sporcular burada önerilmez (Seyhun'un kuralı). [{ name, saved }], ada göre sıralı.
+const nameKey = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
+const NOT_WHO = new Set(["athlete", "student"]);
+export function whoOptions(members = [], saved = []) {
+  const out = new Map();
+  for (const m of members) {
+    if (!m || m.status === "left" || NOT_WHO.has(m.kind)) continue;
+    const name = String(m.name || "").trim();
+    if (name && !out.has(nameKey(name))) out.set(nameKey(name), { name, saved: false });
+  }
+  for (const s of saved || []) {
+    const name = String(s || "").trim();
+    if (name && !out.has(nameKey(name))) out.set(nameKey(name), { name, saved: true });
+  }
+  return [...out.values()].sort((a, b) => a.name.localeCompare(b.name, "tr"));
+}
+// Yazılan ad seçeneklerde yoksa saklanacak ad (boşsa "")
+export const newWhoName = (name, options = []) => {
+  const k = nameKey(name);
+  return k && !options.some((o) => nameKey(o.name) === k) ? String(name).trim().replace(/\s+/g, " ") : "";
+};

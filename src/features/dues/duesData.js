@@ -128,3 +128,8 @@ export const setDebtPaid = (orgId, id, paid) => setDoc(doc(db, "orgs", orgId, "i
 
 // Aralığın banka hareketleri (banka defterinden): Excel'in getirdikleri + günlük mailler, aynı hareket bir kez
 export const loadMovementsRange = (uid, fromYm, toYm) => loadLedger(uid, fromYm, toYm);
+// Kasa "Kime verildi" için elle yazılan adlar (sonraki seferde seçenek olur, silinebilir)
+export const saveCashName = (orgId, name) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { names: arrayUnion(name) }, { merge: true });
+export const dropCashName = (orgId, name) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { names: arrayRemove(name) }, { merge: true });
+// Hesaplar › Bakiye'de gösterilecek hesaplar (hesap anahtarları)
+export const saveShownAccts = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { accts: keys }, { merge: true });

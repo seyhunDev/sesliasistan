@@ -35,9 +35,10 @@ const TITLE = { club: { in: "Nakit giriş", out: "Nakit çıkış" }, personal: 
 const WHO = { club: { in: "Kimden", out: "Kime verildi" }, personal: { in: "Kimden (isteğe bağlı)", out: "Nereye (isteğe bağlı)", debt: "Kime borçlusun" } };
 
 // Hesaplar › "+": elle nakit giriş/çıkış (kulüp kasası) ya da kişisel gelir/gider/borç. Tür seçilir (Diğer → elle yazılır),
-// kişi sporculardan seçilir ya da yazılır, tutar, tarih, not. Kulüpte Aidat seçilince sporcu ve ay sorulur; ödeme Aidatlar'da
-// o ay ödendi görünür.
-export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book = "club", dir: startDir = "in" }) {
+// kişi Kişiler'den (çalışanlar, aile, diğer; sporcular değil) ya da daha önce yazılan adlardan seçilir veya yazılır (yeni ad
+// kaydedince seçeneklere eklenir, × ile silinir), tutar, tarih, not. Kulüpte Aidat seçilince sporcu ve ay sorulur; ödeme
+// Aidatlar'da o ay ödendi görünür.
+export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book = "club", dir: startDir = "in", options = [], onDropName }) {
   const today = todayStr();
   const [dir, setDir] = useState(startDir);
   const [cat, setCat] = useState(catsOf(book, startDir)[0]);
@@ -64,6 +65,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
 
   const isDues = book === "club" && dir === "in" && cat === "Aidat";
   const needWho = book === "club" || dir === "debt";
+  const opts = who.trim() ? options.filter((o) => words(who).every((w) => words(o.name).some((x) => x.startsWith(w))) && o.name !== who.trim()) : options;
   const people = [...roster].sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), "tr"));
   const shown = find.trim() ? people.filter((a) => words(find).every((w) => words(a.studentName).some((x) => x.startsWith(w)))) : people;
   const fee = (id) => Number(cfg?.fees?.[id]) || Number(cfg?.fee) || 0;
@@ -151,15 +153,26 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
             </label>
           </>
         ) : (
-          <label className="block">
+          <div>
             <span className={label}>{WHO[book][dir]}</span>
-            <input value={who} onChange={(e) => setWho(e.target.value)} list="income-people" placeholder={book === "personal" && dir !== "debt" ? "" : "Ad Soyad"} className={field} />
-            <datalist id="income-people">
-              {people.map((a) => (
-                <option key={a.id} value={a.studentName} />
-              ))}
-            </datalist>
-          </label>
+            <input value={who} onChange={(e) => setWho(e.target.value)} placeholder={book === "personal" && dir !== "debt" ? "" : "Ad Soyad"} aria-label={WHO[book][dir]} className={field} />
+            {opts.length > 0 && (
+              <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                {opts.slice(0, 30).map((o) => (
+                  <span key={o.name} className="flex h-8 items-center rounded-full bg-bg text-[0.8125rem] font-semibold">
+                    <button type="button" onClick={() => setWho(o.name)} className={`h-8 ${o.saved ? "pl-3 pr-1" : "px-3"}`}>
+                      {o.name}
+                    </button>
+                    {o.saved && onDropName && (
+                      <button type="button" onClick={() => onDropName(o.name)} aria-label={`${o.name} seçeneklerden sil`} className="flex size-8 items-center justify-center text-mut">
+                        <Icon name="x" className="size-3.5" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
