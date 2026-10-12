@@ -182,12 +182,16 @@ export default function MailPage() {
   const accounts = shownAccounts(allAccts, cashData.meta?.accts); // yalnız seçilen hesaplar (seçim yoksa bakiyesi olanlar)
   const hiddenN = allAccts.length - accounts.length;
   const totals = totalsOf(accounts);
+  const shownKeys = new Set(accounts.map((a) => a.key));
   const bankMoves = ledger || movementsOf(list);
   const moves = cashList.length ? [...bankMoves, ...cashList].sort((a, b) => (b.ts || 0) - (a.ts || 0)) : bankMoves;
   const picked = accounts.find((a) => a.key === acct);
   const acctMoves = picked ? moves.filter((x) => x.account === acct) : moves;
   const shown = (q.trim() ? searchMoves(acctMoves, q) : acctMoves).filter((x) => (dir === "in" ? x.amount > 0 : dir === "out" ? x.amount < 0 : true));
   const shownSum = inOut(shown);
+  // Bakiye kartında bugünkü hareketler (yalnız gösterilen banka hesapları)
+  const todayMoves = bankMoves.filter((x) => shownKeys.has(x.account) && x.ts && localDate(new Date(x.ts).toISOString()) === today);
+  const todaySum = inOut(todayMoves);
   // En çok ödeyenler: defterin başından bugüne bütün gelen paralar (seçili hesap ve arama uygulanır)
   const allPayers = topPayers(acctMoves);
   const payers = q.trim() ? allPayers.filter((w) => moveHas({ who: w.who }, q)) : allPayers;
@@ -296,27 +300,49 @@ export default function MailPage() {
         <Loading />
       ) : (
         <>
-          {/* Bakiye: toplam ve her hesap; hesaba dokununca hareketler o hesaba süzülür */}
+          {/* Bakiye: tek kart. Tek hesapta bakiye bir kez yazılır, altında hesabın adı ve bugünkü hareketler; birden çok
+              hesapta altında hesap listesi (dokununca hareketler o hesaba süzülür). Sağ üstteki + ile gösterilen hesaplar seçilir. */}
           {accounts.length > 0 && (
             <section className={`${card} mt-4`}>
               <div className="bg-acc px-4 pb-4 pt-3.5 text-white">
-                <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">TOPLAM BAKİYE</p>
-                {totals.map((t, i) => (
-                  <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.875rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
-                    {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
-                  </p>
-                ))}
-                <p className="mt-1 text-[0.75rem] text-white/75">
-                  {accounts.length} hesap · son özet{" "}
-                  {when(
-                    accounts
-                      .map((a) => a.at)
-                      .sort()
-                      .at(-1),
-                    today,
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">{accounts.length === 1 ? "BAKİYE" : "TOPLAM BAKİYE"}</p>
+                    {totals.map((t, i) => (
+                      <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.875rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
+                        {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
+                      </p>
+                    ))}
+                  </div>
+                  {allAccts.length > 1 && (
+                    <button type="button" onClick={() => setAcctPick(true)} aria-label={hiddenN > 0 ? `Hesap ekle (${hiddenN} gizli)` : "Gösterilen hesapları seç"} className="grid size-9 shrink-0 place-items-center rounded-full bg-white/15 text-[1.375rem] font-semibold leading-none text-white">
+                      +
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 truncate text-[0.75rem] text-white/75">
+                  {accounts.length === 1
+                    ? [accounts[0].name, accounts[0].last4 && `·${accounts[0].last4}`, `son özet ${when(accounts[0].at, today)}`].filter(Boolean).join(" · ")
+                    : `${accounts.length} hesap · son özet ${when(
+                        accounts
+                          .map((a) => a.at)
+                          .sort()
+                          .at(-1),
+                        today,
+                      )}`}
+                </p>
+                <p className="mt-2 border-t border-white/15 pt-2 text-[0.8125rem] font-semibold tabular-nums">
+                  {todayMoves.length ? (
+                    <>
+                      Bugün{todaySum.in > 0 && <span className="text-white"> · gelen +{money(todaySum.in)}</span>}
+                      {todaySum.out > 0 && <span className="text-white/85"> · giden −{money(todaySum.out)}</span>}
+                    </>
+                  ) : (
+                    <span className="font-normal text-white/75">Bugün hareket yok</span>
                   )}
                 </p>
               </div>
+              {accounts.length > 1 && (
               <ul className="divide-y divide-line">
                 {accounts.map((a) => (
                   <li key={a.key}>
@@ -334,11 +360,6 @@ export default function MailPage() {
                   </li>
                 ))}
               </ul>
-              {allAccts.length > 1 && (
-                <button type="button" onClick={() => setAcctPick(true)} className="flex h-11 w-full items-center gap-2 border-t border-line px-4 text-left text-[0.8125rem] font-semibold text-acc">
-                  <span className="min-w-0 flex-1">{hiddenN > 0 ? `${hiddenN} hesap gizli · göster` : "Gösterilen hesapları seç"}</span>
-                  <span aria-hidden className="shrink-0 text-[1rem]">›</span>
-                </button>
               )}
             </section>
           )}
