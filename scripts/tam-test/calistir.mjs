@@ -11,8 +11,8 @@
 //                          kalan cümleler "atlandı" sayılır, hata sayılmaz.
 //
 // Seçenekler: --yzsiz (yapay zekaya sorma)  --yz-tam (bütün yapay zeka seti)  --tarayicisiz (uygulamayı açma)  --ayrinti (geçenleri de yaz)
-// Sonuç ekrana ve ~/Downloads/tam-test-<tarih>.txt dosyasına yazılır (TEST_SONUC_DIR verilirse oraya; GitHub'daki "Testler" iş akışı
-// sonucu depodaki test-sonuclari dalına yazar).
+// Sonuç ekrana yazılır ve GitHub'a gider: depodaki test-sonuclari dalı › son.txt (Mac'te de, GitHub'daki "Testler" iş akışında da).
+// Gönderilemezse ~/Downloads/tam-test-<tarih>.txt. Seçenek --yuklemeden: göndermez, yalnız dosya.
 // Veritabanına yazmaz, mesaj göndermez, gerçek hesaba girmez. Kalan (✗) testler hatayı gösterir; düzeltilince yeşile döner.
 import { register } from "node:module";
 import { spawn } from "node:child_process";
@@ -160,9 +160,17 @@ out("");
 out("Okuma: ✓ geçti, ✗ kalan (hata var), – atlandı. “beklenen” asistanın yapması gereken, “olan” şu an yaptığı.");
 out("“yapay zeka (plan/görev/not/mesaj/soru)”: cümle ana yapay zekaya gidiyor; plan, görev, not, mesaj ve sorular için doğru yer budur.");
 
-const dir = process.env.TEST_SONUC_DIR || join(homedir(), "Downloads");
-if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-const outFile = join(dir, `tam-test-${new Date().toISOString().slice(0, 10)}.txt`);
-writeFileSync(outFile, lines.join("\n") + "\n");
-console.log(`\nSonuç dosyası: ${outFile}`);
+// Mac'te: sonuç GitHub'a (test-sonuclari dalı) gider, bilgisayara dosya inmez; gönderilemezse ~/Downloads'a yazılır.
+// GitHub'daki iş akışında (TEST_SONUC_DIR) dosya oraya yazılır, dala iş akışı gönderir. --yuklemeden: yalnız dosya.
+const text = lines.join("\n") + "\n";
+const { uploadResult } = await import("./yukle.mjs");
+if (!process.env.TEST_SONUC_DIR && !args.includes("--yuklemeden") && uploadResult(ROOT, text)) {
+  console.log("\nSonuç GitHub'a gönderildi: test-sonuclari dalı › son.txt");
+} else {
+  const dir = process.env.TEST_SONUC_DIR || join(homedir(), "Downloads");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const outFile = join(dir, `tam-test-${new Date().toISOString().slice(0, 10)}.txt`);
+  writeFileSync(outFile, text);
+  console.log(`\nSonuç dosyası: ${outFile}`);
+}
 process.exitCode = counted.length - pass ? 1 : 0;
