@@ -16,104 +16,87 @@ import { Thread } from "@/features/add/Thread";
 import { useSpeech } from "@/hooks/useSpeech";
 import { assigneesInText, fixNames, namesToUids, uidsToNames } from "@/lib/names";
 import { interpretText } from "@/services/aiService";
-import { carry, check, firstNeed, fresh, isBlank, pub, tidy } from "@/features/add/drafts";
+import { check, firstNeed } from "@/features/add/drafts";
 import { rel, todayStr } from "@/lib/utils/format";
-import { applyRepeat, seriesDates } from "@/lib/repeat";
+import { seriesDates } from "@/lib/repeat";
 import { shareGroup } from "@/lib/cancelPlan";
-import { waGroupFor } from "@/lib/waGroups";
 import { precue } from "@/lib/precue";
-import { inventoryWork, pastTense, taskOf } from "@/lib/assistTasks";
+import { pastTense } from "@/lib/assistTasks";
 import { WaitLines, useWaitLines } from "./WaitLines";
 import { askAssistant } from "@/services/assistantService";
 import { EARLY, routesOf } from "@/lib/assistRoute";
 import { buildSpeech } from "@/lib/buildInfo";
 import { applyUpdate, checkVersion } from "@/lib/newVersion";
 import { clearInbox } from "@/features/home/Inbox";
-import { ASK_EMPTY, DRAFT_AGE, PAST_MS, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, isPronoun, memoFor, remember, sameTo } from "@/lib/convoContext";
+import { ASK_EMPTY, DRAFT_AGE, PAST_MS, asksToClear, draftFor, editPrecue, historyFor, isDraftEdit, memoFor, remember } from "@/lib/convoContext";
 import { buildDigest } from "@/lib/ai/digest";
 import { clubDigest } from "@/lib/ai/clubDigest";
 import { cached as cachedWeather, dayHours, loadWeather, wantsWeather, weatherDigest } from "@/features/weather/weather";
 import { canSeeAthletes, wantsAttendance } from "@/features/athletes/access";
-import { ATT_LABEL, applyAttendance, attSummary, parseAttendance } from "@/features/athletes/assistAttendance";
-import { findRaceAi, runRaceCommand, wantsRace } from "@/features/athletes/assistRace";
+import { ATT_LABEL } from "@/features/athletes/assistAttendance";
+import { wantsRace } from "@/features/athletes/assistRace";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
-import { athleteNames, byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
-import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
-import { cleanResults } from "@/lib/raceResults";
-import { emptyBudget } from "@/features/athletes/budget";
-import { totalTL } from "@/lib/receipts";
-import { addDays } from "@/lib/utils/format";
+import { athleteNames, byId, isActive, loadAthletes } from "@/features/athletes/data";
+import { absentNotifyCommand, athleteCommand, callCommand, cashCommand, duesCommand, incomeCommand, receiptPayCommand } from "@/lib/assistMore";
 import { useCall } from "@/features/call/CallProvider";
-import { canCall } from "@/lib/call";
-import { unpaidRoster } from "@/lib/duesRemind";
-import { athleteDues, athleteDuesText, feeOf, lastMonths } from "@/lib/dues";
-import { addRacePlan, cleanDone, cleanHotels, deleteRace, doneSteps, matchStep, raceHotels, saveRace, stepsOf, telOf } from "@/features/athletes/races";
-import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
+import { wantsPost } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
-import { findRace, nearest, pickChoice, raceRef, rankRaces, sure } from "@/features/athletes/raceNav";
+import { pickChoice } from "@/features/athletes/raceNav";
 import { useNameIndex } from "@/features/athletes/names";
-import { LISTS, addItems, clearDone, listsFor, removeItem, splitItems, toggleItem } from "@/features/shop/shop";
-import { matchShop, shopCommand } from "@/features/shop/shopWords";
+import { listsFor } from "@/features/shop/shop";
+import { shopCommand } from "@/features/shop/shopWords";
 import { useKind } from "@/features/auth/useKind";
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { planDonePatch, planReopenPatch } from "@/lib/planActions";
-import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate, undoLast } from "@/lib/assistantLocal";
+import { KIND, PAGES, buildPatch, describeAction, isCloseNow, isEnd, isNo, isNoMore, isYes, lastCreated, localQuery, looksLikeCreate } from "@/lib/assistantLocal";
 import { brainCommand } from "@/lib/commands";
-import { labelFromAI, labelFromCommand, labelFromItems } from "@/lib/brain/model";
+import { labelFromAI, labelFromCommand } from "@/lib/brain/model";
 import { countHit, guess as brainGuess, record } from "@/lib/brain/store";
 import { RecordList } from "./RecordList";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
-import { dmId, useChat, sendErrorText } from "@/features/chat/ChatProvider";
+import { useChat } from "@/features/chat/ChatProvider";
 import { Avatar } from "@/features/chat/bits";
-import { confirmWord, matchGroup, messageIntent } from "@/lib/ai/messageRules";
-import { closeNames, matchPerson, plain, sameNamed } from "@/lib/names";
-import { resultsAnswer } from "@/lib/resultSheet";
-import { soon } from "@/lib/soon";
+import { confirmWord, messageIntent } from "@/lib/ai/messageRules";
 import { cleanSay, unglue } from "@/lib/speech/normalize";
 import { attRetry } from "@/lib/attAsk";
-import { GROUPS, KIND_LABEL, canReceipts, groupOfKind, isAthleteSide, kindOf, validUsername, waPhone } from "@/lib/kinds";
+import { GROUPS, canReceipts, isAthleteSide, waPhone } from "@/lib/kinds";
 import { authFetch } from "@/lib/authFetch";
-import { money } from "@/lib/bankSheet";
 import { localNavigate } from "@/lib/nav";
 import { fromMessage } from "@/lib/ai/assistant";
-import { quickAnswer } from "@/lib/ai/rules";
-import { isMulti, isQuestion, jobsIn, extraNote, keepNotes, messageFirst, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
-import { applyAnswer, changes, findDuplicates, formatPhone, loginIn, nextQuestion, suggestLogin, summarySay, wantsPerson } from "@/features/people/assistPerson";
-import { askOpen, createPerson, newPassword, openAccount, readPerson, removePerson } from "@/features/people/personActions";
+import { isMulti, jobsIn, extraNote, keepNotes, messageFirst, taskList, wantsNote, wantsRecord, waMode } from "@/lib/steps";
+import { wantsPerson } from "@/features/people/assistPerson";
 import { PersonCard } from "@/features/people/PersonCard";
-import { isDrop, kindFromText, wantsEvent } from "@/features/events/eventWords";
-import { attLine, canLog, isLogAnswer, logReply, looksLikeLog, missingOf, wantsLog } from "@/lib/trainingLog";
-import { askLog, saveLog, syncAttendance } from "@/features/training/logAi";
-import { askPlan, deleteEvent, saveEvent } from "@/features/events/events";
-import { countsText } from "@/features/events/eventModel";
+import { isDrop, wantsEvent } from "@/features/events/eventWords";
+import { canLog, isLogAnswer, looksLikeLog, wantsLog } from "@/lib/trainingLog";
 import { EventCard } from "@/features/events/EventCard";
 import { InvCard } from "@/features/inventory/InvCard";
-import { dropInvFile } from "@/features/inventory/invFiles";
-import { applyOps, dropItem, itemLabel, statsText, pickInv } from "@/features/inventory/invModel";
-import { askInventory, changeInventory, createInventory, lastInv, loadInventories, setLastInv } from "@/features/inventory/inventory";
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
-import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
-import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
-import { payeeAnswer, payeeMoves, payeeOf, whoIn } from "@/lib/payee";
-import { convPick, debtMoves, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
-import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
-import { loadDebts, updateDebts } from "@/features/debts/debtData";
-import { addIncome, archiveCash, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart, saveCashName } from "@/features/dues/duesData";
+import { invoiceCommand } from "@/lib/invoices";
+import { debtCommand } from "@/lib/debts";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
-import { wantsFitness, fitLocal } from "@/lib/fitness/words";
-import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
-import { addMeals as foodAddMeals, addWater as foodAddWater, askFood, loadMonth as loadFoodMonth, saveWeight as saveFoodWeight } from "@/features/fitness/foodData";
-import { applyLog, planOf as fitPlanOf, recentText as fitRecent, resLine as fitResLine, weekStats as fitWeek, monthStats as fitMonth, programLine as fitProgLine } from "@/lib/fitness/model";
-import { activeOf as fitActive, addSession as fitAddSession, askFitness, loadPrograms as loadFitPrograms, removePlans as fitRemovePlans, saveProfile as saveFitProfile, showProgram as showFitProgram, syncPlans as fitSyncPlans } from "@/features/fitness/fitnessData";
-import { askSchedule, showSchedule } from "@/features/schedule/assistSchedule";
+import { wantsFitness } from "@/lib/fitness/words";
+import { wantsFood } from "@/lib/fitness/food";
 import { timingMark, timingReply, timingStart } from "@/lib/assistTiming";
 import { goBack } from "@/lib/navTrail";
 import { splitChain } from "@/lib/chain";
 import { PLAN_MAX, actCount, cachedPlan, clausesOf, failed, lastPagesPlan, learnedKind, localPlan, looksMulti, orderPlan, planLessons, rememberPlan } from "@/lib/taskPlan";
+import { QUESTION, RECORD_TO, TEAM_WORD, groupOf, waTo } from "./isler/ortak";
+import * as is_kayit from "./isler/kayit";
+import * as is_mesaj from "./isler/mesaj";
+import * as is_kisi from "./isler/kisi";
+import * as is_yaris from "./isler/yaris";
+import * as is_yoklama from "./isler/yoklama";
+import * as is_gunluk from "./isler/gunluk";
+import * as is_etkinlik from "./isler/etkinlik";
+import * as is_envanter from "./isler/envanter";
+import * as is_fitness from "./isler/fitness";
+import * as is_para from "./isler/para";
+import * as is_alisveris from "./isler/alisveris";
+import * as is_ders from "./isler/ders";
+import * as is_komutlar from "./isler/komutlar";
 
 const SILENCE_MS = 0; // Otomatik kapanma kapalı
 // Dokun-konuş-dokun-gönder (Seyhun, 2026-10-06: "ChatGPT, Claude gibi; şimdilik canlı dinleme yok"): küreye dokununca
@@ -124,7 +107,6 @@ const HANDS_FREE = false;
 const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
 const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
 const clock = () => Date.now(); // konuşma kuyruğu zamanlaması (olay anında çağrılır)
-const RECORD_TO = "Bu kaydın konuşması";
 // Yapay zekanın gerçekte olmayan gönderimi anlatması ("gönderdim", "ilettim")
 const ASKED = /\?|\s(m[ıiuü])(\s|$)|gönderdin mi|gitti mi/i;
 const SENT_CLAIM = /(^|\s)(gönderdim|ilettim|yolladım|haber verdim|mesaj(ı|ınız)? gönderildi)/i;
@@ -136,27 +118,15 @@ const focusBody = (s) => {
     .trim();
   return t ? t[0].toLocaleUpperCase("tr-TR") + t.slice(1) : s;
 }; // kayıt ekranından açılınca mesajın kayda gitmesi için alıcı adı
-// Belirli bir numaraya WhatsApp mesajı (uygulamada hesabı olmayan kişi)
-const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 const EMPTY = { show: [], pending: null, nav: "", chat: "", share: "", att: null, engine: "", awaiting: false, races: [], person: null, event: null };
 // Biten adım geçmiş zamanla yazılır ("Yoklama kaydediliyor" → "Yoklama kaydedildi")
 const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [/eşleştiriliyor$/, "eşleştirildi"], [/kaydediliyor$/, "kaydedildi"], [/hazırlanıyor$/, "hazırlandı"], [/inceleniyor$/, "incelendi"], [/gönderiliyor$/, "gönderildi"], [/alınıyor$/, "alındı"]];
 const pastOf = (s) => pastTense(PAST.reduce((t, [re, to]) => t.replace(re, to), s));
-const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara|veli|veliler|velilere)/i;
-// Söylenen grup adı → sabit grup ("ekibe" → team, "aileye" → family, "sporculara" → athletes; "herkese" → ilk grubum)
-const groupOf = (t, mine = []) => {
-  const s = String(t || "").toLocaleLowerCase("tr-TR");
-  const g = /^aile/.test(s) ? "family" : /^(sporcu|veli)/.test(s) ? "athletes" : /^(ekip|ekib)/.test(s) ? "team" : mine[0] || "";
-  return mine.includes(g) ? g : "";
-};
 const MORE = "Başka bir isteğin var mı?";
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 // Taslak varken kaydetme / vazgeçme
 const SAVE = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(kaydet|kaydedebilirsin|evet|tamam|olur|onayla|ekle|ekleyebilirsin|kaydet gitsin|aynen|he|hı hı)(?=$|[\s.,!?])/i;
 const DROP = /^(?!.*(?:\s(?:ama|fakat|ancak|da|de)\s|(?:^|\s)değil(?:\s|$)))(vazgeç|vazgeçtim|iptal|hayır|kaydetme|sil|boş ?ver|yok)(?=$|[\s.,!?])/i;
-// Taslak varken sorulan soru taslağı değiştirmesin, asistana gitsin
-// Soru mu ("kaç görev var", "haftayı özetle"): \b Türkçe harfle biten kelimede çalışmadığı için isQuestion (steps.js) kullanılır
-const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
 const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 
 // Kullanıcı vazgeçti ya da iş yapılmadan bırakıldı: öğrenme deposuna yazılmaz
@@ -571,140 +541,31 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (names.length) return { ...x, assignees: namesToUids(names, members) };
     return Array.isArray(assignTo) ? { ...x, assignees: [] } : x;
   };
-  function draftSay(msg, list) {
-    const need = firstNeed(list);
-    // "Kontrol edip kaydedebilirsin" yerine sesli sohbete uygun tek soru: "Kaydedeyim mi?"
-    const base = (msg || "").replace(/\s*(kontrol edip |hazırsa )?kaydedebilirsin\.?/gi, "").trim() || `${list.length} kayıt hazırladım.`;
-    if (need && !/\?/.test(base)) return `${base} ${need.kind === "date" ? "Hangi gün olsun?" : "Saat kaçta olsun?"}`;
-    return need || /\?\s*$/.test(base) ? base : `${base} Kaydedeyim mi?`;
+  function draftSay(...a) {
+    return is_kayit.draftSay(ctx, ...a);
   }
-  // lead: görev listesinde önceki işlerin sonucu ("Tamamladım: …"); cevabın başına gelir
-  function startDrafts(items, s, msg, engine, viaVoice, lead = "") {
-    // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
-    draftSrc.current = s;
-    let next = applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
-    const need = firstNeed(next);
-    if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-    if (ready(next)) return saveDraftsNow(viaVoice, next, msg, lead);
-    setDrafts(next);
-    reply(`${lead}${draftSay(/^tamam\.?$/i.test(msg) ? "" : msg, next)}`, { engine }, viaVoice);
+  function startDrafts(...a) {
+    return is_kayit.startDrafts(ctx, ...a);
   }
-  async function refineDrafts(s, viaVoice) {
-    // "Saat kaçta olsun?" → "10'da": kısa cevap yerelde taslağa yazılır, yapay zekaya yeniden gidilmez
-    const quick = quickAnswer(s, drafts, todayStr(), firstNeed(drafts));
-    if (quick) {
-      ++runId.current;
-      ctrl.current?.abort();
-      countHit("local");
-      const need = firstNeed(quick);
-      const next = need ? quick.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d)) : quick;
-      if (ready(next)) return saveDraftsNow(viaVoice, next);
-      setDrafts(next);
-      return reply(draftSay("", next), { engine: "local" }, viaVoice);
-    }
-    const id = ++runId.current;
-    ctrl.current?.abort();
-    const c = new AbortController();
-    ctrl.current = c;
-    setPhase("thinking");
-    try {
-      const known = drafts.filter((d) => !isBlank(d));
-      const history = turns.slice(-10).map((t) => ({ role: t.role, text: t.text }));
-      const last = [...turns].reverse().find((t) => t.role === "assistant")?.text || "";
-      if (viaVoice) {
-        inflight.current = s;
-        listenWhileThinking();
-      }
-      const r = await interpretText(s, firstName, c.signal, { mode: "create", drafts: known.map((d) => pub(d, staff)), last, history }, staffNames);
-      if (id !== runId.current) return;
-      const items = applyRepeat(keepNotes(r.items, s, known.filter((d) => d.type === "note").length), s, todayStr()).map((x) => withAssignees(x, s));
-      let next = items.length ? carry(known, items) : drafts;
-      const need = firstNeed(next);
-      if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-      if (ready(next)) return saveDraftsNow(viaVoice, next, r.message);
-      setDrafts(next);
-      reply(draftSay(r.message, next), { engine: r.source }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      inflight.current = null; // hata: sonraki sözlü istek bu cümleyle birleşmesin (denetim B14)
-      failNow(e.message || "Yapay zeka yanıt vermedi", viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function refineDrafts(...a) {
+    return is_kayit.refineDrafts(ctx, ...a);
   }
-  // Tür sayfasından açıldı (Planlar, Görevler, Notlar, Takvim): ilk cümle doğrudan o türde taslağa çevrilir
-  async function createAs(s, kind, viaVoice) {
-    const id = ++runId.current;
-    ctrl.current?.abort();
-    const c = new AbortController();
-    ctrl.current = c;
-    setPhase("thinking");
-    try {
-      if (viaVoice) {
-        inflight.current = s;
-        listenWhileThinking();
-      }
-      const r = await interpretText(s, firstName, c.signal, null, staffNames, kind);
-      if (id !== runId.current) return;
-      inflight.current = null;
-      if (r.items?.length) startDrafts(r.items, s, r.message, r.source, viaVoice);
-      else reply(r.message || "Bunu kayda çeviremedim, biraz daha açık söyler misin?", { engine: r.source }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      inflight.current = null;
-      failNow(e.message || "Yapay zeka yanıt vermedi", viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function createAs(...a) {
+    return is_kayit.createAs(ctx, ...a);
   }
   // Bilgisi tamam taslak (eksik soru yok, başlık/tarih var) sormadan kaydedilir; kartta yalnız Düzenle kalır
   // Kayıt sorulmadan yapıldığı için yapay zekanın soru ve "oluşturuyorum/ekliyorum" cümleleri atılır
   // (önceden "Akşam 8 için planı oluşturuyorum, onaylıyor musun? Ekledim: …" okunuyordu); yalnız ek bilgi kalır
   const extra = (m) => extraNote(m);
   const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
-  // pre: yapay zekanın ek sözü (çakışma, rüzgâr…); varsa "Ekledim" cümlesinden önce gelir (akışta okunduysa tekrar okunmaz)
-  async function saveDraftsNow(viaVoice, list = drafts, pre = "", lead = "") {
-    for (const d of list) {
-      const e = check(d);
-      if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
-    }
-    setPhase("thinking");
-    const r = await saveDrafts(list.map(tidy), { source: viaVoice || convo.current ? "voice" : "manual", by });
-    timingMark("saved");
-    setPhase("idle");
-    // Kayıt veritabanına yazılamadıysa "kaydettim" denmez; taslak durur, yeniden "kaydet" denebilir
-    if (!r || r.error || r.plans + r.tasks + r.notes === 0) {
-      setDrafts(list);
-      return reply("Kaydedemedim, bir sorun çıktı. Taslak duruyor; tekrar “kaydet” diyebilirsin.", { engine: "local" }, viaVoice);
-    }
-    // Öğrenme kaydı: taslağı doğuran cümle (önceden sohbetin İLK cümlesi alınıyordu; ikinci işte yanlış cümle öğreniliyordu)
-    const said = draftSrc.current || [...turns].reverse().find((t) => t.role === "user" && !t.chip)?.text;
-    if (said) record(said, labelFromItems(list), "user");
-    const parts = [r.plans && `${r.plans} plan`, r.tasks && `${r.tasks} görev`, r.notes && `${r.notes} not`].filter(Boolean);
-    const who = uidsToNames([...new Set(list.flatMap((d) => d.assignees || []))], members).map((n) => n.split(" ")[0]);
-    setDrafts([]);
-    setSaved((r.ids || []).map(([kind, id], i) => list[i] && { kind, id, title: list[i].title || list[i].body || "Başlıksız", meta: draftMeta(list[i]), type: list[i].type }).filter(Boolean));
-    toast(`${parts.join(", ")} kaydedildi${who.length ? ` · ${who.join(", ")}` : ""}`);
-    navigator.vibrate?.([10, 40, 10]);
-    // Ne kaydedildiği açıkça söylenir (yapay zeka sonraki "saatini 11 yap" cümlesinde hangi kayıt olduğunu bilsin)
-    if (list.length === 1) memoSet("record", `${{ plan: "plan", task: "görev", note: "not" }[list[0].type] || ""} ${list[0].title || list[0].body || ""}`.trim());
-    const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
-    const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
-    if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} kaydedildi, bağlantı gelince gönderilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
-    done(r.queued ? `${lead}İnternet yok: ${what}${whoTxt} kaydedildi, bağlantı gelince gönderilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
+  function saveDraftsNow(...a) {
+    return is_kayit.saveDraftsNow(ctx, ...a);
   }
-  function dropDrafts(viaVoice) {
-    setDrafts([]);
-    if (queue.current.length) return nextStep(viaVoice, "Kaydetmedim. ");
-    done("Tamam, kaydetmedim.", { engine: "local" }, viaVoice);
+  function dropDrafts(...a) {
+    return is_kayit.dropDrafts(ctx, ...a);
   }
-  // Tam ekranda düzenle: taslaklar yeni kayıt penceresine taşınır
-  function editDraftsFull() {
-    const said = draftSrc.current || heard;
-    const last = [...turns].reverse().find((t) => t.role === "assistant")?.text || "";
-    openAdd({ prefill: { text: said, items: drafts, message: last, engine: "local" } });
-    setDrafts([]);
-    park();
+  function editDraftsFull(...a) {
+    return is_kayit.editDraftsFull(ctx, ...a);
   }
 
   // Sayfayı aç: panel açık kalır, sohbet sürer
@@ -751,48 +612,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     setError(message);
   }
 
-  // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
-  async function openRace(s, viaVoice) {
-    const list = races.current;
-    const today = todayStr();
-    if (!list.length) return reply("Kayıtlı yarış bulamadım. Yarışlar sayfasından ekleyebilirsin.", { engine: "local", nav: "races" }, viaVoice);
-    // Puanlama tekne sınıfını ve ayak numarasını da sayar; kesinse o, değilse ad kelimesiyle tam eşleşen
-    const ranked = rankRaces(s, list, today);
-    if (sure(ranked)) return goRace(ranked[0].race, viaVoice);
-    const exact = findRace(s, list, today);
-    if (exact && (!ranked[1] || ranked[0]?.race.id === exact.id)) return goRace(exact, viaVoice);
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    stepTo("Yarış aranıyor");
-    let ai = null;
-    try {
-      ai = await findRaceAi(s, list);
-    } catch {}
-    if (id !== runId.current) return;
-    setPhase("idle");
-    setSteps([]); // arama adımı iş bitince kalmasın (seçenek sormak hata değil)
-    const byId = (x) => list.find((r) => r.id === x);
-    if (ai?.raceId && byId(ai.raceId)) return goRace(byId(ai.raceId), viaVoice);
-    // Seçenekler: yapay zekanın adayları, yoksa puanı olanlar, o da yoksa tarihi bugüne en yakın 3 yarış
-    const fromAi = (ai?.candidates || []).map(byId).filter(Boolean);
-    // Yapay zekanın ilk adayı yerel puanlamanın da birincisiyse sormadan açılır
-    if (fromAi[0] && ranked[0]?.race.id === fromAi[0].id) return goRace(fromAi[0], viaVoice);
-    const scored = ranked.map((x) => x.race);
-    const opts = [...fromAi, ...scored].filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i).slice(0, 3);
-    const guess = opts.length ? opts : nearest(list, today, 3);
-    if (guess.length === 1 && opts.length) return goRace(guess[0], viaVoice);
-    const names = guess.map((r) => r.name);
-    const said = opts.length ? `Tam emin olamadım. ${names.join(", ")} olabilir. Hangisini açayım?` : `Bu adda bir yarış bulamadım. Tarihi en yakın yarışlar: ${names.join(", ")}. Hangisini açayım?`;
-    return reply(said, { engine: ai ? "ai" : "local", races: guess, expect: true }, viaVoice);
+  function openRace(...a) {
+    return is_yaris.openRace(ctx, ...a);
   }
 
-  function goRace(r, viaVoice) {
-    navigator.vibrate?.(8);
-    chainRace.current = r.id; // sohbetin yarışı: "bunun için gönderi hazırla", "yarışa Ali'yi de ekle"
-    memoSet("race", r.name);
-    if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
-    leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
+  function goRace(...a) {
+    return is_yaris.goRace(ctx, ...a);
   }
 
   // Sıralı işlerin bir adımı: mesaj kartı (onayla gönderilir) ya da kayıtlar (bilgisi tamamsa hemen kaydedilir)
@@ -1506,419 +1331,67 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     } else reply(cmd.message, { show: cmd.show, engine: cmd.brain ? "brain" : "local" }, viaVoice);
   }
 
-  // Alıcıyı sohbete çevirir: "Ekip" → ekip sohbeti; kişi → birebir sohbet (ilk mesajda oluşturulur)
-  function resolveTo(to) {
-    const f = focusRef.current;
-    const t = String(to || f?.to || "").trim() || (f?.rec ? RECORD_TO : "");
-    if (!t) return null;
-    if (f?.rec && (t === RECORD_TO || /^bu kayd|^kayıt/i.test(t))) return { rec: f.rec, label: "kaydın konuşması" };
-    // Kurulan grup ("Yelken Ekibi grubuna"): sabit grup kelimeleriyle başlasa da önce adıyla aranır
-    const cg = matchGroup(t, myGroups);
-    if (cg) return { cid: cg.id, label: cg.name, team: true, icon: "users" };
-    if (TEAM_WORD.test(t)) {
-      const g = groupOf(t, groupIds);
-      return g ? { cid: g, label: GROUPS[g].name, team: true, icon: GROUPS[g].icon, create: { type: "team" } } : null;
-    }
-    const everyone = [...contacts, ...waPeople];
-    const name = everyone.find((c) => c.name === t)?.name || matchPerson(t, everyone);
-    const c = contacts.find((x) => x.name === name);
-    // Uygulamada hesabı yok ama kişilerde telefonu var: kartta WhatsApp'la gönderilir
-    const w = !c && waPeople.find((x) => x.name === name);
-    if (w) return { wa: w.wa, label: w.name };
-    if (!c || !myUid) return null;
-    return { cid: dmId(myUid, c.p.uid), label: c.name, create: { type: "dm", members: [myUid, c.p.uid].sort() } };
+  function resolveTo(...a) {
+    return is_mesaj.resolveTo(ctx, ...a);
   }
-  // wa: istekte WhatsApp geçti. "also" ("sporculara ve WhatsApp grubuna da"): kart "Gönder + WhatsApp";
-  // "only" ("WhatsApp sporcular grubuna gönder"): yalnız WhatsApp grubu açılır, uygulamadaki gruba gitmez
-  function prepareSend(to, text, msg, engine, viaVoice, lead = "", wa = "") {
-    // Aynı alıcıya düzeltilen taslak önceki WhatsApp seçimini korur ("şunu da ekle" cümlesinde WhatsApp geçmez)
-    const prev = msgDraft.current;
-    if (!wa && prev?.wa && (sameTo(to, prev.to) || sameTo(to, prev.label))) wa = prev.wa;
-    let dest = resolveTo(to);
-    // Yalnız Ayarlar › WhatsApp gruplarında olan grup ("WhatsApp veliler grubuna yaz")
-    if (!dest && wa === "only") {
-      const g = (profile?.waGroups || []).find((x) => waGroupFor(String(to || ""), [x]));
-      if (g) dest = { label: g.name, team: true, icon: "users" };
-    }
-    const waOnly = wa === "only" && !!dest?.team;
-    const alsoWa = wa === "also";
-    if (dest) msgDraft.current = { to: String(to || ""), label: dest.label, text, wa: waOnly ? "only" : alsoWa ? "also" : "", state: "pending", age: 0 };
-    if (!dest) {
-      const who = String(to || "").trim();
-      queue.current = []; // alıcı yoksa sıralı işler de durur (kullanıcı yeniden söyler)
-      // Kişilerde var ama uygulamada hesabı da telefonu da yok: neden gönderilemediği söylenir
-      const known = who && matchPerson(who, members.filter((m) => m.name).map((m) => m.name));
-      if (known) return reply(`${lead}${known} uygulamada değil ve kişilerde telefonu yok; mesaj gönderemiyorum. Kişiler'den telefonunu eklersen WhatsApp'la gönderebilirim.`, { engine }, viaVoice);
-      return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
-    }
-    if (waOnly) return reply(`${lead}${dest.label} WhatsApp grubu için mesaj hazır: “${text}” WhatsApp'ta açayım mı?`, { pending: { send: { ...dest, text, waOnly: true } }, engine, expect: true }, viaVoice);
-    const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
-    reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
+  function prepareSend(...a) {
+    return is_mesaj.prepareSend(ctx, ...a);
   }
   const setSendText = (t) => {
     if (msgDraft.current) msgDraft.current = { ...msgDraft.current, text: t }; // kartta elle düzeltilen metin de bağlama gider
     setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
   };
 
-  // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
-  async function confirmPending(fromText = false, waOpened = false) {
-    const pend = cards.pending;
-    if (!pend) return;
-    if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
-    if (pend.send && msgDraft.current) msgDraft.current = { ...msgDraft.current, text: pend.send.text, state: pend.send.waOnly || pend.send.wa ? "wa" : "sent" };
-    if (pend.att) {
-      setCards((c) => ({ ...c, pending: null, awaiting: false }));
-      setSteps([]);
-      try {
-        await saveAtt(pend.att, fromText && convo.current);
-        if (pend.rest) restAfterAtt(pend.rest, fromText && convo.current, `Yoklama kaydedildi (${attSummary(pend.att)}).`);
-      } catch (e) {
-        stepsEnd(false);
-        reply(e.message || "Kaydedemedim.", { fail: true, engine: "local" });
-      }
-      return;
-    }
-    if (pend.send?.waOnly) {
-      // Yalnız WhatsApp grubu: kartta dokunulunca grup zaten açıldı; sesle onaylanınca WhatsApp kendiliğinden açılamaz (iPhone dokunuş ister), düğme verilir
-      const { text: body, label } = pend.send;
-      setCards((c) => ({ ...c, pending: null, awaiting: false }));
-      if (!waOpened) return reply(`Hazır. WhatsApp'ı açmak için aşağıdaki düğmeye dokun, listeden ${label} grubunu seç; mesaj hazır gelir.`, { engine: "local", share: body }, fromText && convo.current);
-      if (nextStep(fromText && convo.current, "WhatsApp'ta açtım. ")) return;
-      return done(`WhatsApp'ı açtım; listeden ${label} grubunu seç, mesaj hazır gelir.`, { engine: "local" }, fromText && convo.current);
-    }
-    if (pend.send) {
-      const { cid, text: body, create, label, team, rec, wa } = pend.send;
-      if (!body.trim()) return reply("Mesaj boş; ne yazayım?", { engine: "local", expect: true }, fromText && convo.current);
-      // Uygulamada olmayan kişi: WhatsApp mesajı hazır açılır, gönder düğmesine kişi kendisi basar
-      if (wa) {
-        const opened = !!window.open(waTo(wa, body), "_blank");
-        if (!opened) return reply("WhatsApp'ı açamadım; karttaki WhatsApp düğmesine dokun.", { engine: "local" }, fromText && convo.current);
-        setCards((c) => ({ ...c, pending: null, awaiting: false }));
-        if (nextStep(fromText && convo.current, "WhatsApp'ta açtım. ")) return;
-        return done(`WhatsApp'ta ${label} için açtım; orada gönder'e dokun.`, { engine: "local" }, fromText && convo.current);
-      }
-      setCards((c) => ({ ...c, pending: null, awaiting: false }));
-      setSteps([]);
-      if (rec) {
-        stepTo("Mesaj kaydın konuşmasına gönderiliyor");
-        const ok = await Promise.resolve(addReply?.(rec.kind, rec.id, body)).then(() => true, () => false);
-        if (ok) sentOk.current = true;
-        stepsEnd(ok);
-        toast(ok ? "Mesaj gönderildi" : sendErrorText());
-        if (nextStep(fromText && convo.current, ok ? "Gönderdim. " : "Mesajı gönderemedim. ")) return;
-        return (ok ? done : reply)(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
-      }
-      stepTo(`Mesaj ${team ? `${label} grubuna` : label} gönderiliyor`);
-      const ok = await chatSend?.(cid, body, { create });
-      if (ok) sentOk.current = true;
-      stepsEnd(!!ok);
-      toast(ok ? "Mesaj gönderildi" : "Mesaj gönderilemedi");
-      navigator.vibrate?.([10, 40, 10]);
-      // Grup mesajı WhatsApp grubuna da istendiyse (sesle onaylanınca WhatsApp kendiliğinden açılamaz): "WhatsApp'ta da paylaş" düğmesi
-      const waLeft = ok && team && pend.send.alsoWa && !waOpened;
-      if (!waLeft && nextStep(fromText && convo.current, ok ? `Gönderdim${team ? `, ${label} grubu gördü` : ""}. ` : "Mesajı gönderemedim. ")) return;
-      if (waLeft) return reply(`Gönderdim, ${label} grubu gördü. WhatsApp grubuna da göndermek için aşağıdaki düğmeye dokun, listeden grubu seç; mesaj hazır gelir.`, { engine: "local", chat: cid, share: body }, fromText && convo.current);
-      return (ok ? done : reply)(ok ? `Gönderdim${team ? `, ${label} grubu gördü${waOpened ? "; WhatsApp'ta listeden grubu seç, mesaj hazır" : ""}` : `, ${label} görecek`}.` : `Mesajı gönderemedim. ${sendErrorText()}`, { engine: "local", chat: ok ? cid : "", share: ok && team ? body : "" }, fromText && convo.current);
-    }
-    let n = 0;
-    for (const a of pend.actions) {
-      const rec = find(a.kind, a.id);
-      if (!rec) continue;
-      if (a.op === "delete" || a.op === "approve_delete") {
-        deleteRecord(a.kind, a.id);
-        n++;
-      } else if (a.op === "delete_series" && rec.seriesId) {
-        n += (await deleteSeries(rec.seriesId, rec.date).catch(() => 0)) || 1;
-      } else if (a.op === "update") {
-        const patch = buildPatch(a.kind, a.patch, rec);
-        if (Object.keys(patch).length) {
-          updateRecord(a.kind, a.id, patch, by);
-          n++;
-        }
-      }
-    }
-    const del = pend.actions.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op));
-    toast(n ? (del ? "Silindi" : "Yapıldı") : "Kayıt bulunamadı");
-    navigator.vibrate?.([10, 40, 10]);
-    setCards((c) => ({ ...c, pending: null, awaiting: false }));
-    if (nextStep(fromText && convo.current, n ? (del ? "Sildim. " : "Yaptım. ") : "O kayıtları bulamadım. ")) return;
-    (n ? done : reply)(n ? (del ? "Sildim." : "Tamamdır, yaptım.") : "O kayıtları bulamadım.", { engine: "local" }, fromText && convo.current);
+  function confirmPending(...a) {
+    return is_mesaj.confirmPending(ctx, ...a);
   }
 
-  function cancelPending(fromText = false) {
-    if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
-    if (cards.pending?.send && msgDraft.current) msgDraft.current = { ...msgDraft.current, state: "dropped" };
-    // Yoklama onayından vazgeçildi: cümledeki diğer işler yine yapılır
-    if (cards.pending?.att && cards.pending.rest) {
-      reply("Tamam, yoklamayı kaydetmedim.", { engine: "local" }, fromText && convo.current);
-      return void restAfterAtt(cards.pending.rest, fromText && convo.current, "Yoklama kaydedilmedi.");
-    }
-    if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
-    queue.current = [];
-    done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+  function cancelPending(...a) {
+    return is_mesaj.cancelPending(ctx, ...a);
   }
 
   // ---- Kişi ekleme (yalnız ana hesap): bilgiler toplanır, eksikler sorulur, mükerrer bakılır, özet kartında onaylanır ----
   // Hesap açılmaz; kaydedince "Hesap da açalım mı?" sorulur ve kişi kartı hesap ekranında açılır (kullanıcı adı/şifreyi kişi görür).
   const personCard = (f) => ({ draft: f.draft, step: f.step, dups: f.dups || [], uid: f.uid || "", acc: f.acc || null });
-  async function startPerson(s, viaVoice) {
-    if (isStaff) return reply("Kişi eklemeyi yalnız ana hesap yapabilir.", { engine: "local" }, viaVoice);
-    const id = ++runId.current;
-    setPhase("thinking");
-    let r;
-    try {
-      r = await readPerson(s);
-    } catch (e) {
-      if (id === runId.current) setPhase("idle");
-      return reply(e.message || "Kişi eklemeyi yalnız ana hesap yapabilir.", { fail: true, engine: "local" }, viaVoice);
-    }
-    if (id !== runId.current) return;
-    setPhase("idle");
-    // Öğrenme kaydına yazılmaz (cümlede telefon/e-posta olabilir)
-    stepPerson(r.draft, viaVoice, r.engine === "ai" ? "ai" : "local");
+  function startPerson(...a) {
+    return is_kisi.startPerson(ctx, ...a);
   }
-  // Sıradaki adım: eksik/hatalı alan varsa tek soru; yoksa mükerrer kontrolü ve özet + onay
-  function stepPerson(draft, viaVoice, engine = "local", lead = "") {
-    const q = nextQuestion(draft);
-    if (q) {
-      waitFor("person");
-      personFlow.current = { draft, step: "ask", ask: q.field };
-      return reply(`${lead}${q.ask}`, { person: personCard(personFlow.current), engine, expect: true }, viaVoice);
-    }
-    const dups = findDuplicates(draft, allMembers || members);
-    waitFor("person");
-    personFlow.current = { draft, step: "confirm", ask: "", dups };
-    const warn = dups.length
-      ? ` Dikkat, listede benzer kişi var: ${dups.map((d) => `${d.person.name} (${d.why}${d.left ? ", silinmiş" : ""})`).join("; ")}. Yine de eklemek için “yine de ekle” de.`
-      : " Kaydedeyim mi?";
-    reply(`${lead}${summarySay(draft)}${warn}`, { person: personCard(personFlow.current), engine, expect: true }, viaVoice);
+  function stepPerson(...a) {
+    return is_kisi.stepPerson(ctx, ...a);
   }
-  // Kişi ekleme sürerken gelen cümle. İşlendiyse true; başka bir istekse false (akış biter, cümle her zamanki yoldan gider).
-  async function continuePerson(s, viaVoice) {
-    const f = personFlow.current;
-    const t = s.toLocaleLowerCase("tr-TR").trim();
-    const no = isNo(s) || /^(vazgeç|iptal|ekleme|kaydetme)/.test(t);
-    const yes = (isYes(s) && !/^sil/.test(t)) || /^(kaydet|ekle|aç|hesap aç)\S*[\s.!]*$/.test(t);
-    if (f.step === "saved") {
-      if (undoLast(s) || /^(geri al|sil|kaldır)/.test(t)) return personUndoAsk(viaVoice), true;
-      if (yes) return personAccount(viaVoice), true;
-      if (no) return reply("Tamam, hesap açmadım. İstediğinde Kişiler sayfasından açabilirsin.", { person: personCard(f), engine: "local" }, viaVoice), true;
-      personFlow.current = null;
-      return false;
-    }
-    if (f.step === "account") {
-      const login = loginIn(s);
-      if (login) {
-        if (!login.includes("@") && !validUsername(login)) return reply("Kullanıcı adı en az 3 karakter olmalı; harf, rakam ve nokta kullan.", { person: personCard(f), engine: "local", expect: true }, viaVoice), true;
-        personFlow.current = { ...f, acc: { ...f.acc, login } };
-        return reply(`Giriş ${login} olacak. Hesabı açayım mı?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice), true;
-      }
-      if (yes || /hesabı aç/.test(t)) return personOpenAccount(viaVoice), true;
-      personFlow.current = { ...f, step: "saved", acc: null };
-      if (no) return reply("Tamam, hesap açmadım.", { person: personCard(personFlow.current), engine: "local" }, viaVoice), true;
-      return false;
-    }
-    if (f.step === "opened") {
-      personFlow.current = null;
-      return false;
-    }
-    if (f.step === "undo") {
-      if (yes || /^sil/.test(t)) return personUndo(viaVoice), true;
-      personFlow.current = { ...f, step: "saved" };
-      return reply("Tamam, silmedim.", { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice), true;
-    }
-    if (no) return personCancel(true, viaVoice), true;
-    if (wantsPerson(s)) return startPerson(s, viaVoice), true; // baştan yeni kişi
-    if (f.step === "confirm") {
-      const anyway = /yine de (ekle|kaydet)/.test(t);
-      if (yes || anyway) {
-        if (f.dups.length && !anyway)
-          return reply("Listede benzer kişi olduğu için emin olmak istiyorum: eklemek için “yine de ekle”, eklememek için “vazgeç” de.", { person: personCard(f), engine: "local", expect: true }, viaVoice), true;
-        return personSave(viaVoice), true;
-      }
-    }
-    const next = applyAnswer(f.draft, s, f.ask);
-    if (!changes(f.draft, next)) {
-      if (f.step === "ask" && !QUESTION.test(s) && s.split(/\s+/).length <= 6) return stepPerson(f.draft, viaVoice, "local", "Anlayamadım. "), true;
-      personFlow.current = null; // başka bir istek
-      return false;
-    }
-    stepPerson(next, viaVoice);
-    return true;
+  function continuePerson(...a) {
+    return is_kisi.continuePerson(ctx, ...a);
   }
-  async function personSave(viaVoice) {
-    const f = personFlow.current;
-    if (!f || f.step !== "confirm" || isStaff) return;
-    const { draft } = f;
-    personFlow.current = { ...f, step: "saving" };
-    setSteps([]);
-    stepTo("Kişi kaydediliyor");
-    try {
-      const uid = await createPerson(profile.uid, draft);
-      if (draft.birth) {
-        stepTo("Doğum günü takvime ekleniyor");
-        saveBirthday({ name: draft.name, month: draft.birth.month, day: draft.birth.day, year: draft.birth.year, phone: draft.phone ? formatPhone(draft.phone) : "", memberUid: uid, note: KIND_LABEL[draft.kind] });
-      }
-      stepsEnd();
-      navigator.vibrate?.([10, 40, 10]);
-      toast(`${draft.name} eklendi`);
-      personFlow.current = { draft, step: "saved", uid };
-      memoSet("person", draft.name);
-      reply(`Kaydettim, ${draft.name} kişilere eklendi. Uygulamaya girebilmesi için hesap da açalım mı?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
-    } catch {
-      stepsEnd(false);
-      personFlow.current = f;
-      reply("Kaydedemedim; bağlantını kontrol edip tekrar dene.", { person: personCard(f), engine: "local", expect: true }, viaVoice);
-    }
+  function personSave(...a) {
+    return is_kisi.personSave(ctx, ...a);
   }
-  function personCancel(fromText = false, viaVoice = false) {
-    if (!fromText) setTurns((p) => [...p, { role: "user", text: "Vazgeç", chip: true }]);
-    personFlow.current = null;
-    reply("Tamam, kişiyi eklemedim.", { engine: "local" }, viaVoice);
+  function personCancel(...a) {
+    return is_kisi.personCancel(ctx, ...a);
   }
-  // Hesap açma ayrı onay: önce önerilen giriş ve şifre kartta gösterilir ("kullanıcı adı … olsun" ile değişir), ikinci onayla açılır
-  function personAccount(viaVoice = false) {
-    const f = personFlow.current;
-    if (!f?.uid || isStaff) return;
-    const acc = { login: suggestLogin(f.draft, allMembers || members), password: newPassword() };
-    personFlow.current = { ...f, step: "account", acc };
-    reply(`${f.draft.name} için giriş ${acc.login} olacak, şifre ekranda. Hesabı açayım mı? Kullanıcı adını değiştirmek için “kullanıcı adı … olsun” de.`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
+  function personAccount(...a) {
+    return is_kisi.personAccount(ctx, ...a);
   }
-  async function personOpenAccount(viaVoice = false) {
-    const f = personFlow.current;
-    if (!f?.uid || f.step !== "account" || isStaff) return;
-    personFlow.current = { ...f, step: "opening" };
-    setSteps([]);
-    stepTo("Hesap açılıyor");
-    try {
-      await openAccount({ uid: f.uid, name: f.draft.name, kind: f.draft.kind, login: f.acc.login, password: f.acc.password });
-      stepsEnd();
-      navigator.vibrate?.([10, 40, 10]);
-      toast("Hesap açıldı");
-      personFlow.current = { ...f, step: "opened" };
-      reply(`Hesabı açtım. Giriş bilgileri ekranda; ${f.draft.phone ? "WhatsApp ile gönderebilirsin" : "kişiye ilet"}.`, { person: personCard(personFlow.current), engine: "local" }, viaVoice);
-    } catch (e) {
-      stepsEnd(false);
-      personFlow.current = f;
-      reply(`${e.message} Başka bir kullanıcı adı söyleyebilir ya da vazgeçebilirsin.`, { person: personCard(f), engine: "local", expect: true }, viaVoice);
-    }
+  function personOpenAccount(...a) {
+    return is_kisi.personOpenAccount(ctx, ...a);
   }
-  // Düzenle: kaydedilmemiş bilgiler kişi formunda dolu açılır; kaydedildiyse kişinin kartı açılır
-  function personEdit() {
-    const f = personFlow.current;
-    if (!f) return;
-    askOpen(f.uid ? { uid: f.uid } : { prefill: f.draft });
-    park();
-    router.push(`/people/${groupOfKind(f.draft.kind || "other")}`);
-    reply(f.uid ? `${f.draft.name} kişi kartını açtım.` : "Kişi formunu doldurup açtım; kontrol edip “Ekle”ye bas.", { engine: "local" });
+  function personEdit(...a) {
+    return is_kisi.personEdit(ctx, ...a);
   }
-  function personUndoAsk(viaVoice = false) {
-    const f = personFlow.current;
-    if (!f?.uid) return;
-    const m = (allMembers || []).find((x) => x.uid === f.uid);
-    if (m && m.account !== false) return reply(`${f.draft.name} için hesap açıldığından buradan silmiyorum; Kişiler sayfasından silebilirsin.`, { engine: "local" }, viaVoice);
-    personFlow.current = { ...f, step: "undo" };
-    reply(`Az önce eklediğim ${f.draft.name} silinsin mi?`, { person: personCard(personFlow.current), engine: "local", expect: true }, viaVoice);
+  function personUndoAsk(...a) {
+    return is_kisi.personUndoAsk(ctx, ...a);
   }
-  async function personUndo(viaVoice = false) {
-    const f = personFlow.current;
-    if (!f?.uid) return;
-    const m = (allMembers || []).find((x) => x.uid === f.uid);
-    if (m && m.account !== false) return reply(`${f.draft.name} için hesap açıldığından buradan silmiyorum; Kişiler sayfasından silebilirsin.`, { engine: "local" }, viaVoice);
-    try {
-      await removePerson(profile.uid, f.uid);
-      const b = birthdays.find((x) => x.memberUid === f.uid);
-      if (b) deleteRecord("birthday", b.id);
-      toast(`${f.draft.name} silindi`);
-      personFlow.current = null;
-      reply(`Geri aldım, ${f.draft.name} silindi.`, { engine: "local" }, viaVoice);
-    } catch {
-      reply("Silemedim; Kişiler sayfasından silebilirsin.", { engine: "local" }, viaVoice);
-    }
+  function personUndo(...a) {
+    return is_kisi.personUndo(ctx, ...a);
   }
 
-  // ---- Alışveriş listesi (asistandan) ----
-  async function runShopAdd(what, list, viaVoice) {
-    const items = splitItems(what);
-    if (!items.length) return reply("Neyi ekleyeyim?", { engine: "local", expect: true }, viaVoice);
-    setSteps([]);
-    stepTo(`${LISTS[list].name} listesine ekleniyor`);
-    try {
-      await addItems(profile.orgId, list, profile.uid, items);
-      stepsEnd();
-      navigator.vibrate?.(8);
-      reply(`Ekledim: ${items.join(", ")}.`, { engine: "local", nav: "shopping" }, viaVoice);
-    } catch {
-      stepsEnd(false);
-      reply("Listeye ekleyemedim.", { engine: "local" }, viaVoice);
-    }
+  function runShopAdd(...a) {
+    return is_alisveris.runShopAdd(ctx, ...a);
   }
-  // "ekmek alındı" → işaretle, "listeden sütü sil" → sil. Bir şey yapıldıysa (ya da silme istendiyse) true döner.
-  async function runShopMark({ op, what }, list, viaVoice) {
-    let open;
-    try {
-      const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
-      open = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((x) => op === "remove" || !x.done);
-    } catch {
-      if (op !== "remove") return false;
-      reply("Listeye ulaşamadım.", { engine: "local" }, viaVoice);
-      return true;
-    }
-    const { hits, missed } = matchShop(what, open);
-    if (!hits.length) {
-      if (op !== "remove") return false;
-      reply(`${LISTS[list].name} listesinde ${what} bulamadım.`, { engine: "local", nav: "shopping" }, viaVoice);
-      return true;
-    }
-    try {
-      await Promise.all(hits.map((it) => (op === "remove" ? removeItem(profile.orgId, it) : toggleItem(profile.orgId, it, profile.uid))));
-    } catch {
-      reply("Listeyi güncelleyemedim.", { engine: "local" }, viaVoice);
-      return true;
-    }
-    navigator.vibrate?.(8);
-    const names = hits.map((x) => x.text).join(", ");
-    const left = missed.length ? ` ${missed.join(", ")} listede yok.` : "";
-    reply(`${op === "remove" ? `Listeden çıkardım: ${names}.` : `Alındı olarak işaretledim: ${names}.`}${left}`, { engine: "local", nav: "shopping" }, viaVoice);
-    return true;
+  function runShopMark(...a) {
+    return is_alisveris.runShopMark(ctx, ...a);
   }
-  // ---- Fatura ödendi / ödenmedi (asistandan) ----
-  // ia: önceki turda "hangi fatura" soruldu; bulunamazsa false döner, cümle başka işlere devam eder
-  async function runInvoice(ic, viaVoice, asked = false) {
-    let list;
-    try {
-      list = await loadInvoices(profile.orgId);
-    } catch {
-      reply("Faturaları okuyamadım.", { engine: "local" }, viaVoice);
-      return true;
-    }
-    const { pick, list: many } = pickInvoice(ic.t, list, ic.op);
-    if (!pick) {
-      if (asked && !many.length) return false;
-      if (!many.length) {
-        reply(ic.op === "paid" ? "Ödenmemiş fatura yok." : "Ödendi işaretli fatura yok.", { engine: "local", nav: "invoices" }, viaVoice);
-        return true;
-      }
-      waitFor("invoice");
-      invAsk.current = { op: ic.op, cash: !!ic.cash };
-      const names = many.slice(0, 4).map((x) => `${x.seller} ${amountText(x)}`);
-      reply(`Hangi fatura? ${names.join(", ")}${many.length > 4 ? " ve diğerleri" : ""}. Firmanın adını söyle.`, { engine: "local", expect: true }, viaVoice);
-      return true;
-    }
-    try {
-      await setInvoicePaid(profile.orgId, pick, ic.op === "paid", ic.cash ? "cash" : "hand");
-      window.dispatchEvent(new Event("sa-invoices-saved"));
-      done(
-        ic.op === "paid"
-          ? `${ic.cash ? "Nakit ödendi, kasadan düştüm" : "Ödendi olarak işaretledim"}: ${pick.seller}, ${amountText(pick)}.${pick.taskId ? " Görevi de tamamladım." : ""}`
-          : `Ödenmedi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.${pick.paidVia === "cash" ? " Kasaya geri ekledim." : ""}`,
-        { engine: "local", nav: "invoices" },
-        viaVoice,
-      );
-    } catch {
-      reply("Faturayı kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
-    }
-    return true;
+  function runInvoice(...a) {
+    return is_para.runInvoice(ctx, ...a);
   }
 
   // ---- Son eklenen işler (lib/assistMore.js). Geri alınamayanlar önce sorar (okFlow + onay kartı) ----
@@ -1927,994 +1400,63 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     okFlow.current = { yes, word };
     reply(text, { engine: "local", ok: { label } }, viaVoice);
   }
-  // ---- Elle yapılan diğer işler (lib/assistMore.js): fiş ödendi, gelmeyenlerin velilerine haber, alınanları temizle,
-  // doğum günü / kişi silme, açık yarışta sporcu çıkarma, sonuç, ödeme, yarışı silme ve planlara ekleme, mesaj grubu kurma ----
-  async function saveHereRace(r, next) {
-    await saveRace(raceOrg, myUid || profile.uid, next);
-    races.current = races.current.map((x) => (x.id === r.id ? next : x));
-    window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
+  function saveHereRace(...a) {
+    return is_yaris.saveHereRace(ctx, ...a);
   }
-  async function runExtra(s, viaVoice) {
-    // Yarış sayfasında: "Ali'yi yarıştan çıkar", "Ali 3. oldu", "24 tekne yarıştı", "Ali ödedi", "yarışı planlara ekle", "yarışı sil"
-    const rh = curRace && racer ? raceHereCommand(s) : null;
-    const r = rh ? races.current.find((x) => x.id === curRace) : null;
-    if (rh && r) {
-      if (rh.op === "delete") {
-        askOk(`“${r.name}” yarışı silinsin mi? Bütçesi, evrak bilgisi ve notları da silinir, geri alınamaz.`, "Sil", async (v) => {
-          try {
-            await deleteRace(raceOrg, r.id);
-            races.current = races.current.filter((x) => x.id !== r.id);
-            park();
-            router.push("/athletes/races");
-            done(`${r.name} yarışını sildim.`, { engine: "local" }, v);
-          } catch {
-            reply("Yarışı silemedim.", { engine: "local" }, v);
-          }
-        }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
-        return true;
-      }
-      if (rh.op === "plan") {
-        const ok = await addRacePlan(saveDrafts, r, { uid: profile.uid, name: profile.name || "" }).catch(() => false);
-        if (ok) await saveHereRace(r, { ...r, planAdded: true }).catch(() => {});
-        if (ok) done(`${r.name} planlara eklendi.`, { engine: "local" }, viaVoice);
-        else reply("Planlara ekleyemedim; yarışın tarihi yazılı mı?", { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (rh.op === "step") {
-        const hit = matchStep(r, rh.words, rh.done ? stepsOf(r) : doneSteps(r));
-        // Listede yoksa başka işe ait bir cümle olabilir: her zamanki yoldan sürer
-        if (!hit) return false;
-        const list = cleanDone(r.done).filter((k) => k !== hit.key);
-        await saveHereRace(r, { ...r, done: rh.done ? [...list, hit.key] : list });
-        done(rh.done ? `İşaretledim: ${hit.label} yapıldı.` : `${hit.label} yeniden yapılacaklara alındı.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (rh.op === "fleet") {
-        await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), fleet: rh.n }) });
-        done(`Tekne sayısı ${rh.n} olarak yazıldı.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
-      const mine = athletes.filter((a) => (r.athleteIds || []).includes(a.id));
-      if (rh.op === "sheet") {
-        const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
-        const one = hit ? mine.find((x) => x.studentName === hit) : null;
-        if (rh.name && !one) {
-          reply(`${rh.name} bu yarışın sporcuları arasında yok.`, { engine: "local" }, viaVoice);
-          return true;
-        }
-        if (!mine.length) {
-          reply("Bu yarışa önce sporcu ekle.", { engine: "local" }, viaVoice);
-          return true;
-        }
-        window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [] } }));
-        done(one ? `${one.studentName} için bilgi notunu hazırlıyorum.` : `${mine.length} sporcunun bilgi notunu hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
-      const a = hit ? mine.find((x) => x.studentName === hit) : null;
-      if (!a) {
-        reply(`${rh.name} bu yarışın sporcuları arasında yok.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      try {
-        if (rh.op === "remove") {
-          await saveHereRace(r, { ...r, athleteIds: r.athleteIds.filter((x) => x !== a.id) });
-          done(`${a.studentName} yarıştan çıkarıldı.`, { engine: "local" }, viaVoice);
-        } else if (rh.op === "result") {
-          const rows = { ...(r.results?.rows || {}), [a.id]: { ...(r.results?.rows?.[a.id] || {}), place: rh.place } };
-          await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), rows }) });
-          done(`Yazdım: ${a.studentName} ${rh.place}.${r.results?.fleet ? ` / ${r.results.fleet}` : ""}.`, { engine: "local" }, viaVoice);
-        } else {
-          const b = r.budget || emptyBudget(r);
-          const paid = { ...(b.paid || {}) };
-          if (rh.paid) paid[a.id] = true;
-          else delete paid[a.id];
-          await saveHereRace(r, { ...r, budget: { ...b, paid } });
-          done(rh.paid ? `${a.studentName} ödedi olarak işaretlendi.` : `${a.studentName} ödemedi olarak işaretlendi.`, { engine: "local" }, viaVoice);
-        }
-      } catch {
-        reply("Yarışa kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Fiş ödendi (ana hesap, çalışanın fişi): "F-0012 fişini ödendi yap", "Ali'nin fişlerini ödedim"
-    const rp = owner ? receiptPayCommand(s) : null;
-    if (rp) {
-      const want = rp.paid ? "pending" : "paid";
-      let list = receipts.filter((x) => x.payStatus === want);
-      if (rp.no) list = receipts.filter((x) => Number(x.no) === rp.no);
-      else if (rp.who) {
-        const m = matchPerson(rp.who, members);
-        const u = m ? members.find((x) => x.name === m)?.uid : "";
-        list = u ? list.filter((x) => x.createdByUid === u) : [];
-      }
-      if (!list.length) {
-        reply(rp.no ? `F-${String(rp.no).padStart(4, "0")} numaralı fiş bulamadım.` : rp.paid ? "Ödeme bekleyen fiş görünmüyor." : "Ödendi işaretli fiş bulamadım.", { engine: "local", nav: "receipts" }, viaVoice);
-        return true;
-      }
-      if (!rp.no && !rp.who && list.length > 1) {
-        reply(`${list.length} fiş ödeme bekliyor. Fiş numarasıyla ya da kimin fişi olduğunu söyle (ör. “Ali'nin fişlerini ödedim”).`, { engine: "local", nav: "receipts" }, viaVoice);
-        return true;
-      }
-      await Promise.all(list.map((x) => markPaid(x.id, rp.paid, rp.cash ? "cash" : "eft")));
-      const sum = list.reduce((t, x) => t + totalTL(x), 0);
-      const kasa = rp.paid ? (rp.cash ? " Kasadan düştüm." : "") : list.some((x) => x.paidVia === "cash") ? " Kasaya geri ekledim." : "";
-      done(`${list.length === 1 ? "Fiş" : `${list.length} fiş`} ${rp.paid ? (rp.cash ? "nakit ödendi" : "ödendi") : "ödeme bekliyor"} olarak işaretlendi${sum ? `, toplam ${money(sum).replace(/,00$/, "")} TL` : ""}.${kasa}${rp.paid ? " Ekleyene bildirim gitti." : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
-      return true;
-    }
-    // Gelmeyenlerin velilerine haber (yoklama): uygulamadaki velilere bildirim, onayla
-    const an = owner && racer ? absentNotifyCommand(s) : null;
-    if (an) {
-      setPhase("thinking");
-      const day = an.day ? addDays(an.day) : todayStr();
-      let absent;
-      try {
-        const { athletes } = await loadAthletes({ fresh: true });
-        absent = athletes.filter((a) => isActive(a) && a.att?.[day.slice(0, 4)]?.[day.slice(5)] === "absent");
-      } catch {
-        reply("Yoklamayı okuyamadım.", { engine: "local" }, viaVoice);
-        return true;
-      }
-      const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m.uid]));
-      const ids = absent.map((a) => linked.get(a.id)).filter(Boolean);
-      const when = an.day ? "Dün" : "Bugün";
-      if (!absent.length) {
-        reply(`${when} yoklamada gelmedi yazılan sporcu yok.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (!ids.length) {
-        reply(`${when} ${absent.length} sporcu gelmedi ama velileri uygulamada değil. Yoklama sayfasındaki WhatsApp düğmeleriyle haber verebilirsin.`, { engine: "local", nav: "attendance" }, viaVoice);
-        return true;
-      }
-      askOk(`${when} gelmeyen ${absent.length} sporcudan ${ids.length} tanesinin velisine uygulamadan bildirim gitsin mi? (${absent.map((a) => a.studentName).slice(0, 6).join(", ")})`, "Gönder", async (v) => {
-        try {
-          const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "absent", date: day, ids }) });
-          const d = await res.json().catch(() => ({}));
-          done(res.ok ? `Haber verdim${d.parents ? `: ${d.parents} veli` : ""}.` : "Bildirim gönderilemedi (bugün zaten gönderilmiş olabilir).", { engine: "local" }, v);
-        } catch {
-          reply("Bildirim gönderilemedi.", { engine: "local" }, v);
-        }
-      }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    // Alışveriş: "alınanları temizle"
-    const shopLs = listsFor(myKind, members);
-    if (shopLs.length && shopClearCommand(s)) {
-      const list = /ekip|kulüp/iu.test(s) && shopLs.includes("team") ? "team" : shopLs[0];
-      try {
-        const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
-        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const n = items.filter((i) => i.done).length;
-        if (n) await clearDone(profile.orgId, items);
-        done(n ? `${LISTS[list].name} listesinden alınan ${n} şeyi temizledim.` : `${LISTS[list].name} listesinde alınmış işaretli bir şey yok.`, { engine: "local", nav: "shopping" }, viaVoice);
-      } catch {
-        reply("Listeyi temizleyemedim.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Doğum günü silme: "Ayşe'nin doğum gününü sil" (onayla)
-    const bd = birthdayDeleteCommand(s);
-    if (bd) {
-      const hit = matchPerson(bd.name, birthdays.map((b) => b.name || ""));
-      const b = hit ? birthdays.find((x) => x.name === hit) : null;
-      if (!b) {
-        reply(`${bd.name} için kayıtlı doğum günü bulamadım.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      askOk(`${b.name} doğum günü silinsin mi?`, "Sil", (v) => {
-        deleteRecord("birthday", b.id);
-        done(`${b.name} doğum gününü sildim.`, { engine: "local" }, v);
-      }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    // Kişi silme (ana hesap, hesabı olmayan kişi): "Ayşe Yılmaz'ı kişilerden sil" (onayla)
-    const pd = owner ? personDeleteCommand(s) : null;
-    if (pd) {
-      const live = members.filter((m) => m.status !== "left");
-      const hit = matchPerson(pd.name, live);
-      const m = hit ? live.find((x) => x.name === hit) : null;
-      if (!m) {
-        reply(`${pd.name} kişilerde yok.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (m.account !== false) {
-        reply(`${m.name} uygulamada hesabı olan biri; hesabı kapatmayı Kişiler sayfasından onun kartında yap.`, { engine: "local", nav: "people" }, viaVoice);
-        return true;
-      }
-      askOk(`${m.name} kişilerden silinsin mi?`, "Sil", async (v) => {
-        try {
-          await setDoc(doc(db, "orgs", dataUid || profile.uid, "members", m.uid), { status: "left", leftAt: new Date().toISOString() }, { merge: true });
-          done(`${m.name} kişilerden silindi.`, { engine: "local" }, v);
-        } catch {
-          reply("Kişiyi silemedim.", { engine: "local" }, v);
-        }
-      }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    // Mesaj grubu kurma: "Ali, Ayşe ve Mehmet ile Yelken Ekibi adında grup kur"
-    const gc = createGroup ? groupCreateCommand(s) : null;
-    if (gc) {
-      const words = gc.t.replace(/['’]\p{L}*/gu, " ");
-      const picked = contacts.filter((c) => c.p.uid !== myUid && c.name.split(" ")[0].length > 1 && new RegExp(`(^|\\s)${c.name.split(" ")[0].toLocaleLowerCase("tr-TR")}(\\s|$|,)`, "u").test(words));
-      if (!gc.name || !picked.length) {
-        reply(!gc.name ? "Grubun adı ne olsun? Örnek: “Ali ve Ayşe ile Yelken Ekibi adında grup kur”." : "Gruba kimleri ekleyeyim? Adlarını söyle.", { engine: "local" }, viaVoice);
-        return true;
-      }
-      try {
-        const id = await createGroup(gc.name, picked.map((c) => c.p.uid));
-        park();
-        router.push(`/messages?c=${encodeURIComponent(id)}`);
-        leave(`${gc.name} grubunu kurdum: ${picked.map((c) => c.name).join(", ")}.`, viaVoice);
-      } catch {
-        reply("Grubu kuramadım.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    return false;
+  function runExtra(...a) {
+    return is_komutlar.runExtra(ctx, ...a);
   }
-  async function runMore(s, viaVoice) {
-    if (await runExtra(s, viaVoice)) return true;
-    // Yarış sayfasında otel ekleme: "otel ekle: Foça Palas, 0232 812 34 56"
-    const hc = curRace && racer ? hotelAddCommand(s) : null;
-    if (hc) {
-      const r = races.current.find((x) => x.id === curRace);
-      if (!r) return false;
-      try {
-        const hotels = cleanHotels([...raceHotels(r), { name: hc.name, phone: hc.phone }]);
-        const next = { ...r, hotels };
-        await saveRace(raceOrg, myUid || profile.uid, next);
-        races.current = races.current.map((x) => (x.id === r.id ? next : x));
-        window.dispatchEvent(new CustomEvent("sa-race-saved", { detail: next }));
-        done(`Ekledim: ${hc.name}${hc.phone ? `, ${hc.phone}` : ""}. Özet › Konaklama'da görünür.`, { engine: "local" }, viaVoice);
-      } catch {
-        reply("Oteli kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Sporcu kartı: "Ali Kaya'nın sporcu kartını aç"
-    const ao = racer ? athleteOpenCommand(s) : null;
-    if (ao) {
-      const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
-      const hit = matchPerson(ao.name, athletes.map((a) => a.studentName));
-      const a = hit ? athletes.find((x) => x.studentName === hit) : null;
-      if (!a) return false;
-      park();
-      router.push(`/athletes/${a.id}`);
-      leave(`${a.studentName} kartını açtım.`, viaVoice);
-      return true;
-    }
-    // Fatura: "Turkcell faturasını Ali'ye ver" (görevliye bildirim gider), "Turkcell faturasını sil" (onayla)
-    const it = owner ? invoiceTaskCommand(s) : null;
-    if (it) {
-      let list;
-      try {
-        list = await loadInvoices(profile.orgId);
-      } catch {
-        reply("Faturaları okuyamadım.", { engine: "local" }, viaVoice);
-        return true;
-      }
-      const { pick, list: many } = pickInvoice(it.t, list, it.op === "assign" ? "paid" : "any");
-      if (!pick) {
-        reply(many.length ? `Hangi fatura? ${many.slice(0, 4).map((x) => x.seller).join(", ")}. Firmanın adıyla söyle.` : "Fatura bulamadım.", { engine: "local", nav: "invoices" }, viaVoice);
-        return true;
-      }
-      if (it.op === "delete") {
-        askOk(`${pick.seller} faturası (${amountText(pick)}) dosyası ve görevi ile silinsin mi? Geri alınamaz.`, "Sil", async (v) => {
-          try {
-            await deleteInvoice(profile.orgId, pick);
-            window.dispatchEvent(new Event("sa-invoices-saved"));
-            done(`${pick.seller} faturasını sildim.`, { engine: "local", nav: "invoices" }, v);
-          } catch {
-            reply("Faturayı silemedim.", { engine: "local" }, v);
-          }
-        }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
-        return true;
-      }
-      const who = matchPerson(it.who, members.filter((m) => m.account !== false && m.status !== "left"));
-      const m = who ? members.find((x) => x.name === who && x.account !== false) : null;
-      if (!m) {
-        reply(`${it.who} görev verilebilecek kişiler arasında yok.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      try {
-        let inv = pick;
-        if (!inv.taskId || !tasks.some((x) => x.id === inv.taskId)) inv = await ensureTask(profile.orgId, inv, { uid: profile.uid, name: profile.name || "" });
-        await updateRecord("task", inv.taskId, { assignees: [m.uid] }, { name: profile.name || "" });
-        window.dispatchEvent(new Event("sa-invoices-saved"));
-        done(`${pick.seller} faturasının ödeme görevi ${m.name} kişisine verildi, bildirim gitti.`, { engine: "local", nav: "invoices" }, viaVoice);
-      } catch {
-        reply("Görevi veremedim, tekrar dene.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Arama: "Ali'yi ara" (uygulama içi sesli arama), yarış sayfasında "oteli ara" (telefon)
-    const cc = callCommand(s);
-    if (cc?.hotel && curRace) {
-      const r = races.current.find((x) => x.id === curRace);
-      const hs = raceHotels(r).filter((h) => telOf(h.phone));
-      const words = cc.who.split(" ").filter((w) => !/^otel/u.test(w));
-      const h = hs.find((x) => words.some((w) => x.name.toLocaleLowerCase("tr-TR").includes(w))) || (hs.length === 1 ? hs[0] : null);
-      if (!h) {
-        reply(hs.length ? `Hangi otel? ${hs.map((x) => x.name).join(", ")}.` : "Bu yarışta telefonu kayıtlı otel yok. Özet › Konaklama'dan ekleyebilirsin.", { engine: "local", expect: hs.length > 1 }, viaVoice);
-        return true;
-      }
-      askOk(`${h.name} aransın mı? ${h.phone}`, "Ara", () => {
-        window.location.href = telOf(h.phone);
-        done(`${h.name} aranıyor.`, { engine: "local" });
-      }, viaVoice, /^ara\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    if (cc && !cc.hotel) {
-      const name = matchPerson(cc.who, contacts);
-      const p = name ? contacts.find((c) => c.name === name)?.p : null;
-      if (!p) return false; // kişi değil ("Turkcell'i ara"): yapay zekaya
-      const peerKind = p.role === "owner" ? "owner" : kindOf(p);
-      if (!startCall || !canCall(myKind, peerKind)) {
-        reply(`${p.name} ile uygulamadan arama yapılamıyor.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (callBusy) {
-        reply("Şu an başka bir arama sürüyor.", { engine: "local" }, viaVoice);
-        return true;
-      }
-      askOk(`${p.name} aransın mı?`, "Ara", () => {
-        sp.cancel();
-        tts.stop();
-        startCall(p.uid);
-        finish(true);
-      }, viaVoice, /^ara\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    // Aidat: "aidat hatırlatması gönder" (onayla velilere bildirim), "bu ay kim aidat ödemedi"
-    const dc = owner && canSeeAthletes(profile?.email) ? duesCommand(s) : null;
-    if (dc) {
-      setPhase("thinking");
-      const ym = todayStr().slice(0, 7);
-      const month = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
-      // Başlangıç ayı ve muafiyet: "Ali'nin aidatı kasımdan başlasın", "Ali bu ay aidattan muaf"
-      if (dc.op === "start" || dc.op === "free") {
-        const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
-        const hit = matchPerson(dc.name, athletes.map((a) => a.studentName));
-        const a = hit ? athletes.find((x) => x.studentName === hit) : null;
-        if (!a) return false;
-        const at = monthYm(dc.mon, todayStr());
-        const label = new Date(`${at}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
-        try {
-          if (dc.op === "start") await saveStart(profile.orgId, a.id, at);
-          else await saveFree(profile.orgId, at, a.id, !dc.undo);
-        } catch {
-          reply("Aidat kaydını yazamadım.", { engine: "local", fail: true }, viaVoice);
-          return true;
-        }
-        leave(
-          dc.op === "start"
-            ? `${a.studentName}: aidat ${label} ayından başlıyor, önceki aylar borç sayılmaz.`
-            : dc.undo
-              ? `${a.studentName}: ${label} aidatı yeniden sayılıyor.`
-              : `${a.studentName}: ${label} aidatı sayılmayacak.`,
-          viaVoice,
-        );
-        return true;
-      }
-      // Tek sporcu: "Ahmet'in aidat durumu ne" → bu ay, son 6 aydaki borç; sporcu sayfası açılır
-      if (dc.op === "one") {
-        const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
-        const hit = matchPerson(dc.name, athletes.map((a) => a.studentName));
-        const a = hit ? athletes.find((x) => x.studentName === hit) : null;
-        if (!a) return false;
-        try {
-          const yms = lastMonths(ym, 6);
-          const { cfg, months } = await loadDuesRange(profile.orgId, yms);
-          park();
-          router.push(`/athletes/${a.id}`);
-          leave(athleteDuesText(a.studentName, athleteDues(a, cfg, months, yms)), viaVoice);
-        } catch {
-          reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
-        }
-        return true;
-      }
-      let list;
-      try {
-        const { cfg, months } = await loadDuesRange(profile.orgId, [ym]);
-        list = unpaidRoster(cfg, months[ym], ym);
-      } catch {
-        reply("Aidat kayıtlarını okuyamadım.", { engine: "local" }, viaVoice);
-        return true;
-      }
-      if (dc.op === "ask" || !list.length) {
-        const names = list.map((x) => x.a.studentName);
-        reply(
-          !list.length ? `${month} aidatını ödemeyen sporcu görünmüyor.` : `${month} aidatını ${names.length} sporcu ödemedi: ${names.slice(0, 10).join(", ")}${names.length > 10 ? " ve diğerleri" : ""}.`,
-          { engine: "local", nav: "dues" },
-          viaVoice,
-        );
-        return true;
-      }
-      const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m.uid]));
-      const inApp = list.filter((x) => linked.has(x.a.id));
-      if (!inApp.length) {
-        reply(`${list.length} sporcu ödemedi ama velileri uygulamada değil. Aidatlar sayfasından WhatsApp ile hatırlatabilirsin.`, { engine: "local", nav: "dues" }, viaVoice);
-        return true;
-      }
-      askOk(`${month} aidatını ödemeyen ${inApp.length} sporcunun velisine uygulamadan hatırlatma gitsin mi?`, "Gönder", async (v) => {
-        setPhase("thinking");
-        try {
-          const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "dues", ym, ids: inApp.map((x) => linked.get(x.a.id)) }) });
-          const d = await res.json().catch(() => ({}));
-          const at = new Date().toISOString();
-          await setDoc(doc(db, "orgs", profile.orgId, "dues", ym), { reminded: Object.fromEntries(inApp.map((x) => [x.a.id, at])) }, { merge: true }).catch(() => {});
-          done(d.parents ? `Hatırlatma ${d.parents} veliye gitti.` : "Bu ay hatırlatılmamış, uygulamada bağlı veli kalmadı.", { engine: "local", nav: "dues" }, v);
-        } catch {
-          reply("Hatırlatma gönderilemedi.", { engine: "local" }, v);
-        }
-      }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
-      return true;
-    }
-    // Kasa çıkışı, kişisel gelir/gider/borç ve kasa sorusu (Hesaplar): "kulüpten Ali'ye 500 nakit verildi", "kişisel gider 300 market"
-    const kc = owner ? cashCommand(s) : null;
-    if (kc) {
-      setPhase("thinking");
-      const tl = (n) => `${money(n).replace(/,00$/, "")} TL`;
-      try {
-        if (kc.op === "archive") {
-          const cd = await loadCash(profile.uid);
-          const old = kasaOf(cd.moves, cd.meta).old;
-          if (!old.length) {
-            reply("Arşivlenecek eski nakit girişi yok.", { engine: "local", nav: "accounts" }, viaVoice);
-            return true;
-          }
-          await soon(archiveCash(profile.uid, old.map((x) => x.key)), 2500, "Kasa");
-          done(`${old.length} eski nakit girişini arşivledim. Kasaya sayılmaz, Hesaplar › Kulüp › Arşiv'den geri alınır.`, { engine: "local", nav: "accounts" }, viaVoice);
-          return true;
-        }
-        if (kc.op === "conv") {
-          if (!(kc.amount > 0)) {
-            reply("Hangi tutarı nakite çevirdin? Tutarıyla söyler misin? (ör. gelen 20 bin lirayı nakite çevirdim)", { fail: true, engine: "local" }, viaVoice);
-            return true;
-          }
-          const ymNow = todayStr().slice(0, 7);
-          const ymPrev = new Date(Date.parse(`${ymNow}-15T12:00:00Z`) - 31 * 864e5).toISOString().slice(0, 7);
-          const [{ movements }, conv] = await Promise.all([loadMovementsRange(profile.uid, ymPrev, ymNow), loadConv(profile.uid)]);
-          const m = convPick(movements, kc.amount, conv);
-          if (!m) {
-            reply(`Son iki ayın banka hareketlerinde ${tl(kc.amount)} bulamadım. Hesaplar'da harekete dokunup "Nakite çevir" diyebilirsin.`, { fail: true, engine: "local", nav: "accounts" }, viaVoice);
-            return true;
-          }
-          await soon(convertToCash(profile.uid, m), 2500, "Kasa");
-          done(`Kulüp kasasına ekledim: ${tl(kc.amount)} nakit (${m.date?.slice(0, 10) || "banka"}${whoIn(m) ? `, ${whoIn(m)}` : ""}). Kişisel hesabında artık sayılmaz.`, { engine: "local", nav: "accounts" }, viaVoice);
-          return true;
-        }
-        if (kc.op === "ask") {
-          const [r, lent] = await Promise.all([loadCash(profile.orgId), loadDebts(profile.orgId).catch(() => [])]);
-          if (kc.book === "club") {
-            const k = kasaOf([...r.moves, ...debtMoves(lent)], r.meta);
-            reply(`Kasada ${k.total < 0 ? "eksi " : ""}${tl(Math.abs(k.total))} var. Giriş ${tl(k.in)}, çıkış ${tl(k.out)}.`, { engine: "local", nav: "accounts" }, viaVoice);
-          } else {
-            const b = personalOf(r.personal);
-            const owed = lent.filter((d) => d.kind === "personal" && leftOf(d) > 0).reduce((n, d) => n + leftOf(d), 0);
-            reply(`${b.debts.length ? `${b.debts.length} borcun var, toplam ${tl(b.debt)}: ${b.debts.slice(0, 3).map((x) => `${x.who || "?"} ${tl(-x.amount)}`).join(", ")}.` : "Ödenmemiş borcun yok."}${owed > 0 ? ` Sana borçlu olanlardan ${tl(owed)} geri gelecek.` : ""}`, { engine: "local", nav: "accounts" }, viaVoice);
-          }
-          return true;
-        }
-        if (kc.book === "club" && !kc.who) {
-          reply(`Kasadan ${tl(kc.amount)} kime verildi? Adıyla yeniden söyler misin? (ör. kulüpten Ali'ye ${tl(kc.amount)} nakit verildi)`, { fail: true, engine: "local" }, viaVoice);
-          return true;
-        }
-        await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
-        if (kc.book === "club" && kc.who) saveCashName(profile.orgId, kc.who).catch(() => {}); // sonraki seferde "Kime verildi" seçeneği
-        const what = kc.book === "club" ? `nakit çıkış, ${kc.who}, ${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
-        done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, viaVoice);
-      } catch {
-        reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Nakit gelir (Hesaplar): "Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet'ten 2000 lira bağış geldi"
-    const ic = owner ? incomeCommand(s, todayStr()) : null;
-    if (ic) {
-      setPhase("thinking");
-      const date = todayStr();
-      try {
-        if (ic.cat === "Aidat") {
-          const { roster, cfg } = await loadCash(profile.orgId);
-          const name = ic.who ? matchPerson(ic.who, roster.map((a) => a.studentName)) : "";
-          const a = name ? roster.find((x) => x.studentName === name) : null;
-          // Bulunamadı / birden çok aynı ad / tutar yok: kaydedilmedi, iş ✗ (önceden ✓ görünüyordu; denetim B4, B17)
-          if (!a) {
-            const many = ic.who ? sameNamed(ic.who, roster.map((x) => x.studentName)) : [];
-            const msg = many.length ? `${many.length} ${ic.who} var: ${many.join(", ")}. Hangisinin aidatı? Soyadıyla yeniden söyler misin?` : ic.who ? `${ic.who} aidat listesinde yok, kaydetmedim. Adını soyadıyla yeniden söyler misin?` : "Hangi sporcunun aidatı? Adını söyler misin?";
-            reply(msg, { fail: true, engine: "local" }, viaVoice);
-            return true;
-          }
-          const amount = ic.amount || feeOf(a, cfg);
-          if (!amount) {
-            reply(`${a.studentName} ne kadar ödedi? Aidat tutarı ayarlı değil, kaydetmedim. Tutarla yeniden söyler misin?`, { fail: true, engine: "local" }, viaVoice);
-            return true;
-          }
-          await soon(addIncome(profile.orgId, { cat: "Aidat", who: a.studentName, athleteId: a.id, ym: ic.ym, amount, date }), 2500, "Aidat");
-          const m = new Date(`${ic.ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
-          done(`Ekledim: ${a.studentName}, ${m} aidatı, nakit ${money(amount).replace(/,00$/, "")} TL. Aidatlar'da ödendi görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
-          return true;
-        }
-        await soon(addIncome(profile.orgId, { cat: ic.cat, who: ic.who, amount: ic.amount, date, note: ic.note }), 2500, "Gelir");
-        done(`Ekledim: ${ic.cat} geliri${ic.who ? `, ${ic.who}` : ""}, ${money(ic.amount).replace(/,00$/, "")} TL. Hesaplar'da görünür.`, { engine: "local", nav: "accounts" }, viaVoice);
-      } catch {
-        reply("Geliri kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    // Sporcu: ekle (hemen), arşive al / çıkar (hemen), sil (onayla)
-    const ac = owner && canSeeAthletes(profile?.email) ? athleteCommand(s) : null;
-    if (!ac) return false;
-    if (ac.op === "add" && !ac.name) {
-      reply("Yeni sporcunun adı soyadı ne?", { engine: "local", expect: true }, viaVoice);
-      waitFor("athlete");
-      athAsk.current = true;
-      return true;
-    }
-    setPhase("thinking");
-    let athletes;
-    try {
-      ({ athletes } = await loadAthletes({ fresh: true }));
-    } catch {
-      reply("Sporcu listesini okuyamadım.", { engine: "local" }, viaVoice);
-      return true;
-    }
-    const low = (x) => String(x || "").toLocaleLowerCase("tr-TR");
-    // "onu arşive al", "bunu sil": sohbette az önce konuşulan sporcu
-    const name = isPronoun(ac.name) ? memo.current.athlete || "" : ac.name;
-    const hit = name ? matchPerson(name, athletes.map((a) => a.studentName)) : "";
-    const a = hit ? athletes.find((x) => x.studentName === hit) : null;
-    if (a) memoSet("athlete", a.studentName);
-    if (ac.op === "add") {
-      const same = athletes.find((x) => low(x.studentName) === low(ac.name));
-      if (same) {
-        reply(`${same.studentName} zaten sporcularda${isActive(same) ? "" : " (arşivde; “arşivden çıkar” diyebilirsin)"}.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      stepTo("Sporcu ekleniyor");
-      try {
-        const id = await createAthlete({ studentName: ac.name, studentBirthDate: ac.birth });
-        memoSet("athlete", ac.name);
-        await linkMember(dataUid || profile.uid, members, { id, name: ac.name, birth: ac.birth }).catch(() => {});
-        stepsEnd();
-        done(`Ekledim: ${ac.name}${ac.birth ? `, ${ac.birth.slice(0, 4)} doğumlu` : ""}. Sınıfını ve veli bilgisini sporcu kartından tamamlayabilirsin.`, { engine: "local", nav: "athletes" }, viaVoice);
-      } catch (e) {
-        stepsEnd(false);
-        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.", { fail: true, engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    if (!a) {
-      if (!ac.explicit) return false; // sporcu adı değil: başka iş (yapay zekaya)
-      reply(`${ac.name} adında sporcu bulamadım.`, { engine: "local" }, viaVoice);
-      return true;
-    }
-    if (ac.op === "archive" || ac.op === "unarchive") {
-      const on = ac.op === "archive";
-      if (isActive(a) !== on) {
-        reply(on ? `${a.studentName} zaten arşivde.` : `${a.studentName} arşivde değil.`, { engine: "local" }, viaVoice);
-        return true;
-      }
-      try {
-        await setArchived(a, on, { classes: [], coaches: [] });
-        done(on ? `${a.studentName} arşive alındı; yoklama ve aidat listesinde görünmez.` : `${a.studentName} arşivden çıkarıldı.`, { engine: "local", nav: "athletes" }, viaVoice);
-      } catch {
-        reply("Kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
-      }
-      return true;
-    }
-    askOk(`${a.studentName} sporculardan tamamen silinsin mi? Geçmişiyle birlikte silinir, geri alınamaz. İstersen arşive de alabilirim.`, "Sil", async (v) => {
-      setPhase("thinking");
-      try {
-        await deleteAthlete(a.id);
-        try {
-          await unlinkMembers(dataUid || profile.uid, members, a.id);
-          birthdays.filter((b) => b.athleteId === a.id).forEach((b) => deleteRecord("birthday", b.id));
-        } catch {}
-        done(`${a.studentName} silindi.`, { engine: "local", nav: "athletes" }, v);
-      } catch (e) {
-        reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu silme izni yok." : "Silemedim, tekrar dene.", { fail: true, engine: "local" }, v);
-      }
-    }, viaVoice, /^sil\p{L}*[\s.!]*$/iu);
-    return true;
+  function runMore(...a) {
+    return is_komutlar.runMore(ctx, ...a);
   }
 
-  async function runResults(ra, viaVoice) {
-    const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
-    const hit = matchPerson(ra.name, athletes.map((a) => a.studentName));
-    const a = hit ? athletes.find((x) => x.studentName === hit) : null;
-    if (!a) return false;
-    if (raceOrg) races.current = await loadRaces(raceOrg).catch(() => races.current);
-    const list = [...races.current].sort((x, y) => String(y.startDate || "").localeCompare(String(x.startDate || "")));
-    reply(resultsAnswer(list, a, ra.race), { engine: "local" }, viaVoice);
-    return true;
+  function runResults(...a) {
+    return is_yaris.runResults(ctx, ...a);
   }
 
-  async function runDebt({ dq, dc }, viaVoice) {
-    setPhase("thinking");
-    let items;
-    try {
-      items = await loadDebts(profile.orgId, { fresh: true });
-    } catch {
-      reply("Borçları okuyamadım.", { fail: true, engine: "local" }, viaVoice);
-      return;
-    }
-    if (dq) return reply(debtAnswer(items, dq.who), { engine: "local", nav: "accounts" }, viaVoice);
-    const nav = { engine: "local", nav: "accounts" };
-    if (dc.op === "add") {
-      if (!dc.who) return reply("Kime borç verdin? Adıyla ve tutarıyla söyler misin?", { fail: true, engine: "local" }, viaVoice);
-      if (!(dc.amount > 0)) return reply(`${dc.who} için ne kadar? Tutarıyla yeniden söyler misin?`, { fail: true, engine: "local" }, viaVoice);
-      // Kişiler, sporcular ve önceki borçlardaki adla yazılır ("Ali" → "Ali Kaya" tek eşleşirse)
-      const known = [...new Set([...items.map((d) => d.who), ...contacts.map((c) => c.name), ...athleteNames()].filter(Boolean))];
-      const who = matchPerson(dc.who, known) || dc.who;
-      const d = cleanDebt({ who, amount: dc.amount, kind: dc.kind, note: dc.note, date: todayStr(), at: new Date().toISOString() });
-      try {
-        await soon(updateDebts(profile.orgId, (list) => [d, ...list]), 2500, "Borç");
-        done(`Ekledim: ${who}, ${tl(d.amount)}, ${DEBT_KINDS[d.kind].toLocaleLowerCase("tr-TR")}. ${d.kind === "club" ? "Kasadan düştüm, Hesaplar › Kulüp'te" : "Hesaplar › Kişisel'de"} görünür.`, nav, viaVoice);
-      } catch {
-        reply("Borcu kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
-      }
-      return;
-    }
-    const { hit, list } = debtsOf(items, dc.who);
-    if (!hit) return reply(dc.who ? `${dc.who} adına açık borç bulamadım.` : "Kimin borcu? Adıyla söyler misin?", { fail: true, ...nav }, viaVoice);
-    if (dc.op === "pay") {
-      // Tutar yoksa kişinin bütün açık borçları kapanır; tutar varsa en eskisinden düşülür
-      let rest = dc.amount > 0 ? dc.amount : Infinity;
-      const ids = [...list].sort((a, b) => `${a.date}${a.at}`.localeCompare(`${b.date}${b.at}`)).map((d) => d.id);
-      try {
-        const next = await updateDebts(profile.orgId, (all) => {
-          const pay = new Map();
-          for (const id of ids) {
-            const d = all.find((x) => x.id === id);
-            if (!d || rest <= 0) continue;
-            const a = Math.min(leftOf(d), rest);
-            rest -= a;
-            pay.set(id, a);
-          }
-          return all.map((d) => (pay.has(d.id) ? payDebt(d, pay.get(d.id), todayStr()) : d));
-        });
-        const left = next.filter((d) => d.who === hit).reduce((t, d) => t + leftOf(d), 0);
-        done(`${hit}: ${dc.amount > 0 ? `${tl(dc.amount)} geri geldi yazdım.` : "borç ödendi yazdım."}${left > 0 ? ` Kalan ${tl(left)}.` : ""}`, nav, viaVoice);
-      } catch {
-        reply("Ödemeyi kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
-      }
-      return;
-    }
-    // Silme: onayla
-    const sum = list.reduce((t, d) => t + leftOf(d), 0);
-    askOk(`${hit} adına ${list.length > 1 ? `${list.length} borç` : "borç"} (${tl(sum)}) silinsin mi? Geri alınamaz.`, "Sil", async (v) => {
-      try {
-        const ids = new Set(list.map((d) => d.id));
-        await updateDebts(profile.orgId, (all) => all.filter((d) => !ids.has(d.id)));
-        done(`${hit} borcunu sildim.`, nav, v);
-      } catch {
-        reply("Silemedim, tekrar dene.", { fail: true, engine: "local" }, v);
-      }
-    }, viaVoice);
+  function runDebt(...a) {
+    return is_para.runDebt(ctx, ...a);
   }
 
-  async function runPayee(pq, viaVoice) {
-    setPhase("thinking");
-    try {
-      const { movements } = await loadMovementsRange(profile.uid, pq.ym, pq.ym);
-      const payee = payeeOf(profile);
-      reply(payeeAnswer(payeeMoves(withoutConv(movements, await loadConv(profile.uid)), payee), payee, pq.ym, todayStr().slice(0, 7)), { engine: "local", nav: "payments" }, viaVoice);
-    } catch {
-      reply("Banka hareketlerini okuyamadım.", { engine: "local" }, viaVoice);
-    }
+  function runPayee(...a) {
+    return is_para.runPayee(ctx, ...a);
   }
 
-  async function runShopRead(list, viaVoice) {
-    try {
-      const snap = await getDocs(query(collection(db, "orgs", profile.orgId, "shop"), where("list", "==", list)));
-      const open = snap.docs.map((d) => d.data()).filter((x) => !x.done).map((x) => x.text);
-      reply(open.length ? `${LISTS[list].name} listesinde ${open.length} şey var: ${open.slice(0, 12).join(", ")}${open.length > 12 ? " ve diğerleri" : ""}.` : `${LISTS[list].name} listesi boş.`, { engine: "local", nav: "shopping" }, viaVoice);
-    } catch {
-      reply("Listeyi okuyamadım.", { engine: "local" }, viaVoice);
-    }
+  function runShopRead(...a) {
+    return is_alisveris.runShopRead(ctx, ...a);
   }
 
-  // ---- Yoklama (asistandan) ----
-  // rest: cümledeki diğer işler ({ s, history }); yoklama kaydedilince (ya da onay kartında vazgeçilince) yapay zekaya gider
-  async function runAttendance(s, viaVoice, rest = null) {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    try {
-      const r = await parseAttendance(s, nameIdx, stepTo);
-      if (id !== runId.current) return;
-      const n = Object.keys(r.changes).length;
-      if (!n) {
-        stepsEnd(false);
-        // Cümle yoklama değil de başka işmiş (yoklama sayfasında "Ali'ye geldi mi diye sor"): yapay zekaya gider
-        if (rest) return void askAI(rest.s, rest.s, viaVoice, rest.history, false);
-        // Ad söylenmedi ya da bulunamadı: kısa soru, yanlış duyulmuş ada en yakın sporcular seçenek, sesle sorulduysa mikrofon açılır
-        const amb = sameIn(r.unknown, Object.values(r.names));
-        const picks = amb.picks.length ? amb.picks : closeNames(r.unknown.length ? r.unknown.join(" ") : s, Object.values(r.names));
-        waitFor("attName");
-        attAsk.current = { text: s };
-        if (amb.text) return reply(`${amb.text} Adını söyle ya da seç.`, { engine: "local", expect: true, picks, listen: true }, viaVoice);
-        return reply(`${r.unknown.length ? `${r.unknown.join(", ")} adında sporcu bulamadım. ` : ""}Kimi ekleyeyim? ${picks.length ? "Adını söyle ya da seç." : "Adını söyle."}`, { engine: "local", expect: true, picks, listen: true }, viaVoice);
-      }
-      // Bulunamayan ad varsa kaydetmeden sor
-      if (r.unknown.length) {
-        stepsEnd();
-        const amb = sameIn(r.unknown, Object.values(r.names));
-        const lost = r.unknown.filter((u) => !AMB.test(u));
-        return reply(`${amb.text ? `${amb.text} ` : ""}${lost.length ? `${lost.join(", ")} adını bulamadım. ` : ""}${attSummary(r)}. Bunları kaydedeyim mi?`, { pending: { att: r, rest }, att: { ...r, saved: false }, engine: "ai", expect: true }, viaVoice);
-      }
-      await saveAtt(r, viaVoice);
-      if (rest) restAfterAtt(rest, viaVoice, `Yoklama kaydedildi (${attSummary(r)}).`);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      const denied = e.code === "permission-denied";
-      reply(denied ? "Kulüp hesabına bağlı değilsin. Yoklama sayfasından bir kez bağlanman gerekiyor." : e.message || "Yoklama yapılamadı.", { fail: true, engine: "local", nav: "attendance" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runAttendance(...a) {
+    return is_yoklama.runAttendance(ctx, ...a);
   }
   // Yapay zekanın "Mustafa (2 kişi)" diye yazdığı belirsiz adlar: "2 Mustafa var: … Hangisi?" ve seçenekler (denetim B17)
   const AMB = /\(\d+\s*kişi\)/u;
-  function sameIn(unknown, names) {
-    const amb = (unknown || []).filter((u) => AMB.test(u)).map((u) => u.replace(AMB, "").trim());
-    const picks = amb.flatMap((n) => sameNamed(n, names));
-    const text = amb.map((n) => {
-      const many = sameNamed(n, names);
-      return many.length ? `${many.length} ${n} var: ${many.join(", ")}. Hangisi?` : `Birden çok ${n} var, hangisi?`;
-    }).join(" ");
-    return { text, picks: [...new Set(picks)].slice(0, 4) };
+  function sameIn(...a) {
+    return is_yaris.sameIn(ctx, ...a);
   }
-  // follow: yeni yarışın tarih/sporcu sorusuna cevap ({ id, n }): o yarışa yazılır
-  async function runRace(s, viaVoice, follow = null) {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    try {
-      const orgId = profile?.orgId || myUid;
-      const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0, noAsk: planOn.current && chain.current.length > 0 }, stepTo);
-      if (id !== runId.current) return;
-      // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
-      if (r.none) {
-        setPhase("idle");
-        setSteps([]);
-        setTurns((p) => (p.at(-1)?.role === "user" ? p.slice(0, -1) : p));
-        skipRace.current = true;
-        if (planOn.current) chainStep.current = true;
-        return run(s, viaVoice);
-      }
-      stepsEnd(!r.expect || r.follow);
-      if (!r.expect || r.follow) {
-        navigator.vibrate?.([10, 40, 10]);
-        toast("Yarış kaydedildi");
-      }
-      if (r.id) {
-        chainRace.current = r.id;
-        if (raceOrg) races.current = await loadRaces(raceOrg).catch(() => races.current);
-        memoSet("race", races.current.find((x) => x.id === r.id)?.name);
-      }
-      if (r.follow) waitFor("raceFollow"), (raceFollow.current = { id: r.id, n: follow ? follow.n + 1 : 0 });
-      reply(r.said, { engine: "ai", nav: curRace ? "" : "races", expect: !!r.expect }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      const denied = e.code === "permission-denied";
-      reply(denied ? "Kulüp hesabına bağlı değilsin. Sporcular sayfasından bir kez bağlanman gerekiyor." : e.message || "Yarış kaydedilemedi.", { fail: true, engine: "local", nav: "races" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runRace(...a) {
+    return is_yaris.runRace(ctx, ...a);
   }
-  // Instagram gönderisi: söylenen yarış bulunursa sporcularıyla bağlanır; gönderi ekranı açılınca yapay zeka yazar (POST_ASK_KEY)
-  async function startPost(s, viaVoice) {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    let r = null;
-    try {
-      if (racer) {
-        stepTo("Yarış aranıyor");
-        if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-        // Bu sohbette az önce oluşturulan / açılan yarış adla uyuşuyorsa önce o: aynı adlı eski yarış seçilmesin (denetim B7)
-        const near = chainRace.current && races.current.find((x) => x.id === chainRace.current);
-        const words = near ? near.name.split(/\s+/).map(plain).filter((w) => w.length > 2 && !/^(yaris|kupasi|kupa|ayak|ligi)$/.test(w)) : [];
-        r = (near && words.length && words.every((w) => plain(s).includes(w)) ? near : null) || raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race || null;
-        if (r) {
-          stepTo("Sporcular alınıyor");
-          const data = await loadAthletes().catch(() => null);
-          if (data) r = raceWithAthletes(r, data);
-        }
-      }
-      if (id !== runId.current) return;
-      stepsEnd();
-      try {
-        if (r) sessionStorage.setItem(RACE_KEY, JSON.stringify(r));
-        sessionStorage.setItem(POST_ASK_KEY, s);
-      } catch {}
-      record(s, "nav:posts", "local");
-      memoSet("post", r ? `${r.name} gönderisi` : "yeni gönderi");
-      // Önce cevap (görev listesinde ✓ ve "Başka bir isteğin var mı?"), sayfa kısa süre sonra açılır: sayfa geçişi
-      // cevabın ve işaretin önüne geçmesin (Seyhun: "en son gönderiyi oluşturdu ama tik işareti çıkmadı", 2026-10-09)
-      setTimeout(() => router.push("/posts/new"), 400);
-      leave(r ? `${r.name} için gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.` : "Gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.", viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function startPost(...a) {
+    return is_yaris.startPost(ctx, ...a);
   }
-  // Açık gönderi ekranındaki değişiklik (PostEditor setPostHandler)
-  async function runPost(s, viaVoice) {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    const h = postHandler();
-    stepTo(wantsPostImage(s) ? "Görsel çiziliyor" : "Gönderi yazılıyor");
-    try {
-      const r = await h.ask(s);
-      if (id !== runId.current) return;
-      stepsEnd();
-      reply(r.say, { engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(e?.message || "Gönderiyi değiştiremedim.", { fail: true, engine: "local" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runPost(...a) {
+    return is_yaris.runPost(ctx, ...a);
   }
-  // Antrenman günlüğü: anlatılan → alanlar; tarih yoksa sorulur (bir kez), varsa günün antrenmanına yazılır
-  async function runLog(text, viaVoice, { date = "", time = "", planId = "", retry = false } = {}) {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    stepTo(taskOf("log").work);
-    try {
-      const r = await askLog({ text, date });
-      if (id !== runId.current) return;
-      if (!r.log) {
-        setSteps([]);
-        reply("Günlüğe yazılacak bilgi duymadım. Rüzgârı, çalışılanları ya da nasıl geçtiğini söyler misin?", { engine: "ai", expect: true }, viaVoice);
-        waitFor("log");
-        logFlow.current = { collect: true, text, date, time, planId };
-        return;
-      }
-      if (!r.date) {
-        setSteps([]);
-        reply(retry ? "Günü anlayamadım. “Bugün”, “dün” ya da “3 Ekim” gibi söyler misin?" : "Hangi günün antrenmanı? Bugün, dün ya da gün adını söyle.", { engine: "ai", expect: true }, viaVoice);
-        waitFor("log");
-        logFlow.current = { ask: true, text };
-        return;
-      }
-      // Katılanlar ↔ yoklama: söylenenler o gün "geldi" olur, yoklamada gelenler günlüğe girer (sporcu yetkisi olanda)
-      let att = null;
-      if (racer && myUid) {
-        stepTo("Yoklamayla eşleştiriliyor");
-        att = await syncAttendance(r.log, r.date, { orgId: myUid, members });
-        if (id !== runId.current) return;
-        r.log = att.log;
-      }
-      stepTo("Günlüğe yazılıyor");
-      const sv = await saveLog({ plans, updateRecord, saveDrafts, isLocked }, { ...r, time: r.time || time, planId: r.date === date ? planId : "" }, by, viaVoice || convo.current ? "voice" : "manual");
-      if (id !== runId.current) return;
-      if (sv.error) {
-        stepsEnd(false);
-        return reply(sv.error, { engine: "local" }, viaVoice);
-      }
-      stepsEnd();
-      navigator.vibrate?.([10, 40, 10]);
-      toast("Günlük kaydedildi");
-      const more = missingOf(sv.log).length > 0;
-      const attSay = att ? attLine(att) : "";
-      reply(`${logReply(sv.log, r.date, todayStr(), sv.fresh)}${attSay ? ` ${attSay}` : ""}`, { show: sv.id ? [{ kind: "plan", id: sv.id }] : [], nav: "training", engine: "ai", expect: more }, viaVoice);
-      if (more) logFlow.current = { date: r.date, time: r.time || time, planId: sv.id };
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(`${e.message || "Günlük yazılamadı."} Antrenman günlüğü sayfasından elle de yazabilirsin.`, { fail: true, engine: "local", nav: "training" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runLog(...a) {
+    return is_gunluk.runLog(ctx, ...a);
   }
-  // Etkinlik planı: yapay zeka yer/zaman eksikse soru döner (general false), yoksa plan; plan Etkinlikler'e kaydedilir
-  async function runEvent(text, viaVoice, general, lead = "") {
-    const id = ++runId.current;
-    setPhase("thinking");
-    setSteps([]);
-    stepTo(general ? taskOf("event").work : "Etkinlik inceleniyor");
-    try {
-      const p = await askPlan({ text, general });
-      if (id !== runId.current) return;
-      if (p.ask?.length) {
-        setSteps([]);
-        waitFor("event");
-        eventFlow.current = { text, turns: null };
-        return reply(`${p.question} Bilmiyorsan “genel plan yap” de.`, { event: { asking: true, kind: p.event?.kind || kindFromText(text), text }, engine: "ai", expect: true }, viaVoice);
-      }
-      stepTo("Etkinliklere kaydediliyor");
-      const ev = p.event;
-      const nid = await saveEvent(profile?.orgId || myUid, profile?.uid || myUid, ev);
-      stepsEnd();
-      navigator.vibrate?.([10, 40, 10]);
-      toast("Etkinlik kaydedildi");
-      const counts = countsText(ev);
-      const first = (ev.summary.match(/^[^.!?]+[.!?]/) || [""])[0];
-      reply(`${lead}${ev.title} planını hazırladım ve Etkinlikler'e kaydettim${counts ? `: ${counts}` : ""}. ${first}`.trim(), { event: { ...ev, id: nid, saved: true }, engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(`${e.message || "Plan hazırlanamadı."} Etkinlikler sayfasından elle de ekleyebilirsin.`, { fail: true, engine: "local", nav: "events" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runEvent(...a) {
+    return is_etkinlik.runEvent(ctx, ...a);
   }
-  // Envanter: hedef envanter (cümlede adı geçen, açık sayfadaki, son kullanılan, yoksa kulüp) seçilir, yapay zeka işlemleri verir
-  async function runInventory(s, viaVoice) {
-    const id = ++runId.current;
-    const org = profile?.orgId || myUid;
-    setPhase("thinking");
-    setSteps([]);
-    stepTo(inventoryWork(s));
-    try {
-      const list = await loadInventories(org);
-      let inv = pickInv(s, list, { here: invHere, last: lastInv() });
-      if (!inv) throw new Error("Envanter bulunamadı.");
-      const r = await askInventory(s, inv, list.filter((x) => x.id !== inv.id).map((x) => x.name));
-      if (id !== runId.current) return;
-      if (r.newInv) {
-        stepTo("Yeni envanter açılıyor");
-        inv = await createInventory(org, r.newInv.name, r.newInv.kind, list.length + 1);
-      }
-      setLastInv(inv.id);
-      const plan = applyOps(inv, r.ops, { by: profile?.name || "" });
-      if (plan.changed) {
-        stepTo("Envantere kaydediliyor");
-        inv = await changeInventory(org, inv.id, (cur) => applyOps(cur, r.ops, { by: profile?.name || "" }).inv);
-      }
-      if (id !== runId.current) return;
-      stepsEnd();
-      const card = { id: inv.id, name: inv.name, kind: inv.kind, sub: statsText(inv) };
-      const said = [r.newInv ? `Yeni envanter açtım: ${inv.name}.` : "", ...plan.lines].filter(Boolean).join(" ");
-      if (plan.changed) {
-        navigator.vibrate?.([10, 40, 10]);
-        toast("Envanter kaydedildi");
-      }
-      if (plan.deletes.length) {
-        waitFor("inv");
-        invFlow.current = { org, id: inv.id, name: inv.name, kind: inv.kind, ask: plan.deletes };
-        const q = `${plan.deletes.map((x) => `“${itemLabel(x)}”`).join(", ")} envanterden silinsin mi?`;
-        return reply(`${said} ${q}`.trim(), { inv: { ...card, ask: plan.deletes }, engine: "ai", expect: true }, viaVoice);
-      }
-      if (!said) return reply(r.message || "Envanterde bir değişiklik yapmadım. Ne eklememi ya da çıkarmamı istersin?", { inv: card, engine: "ai", expect: !r.message }, viaVoice);
-      done(`${said}${r.message && /\?\s*$/.test(r.message) ? ` ${r.message}` : ""}`, { inv: card, engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(`${e.message || "Envanter işlenemedi."} Envanter sayfasından elle de ekleyebilirsin.`, { fail: true, engine: "local", nav: "inventory" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runInventory(...a) {
+    return is_envanter.runInventory(ctx, ...a);
   }
-  async function invDelete(f, viaVoice = false) {
-    invFlow.current = null;
-    try {
-      const inv = await changeInventory(f.org, f.id, (cur) => f.ask.reduce((v, x) => dropItem(v, x.id, { by: profile?.name || "" }), cur));
-      toast("Envanterden silindi");
-      f.ask.flatMap((x) => x.files || []).forEach((m) => dropInvFile(f.org, m));
-      done(`Sildim: ${f.ask.map((x) => x.name).join(", ")}.`, { inv: { id: f.id, name: inv.name, kind: inv.kind, sub: statsText(inv) }, engine: "local" }, viaVoice);
-    } catch {
-      toast("Silinemedi");
-      reply("Silemedim, bağlantını kontrol edip tekrar dene.", { engine: "local" }, viaVoice);
-    }
+  function invDelete(...a) {
+    return is_envanter.invDelete(ctx, ...a);
   }
-  async function eventDelete(e) {
-    try {
-      await deleteEvent(profile?.orgId || myUid, e.id);
-      toast("Etkinlik silindi");
-      reply(`Sildim, “${e.title}” artık Etkinlikler'de yok.`, { event: { ...e, deleted: true }, engine: "local" });
-    } catch {
-      toast("Silinemedi");
-    }
+  function eventDelete(...a) {
+    return is_etkinlik.eventDelete(ctx, ...a);
   }
   // Soru sorulduktan sonra mikrofon açılıp hiç konuşulmadan kapandıysa: genel plan
   useEffect(() => {
@@ -2937,197 +1479,27 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listening, transcribing, busy, open]);
 
-  // Yoklamadan sonra cümledeki diğer işler: yoklama cevabı okunup bitince yapay zekaya (görev listesi) gider
-  // Fitness (yalnız ana hesap). Yerelde: "programı planlara ekle / takvimden kaldır", "bugünkü antrenmanı yaptım / atladım",
-  // "bu hafta kaç antrenman yaptım". Diğerleri /api/fitness: program hazırlama ya da değiştirme Fitness sayfasında önizlemede
-  // açılır (kaydetmeyi kullanıcı seçer); yapılan antrenman (set, tekrar, kilo) o günün fitness planına yazılır, plan yoksa açılır.
-  async function runFitness(s, viaVoice, focusFit) {
-    const id = ++runId.current;
-    const org = profile?.orgId || myUid;
-    const uid = profile?.uid || myUid;
-    const today = todayStr();
-    const by = { name: profile?.name || "" };
-    const loc = fitLocal(s);
-    setPhase("thinking");
-    setSteps([]);
-    try {
-      const prog = fitActive(await loadFitPrograms(org).catch(() => []));
-      if (loc?.op === "stats") {
-        const w = fitWeek(plans, today);
-        const m = fitMonth(plans, today.slice(0, 7), today);
-        const msg = w.planned || m.done
-          ? `Bu hafta ${w.planned} antrenmandan ${w.done} tanesini yaptın${w.left ? `, ${w.left} tane kaldı` : ""}${w.missed ? `, ${w.missed} tanesini kaçırdın` : ""}.${w.minutes ? ` Toplam ${w.minutes} dakika.` : ""} Bu ay ${m.done} antrenman${w.streak > 1 ? `, ${w.streak} haftadır aralıksız` : ""}.`
-          : "Henüz fitness antrenmanın yok. “Pazartesi, çarşamba, cuma sabah 7'de program hazırla” diyebilirsin.";
-        return reply(msg, { engine: "local" }, viaVoice);
-      }
-      if (loc?.op === "plans" || loc?.op === "unplan") {
-        if (!prog) return reply("Kayıtlı bir fitness programın yok. Önce program hazırlayalım: günlerini ve saatini söyle.", { engine: "local", expect: true }, viaVoice);
-        stepTo(loc.op === "plans" ? "Antrenmanlar takvime yazılıyor" : "Antrenmanlar takvimden kaldırılıyor");
-        if (loc.op === "plans") {
-          const r = await fitSyncPlans(org, uid, prog, plans, by);
-          stepsEnd(true);
-          return reply(`Ekledim: ${r.added} antrenman takvimde (${fitProgLine(prog)}).`, { engine: "local" }, viaVoice);
-        }
-        const n = await fitRemovePlans(org, prog, plans);
-        stepsEnd(true);
-        return reply(`Takvimden ${n} antrenmanı kaldırdım. Yapılanlar duruyor.`, { engine: "local" }, viaVoice);
-      }
-      if (loc?.op === "done" || loc?.op === "skip") {
-        const p = focusFit || fitPlanOf(plans, today);
-        if (!p) return reply("Bugün için fitness antrenmanı bulamadım. Ne yaptığını söylersen yazarım, ör. “30 dakika koştum”.", { engine: "local", expect: true }, viaVoice);
-        stepTo("Antrenman yazılıyor");
-        const fit = applyLog(p.fit || { items: [] }, { st: loc.op });
-        await updateRecord("plan", p.id, { fit }, by);
-        stepsEnd(true);
-        return reply(loc.op === "done" ? `Yazdım: ${p.fit?.name || p.title} yapıldı.` : `Yazdım: ${p.fit?.name || p.title} atlandı.`, { engine: "local", show: [{ kind: "plan", id: p.id }] }, viaVoice);
-      }
-      stepTo("Fitness isteğin hazırlanıyor");
-      const r = await askFitness({ text: s, profile: profile?.fit || {}, program: prog || null, recent: fitRecent(plans, today) });
-      if (id !== runId.current) return;
-      // Söylenen kişisel bilgi (kilo, hedef…) profile yazılır
-      const pf = Object.fromEntries(Object.entries(r.profile || {}).filter(([, v]) => (Array.isArray(v) ? v.length : !!v)));
-      if (Object.keys(pf).length) await saveFitProfile(uid, { ...(profile?.fit || {}), ...pf }).catch(() => {});
-      if (r.op === "program" && r.program) {
-        // "yeni program hazırla" yeni programdır; diğer cümleler açık programı değiştirir
-        const fresh = !prog || /(yeni|baştan|sıfırdan)/iu.test(s);
-        const next = fresh ? r.program : { ...prog, ...r.program, id: prog.id, plansAt: prog.plansAt, createdAt: prog.createdAt };
-        stepsEnd(true);
-        showFitProgram(next);
-        if (path !== "/fitness") router.push("/fitness");
-        return reply(`${(r.message || "Programı hazırladım.").trim()} Önizlemeyi açtım; kontrol edip ${next.plansAt ? "kaydet, takvim de güncellenir" : "“Kaydet ve planlara ekle”ye bas"}.`, { engine: "ai" }, viaVoice);
-      }
-      if (r.op === "log" && r.log) {
-        const date = r.log.date || today;
-        const p = focusFit && focusFit.date === date ? focusFit : plans.find((x) => x.fit && x.status !== "cancelled" && x.date === date);
-        stepTo("Antrenman yazılıyor");
-        let fit;
-        let pid;
-        if (p) {
-          fit = applyLog(p.fit, r.log);
-          pid = p.id;
-          await updateRecord("plan", p.id, { fit }, by);
-        } else {
-          fit = applyLog({ name: "Fitness", items: [] }, r.log);
-          pid = await fitAddSession(org, uid, { date, title: "Fitness", fit }, by);
-        }
-        stepsEnd(true);
-        const line = fitResLine(fit);
-        return reply(r.log.st === "skip" ? "Yazdım: antrenman atlandı." : `Yazdım${line ? `: ${line}` : ""}.`, { engine: "ai", show: pid ? [{ kind: "plan", id: pid }] : undefined }, viaVoice);
-      }
-      stepsEnd(true);
-      return reply(r.message || (Object.keys(pf).length ? "Profiline yazdım." : "Anlayamadım, tekrar söyler misin?"), { engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(`${e.message || "Fitness isteği işlenemedi."} Fitness sayfasından elle de yapabilirsin.`, { fail: true, engine: "ai" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runFitness(...a) {
+    return is_fitness.runFitness(ctx, ...a);
   }
 
-  // Beslenme (Fitness › Beslenme): su, kilo ve gün özeti yerelde; yemek yapay zekayla (/api/food) okunup hemen yazılır,
-  // düzeltme Fitness › Beslenme'de yemeğe dokunarak
-  async function runFood(s, viaVoice) {
-    const id = ++runId.current;
-    const org = profile?.orgId || myUid;
-    const uid = profile?.uid || myUid;
-    const today = todayStr();
-    const loc = foodLocal(s);
-    const tg = () => foodTargets(profile?.fit || {}, 3);
-    setPhase("thinking");
-    setSteps([]);
-    try {
-      if (loc?.op === "weight") {
-        const list = await saveFoodWeight(uid, profile?.fitW || [], loc.kg);
-        const prev = list.length > 1 ? list[list.length - 2].kg : 0;
-        const d = prev ? Math.round((loc.kg - prev) * 10) / 10 : 0;
-        return reply(`Yazdım: ${String(loc.kg).replace(".", ",")} kg.${d ? ` Öncekine göre ${d > 0 ? "+" : ""}${String(d).replace(".", ",")} kg.` : ""}`, { engine: "local" }, viaVoice);
-      }
-      if (loc?.op === "stats") {
-        const day = foodDayOf(await loadFoodMonth(org, uid, foodMonth(today)), today);
-        return reply(foodDayLine(day, tg()), { engine: "local" }, viaVoice);
-      }
-      if (loc?.op === "water") {
-        const day = await foodAddWater(org, uid, today, loc.n);
-        const goal = tg()?.water;
-        return reply(`Yazdım: ${loc.n} bardak su. Bugün ${day.water}${goal ? `/${goal}` : ""} bardak.`, { engine: "local" }, viaVoice);
-      }
-      stepTo("Yemekler okunuyor");
-      const r = await askFood({ text: s });
-      if (id !== runId.current) return;
-      if (!r.isFood) {
-        stepsEnd(false);
-        return reply("Ne yediğini anlayamadım. Örneğin “öğlen tavuk pilav ve ayran içtim” de.", { engine: "ai", expect: true, fail: true }, viaVoice);
-      }
-      const date = r.date || today;
-      let day = r.items.length ? await foodAddMeals(org, uid, date, r.items) : null;
-      if (r.water) day = await foodAddWater(org, uid, date, r.water);
-      stepsEnd(true);
-      const what = r.items.map((m) => `${m.name} (${m.kcal} kcal)`).join(", ");
-      const t = day ? foodTotals(day.meals).kcal : 0;
-      const goal = tg()?.kcal;
-      const sum = date === today && t ? ` Bugün ${t}${goal ? ` / ${goal}` : ""} kalori.` : "";
-      return reply(`Yazdım: ${[what, r.water ? `${r.water} bardak su` : ""].filter(Boolean).join(", ")}.${sum}`, { engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(`${e.message || "Yazamadım."} Fitness › Beslenme'den elle ekleyebilirsin.`, { fail: true, engine: "ai" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runFood(...a) {
+    return is_fitness.runFood(ctx, ...a);
   }
 
-  async function runSchedule(s, viaVoice) {
-    const id = ++runId.current;
-    ctrl.current?.abort();
-    setPhase("thinking");
-    setSteps([]);
-    stepTo("Ders programı hazırlanıyor");
-    try {
-      const current = lessons.filter((l) => l.createdByUid === dataUid).map(({ title, day, start, end, place, teacher }) => ({ title, day, start, end, place, teacher }));
-      const r = await askSchedule({ text: s, current });
-      if (id !== runId.current) return;
-      stepsEnd(true);
-      if (!r.lessons?.length) return reply(r.message || "Ders bulamadım. Gün, saat ve dersi söyler misin?", { engine: "ai", expect: true }, viaVoice);
-      showSchedule(r);
-      if (path !== "/schedule") router.push("/schedule");
-      reply(`${(r.message || `${r.lessons.length} ders hazırladım.`).trim()} Önizlemeyi açtım, kontrol edip kaydet.`, { engine: "ai" }, viaVoice);
-    } catch (e) {
-      if (id !== runId.current) return;
-      stepsEnd(false);
-      reply(e.message || "Ders programı hazırlanamadı.", { fail: true, engine: "ai" }, viaVoice);
-    } finally {
-      if (id === runId.current) setPhase("idle");
-    }
+  function runSchedule(...a) {
+    return is_ders.runSchedule(ctx, ...a);
   }
 
-  async function restAfterAtt(rest, viaVoice, done) {
-    const id = runId.current;
-    for (let i = 0; i < 80 && (sayQ.current.busy || speakingRef.current); i++) await new Promise((ok) => setTimeout(ok, 150)); // en çok 12 sn
-    if (id !== runId.current) return; // bu arada başka bir şey söylendi
-    askAI(rest.s, `${rest.s}\n(${done} Yoklamayı yeniden yapma; cümledeki diğer işleri yap.)`, viaVoice, rest.history, false);
+  function restAfterAtt(...a) {
+    return is_yoklama.restAfterAtt(ctx, ...a);
   }
 
-  async function saveAtt(r, viaVoice) {
-    stepTo("Yoklama kaydediliyor");
-    await soon(applyAttendance(myUid, members, r.date, r.changes), 4000, "Yoklama");
-    stepsEnd();
-    navigator.vibrate?.([10, 40, 10]);
-    toast("Yoklama kaydedildi");
-    reply(`Kaydettim. ${attSummary(r)}.`, { att: { ...r, saved: true }, engine: "ai" }, viaVoice);
+  function saveAtt(...a) {
+    return is_yoklama.saveAtt(ctx, ...a);
   }
-  async function undoAtt(r) {
-    setSteps([]);
-    stepTo("Yoklama geri alınıyor");
-    try {
-      await applyAttendance(myUid, members, r.date, r.prev);
-      stepsEnd();
-      toast("Geri alındı");
-      reply("Geri aldım; yoklama önceki haline döndü.", { engine: "local" });
-    } catch (e) {
-      stepsEnd(false);
-      toast(e.message || "Geri alınamadı");
-    }
+  function undoAtt(...a) {
+    return is_yoklama.undoAtt(ctx, ...a);
   }
 
   // Bekleyen isteği bırak, metni geri getir
@@ -3678,5 +2050,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   );
 
   // Tek görünüm: konuşma alttaki yeşil kubbenin (TabBar › Dome) içindeki yuvaya çizilir; ayrı pencere yok
+  // Taşınan işler (isler/) bileşenin durumuna ve yardımcılarına bu nesneyle ulaşır
+  const ctx = { AMB, addReply, allMembers, askAI, askOk, athAsk, attAsk, birthdays, by, callBusy, cards, chain, chainRace, chainStep, chatSend, contacts, convo, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, eventFlow, extra, failNow, find, finish, firstName, focusRef, goRace, groupIds, heard, inflight, invAsk, invFlow, invHere, isLocked, isStaff, leave, lessons, listenWhileThinking, logFlow, markPaid, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextStep, openAdd, owner, park, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planOn, plans, profile, queue, raceFollow, raceOrg, racer, races, ready, receipts, reply, resolveTo, restAfterAtt, router, run, runExtra, runId, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sentOk, setCards, setDrafts, setPhase, setSaved, setSteps, setTurns, skipRace, sp, speakingRef, staff, staffNames, startCall, startDrafts, startPerson, stepPerson, stepTo, stepsEnd, tasks, toast, tts, turns, updateRecord, waPeople, waitFor, withAssignees };
   return slot ? createPortal(<div className="pb-1 text-[1rem]">{convoView(true)}</div>, slot) : null;
 }
