@@ -1658,3 +1658,19 @@ group("Kulüpten haberler")([
   ["kayıt alanları", F("kaynak afis-asistani, sourceId gönderi, bozuk tarih boş", () => { const f = NM.newsFields({ title: "A #b", body: "x", date: "12.10.2026", published: 1 }, "p1"); return f.source === "afis-asistani" && f.sourceId === "p1" && f.date === "" && f.published === true && f.title === "A"; })],
   ["gönderide bağlantı", F("newsId saklanır", async () => { const { cleanPost } = await import("@/features/posts/postModel"); return cleanPost({ newsId: "n1" }).newsId === "n1" && cleanPost({}).newsId === ""; })],
 ]);
+
+// Yarış sonucu gönderisi: görselde yalnız fotoğraf, açıklama Seyhun'un kalıbıyla (postModel.js resultCaption)
+const TEOS = { name: "9 Eylül Kurtuluş Kupası Yelken Yarışları", dates: "11-13 Eylül 2026", host: "Teos Yat ve Yelken Kulübü", classes: "Optimist, Optimist Junior, ILCA, RS Feva", athletes: [{ name: "Mete Ok", cls: "ILCA 4", r: { cls: "ILCA 4", cat: "Junior", place: 1, n: 20, cp: 1, cn: 8 } }] };
+const TEOS_TEXT = "TEBRİKLER METE! 🏆\n\n11–13 Eylül tarihlerinde, Teos Yat ve Yelken Kulübü ev sahipliğinde düzenlenen 9 Eylül Kurtuluş Kupası Yelken Yarışları’nda Optimist, Optimist Junior, ILCA ve RS Feva sınıflarında sporcular mücadele etti.\n\nKulübümüz sporcusu Mete Ok, ILCA 4 ve ILCA 4 Junior kategorilerinde 1. olarak büyük bir başarıya imza attı. 🥇\n\nTebrikler Mete! Başarılarının devamını diliyoruz. ⛵💙";
+group("Instagram sonuç (yalnız fotoğraf)")([
+  ["Seyhun'un örneği", F("birebir aynı açıklama", () => PM.resultCaption(TEOS) === TEOS_TEXT)],
+  ["bulunma eki", F("Yarışları’nda, Kupası’nda, Regatta’da, Cup’ta, Trofe’de", () => PM.locative("Ege Kupası") === "Ege Kupası’nda" && PM.locative("Bodrum Regatta") === "Bodrum Regatta’da" && PM.locative("Spring Cup") === "Spring Cup’ta" && PM.locative("Foça Trofe") === "Foça Trofe’de")],
+  ["sırası yok", F("başarıyla temsil etti", () => PM.resultSentence({ name: "Ayşe Su", cls: "Optimist" }) === "Kulübümüz sporcusu Ayşe Su, Optimist sınıfında kulübümüzü başarıyla temsil etti. 👏")],
+  ["ilk üç dışı", F("sınıfında 12. olarak yarışı tamamladı", () => PM.resultSentence({ name: "Ali Kaya", r: { cls: "Optimist", place: 12 } }) === "Kulübümüz sporcusu Ali Kaya, Optimist sınıfında 12. olarak yarışı tamamladı. 👏")],
+  ["çok sporcu", F("TEBRİKLER SPORCULARIMIZ, her sporcu bir paragraf", () => { const t = PM.resultCaption({ ...TEOS, athletes: [...TEOS.athletes, { name: "Ali Kaya" }, { name: "Ayşe Su" }] }); return t.startsWith("TEBRİKLER SPORCULARIMIZ! 🏆") && t.split("\n\n").length === 6; })],
+  ["iki sporcu", F("TEBRİKLER METE VE ALİ", () => PM.resultCaption({ ...TEOS, athletes: [...TEOS.athletes, { name: "Ali Kaya" }] }).startsWith("TEBRİKLER METE VE ALİ! 🏆"))],
+  ["yarıştan ilk hali", F("bitmiş yarış: sonuç, yalnız fotoğraf, ev sahibi talimattan", () => { const p = PM.postFromRace({ name: "Ege Kupası", startDate: "2026-09-11", endDate: "2026-09-13", notice: { organizer: "Teos Yat ve Yelken Kulübü" } }, "2026-10-12"); return p.kind === "sonuc" && p.photoOnly === true && p.race.host === "Teos Yat ve Yelken Kulübü"; })],
+  ["tür değişince", F("sonuca geçince yalnız fotoğraf, duyuruya dönünce yazılı", () => { const a = PM.cleanPost({ kind: "duyuru", race: TEOS }); const b = PM.reauto(a, { ...a, kind: "sonuc" }); const c = PM.reauto(b, { ...b, kind: "duyuru" }); return b.photoOnly === true && c.photoOnly === false; })],
+  ["sıra saklanır", F("sporcunun derecesi gönderide kalır", () => PM.cleanPost({ kind: "sonuc", race: TEOS }).race.athletes[0].r.cp === 1)],
+  ["haber başlığı", F("ilk satır başlık, gövdeden çıkar", () => { const d = NM.newsDraft({ photoOnly: true, caption: TEOS_TEXT }, "2026-10-12"); return d.title === "Tebrikler Mete!" && d.body.startsWith("11–13 Eylül") && !d.body.includes("🏆"); })],
+]);

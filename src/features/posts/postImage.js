@@ -928,6 +928,18 @@ export async function drawPost(canvas, post, photo) {
   const deep = post.theme === "kum" ? "#1f5a4b" : c2;
   // Kum temasında vurgu koyu yeşil; koyu şeritte görünsün diye bantta kum sarısı
   const bandAcc = post.theme === "kum" ? "#e9c46a" : accent;
+  // Yalnız fotoğraf (yarış sonucu): görselde yazı ve logo yok; fotoğraf yoksa sade renk geçişi
+  if (post.photoOnly) {
+    if (photo) cover(ctx, photo, W, H, post);
+    else {
+      const g = ctx.createLinearGradient(0, 0, W * 0.45, H);
+      g.addColorStop(0, c1);
+      g.addColorStop(1, c2);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+    return canvas;
+  }
   // Modern tasarım türe göre çizilir (postModern.js); özel günde Afiş
   if (style === "modern" && (await drawModern(KIT, ctx, post, photo, W, H))) return canvas;
   if (style === "afis" || style === "modern") {

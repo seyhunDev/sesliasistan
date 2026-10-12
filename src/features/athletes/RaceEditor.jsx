@@ -373,7 +373,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     const cls = Object.fromEntries(classes.map((c) => [c.id, c.name]));
     const list = withResults(chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" })), chosen.map((a) => a.id), r.results);
     try {
-      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [] } }));
+      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [], organizer: r.notice?.organizer || "" } }));
     } catch {}
   };
   const toPlan = async () => {
