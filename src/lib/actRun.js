@@ -78,3 +78,90 @@ export function raceFromArgs(act, args, { athletes, races }) {
   }
   return null;
 }
+
+// ---- Kalan numaralı işler (4-15): görev satırının alanlarından hazır komut. Akış cümleyi yeniden okumaz;
+// komut nesnesi akışın kendi okuyucusunun verdiği biçimde (incomeCommand, callCommand, athleteCommand, duesCommand,
+// invoiceCommand, shopCommand). Metin işleri (gönderi, günlük, fitness) kalıp cümleyle kendi yoluna gider, yalnız yol önde
+// (başka işe kaymaz). Sayfa açma (9) zaten yapay zekasız: kalıp cümle sayfa listesinden açılır.
+const MONTHS = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"];
+const CATS = [
+  [/aidat/u, "Aidat"],
+  [/bağış/u, "Bağış"],
+  [/kano/u, "Kano eğitimi"],
+  [/\bsup\b/u, "SUP eğitimi"],
+  [/yetişkin/u, "Yetişkin eğitimi"],
+  [/amatör|denizcilik/u, "Amatör denizcilik eğitimi"],
+];
+const low = (v) => actText(v, 60).toLocaleLowerCase("tr-TR");
+const tl = (v) => {
+  const n = Number(String(v ?? "").replace(/[^\d.,]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+};
+// Ay adı → YYYY-AA (incomeCommand ile aynı: bu aydan sonraki ay geçen yılındır); boş → bu ay; okunamazsa ""
+export function ymFrom(month, today) {
+  const y = Number(String(today).slice(0, 4));
+  const cur = Number(String(today).slice(5, 7));
+  const m = low(month);
+  if (!m) return `${y}-${String(cur).padStart(2, "0")}`;
+  const i = MONTHS.indexOf(m.split(" ")[0]);
+  if (i < 0) return "";
+  return `${i + 1 > cur + 1 ? y - 1 : y}-${String(i + 1).padStart(2, "0")}`;
+}
+
+// { act, args } → yol adayı (assistRoute.js biçiminde) ya da null (alan eksik: eski yol)
+export function routeFromAct(a, { today }) {
+  if (!a) return null;
+  const x = a.args || {};
+  switch (Number(a.act)) {
+    case 4: {
+      const who = actText(x.who, 60);
+      const ym = ymFrom(x.month, today);
+      return who && ym ? { id: "more", pre: { kind: "income", cmd: { cat: "Aidat", amount: tl(x.amount), who, ym, note: "" } } } : null;
+    }
+    case 5: {
+      const amount = tl(x.amount);
+      if (!amount) return null;
+      const c = low(x.cat);
+      const cat = (CATS.find(([re]) => re.test(c)) || [null, "Diğer"])[1];
+      const note = cat === "Diğer" && c && c !== "gelir" ? actText(x.cat, 60) : "";
+      return { id: "more", pre: { kind: "income", cmd: { cat, amount, who: actText(x.who, 60), ym: ymFrom("", today), note } } };
+    }
+    case 7: {
+      const items = actList(x.items);
+      return items.length ? { id: "shopping", sc: { op: "add", what: items.join(", ") } } : null;
+    }
+    case 8: {
+      const who = low(x.who);
+      return who ? { id: "more", pre: { kind: "call", cmd: { who, hotel: /otel/u.test(who) } } } : null;
+    }
+    case 10: {
+      const t = low(x.seller);
+      return t ? { id: "invoice", ic: { op: "paid", t, cash: x.cash === true || x.cash === "true" }, asked: false } : null;
+    }
+    case 11: {
+      const name = actText(x.name, 60);
+      const y = actText(x.year, 4);
+      return name ? { id: "more", pre: { kind: "athlete", cmd: { op: "add", name, birth: /^\d{4}$/.test(y) ? `${y}-01-01` : "", explicit: true } } } : null;
+    }
+    case 14:
+      return { id: "more", pre: { kind: "dues", cmd: { op: "remind" } } };
+    case 15:
+      return { id: "more", pre: { kind: "dues", cmd: { op: "ask", paid: false } } };
+    case 6:
+      return { id: "post" };
+    case 12:
+      return { id: "log" };
+    case 13:
+      return { id: "fitness" };
+    default:
+      return null;
+  }
+}
+
+// Yol listesinde aynı işin adayı varsa (izin ve koşullar orada denetlendi) öne alınır ve hazır komutla birleşir;
+// yoksa liste olduğu gibi kalır (bu kişi bu işi yapamaz ya da kalıp tanınmadı: eski yol)
+export function withAct(routes, direct) {
+  const i = direct ? routes.findIndex((r) => r.id === direct.id) : -1;
+  if (i < 0) return routes;
+  return [{ ...routes[i], ...direct }, ...routes.filter((_, k) => k !== i)];
+}

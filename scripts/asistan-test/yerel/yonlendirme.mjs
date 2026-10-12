@@ -544,6 +544,43 @@ group("Sohbetteki yarış")([
   ]);
 }
 
+// Kalan numaralı işler (4-15): yol önceden belli, komut alanlardan hazır (lib/actRun.js routeFromAct, withAct).
+// Uygulamanın yol listesinde aynı işin adayı (izin denetlenmiş) öne alınır ve hazır komutla birleşir
+{
+  const { routeFromAct, withAct, ymFrom } = await import("@/lib/actRun");
+  const { actSay } = await import("@/lib/actCatalog");
+  const { routesOf } = await import("@/lib/assistRoute");
+  const { incomeCommand, callCommand, athleteCommand, duesCommand } = await import("@/lib/assistMore");
+  const { invoiceCommand } = await import("@/lib/invoices");
+  const T = "2026-10-12";
+  const ctx = (owner = true) => ({ owner, isStaff: !owner, racer: owner, att: owner, path: "/", today: T, races, raceNames: races.map((r) => r.name), names, shop: true });
+  // Görev satırı → yol listesinin ilk adayı (izinli kişide)
+  const first = (no, args, owner = true) => {
+    const a = actSay(no, args);
+    const r = withAct(routesOf(a.say, ctx(owner)), routeFromAct(a, { today: T }))[0];
+    return r;
+  };
+  const J = (x) => JSON.stringify(x);
+  group("Numaralı iş: hazır komut")([
+    ["ay", { desc: "ekim → 2026-10, kasım (gelecek ay) bu yıl, aralık geçen yıl, boş bu ay, bozuk boş", fn: () => [ymFrom("Ekim", T), ymFrom("kasım", T), ymFrom("aralık", T), ymFrom("", T), ymFrom("geçen ay", T)].join(" "), ok: (r) => r === "2026-10 2026-11 2025-12 2026-10 " }],
+    ["4. aidat nakit", { desc: "cümleden okunanla aynı komut", fn: () => { const r = first(4, { who: "Ali Kaya", month: "Ekim", amount: "1500" }); return `${r.id} ${J(r.pre.cmd)} | ${J(incomeCommand("Ali Kaya'nın ekim aidatı nakit 1500 TL alındı", T))}`; }, ok: (r) => r === 'more {"cat":"Aidat","amount":1500,"who":"Ali Kaya","ym":"2026-10","note":""} | {"cat":"Aidat","amount":1500,"who":"Ali Kaya","ym":"2026-10","note":""}' }],
+    ["4. tutarsız", { desc: "tutar 0: sporcunun aidatı yazılır", fn: () => first(4, { who: "Enes" }).pre.cmd.amount, ok: (r) => r === 0 }],
+    ["4. bozuk ay", { desc: "okunmayan ay → eski yol (cümleden)", fn: () => routeFromAct({ act: 4, args: { who: "Ali", month: "geçen ay" } }, { today: T }), ok: (r) => r === null }],
+    ["5. bağış", { desc: "kimden, tutar, tür", fn: () => J(first(5, { who: "Ahmet", amount: "2.000", cat: "bağış" }).pre.cmd), ok: (r) => r === '{"cat":"Bağış","amount":2000,"who":"Ahmet","ym":"2026-10","note":""}' }],
+    ["5. kano", { desc: "eğitim türü", fn: () => first(5, { amount: "3000", cat: "kano eğitimi" }).pre.cmd.cat, ok: (r) => r === "Kano eğitimi" }],
+    ["5. başka tür", { desc: "Diğer + not", fn: () => J(first(5, { amount: "500", cat: "tekne kirası" }).pre.cmd), ok: (r) => r.includes('"cat":"Diğer"') && r.includes('"note":"tekne kirası"') }],
+    ["7. alışveriş", { desc: "kalemler hazır", fn: () => J(first(7, { items: ["süt", "ekmek"] }).sc), ok: (r) => r === '{"op":"add","what":"süt, ekmek"}' }],
+    ["8. arama", { desc: "callCommand biçimi", fn: () => `${J(first(8, { who: "Gökhan Arslan" }).pre)} | ${J(callCommand("Gökhan Arslan'ı ara"))}`, ok: (r) => r.startsWith('{"kind":"call","cmd":{"who":"gökhan arslan","hotel":false}}') }],
+    ["10. fatura", { desc: "invoiceCommand biçimi, nakit", fn: () => `${J(first(10, { seller: "Turkcell", cash: true }).ic)} | ${invoiceCommand("Turkcell faturası nakit ödendi")?.op}`, ok: (r) => r === '{"op":"paid","t":"turkcell","cash":true} | paid' }],
+    ["11. sporcu ekle", { desc: "athleteCommand biçimi", fn: () => `${J(first(11, { name: "Can Tekin", year: "2014" }).pre.cmd)} | ${J(athleteCommand("yeni sporcu ekle: Can Tekin, 2014 doğumlu"))}`, ok: (r) => r === '{"op":"add","name":"Can Tekin","birth":"2014-01-01","explicit":true} | {"op":"add","name":"Can Tekin","birth":"2014-01-01","explicit":true}' }],
+    ["14. hatırlatma", { desc: "duesCommand biçimi", fn: () => `${J(first(14, {}).pre.cmd)} | ${J(duesCommand("aidat hatırlatması gönder"))}`, ok: (r) => r === '{"op":"remind"} | {"op":"remind"}' }],
+    ["15. ödemeyenler", { desc: "duesCommand biçimi", fn: () => `${J(first(15, {}).pre.cmd)} | ${J(duesCommand("bu ay kim aidat ödemedi"))}`, ok: (r) => r === '{"op":"ask","paid":false} | {"op":"ask","paid":false}' }],
+    ["6/12/13", { desc: "metin işleri: yol önde", fn: () => [first(6, { topic: "Foça Kupası" }).id, first(12, { text: "14 knot poyrazda start çalıştık" }).id, first(13, { text: "bugün 3 set 12 squat yaptım" }).id].join(" "), ok: (r) => r === "post log fitness" }],
+    ["çalışan", { desc: "izni olmayan işte hazır komut eklenmez (çalışan: alışveriş dışı para/sporcu yok)", fn: () => { const a = actSay(10, { seller: "Turkcell" }); const rs = routesOf(a.say, ctx(false)); return withAct(rs, routeFromAct(a, { today: T })) === rs; }, ok: (r) => r === true }],
+    ["numara yok", { desc: "liste değişmez", fn: () => { const rs = [{ id: "ai" }]; return withAct(rs, null) === rs; }, ok: (r) => r === true }],
+  ]);
+}
+
 // Gönderi ekranında "Kulüpten haberler" (posts/newsModel.js `newsCommand`): cümle açık gönderiye gider, orada haber işine çevrilir
 const { newsCommand } = await import("@/features/posts/newsModel");
 const onPostRoute = (s) => routeOf(s, { owner: true, isStaff: false, racer: true, att: true, path: "/posts/p1", today, races, raceNames: races.map((r) => r.name), names, onPost: true, shop: true });
