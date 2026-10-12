@@ -610,6 +610,8 @@ group("Göreve göre ara yazı")([
       ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", K("nakit giriş kasa çıkışı değil", (r) => r === null)],
       ["Ahmet'ten 2000 lira bağış geldi", K("bağış girişi değil", (r) => r === null)],
       ["yarın 10'da antrenman", K("ilgisiz", (r) => r === null)],
+      ["kulüpten Ahmet'e 2 bin TL borç verildi", K("borç verme Borçlar'ın işi", (r) => r === null)],
+      ["Ali 200 lirasını geri verdi", K("geri ödeme Borçlar'ın işi", (r) => r === null)],
     ]);
   }
   const M = await import("@/lib/assistMore");

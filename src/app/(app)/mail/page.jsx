@@ -19,7 +19,11 @@ import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
 import { addIncome, deleteIncome, loadCash, setDebtPaid, setInKasa } from "@/features/dues/duesData";
 import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
-import { inKasa, kasaOf, personalOf } from "@/lib/cashbook";
+import { debtMoves, inKasa, kasaOf, personalOf } from "@/lib/cashbook";
+import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
+import { loadDebts, updateDebts } from "@/features/debts/debtData";
+import { cleanDebt, newId, payDebt } from "@/lib/debts";
+import { todayStr } from "@/lib/utils/format";
 import { AddIncome } from "@/features/bank/AddIncome";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -67,7 +71,11 @@ export default function MailPage() {
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
   const [cashData, setCashData] = useState({ moves: [], personal: [], meta: {}, roster: [], cfg: {} }); // nakitler + kişisel defter
   const cashList = cashData.moves;
-  const [book, setBook] = useState("club"); // üstteki sekme: club (kulüp) | personal (kişisel)
+  // Üstteki sekme: club (kulüp) | personal (kişisel); /mail?tab=kisisel Kişisel'i açar (eski Borçlar bağlantısı, asistan)
+  const [book, setBook] = useState(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "kisisel" ? "personal" : "club"));
+  const [lent, setLent] = useState([]); // verilen borçlar (debts/book)
+  const [debtForm, setDebtForm] = useState(null); // yeni ya da düzenlenen verilen borç
+  const [debtOpen, setDebtOpen] = useState(null); // ayrıntısı açık verilen borç
   const [add, setAdd] = useState(null); // "+": { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
   const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
   const [cashTick, setCashTick] = useState(0);
@@ -119,6 +127,15 @@ export default function MailPage() {
       live = false;
     };
   }, [owner, profile?.uid, tick, cashTick]);
+
+  // Verilen borçlar: sayfa açılınca bir kez (1 okuma); asistan kaydedince yenilenir
+  useEffect(() => {
+    if (!owner) return;
+    const load = () => loadDebts(profile.uid).then(setLent, () => {});
+    load();
+    window.addEventListener("sa-debts-saved", load);
+    return () => window.removeEventListener("sa-debts-saved", load);
+  }, [owner, profile?.uid]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
   const pending = (mails || [])
@@ -180,7 +197,19 @@ export default function MailPage() {
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
   const cashIn = cashList.filter((x) => x.amount > 0);
   const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashIn.length, cashSum: cashIn.reduce((n, x) => n + x.amount, 0) } : null;
-  const kasa = kasaOf(cashList, cashData.meta);
+  const kasa = kasaOf([...cashList, ...debtMoves(lent)].sort((a, b) => (b.ts || 0) - (a.ts || 0)), cashData.meta);
+  const curDebt = lent.find((d) => d.id === debtOpen);
+  const saveDebts = async (fn, ok) => {
+    try {
+      setLent(await updateDebts(profile.uid, fn));
+      if (ok) toast(ok);
+      return true;
+    } catch {
+      toast("Kaydedilemedi, tekrar dene");
+      return false;
+    }
+  };
+  const debtNames = [...new Set([...lent.map((d) => d.who), ...(cashData.roster || []).map((a) => a.studentName)].filter(Boolean))].slice(0, 300);
   const personal = personalOf(cashData.personal || []);
   // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
   const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
@@ -233,7 +262,7 @@ export default function MailPage() {
       </div>
 
       {book === "personal" ? (
-        <PersonalBook book={personal} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} />
+        <PersonalBook book={personal} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} lent={<LentSection flat items={lent} kind="personal" title="Bana borçlu olanlar" onAdd={() => setDebtForm({ kind: "personal", date: todayStr() })} onOpen={setDebtOpen} />} />
       ) : !mails ? (
         <Loading />
       ) : (
@@ -279,7 +308,8 @@ export default function MailPage() {
             </section>
           )}
 
-          <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={setManual} onInclude={include} />
+          <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} />
+          <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
 
           {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}
           <section className="mt-6">
@@ -475,6 +505,28 @@ export default function MailPage() {
           </div>
         </>
       )}
+      <DebtForm
+        key={debtForm ? debtForm.id || `new-${debtForm.kind}` : "off"}
+        value={debtForm}
+        names={debtNames}
+        onClose={() => setDebtForm(null)}
+        onSave={async (d) => {
+          const isNew = !d.id;
+          const x = cleanDebt({ ...d, id: d.id || newId(), at: d.at || new Date().toISOString() });
+          if (await saveDebts((list) => (isNew ? [x, ...list] : list.map((y) => (y.id === x.id ? { ...x, paid: y.paid } : y))), isNew ? (x.kind === "club" ? "Borç eklendi, kasadan düştü" : "Borç eklendi") : "Kaydedildi")) setDebtForm(null);
+        }}
+      />
+      <DebtDetail
+        key={curDebt?.id || "off"}
+        debt={curDebt}
+        onClose={() => setDebtOpen(null)}
+        onPay={(amt) => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? payDebt(y, amt, todayStr()) : y)), curDebt.kind === "club" ? "Ödeme kasaya girdi" : "Ödeme yazıldı")}
+        onUndo={() => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? { ...y, paid: [] } : y)), "Ödemeler geri alındı")}
+        onEdit={() => (setDebtForm(curDebt), setDebtOpen(null))}
+        onDelete={async () => {
+          if (await saveDebts((list) => list.filter((y) => y.id !== curDebt.id), "Silindi")) setDebtOpen(null);
+        }}
+      />
       <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
       <Sheet open={!!manual} onClose={() => setManual(null)} title={manual?.book === "personal" ? (manual.dir === "debt" ? "Borcum" : manual.dir === "out" ? "Kişisel gider" : "Kişisel gelir") : manual?.amount < 0 ? "Nakit çıkış" : "Nakit giriş"}>
         {manual && (

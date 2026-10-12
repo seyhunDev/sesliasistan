@@ -19,6 +19,7 @@ export const PAGES = {
   invoices: { path: "/invoices", label: "Faturalar", need: "owner" },
   payments: { path: "/payments", label: "Gelen ödemeler", need: "owner" },
   accounts: { path: "/mail", label: "Hesaplar", need: "owner" },
+  debts: { path: "/mail?tab=kisisel", label: "Hesaplar › Borçlar", need: "owner" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
@@ -77,6 +78,7 @@ const TARGETS = [
   ["invoices", /(^|\s)fatura\S*/],
   ["payments", /(^|\s)(ödemeler\S*|aldığım ödeme\S*|gelen ödeme\S*|kişisel hesab\S*|kişisel hesap\S*)/],
   ["accounts", /(^|\s)(hesaplar\S*|hesaplarım\S*|banka hesab\S*|mailler\S*|maillerim\S*)(?=\s|$)/],
+  ["debts", /(^|\s)(borçlar\S*|borç sayfa\S*|borç listes\S*|alacaklar\S*|verdiğim borç\S*)/],
   ["receipts", /(^|\s)(fiş\S*|harcama\S*|masraf\S*)/],
   ["tasks", /(^|\s)(görev\S*|yapılacak\S*|işler\S*|işlerim\S*)/],
   ["notes", /(^|\s)not(lar\S*|ları\S*|larım\S*|um\S*|u|a)?(?=\s|$)/],
@@ -92,7 +94,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|antrenman günlüğü|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

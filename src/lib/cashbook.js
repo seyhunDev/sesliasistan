@@ -5,9 +5,11 @@
 //   orgs/{uid}/cash/meta = { from (kasanın başladığı an, ISO), add [anahtar] (eski nakit "kasaya eklendi"), skip [anahtar] }
 // Kasa = kulübün sayılan nakit girişleri − nakit çıkışları. Kasa başlamadan önce girilen nakitler (Aidatlar'daki nakit aidatlar,
 // elle gelirler) kendiliğinden sayılmaz; her birinde "Nakit girdi olarak ekle" düğmesi var (add). Sonrakiler kendiliğinden sayılır.
+// Verilen borçlar (orgs/{uid}/debts/book, debts.js): kulübün verdiği borç kasadan çıkar, geri ödemesi kasaya girer (debtMoves).
+// Kişisel verilen borçlar (bana borçlu olanlar) kişisel defterde görünür, kasaya girmez.
 // Kişisel defter kulüpten tamamen ayrıdır: kasaya, Ödemeler'e ve özete girmez.
 
-export const OUT_CATS = ["Avans", "Malzeme", "Yakıt", "Ulaşım", "Yemek", "Borç verildi", "Diğer"];
+export const OUT_CATS = ["Avans", "Malzeme", "Yakıt", "Ulaşım", "Yemek", "Diğer"];
 export const PERSONAL_CATS = {
   in: ["Maaş", "Ders", "Satış", "Diğer"],
   out: ["Market", "Fatura", "Yakıt", "Yemek", "Kira", "Sağlık", "Diğer"],
@@ -48,4 +50,22 @@ export function personalOf(moves = []) {
   const out = add((x) => x.dir === "out");
   const debts = list.filter((x) => x.dir === "debt" && !x.paid);
   return { moves: list, in: inn, out, net: Math.round((inn - out) * 100) / 100, debt: debts.reduce((n, x) => n + Math.abs(x.amount), 0), debts };
+}
+
+// Kulübün verdiği borçlar → kasa hareketleri: borç verilince eksi, her geri ödeme artı. Borç kasa başlamadan önce
+// verildiyse (at < from) kendiliğinden sayılmaz; anahtarlar b:<borç> ve b:<borç>:<ödeme>.
+export function debtMoves(items = []) {
+  const out = [];
+  const ts = (d) => Date.parse(`${d}T09:00:00Z`) || 0;
+  const tr = (d) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : "");
+  for (const d of items) {
+    if (d?.kind !== "club" || !(d.amount > 0)) continue;
+    const day = d.date || String(d.at || "").slice(0, 10);
+    out.push({ id: `debt-${d.id}`, key: `b:${d.id}`, debtId: d.id, cash: true, at: d.at || "", amount: -d.amount, currency: "TL", account: "cash", accountLabel: "Nakit", kind: "Nakit", cat: "Borç verildi", who: d.who, note: d.note ? `Borç verildi · ${d.note}` : "Borç verildi", desc: "Borç verildi", date: tr(day), ts: ts(day) });
+    for (const p of d.paid || []) {
+      const pd = p.date || day;
+      out.push({ id: `debt-${d.id}-${p.id}`, key: `b:${d.id}:${p.id}`, debtId: d.id, cash: true, at: d.at || "", amount: p.amt, currency: "TL", account: "cash", accountLabel: "Nakit", kind: "Nakit", cat: "Borç geri ödendi", who: d.who, note: "Borç geri ödendi", desc: "Borç geri ödendi", date: tr(pd), ts: ts(pd) });
+    }
+  }
+  return out.sort((a, b) => b.ts - a.ts);
 }

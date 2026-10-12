@@ -124,7 +124,6 @@ const OUT_WORDS = [
   [/avans/u, "Avans"],
   [/ulaşım|yol parası|taksi|otobüs/u, "Ulaşım"],
   [/yemek|kumanya/u, "Yemek"],
-  [/borç (olarak )?ver/u, "Borç verildi"],
 ];
 const MY_WORDS = {
   out: [
@@ -159,6 +158,8 @@ export function cashCommand(raw) {
   if (!(amount > 0)) return null;
   const pick = (list, d) => (list.find(([re]) => re.test(t)) || [null, d])[1];
   const rest = (s) => nameOf(s.replace(/\d[\d.,]*|(^| )(bin|tl|lira|nakit|kişisel|şahsi|kendi|gider\p{L}*|gelir\p{L}*|harcama\p{L}*|olarak|ekle|yaz|kaydet|için|deftere|defterime|kasadan|kulüpten|verildi|verdim|harcadım|ödedim|aldım|çıkış|var)(?= |$)/gu, " ")).slice(0, 60);
+  // Borç verme ("kulüpten Ali'ye 500 borç verildi") ve geri ödeme Borçlar'ın işi (debts.js debtCommand)
+  if (/(borç|borc|ödünç)\p{L}* (olarak )?(para )?(ver|geri)/u.test(t) || /geri (verdi|ödedi|getirdi)/u.test(t)) return null;
   // Kişisel borç: "Ahmet'e 1000 lira borcum var", "kişisel borç Ahmet 1000"
   if (/(borcum|borçluyum|borç aldım|kişisel borç)/u.test(t) && !/borcumu (ödedim|kapattım)/u.test(t)) {
     const who = toWhom(raw) || nameOf((t.match(/kişisel borç (\p{L}+(?: \p{L}+)?)/u) || [])[1] || "");

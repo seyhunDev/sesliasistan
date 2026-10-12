@@ -85,7 +85,7 @@ export function KasaCard({ kasa, onAdd, onOpen, onInclude }) {
 }
 
 // Hesaplar › Kişisel: kulüpten ayrı gelir, gider ve borçlar; bankadan aldığın ödemeler ayrı satırda (/payments)
-export function PersonalBook({ book, payee, onAdd, onOpen }) {
+export function PersonalBook({ book, payee, onAdd, onOpen, lent }) {
   const [all, setAll] = useState(false);
   const rest = book.moves.filter((x) => !(x.dir === "debt" && !x.paid)); // ödenmemiş borçlar yukarıda ayrı
   const list = all ? rest : rest.slice(0, 20);
@@ -103,11 +103,10 @@ export function PersonalBook({ book, payee, onAdd, onOpen }) {
               Gelir +{money(book.in)} · Gider −{money(book.out)}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 px-4 py-3">
+          <div className="grid grid-cols-2 gap-2 px-4 py-3">
             {[
               ["in", "Gelir", "plus", "bg-ok/10 text-ok"],
               ["out", "Gider", "up", "bg-rec/10 text-rec"],
-              ["debt", "Borcum", "wallet", "bg-amber-500/15 text-amber-700"],
             ].map(([d, l, ic, cls]) => (
               <button key={d} type="button" onClick={() => onAdd(d)} className={`flex h-10 items-center justify-center gap-1.5 rounded-xl text-[0.875rem] font-semibold ${cls}`}>
                 <Icon name={ic} className="size-4" /> {l}
@@ -117,16 +116,27 @@ export function PersonalBook({ book, payee, onAdd, onOpen }) {
         </div>
       </section>
 
-      {book.debts.length > 0 && (
-        <section className="mt-6">
-          <h2 className={title}>Borçlarım · −{money(book.debt)} TL</h2>
-          <ul className={`${card} divide-y divide-line`}>
-            {book.debts.map((x) => (
-              <Row key={x.id} x={x} onClick={() => onOpen(x)} />
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* Borçlar tek yerde: bana borçlu olanlar (verilen borçlar) ve benim borçlarım */}
+      <section className="mt-6 space-y-4">
+        {lent}
+        <div>
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">Benim borçlarım{book.debt > 0 ? ` · ${money(book.debt)} TL` : ""}</h2>
+            <button type="button" onClick={() => onAdd("debt")} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc shadow-[0_1px_2px_rgba(38,40,44,.06)]">
+              <Icon name="plus" className="size-3.5" /> Borç ekle
+            </button>
+          </div>
+          {book.debts.length ? (
+            <ul className={`${card} divide-y divide-line`}>
+              {book.debts.map((x) => (
+                <Row key={x.id} x={x} onClick={() => onOpen(x)} />
+              ))}
+            </ul>
+          ) : (
+            <p className={`${card} px-4 py-3 text-[0.8125rem] text-mut`}>Ödenmemiş borcun yok.</p>
+          )}
+        </div>
+      </section>
 
       <section className="mt-6">
         <h2 className={title}>Bankadan aldıkların</h2>
