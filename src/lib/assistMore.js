@@ -259,6 +259,9 @@ export function raceHereCommand(raw) {
   if (m && /(yarıştan|listeden|kafileden)/u.test(t)) return { op: "remove", name: nameOf(m[1]) };
   m = t.match(/^(.+?) (\d{1,3})\.? ?(?:oldu|sırada|olarak bitirdi|bitirdi)$/u) || t.match(/^(.+?) (birinci|ikinci|üçüncü|dördüncü|beşinci|altıncı|yedinci|sekizinci|dokuzuncu|onuncu) (?:oldu|bitirdi)$/u);
   if (m) return { op: "result", name: nameOf(m[1]), place: Number(m[2]) || ORD[m[2]] };
+  // Yapılacaklardaki iş: "vize başvurusu yapıldı", "evrakları hazırla işini yaptım", "velilere imzalat yapılmadı"
+  m = t.match(/^(.+?) (?:işi |işini )?(yapıldı|yapılmadı|yaptım|tamamlandı|tamamladım|bitti|bitirdim|halledildi|hallettim)$/u);
+  if (m && !/(\bnot\p{L}*|görev\p{L}*|plan\p{L}*|antrenman\p{L}*|fatura\p{L}*|fiş\p{L}*|aidat\p{L}*)/u.test(m[1]) && m[1].split(" ").length <= 8) return { op: "step", words: m[1], done: m[2] !== "yapılmadı" };
   m = t.match(/^(.+?) (?:yarış ücretini |ücretini |bütçesini |payını )?(ödedi|ödemedi)$/u);
   if (m && !/aidat|fatura|fiş/u.test(t)) return { op: "paid", name: nameOf(m[1].replace(/['’].*$/u, "")), paid: m[2] === "ödedi" };
   return null;

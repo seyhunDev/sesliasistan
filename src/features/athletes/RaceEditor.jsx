@@ -28,7 +28,7 @@ import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
-import { cleanNotice, cleanSkips, cleanTodos, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
+import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
@@ -536,6 +536,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const parts4 = sheetParts(r, chosen.length);
 
   const steps = stepsOf(r);
+  const doneList = doneSteps(r);
   // Özet'teki durum satırları: [sekme, simge, ad, kısa durum, uyarı mı]
   const trip = tripRows(r);
   const money = totals(r.budget, chosen.length, chosen.map((a) => a.id));
@@ -562,6 +563,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     });
     toast("Listeden çıkarıldı", { action: { label: "Geri al", onClick: () => setR((p) => ({ ...p, ...back })) } });
   };
+  // Yapıldı / geri al: iş listede kalır, soluk ve ✓ (bilgi notunda da "Yapıldı" yazar)
+  const markStep = ({ key }, on) => setR((p) => ({ ...p, done: on ? cleanDone([...(p.done || []), key]) : cleanDone(p.done).filter((k) => k !== key) }));
   // Çıkarılanları geri getir (eski işaretlemeler de; "Evrakları hazırla" belgeler hazırsa çıkmış kalır)
   const restoreSteps = () => setR((p) => ({ ...p, skips: [], checks: p.checks?.docs && file ? { docs: true } : {} }));
   // Elle iş ekleme (her yarışa ayrı)
@@ -766,13 +769,15 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             })}
           </ul>
 
-          <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
+          <Label right={steps.length || doneList.length ? `${steps.length} iş${doneList.length ? ` · ${doneList.length} yapıldı` : ""}` : ""}>YAPILACAKLAR</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {steps.map((s) => {
               const left = s.date ? daysTo(s.date) : null;
               return (
-                <li key={s.key} className="flex items-center gap-3 pl-4">
-                  <span className="size-1.5 shrink-0 rounded-full bg-acc" />
+                <li key={s.key} className="flex items-center gap-1 pl-1">
+                  <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
+                    <span className="size-[1.375rem] rounded-full border-2 border-line" />
+                  </button>
                   <span className="min-w-0 flex-1 py-3">
                     <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
                     {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
@@ -788,6 +793,17 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 </li>
               );
             })}
+            {doneList.map((s) => (
+              <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
+                <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
+                  <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
+                    <Icon name="check" className="size-3.5" />
+                  </span>
+                </button>
+                <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut line-through decoration-mut/40">{s.label}</span>
+                <span className="shrink-0 rounded-lg bg-ok/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-ok">Yapıldı</span>
+              </li>
+            ))}
             <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
               <Icon name="plus" className="size-5 shrink-0 text-acc" />
               <input

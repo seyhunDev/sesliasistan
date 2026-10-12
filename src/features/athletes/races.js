@@ -14,7 +14,7 @@ import { cleanWeather } from "./raceWeather";
 // T.C., veli gibi kişisel bilgiler kopyalanmaz, belge üretilirken sporcu kartından okunur.
 export const RACE_FIELDS = [
   // abroad: yurt dışı yarışı (city = ülke, district = şehir; Türkiye'de yapılacaklar listesi açılır), skips: listeden çıkarılan hazır işler
-  "abroad", "skips",
+  "abroad", "skips", "done",
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Yolculuk: çıkış günü/saati, çıkış yeri, buluşma noktası (boşsa çıkış yeri), dönüş günü/saati (tripText)
@@ -164,15 +164,38 @@ function allSteps(r) {
   return [...noticeTasks(r?.notice), ...own, ...abroad, ...docs];
 }
 const gone = (r, s) => !!r?.checks?.[s.key] || cleanSkips(r?.skips).includes(s.key);
-// Yapılacaklar: çıkarılmayanlar; son tarihlisi önde (tarih sırasıyla), sonra tarihsizler eklendiği sırayla
+// Yapıldı işaretlenen işler (Seyhun: "bir tanesini yaptım, yapıldı olarak gösterilebilir mi", 2026-10-12): listede soluk ✓ kalır
+const DONE_RE = /^(a:[a-z]{1,20}|[tm]:[\p{L}\p{N}-]{1,40}|docs|parents|schools|gsim)$/u;
+export const cleanDone = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && DONE_RE.test(k)))].slice(0, 80);
+const isDone = (r, s) => cleanDone(r?.done).includes(s.key);
+const byDate = (list) => [...list.filter((s) => s.date).sort((a, b) => a.date.localeCompare(b.date)), ...list.filter((s) => !s.date)];
+// Yapılacaklar: çıkarılmayan ve yapılmayanlar; son tarihlisi önde (tarih sırasıyla), sonra tarihsizler eklendiği sırayla
 export function stepsOf(r) {
-  const list = allSteps(r).filter((s) => !gone(r, s));
-  return [...list.filter((s) => s.date).sort((a, b) => a.date.localeCompare(b.date)), ...list.filter((s) => !s.date)];
+  return byDate(allSteps(r).filter((s) => !gone(r, s) && !isDone(r, s)));
 }
+// Yapıldı işaretlenenler (listede altta soluk görünür)
+export const doneSteps = (r) => byDate(allSteps(r).filter((s) => !gone(r, s) && isDone(r, s)));
 // Bütün iş sayısı (yapılan/çıkarılan dahil): yarış listesindeki hazırlık çubuğu için
 export const stepTotal = (r) => allSteps(r).length;
 // Listeden çıkarılan (ya da eskiden işaretlenen) iş sayısı ("geri getir" için)
 export const hiddenCount = (r) => allSteps(r).filter((s) => gone(r, s)).length;
+// Bir son tarih ya da iş yapıldı mı: aynı anahtar ya da aynı günlü yapılmış iş (talimattaki "Online kayıt son gün" = "Online kaydı yap")
+export function doneFor(r, title, date = "") {
+  const ds = doneSteps(r);
+  if (ds.some((s) => s.key === slug(title) || s.key === slug(title, "m:"))) return true;
+  // Aynı günün işlerinin hepsi yapıldıysa o günün son tarihi de yapılmış sayılır
+  const same = date ? allSteps(r).filter((s) => s.date === date && !gone(r, s)) : [];
+  return same.length > 0 && same.every((s) => isDone(r, s));
+}
+// Sesle: "vize başvurusu yapıldı" → listedeki en uygun iş (kelime köklerinin örtüşmesi; eşitlikte ya da hiç yoksa null)
+export function matchStep(r, words, list = stepsOf(r)) {
+  const roots = (s) => String(s || "").toLocaleLowerCase("tr-TR").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3).map((w) => w.slice(0, 4));
+  const want = new Set(roots(words));
+  if (!want.size) return null;
+  const scored = list.map((s) => ({ s, n: roots(s.label).filter((w) => want.has(w)).length })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+  if (!scored.length || (scored[1] && scored[1].n === scored[0].n)) return null;
+  return scored[0].s;
+}
 
 const col = (orgId) => collection(db, "orgs", orgId, "races");
 const clean = (r) =>
@@ -191,6 +214,8 @@ const clean = (r) =>
               ? cleanNoticeFile(r[k])
             : k === "skips"
               ? cleanSkips(r[k])
+            : k === "done"
+              ? cleanDone(r[k])
             : k === "todos"
               ? cleanTodos(r[k])
             : k === "budget"
@@ -213,7 +238,7 @@ const clean = (r) =>
 // Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
 export function freshRace(last = {}, today = "") {
   return {
-    abroad: false, skips: [],
+    abroad: false, skips: [], done: [],
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
     startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
