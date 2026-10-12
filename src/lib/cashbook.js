@@ -1,7 +1,8 @@
 // Kasa (kulübün nakdi) ve kişisel defter (saf fonksiyonlar, test edilir). Ekran: Hesaplar (/mail) › Kulüp | Kişisel.
 // Kayıt:
 //   orgs/{uid}/incomes/{id} = { book "club"|"personal" (yoksa club), dir "in"|"out"|"debt" (yoksa in), cat, who, amount, note,
-//     date "YYYY-MM-DD", at, paid?, paidAt? }  (elle girilen nakit giriş/çıkış; kişisel gelir, gider ve borçlar)
+//     date "YYYY-MM-DD", at, paid?, paidAt?, src? }  (elle girilen nakit giriş/çıkış; kişisel gelir, gider ve borçlar;
+//     src "rc:<fiş>" / "inv:<fatura>": fiş ya da fatura nakit ödenince kendiliğinden yazılan çıkış, ödeme geri alınınca silinir)
 //   orgs/{uid}/cash/meta = { from (kasanın başladığı an, ISO), add [anahtar] (eski nakit "kasaya eklendi"), skip [anahtar] }
 // Kasa = kulübün sayılan nakit girişleri − nakit çıkışları. Kasa başlamadan önce girilen nakitler (Aidatlar'daki nakit aidatlar,
 // elle gelirler) kendiliğinden sayılmaz; her birinde "Nakit girdi olarak ekle" düğmesi var (add). Sonrakiler kendiliğinden sayılır.

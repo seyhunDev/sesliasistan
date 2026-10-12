@@ -1,6 +1,6 @@
 // Faturalar (saf fonksiyonlar; sayfa, asistan, sunucu ve zamanlanmış görev ortak kullanır, test edilir).
 // Kayıt: orgs/{org}/invoices/{id} = { seller, taxId, no, date, due, amount, currency, iban, desc, note,
-//   status "open"|"paid", paidAt (YYYY-MM-DD), paidVia "bank"|"hand"|"task", paidMov { date, desc, amount },
+//   status "open"|"paid", paidAt (YYYY-MM-DD), paidVia "bank"|"hand"|"task"|"cash" (cash: kasadan çıkış yazılır), paidMov { date, desc, amount },
 //   taskId, file { id, name, type, size, parts, at }, createdAt, createdBy }
 // Dosya (PDF/fotoğraf) parçalı: orgs/{org}/invoiceFiles/{id}/parts/{000..} (envanter belgeleri gibi).
 // Sunucu için açık faturaların kısa listesi tek belgede: orgs/{org}/invoiceIndex/open = { list [openRow], at }
@@ -130,13 +130,14 @@ export function summaryOf(list, today) {
 const lower = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[.,!?;:"“”()]/g, " ").replace(/['’]/g, " ").replace(/\s+/g, " ").trim();
 const FAT = /(^|\s)fatura\S*/;
 const PAID = /(^|\s)(ödendi|ödedim|ödedik|ödenmiş|ödeme yapıldı|ödendi olarak|ödendi işaretle|ödeyin? ?dim|yatırıldı|yatırdım|yatırdık)(?=\s|$)/;
+const CASH = /(^|\s)(nakit|elden|peşin)(\s|$)/; // "nakit ödedim" → kasadan çıkış
 const UNPAID = /(^|\s)(ödenmedi|ödenmemiş|ödenmedi olarak|açık(a)? al|geri al)(?=\s|$)/;
-// "Turkcell faturası ödendi", "faturayı ödendi işaretle", "elektrik faturasını ödedim", "fatura ödenmedi olarak işaretle"
+// "Turkcell faturası ödendi", "Turkcell faturasını nakit ödedim" (cash), "faturayı ödendi işaretle", "elektrik faturasını ödedim", "fatura ödenmedi olarak işaretle"
 export function invoiceCommand(text) {
   const t = lower(text);
   if (!FAT.test(t) || t.split(" ").length > 14 || /\?|(^|\s)(mı|mi|mu|mü)(\s|$)/.test(t)) return null;
   if (UNPAID.test(t)) return { op: "unpaid", t };
-  if (PAID.test(t)) return { op: "paid", t };
+  if (PAID.test(t)) return { op: "paid", t, cash: CASH.test(t) };
   return null;
 }
 // Cümledeki firma adına göre fatura seçer (yoksa tek açık fatura) → { pick, list }

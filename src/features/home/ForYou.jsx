@@ -227,9 +227,14 @@ export function useForYou() {
           sub: `${first(nameOf(r.createdByUid))} · ödeme bekliyor`,
           onOpen: () => openReceipt({ edit: r.id }),
           trail: (
-            <Pill tone="ok" onClick={() => markPaid(r.id)} label="Öde">
-              Öde
-            </Pill>
+            <span className="flex shrink-0 gap-1.5">
+              <Pill tone="ok" onClick={() => markPaid(r.id, true, "cash")} label="Nakit öde, kasadan düşsün">
+                Nakit
+              </Pill>
+              <Pill onClick={() => markPaid(r.id, true, "eft")} label="EFT ile ödendi">
+                EFT
+              </Pill>
+            </span>
           ),
         });
 

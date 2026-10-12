@@ -625,6 +625,8 @@ group("Göreve göre ara yazı")([
     ["Ali'nin fişlerini ödedim", C("kişinin fişleri", M.receiptPayCommand, (r) => r?.paid && r.who === "Ali")],
     ["F-3 fişi ödenmedi", C("geri al", M.receiptPayCommand, (r) => r?.paid === false && r.no === 3)],
     ["fiş yükle", C("fiş kamerası değil", M.receiptPayCommand, (r) => r === null)],
+    ["F-7 fişini nakit ödedim", C("nakit: kasadan düşer", M.receiptPayCommand, (r) => r?.paid && r.no === 7 && r.cash)],
+    ["F-7 fişini ödedim", C("nakit değil (EFT)", M.receiptPayCommand, (r) => r?.paid && !r.cash)],
     ["gelmeyenlerin velilerine haber ver", C("bugün", M.absentNotifyCommand, (r) => r?.day === 0)],
     ["dün gelmeyenlerin velilerine bildir", C("dün", M.absentNotifyCommand, (r) => r?.day === -1)],
     ["dün gelmeyenler kimdi?", C("soru değil", M.absentNotifyCommand, (r) => r === null)],

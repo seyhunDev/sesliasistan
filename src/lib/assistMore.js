@@ -279,7 +279,7 @@ export function invoiceTaskCommand(raw) {
   return who ? { op: "assign", who: who.replace(/['’].*$/u, ""), t } : null;
 }
 
-// ---- Fiş ödemesi (çalışanın fişi): "F-0012 fişini ödendi yap", "Ali'nin fişlerini ödedim", "fişi ödendi işaretle" ----
+// ---- Fiş ödemesi (çalışanın fişi): "F-0012 fişini ödendi yap", "F-3 fişini nakit ödedim" (cash: kasadan düşer), "Ali'nin fişlerini ödedim", "fişi ödendi işaretle" ----
 export function receiptPayCommand(raw) {
   const t = low(raw);
   if (!/(^| )fiş/u.test(t) || QUESTION.test(t) || /(yükle|fotoğraf|çek|excel|mail|aç)( |$)/u.test(t)) return null;
@@ -287,7 +287,7 @@ export function receiptPayCommand(raw) {
   if (!unpaid && !/(ödendi|ödedim|ödedik|öde|ödeme yapıldı|parasını verdim)( |$)/u.test(t)) return null;
   const no = t.match(/(?:^| )f[- ]?(\d{1,5})(?: |$|['’])|(\d{1,5}) (?:numaralı|nolu|no'?lu) fiş/u);
   const w = String(raw || "").match(/(\p{Lu}\p{Ll}+(?:\s\p{Lu}\p{Ll}+)?)['’](?:n?[ıiuü]n)\s+fiş/u);
-  return { paid: !unpaid, no: no ? Number(no[1] || no[2]) : 0, who: w ? w[1] : "" };
+  return { paid: !unpaid, no: no ? Number(no[1] || no[2]) : 0, who: w ? w[1] : "", cash: !unpaid && /(^| )(nakit|elden|peşin)( |$)/u.test(t) };
 }
 
 // ---- Yoklama sonrası: "gelmeyenlerin velilerine haber ver", "devamsızların velilerine bildir" (bugün; "dün" denirse dün) ----
