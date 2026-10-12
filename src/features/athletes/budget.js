@@ -9,6 +9,8 @@
 //                   rooms = aynı odadan kaç tane, who = athlete|staff (odada kim kalıyor, yalnız bilgi) →
 //                   tutar ÷ cap × beds × rooms × gece. Ör. 3 kişilik oda gecelik 3200, bizden 1 sporcu, 4 gece → 3200/3 × 1 × 4.
 //   qty: adet ya da gece (otelde gece sayısı); club: kulüp karşılar (sporcu payına girmez)
+//   only: [sporcu id] kalem yalnız bu sporcular için (yoksa hepsi); sporcu başı/kişi başı yalnız onlarla çarpılır, ortak tutar
+//         yalnız onlara bölünür, diğer sporcuların payına girmez. Yarıştan çıkarılan sporcu sayılmaz; kimse kalmazsa kalem herkesin olur.
 //   est: tutar yapay zekanın tahmini (kullanıcı kalemi kaydedince kalkar); amount 0 = tutar henüz girilmedi
 // Sporcu payı: sporcu başı kalemler + kişi başı kalemlerin tamamı (antrenör payı sporculara bölünür) + ortaklar / sporcu.
 
@@ -33,6 +35,8 @@ const num = (v, max = 10_000_000) => {
 const int = (v, max) => Math.min(Math.max(0, Math.round(Number(v) || 0)), max);
 export const newId = () => Math.random().toString(36).slice(2, 10);
 
+const onlyOf = (a) => [...new Set((Array.isArray(a) ? a : []).filter((v) => typeof v === "string" && /^[\w-]{1,64}$/.test(v)))].slice(0, 50);
+
 export function cleanItem(x) {
   const cat = CATS.includes(x?.cat) ? x.cat : "Diğer";
   const unit = UNIT_KEYS.includes(x?.unit) ? x.unit : "athlete";
@@ -49,6 +53,7 @@ export function cleanItem(x) {
       ? { cap, beds: Math.min(cap, Math.max(1, int(x?.beds ?? cap, 10))), rooms: Math.max(1, int(x?.rooms ?? 1, 30)), who: x?.who === "staff" ? "staff" : "athlete" }
       : {}),
     ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
+    ...(onlyOf(x?.only).length ? { only: onlyOf(x.only) } : {}),
   };
 }
 
@@ -142,22 +147,43 @@ export function nearReceipts(receipts, r, spent = []) {
 // Bağlı fişlerin toplamı (TL); totalTL: fiş tutarı kuruştan TL'ye
 export const spentTotal = (receipts, spent = [], totalTL) => receipts.filter((x) => spent.includes(x.id)).reduce((n, x) => n + (totalTL(x) || 0), 0);
 
-// Hesap: athletes = sporcu sayısı
-export function totals(b, athletes) {
+// Hesap: athletes = sporcu sayısı; ids = yarıştaki sporcuların kimlikleri (yalnız belirli sporculara ait kalemler için)
+export function totals(b, athletes, ids = null) {
   const A = Math.max(0, athletes);
   const P = A + (b?.staff || 0);
   const lines = (b?.items || []).map((it) => {
+    const only = it.only?.length ? (ids ? it.only.filter((x) => ids.includes(x)) : it.only) : [];
+    const n = only.length;
     const each = it.amount * (it.qty || 1);
-    const total =
-      it.unit === "athlete" ? each * A : it.unit === "person" ? each * P : it.unit === "room" ? (each / (it.cap || 1)) * (it.beds || 1) * (it.rooms || 1) : each;
-    const share = it.club || !A ? 0 : total / A;
-    return { ...it, each, total, share };
+    const total = n
+      ? it.unit === "athlete" || it.unit === "person"
+        ? each * n
+        : it.unit === "room"
+          ? (each / (it.cap || 1)) * (it.beds || 1) * (it.rooms || 1)
+          : each
+      : it.unit === "athlete"
+        ? each * A
+        : it.unit === "person"
+          ? each * P
+          : it.unit === "room"
+            ? (each / (it.cap || 1)) * (it.beds || 1) * (it.rooms || 1)
+            : each;
+    const share = it.club || !A ? 0 : n ? total / n : total / A;
+    const { only: _o, ...rest } = it;
+    return { ...rest, ...(n ? { only } : {}), each, total, share };
   });
   const total = lines.reduce((n, l) => n + l.total, 0);
   const club = lines.filter((l) => l.club).reduce((n, l) => n + l.total, 0);
-  const perAthlete = lines.reduce((n, l) => n + l.share, 0);
-  return { lines, total, club, fromAthletes: total - club, perAthlete, athletes: A, people: P };
+  // Herkesin ödediği (yalnız belirli sporculara ait kalemler hariç); sporcuya göre: forAthlete
+  const perAthlete = lines.filter((l) => !l.only).reduce((n, l) => n + l.share, 0);
+  const varies = lines.some((l) => l.only && l.share > 0);
+  return { lines, total, club, fromAthletes: total - club, perAthlete, varies, athletes: A, people: P };
 }
+
+// Bir sporcunun ödeyeceği toplam (ortak pay + yalnız ona ait kalemler)
+export const forAthlete = (t, id) => t.lines.filter((l) => !l.only || l.only.includes(id)).reduce((n, l) => n + l.share, 0);
+// Sporcunun kalemleri
+export const linesFor = (t, id) => t.lines.filter((l) => l.share > 0 && (!l.only || l.only.includes(id)));
 
 export const tl = (n) => `${(Math.round((n || 0) * 100) / 100).toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺`;
 
@@ -187,6 +213,10 @@ export function howText(l, t) {
   }
   const parts = [tl(l.amount)];
   if (l.qty > 1) parts.push(`${l.qty} ${l.cat === "Konaklama" ? "gece" : "adet"}`);
+  if (l.only) {
+    if (l.unit === "athlete" || l.unit === "person") parts.push(`${l.only.length} sporcu`);
+    return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");
+  }
   if (l.unit === "athlete") parts.push(`${t.athletes} sporcu`);
   if (l.unit === "person") parts.push(`${t.people} kişi`);
   return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");

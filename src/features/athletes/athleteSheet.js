@@ -2,7 +2,7 @@
 // İçinde: yolculuk (tahmini plan), talimattaki program, konaklama, yalnız o sporcunun bütçe payı kalem kalem.
 // sheetData saf (testlenir); buildAthleteSheet pdf-lib'i yalnız çıktı alınırken yükler.
 import { CLUB, hotelInfo, rangeText } from "./raceDocs.js";
-import { tl, totals } from "./budget.js";
+import { linesFor, tl, totals } from "./budget.js";
 import { cleanTodos, noticeTasks, raceHotels, tripRows } from "./races.js";
 import { todayStr } from "@/lib/utils/format";
 
@@ -61,10 +61,11 @@ export function upcomingDates(r, today = todayStr()) {
 export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} gün kaldı`);
 
 // Bir sporcunun notu. show: hangi bölümler görünsün ({ trip, program, stay, dates, budget }; yoksa hepsi) count: yarıştaki sporcu sayısı (bütçe payı buna göre bölünür)
+// Yalnız bazı sporculara yazılan kalem (only) yalnız onların notunda görünür
 export function sheetData(r, athlete, count, show = ALL) {
   const on = { ...ALL, ...show };
-  const t = totals(r?.budget, count);
-  const mine = t.lines.filter((l) => l.share > 0).map((l) => ({ cat: l.cat, title: l.title, amount: l.share, est: !!l.est }));
+  const t = totals(r?.budget, count, r?.athleteIds);
+  const mine = (athlete?.id ? linesFor(t, athlete.id) : t.lines.filter((l) => l.share > 0 && !l.only)).map((l) => ({ cat: l.cat, title: l.title, amount: l.share, est: !!l.est }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
   return {
     name: athlete?.studentName || "",
@@ -90,6 +91,60 @@ export function sheetParts(r, count) {
     ["Son tarihler", d.deadlines.length ? `${d.deadlines[0].title} · ${leftText(d.deadlines[0].left)}${d.deadlines.length > 1 ? ` · +${d.deadlines.length - 1}` : ""}` : "Yaklaşan son tarih yok", d.deadlines.length > 0, "sum", "dates"],
     ["Bütçe", d.money.lines.length ? `Sporcu payı ${tl(d.money.total)} · ${d.money.lines.length} kalem` : "Sporcu payı olan kalem yok", d.money.lines.length > 0, "budget", "budget"],
   ];
+}
+
+// Programın yerleşimi: hangi ölçekte, tek mi iki sütun mu. Önce tek sütun, sonra iki sütun, sonra küçülerek; hiçbir madde atılmaz.
+// avail: kullanılabilir yükseklik (pt), width: genişlik, measure(metin, boyut) -> genişlik
+export function programLayout(days, avail, width, measure) {
+  const wrap = (s, max, size) => {
+    const words = String(s || "").split(/\s+/).filter(Boolean);
+    const out = [""];
+    for (const wd of words) {
+      const next = out.at(-1) ? `${out.at(-1)} ${wd}` : wd;
+      if (measure(next, size) <= max || !out.at(-1)) out[out.length - 1] = next;
+      else if (out.length < 2) out.push(wd);
+      else out[1] = `${out[1]} ${wd}`;
+    }
+    return out;
+  };
+  const build = (k, n) => {
+    const colW = n === 1 ? width : (width - 16) / 2;
+    const tx = 46 * k;
+    const rows = [];
+    days.forEach((d, i) => {
+      rows.push({ day: true, gap: i > 0, label: d.date ? dayName(d.date) : "Tarih yok", di: i });
+      for (const it of d.items) rows.push({ time: it.time, lines: wrap(it.title, colW - tx, 9.5 * k), di: i });
+    });
+    const hOf = (r, first) => (r.day ? (r.gap && !first ? 5 : 0) + 14 : 13 + (r.lines.length - 1) * 11.5) * k;
+    const sum = (rs) => rs.reduce((n, r, i) => n + hOf(r, i === 0), 0);
+    if (n === 1) return { k, colW, tx, cols: [{ x: 0, rows }], h: sum(rows) };
+    // İki sütun: önce gün sınırında, sığmazsa gün içinden bölünür (sağ sütun günün adıyla "devam" başlar)
+    const at = (i) => {
+      const left = rows.slice(0, i);
+      let right = rows.slice(i);
+      right = right[0].day ? [{ ...right[0], gap: false }, ...right.slice(1)] : [{ day: true, label: `${rows.find((r) => r.day && r.di === right[0].di).label} (devam)`, di: right[0].di }, ...right];
+      return { left, right, h: Math.max(sum(left), sum(right)) };
+    };
+    let byDay = null;
+    let any = null;
+    for (let i = 1; i < rows.length; i++) {
+      const c = at(i);
+      if (rows[i].day && (!byDay || c.h < byDay.h)) byDay = c;
+      if (!any || c.h < any.h) any = c;
+    }
+    const best = byDay && byDay.h <= avail ? byDay : any;
+    if (!best) return { k, colW, tx, cols: [{ x: 0, rows }], h: sum(rows) };
+    return { k, colW, tx, cols: [{ x: 0, rows: best.left }, { x: colW + 16, rows: best.right }], h: best.h };
+  };
+  const ks = [1, 0.92, 0.85, 0.78, 0.72, 0.66, 0.6];
+  let last;
+  for (const k of ks) {
+    for (const n of [1, 2]) {
+      last = build(k, n);
+      if (last.h <= avail) return last;
+    }
+  }
+  return last;
 }
 
 const W = 595.28;
@@ -161,35 +216,28 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
       y += 14;
     }
 
-    // Program: kalan yere sığan kadar; sığmazsa "…"
+    // Program: hepsi gösterilir. Tek sütuna sığmazsa iki sütun (ilk günler solda, kalanı sağda), yine sığmazsa yazı küçülür
     if (d.days.length) {
       head("PROGRAM", y);
       y += 20;
-      const bottom = H - 56 - moneyH - stayH - datesH - 18;
-      let cut = false;
-      outer: for (const day of d.days) {
-        if (y + 30 > bottom) {
-          cut = true;
-          break;
-        }
-        text(day.date ? dayName(day.date) : "Tarih yok", L, y, f.b, 9.5);
-        y += 14;
-        for (const s of day.items) {
-          if (y + 13 > bottom) {
-            cut = true;
-            break outer;
+      const bottom = H - 56 - moneyH - stayH - datesH - 8;
+      const lay = programLayout(d.days, bottom - y, R - L, (s, size) => w(s, f.r, size));
+      for (const col of lay.cols) {
+        let cy = y;
+        for (const row of col.rows) {
+          if (row.day) {
+            if (row.gap) cy += 5 * lay.k;
+            text(row.label, col.x + L, cy, f.b, 9.5 * lay.k, { max: lay.colW });
+            cy += 14 * lay.k;
+          } else {
+            text(row.time || "—", col.x + L + 6 * lay.k, cy, f.r, 9.5 * lay.k, { color: MUT });
+            row.lines.forEach((ln, i) => text(ln, col.x + L + lay.tx, cy + i * 11.5 * lay.k, f.r, 9.5 * lay.k, { max: lay.colW - lay.tx }));
+            cy += (13 + (row.lines.length - 1) * 11.5) * lay.k;
           }
-          text(s.time || "—", L + 8, y, f.r, 9.5, { color: MUT });
-          text(s.title, L + 56, y, f.r, 9.5, { max: R - L - 56 });
-          y += 13;
         }
-        y += 5;
       }
-      if (cut) {
-        text("… programın devamı talimatta", L + 8, y, f.r, 9, { color: MUT });
-        y += 14;
-      }
-      y += 10;
+      if (lay.cols.length > 1) page.drawLine({ start: { x: L + lay.colW + 8, y: H - y + 8 }, end: { x: L + lay.colW + 8, y: H - y - lay.h + 6 }, thickness: 0.5, color: LINE });
+      y += lay.h + 10;
     }
 
     // Konaklama
