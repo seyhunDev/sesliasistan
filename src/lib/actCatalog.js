@@ -28,15 +28,19 @@ function suffix(name, kind) {
   return w;
 }
 
+// Yoklamada söylenmeyenler ("kalanlar gelmedi")
+export const OTHERS = { geldi: "present", gelmedi: "absent", izinli: "excused" };
+
 // Alanların açıklaması yapay zeka içindir; say(a) uygulamanın kendi akışının tanıdığı kalıbı yazar
 export const ACTS = [
-  { no: 1, id: "race_create", kind: "race", name: "Yarış oluştur", fields: "name (yarış adı), date (söylendiği gibi: '7-11 Ekim'), place, athletes [ad]",
+  { no: 1, id: "race_create", kind: "race", name: "Yarış oluştur", fields: "name (yarış adı), date (söylendiği gibi: '7-11 Ekim'), start ve end (YYYY-AA-GG; bugüne göre hesapla, söylenmediyse boş), place (söylendiği gibi), city (il; yurt dışında ülke), district (ilçe; yurt dışında şehir), abroad (Türkiye dışındaysa true), athletes [ad]",
     say: (a) => S(a.name) && [`${S(a.name)} adında yarış oluştur`, S(a.date), S(a.place), list(a.athletes).length && `${and(list(a.athletes))} katılacak`].filter(Boolean).join(", ") },
   { no: 2, id: "race_add", kind: "race", name: "Yarışa sporcu ekle", fields: "race (yarış adı), athletes [ad]",
     say: (a) => S(a.race) && list(a.athletes).length && `${S(a.race)} yarışına ${and(list(a.athletes))} ekle` },
-  { no: 3, id: "attendance", kind: "attendance", name: "Yoklama", fields: "day ('bugün', 'dün' ya da tarih), came [ad], absent [ad], excused [ad]",
+  { no: 3, id: "attendance", kind: "attendance", name: "Yoklama", fields: "day ('bugün', 'dün' ya da YYYY-AA-GG), came [ad], absent [ad], excused [ad], others (söylenmeyenler için: 'gelmedi' | 'geldi' | 'izinli'; 'kalanlar gelmedi' denirse 'gelmedi')",
     say: (a) => {
       const parts = [list(a.came).length && `${and(list(a.came))} geldi`, list(a.absent).length && `${and(list(a.absent))} gelmedi`, list(a.excused).length && `${and(list(a.excused))} izinli`].filter(Boolean);
+      if (parts.length && OTHERS[S(a.others, 10)]) parts.push(`kalanlar ${S(a.others, 10)}`);
       return parts.length && `yoklama: ${S(a.day, 20) || "bugün"} ${parts.join(", ")}`;
     } },
   { no: 4, id: "dues_cash", kind: "income", name: "Aidat nakit alındı", fields: "who (sporcu adı), month (ay adı, söylendiyse), amount (TL, söylendiyse)",
@@ -67,11 +71,11 @@ export const ACTS = [
 
 export const ACT = Object.fromEntries(ACTS.map((x) => [x.no, x]));
 // Yapay zekaya giden alanlar (tek düz nesne: her işin alanları bunlardan)
-export const ARG_KEYS = ["name", "date", "place", "race", "athletes", "day", "came", "absent", "excused", "who", "month", "amount", "cat", "topic", "type", "color", "size", "items", "page", "seller", "cash", "year", "text"];
+export const ARG_KEYS = ["name", "date", "start", "end", "place", "city", "district", "abroad", "race", "athletes", "day", "came", "absent", "excused", "others", "who", "month", "amount", "cat", "topic", "type", "color", "size", "items", "page", "seller", "cash", "year", "text"];
 const ARRAYS = new Set(["athletes", "came", "absent", "excused", "items"]);
 export const ARGS_SCHEMA = {
   type: "object",
-  properties: Object.fromEntries(ARG_KEYS.map((k) => [k, ARRAYS.has(k) ? { type: "array", items: { type: "string" } } : k === "cash" ? { type: "boolean" } : { type: "string" }])),
+  properties: Object.fromEntries(ARG_KEYS.map((k) => [k, ARRAYS.has(k) ? { type: "array", items: { type: "string" } } : k === "cash" || k === "abroad" ? { type: "boolean" } : { type: "string" }])),
 };
 
 // İstem için katalog satırları
@@ -82,5 +86,10 @@ export function actSay(no, args) {
   const a = ACT[Number(no)];
   if (!a) return null;
   const say = a.say(args && typeof args === "object" ? args : {});
-  return say ? { act: a.no, kind: a.kind, say: S(say, 400) } : null;
+  return say ? { act: a.no, kind: a.kind, say: S(say, 400), args: args && typeof args === "object" ? args : {} } : null;
 }
+
+// Yapay zekasız doğrudan yapılabilecek alanlar için (actRun.js): tarih ve liste okuma
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const isoDay = (v) => (DAY.test(S(v, 10)) ? S(v, 10) : "");
+export { list as actList, S as actText };

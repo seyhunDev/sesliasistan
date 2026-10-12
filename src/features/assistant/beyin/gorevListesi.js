@@ -23,8 +23,18 @@ import { localNavigate } from "@/lib/nav";
 import { learnedKind } from "@/lib/taskPlan";
 import { guess as brainGuess } from "@/lib/brain/store";
 
+// Numaralı iş (actCatalog): akış cümleyi yeniden yapay zekaya sormadan alanlardan yapar (actRun.js)
+const actOf = (t) => (t && typeof t === "object" && t.act && t.args ? { act: t.act, args: t.args, say: t.say } : null);
+// Akış o anki görev satırının numaralı işini alır (bir kez; run() cümleyi temizleyebildiği için cümleye değil numaraya bakılır).
+// Numara bu akışın değilse null: akış eski yoldan (cümle → yapay zeka) gider
+export function takeAct(ctx, nos) {
+  const a = ctx.actNow?.current;
+  if (ctx.actNow) ctx.actNow.current = null;
+  return a && nos.includes(a.act) ? a : null;
+}
+
 export function nextInChain(ctx, viaVoice) {
-  const { chain, chainGen, chainStep, planIdx, planKind, planNow, raceFailed, reply, run, setPlan, setWork, speaking } = ctx;
+  const { actNow, chain, chainGen, chainStep, planIdx, planKind, planNow, raceFailed, reply, run, setPlan, setWork, speaking } = ctx;
   const next = chain.current.shift();
   if (!next) return;
   const gen = chainGen.current;
@@ -35,6 +45,7 @@ export function nextInChain(ctx, viaVoice) {
     chainStep.current = true;
     planNow.current = next.label || "";
     planKind.current = next.kind || "";
+    actNow.current = actOf(next);
     // Satır işi başlatırken açıkça "sürüyor" olur: işaret bir önceki cevabın zamanlamasına bağlı kalmaz
     // (önceden son iş hiç "sürüyor" olmayınca ✓ konacak satır bulunamıyordu; denetim D, 2026-10-09)
     if (Number.isInteger(next.i)) {
@@ -76,13 +87,14 @@ export function go(ctx, page, message, viaVoice = false) {
 
 // Görev listesini başlat: işler sırayla, her biri kendi akışında; listede yalnız işlerin adı ve sonucu görünür
 export function startPlan(ctx, tasks, viaVoice, fresh) {
-  const { chain, chainGen, chainStep, planFails, planIdx, planKind, planLearn, planNow, planOn, raceFailed, raceFollow, run, setPlan, setWork } = ctx;
+  const { actNow, chain, chainGen, chainStep, planFails, planIdx, planKind, planLearn, planNow, planOn, raceFailed, raceFollow, run, setPlan, setWork } = ctx;
   chain.current = tasks.slice(1).map((x, k) => ({ ...x, i: k + 1 }));
   chainGen.current++;
   raceFollow.current = null;
   planOn.current = true;
   planIdx.current = 0;
   planKind.current = tasks[0].kind || "";
+  actNow.current = actOf(tasks[0]);
   raceFailed.current = false;
   planNow.current = tasks[0].label || "";
   planFails.current = [];
@@ -121,6 +133,7 @@ export function stopPlan(ctx) {
   if (!planOn.current && !chain.current.length) return;
   chain.current = [];
   chainGen.current++;
+  if (ctx.actNow) ctx.actNow.current = null;
   planOn.current = false;
   planIdx.current = -1;
   planFails.current = [];

@@ -8,6 +8,7 @@ import { todayStr } from "@/lib/utils/format";
 import { byId, isActive, loadAthletes, saveAttendance } from "./data";
 import { aliasesOf } from "./names";
 import { mirrorChanges } from "./mirror";
+import { attendanceFromArgs } from "@/lib/actRun";
 
 export const ATT_LABEL = { present: "geldi", absent: "gelmedi", excused: "izinli" };
 
@@ -17,11 +18,14 @@ let screen = { day: "", cls: "" };
 export const setAttDay = (day, cls) => (screen = { day: day || "", cls: cls || "" });
 
 // onStep(label): her adım başlarken çağrılır (panelde "yapılıyor" olarak görünür)
-export async function parseAttendance(text, idx, onStep = () => {}) {
+// args: görev listesindeki numaralı işin alanları (iş 3); adların hepsi bulunursa yapay zekaya ikinci kez sorulmaz
+export async function parseAttendance(text, idx, onStep = () => {}, args = null) {
   onStep("Sporcular yükleniyor");
   const data = await loadAthletes();
   const list = data.athletes.filter((a) => isActive(a) && (!screen.cls || a.currentClassId === screen.cls));
   if (!list.length) throw Object.assign(new Error("Aktif sporcu yok."), { code: "empty" });
+  const direct = args ? attendanceFromArgs(args, list, { today: todayStr(), day: screen.day }) : null;
+  if (direct) return direct;
   const classes = byId(data.classes);
   onStep("Söylediklerin sporcularla eşleştiriliyor");
   const res = await authFetch("/api/attendance", {
