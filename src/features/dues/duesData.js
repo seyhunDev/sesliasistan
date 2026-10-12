@@ -8,6 +8,7 @@ import { cashMoves, filedMoves, incomeMoves, rangeOf } from "@/lib/dues";
 import { bookOf, convIncome, convSet } from "@/lib/cashbook";
 import { whoIn } from "@/lib/payee";
 import { addFileMoves, dropFileMoves, loadLedger } from "@/features/bank/ledgerData";
+import { todayStr } from "@/lib/utils/format";
 
 // Aidat verisi (yalnız ana hesap; kurallar ana hesaba orgs altındaki her koleksiyonu açıyor). Okuma sayfa açılınca bir kez.
 const dues = (orgId, id) => doc(db, "orgs", orgId, "dues", id);
@@ -133,3 +134,10 @@ export const saveCashName = (orgId, name) => setDoc(doc(db, "orgs", orgId, "cash
 export const dropCashName = (orgId, name) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { names: arrayRemove(name) }, { merge: true });
 // Hesaplar › Bakiye'de gösterilecek hesaplar (hesap anahtarları)
 export const saveShownAccts = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { accts: keys }, { merge: true });
+// Fiş ya da fatura nakit ödenince kulüp kasasından çıkış (src: "rc:<fiş>" | "inv:<fatura>"); ödeme geri alınınca silinir
+export const cashOutFor = (orgId, { src, cat, who, amount, note, date }) =>
+  addDoc(collection(db, "orgs", orgId, "incomes"), clean({ dir: "out", cat, who, amount, note, date: date || todayStr(), src, at: new Date().toISOString() }));
+export async function dropCashFor(orgId, src) {
+  const q = await getDocs(query(collection(db, "orgs", orgId, "incomes"), where("src", "==", src)));
+  await Promise.all(q.docs.map((d) => deleteDoc(d.ref)));
+}

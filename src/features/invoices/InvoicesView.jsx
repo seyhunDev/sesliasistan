@@ -452,7 +452,7 @@ function Detail({ inv, orgId, task, members, today, onChange, onAssign, onReplac
   };
   const paidInfo =
     inv.status === "paid" &&
-    [inv.paidAt && shortDay(inv.paidAt), { bank: "bankadan görüldü", hand: "elle işaretlendi", task: "görevli tamamladı" }[inv.paidVia]].filter(Boolean).join(" · ");
+    [inv.paidAt && shortDay(inv.paidAt), { bank: "bankadan görüldü", hand: "elle işaretlendi", task: "görevli tamamladı", cash: "nakit · kasadan düştü" }[inv.paidVia]].filter(Boolean).join(" · ");
   return (
     <div className="pb-4">
       <div className={`rounded-2xl px-4 py-3 ${st === "paid" ? "bg-ok/10" : st === "late" ? "bg-rec/10" : "bg-bg"}`}>
@@ -466,15 +466,20 @@ function Detail({ inv, orgId, task, members, today, onChange, onAssign, onReplac
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         {inv.status === "paid" ? (
-          <Button variant="ghost" loading={busy === "pay"} onClick={() => run("pay", async () => (onChange(await setPaid(orgId, inv, false)), toast("Ödenmedi olarak işaretlendi")))}>
+          <Button variant="ghost" loading={busy === "pay"} onClick={() => run("pay", async () => (onChange(await setPaid(orgId, inv, false)), toast(inv.paidVia === "cash" ? "Ödenmedi yapıldı, kasaya geri eklendi" : "Ödenmedi olarak işaretlendi")))}>
             Ödenmedi yap
           </Button>
         ) : (
-          <Button loading={busy === "pay"} onClick={() => run("pay", async () => (onChange(await setPaid(orgId, inv, true, "hand")), toast("Ödendi, görev de tamamlandı")))}>
-            Ödendi
-          </Button>
+          <>
+            <Button loading={busy === "pay"} onClick={() => run("pay", async () => (onChange(await setPaid(orgId, inv, true, "hand")), toast("Ödendi (EFT), görev de tamamlandı")))}>
+              Ödendi (EFT)
+            </Button>
+            <Button variant="ghost" loading={busy === "cash"} onClick={() => run("cash", async () => (onChange(await setPaid(orgId, inv, true, "cash")), toast("Nakit ödendi, kasadan düştü")))}>
+              Nakit ödendi
+            </Button>
+          </>
         )}
-        <Button variant="ghost" onClick={() => navigator.clipboard?.writeText(payText(inv)).then(() => toast("Ödeme bilgisi kopyalandı"), () => toast("Kopyalanamadı"))}>
+        <Button variant="ghost" className={inv.status === "paid" ? "" : "col-span-2"} onClick={() => navigator.clipboard?.writeText(payText(inv)).then(() => toast("Ödeme bilgisi kopyalandı"), () => toast("Kopyalanamadı"))}>
           <Icon name="copy" className="size-4" /> Kopyala
         </Button>
       </div>

@@ -944,6 +944,7 @@ group("Faturalar")([
   ["asistan: hangisi", F("faturayı ödendi işaretle → iki açık fatura, sorar", () => { const c = IV.invoiceCommand("faturayı ödendi işaretle"); const r = IV.pickInvoice(c.t, INV); return c.op === "paid" && !r.pick && r.list.length === 2; })],
   ["asistan: elektrik", F("elektrik faturasını ödedim → Gediz", () => IV.pickInvoice(IV.invoiceCommand("elektrik faturasını ödedim").t, INV).pick?.id === "i2")],
   ["asistan: ödenmedi", F("ödenmişlerden seçer", () => { const c = IV.invoiceCommand("Deniz malzeme faturası ödenmedi olarak işaretle"); return c?.op === "unpaid" && IV.pickInvoice(c.t, INV, "unpaid").pick?.id === "i3"; })],
+  ["asistan: nakit", F("Turkcell faturasını nakit ödedim → Turkcell, kasadan", () => { const c = IV.invoiceCommand("Turkcell faturasını nakit ödedim"); return c?.op === "paid" && c.cash && IV.pickInvoice(c.t, INV).pick?.id === "i1" && !IV.invoiceCommand("Turkcell faturası ödendi").cash; })],
   ["asistan: soru değil", F("fatura ödendi mi? → yerel değil", () => IV.invoiceCommand("Turkcell faturası ödendi mi") === null && IV.invoiceCommand("fatura çek") === null)],
   ["banka mailinden kendiliğinden", F("emin olan ödendi, görev tamam, liste kısalır", async () => {
     const store = { "orgs/u1/invoiceIndex/open": { list: IV.openIndex(INV) }, "orgs/u1/tasks/t1": { title: "x", done: false } };

@@ -1900,18 +1900,18 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         return true;
       }
       waitFor("invoice");
-      invAsk.current = { op: ic.op };
+      invAsk.current = { op: ic.op, cash: !!ic.cash };
       const names = many.slice(0, 4).map((x) => `${x.seller} ${amountText(x)}`);
       reply(`Hangi fatura? ${names.join(", ")}${many.length > 4 ? " ve diğerleri" : ""}. Firmanın adını söyle.`, { engine: "local", expect: true }, viaVoice);
       return true;
     }
     try {
-      await setInvoicePaid(profile.orgId, pick, ic.op === "paid", "hand");
+      await setInvoicePaid(profile.orgId, pick, ic.op === "paid", ic.cash ? "cash" : "hand");
       window.dispatchEvent(new Event("sa-invoices-saved"));
       done(
         ic.op === "paid"
-          ? `Ödendi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.${pick.taskId ? " Görevi de tamamladım." : ""}`
-          : `Ödenmedi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.`,
+          ? `${ic.cash ? "Nakit ödendi, kasadan düştüm" : "Ödendi olarak işaretledim"}: ${pick.seller}, ${amountText(pick)}.${pick.taskId ? " Görevi de tamamladım." : ""}`
+          : `Ödenmedi olarak işaretledim: ${pick.seller}, ${amountText(pick)}.${pick.paidVia === "cash" ? " Kasaya geri ekledim." : ""}`,
         { engine: "local", nav: "invoices" },
         viaVoice,
       );
@@ -2037,9 +2037,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         reply(`${list.length} fiş ödeme bekliyor. Fiş numarasıyla ya da kimin fişi olduğunu söyle (ör. “Ali'nin fişlerini ödedim”).`, { engine: "local", nav: "receipts" }, viaVoice);
         return true;
       }
-      await Promise.all(list.map((x) => markPaid(x.id, rp.paid)));
+      await Promise.all(list.map((x) => markPaid(x.id, rp.paid, rp.cash ? "cash" : "eft")));
       const sum = list.reduce((t, x) => t + totalTL(x), 0);
-      done(`${list.length === 1 ? "Fiş" : `${list.length} fiş`} ${rp.paid ? "ödendi" : "ödeme bekliyor"} olarak işaretlendi${sum ? `, toplam ${money(sum).replace(/,00$/, "")} TL` : ""}.${rp.paid ? " Ekleyene bildirim gitti." : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
+      const kasa = rp.paid ? (rp.cash ? " Kasadan düştüm." : "") : list.some((x) => x.paidVia === "cash") ? " Kasaya geri ekledim." : "";
+      done(`${list.length === 1 ? "Fiş" : `${list.length} fiş`} ${rp.paid ? (rp.cash ? "nakit ödendi" : "ödendi") : "ödeme bekliyor"} olarak işaretlendi${sum ? `, toplam ${money(sum).replace(/,00$/, "")} TL` : ""}.${kasa}${rp.paid ? " Ekleyene bildirim gitti." : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
       return true;
     }
     // Gelmeyenlerin velilerine haber (yoklama): uygulamadaki velilere bildirim, onayla

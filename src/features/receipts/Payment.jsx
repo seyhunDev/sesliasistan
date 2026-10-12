@@ -1,11 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useData } from "@/features/data/DataProvider";
 import { TLk, totalOf } from "@/lib/receipts";
 
 const when = (iso) => (iso ? new Date(iso).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
+
+// "Öde"ye basınca nasıl ödendiği sorulur: Nakit (kasadan düşer) ya da EFT (bankadan zaten görünür)
+function PayButtons({ id, small }) {
+  const { markPaid } = useData();
+  const [ask, setAsk] = useState(false);
+  const pad = small ? "px-3 py-1.5" : "px-3.5 py-2";
+  if (!ask)
+    return (
+      <button onClick={() => setAsk(true)} className={`shrink-0 rounded-full bg-ok ${pad} text-[0.8125rem] font-semibold text-white`}>
+        Öde
+      </button>
+    );
+  return (
+    <span className="flex shrink-0 gap-1.5">
+      <button onClick={() => markPaid(id, true, "cash")} className={`rounded-full bg-ok ${pad} text-[0.8125rem] font-semibold text-white`}>
+        Nakit
+      </button>
+      <button onClick={() => markPaid(id, true, "eft")} className={`rounded-full bg-ok/15 ${pad} text-[0.8125rem] font-semibold text-ok`}>
+        EFT
+      </button>
+    </span>
+  );
+}
 
 // Fiş satırındaki küçük ödeme etiketi
 export function PayBadge({ r }) {
@@ -25,7 +49,7 @@ export function PayBox({ r }) {
         <Icon name="check" className="size-5 shrink-0 text-ok" />
         <span className="min-w-0 flex-1 text-[0.875rem]">
           <b className="block font-semibold text-ok">Ödendi</b>
-          <small className="text-[0.8125rem] text-mut">{[when(r.paidAt), r.paidBy?.name].filter(Boolean).join(" · ")}</small>
+          <small className="text-[0.8125rem] text-mut">{[when(r.paidAt), r.paidBy?.name, r.paidVia === "cash" ? "nakit · kasadan düştü" : r.paidVia === "eft" ? "EFT" : ""].filter(Boolean).join(" · ")}</small>
         </span>
         {!isStaff && (
           <button onClick={() => markPaid(r.id, false)} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-60">
@@ -42,18 +66,14 @@ export function PayBox({ r }) {
         <b className="block font-semibold">Ödeme bekliyor</b>
         <small className="text-[0.8125rem] opacity-80">{isStaff ? "Ana hesap ödeyince bildirim gelecek" : `${who || "Üye"} · ${TLk(totalOf(r))}`}</small>
       </span>
-      {!isStaff && (
-        <button onClick={() => markPaid(r.id)} className="shrink-0 rounded-full bg-ok px-3.5 py-2 text-[0.8125rem] font-semibold text-white active:scale-95">
-          Öde
-        </button>
-      )}
+      {!isStaff && <PayButtons id={r.id} />}
     </div>
   );
 }
 
 // Ana hesap: fiş listesinin üstünde ödeme bekleyenler (tek dokunuşla "Öde")
 export function PendingPayments() {
-  const { receipts, isStaff, markPaid, nameOf } = useData();
+  const { receipts, isStaff, nameOf } = useData();
   const list = receipts.filter((r) => r.payStatus === "pending").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   if (isStaff || !list.length) return null;
   const sum = list.reduce((a, r) => a + totalOf(r), 0);
@@ -71,9 +91,7 @@ export function PendingPayments() {
               <small className="block truncate text-[0.8125rem] text-mut">{[nameOf(r.createdByUid), when(r.date)].filter(Boolean).join(" · ")}</small>
             </Link>
             <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
-            <button onClick={() => markPaid(r.id)} className="shrink-0 rounded-full bg-ok px-3 py-1.5 text-[0.8125rem] font-semibold text-white active:scale-95">
-              Öde
-            </button>
+            <PayButtons id={r.id} small />
           </li>
         ))}
       </ul>

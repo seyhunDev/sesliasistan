@@ -10,7 +10,7 @@ import { todayStr } from "@/lib/utils/format";
 import { peopleFor } from "@/lib/people";
 import { prepFile } from "@/features/inventory/invFiles";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/raceFiles";
-import { loadMovementsRange } from "@/features/dues/duesData";
+import { cashOutFor, dropCashFor, loadMovementsRange } from "@/features/dues/duesData";
 import { primeOpen } from "./openInvoices";
 import { bankMatches, isoDay, openIndex, paidMovOf, taskInvoice, taskTitle } from "@/lib/invoices";
 
@@ -157,8 +157,15 @@ export async function updateInvoice(orgId, inv, patch) {
   return next;
 }
 
-// Ödendi / ödenmedi. via: hand | bank | task; mov: banka hareketi. Görev de tamamlanır / yeniden açılır (task'tan gelmiyorsa).
+// Nakit ödenen fatura kasadan çıkış olarak yazılır (src "inv:<id>"); geri alınınca / silinince kalkar
+const cashSrc = (inv) => `inv:${inv.id}`;
+const cashNote = (inv) => ["Fatura", inv.no].filter(Boolean).join(" ");
+
+// Ödendi / ödenmedi. via: hand | bank | task | cash; mov: banka hareketi. Görev de tamamlanır / yeniden açılır (task'tan gelmiyorsa).
 export async function setPaid(orgId, inv, paid, via = "hand", mov = null) {
+  if (inv.paidVia === "cash" && !(paid && via === "cash")) dropCashFor(orgId, cashSrc(inv)).catch(() => {});
+  if (paid && via === "cash" && inv.paidVia !== "cash")
+    cashOutFor(orgId, { src: cashSrc(inv), cat: "Fatura", who: inv.seller || "", amount: Number(inv.amount) || 0, note: cashNote(inv) }).catch(() => {});
   const patch = paid
     ? { status: "paid", paidAt: mov ? isoDay(mov) : todayStr(), paidVia: via, paidMov: mov ? paidMovOf(mov) : null }
     : { status: "open", paidAt: null, paidVia: null, paidMov: null };
@@ -181,6 +188,7 @@ export async function ensureTask(orgId, inv, me) {
 }
 
 export async function deleteInvoice(orgId, inv) {
+  if (inv.paidVia === "cash") dropCashFor(orgId, cashSrc(inv)).catch(() => {});
   await deleteDoc(doc(col(orgId), inv.id));
   if (inv.taskId) await deleteDoc(doc(db, "orgs", orgId, "tasks", inv.taskId)).catch(() => {});
   dropFile(orgId, inv.file);

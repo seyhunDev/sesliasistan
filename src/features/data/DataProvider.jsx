@@ -8,7 +8,8 @@ import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
-import { calcTotals, mismatch, newPay } from "@/lib/receipts";
+import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
+import { cashOutFor, dropCashFor } from "@/features/dues/duesData";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
@@ -531,6 +532,7 @@ export function DataProvider({ children }) {
           notes.filter((n) => n.planId === id).forEach((n) => batch.update(doc(db, "orgs", ownerId, "notes", n.id), { planId: null }));
         }
         if (kind === "receipt") batch.delete(doc(db, "orgs", ownerId, "receiptImages", id));
+        if (kind === "receipt" && cur.current.receipts.find((x) => x.id === id)?.paidVia === "cash") dropCashFor(ownerId, `rc:${id}`).catch(() => {});
         await batch.commit(); // ya hepsi ya hiçbiri
       } catch (e) {
         fail(e, "Silme");
@@ -867,19 +869,28 @@ export function DataProvider({ children }) {
 
   // Ana hesap: çalışanın fişini "ödendi" yapar (ya da geri alır); ödendiyse çalışana bildirim gider
   const markPaid = useCallback(
-    async (id, paid = true) => {
+    // via: "eft" | "cash"; nakit ödenen fiş kasadan çıkış olarak yazılır (src "rc:<id>"), geri alınınca kalkar
+    async (id, paid = true, via = "eft") => {
+      const r = cur.current.receipts.find((x) => x.id === id);
       const patch = paid
-        ? { payStatus: "paid", paidAt: new Date().toISOString(), paidBy: { name: me.current.name || "Ana hesap" }, paySeenAt: null }
-        : { payStatus: "pending", paidAt: null, paidBy: null, paySeenAt: null };
+        ? { payStatus: "paid", paidAt: new Date().toISOString(), paidBy: { name: me.current.name || "Ana hesap" }, paySeenAt: null, paidVia: via }
+        : { payStatus: "pending", paidAt: null, paidBy: null, paySeenAt: null, paidVia: null };
       setData((p) => ({ ...p, receipts: p.receipts.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
       try {
-        await updateDoc(doc(db, "orgs", getOrgId(), "receipts", id), patch);
+        const org = getOrgId();
+        const wasCash = r?.paidVia === "cash";
+        if (wasCash && !(paid && via === "cash")) dropCashFor(org, `rc:${id}`).catch(() => {});
+        if (paid && via === "cash" && !wasCash && r) {
+          const who = r.createdBy?.name || members.find((m) => m.uid === r.createdByUid)?.name || "";
+          cashOutFor(org, { src: `rc:${id}`, cat: "Fiş", who, amount: totalOf(r) / 100, note: [r.merchant, noText(r.no)].filter(Boolean).join(" · ") }).catch((e) => fail(e, "Kasa çıkışı"));
+        }
+        await updateDoc(doc(db, "orgs", org, "receipts", id), patch);
         if (paid) authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: id }) }).catch(() => {});
       } catch (e) {
         fail(e, "Ödeme güncelleme");
       }
     },
-    [getOrgId, fail],
+    [getOrgId, fail, members],
   );
 
   // Çalışan: ödendi bildirimini gördü
