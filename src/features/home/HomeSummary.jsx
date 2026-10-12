@@ -6,8 +6,9 @@ import { db } from "@/lib/firebase/clientApp";
 import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { clubDues, clubFis, clubPosts, clubRace, clubTraining, duesLive, readSum, saveSum } from "@/lib/homeTiles";
-import { todayStr } from "@/lib/utils/format";
+import { clubDues, clubFis, clubPosts, clubRace, clubTraining, duesLive, homeNotes, readSum, saveSum } from "@/lib/homeTiles";
+import { rel, todayStr } from "@/lib/utils/format";
+import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
 import { BRAND } from "./HomeActions";
 import { CARD, SectionHead } from "./ui";
@@ -19,13 +20,15 @@ import { invoiceTile } from "@/lib/invoices";
 // Aidat (ödemeyen/onay bekleyen varsa), Fiş / Fatura (ödenmemiş fatura ya da bu ay fiş varsa), Banka, Antrenman (bu ay varsa),
 // Instagram (gönderi varsa). Bilgisi biten kart kendiliğinden gizlenir (clubDues, clubFis… homeTiles.js). Dikkat isteyen kart (warn)
 // kehribar simge ve yazıyla öne çıkar. Hiç kart yoksa bölüm görünmez.
+// Yarışın altında Notlar kartı (Seyhun: "notları da ana ekranda görebilmeliyim, kulüp kısmına"): en çok 3 not, önce sabitlenenler
+// sonra en yeni (homeNotes); Tümü › Notlar sayfası, + Not ekle; nota dokununca not açılır. Not yoksa kart görünmez. Bellekteki notlardan, ek okuma yok.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
 // eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
 // İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
 // Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices, notes }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -98,13 +101,15 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
     posts && ["/posts", "instagram", "Instagram", clubPosts(sum.posts), null, "instagram"],
   ].filter((x) => x && (x.length === 1 || x[3]));
   const raceWait = skel("race");
-  if (!raceCard && !raceWait && !tiles.length) return null;
+  const note = homeNotes(notes || [], 3);
+  if (!raceCard && !raceWait && !tiles.length && !note.total) return null;
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
       <SectionHead id="home-sum" title={title} />
       <div className="space-y-3">
         {raceWait ? <Skeleton wide /> : raceCard && <RaceCard r={raceCard} fade={fade.has("race")} />}
+        {note.total > 0 && <NotesCard list={note.list} total={note.total} />}
         {tiles.length > 0 && (
           <ul className="grid grid-cols-2 gap-3">
             {tiles.map(([href, icon, label, t, k, brand], i) => {
@@ -168,6 +173,57 @@ function RaceCard({ r, fade }) {
         <b className="shrink-0 text-[1.0625rem] font-bold text-acc">{r.when}</b>
       )}
     </Link>
+  );
+}
+
+// Notlar: başlık satırı (simge, ad, sayı, Tümü), en çok 3 not (sabitliye yıldız, diğerlerine gri çizgi; altında "Sabit" ya da tarih · ilk satır), en altta + Not ekle
+function NotesCard({ list, total }) {
+  const { openAdd } = useAdd();
+  return (
+    <div className={`overflow-hidden ${CARD}`}>
+      <div className="flex items-center gap-2.5 px-4 pb-2 pt-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-[0.625rem] bg-acc/10 text-acc">
+          <Icon name="note" className="size-[1.125rem]" />
+        </span>
+        <b className="text-[0.9375rem] font-semibold">Notlar</b>
+        <span className="text-[0.8125rem] font-semibold tabular-nums text-mut">{total}</span>
+        <Link href="/notes" className="ml-auto flex items-center gap-0.5 text-[0.8125rem] font-semibold text-acc">
+          Tümü
+          <Icon name="chev" className="size-3.5" />
+        </Link>
+      </div>
+      <ul>
+        {list.map((n) => {
+          const text = n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : "";
+          const when = n.pinned ? "Sabit" : n.createdAt ? rel(n.createdAt.slice(0, 10)) : "";
+          return (
+            <li key={n.id} className="border-t border-line">
+              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+                {n.pinned ? (
+                  <Icon name="star" className="size-3.5 shrink-0 fill-current text-amber-500" />
+                ) : (
+                  <span aria-hidden="true" className="mx-[0.3125rem] h-7 w-1 shrink-0 rounded-full bg-line" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{n.title || "Not"}</b>
+                  {(when || text) && (
+                    <small className="block truncate text-[0.8125rem] text-mut">
+                      {when}
+                      {when && text && " · "}
+                      {text}
+                    </small>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <button type="button" onClick={() => openAdd({ type: "note" })} className="flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-[0.875rem] font-semibold text-acc">
+        <Icon name="plus" className="size-4" />
+        Not ekle
+      </button>
+    </div>
   );
 }
 

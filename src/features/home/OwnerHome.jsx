@@ -70,11 +70,11 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Şu an (altında "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet › Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra: Şu an (altında "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
-  const { plans, lessons, members } = useData();
+  const { plans, lessons, members, notes } = useData();
   const staff = profile?.role === "staff";
   const owner = profile?.role === "owner";
   const kind = useKind();
@@ -104,7 +104,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
         <BirthdayStrip />
       </div>
       {side && <MyAttendanceCard kind={kind} />}
-      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} />
+      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} notes={notes} />
       <HomeActions groups={actions} />
     </div>
   );
