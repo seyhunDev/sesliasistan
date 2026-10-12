@@ -160,6 +160,8 @@ const OOPS = /^(?:yanlış söyledim|pardon|neyse|özür dilerim)[\s,.…]+(?=\S
 // "-iver" kipi ("ekleyiver", "yazıver", "arayıver"): asıl fiile çevrilir
 const IVER = /(?<![\p{L}])(\p{L}+?)y?[ıiuü]ver(?![\p{L}])/gu;
 const IVER_ROOT = { ekle: "ekle", yaz: "yaz", ara: "ara", sil: "sil", aç: "aç", kaydet: "kaydet", kayded: "kaydet", gönder: "gönder", yolla: "yolla", gör: "göster", göster: "göster", bak: "bak" };
+// Söylerken sayıyı düzeltme: "1500 yok yok 1000 verdi", "2 pardon 3. oldu" → yalnız son sayı kalır
+const NUM_FIX = /(?<![\p{L}\d])\d[\d.,]*(?:\s*(?:lira|tl|₺))?[\s,]+(?:yok(?:[\s,]+yok)*|hayır|pardon)[\s,]+(?=\d)/giu;
 const keyOf = (w) => w.toLocaleLowerCase("tr-TR").replace(/[^\p{L}\p{N}]/gu, "");
 // Söylenen cümleyi komut kurallarına hazırlar: baştaki dolgu sözler ("şey ııı"), kekemelik ("Tamam, tamam, kapat",
 // "Yoklama yoklama al"), Türkçe harfsiz yazım ("foca yarisini ac") ve bozuk iş fiilleri (fixVerbs). Anlam değişmez.
@@ -179,6 +181,7 @@ export function cleanSay(text) {
     return up ? f[0].toLocaleUpperCase("tr-TR") + f.slice(1) : f;
   });
   for (const [re, to] of PHRASE_FIX) t = t.replace(re, to);
+  t = t.replace(NUM_FIX, "");
   return fixVerbs(t);
 }
 

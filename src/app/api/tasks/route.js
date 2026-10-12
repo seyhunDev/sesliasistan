@@ -4,6 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
+import { cleanSay } from "@/lib/speech/normalize";
 import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
@@ -64,7 +65,8 @@ async function handle(request) {
   } catch {
     return bad("Geçersiz istek");
   }
-  const text = String(body?.text ?? "").replace(/\s+/g, " ").trim().slice(0, 2000);
+  // Telefon cümleyi zaten temizler (yonlendirme.js); başka yoldan gelen ham söz de aynı temizlikten geçer ("yarışı oluru", "1500 yok yok 1000")
+  const text = cleanSay(String(body?.text ?? "").replace(/\s+/g, " ").trim().slice(0, 2000));
   if (!text) return bad("Boş istek");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   const memo = memoBlock(body?.memo);
