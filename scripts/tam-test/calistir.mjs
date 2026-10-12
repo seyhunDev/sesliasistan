@@ -11,7 +11,8 @@
 //                          kalan cümleler "atlandı" sayılır, hata sayılmaz.
 //
 // Seçenekler: --yzsiz (yapay zekaya sorma)  --yz-tam (bütün yapay zeka seti)  --tarayicisiz (uygulamayı açma)  --ayrinti (geçenleri de yaz)
-// Sonuç ekrana ve ~/Downloads/tam-test-<tarih>.txt dosyasına yazılır (bu dosyayı sohbete yükleyebilirsin).
+// Sonuç ekrana ve ~/Downloads/tam-test-<tarih>.txt dosyasına yazılır (TEST_SONUC_DIR verilirse oraya; GitHub'daki "Testler" iş akışı
+// sonucu depodaki test-sonuclari dalına yazar).
 // Veritabanına yazmaz, mesaj göndermez, gerçek hesaba girmez. Kalan (✗) testler hatayı gösterir; düzeltilince yeşile döner.
 import { register } from "node:module";
 import { spawn } from "node:child_process";
@@ -159,7 +160,7 @@ out("");
 out("Okuma: ✓ geçti, ✗ kalan (hata var), – atlandı. “beklenen” asistanın yapması gereken, “olan” şu an yaptığı.");
 out("“yapay zeka (plan/görev/not/mesaj/soru)”: cümle ana yapay zekaya gidiyor; plan, görev, not, mesaj ve sorular için doğru yer budur.");
 
-const dir = join(homedir(), "Downloads");
+const dir = process.env.TEST_SONUC_DIR || join(homedir(), "Downloads");
 if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 const outFile = join(dir, `tam-test-${new Date().toISOString().slice(0, 10)}.txt`);
 writeFileSync(outFile, lines.join("\n") + "\n");
