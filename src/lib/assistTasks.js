@@ -80,6 +80,7 @@ export const TASKS = [
   { id: "personDelete", group: "Diğer", name: "Kişi silme (hesabı olmayan; onayla)", say: "Ayşe Yılmaz'ı kişilerden sil", who: "ana", by: "yerel", confirm: true },
   { id: "shopClear", group: "Diğer", name: "Alışveriş listesinden alınanları temizleme", say: "alınanları temizle", who: "herkes", by: "yerel" },
   { id: "person", group: "Diğer", name: "Kişi ekleme (ve hesap açma)", say: "Kişi ekle: Ayşe Yılmaz, eşim, 0532…", who: "ana", by: "yz-ayrı", confirm: true, doing: "Tamam, kişiyi hazırlıyorum.", work: "Kişi hazırlanıyor" },
+  { id: "debt", group: "Diğer", name: "Borçlar", say: "Ali'ye 500 lira borç verdim; kulüpten Ahmet'e 2 bin lira borç verildi; Ali 200 lirasını geri verdi; kime ne kadar borç verdim; Ali'nin borcunu sil (onayla)", who: "ana", by: "yerel" },
   { id: "shopping", group: "Diğer", name: "Alışveriş listesi (ekle, alındı, sil, oku)", say: "listeye süt ekle, ekmek alındı", who: "herkes", by: "yerel" },
 ];
 

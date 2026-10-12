@@ -46,7 +46,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -109,6 +109,10 @@ const CASES = {
   person: ["Kişi ekle: Ayşe Yılmaz, eşim, 0532 111 22 33", "Annem Fatma Yıldız'ı aileye ekle", "Ali Kaya'yı çalışan olarak ekle, antrenör"],
   call: ["Ali'yi ara", "Gökhan Demir'i arar mısın", "Zeynep'e arama yap", ["oteli ara", { path: "/athletes/races/r1" }]],
   dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi", "Ali Kaya'nın aidat durumu ne", "Zeynep aidatını ödedi mi", "Emre Şahin'in aidat borcu var mı", "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın"],
+  debt: ["Ali'ye 500 lira borç verdim", "Kulüpten Ahmet Kaya'ya 2 bin TL borç verildi", "Mehmet'e 300 lira borç verdim not: tekne parası", "Zeynep'e 1000 lira ödünç verdim"],
+  debtPay: ["Ali borcunu ödedi", "Ali 200 lirasını geri verdi", "Ahmet'in borcu kapandı"],
+  debtAsk: ["kime ne kadar borç verdim", "Ali'nin ne kadar borcu var?", "toplam alacağım ne kadar", "Ahmet'e ne kadar borç verdim"],
+  debtDelete: ["Ali'nin borcunu sil"],
   income: ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "kano eğitimi için 3 bin lira nakit aldım", "hesaplara 500 lira gelir ekle"],
   athlete: ["yeni sporcu ekle: Can Tekin, 2014 doğumlu", "Can Tekin'i sporcu olarak ekle", "Ali Kaya'yı arşive al", "Zeynep'i arşivden çıkar", "Emre Şahin sporcusunu sil"],
   raceHere: [["Ali 3. oldu", { path: "/athletes/races/r1" }], ["Ali'yi yarıştan çıkar", { path: "/athletes/races/r1" }], ["24 tekne yarıştı", { path: "/athletes/races/r1" }], ["Ayşe ödedi", { path: "/athletes/races/r1" }], ["yarışı planlara ekle", { path: "/athletes/races/r1" }], ["yarışı sil", { path: "/athletes/races/r1" }], ["bilgi notunu hazırla", { path: "/athletes/races/r1" }], ["Ali'nin veli notunu hazırla", { path: "/athletes/races/r1" }], ["Zeynep ikinci oldu", { path: "/athletes/races/r1" }]],
@@ -130,6 +134,10 @@ const CASES = {
 
 // Görevler arası karışma ihtimali olan cümleler: beklenen görev ve neden
 const CROSS = [
+  ["navigate", "borçlarımı göster", "liste: sayfa açılır"],
+  ["navigate", "borçlar sayfasını aç", "sayfa açma, borç sorusu değil"],
+  ["income", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "gelir, borç değil"],
+  ["send", "Ali'ye yaz, borcunu ödesin", "mesaj, borç kaydı değil"],
   ["log", "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", "yelken antrenmanı, fitness değil"],
   ["plan", "yarın 10'da antrenman ekle", "takvim planı, fitness değil"],
   ["navigate", "fitness sayfasını aç", "sayfa açma, fitness isteği değil"],

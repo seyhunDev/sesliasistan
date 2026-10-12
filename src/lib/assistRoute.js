@@ -28,6 +28,7 @@ import { versionAsk } from "@/lib/buildInfo";
 import { updateAsk } from "@/lib/newVersion";
 import { inboxClearAsk } from "@/lib/inbox";
 import { resultsAsk } from "@/lib/resultSheet";
+import { debtAsk, debtCommand } from "@/lib/debts";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -94,6 +95,10 @@ export function routesOf(s, c = {}) {
   if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
   const n = !(racer && athleteOpenCommand(s)) && nav(s);
   if (n) add("navigate", { nav: n });
+  // Borçlar (yalnız ana hesap): "Ali'ye 500 lira borç verdim", "Ali borcunu ödedi", "kime ne kadar borç verdim"
+  const dq = owner && !isStaff ? debtAsk(s) : null;
+  const dc = !dq && !mf && owner && !isStaff ? debtCommand(s) : null;
+  if (dq || dc) add("debt", { dq, dc });
   if (c.onPost) add("postEdit");
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
@@ -129,6 +134,7 @@ export function routeOf(s, c = {}) {
     if (r.id === "shopping") return r.sc.op === "add" || r.sc.op === "read" ? "shopping" : "shopping(mark)";
     if (r.id === "local") return r.cmd.type === "receipt" ? "receiptCam" : r.cmd.type === "meeting" ? "meeting" : r.cmd.type === "navigate" ? "navigate" : `local:${r.cmd.type}`;
     if (r.id === "logBare") return "log";
+    if (r.id === "debt") return r.dq ? "debt(ask)" : `debt(${r.dc.op})`;
     return r.id;
   }
   return "ai";

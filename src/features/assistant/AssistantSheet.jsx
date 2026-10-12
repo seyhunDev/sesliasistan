@@ -99,6 +99,8 @@ import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
+import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
+import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
@@ -970,6 +972,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (racer && wantsRace(x)) return "race";
     if (racer && wantsAttendance(x, false)) return "attendance";
     if (racer && absentNotifyCommand(x)) return "absent"; // gelmeyenlerin velilerine haber
+    if (owner && debtCommand(x)) return "debt";
     if (incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
     if (racer && (athleteCommand(x) || duesCommand(x))) return "athlete";
     if (invoiceCommand(x)) return "invoice";
@@ -1287,6 +1290,9 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         // Fatura: "Turkcell faturası ödendi"; "Hangi fatura?" sorulduysa bu cümle firma adı
         case "invoice":
           return runInvoice(r.ic, viaVoice, r.asked);
+        // Borçlar: ekle (hemen), ödendi (hemen), sil (onayla), "kime ne kadar borç verdim" (yerel cevap)
+        case "debt":
+          return runDebt(r, viaVoice), true;
         // Gelen ödemeler: "bu ay ne kadar ödeme aldım"
         case "payee":
           return runPayee(r.pq, viaVoice), true;
@@ -2463,6 +2469,70 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     const list = [...races.current].sort((x, y) => String(y.startDate || "").localeCompare(String(x.startDate || "")));
     reply(resultsAnswer(list, a, ra.race), { engine: "local" }, viaVoice);
     return true;
+  }
+
+  async function runDebt({ dq, dc }, viaVoice) {
+    setPhase("thinking");
+    let items;
+    try {
+      items = await loadDebts(profile.orgId, { fresh: true });
+    } catch {
+      reply("Borçları okuyamadım.", { fail: true, engine: "local" }, viaVoice);
+      return;
+    }
+    if (dq) return reply(debtAnswer(items, dq.who), { engine: "local", nav: "debts" }, viaVoice);
+    const nav = { engine: "local", nav: "debts" };
+    if (dc.op === "add") {
+      if (!dc.who) return reply("Kime borç verdin? Adıyla ve tutarıyla söyler misin?", { fail: true, engine: "local" }, viaVoice);
+      if (!(dc.amount > 0)) return reply(`${dc.who} için ne kadar? Tutarıyla yeniden söyler misin?`, { fail: true, engine: "local" }, viaVoice);
+      // Kişiler, sporcular ve önceki borçlardaki adla yazılır ("Ali" → "Ali Kaya" tek eşleşirse)
+      const known = [...new Set([...items.map((d) => d.who), ...contacts.map((c) => c.name), ...athleteNames()].filter(Boolean))];
+      const who = matchPerson(dc.who, known) || dc.who;
+      const d = cleanDebt({ who, amount: dc.amount, kind: dc.kind, note: dc.note, date: todayStr(), at: new Date().toISOString() });
+      try {
+        await soon(updateDebts(profile.orgId, (list) => [d, ...list]), 2500, "Borç");
+        done(`Ekledim: ${who}, ${tl(d.amount)}, ${DEBT_KINDS[d.kind].toLocaleLowerCase("tr-TR")}. Borçlar'da görünür.`, nav, viaVoice);
+      } catch {
+        reply("Borcu kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
+      return;
+    }
+    const { hit, list } = debtsOf(items, dc.who);
+    if (!hit) return reply(dc.who ? `${dc.who} adına açık borç bulamadım.` : "Kimin borcu? Adıyla söyler misin?", { fail: true, ...nav }, viaVoice);
+    if (dc.op === "pay") {
+      // Tutar yoksa kişinin bütün açık borçları kapanır; tutar varsa en eskisinden düşülür
+      let rest = dc.amount > 0 ? dc.amount : Infinity;
+      const ids = [...list].sort((a, b) => `${a.date}${a.at}`.localeCompare(`${b.date}${b.at}`)).map((d) => d.id);
+      try {
+        const next = await updateDebts(profile.orgId, (all) => {
+          const pay = new Map();
+          for (const id of ids) {
+            const d = all.find((x) => x.id === id);
+            if (!d || rest <= 0) continue;
+            const a = Math.min(leftOf(d), rest);
+            rest -= a;
+            pay.set(id, a);
+          }
+          return all.map((d) => (pay.has(d.id) ? payDebt(d, pay.get(d.id), todayStr()) : d));
+        });
+        const left = next.filter((d) => d.who === hit).reduce((t, d) => t + leftOf(d), 0);
+        done(`${hit}: ${dc.amount > 0 ? `${tl(dc.amount)} geri geldi yazdım.` : "borç ödendi yazdım."}${left > 0 ? ` Kalan ${tl(left)}.` : ""}`, nav, viaVoice);
+      } catch {
+        reply("Ödemeyi kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
+      return;
+    }
+    // Silme: onayla
+    const sum = list.reduce((t, d) => t + leftOf(d), 0);
+    askOk(`${hit} adına ${list.length > 1 ? `${list.length} borç` : "borç"} (${tl(sum)}) silinsin mi? Geri alınamaz.`, "Sil", async (v) => {
+      try {
+        const ids = new Set(list.map((d) => d.id));
+        await updateDebts(profile.orgId, (all) => all.filter((d) => !ids.has(d.id)));
+        done(`${hit} borcunu sildim.`, nav, v);
+      } catch {
+        reply("Silemedim, tekrar dene.", { fail: true, engine: "local" }, v);
+      }
+    }, viaVoice);
   }
 
   async function runPayee(pq, viaVoice) {

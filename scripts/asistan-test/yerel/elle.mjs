@@ -1544,3 +1544,26 @@ group("Plan bitti ve kelime kartı", [
     return b === a + 1;
   })],
 ]);
+
+const DB = await import("@/lib/debts");
+{
+  const D = (o) => DB.cleanDebt({ who: "Ali Kaya", amount: 1000, date: "2026-10-01", ...o });
+  const list = [D({ id: "a" }), D({ id: "b", who: "Ahmet", amount: 500, kind: "club", paid: [{ amt: 200 }] }), D({ id: "c", who: "Zeynep", amount: 300, paid: [{ amt: 300 }] })];
+  const C = (s) => JSON.stringify(DB.debtCommand(s));
+  group("Borçlar")([
+    ["kalan", F("verilen − geri gelen", () => DB.leftOf(list[1]) === 300 && DB.isClosed(list[2]))],
+    ["kısmi ödeme", F("200 yazılır, kalan 800", () => DB.leftOf(DB.payDebt(list[0], 200, "2026-10-12")) === 800)],
+    ["tamamı ödendi", F("tutarsız ödeme kalanı kapatır", () => DB.isClosed(DB.payDebt(list[0], 0)))],
+    ["fazla ödeme", F("kalandan fazlası yazılmaz", () => DB.paidOf(DB.payDebt(list[1], 5000)) === 500)],
+    ["toplam", F("açık borçlar, kişisel/kulüp", () => { const t = DB.debtTotals(list); return t.left === 1300 && t.personal === 1000 && t.club === 300 && t.people === 2; })],
+    ["açık / ödenen", F("ödenen ayrı", () => { const s = DB.splitDebts(list); return s.open.length === 2 && s.closed.length === 1; })],
+    ["cevap: genel", F("toplam ve kişiler", () => DB.debtAnswer(list) === "Toplam 1.300 TL alacağın var: Ali Kaya 1.000 TL, Ahmet 300 TL.")],
+    ["cevap: kişi", F("Ahmet kalan", () => DB.debtAnswer(list, "Ahmet").startsWith("Ahmet için kalan borç 300 TL"))],
+    ["cevap: kapanmış", F("Zeynep ödedi", () => /Zeynep borcunun hepsini ödedi/.test(DB.debtAnswer(list, "Zeynep")))],
+    ["cümle: ekle", F("kişi, tutar, kişisel", () => C("Ali'ye 500 lira borç verdim") === JSON.stringify({ op: "add", who: "Ali", amount: 500, kind: "personal", note: "" }))],
+    ["cümle: kulüp", F("kulüpten, bin", () => { const c = DB.debtCommand("Kulüpten Ahmet Kaya'ya 2 bin TL borç verildi"); return c.kind === "club" && c.amount === 2000 && c.who === "Ahmet Kaya"; })],
+    ["cümle: kısmi geri", F("ödeme 200", () => { const c = DB.debtCommand("Ali 200 lirasını geri verdi"); return c.op === "pay" && c.amount === 200 && c.who === "Ali"; })],
+    ["cümle: sil", F("silme", () => DB.debtCommand("Ali'nin borcunu sil")?.op === "delete")],
+    ["kayıt temizliği", F("boş ad ya da tutar atılır", () => DB.cleanBook([{ who: "", amount: 5 }, { who: "X", amount: 0 }, { who: "Y", amount: 10 }]).length === 1)],
+  ]);
+}
