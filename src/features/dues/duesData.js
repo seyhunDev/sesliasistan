@@ -5,7 +5,8 @@ import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { cashMoves, filedMoves, incomeMoves, rangeOf } from "@/lib/dues";
-import { bookOf } from "@/lib/cashbook";
+import { bookOf, convIncome, convSet } from "@/lib/cashbook";
+import { whoIn } from "@/lib/payee";
 import { addFileMoves, dropFileMoves, loadLedger } from "@/features/bank/ledgerData";
 
 // Aidat verisi (yalnız ana hesap; kurallar ana hesaba orgs altındaki her koleksiyonu açıyor). Okuma sayfa açılınca bir kez.
@@ -103,6 +104,21 @@ export async function addIncome(orgId, { book = "club", dir = "in", cat, who, at
   return addDoc(collection(db, "orgs", orgId, "incomes"), clean({ ...(book === "personal" ? { book } : {}), ...(dir !== "in" ? { dir } : {}), cat, who, amount, date, note, at }));
 }
 export const deleteIncome = (orgId, id) => deleteDoc(doc(db, "orgs", orgId, "incomes", id));
+// Banka hareketini nakite çevir: kulüp kasasına nakit giriş + cash/meta.conv (kişisel hesapta artık sayılmaz; cashbook.js)
+export async function convertToCash(orgId, m) {
+  const inc = convIncome(m, whoIn);
+  await Promise.all([addDoc(collection(db, "orgs", orgId, "incomes"), { ...inc, at: new Date().toISOString() }), setDoc(doc(db, "orgs", orgId, "cash", "meta"), { conv: arrayUnion(m.id) }, { merge: true })]);
+}
+// Geri al: kasadaki girişi siler, banka hareketi yine kişisel hesapta sayılır
+export async function undoConvert(orgId, movId) {
+  const q = await getDocs(query(collection(db, "orgs", orgId, "incomes"), where("conv", "==", movId)));
+  await Promise.all([...q.docs.map((d) => deleteDoc(d.ref)), setDoc(doc(db, "orgs", orgId, "cash", "meta"), { conv: arrayRemove(movId) }, { merge: true })]);
+}
+// Yalnız nakite çevrilenlerin anahtarları (tek okuma; Gelen ödemeler ve asistan)
+export const loadConv = (orgId) =>
+  getDoc(doc(db, "orgs", orgId, "cash", "meta"))
+    .then((d) => convSet(d.data()))
+    .catch(() => new Set());
 // Kişisel borç ödendi / geri al
 export const setDebtPaid = (orgId, id, paid) => setDoc(doc(db, "orgs", orgId, "incomes", id), paid ? { paid: true, paidAt: new Date().toISOString() } : { paid: false, paidAt: deleteField() }, { merge: true });
 

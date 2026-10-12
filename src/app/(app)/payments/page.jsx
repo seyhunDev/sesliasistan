@@ -8,10 +8,11 @@ import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { loadCashMoves, loadMovementsRange } from "@/features/dues/duesData";
+import { convertToCash, loadCashMoves, loadConv, loadMovementsRange } from "@/features/dues/duesData";
 import { ledgerStart, rebuildLedger } from "@/features/bank/ledgerData";
 import { db } from "@/lib/firebase/clientApp";
 import { money } from "@/lib/bankSheet";
+import { canConv, withoutConv } from "@/lib/cashbook";
 import { monthName, nameMoves, payeeCsv, payeeMoves, payeeOf, payeeSummary, whoIn } from "@/lib/payee";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
@@ -41,6 +42,7 @@ function Payments() {
   const [edit, setEdit] = useState(false);
   const [open, setOpen] = useState(""); // açık ay (boşsa en yeni)
   const [busy, setBusy] = useState(false);
+  const [act, setAct] = useState(""); // dokunulan ödeme: "Nakite çevir" düğmesi açılır
   const [tick, setTick] = useState(0); // Yenile'den sonra yeniden okunur
   const ym = thisMonth();
 
@@ -51,8 +53,9 @@ function Payments() {
     if (!owner) return;
     let live = true;
     // Eklenen ad sayfasında nakit aidatlar da (Aidatlar'da yazılan) gelir olarak
-    Promise.all([ledgerStart(profile.uid, ym).then((first) => loadMovementsRange(profile.uid, first, ym)), named ? loadCashMoves(profile.uid).catch(() => []) : []])
-      .then(([r, cashList]) => live && setData({ ...r, movements: [...r.movements, ...cashList] }))
+    // Nakite çevrilen banka hareketleri (Hesaplar › hareket › Nakite çevir) kişisel hesapta sayılmaz
+    Promise.all([ledgerStart(profile.uid, ym).then((first) => loadMovementsRange(profile.uid, first, ym)), named ? loadCashMoves(profile.uid).catch(() => []) : [], loadConv(profile.uid)])
+      .then(([r, cashList, conv]) => live && setData({ ...r, movements: [...withoutConv(r.movements, conv), ...cashList] }))
       .catch(() => live && setData({ error: true, movements: [] }));
     return () => {
       live = false;
@@ -92,6 +95,11 @@ function Payments() {
     updateDoc(doc(db, "users", profile.uid), { payeeNames: arrayRemove(...(profile.payeeNames || []).filter((n) => n.trim() === named)) })
       .then(() => (toast("İsim kaldırıldı"), router.replace("/mail")))
       .catch(() => toast("Kaldırılamadı"));
+  // Bu para maaş/ödeme değil, nakite çevrildi: kulüp kasasına nakit giriş olur, bu listeden çıkar
+  const toCash = (m) =>
+    convertToCash(profile.uid, m)
+      .then(() => (setAct(""), setData((d) => ({ ...d, movements: d.movements.filter((x) => x.id !== m.id) })), toast("Kulüp kasasına nakit olarak eklendi")))
+      .catch(() => toast("Kaydedilemedi, internet bağlantını kontrol et"));
   const shown = open || sum.byMonth[0]?.ym || "";
   const title = named || payee.name || "Kişisel hesap";
 
@@ -198,7 +206,7 @@ function Payments() {
                       {mo.ym === shown && (
                         <ul className="fade-in border-t border-line bg-bg/40">
                           {mo.list.map((m) => (
-                            <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} className="flex items-start gap-3 px-4 py-2.5">
+                            <li key={m.id || `${m.date}|${m.amount}|${m.desc}`} onClick={!named && canConv(m) ? () => setAct((v) => (v === m.id ? "" : m.id)) : undefined} className={`flex flex-wrap items-start gap-x-3 px-4 py-2.5 ${!named && canConv(m) ? "cursor-pointer" : ""}`}>
                               <span className="w-[4.5rem] shrink-0 pt-0.5 text-[0.75rem] leading-tight text-mut">
                                 {dayText(m)}
                                 {hmOf(m) && <span className="block tabular-nums">{hmOf(m)}</span>}
@@ -208,6 +216,11 @@ function Payments() {
                                 <span className="block text-[0.8125rem] text-mut">{m.cash ? "Nakit ödendi" : [m.out || m.amount < 0 ? "Giden" : "Gelen", m.accountLabel, m.out || named ? "" : whoIn(m)].filter(Boolean).join(" · ")}</span>
                               </span>
                               <b className={`shrink-0 text-[0.875rem] font-semibold tabular-nums ${m.amount < 0 ? "" : "text-ok"}`}>{m.amount < 0 ? `−${money(-m.amount)}` : `+${money(m.amount)}`}</b>
+                              {act === m.id && (
+                                <button type="button" onClick={(e) => (e.stopPropagation(), toCash(m))} className="fade-in mt-2 h-10 w-full rounded-xl bg-acc text-[0.8125rem] font-semibold text-white">
+                                  Nakite çevir · kulüp kasasına
+                                </button>
+                              )}
                             </li>
                           ))}
                         </ul>

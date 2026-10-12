@@ -153,6 +153,10 @@ export function cashCommand(raw) {
   // Soru: "kasada ne kadar var", "kasa durumu", "kasada kaç lira kaldı", "kişisel borcum ne kadar"
   if (/(^| )kasa(da|mız|mızda|nın)?( |$)/u.test(t) && /(ne kadar|kaç|durum|kaldı|var mı|bakiye)/u.test(t) && !/(ekle|yaz|verildi|verdim)/u.test(t)) return { op: "ask", book: "club" };
   if (/(borçlarım|borcum|kişisel defter)/u.test(t) && /(ne kadar|kaç|neler|kime|durum)/u.test(t)) return { op: "ask", book: "personal" };
+  // Bankadan nakite çevirme: "gelen 20 bini nakite çevirdim", "20.000 lirayı kulüp kasasına nakite döndür"
+  if (/nakit[ei]? (olarak )?(çevir|döndür|geçir|çek)\p{L}*|kasa(ya|sına) (nakit )?(aktar|çevir|döndür)\p{L}*/u.test(t) && !/(verildi|verdim|harcad)/u.test(t)) {
+    return { op: "conv", amount: amountOf(t.replace(/(19|20)\d{2} yılı/gu, "")) || 0 };
+  }
   if (QUESTION.test(t) || /(^| )(kim|kimler|kaç|ne kadar|fatura\p{L}* (ödendi|ödedim)|fiş\p{L}*)( |$)/u.test(t)) return null;
   const amount = amountOf(t.replace(/(19|20)\d{2} yılı/gu, ""));
   if (!(amount > 0)) return null;

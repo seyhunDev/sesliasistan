@@ -17,9 +17,9 @@ import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { addIncome, deleteIncome, loadCash, setDebtPaid, setInKasa } from "@/features/dues/duesData";
+import { addIncome, convertToCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
 import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
-import { debtMoves, inKasa, kasaOf, personalOf } from "@/lib/cashbook";
+import { canConv, convSet, debtMoves, inKasa, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { cleanDebt, newId, payDebt } from "@/lib/debts";
@@ -77,6 +77,7 @@ export default function MailPage() {
   const [debtForm, setDebtForm] = useState(null); // yeni ya da düzenlenen verilen borç
   const [debtOpen, setDebtOpen] = useState(null); // ayrıntısı açık verilen borç
   const [add, setAdd] = useState(null); // "+": { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
+  const [bankPick, setBankPick] = useState(null); // dokunulan banka hareketi (nakite çevir)
   const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
   const [cashTick, setCashTick] = useState(0);
   const toast = useToast();
@@ -191,12 +192,14 @@ export default function MailPage() {
   const payee = payeeOf(profile);
   const ym = today.slice(0, 7);
   const covered = !!ledger || (list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym);
-  const payeeMonth = payeeMoves(moves, payee).filter((x) => monthOf(x) === ym);
+  const conv = convSet(cashData.meta); // nakite çevrilen banka hareketleri: kişisel hesapta sayılmaz
+  const payeeMonth = payeeMoves(withoutConv(moves, conv), payee).filter((x) => monthOf(x) === ym);
   const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
-  const payeeAll = payeeMoves(moves, payee);
+  const payeeAll = payeeMoves(withoutConv(moves, conv), payee);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
-  const cashIn = cashList.filter((x) => x.amount > 0);
-  const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashIn.length, cashSum: cashIn.reduce((n, x) => n + x.amount, 0) } : null;
+  const realCash = cashList.filter((x) => !x.conv); // bankadan nakite çevrilen para yeniden "gelen" sayılmaz
+  const cashIn = realCash.filter((x) => x.amount > 0);
+  const rep = ledger?.length || cashList.length ? { ...report([...withoutConv(ledger || [], conv), ...realCash], payee, 1000), cashN: cashIn.length, cashSum: cashIn.reduce((n, x) => n + x.amount, 0) } : null;
   const kasa = kasaOf([...cashList, ...debtMoves(lent)].sort((a, b) => (b.ts || 0) - (a.ts || 0)), cashData.meta);
   const curDebt = lent.find((d) => d.id === debtOpen);
   const saveDebts = async (fn, ok) => {
@@ -227,7 +230,9 @@ export default function MailPage() {
       () => (setManual(null), setCashTick((n) => n + 1), toast(msg)),
       () => toast("Kaydedilemedi, internet bağlantını kontrol et"),
     );
-  const dropIncome = (x) => after(deleteIncome(profile.uid, x.incomeId), "Silindi");
+  const dropIncome = (x) => after(x.conv ? undoConvert(profile.uid, x.conv) : deleteIncome(profile.uid, x.incomeId), x.conv ? "Geri alındı, banka hareketi yine kişisel hesapta" : "Silindi");
+  const toCash = (m) => after(convertToCash(profile.uid, m), "Kulüp kasasına nakit olarak eklendi").then(() => setBankPick(null));
+  const unConv = (m) => after(undoConvert(profile.uid, m.id), "Geri alındı").then(() => setBankPick(null));
   const include = (x, on) => after(setInKasa(profile.uid, x.key, on), on ? "Kasaya eklendi" : "Kasadan çıkarıldı");
   const payDebt = (x) => after(setDebtPaid(profile.uid, x.incomeId, !x.paid), x.paid ? "Ödenmedi olarak işaretlendi" : "Borç ödendi");
   const addName = (name) => {
@@ -404,7 +409,7 @@ export default function MailPage() {
                   </p>
                   {shown.length > 0 && (
                     <div className={card}>
-                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} />
+                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} onBank={setBankPick} conv={conv} />
                       {shown.length > shownMax && (
                         <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
                           Daha fazla göster ({shown.length - shownMax} kaldı)
@@ -528,6 +533,32 @@ export default function MailPage() {
         }}
       />
       <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
+      <Sheet open={!!bankPick} onClose={() => setBankPick(null)} title={bankPick?.amount > 0 ? "Gelen para" : "Giden para"}>
+        {bankPick && (
+          <div className="space-y-3 pb-2">
+            <p className={`text-[1.5rem] font-bold tabular-nums ${bankPick.amount > 0 ? "text-ok" : ""}`}>{signed(bankPick.amount, bankPick.currency)}</p>
+            <p className="text-[0.9375rem]">{[whoIn(bankPick) && <b key="w" className="font-semibold">{whoIn(bankPick)}</b>, bankPick.note || bankPick.desc, bankPick.date, bankPick.accountLabel].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
+            {conv.has(bankPick.id) ? (
+              <>
+                <p className="text-[0.8125rem] leading-snug text-mut">Nakite çevrildi, kulüp kasasında. Kişisel hesabında sayılmıyor.</p>
+                <button type="button" onClick={() => unConv(bankPick)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                  Geri al
+                </button>
+              </>
+            ) : canConv(bankPick) ? (
+              <>
+                <p className="text-[0.8125rem] leading-snug text-mut">Bu parayı nakite çevirdiysen kulüp kasasına {money(Math.abs(bankPick.amount))} TL nakit giriş olarak eklenir. Maaş ya da sana gelen ödeme sayılmaz.</p>
+                <button type="button" onClick={() => toCash(bankPick)} className="h-11 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+                  Nakite çevir · kulüp kasasına
+                </button>
+              </>
+            ) : (
+              <p className="text-[0.8125rem] text-mut">Bu hareket nakite çevrilemez.</p>
+            )}
+          </div>
+        )}
+      </Sheet>
+
       <Sheet open={!!manual} onClose={() => setManual(null)} title={manual?.book === "personal" ? (manual.dir === "debt" ? "Borcum" : manual.dir === "out" ? "Kişisel gider" : "Kişisel gelir") : manual?.amount < 0 ? "Nakit çıkış" : "Nakit giriş"}>
         {manual && (
           <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
@@ -535,6 +566,7 @@ export default function MailPage() {
               {manual.amount > 0 ? "+" : "−"}
               {money(Math.abs(manual.amount))} TL
             </p>
+            {manual.conv && <p className="text-[0.8125rem] text-mut">Bankadan nakite çevrildi.</p>}
             <p className="text-[0.9375rem]">{[manual.who && <b key="w" className="font-semibold">{manual.who}</b>, manual.note, manual.date].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
             {manual.cash && manual.key && (
               <p className="text-[0.8125rem] text-mut">{inKasa(manual, cashData.meta) ? "Kasaya sayılıyor." : "Kasaya sayılmıyor."}</p>
@@ -556,7 +588,7 @@ export default function MailPage() {
             )}
             {manual.manual && (
               <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
-                Sil
+                {manual.conv ? "Nakite çevirmeyi geri al" : "Sil"}
               </button>
             )}
           </div>
@@ -668,7 +700,7 @@ function AddName({ onAdd, onClose }) {
 }
 
 // Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
-function Moves({ list, today, onManual }) {
+function Moves({ list, today, onManual, onBank, conv }) {
   const dayOf = (x) => localDate(new Date(x.ts).toISOString());
   return (
     <ul>
@@ -679,14 +711,15 @@ function Moves({ list, today, onManual }) {
         return (
           <li key={x.id}>
             {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-            <div onClick={x.cash && onManual ? () => onManual(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${x.cash && onManual ? "cursor-pointer" : ""}`}>
+            <div onClick={x.cash ? (onManual ? () => onManual(x) : undefined) : onBank ? () => onBank(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${(x.cash ? onManual : onBank) ? "cursor-pointer" : ""}`}>
               <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
                 {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <b className="truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
-                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">{x.amount < 0 ? "Nakit verildi" : "Nakit ödendi"}</span>}
+                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">{x.conv ? "Bankadan nakit" : x.amount < 0 ? "Nakit verildi" : "Nakit ödendi"}</span>}
+                  {!x.cash && conv?.has(x.id) && <span className="shrink-0 rounded-full bg-acc/10 px-1.5 py-px text-[0.6875rem] font-semibold text-acc">Nakite çevrildi</span>}
                 </span>
                 <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), !x.cash && (x.cat || x.kind)].filter(Boolean).join(" · ")}</small>
               </span>
