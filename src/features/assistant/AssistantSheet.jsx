@@ -49,7 +49,7 @@ import { useCall } from "@/features/call/CallProvider";
 import { canCall } from "@/lib/call";
 import { unpaidRoster } from "@/lib/duesRemind";
 import { athleteDues, athleteDuesText, feeOf, lastMonths } from "@/lib/dues";
-import { addRacePlan, cleanHotels, deleteRace, raceHotels, saveRace, telOf } from "@/features/athletes/races";
+import { addRacePlan, cleanDone, cleanHotels, deleteRace, doneSteps, matchStep, raceHotels, saveRace, stepsOf, telOf } from "@/features/athletes/races";
 import { POST_ASK_KEY, RACE_KEY, raceWithAthletes, wantsPost, wantsPostImage } from "@/features/posts/postModel";
 import { postHandler } from "@/features/posts/posts";
 import { findRace, nearest, pickChoice, raceRef, rankRaces, sure } from "@/features/athletes/raceNav";
@@ -1951,6 +1951,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         if (ok) await saveHereRace(r, { ...r, planAdded: true }).catch(() => {});
         if (ok) done(`${r.name} planlara eklendi.`, { engine: "local" }, viaVoice);
         else reply("Planlara ekleyemedim; yarışın tarihi yazılı mı?", { engine: "local" }, viaVoice);
+        return true;
+      }
+      if (rh.op === "step") {
+        const hit = matchStep(r, rh.words, rh.done ? stepsOf(r) : doneSteps(r));
+        // Listede yoksa başka işe ait bir cümle olabilir: her zamanki yoldan sürer
+        if (!hit) return false;
+        const list = cleanDone(r.done).filter((k) => k !== hit.key);
+        await saveHereRace(r, { ...r, done: rh.done ? [...list, hit.key] : list });
+        done(rh.done ? `İşaretledim: ${hit.label} yapıldı.` : `${hit.label} yeniden yapılacaklara alındı.`, { engine: "local" }, viaVoice);
         return true;
       }
       if (rh.op === "fleet") {

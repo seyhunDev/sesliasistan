@@ -3,7 +3,7 @@
 // sheetData saf (testlenir); buildAthleteSheet pdf-lib'i yalnız çıktı alınırken yükler.
 import { CLUB, hotelInfo, rangeText } from "./raceDocs.js";
 import { capName, cleanRooms, linesFor, money as cash, roomNight, tl, totals } from "./budget.js";
-import { cleanTodos, noticeTasks, raceHotels, tripRows } from "./races.js";
+import { cleanTodos, doneFor, noticeTasks, raceHotels, tripRows } from "./races.js";
 import { todayStr } from "@/lib/utils/format";
 
 const dayName = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
@@ -62,7 +62,7 @@ export function upcomingDates(r, today = todayStr()) {
     })
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 6)
-    .map((d) => ({ ...d, left: nightsBetween(today, d.date) }));
+    .map((d) => ({ ...d, left: nightsBetween(today, d.date), done: doneFor(r, d.title, d.date) }));
 }
 export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} gün kaldı`);
 
@@ -94,7 +94,7 @@ export function sheetParts(r, count) {
     ["Yolculuk", d.trip.length ? d.trip[0][1] : "Çıkış girilmedi", d.trip.length > 0, "trip", "trip"],
     ["Program", d.days.length ? `Talimattan ${d.days.length} gün, ${items} madde` : "Talimatta program yok", d.days.length > 0, "notice", "program"],
     ["Konaklama", d.stay.hotels.length ? [d.stay.hotels.map((h) => h.name).join(", "), d.stay.nights && `${d.stay.nights} gece`, d.stay.hotels.some((h) => h.rooms.length) && "oda fiyatları"].filter(Boolean).join(" · ") : "Otel girilmedi", d.stay.hotels.length > 0, "trip", "stay"],
-    ["Son tarihler", d.deadlines.length ? `${d.deadlines[0].title} · ${leftText(d.deadlines[0].left)}${d.deadlines.length > 1 ? ` · +${d.deadlines.length - 1}` : ""}` : "Yaklaşan son tarih yok", d.deadlines.length > 0, "sum", "dates"],
+    ["Son tarihler", d.deadlines.length ? `${d.deadlines[0].title} · ${d.deadlines[0].done ? "yapıldı" : leftText(d.deadlines[0].left)}${d.deadlines.length > 1 ? ` · +${d.deadlines.length - 1}` : ""}` : "Yaklaşan son tarih yok", d.deadlines.length > 0, "sum", "dates"],
     ["Bütçe", d.money.lines.length ? `Sporcu payı ${tl(d.money.total)} · ${d.money.lines.length} kalem` : "Sporcu payı olan kalem yok", d.money.lines.length > 0, "budget", "budget"],
   ];
 }
@@ -226,7 +226,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
     if (d.days.length) {
       head("PROGRAM", y);
       y += 20;
-      const bottom = H - 54 - moneyH - stayH - datesH;
+      const bottom = H - 40 - moneyH - stayH - datesH;
       const lay = programLayout(d.days, bottom - y, R - L, (s, size) => w(s, f.r, size));
       for (const col of lay.cols) {
         let cy = y;
@@ -289,7 +289,8 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
       for (const x of d.deadlines) {
         text(shortDay(x.date), L, y, f.b, 9.5, { max: 100 });
         text(x.title, L + 110, y, f.r, 10, { max: R - L - 200 });
-        text(leftText(x.left), R, y, x.left <= 7 ? f.b : f.r, 9.5, { align: "right", color: x.left <= 7 ? rgb(0.75, 0.33, 0.05) : MUT });
+        if (x.done) text("Yapıldı", R, y, f.b, 9.5, { align: "right", color: rgb(0.1, 0.5, 0.3) });
+        else text(leftText(x.left), R, y, x.left <= 7 ? f.b : f.r, 9.5, { align: "right", color: x.left <= 7 ? rgb(0.75, 0.33, 0.05) : MUT });
         y += 16;
       }
       y += 10;
@@ -312,8 +313,6 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length, sho
       y += 26;
       if (d.money.club.length) text(`Kulüp karşılar: ${d.money.club.join(", ")}`, L, y, f.r, 8.5, { color: MUT, max: R - L });
     }
-
-    text("Gün ve saatler değişebilir. Sorular için kulübe ulaşın: " + CLUB.phone, L, H - 40, f.r, 8, { color: MUT, max: R - L });
   }
   return pdf.save();
 }
