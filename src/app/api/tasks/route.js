@@ -5,6 +5,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
 import { cleanSay } from "@/lib/speech/normalize";
+import { ARGS_SCHEMA, actsPrompt } from "@/lib/actCatalog";
 import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
@@ -20,6 +21,8 @@ Söyleneni uygulamanın sırayla, kullanıcıya dokunmadan yapabileceği işlere
 4) Instagram gönderisi (post) EN SON: gönderi ekranı açılır ve orada kalınır.
 Aynı türden işler söylendiği sırada kalır. Bir iş başka bir işin sonucuna dayanıyorsa (ör. "bu yarışa", "o kişiye") dayandığı işten sonra gelir. Aynı işe ait cümleleri birleştir ("Enes ödemesini yaptı. Aidat ödemesini yaptı. Nakit verdi." tek iş: Enes'in aidatı nakit alındı).
 Her iş için:
+- act: işin numarası, aşağıdaki "Numaralı işler" listesinden. İş listedekilerden biriyse MUTLAKA numarasını yaz ve args içine yalnız o işin alanlarını, söylendiği gibi doldur (söylenmeyen alanı boş bırak, uydurma). Listede yoksa 0.
+- args: numaralı işin alanları (act 0 ise boş nesne).
 - kind: işin türü (aşağıdaki listeden).
 - say: uygulamaya verilecek, TEK BAŞINA anlaşılır kısa Türkçe komut, verilen kalıba uygun. Öncekine gönderme yapma; "bunun için", "o yarış" yerine adını yaz ("Atatürk Kupası için Instagram gönderisi hazırla"). Kullanıcının söylemediği bilgiyi (tarih, tutar, ad) uydurma; söylenen her bilgiyi (renk, boyut, gün, tutar, adlar) koru. Gün söylenmediyse yoklamada "bugün" yaz. Ay söylenmediyse aidatta ay yazma.
 - from: kullanıcının bu işe ait sözleri, söylediği gibi (düzeltmeden; birleştirdiğin cümleleri ". " ile; en çok 20 kelime). Uygulama bunlardan öğrenir.
@@ -30,6 +33,9 @@ Tek iş varsa tek eleman döndür.
 Açık mesaj taslağı verildiyse ve yeni söz o mesajı değiştiriyorsa ("şunu da ekle", "daha kısa yaz") tek iş: other, say "Mesajı değiştir: <istenen>".
 Sohbetteki yarış verildiyse: "yarış görseli", "bunun için", "o yarışa", "yarışa" gibi ad söylenmeyen gönderme o yarıştır; say içinde adını yaz. Kullanıcı başka bir yarışın adını söylerse o yarışı yaz.
 
+Numaralı işler (uygulamanın kendi kalıbıyla doğrudan yaptıkları):
+${actsPrompt()}
+
 Türler:
 ${Object.entries(PLAN_KINDS).map(([k, v]) => `- ${k}: ${v.how}. Kalıp: ${v.say}`).join("\n")}`;
 
@@ -38,7 +44,7 @@ const SCHEMA = {
   properties: {
     tasks: {
       type: "array",
-      items: { type: "object", properties: { kind: { type: "string", enum: Object.keys(PLAN_KINDS) }, say: { type: "string" }, label: { type: "string" }, from: { type: "string" } }, required: ["kind", "say", "label", "from"] },
+      items: { type: "object", properties: { act: { type: "integer" }, args: ARGS_SCHEMA, kind: { type: "string", enum: Object.keys(PLAN_KINDS) }, say: { type: "string" }, label: { type: "string" }, from: { type: "string" } }, required: ["act", "kind", "say", "label", "from"] },
     },
     fixes: { type: "array", items: { type: "object", properties: { heard: { type: "string" }, meant: { type: "string" } }, required: ["heard", "meant"] } },
   },
@@ -77,7 +83,7 @@ async function handle(request) {
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1000, timeoutMs: 16000, attemptMs: 8000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1400, timeoutMs: 16000, attemptMs: 8000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     const fixes = (Array.isArray(raw?.fixes) ? raw.fixes : []).map((f) => ({ heard: line(f?.heard), meant: line(f?.meant) })).filter((f) => f.heard && f.meant).slice(0, 10);
