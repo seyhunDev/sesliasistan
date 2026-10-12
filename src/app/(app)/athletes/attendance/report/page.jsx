@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -119,7 +120,8 @@ function Report() {
               </div>
               <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
                 {report.rows.map((r) => (
-                  <li key={r.id} className="flex items-center gap-2 py-2.5 pl-4 pr-3 text-[0.9375rem]">
+                  <li key={r.id}>
+                    <Link href={`/athletes/${r.id}`} className="flex items-center gap-2 py-2.5 pl-4 pr-3 text-[0.9375rem]">
                     <span className="min-w-0 flex-1">
                       <b className="block truncate font-medium">{r.name}</b>
                       {!cls && r.cls && <small className="block truncate text-[0.75rem] text-mut">{r.cls}</small>}
@@ -128,6 +130,7 @@ function Report() {
                     <span className="w-9 text-center tabular-nums">{r.absent}</span>
                     <span className="w-9 text-center tabular-nums">{r.excused}</span>
                     <b className={`w-11 text-right font-semibold tabular-nums ${rateTone(r.rate)}`}>{r.rate === null ? "—" : `%${r.rate}`}</b>
+                    </Link>
                   </li>
                 ))}
               </ul>

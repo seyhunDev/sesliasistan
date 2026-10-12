@@ -586,6 +586,11 @@ group("Göreve göre ara yazı")([
     ["Ali Kaya'nın ekim aidatı ödendi mi", { desc: "tek sporcu, ay adı atılır", fn: duesCommand, ok: (r) => r?.op === "one" && r.name === "Ali Kaya" }],
     ["Zeynep aidatını ödedi mi", { desc: "tek sporcu", fn: duesCommand, ok: (r) => r?.op === "one" && r.name === "Zeynep" }],
     ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", { desc: "nakit gelir, soru değil", fn: duesCommand, ok: (r) => r === null }],
+    ["Ali Kaya'nın aidatı kasımdan başlasın", { desc: "başlangıç ayı", fn: duesCommand, ok: (r) => r?.op === "start" && r.name === "Ali Kaya" && r.mon === "m:10" }],
+    ["Ali Kaya'nın aidatını bu aydan başlat", { desc: "başlangıç bu ay", fn: duesCommand, ok: (r) => r?.op === "start" && r.name === "Ali Kaya" && r.mon === 0 }],
+    ["Ali bu ay aidattan muaf", { desc: "muaf ay", fn: duesCommand, ok: (r) => r?.op === "free" && r.name === "Ali" && !r.undo }],
+    ["Zeynep'in ekim aidatı sayılmasın", { desc: "sayılmasın", fn: duesCommand, ok: (r) => r?.op === "free" && r.name === "Zeynep" && r.mon === "m:9" }],
+    ["Zeynep'in ekim aidatı sayılsın", { desc: "geri al", fn: duesCommand, ok: (r) => r?.op === "free" && r.undo }],
     ["gönderiyi arşive kaldır", { desc: "gönderi arşivi", fn: postArchiveCommand, ok: (r) => r?.archived === true }],
     ["arşivden çıkar", { desc: "gönderi arşivden", fn: postArchiveCommand, ok: (r) => r?.archived === false }],
   ]);
@@ -928,17 +933,25 @@ group("Temiz başlık ve sorusuz ekleme")([
 
 // Sporcu sayfasındaki aidat bölümü ve "Ahmet'in aidat durumu ne" cevabı (lib/dues.js athleteDues, athleteDuesText)
 {
-  const { athleteDues, athleteDuesText } = await import("@/lib/dues");
+  const { athleteDues, athleteDuesText, monthRows, startOf, ymOfTime } = await import("@/lib/dues");
+  const { unpaidRoster } = await import("@/lib/duesRemind");
+  const { rosterOf } = await import("@/lib/duesAuto");
   const a = { id: "a1", studentName: "Ali Kaya" };
   const yms = ["2026-08", "2026-09", "2026-10"];
   const months = { "2026-08": { paid: { a1: [{ amt: 1500, via: "eft", date: "03.08.2026 14:22" }] } }, "2026-09": {}, "2026-10": { paid: { a1: [{ amt: 500, via: "cash", date: "2026-10-05" }] } } };
   const d = athleteDues(a, { fee: 1500 }, months, yms);
-  const late = athleteDues(a, { fee: 1500 }, months, yms, "2026-09");
+  const late = athleteDues(a, { fee: 1500, start: { a1: "2026-09" } }, months, yms);
   group("Sporcu aidat durumu")([
     ["bu ay eksik", { desc: "bu ay", fn: () => d.now, ok: (r) => r.state === "part" && r.paid === 500 }],
     ["borç", { desc: "eylül tam + ekim 1000 eksik", fn: () => d, ok: (r) => r.debt === 2500 && r.dueMonths.join() === "2026-09,2026-10" }],
     ["son ödemeler", { desc: "en yeni önce, banka tarihi okunur", fn: () => d.last, ok: (r) => r[0].date === "2026-10-05" && r[1].date === "2026-08-03" }],
-    ["kayıttan önce", { desc: "kaydolmadan önceki ay borç sayılmaz", fn: () => athleteDues(a, { fee: 1500 }, {}, yms, "2026-10"), ok: (r) => r.debt === 1500 && r.cells[0].state === "none" }],
+    ["kayıttan önce", { desc: "kulübe eklenmeden önceki ay borç sayılmaz", fn: () => athleteDues({ ...a, createdAt: { seconds: Date.UTC(2026, 9, 3) / 1000 } }, { fee: 1500 }, {}, yms), ok: (r) => r.debt === 1500 && r.cells[0].state === "none" && r.start === "2026-10" }],
+    ["elle başlangıç", { desc: "Aidatı bu aydan başlat: elle seçilen ay kayıt ayından önce gelir", fn: () => startOf({ ...a, createdAt: "2025-01-10" }, { start: { a1: "2026-09" } }), ok: (r) => r === "2026-09" }],
+    ["sayılmayan ay", { desc: "Bu ay sayılmasın: o ay borç değil", fn: () => athleteDues(a, { fee: 1500 }, { ...months, "2026-09": { free: { a1: true } } }, yms), ok: (r) => r.cells[1].state === "free" && r.debt === 1000 }],
+    ["zaman damgası", { desc: "Firestore zamanı ay olur", fn: () => ymOfTime({ toDate: () => new Date(2026, 2, 5) }), ok: (r) => r === "2026-03" }],
+    ["tablo", { desc: "başlamamış ve sayılmayan sporcu beklenene ve sayıya girmez", fn: () => monthRows([a, { id: "b", studentName: "Bora", from: "2026-11" }, { id: "c", studentName: "Can" }], { free: { c: true } }, { fee: 1000 }, "2026-10"), ok: (r) => r.count === 1 && r.expected === 1000 && r.rows.find((x) => x.a.id === "b").state === "none" && r.rows.find((x) => x.a.id === "c").state === "free" }],
+    ["hatırlatma", { desc: "sunucu listesi: başlamamış ve muaf sporcuya hatırlatma gitmez", fn: () => unpaidRoster({ fee: 1000, roster: [a, { id: "b", studentName: "Bora", from: "2026-11" }, { id: "c", studentName: "Can" }] }, { free: { c: true } }, "2026-10"), ok: (r) => r.length === 1 && r[0].a.id === "a1" }],
+    ["sunucu listesi", { desc: "başlangıç ayı listeye yazılır", fn: () => rosterOf([{ ...a, createdAt: "2026-07-01T10:00:00" }], { start: {} }), ok: (r) => r[0].from === "2026-07" }],
     ["tutar yok", { desc: "aidat tutarı ayarlı değilse borç yok", fn: () => athleteDues(a, {}, months, yms), ok: (r) => r.debt === 0 }],
     ["cümle", { desc: "asistan cevabı", fn: () => athleteDuesText("Ali Kaya", late), ok: (r) => /Ekim aidatı eksik ödendi/.test(r) && /2 ay/.test(r) }],
   ]);

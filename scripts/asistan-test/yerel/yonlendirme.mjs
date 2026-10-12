@@ -108,7 +108,7 @@ const CASES = {
   schedule: ["ders programıma çarşamba 10'da kimya ekle", ["salı 13:00 fizik B-204", { path: "/schedule" }]],
   person: ["Kişi ekle: Ayşe Yılmaz, eşim, 0532 111 22 33", "Annem Fatma Yıldız'ı aileye ekle", "Ali Kaya'yı çalışan olarak ekle, antrenör"],
   call: ["Ali'yi ara", "Gökhan Demir'i arar mısın", "Zeynep'e arama yap", ["oteli ara", { path: "/athletes/races/r1" }]],
-  dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi", "Ali Kaya'nın aidat durumu ne", "Zeynep aidatını ödedi mi", "Emre Şahin'in aidat borcu var mı"],
+  dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi", "Ali Kaya'nın aidat durumu ne", "Zeynep aidatını ödedi mi", "Emre Şahin'in aidat borcu var mı", "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın"],
   income: ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "kano eğitimi için 3 bin lira nakit aldım", "hesaplara 500 lira gelir ekle"],
   athlete: ["yeni sporcu ekle: Can Tekin, 2014 doğumlu", "Can Tekin'i sporcu olarak ekle", "Ali Kaya'yı arşive al", "Zeynep'i arşivden çıkar", "Emre Şahin sporcusunu sil"],
   raceHere: [["Ali 3. oldu", { path: "/athletes/races/r1" }], ["Ali'yi yarıştan çıkar", { path: "/athletes/races/r1" }], ["24 tekne yarıştı", { path: "/athletes/races/r1" }], ["Ayşe ödedi", { path: "/athletes/races/r1" }], ["yarışı planlara ekle", { path: "/athletes/races/r1" }], ["yarışı sil", { path: "/athletes/races/r1" }], ["Zeynep ikinci oldu", { path: "/athletes/races/r1" }]],
