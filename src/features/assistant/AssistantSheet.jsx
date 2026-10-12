@@ -102,7 +102,7 @@ import { payeeAnswer, payeeMoves, payeeOf, whoIn } from "@/lib/payee";
 import { convPick, debtMoves, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
 import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
-import { addIncome, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
+import { addIncome, archiveCash, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
 import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
@@ -2356,6 +2356,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setPhase("thinking");
       const tl = (n) => `${money(n).replace(/,00$/, "")} TL`;
       try {
+        if (kc.op === "archive") {
+          const cd = await loadCash(profile.uid);
+          const old = kasaOf(cd.moves, cd.meta).old;
+          if (!old.length) {
+            reply("Arşivlenecek eski nakit girişi yok.", { engine: "local", nav: "accounts" }, viaVoice);
+            return true;
+          }
+          await soon(archiveCash(profile.uid, old.map((x) => x.key)), 2500, "Kasa");
+          done(`${old.length} eski nakit girişini arşivledim. Kasaya sayılmaz, Hesaplar › Kulüp › Arşiv'den geri alınır.`, { engine: "local", nav: "accounts" }, viaVoice);
+          return true;
+        }
         if (kc.op === "conv") {
           if (!(kc.amount > 0)) {
             reply("Hangi tutarı nakite çevirdin? Tutarıyla söyler misin? (ör. gelen 20 bin lirayı nakite çevirdim)", { fail: true, engine: "local" }, viaVoice);

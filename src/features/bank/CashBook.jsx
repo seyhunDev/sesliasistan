@@ -15,8 +15,9 @@ const SHOW = 5;
 
 // Hesaplar › Kulüp: Kasa (nakit). Sayılan girişler − çıkışlar; altta son nakitler ve kasa başlamadan önceki girişler
 // ("Nakit girdi olarak ekle"). Ayrıntı: src/lib/cashbook.js.
-export function KasaCard({ kasa, onAdd, onOpen, onInclude }) {
+export function KasaCard({ kasa, onAdd, onOpen, onInclude, onArchive, onUnarchive }) {
   const [oldOpen, setOldOpen] = useState(false);
+  const [arcOpen, setArcOpen] = useState(false);
   const [all, setAll] = useState(false);
   const list = all ? kasa.counted : kasa.counted.slice(0, SHOW);
   return (
@@ -69,10 +70,45 @@ export function KasaCard({ kasa, onAdd, onOpen, onInclude }) {
                     </span>
                     <span className="shrink-0 text-right">
                       <b className="block text-[0.875rem] font-semibold tabular-nums text-ok">+{money(x.amount)}</b>
-                      <button type="button" onClick={() => onInclude(x, true)} className="mt-0.5 rounded-full bg-acc/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-acc">
-                        Nakit girdi olarak ekle
-                      </button>
+                      <span className="mt-0.5 flex justify-end gap-1">
+                        <button type="button" onClick={() => onArchive([x])} className="rounded-full bg-bg px-2 py-0.5 text-[0.6875rem] font-semibold text-mut">
+                          Arşivle
+                        </button>
+                        <button type="button" onClick={() => onInclude(x, true)} className="rounded-full bg-acc/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-acc">
+                          Kasaya ekle
+                        </button>
+                      </span>
                     </span>
+                  </li>
+                ))}
+                {kasa.old.length > 1 && (
+                  <li>
+                    <button type="button" onClick={() => onArchive(kasa.old)} className="h-10 w-full text-[0.8125rem] font-semibold text-mut">
+                      Hepsini arşivle ({kasa.old.length}) · kullanıldı, kasada değil
+                    </button>
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
+        {kasa.archived.length > 0 && (
+          <div className="border-t border-line">
+            <button type="button" onClick={() => setArcOpen((v) => !v)} aria-expanded={arcOpen} className="flex h-10 w-full items-center gap-2 px-4 text-left text-[0.75rem] font-semibold text-mut">
+              <span className="min-w-0 flex-1">Arşiv ({kasa.archived.length})</span>
+              <Icon name="chev" className={`size-4 shrink-0 transition ${arcOpen ? "rotate-90" : ""}`} />
+            </button>
+            {arcOpen && (
+              <ul className="divide-y divide-line border-t border-line">
+                {kasa.archived.map((x) => (
+                  <li key={x.id} className="flex items-center gap-3 px-4 py-2 text-mut">
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.8125rem] font-medium">{x.who || x.note}</b>
+                      <small className="block truncate text-[0.6875rem]">{[shortDate(x), `+${money(x.amount)}`].filter(Boolean).join(" · ")}</small>
+                    </span>
+                    <button type="button" onClick={() => onUnarchive([x])} className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[0.6875rem] font-semibold">
+                      Geri al
+                    </button>
                   </li>
                 ))}
               </ul>

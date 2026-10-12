@@ -93,6 +93,10 @@ export const loadCashMoves = (orgId) => loadCash(orgId).then((r) => r.moves);
 export const setInKasa = (orgId, key, on) =>
   setDoc(doc(db, "orgs", orgId, "cash", "meta"), on ? { add: arrayUnion(key), skip: arrayRemove(key) } : { add: arrayRemove(key), skip: arrayUnion(key) }, { merge: true });
 
+// Eski nakit girişlerini arşivle (kullanıldı, kasada değil) ya da arşivden geri al (yine "önceki girişler"de görünür)
+export const archiveCash = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { skip: arrayUnion(...keys), add: arrayRemove(...keys) }, { merge: true });
+export const unarchiveCash = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { skip: arrayRemove(...keys) }, { merge: true });
+
 // Hesaplar › "+". Kulüp nakit girişi: Aidat o ayın aidat kaydına nakit ödeme olarak (Aidatlar'da o ay ödendi görünür), diğer
 // türler incomes'a. Kulüp nakit çıkışı ve kişisel gelir/gider/borç: incomes'a (book, dir).
 export async function addIncome(orgId, { book = "club", dir = "in", cat, who, athleteId, ym, amount, date, note }) {

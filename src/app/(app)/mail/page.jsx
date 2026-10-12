@@ -17,7 +17,7 @@ import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { addIncome, convertToCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
+import { addIncome, archiveCash, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
 import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
 import { canConv, convSet, debtMoves, inKasa, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
@@ -233,6 +233,8 @@ export default function MailPage() {
   const dropIncome = (x) => after(x.conv ? undoConvert(profile.uid, x.conv) : deleteIncome(profile.uid, x.incomeId), x.conv ? "Geri alındı, banka hareketi yine kişisel hesapta" : "Silindi");
   const toCash = (m) => after(convertToCash(profile.uid, m), "Kulüp kasasına nakit olarak eklendi").then(() => setBankPick(null));
   const unConv = (m) => after(undoConvert(profile.uid, m.id), "Geri alındı").then(() => setBankPick(null));
+  const archive = (list) => after(archiveCash(profile.uid, list.map((x) => x.key)), list.length > 1 ? `${list.length} giriş arşivlendi` : "Arşivlendi");
+  const unarchive = (list) => after(unarchiveCash(profile.uid, list.map((x) => x.key)), "Arşivden çıkarıldı");
   const include = (x, on) => after(setInKasa(profile.uid, x.key, on), on ? "Kasaya eklendi" : "Kasadan çıkarıldı");
   const payDebt = (x) => after(setDebtPaid(profile.uid, x.incomeId, !x.paid), x.paid ? "Ödenmedi olarak işaretlendi" : "Borç ödendi");
   const addName = (name) => {
@@ -313,7 +315,7 @@ export default function MailPage() {
             </section>
           )}
 
-          <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} />
+          <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} onArchive={archive} onUnarchive={unarchive} />
           <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
 
           {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}

@@ -96,7 +96,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
   const tiles = [
     skel("dues") ? ["dues"] : dues && ["/dues", "wallet", "Aidat", clubDues(sum.dues, ym), "dues"],
     skel("inv") ? ["inv"] : (money || invoices) && ["/receipts", "receipt", "Fiş / Fatura", clubFis(inv, money && m.receipts), "inv"],
-    skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Banka", m.bank, "bank"],
+    skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Hesaplar", m.bank, "bank"],
     training && ["/training", "trend", "Antrenman", clubTraining(plans, today)],
     posts && ["/posts", "instagram", "Instagram", clubPosts(sum.posts), null, "instagram"],
   ].filter((x) => x && (x.length === 1 || x[3]));
