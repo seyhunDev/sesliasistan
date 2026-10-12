@@ -1,7 +1,6 @@
 "use client";
 
 import { formatOf, imagePeople, moodOf, safeOf, tallOf, themeOf } from "./postModel";
-import { drawModern } from "./postModern";
 
 // Gönderi görseli telefonda çizilir (canvas, 1080 genişlik): fotoğraf ya da kulüp renkli zemin, logo, etiket, başlık, alt satır.
 // Sunucuya ya da yapay zekaya görsel gitmez; ücretli görüntü üretimi yok.
@@ -922,12 +921,7 @@ export async function drawPost(canvas, post, photo) {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
-  const [, , c1, c2, accent] = themeOf(post.theme);
-  const style = post.style || "klasik";
-  const light = !photo && post.theme === "kum";
-  const deep = post.theme === "kum" ? "#1f5a4b" : c2;
-  // Kum temasında vurgu koyu yeşil; koyu şeritte görünsün diye bantta kum sarısı
-  const bandAcc = post.theme === "kum" ? "#e9c46a" : accent;
+  const [, , c1, c2] = themeOf(post.theme);
   // Yalnız fotoğraf (yarış sonucu): görselde yazı ve logo yok; fotoğraf yoksa sade renk geçişi
   if (post.photoOnly) {
     if (photo) cover(ctx, photo, W, H, post);
@@ -940,137 +934,11 @@ export async function drawPost(canvas, post, photo) {
     }
     return canvas;
   }
-  // Modern tasarım türe göre çizilir (postModern.js); özel günde Afiş
-  if (style === "modern" && (await drawModern(KIT, ctx, post, photo, W, H))) return canvas;
-  if (style === "afis" || style === "modern") {
-    await drawAfis(ctx, post, photo, W, H);
-    return canvas;
-  }
-  const top = post.pos === "top";
-  // Hikâye/Reels'te Instagram'ın üst satırı, alttaki yazılar ve sağdaki düğmeler yazının üstüne binmesin
-  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
-  const L = PAD + safeL;
-
-  if (photo) {
-    cover(ctx, photo, W, H, post);
-    if (style === "klasik") {
-      const k = post.shade / 100;
-      fade(ctx, W, H, top, "rgb(6,22,18)", 0.6 + k * 0.35, 0.62 + k * 0.2);
-    } else {
-      ctx.fillStyle = `rgba(0,0,0,${(post.shade / 100) * 0.4})`;
-      ctx.fillRect(0, 0, W, H);
-    }
-    const g2 = top ? ctx.createLinearGradient(0, H, 0, H - 280) : ctx.createLinearGradient(0, 0, 0, 280);
-    g2.addColorStop(0, "rgba(0,0,0,.38)");
-    g2.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, W, H);
-  } else {
-    const g = ctx.createLinearGradient(0, 0, W * 0.45, H);
-    g.addColorStop(0, c1);
-    g.addColorStop(1, c2);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-    decor(ctx, W, H, top, light ? "rgba(31,90,75,.1)" : "rgba(255,255,255,.08)", post.kind);
-  }
-
-  // Logo + kulüp adı (yazının karşı köşesinde); istenirse kapatılır (noBrand)
-  if (!post.noBrand) {
-    const logo = await loadLogo();
-    const ly = top ? H - PAD - 104 - safeB : PAD - 20 + safeT;
-    const R = 52;
-    ctx.save();
-    if (photo) {
-      ctx.shadowColor = "rgba(0,0,0,.35)";
-      ctx.shadowBlur = 14;
-    }
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(L + R, ly + R, R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowColor = "transparent";
-    if (logo) {
-      ctx.clip();
-      ctx.drawImage(logo, L + 6, ly + 6, R * 2 - 12, R * 2 - 12);
-    }
-    ctx.restore();
-    ctx.save();
-    if (photo) {
-      ctx.shadowColor = "rgba(0,0,0,.45)";
-      ctx.shadowBlur = 12;
-    }
-    ctx.fillStyle = light ? "#123c33" : "#ffffff";
-    ctx.textBaseline = "middle";
-    ctx.font = `700 30px ${FONT}`;
-    ctx.fillText(CLUB, L + R * 2 + 24, ly + R);
-    ctx.restore();
-  }
-
-  // Yazı bloğu: Kart ve Bant'ta kutu/şerit içinde, Klasik'te doğrudan zeminde. Sığmazsa her şey birlikte küçülür.
-  const inset = style === "kart" ? 52 : 0;
-  const maxW = W - PAD * 2 - inset * 2 - safeR - safeL;
-  const room = H - PAD * 2 - safeT - safeB - 150 - (style === "klasik" ? 0 : 90);
-  let m = measure(ctx, post, maxW, 1);
-  for (let k = 0.94; m.h > room && k >= 0.66; k -= 0.06) m = measure(ctx, post, maxW, k);
-
-  const c = {
-    tag: post.tag,
-    ink: light ? "#123c33" : "#ffffff",
-    accent: light ? "#1f5a4b" : accent,
-    tagBg: light ? "#1f5a4b" : accent,
-    tagInk: light ? "#ffffff" : "#10231e",
-    wish: light ? "#1f5a4b" : accent,
-    rule: light ? "rgba(18,60,51,.25)" : "rgba(255,255,255,.35)",
-  };
-  let x = L;
-  let y;
-  if (style === "kart") {
-    // Açık renk yuvarlak kutu; içindeki yazı koyu
-    const bw = W - PAD * 2 + 24 - safeR - safeL;
-    const bh = m.h + inset * 2;
-    const bx = L - 12;
-    const by = top ? PAD - 12 + safeT : H - PAD - bh - safeB + 12;
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,.22)";
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetY = 10;
-    ctx.fillStyle = "rgba(252,249,244,.96)";
-    pill(ctx, bx, by, bw, bh, 44);
-    ctx.fill();
-    ctx.restore();
-    Object.assign(c, { ink: "#10231e", accent: deep, tagBg: deep, tagInk: "#ffffff", wish: deep, rule: "rgba(16,35,30,.2)" });
-    x = bx + 12 + inset;
-    y = by + inset;
-  } else if (style === "bant") {
-    // Kenardan kenara koyu şerit + ince renkli çizgi
-    const bh = m.h + 140 + (top ? safeT : safeB);
-    const by = top ? 0 : H - bh;
-    ctx.save();
-    ctx.fillStyle = deep;
-    ctx.globalAlpha = 0.96;
-    ctx.fillRect(0, by, W, bh);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = bandAcc;
-    ctx.fillRect(0, top ? by + bh - 10 : by, W, 10);
-    ctx.restore();
-    Object.assign(c, { ink: "#ffffff", accent: bandAcc, tagBg: bandAcc, tagInk: "#10231e", wish: bandAcc, rule: "rgba(255,255,255,.35)" });
-    y = top ? 70 + safeT : by + 76;
-  } else {
-    if (photo) {
-      ctx.shadowColor = "rgba(0,0,0,.35)";
-      ctx.shadowBlur = 14;
-    }
-    y = top ? PAD + 10 + safeT : H - PAD - m.h - safeB;
-  }
-  c.sub = c.ink;
-  c.name = c.accent;
-  paint(ctx, m, x, y, c);
-  ctx.shadowColor = "transparent";
+  // Tek tasarım: Afiş (Klasik, Kart, Bant ve Modern kaldırıldı)
+  await drawAfis(ctx, post, photo, W, H);
   return canvas;
 }
 
-// Modern tasarımın kullandığı çizim yardımcıları
-const KIT = { FONT, PAD, sizeK, fit, fitRich, drawRich, namesOf, cover, loadLogo, pill, pin, mixRgb, decor, fade };
 
 // Instagram'a gidecek dosya (JPEG)
 export function postFile(canvas, name = "gonderi") {

@@ -335,7 +335,7 @@ group("Instagram tasarım")([
     const r = PM.raceWithAthletes({ athleteIds: ["a", "b", "yok"], results: { rows: { b: { place: 2 } } } }, { athletes: [{ id: "a", studentName: "Ali Kaya", currentClassId: "o", studentTc: "12345678901" }, { id: "b", studentName: "Ece Su", currentClassId: "i" }], classes: [{ id: "o", name: "Optimist" }, { id: "i", name: "ILCA 4" }] });
     return r.athletes.length === 2 && r.athletes[0].name === "Ece Su" && r.athletes[0].cls === "ILCA 4" && !/12345678901/.test(JSON.stringify(r.athletes));
   })],
-  ["şablon kaydı", F("bilinmeyen şablon Afiş, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "afis" && PM.cleanPost({ style: "bant" }).style === "bant" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
+  ["şablon kaydı", F("bilinmeyen şablon Afiş, dilek 60 karakter", () => PM.cleanPost({ style: "x" }).style === "afis" && PM.cleanPost({ style: "bant" }).style === "afis" && PM.cleanPost({ wish: "a".repeat(90) }).wish.length === 60 && PM.cleanPost({ meta: false }).meta === false)],
   ["yer ve sınıf düzenlenir", F("yarıştan dolar, alan olarak kaydedilir, eski kayıt doldurulur", () => {
     const a = PM.cleanPost({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" }, ...PM.autoOf({ kind: "duyuru", race: { ...ONE, classes: "ILCA 4, ILCA 6" } }) });
     const old = PM.withInfo(PM.cleanPost({ race: ONE }));
@@ -389,20 +389,11 @@ group("Instagram hikâye")([
   ["hikâye boyutu", F("1080×1920, oran 9/16", () => { const f = PMs.formatOf("story"); return f[2] === 1080 && f[3] === 1920 && PMs.aspectOf("story") === "9 / 16"; })],
   ["kayıtta korunur", F("cleanPost story kalır, bilinmeyen kare olur", () => PMs.cleanPost({ format: "story" }).format === "story" && PMs.cleanPost({ format: "x" }).format === "square")],
   ["reels boyutu", F("1080×1920, kayıtta kalır, sağda ve altta güvenli alan", () => { const f = PMs.formatOf("reels"); const s = PMs.safeOf("reels"); return f[3] === 1920 && PMs.aspectOf("reels") === "9 / 16" && PMs.cleanPost({ format: "reels" }).format === "reels" && s.r > 0 && s.b > PMs.safeOf("story").b && PMs.safeOf("square").b === 0; })],
-  ["afiş şablonu", F("yeni gönderi Afiş şablonuyla açılır, eski şablonlar korunur", () => PMs.freshPost("duyuru").style === "afis" && PMs.cleanPost({ style: "kart" }).style === "kart" && PMs.STYLES[0][0] === "afis")],
+  ["tek tasarım", F("her gönderi Afiş (eski Kart/Modern de Afiş olur), seçimde 5 tür", () => PMs.freshPost("duyuru").style === "afis" && PMs.cleanPost({ style: "kart" }).style === "afis" && PMs.cleanPost({ style: "modern" }).style === "afis" && PMs.PICK_KINDS.join() === "duyuru,antrenman,sonuc,kulup,ozel")],
   ["karartma", F("varsayılan 55, 0-100 arası", () => PMs.cleanPost({}).shade === 55 && PMs.cleanPost({ shade: 140 }).shade === 100 && PMs.cleanPost({ shade: -5 }).shade === 0 && PMs.cleanPost({ shade: 20 }).shade === 20)],
   ["üç boyut", F("gönderi + hikâye + reels; gönderi seçili Kare/Dikey, yoksa Kare", () => PMs.setOf("square").join() === "square,story,reels" && PMs.setOf("portrait").join() === "portrait,story,reels" && PMs.setOf("reels").join() === "square,story,reels")],
   ["afiş renkleri", F("her rengin kendi etiket rengi var, türler farklı etiket rengiyle açılır", () => { const tags = PMs.THEMES.map(([k]) => PIs.afisTag(k)); const kinds = ["duyuru", "sonuc", "antrenman", "genel", "kayit", "kulup"].map((k) => PIs.afisTag(PMs.kindTheme(k))); return new Set(tags).size === tags.length && new Set(kinds).size === kinds.length && PIs.afisTag("x") === PIs.afisTag("deniz"); })],
   ["profil ızgarası", F("karede yazı ortadaki 3:4'te (sağ/sol 66 px ek kenar), yeni gönderi Kare (1080×1080)", () => { const s = PMs.safeOf("square"); return s.l === 66 && s.r === 66 && PMs.safeOf("portrait").l === 0 && PMs.freshPost().format === "square" && PMs.cleanPost({ format: "square" }).format === "square"; })],
-]);
-
-// Instagram Modern tasarım (postModel.js, postModern.js)
-const PMo = await import("@/features/posts/postModern");
-group("Instagram modern tasarım")([
-  ["kayıtta korunur", F("modern kalır, Klasik şablonlar değişmez", () => PMs.cleanPost({ style: "modern" }).style === "modern" && PMs.cleanPost({ style: "kart" }).style === "kart" && PMs.designOf("modern") === "modern" && PMs.designOf("afis") === "klasik" && PMs.designOf("bant") === "klasik")],
-  ["türe göre düzen", F("yarış/sonuç race, antrenman training, kayıt school, haberler news, özel gün Afiş", () => PMs.modernOf("duyuru") === "race" && PMs.modernOf("sonuc") === "race" && PMs.modernOf("antrenman") === "training" && PMs.modernOf("kayit") === "school" && ["genel", "kulup", "kutlama", "diger"].every((k) => PMs.modernOf(k) === "news") && PMs.modernOf("ozel") === null)],
-  ["her düzenin açıklaması", F("dört düzenin ekranda açıklaması var", () => ["race", "training", "school", "news"].every((k) => PMs.MODERN_HINT[k]))],
-  ["renkler", F("her rengin modern vurgusu var, türler farklı vurguyla açılır", () => { const acc = ["duyuru", "sonuc", "antrenman", "genel", "kayit", "kulup"].map((k) => PMo.modernPal(PMs.kindTheme(k)).acc); return PMs.THEMES.every(([k]) => /^#[0-9a-f]{6}$/.test(PMo.modernPal(k).acc)) && new Set(acc).size === acc.length && PMo.modernPal("x") === PMo.modernPal("deniz"); })],
 ]);
 
 // Notlar: thread'lerin notlar/yeni/ dosyaları NOTLAR.md'ye taşınır (scripts/notlar-topla.mjs)
