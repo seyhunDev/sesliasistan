@@ -1,8 +1,8 @@
-Commit: e00fc02 · Instagram: yarış sonucu yalnız fotoğraf, açıklama kalıpla (#332)
-Zaman: 2026-10-12-2023 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38283735185
+Commit: caffe27 · Instagram: tek tasarım (Afiş), 5 tür, düğmeler önizlemenin altında (#333)
+Zaman: 2026-10-12-2030 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38284505416
 
-TAM TEST · 12.10.2026 20:22:31
+TAM TEST · 12.10.2026 20:29:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
