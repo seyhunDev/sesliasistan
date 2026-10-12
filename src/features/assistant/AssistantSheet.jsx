@@ -1960,6 +1960,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }
       const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
       const mine = athletes.filter((a) => (r.athleteIds || []).includes(a.id));
+      if (rh.op === "sheet") {
+        const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
+        const one = hit ? mine.find((x) => x.studentName === hit) : null;
+        if (rh.name && !one) {
+          reply(`${rh.name} bu yarışın sporcuları arasında yok.`, { engine: "local" }, viaVoice);
+          return true;
+        }
+        if (!mine.length) {
+          reply("Bu yarışa önce sporcu ekle.", { engine: "local" }, viaVoice);
+          return true;
+        }
+        window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [] } }));
+        done(one ? `${one.studentName} için bilgi notunu hazırlıyorum.` : `${mine.length} sporcunun bilgi notunu hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
+        return true;
+      }
       const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
       const a = hit ? mine.find((x) => x.studentName === hit) : null;
       if (!a) {

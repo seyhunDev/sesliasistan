@@ -155,6 +155,27 @@ const DOC_ATH = [
 const DOC_RACE = { name: "TYF Yelken Ligi ILCA 1. Ayak", district: "Foça", city: "İzmir", startDate: "2026-10-07", endDate: "2026-10-11", clubNo: "GID-2026-09", budget: BUD, athleteIds: ["a", "b"] };
 const COACH = { name: "Deneme Antrenör", tc: "11111111110", sicil: "0001234", phone: "555 000 00 00", email: "a@b.c", club: "SERBEST", city: "İZMİR", boatLength: "520" };
 const pages = async (bytes) => (await PDFDocument.load(bytes)).getPageCount();
+
+// Veli bilgi notu (athleteSheet.js): sporcu başına tek sayfa
+const AS = await import("@/features/athletes/athleteSheet");
+const SHEET_RACE = {
+  ...DOC_RACE,
+  departDate: "2026-10-06", departTime: "07:00", departFrom: "Dikili",
+  notice: { schedule: [{ date: "2026-10-07", time: "09:00", title: "Kayıt" }, { date: "2026-10-07", time: "13:00", title: "1. yarış" }, { date: "2026-10-08", time: "11:00", title: "Yarışlar" }] },
+  hotels: [{ name: "Foça Otel", phone: "0232 000 00 00" }],
+  budget: { staff: 1, nights: 4, items: [{ id: "k", cat: "Kayıt", title: "Kayıt ücreti", amount: 500, unit: "athlete", qty: 1 }, { id: "m", cat: "Ulaşım", title: "Minibüs", amount: 2000, unit: "shared", qty: 1 }, { id: "c", cat: "Diğer", title: "Antrenör yolluğu", amount: 1000, unit: "shared", qty: 1, club: true }] },
+};
+group("Veli bilgi notu")([
+  ["program günleri", { desc: "talimattaki program güne göre toplanır", fn: () => AS.programDays(SHEET_RACE).map((d) => d.items.length), ok: (r) => r.join() === "2,1" }],
+  ["sporcu payı", { desc: "kayıt 500 + minibüs 2000/2 = 1500; kulübün kalemi girmez", fn: () => AS.sheetData(SHEET_RACE, DOC_ATH[0], 2).money, ok: (m) => m.total === 1500 && m.lines.length === 2 && m.club.join() === "Antrenör yolluğu" }],
+  ["konaklama", { desc: "evrakta yazılan otel öne çıkar, giriş-çıkış yarış tarihleri", fn: () => AS.stayOf({ ...SHEET_RACE, hotelName: "foça otel" }), ok: (s) => s.hotels.length === 1 && s.hotels[0].phone && s.nights === 4 }],
+  ["eksik bölümler", { desc: "bilgisiz yarışta dört bölüm de boş görünür", fn: () => AS.sheetParts({ name: "A", startDate: "2026-10-07" }, 1).filter((x) => !x[2]).map((x) => x[0]), ok: (r) => r.join() === "Yolculuk,Program,Konaklama,Son tarihler,Bütçe" }],
+  ["yaklaşan son tarihler", { desc: "geçmiş tarih atlanır, sıralı, kalan gün yazılır", fn: () => AS.upcomingDates({ notice: { deadlines: [{ title: "Kayıt son gün", date: "2026-10-19" }, { title: "Eski", date: "2026-10-01" }] }, todos: [{ title: "Ölçüm", date: "2026-10-13" }] }, "2026-10-12"), ok: (r) => r.map((x) => `${x.title}:${x.left}`).join() === "Ölçüm:1,Kayıt son gün:7" }],
+  ["bölüm seçimi", { desc: "kapatılan bütçe ve program notta yer almaz", fn: () => AS.sheetData(SHEET_RACE, DOC_ATH[0], 2, { budget: false, program: false }), ok: (d) => !d.money.lines.length && !d.days.length && d.stay.hotels.length === 1 }],
+  ["PDF son tarihli", { desc: "son tarihler bölümüyle de tek sayfa", fn: async () => pages(await AS.buildAthleteSheet({ ...SHEET_RACE, notice: { ...SHEET_RACE.notice, deadlines: [{ title: "Kayıt ücreti son gün", date: "2099-01-05" }] } }, [DOC_ATH[0]], FONTS)), ok: (r) => r === 1 }],
+  ["PDF", { desc: "iki sporcuya iki sayfa", fn: async () => pages(await AS.buildAthleteSheet(SHEET_RACE, DOC_ATH, FONTS)), ok: (r) => r === 2 }],
+  ["PDF boş yarış", { desc: "bilgisiz yarışta da tek sayfa açılır", fn: async () => pages(await AS.buildAthleteSheet({ name: "A" }, [DOC_ATH[1]], FONTS)), ok: (r) => r === 1 }],
+]);
 group("Yarış evrakı")([
   ["bulunma eki", { desc: "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da", fn: () => ["İzmir", "Antalya", "Çeşme", "İzmit", "Foça"].map(RD.locative).join(" "), ok: (r) => r === "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da" }],
   ["tarih aralığı", { desc: "07-11 EKİM 2026 · 28 EYLÜL-02 EKİM 2026", fn: () => [RD.rangeText("2026-10-07", "2026-10-11"), RD.rangeText("2026-09-28", "2026-10-02"), RD.rangeTitle("2026-10-07", "2026-10-11")], ok: ([a, b, c]) => a === "07-11 EKİM 2026" && b === "28 EYLÜL-02 EKİM 2026" && c === "07-11 Ekim 2026" }],

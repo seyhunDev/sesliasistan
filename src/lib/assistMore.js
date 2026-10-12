@@ -245,6 +245,12 @@ const ORD = { birinci: 1, ikinci: 2, üçüncü: 3, dördüncü: 4, beşinci: 5,
 export function raceHereCommand(raw) {
   const t = low(raw);
   if (QUESTION.test(t)) return null;
+  // Veli bilgi notu (tek sayfa PDF): "bilgi notunu hazırla", "Ali'nin veli notunu çıkar", "herkesin bilgi notunu hazırla"
+  if (/(bilgi not|veli not|veli pdf|sporcu pdf|bilgi pdf|bilgilendirme pdf)/u.test(t) && /(hazırla|çıkar|oluştur|yap|ver|aç|göster)\p{L}*$/u.test(t)) {
+    const w = t.match(/^(.+?)['’]?(?:n?[ıiuü]n) (?:bilgi|veli|sporcu|bilgilendirme)/u);
+    const name = w && !/(herkes|hepsi|tüm|bütün|sporcular|bu yarış|yarış)/u.test(w[1]) ? nameOf(w[1]) : "";
+    return { op: "sheet", name };
+  }
   if (/^(bu )?(yarışı|yarış kaydını) sil\p{L}*$/u.test(t)) return { op: "delete" };
   if (/(yarışı )?(planlara|takvime|planlarıma) ekle/u.test(t) && !/\d/.test(t) && t.split(" ").length <= 5) return { op: "plan" };
   const fleet = t.match(/tekne sayısı (\d{1,3})|(\d{1,3}) tekne (yarıştı|katıldı|vardı)/u);
