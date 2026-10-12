@@ -8,3 +8,5 @@
 
 - Telefonda dene: başlık kartına dokunup yarışın adını değiştir; Veli sekmesinde bir sporcu seç, PDF'i aç ve WhatsApp'tan paylaş. Asistana yarış sayfasında "Ali'nin bilgi notunu hazırla" de.
 - İstenirse: bilgi notunu velilere tek tek WhatsApp/uygulama bildirimiyle gönderme, nota iletişim (yarış sekreteri) ve getirilecekler listesi.
+
+- Veli bilgi notunda bölümler seçilir (Seyhun: "yolculuk, program, konaklama seçilebilir olmalı; yaklaşan son tarihler de tarihiyle görünsün"): Veli › "Notta neler olsun"da Yolculuk, Program, Konaklama, Son tarihler, Bütçe işaretlenir; seçim bu cihazda saklanır (`sa-sheet-show`). Yeni bölüm "Yaklaşan son tarihler": talimattaki son tarihler, tarihli talimat işleri (aynı günde son tarih yoksa) ve elle eklenen tarihli işler; bugünden sonrakiler, en çok 6, "3 gün kaldı"; 7 gün ve daha az kalan turuncu (`upcomingDates`, `SHEET_KEYS`, athleteSheet.js). Testleri `test:yaris` › "Veli bilgi notu".

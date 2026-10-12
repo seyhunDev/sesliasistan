@@ -485,12 +485,27 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   // Veli bilgi notu: seçili her sporcuya tek sayfa (yolculuk, program, konaklama, sporcu payı)
   const [sheetIds, setSheetIds] = useState(null); // null: hepsi
   const [sheetBusy, setSheetBusy] = useState(false);
+  // kapatılan bölümler false; seçim bu cihazda saklanır (yarış sayfası veriler gelince çizildiği için ilk çizimde okunabilir)
+  const [sheetShow, setSheetShow] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("sa-sheet-show") || "{}") || {};
+    } catch {
+      return {};
+    }
+  });
+  const toggleShow = (k) => {
+    const next = { ...sheetShow, [k]: sheetShow[k] === false };
+    setSheetShow(next);
+    try {
+      localStorage.setItem("sa-sheet-show", JSON.stringify(next));
+    } catch {}
+  };
   const sheetList = sheetIds ? chosen.filter((a) => sheetIds.includes(a.id)) : chosen;
   const makeSheet = async (list = sheetList) => {
     if (!list.length) return toast("En az bir sporcu seç");
     setSheetBusy(true);
     try {
-      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length);
+      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length, sheetShow);
       const base = `${(latest.current.name || "yaris").trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}`;
       const who = list.length === 1 ? `-${list[0].studentName.replace(/[^\p{L}\p{N}]+/gu, "-")}` : "";
       setDocView(new File([bytes], `${base}${who}-bilgi-notu.pdf`, { type: "application/pdf" }));
@@ -924,7 +939,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
       {tab === "sheet" && (
         <>
-          <p className="mt-4 px-1 text-[0.875rem] leading-relaxed text-mut">Her sporcuya tek sayfa: yolculuk, program, konaklama ve yalnız onun ödeyeceği kalemler. Veliye gönder.</p>
+          <p className="mt-4 px-1 text-[0.875rem] leading-relaxed text-mut">Her sporcuya tek sayfa. Notta görünecek bölümleri aşağıdan seç, veliye gönder.</p>
           <Label right={chosen.length ? `${sheetList.length}/${chosen.length}` : ""}>SPORCULAR</Label>
           {!chosen.length ? (
             <button type="button" onClick={() => setTab("people")} className={`${card} flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
@@ -960,24 +975,29 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </ul>
           )}
 
-          <Label>NOTTA NELER VAR</Label>
+          <Label>NOTTA NELER OLSUN</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {parts4.map(([title, sub, ok, to]) => (
-              <li key={title}>
-                <button type="button" onClick={() => (to === "notice" ? setNoticeMenu(true) : setTab(to))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <span className={`grid size-8 shrink-0 place-items-center rounded-full ${ok ? "bg-ok/15 text-ok" : "bg-bg text-mut"}`}>
-                    <Icon name={ok ? "check" : "minus"} className="size-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <b className={`block text-[0.9375rem] font-semibold ${ok ? "" : "text-mut"}`}>{title}</b>
-                    <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
-                  </span>
-                  {!ok && <span className="shrink-0 text-[0.8125rem] font-semibold text-acc">{to === "notice" ? "Talimat" : "Ekle"}</span>}
-                </button>
-              </li>
-            ))}
+            {parts4.map(([title, sub, ok, to, key]) => {
+              const on = ok && sheetShow[key] !== false;
+              return (
+                <li key={key} className="flex items-center">
+                  <button type="button" onClick={() => ok && toggleShow(key)} disabled={!ok} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+                    <Check on={on} tone="acc" />
+                    <span className="min-w-0 flex-1">
+                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{title}</b>
+                      <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
+                    </span>
+                  </button>
+                  {!ok && to !== "sum" && (
+                    <button type="button" onClick={() => (to === "notice" ? setNoticeMenu(true) : setTab(to))} className="shrink-0 px-4 py-3 text-[0.8125rem] font-semibold text-acc">
+                      {to === "notice" ? "Talimat" : "Ekle"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">Olmayan bölüm notta yer almaz.</p>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">İşaretli bölümler notta görünür. Son tarihler bilgi içindir, 7 gün ve daha az kalanlar vurgulanır.</p>
 
           <button type="button" onClick={() => makeSheet()} disabled={sheetBusy || !sheetList.length} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-40">
             <Icon name="print" className="size-5" />

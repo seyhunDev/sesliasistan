@@ -3,7 +3,8 @@
 // sheetData saf (testlenir); buildAthleteSheet pdf-lib'i yalnız çıktı alınırken yükler.
 import { CLUB, hotelInfo, rangeText } from "./raceDocs.js";
 import { tl, totals } from "./budget.js";
-import { raceHotels, tripRows } from "./races.js";
+import { cleanTodos, noticeTasks, raceHotels, tripRows } from "./races.js";
+import { todayStr } from "@/lib/utils/format";
 
 const dayName = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -30,8 +31,38 @@ export function stayOf(r) {
   return { hotels: pick.map((x) => ({ name: x.name, phone: x.phone || "", note: x.note || "" })), from: h.from || "", to: h.to || "", nights: nightsBetween(h.from, h.to) };
 }
 
-// Bir sporcunun notu. count: yarıştaki sporcu sayısı (bütçe payı buna göre bölünür)
-export function sheetData(r, athlete, count) {
+// Notta seçilebilen bölümler (anahtar, ad); hepsi varsayılan açık
+export const SHEET_KEYS = [
+  ["trip", "Yolculuk"],
+  ["program", "Program"],
+  ["stay", "Konaklama"],
+  ["dates", "Son tarihler"],
+  ["budget", "Bütçe"],
+];
+const ALL = Object.fromEntries(SHEET_KEYS.map(([k]) => [k, true]));
+
+// Yaklaşan son tarihler: talimattaki son tarihler + tarihli talimat işleri + elle eklenen tarihli işler (bugün ve sonrası, en çok 6)
+export function upcomingDates(r, today = todayStr()) {
+  const seen = new Set();
+  const dl = (r?.notice?.deadlines || []).map((d) => ({ title: d.title, date: d.date }));
+  const days = new Set(dl.map((d) => d.date));
+  // Talimat işleri çoğu zaman son tarihin tekrarı ("Online kaydı yap" = "Online kayıt son gün"): aynı günde son tarih varsa alınmaz
+  const list = [...dl, ...noticeTasks(r?.notice).filter((t) => !days.has(t.date)).map((t) => ({ title: t.label, date: t.date })), ...cleanTodos(r?.todos)];
+  return list
+    .filter((d) => d?.title && /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") && d.date >= today)
+    .filter((d) => {
+      const k = `${d.date}|${low(d.title)}`;
+      return !seen.has(k) && seen.add(k);
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 6)
+    .map((d) => ({ ...d, left: nightsBetween(today, d.date) }));
+}
+export const leftText = (n) => (n === 0 ? "bugün" : n === 1 ? "yarın" : `${n} gün kaldı`);
+
+// Bir sporcunun notu. show: hangi bölümler görünsün ({ trip, program, stay, dates, budget }; yoksa hepsi) count: yarıştaki sporcu sayısı (bütçe payı buna göre bölünür)
+export function sheetData(r, athlete, count, show = ALL) {
+  const on = { ...ALL, ...show };
   const t = totals(r?.budget, count);
   const mine = t.lines.filter((l) => l.share > 0).map((l) => ({ cat: l.cat, title: l.title, amount: l.share, est: !!l.est }));
   const club = t.lines.filter((l) => l.club).map((l) => l.title);
@@ -40,22 +71,24 @@ export function sheetData(r, athlete, count) {
     race: r?.name || "",
     place: [r?.district, r?.city].filter(Boolean).join(", "),
     dates: rangeText(r?.startDate, r?.endDate || r?.startDate),
-    trip: tripRows(r),
-    days: programDays(r),
-    stay: stayOf(r),
-    money: { lines: mine, club, total: mine.reduce((n, l) => n + l.amount, 0) },
+    trip: on.trip ? tripRows(r) : [],
+    days: on.program ? programDays(r) : [],
+    stay: on.stay ? stayOf(r) : { hotels: [], from: "", to: "", nights: 0 },
+    deadlines: on.dates ? upcomingDates(r) : [],
+    money: on.budget ? { lines: mine, club, total: mine.reduce((n, l) => n + l.amount, 0) } : { lines: [], club: [], total: 0 },
   };
 }
 
-// Notta neler var (sayfadaki özet için): [ad, durum, var mı]
+// Notta neler var (sayfadaki özet için): [ad, durum, var mı, gidilecek sekme, anahtar]
 export function sheetParts(r, count) {
   const d = sheetData(r, null, count);
   const items = d.days.reduce((n, x) => n + x.items.length, 0);
   return [
-    ["Yolculuk", d.trip.length ? d.trip[0][1] : "Çıkış girilmedi", d.trip.length > 0, "trip"],
-    ["Program", d.days.length ? `Talimattan ${d.days.length} gün, ${items} madde` : "Talimatta program yok", d.days.length > 0, "notice"],
-    ["Konaklama", d.stay.hotels.length ? [d.stay.hotels.map((h) => h.name).join(", "), d.stay.nights && `${d.stay.nights} gece`].filter(Boolean).join(" · ") : "Otel girilmedi", d.stay.hotels.length > 0, "trip"],
-    ["Bütçe", d.money.lines.length ? `Sporcu payı ${tl(d.money.total)} · ${d.money.lines.length} kalem` : "Sporcu payı olan kalem yok", d.money.lines.length > 0, "budget"],
+    ["Yolculuk", d.trip.length ? d.trip[0][1] : "Çıkış girilmedi", d.trip.length > 0, "trip", "trip"],
+    ["Program", d.days.length ? `Talimattan ${d.days.length} gün, ${items} madde` : "Talimatta program yok", d.days.length > 0, "notice", "program"],
+    ["Konaklama", d.stay.hotels.length ? [d.stay.hotels.map((h) => h.name).join(", "), d.stay.nights && `${d.stay.nights} gece`].filter(Boolean).join(" · ") : "Otel girilmedi", d.stay.hotels.length > 0, "trip", "stay"],
+    ["Son tarihler", d.deadlines.length ? `${d.deadlines[0].title} · ${leftText(d.deadlines[0].left)}${d.deadlines.length > 1 ? ` · +${d.deadlines.length - 1}` : ""}` : "Yaklaşan son tarih yok", d.deadlines.length > 0, "sum", "dates"],
+    ["Bütçe", d.money.lines.length ? `Sporcu payı ${tl(d.money.total)} · ${d.money.lines.length} kalem` : "Sporcu payı olan kalem yok", d.money.lines.length > 0, "budget", "budget"],
   ];
 }
 
@@ -64,8 +97,8 @@ const H = 841.89;
 const L = 48;
 const R = W - 48;
 
-// list: seçili sporcular [{ id, studentName }]; count: yarıştaki sporcu sayısı
-export async function buildAthleteSheet(r, list, fonts, count = list.length) {
+// list: seçili sporcular [{ id, studentName }]; count: yarıştaki sporcu sayısı; show: görünecek bölümler
+export async function buildAthleteSheet(r, list, fonts, count = list.length, show = ALL) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   const INK = rgb(0.1, 0.12, 0.14);
   const MUT = rgb(0.4, 0.43, 0.47);
@@ -80,7 +113,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length) {
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo) : null;
 
   for (const a of list) {
-    const d = sheetData(r, a, count);
+    const d = sheetData(r, a, count, show);
     const page = pdf.addPage([W, H]);
     const w = (s, font, size) => font.widthOfTextAtSize(String(s), size);
     const text = (s, x, top, font, size, { align = "left", color = INK, max } = {}) => {
@@ -114,6 +147,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length) {
     // Bütçe ve konaklama sabit yer kaplar; program kalan yere sığdırılır
     const moneyH = d.money.lines.length ? 40 + d.money.lines.length * 16 + 26 + (d.money.club.length ? 14 : 0) : 0;
     const stayH = d.stay.hotels.length ? 36 + d.stay.hotels.length * 28 : 0;
+    const datesH = d.deadlines.length ? 34 + d.deadlines.length * 16 : 0;
 
     // Yolculuk
     if (d.trip.length) {
@@ -131,7 +165,7 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length) {
     if (d.days.length) {
       head("PROGRAM", y);
       y += 20;
-      const bottom = H - 56 - moneyH - stayH - 18;
+      const bottom = H - 56 - moneyH - stayH - datesH - 18;
       let cut = false;
       outer: for (const day of d.days) {
         if (y + 30 > bottom) {
@@ -171,6 +205,19 @@ export async function buildAthleteSheet(r, list, fonts, count = list.length) {
         y += 15;
       }
       y += 8;
+    }
+
+    // Yaklaşan son tarihler (bilgi için)
+    if (d.deadlines.length) {
+      head("YAKLAŞAN SON TARİHLER", y);
+      y += 20;
+      for (const x of d.deadlines) {
+        text(shortDay(x.date), L, y, f.b, 9.5, { max: 100 });
+        text(x.title, L + 110, y, f.r, 10, { max: R - L - 200 });
+        text(leftText(x.left), R, y, x.left <= 7 ? f.b : f.r, 9.5, { align: "right", color: x.left <= 7 ? rgb(0.75, 0.33, 0.05) : MUT });
+        y += 16;
+      }
+      y += 10;
     }
 
     // Bütçe: yalnız bu sporcunun payı
