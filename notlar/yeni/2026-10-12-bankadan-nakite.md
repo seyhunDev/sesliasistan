@@ -1,0 +1,7 @@
+## Nerede kaldım
+
+- Bankadan nakite çevirme (Seyhun: "hesaba 20 bin geldi, maaş değil, nakite döndürdüm; bana gelmiş gibi görünmesin, kulüp kasasına nakite döndür diyebileyim"; telefonda denenmedi): Hesaplar › Hareketler'de banka hareketine dokununca pencere açılır, "Nakite çevir · kulüp kasasına" ile o tutar kasaya nakit giriş olur (`incomes` {cat "Bankadan nakit", conv <defter anahtarı>}, `cash/meta.conv`; `convertToCash`, `undoConvert`, duesData.js; `convIncome`, `convSet`, `withoutConv`, `canConv`, `convPick`, cashbook.js). Çevrilen hareket satırda "Nakite çevrildi" etiketiyle kalır, kişisel hesapta (Gelen ödemeler, Kişisel › Bankadan aldıkların, asistanın "bu ay ne kadar ödeme aldım" cevabı) artık sayılmaz; kasadaki giriş özetin Gelen toplamına girmez (aynı para iki kez gelir sayılmasın). Gelen ödemeler sayfasında ödemeye dokununca da aynı düğme çıkar. Geri al: harekete ya da kasadaki girişe dokun › "Geri al". Asistan: "gelen 20 bin lirayı nakite çevirdim", "20.000 lirayı kulüp kasasına nakite döndür" (son iki ayın banka hareketlerinde o tutarı bulur; `cashCommand` op conv). Kural değişikliği yok. Testleri `test:elle` › "kasa: bankadan nakite çevirme", `test:asistan` › "Kasa ve kişisel defter (asistan)".
+
+## Sıradaki işler
+
+- Hesaplar › Hareketler'de 20 bin liralık harekete dokun, "Nakite çevir"e bas; Kulüp › Kasa'da +20.000 görünmeli, Gelen ödemeler'de o ödeme olmamalı. Sonra "Geri al" ile dene.

@@ -103,6 +103,7 @@ export function incomeMoves(docs = []) {
         dir,
         at: x.at || "",
         ...(x.paid ? { paid: true, paidAt: x.paidAt || "" } : {}),
+        ...(x.conv ? { conv: x.conv } : {}), // bankadan nakite çevrilen hareketin defter anahtarı (cashbook.js)
         amount: dir === "in" ? amt : -amt,
         currency: "TL",
         account: book === "club" ? "cash" : "personal",

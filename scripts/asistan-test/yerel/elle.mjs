@@ -1071,6 +1071,21 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaOf(l, { from: "2026-10-10T00:00:00Z" });
     return l.length === 3 && k.total === -300 && k.in === 200 && k.out === 500 && !k.old.length;
   })],
+  ["kasa: bankadan nakite çevirme", F("kasaya nakit giriş, kişisel hesaptan çıkar, tutarla bulunur", () => {
+    const bank = [
+      { id: "kaa1", amount: 20000, currency: "TL", who: "SEYHUN YILDIZ", desc: "Hesaba gelen", date: "11.10.2026 10:00", ts: Date.parse("2026-10-11T07:00:00Z") },
+      { id: "kaa2", amount: 20000, currency: "TL", who: "ALI", desc: "eski", date: "01.10.2026 10:00", ts: Date.parse("2026-10-01T07:00:00Z") },
+      { id: "kaa3", amount: 500, currency: "TL", desc: "x", ts: 1 },
+    ];
+    const pick = KB.convPick(bank, 20000, new Set());
+    const inc = KB.convIncome(pick, (m) => m.who);
+    const conv = KB.convSet({ conv: ["kaa1"] });
+    const left = KB.withoutConv(bank, conv);
+    const again = KB.convPick(bank, 20000, conv);
+    const cashM = D.incomeMoves([{ id: "i1", ...inc, at: "2026-10-12T09:00:00Z" }]);
+    const k = KB.kasaOf(cashM, { from: "2026-10-10T00:00:00Z" });
+    return pick.id === "kaa1" && inc.amount === 20000 && inc.date === "2026-10-11" && inc.conv === "kaa1" && left.length === 2 && again.id === "kaa2" && cashM[0].conv === "kaa1" && k.total === 20000 && !KB.canConv({ id: "inc-1", cash: true, amount: 5 });
+  })],
   ["kişisel defter ayrı", F("kasaya girmez; gelir, gider, ödenmemiş borç", () => {
     const l = D.incomeMoves([
       { id: "p1", book: "personal", amount: 2000, cat: "Ders", date: "2026-10-05", at: "2026-10-12T09:00:00Z" },

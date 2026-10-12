@@ -98,11 +98,11 @@ import { askInventory, changeInventory, createInventory, lastInv, loadInventorie
 import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords";
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
-import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
-import { debtMoves, kasaOf, personalOf } from "@/lib/cashbook";
+import { payeeAnswer, payeeMoves, payeeOf, whoIn } from "@/lib/payee";
+import { convPick, debtMoves, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
 import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
-import { addIncome, loadCash, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
+import { addIncome, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
 import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
@@ -2356,6 +2356,23 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       setPhase("thinking");
       const tl = (n) => `${money(n).replace(/,00$/, "")} TL`;
       try {
+        if (kc.op === "conv") {
+          if (!(kc.amount > 0)) {
+            reply("Hangi tutarı nakite çevirdin? Tutarıyla söyler misin? (ör. gelen 20 bin lirayı nakite çevirdim)", { fail: true, engine: "local" }, viaVoice);
+            return true;
+          }
+          const ymNow = todayStr().slice(0, 7);
+          const ymPrev = new Date(Date.parse(`${ymNow}-15T12:00:00Z`) - 31 * 864e5).toISOString().slice(0, 7);
+          const [{ movements }, conv] = await Promise.all([loadMovementsRange(profile.uid, ymPrev, ymNow), loadConv(profile.uid)]);
+          const m = convPick(movements, kc.amount, conv);
+          if (!m) {
+            reply(`Son iki ayın banka hareketlerinde ${tl(kc.amount)} bulamadım. Hesaplar'da harekete dokunup "Nakite çevir" diyebilirsin.`, { fail: true, engine: "local", nav: "accounts" }, viaVoice);
+            return true;
+          }
+          await soon(convertToCash(profile.uid, m), 2500, "Kasa");
+          done(`Kulüp kasasına ekledim: ${tl(kc.amount)} nakit (${m.date?.slice(0, 10) || "banka"}${whoIn(m) ? `, ${whoIn(m)}` : ""}). Kişisel hesabında artık sayılmaz.`, { engine: "local", nav: "accounts" }, viaVoice);
+          return true;
+        }
         if (kc.op === "ask") {
           const [r, lent] = await Promise.all([loadCash(profile.orgId), loadDebts(profile.orgId).catch(() => [])]);
           if (kc.book === "club") {
@@ -2571,7 +2588,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     try {
       const { movements } = await loadMovementsRange(profile.uid, pq.ym, pq.ym);
       const payee = payeeOf(profile);
-      reply(payeeAnswer(payeeMoves(movements, payee), payee, pq.ym, todayStr().slice(0, 7)), { engine: "local", nav: "payments" }, viaVoice);
+      reply(payeeAnswer(payeeMoves(withoutConv(movements, await loadConv(profile.uid)), payee), payee, pq.ym, todayStr().slice(0, 7)), { engine: "local", nav: "payments" }, viaVoice);
     } catch {
       reply("Banka hareketlerini okuyamadım.", { engine: "local" }, viaVoice);
     }

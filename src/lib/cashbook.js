@@ -7,6 +7,10 @@
 // elle gelirler) kendiliğinden sayılmaz; her birinde "Nakit girdi olarak ekle" düğmesi var (add). Sonrakiler kendiliğinden sayılır.
 // Verilen borçlar (orgs/{uid}/debts/book, debts.js): kulübün verdiği borç kasadan çıkar, geri ödemesi kasaya girer (debtMoves).
 // Kişisel verilen borçlar (bana borçlu olanlar) kişisel defterde görünür, kasaya girmez.
+// Bankadan nakite çevirme: banka defterindeki bir hareket (ör. hesaba gelen 20.000 TL, maaş değil, kulüp için çekildi)
+// "Nakite çevir" ile kulüp kasasına nakit giriş olur: incomes'a { cat "Bankadan nakit", conv <defter anahtarı> } yazılır,
+// anahtar cash/meta.conv listesine eklenir. O banka hareketi kişisel hesapta (aldığı ödemeler) artık sayılmaz; nakit giriş
+// özetin "Gelen" toplamına girmez (aynı para ikinci kez gelir sayılmasın).
 // Kişisel defter kulüpten tamamen ayrıdır: kasaya, Ödemeler'e ve özete girmez.
 
 export const OUT_CATS = ["Avans", "Malzeme", "Yakıt", "Ulaşım", "Yemek", "Diğer"];
@@ -68,4 +72,23 @@ export function debtMoves(items = []) {
     }
   }
   return out.sort((a, b) => b.ts - a.ts);
+}
+
+export const CONV_CAT = "Bankadan nakit";
+// Nakite çevrilen banka hareketlerinin anahtarları (cash/meta.conv)
+export const convSet = (meta) => new Set(meta?.conv || []);
+// Banka hareketleri listesinden nakite çevrilenleri çıkarır (nakit hareketlere dokunmaz)
+export const withoutConv = (moves = [], conv) => (conv?.size ? moves.filter((m) => m.cash || !conv.has(m.id)) : moves);
+// Bu banka hareketi nakite çevrilebilir mi: defterden gelen (anahtarı belli), TL, tutarı olan hareket
+export const canConv = (m) => !!m && !m.cash && !m.manual && typeof m.amount === "number" && m.amount !== 0 && (!m.currency || m.currency === "TL") && /^k/.test(String(m.id || ""));
+// Kasaya yazılacak nakit giriş (incomes belgesi alanları)
+export function convIncome(m, whoOf = (x) => x.who || "") {
+  const day = new Date((m.ts || 0) + 3 * 3600e3).toISOString().slice(0, 10);
+  const from = (whoOf(m) || m.note || m.desc || "").trim().slice(0, 60);
+  return { cat: CONV_CAT, who: "Bankadan nakit", amount: Math.abs(m.amount), date: day, note: from, conv: m.id };
+}
+// Sesli komutta söylenen tutara uyan, henüz çevrilmemiş en yeni banka hareketi (önce gelen paralar)
+export function convPick(moves = [], amount, conv) {
+  const ok = moves.filter((m) => canConv(m) && !conv?.has(m.id) && Math.abs(Math.abs(m.amount) - amount) < 0.01).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return ok.find((m) => m.amount > 0) || ok[0] || null;
 }
