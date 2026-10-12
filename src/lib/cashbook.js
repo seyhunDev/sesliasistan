@@ -31,19 +31,21 @@ export function inKasa(m, meta = {}) {
   return !!meta.from && !!m.at && String(m.at) >= String(meta.from);
 }
 
-// Kasa: { total, in, out, counted [sayılanlar], old [kasa başlamadan önceki, eklenmemiş girişler] }
+// Kasa: { total, in, out, counted [sayılanlar], old [kasa başlamadan önceki, eklenmemiş girişler],
+//   archived [arşivlenen eski girişler: kullanılmış, kasada değil; meta.skip] }
 export function kasaOf(moves = [], meta = {}) {
   const counted = [];
   const old = [];
+  const archived = [];
   for (const m of moves) {
     if (!m?.cash || bookOf(m) === "personal") continue;
     if (inKasa(m, meta)) counted.push(m);
-    else if (m.amount > 0 && !(meta.skip || []).includes(m.key)) old.push(m);
+    else if (m.amount > 0) ((meta.skip || []).includes(m.key) ? archived : old).push(m);
   }
   const sum = (f) => counted.filter(f).reduce((n, x) => n + Math.abs(x.amount), 0);
   const inn = sum((x) => x.amount > 0);
   const out = sum((x) => x.amount < 0);
-  return { total: Math.round((inn - out) * 100) / 100, in: inn, out, counted, old };
+  return { total: Math.round((inn - out) * 100) / 100, in: inn, out, counted, old, archived };
 }
 
 // Kişisel defter: { moves (en yeni önce), in, out, net, debt (ödenmemiş borç toplamı), debts (ödenmemişler) }

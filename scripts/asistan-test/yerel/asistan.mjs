@@ -607,6 +607,7 @@ group("Göreve göre ara yazı")([
       ["Ahmet'e 1000 lira borcum var", K("borcum", (r) => r?.book === "personal" && r.dir === "debt" && r.who === "Ahmet" && r.amount === 1000)],
       ["gelen 20 bin lirayı nakite çevirdim", K("bankadan nakite çevirme", (r) => r?.op === "conv" && r.amount === 20000)],
       ["20.000 lirayı kulüp kasasına nakite döndür", K("kasaya nakite döndür", (r) => r?.op === "conv" && r.amount === 20000)],
+      ["önceki nakit girişlerini arşivle", K("eski nakitleri arşivle", (r) => r?.op === "archive")],
       ["bunu nakite çevir", K("tutarsız: sorar", (r) => r?.op === "conv" && r.amount === 0)],
       ["kasada ne kadar var", K("kasa sorusu", (r) => r?.op === "ask" && r.book === "club")],
       ["borçlarım ne kadar", K("borç sorusu", (r) => r?.op === "ask" && r.book === "personal")],

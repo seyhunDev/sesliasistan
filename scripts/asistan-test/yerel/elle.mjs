@@ -1071,6 +1071,11 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaOf(l, { from: "2026-10-10T00:00:00Z" });
     return l.length === 3 && k.total === -300 && k.in === 200 && k.out === 500 && !k.old.length;
   })],
+  ["kasa: eski girişleri arşivleme", F("arşivlenen önceki girişlerde görünmez, kasaya sayılmaz, arşivde durur", () => {
+    const l = [{ id: "a", key: "i:a", cash: true, amount: 500, at: "2026-09-01T09:00:00Z" }, { id: "b", key: "i:b", cash: true, amount: 300, at: "2026-09-02T09:00:00Z" }];
+    const k = KB.kasaOf(l, { from: "2026-10-10T00:00:00Z", skip: ["i:a"] });
+    return k.total === 0 && k.old.length === 1 && k.old[0].id === "b" && k.archived.length === 1 && k.archived[0].id === "a";
+  })],
   ["kasa: bankadan nakite çevirme", F("kasaya nakit giriş, kişisel hesaptan çıkar, tutarla bulunur", () => {
     const bank = [
       { id: "kaa1", amount: 20000, currency: "TL", who: "SEYHUN YILDIZ", desc: "Hesaba gelen", date: "11.10.2026 10:00", ts: Date.parse("2026-10-11T07:00:00Z") },
