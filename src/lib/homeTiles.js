@@ -149,6 +149,7 @@ export function homeActions(o) {
     ["Yönetim", [
       o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
       !o.staff && { href: "/mail", icon: "wallet", label: "Hesaplar" },
+      o.owner && { href: "/debts", icon: "coins", label: "Borçlar" },
       !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
     ]],
     ["Sosyal", [!o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" }, !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" }]],
