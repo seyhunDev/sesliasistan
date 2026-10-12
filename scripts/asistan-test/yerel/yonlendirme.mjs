@@ -543,3 +543,19 @@ group("Sohbetteki yarış")([
     ["yarışa ekle: belirsiz", { desc: "iki yarış uyarsa eski yol", fn: () => raceFromArgs(2, { race: "Kupası", athletes: ["Emre"] }, { athletes: ath, races }), ok: (r) => r === null }],
   ]);
 }
+
+// Gönderi ekranında "Kulüpten haberler" (posts/newsModel.js `newsCommand`): cümle açık gönderiye gider, orada haber işine çevrilir
+const { newsCommand } = await import("@/features/posts/newsModel");
+const onPostRoute = (s) => routeOf(s, { owner: true, isStaff: false, racer: true, att: true, path: "/posts/p1", today, races, raceNames: races.map((r) => r.name), names, onPost: true, shop: true });
+const NEWS = (op) => ({ desc: `gönderi ekranı → haber: ${op}`, fn: (s) => `${onPostRoute(s)} · ${newsCommand(s)?.op || "-"}`, ok: (r) => r === `postEdit · ${op}` });
+group("Yönlendirme: afiş Kulüpten haberler'e")([
+  ["afişi haber olarak ekle", NEWS("add")],
+  ["bunu kulüpten haberlere ekle", NEWS("add")],
+  ["sitedeki haberlere koy", NEWS("add")],
+  ["haberi düzenle", NEWS("edit")],
+  ["haberi yayınla", NEWS("publish")],
+  ["haberi yayından al", NEWS("unpublish")],
+  ["haberden kaldır", NEWS("remove")],
+  ["afişi haberlerden çıkar", NEWS("remove")],
+  ["başlığı daha kısa yaz", { desc: "haber işi değil", fn: (s) => newsCommand(s), ok: (r) => r === null }],
+]);

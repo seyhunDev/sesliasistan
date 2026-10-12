@@ -12,6 +12,8 @@ import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { postArchiveCommand, postDeleteCommand } from "@/lib/assistMore";
+import { NewsPanel } from "./NewsPanel";
+import { newsCommand } from "./newsModel";
 import { todayStr } from "@/lib/utils/format";
 
 const area =
@@ -71,7 +73,7 @@ function legacyCopy(t) {
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onArchive, onRaces, onAthletes }) {
+export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
   const toast = useToast();
   // Yeni gönderi son seçilen tasarımla (Klasik / Modern) açılır
   const [start] = useState(() => {
@@ -102,6 +104,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const latest = useRef(null);
   const arcRef = useRef(null); // asistanın "arşive kaldır" demesi için (arc aşağıda)
   const delRef = useRef(null); // asistanın "gönderiyi sil" demesi için (del aşağıda, onay sorar)
+  const newsRef = useRef(null); // "Kulüpten haberler" (NewsPanel): asistanın "haber olarak ekle", "haberden kaldır" demesi için
   const drag = useRef(null);
   // Adım: "kind" (ne paylaşacaksın) ya da "edit" (önizleme + alt çubuk). Yeni ve boş gönderi türle başlar.
   const [step, setStep] = useState(() => {
@@ -260,6 +263,13 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         await arcRef.current?.();
         return { say: ac.archived ? "Gönderiyi arşive kaldırdım." : "Gönderiyi arşivden çıkardım." };
       }
+      // "Haber olarak ekle", "haberi yayınla", "yayından al", "haberden kaldır" (onay sorar): Dikili Yelken sitesi (NewsPanel)
+      const nc = newsCommand(text);
+      if (nc && newsRef.current) {
+        setTool("share");
+        setOpen("news");
+        return { say: await newsRef.current.run(nc.op) };
+      }
       // "Gönderiyi sil": silme onayı sorulur (geri alınamaz)
       if (postDeleteCommand(text)) {
         if (!id) return { say: "Gönderi henüz kaydedilmedi, silinecek bir şey yok." };
@@ -325,12 +335,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
   const save = async (quiet) => {
     if (!canvas.current) return;
+    let ok = "";
     setBusy((b) => b || "save");
     try {
       const hasPhoto = photoDirty ? !!photo : post.hasPhoto;
       const nid = await onSave({ ...post, id: pid || undefined, thumb: thumbOf(canvas.current) }, photoDirty ? photo : undefined);
       if (!pid) window.history.replaceState(null, "", `/posts/${nid}`);
       setPid(nid);
+      ok = nid;
       setPhotoDirty(false);
       setP((x) => ({ ...x, hasPhoto }));
       setSaved(sig({ ...post, hasPhoto }));
@@ -340,6 +352,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     } finally {
       setBusy((b) => (b === "save" ? "" : b));
     }
+    return ok;
   };
 
   // Asistanla hazırlanan gönderi yazıları gelince bir kez kaydedilir (yukarıdaki açılış)
@@ -959,7 +972,29 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
                 </Button>
               </div>
             )}
+            {onNews && row("news", "Kulüpten haberler", "Dikili Yelken sitesine haber olarak ekle")}
           </div>
+        )}
+        {onNews && (
+          <NewsPanel
+            ref={newsRef}
+            show={step === "edit" && tool === "share" && open === "news"}
+            post={post}
+            pid={pid}
+            poster={() => canvas.current}
+            ensureId={async () => pid || (await save(true))}
+            onLinked={(nid, id = pid) => {
+              setP((x) => ({ ...x, newsId: nid }));
+              setSaved((s) => {
+                try {
+                  return sig({ ...JSON.parse(s), newsId: nid });
+                } catch {
+                  return s;
+                }
+              });
+              if (id) onNews(id, nid).catch(() => {});
+            }}
+          />
         )}
         {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
       </div>

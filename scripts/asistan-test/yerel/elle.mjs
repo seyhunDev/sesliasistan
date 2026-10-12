@@ -1644,3 +1644,17 @@ const DB = await import("@/lib/debts");
     ["kayıt temizliği", F("boş ad ya da tutar atılır", () => DB.cleanBook([{ who: "", amount: 5 }, { who: "X", amount: 0 }, { who: "Y", amount: 10 }]).length === 1)],
   ]);
 }
+
+// Afişi Dikili Yelken sitesindeki "Kulüpten haberler"e ekleme (posts/newsModel.js; kayıt clubNews.js)
+const NM = await import("@/features/posts/newsModel");
+group("Kulüpten haberler")([
+  ["etiket ve emoji", F("başlıkta # ve emoji yok", () => NM.newsTitle("🏆 Çeşme'de Optimist #yelken") === "Çeşme'de Optimist")],
+  ["uzun başlık", F("en çok 70 harf, kelimede kesilir, sonda 've' kalmaz", () => { const t = NM.newsTitle("Çeşme Optimist yarışlarında sporcularımız büyük başarı gösterdi ve kulübümüzü temsil etti"); return t.length <= 70 && !/\sve$/.test(t) && t.startsWith("Çeşme Optimist"); })],
+  ["etiket satırı", F("yalnız etiketten oluşan satır çıkar", () => NM.newsBody("Harika bir yarıştı.\n#DikiliYelken #Optimist") === "Harika bir yarıştı.")],
+  ["sosyal sözler", F("'linki biyografide', 'takip edin' çıkar, cümlenin kalanı kalır", () => NM.newsBody("Kayıtlar başladı! Linki biyografide.\n\nBizi takip edin. Görüşmek üzere") === "Kayıtlar başladı!\n\nGörüşmek üzere")],
+  ["paragraflar", F("boş satırla ayrılır, emoji silinir", () => NM.newsBody("⛵ Birinci paragraf\n\n\n🎉 İkinci #yelken") === "Birinci paragraf\n\nİkinci")],
+  ["taslak", F("başlık görseldeki başlık, tarih bugün, yayında", () => { const d = NM.newsDraft({ headline: "Yarışa Hazırız", caption: "Sporcularımız Foça'da.\n#yelken" }, "2026-10-12"); return d.title === "Yarışa Hazırız" && d.body === "Sporcularımız Foça'da." && d.date === "2026-10-12" && d.published === true; })],
+  ["başlıksız taslak", F("açıklamanın ilk cümlesi", () => NM.newsDraft({ caption: "Kulübümüzde yaz okulu başladı. Kayıtlar sürüyor." }, "2026-10-12").title === "Kulübümüzde yaz okulu başladı")],
+  ["kayıt alanları", F("kaynak afis-asistani, sourceId gönderi, bozuk tarih boş", () => { const f = NM.newsFields({ title: "A #b", body: "x", date: "12.10.2026", published: 1 }, "p1"); return f.source === "afis-asistani" && f.sourceId === "p1" && f.date === "" && f.published === true && f.title === "A"; })],
+  ["gönderide bağlantı", F("newsId saklanır", async () => { const { cleanPost } = await import("@/features/posts/postModel"); return cleanPost({ newsId: "n1" }).newsId === "n1" && cleanPost({}).newsId === ""; })],
+]);
