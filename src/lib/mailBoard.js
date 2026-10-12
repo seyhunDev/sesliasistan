@@ -154,3 +154,15 @@ export function previewOf(m, money) {
       .join(" · ");
   return String(m.text || "").replace(/\s+/g, " ").trim().slice(0, 140);
 }
+
+// Bakiye'de gösterilen hesaplar: seçim kaydedildiyse (cash/meta.accts, hesap anahtarları) yalnız onlar; seçim yoksa
+// bakiyesi sıfır olmayanlar (hepsi sıfırsa hepsi). Toplam bakiye yalnız gösterilenlerden.
+export function shownAccounts(accounts = [], keys) {
+  if (Array.isArray(keys)) {
+    const set = new Set(keys);
+    const out = accounts.filter((a) => set.has(a.key));
+    if (out.length) return out;
+  }
+  const live = accounts.filter((a) => Number(a.balance) !== 0);
+  return live.length ? live : accounts;
+}

@@ -102,7 +102,7 @@ import { payeeAnswer, payeeMoves, payeeOf, whoIn } from "@/lib/payee";
 import { convPick, debtMoves, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
 import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
-import { addIncome, archiveCash, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
+import { addIncome, archiveCash, convertToCash, loadCash, loadConv, loadDuesRange, loadMovementsRange, saveFree, saveStart, saveCashName } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
 import { dayLine as foodDayLine, dayOf as foodDayOf, foodLocal, monthKey as foodMonth, targets as foodTargets, totals as foodTotals, wantsFood } from "@/lib/fitness/food";
@@ -2401,6 +2401,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           return true;
         }
         await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
+        if (kc.book === "club" && kc.who) saveCashName(profile.orgId, kc.who).catch(() => {}); // sonraki seferde "Kime verildi" seçeneği
         const what = kc.book === "club" ? `nakit çıkış, ${kc.who}, ${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
         done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, viaVoice);
       } catch {

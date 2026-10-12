@@ -1091,6 +1091,25 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaOf(cashM, { from: "2026-10-10T00:00:00Z" });
     return pick.id === "kaa1" && inc.amount === 20000 && inc.date === "2026-10-11" && inc.conv === "kaa1" && left.length === 2 && again.id === "kaa2" && cashM[0].conv === "kaa1" && k.total === 20000 && !KB.canConv({ id: "inc-1", cash: true, amount: 5 });
   })],
+  ["bakiye: gösterilen hesaplar", F("seçim yoksa bakiyesi olanlar, seçim varsa seçilenler", () => {
+    const acc = [{ key: "a", balance: 45000 }, { key: "b", balance: 0 }, { key: "c", balance: 0 }];
+    const ks = (l) => l.map((x) => x.key).join("");
+    return ks(MBX.shownAccounts(acc)) === "a" && ks(MBX.shownAccounts(acc, ["a", "b"])) === "ab" && ks(MBX.shownAccounts(acc, ["zz"])) === "a" && ks(MBX.shownAccounts(acc.slice(1))) === "bc";
+  })],
+  ["kasa: kime verildi seçenekleri", F("sporcular yok; çalışan, aile, kişi ve yazılan adlar; yeni ad bir kez", () => {
+    const members = [
+      { name: "Gökhan Arslan", kind: "staff" },
+      { name: "Ali Kaya", kind: "athlete" },
+      { name: "Zeynep Ok", kind: "student" },
+      { name: "Fatma Yıldız", kind: "family" },
+      { name: "Usta Mehmet", kind: "other" },
+      { name: "Eski Çalışan", kind: "staff", status: "left" },
+    ];
+    const o = KB.whoOptions(members, ["Tekne Servisi", "gökhan arslan"]);
+    const names = o.map((x) => x.name);
+    return names.join("|") === "Fatma Yıldız|Gökhan Arslan|Tekne Servisi|Usta Mehmet" && o.find((x) => x.name === "Tekne Servisi").saved && !o.find((x) => x.name === "Gökhan Arslan").saved
+      && KB.newWhoName("  Marina  Ofisi ", o) === "Marina Ofisi" && KB.newWhoName("tekne servisi", o) === "" && KB.newWhoName("", o) === "";
+  })],
   ["kişisel defter ayrı", F("kasaya girmez; gelir, gider, ödenmemiş borç", () => {
     const l = D.incomeMoves([
       { id: "p1", book: "personal", amount: 2000, cat: "Ders", date: "2026-10-05", at: "2026-10-12T09:00:00Z" },

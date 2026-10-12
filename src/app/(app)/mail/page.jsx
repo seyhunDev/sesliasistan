@@ -8,18 +8,19 @@ import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useData } from "@/features/data/DataProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
-import { accountsOf, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
+import { accountsOf, shownAccounts, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { dayLabel, todayIn } from "@/lib/notifyText";
 import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { addIncome, archiveCash, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
+import { addIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
 import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
-import { canConv, convSet, debtMoves, inKasa, kasaOf, personalOf, withoutConv } from "@/lib/cashbook";
+import { canConv, convSet, debtMoves, inKasa, kasaOf, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { cleanDebt, newId, payDebt } from "@/lib/debts";
@@ -57,12 +58,14 @@ const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 // okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {
   const { profile } = useAuth();
+  const { allMembers = [] } = useData();
   const router = useRouter();
   const owner = profile?.role === "owner";
   const [mails, setMails] = useState(null);
   const [max, setMax] = useState(PAGE);
   const [now] = useState(() => Date.now());
-  const [acct, setAcct] = useState(""); // hareketleri tek hesaba süz
+  const [acct, setAcct] = useState("");
+  const [acctPick, setAcctPick] = useState(false); // gösterilen hesapları seçme penceresi // hareketleri tek hesaba süz
   const [dir, setDir] = useState(""); // hareketler: "" hepsi, "in" gelen, "out" giden
   const [tab, setTab] = useState("all"); // Ödemeler sekmesi: all (tüm ödemeler) | top (en çok ödeyenler)
   const [shownMax, setShownMax] = useState(SHOW); // hareketler sayfa sayfa (sınır yok)
@@ -175,7 +178,9 @@ export default function MailPage() {
       .sort()
       .at(-1) || "";
 
-  const accounts = accountsOf(list);
+  const allAccts = accountsOf(list);
+  const accounts = shownAccounts(allAccts, cashData.meta?.accts); // yalnız seçilen hesaplar (seçim yoksa bakiyesi olanlar)
+  const hiddenN = allAccts.length - accounts.length;
   const totals = totalsOf(accounts);
   const bankMoves = ledger || movementsOf(list);
   const moves = cashList.length ? [...bankMoves, ...cashList].sort((a, b) => (b.ts || 0) - (a.ts || 0)) : bankMoves;
@@ -212,13 +217,30 @@ export default function MailPage() {
       return false;
     }
   };
-  const debtNames = [...new Set([...lent.map((d) => d.who), ...(cashData.roster || []).map((a) => a.studentName)].filter(Boolean))].slice(0, 300);
+  const whoOpts = whoOptions(allMembers, cashData.meta?.names); // Kişiler (sporcular hariç) + elle yazılan adlar
+  const toggleAcct = (key) => {
+    const cur = new Set(accounts.map((a) => a.key));
+    if (cur.has(key)) cur.delete(key);
+    else cur.add(key);
+    if (!cur.size) return toast("En az bir hesap görünmeli");
+    const keys = allAccts.filter((a) => cur.has(a.key)).map((a) => a.key);
+    setCashData((c) => ({ ...c, meta: { ...c.meta, accts: keys } }));
+    if (!keys.includes(acct)) setAcct("");
+    saveShownAccts(profile.uid, keys).catch(() => toast("Kaydedilemedi, tekrar dene"));
+  };
+  const debtNames = [...new Set([...lent.map((d) => d.who), ...whoOpts.map((o) => o.name)].filter(Boolean))].slice(0, 300);
+  const dropName = (name) =>
+    dropCashName(profile.uid, name).then(
+      () => (setCashData((c) => ({ ...c, meta: { ...c.meta, names: (c.meta?.names || []).filter((n) => n !== name) } })), toast("Seçeneklerden silindi")),
+      () => toast("Silinemedi, tekrar dene"),
+    );
   const personal = personalOf(cashData.personal || []);
   // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
   const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
   const saveIncome = (x) =>
     addIncome(profile.uid, x).then(
       () => (
+        x.cat !== "Aidat" && newWhoName(x.who, whoOpts) && saveCashName(profile.uid, newWhoName(x.who, whoOpts)).catch(() => {}),
         setAdd(null),
         setCashTick((n) => n + 1),
         toast(x.book === "personal" ? "Kişisel deftere eklendi" : x.dir === "out" ? "Nakit çıkış kasadan düşüldü" : x.cat === "Aidat" ? "Aidat kasaya girdi, Aidatlar'da da ödendi görünür" : "Nakit giriş kasaya eklendi")
@@ -312,8 +334,32 @@ export default function MailPage() {
                   </li>
                 ))}
               </ul>
+              {allAccts.length > 1 && (
+                <button type="button" onClick={() => setAcctPick(true)} className="flex h-11 w-full items-center gap-2 border-t border-line px-4 text-left text-[0.8125rem] font-semibold text-acc">
+                  <span className="min-w-0 flex-1">{hiddenN > 0 ? `${hiddenN} hesap gizli · göster` : "Gösterilen hesapları seç"}</span>
+                  <span aria-hidden className="shrink-0 text-[1rem]">›</span>
+                </button>
+              )}
             </section>
           )}
+          <Sheet open={acctPick} onClose={() => setAcctPick(false)} title="Gösterilen hesaplar">
+            <ul className="divide-y divide-line px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+              {allAccts.map((a) => {
+                const on = accounts.some((x) => x.key === a.key);
+                return (
+                  <li key={a.key}>
+                    <button type="button" onClick={() => toggleAcct(a.key)} aria-pressed={on} className="flex w-full items-center gap-3 py-3 text-left">
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                        <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, cash(a.balance, a.currency)].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      <span className={`grid size-6 shrink-0 place-items-center rounded-md border ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-4" />}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </Sheet>
 
           <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} onArchive={archive} onUnarchive={unarchive} />
           <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
@@ -534,7 +580,7 @@ export default function MailPage() {
           if (await saveDebts((list) => list.filter((y) => y.id !== curDebt.id), "Silindi")) setDebtOpen(null);
         }}
       />
-      <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
+      <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} options={whoOpts} onDropName={dropName} onSave={saveIncome} />
       <Sheet open={!!bankPick} onClose={() => setBankPick(null)} title={bankPick?.amount > 0 ? "Gelen para" : "Giden para"}>
         {bankPick && (
           <div className="space-y-3 pb-2">
