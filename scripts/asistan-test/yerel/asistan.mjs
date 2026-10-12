@@ -654,7 +654,7 @@ group("Göreve göre ara yazı")([
   const PM = await import("@/features/posts/postModel");
   const { followAsk } = await import("@/features/athletes/raceNav");
   group("Gönderi tasarımı sesle ve yarışın eksikleri")([
-    ["gönderi hazırla, mavi olsun, hikâye boyutunda, modern", C("renk, boyut, tasarım", PM.designFrom, (r) => r.theme === "gece" && r.format === "story" && r.style === "modern")],
+    ["gönderi hazırla, mavi olsun, hikâye boyutunda, modern", C("renk ve boyut (tasarım tek)", PM.designFrom, (r) => r.theme === "gece" && r.format === "story" && !r.style)],
     ["kırmızı renkli kare gönderi", C("kırmızı, kare", PM.designFrom, (r) => r.theme === "al" && r.format === "square")],
     ["yarış sonucu gönderisi, bordo olsun", C("tür ve renk", PM.designFrom, (r) => r.kind === "sonuc" && r.theme === "bordo")],
     ["moral verici bir yazı", C("moral mor değil", PM.designFrom, (r) => !r.theme)],

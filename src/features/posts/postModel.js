@@ -25,13 +25,15 @@ export const KINDS = [
   ["antrenman", "Antrenman", "wind", "ANTRENMAN"],
   ["genel", "Duyuru", "bell", "DUYURU"],
   ["kayit", "Kayıt / yelken okulu", "users", "KAYITLAR AÇIK"],
-  ["kulup", "Kulüp haberi", "anchor", "KULÜP HABERİ"],
+  ["kulup", "Kulüpten haber", "anchor", "KULÜP HABERİ"],
   ["ozel", "Özel gün", "cal", ""],
   ["kutlama", "Kutlama", "cake", "KUTLAMA"],
   ["diger", "Diğer", "tag", ""],
 ];
 // Yarışa bağlı türler (ekranda yarış adımı bunlarda öne çıkar)
 export const RACE_KINDS = ["duyuru", "sonuc"];
+// Seçimde görünen türler (Seyhun: "yarış, antrenman, yarış sonucu, kulüpten haber", 2026-10-12); diğerleri eski kayıtlar için
+export const PICK_KINDS = ["duyuru", "antrenman", "sonuc", "kulup", "ozel"];
 export const kindOf = (k) => KINDS.find(([x]) => x === k) || KINDS[KINDS.length - 1];
 
 export const FORMATS = [
@@ -142,20 +144,6 @@ export const STYLES = [
 ];
 export const styleOf = (s) => STYLES.find(([x]) => x === s) || STYLES[0];
 
-// Tasarım: Klasik (yukarıdaki şablonlar) ya da Modern (style "modern"). Modern'de yerleşim türe göre değişir:
-// race: yarış duyurusu ve sonucu (dev başlık, arkada dış çizgili büyük yazı, tarih/yer kutusu),
-// training: antrenman (eğik, hızlı başlık, bilgi hapları, hız çizgileri),
-// school: kayıt / yelken okulu (açık zemin, yuvarlak şekiller, eğik çıkartma etiketi, düğme gibi dilek),
-// news: duyuru, kulüp haberi, kutlama, diğer (dergi düzeni: üstte künye, çerçeveli görsel, altında başlık).
-// Özel günde Modern de Afiş'i kullanır (günün havası: bayrak, anma, bayram).
-export const DESIGNS = [
-  ["klasik", "Klasik"],
-  ["modern", "Modern"],
-];
-export const designOf = (style) => (style === "modern" ? "modern" : "klasik");
-const MODERN = { duyuru: "race", sonuc: "race", antrenman: "training", kayit: "school", genel: "news", kulup: "news", kutlama: "news", diger: "news" };
-export const modernOf = (kind) => MODERN[kind] || null;
-export const MODERN_HINT = { race: "Yarış: dev başlık, tarih ve yer kutusu", training: "Antrenman: eğik başlık, bilgi hapları", school: "Yelken okulu: açık zemin, çıkartma etiket", news: "Haber: dergi düzeni, çerçeveli görsel" };
 
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const L = (v, n) => String(v ?? "").replace(/[ \t]+/g, " ").replace(/ ?\n ?/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, n);
@@ -246,7 +234,8 @@ export function cleanPost(p = {}) {
     meta: p.meta !== false,
     // Yalnız fotoğraf: afişte hiç yazı yok, anlatım açıklamada (Yarış sonucu bununla açılır)
     photoOnly: !!p.photoOnly,
-    style: p.style === "modern" ? "modern" : styleOf(p.style)[0],
+    // Tek tasarım: Afiş (Klasik, Kart, Bant ve Modern kaldırıldı, 2026-10-12)
+    style: "afis",
     // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
     tag: S(p.tag, 24),
     caption: L(p.caption, 2200),
@@ -528,7 +517,7 @@ export function sizeAsk(text, post = {}) {
 }
 
 // Söylenen tasarım isteği → gönderi alanları (Seyhun: "renk, şablon falan söylediklerimi uygulamadaki seçeneklerle eşleştirip
-// hazırlasın", 2026-10-09). "mavi, hikâye boyutunda, modern" → { theme: "gece", format: "story", style: "modern" }.
+// hazırlasın", 2026-10-09). "mavi, hikâye boyutunda" → { theme: "gece", format: "story" }.
 // Yalnız açıkça söylenen alanlar döner; boşsa {}.
 const LOOK_THEME = [
   [/turkuaz|camgöbeği/u, "turkuaz"], [/bordo|şarap/u, "bordo"], [/kırmızı|al bayrak|bayrak rengi/u, "al"], [/lacivert|mavi/u, "gece"],
@@ -543,14 +532,8 @@ export function designFrom(text) {
   else if (/reels/u.test(t)) out.format = "reels";
   else if (/ kare /u.test(t) || /kare (boyut|olsun|format)/u.test(t)) out.format = "square";
   else if (/dikey/u.test(t)) out.format = "portrait";
-  if (/modern/u.test(t)) out.style = "modern";
-  else if (/afiş/u.test(t)) out.style = "afis";
-  else if (/klasik/u.test(t)) out.style = "afis";
-  else if (/ bant /u.test(t)) out.style = "bant";
-  else if (/kart şablon|şablonu kart/u.test(t)) out.style = "kart";
   if (/sonu[çc]|kazandı|derece|birinci oldu|ikinci oldu|üçüncü oldu/u.test(t)) out.kind = "sonuc";
-  else if (/kayıt|yelken okulu|yaz okulu/u.test(t)) out.kind = "kayit";
-  else if (/kutlama|tebrik/u.test(t)) out.kind = "kutlama";
+  else if (/kayıt|yelken okulu|yaz okulu|kutlama|tebrik|kulüp haber|kulüpten haber/u.test(t)) out.kind = "kulup";
   // "Yarış duyurusu yap", "kulüp yarış duyurusu olacak", "kulüp haberi olsun": türü ve görseldeki etiketi
   const tg = TAG_ASK.find(([re]) => re.test(t));
   if (tg && FORM.test(t)) {

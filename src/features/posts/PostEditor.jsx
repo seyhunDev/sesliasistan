@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, resultCaption, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
-import { modernPal } from "./postModern";
+import { FORMATS, KINDS, PICK_KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, resultCaption, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
 import { postArchiveCommand, postDeleteCommand } from "@/lib/assistMore";
@@ -23,9 +22,7 @@ const chip = (on) =>
 const stepBtn = "grid size-10 shrink-0 place-items-center rounded-full bg-bg text-fg ring-1 ring-line transition active:scale-90 disabled:opacity-40";
 const small = "flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-line bg-card text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50";
 
-const DESIGN_KEY = "sa-post-design";
-
-// Düzenleme ekranının alt çubuğu: her düğme önizlemenin altında tek bir iş açar
+// Düzenleme ekranının dört düğmesi (önizlemenin altında): her biri tek bir iş açar
 const TABS = [
   ["photo", "Fotoğraf", "camera"],
   ["text", "Yazı", "edit"],
@@ -75,15 +72,7 @@ function legacyCopy(t) {
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
 export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
   const toast = useToast();
-  // Yeni gönderi son seçilen tasarımla (Klasik / Modern) açılır
-  const [start] = useState(() => {
-    const g = withInfo(given);
-    if (g.id) return g;
-    try {
-      if (localStorage.getItem(DESIGN_KEY) === "modern") return { ...g, style: "modern" };
-    } catch {}
-    return g;
-  });
+  const [start] = useState(() => withInfo(given));
   const [p, setP] = useState(start);
   const [tags, setTags] = useState(start.hashtags.join(" "));
   const [photo, setPhoto] = useState(startPhoto);
@@ -137,16 +126,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   const post = cleanPost({ ...p, hashtags: cleanTags(tags) });
   const dirty = photoDirty || sig(post) !== saved;
   const put = (k, v) => setP((x) => ({ ...x, [k]: v }));
-  // Klasik'e dönünce son klasik şablon geri gelir
-  const lastClassic = useRef(start.style === "modern" ? "afis" : start.style);
-  const setDesign = (d) => {
-    if (d === designOf(post.style)) return;
-    if (d === "modern") lastClassic.current = post.style;
-    put("style", d === "modern" ? "modern" : lastClassic.current || "afis");
-    try {
-      localStorage.setItem(DESIGN_KEY, d);
-    } catch {}
-  };
 
   useEffect(() => {
     let live = true;
@@ -656,7 +635,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         <h2 className="text-[1.5rem] font-extrabold leading-tight">Ne paylaşacaksın?</h2>
         <p className="mt-1 text-[0.875rem] text-mut">Seç, yazıları ben hazırlayayım.</p>
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {KINDS.map(([k, label, icon]) => (
+          {KINDS.filter(([k]) => PICK_KINDS.includes(k)).map(([k, label, icon]) => (
             <button key={k} type="button" aria-pressed={post.kind === k} onClick={() => pickKind(k)} className={`flex h-[5.5rem] flex-col items-start justify-between rounded-2xl p-3 text-left transition active:scale-95 ${post.kind === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"}`}>
               <span className="flex w-full items-center justify-between">
                 <Icon name={icon} className="size-5" />
@@ -726,7 +705,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       </div>
     );
 
-  // 2. adım: önizleme üstte, altında seçili düğmenin ayarları, en altta dört düğme
+  // 2. adım: önizleme ve dört düğme üstte sabit, altında seçili düğmenin ayarları
   return (
     <div
       className="mt-1 pb-6"
@@ -754,7 +733,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
               onPointerUp={dragEnd}
               onPointerCancel={dragEnd}
               className={`block w-auto max-w-full bg-deep transition-[height] duration-200 ${shown ? "cursor-grab touch-none" : ""}`}
-              style={{ aspectRatio: aspectOf(post.format), height: `min(${typing ? 24 : 46}svh, calc(100cqw * ${formatOf(post.format)[3] / formatOf(post.format)[2]}))` }}
+              style={{ aspectRatio: aspectOf(post.format), height: `min(${typing ? 24 : 42}svh, calc(100cqw * ${formatOf(post.format)[3] / formatOf(post.format)[2]}))` }}
             />
             {/* Karede profil ızgarasında kesilen kenarlar (ızgara 3:4 gösterir): yazı bu çizgilerin içinde kalır */}
             {post.format === "square" && (
@@ -770,6 +749,15 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
               </span>
             )}
           </div>
+        </div>
+        {/* Dört düğme önizlemenin hemen altında, onunla birlikte sabit (altta asistanla karışmasın) */}
+        <div className="mt-2 grid grid-cols-4 gap-1 rounded-2xl bg-card p-1 ring-1 ring-line">
+          {TABS.map(([k, label, icon]) => (
+            <button key={k} type="button" aria-pressed={tool === k} onClick={() => (setTool(k), setOpen(""))} className={`flex h-10 items-center justify-center gap-1.5 rounded-xl text-[0.8125rem] font-semibold transition ${tool === k ? "bg-deep text-white" : "text-mut"}`}>
+              <Icon name={icon} className="size-[1.125rem] shrink-0" />
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -833,7 +821,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         {tool === "text" && post.photoOnly && (
           <div className={`${card} space-y-3 px-4 py-4`}>
             {toggle("Yalnız fotoğraf (görselde yazı yok)", true, (v) => put("photoOnly", v))}
-            <p className="text-[0.8125rem] leading-snug text-mut">Görselde yalnız fotoğraf var. Yarışın adı, sporcular ve dereceler açıklamada; Paylaş'tan görüp değiştirebilirsin.</p>
+            <p className="text-[0.8125rem] leading-snug text-mut">Görselde yalnız fotoğraf var. Yarışın adı, sporcular ve dereceler açıklamada; Paylaş&apos;tan görüp değiştirebilirsin.</p>
           </div>
         )}
 
@@ -889,24 +877,12 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         {tool === "look" && (
           <div className={`${card} space-y-4 px-4 py-4`}>
             <div>
-              <span className="text-[0.8125rem] font-medium text-mut">Tasarım</span>
-              <div className="mt-1.5 space-y-2">
-                <Seg value={designOf(post.style)} onChange={setDesign} options={DESIGNS} />
-                {post.style === "modern" ? (
-                  <p className="text-[0.75rem] leading-snug text-mut">{modernOf(post.kind) ? `Modern tasarım türe göre değişir. ${MODERN_HINT[modernOf(post.kind)]}.` : "Özel günde günün afişi kullanılır."}</p>
-                ) : (
-                  <Seg value={post.style} onChange={(v) => put("style", v)} options={STYLES} />
-                )}
-              </div>
-            </div>
-            <div>
               <span className="text-[0.8125rem] font-medium text-mut">Renk</span>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 {THEMES.map(([k, label, c1, c2]) => (
                   <button key={k} type="button" aria-label={label} aria-pressed={post.theme === k} onClick={() => put("theme", k)} className={`grid size-10 shrink-0 place-items-center rounded-full transition active:scale-95 ${post.theme === k ? "ring-2 ring-deep ring-offset-2 ring-offset-card" : "ring-1 ring-line"}`}>
                     <span className="grid size-8 place-items-center rounded-full" style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}>
-                      {post.style === "modern" && <span className="size-2.5 rounded-full ring-1 ring-black/20" style={{ background: modernPal(k).acc }} />}
-                      {post.style === "afis" && <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />}
+                      <span className="size-2.5 rounded-sm ring-1 ring-black/20" style={{ background: afisTag(k) }} />
                     </span>
                   </button>
                 ))}
@@ -1026,20 +1002,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         {err && <p className="text-center text-[0.875rem] text-rec">{err}</p>}
       </div>
       {fileBox}
-
-      {/* Alt çubuk: dört düğme; asistan kubbesinin hemen üstünde, yazarken gizlenir */}
-      <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card/95 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur">
-        <div className="mx-auto grid max-w-[30rem] grid-cols-4 gap-1">
-          {TABS.map(([k, label, icon]) => (
-            <button key={k} type="button" aria-pressed={tool === k} onClick={() => (setTool(k), setOpen(""))} className={`flex flex-col items-center gap-1 rounded-xl py-1 text-[0.75rem] font-semibold transition active:scale-95 ${tool === k ? "text-deep" : "text-mut"}`}>
-              <span className={`grid h-9 w-12 place-items-center rounded-xl ${tool === k ? "bg-deep text-white" : "bg-bg text-fg"}`}>
-                <Icon name={icon} className="size-5" />
-              </span>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
