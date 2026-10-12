@@ -203,12 +203,15 @@ select {
 @keyframes pagein { from { opacity: 0; } }
 @keyframes pagefwd { from { opacity: 0; transform: translate3d(24px, 0, 0); } }
 @keyframes pageback { from { opacity: 0; transform: translate3d(-24px, 0, 0); } }
-.page-in { overflow-x: clip; animation: pagein .2s ease-out backwards; }
-html[data-boot] .page-in { animation: none; }
+/* İlk sayfada (data-dir boş) animasyon yok: açılış ekranı zaten soldurur. Eskiden ilk sayfa da solma alıyordu ama açılış
+   sürerken (html[data-boot] .page-in { animation: none }) durduruluyordu; açılış bitip data-boot kalkınca animasyon baştan başlıyor, ana sayfa bir an
+   kaybolup geri geliyordu (Seyhun: "ekran geldi, gitti, geldi"). */
+.page-in { overflow-x: clip; }
+.page-in:is([data-dir="tab"], [data-dir="fwd"], [data-dir="back"]) { animation: pagein .2s ease-out backwards; }
 .page-in[data-dir="fwd"]:not(:has(.fixed)) { animation: pagefwd .3s cubic-bezier(.22, .8, .24, 1) backwards; }
 .page-in[data-dir="back"]:not(:has(.fixed)) { animation: pageback .3s cubic-bezier(.22, .8, .24, 1) backwards; }
 @media (prefers-reduced-motion: reduce) {
-  .page-in[data-dir] { animation: pagein .2s ease-out backwards !important; }
+  .page-in:is([data-dir="fwd"], [data-dir="back"]) { animation: pagein .2s ease-out backwards !important; }
 }
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
