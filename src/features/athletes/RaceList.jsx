@@ -6,7 +6,7 @@ import { Empty, Label } from "@/components/ui/Page";
 import { CARD } from "@/features/home/ui";
 import { todayStr } from "@/lib/utils/format";
 import { rangeText } from "./raceDocs";
-import { stepTotal, stepsOf } from "./races";
+import { doneFor, stepTotal, stepsOf } from "./races";
 
 const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
 const day = (s) => new Date(`${s}T12:00:00`);
@@ -44,8 +44,9 @@ export function DateBadge({ r, light }) {
 const WD = ["PAZ", "PZT", "SAL", "ÇAR", "PER", "CUM", "CMT"];
 const MONTHS = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
 const nextStep = (r) => stepsOf(r)[0]?.label;
-// Talimattaki en yakın son tarih
-const nextDeadline = (r) => (r.notice?.deadlines || []).find((d) => diff(d.date) >= 0);
+// Talimattaki en yakın son tarih; yapıldı işaretlenen işin son tarihi atlanır (Seyhun: "yaptıysak bir sonrakini göstermeli")
+const nextDeadline = (r) =>
+  [...(r.notice?.deadlines || [])].sort((a, b) => String(a.date).localeCompare(String(b.date))).find((d) => diff(d.date) >= 0 && !doneFor(r, d.title, d.date));
 // Sağdaki kısa süre: "12 gün", "Yarın", "Bugün", "Sürüyor", uzaksa "4 ay"
 function soonText(r) {
   if (!r.startDate) return "";
