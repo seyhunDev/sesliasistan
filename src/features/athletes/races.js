@@ -179,10 +179,19 @@ export const doneSteps = (r) => byDate(allSteps(r).filter((s) => !gone(r, s) && 
 export const stepTotal = (r) => allSteps(r).length;
 // Listeden çıkarılan (ya da eskiden işaretlenen) iş sayısı ("geri getir" için)
 export const hiddenCount = (r) => allSteps(r).filter((s) => gone(r, s)).length;
+// Benzerlik için kelime kökleri (ilk 3 harf); "son, gün, tarih, yap" gibi her işte geçen sözler sayılmaz
+const STEM_SKIP = new Set(["son", "gün", "tar", "yap", "içi", "ile", "kad", "edi", "olu", "bel", "the", "and", "for"]);
+const stems = (t) => [...new Set(String(t || "").toLocaleLowerCase("tr-TR").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3).map((w) => w.slice(0, 3)).filter((w) => !STEM_SKIP.has(w)))];
 // Bir son tarih ya da iş yapıldı mı: aynı anahtar ya da aynı günlü yapılmış iş (talimattaki "Online kayıt son gün" = "Online kaydı yap")
 export function doneFor(r, title, date = "") {
   const ds = doneSteps(r);
   if (ds.some((s) => s.key === slug(title) || s.key === slug(title, "m:"))) return true;
+  // Adı benzeyen iş ("Online kayıt son gün" ↔ "Online kaydı yap"; tarihleri farklı olsa da): en çok benzeyen iş yapıldıysa
+  const want = new Set(stems(title));
+  if (want.size) {
+    const scored = allSteps(r).filter((s) => !gone(r, s)).map((s) => ({ s, n: stems(s.label).filter((w) => want.has(w)).length })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+    if (scored.length && isDone(r, scored[0].s) && !scored.some((x) => x.n === scored[0].n && !isDone(r, x.s))) return true;
+  }
   // Aynı günün işlerinin hepsi yapıldıysa o günün son tarihi de yapılmış sayılır
   const same = date ? allSteps(r).filter((s) => s.date === date && !gone(r, s)) : [];
   return same.length > 0 && same.every((s) => isDone(r, s));
