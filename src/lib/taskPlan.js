@@ -1,3 +1,5 @@
+import { actSay } from "@/lib/actCatalog";
+
 // Sıralı görev listesi (Seyhun: "Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit
 // verdi. Atatürk Kupası için Instagram yarış görseli hazırla" gibi tek cümlede birden çok iş: yapay zeka görev listesi
 // çıkarsın, sırayla yapılsın, her biri bitince söylensin; ara adımlar görünmesin. 2026-10-09).
@@ -34,11 +36,16 @@ export const planCut = (raw) => Math.max(0, (Array.isArray(raw?.tasks) ? raw.tas
 // Yapay zeka yanıtı → [{ kind, say, label }]; ardışık "other" işler tek işte birleşir (ana yapay zeka hepsini birlikte yapar)
 export function cleanPlan(raw) {
   const list = (Array.isArray(raw?.tasks) ? raw.tasks : [])
-    .map((x) => ({ kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) }))
+    .map((x) => {
+      const base = { kind: PLAN_KINDS[x?.kind] ? x.kind : "other", say: S(x?.say, 400), label: S(x?.label, 60), from: S(x?.from, 160) };
+      // Numaralı iş (lib/actCatalog.js): komut uygulamanın kalıbından yazılır; alan eksikse yapay zekanın cümlesi kalır
+      const a = x?.act ? actSay(x.act, x.args) : null;
+      return a ? { ...base, ...a } : base;
+    })
     // Yapay zeka "yarın 10'da antrenman planla"yı etkinlik sanabiliyor: takvim planı ana yapay zekanın işidir (other)
-    .map((x) => (x.kind === "event" && CAL_PLAN.test(x.say) && !EVENT_WORD.test(x.say) ? { ...x, kind: "other" } : x))
+    .map((x) => (!x.act && x.kind === "event" && CAL_PLAN.test(x.say) && !EVENT_WORD.test(x.say) ? { ...x, kind: "other" } : x))
     // "… geldi, yoklamaya ekle" günlük değil yoklamadır (notsa nottur, yoklamaysa yoklamadır)
-    .map((x) => (x.kind === "log" && /yoklama/iu.test(x.say) && !LOG_WORD.test(x.say) ? { ...x, kind: "attendance" } : x))
+    .map((x) => (!x.act && x.kind === "log" && /yoklama/iu.test(x.say) && !LOG_WORD.test(x.say) ? { ...x, kind: "attendance" } : x))
     .filter((x) => x.say)
     .slice(0, PLAN_MAX);
   const out = [];

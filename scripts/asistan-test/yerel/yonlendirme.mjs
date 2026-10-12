@@ -487,3 +487,34 @@ group("Sohbetteki yarış")([
     [ATK, { desc: "görev listesi sorulur (yarış + afiş + görev)", fn: (s) => looksMulti(cleanSay(unglue(s)), flowOf), ok: (r) => r === true }],
   ]);
 }
+
+// Numaralı iş kataloğu (lib/actCatalog.js): yapay zeka numara + alan verir, uygulama komutu kendi kalıbından yazar.
+// Her numaranın yazdığı komut uygulamanın doğru akışına gitmeli (yapay zekanın serbest cümlesi yeniden yorumlanmaz)
+{
+  const { ACTS, actSay } = await import("@/lib/actCatalog");
+  const { cleanPlan } = await import("@/lib/taskPlan");
+  const SAMPLE = {
+    1: [{ name: "Atatürk Kupası", date: "7-8 Kasım", place: "Dikili", athletes: ["Ali", "Ayşe"] }, "race"],
+    2: [{ race: "Foça", athletes: ["Mehmet"] }, "race"],
+    3: [{ day: "bugün", came: ["Ali", "Ayşe"], absent: ["Emre"] }, "attendance"],
+    4: [{ who: "Ali Kaya", month: "Ekim", amount: "1500" }, "income"],
+    5: [{ who: "Ahmet", amount: "2000", cat: "bağış" }, "income"],
+    6: [{ topic: "Atatürk Kupası", type: "yarış duyurusu", color: "mavi" }, "post"],
+    7: [{ items: ["süt", "ekmek"] }, "shopping"],
+    8: [{ who: "Gökhan" }, "call"],
+    9: [{ page: "Aidatlar" }, "navigate"],
+    10: [{ seller: "Turkcell", cash: true }, "invoice"],
+    11: [{ name: "Can Tekin", year: "2014" }, "athlete"],
+    12: [{ text: "14 knot poyrazda start ve tramola çalıştık, 2 saat sürdü" }, "log"],
+    13: [{ text: "bugün 3 set 12 squat 40 kilo yaptım" }, "fitness"],
+    14: [{}, "dues"],
+    15: [{}, "dues"],
+  };
+  group("Numaralı iş kataloğu")([
+    ...ACTS.map((x) => [`${x.no}. ${x.name}`, { desc: `→ ${SAMPLE[x.no]?.[1]}`, fn: () => { const r = actSay(x.no, SAMPLE[x.no]?.[0]); return r ? `${r.say} → ${route(r.say)}` : "-"; }, ok: (r) => r.endsWith(`→ ${SAMPLE[x.no]?.[1]}`) }]),
+    ["Ali'nin / Ahmet'ten / Gökhan'ı", { desc: "Türkçe ekler", fn: () => [actSay(4, { who: "Ali" }).say, actSay(5, { who: "Ayşe", amount: 5 }).say, actSay(8, { who: "Gökhan" }).say, actSay(8, { who: "Zeynep" }).say].join(" | "), ok: (r) => r === "Ali'nin aidatı nakit alındı | Ayşe'den 5 lira bağış geldi | Gökhan'ı ara | Zeynep'i ara" }],
+    ["eksik alan", { desc: "gerekli alan yoksa eski yol (null)", fn: () => [actSay(1, {}), actSay(3, { day: "bugün" }), actSay(99, {})].every((r) => r === null), ok: (r) => r === true }],
+    ["cleanPlan", { desc: "numara varsa komut katalogdan, tür numaradan", fn: () => JSON.stringify(cleanPlan({ tasks: [{ act: 3, args: { came: ["Mustafa"] }, kind: "other", say: "Mustafa geldi", label: "Yoklama" }] })[0]), ok: (r) => r.includes('"kind":"attendance"') && r.includes("yoklama: bugün Mustafa geldi") && r.includes('"act":3') }],
+    ["cleanPlan (0)", { desc: "numara 0: yapay zekanın cümlesi kalır", fn: () => cleanPlan({ tasks: [{ act: 0, kind: "other", say: "yarın 10'da toplantı ekle" }] })[0].say, ok: (r) => r === "yarın 10'da toplantı ekle" }],
+  ]);
+}
