@@ -157,6 +157,8 @@ const COACH = { name: "Deneme Antrenör", tc: "11111111110", sicil: "0001234", p
 const pages = async (bytes) => (await PDFDocument.load(bytes)).getPageCount();
 
 // Veli bilgi notu (athleteSheet.js): sporcu başına tek sayfa
+const BGT = await import("@/features/athletes/budget");
+const RF = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 const AS = await import("@/features/athletes/athleteSheet");
 const SHEET_RACE = {
   ...DOC_RACE,
@@ -175,6 +177,19 @@ group("Veli bilgi notu")([
   ["PDF son tarihli", { desc: "son tarihler bölümüyle de tek sayfa", fn: async () => pages(await AS.buildAthleteSheet({ ...SHEET_RACE, notice: { ...SHEET_RACE.notice, deadlines: [{ title: "Kayıt ücreti son gün", date: "2099-01-05" }] } }, [DOC_ATH[0]], FONTS)), ok: (r) => r === 1 }],
   ["PDF", { desc: "iki sporcuya iki sayfa", fn: async () => pages(await AS.buildAthleteSheet(SHEET_RACE, DOC_ATH, FONTS)), ok: (r) => r === 2 }],
   ["PDF boş yarış", { desc: "bilgisiz yarışta da tek sayfa açılır", fn: async () => pages(await AS.buildAthleteSheet({ name: "A" }, [DOC_ATH[1]], FONTS)), ok: (r) => r === 1 }],
+  ["otel oda fiyatları", { desc: "talimattaki odalar: 2 kişilik 3.000/gece, kişi başı 1.500; kişi başı yazılan 3 kişilik 1.000 → oda 3.000", fn: () => AS.stayOf({ ...SHEET_RACE, hotels: [{ name: "Foça Otel", rooms: [{ cap: 2, amount: 3000, per: "room", board: "Oda kahvaltı" }, { cap: 3, amount: 1000, per: "person" }] }] }).hotels[0].rooms, ok: (r) => r.length === 2 && r[0].name === "2 kişilik" && /3\.000/.test(r[0].night) && /1\.500/.test(r[0].each) && r[0].board === "Oda kahvaltı" && /3\.000/.test(r[1].night) }],
+  ["PDF oda fiyatlı", { desc: "3 otel, 5'er oda tipi ve uzun programla tek sayfa", fn: async () => pages(await AS.buildAthleteSheet({ ...SHEET_RACE, hotels: [1, 2, 3].map((i) => ({ name: `Otel ${i}`, phone: "0232", rooms: [1, 2, 3, 4, 5].map((c) => ({ cap: c, amount: 1000 * c, per: "room", board: "Yarım pansiyon" })) })), notice: { schedule: Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-0${1 + Math.floor(i / 6)}`, time: "10:00", title: `Yarış ${i}` })) } }, [DOC_ATH[0]], FONTS)), ok: (r) => r === 1 }],
+  ["yalnız bir sporcunun kalemi", { desc: "Ali'ye yazılan ekipman 800 yalnız Ali'nin notunda; Zeynep'inkinde yok", fn: () => { const r = { ...SHEET_RACE, budget: { ...SHEET_RACE.budget, items: [...SHEET_RACE.budget.items, { id: "e", cat: "Tekne/Ekipman", title: "Ekipman", amount: 800, unit: "athlete", qty: 1, only: ["a"] }] } }; return [AS.sheetData(r, DOC_ATH[0], 2).money.total, AS.sheetData(r, DOC_ATH[1], 2).money.total]; }, ok: ([a, b]) => a === 2300 && b === 1500 }],
+  ["uzun program iki sütun", { desc: "6 gün × 6 madde tek sütuna sığmaz: iki sütun, hiçbir madde atılmaz, ilk günler solda", fn: () => { const days = Array.from({ length: 6 }, (_, i) => ({ date: `2026-10-0${i + 1}`, items: Array.from({ length: 6 }, (_, j) => ({ time: `${9 + j}:00`, title: `Madde ${i}-${j}` })) })); const l = AS.programLayout(days, 300, 500, (t, z) => String(t).length * z * 0.5); const items = l.cols.flatMap((c) => c.rows.filter((x) => !x.day)); return [l.cols.length, items.length, l.h <= 300, l.cols[0].rows[0].label.includes("1 Ekim")]; }, ok: ([n, c, fit, first]) => n === 2 && c === 36 && fit && first }],
+  ["kısa program tek sütun", { desc: "sığan program tek sütunda kalır", fn: () => AS.programLayout(AS.programDays(SHEET_RACE), 300, 500, (t, z) => String(t).length * z * 0.5).cols.length, ok: (r) => r === 1 }],
+  ["PDF uzun program", { desc: "8 günlük, 48 maddelik programla da tek sayfa", fn: async () => pages(await AS.buildAthleteSheet({ ...SHEET_RACE, notice: { deadlines: [{ title: "Kayıt son gün", date: "2099-01-05" }], schedule: Array.from({ length: 48 }, (_, i) => ({ date: `2026-10-0${1 + Math.floor(i / 6)}`, time: `${9 + (i % 6)}:00`, title: `Yarışlar ve ölçüm işlemleri ${i + 1}` })) } }, [DOC_ATH[0]], FONTS)), ok: (r) => r === 1 }],
+]);
+group("Bütçe: yalnız seçilen sporcular")([
+  ["pay", RF("sporcu başı 500 yalnız Ali'ye: toplam 500, Ali 500, Zeynep 0; ortak kalem ikiye bölünür", () => { const t = BGT.totals({ items: [{ id: "x", cat: "Diğer", title: "Ekipman", amount: 500, unit: "athlete", qty: 1, only: ["a"] }, { id: "m", cat: "Ulaşım", title: "Minibüs", amount: 2000, unit: "shared", qty: 1 }] }, 2, ["a", "b"]); return t.total === 2500 && BGT.forAthlete(t, "a") === 1500 && BGT.forAthlete(t, "b") === 1000 && t.perAthlete === 1000 && t.varies; })],
+  ["varsayılan herkes", RF("only yoksa ya da yarıştan çıkan sporcuysa kalem herkese", () => { const t = BGT.totals({ items: [{ id: "x", cat: "Diğer", title: "Ekipman", amount: 500, unit: "athlete", qty: 1, only: ["z"] }] }, 2, ["a", "b"]); return t.total === 1000 && !t.varies && !t.lines[0].only; })],
+  ["yazı", RF("satırda kaç sporcu için olduğu yazar", () => { const t = BGT.totals({ items: [{ id: "x", cat: "Diğer", title: "Lisans", amount: 300, unit: "athlete", qty: 1, only: ["a", "b"] }] }, 3, ["a", "b", "c"]); return /2 sporcu/.test(BGT.howText(t.lines[0], t)) && t.total === 600; })],
+  ["temizlik", RF("geçersiz kimlik atılır, tekrar yok", () => BGT.cleanItem({ id: "x", title: "A", amount: 1, unit: "athlete", only: ["a", "a", "x/y"] }).only.join() === "a")],
+  ["asistan adları", RF("'Ali için' → yalnız Ali; yarışta olmayan ad herkese kalır", async () => { const { whoFor } = await import("@/features/athletes/raceBudgetAi"); const r = whoFor([{ title: "Ekipman", for: "Ali" }, { title: "Lisans", for: "Mehmet" }, { title: "Otel" }], DOC_ATH); return r.items[0].only?.join() === "a" && !r.items[1].only && !r.items[2].only && r.missed.join() === "Mehmet"; })],
 ]);
 group("Yarış evrakı")([
   ["bulunma eki", { desc: "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da", fn: () => ["İzmir", "Antalya", "Çeşme", "İzmit", "Foça"].map(RD.locative).join(" "), ok: (r) => r === "İZMİR’de ANTALYA’da ÇEŞME’de İZMİT’te FOÇA’da" }],
@@ -204,7 +219,6 @@ group("Yarış evrakı")([
 
 // Yarış sonuçları (raceResults.js)
 const RR = await import("@/lib/raceResults");
-const RF = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 group("Yarış sonuçları")([
   ["temizlik", RF("sıra sayı, boşlar atılır", () => { const c = RR.cleanResults({ fleet: "24", rows: { a1: { place: "3", note: " ILCA 4 " }, a2: { place: "", note: "" }, "x/y": { place: 1 } } }); return c.fleet === 24 && c.rows.a1.place === 3 && c.rows.a1.note === "ILCA 4" && !c.rows.a2 && !c.rows["x/y"]; })],
   ["metin", RF("3. / 24 · ILCA 4", () => RR.placeText({ fleet: 24, rows: { a1: { place: 3, note: "ILCA 4" } } }, "a1") === "3. / 24 · ILCA 4")],

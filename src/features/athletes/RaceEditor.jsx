@@ -538,13 +538,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const steps = stepsOf(r);
   // Özet'teki durum satırları: [sekme, simge, ad, kısa durum, uyarı mı]
   const trip = tripRows(r);
-  const money = totals(r.budget, chosen.length);
+  const money = totals(r.budget, chosen.length, chosen.map((a) => a.id));
   const hotelCount = raceHotels(r).length;
   const stat = [
     ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
     ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale || r.docsAt ? "Eski, yenilenmeli" : "Hazırlanmadı", !!file, stale || r.docsAt ? "Evrakı yenile" : "Evrakı hazırla"],
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
-    ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `Sporcu başı ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
+    ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `${money.varies ? "Ortak pay" : "Sporcu başı"} ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
   // Sıradaki adım: sırayla ilk bitmeyen (sporcu → evrak → yolculuk → bütçe)
   const nextStep = stat.find((x) => !x[4])?.[0];

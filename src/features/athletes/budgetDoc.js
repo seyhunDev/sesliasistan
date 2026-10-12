@@ -1,7 +1,7 @@
 // Yarış bütçesi PDF'i: antetli başlık, kalem tablosu, özet ve sporcu başına ödeme listesi (A4).
 // pdf-lib yalnızca çıktı alınırken yüklenir. Yazı tipleri ve logo raceDocs.loadFonts'tan.
 import { CLUB, rangeText } from "./raceDocs.js";
-import { UNITS, howText, tl, totals } from "./budget.js";
+import { UNITS, forAthlete, howText, tl, totals } from "./budget.js";
 import { tripRows } from "./races.js";
 
 const W = 595.28;
@@ -24,7 +24,7 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   const f = { r: await pdf.embedFont(fonts.sans, { subset: true }), b: await pdf.embedFont(fonts.sansB, { subset: true }) };
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo) : null;
   const b = r.budget;
-  const t = totals(b, athletes.length);
+  const t = totals(b, athletes.length, athletes.map((a) => a.id));
 
   let page;
   let y;
@@ -83,7 +83,7 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   // Özet kutuları (kulüp payı yoksa kulüp kutusu çıkmaz)
   const boxes = [
     ["Toplam bütçe", tl(t.total)],
-    ["Sporcu başı ödeme", t.athletes ? tl(t.perAthlete) : "-"],
+    [t.varies ? "Ortak sporcu payı" : "Sporcu başı ödeme", t.athletes ? tl(t.perAthlete) : "-"],
     t.club > 0 && ["Kulüp karşılar", tl(t.club)],
   ].filter(Boolean);
   const bw = (R - L - 8 * (boxes.length - 1)) / boxes.length;
@@ -141,7 +141,7 @@ export async function buildBudgetPdf(r, athletes, fonts) {
     athletes.forEach((a, i) => {
       need(20);
       text(`${i + 1}. ${a.studentName}`, cols[0], y, f.r, 9.5, { max: cols[3] - cols[0] - 80 });
-      text(tl(t.perAthlete), cols[3], y, f.r, 9.5, { align: "right" });
+      text(tl(forAthlete(t, a.id)), cols[3], y, f.r, 9.5, { align: "right" });
       y += 18;
       rule(y - 13);
     });

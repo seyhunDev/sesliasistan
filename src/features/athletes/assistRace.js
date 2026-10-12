@@ -10,7 +10,7 @@ import { aliasesOf } from "./names";
 import { rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { tl, totals } from "./budget";
-import { askBudget, mergeBudget } from "./raceBudgetAi";
+import { askBudget, mergeBudget, whoFor } from "./raceBudgetAi";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
 import { followAsk, wantsRaceText } from "./raceNav";
 
@@ -87,16 +87,21 @@ export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, cu
     onStep("Bütçe hazırlanıyor");
     const b = await askBudget(race, race.athleteIds.length, text);
     if (!b.items?.length && b.staff == null && b.nights == null) return { said: b.message || `${race.name} bütçesine eklenecek bir tutar anlayamadım.`, id: race.id, expect: true };
-    const budget = mergeBudget(race, b);
+    const mine = list.filter((a) => race.athleteIds.includes(a.id));
+    const budget = mergeBudget(race, b, mine);
+    const { items: got, missed } = whoFor(b.items, mine);
+    const nameOf = (id) => mine.find((a) => a.id === id)?.studentName || "";
     onStep("Bütçe kaydediliyor");
     await saveRace(orgId, uid, { ...race, budget });
     told({ ...race, budget });
-    const t = totals(budget, race.athleteIds.length);
+    const t = totals(budget, race.athleteIds.length, race.athleteIds);
     const open = b.items.filter((x) => !x.amount).map((x) => x.title);
     const est = b.items.filter((x) => x.amount && x.est).map((x) => `${x.title} ${tl(x.amount)}`);
-    const note = (open.length ? ` ${open.join(", ")} için tutar söylemedin; Bütçe sekmesinden girebilirsin.` : "") + (est.length ? ` Tahmini tutar yazdım: ${est.join(", ")}; kontrol et.` : "");
+    const note = (open.length ? ` ${open.join(", ")} için tutar söylemedin; Bütçe sekmesinden girebilirsin.` : "") + (est.length ? ` Tahmini tutar yazdım: ${est.join(", ")}; kontrol et.` : "")
+      + got.filter((x) => x.only).map((x) => ` ${x.title} yalnız ${x.only.map(nameOf).join(", ")} için.`).join("")
+      + (missed.length ? ` ${[...new Set(missed)].join(", ")} bu yarışın sporcularında yok; kalemi herkese yazdım.` : "");
     return {
-      said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, sporcu başı ${tl(t.perAthlete)}` : ""}.${note}`,
+      said: `Kaydettim. ${race.name} bütçesine ${b.items.map((x) => x.title).join(", ") || "değişiklik"} eklendi. Toplam ${tl(t.total)}${t.athletes ? `, ${t.varies ? "ortak pay" : "sporcu başı"} ${tl(t.perAthlete)}` : ""}.${note}`,
       id: race.id,
     };
   }

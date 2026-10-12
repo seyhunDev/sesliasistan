@@ -9,7 +9,7 @@ import { CATS, cleanItem, cleanRooms, roomLine } from "@/features/athletes/budge
 export const runtime = "nodejs";
 
 // Yarış bütçesi: antrenörün yazdığı/söylediği bilgiler (ve talimattaki ücretler) → bütçe kalemleri.
-// Kaydetmez; telefon kalemleri bütçeye ekler. Sporcu adı gitmez, yalnız sayılar.
+// Kaydetmez; telefon kalemleri bütçeye ekler. Sporcu adı gitmez, yalnız sayılar (cümlede geçen ad "for" olarak geri döner, telefon eşleştirir).
 const SYSTEM = `Sen bir yelken kulübünde antrenörün bütçe asistanısın. Antrenör bir yarış için masrafları Türkçe anlatır (ses tanıma metni olabilir, yazım hataları olabilir).
 Sana yarış bilgisi, sporcu sayısı, antrenör/refakatçi sayısı, gece sayısı, varsa yarış talimatındaki ücretler/oteller ve bütçedeki mevcut kalemler verilir.
 Anlatılanlardan bütçe kalemleri çıkar. Yalnızca antrenörün söylediği ya da açıkça istediği kalemleri yaz; antrenörün eklemek istediği kalemi tutarı olmasa da mutlaka yaz.
@@ -35,7 +35,7 @@ const SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared", "room"] }, qty: { type: "number" }, cap: { type: "number" }, beds: { type: "number" }, rooms: { type: "number" }, who: { type: "string", enum: ["athlete", "staff"] }, club: { type: "boolean" }, est: { type: "boolean" } },
+        properties: { cat: { type: "string" }, title: { type: "string" }, amount: { type: "number" }, unit: { type: "string", enum: ["athlete", "person", "shared", "room"] }, qty: { type: "number" }, cap: { type: "number" }, beds: { type: "number" }, rooms: { type: "number" }, who: { type: "string", enum: ["athlete", "staff"] }, club: { type: "boolean" }, est: { type: "boolean" }, for: { type: "string" } },
         required: ["cat", "title", "amount", "unit"],
       },
     },
@@ -81,7 +81,7 @@ async function handle(request) {
     const t0 = Date.now();
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 3000, timeoutMs: 25000 });
     const out = {
-      items: (Array.isArray(raw?.items) ? raw.items : []).filter((x) => S(x?.title, 80)).map(cleanItem).slice(0, 30),
+      items: (Array.isArray(raw?.items) ? raw.items : []).filter((x) => S(x?.title, 80)).map((x) => ({ ...cleanItem(x), ...(S(x?.for, 120) ? { for: S(x.for, 120) } : {}) })).slice(0, 30),
       staff: Number(raw?.staff) >= 0 ? N(raw.staff, 50) : null,
       nights: Number(raw?.nights) >= 0 ? N(raw.nights, 60) : null,
       message: S(raw?.message, 300),

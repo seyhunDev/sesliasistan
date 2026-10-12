@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
@@ -37,7 +37,8 @@ function Stepper({ label, value, onChange, max }) {
 export function BudgetView({ r, athletes, onChange }) {
   const toast = useToast();
   const b = r.budget || emptyBudget(r);
-  const t = totals(b, athletes.length);
+  const t = totals(b, athletes.length, athletes.map((a) => a.id));
+  const nameOf = Object.fromEntries(athletes.map((a) => [a.id, a.studentName]));
   const set = (patch) => onChange(cleanBudget({ ...b, ...patch }));
   const [edit, setEdit] = useState(null); // düzenlenen kalem (yeni için id'siz)
   const [busy, setBusy] = useState(false);
@@ -65,7 +66,7 @@ export function BudgetView({ r, athletes, onChange }) {
       const p = await askBudget({ ...r, budget: b }, athletes.length, text);
       if (!p.items?.length && p.staff == null && p.nights == null) toast(p.message || "Eklenecek bir tutar bulamadım");
       else {
-        onChange(mergeBudget({ ...r, budget: b }, p));
+        onChange(mergeBudget({ ...r, budget: b }, p, athletes));
         toast(p.message || `${p.items.length} kalem eklendi`);
         // Tutarı boş ya da tahmini gelen tek kalem: kontrol için hemen açılır
         const check = p.items.filter((x) => !x.amount || x.est);
@@ -101,7 +102,7 @@ export function BudgetView({ r, athletes, onChange }) {
         <span className="block text-[0.6875rem] font-semibold tracking-[.1em] text-white/70">TOPLAM BÜTÇE</span>
         <b className="mt-1 block text-[1.75rem] font-semibold leading-tight tabular-nums">{tl(t.total)}</b>
         <div className="mt-3 flex gap-2">
-          <Stat n={t.athletes ? tl(t.perAthlete) : "-"} label="Sporcu başı" />
+          <Stat n={t.athletes ? tl(t.perAthlete) : "-"} label={t.varies ? "Herkesin payı" : "Sporcu başı"} />
           <Stat n={tl(t.club)} label="Kulüp karşılar" />
         </div>
       </Hero>
@@ -175,6 +176,7 @@ export function BudgetView({ r, athletes, onChange }) {
                   )}
                 </b>
                 <span className="block truncate text-[0.8125rem] text-mut">{howText(l, t)}</span>
+                {l.only && <span className="block truncate text-[0.8125rem] font-medium text-acc">Yalnız {l.only.map((id) => nameOf[id]).filter(Boolean).join(", ")}</span>}
               </span>
               <b className="shrink-0 text-[0.9375rem] tabular-nums">{tl(l.total)}</b>
             </button>
@@ -220,7 +222,7 @@ export function BudgetView({ r, athletes, onChange }) {
                   >
                     <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
                     <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${on ? "text-mut" : "font-medium"}`}>{a.studentName}</span>
-                    <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{tl(t.perAthlete)}</span>
+                    <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{tl(forAthlete(t, a.id))}</span>
                   </button>
                 </li>
               );
@@ -246,7 +248,7 @@ export function BudgetView({ r, athletes, onChange }) {
       {view && <PdfViewer title="Bütçe çıktısı" load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
-        {edit && <ItemForm key={edit.id || "new"} item={edit} nights={b.nights} hotels={raceHotels(r)} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
+        {edit && <ItemForm key={edit.id || "new"} item={edit} athletes={athletes} nights={b.nights} hotels={raceHotels(r)} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
       </Sheet>
     </>
   );
@@ -271,7 +273,7 @@ function Count({ label, value, min = 1, max, onChange }) {
   );
 }
 
-function ItemForm({ item, nights, hotels, onSave, onRemove }) {
+function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
   const [x, setX] = useState({ ...item, id: item.id || newId(), amount: item.amount === "" || item.amount === 0 ? "" : String(item.amount).replace(".", ",") });
   const put = (k) => (v) => setX((p) => ({ ...p, [k]: v }));
   const amount = Number(String(x.amount).replace(/\./g, "").replace(",", ".")) || 0;
@@ -357,6 +359,29 @@ function ItemForm({ item, nights, hotels, onSave, onRemove }) {
         <span className="flex-1 text-[0.9375rem]">{x.cat === "Konaklama" || room ? "Gece" : "Adet"}</span>
         <input type="number" min="1" value={x.qty} onChange={(e) => put("qty")(e.target.value)} className="h-11 w-24 rounded-xl bg-bg px-3 text-center text-[0.9375rem] outline-none" />
       </div>
+      {athletes.length > 1 && (
+        <div>
+          <span className="mb-1.5 block text-[0.8125rem] text-mut">Kimin için</span>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => put("only")([])} aria-pressed={!x.only?.length} className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${!x.only?.length ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+              Hepsi
+            </button>
+            {athletes.map((a) => {
+              const on = !!x.only?.includes(a.id);
+              const toggle = () => {
+                const next = on ? x.only.filter((v) => v !== a.id) : [...(x.only || []), a.id];
+                put("only")(next.length === athletes.length ? [] : next);
+              };
+              return (
+                <button key={a.id} type="button" onClick={toggle} aria-pressed={on} className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+                  {a.studentName}
+                </button>
+              );
+            })}
+          </div>
+          {x.only?.length > 0 && <p className="mt-1.5 px-1 text-[0.75rem] text-mut">Yalnız seçilen sporcuların payına girer.</p>}
+        </div>
+      )}
       <button type="button" onClick={() => put("club")(!x.club)} aria-pressed={x.club} className="flex w-full items-center gap-3 text-left">
         <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${x.club ? "bg-ok text-white ring-ok" : "ring-line"}`}>{x.club && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
         <span className="text-[0.9375rem]">Kulüp karşılar (sporcu payına girmez)</span>
