@@ -1,10 +1,11 @@
 "use client";
 
-import { addDoc, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { cashMoves, filedMoves, incomeMoves, rangeOf } from "@/lib/dues";
+import { bookOf } from "@/lib/cashbook";
 import { addFileMoves, dropFileMoves, loadLedger } from "@/features/bank/ledgerData";
 
 // Aidat verisi (yalnız ana hesap; kurallar ana hesaba orgs altındaki her koleksiyonu açıyor). Okuma sayfa açılınca bir kez.
@@ -69,28 +70,41 @@ export async function loadDuesRange(orgId, yms) {
   const [c, ...ms] = await Promise.all([getDoc(dues(orgId, "settings")), ...yms.map((ym) => getDoc(dues(orgId, ym)))]);
   return { cfg: c.data() || {}, months: Object.fromEntries(yms.map((ym, i) => [ym, ms[i].data() || {}])) };
 }
-// Hesaplar'daki nakit gelirler: Aidatlar'da yazılan nakit aidatlar + elle girilen gelirler (incomes).
-// Aidat kayıtları ve gelirler iki sorguda (belge sayısı kadar okuma) → { moves, roster, cfg }
+// Hesaplar'daki nakitler: Aidatlar'da yazılan nakit aidatlar + elle girilen giriş/çıkışlar (incomes) + kasa ayarı (cash/meta).
+// Kasa ayarı ilk açılışta yazılır (from = şimdi): ondan önce girilen nakitler kasaya kendiliğinden sayılmaz.
+// → { moves (kulüp), personal (kişisel defter), meta, roster, cfg }
 export async function loadCash(orgId) {
-  const [snap, inc] = await Promise.all([getDocs(collection(db, "orgs", orgId, "dues")), getDocs(collection(db, "orgs", orgId, "incomes")).catch(() => null)]);
+  const metaRef = doc(db, "orgs", orgId, "cash", "meta");
+  const [snap, inc, m] = await Promise.all([getDocs(collection(db, "orgs", orgId, "dues")), getDocs(collection(db, "orgs", orgId, "incomes")).catch(() => null), getDoc(metaRef).catch(() => null)]);
   const all = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
   const cfg = all.settings || {};
-  const moves = [...cashMoves(all, cfg.roster || []), ...incomeMoves((inc?.docs || []).map((d) => ({ id: d.id, ...d.data() })))].sort((a, b) => b.ts - a.ts);
-  return { moves, roster: cfg.roster || [], cfg };
+  let meta = m?.data() || null;
+  if (m && !meta) {
+    meta = { from: new Date().toISOString(), add: [], skip: [] };
+    setDoc(metaRef, meta).catch(() => {});
+  }
+  const mine = incomeMoves((inc?.docs || []).map((d) => ({ id: d.id, ...d.data() })));
+  const moves = [...cashMoves(all, cfg.roster || []), ...mine.filter((x) => bookOf(x) === "club")].sort((a, b) => b.ts - a.ts);
+  return { moves, personal: mine.filter((x) => bookOf(x) === "personal"), meta: meta || {}, roster: cfg.roster || [], cfg };
 }
 export const loadCashMoves = (orgId) => loadCash(orgId).then((r) => r.moves);
+// Eski nakit girişi kasaya ekle (on) ya da kasadan çıkar
+export const setInKasa = (orgId, key, on) =>
+  setDoc(doc(db, "orgs", orgId, "cash", "meta"), on ? { add: arrayUnion(key), skip: arrayRemove(key) } : { add: arrayRemove(key), skip: arrayUnion(key) }, { merge: true });
 
-// Hesaplar › Gelir ekle. Aidat: o ayın aidat kaydına nakit ödeme olarak (Aidatlar'da o ay ödendi görünür);
-// diğer türler: incomes koleksiyonuna.
-export async function addIncome(orgId, { cat, who, athleteId, ym, amount, date, note }) {
+// Hesaplar › "+". Kulüp nakit girişi: Aidat o ayın aidat kaydına nakit ödeme olarak (Aidatlar'da o ay ödendi görünür), diğer
+// türler incomes'a. Kulüp nakit çıkışı ve kişisel gelir/gider/borç: incomes'a (book, dir).
+export async function addIncome(orgId, { book = "club", dir = "in", cat, who, athleteId, ym, amount, date, note }) {
   const at = new Date().toISOString();
-  if (cat === "Aidat" && athleteId && ym) {
+  if (book === "club" && dir === "in" && cat === "Aidat" && athleteId && ym) {
     const entry = { amt: amount, via: "cash", date, at, by: "hesaplar", ...(note ? { desc: note } : {}) };
     return setDoc(dues(orgId, ym), { paid: { [athleteId]: arrayUnion(entry) } }, { merge: true });
   }
-  return addDoc(collection(db, "orgs", orgId, "incomes"), clean({ cat, who, amount, date, note, at }));
+  return addDoc(collection(db, "orgs", orgId, "incomes"), clean({ ...(book === "personal" ? { book } : {}), ...(dir !== "in" ? { dir } : {}), cat, who, amount, date, note, at }));
 }
 export const deleteIncome = (orgId, id) => deleteDoc(doc(db, "orgs", orgId, "incomes", id));
+// Kişisel borç ödendi / geri al
+export const setDebtPaid = (orgId, id, paid) => setDoc(doc(db, "orgs", orgId, "incomes", id), paid ? { paid: true, paidAt: new Date().toISOString() } : { paid: false, paidAt: deleteField() }, { merge: true });
 
 // Aralığın banka hareketleri (banka defterinden): Excel'in getirdikleri + günlük mailler, aynı hareket bir kez
 export const loadMovementsRange = (uid, fromYm, toYm) => loadLedger(uid, fromYm, toYm);

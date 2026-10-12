@@ -40,7 +40,7 @@ import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
 import { athleteNames, byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { cleanResults } from "@/lib/raceResults";
 import { emptyBudget } from "@/features/athletes/budget";
 import { totalTL } from "@/lib/receipts";
@@ -99,6 +99,7 @@ import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
+import { kasaOf, personalOf } from "@/lib/cashbook";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
 import { wantsSchedule } from "@/features/schedule/scheduleWords";
 import { wantsFitness, fitLocal } from "@/lib/fitness/words";
@@ -970,7 +971,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (racer && wantsRace(x)) return "race";
     if (racer && wantsAttendance(x, false)) return "attendance";
     if (racer && absentNotifyCommand(x)) return "absent"; // gelmeyenlerin velilerine haber
-    if (incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
+    if (cashCommand(x) || incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
     if (racer && (athleteCommand(x) || duesCommand(x))) return "athlete";
     if (invoiceCommand(x)) return "invoice";
     if (wantsInventory(x, false)) return "inventory";
@@ -2341,6 +2342,35 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           reply("Hatırlatma gönderilemedi.", { engine: "local" }, v);
         }
       }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
+      return true;
+    }
+    // Kasa çıkışı, kişisel gelir/gider/borç ve kasa sorusu (Hesaplar): "kulüpten Ali'ye 500 nakit verildi", "kişisel gider 300 market"
+    const kc = owner ? cashCommand(s) : null;
+    if (kc) {
+      setPhase("thinking");
+      const tl = (n) => `${money(n).replace(/,00$/, "")} TL`;
+      try {
+        if (kc.op === "ask") {
+          const r = await loadCash(profile.orgId);
+          if (kc.book === "club") {
+            const k = kasaOf(r.moves, r.meta);
+            reply(`Kasada ${k.total < 0 ? "eksi " : ""}${tl(Math.abs(k.total))} var. Giriş ${tl(k.in)}, çıkış ${tl(k.out)}.`, { engine: "local", nav: "accounts" }, viaVoice);
+          } else {
+            const b = personalOf(r.personal);
+            reply(b.debts.length ? `${b.debts.length} borcun var, toplam ${tl(b.debt)}: ${b.debts.slice(0, 3).map((x) => `${x.who || "?"} ${tl(-x.amount)}`).join(", ")}.` : `Ödenmemiş borcun yok. Kişisel gelir ${tl(b.in)}, gider ${tl(b.out)}.`, { engine: "local", nav: "accounts" }, viaVoice);
+          }
+          return true;
+        }
+        if (kc.book === "club" && !kc.who) {
+          reply(`Kasadan ${tl(kc.amount)} kime verildi? Adıyla yeniden söyler misin? (ör. kulüpten Ali'ye ${tl(kc.amount)} nakit verildi)`, { fail: true, engine: "local" }, viaVoice);
+          return true;
+        }
+        await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
+        const what = kc.book === "club" ? `nakit çıkış, ${kc.who}, ${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
+        done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, viaVoice);
+      } catch {
+        reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
       return true;
     }
     // Nakit gelir (Hesaplar): "Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet'ten 2000 lira bağış geldi"

@@ -21,7 +21,7 @@ import { shopCommand } from "@/features/shop/shopWords";
 import { wantsAttendance } from "@/features/athletes/access";
 import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
 import { localCommand } from "@/lib/commands";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
@@ -57,7 +57,7 @@ export function moreKind(s, c = {}) {
   if (cc?.hotel && onRace) return "call";
   if (cc && !cc.hotel && matchPerson(cc.who, names)) return "call";
   if (owner && racer && duesCommand(s)) return "dues";
-  if (owner && incomeCommand(s, c.today)) return "income";
+  if (owner && (cashCommand(s) || incomeCommand(s, c.today))) return "income";
   const ac = owner && racer ? athleteCommand(s) : null;
   if (ac && (ac.op === "add" || ac.explicit || matchPerson(ac.name, names) || (isPronoun(ac.name) && c.memo?.athlete))) return "athlete";
   return "";
