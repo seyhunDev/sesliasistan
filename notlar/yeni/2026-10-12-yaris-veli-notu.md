@@ -1,0 +1,10 @@
+## Nerede kaldım
+
+- Yarış sayfası sadeleşti (Seyhun: "evrakla ilgili işlemler evrak sayfasında, bilgi sekmesi gereksiz, yarışın adına tıklayınca değiştirebilmeliyim; sporcu seçilip talimattaki program, konaklama ve sadece onun bütçesi tek sayfa PDF"; onay bekliyor, telefonda denenmedi): Bilgi sekmesi kaldırıldı. Başlık kartına (yer, tarih) dokununca "Yarış bilgisi" penceresi: yurt içi/dışı, ad, başlangıç/bitiş, il/ilçe, federasyon; sayfa başlığı da değişen adla güncellenir. Evrak tarihi ve okul izni başlangıç/bitişi Evrak › "İMZA VE TARİHLER"e taşındı.
+- Yeni sekme "Veli": sporcular (Hepsi ya da tek tek) seçilir, "Bilgi notunu hazırla · N sayfa" her sporcuya tek sayfa PDF yapar: yolculuk, talimattaki program (gün gün; sığmazsa "devamı talimatta"), konaklama (evrakta yazılan otel ya da yarışın otelleri, giriş-çıkış, gece), yalnız o sporcunun ödeyeceği kalemler ve toplam; kulübün karşıladığı kalemler adıyla not edilir. PDF uygulama içinde açılır, paylaşılır. Olmayan bölüm notta yer almaz; sekmede "Notta neler var" listesi eksik bölüme götürür (`athleteSheet.js`: `sheetData`, `programDays`, `stayOf`, `sheetParts`, `buildAthleteSheet`).
+- Asistan (yarış sayfasında): "bilgi notunu hazırla", "Ali'nin veli notunu hazırla", "herkesin bilgi notunu çıkar" (`raceHereCommand` op `sheet`, olay `sa-race-sheet`). Testleri `test:yaris` › "Veli bilgi notu", `test:asistan` › yarış sayfası komutları. Kural değişikliği yok. Örnek: `/mnt/project-files/yaris-tasarim/yaris-veli-notu.png`.
+
+## Sıradaki işler
+
+- Telefonda dene: başlık kartına dokunup yarışın adını değiştir; Veli sekmesinde bir sporcu seç, PDF'i aç ve WhatsApp'tan paylaş. Asistana yarış sayfasında "Ali'nin bilgi notunu hazırla" de.
+- İstenirse: bilgi notunu velilere tek tek WhatsApp/uygulama bildirimiyle gönderme, nota iletişim (yarış sekreteri) ve getirilecekler listesi.

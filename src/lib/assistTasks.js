@@ -64,7 +64,7 @@ export const TASKS = [
   { id: "invoice", group: "Kulüp", name: "Fatura ödendi işaretleme", say: "Turkcell faturası ödendi", who: "ana", by: "yerel" },
   { id: "athlete", group: "Kulüp", name: "Sporcu ekleme, arşive alma, silme (silme onayla)", say: "yeni sporcu ekle: Ali Kaya, 2014 doğumlu; Ali Kaya'yı arşive al", who: "ana", by: "yerel", confirm: true },
   { id: "athleteOpen", group: "Kulüp", name: "Sporcu kartını açma", say: "Ali Kaya'nın sporcu kartını aç", who: "sporcu", by: "yerel" },
-  { id: "raceHere", group: "Kulüp", name: "Açık yarışta: sporcu çıkarma, sonuç, ücret ödendi, planlara ekleme, yarışı silme (onayla)", say: "Ali 3. oldu; Ali'yi yarıştan çıkar; yarışı sil", who: "sporcu", by: "yerel", confirm: true },
+  { id: "raceHere", group: "Kulüp", name: "Açık yarışta: sporcu çıkarma, sonuç, ödeme, bilgi notu, plana ekleme, silme (onayla)", say: "Ali 3. oldu; bilgi notunu hazırla; yarışı sil", who: "sporcu", by: "yerel", confirm: true },
   { id: "results", group: "Kulüp", name: "Sporcunun yarış sonuçları", say: "Ali'nin sonuçları; Foça yarışında Ali kaçıncı oldu", who: "ana", by: "yerel" },
   { id: "hotel", group: "Kulüp", name: "Açık yarışa otel ekleme", say: "otel ekle: Foça Palas, 0232 812 34 56", who: "sporcu", by: "yerel" },
   { id: "absent", group: "Kulüp", name: "Gelmeyenlerin velilerine haber (onayla)", say: "gelmeyenlerin velilerine haber ver", who: "ana", by: "yerel", confirm: true },

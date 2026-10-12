@@ -47,6 +47,7 @@ function Race({ orgId, uid, by, mail, coach }) {
   const user = useDikiliUser();
   const [race, setRace] = useState(null);
   const [missingRace, setMissingRace] = useState(false);
+  const [head, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
   useEffect(() => {
     loadRaces(orgId).then(
       (list) => {
@@ -62,6 +63,7 @@ function Race({ orgId, uid, by, mail, coach }) {
   // Yeni yarış ilk kaydında adresi kendi kimliğine döner (geri/yenile doğru yarışı açsın)
   const onSave = useCallback(
     async (r, cur) => {
+      setHead({ name: r.name, startDate: r.startDate, endDate: r.endDate });
       const nid = await saveRace(orgId, uid, { ...r, id: cur });
       if (!cur) window.history.replaceState(null, "", `/athletes/races/${nid}`);
       return nid;
@@ -95,7 +97,7 @@ function Race({ orgId, uid, by, mail, coach }) {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={race?.name || (id === "new" ? "Yeni yarış" : "Yarış")} sub={race ? rangeText(race.startDate, race.endDate) || leftText(race) : ""} back="/athletes/races" />
+      <PageHeader title={(head || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")} sub={race ? rangeText((head || race).startDate, (head || race).endDate) || leftText({ ...race, ...head }) : ""} back="/athletes/races" />
       {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
       {missingRace ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p>
