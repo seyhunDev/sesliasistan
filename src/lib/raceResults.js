@@ -58,7 +58,12 @@ export function historyOf(races, athleteId) {
 // Instagram için: sporculara sonuç eklenir, dereceliler önce
 export function withResults(list, ids, res) {
   return list
-    .map((a, i) => ({ ...a, res: placeText(res, ids[i]), _p: res?.rows?.[ids[i]]?.place || 999 }))
+    .map((a, i) => {
+      const x = res?.rows?.[ids[i]];
+      // r: sıralar (Instagram sonuç açıklaması kategori kategori yazar)
+      const r = x?.place ? { cls: x.cls || "", cat: x.cat || "", place: x.place, n: x.n || "", cp: x.cp || "", cn: x.cn || "", gp: x.gp || "", gn: x.gn || "" } : null;
+      return { ...a, res: placeText(res, ids[i]), ...(r ? { r } : {}), _p: x?.place || 999 };
+    })
     .sort((a, b) => a._p - b._p)
     .map(({ _p, ...a }) => a);
 }

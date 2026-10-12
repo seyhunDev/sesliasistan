@@ -174,9 +174,21 @@ export function cleanTags(v) {
   return out;
 }
 
+// Sporcunun yarıştaki sırası (sonuç belgesinden): { cls, cat, place, n, cp, cn, gp, gn }; sırası yoksa null
+const num = (v, max = 1000) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n > 0 && n <= max ? n : 0;
+};
+function cleanPlace(x) {
+  if (!x || typeof x !== "object" || !num(x.place)) return null;
+  const out = { cls: S(x.cls, 30), cat: ["Junior", "Bambino"].includes(x.cat) ? x.cat : "", place: num(x.place) };
+  for (const k of ["n", "cp", "cn", "gp", "gn"]) if (num(x[k])) out[k] = num(x[k]);
+  if (!out.cat) (delete out.cp, delete out.cn);
+  return out;
+}
 const cleanAthletes = (a) =>
   (Array.isArray(a) ? a : [])
-    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30), ...(S(x?.res, 30) ? { res: S(x.res, 30) } : {}) }))
+    .map((x) => ({ name: S(x?.name, 60), cls: S(x?.cls, 30), ...(S(x?.res, 30) ? { res: S(x.res, 30) } : {}), ...(cleanPlace(x?.r) ? { r: cleanPlace(x.r) } : {}) }))
     .filter((x) => x.name)
     .slice(0, 20);
 
@@ -189,6 +201,7 @@ export function cleanRace(r) {
     dates: S(r.dates, 60),
     count: Math.max(athletes.length, Math.min(200, Math.round(Number(r.count) || 0))),
     classes: S(r.classes, 80),
+    ...(S(r.host, 100) ? { host: S(r.host, 100) } : {}),
     ...(athletes.length ? { athletes } : {}),
   };
 }
@@ -231,6 +244,8 @@ export function cleanPost(p = {}) {
     info: S(p.info, 60),
     classes: S(p.classes, 100),
     meta: p.meta !== false,
+    // Yalnız fotoğraf: afişte hiç yazı yok, anlatım açıklamada (Yarış sonucu bununla açılır)
+    photoOnly: !!p.photoOnly,
     style: p.style === "modern" ? "modern" : styleOf(p.style)[0],
     // "Yarış duyurusu" etiketi artık "Yarış" (eski kayıtlar da)
     tag: S(p.tag, 24),
@@ -281,6 +296,7 @@ export const raceBrief = (r, athletes) =>
     dates: dateRange(r?.startDate, r?.endDate),
     count: r?.athleteIds?.length || 0,
     classes: (r?.notice?.classes || []).filter((c) => typeof c === "string").join(", "),
+    host: r?.notice?.organizer || r?.host || "",
   });
 
 // Türkçe ilgi eki (ünlü uyumu): Foça → Foça'nın, Çeşme → Çeşme'nin, Bodrum → Bodrum'un, Göcek → Göcek'in
@@ -380,6 +396,8 @@ export function reauto(prev, next) {
   const b = autoOf(next);
   const out = { ...next };
   for (const k of Object.keys(b)) if (!prev[k] || prev[k] === a[k]) out[k] = b[k];
+  // Tür değişince: Yarış sonucu yalnız fotoğrafla açılır, diğer türler yazılı afişle
+  if (prev.kind !== next.kind) out.photoOnly = next.kind === "sonuc";
   return out;
 }
 
@@ -387,7 +405,75 @@ export function reauto(prev, next) {
 export function postFromRace(r, today) {
   const kind = r?.endDate || r?.startDate ? ((r.endDate || r.startDate) < today ? "sonuc" : "duyuru") : "duyuru";
   const race = raceBrief(r, r?.athletes);
-  return cleanPost({ kind, race, ...autoOf({ kind, race }) });
+  return cleanPost({ kind, race, photoOnly: kind === "sonuc", ...autoOf({ kind, race }) });
+}
+
+// ---- Yarış sonucu açıklaması (Seyhun'un kalıbı; yapay zekasız, her seferinde aynı biçim) ----
+// TEBRİKLER METE! 🏆
+// 11–13 Eylül tarihlerinde, Teos Yat ve Yelken Kulübü ev sahipliğinde düzenlenen 9 Eylül Kurtuluş Kupası Yelken Yarışları’nda
+// Optimist, Optimist Junior, ILCA ve RS Feva sınıflarında sporcular mücadele etti.
+// Kulübümüz sporcusu Mete Ok, ILCA 4 ve ILCA 4 Junior kategorilerinde 1. olarak büyük bir başarıya imza attı. 🥇
+// Tebrikler Mete! Başarılarının devamını diliyoruz. ⛵💙
+const upTr = (s) => String(s || "").toLocaleUpperCase("tr-TR");
+const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
+// Bulunma eki: Yarışları’nda, Kupası’nda, Regatta’da, Trofe’de, Cup’ta
+export function locative(name) {
+  const w = String(name || "").trim();
+  const low = w.toLocaleLowerCase("tr-TR");
+  const v = low.match(/[aıoueiöü](?=[^aıoueiöü]*$)/)?.[0];
+  if (!v) return w;
+  const back = /[aıou]/.test(v);
+  const d = back ? "da" : "de";
+  if (/(s[ıiuü]|l[ae]r[ıi])$/.test(low)) return `${w}’n${d}`;
+  if (/[fstkçşhp]$/.test(low)) return `${w}’${back ? "ta" : "te"}`;
+  return `${w}’${d}`;
+}
+// "11-13 Eylül 2026" → "11–13 Eylül" (aynı yıl içindeyse yıl yazılmaz)
+const shortDates = (d) => {
+  const s = String(d || "").trim();
+  const years = s.match(/\b(19|20)\d{2}\b/g) || [];
+  return (years.length === 1 ? s.replace(/\s*\b(19|20)\d{2}\b\s*$/, "") : s).replace(/(\d)-(\d)/g, "$1–$2").replace(/ - |-(?=\d+ \p{L})/gu, "–");
+};
+const MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
+// Bir sporcunun cümlesi: aynı sıradaki kategoriler birleşir ("ILCA 4 ve ILCA 4 Junior kategorilerinde 1.")
+export function resultSentence(a) {
+  const r = a?.r;
+  const name = a?.name || "";
+  const cls = r?.cls || a?.cls || "";
+  if (!r?.place) return `Kulübümüz sporcusu ${name}${cls ? `, ${cls} sınıfında` : ""} kulübümüzü başarıyla temsil etti. 👏`;
+  const parts = [{ l: cls, p: r.place }];
+  if (r.cp && r.cat) parts.push({ l: [cls, r.cat].filter(Boolean).join(" "), p: r.cp });
+  if (r.gp) parts.push({ l: [cls, "Kızlar"].filter(Boolean).join(" "), p: r.gp });
+  const groups = [];
+  for (const x of parts.filter((x) => x.l)) {
+    const g = groups.find((g) => g.p === x.p);
+    if (g) g.l.push(x.l);
+    else groups.push({ p: x.p, l: [x.l] });
+  }
+  const where = groups.length
+    ? groups.map((g) => `${andTr(g.l)} ${g.l.length > 1 ? "kategorilerinde" : groups.length === 1 && g.l[0] === cls ? "sınıfında" : "kategorisinde"} ${g.p}.`).join(", ")
+    : `${r.place}.`;
+  const best = Math.min(...parts.map((x) => x.p));
+  return best <= 3
+    ? `Kulübümüz sporcusu ${name}, ${where} olarak büyük bir başarıya imza attı. ${MEDAL[best]}`
+    : `Kulübümüz sporcusu ${name}, ${where} olarak yarışı tamamladı. 👏`;
+}
+export function resultCaption(race) {
+  if (!race) return "";
+  const list = race.athletes || [];
+  const names = list.map((a) => firstName(a.name)).filter(Boolean);
+  const many = names.length > 2 || !names.length;
+  const title = many ? "TEBRİKLER SPORCULARIMIZ! 🏆" : `TEBRİKLER ${upTr(andTr(names))}! 🏆`;
+  const dates = shortDates(race.dates);
+  const single = dates && !/[–-]/.test(dates);
+  const cls = race.classes ? andTr(race.classes.split(",").map((c) => c.trim()).filter(Boolean)) : "";
+  const intro =
+    [dates ? `${dates} ${single ? "tarihinde" : "tarihlerinde"}${race.host ? "," : ""}` : "", race.host ? `${race.host} ev sahipliğinde` : "", `${dates || race.host ? "düzenlenen" : "Düzenlenen"} ${locative(race.name)}`]
+      .filter(Boolean)
+      .join(" ") + (cls ? ` ${cls} sınıflarında sporcular mücadele etti.` : " sporcular mücadele etti.");
+  const lines = list.map(resultSentence);
+  const end = many ? "Tüm sporcularımızı tebrik ediyor, başarılarının devamını diliyoruz. ⛵💙" : `Tebrikler ${andTr(names)}! Başarılarının devamını diliyoruz. ⛵💙`;
+  return [title, intro, ...lines, end].join("\n\n");
 }
 
 // Yarış kaydı + sporcu listesi (kulüp projesi) → gönderiye giden yarış: seçili sporcuların yalnız adı, sınıfı ve sonucu

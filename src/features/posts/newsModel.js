@@ -39,7 +39,19 @@ export function newsBody(raw = "") {
 }
 
 // Gönderiden ilk taslak: başlık görseldeki başlık (yoksa açıklamanın ilk cümlesi), gövde açıklama
+// Yalnız fotoğraflı (sonuç) gönderide başlık açıklamanın ilk satırıdır ("TEBRİKLER METE VE ALİ!" → "Tebrikler Mete ve Ali!") ve gövdeden çıkar
+const sentenceCase = (s) =>
+  s
+    .toLocaleLowerCase("tr-TR")
+    .split(" ")
+    .map((w) => (w === "ve" ? w : w.charAt(0).toLocaleUpperCase("tr-TR") + w.slice(1)))
+    .join(" ");
 export function newsDraft(post = {}, today = "") {
+  if (post.photoOnly && post.caption) {
+    const [head, ...rest] = String(post.caption).replace(/\r/g, "").split(/\n\s*\n/);
+    const title = newsTitle(sentenceCase(newsTitle(head)));
+    if (title && rest.length) return { title, body: newsBody(rest.join("\n\n")), date: today, published: true };
+  }
   const body = newsBody(post.caption || "");
   const first = (body.match(/^[^.!?\n]+/) || [""])[0];
   return { title: newsTitle(post.headline || post.topic || first || "Kulüpten haber"), body, date: today, published: true };

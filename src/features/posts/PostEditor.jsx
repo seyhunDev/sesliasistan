@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Seg, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
-import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
+import { DESIGNS, MODERN_HINT, designOf, modernOf, FORMATS, KINDS, dayIn, dayOf, formatOf, nextDays, POST_ASK_KEY, SET_LABELS, STYLES, THEMES, aspectOf, askBeyondLook, autoOf, changedText, cleanPost, designFrom, cleanTags, fullCaption, kindOf, kindTheme, classList, raceBrief, raceMeta, raceWithAthletes, reauto, resultCaption, setOf, sizeAsk, themeOf, wantsPostImage, withInfo } from "./postModel";
 import { modernPal } from "./postModern";
 import { afisTag, drawPost, loadImg, postFile, thumbOf } from "./postImage";
 import { askCaption, askImage, imageUsage, setPostHandler } from "./posts";
@@ -166,7 +166,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   }, []);
 
   // Önizlemeyi hemen çiz (ayar değişince anında görünsün), paylaşılacak dosyayı kısa gecikmeyle hazırla
-  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
+  const look = JSON.stringify([post.format, post.theme, post.style, post.pos, post.focus, post.fx, post.zoom, post.shade, post.headline, post.noHead, post.noBrand, post.photoOnly, post.headSize, post.subSize, post.sub, post.people, post.wish, post.info, post.classes, post.tag, post.meta, post.race]);
   useEffect(() => {
     let live = true;
     file.current = null;
@@ -211,6 +211,14 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
   // Açıklama + görsel yazıları (yapay zeka). ask: ana asistana söylenen değişiklik; yoksa ilk yazım.
   const write = async (base, ask = "") => {
+    // Yarış sonucu (yalnız fotoğraf): açıklama Seyhun'un kalıbıyla yerelde yazılır, yapay zekaya gitmez
+    if (base.kind === "sonuc" && base.photoOnly && base.race && !ask) {
+      const caption = resultCaption(base.race);
+      autoCap.current = caption;
+      setP((x) => ({ ...x, caption }));
+      setTags("");
+      return { caption };
+    }
     setAiErr("");
     setAiBusy(true);
     try {
@@ -484,6 +492,17 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
     if (!post.caption && step !== "kind") write(next).catch(() => {});
   };
   const dropRace = () => setP((x) => reauto(x, { ...x, race: null }));
+  // Sonuç açıklaması yarış ya da sporcular değişince yenilenir (elle değiştirilmediyse)
+  const resultKey = post.kind === "sonuc" && post.photoOnly && post.race ? JSON.stringify(post.race) : "";
+  useEffect(() => {
+    if (!resultKey) return;
+    setP((x) => {
+      if (x.caption && x.caption !== autoCap.current) return x;
+      const caption = resultCaption(x.race);
+      autoCap.current = caption;
+      return caption === x.caption ? x : { ...x, caption };
+    });
+  }, [resultKey]);
   const dropAthlete = (i) =>
     setP((x) => {
       const athletes = x.race.athletes.filter((_, k) => k !== i);
@@ -789,7 +808,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
                 {slider("zoom", "Büyüt", 100, 250, 5, "%")}
                 {slider("fx", "Sağa-sola kaydır", 0, 100)}
                 {slider("focus", "Yukarı-aşağı kaydır", 0, 100)}
-                {slider("shade", "Gölge (yazı okunsun)", 0, 100)}
+                {!post.photoOnly && slider("shade", "Gölge (yazı okunsun)", 0, 100)}
                 <div className="flex items-center gap-3">
                   <p className="min-w-0 flex-1 text-[0.75rem] text-mut">Önizlemede parmağınla sürükleyerek de yerleştirebilirsin.</p>
                   <button type="button" onClick={() => setP((x) => ({ ...x, zoom: 100, fx: 50, focus: 50 }))} className="h-8 shrink-0 rounded-full px-3 text-[0.75rem] font-semibold text-acc ring-1 ring-line active:scale-95">
@@ -798,7 +817,7 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
                 </div>
               </>
             ) : (
-              <p className="text-[0.8125rem] text-mut">Fotoğraf eklemezsen sade zemin kullanılır.</p>
+              <p className="text-[0.8125rem] text-mut">{post.photoOnly ? "Sonuç gönderisinde görselde yalnız fotoğraf olur; bir fotoğraf seç." : "Fotoğraf eklemezsen sade zemin kullanılır."}</p>
             )}
             {usage && (
               <p className={`text-center text-[0.6875rem] leading-snug tabular-nums ${usage.left === 0 ? "text-rec" : "text-mut"}`}>
@@ -811,8 +830,16 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
           </div>
         )}
 
-        {tool === "text" && (
+        {tool === "text" && post.photoOnly && (
           <div className={`${card} space-y-3 px-4 py-4`}>
+            {toggle("Yalnız fotoğraf (görselde yazı yok)", true, (v) => put("photoOnly", v))}
+            <p className="text-[0.8125rem] leading-snug text-mut">Görselde yalnız fotoğraf var. Yarışın adı, sporcular ve dereceler açıklamada; Paylaş'tan görüp değiştirebilirsin.</p>
+          </div>
+        )}
+
+        {tool === "text" && !post.photoOnly && (
+          <div className={`${card} space-y-3 px-4 py-4`}>
+            {toggle("Yalnız fotoğraf (görselde yazı yok)", false, (v) => put("photoOnly", v))}
             <div>
               <span className="flex items-center justify-between gap-3 text-[0.8125rem] font-medium text-mut">
                 Başlık
