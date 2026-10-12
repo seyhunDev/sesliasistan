@@ -13,6 +13,7 @@ import { tl, totals } from "./budget";
 import { askBudget, mergeBudget, whoFor } from "./raceBudgetAi";
 import { addRacePlan, freshRace, loadRaces, saveRace, shiftDay } from "./races";
 import { followAsk, wantsRaceText } from "./raceNav";
+import { raceFromArgs } from "@/lib/actRun";
 
 // Yarış kaydı isteği mi? Saf kural raceNav.js'te (testlenir); burada kayıtlı yarış adları da verilir
 export const wantsRace = (text, known = raceNames()) => wantsRaceText(text, known);
@@ -23,27 +24,33 @@ const told = (r) => window.dispatchEvent(new CustomEvent("sa-race-saved", { deta
 // onStep(label): panelde görünen adım. current: açık yarış sayfasının kimliği (ad söylenmezse o yarış)
 // follow: yeni yarıştan sonra kaçıncı kez eksik soruluyor (tarih, sporcular); 2'den sonra sorulmaz
 // noAsk: görev listesinde sıradaki iş varken eksikler sorulmaz (liste durmasın; tarih/sporcu sonra eklenir)
-export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "", follow = 0, noAsk = false }, onStep = () => {}) {
+// pre: görev listesindeki numaralı iş { act 1|2, args }; alanlar yetiyorsa yapay zekaya ikinci kez sorulmaz (actRun.js)
+export async function runRaceCommand(text, { idx, orgId, uid, saveDrafts, by, current = "", follow = 0, noAsk = false, pre = null }, onStep = () => {}) {
   onStep("Sporcular ve yarışlar yükleniyor");
   const [data, races] = await Promise.all([loadAthletes(), loadRaces(orgId)]);
   const classes = byId(data.classes);
   const list = data.athletes.filter(isActive);
-  onStep("Söylediklerin anlaşılıyor");
-  const res = await authFetch("/api/race", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      text,
-      today: todayStr(),
-      athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
-      races: races.map((r) => ({ id: r.id, name: r.name, startDate: r.startDate })),
-      current: races.some((r) => r.id === current) ? current : "",
-      known: raceNames(),
-      notes: idx?.notes || [],
-    }),
-  });
-  const p = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(p.error || "Yarış anlaşılamadı");
+  const direct = pre ? raceFromArgs(pre.act, pre.args, { athletes: list, races }) : null;
+  const p = direct || (await askRace());
+  async function askRace() {
+    onStep("Söylediklerin anlaşılıyor");
+    const res = await authFetch("/api/race", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        text,
+        today: todayStr(),
+        athletes: list.map((a) => ({ id: a.id, name: a.studentName, cls: classes[a.currentClassId] || "", aliases: aliasesOf(idx, a.id) })),
+        races: races.map((r) => ({ id: r.id, name: r.name, startDate: r.startDate })),
+        current: races.some((r) => r.id === current) ? current : "",
+        known: raceNames(),
+        notes: idx?.notes || [],
+      }),
+    });
+    const got = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(got.error || "Yarış anlaşılamadı");
+    return got;
+  }
   const names = Object.fromEntries(data.athletes.map((a) => [a.id, a.studentName]));
   const first = (ids) => ids.map((id) => names[id]?.split(" ")[0] || "?").join(", ");
   const missed = p.unknown?.length ? ` ${p.unknown.join(", ")} adını sporcularda bulamadım.` : "";

@@ -1,5 +1,6 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
 import { parseAttendance, attSummary, applyAttendance } from "@/features/athletes/assistAttendance";
+import { takeAct } from "../beyin/gorevListesi";
 import { closeNames } from "@/lib/names";
 import { soon } from "@/lib/soon";
 import { absentNotifyCommand } from "@/lib/assistMore";
@@ -15,7 +16,7 @@ export async function runAttendance(ctx, s, viaVoice, rest = null) {
   setPhase("thinking");
   setSteps([]);
   try {
-    const r = await parseAttendance(s, nameIdx, stepTo);
+    const r = await parseAttendance(s, nameIdx, stepTo, takeAct(ctx, [3])?.args);
     if (id !== runId.current) return;
     const n = Object.keys(r.changes).length;
     if (!n) {

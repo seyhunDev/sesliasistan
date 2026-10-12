@@ -2,6 +2,7 @@
 import { todayStr } from "@/lib/utils/format";
 import { rankRaces, sure, findRace, nearest, raceRef } from "@/features/athletes/raceNav";
 import { findRaceAi, runRaceCommand } from "@/features/athletes/assistRace";
+import { takeAct } from "../beyin/gorevListesi";
 import { saveRace, loadRaces } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
 import { matchPerson, sameNamed, plain } from "@/lib/names";
@@ -89,7 +90,7 @@ export async function runRace(ctx, s, viaVoice, follow = null) {
   setSteps([]);
   try {
     const orgId = profile?.orgId || myUid;
-    const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0, noAsk: planOn.current && chain.current.length > 0 }, stepTo);
+    const r = await runRaceCommand(s, { idx: nameIdx, orgId, uid: myUid, saveDrafts, by, current: follow?.id || curRace || chainRace.current, follow: follow ? follow.n + 1 : 0, noAsk: planOn.current && chain.current.length > 0, pre: follow ? null : takeAct(ctx, [1, 2]) }, stepTo);
     if (id !== runId.current) return;
     // Yarış sayfasında söylenen cümle yarışla ilgili çıkmadıysa her zamanki yoldan sorulur
     if (r.none) {

@@ -518,3 +518,28 @@ group("Sohbetteki yarış")([
     ["cleanPlan (0)", { desc: "numara 0: yapay zekanın cümlesi kalır", fn: () => cleanPlan({ tasks: [{ act: 0, kind: "other", say: "yarın 10'da toplantı ekle" }] })[0].say, ok: (r) => r === "yarın 10'da toplantı ekle" }],
   ]);
 }
+
+// Numaralı işin alanlarından doğrudan iş (lib/actRun.js): yoklama ve yarış ikinci kez yapay zekaya sormaz; emin değilse null (eski yol)
+{
+  const { attendanceFromArgs, raceFromArgs, dayFrom } = await import("@/lib/actRun");
+  const A = (id, name, att) => ({ id, studentName: name, status: "active", ...(att ? { att } : {}) });
+  const ath = [A("a1", "Ali Kaya", { 2026: { "10-12": "absent" } }), A("a2", "Ayşe Şahin"), A("a3", "Emre Yıldız"), A("a4", "Mehmet Öz"), A("a5", "Ali Demir")];
+  const races = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-20" }, { id: "r2", name: "Atatürk Kupası", startDate: "2026-11-07" }];
+  const T = "2026-10-12";
+  const att = (args, o = {}) => attendanceFromArgs(args, ath, { today: T, ...o });
+  group("Numaralı iş: doğrudan")([
+    ["gün", { desc: "bugün / dün / tarih / ekrandaki gün", fn: () => [dayFrom("bugün", T), dayFrom("dün", T), dayFrom("2026-10-01", T), dayFrom("", T, "2026-10-05"), dayFrom("geçen salı", T)].join(" "), ok: (r) => r === "2026-10-12 2026-10-11 2026-10-01 2026-10-05 " }],
+    ["yoklama", { desc: "adlar sporculara eşlenir", fn: () => JSON.stringify(att({ day: "bugün", came: ["Ayşe", "Emre Yıldız"], absent: ["Mehmet"] }).changes), ok: (r) => r === '{"a2":"present","a3":"present","a4":"absent"}' }],
+    ["yoklama: önceki durum", { desc: "geri alma için prev", fn: () => JSON.stringify(att({ came: ["Ali Kaya"] }).prev), ok: (r) => r === '{"a1":"absent"}' }],
+    ["yoklama: kalanlar", { desc: "others gelmedi → söylenmeyenler gelmedi", fn: () => Object.values(att({ came: ["Ayşe"], others: "gelmedi" }).changes).join(","), ok: (r) => r === "present,absent,absent,absent,absent" }],
+    ["yoklama: iki Ali", { desc: "belirsiz ad → eski yol", fn: () => att({ came: ["Ali"] }), ok: (r) => r === null }],
+    ["yoklama: bilinmeyen", { desc: "bulunamayan ad → eski yol", fn: () => att({ came: ["İlay"] }), ok: (r) => r === null }],
+    ["yoklama: okunmayan gün", { desc: "gün okunamazsa eski yol", fn: () => att({ day: "geçen salı", came: ["Ayşe"] }), ok: (r) => r === null }],
+    ["yarış oluştur", { desc: "alanlar doğrudan kayda", fn: () => JSON.stringify(raceFromArgs(1, { name: "Cumhuriyet Kupası", start: "2026-10-29", end: "2026-10-30", district: "Dikili", athletes: ["Ayşe", "Mehmet"] }, { athletes: ath, races })), ok: (r) => r.includes('"op":"create"') && r.includes('"startDate":"2026-10-29"') && r.includes('"endDate":"2026-10-30"') && r.includes('"athleteIds":["a2","a4"]') }],
+    ["yarış oluştur: tarihsiz", { desc: "tarih yoksa boş", fn: () => raceFromArgs(1, { name: "Cumhuriyet Kupası" }, { athletes: ath, races }).startDate, ok: (r) => r === "" }],
+    ["yarış oluştur: aynı ad", { desc: "aynı adlı yarış varsa eski yol", fn: () => raceFromArgs(1, { name: "Foça kupası" }, { athletes: ath, races }), ok: (r) => r === null }],
+    ["yarış oluştur: bozuk tarih", { desc: "okunmayan tarih eski yol", fn: () => raceFromArgs(1, { name: "X Kupası", start: "29 Ekim" }, { athletes: ath, races }), ok: (r) => r === null }],
+    ["yarışa ekle", { desc: "tek yarış uyar", fn: () => JSON.stringify(raceFromArgs(2, { race: "Foça yarışı", athletes: ["Emre"] }, { athletes: ath, races })), ok: (r) => r.includes('"op":"update"') && r.includes('"raceId":"r1"') && r.includes('"athleteIds":["a3"]') }],
+    ["yarışa ekle: belirsiz", { desc: "iki yarış uyarsa eski yol", fn: () => raceFromArgs(2, { race: "Kupası", athletes: ["Emre"] }, { athletes: ath, races }), ok: (r) => r === null }],
+  ]);
+}
