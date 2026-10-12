@@ -57,6 +57,8 @@ export function cashMoves(months = {}, roster = []) {
         const [y, m, d] = day.split("-");
         out.push({
           id: `cash-${ym}-${id}-${i}`,
+          key: `d:${ym}:${id}:${p.at || i}`, // kasa anahtarı (cashbook.js)
+          at: p.at || "",
           cash: true,
           amount: amt,
           currency: "TL",
@@ -79,27 +81,37 @@ export function cashMoves(months = {}, roster = []) {
 
 // Hesaplar › "+ Gelir ekle" türleri (Diğer seçilince tür elle yazılır). Aidat seçilirse ödeme aidat kaydına yazılır.
 export const INCOME_CATS = ["Aidat", "Bağış", "Yetişkin eğitimi", "Kano eğitimi", "SUP eğitimi", "Amatör denizcilik eğitimi", "Diğer"];
-// Elle girilen gelirler (orgs/{orgId}/incomes/{id} = { who, amount, cat, note, date "YYYY-MM-DD", at }) → hareket biçimi
+// Elle girilen nakitler (orgs/{orgId}/incomes/{id} = { book, dir, who, amount, cat, note, date "YYYY-MM-DD", at, paid }) → hareket
+// biçimi. dir "out" (nakit çıkış, gider) eksi tutar; "debt" kişisel borç (eksi). Ayrıntı: cashbook.js.
+const LABEL = { club: { in: "Nakit giriş", out: "Nakit çıkış" }, personal: { in: "Kişisel gelir", out: "Kişisel gider", debt: "Borcum" } };
 export function incomeMoves(docs = []) {
   return docs
     .filter((x) => Number(x?.amount) > 0)
     .map((x) => {
       const day = /^\d{4}-\d{2}-\d{2}/.test(x.date || "") ? x.date.slice(0, 10) : String(x.at || "").slice(0, 10);
       const [y, m, d] = day.split("-");
+      const book = x.book === "personal" ? "personal" : "club";
+      const dir = x.dir === "out" || (x.dir === "debt" && book === "personal") ? x.dir : "in";
+      const amt = Number(x.amount);
       return {
         id: `inc-${x.id}`,
+        key: `i:${x.id}`,
         incomeId: x.id,
         manual: true,
-        cash: true,
-        amount: Number(x.amount),
+        cash: book === "club",
+        book,
+        dir,
+        at: x.at || "",
+        ...(x.paid ? { paid: true, paidAt: x.paidAt || "" } : {}),
+        amount: dir === "in" ? amt : -amt,
         currency: "TL",
-        account: "cash",
-        accountLabel: "Nakit",
-        kind: "Nakit",
+        account: book === "club" ? "cash" : "personal",
+        accountLabel: book === "club" ? "Nakit" : "Kişisel",
+        kind: book === "club" ? "Nakit" : "Kişisel",
         cat: x.cat || "Diğer",
         who: x.who || "",
         note: x.note ? `${x.cat || "Gelir"} · ${x.note}` : x.cat || "Gelir",
-        desc: "Nakit giriş",
+        desc: LABEL[book][dir],
         date: d ? `${d}.${m}.${y}` : "",
         ts: Date.parse(`${day}T09:00:00Z`) || 0,
       };

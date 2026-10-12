@@ -40,7 +40,7 @@ import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
 import { athleteNames, byId, createAthlete, deleteAthlete, isActive, loadAthletes, setArchived } from "@/features/athletes/data";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, monthYm, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
 import { cleanResults } from "@/lib/raceResults";
 import { emptyBudget } from "@/features/athletes/budget";
 import { totalTL } from "@/lib/receipts";
@@ -99,6 +99,7 @@ import { isDrop as invDrop, wantsInventory } from "@/features/inventory/invWords
 import { amountText, invoiceCommand, pickInvoice } from "@/lib/invoices";
 import { deleteInvoice, ensureTask, loadInvoices, setPaid as setInvoicePaid } from "@/features/invoices/invoiceData";
 import { payeeAnswer, payeeMoves, payeeOf } from "@/lib/payee";
+import { debtMoves, kasaOf, personalOf } from "@/lib/cashbook";
 import { DEBT_KINDS, cleanDebt, debtAnswer, debtCommand, debtsOf, leftOf, payDebt, tl } from "@/lib/debts";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { addIncome, loadCash, loadDuesRange, loadMovementsRange, saveFree, saveStart } from "@/features/dues/duesData";
@@ -973,7 +974,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     if (racer && wantsAttendance(x, false)) return "attendance";
     if (racer && absentNotifyCommand(x)) return "absent"; // gelmeyenlerin velilerine haber
     if (owner && debtCommand(x)) return "debt";
-    if (incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
+    if (cashCommand(x) || incomeCommand(x, todayStr()) || /(aidat\p{L}*|ödemesini) (yaptı|verdi|ödedi)|nakit (verdi|ödedi|getirdi)/iu.test(x)) return "income";
     if (racer && (athleteCommand(x) || duesCommand(x))) return "athlete";
     if (invoiceCommand(x)) return "invoice";
     if (wantsInventory(x, false)) return "inventory";
@@ -2349,6 +2350,36 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
       return true;
     }
+    // Kasa çıkışı, kişisel gelir/gider/borç ve kasa sorusu (Hesaplar): "kulüpten Ali'ye 500 nakit verildi", "kişisel gider 300 market"
+    const kc = owner ? cashCommand(s) : null;
+    if (kc) {
+      setPhase("thinking");
+      const tl = (n) => `${money(n).replace(/,00$/, "")} TL`;
+      try {
+        if (kc.op === "ask") {
+          const [r, lent] = await Promise.all([loadCash(profile.orgId), loadDebts(profile.orgId).catch(() => [])]);
+          if (kc.book === "club") {
+            const k = kasaOf([...r.moves, ...debtMoves(lent)], r.meta);
+            reply(`Kasada ${k.total < 0 ? "eksi " : ""}${tl(Math.abs(k.total))} var. Giriş ${tl(k.in)}, çıkış ${tl(k.out)}.`, { engine: "local", nav: "accounts" }, viaVoice);
+          } else {
+            const b = personalOf(r.personal);
+            const owed = lent.filter((d) => d.kind === "personal" && leftOf(d) > 0).reduce((n, d) => n + leftOf(d), 0);
+            reply(`${b.debts.length ? `${b.debts.length} borcun var, toplam ${tl(b.debt)}: ${b.debts.slice(0, 3).map((x) => `${x.who || "?"} ${tl(-x.amount)}`).join(", ")}.` : "Ödenmemiş borcun yok."}${owed > 0 ? ` Sana borçlu olanlardan ${tl(owed)} geri gelecek.` : ""}`, { engine: "local", nav: "accounts" }, viaVoice);
+          }
+          return true;
+        }
+        if (kc.book === "club" && !kc.who) {
+          reply(`Kasadan ${tl(kc.amount)} kime verildi? Adıyla yeniden söyler misin? (ör. kulüpten Ali'ye ${tl(kc.amount)} nakit verildi)`, { fail: true, engine: "local" }, viaVoice);
+          return true;
+        }
+        await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
+        const what = kc.book === "club" ? `nakit çıkış, ${kc.who}, ${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
+        done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, viaVoice);
+      } catch {
+        reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
+      return true;
+    }
     // Nakit gelir (Hesaplar): "Ali Kaya'nın ekim aidatı nakit 1500 alındı", "Ahmet'ten 2000 lira bağış geldi"
     const ic = owner ? incomeCommand(s, todayStr()) : null;
     if (ic) {
@@ -2480,8 +2511,8 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       reply("Borçları okuyamadım.", { fail: true, engine: "local" }, viaVoice);
       return;
     }
-    if (dq) return reply(debtAnswer(items, dq.who), { engine: "local", nav: "debts" }, viaVoice);
-    const nav = { engine: "local", nav: "debts" };
+    if (dq) return reply(debtAnswer(items, dq.who), { engine: "local", nav: "accounts" }, viaVoice);
+    const nav = { engine: "local", nav: "accounts" };
     if (dc.op === "add") {
       if (!dc.who) return reply("Kime borç verdin? Adıyla ve tutarıyla söyler misin?", { fail: true, engine: "local" }, viaVoice);
       if (!(dc.amount > 0)) return reply(`${dc.who} için ne kadar? Tutarıyla yeniden söyler misin?`, { fail: true, engine: "local" }, viaVoice);
@@ -2491,7 +2522,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
       const d = cleanDebt({ who, amount: dc.amount, kind: dc.kind, note: dc.note, date: todayStr(), at: new Date().toISOString() });
       try {
         await soon(updateDebts(profile.orgId, (list) => [d, ...list]), 2500, "Borç");
-        done(`Ekledim: ${who}, ${tl(d.amount)}, ${DEBT_KINDS[d.kind].toLocaleLowerCase("tr-TR")}. Borçlar'da görünür.`, nav, viaVoice);
+        done(`Ekledim: ${who}, ${tl(d.amount)}, ${DEBT_KINDS[d.kind].toLocaleLowerCase("tr-TR")}. ${d.kind === "club" ? "Kasadan düştüm, Hesaplar › Kulüp'te" : "Hesaplar › Kişisel'de"} görünür.`, nav, viaVoice);
       } catch {
         reply("Borcu kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
       }

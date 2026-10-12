@@ -594,6 +594,26 @@ group("Göreve göre ara yazı")([
     ["gönderiyi arşive kaldır", { desc: "gönderi arşivi", fn: postArchiveCommand, ok: (r) => r?.archived === true }],
     ["arşivden çıkar", { desc: "gönderi arşivden", fn: postArchiveCommand, ok: (r) => r?.archived === false }],
   ]);
+  {
+    const { cashCommand } = await import("@/lib/assistMore");
+    const K = (desc, ok) => ({ desc, fn: cashCommand, ok });
+    group("Kasa ve kişisel defter (asistan)")([
+      ["kulüpten Ali'ye 500 nakit verildi", K("kasadan çıkış, kişi", (r) => r?.book === "club" && r.dir === "out" && r.who === "Ali" && r.amount === 500)],
+      ["Ali Kaya'ya kasadan 1500 lira avans verdim", K("avans, iki kelimeli ad", (r) => r?.dir === "out" && r.cat === "Avans" && r.who === "Ali Kaya" && r.amount === 1500)],
+      ["kasadan 300 lira yakıt aldım", K("yakıt", (r) => r?.book === "club" && r.dir === "out" && r.cat === "Yakıt")],
+      ["nakit çıkış 200 malzeme", K("nakit çıkış", (r) => r?.dir === "out" && r.cat === "Malzeme" && r.amount === 200)],
+      ["kişisel gider 300 market", K("kişisel gider", (r) => r?.book === "personal" && r.dir === "out" && r.cat === "Market")],
+      ["kişisel gelir 2000 ders", K("kişisel gelir", (r) => r?.book === "personal" && r.dir === "in" && r.cat === "Ders" && r.amount === 2000)],
+      ["Ahmet'e 1000 lira borcum var", K("borcum", (r) => r?.book === "personal" && r.dir === "debt" && r.who === "Ahmet" && r.amount === 1000)],
+      ["kasada ne kadar var", K("kasa sorusu", (r) => r?.op === "ask" && r.book === "club")],
+      ["borçlarım ne kadar", K("borç sorusu", (r) => r?.op === "ask" && r.book === "personal")],
+      ["Ali Kaya'nın ekim aidatı nakit 1500 alındı", K("nakit giriş kasa çıkışı değil", (r) => r === null)],
+      ["Ahmet'ten 2000 lira bağış geldi", K("bağış girişi değil", (r) => r === null)],
+      ["yarın 10'da antrenman", K("ilgisiz", (r) => r === null)],
+      ["kulüpten Ahmet'e 2 bin TL borç verildi", K("borç verme Borçlar'ın işi", (r) => r === null)],
+      ["Ali 200 lirasını geri verdi", K("geri ödeme Borçlar'ın işi", (r) => r === null)],
+    ]);
+  }
   const M = await import("@/lib/assistMore");
   const C = (desc, fn, ok) => ({ desc, fn, ok });
   group("Elle yapılanlar asistanla (2026-10-09)")([

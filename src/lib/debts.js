@@ -1,4 +1,4 @@
-// Borç takibi (Hesaplar'dan bağımsız): kime ne kadar para verildi, kişisel mi kulüpten mi, ne kadarı geri geldi.
+// Verilen borçlar (Hesaplar › Kulüp ve Kişisel; kulübün verdiği borç kasadan düşer, cashbook.js debtMoves): kime ne kadar para verildi, kişisel mi kulüpten mi, ne kadarı geri geldi.
 // Kayıt tek belgede: orgs/{orgId}/debts/book = { items: [borç] } (sayfa açılınca 1 okuma).
 // Borç: { id, who, amount, date (YYYY-MM-DD), kind: "personal" | "club", note, paid: [{ id, amt, date }], at }
 // Saf işlevler; asistan cümleleri de burada (testleri scripts/asistan-test/yerel/elle.mjs › "Borçlar", yönlendirme › debt).
@@ -115,6 +115,8 @@ export function debtAsk(raw) {
   if (!DEBT_W.test(t) || !ASK.test(t)) return null;
   if (/(aç|sayfa\p{L}*|ekranı)( |$)/u.test(t) && !/\?|ne kadar|kime|kaç/u.test(t)) return null;
   if (/fatura|aidat|kredi kart/u.test(t)) return null;
+  // "borçlarım ne kadar", "kime borcum var": benim borcum (Hesaplar › Kişisel, cashCommand)
+  if (/(borcum|borçlarım|borçluyum)/u.test(t) && !/(alacağ|bana)/u.test(t)) return null;
   return { who: whoIn(raw) };
 }
 
@@ -131,7 +133,7 @@ export function debtCommand(raw) {
     return { op: "pay", who, amount };
   }
   if (/(borç|borc|ödünç)\p{L}* (para )?(verdim|verdik|verildi|verdi|ver|ekle|yaz|kaydet)|(borç|borc|ödünç)\p{L}* olarak (verdim|verdik|verildi|verdi|ekle|yaz)|borçlara (ekle|yaz)/u.test(t)) {
-    const kind = /kulüp|kulüb|kulübün|kulüpün|kulüp kasası/u.test(t) ? "club" : "personal";
+    const kind = /kulüp|kulüb|kulübün|kulüpün|kulüp kasası|kasadan/u.test(t) ? "club" : "personal";
     const n = t.match(/(?:not|açıklama)[: ]+(.+)$/u);
     return { op: "add", who, amount, kind, note: n ? str(n[1], 200) : "" };
   }

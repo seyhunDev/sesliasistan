@@ -115,6 +115,72 @@ export function incomeCommand(raw, today = "") {
   return { cat, amount, who, ym, note };
 }
 
+// ---- Kasa çıkışı ve kişisel defter (Hesaplar): "kulüpten Ali'ye 500 nakit verildi", "kasadan 300 lira yakıt aldım",
+//      "nakit çıkış 200 malzeme", "kişisel gider 300 market", "kişisel gelir 2000 ders", "Ahmet'e 1000 lira borcum var" ----
+// → { book "club"|"personal", dir "in"|"out"|"debt", cat, who, amount, note } ya da null. Nakit girişi incomeCommand'da.
+const OUT_WORDS = [
+  [/yakıt|benzin|mazot/u, "Yakıt"],
+  [/malzeme|ekipman|parça/u, "Malzeme"],
+  [/avans/u, "Avans"],
+  [/ulaşım|yol parası|taksi|otobüs/u, "Ulaşım"],
+  [/yemek|kumanya/u, "Yemek"],
+];
+const MY_WORDS = {
+  out: [
+    [/market/u, "Market"],
+    [/fatura/u, "Fatura"],
+    [/yakıt|benzin|mazot/u, "Yakıt"],
+    [/yemek|restoran|kafe/u, "Yemek"],
+    [/kira/u, "Kira"],
+    [/ilaç|doktor|sağlık|hastane/u, "Sağlık"],
+  ],
+  in: [
+    [/maaş/u, "Maaş"],
+    [/ders/u, "Ders"],
+    [/satış|sattım/u, "Satış"],
+  ],
+};
+// "Ali'ye", "Ali Kaya'ya" (yönelme eki): kime verildi
+function toWhom(raw) {
+  const words = String(raw || "").replace(/[,.;:!]/g, " ").split(/\s+/).filter(Boolean);
+  const i = words.findIndex((w) => /^\p{Lu}/u.test(w) && /['’]y?[ae]$/iu.test(w));
+  if (i < 0) return "";
+  const prev = i > 0 && /^\p{Lu}\p{Ll}/u.test(words[i - 1]) && !/^(Kulüp|Kasa|Nakit|Kişisel)/u.test(words[i - 1]) ? `${words[i - 1]} ` : "";
+  return nameOf(prev + words[i]);
+}
+export function cashCommand(raw) {
+  const t = low(raw);
+  // Soru: "kasada ne kadar var", "kasa durumu", "kasada kaç lira kaldı", "kişisel borcum ne kadar"
+  if (/(^| )kasa(da|mız|mızda|nın)?( |$)/u.test(t) && /(ne kadar|kaç|durum|kaldı|var mı|bakiye)/u.test(t) && !/(ekle|yaz|verildi|verdim)/u.test(t)) return { op: "ask", book: "club" };
+  if (/(borçlarım|borcum|kişisel defter)/u.test(t) && /(ne kadar|kaç|neler|kime|durum)/u.test(t)) return { op: "ask", book: "personal" };
+  if (QUESTION.test(t) || /(^| )(kim|kimler|kaç|ne kadar|fatura\p{L}* (ödendi|ödedim)|fiş\p{L}*)( |$)/u.test(t)) return null;
+  const amount = amountOf(t.replace(/(19|20)\d{2} yılı/gu, ""));
+  if (!(amount > 0)) return null;
+  const pick = (list, d) => (list.find(([re]) => re.test(t)) || [null, d])[1];
+  const rest = (s) => nameOf(s.replace(/\d[\d.,]*|(^| )(bin|tl|lira|nakit|kişisel|şahsi|kendi|gider\p{L}*|gelir\p{L}*|harcama\p{L}*|olarak|ekle|yaz|kaydet|için|deftere|defterime|kasadan|kulüpten|verildi|verdim|harcadım|ödedim|aldım|çıkış|var)(?= |$)/gu, " ")).slice(0, 60);
+  // Borç verme ("kulüpten Ali'ye 500 borç verildi") ve geri ödeme Borçlar'ın işi (debts.js debtCommand)
+  if (/(borç|borc|ödünç)\p{L}* (olarak )?(para )?(ver|geri)/u.test(t) || /geri (verdi|ödedi|getirdi)/u.test(t)) return null;
+  // Kişisel borç: "Ahmet'e 1000 lira borcum var", "kişisel borç Ahmet 1000"
+  if (/(borcum|borçluyum|borç aldım|kişisel borç)/u.test(t) && !/borcumu (ödedim|kapattım)/u.test(t)) {
+    const who = toWhom(raw) || nameOf((t.match(/kişisel borç (\p{L}+(?: \p{L}+)?)/u) || [])[1] || "");
+    return { book: "personal", dir: "debt", cat: "Borç", who, amount, note: "" };
+  }
+  // Kişisel gelir / gider: "kişisel gider 300 market", "kendi harcamam 200 yemek", "şahsi gelir 2000 ders"
+  if (/(kişisel|şahsi|kendi) (gider|gelir|harcama|masraf)/u.test(t) || /(gider|gelir)\p{L}* (kişisel|şahsi)/u.test(t) || /kişisel deftere/u.test(t)) {
+    const dir = /(gelir|kazandım|aldım)/u.test(t) && !/(gider|harca|masraf)/u.test(t) ? "in" : "out";
+    const cat = pick(MY_WORDS[dir], "Diğer");
+    return { book: "personal", dir, cat, who: "", amount, note: cat === "Diğer" ? rest(t) : "" };
+  }
+  // Kulüp kasasından çıkış: "kulüpten/kasadan … verildi", "nakit çıkış …", "Ali'ye 500 nakit verdim"
+  const fromKasa = /(kasadan|kulüpten|kulüp kasasından|nakit çıkış|kasa çıkış)/u.test(t);
+  const gave = /(verildi|verdim|verdik|ödendi|ödedim|harcandı|harcadım|harcadık|aldım|aldık|çıkış|çıktı)/u.test(t);
+  if ((fromKasa && gave) || (/nakit/u.test(t) && /(verildi|verdim|verdik)/u.test(t) && toWhom(raw))) {
+    const cat = pick(OUT_WORDS, "Diğer");
+    return { book: "club", dir: "out", cat, who: toWhom(raw), amount, note: cat === "Diğer" ? rest(t.replace(/['’]\p{L}+/gu, "")).split(" ").filter((w) => !toWhom(raw).includes(w)).join(" ") : "" };
+  }
+  return null;
+}
+
 // ---- Aidat: "aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat" · soru: "bu ay kim aidat ödemedi" ----
 const MONTH_WORDS = new RegExp(`(^| )(bu ay\\p{L}*|geçen ay\\p{L}*|gelecek ay\\p{L}*|(?:${MONTHS.join("|")})\\p{L}*|sporcu|sporcunun|ayın|ayki|ayından|ayından itibaren|itibaren)(?= |$)`, "gu");
 // Cümledeki ay: "bu ay" → 0, "geçen ay" → -1, "gelecek ay" → 1, ay adı → "m:<0-11>"; yoksa 0 (bu ay)

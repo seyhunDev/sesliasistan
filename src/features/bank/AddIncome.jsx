@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { INCOME_CATS, words } from "@/lib/dues";
+import { OUT_CATS, PERSONAL_CATS } from "@/lib/cashbook";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 
@@ -17,11 +18,40 @@ const monthsAround = (today) => {
 const field = "h-11 w-full min-w-0 rounded-xl bg-bg px-3.5 text-[1rem] outline-none";
 const label = "mb-1 block text-[0.8125rem] font-semibold text-mut";
 
-// Hesaplar › "+": elle nakit gelir. Tür seçilir (Aidat, Bağış, eğitimler, Diğer → elle yazılır), kişi sporculardan seçilir ya
-// da yazılır, tutar, tarih, not. Aidat seçilince sporcu ve ay sorulur; ödeme Aidatlar'da o ay ödendi olarak görünür.
-export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
+// Yön seçimi: kulüpte Nakit giriş / Nakit çıkış, kişisel defterde Gelir / Gider / Borcum
+const DIRS = {
+  club: [
+    ["in", "Nakit giriş"],
+    ["out", "Nakit çıkış"],
+  ],
+  personal: [
+    ["in", "Gelir"],
+    ["out", "Gider"],
+    ["debt", "Borcum"],
+  ],
+};
+const catsOf = (book, dir) => (book === "personal" ? PERSONAL_CATS[dir] : dir === "out" ? OUT_CATS : INCOME_CATS);
+const TITLE = { club: { in: "Nakit giriş", out: "Nakit çıkış" }, personal: { in: "Kişisel gelir", out: "Kişisel gider", debt: "Borcum" } };
+const WHO = { club: { in: "Kimden", out: "Kime verildi" }, personal: { in: "Kimden (isteğe bağlı)", out: "Nereye (isteğe bağlı)", debt: "Kime borçlusun" } };
+
+// Hesaplar › "+": elle nakit giriş/çıkış (kulüp kasası) ya da kişisel gelir/gider/borç. Tür seçilir (Diğer → elle yazılır),
+// kişi sporculardan seçilir ya da yazılır, tutar, tarih, not. Kulüpte Aidat seçilince sporcu ve ay sorulur; ödeme Aidatlar'da
+// o ay ödendi görünür.
+export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book = "club", dir: startDir = "in" }) {
   const today = todayStr();
-  const [cat, setCat] = useState("Aidat");
+  const [dir, setDir] = useState(startDir);
+  const [cat, setCat] = useState(catsOf(book, startDir)[0]);
+  // Her açılışta seçilen yönle başlar (render sırasında, efektsiz)
+  const want = open ? `${book}:${startDir}` : "";
+  const [seen, setSeen] = useState(want);
+  if (want !== seen) {
+    setSeen(want);
+    if (want) {
+      setDir(startDir);
+      setCat(catsOf(book, startDir)[0]);
+    }
+  }
+  const pickDir = (d) => (setDir(d), setCat(catsOf(book, d)[0]));
   const [other, setOther] = useState("");
   const [who, setWho] = useState("");
   const [athleteId, setAthleteId] = useState("");
@@ -32,14 +62,15 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
   const [find, setFind] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const isDues = cat === "Aidat";
+  const isDues = book === "club" && dir === "in" && cat === "Aidat";
+  const needWho = book === "club" || dir === "debt";
   const people = [...roster].sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), "tr"));
   const shown = find.trim() ? people.filter((a) => words(find).every((w) => words(a.studentName).some((x) => x.startsWith(w)))) : people;
   const fee = (id) => Number(cfg?.fees?.[id]) || Number(cfg?.fee) || 0;
   const amt = Number(String(amount).replace(/\./g, "").replace(",", "."));
   const name = isDues ? roster.find((a) => a.id === athleteId)?.studentName || "" : who.trim();
   const finalCat = cat === "Diğer" ? other.trim() || "Diğer" : cat;
-  const ok = amt > 0 && (isDues ? !!athleteId && !!ym : !!name) && !busy;
+  const ok = amt > 0 && (isDues ? !!athleteId && !!ym : !!name || !needWho) && !busy;
 
   const pick = (a) => {
     setAthleteId(a.id);
@@ -49,7 +80,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
   const save = async () => {
     if (!ok) return;
     setBusy(true);
-    const r = await onSave({ cat: finalCat, who: name, athleteId: isDues ? athleteId : "", ym: isDues ? ym : "", amount: amt, date, note: note.trim() });
+    const r = await onSave({ book, dir, cat: finalCat, who: name, athleteId: isDues ? athleteId : "", ym: isDues ? ym : "", amount: amt, date, note: note.trim() });
     setBusy(false);
     if (r !== false) {
       setAmount("");
@@ -61,12 +92,20 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Nakit gelir ekle">
+    <Sheet open={open} onClose={onClose} title={book === "personal" ? "Kişisel defter" : "Kasa (nakit)"}>
       <div className="space-y-4 overflow-y-auto overflow-x-hidden px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div className={`grid gap-1 rounded-xl bg-line/50 p-1 ${DIRS[book].length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {DIRS[book].map(([k, l]) => (
+            <button key={k} type="button" onClick={() => pickDir(k)} aria-pressed={dir === k} className={`h-9 rounded-lg text-[0.875rem] font-semibold ${dir === k ? (k === "in" ? "bg-card text-ok shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "bg-card text-rec shadow-[0_1px_2px_rgba(38,40,44,.08)]") : "text-mut"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        {dir !== "debt" && (
         <div>
           <span className={label}>Tür</span>
           <div className="flex flex-wrap gap-1.5">
-            {INCOME_CATS.map((c) => (
+            {catsOf(book, dir).map((c) => (
               <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${cat === c ? "bg-acc text-white" : "bg-bg text-fg"}`}>
                 {c}
               </button>
@@ -74,6 +113,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
           </div>
           {cat === "Diğer" && <input value={other} onChange={(e) => setOther(e.target.value)} placeholder="Türü yaz (ör. Tekne kiralama)" className={`${field} mt-2`} />}
         </div>
+        )}
 
         {isDues ? (
           <>
@@ -112,8 +152,8 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
           </>
         ) : (
           <label className="block">
-            <span className={label}>Kimden</span>
-            <input value={who} onChange={(e) => setWho(e.target.value)} list="income-people" placeholder="Ad Soyad" className={field} />
+            <span className={label}>{WHO[book][dir]}</span>
+            <input value={who} onChange={(e) => setWho(e.target.value)} list="income-people" placeholder={book === "personal" && dir !== "debt" ? "" : "Ad Soyad"} className={field} />
             <datalist id="income-people">
               {people.map((a) => (
                 <option key={a.id} value={a.studentName} />
@@ -135,11 +175,11 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave }) {
 
         <label className="block">
           <span className={label}>Not (isteğe bağlı)</span>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={isDues ? "" : "ör. 4 kişilik grup, 2 ders"} className={field} />
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={isDues ? "" : dir === "out" ? "ör. tekne yakıtı" : dir === "debt" ? "ör. ay sonu ödenecek" : "ör. 4 kişilik grup, 2 ders"} className={field} />
         </label>
 
         <button type="button" disabled={!ok} onClick={save} className="h-12 w-full rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
-          {busy ? "Kaydediliyor…" : amt > 0 ? `${money(amt)} TL nakit gelir ekle` : "Ekle"}
+          {busy ? "Kaydediliyor…" : amt > 0 ? `${money(amt)} TL · ${TITLE[book][dir]} ekle` : "Ekle"}
         </button>
       </div>
     </Sheet>

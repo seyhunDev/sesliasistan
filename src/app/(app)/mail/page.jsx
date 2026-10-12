@@ -17,7 +17,13 @@ import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
 import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { addIncome, deleteIncome, loadCash } from "@/features/dues/duesData";
+import { addIncome, deleteIncome, loadCash, setDebtPaid, setInKasa } from "@/features/dues/duesData";
+import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
+import { debtMoves, inKasa, kasaOf, personalOf } from "@/lib/cashbook";
+import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
+import { loadDebts, updateDebts } from "@/features/debts/debtData";
+import { cleanDebt, newId, payDebt } from "@/lib/debts";
+import { todayStr } from "@/lib/utils/format";
 import { AddIncome } from "@/features/bank/AddIncome";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -63,10 +69,15 @@ export default function MailPage() {
   const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
   const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
   const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
-  const [cashData, setCashData] = useState({ moves: [], roster: [], cfg: {} }); // nakit aidatlar + elle girilen gelirler
+  const [cashData, setCashData] = useState({ moves: [], personal: [], meta: {}, roster: [], cfg: {} }); // nakitler + kişisel defter
   const cashList = cashData.moves;
-  const [addOpen, setAddOpen] = useState(false); // "+": nakit gelir ekle
-  const [manual, setManual] = useState(null); // dokunulan elle girilmiş gelir (sil)
+  // Üstteki sekme: club (kulüp) | personal (kişisel); /mail?tab=kisisel Kişisel'i açar (eski Borçlar bağlantısı, asistan)
+  const [book, setBook] = useState(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "kisisel" ? "personal" : "club"));
+  const [lent, setLent] = useState([]); // verilen borçlar (debts/book)
+  const [debtForm, setDebtForm] = useState(null); // yeni ya da düzenlenen verilen borç
+  const [debtOpen, setDebtOpen] = useState(null); // ayrıntısı açık verilen borç
+  const [add, setAdd] = useState(null); // "+": { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
+  const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
   const [cashTick, setCashTick] = useState(0);
   const toast = useToast();
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -116,6 +127,15 @@ export default function MailPage() {
       live = false;
     };
   }, [owner, profile?.uid, tick, cashTick]);
+
+  // Verilen borçlar: sayfa açılınca bir kez (1 okuma); asistan kaydedince yenilenir
+  useEffect(() => {
+    if (!owner) return;
+    const load = () => loadDebts(profile.uid).then(setLent, () => {});
+    load();
+    window.addEventListener("sa-debts-saved", load);
+    return () => window.removeEventListener("sa-debts-saved", load);
+  }, [owner, profile?.uid]);
 
   // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
   const pending = (mails || [])
@@ -175,19 +195,41 @@ export default function MailPage() {
   const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
   const payeeAll = payeeMoves(moves, payee);
   const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
-  const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashList.length, cashSum: cashList.reduce((n, x) => n + x.amount, 0) } : null;
+  const cashIn = cashList.filter((x) => x.amount > 0);
+  const rep = ledger?.length || cashList.length ? { ...report([...(ledger || []), ...cashList], payee, 1000), cashN: cashIn.length, cashSum: cashIn.reduce((n, x) => n + x.amount, 0) } : null;
+  const kasa = kasaOf([...cashList, ...debtMoves(lent)].sort((a, b) => (b.ts || 0) - (a.ts || 0)), cashData.meta);
+  const curDebt = lent.find((d) => d.id === debtOpen);
+  const saveDebts = async (fn, ok) => {
+    try {
+      setLent(await updateDebts(profile.uid, fn));
+      if (ok) toast(ok);
+      return true;
+    } catch {
+      toast("Kaydedilemedi, tekrar dene");
+      return false;
+    }
+  };
+  const debtNames = [...new Set([...lent.map((d) => d.who), ...(cashData.roster || []).map((a) => a.studentName)].filter(Boolean))].slice(0, 300);
+  const personal = personalOf(cashData.personal || []);
   // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
   const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
   const saveIncome = (x) =>
     addIncome(profile.uid, x).then(
-      () => (setAddOpen(false), setCashTick((n) => n + 1), toast(x.cat === "Aidat" ? "Aidat yazıldı, Aidatlar'da da ödendi görünür" : "Nakit gelir eklendi")),
+      () => (
+        setAdd(null),
+        setCashTick((n) => n + 1),
+        toast(x.book === "personal" ? "Kişisel deftere eklendi" : x.dir === "out" ? "Nakit çıkış kasadan düşüldü" : x.cat === "Aidat" ? "Aidat kasaya girdi, Aidatlar'da da ödendi görünür" : "Nakit giriş kasaya eklendi")
+      ),
       () => (toast("Kaydedilemedi, internet bağlantını kontrol et"), false),
     );
-  const dropIncome = (x) =>
-    deleteIncome(profile.uid, x.incomeId).then(
-      () => (setManual(null), setCashTick((n) => n + 1), toast("Silindi")),
-      () => toast("Silinemedi"),
+  const after = (p, msg) =>
+    p.then(
+      () => (setManual(null), setCashTick((n) => n + 1), toast(msg)),
+      () => toast("Kaydedilemedi, internet bağlantını kontrol et"),
     );
+  const dropIncome = (x) => after(deleteIncome(profile.uid, x.incomeId), "Silindi");
+  const include = (x, on) => after(setInKasa(profile.uid, x.key, on), on ? "Kasaya eklendi" : "Kasadan çıkarıldı");
+  const payDebt = (x) => after(setDebtPaid(profile.uid, x.incomeId, !x.paid), x.paid ? "Ödenmedi olarak işaretlendi" : "Borç ödendi");
   const addName = (name) => {
     const n = name.trim();
     if (!n) return setAdding(false);
@@ -199,7 +241,7 @@ export default function MailPage() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Hesaplar" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
-        <button type="button" onClick={() => setAddOpen(true)} aria-label="Nakit gelir ekle" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_1px_3px_rgba(38,40,44,.12)] active:scale-95">
+        <button type="button" onClick={() => setAdd({ book, dir: "in" })} aria-label={book === "personal" ? "Kişisel gelir ya da gider ekle" : "Nakit giriş ya da çıkış ekle"} className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_1px_3px_rgba(38,40,44,.12)] active:scale-95">
           <Icon name="plus" className="size-5" />
         </button>
         <Link href="/mail/setup" aria-label="Mail ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
@@ -207,7 +249,21 @@ export default function MailPage() {
         </Link>
       </PageHeader>
 
-      {!mails ? (
+      {/* Kulüp (banka, kasa, ödemeler) ve Kişisel (kendi gelir, gider, borç) birbirinden ayrı */}
+      <div role="tablist" className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-line/50 p-1">
+        {[
+          ["club", "Kulüp"],
+          ["personal", "Kişisel"],
+        ].map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={book === k} onClick={() => setBook(k)} className={`h-9 rounded-lg text-[0.9375rem] font-semibold ${book === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {book === "personal" ? (
+        <PersonalBook book={personal} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} lent={<LentSection flat items={lent} kind="personal" title="Bana borçlu olanlar" onAdd={() => setDebtForm({ kind: "personal", date: todayStr() })} onOpen={setDebtOpen} />} />
+      ) : !mails ? (
         <Loading />
       ) : (
         <>
@@ -251,6 +307,9 @@ export default function MailPage() {
               </ul>
             </section>
           )}
+
+          <KasaCard kasa={kasa} onAdd={(dir) => setAdd({ book: "club", dir })} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} />
+          <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
 
           {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}
           <section className="mt-6">
@@ -345,7 +404,7 @@ export default function MailPage() {
                   </p>
                   {shown.length > 0 && (
                     <div className={card}>
-                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} onAthlete={(id) => router.push(`/athletes/${id}`)} />
+                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} />
                       {shown.length > shownMax && (
                         <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
                           Daha fazla göster ({shown.length - shownMax} kaldı)
@@ -446,17 +505,60 @@ export default function MailPage() {
           </div>
         </>
       )}
-      <AddIncome open={addOpen} onClose={() => setAddOpen(false)} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
-      <Sheet open={!!manual} onClose={() => setManual(null)} title="Nakit gelir">
+      <DebtForm
+        key={debtForm ? debtForm.id || `new-${debtForm.kind}` : "off"}
+        value={debtForm}
+        names={debtNames}
+        onClose={() => setDebtForm(null)}
+        onSave={async (d) => {
+          const isNew = !d.id;
+          const x = cleanDebt({ ...d, id: d.id || newId(), at: d.at || new Date().toISOString() });
+          if (await saveDebts((list) => (isNew ? [x, ...list] : list.map((y) => (y.id === x.id ? { ...x, paid: y.paid } : y))), isNew ? (x.kind === "club" ? "Borç eklendi, kasadan düştü" : "Borç eklendi") : "Kaydedildi")) setDebtForm(null);
+        }}
+      />
+      <DebtDetail
+        key={curDebt?.id || "off"}
+        debt={curDebt}
+        onClose={() => setDebtOpen(null)}
+        onPay={(amt) => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? payDebt(y, amt, todayStr()) : y)), curDebt.kind === "club" ? "Ödeme kasaya girdi" : "Ödeme yazıldı")}
+        onUndo={() => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? { ...y, paid: [] } : y)), "Ödemeler geri alındı")}
+        onEdit={() => (setDebtForm(curDebt), setDebtOpen(null))}
+        onDelete={async () => {
+          if (await saveDebts((list) => list.filter((y) => y.id !== curDebt.id), "Silindi")) setDebtOpen(null);
+        }}
+      />
+      <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} onSave={saveIncome} />
+      <Sheet open={!!manual} onClose={() => setManual(null)} title={manual?.book === "personal" ? (manual.dir === "debt" ? "Borcum" : manual.dir === "out" ? "Kişisel gider" : "Kişisel gelir") : manual?.amount < 0 ? "Nakit çıkış" : "Nakit giriş"}>
         {manual && (
           <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            <p className="text-[1.5rem] font-bold tabular-nums text-ok">+{money(manual.amount)} TL</p>
-            <p className="text-[0.9375rem]">
-              <b className="font-semibold">{manual.who}</b> · {manual.note} · {manual.date}
+            <p className={`text-[1.5rem] font-bold tabular-nums ${manual.amount > 0 ? "text-ok" : manual.dir === "debt" ? "text-amber-700" : "text-rec"}`}>
+              {manual.amount > 0 ? "+" : "−"}
+              {money(Math.abs(manual.amount))} TL
             </p>
-            <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
-              Bu geliri sil
-            </button>
+            <p className="text-[0.9375rem]">{[manual.who && <b key="w" className="font-semibold">{manual.who}</b>, manual.note, manual.date].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
+            {manual.cash && manual.key && (
+              <p className="text-[0.8125rem] text-mut">{inKasa(manual, cashData.meta) ? "Kasaya sayılıyor." : "Kasaya sayılmıyor."}</p>
+            )}
+            {manual.dir === "debt" && (
+              <button type="button" onClick={() => payDebt(manual)} className="h-11 w-full rounded-xl bg-ok/10 text-[0.875rem] font-semibold text-ok">
+                {manual.paid ? "Ödenmedi olarak işaretle" : "Borcu ödedim"}
+              </button>
+            )}
+            {manual.cash && manual.key && (
+              <button type="button" onClick={() => include(manual, !inKasa(manual, cashData.meta))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
+                {inKasa(manual, cashData.meta) ? "Kasadan çıkar" : "Nakit girdi olarak ekle"}
+              </button>
+            )}
+            {manual.athleteId && (
+              <button type="button" onClick={() => router.push(`/athletes/${manual.athleteId}`)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                Sporcuyu aç
+              </button>
+            )}
+            {manual.manual && (
+              <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
+                Sil
+              </button>
+            )}
           </div>
         )}
       </Sheet>
@@ -566,7 +668,7 @@ function AddName({ onAdd, onClose }) {
 }
 
 // Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
-function Moves({ list, today, onManual, onAthlete }) {
+function Moves({ list, today, onManual }) {
   const dayOf = (x) => localDate(new Date(x.ts).toISOString());
   return (
     <ul>
@@ -577,14 +679,14 @@ function Moves({ list, today, onManual, onAthlete }) {
         return (
           <li key={x.id}>
             {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-            <div onClick={x.manual && onManual ? () => onManual(x) : x.athleteId && onAthlete ? () => onAthlete(x.athleteId) : undefined} className={`flex h-14 items-center gap-3 px-4 ${(x.manual && onManual) || (x.athleteId && onAthlete) ? "cursor-pointer" : ""}`}>
+            <div onClick={x.cash && onManual ? () => onManual(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${x.cash && onManual ? "cursor-pointer" : ""}`}>
               <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
                 {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <b className="truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
-                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">Nakit ödendi</span>}
+                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">{x.amount < 0 ? "Nakit verildi" : "Nakit ödendi"}</span>}
                 </span>
                 <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), !x.cash && (x.cat || x.kind)].filter(Boolean).join(" · ")}</small>
               </span>

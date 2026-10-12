@@ -1025,6 +1025,7 @@ const HMOV = [
   { ...inc("EFT AHMET KAYA DOLAR", 50, "05.10.2026 10:00", "USD|9999|Vadesiz"), currency: "USD" },
 ];
 const D = await import("@/lib/dues");
+const KB = await import("@/lib/cashbook");
 group("Hesaplar arama ve eklenen adlar")([
   ["isimle arama", F("ahmet → 3 hareket (Türkçe harfsiz, kelime başı)", () => PY.searchMoves(HMOV, "ahm").length === 3 && PY.searchMoves(HMOV, "Ahmet Kaya").length === 3)],
   ["açıklamada arama", F("aidat → 2", () => PY.searchMoves(HMOV, "aidat").length === 2)],
@@ -1043,6 +1044,42 @@ group("Hesaplar arama ve eklenen adlar")([
   ["elle nakit gelir", F("tür, kişi, tarih; Hesaplar'da hareket", () => {
     const [m] = D.incomeMoves([{ id: "x1", who: "Ali Kaya", amount: 2500, cat: "Kano eğitimi", note: "2 ders", date: "2026-10-08" }, { id: "x2", amount: 0 }]);
     return m && m.manual && m.cash && m.who === "Ali Kaya" && m.cat === "Kano eğitimi" && m.note === "Kano eğitimi · 2 ders" && D.monthOf(m) === "2026-10" && D.INCOME_CATS.includes("Bağış") && PY.searchMoves([m], "kano").length === 1;
+  })],
+  ["kasa: eskiler sayılmaz", F("başlangıçtan önceki nakit girişi kasada yok, eklenince sayılır", () => {
+    const CB = KB;
+    const [m1, m2, m3] = D.incomeMoves([
+      { id: "a", amount: 1000, cat: "Bağış", who: "Ali", date: "2026-10-01", at: "2026-10-01T09:00:00Z" },
+      { id: "b", amount: 500, cat: "Bağış", who: "Ayşe", date: "2026-10-12", at: "2026-10-12T09:00:00Z" },
+      { id: "c", amount: 200, dir: "out", cat: "Yakıt", who: "Mehmet", date: "2026-10-12", at: "2026-10-12T10:00:00Z" },
+    ]);
+    const meta = { from: "2026-10-10T00:00:00Z" };
+    const k = CB.kasaOf([m1, m2, m3], meta);
+    const k2 = CB.kasaOf([m1, m2, m3], { ...meta, add: [m1.key] });
+    return m3.amount === -200 && m3.cash && k.total === 300 && k.old.length === 1 && k.old[0].key === "i:a" && k2.total === 1300 && !k2.old.length && CB.kasaOf([m1, m2, m3], { ...meta, skip: [m2.key] }).total === -200;
+  })],
+  ["kasa: nakit aidat anahtarı", F("aidat nakitleri kasaya at ile girer", () => {
+    const l = D.cashMoves({ "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-11", at: "2026-10-11T08:00:00Z" }] } } }, []);
+    return l[0].key === "d:2026-10:a1:2026-10-11T08:00:00Z" && KB.kasaOf(l, { from: "2026-10-10T00:00:00Z" }).total === 1500;
+  })],
+  ["kasa: kulübün verdiği borç", F("borç kasadan düşer, geri ödeme girer; kişisel borç kasaya girmez; eski borç sayılmaz", () => {
+    const items = [
+      { id: "d1", kind: "club", who: "Ali", amount: 500, date: "2026-10-12", at: "2026-10-12T09:00:00Z", paid: [{ id: "p1", amt: 200, date: "2026-10-13" }] },
+      { id: "d2", kind: "personal", who: "Can", amount: 900, date: "2026-10-12", at: "2026-10-12T09:00:00Z", paid: [] },
+      { id: "d3", kind: "club", who: "Eski", amount: 700, date: "2026-09-01", at: "2026-09-01T09:00:00Z", paid: [] },
+    ];
+    const l = KB.debtMoves(items);
+    const k = KB.kasaOf(l, { from: "2026-10-10T00:00:00Z" });
+    return l.length === 3 && k.total === -300 && k.in === 200 && k.out === 500 && !k.old.length;
+  })],
+  ["kişisel defter ayrı", F("kasaya girmez; gelir, gider, ödenmemiş borç", () => {
+    const l = D.incomeMoves([
+      { id: "p1", book: "personal", amount: 2000, cat: "Ders", date: "2026-10-05", at: "2026-10-12T09:00:00Z" },
+      { id: "p2", book: "personal", dir: "out", amount: 300, cat: "Market", date: "2026-10-06", at: "2026-10-12T09:00:00Z" },
+      { id: "p3", book: "personal", dir: "debt", amount: 1000, who: "Ahmet", date: "2026-10-07", at: "2026-10-12T09:00:00Z" },
+      { id: "p4", book: "personal", dir: "debt", amount: 400, who: "Can", paid: true, date: "2026-10-01", at: "2026-10-12T09:00:00Z" },
+    ]);
+    const b = KB.personalOf(l);
+    return l.every((x) => !x.cash) && KB.kasaOf(l, { from: "2026-01-01" }).total === 0 && b.in === 2000 && b.out === 300 && b.net === 1700 && b.debt === 1000 && b.debts.length === 1 && b.moves[0].id === "inc-p3";
   })],
   ["ad listesi", F("boşlar ve tekrarlar atılır", () => { const n = PY.namesOf({ payeeNames: [" Ali Kaya ", "", "ALI KAYA", "Ayşe Demir"] }); return n.length === 2 && n[0] === "Ali Kaya"; })],
 ]);
