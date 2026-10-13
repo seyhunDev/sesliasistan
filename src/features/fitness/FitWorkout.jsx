@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useKind } from "@/features/auth/useKind";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { FitGuided } from "./FitGuided";
@@ -35,6 +36,9 @@ export function FitWorkout({ rec, by }) {
   const { plans, updateRecord } = useData();
   const toast = useToast();
   const fit = rec.fit || { items: [] };
+  // Sporcu kendisine hazırlanan programı yalnız işaretler ve bitirir; set, tekrar, kilo, süre değiştiremez
+  const kind = useKind();
+  const lock = !!fit.for && (kind === "athlete" || kind === "student");
   const today = todayStr();
   const st = statusOf(rec, today);
   const [sets, setSets] = useState(() => startSets(fit, plans, rec.date));
@@ -136,7 +140,7 @@ export function FitWorkout({ rec, by }) {
           items={fit.items || []}
           sets={sets}
           onCheck={(i, k) => toggle(i, k, true)}
-          onVal={setVal}
+          onVal={lock ? null : setVal}
           feel={feel}
           setFeel={setFeel}
           onFinish={finish}
@@ -177,7 +181,7 @@ export function FitWorkout({ rec, by }) {
               {s.map((x, k) => (
                 <div key={k} className="flex items-center gap-2">
                   <span className="w-9 shrink-0 text-[0.75rem] font-semibold text-mut">Set {k + 1}</span>
-                  {cell === `${i}-${k}` ? (
+                  {!lock && cell === `${i}-${k}` ? (
                     <>
                       <label className="flex min-w-0 flex-1 items-center gap-1">
                         <input autoFocus inputMode="numeric" aria-label={unit} value={x[key]} onChange={(e) => setVal(i, k, key, e.target.value)} onBlur={() => it.kind !== "reps" && setCell("")} className={inp} />
@@ -191,9 +195,15 @@ export function FitWorkout({ rec, by }) {
                       )}
                     </>
                   ) : (
-                    <button type="button" onClick={() => setCell(`${i}-${k}`)} className={`h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
-                      {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "Değer yaz"}
-                    </button>
+                    lock ? (
+                      <span className={`flex h-9 min-w-0 flex-1 items-center truncate px-2 text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
+                        {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "–"}
+                      </span>
+                    ) : (
+                      <button type="button" onClick={() => setCell(`${i}-${k}`)} className={`h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
+                        {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "Değer yaz"}
+                      </button>
+                    )
                   )}
                   <button
                     type="button"
@@ -210,9 +220,11 @@ export function FitWorkout({ rec, by }) {
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => addSet(i)} className="mt-1.5 text-[0.75rem] font-semibold text-acc">
-              + Set
-            </button>
+            {!lock && (
+              <button type="button" onClick={() => addSet(i)} className="mt-1.5 text-[0.75rem] font-semibold text-acc">
+                + Set
+              </button>
+            )}
           </section>
         );
       })}
@@ -246,15 +258,17 @@ export function FitWorkout({ rec, by }) {
         </div>
         {extra ? (
           <div className="mt-2 flex gap-2">
-            <label className="flex w-24 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
-              <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
-              <span className="text-[0.8125rem] text-mut">dk</span>
-            </label>
+            {!lock && (
+              <label className="flex w-24 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
+                <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
+                <span className="text-[0.8125rem] text-mut">dk</span>
+              </label>
+            )}
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
           </div>
         ) : (
           <button type="button" onClick={() => setExtra(true)} className="mt-1.5 px-1 text-[0.8125rem] font-semibold text-acc">
-            + Süre ve not ekle
+            {lock ? "+ Not ekle" : "+ Süre ve not ekle"}
           </button>
         )}
         <div className="mt-3 flex gap-2">
