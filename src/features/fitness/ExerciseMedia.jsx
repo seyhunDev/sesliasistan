@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { stockPhotos } from "@/lib/fitness/exerciseGuide";
 import { MEDIA_MAX, dropMedia, loadMedia, prepMedia, saveMedia } from "./fitMedia";
 
 // Hareketin fotoğraf ve videoları: küçük kareler (fotoğraf ya da ▶), dokununca tam ekran.
@@ -12,6 +13,7 @@ function useBlobUrl(orgId, m) {
   const [url, setUrl] = useState("");
   const [err, setErr] = useState(false);
   useEffect(() => {
+    if (m?.stock) return undefined;
     if (!m?.id || !orgId) return undefined;
     let u = "";
     let live = true;
@@ -27,6 +29,7 @@ function useBlobUrl(orgId, m) {
       if (u) URL.revokeObjectURL(u);
     };
   }, [orgId, m?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (m?.stock) return { url: m.url, err: false };
   return { url, err };
 }
 
@@ -52,7 +55,8 @@ function Thumb({ orgId, m, onOpen, onDrop }) {
           <img src={url} alt="" className="size-full object-cover" />
         )}
       </button>
-      {onDrop && (
+      {m.stock && <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 text-[0.625rem] font-semibold text-white">Örnek</span>}
+      {onDrop && !m.stock && (
         <button type="button" onClick={() => onDrop(m)} aria-label="Çıkar" className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-deep text-white shadow">
           <Icon name="x" className="size-3.5" />
         </button>
@@ -84,6 +88,26 @@ function Viewer({ orgId, m, onClose }) {
 }
 
 // Büyük gösterim (sporcunun "Nasıl yapılır" ekranı): ilk dosya kenardan kenara, video sessiz ve tekrar ederek oynar
+// Hazır örnek: başlangıç ve bitiş kareleri sırayla, hareket gibi görünür
+function StockBig({ shots, onOpen }) {
+  const [k, setK] = useState(0);
+  const [bad, setBad] = useState(false);
+  useEffect(() => {
+    if (shots.length < 2) return undefined;
+    const t = setInterval(() => setK((x) => (x + 1) % shots.length), 1200);
+    return () => clearInterval(t);
+  }, [shots.length]);
+  if (bad) return null;
+  return (
+    <button type="button" onClick={() => onOpen(shots[k])} aria-label="Fotoğrafı büyüt" className="relative block aspect-[4/3] w-full overflow-hidden rounded-3xl bg-white">
+      {shots.map((m, n) => (
+        <img key={m.id} src={m.url} alt="" onError={() => setBad(true)} className={`absolute inset-0 size-full object-contain transition-opacity duration-500 ${n === k ? "opacity-100" : "opacity-0"}`} />
+      ))}
+      <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[0.6875rem] font-semibold text-white">Örnek fotoğraf</span>
+    </button>
+  );
+}
+
 function Big({ orgId, m, onOpen }) {
   const { url, err } = useBlobUrl(orgId, m);
   if (err) return null;
@@ -100,7 +124,12 @@ function Big({ orgId, m, onOpen }) {
   );
 }
 
-export function ExerciseMedia({ media = [], edit, onChange, className = "", big = false }) {
+// Hareketin hazır örnek fotoğrafları (kendi fotoğrafı/videosu eklenene kadar gösterilir)
+export function stockMedia(ex) {
+  return stockPhotos(ex).map((url, n) => ({ id: `stock-${ex}-${n}`, kind: "photo", url, stock: true }));
+}
+
+export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", big = false }) {
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const [open, setOpen] = useState(null);
@@ -110,7 +139,8 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "", big 
   const videoRef = useRef(null);
   const added = useRef(new Set());
   const list = media || [];
-  if (!edit && !list.length) return null;
+  const stock = list.length ? [] : stockMedia(ex);
+  if (!edit && !list.length && !stock.length) return null;
 
   const pick = async (e) => {
     const file = e.target.files?.[0];
@@ -136,6 +166,15 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "", big 
     if (added.current.has(m.id)) dropMedia(orgId, m);
   };
 
+  if (big && !edit && stock.length) {
+    return (
+      <div className={className}>
+        <StockBig shots={stock} onOpen={setOpen} />
+        {open && <Viewer orgId={orgId} m={open} onClose={() => setOpen(null)} />}
+      </div>
+    );
+  }
+
   if (big && !edit) {
     const [first, ...more] = list;
     return (
@@ -155,9 +194,9 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "", big 
 
   return (
     <div className={className}>
-      {(list.length > 0 || busy) && (
+      {(list.length > 0 || busy || stock.length > 0) && (
         <div className="flex gap-2 overflow-x-auto pb-1 pt-1.5">
-          {list.map((m) => (
+          {(busy ? list : list.length ? list : stock.slice(0, 1)).map((m) => (
             <Thumb key={m.id} orgId={orgId} m={m} onOpen={setOpen} onDrop={edit ? drop : null} />
           ))}
           {busy && (
@@ -179,6 +218,7 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "", big 
           <input ref={videoRef} type="file" accept="video/*" className="hidden" onChange={pick} />
         </div>
       )}
+      {edit && stock.length > 0 && !busy && <p className="mt-1 text-[0.75rem] text-mut">Örnek fotoğraf. Kendi fotoğrafını ya da videonu ekleyince onun yerine geçer.</p>}
       {err && <p className="mt-1 text-[0.75rem] font-semibold text-rec">{err}</p>}
       {open && <Viewer orgId={orgId} m={open} onClose={() => setOpen(null)} />}
     </div>
