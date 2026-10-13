@@ -44,6 +44,15 @@ function useCountdown() {
 }
 
 function Adjust({ label, value, unit, onChange }) {
+  // onChange yoksa (sporcu) yalnız değer görünür, − / + yok
+  if (!onChange) {
+    return (
+      <div className="text-center">
+        <b className="block text-[2.75rem] font-bold leading-none tabular-nums">{value ? String(value).replace(".", ",") : "–"}</b>
+        <small className="mt-1 block text-[0.8125rem] text-mut">{unit}</small>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center justify-center gap-4">
       <button type="button" aria-label={`${label} azalt`} onClick={() => onChange(-1)} className="grid size-11 place-items-center rounded-full bg-card text-[1.375rem] font-semibold shadow-sm active:scale-90">
@@ -302,11 +311,11 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
               Set {pos.k + 1} / {s.length}
             </p>
             <div className="mt-4">
-              <Adjust label={UNIT[key]} value={val} unit={UNIT[key]} onChange={(d) => onVal(pos.i, pos.k, key, bump(val, key, d))} />
+              <Adjust label={UNIT[key]} value={val} unit={UNIT[key]} onChange={onVal ? (d) => onVal(pos.i, pos.k, key, bump(val, key, d)) : null} />
             </div>
             {it.kind === "reps" && (cur.kg || it.kg) ? (
               <div className="mt-4">
-                <Adjust label="kilo" value={cur.kg || it.kg} unit="kg" onChange={(d) => onVal(pos.i, pos.k, "kg", bump(cur.kg || it.kg, "kg", d))} />
+                <Adjust label="kilo" value={cur.kg || it.kg} unit="kg" onChange={onVal ? (d) => onVal(pos.i, pos.k, "kg", bump(cur.kg || it.kg, "kg", d)) : null} />
               </div>
             ) : null}
             {it.kind === "time" && (
