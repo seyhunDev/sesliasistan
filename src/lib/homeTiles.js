@@ -118,19 +118,19 @@ export function fitDays(plans = [], others = [], people = [], me = "") {
     .filter(({ p }) => p.date && p.status !== "cancelled")
     .map(({ p, mine }) => ({ date: p.date, id: p.id, name: mine ? "Sen" : nameOf(p.fit.for), mine, plan: p }));
 }
-// Güne dokununca ne olur: yelken (yoklama) ve/veya fitness. Yalnız biri varsa doğrudan oraya, ikisi de varsa seçim penceresi.
-// sail: yoklama bağlantısı (yetki yoksa ya da gün ileride ise boş). Fitness: sporcular varsa o günün sporcu listesi, yalnız kendinse Fitness › Benim.
+// Fitness'ta aç bağlantısı: sporcu varsa o günün sporcu listesi, yalnız kendinse Fitness › Benim
 export function fitHref(date, fit = []) {
   if (!fit.length) return "";
   return fit.some((f) => !f.mine) ? `/fitness?sporcular=1&gun=${date}` : "/fitness?tab=me";
 }
-export function dayTap(day, att, today) {
-  const sail = day.has && att ? attHref(day.date, today) : "";
-  const fit = fitHref(day.date, day.fit || []);
-  const f = day.fit || [];
-  if ((sail && fit) || (f.some((x) => x.mine) && f.some((x) => !x.mine))) return { sheet: true, sail, fit };
-  if (sail || fit) return { href: sail || fit, sail, fit };
-  return att ? { href: attHref(day.date, today) || "", sail: "", fit: "" } : { href: "", sail: "", fit: "" };
+// Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın; plan yoksa antrenman ekle, yoklamasını al").
+// tap: dokunulur mu (yelken planı, fitness ya da yoklama yetkisi). sail: o günün yelken planları. attHref: yoklama (yetki ve gün geçmiş/bugün).
+// add: yelken planı yok ve yetki var → "Antrenman ekle" (gün geldiyse yoklamayla birlikte). fit: kimlerin fitness'ı, fitHref: Fitness'ta aç.
+export function dayInfo(day, att, today) {
+  const sail = day.sail || [];
+  const fit = day.fit || [];
+  const yok = att ? attHref(day.date, today) || "" : "";
+  return { tap: sail.length > 0 || fit.length > 0 || !!att, sail, attHref: yok, add: !!att && !sail.length, fit, fitHref: fitHref(day.date, fit) };
 }
 export function trainingWeek(plans = [], today, fit = []) {
   const base = new Date(`${today}T12:00:00`);
@@ -147,7 +147,7 @@ export function trainingWeek(plans = [], today, fit = []) {
     const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
     const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
     f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
-    return { date, d: d.getDate(), w, state, has: on.length > 0, fit: f };
+    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f };
   });
   const ym = today.slice(0, 7);
   const m = monthLog(plans, ym);
