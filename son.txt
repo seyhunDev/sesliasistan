@@ -1,8 +1,8 @@
-Commit: 15d9d6b · Fitness: hareketin kendi videosu antrenman ekranında oynatılıyor (#367)
-Zaman: 2026-10-13-1811 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38419778656
+Commit: 0c48f56 · Fitness: yüklenen video hemen sporcunun antrenmanına gider (#368)
+Zaman: 2026-10-13-1824 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38421591209
 
-TAM TEST · 13.10.2026 18:10:54
+TAM TEST · 13.10.2026 18:23:36
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 54 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
