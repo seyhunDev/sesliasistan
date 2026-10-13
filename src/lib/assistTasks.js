@@ -54,6 +54,7 @@ export const TASKS = [
   { id: "fitPlans", group: "Fitness", name: "Fitness programını planlara ekleme ya da takvimden kaldırma", say: "fitness programını planlara ekle", who: "ana", by: "yerel" },
   { id: "foodLog", group: "Fitness", name: "Beslenme: yemek, su, kilo yazma; bugün kaç kalori", say: "öğlen tavuk pilav ve ayran içtim; 2 bardak su içtim; kilom 82", who: "ana", by: "yz-ayrı", doing: "Tamam, yazıyorum.", work: "Yemekler okunuyor" },
   { id: "fitDone", group: "Fitness", name: "Bugünkü fitness antrenmanı yapıldı / atlandı; bu hafta kaç antrenman", say: "bugünkü fitness antrenmanını yaptım; bu hafta kaç fitness antrenmanı yaptım", who: "ana", by: "yerel" },
+  { id: "fitAthletes", group: "Fitness", name: "Sporcu fitness (kim yaptı, adım adım antrenman)", say: "sporcular bugün antrenman yaptı mı; Ali için fitness programı hazırla; bugünkü antrenmanım ne; antrenmana başla; tamam; bu hareketi atla", who: "herkes", by: "yerel" },
 
   // Kulüp
   { id: "attendance", group: "Kulüp", name: "Yoklama", say: "Ali ve Zeynep geldi, Emre izinli", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yoklamayı alıyorum.", work: "Yoklama alınıyor" },

@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { exById } from "@/lib/fitness/exercises";
 import { FitGuided } from "./FitGuided";
+import { clearStart, isStart } from "./guideVoice";
 import { FEELS, cleanRes, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr } from "@/lib/utils/format";
 
@@ -44,9 +45,12 @@ export function FitWorkout({ rec, by }) {
   const [edit, setEdit] = useState(!fit.res?.st);
   const [cell, setCell] = useState(""); // düzenlenen set "i-k"
   const [extra, setExtra] = useState(!!(fit.res?.note || fit.res?.min));
-  const [guide, setGuide] = useState(false); // adım adım ekran
+  const [guide, setGuide] = useState(() => !fit.res?.st && isStart(rec.id)); // adım adım ekran (asistanla "antrenmana başla" açar)
   const [list, setList] = useState(false); // tüm hareketlerin set listesi
   const tick = useRef(null);
+  useEffect(() => {
+    if (isStart(rec.id)) clearStart();
+  }, [rec.id]);
 
   // Dinlenme sayacı: süre dolunca titreşir ve kapanır
   useEffect(() => {

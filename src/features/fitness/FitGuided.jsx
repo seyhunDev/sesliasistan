@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
+import { setGuideHandler } from "./guideVoice";
 
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
 // Değer hedeften farklıysa − / + ile düzeltilir. Süreli harekette "Süreyi başlat" geri sayar.
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
+// Ana asistanla da yürür: ekran kayıt kubbesinin (z-55) altında durur; "tamam", "atla", "15 saniye ekle", "nasıl yapılır",
+// "zor geçti", "antrenmanı bitir" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
 const KEY = { time: "sec", cardio: "min", reps: "reps" };
 const UNIT = { sec: "sn", min: "dk", reps: "tekrar" };
 
@@ -70,7 +73,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   }, []);
 
   function complete() {
-    if (!pos) return;
+    if (!pos) return null;
     const { i, k } = pos;
     timer.stop();
     onCheck(i, k);
@@ -78,13 +81,57 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
     const n = nextOpen(next, i, k + 1);
     setPos(n);
     if (n) rest.start(items[i]?.rest || 60);
+    return n;
   }
   function skipEx() {
-    if (!pos) return;
+    if (!pos) return null;
     rest.stop();
     timer.stop();
-    setPos(nextOpen(sets, pos.i + 1, 0));
+    const n = nextOpen(sets, pos.i + 1, 0);
+    setPos(n);
+    return n;
   }
+
+  // Sesle söylenenler: yapılan işi kısa söyler
+  const setText = (p) => (p ? `${p.i === pos?.i ? "" : `Sıradaki hareket: ${items[p.i]?.name}. `}Set ${p.k + 1} / ${sets[p.i]?.length || 0}.` : "");
+  function voice(g) {
+    if (!g) return "";
+    if (g.op === "finish") {
+      onFinish("done");
+      return "Antrenmanı bitirdim.";
+    }
+    if (g.op === "feel") {
+      setFeel(g.k);
+      return `Not ettim: ${FEELS.find(([k]) => k === g.k)?.[1] || ""}.${pos ? "" : " Bitirmek için \"antrenmanı bitir\" de."}`;
+    }
+    if (!pos) return "Hepsi tamam. Nasıl geçti? Bitirmek için \"antrenmanı bitir\" de.";
+    if (g.op === "how") {
+      const h = String(exById(items[pos.i]?.ex)?.how || "").trim();
+      return h ? `${items[pos.i]?.name}: ${h.replace(/;\s*/g, ". ")}` : `${items[pos.i]?.name} için açıklama yok.`;
+    }
+    if (g.op === "more") {
+      if (!rest.run) return "Şu an dinlenme yok.";
+      rest.add(15);
+      return "15 saniye ekledim.";
+    }
+    if (g.op === "skip") {
+      const n = skipEx();
+      return n ? `Geçtim. ${setText(n)}` : "Geçtim. Hepsi tamam. Nasıl geçti?";
+    }
+    if (g.op === "done") {
+      if (rest.run) {
+        rest.stop();
+        return `Dinlenme bitti. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
+      }
+      const n = complete();
+      return n ? `Tamam. ${items[pos.i]?.rest || 60} saniye dinlen. ${setText(n)}` : "Tamam, hepsi bitti. Nasıl geçti?";
+    }
+    return "";
+  }
+  useEffect(() => {
+    setGuideHandler(voice);
+  });
+  useEffect(() => () => setGuideHandler(null), []);
 
   const top = (
     <div className="flex items-center gap-3 px-5 pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -106,7 +153,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   // Hepsi bitti (ya da kalanlar atlandı): nasıl geçti + bitir
   if (!pos) {
     return (
-      <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[80] flex flex-col bg-bg">
+      <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
         {top}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
           <span className="grid size-20 place-items-center rounded-full bg-acc text-white">
@@ -125,7 +172,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
             ))}
           </div>
         </div>
-        <div className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
           <button type="button" onClick={() => onFinish("done")} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
             Antrenmanı bitir
           </button>
@@ -145,7 +192,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   const val = cur[key] || it[key] || "";
 
   return (
-    <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[80] flex flex-col bg-bg">
+    <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
       {top}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-5">
         <h2 className="text-[1.625rem] font-bold leading-tight">{it.name}</h2>
@@ -199,7 +246,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
           </div>
         )}
       </div>
-      <div className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
         {!rest.run && (
           <button type="button" onClick={complete} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
             Tamamlandı

@@ -7,7 +7,8 @@ import { isEnd, isNoMore, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
-import { wantsFitness } from "@/lib/fitness/words";
+import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
+import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
 import { wantsPost } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
@@ -65,6 +66,8 @@ export function moreKind(s, c = {}) {
 }
 
 // c: { owner (ana hesap), isStaff, racer (sporcu/yarış yetkisi), athleteSide (sporcu/veli/öğrenci), att (yoklama yetkisi),
+//      guide (adım adım antrenman ekranı açık), myFit (sporcunun kendi fitness planı var), myFitToday (bugün var),
+//      fitPeople (ana hesap: fitness planı olan sporcular [{ uid, name }]),
 //      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
 //      askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
 // Dönen: [{ id, ...veri }] uygulanacak sırayla; son aday her zaman { id: "ai" }
@@ -74,6 +77,8 @@ export function routesOf(s, c = {}) {
   const mf = messageFirst(s);
   const { owner, isStaff, racer, athleteSide, path = "", today = "" } = c;
   const nav = (x) => localNavigate(x, { names: c.names || [] });
+  // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
+  if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
   if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
@@ -86,7 +91,13 @@ export function routesOf(s, c = {}) {
   if (!mf && !isStaff && wantsInventory(s, !!c.invPage) && !nav(s)) add("inventory");
   // Beslenme fitness'tan önce: Fitness sayfasında "öğlen tavuk pilav yedim", "kilom 82" yemek/kilo kaydıdır
   if (!mf && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
-  if (!mf && owner && !isStaff && wantsFitness(s, !!c.fitHere) && !nav(s)) add("fitness");
+  // Ana hesap: "sporcular bugün antrenman yaptı mı" her yerde. Sporcu (antrenörün hazırladığı programı varsa):
+  // "bugünkü antrenmanım ne", "antrenmana başla", "bu hafta kaç antrenman yaptım"; yaptım/atladım bugün fitness antrenmanı varsa
+  const fl = !mf ? fitLocal(s) : null;
+  const myFitOp = isStaff && c.myFit && fl && (["today", "start", "stats"].includes(fl.op) || (c.myFitToday && ["done", "skip"].includes(fl.op)));
+  // Ana hesap: "Ali bu hafta kaç antrenman yaptı" (Ali'nin fitness planı varsa)
+  const fitWho = owner && !isStaff && c.fitPeople?.length && athleteIn(s, c.fitPeople) && /\b(antrenman|idman|fitness)\w*/.test(fold(s)) && /\b(yapt|yapmis|yapmadi|kac\b|durum)/.test(fold(s));
+  if (!mf && ((owner && !isStaff && (wantsFitness(s, !!c.fitHere) || fl?.op === "athletes" || fitWho)) || (isStaff && c.myFit && (myFitOp || wantsFitness(s, !!c.fitHere)))) && !nav(s)) add("fitness");
   if (!c.drafts && !c.pending && BARE_SAVE.test(s)) add("bareSave");
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   const ra = !mf && owner && racer ? resultsAsk(s) : null;

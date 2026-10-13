@@ -32,6 +32,9 @@ import { labelFromCommand } from "@/lib/brain/model";
 import { pickChoice } from "@/features/athletes/raceNav";
 import { goBack } from "@/lib/navTrail";
 import { DROP, SAVE, focusBody } from "./ortak";
+import { guideHandler } from "@/features/fitness/guideVoice";
+import { guideWord } from "@/lib/fitness/words";
+import { myFit, planOf } from "@/lib/fitness/model";
 
 // Numaralı işlerden doğrudan yola gidenler (1-3 kendi akışlarında alınır: yaris.js, yoklama.js)
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
@@ -48,6 +51,15 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   // Cümle birine mesajla başlıyorsa ("Ali'ye yaz, faturayı ödedim", "ekibe yaz, kamp planı yapıyoruz") yerel akışlara
   // (kapatma, günlük, etkinlik, envanter, gönderi, ders programı, doğum günü, fatura, yoklama, yarış) girmez; mesaj ana yapay zekayla hazırlanır
   const msgFirst = messageFirst(s);
+  // Adım adım antrenman ekranı açık: "tamam", "bitti", "atla", "15 saniye ekle", "nasıl yapılır" ekrana gider (kapatmadan önce)
+  const gw = guideHandler() && guideWord(s);
+  if (gw) {
+    setTurns((p) => [...p, { role: "user", text: s }]);
+    setHeard(s);
+    setText("");
+    const say = guideHandler()(gw);
+    if (say) return reply(say, { engine: "local" }, viaVoice);
+  }
   // Sohbeti bitir ("bitir", "kapat", "tamam teşekkürler"): dinleme durur, sesli cevap yok
   if (isEnd(s) && !msgFirst) {
     finish();
@@ -194,11 +206,15 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   invAsk.current = null;
   const toWho = askTo.current;
   const shopLists = listsFor(myKind, members);
+  const mine = isStaff ? myFit(plans, profile?.uid) : [];
+  const fitIds = owner ? new Set((ctx.fitOthers || []).map((p) => p.fit?.for)) : null;
+  const fitPeople = owner ? members.filter((m) => fitIds.has(m.uid)).map((m) => ({ uid: m.uid, name: m.name || "" })) : [];
   const found = routesOf(s, {
     owner, isStaff, racer, att: canSeeAthletes(profile?.email), athleteSide: isAthleteSide(myKind), path, today: todayStr(),
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
+    guide: !!guideHandler(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
   // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
   const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;
@@ -207,6 +223,10 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     switch (r.id) {
       case "close":
         return finish(), true;
+      case "guide": {
+        const say = guideHandler()?.(guideWord(s));
+        return say ? (reply(say, { engine: "local" }, viaVoice), true) : false;
+      }
       // "Son güncelleme ne?": derlemede gömülen yayın bilgisi (lib/buildInfo.js)
       // "Bildirimleri temizle": zildeki bildirim listesi boşalır (yapılacaklar kalır)
       case "inboxClear": {
