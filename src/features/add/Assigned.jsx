@@ -224,7 +224,7 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
       )}
       {mine && !extra && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
 
-      <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" docked={docked} />
+      {onReply && <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" docked={docked} />}
     </div>
   );
 }
