@@ -4,6 +4,7 @@ import { reminderTextOf } from "./notifyText.js";
 
 export const LEADS = [
   { min: 15, label: "15 dk önce" },
+  { min: 30, label: "30 dk önce" },
   { min: 60, label: "1 saat önce" },
   { min: 1440, label: "1 gün önce" },
 ];
@@ -60,4 +61,40 @@ export function reminderText(plan, lead, { tz = DEFAULT_TZ, now = new Date() } =
     if (left > 0 && left < 60 && left < lead - 5) use = Math.max(5, Math.round(left / 5) * 5);
   }
   return { ...reminderTextOf(plan, use), tag: `plan-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
+}
+
+// Plana özel hatırlatma (plan formundaki "Hatırlat"): dakika. Yoksa null (kişinin kendi ayarı geçerli), 0 = bu plan hatırlatılmaz.
+export function planRemind(p) {
+  if (p?.remind === undefined || p?.remind === null || p.remind === "") return null;
+  const n = Number(p.remind);
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 2880) : null;
+}
+// Plana özel hatırlatma kime gider: sorumlular (people) ve ana hesap (kulübün sahibi). Fitness planı yalnız sporcusuna.
+export function planRecipients(p, ownerId) {
+  if (p?.fit?.for) return [p.fit.for];
+  return [...new Set([...(p?.people || []), ownerId].filter(Boolean))];
+}
+// "Hatırlat" seçenekleri (plan formu): Yok + LEADS
+export const REMIND_OPTS = [{ min: 0, label: "Yok" }, ...LEADS.map((l) => ({ min: l.min, label: l.label.replace(" önce", "") }))];
+export const remindLabel = (min) => (min === 0 ? "hatırlatma yok" : `${(LEADS.find((l) => l.min === min) || { label: min % 60 ? `${min} dk önce` : `${min / 60} saat önce` }).label} hatırlat`);
+
+// Cümledeki "… önce hatırlat" isteği (dakika): "yarım saat önce hatırlat" 30, "1 saat kala hatırlat" 60, "bir gün önce hatırlat" 1440,
+// "hatırlatma olmasın" 0. Yoksa null.
+const NUM = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, on: 10, yirmi: 20, otuz: 30, kırk: 40, kırkbeş: 45, "kırk beş": 45 };
+export function remindOf(text) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  if (/hat[ıi]rlatma (olmas[ıi]n|yok|gönderme|istemiyorum)|hat[ıi]rlatmas[ıi]n/.test(t)) return 0;
+  const m = /(yarım saat|çeyrek saat|(\d+|bir|iki|üç|dört|beş|on|yirmi|otuz|kırk beş|kırk)\s*(dk|dakika|saat|gün))\s*(önceden|önce|evvel|kala)?\s*hat[ıi]rlat/.exec(t);
+  if (!m) return null;
+  if (m[1] === "yarım saat") return 30;
+  if (m[1] === "çeyrek saat") return 15;
+  const n = /^\d+$/.test(m[2]) ? Number(m[2]) : NUM[m[2]] || 1;
+  const v = m[3] === "gün" ? n * 1440 : m[3] === "saat" ? n * 60 : n;
+  return v > 0 && v <= 2880 ? v : null;
+}
+// Taslak listesine uygular: yalnız planlara (plan yoksa olduğu gibi)
+export function applyRemind(items, text) {
+  const r = remindOf(text);
+  if (r === null) return items;
+  return items.map((x) => (x.type === "plan" && x.remind == null ? { ...x, remind: r } : x));
 }

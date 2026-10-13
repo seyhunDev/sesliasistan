@@ -209,6 +209,27 @@ export function programLine(prog) {
   return [days, prog?.weeks ? `${prog.weeks} hafta` : ""].filter(Boolean).join(" · ");
 }
 
+// Programın düz yazı listesi (kopyalamak için): kime, yaşı, ne için, gün gün hareketler
+export function programText(prog, { age = 0, sport = "" } = {}) {
+  if (!prog) return "";
+  const who = prog.forName ? `${prog.forName} için fitness programı` : prog.title || "Fitness programı";
+  const yas = age || prog.forAge || 0;
+  const spor = labelOf(SPORTS, sport || prog.sport || "");
+  const head = [
+    who,
+    prog.forName && prog.title && !prog.title.startsWith(prog.forName) ? prog.title : "",
+    [yas ? `${yas} yaş` : "", spor ? `Spor: ${spor}` : ""].filter(Boolean).join(" · "),
+    [prog.goal && `Hedef: ${labelOf(GOALS, prog.goal)}`, prog.level && `Seviye: ${labelOf(LEVELS, prog.level)}`, prog.place && `Yer: ${labelOf(PLACES, prog.place)}`].filter(Boolean).join(" · "),
+    [`Haftada ${(prog.days || []).length} gün`, prog.weeks ? `${prog.weeks} hafta` : "", prog.start ? `başlangıç ${new Date(`${prog.start}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}` : ""].filter(Boolean).join(" · "),
+  ].filter(Boolean);
+  const days = (prog.days || []).map((d) => {
+    const top = `${DOW_LONG[d.dow]}${d.time ? ` ${d.time}` : ""} · ${d.name}${d.min ? ` (${d.min} dk)` : ""}`;
+    const items = (d.items || []).map((it, i) => `${i + 1}. ${it.name || exById(it.ex)?.name || "Hareket"} — ${itemLine(it)}`);
+    return [top, ...items].join("\n");
+  });
+  return [head.join("\n"), ...days, prog.note ? `Not: ${prog.note}` : ""].filter(Boolean).join("\n\n");
+}
+
 // ---- Hareket satırı ----
 const kgText = (kg) => `${String(kg).replace(".", ",")} kg`;
 export function itemLine(it) {
@@ -275,6 +296,15 @@ export function statusOf(p, today) {
 }
 export const STATUS = { done: "Yapıldı", skip: "Atlandı", missed: "Yapılmadı", today: "Bugün", next: "Sırada" };
 
+// "Ali Kaya" → "Ali'ye", "Zeynep" → "Zeynep'e", "Mete" → "Mete'ye" (ilk ad, yönelme eki)
+export function toName(full) {
+  const w = String(full || "").trim().split(/\s+/)[0] || "";
+  if (!w) return "";
+  const low = w.toLocaleLowerCase("tr-TR");
+  const v = [...low].reverse().find((c) => "aeıioöuü".includes(c)) || "e";
+  const e = "aıou".includes(v) ? "a" : "e";
+  return `${w}'${"aeıioöuü".includes(low.at(-1)) ? "y" : ""}${e}`;
+}
 // Sporcunun planı mı (ana hesap hazırladı, sporcu yapar). Ana hesabın kendi takvimi ve takibi bunları saymaz.
 export const isOthers = (p, me) => !!p?.fit?.for && p.fit.for !== me;
 // Sporcu listesi (Fitness › Sporcular): her sporcunun etkin programı ve bu haftası.

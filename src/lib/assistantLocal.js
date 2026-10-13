@@ -1,5 +1,6 @@
 import { addDate, weekRange } from "@/lib/ai/digest";
 import { short, todayStr } from "@/lib/utils/format";
+import { remindLabel } from "@/lib/reminders";
 
 export { PAGES } from "./nav";
 export const KIND = { plan: "Plan", task: "Görev", note: "Not" };
@@ -48,6 +49,7 @@ export function buildPatch(kind, p = {}, rec = {}) {
     if (p.place) o.place = p.place.trim();
     if (p.time) Object.assign(o, { time: p.time, allDay: false, durationMin: rec.durationMin || 60, timeSource: "user" });
     else if (p.allDay === true) Object.assign(o, { time: "", allDay: true, durationMin: null, timeSource: "none" });
+    if (Number.isFinite(p.remind)) o.remind = p.remind; // plana özel hatırlatma (dk önce; 0 yok)
   } else if (kind === "task") {
     if (p.date) o.due = p.date;
   } else if (p.body) o.body = p.body.trim();
@@ -66,6 +68,7 @@ export function describeAction(a, rec) {
   else if (p.allDay) parts.push("tüm gün");
   if (p.place) parts.push(`yer ${p.place}`);
   if (p.body) parts.push("not metni");
+  if (Number.isFinite(p.remind)) parts.push(remindLabel(p.remind));
   if (Array.isArray(p.assignTo)) parts.push(p.assignTo.length ? `sorumlu ${p.assignTo.join(", ")}` : "sorumlu yok");
   return `Güncelle: ${name} → ${parts.join(", ") || "değişiklik"}`;
 }

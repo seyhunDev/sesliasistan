@@ -153,6 +153,16 @@ export function DataProvider({ children }) {
       toast("İnternete ulaşılamadı, tekrar dene.");
     }
   }, [toast]);
+  // Plana özel hatırlatma gitmediyse "Yeniden gönder": gitmeyenlere şimdi gönderilir
+  const resendRemind = useCallback(async (id) => {
+    try {
+      const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "plan", id, event: "remind" }) });
+      const j = await res.json().catch(() => ({}));
+      toast(j.sent ? "Hatırlatma gönderildi." : "Yine gitmedi; nedeni altta yazıyor.");
+    } catch {
+      toast("İnternete ulaşılamadı, tekrar dene.");
+    }
+  }, [toast]);
   // Kayda not eklendi / kişi tamamladı: kaydı verene ve ana hesaba bildirim (metni sunucu kayıttan okur)
   const notifyEvent = (kind, id, event) =>
     authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, event }) }).catch(() => {});
@@ -326,6 +336,8 @@ export function DataProvider({ children }) {
             timeSource: timed ? "user" : "none",
             place: (d.place || "").trim(),
             status: "planned",
+            // Hatırlat: seçildiyse o; sorumlusu olan planda varsayılan 1 saat önce (sorumlulara ve ana hesaba gider)
+            ...(d.remind != null ? { remind: d.remind } : base.assignees.length ? { remind: 60 } : {}),
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
           };
           ids.push(["plan", planIds[i]]);
@@ -984,7 +996,7 @@ export function DataProvider({ children }) {
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
         saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked, resendAssign,
+        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked, resendAssign, resendRemind,
       }}
     >
       {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}
