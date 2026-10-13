@@ -120,12 +120,17 @@ export function cleanItem(it = {}) {
   if (media.length) out.media = media;
   return out;
 }
-// Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts }], en çok 3
+// Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts, url }], en çok 3
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
     .filter((m) => m && typeof m.id === "string" && m.id && (m.kind === "photo" || m.kind === "video"))
     .slice(0, 3)
-    .map((m) => ({ id: m.id.slice(0, 40), kind: m.kind, type: String(m.type || "").slice(0, 40), size: Math.max(0, +m.size || 0), parts: Math.min(40, Math.max(1, Math.round(+m.parts) || 1)) }));
+    .map((m) => {
+      const o = { id: m.id.slice(0, 40), kind: m.kind, type: String(m.type || "").slice(0, 40), size: Math.max(0, +m.size || 0), parts: Math.min(40, Math.max(1, Math.round(+m.parts) || 1)) };
+      // Storage'daki dosya: indirme adresi (https, firebasestorage) künyede durur, video oradan akarak oynar
+      if (typeof m.url === "string" && /^https:\/\/firebasestorage\.googleapis\.com\//.test(m.url) && m.url.length < 1200) o.url = m.url;
+      return o;
+    });
 }
 export function cleanDay(d = {}) {
   const dow = num(d.dow, 1, 7);

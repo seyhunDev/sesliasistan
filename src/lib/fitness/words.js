@@ -29,6 +29,7 @@ export function wantsFitness(raw, here = false) {
 export function fitLocal(raw) {
   const t = fold(raw).replace(/'/g, "");
   if (!t) return null;
+  if (/\bfitness\w*\b.*\bsifirla\w*|\bsifirla\w*\b.*\bfitness\w*|\b(butun|tum)\b.*\bfitness\w*\b.*\bsil\w*/.test(t)) return { op: "reset" };
   if (/\bprogram\w*\b.*\b(planlar\w*|takvim\w*)\b.*\b(kaldir\w*|sil\w*|cikar\w*)\b/.test(t)) return { op: "unplan" };
   if (/\b(planlar\w*|takvim\w*)\b.*\b(ekle\w*|isle\w*|koy\w*|yaz\b|aktar\w*)\b/.test(t) && !/\b(set|tekrar|kilo|gun\w* yap)\b/.test(t)) return { op: "plans" };
   if (/\bkac\b.*\b(antrenman\w*|fitness\w*|idman\w*|gun)\b.*\b(yaptim|yapmisim|yaptik|kacirdim)\b|\b(bu hafta|bu ay)\b.*\bdurum\w*\b/.test(t)) return { op: "stats" };
