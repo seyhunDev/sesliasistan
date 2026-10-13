@@ -1826,3 +1826,46 @@ group("Instagram sonuç (yalnız fotoğraf)")([
   ["sıra saklanır", F("sporcunun derecesi gönderide kalır", () => PM.cleanPost({ kind: "sonuc", race: TEOS }).race.athletes[0].r.cp === 1)],
   ["haber başlığı", F("ilk satır başlık, gövdeden çıkar", () => { const d = NM.newsDraft({ photoOnly: true, caption: TEOS_TEXT }, "2026-10-12"); return d.title === "Tebrikler Mete!" && d.body.startsWith("11–13 Eylül") && !d.body.includes("🏆"); })],
 ]);
+
+// Fitness hareket kütüphanesi (library.js): numara, aynı harekete aynı video, kulübün kendi hareketleri
+const LB = await import("@/lib/fitness/library");
+const FMK = await import("@/lib/fitness/model");
+const YT = { id: "dQw4w9WgXcQ" };
+group("Fitness hareket kütüphanesi")([
+  ["numara", F("yeni hareketler 1, 2, 3; aynısı tekrar eklenmez", () => {
+    const { lib, added } = LB.libAdd(LB.cleanLib(), [{ ex: "warmup" }, { ex: "wall-sit" }, { ex: "warmup" }, { name: "Sandalyede dips" }]);
+    return added.length === 3 && lib.items["wall-sit"].no === 2 && lib.items["c:sandalyede-dips"].no === 3 && lib.next === 4;
+  })],
+  ["numara değişmez", F("ikinci programda eski numara kalır", () => {
+    const a = LB.libAdd(LB.cleanLib(), [{ ex: "squat" }]).lib;
+    const b = LB.libAdd(a, [{ ex: "plank" }, { ex: "squat" }]).lib;
+    return b.items.squat.no === 1 && b.items.plank.no === 2;
+  })],
+  ["aynı video her yerde", F("duvarda oturmaya eklenen video başka programdaki duvarda oturmada da", () => {
+    const lib = LB.libSetMedia(LB.cleanLib(), { ex: "wall-sit", name: "Duvarda oturma" }, { yt: YT });
+    const other = LB.withLib({ ex: "wall-sit", name: "Duvarda oturma", sec: 30 }, lib);
+    return other.yt?.id === YT.id && other.sec === 30 && !LB.withLib({ ex: "squat", name: "Squat" }, lib).yt;
+  })],
+  ["eski programın videosu", F("kütüphaneye geçer", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "warmup", yt: YT }]);
+    return lib.items.warmup.m === true && lib.items.warmup.yt?.id === YT.id;
+  })],
+  ["video kaldırma", F("kütüphanede kaldırılan video programdan da kalkar", () => {
+    const a = LB.libSetMedia(LB.cleanLib(), { ex: "warmup" }, { yt: YT });
+    const b = LB.libSetMedia(a, { ex: "warmup" }, { yt: null });
+    return !LB.withLib({ ex: "warmup", name: "Isınma", yt: YT }, b).yt;
+  })],
+  ["değişiklik var mı", F("sameMedia", () => LB.sameMedia([{ yt: YT }], [{ yt: YT }]) && !LB.sameMedia([{ yt: YT }], [{}]))],
+  ["yapay zekaya kulübün hareketleri", F("c: satırları, listedekiler girmez", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "squat" }, { name: "Sandalyede dips" }]);
+    return LB.customCatalog(lib) === "c:sandalyede-dips: Sandalyede dips";
+  })],
+  ["kendi hareketi listedekine dönmez", F("ex boş + ad: squat'a çevrilmez", () => {
+    const it = FMK.cleanItem({ ex: "", name: "Sandalyede tek bacak squat" });
+    return it.ex === "" && it.name === "Sandalyede tek bacak squat" && LB.exKey(it).startsWith("c:");
+  })],
+  ["arama", F("numarayla ve adla", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "warmup" }, { ex: "wall-sit" }]);
+    return LB.libList(lib, "2")[0]?.key === "wall-sit" && LB.libList(lib, "isinma")[0]?.key === "warmup";
+  })],
+]);

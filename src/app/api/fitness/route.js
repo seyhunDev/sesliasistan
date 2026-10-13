@@ -19,7 +19,7 @@ Tek bir iş seç (op):
 - "profile": yalnız kişisel bilgi söylenirse ("kilom 82", "hedefim kilo vermek", "evde çalışıyorum, dambılım var").
 - "answer": soru ya da tavsiye ("bu hafta kaç antrenman yaptım", "squat rekorum ne", "dinlenme günü ne yapayım"). Verilen özetten kısa, doğru cevap ver; bilmediğini uydurma.
 Program kuralları:
-- Hareketler YALNIZ verilen listeden, "ex" alanına listedeki id yazılır (ör. "squat"). Listede olmayan hareket yazma.
+- Hareketler YALNIZ verilen listeden, "ex" alanına listedeki id yazılır (ör. "squat"). Listede olmayan hareket yazma. "Kulübün kendi hareketleri" verildiyse onlar da kullanılabilir, "ex" alanına "c:" ile başlayan id'si aynen yazılır.
 - Kullanıcının söylediği günleri ve saatleri aynen kullan: dow 1 Pazartesi … 7 Pazar; "sabah" söylendiyse ve saat yoksa 07:00, "akşam" ise 19:00, "öğle" 12:30. Gün söylenmediyse hedefe göre haftada 3 gün (Pzt, Çar, Cum) ve profilde/programda saat yoksa boş bırak.
 - weeks: söylenen hafta sayısı, yoksa 4. start: söylendiyse YYYY-MM-DD, yoksa boş (telefon önümüzdeki ilk günü koyar).
 - Her güne kısa ad ver (ör. "Üst vücut", "Alt vücut", "Tüm vücut", "Kardiyo ve karın"). min: antrenman süresi (söylenmediyse 45).
@@ -105,7 +105,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const opt = (list) => list.map(([k, l]) => `${k} (${l})`).join(", ");
 
 // Mevcut programın kısa yazısı (yapay zekaya; değişiklik isteğinde tam programı geri döndürsün diye JSON)
-const progText = (p) => (p?.days?.length ? JSON.stringify({ title: p.title, weeks: p.weeks, start: p.start, days: p.days.map(({ dow, time, min, name, items }) => ({ dow, time, min, name, items: items.map(({ ex, sets, reps, sec, min: m, kg, rest }) => ({ ex, sets, reps, sec, min: m, kg, rest })) })) }) : "");
+const progText = (p) => (p?.days?.length ? JSON.stringify({ title: p.title, weeks: p.weeks, start: p.start, days: p.days.map(({ dow, time, min, name, items }) => ({ dow, time, min, name, items: items.map(({ ex, name, sets, reps, sec, min: m, kg, rest }) => ({ ex, ...(ex ? {} : { name }), sets, reps, sec, min: m, kg, rest })) })) }) : "");
 
 async function handle(request) {
   const au = await requireUser(request);
@@ -123,6 +123,16 @@ async function handle(request) {
   const today = DAY.test(body?.today) ? body.today : new Date().toISOString().slice(0, 10);
   const prof = cleanProfile(body?.profile || {});
   const cur = body?.program ? cleanProgram(body.program) : null;
+  // Kulübün hareket kütüphanesindeki, listede olmayan hareketler ("c:ad: Ad"); yapay zeka id'yi yazınca ada çevrilir
+  const custom = new Map(
+    String(body?.lib || "")
+      .split("\n")
+      .slice(0, 60)
+      .map((l) => l.match(/^(c:[^:\s]{1,50}):\s*(.{1,60})$/))
+      .filter(Boolean)
+      .map((m) => [m[1], m[2].trim()]),
+  );
+  const own = (it) => (custom.has(it?.ex) ? { ...it, ex: "", name: custom.get(it.ex) } : it);
   const user = [
     `Bugün: ${today} (${DOW_LONG[((new Date(`${today}T12:00:00`).getDay() + 6) % 7) + 1]})`,
     `Profil: ${JSON.stringify(prof)}\n(goal: ${opt(GOALS)}; level: ${opt(LEVELS)}; place: ${opt(PLACES)})`,
@@ -130,6 +140,7 @@ async function handle(request) {
     body?.recent ? `Son antrenmanlar:\n${S(body.recent, 3000)}` : "",
     body?.stats ? `Özet: ${S(body.stats, 600)}` : "",
     `Hareket listesi (id: ad):\n${exerciseCatalog()}`,
+    custom.size ? `Kulübün kendi hareketleri (id: ad):\n${[...custom].map(([k, v]) => `${k}: ${v}`).join("\n")}` : "",
     `Kullanıcının söylediği:\n"""\n${text}\n"""`,
     body?.want === "program" ? 'Bu istek "Program hazırla" formundan geldi: op MUTLAKA "program" olsun, soru sorma. Eksik bilgi (boy, kilo, yaş, seviye, ekipman) için makul varsayım yap ve note içinde kısaca söyle.' : "",
   ].filter(Boolean).join("\n\n");
@@ -146,7 +157,8 @@ async function handle(request) {
     const out = { op, message: S(raw?.message, 400) };
     if (raw?.profile) out.profile = cleanProfile(raw.profile);
     if (op === "program") {
-      const p = cleanProgram({ ...(cur || {}), ...raw.program, goal: prof.goal || out.profile?.goal, level: prof.level || out.profile?.level, place: prof.place || out.profile?.place });
+      const days = (raw.program.days || []).map((d) => ({ ...d, items: (d.items || []).map(own) }));
+      const p = cleanProgram({ ...(cur || {}), ...raw.program, days, goal: prof.goal || out.profile?.goal, level: prof.level || out.profile?.level, place: prof.place || out.profile?.place });
       if (!p.days.length || p.days.every((d) => !d.items.length)) return bad("Program hazırlanamadı, gün ve hedefi söyleyip tekrar dene.", 502);
       out.program = p;
     }
