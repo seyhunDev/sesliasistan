@@ -5,7 +5,7 @@
 import webpush from "web-push";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, Filter, getFirestore } from "firebase-admin/firestore";
-import { dueReminders, localNow, reminderText, remindKey } from "../../src/lib/reminders.js";
+import { dueReminders, localNow, planRecipients, planRemind, reminderText, remindKey } from "../../src/lib/reminders.js";
 import { due, eveningText, morningText } from "../../src/lib/summary.js";
 import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
 import { mailDigestText } from "../../src/lib/bankSheet.js";
@@ -92,7 +92,7 @@ async function sendDueReminders() {
     // Çalışan yalnızca kendisini ilgilendiren (people listesinde olduğu) planlar için bildirim alır.
     const oid = orgId || u.id;
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
-    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id));
+    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && planRemind(p) === null && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
       const payload = await withBadge(db, u.id, reminderText(p, lead, { tz }));
       await Promise.all(
@@ -110,13 +110,68 @@ async function sendDueReminders() {
       await snap.docs.find((d) => d.id === p.id).ref.update({ [`reminded.${u.id}`]: remindKey(p, lead) });
     }
   }
+  const own = await sendPlanReminders(db, all, q).catch((e) => (console.error("[plana özel hatırlatma]", e.message), 0));
   const summaries = await sendSummaries(db, all, q).catch((e) => (console.error("[summary]", e.message), 0));
   const mails = await sendMailDigests(db, all).catch((e) => (console.error("[mail]", e.message), 0));
   const extras = await sendExtras(db, all, q).catch((e) => (console.error("[extras]", e.message), 0));
   const dues = await sendDuesRemind(db, all).catch((e) => (console.error("[aidat hatırlatma]", e.message), 0));
   const att = await sendAttRemind(db, all, q).catch((e) => (console.error("[yoklama hatırlatma]", e.message), 0));
-  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama`);
-  return new Response(`ok ${sent} ${summaries} ${mails} ${extras} ${dues} ${att}`);
+  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${own} plana özel, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama`);
+  return new Response(`ok ${sent} ${own} ${summaries} ${mails} ${extras} ${dues} ${att}`);
+}
+
+// Plana özel hatırlatma (plan formundaki "Hatırlat"): kişinin kendi hatırlatma ayarından bağımsız, planın sorumlularına
+// ve ana hesaba gider. Plan sorgusu yukarıdakiyle paylaşılır (ek okuma yok); yalnız hatırlatılacak kişi bildirim kullanıcıları
+// arasında değilse onun belgesi okunur. Gitmezse nedeni planda (remindFail.<kişi>) durur, plan ekranında görünür.
+async function sendPlanReminders(db, all, q) {
+  let n = 0;
+  const byId = new Map(all.map((d) => [d.id, d]));
+  const orgs = [...new Set(all.map((d) => d.data().orgId || d.id))];
+  for (const oid of orgs) {
+    const tz0 = byId.get(oid)?.data().reminders?.tz || "Europe/Istanbul";
+    const today = localNow(tz0).date;
+    const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
+    for (const doc of snap.docs) {
+      const p = { ...doc.data(), id: doc.id };
+      const lead = planRemind(p);
+      if (!lead || p.status === "cancelled" || p.done) continue;
+      for (const uid of planRecipients(p, oid)) {
+        let u = byId.get(uid);
+        const tz = u?.data().reminders?.tz || tz0;
+        if (!dueReminders([p], { lead, tz, uid }).length) continue;
+        if (!u) {
+          u = await db.collection("users").doc(uid).get();
+          if (u.exists) byId.set(uid, u);
+        }
+        const d = u.exists ? u.data() : null;
+        const subs = Object.entries(d?.push || {});
+        let ok = 0;
+        let why = !d ? "account" : !subs.length ? "device" : "";
+        if (subs.length) {
+          const payload = await withBadge(db, uid, reminderText(p, lead, { tz }));
+          let err = "";
+          await Promise.all(
+            subs.map(async ([key, sub]) => {
+              try {
+                await sendDevice(sub, payload, { TTL: 3600 });
+                ok++;
+              } catch (e) {
+                if (e.statusCode === 404 || e.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+                else err = String(e.statusCode || e.message || "hata");
+              }
+            }),
+          );
+          if (!ok) why = err ? "error" : "device";
+        }
+        n += ok;
+        await doc.ref.update({
+          [`reminded.${uid}`]: remindKey(p, lead),
+          [`remindFail.${uid}`]: ok ? FieldValue.delete() : { why, at: Date.now() },
+        });
+      }
+    }
+  }
+  return n;
 }
 
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez

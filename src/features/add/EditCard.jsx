@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { leftLabel } from "@/lib/agenda";
 import { addDays, cap, short, todayStr } from "@/lib/utils/format";
-import { Picker, TIMES, addDaysFrom, chip, dayLabel, saturday } from "./DraftCard";
+import { Picker, RemindChips, TIMES, addDaysFrom, chip, dayLabel, remindText, saturday } from "./DraftCard";
 
 const D = (s) => new Date(`${s}T00:00`);
 // "14:05" (bugün), "dün 18:20", "27 Eyl 09:10"
@@ -78,7 +78,8 @@ function DayChips({ value, onPick, onClear }) {
 // d: taslak, onChange(patch). meta: "Ali ekledi · dün". done/onToggleDone: yalnızca görev.
 // assign: ana hesabın çalışanları (boşsa "Çalışan ekle"), çalışan hesabında null (satır gösterilmez).
 // acks: kayıtlı sorumluların durumu [{ uid, name, key, label, at }] (ana hesapta gösterilir)
-export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [], onResend }) {
+// remindFails: plana özel hatırlatması gitmeyenler [{ uid, name, why }] (ana hesapta), onRemindResend: yeniden dene
+export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [], onResend, remindFails = [], onRemindResend }) {
   const [open, setOpen] = useState(""); // açık satır
   const toggle = (k) => () => setOpen((o) => (o === k ? "" : k));
   const put = (patch, close = true) => {
@@ -162,6 +163,25 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
   </div>
   );
 
+  const remindList = remindFails.length > 0 && (
+    <div className="mt-3 rounded-2xl bg-card px-4 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <p className="flex items-center gap-2 py-1 text-[0.875rem] font-medium text-rose-600 dark:text-rose-400">
+        <Icon name="bell" className="size-4 shrink-0" />
+        Hatırlatma gitmedi
+      </p>
+      {remindFails.map((a) => (
+        <p key={a.uid} className="py-0.5 text-[0.8125rem] leading-snug text-mut">
+          <span className="font-medium text-fg">{a.name.split(" ")[0]}:</span> {a.why}
+        </p>
+      ))}
+      {onRemindResend && (
+        <button type="button" onClick={onRemindResend} className="mt-1.5 text-[0.875rem] font-semibold text-acc">
+          Yeniden gönder
+        </button>
+      )}
+    </div>
+  );
+
   const addStaffRow = assign && !assign.length && onAddStaff && (
     <li className="border-b border-line">
       <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
@@ -243,6 +263,12 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
                 </div>
               </Row>
             )}
+            {d.date && (
+              <Row icon="bell" label="Hatırlat" value={remindText(d.remind ?? null)} tone={d.remind ? "text-fg" : undefined} open={open === "remind"} onToggle={toggle("remind")}>
+                <RemindChips value={d.remind ?? null} onPick={(v) => onChange({ remind: v })} />
+                <p className="mt-2 text-[0.8125rem] text-mut">Sorumlulara ve sana bildirim gider.</p>
+              </Row>
+            )}
             <li className="border-b border-line">
               <label className="flex min-h-[3.25rem] items-center gap-3 px-4">
                 <Icon name="pin" className="size-5 shrink-0 text-mut" />
@@ -281,6 +307,7 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
           </ul>
         )}
         {ackList}
+        {remindList}
       </div>
     );
 

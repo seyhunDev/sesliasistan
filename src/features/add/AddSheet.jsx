@@ -14,7 +14,7 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useKind } from "@/features/auth/useKind";
 import { addDays, rel, todayStr } from "@/lib/utils/format";
 import { labelFromItems } from "@/lib/brain/model";
-import { ackState, assigneesOf, lockedFor } from "@/lib/people";
+import { ackState, assigneesOf, lockedFor, pushWhy } from "@/lib/people";
 import { assigneeHints, assigneesInText, namesToUids, uidsToNames } from "@/lib/names";
 import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
@@ -40,7 +40,7 @@ const MANUAL = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "N
 
 const fromRecord = (kind, r) => ({
   ...(kind === "plan"
-    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", cat: r.cat }
+    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", remind: r.remind ?? null, cat: r.cat }
     : kind === "task"
       ? { ...blank("task"), title: r.title, date: r.due || "", cat: r.cat }
       : { ...blank("note"), title: r.title, body: r.body, cat: r.cat }),
@@ -62,7 +62,7 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { resendAssign, plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
+  const { resendAssign, resendRemind, plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
   const { openAssistant } = useAssistant();
   const router = useRouter();
   const [drafts, setDrafts] = useState([]);
@@ -392,6 +392,8 @@ export function AddSheet({ open, onClose, seed }) {
                     : []
                 }
                 onResend={rec && !isStaff ? () => resendAssign(edit.kind, edit.id) : undefined}
+                remindFails={edit.kind === "plan" && rec && !isStaff ? Object.entries(rec.remindFail || {}).map(([u, x]) => ({ uid: u, name: u === myUid ? "Sen" : nameOf(u) || "Kişi", why: pushWhy(x) })) : []}
+                onRemindResend={rec && !isStaff ? () => resendRemind(edit.id) : undefined}
               />
             )}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}

@@ -42,6 +42,8 @@ const ACTIONS = [
   ["delete", /(^| )(sil|silelim|siler misin|sil\p{L}*|kaldır\p{L}*)( |$)/u],
   ["update", /(ertele\p{L}*|değiştir\p{L}*|güncelle\p{L}*|kaydır\p{L}*|(saatini|saati|tarihini|gününü) \S+|(\d+['’]?|\p{L}+['’])(e|a|ye|ya) (al|çek)(?![\p{L}]))/u],
 ];
+// "yarım saat önce hatırlat", "1 saat önce hatırlat": plana hatırlatma ayarı, görev isteği değil
+const REMIND_P = /(yarım saat|çeyrek saat|\S+\s*(dk|dakika|saat|gün))\s*(önceden|önce|evvel|kala)\s*hat[ıi]rlat\S*/gu;
 const pcOf = (id, extra = {}) => ({ kind: id, ...cueOf(id), ...extra });
 
 const hm = (t) => (t ? t.slice(0, 5) : "");
@@ -91,7 +93,11 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   }
 
   // Var olan kayıtta işlem ("motor yağı görevini tamamla", "antrenmanı 11'e al", "yarınki toplantıyı sil"): plan hazırlanmaz
-  const act = !CREATE.test(rawLow) && ACTIONS.find(([, re]) => re.test(rawLow))?.[0];
+  const remind = new RegExp(REMIND_P.source, "u").test(rawLow);
+  const rawS = rawLow.replace(REMIND_P, " ");
+  const tS = t.replace(REMIND_P, " ");
+  const timeIn = (x) => /saat \d|\d{1,2}[:.]\d{2}|\d{1,2}'?(de|da|te|ta)( |$)/.test(x);
+  const act = !CREATE.test(rawS) && (ACTIONS.find(([, re]) => re.test(rawS))?.[0] || (remind && !timeIn(tS) && "update"));
   if (act) {
     const c = cueOf(act);
     return { kind: "action", line: c.line, work: c.work, hint: hintOf("", { kind: `işlem (${act})` }) };
@@ -100,11 +106,11 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Yeni kayıt: tür ve alanlar kurallarla
   const label = guess?.score >= 0.55 ? guess.label : "";
   // Not açıkça istendiyse ("notlara ekle …", "Not: …") tür nottur
-  const byWord = (wantsNote(text) && !SEND.test(rawLow) && "note") || TYPE_W.find(([, re]) => re.test(t))?.[0] || "";
+  const byWord = (wantsNote(text) && !SEND.test(rawLow) && "note") || TYPE_W.find(([, re]) => re.test(tS))?.[0] || "";
   // Not yalnız açıkça istenince söylenir ("not alıyorum"); öğrenilmiş tahmin ya da kuralın varsayılanı notu seçtirmez
   const byGuess = { "create:plan": "plan", "create:task": "task", "create:plan+note": "plan" }[label] || "";
   const hasTime = /saat \d|\d{1,2}[:.]\d{2}|\d{1,2}'?(de|da|te|ta)( |$)/.test(t);
-  const wantsCreate = CREATE.test(t) || !!byWord || !!byGuess || (hasTime && !QUESTION.test(t));
+  const wantsCreate = CREATE.test(tS) || !!byWord || !!byGuess || (hasTime && !QUESTION.test(t));
   if (!wantsCreate) {
     if (t.split(/\s+/).length <= 3) return null; // "teşekkürler", "tamam sağ ol": ön cevaba gerek yok
     const line = "Bir bakayım.";

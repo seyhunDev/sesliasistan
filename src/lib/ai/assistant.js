@@ -1,6 +1,7 @@
 import { TOOL as CREATE_TOOL, toDrafts } from "./schema";
 import { matchPerson } from "../names.js";
 import { applyRepeat } from "../repeat.js";
+import { remindOf } from "../reminders.js";
 
 const KIND = ["plan", "task", "note"];
 import { PAGE_KEYS as PAGES, PAGES as PAGE_INFO } from "../nav.js";
@@ -67,6 +68,7 @@ Kullanıcı tek cümlede birden çok iş isteyebilir: "Gökhan'a yarın 10'da te
 - Özette "| silme isteği: Ad" yazan kayıt için "silme isteğini onayla / sil" → op approve_delete (uygulama onay ister), "silme isteğini reddet / silmesin" → op reject_delete.
 - Var olan kaydın sorumlusunu değiştirmek ("motor görevini Ali'ye ver", "toplantıya Ayşe'yi de ekle", "görevden Ali'yi çıkar") → op update, patch.assignTo: kaydın YENİ sorumlularının tam listesi (KİŞİLER bölümündeki tam adlar; çıkarılan yazılmaz, hepsi çıkarılırsa boş liste).
 - message: yalnız "Tamam." yaz (uygulama ne yaptığını ve silme onayını kendisi söyler). Kayıt belirsizse işlem yapma, tek kısa soru sor.
+- Var olan planın hatırlatması ("antrenmanı yarım saat önce hatırlat", "toplantıyı 1 gün önce hatırlat", "yarınki planı hatırlatma") → op update, patch.remind dakika (15, 30, 60, 1440; hatırlatma istenmezse 0). Yeni plan açma. Yeni plan cümlesinde ("yarın 10'da antrenman, yarım saat önce hatırlat") hatırlatmayı uygulama cümleden kendisi okur, sen planı yaz.
 - update için patch'e yalnızca DEĞİŞEN alanları yaz. "Ertele", "öne al" gibi göreli ifadelerde yeni tarihi ŞİMDİ bilgisine göre hesapla. Saati kaldırmak için allDay true.
 - Toplu işlemler için (birkaç görevi birden tamamla) actions'a hepsini ekle, en fazla 10.
 
@@ -174,6 +176,7 @@ export const ASSISTANT_TOOL = {
                 place: { type: "string" },
                 allDay: { type: "boolean" },
                 assignTo: { type: "array", items: { type: "string" }, description: "Sorumluları değiştirirken: yeni sorumluların tam listesi (KİŞİLER bölümündeki tam adlar)" },
+                remind: { type: "number", description: "Yalnız plan: kaç dakika önce hatırlatılsın (15, 30, 60, 1440); 0 = hatırlatma yok" },
               },
             },
           },
@@ -214,6 +217,7 @@ function cleanPatch(p) {
   if (okT(p?.time)) o.time = okT(p.time);
   if (txt(p?.place, 80)) o.place = txt(p.place, 80);
   if (p?.allDay === true) o.allDay = true;
+  if (Number.isFinite(p?.remind) && p.remind >= 0 && p.remind <= 2880) o.remind = Math.round(p.remind);
   if (Array.isArray(p?.assignTo)) o.assignTo = p.assignTo.map((x) => txt(x, 60)).filter(Boolean).slice(0, 10);
   return o;
 }
@@ -277,7 +281,9 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
     actions: arr(raw?.actions)
       .filter((a) => OPS.includes(a?.op) && KIND.includes(a?.kind) && txt(a?.id, 60))
       .slice(0, 10)
-      .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) })),
+      .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) }))
+      // "antrenmanı yarım saat önce hatırlat": yapay zeka patch.remind yazmayı unutursa cümleden
+      .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a)),
     items: said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message),
   };
 }
