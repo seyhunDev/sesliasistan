@@ -98,6 +98,12 @@ service cloud.firestore {
         allow delete: if col in ["birthdays", "lessons"] && isStaff(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
       }
 
+      // Fitness hareketinin fotoğraf/videosu (src/features/fitness/fitMedia.js): ana hesap yazar (yukarıdaki genel kural),
+      // çalışan ve sporcu kendi planındaki hareketin dosyasını okur
+      match /fitMedia/{id}/{document=**} {
+        allow read: if isStaff(orgId);
+      }
+
       // ---- Sesli arama (src/lib/call.js) ----
       // Arama kaydını yalnız arayan ve aranan okur/yazar (ana hesap dahil başkası göremez). Arayan "çalıyor" olarak açar;
       // sonra yalnız durum, cevap, zaman ve yeniden bağlanma (offer, rev, arev) alanları değişir. Sporcu/öğrenci/veli şimdilik arayamaz ve aranamaz.

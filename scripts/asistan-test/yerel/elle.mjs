@@ -1581,6 +1581,14 @@ group("Fitness")([
 
 // Fitness: ana hesabın sporcuya hazırladığı program (fit.for)
 group("Fitness: sporcu programı")([
+  ["hareket fotoğraf/video", F("harekette media künyesi korunur, en çok 3, bozuk olan atılır; programdan plana geçer", () => {
+    const m = [{ id: "a1", kind: "photo", type: "image/jpeg", size: 1000, parts: 1 }, { id: "a2", kind: "video", type: "video/mp4", size: 3e6, parts: 4 }, { id: "", kind: "photo" }, { id: "x", kind: "gif" }, { id: "a3", kind: "video", parts: 99 }, { id: "a4", kind: "photo" }];
+    const it = FM2.cleanItem({ name: "Squat", sets: 3, reps: 10, media: m });
+    const plain = FM2.cleanItem({ name: "Squat" });
+    const prog = FM2.cleanProgram({ title: "P", start: "2026-10-12", weeks: 1, days: [{ dow: 1, items: [{ name: "Squat", media: m.slice(0, 1) }] }] });
+    return it.media.length === 3 && it.media.map((x) => x.id).join() === "a1,a2,a3" && it.media[2].parts === 40 && !("media" in plain) &&
+      FM2.planDrafts({ ...prog, id: "p" }).every((p) => p.fit.items[0].media?.[0]?.id === "a1");
+  })],
   ["başkasının antrenmanı", F("fit.for başka kişi → ana hesabın takvimine girmez; kendisininki ve fit.for'suz girer", () =>
     FM2.isOthers(FPL("2026-10-12", SQ, null, { fit: { prog: "p1", for: "ali" } }), "me") && !FM2.isOthers(FPL("2026-10-12", SQ, null, { fit: { prog: "p1", for: "ali" } }), "ali") && !FM2.isOthers(FPL("2026-10-12", SQ), "me"))],
   ["sporcular listesi", F("programı ya da antrenmanı olan sporcu; bu hafta 1/2, son ve sıradaki; programsız sporcu listede yok", () => {

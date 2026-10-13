@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
+import { ExerciseMedia } from "./ExerciseMedia";
 import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
 
@@ -206,6 +207,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
             ))}
           </ul>
         )}
+        <ExerciseMedia media={it.media} className="mt-3" />
 
         {rest.run ? (
           <div className="mt-8 rounded-3xl bg-deep px-5 py-7 text-center text-white">
