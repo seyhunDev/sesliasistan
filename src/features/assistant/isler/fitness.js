@@ -65,6 +65,15 @@ export async function runFitness(ctx, s, viaVoice, focusFit) {
   if (isStaff) return runAthleteFit(ctx, s, viaVoice, fitLocal(s));
   // Ana hesap: sporcular (uygulamada hesabı olan sporcu ve öğrenciler)
   const athletes = members.filter((m) => m.account !== false && (kindOf(m) === "athlete" || kindOf(m) === "student")).map((m) => ({ uid: m.uid, name: m.name || "Sporcu" }));
+  // Sıfırlama geri alınamaz: Fitness sayfasındaki düğmeyle aynı onay penceresi açılır
+  if (fitLocal(s)?.op === "reset") {
+    const go = () => window.dispatchEvent(new Event("sa-fit-reset"));
+    if (path !== "/fitness") {
+      router.push("/fitness");
+      setTimeout(go, 900);
+    } else go();
+    return reply("Fitness sayfasında onay soruyorum: bütün programlar, antrenmanlar, fotoğraf ve videolar silinecek.", { engine: "local" }, viaVoice);
+  }
   const who = athleteIn(s, athletes);
   if (fitLocal(s)?.op === "athletes" && !who) {
     const today = todayStr();

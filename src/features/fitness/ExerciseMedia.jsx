@@ -16,10 +16,10 @@ function useBlobUrl(orgId, m) {
     let u = "";
     let live = true;
     loadMedia(orgId, m)
-      .then((b) => {
+      .then(({ src, blob }) => {
         if (!live) return;
-        u = URL.createObjectURL(b);
-        setUrl(u);
+        if (blob) u = URL.createObjectURL(blob);
+        setUrl(u || src);
       })
       .catch(() => live && setErr(true));
     return () => {
@@ -121,11 +121,11 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "", big 
     try {
       const m = await prepMedia(file, (p) => setBusy(`Video küçültülüyor %${Math.round(p * 100)}`));
       setBusy("Yükleniyor…");
-      const meta = await saveMedia(orgId, m);
+      const meta = await saveMedia(orgId, m, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`));
       added.current.add(meta.id);
       onChange?.([...list, meta].slice(0, MEDIA_MAX));
     } catch (x) {
-      setErr(x?.message || "Eklenemedi");
+      setErr(/storage\/(unauthorized|unknown|retry|bucket|project)/.test(x?.code || "") ? "Yüklenemedi: Firebase Storage açık değil ya da kuralı yayınlanmadı." : x?.message || "Eklenemedi");
     } finally {
       setBusy("");
     }

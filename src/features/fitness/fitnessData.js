@@ -1,11 +1,12 @@
 "use client";
 
-import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/model";
 import { introKey } from "@/lib/fitness/forecast";
+import { dropAllMedia, dropMedia } from "./fitMedia";
 
 // Fitness programları: orgs/{orgId}/fitPrograms/{id} (yalnız ana hesap; kural ana hesaba orgs altını zaten açıyor).
 // Sporcuya hazırlanan programda for = sporcunun hesabı, forName = adı (boşsa ana hesabın kendi programı). Sporcu programını
@@ -65,13 +66,49 @@ export async function saveProgram(orgId, uid, prog) {
   return out;
 }
 
+// Planları 400'erli toplu silme (Firestore sınırı 500)
+async function dropPlans(orgId, ids) {
+  for (let i = 0; i < ids.length; i += 400) {
+    const b = writeBatch(db);
+    ids.slice(i, i + 400).forEach((id) => b.delete(doc(db, "orgs", orgId, "plans", id)));
+    await b.commit();
+  }
+}
+const mediaOf = (prog) => (prog?.days || []).flatMap((d) => (d.items || []).flatMap((it) => it.media || []));
+
+// Programı tamamen siler: bütün antrenmanları (geçmiş, yapılan, atlanan dahil; tek sorgu), programın fotoğraf ve videoları
+// (başka programda da kullanılmıyorsa) ve programın kendisi. Dönüş: silinen antrenman sayısı
 export async function deleteProgram(orgId, id) {
+  const snap = await getDocs(query(collection(db, "orgs", orgId, "plans"), where("fit.prog", "==", id)));
+  await dropPlans(orgId, snap.docs.map((d) => d.id));
+  const list = cache.org === orgId && cache.list ? cache.list : [];
+  const prog = list.find((p) => p.id === id);
+  const others = new Set(list.filter((p) => p.id !== id).flatMap(mediaOf).map((m) => m.id));
+  await Promise.all(mediaOf(prog).filter((m) => !others.has(m.id)).map((m) => dropMedia(orgId, m)));
   await deleteDoc(doc(col(orgId), id));
   if (cache.org === orgId && cache.list) {
     cache.list = cache.list.filter((p) => p.id !== id);
     keep(orgId, cache.list);
   }
   told();
+  return snap.size;
+}
+
+// Fitness'ı sıfırla: bütün programlar (kendi ve sporcuların), bütün fitness antrenmanları (yapılanlar dahil) ve bütün
+// fotoğraf/videolar silinir. Profil (boy, kilo) ve beslenme kalır. Dönüş: { progs, plans, media }
+export async function resetFitness(orgId) {
+  const [progs, plans] = await Promise.all([getDocs(col(orgId)), getDocs(query(collection(db, "orgs", orgId, "plans"), where("src", "==", "fitness")))]);
+  await dropPlans(orgId, plans.docs.map((d) => d.id));
+  const media = await dropAllMedia(orgId);
+  for (let i = 0; i < progs.docs.length; i += 400) {
+    const b = writeBatch(db);
+    progs.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
+    await b.commit();
+  }
+  cache = { org: orgId, at: Date.now(), list: [] };
+  keep(orgId, []);
+  told();
+  return { progs: progs.size, plans: plans.size, media };
 }
 
 const tzName = () => {

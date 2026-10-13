@@ -1648,6 +1648,16 @@ group("Fitness: sporcu programı")([
     return W.fitLocal("bugünkü antrenmanım ne")?.op === "today" && W.fitLocal("antrenmana başla")?.op === "start" && W.fitLocal("bugünkü antrenmanı yaptım")?.op === "done" &&
       W.fitLocal("sporcular bugün antrenman yaptı mı")?.op === "athletes" && W.fitLocal("kimler fitness antrenmanı yapmadı")?.op === "athletes" && W.fitLocal("Ali için fitness programı hazırla") === null;
   })],
+  ["fitness sıfırla (sesle)", F("“fitness'ı sıfırla”, “bütün fitness programlarını sil”; program silme ve takvim ayrı kalır", async () => {
+    const W = await import("@/lib/fitness/words");
+    return W.fitLocal("fitness'ı sıfırla")?.op === "reset" && W.fitLocal("bütün fitness programlarını sil")?.op === "reset" && W.fitLocal("fitness programını takvimden kaldır")?.op === "unplan" && W.fitLocal("bugünkü antrenmanı yaptım")?.op === "done";
+  })],
+  ["hareket dosyası Storage adresi", F("künyede yalnız firebasestorage adresi kalır", async () => {
+    const FM = await import("@/lib/fitness/model");
+    const ok = FM.cleanMedia([{ id: "a", kind: "video", url: "https://firebasestorage.googleapis.com/v0/b/x/o/orgs%2Fo%2FfitMedia%2Fa?alt=media&token=t" }])[0];
+    const bad = FM.cleanMedia([{ id: "b", kind: "photo", url: "https://kotu.example.com/a.jpg" }])[0];
+    return !!ok.url && !("url" in bad);
+  })],
   ["antrenman ekranı sözleri", F("tamam/sonraki, atla, 15 saniye, nasıl yapılır, bitir, zor geçti; uzun cümle değil", async () => {
     const W = await import("@/lib/fitness/words");
     const g = (x) => W.guideWord(x)?.op;

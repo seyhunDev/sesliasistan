@@ -15,7 +15,7 @@ import {
   STATUS, addDays, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { kindOf } from "@/lib/kinds";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
 import { BodyStep, FitIntro } from "./FitIntro";
@@ -191,12 +191,34 @@ export function FitnessHome() {
     }
   }
   async function drop(pg = prog) {
-    if (!window.confirm("Program silinsin mi? Takvimdeki gelecek antrenmanları da kaldırılır; yapılanlar kalır.")) return false;
+    if (!window.confirm("Program silinsin mi? Bütün antrenmanları (yapılanlar dahil), fotoğraf ve videoları da silinir. Geri alınamaz.")) return false;
     setBusy("drop");
     try {
-      await removePlans(orgId, pg, plansFor(pg));
-      await deleteProgram(orgId, pg.id);
-      toast("Program silindi");
+      const n = await deleteProgram(orgId, pg.id);
+      toast(n ? `Program ve ${n} antrenmanı silindi` : "Program silindi");
+    } catch (e) {
+      toast(e.message || "Silinemedi");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+  useEffect(() => {
+    const on = () => reset();
+    window.addEventListener("sa-fit-reset", on);
+    return () => window.removeEventListener("sa-fit-reset", on);
+  });
+  // Bütün fitness'ı sıfırla (denemeler silinsin): programlar, antrenmanlar, fotoğraf ve videolar; profil ve beslenme kalır
+  async function reset() {
+    if (!window.confirm("Fitness sıfırlansın mı? Bütün programlar (sporcularınki dahil), bütün antrenmanlar (yapılanlar dahil), fotoğraf ve videolar silinir. Boy, kilo ve beslenme kalır.")) return;
+    if (!window.confirm("Emin misin? Geri alınamaz.")) return;
+    setBusy("reset");
+    try {
+      const r = await resetFitness(orgId);
+      setList([]);
+      toast(`Sıfırlandı: ${r.progs} program, ${r.plans} antrenman silindi`);
+    } catch (e) {
+      toast(e.message || "Sıfırlanamadı");
     } finally {
       setBusy("");
     }
@@ -382,6 +404,11 @@ export function FitnessHome() {
           if ((await drop(pg)) !== false) setAth("");
         }}
       />
+      {(prog || rows.length > 0 || all.length > 0) && (
+        <button type="button" disabled={!!busy} onClick={reset} className="mt-6 h-10 w-full text-[0.8125rem] font-semibold text-rec">
+          {busy === "reset" ? "Sıfırlanıyor…" : "Fitness'ı sıfırla"}
+        </button>
+      )}
       <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} error={askErr} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </main>

@@ -1,22 +1,25 @@
 "use client";
 
-// Fitness hareketine eklenen fotoğraf ve kısa video (hareketin nasıl yapıldığı). Firebase Storage yok (Blaze ister);
-// envanter belgeleri gibi Firestore'da 900 KB'lık parçalar: orgs/{org}/fitMedia/{id}/parts/{000..} { data: Bytes }.
-// Harekette yalnız künye durur: media [{ id, type, size, parts, kind photo|video }] (en çok 3). Sporcu kendi planındaki
-// hareketin dosyasını okur (kural: fitMedia çalışan/sporcuya okumaya açık). Dosya bir kez okunur, sonra bu cihazda (IndexedDB) kalır.
+// Fitness hareketine eklenen fotoğraf ve kısa video (hareketin nasıl yapıldığı). Dosyalar Firebase Storage'da:
+// orgs/{org}/fitMedia/{id} (kural storage.rules: ana hesap yazar, aynı kulüpteki hesaplar okur).
+// Harekette yalnız künye durur: media [{ id, type, size, kind photo|video, url }] (en çok 3). url indirme adresidir;
+// video oradan akarak oynar (baştan sona inmesi beklenmez); dosya tarayıcı önbelleğinde kalır.
+// Eski düzen (Firestore'da 900 KB'lık parçalar, url yok) yalnız okunur.
 // Fotoğraf 1280 px JPEG'e küçültülür. Video en çok 60 sn; 6 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
-// (video süresi kadar sürer); küçültülemezse en çok 20 MB kabul edilir.
-import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase/clientApp";
+// (video süresi kadar sürer); küçültülemezse en çok 80 MB kabul edilir.
+import { collection, getDocs } from "firebase/firestore";
+import { deleteObject, getStorage, listAll, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/raceFiles";
 
-const PART = 900_000;
 export const MEDIA_MAX = 3;
 const VIDEO_SEC = 60;
 const VIDEO_OK = 6 * 1024 * 1024;
-const VIDEO_MAX = 20 * 1024 * 1024;
-const col = (orgId) => collection(db, "orgs", orgId, "fitMedia");
+const VIDEO_MAX = 80 * 1024 * 1024;
+const store = () => getStorage(app);
+const path = (orgId, id) => `orgs/${orgId}/fitMedia/${id}`;
+const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const cacheKey = (id) => `fitm:${id}`;
 
 export const isVideoFile = (f) => /^video\//.test(f?.type || "") || /\.(mov|mp4|m4v|webm)$/i.test(f?.name || "");
@@ -92,49 +95,59 @@ export async function prepMedia(file, onProg) {
     } catch (e) {
       if (e.message !== "no-shrink") console.warn("[fitMedia] küçültülemedi", e);
     }
-    if (file.size > VIDEO_MAX) throw new Error("Video çok büyük (en çok 20 MB). Daha kısa çek.");
+    if (file.size > VIDEO_MAX) throw new Error("Video çok büyük (en çok 80 MB). Daha kısa çek.");
     return { blob: file, type: file.type || "video/mp4", kind: "video" };
   } finally {
     URL.revokeObjectURL(url);
   }
 }
 
-// Parça parça yazar, künyeyi döndürür
-export async function saveMedia(orgId, m) {
-  const bytes = new Uint8Array(await m.blob.arrayBuffer());
-  const ref = doc(col(orgId));
-  const parts = Math.max(1, Math.ceil(bytes.length / PART));
-  for (let i = 0; i < parts; i += 8) {
-    const batch = writeBatch(db);
-    for (let j = i; j < Math.min(parts, i + 8); j++) batch.set(doc(ref, "parts", String(j).padStart(3, "0")), { data: Bytes.fromUint8Array(bytes.subarray(j * PART, (j + 1) * PART)) });
-    await batch.commit();
-  }
-  await setDoc(ref, { kind: m.kind, type: m.type, size: bytes.length, parts, createdAt: serverTimestamp() });
-  await saveRaceFile({ id: cacheKey(ref.id), blob: m.blob, name: ref.id });
-  return { id: ref.id, kind: m.kind, type: m.type, size: bytes.length, parts };
+// Storage'a yükler, künyeyi döndürür. onProg(0..1)
+export async function saveMedia(orgId, m, onProg) {
+  const id = newId();
+  const r = sref(store(), path(orgId, id));
+  const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
+  await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  const url = await getDownloadURL(r);
+  return { id, kind: m.kind, type: m.type, size: m.blob.size, parts: 1, url };
 }
 
-// Dosyayı getirir: önce bu cihazdan, yoksa Firestore'dan (parça sayısı kadar okuma)
+// Gösterilecek adres: Storage'da ise indirme adresi (tarayıcı önbelleğinde 1 yıl kalır), eski düzende parçalardan blob (bu cihazda saklanır).
+// Dönüş { src, blob } (blob varsa çağıran URL.createObjectURL yapar)
 export async function loadMedia(orgId, meta) {
   const hit = await getRaceFile(cacheKey(meta.id));
-  if (hit?.blob) return hit.blob;
+  if (hit?.blob) return { blob: hit.blob };
+  if (meta.url) return { src: meta.url };
   const snap = await getDocs(collection(db, "orgs", orgId, "fitMedia", meta.id, "parts"));
   const list = snap.docs.sort((a, b) => a.id.localeCompare(b.id)).map((d) => d.data().data?.toUint8Array?.());
   if (!list.length || list.length < (meta.parts || 1) || list.some((x) => !x)) throw new Error("Dosya bulunamadı");
   const blob = new Blob(list, { type: meta.type || (meta.kind === "video" ? "video/mp4" : "image/jpeg") });
   saveRaceFile({ id: cacheKey(meta.id), blob, name: meta.id });
-  return blob;
+  return { blob };
 }
 
 // Siler; hata sessiz
 export async function dropMedia(orgId, meta) {
   if (!meta?.id) return;
-  try {
-    const ref = doc(col(orgId), meta.id);
-    const batch = writeBatch(db);
-    for (let j = 0; j < (meta.parts || 1); j++) batch.delete(doc(ref, "parts", String(j).padStart(3, "0")));
-    await batch.commit();
-    await deleteDoc(ref);
-  } catch {}
+  if (meta.url) await deleteObject(sref(store(), path(orgId, meta.id))).catch(() => {});
   dropRaceFile(cacheKey(meta.id));
+}
+
+// Kulübün bütün fitness dosyalarını siler (Fitness'ı sıfırla). Dönüş: silinen dosya sayısı
+export async function dropAllMedia(orgId) {
+  let n = 0;
+  try {
+    const all = await listAll(sref(store(), `orgs/${orgId}/fitMedia`));
+    await Promise.all(
+      all.items.map((it) =>
+        deleteObject(it)
+          .then(() => {
+            n++;
+            dropRaceFile(cacheKey(it.name));
+          })
+          .catch(() => {}),
+      ),
+    );
+  } catch {}
+  return n;
 }
