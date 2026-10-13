@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sheet } from "@/components/ui/Sheet";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { attHref, clubDues, clubFis, clubRace, duesLive, homeNotes, noteGroups, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
+import { dayTap, clubDues, clubFis, clubRace, duesLive, homeNotes, noteGroups, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
 import { catStyle } from "@/components/ui/Page";
 import { money } from "@/lib/bankSheet";
 import { rel, todayStr } from "@/lib/utils/format";
@@ -30,7 +31,7 @@ import { invoiceTile } from "@/lib/invoices";
 // Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices, notes, att }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, fit, plans, invoices, notes, att }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -100,7 +101,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
     skel("inv") ? ["inv"] : (money || invoices) && ["/receipts", "receipt", "Fiş / Fatura", clubFis(inv, money && m.receipts), "inv"],
     skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Hesaplar", m.bank, "bank"],
   ].filter((x) => x && (x.length === 1 || x[3]));
-  const week = training ? trainingWeek(plans || [], today) : null;
+  const week = training ? trainingWeek(plans || [], today, fit || []) : null;
   const post = posts && sum.posts?.count ? sum.posts : null;
   const raceWait = skel("race");
   const note = homeNotes(notes || [], 3);
@@ -222,16 +223,21 @@ function BankBody({ t }) {
 }
 
 // Antrenman (tam genişlik): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu; altta ayın özeti.
-// Sporcu yetkisi olanda bugün ve geçmiş günler dokunulur: o günün yoklaması açılır (attHref); başlık ve alt satır Antrenman günlüğüne gider.
+// Güne dokununca: yalnız yelken varsa o günün yoklaması (sporcu yetkisi, bugün ve geçmiş), yalnız fitness varsa Fitness (kimin olduğu),
+// ikisi de varsa seçim penceresi (dayTap, homeTiles.js). Fitness olan günün altında turuncu nokta; başlık ve alt satır Antrenman günlüğüne gider.
 function TrainingCard({ w, att, today }) {
+  const [pick, setPick] = useState(null); // Hem yelken hem fitness olan gün: seçim penceresi
   const DAY = {
     done: "bg-acc text-white",
     miss: "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/50 dark:text-amber-300",
     today: "bg-fg text-bg",
     plan: "ring-[1.5px] ring-acc text-acc",
     none: "bg-line/60 text-mut",
+    fit: "bg-orange-500/12 text-orange-700 ring-1 ring-orange-500/50 dark:text-orange-300",
   };
-  const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok" };
+  const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
+  const both = w.planned > 0 && w.fitN > 0;
+  const hint = att && w.fitN ? "Güne dokun: yoklama ya da fitness · " : att ? "Yoklama için güne dokun · " : w.fitN ? "Fitness için güne dokun · " : "";
   return (
     <div className={`px-4 pb-3.5 pt-3.5 ${CARD}`}>
       <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className="flex items-center gap-2.5">
@@ -248,34 +254,98 @@ function TrainingCard({ w, att, today }) {
       </Link>
       <span className="mt-3 grid grid-cols-7 gap-1">
         {w.days.map((d) => {
-          const st = d.state === "today" && !d.has ? "none" : d.state;
-          const href = att ? attHref(d.date, today) : null;
+          const fitOnly = !d.has && d.fit.length > 0;
+          const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;
+          const tap = dayTap(d, att, today);
+          const what = [d.has ? "yelken" : "", d.fit.length ? `fitness: ${d.fit.map((f) => f.name).join(", ")}` : ""].filter(Boolean).join(", ") || label[st];
           const inner = (
             <>
               <small className={`text-[0.6875rem] ${d.state === "today" ? "font-bold text-fg" : "text-mut"}`}>{d.w}</small>
-              <span className={`grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has ? "ring-[1.5px] ring-fg" : ""}`}>
+              <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "ring-[1.5px] ring-fg" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
+              <span className={`h-1.5 w-1.5 rounded-full ${d.fit.length ? (d.fit.every((f) => f.st === "done") ? "bg-orange-500" : "bg-orange-400/70") : "bg-transparent"}`} />
             </>
           );
-          return href ? (
-            <Link key={d.date} href={href} data-press aria-label={`${d.d} ${d.w} yoklaması (${label[st]})`} className="flex flex-col items-center gap-1 rounded-xl py-0.5">
+          const cls = "flex flex-col items-center gap-1 rounded-xl py-0.5";
+          if (tap.sheet)
+            return (
+              <button key={d.date} type="button" data-press onClick={() => setPick(d)} aria-label={`${d.d} ${d.w}: ${what}`} className={cls}>
+                {inner}
+              </button>
+            );
+          return tap.href ? (
+            <Link key={d.date} href={tap.href} data-press aria-label={`${d.d} ${d.w}: ${tap.fit ? what : `yoklama (${label[st]})`}`} className={cls}>
               {inner}
             </Link>
           ) : (
-            <span key={d.date} aria-hidden="true" className="flex flex-col items-center gap-1 py-0.5" title={label[st]}>
+            <span key={d.date} aria-hidden="true" className={cls} title={what}>
               {inner}
             </span>
           );
         })}
       </span>
       <Link href="/training" className="mt-3 block truncate border-t border-line pt-2.5 text-[0.8125rem] text-mut">
-        {att ? <span className="font-semibold text-acc">Yoklama için güne dokun · </span> : null}
+        {hint ? <span className="font-semibold text-acc">{hint}</span> : null}
         Bu ay <b className="font-semibold text-fg">{w.total}</b> antrenman
-        {w.avgWind != null && ` · ortalama ${w.avgWind} kn rüzgâr`}
+        {w.fitN > 0 && (
+          <>
+            {" · "}
+            <span className="text-orange-700 dark:text-orange-300">bu hafta {w.fitDone}/{w.fitN} fitness</span>
+          </>
+        )}
+        {!both && w.avgWind != null && ` · ortalama ${w.avgWind} kn rüzgâr`}
         {w.missing > 0 && <span className={`font-semibold ${WARN_TX}`}> · {w.missing} günlük yazılmadı</span>}
       </Link>
+      <DayPick day={pick} att={att} today={today} onClose={() => setPick(null)} />
     </div>
+  );
+}
+
+// Aynı günde yelken ve fitness: Yelken › yoklama; fitness satırları (kimin, durumu) › Fitness
+const FIT_ST = { done: ["Yaptı", "bg-acc/12 text-acc"], missed: ["Yapmadı", "bg-rec/12 text-rec"], skip: ["Atladı", "bg-line text-mut"] };
+function DayPick({ day, att, today, onClose }) {
+  const tap = day ? dayTap(day, att, today) : {};
+  const title = day ? new Date(`${day.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }) : "";
+  const row = "flex w-full items-center gap-3 py-3 text-left";
+  return (
+    <Sheet open={!!day} onClose={onClose} title={title}>
+      {day && (
+        <ul className="divide-y divide-line">
+          {tap.sail && (
+            <li>
+              <Link href={tap.sail} onClick={onClose} className={row}>
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
+                  <Icon name="trend" className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[0.9375rem] font-semibold">Yelken antrenmanı</b>
+                  <small className="block text-[0.8125rem] text-mut">Yoklamayı aç</small>
+                </span>
+                <Icon name="chev" className="size-4 text-mut" />
+              </Link>
+            </li>
+          )}
+          {day.fit.map((f) => {
+            const [t, c] = FIT_ST[f.st] || [f.plan?.time || "Bekliyor", "bg-bg text-mut"];
+            return (
+              <li key={f.id || f.name}>
+                <Link href={f.mine ? "/fitness?tab=me" : `/fitness?sporcular=1&gun=${day.date}`} onClick={onClose} className={row}>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-orange-500/12 text-[0.8125rem] font-bold text-orange-700 dark:text-orange-300">
+                    {f.mine ? "Sen" : f.name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR")}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{f.mine ? "Senin fitness antrenmanın" : f.name}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">Fitness · {f.plan?.fit?.name || f.plan?.title || "Antrenman"}</small>
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${c}`}>{t}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Sheet>
   );
 }
 

@@ -613,6 +613,33 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
+  ["kulüp kartları", F("antrenman haftası: fitness günleri; yalnız yelken yoklama, yalnız fitness Fitness, ikisi seçim", () => {
+    const today = "2026-10-14";
+    const plans = [
+      { cat: "Antrenman", date: "2026-10-13" },
+      { cat: "Antrenman", date: "2026-10-14" },
+      { id: "m1", cat: "Fitness", date: "2026-10-15", fit: { name: "Bacak" } },
+    ];
+    const others = [
+      { id: "a1", cat: "Fitness", date: "2026-10-14", fit: { for: "u1", res: { st: "done" } } },
+      { id: "a2", cat: "Fitness", date: "2026-10-16", fit: { for: "u2" } },
+      { id: "a3", cat: "Fitness", date: "2026-10-15", fit: { for: "u1" }, status: "cancelled" },
+    ];
+    const people = [{ uid: "u1", name: "Ali Kaya" }, { uid: "u2", name: "Ayşe Ak" }];
+    const fit = HT.fitDays(plans, others, people, "me");
+    const w = HT.trainingWeek(plans, today, fit);
+    const [, mon, tue, wed, thu] = [null, w.days[1], w.days[2], w.days[3], w.days[4]];
+    const tMon = HT.dayTap(mon, true, today), tTue = HT.dayTap(tue, true, today), tWed = HT.dayTap(wed, true, today), tThu = HT.dayTap(thu, true, today);
+    const noAtt = HT.dayTap(tue, false, today);
+    const onlyFit = HT.trainingWeek([], today, HT.fitDays([], others.slice(1, 2), people, "me"));
+    return fit.length === 3 && tue.fit[0].name === "Ali Kaya" && tue.fit[0].st === "done" && w.fitN === 3 && w.fitDone === 1
+      && tMon.href === "/athletes/attendance?gun=2026-10-13" && !tMon.sheet
+      && tTue.sheet && tTue.sail === "/athletes/attendance?gun=2026-10-14" && tTue.fit === "/fitness?sporcular=1&gun=2026-10-14"
+      && tWed.href === "/fitness?tab=me" && wed.fit[0].name === "Sen"
+      && tThu.href === "/fitness?sporcular=1&gun=2026-10-16"
+      && !noAtt.sheet && noAtt.href === "/fitness?sporcular=1&gun=2026-10-14"
+      && onlyFit && onlyFit.planned === 0 && onlyFit.fitN === 1;
+  })],
   ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
     const open = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-09" }, { id: "r2", name: "Çeşme Ligi", startDate: "2026-10-20" }];
     const t = "2026-10-10";

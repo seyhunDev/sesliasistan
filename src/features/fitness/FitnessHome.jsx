@@ -77,6 +77,7 @@ export function FitnessHome() {
   const tq = sp.get("tab");
   const tab = tq === "food" ? "food" : tq === "me" || !athletes.length ? "me" : "ath";
   const athQ = sp.get("sporcular");
+  const gunQ = /^\d{4}-\d{2}-\d{2}$/.test(sp.get("gun") || "") ? sp.get("gun") : ""; // Ana sayfadaki Antrenman kartından o gün
   const setTab = (t) => {
     setAth("");
     router.replace(t === "ath" ? "/fitness" : `/fitness?tab=${t}`, { scroll: false });
@@ -107,12 +108,12 @@ export function FitnessHome() {
   }, [reload]);
 
   useEffect(() => {
-    const show = () => {
+    const show = (gun) => {
       setAth("");
-      setDayDate(todayStr());
+      setDayDate(gun || todayStr());
       setDayOpen(true);
     };
-    if (athQ) show();
+    if (athQ) show(gunQ);
     // Asistan ("sporcular bugün antrenman yaptı mı") Fitness sayfası açıkken
     const onEv = () => {
       show();
@@ -120,7 +121,7 @@ export function FitnessHome() {
     };
     window.addEventListener("sa-fit-athletes", onEv);
     return () => window.removeEventListener("sa-fit-athletes", onEv);
-  }, [athQ, router]);
+  }, [athQ, gunQ, router]);
 
   const mine = list ? list.filter((p) => !p.for) : null;
   const prog = activeOf(mine);

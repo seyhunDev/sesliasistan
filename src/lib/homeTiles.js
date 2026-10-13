@@ -2,6 +2,7 @@
 // Firestore'a ek okuma yok: aidat ve gönderi özeti ilgili sayfa açılınca bu cihazda saklanır (sa-home-sum),
 // yarış bilgisi raceHome.js'in zaten yaptığı okumadan, antrenman bellekteki planlardan gelir.
 import { canLog, isLogNote, isTraining, monthLog } from "./trainingLog";
+import { isFit, statusOf } from "./fitness/model";
 import { monthRows } from "./dues";
 import { planState } from "./agenda";
 
@@ -107,7 +108,31 @@ export function clubTraining(plans, today) {
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-export function trainingWeek(plans = [], today) {
+// Fitness antrenmanları (Antrenman kartında günlere eklenir): kendi planların (p.fit, "Sen") ve sporcuların planları (fitOthers).
+// Çıktı [{ date, id, name, st (done|skip|missed|today|next), mine }]; iptaller yok.
+export function fitDays(plans = [], others = [], people = [], me = "") {
+  const nameOf = (uid) => people.find((m) => m.uid === uid)?.name || "Sporcu";
+  const own = plans.filter((p) => isFit(p) && (!p.fit?.for || p.fit.for === me)).map((p) => ({ p, mine: true }));
+  const oth = others.filter((p) => isFit(p) && p.fit?.for && p.fit.for !== me).map((p) => ({ p, mine: false }));
+  return [...own, ...oth]
+    .filter(({ p }) => p.date && p.status !== "cancelled")
+    .map(({ p, mine }) => ({ date: p.date, id: p.id, name: mine ? "Sen" : nameOf(p.fit.for), mine, plan: p }));
+}
+// Güne dokununca ne olur: yelken (yoklama) ve/veya fitness. Yalnız biri varsa doğrudan oraya, ikisi de varsa seçim penceresi.
+// sail: yoklama bağlantısı (yetki yoksa ya da gün ileride ise boş). Fitness: sporcular varsa o günün sporcu listesi, yalnız kendinse Fitness › Benim.
+export function fitHref(date, fit = []) {
+  if (!fit.length) return "";
+  return fit.some((f) => !f.mine) ? `/fitness?sporcular=1&gun=${date}` : "/fitness?tab=me";
+}
+export function dayTap(day, att, today) {
+  const sail = day.has && att ? attHref(day.date, today) : "";
+  const fit = fitHref(day.date, day.fit || []);
+  const f = day.fit || [];
+  if ((sail && fit) || (f.some((x) => x.mine) && f.some((x) => !x.mine))) return { sheet: true, sail, fit };
+  if (sail || fit) return { href: sail || fit, sail, fit };
+  return att ? { href: attHref(day.date, today) || "", sail: "", fit: "" } : { href: "", sail: "", fit: "" };
+}
+export function trainingWeek(plans = [], today, fit = []) {
   const base = new Date(`${today}T12:00:00`);
   const start = new Date(base);
   start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
@@ -119,13 +144,17 @@ export function trainingWeek(plans = [], today) {
     const on = tr.filter((p) => p.date === date);
     const logged = on.length > 0 && on.every((p) => p.log);
     const state = date === today ? (logged ? "done" : "today") : !on.length ? "none" : date > today ? "plan" : logged ? "done" : "miss";
-    return { date, d: d.getDate(), w, state, has: on.length > 0 };
+    const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
+    const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
+    f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
+    return { date, d: d.getDate(), w, state, has: on.length > 0, fit: f };
   });
   const ym = today.slice(0, 7);
   const m = monthLog(plans, ym);
   const missing = plans.filter((p) => canLog(p, today) && !p.log && p.date >= `${ym}-01`).length;
   const planned = days.filter((x) => x.has).length;
-  if (!planned && !m.total && !missing) return null;
+  const fitN = days.reduce((t, x) => t + x.fit.length, 0);
+  if (!planned && !m.total && !missing && !fitN) return null;
   return {
     days,
     planned,
@@ -133,6 +162,8 @@ export function trainingWeek(plans = [], today) {
     total: m.total,
     avgWind: m.avgWind,
     missing,
+    fitN,
+    fitDone: days.reduce((t, x) => t + x.fit.filter((f) => f.st === "done").length, 0),
     month: cap(monthName(ym)),
   };
 }

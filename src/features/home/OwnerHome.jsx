@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePress } from "@/hooks/usePress";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -9,7 +9,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
 import { useNow } from "@/hooks/useNow";
-import { homeActions } from "@/lib/homeTiles";
+import { fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
@@ -84,7 +84,7 @@ export function OwnerHome() {
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
-  const { plans, lessons, members, notes } = useData();
+  const { plans, lessons, members, notes, fitOthers } = useData();
   const staff = profile?.role === "staff";
   const owner = profile?.role === "owner";
   const kind = useKind();
@@ -95,6 +95,8 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   const root = useRef(null);
   usePress(root);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
+  // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
+  const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
 
   const actions = homeActions({
     staff,
@@ -118,7 +120,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       </div>
       {side && <MyAttendanceCard kind={kind} />}
       {staff && <MyFitCard />}
-      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} notes={notes} att={athletes} />
+      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training || fit.length > 0} fit={fit} plans={plans} invoices={owner} notes={notes} att={athletes} />
       <HomeActions groups={actions} />
     </div>
   );
