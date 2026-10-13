@@ -1,8 +1,8 @@
-Commit: 1d9fc02 · Fitness: sporcu tarafı ve adım adım antrenman (2. adım) (#337)
-Zaman: 2026-10-13-0736 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38347101460
+Commit: f062c42 · Bildirim kopuklukları: çalışanın ve kulüp sitesinin yoklaması, veliye aidat hatırlatması, geç plan hatırlatması (#338)
+Zaman: 2026-10-13-0749 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38348182956
 
-TAM TEST · 13.10.2026 07:34:59
+TAM TEST · 13.10.2026 07:48:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
