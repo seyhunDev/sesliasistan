@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { card } from "@/components/ui/Page";
-import { DOWS, STATUS, bestText, dowOf, exerciseHistory, itemLine, progWeek, resLine, statusOf } from "@/lib/fitness/model";
+import { DOWS, STATUS, bestText, dowOf, exerciseHistory, itemLine, programText, progWeek, resLine, statusOf } from "@/lib/fitness/model";
 
 // Fitness ana ekranının parçaları (program kaydedildikten sonra): bugünün antrenmanı, bu hafta, gelişim, program, bu ay, geçmiş.
 // Yalnız gösterir; veri ve işlemler FitnessHome'dan gelir.
@@ -234,8 +234,20 @@ export function ProgressCard({ recs: list, plans }) {
 }
 
 // Program: başlık, hafta ilerlemesi, günler (yalnız ad ve saat), işlemler
-export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan, onDrop, bare }) {
+export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan, onDrop, bare, age = 0 }) {
   const wk = progWeek(prog, today);
+  const [list, setList] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const text = list ? programText(prog, { age }) : "";
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
   const k = wk ? Math.min(Math.max(wk.n, 0), wk.of) / wk.of : 0;
   const body = (
       <div className={bare ? "" : `${card} p-4`}>
@@ -251,6 +263,20 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
             </span>
           </>
         )}
+        {list ? (
+          <div className="mt-3">
+            <pre className="max-h-[55svh] select-text overflow-auto whitespace-pre-wrap rounded-xl bg-bg p-3 font-sans text-[0.875rem] leading-relaxed">{text}</pre>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" onClick={copy} className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+                <Icon name={copied ? "check" : "copy"} className="size-4" />
+                {copied ? "Kopyalandı" : "Kopyala"}
+              </button>
+              <button type="button" onClick={() => setList(false)} className="h-11 rounded-xl bg-bg text-[0.875rem] font-semibold">
+                Kapat
+              </button>
+            </div>
+          </div>
+        ) : (
         <ul className="mt-3 divide-y divide-line">
           {prog.days.map((d) => (
             <li key={d.dow} className={`flex items-center gap-3 py-2.5 ${dowOf(today) === d.dow ? "font-semibold" : ""}`}>
@@ -263,6 +289,13 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
             </li>
           ))}
         </ul>
+        )}
+        {!list && (
+          <button type="button" onClick={() => setList(true)} className="mt-1 flex h-10 w-full items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc">
+            <Icon name="copy" className="size-4" />
+            Liste olarak al
+          </button>
+        )}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" onClick={onEdit} className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold">
             <Icon name="edit" className="size-4" />

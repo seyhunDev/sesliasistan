@@ -1597,6 +1597,12 @@ group("Fitness")([
   })],
   ["hareket listesi", F("kimlikler tekrarsız, her grup dolu", () => new Set(FX.EXERCISES.map((e) => e.id)).size === FX.EXERCISES.length && FX.GROUPS.every((g) => FX.EXERCISES.some((e) => e.group === g)))],
   ["söylenen hareket", F("şınav, sınav (ses), squat, plank, mekik, dambıl lunge", () => FX.findExercise("şınav")?.id === "pushup" && FX.findExercise("sınavlar")?.id === "pushup" && FX.findExercise("Squat")?.id === "squat" && FX.findExercise("plank")?.id === "plank" && FX.findExercise("mekik")?.id === "crunch" && FX.findExercise("dambıl lunge")?.id === "db-lunge" && FX.findExercise("asdf") === null)],
+  ["program listesi (kopyala)", F("kime, yaş, spor, hedef, gün gün hareketler set × tekrar", () => {
+    const t = FM2.programText({ ...PROG, goal: "kondisyon", level: "yeni", for: "u1", forName: "Ali Kaya", sport: "yelken" }, { age: 12 });
+    return t.startsWith("Ali Kaya için fitness programı") && t.includes("12 yaş · Spor: Yelken") && t.includes("Hedef: Kondisyon") && t.includes("Haftada 3 gün · 2 hafta") &&
+      t.includes("Pazartesi 07:00 · Üst vücut (45 dk)") && t.includes("2. Şınav — 3 × 12") && t.includes("3 × 10 · 12 kg") && t.includes("Plank — 3 × 30 sn") && !t.includes("undefined") &&
+      FM2.programText({ ...PROG }).startsWith("3 günlük");
+  })],
   ["program temizliği", F("aynı gün bir kez, saat 07:00, koşu dakika, adsız hareket atılır", () => PROG.days.length === 3 && PROG.days[0].time === "07:00" && PROG.days[2].items.length === 1 && PROG.days[2].items[0].kind === "cardio" && PROG.days[2].items[0].min === 20 && PROG.days[1].items[1].sec === 30)],
   ["takvim günleri", F("2 hafta × 3 gün = 6 antrenman, ilki Pzt 12 Ekim", () => { const s = FM2.sessionsOf(PROG); return s.length === 6 && s[0].date === "2026-10-12" && s[1].date === "2026-10-14" && s[5].date === "2026-10-23" && s[5].w === 2; })],
   ["planlar", F("bugünden sonrası; başlık, saat, süre, hareketler", () => { const d = FM2.planDrafts({ ...PROG, id: "p1" }, "2026-10-15"); return d.length === 4 && d[0].date === "2026-10-16" && d[0].title === "Fitness · Tüm vücut" && d[0].time === "07:00" && d[0].fit.prog === "p1" && d[0].fit.items.length === 1; })],
