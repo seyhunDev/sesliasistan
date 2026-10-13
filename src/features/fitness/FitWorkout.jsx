@@ -11,7 +11,7 @@ import { ExerciseMedia } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
-import { FEELS, cleanRes, estMinutes, groupsOf, isTimed, itemLine, resLine, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { FEELS, clockText, cleanRes, estMinutes, groupsOf, isTimed, itemLine, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -117,25 +117,7 @@ export function FitWorkout({ rec, by, hero = false }) {
   const done = sets.reduce((t, s) => t + s.filter((x) => x.ok).length, 0);
   const total = sets.reduce((t, s) => t + s.length, 0);
 
-  if (!edit && fit.res?.st) {
-    return (
-      <div className={`${box} ${hero ? "" : "mt-3"} p-4`}>
-        <div className="flex items-center justify-between gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${fit.res.st === "done" ? "bg-acc/10 text-acc" : "bg-rec/10 text-rec"}`}>{STATUS[fit.res.st]}</span>
-          <Link href="/fitness" className="text-[0.8125rem] font-semibold text-acc">
-            Fitness
-          </Link>
-        </div>
-        {hero && <h3 className="mt-2 text-[1.25rem] font-bold leading-snug">{fit.name || String(rec.title || "").replace(/^Fitness · /, "")}</h3>}
-        {hero && <p className="text-[0.8125rem] text-mut">{when(rec)}</p>}
-        {fit.res.st === "done" && <p className="mt-2 text-[0.9375rem] leading-snug">{resLine(fit) || "Bütün hareketler"}</p>}
-        <p className="mt-1 text-[0.8125rem] text-mut">{[fit.res.min && `${fit.res.min} dk`, fit.res.feel && FEELS.find(([k]) => k === fit.res.feel)?.[1], fit.res.note].filter(Boolean).join(" · ")}</p>
-        <button type="button" onClick={() => setEdit(true)} className="mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
-          Düzenle
-        </button>
-      </div>
-    );
-  }
+  if (!edit && fit.res?.st) return <ResultCard rec={rec} fit={fit} hero={hero} onEdit={() => setEdit(true)} />;
 
   const items = fit.items || [];
   const allDone = total > 0 && done === total;
@@ -358,6 +340,75 @@ export function FitWorkout({ rec, by, hero = false }) {
 }
 
 // Listede video kapalı durur (çok video aynı anda yüklenmesin); dokununca açılır, yeniden dokununca kapanır
+// Biten antrenman: üstte durum, ad ve tarih; üç kutu (süre, set, nasıl geçti); altında hareketler satır satır.
+// Süreli hareketlerde her set ayrı hap: süresi dolan yeşil, erken geçilen kırmızı "0:18 / 0:30" (resRows).
+function ResultCard({ rec, fit, hero, onEdit }) {
+  const r = fit.res;
+  const ok = r.st === "done";
+  const { rows, done, total, active } = resRows(fit);
+  const feel = r.feel && FEELS.find(([k]) => k === r.feel)?.[1];
+  const time = r.min ? `${r.min} dk` : active ? clockText(active) : "";
+  const stats = [
+    ["Süre", time || "–"],
+    ["Set", `${done}/${total}`],
+    ["Nasıl geçti", feel || "–"],
+  ];
+  return (
+    <div className={`${box} ${hero ? "" : "mt-3"} overflow-hidden`}>
+      <div className="p-4 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${ok ? "bg-acc/10 text-acc" : "bg-rec/10 text-rec"}`}>
+            {ok && <Icon name="check" className="size-3.5" />}
+            {STATUS[r.st]}
+          </span>
+          <Link href="/fitness" className="text-[0.8125rem] font-semibold text-acc">
+            Fitness
+          </Link>
+        </div>
+        {hero && <h3 className="mt-2 text-[1.25rem] font-bold leading-snug">{fit.name || String(rec.title || "").replace(/^Fitness · /, "")}</h3>}
+        {hero && <p className="text-[0.8125rem] text-mut">{when(rec)}</p>}
+        {ok && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {stats.map(([k, v]) => (
+              <span key={k} className="rounded-xl bg-bg px-2 py-2 text-center">
+                <b className="block truncate text-[1.0625rem] font-bold tabular-nums">{v}</b>
+                <small className="block text-[0.6875rem] font-semibold text-mut">{k}</small>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      {ok && rows.length > 0 && (
+        <ul className="border-t border-line/60">
+          {rows.map((x, i) => (
+            <li key={i} className="border-b border-line/60 px-4 py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className={`min-w-0 truncate text-[0.9375rem] font-semibold ${x.none ? "text-mut" : ""}`}>{x.name}</span>
+                <span className={`shrink-0 text-[0.875rem] tabular-nums ${x.none ? "text-rec" : "text-mut"}`}>{x.line}</span>
+              </div>
+              {x.sets.length > 0 && !x.none && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {x.sets.map((t) => (
+                    <span key={t.n} className={`rounded-full px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums ${t.state === "early" ? "bg-rec/10 text-rec" : t.state === "no" ? "bg-bg text-mut line-through" : "bg-acc/10 text-acc"}`}>
+                      {t.n}. set {t.text}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {r.note && <p className="border-t border-line/60 px-4 py-2.5 text-[0.875rem] text-mut">{r.note}</p>}
+      <div className="px-4 pb-4 pt-1">
+        <button type="button" onClick={onEdit} className="h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+          Düzenle
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function YtLink({ yt }) {
   const [open, setOpen] = useState(false);
   return (

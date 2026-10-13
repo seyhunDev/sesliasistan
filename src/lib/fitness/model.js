@@ -502,6 +502,32 @@ export function resLine(fit) {
   return parts.join(", ");
 }
 
+// Biten antrenmanın ekranı: hareket başına özet satırı ve süreli setlerin geçen süresi; toplam set ve süre
+// sets[].state: "full" süresi doldu, "early" erken geçildi, "ok" yapıldı (süre kaydı yok), "no" yapılmadı
+export function resRows(fit) {
+  let done = 0;
+  let total = 0;
+  let active = 0;
+  const rows = (fit?.items || []).map((it, i) => {
+    const all = fit.res?.ex?.[i]?.sets || [];
+    const ok = all.filter((s) => s.ok);
+    done += ok.length;
+    total += all.length || it.sets || 1;
+    const last = ok.at(-1) || {};
+    const line = !ok.length ? "Yapılmadı" : it.kind === "cardio" ? `${last.min || it.min} dk` : it.kind === "time" ? `${ok.length} × ${clockText(goalSec(it, last))}` : `${ok.length} × ${last.reps || it.reps}${last.kg ? ` · ${kgText(last.kg)}` : ""}`;
+    const sets = isTimed(it)
+      ? all.map((s, k) => {
+          if (s.took) active += s.took;
+          const goal = goalSec(it, s);
+          const state = !s.ok ? "no" : !s.took ? "ok" : s.full ? "full" : "early";
+          return { n: k + 1, state, text: state === "early" ? `${clockText(s.took)} / ${clockText(goal)}` : clockText(s.took || goal) };
+        })
+      : [];
+    return { name: it.name, line, sets, none: !ok.length };
+  });
+  return { rows, done, total, active };
+}
+
 // Asistana gidecek kısa özet (son 3 hafta + gelecek hafta): "2026-10-06 Pzt Üst vücut: yapıldı (Squat 3 × 10 · 60 kg)"
 export function recentText(plans, today) {
   const from = addDays(today, -21);
