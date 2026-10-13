@@ -1540,6 +1540,12 @@ const FPL = (date, items, res, extra = {}) => ({ id: `${date}-${extra.id || "p"}
 const SQ = [{ ex: "squat", name: "Squat", kind: "reps", sets: 3, reps: 10, kg: 40 }];
 const okSets = (n, reps, kg) => Array.from({ length: n }, () => ({ reps, kg, ok: true }));
 group("Fitness")([
+  ["hareket tarifi ve örnek fotoğraf", F("her harekette 3+ adımlı Türkçe tarif; fotoğraflar sabit sürümlü https, iki kare; burpee'de fotoğraf yok", async () => {
+    const XG = await import("@/lib/fitness/exerciseGuide");
+    const allGuide = FX.EXERCISES.every((e) => XG.guideSteps(e.id).length >= 3);
+    const shots = FX.EXERCISES.map((e) => XG.stockPhotos(e.id)).filter((x) => x.length);
+    return allGuide && shots.length >= 80 && shots.every((x) => x.length === 2 && x.every((u) => /^https:\/\/cdn\.jsdelivr\.net\/gh\/yuhonas\/free-exercise-db@[0-9a-f]{40}\/exercises\/[A-Za-z0-9_\-()]+\/[01]\.jpg$/.test(u))) && XG.stockPhotos("burpee").length === 0 && XG.guideSteps("yok").length === 0;
+  })],
   ["hareket listesi", F("kimlikler tekrarsız, her grup dolu", () => new Set(FX.EXERCISES.map((e) => e.id)).size === FX.EXERCISES.length && FX.GROUPS.every((g) => FX.EXERCISES.some((e) => e.group === g)))],
   ["söylenen hareket", F("şınav, sınav (ses), squat, plank, mekik, dambıl lunge", () => FX.findExercise("şınav")?.id === "pushup" && FX.findExercise("sınavlar")?.id === "pushup" && FX.findExercise("Squat")?.id === "squat" && FX.findExercise("plank")?.id === "plank" && FX.findExercise("mekik")?.id === "crunch" && FX.findExercise("dambıl lunge")?.id === "db-lunge" && FX.findExercise("asdf") === null)],
   ["program temizliği", F("aynı gün bir kez, saat 07:00, koşu dakika, adsız hareket atılır", () => PROG.days.length === 3 && PROG.days[0].time === "07:00" && PROG.days[2].items.length === 1 && PROG.days[2].items[0].kind === "cardio" && PROG.days[2].items[0].min === 20 && PROG.days[1].items[1].sec === 30)],

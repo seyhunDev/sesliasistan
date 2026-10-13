@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
+import { guideSteps, stockPhotos } from "@/lib/fitness/exerciseGuide";
 import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
 
@@ -60,12 +61,14 @@ function Adjust({ label, value, unit, onChange }) {
 }
 
 function howOf(it) {
+  const steps = guideSteps(it?.ex);
+  if (steps.length) return steps;
   return String(exById(it?.ex)?.how || "")
     .split(/;\s*/)
     .map((x) => x.trim().replace(/\.$/, ""))
     .filter(Boolean);
 }
-const hasHow = (it) => howOf(it).length > 0 || (it?.media || []).length > 0;
+const hasHow = (it) => howOf(it).length > 0 || (it?.media || []).length > 0 || stockPhotos(it?.ex).length > 0;
 
 // Hedef: "3 set × 12 tekrar · 20 kg"
 function targetText(it, n) {
@@ -77,7 +80,7 @@ function HowBody({ it }) {
   const how = howOf(it);
   return (
     <>
-      <ExerciseMedia media={it.media} big className="mt-4" />
+      <ExerciseMedia media={it.media} ex={it.ex} big className="mt-4" />
       {how.length > 0 && (
         <ol className="mt-4 space-y-2.5">
           {how.map((h, n) => (

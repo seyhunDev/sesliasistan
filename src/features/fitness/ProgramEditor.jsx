@@ -92,7 +92,7 @@ function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
               {ex.how}
             </p>
           )}
-          <ExerciseMedia media={it.media} edit onChange={(v) => set("media", v)} className="mt-2" />
+          <ExerciseMedia media={it.media} ex={it.ex} edit onChange={(v) => set("media", v)} className="mt-2" />
           <div className="mt-2 flex items-center gap-2">
             <button type="button" aria-label="Yukarı taşı" disabled={i === 0} onClick={() => onMove(-1)} className="grid size-9 place-items-center rounded-full bg-bg disabled:opacity-30">
               <Icon name="up" className="size-4" />
