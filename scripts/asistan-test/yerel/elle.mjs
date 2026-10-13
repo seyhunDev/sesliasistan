@@ -1887,4 +1887,9 @@ group("Fitness antrenman ekranı")([
   ["kardiyo süresi", F("20 dk koşu ≈ 25 dk", () => FMK.estMinutes([{ kind: "cardio", min: 20 }]) === 25)],
   ["boş", F("hareket yoksa 0", () => FMK.estMinutes([]) === 0)],
   ["kas grupları", F("tekrarsız, sırayla", () => { const g = FMK.groupsOf([{ ex: "squat" }, { ex: "lunge" }, { ex: "plank" }]); return g.length === new Set(g).size && g.length >= 1; })],
+  ["süre hedefi", F("plank 30 sn, kardiyo 5 dk = 300 sn", () => FMK.goalSec({ kind: "time", sec: 30 }) === 30 && FMK.goalSec({ kind: "cardio", min: 5 }) === 300 && FMK.goalSec({ kind: "reps" }) === 0)],
+  ["saat yazısı", F("0:30, 5:00, 1:02:05", () => FMK.clockText(30) === "0:30" && FMK.clockText(300) === "5:00" && FMK.clockText(3725) === "1:02:05")],
+  ["süre kaydı saklanır", F("took ve full cleanRes'ten geçer", () => { const r = FMK.cleanRes({ ex: [{ sets: [{ ok: true, sec: 30, took: 18 }, { ok: true, sec: 30, took: 30, full: true }] }] }, [{ kind: "time", sec: 30 }]); const [a, b] = r.ex[0].sets; return a.took === 18 && !a.full && b.took === 30 && b.full === true; })],
+  ["set süre yazısı", F("tamamlandı / erken geçildi", () => FMK.setTimeText({ kind: "time", sec: 30 }, { took: 30, full: true }) === "Tamamlandı · 0:30" && FMK.setTimeText({ kind: "cardio", min: 5 }, { took: 200 }) === "3:20'de geçildi (hedef 5:00)")],
+  ["sonuç satırında erken geçilen", F("Plank … (2. set 0:18'de geçildi)", () => FMK.resLine({ items: [{ name: "Plank", kind: "time", sec: 30 }], res: { ex: [{ sets: [{ ok: true, sec: 30, took: 30, full: true }, { ok: true, sec: 30, took: 18 }] }] } }) === "Plank 2 × 30 sn (2. set 0:18'de geçildi)")],
 ]);

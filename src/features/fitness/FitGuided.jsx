@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { YtToggle } from "./YtVideo";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
-import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
+import { FEELS, bump, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
 
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
-// Değer hedeften farklıysa − / + ile düzeltilir. Süreli harekette "Süreyi başlat" geri sayar.
+// Değer hedeften farklıysa − / + ile düzeltilir.
+// Süreli harekette (süre ve kardiyo, 5 dk dahil) set geri sayımla yapılır: Başlat › Duraklat/Devam › süre dolunca set kendiliğinden
+// tamamlanır; erken "Bitirdim" denirse kaç saniyede geçildiği yazılır (sette took, full; setTimeText).
 // Hareketin videosu (YouTube ya da eklenen video/fotoğraf) ve açıklaması hareket ekranında doğrudan görünür,
 // setler altında; ayrı "Nasıl yapılır" ekranı yok.
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
@@ -42,6 +44,85 @@ function useCountdown() {
     setRun({ end: n + sec * 1000, total: sec });
   };
   return { run, left, start, stop: () => setRun(null), add: (s) => setRun((r) => (r ? { end: r.end + s * 1000, total: r.total + s } : r)) };
+}
+
+// Set geri sayımı: duraklatılır, devam ettirilir; geçen süre saniye olarak tutulur
+function useSetClock(onEnd) {
+  const [run, setRun] = useState(null); // { total sn, base ms (duraklatmadan önce geçen), from ms|null (çalışıyorsa) }
+  const [now, setNow] = useState(0);
+  const end = useRef(onEnd);
+  useEffect(() => {
+    end.current = onEnd;
+  });
+  const beeped = useRef(0);
+  const ac = useRef(null);
+  const beep = (hz = 880, ms = 160) => {
+    try {
+      const c = ac.current;
+      if (!c) return;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.frequency.value = hz;
+      g.gain.setValueAtTime(0.25, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + ms / 1000);
+      o.connect(g).connect(c.destination);
+      o.start();
+      o.stop(c.currentTime + ms / 1000);
+    } catch {}
+  };
+  const used = run ? run.base + (run.from ? Math.max(0, now - run.from) : 0) : 0;
+  const left = run ? Math.max(0, Math.ceil(run.total - used / 1000)) : 0;
+  useEffect(() => {
+    if (!run?.from) return;
+    // Ekran kararmasın
+    let lock = null;
+    navigator.wakeLock?.request?.("screen").then((l) => (lock = l), () => {});
+    const t = setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      const u = run.base + (n - run.from);
+      const l = Math.ceil(run.total - u / 1000);
+      if (l <= 3 && l > 0 && beeped.current !== l) {
+        beeped.current = l;
+        beep(660, 90);
+      }
+      if (u >= run.total * 1000) {
+        clearInterval(t);
+        beep(990, 450);
+        navigator.vibrate?.([60, 80, 60]);
+        setRun(null);
+        end.current?.(run.total, true);
+      }
+    }, 200);
+    return () => {
+      clearInterval(t);
+      lock?.release?.().catch(() => {});
+    };
+  }, [run]);
+  return {
+    run,
+    left,
+    used: Math.round(used / 1000),
+    going: !!run?.from,
+    start(total) {
+      // Ses için kilit dokunuşta açılır (iPhone)
+      try {
+        ac.current = ac.current || new (window.AudioContext || window.webkitAudioContext)();
+        ac.current.resume?.();
+      } catch {}
+      beeped.current = 0;
+      const n = Date.now();
+      setNow(n);
+      setRun({ total, base: 0, from: n });
+    },
+    pause: () => setRun((r) => (r?.from ? { ...r, base: r.base + (Date.now() - r.from), from: null } : r)),
+    resume: () => {
+      const n = Date.now();
+      setNow(n);
+      setRun((r) => (r && !r.from ? { ...r, from: n } : r));
+    },
+    stop: () => setRun(null),
+  };
 }
 
 function Adjust({ label, value, unit, onChange }) {
@@ -105,10 +186,10 @@ function HowBody({ it }) {
   );
 }
 
-export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel, onFinish, onClose }) {
-  const [pos, setPos] = useState(() => nextOpen(sets, 0, 0));
+export function FitGuided({ items = [], sets = [], at = null, onCheck, onVal, feel, setFeel, onFinish, onClose }) {
+  const [pos, setPos] = useState(() => (at && !sets[at.i]?.[at.k]?.ok ? at : nextOpen(sets, 0, 0)));
   const rest = useCountdown();
-  const timer = useCountdown();
+  const timer = useSetClock((took, full) => complete({ took, full }));
   const total = sets.reduce((t, s) => t + s.length, 0);
   const done = sets.reduce((t, s) => t + s.filter((x) => x.ok).length, 0);
 
@@ -121,11 +202,18 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
     };
   }, []);
 
-  function complete() {
+  // rec: süreli sette { took, full }; verilmezse ve geri sayım sürüyorsa erken geçildi sayılır
+  function complete(rec = null) {
     if (!pos) return null;
     const { i, k } = pos;
+    const it = items[i] || {};
+    let r = rec;
+    if (!r && isTimed(it) && timer.run) {
+      const goal = goalSec(it, sets[i]?.[k]);
+      r = { took: Math.max(1, timer.used), full: timer.used >= goal };
+    }
     timer.stop();
-    onCheck(i, k);
+    onCheck(i, k, r);
     const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: true } : x)) : s));
     const n = nextOpen(next, i, k + 1);
     setPos(n);
@@ -169,6 +257,10 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
       return n ? `Geçtim. ${setText(n)}` : "Geçtim. Atladığın setler kaldı, bitirmek için onları da tamamla.";
     }
     if (g.op === "done") {
+      if (!rest.run && isTimed(items[pos.i]) && !timer.run) {
+        timer.start(goalSec(items[pos.i], sets[pos.i]?.[pos.k]));
+        return "Süre başladı.";
+      }
       if (rest.run) {
         rest.stop();
         return `Dinlenme bitti. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
@@ -247,6 +339,8 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   const cur = s[pos.k] || {};
   const key = KEY[it.kind] || "reps";
   const val = cur[key] || it[key] || "";
+  const timed = isTimed(it);
+  const goal = timed ? goalSec(it, cur) : 0;
 
   return (
     <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
@@ -278,33 +372,70 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
             <p className="text-center text-[0.9375rem] font-semibold text-mut">
               Set {pos.k + 1} / {s.length}
             </p>
-            <div className="mt-4">
-              <Adjust label={UNIT[key]} value={val} unit={UNIT[key]} onChange={onVal ? (d) => onVal(pos.i, pos.k, key, bump(val, key, d)) : null} />
-            </div>
+            {timed ? (
+              <Clock left={timer.run ? timer.left : goal} total={goal} run={timer.run} going={timer.going} />
+            ) : null}
+            {!timer.run && (!timed || onVal) && (
+              <div className="mt-4">
+                <Adjust label={UNIT[key]} value={val} unit={UNIT[key]} onChange={onVal ? (d) => onVal(pos.i, pos.k, key, bump(val, key, d)) : null} />
+              </div>
+            )}
             {it.kind === "reps" && (cur.kg || it.kg) ? (
               <div className="mt-4">
                 <Adjust label="kilo" value={cur.kg || it.kg} unit="kg" onChange={onVal ? (d) => onVal(pos.i, pos.k, "kg", bump(cur.kg || it.kg, "kg", d)) : null} />
               </div>
             ) : null}
-            {it.kind === "time" && (
-              <button type="button" onClick={() => (timer.run ? timer.stop() : timer.start(Number(val) || 30))} className="mx-auto mt-5 flex h-11 items-center gap-2 rounded-full bg-bg px-5 text-[0.9375rem] font-semibold">
-                <Icon name="clock" className="size-5" />
-                {timer.run ? `${timer.left} sn · Durdur` : "Süreyi başlat"}
-              </button>
-            )}
+
           </div>
         )}
       </div>
       <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
-        {!rest.run && (
-          <button type="button" onClick={complete} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+        {!rest.run && !timed && (
+          <button type="button" onClick={() => complete()} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
             Tamamlandı
           </button>
+        )}
+        {!rest.run && timed && !timer.run && (
+          <button type="button" onClick={() => timer.start(goal)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+            <Icon name="clock" className="size-5" />
+            Başlat · {clockText(goal)}
+          </button>
+        )}
+        {!rest.run && timed && timer.run && (
+          <div className="flex gap-2">
+            <button type="button" onClick={timer.going ? timer.pause : timer.resume} className="h-14 flex-1 rounded-2xl bg-card text-[1.0625rem] font-semibold shadow-sm active:scale-[.98]">
+              {timer.going ? "Duraklat" : "Devam et"}
+            </button>
+            <button type="button" onClick={() => complete()} className="h-14 flex-1 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              Bitirdim
+            </button>
+          </div>
         )}
         <button type="button" onClick={skipEx} className="mt-2 h-10 w-full text-[0.875rem] font-semibold text-mut">
           Bu hareketi atla
         </button>
       </div>
+    </div>
+  );
+}
+
+// Büyük geri sayım halkası: kalan süre (0:30, 5:00), duraklatılınca "Duraklatıldı"
+function Clock({ left, total, run, going }) {
+  const r = 70;
+  const c = 2 * Math.PI * r;
+  const part = total ? left / total : 1;
+  return (
+    <div className="relative mx-auto mt-4 size-[11rem]">
+      <svg viewBox="0 0 160 160" className="size-full -rotate-90">
+        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-line/60" />
+        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" strokeLinecap="round" className="stroke-acc transition-[stroke-dashoffset] duration-200" strokeDasharray={c} strokeDashoffset={c * (1 - part)} />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-center">
+        <span>
+          <b className={`block text-[2.75rem] font-bold leading-none tabular-nums ${left <= 3 && run ? "text-rec" : ""}`}>{clockText(left)}</b>
+          <small className="mt-1 block text-[0.8125rem] text-mut">{!run ? "hazır" : going ? "kalan" : "Duraklatıldı"}</small>
+        </span>
+      </span>
     </div>
   );
 }
