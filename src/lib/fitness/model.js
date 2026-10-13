@@ -7,6 +7,7 @@
 //     res (yapılan): { st done|skip, at, min, feel 1-3, note, ex [{ sets [{ reps, kg, sec, min, ok }] }] } (items ile aynı sırada)
 // Takip ekranı planlardan hesaplanır (planlar zaten cihazda; ek okuma yok).
 import { EXERCISES, exById, findExercise, fold } from "./exercises";
+import { cleanYt } from "./youtube";
 
 export const GOALS = [
   ["kilo", "Kilo vermek"],
@@ -118,19 +119,31 @@ export function cleanItem(it = {}) {
   if (note) out.note = note;
   const media = cleanMedia(it.media);
   if (media.length) out.media = media;
+  const yt = cleanYt(it.yt);
+  if (yt) out.yt = yt;
   return out;
 }
-// Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts, url }], en çok 3
+// Bağlantıyla eklenen fotoğraf/video: https adresi; video uzantısı (mp4, mov, webm, m4v) videodur, gerisi fotoğraf
+export function linkMedia(text) {
+  const url = String(text || "").trim();
+  if (!/^https:\/\/[^\s]+$/i.test(url) || url.length > 1200) return null;
+  const kind = /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(url) ? "video" : "photo";
+  return { id: `lnk-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, url, link: true };
+}
+// Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts, url }], en çok 3.
+// Bağlantıyla eklenen: { id, kind, url, link: true } (dosya bizde değil, adres olduğu gibi açılır)
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
     .filter((m) => m && typeof m.id === "string" && m.id && (m.kind === "photo" || m.kind === "video"))
     .slice(0, 3)
     .map((m) => {
+      if (m.link) return typeof m.url === "string" && /^https:\/\/\S+$/.test(m.url) && m.url.length <= 1200 ? { id: m.id.slice(0, 40), kind: m.kind, url: m.url, link: true } : null;
       const o = { id: m.id.slice(0, 40), kind: m.kind, type: String(m.type || "").slice(0, 40), size: Math.max(0, +m.size || 0), parts: Math.min(40, Math.max(1, Math.round(+m.parts) || 1)) };
       // Storage'daki dosya: indirme adresi (https, firebasestorage) künyede durur, video oradan akarak oynar
       if (typeof m.url === "string" && /^https:\/\/firebasestorage\.googleapis\.com\//.test(m.url) && m.url.length < 1200) o.url = m.url;
       return o;
-    });
+    })
+    .filter(Boolean);
 }
 export function cleanDay(d = {}) {
   const dow = num(d.dow, 1, 7);

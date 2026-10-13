@@ -115,6 +115,7 @@ export async function saveMedia(orgId, m, onProg) {
 // Gösterilecek adres: Storage'da ise indirme adresi (tarayıcı önbelleğinde 1 yıl kalır), eski düzende parçalardan blob (bu cihazda saklanır).
 // Dönüş { src, blob } (blob varsa çağıran URL.createObjectURL yapar)
 export async function loadMedia(orgId, meta) {
+  if (meta.link) return { src: meta.url };
   const hit = await getRaceFile(cacheKey(meta.id));
   if (hit?.blob) return { blob: hit.blob };
   if (meta.url) return { src: meta.url };
@@ -128,7 +129,7 @@ export async function loadMedia(orgId, meta) {
 
 // Siler; hata sessiz
 export async function dropMedia(orgId, meta) {
-  if (!meta?.id) return;
+  if (!meta?.id || meta.link) return;
   if (meta.url) await deleteObject(sref(store(), path(orgId, meta.id))).catch(() => {});
   dropRaceFile(cacheKey(meta.id));
 }

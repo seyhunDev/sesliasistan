@@ -8,6 +8,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useKind } from "@/features/auth/useKind";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
+import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
 import { FEELS, cleanRes, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
@@ -177,6 +178,7 @@ export function FitWorkout({ rec, by }) {
               {all && <Icon name="check" className="mt-0.5 size-5 text-acc" />}
             </div>
             <ExerciseMedia media={it.media} ex={it.ex} />
+            {it.yt?.id && <YtLink yt={it.yt} />}
             <div className="mt-2 space-y-1.5">
               {s.map((x, k) => (
                 <div key={k} className="flex items-center gap-2">
@@ -280,6 +282,20 @@ export function FitWorkout({ rec, by }) {
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+// Listede video kapalı durur (çok video aynı anda yüklenmesin); dokununca açılır, yeniden dokununca kapanır
+function YtLink({ yt }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1.5">
+      <button type="button" onClick={() => setOpen(!open)} className="flex h-9 items-center gap-1.5 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold text-acc">
+        <Icon name={open ? "x" : "video"} className="size-4" />
+        {open ? "Videoyu kapat" : "Videoyu izle"}
+      </button>
+      {open && <YtPlayer yt={yt} className="mt-2" />}
     </div>
   );
 }

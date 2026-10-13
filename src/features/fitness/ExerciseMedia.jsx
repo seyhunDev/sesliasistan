@@ -29,12 +29,13 @@ function useBlobUrl(orgId, m) {
       if (u) URL.revokeObjectURL(u);
     };
   }, [orgId, m?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (m?.stock) return { url: m.url, err: false };
-  return { url, err };
+  const fail = () => setErr(true);
+  if (m?.stock) return { url: m.url, err: false, fail };
+  return { url, err, fail };
 }
 
 function Thumb({ orgId, m, onOpen, onDrop }) {
-  const { url, err } = useBlobUrl(orgId, m);
+  const { url, err, fail } = useBlobUrl(orgId, m);
   return (
     <span className="relative size-20 shrink-0">
       <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu aç" : "Fotoğrafı aç"} className="grid size-20 place-items-center overflow-hidden rounded-2xl bg-bg">
@@ -44,7 +45,7 @@ function Thumb({ orgId, m, onOpen, onDrop }) {
           <span className="shimmer size-full" />
         ) : m.kind === "video" ? (
           <>
-            <video src={`${url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
+            <video src={`${url}#t=0.1`} muted playsInline preload="metadata" onError={fail} className="size-full object-cover" />
             <span className="absolute inset-0 grid place-items-center">
               <span className="grid size-8 place-items-center rounded-full bg-black/55 text-white">
                 <Icon name="video" className="size-4" />
@@ -52,7 +53,7 @@ function Thumb({ orgId, m, onOpen, onDrop }) {
             </span>
           </>
         ) : (
-          <img src={url} alt="" className="size-full object-cover" />
+          <img src={url} alt="" onError={fail} className="size-full object-cover" />
         )}
       </button>
       {m.stock && <span className="pointer-events-none absolute bottom-1 left-1 rounded-full bg-black/55 px-1.5 text-[0.625rem] font-semibold text-white">Örnek</span>}
@@ -109,16 +110,16 @@ function StockBig({ shots, onOpen }) {
 }
 
 function Big({ orgId, m, onOpen }) {
-  const { url, err } = useBlobUrl(orgId, m);
+  const { url, err, fail } = useBlobUrl(orgId, m);
   if (err) return null;
   return (
     <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="block aspect-[4/3] w-full overflow-hidden rounded-3xl bg-black/5">
       {!url ? (
         <span className="shimmer block size-full" />
       ) : m.kind === "video" ? (
-        <video src={url} autoPlay loop muted playsInline className="size-full object-cover" />
+        <video src={url} autoPlay loop muted playsInline onError={fail} className="size-full object-cover" />
       ) : (
-        <img src={url} alt="" className="size-full object-cover" />
+        <img src={url} alt="" onError={fail} className="size-full object-cover" />
       )}
     </button>
   );

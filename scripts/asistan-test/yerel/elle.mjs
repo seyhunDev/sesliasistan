@@ -1540,6 +1540,23 @@ const FPL = (date, items, res, extra = {}) => ({ id: `${date}-${extra.id || "p"}
 const SQ = [{ ex: "squat", name: "Squat", kind: "reps", sets: 3, reps: 10, kg: 40 }];
 const okSets = (n, reps, kg) => Array.from({ length: n }, () => ({ reps, kg, ok: true }));
 group("Fitness")([
+  ["YouTube bağlantısı", F("watch, youtu.be, shorts, m., t=1m30s; YouTube olmayan atılır; harekete kaydedilir", async () => {
+    const Y = await import("@/lib/fitness/youtube");
+    const FMY = await import("@/lib/fitness/model");
+    const id = "dQw4w9WgXcQ";
+    const it = FMY.cleanItem({ ex: "squat", yt: `https://youtu.be/${id}?t=1m30s` });
+    return Y.ytId(`https://www.youtube.com/watch?v=${id}&list=x`) === id && Y.ytId(`youtu.be/${id}`) === id && Y.ytId(`https://youtube.com/shorts/${id}`) === id && Y.ytId(`https://m.youtube.com/watch?v=${id}`) === id &&
+      Y.ytId("https://vimeo.com/123") === "" && Y.ytId("merhaba") === "" && Y.cleanYt("https://example.com/watch?v=" + id) === null &&
+      it.yt?.id === id && it.yt.start === 90 && !FMY.cleanItem({ ex: "squat", yt: "kötü" }).yt && FMY.cleanItem({ ex: "squat", yt: { id } }).yt.id === id &&
+      Y.ytEmbed(id, 90).startsWith("https://www.youtube-nocookie.com/embed/" + id) && Y.ytEmbed(id, 90).includes("start=90");
+  })],
+  ["fotoğraf/video bağlantısı", F("https fotoğraf ve .mp4 video bağlantısı harekete kaydedilir; http ve yazı atılır", () => {
+    const p = FM2.linkMedia("https://ornek.com/a/squat.jpg");
+    const v = FM2.linkMedia("https://ornek.com/squat.MP4?x=1");
+    const it = FM2.cleanItem({ ex: "squat", media: [p, v, { id: "lnk-k", kind: "photo", url: "http://kotu.com/a.jpg", link: true }] });
+    return p?.kind === "photo" && p.link && v?.kind === "video" && FM2.linkMedia("http://a.com/x.jpg") === null && FM2.linkMedia("merhaba") === null &&
+      it.media.length === 2 && it.media[0].url === p.url && it.media[1].kind === "video" && it.media.every((m) => m.link);
+  })],
   ["hareket tarifi ve örnek fotoğraf", F("her harekette 3+ adımlı Türkçe tarif; fotoğraflar sabit sürümlü https, iki kare; burpee'de fotoğraf yok", async () => {
     const XG = await import("@/lib/fitness/exerciseGuide");
     const allGuide = FX.EXERCISES.every((e) => XG.guideSteps(e.id).length >= 3);
