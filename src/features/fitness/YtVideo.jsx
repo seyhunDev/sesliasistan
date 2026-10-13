@@ -1,0 +1,148 @@
+"use client";
+
+import { useState } from "react";
+import { Icon } from "@/components/ui/Icon";
+import { cleanYt, ytEmbed, ytThumb, ytWatch } from "@/lib/fitness/youtube";
+import { linkMedia } from "@/lib/fitness/model";
+
+const MEDIA_MAX = 3;
+
+// Hareketin YouTube videosu: program düzenlenirken bağlantı yapıştırılır, sporcu antrenmanda izler.
+// Sporcu "Videoyu gizle" derse o video bu cihazda bir daha kendiliğinden açılmaz ("Videoyu göster" ile döner).
+const OFF = "sa-fit-yt-off";
+const offSet = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(OFF) || "[]"));
+  } catch {
+    return new Set();
+  }
+};
+function saveOff(set) {
+  try {
+    localStorage.setItem(OFF, JSON.stringify([...set].slice(-200)));
+  } catch {}
+}
+
+export function YtPlayer({ yt, className = "" }) {
+  if (!yt?.id) return null;
+  return (
+    <div className={`aspect-video w-full overflow-hidden rounded-3xl bg-black ${className}`}>
+      <iframe
+        src={ytEmbed(yt.id, yt.start)}
+        title="Hareket videosu"
+        className="size-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
+  );
+}
+
+// Antrenman ekranı: video açık gelir, gizlenebilir; gizliyse küçük "Videoyu göster" düğmesi
+export function YtToggle({ yt, className = "" }) {
+  const [off, setOff] = useState(() => (yt?.id ? offSet().has(yt.id) : false));
+  if (!yt?.id) return null;
+  const set = (v) => {
+    const s = offSet();
+    if (v) s.add(yt.id);
+    else s.delete(yt.id);
+    saveOff(s);
+    setOff(v);
+  };
+  if (off) {
+    return (
+      <button type="button" onClick={() => set(false)} className={`flex h-10 items-center gap-2 rounded-full bg-card px-4 text-[0.9375rem] font-semibold text-acc shadow-sm active:scale-95 ${className}`}>
+        <Icon name="video" className="size-4.5" />
+        Videoyu göster
+      </button>
+    );
+  }
+  return (
+    <div className={className}>
+      <YtPlayer yt={yt} />
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <a href={ytWatch(yt.id, yt.start)} target="_blank" rel="noreferrer" className="text-[0.8125rem] font-semibold text-mut underline-offset-2">
+          YouTube&apos;da aç
+        </a>
+        <button type="button" onClick={() => set(true)} className="flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
+          <Icon name="x" className="size-4" />
+          Videoyu gizle
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Program düzenleme: bağlantı yapıştırılır. YouTube bağlantısı videonun yerine geçer; başka https bağlantısı
+// (fotoğraf ya da .mp4 video) hareketin fotoğraf/videolarına eklenir (en çok 3).
+export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
+  const [text, setText] = useState("");
+  const [err, setErr] = useState("");
+  const full = (media || []).filter((m) => !m.stock).length >= MEDIA_MAX;
+  const add = (v) => {
+    if (!v.trim()) return setErr("");
+    const y = cleanYt(v);
+    if (y) {
+      setErr("");
+      setText("");
+      return onChange(y);
+    }
+    const m = linkMedia(v);
+    if (!m) return setErr("Bağlantı https:// ile başlamalı");
+    if (full || !onMedia) return setErr(`En çok ${MEDIA_MAX} fotoğraf ya da video`);
+    setErr("");
+    setText("");
+    onMedia([...(media || []).filter((x) => !x.stock), m]);
+  };
+  return (
+    <div className={className}>
+      {yt?.id && (
+        <div className="mb-2 flex items-center gap-3 rounded-2xl bg-bg p-2">
+          <a href={ytWatch(yt.id, yt.start)} target="_blank" rel="noreferrer" className="relative block h-14 w-24 shrink-0 overflow-hidden rounded-xl bg-black">
+            <img src={ytThumb(yt.id)} alt="" className="size-full object-cover" />
+            <span className="absolute inset-0 grid place-items-center">
+              <span className="grid size-7 place-items-center rounded-full bg-black/60 text-white">
+                <Icon name="video" className="size-3.5" />
+              </span>
+            </span>
+          </a>
+          <span className="min-w-0 flex-1 text-[0.8125rem] font-semibold">
+            YouTube videosu
+            <small className="block font-normal text-mut">Sporcu antrenmanda izler</small>
+          </span>
+          <button type="button" onClick={() => onChange(null)} className="h-9 rounded-full bg-rec/10 px-3 text-[0.8125rem] font-semibold text-rec">
+            Kaldır
+          </button>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          type="url"
+          inputMode="url"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setErr("");
+          }}
+          onPaste={(e) => {
+            const v = e.clipboardData?.getData("text") || "";
+            if (cleanYt(v) || linkMedia(v)) {
+              e.preventDefault();
+              add(v);
+            }
+          }}
+          onKeyDown={(e) => e.key === "Enter" && add(text)}
+          placeholder={yt?.id ? "Fotoğraf ya da video bağlantısı" : "Fotoğraf, video ya da YouTube bağlantısı"}
+          className="h-9 min-w-0 flex-1 rounded-full bg-bg px-3 text-[0.8125rem] outline-none"
+        />
+        {text.trim() && (
+          <button type="button" onClick={() => add(text)} className="h-9 rounded-full bg-acc px-3 text-[0.8125rem] font-semibold text-white">
+            Ekle
+          </button>
+        )}
+      </div>
+      {err && <p className="mt-1 text-[0.75rem] font-semibold text-rec">{err}</p>}
+    </div>
+  );
+}

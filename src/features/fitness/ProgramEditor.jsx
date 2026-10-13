@@ -8,6 +8,7 @@ import { exById } from "@/lib/fitness/exercises";
 import { DOWS, DOW_LONG, cleanItem, itemLine } from "@/lib/fitness/model";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
+import { YtEdit } from "./YtVideo";
 
 // Program düzenleme (yapay zekanın hazırladığı önizleme ya da kayıtlı program). Üstte özet (ad, gün/hafta, dakika, hafta,
 // başlangıç), altında haftanın günleri şeridi: antrenman günü dokununca açılır, boş güne dokununca o güne antrenman eklenir.
@@ -67,6 +68,11 @@ function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
             <Chip tone="bg-acc/10 text-acc">{itemLine(it).split(" · ")[0]}</Chip>
             {it.kg ? <Chip>{String(it.kg).replace(".", ",")} kg</Chip> : null}
             {it.rest ? <Chip tone="bg-bg text-mut">{it.rest} sn dinlen</Chip> : null}
+            {it.yt?.id ? (
+              <Chip tone="bg-rec/10 text-rec">
+                <Icon name="video" className="-mt-0.5 inline size-3.5" /> YouTube
+              </Chip>
+            ) : null}
             {it.media?.length ? (
               <Chip tone="bg-bg text-mut">
                 <Icon name={it.media.some((m) => m.kind === "video") ? "video" : "camera"} className="-mt-0.5 inline size-3.5" /> {it.media.length}
@@ -93,6 +99,7 @@ function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
             </p>
           )}
           <ExerciseMedia media={it.media} ex={it.ex} edit onChange={(v) => set("media", v)} className="mt-2" />
+          <YtEdit yt={it.yt} onChange={(v) => set("yt", v)} media={it.media} onMedia={(v) => set("media", v)} className="mt-2" />
           <div className="mt-2 flex items-center gap-2">
             <button type="button" aria-label="Yukarı taşı" disabled={i === 0} onClick={() => onMove(-1)} className="grid size-9 place-items-center rounded-full bg-bg disabled:opacity-30">
               <Icon name="up" className="size-4" />

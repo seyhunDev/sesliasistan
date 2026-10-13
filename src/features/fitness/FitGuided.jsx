@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
+import { YtPlayer, YtToggle } from "./YtVideo";
 import { guideSteps, stockPhotos } from "@/lib/fitness/exerciseGuide";
 import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
@@ -77,7 +78,7 @@ function howOf(it) {
     .map((x) => x.trim().replace(/\.$/, ""))
     .filter(Boolean);
 }
-const hasHow = (it) => howOf(it).length > 0 || (it?.media || []).length > 0 || stockPhotos(it?.ex).length > 0;
+const hasHow = (it) => howOf(it).length > 0 || (it?.media || []).length > 0 || stockPhotos(it?.ex).length > 0 || !!it?.yt?.id;
 
 // Hedef: "3 set × 12 tekrar · 20 kg"
 function targetText(it, n) {
@@ -89,7 +90,8 @@ function HowBody({ it }) {
   const how = howOf(it);
   return (
     <>
-      <ExerciseMedia media={it.media} ex={it.ex} big className="mt-4" />
+      {it.yt?.id && <YtPlayer yt={it.yt} className="mt-4" />}
+      <ExerciseMedia media={it.media} ex={it.ex} big={!it.yt?.id} className="mt-4" />
       {how.length > 0 && (
         <ol className="mt-4 space-y-2.5">
           {how.map((h, n) => (
@@ -281,9 +283,10 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
       {top}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-5">
         <h2 className="text-[1.625rem] font-bold leading-tight">{it.name}</h2>
+        <YtToggle key={it.yt?.id || pos.i} yt={it.yt} className="mt-3" />
         {hasHow(it) && (
           <button type="button" onClick={() => setHowOpen(true)} className="mt-3 flex h-10 items-center gap-2 rounded-full bg-card px-4 text-[0.9375rem] font-semibold text-acc shadow-sm active:scale-95">
-            <Icon name={(it.media || []).some((m) => m.kind === "video") ? "video" : "book"} className="size-4.5" />
+            <Icon name={it.yt?.id || (it.media || []).some((m) => m.kind === "video") ? "video" : "book"} className="size-4.5" />
             Nasıl yapılır
           </button>
         )}
