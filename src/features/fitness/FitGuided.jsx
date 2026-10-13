@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
-import { YtToggle } from "./YtVideo";
+import { YtSmall } from "./YtVideo";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
 import { FEELS, bump, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
@@ -15,7 +15,8 @@ import { setGuideHandler } from "./guideVoice";
 // Süreli harekette (süre ve kardiyo, 5 dk dahil) set geri sayımla yapılır: Başlat › Duraklat/Devam › süre dolunca set kendiliğinden
 // tamamlanır; erken "Bitirdim" denirse kaç saniyede geçildiği yazılır (sette took, full; setTimeText).
 // Hareketin videosu (YouTube ya da eklenen video/fotoğraf) ve açıklaması hareket ekranında doğrudan görünür,
-// setler altında; ayrı "Nasıl yapılır" ekranı yok.
+// setler altında; ayrı "Nasıl yapılır" ekranı yok. Video oynatılmıyorken küçük kart (dokununca büyür), geri sayım
+// arka plansız: ekran kaydırmadan sığsın.
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
 // Ana asistanla da yürür: ekran kayıt kubbesinin (z-55) altında durur; "tamam", "atla", "15 saniye ekle", "nasıl yapılır",
 // "zor geçti", "antrenmanı bitir" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
@@ -170,12 +171,12 @@ function HowBody({ it }) {
   const how = howOf(it);
   return (
     <>
-      <YtToggle key={it.yt?.id} yt={it.yt} className="mt-3" />
-      <ExerciseMedia media={it.media} ex={it.ex} big={!it.yt?.id} className="mt-4" />
+      <YtSmall key={it.yt?.id} yt={it.yt} className="mt-3" />
+      <ExerciseMedia media={it.media} ex={it.ex} className="mt-2" />
       {how.length > 0 && (
-        <ol className="mt-4 space-y-2.5">
+        <ol className="mt-3 space-y-1.5">
           {how.map((h, n) => (
-            <li key={h} className="flex gap-3 text-[1rem] leading-snug">
+            <li key={h} className="flex gap-3 text-[0.9375rem] leading-snug">
               <span className="grid size-6 shrink-0 place-items-center rounded-full bg-acc/15 text-[0.8125rem] font-bold text-acc">{n + 1}</span>
               <span>{h}</span>
             </li>
@@ -345,7 +346,7 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, onVal, fe
   return (
     <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
       {top}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4">
         <h2 className="text-[1.625rem] font-bold leading-tight">{it.name}</h2>
         <p className="mt-1 text-[0.9375rem] font-semibold text-mut">{targetText(it, s.length)}</p>
         <HowBody key={pos.i} it={it} />
@@ -368,7 +369,7 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, onVal, fe
             </div>
           </div>
         ) : (
-          <div className="mt-6 rounded-3xl bg-card px-4 py-6 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+          <div className={timed ? "mt-4" : "mt-6 rounded-3xl bg-card px-4 py-6 shadow-[0_1px_3px_rgba(38,40,44,.05)]"}>
             <p className="text-center text-[0.9375rem] font-semibold text-mut">
               Set {pos.k + 1} / {s.length}
             </p>
@@ -425,14 +426,14 @@ function Clock({ left, total, run, going }) {
   const c = 2 * Math.PI * r;
   const part = total ? left / total : 1;
   return (
-    <div className="relative mx-auto mt-4 size-[11rem]">
+    <div className="relative mx-auto mt-2 size-[9.5rem]">
       <svg viewBox="0 0 160 160" className="size-full -rotate-90">
         <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-line/60" />
         <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" strokeLinecap="round" className="stroke-acc transition-[stroke-dashoffset] duration-200" strokeDasharray={c} strokeDashoffset={c * (1 - part)} />
       </svg>
       <span className="absolute inset-0 grid place-items-center text-center">
         <span>
-          <b className={`block text-[2.75rem] font-bold leading-none tabular-nums ${left <= 3 && run ? "text-rec" : ""}`}>{clockText(left)}</b>
+          <b className={`block text-[2.5rem] font-bold leading-none tabular-nums ${left <= 3 && run ? "text-rec" : ""}`}>{clockText(left)}</b>
           <small className="mt-1 block text-[0.8125rem] text-mut">{!run ? "hazır" : going ? "kalan" : "Duraklatıldı"}</small>
         </span>
       </span>

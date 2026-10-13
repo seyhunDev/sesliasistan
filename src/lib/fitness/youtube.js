@@ -32,7 +32,7 @@ export function ytStart(text) {
   return (Number(m[1]) || 0) * 3600 + (Number(m[2]) || 0) * 60 + (Number(m[3]) || 0);
 }
 
-export const ytEmbed = (id, start = 0) => `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1${start ? `&start=${start}` : ""}`;
+export const ytEmbed = (id, start = 0, auto = false) => `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1${start ? `&start=${start}` : ""}${auto ? "&autoplay=1" : ""}`;
 export const ytWatch = (id, start = 0) => `https://www.youtube.com/watch?v=${id}${start ? `&t=${start}s` : ""}`;
 export const ytThumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
