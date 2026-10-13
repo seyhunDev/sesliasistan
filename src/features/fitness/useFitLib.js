@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useData } from "@/features/data/DataProvider";
 import { libSetMedia } from "@/lib/fitness/library";
-import { FIT_LIB, loadLib, peekLib, saveLib } from "./fitnessData";
+import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
 // Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media }) }
-// setMedia hareketin fotoğraf/videosunu kütüphaneye yazar; programlara ve sporcuların antrenmanlarına spreadLib taşır.
+// setMedia hareketin fotoğraf/videosunu kütüphaneye yazar ve hemen programlara ve sporcuların antrenmanlarına taşır
+// (pencere kapanmasını beklemez; sayfadan çıkılsa da video sporcuya gider).
 export function useFitLib() {
   const { profile } = useAuth();
+  const { plans = [], fitOthers = [] } = useData();
+  const all = useRef([]);
+  useEffect(() => {
+    all.current = [...plans, ...fitOthers];
+  }, [plans, fitOthers]);
   const orgId = profile?.orgId;
   const [lib, setLib] = useState(() => (orgId ? peekLib(orgId) : null));
   useEffect(() => {
@@ -26,7 +33,9 @@ export function useFitLib() {
     async (it, v) => {
       if (!orgId) return null;
       const cur = peekLib(orgId) || (await loadLib(orgId));
-      return saveLib(orgId, libSetMedia(cur, it, v));
+      const saved = await saveLib(orgId, libSetMedia(cur, it, v));
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] video sporculara aktarılamadı", e));
+      return saved;
     },
     [orgId],
   );

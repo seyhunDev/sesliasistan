@@ -274,11 +274,21 @@ export async function loadLib(orgId, { force = false } = {}) {
   libCache = { org: orgId, lib: cleanLib(snap.exists() ? snap.data() : {}) };
   return libCache.lib;
 }
+// Bellekteki kopya yazma beklenmeden yenilenir: hemen ardından kaydedilen program (adoptProgram) yeni videoyu görsün
 export async function saveLib(orgId, lib) {
   const clean = cleanLib(lib);
-  await setDoc(libRef(orgId), { ...clean, updatedAt: new Date().toISOString() });
+  const prev = libCache;
   libCache = { org: orgId, lib: clean };
   libTold();
+  try {
+    await setDoc(libRef(orgId), { ...clean, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    if (libCache.lib === clean) {
+      libCache = prev;
+      libTold();
+    }
+    throw e;
+  }
   return clean;
 }
 // Programın hareketlerini kütüphaneye ekler (yenilere numara), programı kütüphanedeki fotoğraf/videolarla döndürür
@@ -291,7 +301,7 @@ export async function adoptProgram(orgId, prog) {
   return progWithLib(prog, out);
 }
 
-// Kütüphanedeki fotoğraf/video değişince: o hareketin geçtiği bütün programlar ve bugünden sonraki yapılmamış
+// Kütüphanedeki fotoğraf/video değişince: o hareketin geçtiği bütün programlar ve bugün ile sonraki
 // antrenmanlar (sporcularınki dahil) güncellenir. Yalnız değişen belgeler yazılır. plans: kendi planların + fitOthers.
 // Dönüş: { progs, plans } güncellenen sayı
 export async function spreadLib(orgId, plans = []) {
@@ -299,16 +309,16 @@ export async function spreadLib(orgId, plans = []) {
   if (!lib) return { progs: 0, plans: 0 };
   const today = todayStr();
   const progs = (await loadPrograms(orgId).catch(() => [])).filter((p) => p.days?.some((d) => !sameMedia(d.items, itemsWithLib(d.items, lib))));
-  const ps = (plans || []).filter((p) => p.fit?.items?.length && p.date >= today && !p.fit?.res?.st && !sameMedia(p.fit.items, itemsWithLib(p.fit.items, lib)));
-  const ops = [...progs.map((p) => ["prog", p]), ...ps.map((p) => ["plan", p])];
-  for (let i = 0; i < ops.length; i += 400) {
-    const b = writeBatch(db);
-    for (const [k, v] of ops.slice(i, i + 400)) {
-      if (k === "prog") b.update(doc(col(orgId), v.id), { days: progWithLib(v, lib).days });
-      else b.update(doc(db, "orgs", orgId, "plans", v.id), { "fit.items": itemsWithLib(v.fit.items, lib) });
-    }
-    await b.commit();
-  }
+  // Bugün ve sonrası (başlanmış antrenman dahil; yalnız hareketlerin fotoğraf/videosu değişir, sonuca dokunulmaz)
+  const ps = (plans || []).filter((p) => p.fit?.items?.length && p.date >= today && !sameMedia(p.fit.items, itemsWithLib(p.fit.items, lib)));
+  // Belge belge yazılır: listede az önce silinmiş eski bir antrenman varsa yalnız o yazılamaz, gerisi gider
+  const ops = [
+    ...progs.map((p) => updateDoc(doc(col(orgId), p.id), { days: progWithLib(p, lib).days })),
+    ...ps.map((p) => updateDoc(doc(db, "orgs", orgId, "plans", p.id), { "fit.items": itemsWithLib(p.fit.items, lib) })),
+  ];
+  const res = await Promise.allSettled(ops);
+  const bad = res.filter((r) => r.status === "rejected");
+  if (bad.length) console.warn("[fitness] video aktarılamayan kayıt", bad.length, bad[0].reason?.code || bad[0].reason?.message);
   if (progs.length && cache.org === orgId && cache.list) {
     cache.list = cache.list.map((p) => (progs.some((x) => x.id === p.id) ? { ...p, days: progWithLib(p, lib).days } : p));
     keep(orgId, cache.list);

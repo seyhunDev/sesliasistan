@@ -1876,6 +1876,13 @@ group("Fitness hareket kütüphanesi")([
     const b = LB.libSetMedia(a, { ex: "warmup" }, { yt: null });
     return !LB.withLib({ ex: "warmup", name: "Isınma", yt: YT }, b).yt;
   })],
+  ["yüklenen video sporcuya", F("Storage videosu adresiyle kütüphaneden sporcunun antrenmanına geçer", () => {
+    const V = { id: "v1", kind: "video", type: "video/mp4", size: 900000, parts: 1, url: "https://firebasestorage.googleapis.com/v0/b/x.appspot.com/o/orgs%2Fo%2FfitMedia%2Fv1?alt=media&token=t" };
+    const lib = LB.cleanLib(LB.libSetMedia(LB.cleanLib(), { ex: "", name: "Sandalyede dips" }, { media: [V] }));
+    const plan = [{ ex: "", name: "Sandalyede dips", kind: "reps", sets: 3, reps: 10 }];
+    const out = LB.itemsWithLib(plan, lib);
+    return out[0].media?.[0]?.url === V.url && !LB.sameMedia(plan, out) && out[0].sets === 3;
+  })],
   ["değişiklik var mı", F("sameMedia", () => LB.sameMedia([{ yt: YT }], [{ yt: YT }]) && !LB.sameMedia([{ yt: YT }], [{}]))],
   ["yapay zekaya kulübün hareketleri", F("c: satırları, listedekiler girmez", () => {
     const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "squat" }, { name: "Sandalyede dips" }]);
