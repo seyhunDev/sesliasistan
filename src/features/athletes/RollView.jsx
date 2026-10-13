@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 
-// Yoklama ekranının görünümü (veri ve kayıt sayfada, attendance/page.jsx). Üst kısım tek kart: gün + sayılar;
-// sınıf seçimi ve toplu işaretler listenin hemen üstünde, sporcu listesi ekranın ilk yarısında başlar.
+// Yoklama ekranının görünümü (veri ve kayıt sayfada, attendance/page.jsx). Üstte yalnız gün satırı; sınıf seçimi kapalı
+// bir düğme (dokununca liste), toplu işaretlerle aynı satırda; sporcu listesi hemen başlar.
 export const ST = {
   present: { label: "Geldi", short: "Geldi", on: "bg-ok text-white", dot: "bg-ok", tone: "text-ok" },
   absent: { label: "Gelmedi", short: "Yok", on: "bg-rec text-white", dot: "bg-rec", tone: "text-rec" },
@@ -18,60 +19,63 @@ export const shift = (d, n) => {
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
 export function RollView({ date, today, onDate, list, classes, usedClasses, cls, onCls, stateOf, onTap, onBulk, after }) {
-  const count = (s) => list.filter((a) => stateOf(a) === s).length;
+  const [menu, setMenu] = useState(false);
   const empty = list.filter((a) => !stateOf(a)).length;
-  const stats = [
-    { n: count("present"), label: "Geldi", tone: ST.present.tone },
-    { n: count("absent"), label: "Yok", tone: ST.absent.tone },
-    { n: count("excused"), label: "İzinli", tone: ST.excused.tone },
-    { n: empty, label: "Boş", tone: "text-mut" },
-  ];
+  const clsName = usedClasses.find((c) => c.id === cls)?.name || "Tümü";
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e) => !e.target.closest?.("[data-cls-menu]") && setMenu(false);
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu]);
 
   return (
     <>
-      {/* Gün ve sayılar: tek kart */}
-      <section className="raised mt-1 px-1.5 pb-2.5 pt-1.5">
-        <div className="flex items-center">
-          <button data-press onClick={() => onDate(shift(date, -1))} aria-label="Önceki gün" className="grid size-10 place-items-center rounded-full">
-            <Icon name="back" className="size-5" />
-          </button>
-          <button data-press onClick={() => onDate(today)} className="min-w-0 flex-1 text-center leading-tight">
-            <b className="block truncate text-[0.9375rem] font-semibold capitalize">{dayLabel(date)}</b>
-            <small className={`text-[0.75rem] ${date === today ? "text-acc" : "text-mut"}`}>{date === today ? "Bugün" : "Bugüne dön"}</small>
-          </button>
-          <button data-press onClick={() => onDate(shift(date, 1))} disabled={date >= today} aria-label="Sonraki gün" className="grid size-10 place-items-center rounded-full disabled:opacity-30">
-            <Icon name="chev" className="size-5" />
-          </button>
-        </div>
-        <div className="mx-1.5 mt-1.5 grid grid-cols-4 divide-x divide-line border-t border-line pt-2 text-center">
-          {stats.map((s) => (
-            <span key={s.label} className="leading-tight">
-              <b className={`block text-[1.25rem] font-semibold tabular-nums ${s.n ? s.tone : "text-mut/60"}`}>{s.n}</b>
-              <small className="text-[0.6875rem] text-mut">{s.label}</small>
-            </span>
-          ))}
-        </div>
+      {/* Gün: tek ince satır */}
+      <section className="raised mt-1 flex items-center px-1 py-1">
+        <button data-press onClick={() => onDate(shift(date, -1))} aria-label="Önceki gün" className="grid size-9 place-items-center rounded-full">
+          <Icon name="back" className="size-5" />
+        </button>
+        <button data-press onClick={() => onDate(today)} className="min-w-0 flex-1 truncate text-center text-[0.9375rem] font-semibold capitalize">
+          {dayLabel(date)}
+          {date !== today && <span className="ml-1.5 text-[0.75rem] font-medium normal-case text-acc">· Bugüne dön</span>}
+        </button>
+        <button data-press onClick={() => onDate(shift(date, 1))} disabled={date >= today} aria-label="Sonraki gün" className="grid size-9 place-items-center rounded-full disabled:opacity-30">
+          <Icon name="chev" className="size-5" />
+        </button>
       </section>
 
-      {/* Sınıf */}
-      {usedClasses.length > 1 && (
-        <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
-          {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-            <button
-              key={c.id || "all"}
-              data-press
-              onClick={() => onCls(c.id)}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-medium ${cls === c.id ? "bg-acc text-white" : "bg-card text-fg ring-1 ring-line"}`}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Toplu işaret */}
+      {/* Sınıf seçimi (kapalı, dokununca açılır) ve toplu işaret aynı satırda */}
       <div className="mt-3 flex items-center gap-2 px-1">
-        <span className="min-w-0 flex-1 truncate text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{list.length} sporcu</span>
+        <div data-cls-menu className="relative min-w-0 flex-1">
+          {usedClasses.length > 1 ? (
+            <button data-press onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="raised flex h-8 max-w-full items-center gap-1 px-3 text-[0.8125rem] font-semibold">
+              <span className="truncate">{clsName}</span>
+              <span className="shrink-0 tabular-nums text-mut">{list.length}</span>
+              <Icon name="chev" className={`size-3.5 shrink-0 text-mut transition-transform ${menu ? "-rotate-90" : "rotate-90"}`} />
+            </button>
+          ) : (
+            <span className="block truncate text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{list.length} sporcu</span>
+          )}
+          {menu && (
+            <ul className="absolute left-0 top-10 z-20 max-h-72 min-w-[11rem] overflow-y-auto rounded-2xl bg-card py-1 shadow-[0_8px_24px_rgba(38,40,44,.18)] ring-1 ring-line">
+              {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
+                <li key={c.id || "all"}>
+                  <button
+                    onClick={() => {
+                      onCls(c.id);
+                      setMenu(false);
+                    }}
+                    className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[0.875rem] ${cls === c.id ? "font-semibold text-acc" : ""}`}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                    {cls === c.id && <Icon name="check" className="size-4 shrink-0" />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <button data-press onClick={() => onBulk("present")} disabled={!list.length} className="raised h-8 shrink-0 px-3 text-[0.8125rem] font-semibold text-ok disabled:opacity-40">
           Hepsi geldi
         </button>
