@@ -1,8 +1,8 @@
-Commit: 0cf2a3c · Ana sayfa antrenman: güne dokununca alttan pencere (#381)
-Zaman: 2026-10-14-0217 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38483117332
+Commit: d13d0d0 · Gün penceresi: sporcu satırında Antrenmanı aç, genel Fitness bağlantısı ve Güne dokun yazısı kalktı (#382)
+Zaman: 2026-10-14-0225 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38483979175
 
-TAM TEST · 14.10.2026 02:15:54
+TAM TEST · 14.10.2026 02:24:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
