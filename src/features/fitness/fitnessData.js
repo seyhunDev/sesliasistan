@@ -180,6 +180,19 @@ export async function removePlans(orgId, prog, plans) {
   return old.length;
 }
 
+// Yeni program eskisinin yerine geçerken eski programın başlangıçtan sonraki yapılmamış antrenmanları silinir (çakışmasın)
+export async function dropFrom(orgId, progId, plans, from) {
+  const day = from && from > todayStr() ? from : todayStr();
+  const old = (plans || []).filter((p) => progId && p.fit?.prog === progId && p.date >= day && !p.fit?.res?.st);
+  for (let i = 0; i < old.length; i += 400) {
+    const b = writeBatch(db);
+    old.slice(i, i + 400).forEach((p) => b.delete(doc(db, "orgs", orgId, "plans", p.id)));
+    await b.commit();
+  }
+  if (old.length) told();
+  return old.length;
+}
+
 // Sporcuya "Yeni fitness programın hazır" bildirimi (sunucu programdan okur, bir program için bir kez gönderir)
 export async function notifyProgram(id) {
   try {

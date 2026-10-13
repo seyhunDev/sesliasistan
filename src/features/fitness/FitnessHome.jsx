@@ -12,12 +12,12 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  GOALS, SPORTS, STATUS, addDays, ageFrom, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
+  GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { libList } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
 import { kindOf } from "@/lib/kinds";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, dropFrom, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
 import { ExerciseLibrary } from "./ExerciseLibrary";
@@ -148,6 +148,11 @@ export function FitnessHome() {
     return { n: l.length, v: l.filter((x) => x.yt?.id || (x.media || []).some((m) => m.kind === "video")).length };
   }, [lib]);
 
+  const nextTitle = (t) => {
+    const m = String(t || "Program").match(/^(.*?)\s*·\s*(\d+)$/);
+    return m ? `${m[1]} · ${+m[2] + 1}` : `${t || "Program"} · 2`;
+  };
+
   async function save(p, withPlans) {
     setBusy(withPlans ? "plans" : "save");
     try {
@@ -156,6 +161,11 @@ export function FitnessHome() {
       if (onPlans) withPlans = true;
       // Hareketler kütüphaneye girer (yenilere numara), fotoğraf/video kütüphanedekiyle aynı olur
       p = await adoptProgram(orgId, p).catch(() => p);
+      // Devam programı ya da başka sporcuya verilen kopya: eski programın o tarihten sonraki antrenmanları kalkar
+      if (!p.id && withPlans) {
+        const old = activeOf((list || []).filter((x) => (x.for || "") === (p.for || "")));
+        if (old) await dropFrom(orgId, old.id, plansFor(p), p.start).catch(() => 0);
+      }
       const saved = await saveProgram(orgId, uid, { ...p, active: true });
       let r = null;
       if (withPlans) r = await syncPlans(orgId, uid, saved, plansFor(saved), { name: profile.name });
@@ -373,6 +383,9 @@ export function FitnessHome() {
             if ((await drop(pg)) !== false) setAth("");
           }}
           onCard={selAth?.athleteId ? () => router.push(`/athletes/${selAth.athleteId}`) : null}
+          others={athletes.filter((a) => a.uid !== ath).map((a) => ({ ...a, has: rows.some((r) => r.uid === a.uid && r.prog) }))}
+          onContinue={(pg, n, start, weeks) => setEdit({ prog: { ...levelUp(pg, n), start, weeks, title: nextTitle(pg.title) }, fresh: true, simple: true, k: Date.now() })}
+          onGive={(pg, a, start) => setEdit({ prog: copyFor(pg, a, start, today), fresh: true, simple: true, k: Date.now() })}
         />
         {sheets}
       </main>
@@ -635,7 +648,9 @@ function WeekDots({ row, today, onOpen }) {
 
 // Sporcu sayfası: üstte geri ve ⋯, koyu kart (ad, yaş · spor · hedef, bu hafta 7 gün, programın kaçıncı haftası),
 // tek ana işlem "Programı düzenle", geçen ve gelecek haftanın antrenmanları. Seyrek işler ⋯ penceresinde.
-function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop, onCard }) {
+function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop, onCard, others = [], onContinue, onGive }) {
+  const [cont, setCont] = useState(false);
+  const [give, setGive] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sure, setSure] = useState(false);
@@ -784,6 +799,8 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, o
               sub={onCal > 0 ? `${onCal} antrenman takvimde` : "Antrenmanları takvime yaz"}
               onClick={() => (setMore(false), onCal > 0 ? onUnplan(prog) : onPlan(prog))}
             />
+            <MenuRow icon="trend" title="Devam ettir" sub="Seviye artır, yeni başlangıç tarihi" onClick={() => (setMore(false), setCont(true))} />
+            {others.length > 0 && <MenuRow icon="users" title="Başka sporcuya ver" sub="Aynı programı başka sporcuya da ekle" onClick={() => (setMore(false), setGive(true))} />}
             <MenuRow icon="spark" title="Yeni program hazırla" sub="Bu programın yerine" onClick={() => (setMore(false), onNew())} />
           </>
         )}
@@ -802,7 +819,81 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, o
           Vazgeç
         </button>
       </Sheet>
+      {prog && <ContinueSheet key={cont ? "o" : "c"} open={cont} onClose={() => setCont(false)} prog={prog} today={today} onGo={(n, start, weeks) => (setCont(false), onContinue(prog, n, start, weeks))} />}
+      {prog && <GiveSheet key={give ? "o" : "c"} open={give} onClose={() => setGive(false)} others={others} today={today} onGo={(a, start) => (setGive(false), onGive(prog, a, start))} />}
     </>
+  );
+}
+
+// Programı devam ettir: seviye (her seviye +2 tekrar), başlangıç ve hafta seçilir, yeni program Hazır ekranında açılır
+function ContinueSheet({ open, onClose, prog, today, onGo }) {
+  const end = progEnd(prog);
+  const [n, setN] = useState(1);
+  const [start, setStart] = useState(end && end > today ? end : today);
+  const [weeks, setWeeks] = useState(prog.weeks || 4);
+  const sample = (prog.days || []).flatMap((d) => d.items || []).find((it) => it.kind === "reps");
+  return (
+    <Sheet open={open} onClose={onClose} title="Devam ettir">
+      <p className="text-[0.875rem] text-mut">Aynı program, her harekette daha çok tekrar. Süreli hareketler aynı kalır.</p>
+      <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">SEVİYE</small>
+      <div className="mt-1.5 grid grid-cols-5 gap-1.5">
+        {Array.from({ length: LEVEL_MAX }, (_, i) => i + 1).map((k) => (
+          <button key={k} type="button" onClick={() => setN(k)} className={`flex h-14 flex-col items-center justify-center rounded-2xl ${n === k ? "bg-acc text-white" : "bg-bg text-fg"}`}>
+            <b className="text-[1rem] leading-none">{`+${k}`}</b>
+            <small className={`mt-1 text-[0.6875rem] ${n === k ? "text-white/80" : "text-mut"}`}>{`+${2 * k} tekrar`}</small>
+          </button>
+        ))}
+      </div>
+      {sample && <p className="mt-2 text-[0.8125rem] text-mut">{`Örnek: ${sample.name} ${sample.sets} × ${sample.reps} → ${sample.sets} × ${Math.min(100, sample.reps + 2 * n)}`}</p>}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <label className="block">
+          <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">BAŞLANGIÇ</small>
+          <input type="date" value={start} min={today} onChange={(e) => setStart(e.target.value)} className="mt-1.5 h-12 w-full min-w-0 appearance-none rounded-2xl bg-bg px-3 text-[0.9375rem]" />
+        </label>
+        <div>
+          <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">HAFTA</small>
+          <div className="mt-1.5 flex h-12 items-center justify-between rounded-2xl bg-bg px-1">
+            <button type="button" aria-label="Azalt" onClick={() => setWeeks((w) => Math.max(1, w - 1))} className="grid size-10 place-items-center"><Icon name="minus" className="size-4" /></button>
+            <b className="text-[1rem] tabular-nums">{weeks}</b>
+            <button type="button" aria-label="Artır" onClick={() => setWeeks((w) => Math.min(26, w + 1))} className="grid size-10 place-items-center"><Icon name="plus" className="size-4" /></button>
+          </div>
+        </div>
+      </div>
+      <div className="mt-5">
+        <Button disabled={!start} onClick={() => onGo(n, start, weeks)}>Hazırla</Button>
+      </div>
+      <button type="button" onClick={onClose} className="mt-1 h-11 w-full text-[0.9375rem] font-semibold text-mut">Vazgeç</button>
+    </Sheet>
+  );
+}
+
+// Aynı programı başka sporcuya ver: sporcu ve başlangıç seçilir, program o sporcu için Hazır ekranında açılır
+function GiveSheet({ open, onClose, others, today, onGo }) {
+  const [start, setStart] = useState(today);
+  return (
+    <Sheet open={open} onClose={onClose} title="Başka sporcuya ver">
+      <p className="text-[0.875rem] text-mut">Aynı hareketler, setler ve günler. Kaydetmeden önce gözden geçirirsin.</p>
+      <label className="mt-4 block">
+        <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">BAŞLANGIÇ</small>
+        <input type="date" value={start} min={today} onChange={(e) => setStart(e.target.value)} className="mt-1.5 h-12 w-full min-w-0 appearance-none rounded-2xl bg-bg px-3 text-[0.9375rem]" />
+      </label>
+      <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">SPORCU</small>
+      <ul className="mt-1.5 divide-y divide-line">
+        {others.map((a) => (
+          <li key={a.uid}>
+            <button type="button" disabled={!start} onClick={() => onGo(a, start)} className="flex w-full items-center gap-3 py-3 text-left">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc">{initialsOf(a.name)}</span>
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                {a.has && <small className="block text-[0.75rem] text-mut">Şimdiki programının yerine geçer</small>}
+              </span>
+              <Icon name="chev" className="size-4 text-mut" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={onClose} className="mt-1 h-11 w-full text-[0.9375rem] font-semibold text-mut">Vazgeç</button>
+    </Sheet>
   );
 }
 

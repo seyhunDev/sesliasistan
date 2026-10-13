@@ -204,6 +204,29 @@ export function planDrafts(prog, from = "") {
       return { title: sessionTitle(d), date, time: d.time, min: d.min, fit: { prog: prog.id || "", di, w, name: d.name, items: d.items } };
     });
 }
+// Programı seviye artırarak devam ettir: her seviye tekrarlı harekete +2 tekrar (en çok 5 seviye).
+// Süreli ve kardiyo hareketler aynı kalır. Kimlik ve tarih alanları atılır, yeni program olarak kaydedilir.
+export const LEVEL_MAX = 5;
+export function levelUp(prog, n = 1) {
+  const k = Math.min(LEVEL_MAX, Math.max(1, Math.round(+n) || 1));
+  const days = (prog?.days || []).map((d) => ({ ...d, items: (d.items || []).map((it) => (it.kind === "reps" ? { ...it, reps: Math.min(100, (+it.reps || 10) + 2 * k) } : { ...it })) }));
+  const { id, notifiedAt, plansAt, createdAt, updatedAt, active, ...rest } = prog || {};
+  return { ...rest, days };
+}
+// Programın bittiği gün (son haftadan sonraki gün)
+export const progEnd = (prog) => (prog?.start && DAY.test(prog.start) ? addDays(prog.start, (+prog.weeks || 4) * 7) : "");
+// Aynı programı başka sporcuya ver: hareketler aynı, kimin için ve başlangıç yeni
+export function copyFor(prog, athlete, start = "", today = new Date().toISOString().slice(0, 10)) {
+  const { id, notifiedAt, plansAt, createdAt, updatedAt, active, ...rest } = prog || {};
+  return {
+    ...rest,
+    days: (prog?.days || []).map((d) => ({ ...d, items: (d.items || []).map((it) => ({ ...it })) })),
+    for: athlete?.uid || "",
+    forName: athlete?.name || "",
+    forAge: ageFrom(athlete?.birth, today) || 0,
+    start: DAY.test(start || "") ? start : today,
+  };
+}
 export function programLine(prog) {
   const days = (prog?.days || []).map((d) => `${DOWS[d.dow]}${d.time ? ` ${d.time}` : ""}`).join(", ");
   return [days, prog?.weeks ? `${prog.weeks} hafta` : ""].filter(Boolean).join(" · ");
