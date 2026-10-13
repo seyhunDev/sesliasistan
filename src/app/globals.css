@@ -380,17 +380,21 @@ body[data-typing] [data-pagebar] {
   }
 }
 
-/* Ana sayfa kısayolları: kabarık düğme (Seyhun: "butonları buton gibi yapalım"); renkler temadan */
+/* Düğme görünümü (ana sayfa kısayolları, yoklama): dış gölge yok; ince kenarlık + içte üstten alta hafif gradyan
+   (Seyhun, 2026-10-13: "gölge kullanma, kenarlık ve iç gradyan"); renkler temadan */
 .raised {
   border-radius: 1.125rem;
-  background: linear-gradient(180deg, var(--card), color-mix(in srgb, var(--card) 90%, var(--line)));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent), 0 3px 0 var(--line), 0 8px 16px -10px rgba(38, 40, 44, 0.3);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, var(--fg) 20%);
+  background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
+  --btn-top: #ffffff;
+  --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
 }
-/* Basma hissi yalnız ana sayfada (usePress, OwnerHome): parmak kısa süre durunca data-pressed gelir, kaydırırken gelmez */
+html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
+/* Basma hissi (usePress): parmak kısa süre durunca data-pressed gelir, kaydırırken gelmez; gradyan ters döner */
 [data-press][data-pressed] { transform: scale(0.97); filter: brightness(0.97); }
 .raised[data-pressed] {
-  transform: translateY(2px) scale(0.96);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 80%, transparent), 0 1px 0 var(--line), 0 4px 10px -8px rgba(38, 40, 44, 0.3);
+  transform: scale(0.97);
+  background: linear-gradient(180deg, var(--btn-bot) 0%, var(--btn-top) 100%);
 }
 @media (prefers-reduced-motion: reduce) {
   [data-press][data-pressed], .raised[data-pressed] { transform: none; }
