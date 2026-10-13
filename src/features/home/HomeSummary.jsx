@@ -6,7 +6,8 @@ import { db } from "@/lib/firebase/clientApp";
 import { useAuth } from "@/features/auth/AuthProvider";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
+import { attHref, clubDues, clubFis, clubRace, duesLive, homeNotes, noteGroups, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
+import { catStyle } from "@/components/ui/Page";
 import { money } from "@/lib/bankSheet";
 import { rel, todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
@@ -29,7 +30,7 @@ import { invoiceTile } from "@/lib/invoices";
 // Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices, notes }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, plans, invoices, notes, att }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -107,7 +108,11 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
-      <SectionHead id="home-sum" title={title} />
+      {title === "KULÜP" ? (
+        <ClubHead month={new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" })} races={!!race} />
+      ) : (
+        <SectionHead id="home-sum" title={title} />
+      )}
       <div className="space-y-3">
         {raceWait ? <Skeleton wide /> : raceCard && <RaceCard r={raceCard} fade={fade.has("race")} />}
         {note.total > 0 && <NotesCard list={note.list} total={note.total} />}
@@ -132,7 +137,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
             })}
           </ul>
         )}
-        {week && <TrainingCard w={week} />}
+        {week && <TrainingCard w={week} att={att} today={today} />}
         {post && <PostsCard p={post} />}
       </div>
     </section>
@@ -216,8 +221,9 @@ function BankBody({ t }) {
   );
 }
 
-// Antrenman (tam genişlik): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu; altta ayın özeti
-function TrainingCard({ w }) {
+// Antrenman (tam genişlik): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu; altta ayın özeti.
+// Sporcu yetkisi olanda bugün ve geçmiş günler dokunulur: o günün yoklaması açılır (attHref); başlık ve alt satır Antrenman günlüğüne gider.
+function TrainingCard({ w, att, today }) {
   const DAY = {
     done: "bg-acc text-white",
     miss: "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/50 dark:text-amber-300",
@@ -227,8 +233,8 @@ function TrainingCard({ w }) {
   };
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok" };
   return (
-    <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className={`block px-4 pb-3.5 pt-3.5 ${CARD}`}>
-      <span className="flex items-center gap-2.5">
+    <div className={`px-4 pb-3.5 pt-3.5 ${CARD}`}>
+      <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className="flex items-center gap-2.5">
         <span className={`grid size-8 shrink-0 place-items-center rounded-[0.625rem] ${w.missing ? WARN_BG : "bg-acc/10 text-acc"}`}>
           <Icon name="trend" className="size-[1.125rem]" />
         </span>
@@ -239,26 +245,37 @@ function TrainingCard({ w }) {
           {w.missing ? "Günlük yaz" : "Tümü"}
           <Icon name="chev" className="size-3.5" />
         </span>
-      </span>
-      <span className="mt-3 grid grid-cols-7 gap-1" aria-hidden="true">
+      </Link>
+      <span className="mt-3 grid grid-cols-7 gap-1">
         {w.days.map((d) => {
           const st = d.state === "today" && !d.has ? "none" : d.state;
-          return (
-            <span key={d.date} className="flex flex-col items-center gap-1" title={label[st]}>
+          const href = att ? attHref(d.date, today) : null;
+          const inner = (
+            <>
               <small className={`text-[0.6875rem] ${d.state === "today" ? "font-bold text-fg" : "text-mut"}`}>{d.w}</small>
               <span className={`grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has ? "ring-[1.5px] ring-fg" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
+            </>
+          );
+          return href ? (
+            <Link key={d.date} href={href} data-press aria-label={`${d.d} ${d.w} yoklaması (${label[st]})`} className="flex flex-col items-center gap-1 rounded-xl py-0.5">
+              {inner}
+            </Link>
+          ) : (
+            <span key={d.date} aria-hidden="true" className="flex flex-col items-center gap-1 py-0.5" title={label[st]}>
+              {inner}
             </span>
           );
         })}
       </span>
-      <small className="mt-3 block truncate border-t border-line pt-2.5 text-[0.8125rem] text-mut">
+      <Link href="/training" className="mt-3 block truncate border-t border-line pt-2.5 text-[0.8125rem] text-mut">
+        {att ? <span className="font-semibold text-acc">Yoklama için güne dokun · </span> : null}
         Bu ay <b className="font-semibold text-fg">{w.total}</b> antrenman
         {w.avgWind != null && ` · ortalama ${w.avgWind} kn rüzgâr`}
         {w.missing > 0 && <span className={`font-semibold ${WARN_TX}`}> · {w.missing} günlük yazılmadı</span>}
-      </small>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
@@ -303,85 +320,127 @@ function PostsCard({ p }) {
   );
 }
 
-// Sıradaki yarış: tam genişlik kart, dokununca o yarışın sayfası (eski önbellekte id yoksa Yarışlar); solda bayrak, ortada ad ve "tarih · sporcu · eksik iş", sağda büyük kalan gün
+// Kulüp başlığı: büyük "Kulüp", altında "Dikili Yelken · Ekim", sağda Yarışlar ›
+function ClubHead({ month, races }) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-3 px-1">
+      <span className="min-w-0">
+        <h2 id="home-sum" className="text-[1.375rem] font-bold leading-tight tracking-tight">
+          Kulüp
+        </h2>
+        <small className="block truncate text-[0.8125rem] text-mut">Dikili Yelken · {month.charAt(0).toLocaleUpperCase("tr-TR") + month.slice(1)}</small>
+      </span>
+      {races && (
+        <Link href="/athletes/races" className="flex shrink-0 items-center gap-0.5 pb-0.5 text-[0.8125rem] font-semibold text-acc">
+          Yarışlar
+          <Icon name="chev" className="size-3.5" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// Sıradaki yarış: solda yeşil tarih kutusu (gün + ay), "SIRADAKİ YARIŞ" + "5 gün kaldı" hapı, ad, "tarih · yer · sporcu";
+// altta hazırlık çubuğu ("Hazırlık 7/9") ve eksik iş. Dokununca o yarışın sayfası (eski önbellekte id yoksa Yarışlar).
 function RaceCard({ r, fade }) {
+  const pct = r.total ? Math.round((r.done / r.total) * 100) : 100;
   return (
     <Link
       href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"}
-      aria-label={`Sıradaki yarış: ${r.title}, ${r.days != null ? `${r.days} gün kaldı` : r.when}`}
-      className={`flex items-center gap-3.5 py-3.5 pl-4 pr-5 ${CARD} ${fade ? "fade-in" : ""}`}
+      data-press
+      aria-label={`Sıradaki yarış: ${r.title}, ${r.days != null ? `${r.days} gün kaldı` : r.when}${r.left ? `, ${r.left} iş eksik` : ""}`}
+      className={`block p-3.5 ${CARD} ${fade ? "fade-in" : ""}`}
     >
-      <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${r.left ? "bg-amber-500/12 text-amber-700 dark:text-amber-300" : "bg-acc/10 text-acc"}`}>
-        <Icon name="flag" className="size-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <small className="block text-[0.6875rem] font-bold tracking-[.08em] text-acc">SIRADAKİ YARIŞ</small>
-        <b className="block truncate text-[1.0625rem] font-semibold leading-snug">{r.title}</b>
-        <small className="block truncate text-[0.8125rem] leading-snug text-mut">
-          {r.sub}
-          {r.sub && " · "}
-          <span className={r.left ? "font-semibold text-amber-700 dark:text-amber-300" : ""}>{r.left ? `${r.left} iş eksik` : "hazır"}</span>
-        </small>
-      </span>
-      {r.days != null ? (
-        <span className="shrink-0 text-center leading-none">
-          <b className="block text-[1.875rem] font-bold tabular-nums tracking-tight">{r.days}</b>
-          <small className="text-[0.75rem] font-semibold text-mut">gün</small>
+      <span className="flex items-center gap-3.5">
+        <span className="grid w-[3.625rem] shrink-0 place-items-center self-stretch rounded-2xl bg-[linear-gradient(160deg,#2f7d6b,#1f5a4b)] py-2 text-white">
+          {r.day ? (
+            <span className="text-center leading-none">
+              <b className="block text-[1.625rem] font-bold tabular-nums">{r.day}</b>
+              <small className="mt-1 block text-[0.6875rem] font-semibold tracking-[.08em] opacity-85">{r.mon}</small>
+            </span>
+          ) : (
+            <Icon name="flag" className="size-6" />
+          )}
         </span>
-      ) : (
-        <b className="shrink-0 text-[1.0625rem] font-bold text-acc">{r.when}</b>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <small className="text-[0.6875rem] font-bold tracking-[.08em] text-acc">SIRADAKİ YARIŞ</small>
+            <small className="shrink-0 rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{r.days != null ? `${r.days} gün kaldı` : r.when}</small>
+          </span>
+          <b className="mt-0.5 block truncate text-[1.0625rem] font-semibold leading-snug">{r.title}</b>
+          {r.sub && <small className="block truncate text-[0.8125rem] leading-snug text-mut">{r.sub}</small>}
+        </span>
+      </span>
+      {r.total > 0 && (
+        <span className="mt-3 flex items-center gap-3">
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-line/70" aria-hidden="true">
+            <span className="block h-full rounded-full bg-acc" style={{ width: `${pct}%` }} />
+          </span>
+          <small className="shrink-0 text-[0.75rem] tabular-nums text-mut">
+            Hazırlık <b className="font-semibold text-fg">{r.done}/{r.total}</b>
+          </small>
+          <small className={`flex shrink-0 items-center gap-0.5 text-[0.75rem] font-semibold ${r.left ? WARN_TX : "text-acc"}`}>
+            {r.left ? `${r.left} iş eksik` : "Hazır"}
+            {r.left > 0 && <Icon name="chev" className="size-3" />}
+          </small>
+        </span>
       )}
     </Link>
   );
 }
 
-// Notlar: başlık satırı (simge, ad, sayı, Tümü), en çok 3 not (sabitliye yıldız, diğerlerine gri çizgi; altında "Sabit" ya da tarih · ilk satır), en altta + Not ekle
+// Notlar: başlık (simge, ad, sayı, Tümü ›, yuvarlak + ile not ekle); notlar iki grupta: SABİT (sağda yıldız) ve SON NOTLAR (solda kategori noktası, sağda tarih)
 function NotesCard({ list, total }) {
   const { openAdd } = useAdd();
   return (
     <div className={`overflow-hidden ${CARD}`}>
-      <div className="flex items-center gap-2.5 px-4 pb-2 pt-3">
+      <div className="flex items-center gap-2.5 px-4 pb-1 pt-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-[0.625rem] bg-acc/10 text-acc">
           <Icon name="note" className="size-[1.125rem]" />
         </span>
         <b className="text-[0.9375rem] font-semibold">Notlar</b>
-        <span className="text-[0.8125rem] font-semibold tabular-nums text-mut">{total}</span>
+        <span className="rounded-full bg-line/70 px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums text-mut">{total}</span>
         <Link href="/notes" className="ml-auto flex items-center gap-0.5 text-[0.8125rem] font-semibold text-acc">
           Tümü
           <Icon name="chev" className="size-3.5" />
         </Link>
+        <button
+          type="button"
+          data-press
+          aria-label="Not ekle"
+          onClick={() => openAdd({ type: "note" })}
+          className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white shadow-[0_2px_0_#1f5a4b]"
+        >
+          <Icon name="plus" className="size-4" />
+        </button>
       </div>
-      <ul>
-        {list.map((n) => {
-          const text = n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : "";
-          const when = n.pinned ? "Sabit" : n.createdAt ? rel(n.createdAt.slice(0, 10)) : "";
-          return (
-            <li key={n.id} className="border-t border-line">
-              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-                {n.pinned ? (
-                  <Icon name="star" className="size-3.5 shrink-0 fill-current text-amber-500" />
-                ) : (
-                  <span aria-hidden="true" className="mx-[0.3125rem] h-7 w-1 shrink-0 rounded-full bg-line" />
-                )}
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{n.title || "Not"}</b>
-                  {(when || text) && (
-                    <small className="block truncate text-[0.8125rem] text-mut">
-                      {when}
-                      {when && text && " · "}
-                      {text}
-                    </small>
-                  )}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <button type="button" onClick={() => openAdd({ type: "note" })} className="flex w-full items-center gap-1.5 border-t border-line px-4 py-2.5 text-[0.875rem] font-semibold text-acc">
-        <Icon name="plus" className="size-4" />
-        Not ekle
-      </button>
+      {noteGroups(list).map(([head, items]) => (
+        <div key={head}>
+          <small className="block px-4 pb-1 pt-2.5 text-[0.6875rem] font-bold tracking-[.08em] text-mut">{head}</small>
+          <ul>
+            {items.map((n) => {
+              const text = n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : "";
+              const when = n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
+              return (
+                <li key={n.id} className="border-t border-line first:border-t-0">
+                  <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+                    {!n.pinned && <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${n.cat && n.cat !== "Genel" ? catStyle(n.cat).bar : "bg-acc/60"}`} />}
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.9375rem] font-semibold">{n.title || "Not"}</b>
+                      {text && <small className="block truncate text-[0.8125rem] text-mut">{text}</small>}
+                    </span>
+                    {n.pinned ? (
+                      <Icon name="star" className="size-4 shrink-0 fill-current text-amber-500" />
+                    ) : (
+                      when && <small className="shrink-0 text-[0.75rem] text-mut">{when}</small>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
@@ -390,14 +449,16 @@ function NotesCard({ list, total }) {
 function Skeleton({ wide, className = "" }) {
   if (wide)
     return (
-      <div aria-hidden="true" className={`flex items-center gap-3.5 py-3.5 pl-4 pr-5 ${CARD}`}>
-        <span className="shimmer size-11 shrink-0 rounded-xl" />
-        <span className="min-w-0 flex-1">
-          <span className="shimmer block h-3 w-24 rounded-full" />
-          <span className="shimmer mt-2 block h-4 w-36 max-w-full rounded-full" />
-          <span className="shimmer mt-2 block h-3 w-44 max-w-full rounded-full" />
+      <div aria-hidden="true" className={`p-3.5 ${CARD}`}>
+        <span className="flex items-center gap-3.5">
+          <span className="shimmer h-16 w-[3.625rem] shrink-0 rounded-2xl" />
+          <span className="min-w-0 flex-1">
+            <span className="shimmer block h-3 w-32 rounded-full" />
+            <span className="shimmer mt-2 block h-4 w-40 max-w-full rounded-full" />
+            <span className="shimmer mt-2 block h-3 w-44 max-w-full rounded-full" />
+          </span>
         </span>
-        <span className="shimmer block h-8 w-8 rounded-lg" />
+        <span className="shimmer mt-3.5 block h-1.5 w-full rounded-full" />
       </div>
     );
   return (

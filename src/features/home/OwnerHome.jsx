@@ -118,7 +118,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       </div>
       {side && <MyAttendanceCard kind={kind} />}
       {staff && <MyFitCard />}
-      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} notes={notes} />
+      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} notes={notes} att={athletes} />
       <HomeActions groups={actions} />
     </div>
   );

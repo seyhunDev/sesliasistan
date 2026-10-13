@@ -579,6 +579,22 @@ group("Ana sayfa kartları")([
     return r.title === "Foça Kupası" && r.sub === "17-19 Ekim · 6 sporcu" && r.days === 5 && r.left === 2
       && t.title === "Çeşme yarışı" && t.days === null && t.when === "Yarın" && HT.clubRace(null) === null;
   })],
+  ["kulüp kartları", F("yarış kartı: tarih kutusu, yer ve hazırlık sayısı", () => {
+    const r = HT.clubRace({ name: "Foça", when: "5 gün", left: 2, total: 6, title: "Foça Kupası", dates: "17-19 Ekim", place: "Foça", count: 6, start: "2026-10-17" });
+    const o = HT.clubRace({ name: "Çeşme", when: "yarın", left: 3 });
+    return r.day === "17" && r.mon === "EKİ" && r.done === 4 && r.total === 6 && r.sub === "17-19 Ekim · Foça · 6 sporcu"
+      && o.day === "" && o.total === 3 && o.done === 0;
+  })],
+  ["kulüp kartları", F("antrenman gününe dokun: bugün ve geçmiş yoklamayı açar, gelecek açmaz", () => {
+    const t = "2026-10-14";
+    return HT.attHref("2026-10-14", t) === "/athletes/attendance?gun=2026-10-14" && HT.attHref("2026-10-12", t) === "/athletes/attendance?gun=2026-10-12"
+      && HT.attHref("2026-10-15", t) === null && HT.attHref("", t) === null;
+  })],
+  ["kulüp kartları", F("notlar: sabitler ayrı grup, boş grup yok", () => {
+    const g = HT.noteGroups([{ id: 1, pinned: true }, { id: 2 }, { id: 3 }]);
+    const h = HT.noteGroups([{ id: 2 }]);
+    return g.length === 2 && g[0][0] === "SABİT" && g[0][1].length === 1 && g[1][1].length === 2 && h.length === 1 && h[0][0] === "SON NOTLAR" && HT.noteGroups([]).length === 0;
+  })],
   ["kulüp kartları", F("antrenman bu ay yoksa gizli, varsa sayı", () => {
     const today = "2026-10-10";
     return HT.clubTraining([], today) === null && HT.clubTraining([{ cat: "Antrenman", date: "2026-10-01", log: { wind: 10 } }], today)?.big === "1";
