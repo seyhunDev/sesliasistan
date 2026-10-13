@@ -82,6 +82,7 @@ export function AuthProvider({ children }) {
             fitW: Array.isArray(doc_?.fitW) ? doc_.fitW : [], // kilo kayıtları [{ d, kg }] (Fitness › Beslenme; lib/fitness/food)
             weeklyAt: doc_?.weeklyAt || "", // ayarlar: pazartesi haftalık özet saati
             duesAt: typeof doc_?.duesAt === "string" ? doc_.duesAt : null, // aidat: ödemeyenler bildirimi saati ("" kapalı, null henüz yazılmadı; duesRemind.js)
+            attAt: typeof doc_?.attAt === "string" ? doc_.attAt : null, // yoklama hatırlatması ("on" açık, "" kapalı, null henüz yazılmadı; lib/attRemind.js)
             homeLinks: Array.isArray(doc_?.homeLinks) ? doc_.homeLinks : null, // ana sayfa kısayolları (Tümü › Kısayolları düzenle; homeTiles.js shortcutsOf)
             inbox: Array.isArray(doc_?.inbox) ? doc_.inbox : [], // bildirim kutusu (sunucu yazar, lib/inbox; ana sayfa zili ve Senin için)
             inboxSeen: doc_?.inboxSeen || "", // bildirim kutusunun okunduğu an (ISO; ana sayfa yazar)

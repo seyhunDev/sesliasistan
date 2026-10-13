@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -41,6 +41,7 @@ export default function AttendancePage() {
   useEffect(() => {
     if (profile && !allowed) router.replace("/");
   }, [profile, allowed, router]);
+
   if (!allowed) return null;
   return (
     <Suspense>
@@ -54,7 +55,8 @@ function Roll() {
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
   const today = todayStr();
-  const [date, setDate] = useState(today);
+  const gun = useSearchParams().get("gun"); // bildirimden: o günün yoklaması (?gun=YYYY-MM-DD)
+  const [date, setDate] = useState(() => (/^\d{4}-\d{2}-\d{2}$/.test(gun || "") && gun <= today ? gun : today));
   const [cls, setCls] = useState("");
   const [local, setLocal] = useState({}); // "tarih|id" -> durum | null (bu oturumda yapılan işaretler)
   const { members, myUid } = useData(); // uygulamada hesabı olan sporcuların yoklama kopyası için

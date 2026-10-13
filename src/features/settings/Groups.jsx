@@ -20,6 +20,7 @@ import { THEMES, applyTheme, readTheme } from "@/lib/theme";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
 import { Badge, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/waGroups";
 
 // Ayarlar sayfasının satırları. Sayfa bunları "Sık kullanılanlar" ve "Diğer ayarlar" olarak dizer;
@@ -300,7 +301,9 @@ export function SummaryRow() {
     birthdayAt: profile?.birthdayAt || "",
     windAt: profile?.windAt || "",
     windKn: profile?.windKn || WIND_KN,
+    attAt: profile?.attAt ?? "",
   });
+  const canAtt = profile?.role === "owner" && canSeeAthletes(profile?.email);
   const put = (patch) => {
     const prev = sum;
     setSum((x) => ({ ...x, ...patch }));
@@ -310,7 +313,7 @@ export function SummaryRow() {
     });
   };
   const status =
-    [sum.summaryAt && `Sabah ${sum.summaryAt}`, sum.eveningAt && `Akşam ${sum.eveningAt}`, sum.weeklyAt && "Haftalık", sum.birthdayAt && "Doğum günü", sum.windAt && "Rüzgâr"]
+    [sum.summaryAt && `Sabah ${sum.summaryAt}`, sum.eveningAt && `Akşam ${sum.eveningAt}`, sum.weeklyAt && "Haftalık", sum.birthdayAt && "Doğum günü", sum.windAt && "Rüzgâr", canAtt && sum.attAt && "Yoklama"]
       .filter(Boolean)
       .join(" · ") || "Kapalı";
   return (
@@ -371,6 +374,18 @@ export function SummaryRow() {
             ))}
           </select>
         </SummaryItem>
+        {canAtt && (
+          <div className="flex h-[3.75rem] items-center gap-3 px-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600">
+              <Icon name="check" className="size-[1.125rem]" />
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <b className="block truncate text-[0.9375rem] font-semibold">Yoklama hatırlatması</b>
+              <small className="block truncate text-[0.75rem] text-mut">Antrenman bitince yoklama girilmediyse (bitiş yoksa gün batımında)</small>
+            </span>
+            <Switch on={!!sum.attAt} onChange={(v) => put({ attAt: v ? "on" : "" })} label="Yoklama hatırlatması" />
+          </div>
+        )}
       </div>
       <p className="-mt-1.5 px-4 pb-3.5 text-[0.75rem] leading-snug text-mut">Seçtiğin saatte bildirim olarak gelir; sabah ve akşam özeti ana ekranda kart olarak da görünür.</p>
     </Fold>

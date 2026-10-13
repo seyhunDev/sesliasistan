@@ -5,7 +5,8 @@
 // Yalnızca uygulamada hesabı olan sporcular için. Okuyabilenler: ana hesap, sporcunun kendisi, bağlı velileri (firestore.rules).
 // Sağlık, T.C., adres gibi kulüp bilgileri kopyalanmaz.
 import { arrayUnion, deleteField, doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/clientApp";
+import { auth, db } from "@/lib/firebase/clientApp";
+import { todayStr } from "@/lib/utils/format";
 
 const ref = (orgId, mid) => doc(db, "orgs", orgId, "athleteAtt", mid);
 
@@ -30,5 +31,8 @@ export async function mirrorChanges(orgId, members, date, changes) {
   const jobs = Object.entries(changes)
     .filter(([id]) => linked.has(id))
     .map(([id, v]) => setDoc(ref(orgId, linked.get(id).uid), { att: { [date]: v || deleteField() }, updatedAt: new Date().toISOString() }, { merge: true }));
+  // Bugünün yoklaması alındı: sunucu kulüp yoklamasını okuyamadığı için yoklama hatırlatması buna bakar (lib/attRemind.js)
+  const uid = auth.currentUser?.uid;
+  if (uid && date === todayStr()) jobs.push(setDoc(doc(db, "users", uid), { attLast: date }, { merge: true }));
   await Promise.allSettled(jobs);
 }

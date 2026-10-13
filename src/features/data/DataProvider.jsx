@@ -14,6 +14,7 @@ import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
 import { seriesDates } from "@/lib/repeat";
+import { canSeeAthletes } from "@/features/athletes/access";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
 const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
@@ -102,6 +103,11 @@ export function DataProvider({ children }) {
     import("@/features/athletes/raceHome").then((m) => m.prefetchRaces({ email, orgId, races })).catch(() => {});
     if (owner) import("@/features/invoices/openInvoices").then((m) => m.prefetchOpen(orgId)).catch(() => {});
   }, [orgId, owner, races, email]);
+  // Yoklama hatırlatması sporcu yetkili ana hesapta kendiliğinden açılır (bir kez; Ayarlar › Günlük özetler'den kapatılır; lib/attRemind.js)
+  const attAt = profile?.attAt;
+  useEffect(() => {
+    if (owner && uid && attAt === null && canSeeAthletes(email)) updateDoc(doc(db, "users", uid), { attAt: "on" }).catch(() => {});
+  }, [owner, uid, attAt, email]);
 
   const me = useRef({});
   useEffect(() => {
