@@ -583,6 +583,20 @@ group("Ana sayfa kartları")([
     const today = "2026-10-10";
     return HT.clubTraining([], today) === null && HT.clubTraining([{ cat: "Antrenman", date: "2026-10-01", log: { wind: 10 } }], today)?.big === "1";
   })],
+  ["kulüp kartları", F("antrenman haftası: yapıldı ✓, günlüksüz !, bugün, planlı; hiç yoksa kart yok", () => {
+    const today = "2026-10-14";
+    const plans = [
+      { cat: "Antrenman", date: "2026-10-12", log: { wind: 12 } },
+      { cat: "Antrenman", date: "2026-10-13" },
+      { cat: "Antrenman", date: "2026-10-14" },
+      { cat: "Antrenman", date: "2026-10-16" },
+      { cat: "Antrenman", date: "2026-10-15", status: "cancelled" },
+    ];
+    const w = HT.trainingWeek(plans, today);
+    const st = w.days.map((d) => d.state).join(",");
+    return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
+      && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
+  })],
   ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
     const open = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-09" }, { id: "r2", name: "Çeşme Ligi", startDate: "2026-10-20" }];
     const t = "2026-10-10";

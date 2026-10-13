@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePress } from "@/hooks/usePress";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -91,6 +92,8 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
+  const root = useRef(null);
+  usePress(root);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
 
   const actions = homeActions({
@@ -108,7 +111,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
   return (
-    <div className="space-y-6">
+    <div ref={root} className="space-y-6">
       <NowCard weather={weather} inbox={inbox} onInbox={onInbox} />
       <div className="empty:hidden">
         <BirthdayStrip />

@@ -31,10 +31,10 @@ function Posts({ orgId }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("live");
   const toast = useToast();
-  // Ana sayfadaki Instagram kartı için kısa özet bu cihazda (ek okuma yok); arşivdekiler sayılmaz
+  // Ana sayfadaki Instagram kartı için kısa özet bu cihazda (ek okuma yok); arşivdekiler sayılmaz. Son gönderinin küçük görseli (thumb, ~15 KB) kartta görünür
   const sum = (list) => {
     const live = list.filter((p) => !p.archived);
-    saveSum("posts", { count: live.length, last: live[0] ? { title: live[0].headline || live[0].topic.slice(0, 40), at: live[0].at } : null });
+    saveSum("posts", { count: live.length, last: live[0] ? { id: live[0].id, title: live[0].headline || live[0].topic.slice(0, 40), at: live[0].at, thumb: live[0].thumb || "" } : null });
   };
   useEffect(() => {
     loadPosts(orgId).then(
