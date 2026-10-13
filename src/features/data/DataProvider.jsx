@@ -9,7 +9,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
-import { cashOutFor, dropCashFor } from "@/features/dues/duesData";
+import { cashOutFor, dropCashFor, setCashFor } from "@/features/dues/duesData";
 import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
@@ -819,7 +819,8 @@ export function DataProvider({ children }) {
   // Fotoğraf ayrı belgede tutulur (orgs/{uid}/receiptImages/{id}); liste hafif kalır.
   // image: dataURL | undefined (değişmedi) | null (kaldır)
   const saveReceipt = useCallback(
-    (d, { by, image, src }) => {
+    // kasa: Hesaplar › Kasa'dan fiş fotoğrafıyla çıkış. true → nakit ödendi, kasadan çıkış yazılır (src "rc:<id>"); false → ödeme bekliyor
+    (d, { by, image, src, kasa }) => {
       let ownerId;
       try {
         ownerId = getOrgId();
@@ -832,12 +833,19 @@ export function DataProvider({ children }) {
       const batch = writeBatch(db);
       const who = owners();
       // Çalışanın eklediği fiş: ödemesi ana hesaptan bekleniyor. Ana hesabın eklediği: kendisi ödedi, "ödendi".
-      const pay = newPay(me.current.staff, me.current.name, now);
-      batch.set(ref, { ...receiptBody(d), hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, ...pay });
+      const pay =
+        kasa === true
+          ? { payStatus: "paid", paidAt: now, paidBy: { name: me.current.name || "Ana hesap" }, paySeenAt: now, paidVia: "cash" }
+          : kasa === false
+            ? { payStatus: "pending", paidAt: null, paidBy: null, paySeenAt: null }
+            : newPay(me.current.staff, me.current.name, now);
+      const body = receiptBody(d);
+      batch.set(ref, { ...body, hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, ...pay });
       if (image) batch.set(doc(db, "orgs", ownerId, "receiptImages", ref.id), { data: image, createdAt: now, ...who });
       const saved = batch.commit();
+      if (kasa === true) cashOutFor(ownerId, { src: `rc:${ref.id}`, book: body.scope, cat: "Fiş", who: body.merchant, amount: totalOf(body) / 100, note: [body.cat, body.note].filter(Boolean).join(" · "), date: body.date }).catch((e) => fail(e, "Kasa çıkışı"));
       saved
-        .then(() => pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
+        .then(() => kasa === undefined && pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
         .catch((e) => fail(e, "Fiş kaydetme"));
       // Fiş numarası (kulüp genelinde sıralı) sunucudan; internet yoksa sonra verilir (aşağıdaki numarasız fiş taraması)
       const no = saved.then(() => receiptNos([ref.id])).then((m) => m[ref.id] || null).catch(() => null);
@@ -880,6 +888,9 @@ export function DataProvider({ children }) {
       if (image) batch.set(imgRef, { data: image, createdAt: now, ...who });
       else if (image === null) batch.delete(imgRef);
       batch.commit().catch((e) => fail(e, "Fiş güncelleme"));
+      // Nakit ödenmiş fiş: kasadaki çıkış da yeni tutar ve deftere göre düzelir
+      if (rec?.paidVia === "cash" && (totalOf(rec) !== totalOf(patch) || (rec.scope || "club") !== patch.scope))
+        setCashFor(ownerId, `rc:${id}`, { amount: totalOf(patch) / 100, book: patch.scope }).catch(() => {});
     },
     [getOrgId, fail],
   );
@@ -899,7 +910,7 @@ export function DataProvider({ children }) {
         if (wasCash && !(paid && via === "cash")) dropCashFor(org, `rc:${id}`).catch(() => {});
         if (paid && via === "cash" && !wasCash && r) {
           const who = r.createdBy?.name || members.find((m) => m.uid === r.createdByUid)?.name || "";
-          cashOutFor(org, { src: `rc:${id}`, cat: "Fiş", who, amount: totalOf(r) / 100, note: [r.merchant, noText(r.no)].filter(Boolean).join(" · ") }).catch((e) => fail(e, "Kasa çıkışı"));
+          cashOutFor(org, { src: `rc:${id}`, book: r.scope, cat: "Fiş", who, amount: totalOf(r) / 100, note: [r.merchant, noText(r.no)].filter(Boolean).join(" · ") }).catch((e) => fail(e, "Kasa çıkışı"));
         }
         await updateDoc(doc(db, "orgs", org, "receipts", id), patch);
         if (paid) authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: id }) }).catch(() => {});

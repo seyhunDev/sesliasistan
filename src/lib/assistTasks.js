@@ -45,7 +45,7 @@ export const TASKS = [
 
   // Sayfalar
   { id: "navigate", group: "Sayfalar", name: "Sayfa ya da sohbet açma, geri dönme", say: "yoklamayı aç, ekip grubunu aç, geri dön", who: "herkes", by: "yerel" },
-  { id: "receiptCam", group: "Sayfalar", name: "Fiş yükleme (kamera)", say: "fiş yükle", who: "herkes", by: "yerel" },
+  { id: "receiptCam", group: "Sayfalar", name: "Fiş yükleme (kamera)", say: "fiş yükle; kasadan fişle çıkış yap (ana hesap: fiş ödendi, kasadan düşer)", who: "herkes", by: "yerel" },
   { id: "meeting", group: "Sayfalar", name: "Toplantı modu", say: "toplantı modunu aç", who: "yönetici", by: "yerel" },
   { id: "close", group: "Sayfalar", name: "Asistanı kapatma (sessiz)", say: "tamam kapat, teşekkürler", who: "herkes", by: "yerel" },
 

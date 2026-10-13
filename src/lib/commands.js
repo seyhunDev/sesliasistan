@@ -1,6 +1,6 @@
 import { interpretRules } from "@/lib/ai/rules";
 import { addDate, weekRange } from "@/lib/ai/digest";
-import { localReceipt } from "@/lib/assistantLocal";
+import { kasaReceipt, localReceipt } from "@/lib/assistantLocal";
 import { localNavigate } from "@/lib/nav";
 import { todayStr } from "@/lib/utils/format";
 import { spokenTime } from "@/lib/utils/speak";
@@ -220,6 +220,7 @@ export function localCommand(raw, data, today = todayStr(), { aiFirst = false } 
   const t = norm(text);
   if (!t) return null;
   if (HELP.test(t)) return { type: "reply", message: HELP_MSG, show: [] };
+  if (kasaReceipt(text) || kasaReceipt(raw)) return { type: "receipt", kasa: true };
   if (localReceipt(text)) return { type: "receipt" };
   if (isMeeting(raw) || isMeeting(text)) return { type: "meeting" }; // ses düzeltmesi "kaydet"i "ekle"ye çevirir; ham cümleye de bak
   if (aiFirst) {

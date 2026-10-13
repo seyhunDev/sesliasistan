@@ -95,7 +95,7 @@ const CASES = {
   results: ["Ali'nin sonuçları", "Ali Kaya'nın yarış sonuçları neler", "Ali kaçıncı oldu", "Foça yarışında Zeynep kaçıncı oldu", "Ayşe'nin dereceleri"],
   payee: ["bu ay ne kadar ödeme aldım", "geçen ay kaç ödeme geldi", "eylülde ne kadar para geldi"],
   navigate: ["ders programını aç", "yoklamayı aç", "ekip grubunu aç", "geri dön", "ayarlara git", "fişlerimi göster", "aidatlar sayfasını aç", "envanter sayfasını aç", "Ali ile mesajlaşmayı aç", "faturaları aç", "hesaplarımı aç"],
-  receiptCam: ["fiş yükle", "fiş fotoğrafı çek", "yeni fiş ekle"],
+  receiptCam: ["fiş yükle", "fiş fotoğrafı çek", "yeni fiş ekle", "kasadan fişle çıkış yap", "fişle nakit çıkış yap", "fişi kasadan öde"],
   meeting: ["toplantı modunu aç", "toplantıyı kaydet", "toplantı kaydını başlat"],
   close: ["tamam kapat", "teşekkürler", "kapat", "bitir"],
   attendance: ["yoklama al, Ali ve Ayşe geldi", "bugün antrenmana Emre gelmedi", "yoklama: Zeynep izinli, kalanlar geldi", ["Ali ve Zeynep geldi, Emre izinli", { path: "/athletes/attendance" }], ["Mehmet raporlu", { path: "/athletes/attendance" }]],

@@ -283,6 +283,7 @@ export function invoiceTaskCommand(raw) {
 export function receiptPayCommand(raw) {
   const t = low(raw);
   if (!/(^| )fiş/u.test(t) || QUESTION.test(t) || /(yükle|fotoğraf|çek|excel|mail|aç)( |$)/u.test(t)) return null;
+  if (/(^| )kasa/u.test(t) && !/(^| )f[- ]?\d/u.test(t)) return null; // "fişi kasadan öde": fiş kamerası kasa kipinde (kasaReceipt)
   const unpaid = /(ödenmedi|ödenmemiş|geri al)/u.test(t);
   if (!unpaid && !/(ödendi|ödedim|ödedik|öde|ödeme yapıldı|parasını verdim)( |$)/u.test(t)) return null;
   const no = t.match(/(?:^| )f[- ]?(\d{1,5})(?: |$|['’])|(\d{1,5}) (?:numaralı|nolu|no'?lu) fiş/u);
