@@ -177,7 +177,8 @@ export function ReplyComposer({ onSend, placeholder = "Mesaj yaz…", kind, rec,
 }
 
 // Başkasının verdiği kayıt (çalışan görünümü): değiştiremez; yalnızca kendisi için "gerçekleşti / yaptım / okudum" der ve mesaj yazar
-export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, docked = false }) {
+// extra: kayda özel bölüm (sporcunun fitness antrenmanı); varsa "Tamamladım" düğmesi yerine o görünür
+export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onReply, docked = false, extra = null }) {
   const mine = rec.doneBy?.[myUid];
   const by = nameOf(rec.createdByUid) || "Ana hesap";
   const rows = [
@@ -210,7 +211,9 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
         </p>
       </div>
 
+      {extra}
       {/* Yalnızca kendisi için */}
+      {!extra && (
       <button
         onClick={() => onDone(!mine)}
         className={`mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold transition active:scale-[.98] ${mine ? "bg-ok/10 text-ok ring-1 ring-ok/30" : "bg-acc text-white"}`}
@@ -218,7 +221,8 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
         <Icon name="check" className="size-5 [stroke-width:2.5]" />
         {mine ? `${doneOf(kind).mine} · ${stamp(mine)}` : doneOf(kind).act}
       </button>
-      {mine && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
+      )}
+      {mine && !extra && <p className="mt-1 text-center text-[0.75rem] text-mut">Geri almak için tekrar dokun</p>}
 
       <Replies key={rec.id} kind={kind} rec={rec} myUid={myUid} nameOf={nameOf} onSend={onReply} placeholder="Ana hesaba mesaj yaz…" docked={docked} />
     </div>

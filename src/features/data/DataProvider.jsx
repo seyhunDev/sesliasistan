@@ -425,7 +425,9 @@ export function DataProvider({ children }) {
 
   const updateRecord = useCallback(
     async (kind, id, patch, by) => {
-      if (isLocked(kind, id)) return lockedMsg();
+      // Sporcu, ana hesabın kendisine hazırladığı fitness antrenmanına yalnız sonucunu (fit.res) yazar (kural: fitResOnly)
+      const own = kind === "plan" && cur.current.plans?.find((x) => x.id === id)?.fit?.for === me.current.uid && Object.keys(patch).every((x) => x === "fit");
+      if (!own && isLocked(kind, id)) return lockedMsg();
       const k = KEYS[kind];
       const { assignees, ...rest } = patch;
       const full = { ...rest, updatedAt: new Date().toISOString(), updatedBy: by };
@@ -437,7 +439,7 @@ export function DataProvider({ children }) {
       }
       setData((p) => ({ ...p, [k]: p[k].map((x) => (x.id === id ? { ...x, ...full } : x)) }));
       try {
-        await updateDoc(doc(db, "orgs", getOrgId(), k, id), full);
+        await updateDoc(doc(db, "orgs", getOrgId(), k, id), own ? { "fit.res": patch.fit?.res || {}, updatedAt: full.updatedAt, updatedBy: by } : full);
         if (full.assignees?.length && ["plan", "task", "note"].includes(kind)) notifyAssign(kind, id); // yeni eklenen sorumlulara
         // Zaman, yer, başlık ya da metin değiştiyse kayıttaki diğer kişilere "değişti" bildirimi (sunucu kayıttan okur)
         if (["plan", "task", "note"].includes(kind) && Object.keys(rest).some((x) => CHANGE_KEYS.includes(x))) notifyEvent(kind, id, "changed");

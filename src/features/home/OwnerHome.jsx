@@ -20,6 +20,8 @@ import { listsFor } from "@/features/shop/shop";
 import { HomeActions } from "./HomeActions";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
+import { MyFitCard } from "./MyFitCard";
+import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
@@ -95,6 +97,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
     receipts: canReceipts(kind),
     shop: listsFor(kind, members).length > 0,
     lessons: lessons.length > 0,
+    fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
   return (
@@ -104,6 +107,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
         <BirthdayStrip />
       </div>
       {side && <MyAttendanceCard kind={kind} />}
+      {staff && <MyFitCard />}
       <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training} plans={plans} invoices={owner} notes={notes} />
       <HomeActions groups={actions} />
     </div>
