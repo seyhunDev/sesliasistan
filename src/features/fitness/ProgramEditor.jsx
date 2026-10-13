@@ -9,6 +9,8 @@ import { DOWS, DOW_LONG, cleanItem, itemLine } from "@/lib/fitness/model";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { YtEdit } from "./YtVideo";
+import { libNo, withLib } from "@/lib/fitness/library";
+import { useFitLib } from "./useFitLib";
 
 // Program düzenleme (yapay zekanın hazırladığı önizleme ya da kayıtlı program). Üstte özet (ad, gün/hafta, dakika, hafta,
 // başlangıç), altında haftanın günleri şeridi: antrenman günü dokununca açılır, boş güne dokununca o güne antrenman eklenir.
@@ -52,8 +54,17 @@ function Chip({ children, tone }) {
   return <span className={`rounded-full px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums ${tone || "bg-bg text-fg"}`}>{children}</span>;
 }
 
-function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
+function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop }) {
+  // Fotoğraf/video ve YouTube hareket kütüphanesinde: aynı hareket hangi programda olursa olsun aynısı görünür
+  const { lib, setMedia } = useFitLib();
+  const it = withLib(raw, lib);
+  const no = libNo(lib, raw);
   const set = (k, v) => onChange({ ...it, [k]: v });
+  const setLib = (k, v) => {
+    const next = { ...it, [k]: v };
+    onChange(next);
+    setMedia(raw, { yt: next.yt, media: next.media }).catch(() => {});
+  };
   const ex = exById(it.ex);
   return (
     <li className={`rounded-2xl border transition ${open ? "border-acc bg-acc/[.04]" : "border-line bg-card"}`}>
@@ -65,6 +76,7 @@ function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{it.name}</b>
           <span className="mt-1 flex flex-wrap gap-1">
+            {no ? <Chip tone="bg-bg text-mut">No {no}</Chip> : null}
             <Chip tone="bg-acc/10 text-acc">{itemLine(it).split(" · ")[0]}</Chip>
             {it.kg ? <Chip>{String(it.kg).replace(".", ",")} kg</Chip> : null}
             {it.rest ? <Chip tone="bg-bg text-mut">{it.rest} sn dinlen</Chip> : null}
@@ -98,8 +110,9 @@ function ItemCard({ it, i, count, open, onOpen, onChange, onMove, onDrop }) {
               {ex.how}
             </p>
           )}
-          <ExerciseMedia media={it.media} ex={it.ex} edit onChange={(v) => set("media", v)} className="mt-2" />
-          <YtEdit yt={it.yt} onChange={(v) => set("yt", v)} media={it.media} onMedia={(v) => set("media", v)} className="mt-2" />
+          <ExerciseMedia media={it.media} ex={it.ex} edit onChange={(v) => setLib("media", v)} className="mt-2" />
+          <YtEdit yt={it.yt} onChange={(v) => setLib("yt", v)} media={it.media} onMedia={(v) => setLib("media", v)} className="mt-2" />
+          <p className="mt-1 text-[0.75rem] text-mut">Fotoğraf ve video bu hareketin geçtiği bütün programlarda görünür.</p>
           <div className="mt-2 flex items-center gap-2">
             <button type="button" aria-label="Yukarı taşı" disabled={i === 0} onClick={() => onMove(-1)} className="grid size-9 place-items-center rounded-full bg-bg disabled:opacity-30">
               <Icon name="up" className="size-4" />
@@ -192,7 +205,7 @@ function DayPanel({ d, onChange, onDrop }) {
         open={pick}
         onClose={() => setPick(false)}
         onPick={(e) => {
-          set("items", [...items, cleanItem({ ex: e.id })]);
+          set("items", [...items, cleanItem(e.custom ? { ex: "", name: e.name } : { ex: e.id })].filter(Boolean));
           setOpen(items.length);
         }}
       />
