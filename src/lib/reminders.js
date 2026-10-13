@@ -36,19 +36,28 @@ export function reminderAt(plan, lead) {
 // Aynı hatırlatma iki kez gitmesin: plan bu anahtarla işaretlenir
 export const remindKey = (plan, lead) => `${plan.date}T${plan.time || "allday"}|${lead}`;
 
-// Zamanı gelmiş (son windowMin dakika içinde) ve bu kişiye henüz gönderilmemiş hatırlatmalar.
+// Zamanı gelmiş ve bu kişiye henüz gönderilmemiş hatırlatmalar.
+// Zamanlayıcı bir turu kaçırırsa hatırlatma kaybolmasın: saatli planda plan başlayana kadar (en çok 60 dk) geç de gönderilir;
+// tüm gün ve "1 gün önce" hatırlatmasında 60 dk. Gönderildi işareti tekrarı önler.
 // uid: aynı plan birden fazla kişiye hatırlatılabilir; gönderildi işareti kişi başına (plan.reminded[uid]).
-export function dueReminders(plans, { lead, tz = DEFAULT_TZ, now = new Date(), windowMin = 15, uid }) {
+export const remindWindow = (lead) => Math.max(15, Math.min(Number(lead) || 0, 60));
+export function dueReminders(plans, { lead, tz = DEFAULT_TZ, now = new Date(), windowMin = remindWindow(lead), uid }) {
   const n = localNow(tz, now).min;
   return plans.filter((p) => {
     const sent = uid ? p.reminded?.[uid] : p.remindedKey;
     if (!p.date || p.status === "cancelled" || p.done || sent === remindKey(p, lead)) return false;
     const at = reminderAt(p, lead);
+    if (p.time && lead < 1440 && wall(p.date, p.time) <= n) return false; // plan başladı: geç hatırlatma anlamsız
     return at <= n && at > n - windowMin;
   });
 }
 
-// Bildirim metni
-export function reminderText(plan, lead) {
-  return { ...reminderTextOf(plan, lead), tag: `plan-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
+// Bildirim metni. Geç gönderilirse ("1 saat sonra" yerine) kalan gerçek süre yazılır.
+export function reminderText(plan, lead, { tz = DEFAULT_TZ, now = new Date() } = {}) {
+  let use = lead;
+  if (plan.time && lead < 1440) {
+    const left = wall(plan.date, plan.time) - localNow(tz, now).min;
+    if (left > 0 && left < 60 && left < lead - 5) use = Math.max(5, Math.round(left / 5) * 5);
+  }
+  return { ...reminderTextOf(plan, use), tag: `plan-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
 }

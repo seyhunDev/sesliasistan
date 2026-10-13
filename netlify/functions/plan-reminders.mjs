@@ -92,7 +92,7 @@ async function sendDueReminders() {
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
     const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
-      const payload = await withBadge(db, u.id, reminderText(p, lead));
+      const payload = await withBadge(db, u.id, reminderText(p, lead, { tz }));
       await Promise.all(
         subs.map(async ([key, sub]) => {
           try {

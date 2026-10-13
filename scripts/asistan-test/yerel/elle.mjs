@@ -122,7 +122,11 @@ const RP = { id: "p", date: "2026-10-05", time: "10:00", title: "Antrenman" };
 const due = (plan, lead, iso, uid) => RM.dueReminders([plan], { lead, now: new Date(iso), uid }).length;
 group("Plan hatırlatmaları")([
   ["1 saat önce", { desc: "09:05'te gider", fn: () => due(RP, 60, "2026-10-05T06:05:00Z"), ok: (r) => r === 1 }],
-  ["pencere dışı", { desc: "09:30'da gitmez (15 dk geçti)", fn: () => due(RP, 60, "2026-10-05T06:30:00Z"), ok: (r) => r === 0 }],
+  ["geç ama başlamadan", { desc: "09:30'da yine gider (zamanlayıcı tur kaçırdıysa)", fn: () => due(RP, 60, "2026-10-05T06:30:00Z"), ok: (r) => r === 1 }],
+  ["plan başladı", { desc: "10:05'te gitmez", fn: () => due(RP, 60, "2026-10-05T07:05:00Z"), ok: (r) => r === 0 }],
+  ["15 dk önce pencere", { desc: "09:46'da gider, 10:00'da gitmez", fn: () => [due(RP, 15, "2026-10-05T06:46:00Z"), due(RP, 15, "2026-10-05T07:00:00Z")].join(), ok: (r) => r === "1,0" }],
+  ["geç metin", { desc: "09:30'da gidince '30 dk sonra' yazar", fn: () => RM.reminderText(RP, 60, { now: new Date("2026-10-05T06:30:00Z") }).title, ok: (r) => /30 dk sonra/.test(r) }],
+  ["zamanında metin", { desc: "09:02'de '1 saat sonra'", fn: () => RM.reminderText(RP, 60, { now: new Date("2026-10-05T06:02:00Z") }).title, ok: (r) => /1 saat sonra/.test(r) }],
   ["zaten gönderildi", { desc: "aynı kişiye ikinci kez gitmez", fn: () => due({ ...RP, reminded: { u1: RM.remindKey(RP, 60) } }, 60, "2026-10-05T06:05:00Z", "u1"), ok: (r) => r === 0 }],
   ["başka kişi", { desc: "ikinci kişiye gider", fn: () => due({ ...RP, reminded: { u1: RM.remindKey(RP, 60) } }, 60, "2026-10-05T06:05:00Z", "u2"), ok: (r) => r === 1 }],
   ["tüm gün, 1 gün önce", { desc: "önceki sabah 08:00", fn: () => due({ ...RP, time: "" }, 1440, "2026-10-04T05:05:00Z"), ok: (r) => r === 1 }],
@@ -712,6 +716,7 @@ group("Aidat hatırlatması")([
 // Yoklama hatırlatması (attRemind.js): antrenman bitince ya da gün batımında, yoklama girilmediyse bir kez
 const YH = await import("@/lib/attRemind");
 const YR = await import("@/lib/reminders");
+const YIB = await import("@/lib/inbox");
 const AT = "2026-10-13";
 const APL = [{ title: "Optimist antrenmanı", date: AT, time: "16:00", durationMin: 90, cat: "Antrenman" }, { title: "Toplantı", date: AT, time: "19:00", durationMin: 60, cat: "Toplantı" }];
 const ASUN = YH.sunsetHM(AT, { lat: 39.0717, lon: 26.8886 });
@@ -725,6 +730,8 @@ group("Yoklama hatırlatması")([
   ["yoklama girildi", F("attLast bugün: gitmez", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "20:00", sunset: ASUN, taken: AT }) === "")],
   ["bir kez", F("bugün gönderildiyse gitmez", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "20:00", sunset: ASUN, sent: AT }) === "")],
   ["antrenman yok / iptal", F("gitmez", () => YH.attRemindDue({ plans: [APL[1], { ...APL[0], status: "cancelled" }], today: AT, nowHM: "22:00", sunset: ASUN }) === "")],
+  ["kulüp sitesinden girilen", F("sporcularda bugüne yoklama varsa alındı", () => YH.attTakenIn([{ att: {} }, { att: { 2026: { "10-13": "present" } } }], AT) && !YH.attTakenIn([{ att: { 2026: { "10-12": "absent" } } }], AT))],
+  ["veliye aidat hatırlatması", F("gidecek sayfa yok: zilde tam metin", () => YIB.inboxLink({ url: "/?bildirim=1", tag: "dues-x-2026-10" }) === "")],
   ["plan hatırlatması bağlantısı", F("dokununca o plan açılır", () => YR.reminderText({ id: "p1", title: "A", date: AT, time: "10:00" }, 60).url === "/?open=plan:p1")],
   ["metin ve bağlantı", F("o günün yoklaması açılır", () => {
     const m = YH.attRemindText(APL, AT);

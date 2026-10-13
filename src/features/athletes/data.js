@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { FieldPath, Timestamp, addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
 import { dikiliAuth, dikiliDb } from "./dikili";
 import { EXPIRY_KEYS } from "@/lib/expiry";
+import { attTakenIn, markAttTaken } from "./attTaken";
+import { todayStr } from "@/lib/utils/format";
 
 // Firestore değerlerini düz hale getirir (Timestamp -> ISO tarih)
 function plain(v) {
@@ -60,6 +62,8 @@ async function fetchAthletes() {
     });
   });
   rememberNames(athletes);
+  // Bugünün yoklaması kulüp sitesinden girildiyse de alındı sayılsın (yoklama hatırlatması gelmesin)
+  if (attTakenIn(athletes, todayStr())) markAttTaken();
   return { athletes, ...n };
 }
 
