@@ -251,7 +251,7 @@ export function FitWorkout({ rec, by, hero = false }) {
                     {t.up && <p className="mt-1 text-[0.75rem] font-semibold text-acc">↑ geçen sefere göre artırıldı</p>}
                     <MediaVideo media={it.media} className="mt-2" />
                     <ExerciseMedia media={it.media} ex={it.ex} noVideo />
-                    {it.yt?.id && <YtLink yt={it.yt} />}
+                    <YtPlayer yt={it.yt} className="mt-2" />
                     <div className="mt-2 space-y-1.5">
                       {s.map((x, k) => (
                         <div key={k}>
@@ -410,15 +410,3 @@ function ResultCard({ rec, fit, hero, onEdit }) {
   );
 }
 
-function YtLink({ yt }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mt-1.5">
-      <button type="button" onClick={() => setOpen(!open)} className="flex h-9 items-center gap-1.5 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold text-acc">
-        <Icon name={open ? "x" : "video"} className="size-4" />
-        {open ? "Videoyu kapat" : "Videoyu izle"}
-      </button>
-      {open && <YtPlayer yt={yt} className="mt-2" />}
-    </div>
-  );
-}
