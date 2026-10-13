@@ -8,7 +8,6 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
-import { estMinutes, itemLine, resRows } from "@/lib/fitness/model";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { dayInfo, clubDues, clubFis, clubRace, duesLive, homeNotes, noteGroups, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
@@ -296,7 +295,7 @@ function TrainingCard({ w, att, today }) {
 }
 
 // Günün penceresi: YELKEN (planlar, Yoklamayı aç; plan yoksa Antrenman ekle, yoklamasını al) ve FİTNESS (sporcu satırları;
-// dokununca altında antrenmanın adı, süresi, hareketleri ya da sonucu açılır; "Antrenmanı aç" o sporcunun o günkü antrenmanını açar).
+// dokununca o sporcunun o günkü planı açılır).
 const FIT_ST = { done: ["Yaptı", "bg-acc/12 text-acc"], missed: ["Yapmadı", "bg-rec/12 text-rec"], skip: ["Atladı", "bg-line text-mut"] };
 function DayPick({ day, att, today, onClose }) {
   const { saveDrafts } = useData();
@@ -304,7 +303,6 @@ function DayPick({ day, att, today, onClose }) {
   const toast = useToast();
   const router = useRouter();
   const { openAdd } = useAdd();
-  const [open, setOpen] = useState(""); // Açık fitness satırı
   const [busy, setBusy] = useState(false);
   const info = day ? dayInfo(day, att, today) : { sail: [], fit: [] };
   const title = day ? new Date(`${day.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }) : "";
@@ -371,8 +369,7 @@ function DayPick({ day, att, today, onClose }) {
               <h3 className={head}>FİTNESS · {info.fit.length} kişi</h3>
               <ul className="divide-y divide-line">
                 {info.fit.map((f) => (
-                  <FitRow key={f.id || f.name} f={f} open={open === `${day.date}:${f.id || f.name}`} onTap={() => setOpen((o) => (o === `${day.date}:${f.id || f.name}` ? "" : `${day.date}:${f.id || f.name}`))}
-                    onOpen={f.plan?.id ? () => { onClose(); openAdd({ edit: { kind: "plan", id: f.plan.id } }); } : null} />
+                  <FitRow key={f.id || f.name} f={f} onOpen={f.plan?.id ? () => { onClose(); openAdd({ edit: { kind: "plan", id: f.plan.id } }); } : null} />
                 ))}
               </ul>
             </section>
@@ -383,51 +380,22 @@ function DayPick({ day, att, today, onClose }) {
   );
 }
 
-// Fitness satırı: baş harf, ad, antrenman, durum; dokununca hareketler (yapıldıysa sonuçlar)
-function FitRow({ f, open, onTap, onOpen }) {
+// Fitness satırı: baş harf, ad, antrenman, durum; dokununca o günkü plan açılır (Antrenmana başla orada)
+function FitRow({ f, onOpen }) {
   const [t, c] = FIT_ST[f.st] || [f.plan?.time || "Bekliyor", "bg-bg text-mut"];
   const fit = f.plan?.fit || {};
-  const items = fit.items || [];
-  const done = f.st === "done" || f.st === "skip" || f.st === "missed";
-  const rows = done && fit.res ? resRows(fit).rows : items.map((it) => ({ name: it.name, line: itemLine(it) }));
-  const min = fit.res?.min || f.plan?.durationMin || estMinutes(items);
   const ini = f.mine ? "Sen" : f.name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR");
   return (
     <li>
-      <button type="button" onClick={onTap} aria-expanded={open} className="flex w-full items-center gap-3 py-2.5 text-left">
+      <button type="button" onClick={onOpen || undefined} disabled={!onOpen} className="flex w-full items-center gap-3 py-2.5 text-left">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-orange-500/12 text-[0.8125rem] font-bold text-orange-700 dark:text-orange-300">{ini}</span>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{f.mine ? "Senin antrenmanın" : f.name}</b>
           <small className="block truncate text-[0.8125rem] text-mut">{fit.name || f.plan?.title || "Antrenman"}</small>
         </span>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${c}`}>{t}</span>
-        <Icon name="chev" className={`size-4 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />
+        <Icon name="chev" className="size-4 shrink-0 text-mut" />
       </button>
-      {open && (
-        <div className="mb-2.5 ml-[3.25rem] rounded-xl bg-bg px-3 py-2.5">
-          <small className="block text-[0.8125rem] text-mut">
-            {[f.plan?.time, min ? `≈ ${min} dk` : "", items.length ? `${items.length} hareket` : ""].filter(Boolean).join(" · ") || "Ayrıntı yok"}
-          </small>
-          {rows.length > 0 && (
-            <ol className="mt-1.5 space-y-1">
-              {rows.map((r, i) => (
-                <li key={i} className="flex gap-2 text-[0.8125rem]">
-                  <span className="w-4 shrink-0 text-mut tabular-nums">{i + 1}</span>
-                  <span className="min-w-0 flex-1 truncate">{r.name}</span>
-                  <span className={`shrink-0 tabular-nums ${r.none ? "text-rec" : "text-mut"}`}>{r.line}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-          {fit.res?.note && <p className="mt-1.5 text-[0.8125rem] text-mut">Not: {fit.res.note}</p>}
-          {onOpen && (
-            <button type="button" data-press onClick={onOpen} className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-acc py-2.5 text-[0.875rem] font-semibold text-white">
-              Antrenmanı aç
-              <Icon name="chev" className="size-4" />
-            </button>
-          )}
-        </div>
-      )}
     </li>
   );
 }
