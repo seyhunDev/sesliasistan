@@ -1,8 +1,8 @@
-Commit: d8c412e · Sporcu fitness antrenmanında değer, set ve süre değiştiremez (#352)
-Zaman: 2026-10-13-1439 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38391471603
+Commit: 12db3d5 · Fitness: harekete YouTube videosu ve bağlantıyla fotoğraf/video; sporcu izler, gizleyebilir (#353)
+Zaman: 2026-10-13-1446 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38392311871
 
-TAM TEST · 13.10.2026 14:37:40
+TAM TEST · 13.10.2026 14:44:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 85 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
