@@ -1,11 +1,12 @@
 "use client";
 
-import { collection, deleteDoc, doc, getDocs, query, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/model";
 import { introKey } from "@/lib/fitness/forecast";
+import { cleanLib, customCatalog, itemsWithLib, libAdd, libMediaIds, progWithLib, sameMedia } from "@/lib/fitness/library";
 import { dropAllMedia, dropMedia } from "./fitMedia";
 
 // Fitness programları: orgs/{orgId}/fitPrograms/{id} (yalnız ana hesap; kural ana hesaba orgs altını zaten açıyor).
@@ -83,7 +84,8 @@ export async function deleteProgram(orgId, id) {
   await dropPlans(orgId, snap.docs.map((d) => d.id));
   const list = cache.org === orgId && cache.list ? cache.list : [];
   const prog = list.find((p) => p.id === id);
-  const others = new Set(list.filter((p) => p.id !== id).flatMap(mediaOf).map((m) => m.id));
+  // Kütüphanedeki (başka programlarda da kullanılan) hareket fotoğraf/videoları silinmez
+  const others = new Set([...list.filter((p) => p.id !== id).flatMap(mediaOf).map((m) => m.id), ...libMediaIds(await loadLib(orgId).catch(() => null))]);
   await Promise.all(mediaOf(prog).filter((m) => !others.has(m.id)).map((m) => dropMedia(orgId, m)));
   await deleteDoc(doc(col(orgId), id));
   if (cache.org === orgId && cache.list) {
@@ -100,6 +102,9 @@ export async function resetFitness(orgId) {
   const [progs, plans] = await Promise.all([getDocs(col(orgId)), getDocs(query(collection(db, "orgs", orgId, "plans"), where("src", "==", "fitness")))]);
   await dropPlans(orgId, plans.docs.map((d) => d.id));
   const media = await dropAllMedia(orgId);
+  await deleteDoc(libRef(orgId)).catch(() => {});
+  libCache = { org: orgId, lib: cleanLib() };
+  libTold();
   for (let i = 0; i < progs.docs.length; i += 400) {
     const b = writeBatch(db);
     progs.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
@@ -201,7 +206,7 @@ export async function saveProfile(uid, fit) {
 
 // Yapay zeka (/api/fitness): { op, program?, log?, profile?, message }
 export async function askFitness(payload) {
-  const res = await authFetch("/api/fitness", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ today: todayStr(), ...payload }) });
+  const res = await authFetch("/api/fitness", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ today: todayStr(), lib: libCache.lib ? customCatalog(libCache.lib) : "", ...payload }) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Fitness isteği işlenemedi");
   return data;
@@ -254,4 +259,60 @@ export async function askIntro(profile) {
   } catch {
     return null;
   }
+}
+
+// ---- Hareket kütüphanesi (lib/fitness/library.js): orgs/{org}/fitLib/main, tek belge ----
+// Okuma sayfa başına bir kez (bellekte kalır); sporcu okumaz, videolar sporcunun antrenmanlarına kopyalanır (spreadLib).
+const libRef = (orgId) => doc(db, "orgs", orgId, "fitLib", "main");
+let libCache = { org: "", lib: null };
+export const FIT_LIB = "sa-fit-lib";
+const libTold = () => window.dispatchEvent(new CustomEvent(FIT_LIB));
+export const peekLib = (orgId) => (libCache.org === orgId ? libCache.lib : null);
+export async function loadLib(orgId, { force = false } = {}) {
+  if (!force && libCache.org === orgId && libCache.lib) return libCache.lib;
+  const snap = await getDoc(libRef(orgId));
+  libCache = { org: orgId, lib: cleanLib(snap.exists() ? snap.data() : {}) };
+  return libCache.lib;
+}
+export async function saveLib(orgId, lib) {
+  const clean = cleanLib(lib);
+  await setDoc(libRef(orgId), { ...clean, updatedAt: new Date().toISOString() });
+  libCache = { org: orgId, lib: clean };
+  libTold();
+  return clean;
+}
+// Programın hareketlerini kütüphaneye ekler (yenilere numara), programı kütüphanedeki fotoğraf/videolarla döndürür
+export async function adoptProgram(orgId, prog) {
+  const cur = await loadLib(orgId).catch(() => null);
+  if (!cur) return prog;
+  const { lib, added } = libAdd(cur, (prog?.days || []).flatMap((d) => d.items || []));
+  const changed = added.length || JSON.stringify(lib) !== JSON.stringify(cur);
+  const out = changed ? await saveLib(orgId, lib).catch(() => cur) : cur;
+  return progWithLib(prog, out);
+}
+
+// Kütüphanedeki fotoğraf/video değişince: o hareketin geçtiği bütün programlar ve bugünden sonraki yapılmamış
+// antrenmanlar (sporcularınki dahil) güncellenir. Yalnız değişen belgeler yazılır. plans: kendi planların + fitOthers.
+// Dönüş: { progs, plans } güncellenen sayı
+export async function spreadLib(orgId, plans = []) {
+  const lib = await loadLib(orgId).catch(() => null);
+  if (!lib) return { progs: 0, plans: 0 };
+  const today = todayStr();
+  const progs = (await loadPrograms(orgId).catch(() => [])).filter((p) => p.days?.some((d) => !sameMedia(d.items, itemsWithLib(d.items, lib))));
+  const ps = (plans || []).filter((p) => p.fit?.items?.length && p.date >= today && !p.fit?.res?.st && !sameMedia(p.fit.items, itemsWithLib(p.fit.items, lib)));
+  const ops = [...progs.map((p) => ["prog", p]), ...ps.map((p) => ["plan", p])];
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = writeBatch(db);
+    for (const [k, v] of ops.slice(i, i + 400)) {
+      if (k === "prog") b.update(doc(col(orgId), v.id), { days: progWithLib(v, lib).days });
+      else b.update(doc(db, "orgs", orgId, "plans", v.id), { "fit.items": itemsWithLib(v.fit.items, lib) });
+    }
+    await b.commit();
+  }
+  if (progs.length && cache.org === orgId && cache.list) {
+    cache.list = cache.list.map((p) => (progs.some((x) => x.id === p.id) ? { ...p, days: progWithLib(p, lib).days } : p));
+    keep(orgId, cache.list);
+  }
+  if (ops.length) told();
+  return { progs: progs.length, plans: ps.length };
 }

@@ -15,9 +15,10 @@ import {
   STATUS, addDays, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { kindOf } from "@/lib/kinds";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
+import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
 import { HistoryCard, MonthCard, ProgramCard, ProgressCard, RowButton, TodayCard, WeekCard, WeekStrip, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
@@ -54,6 +55,7 @@ export function FitnessHome() {
   const [fitProf, setFitProf] = useState(profile.fit || {});
   const [forUid, setForUid] = useState(""); // Program hazırla bir sporcu için açıldıysa
   const [athOpen, setAthOpen] = useState(false);
+  const [libOpen, setLibOpen] = useState(false);
   const [ath, setAth] = useState(""); // Sporcular penceresinde açık sporcu
   // Program verilebilecek sporcular: uygulamada hesabı olan sporcu ve öğrenciler
   const athletes = useMemo(
@@ -129,11 +131,15 @@ export function FitnessHome() {
       // Takvimde bu programın gelecek planları varsa onlar da her kayıtta yenilenir (video, hareket değişikliği sporcuya gitsin)
       const onPlans = (plansFor(p) || []).some((x) => p.id && x.fit?.prog === p.id && x.date >= todayStr() && !x.fit?.res?.st);
       if (onPlans) withPlans = true;
+      // Hareketler kütüphaneye girer (yenilere numara), fotoğraf/video kütüphanedekiyle aynı olur
+      p = await adoptProgram(orgId, p).catch(() => p);
       const saved = await saveProgram(orgId, uid, { ...p, active: true });
       let r = null;
       if (withPlans) r = await syncPlans(orgId, uid, saved, plansFor(saved), { name: profile.name });
       // Sporcuya tek bildirim: "Yeni fitness programın hazır" (sunucu bir kez gönderir)
       if (saved.for && (withPlans || saved.plansAt)) notifyProgram(saved.id);
+      // Kütüphanede değişen video başka programlara ve sporcuların antrenmanlarına da gitsin
+      spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
       setEdit(null);
       reload(false);
       if (saved.for) toast(r ? `Kaydedildi · ${saved.forName} için ${r.added} antrenman` : "Program kaydedildi");
@@ -231,7 +237,10 @@ export function FitnessHome() {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title={edit.prog.for ? `${edit.prog.forName} için program` : edit.simple ? "Programın hazır" : edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
-        <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} simple={edit.simple} busy={busy} onSave={save} onCancel={() => setEdit(null)} />
+        <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} simple={edit.simple} busy={busy} onSave={save} onCancel={() => {
+          setEdit(null);
+          spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
+        }} />
       </main>
     );
   }
@@ -343,6 +352,15 @@ export function FitnessHome() {
           }}
         />
       )}
+      {(prog || rows.length > 0 || all.length > 0) && <RowButton icon="dumbbell" title="Hareketler" sub="Numaralı liste · fotoğraf ve videolar" onClick={() => setLibOpen(true)} />}
+      <ExerciseLibrary
+        open={libOpen}
+        orgId={orgId}
+        onClose={() => {
+          setLibOpen(false);
+          spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
+        }}
+      />
       {(week.planned > 0 || recs.length > 0 || history.length > 0) && <RowButton icon="trend" title="Gelişim ve geçmiş" sub="Seri, en iyi değerler, bu ay" open={more} onClick={() => setMore(!more)} />}
       {more && (
         <>

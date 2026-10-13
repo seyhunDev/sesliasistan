@@ -103,7 +103,9 @@ export const labelOf = (list, k) => list.find(([x]) => x === k)?.[1] || "";
 
 // ---- Program ----
 export function cleanItem(it = {}) {
-  const ex = exById(it.ex) || findExercise(it.ex) || findExercise(it.name);
+  // ex: "" açıkça boş ve ad varsa kulübün kendi hareketidir (kütüphanede "c:ad"); listedeki benzer harekete çevrilmez
+  const own = it.ex === "" && !!String(it.name || "").trim();
+  const ex = own ? null : exById(it.ex) || findExercise(it.ex) || findExercise(it.name);
   const name = S(it.name || ex?.name, 60);
   if (!name) return null;
   const kind = ex?.kind || (num(it.sec, 1, 3600) ? "time" : num(it.min, 1, 300) && !num(it.reps, 1, 500) ? "cardio" : "reps");
