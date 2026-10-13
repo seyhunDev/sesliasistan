@@ -1,8 +1,8 @@
-Commit: 24d8604 · Fitness: sporcunun antrenmanında her hareketten önce nasıl yapılır ekranı ve düğmesi (#347)
-Zaman: 2026-10-13-1038 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38363743329
+Commit: c203b11 · Merge pull request #348 from seyhunDev/claude/project-thread-rnjfjk
+Zaman: 2026-10-13-1228 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38376387864
 
-TAM TEST · 13.10.2026 10:36:56
+TAM TEST · 13.10.2026 12:27:25
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
