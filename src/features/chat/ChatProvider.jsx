@@ -19,7 +19,7 @@ import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { GROUPS, GROUP_IDS, canTalk, inGroup, kindOf } from "@/lib/kinds";
+import { GROUPS, GROUP_IDS, canTalk, inGroup, kindOf, ownerOnly } from "@/lib/kinds";
 
 // Mesajlaşma: kişi kişiye (dm_<uid1>_<uid2>), gruplar ve türe göre sabit gruplar: Ekip (team), Aile (family), Sporcular (athletes).
 // Kim kiminle yazışır ve hangi sabit gruptadır: lib/kinds.js (kurallar da aynı).
@@ -140,13 +140,15 @@ export function ChatProvider({ children }) {
   }, [myGroups, myKind, fixed, people]);
   // Sohbet listesi: sabit gruplar her zaman var (belge henüz yoksa boş olarak); başlık ve karşı taraf hesaplanır
   const chats = useMemo(() => {
-    const all = [...groupIds.map((g) => fixed[g] || { id: g, type: "team", seq: 0, _ghost: true }), ...list.filter((c) => !GROUP_IDS.includes(c.id))];
+    // Sporcu: Sporcular grubu ve ana hesapla birebir sohbet dışında hiçbir sohbet görünmez (eski sohbetler de)
+    const mineOk = (c) => !ownerOnly(myKind) || (c.type === "dm" && (c.members || []).includes(orgId));
+    const all = [...groupIds.map((g) => fixed[g] || { id: g, type: "team", seq: 0, _ghost: true }), ...list.filter((c) => !GROUP_IDS.includes(c.id) && mineOk(c))];
     return all.map((c) => {
       const other = c.type === "dm" ? (c.members || []).find((m) => m !== uid) : null;
       const title = GROUPS[c.id] ? GROUPS[c.id].name : c.type === "dm" ? personName(other) : c.name || "Grup";
       return { ...c, other, title, unread: unreadOf(c, uid), mutedByMe: !!c.muted?.[uid] };
     });
-  }, [groupIds, fixed, list, uid, personName]);
+  }, [groupIds, fixed, list, uid, personName, myKind, orgId]);
 
   const unreadTotal = chats.reduce((n, c) => n + (c.unread && !c.mutedByMe ? 1 : 0), 0);
 

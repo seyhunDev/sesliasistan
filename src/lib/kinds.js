@@ -22,8 +22,12 @@ export const GROUP_IDS = Object.keys(GROUPS);
 export const inGroup = (gid, k) => k === "owner" || !!GROUPS[gid]?.has(k);
 
 // Birebir yazışma: ana hesap herkesle; çalışan çalışanla ve sporcu tarafıyla; aile aileyle; sporcu tarafı çalışanlarla
+// Sporcu yalnız ana hesapla birebir yazışır (ve Sporcular grubunda); grup kuramaz
+export const ownerOnly = (k) => k === "athlete";
+export const canGroup = (k) => !!k && !ownerOnly(k);
 export function canTalk(a, b) {
   if (a === "owner" || b === "owner") return true;
+  if (ownerOnly(a) || ownerOnly(b)) return false;
   if (a === "staff" && b === "staff") return true;
   if (a === "family" && b === "family") return true;
   if ((a === "staff" && isAthleteSide(b)) || (b === "staff" && isAthleteSide(a))) return true;

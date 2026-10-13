@@ -38,9 +38,12 @@ service cloud.firestore {
     function myKind() { return kindOfUser(request.auth.uid); }
     function athleteSide(k) { return k in ["athlete", "student", "parent"]; }
     // Birebir yazışma kimler arasında olabilir (lib/kinds.js canTalk ile aynı)
+    // Sporcu (athlete) yalnız ana hesapla
     function talkOk(a, b) {
-      return a == "owner" || b == "owner" || (a == "staff" && b == "staff") || (a == "family" && b == "family")
-          || (a == "staff" && athleteSide(b)) || (b == "staff" && athleteSide(a));
+      return a == "owner" || b == "owner"
+          || (a != "athlete" && b != "athlete"
+              && ((a == "staff" && b == "staff") || (a == "family" && b == "family")
+                  || (a == "staff" && athleteSide(b)) || (b == "staff" && athleteSide(a))));
     }
     function mine() { return request.auth.uid in resource.data.get("people", []); }
     function pay(d) { return d.get("payStatus", null); }
@@ -182,6 +185,7 @@ service cloud.firestore {
               && cid == "dm_" + request.resource.data.members[0] + "_" + request.resource.data.members[1]
               && talkOk(myKind(), kindOfUser(request.resource.data.members[0] == request.auth.uid ? request.resource.data.members[1] : request.resource.data.members[0])))
           || (request.resource.data.type == "group" && !isTeam() && !cid.matches("dm_.*")
+              && myKind() != "athlete"
               && request.auth.uid in request.resource.data.members
               && request.resource.data.members.size() <= 30
               && request.resource.data.createdBy == request.auth.uid
