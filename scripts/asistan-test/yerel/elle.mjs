@@ -1466,6 +1466,17 @@ group("Plan detay işlemleri")([
   ["ertele tek gün", { desc: "bitiş eklenmez", fn: () => JSON.stringify(PA.postponePatch({ date: "2026-10-06" }, 7)), ok: (r) => r === '{"date":"2026-10-13"}' }],
 ]);
 
+// Sporcu mesajlarda yalnız ana hesapla ve Sporcular grubunda (src/lib/kinds.js)
+const KD = await import("@/lib/kinds");
+group("Sporcu mesajları")([
+  ["sporcu ↔ ana hesap", F("yazışır", () => KD.canTalk("athlete", "owner") && KD.canTalk("owner", "athlete"))],
+  ["sporcu ↔ çalışan", F("yazışmaz", () => !KD.canTalk("athlete", "staff") && !KD.canTalk("staff", "athlete"))],
+  ["sporcu ↔ sporcu, veli", F("yazışmaz", () => !KD.canTalk("athlete", "athlete") && !KD.canTalk("athlete", "parent"))],
+  ["sporcu grubu", F("Sporcular'da var, Ekip'te yok", () => KD.inGroup("athletes", "athlete") && !KD.inGroup("team", "athlete"))],
+  ["grup kurma", F("sporcu kuramaz, çalışan kurar", () => !KD.canGroup("athlete") && KD.canGroup("staff") && KD.canGroup("owner"))],
+  ["çalışan ↔ veli", F("değişmedi", () => KD.canTalk("staff", "parent") && KD.canTalk("student", "staff"))],
+]);
+
 // Sesli arama 1. adım (src/lib/call.js): kimler arayabilir, durum yazıları, süre
 const CL = await import("@/lib/call");
 group("Sesli arama")([

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
+import { canGroup } from "@/lib/kinds";
 import { dmId, useChat } from "./ChatProvider";
 import { Avatar, isOnline, seenText } from "./bits";
 
@@ -12,7 +13,7 @@ import { Avatar, isOnline, seenText } from "./bits";
 export function NewChatSheet({ open, onClose }) {
   const router = useRouter();
   const toast = useToast();
-  const { people, uid, createGroup } = useChat();
+  const { people, uid, createGroup, myKind } = useChat();
   const [mode, setMode] = useState("pick"); // pick | group
   const [sel, setSel] = useState([]);
   const [name, setName] = useState("");
@@ -42,10 +43,12 @@ export function NewChatSheet({ open, onClose }) {
     <Sheet open={open} onClose={close} title={mode === "group" ? "Yeni grup" : "Yeni sohbet"}>
       {mode === "pick" ? (
         <div className="pb-2">
-          <button type="button" onClick={() => setMode("group")} className="flex w-full items-center gap-3 rounded-2xl bg-bg px-3.5 py-3 text-left active:scale-[.99]">
-            <Avatar icon="users" size="size-11" tone="bg-acc text-white" />
-            <b className="text-[0.9375rem] font-semibold">Yeni grup</b>
-          </button>
+          {canGroup(myKind) && (
+            <button type="button" onClick={() => setMode("group")} className="flex w-full items-center gap-3 rounded-2xl bg-bg px-3.5 py-3 text-left active:scale-[.99]">
+              <Avatar icon="users" size="size-11" tone="bg-acc text-white" />
+              <b className="text-[0.9375rem] font-semibold">Yeni grup</b>
+            </button>
+          )}
           <p className="mb-1.5 mt-4 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">KİŞİLER</p>
           {people.length ? (
             <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-bg">
