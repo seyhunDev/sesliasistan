@@ -56,3 +56,11 @@ export function attRemindText(plans, today) {
   const what = list.length > 1 ? `${list.length} antrenman` : [p?.title || "Antrenman", p?.time].filter(Boolean).join(" ");
   return { title: "Yoklama alınmadı", body: `Bugün: ${what} · Doldurmak için dokun`, tag: `att-remind-${today}`, url: `/athletes/attendance?gun=${today}` };
 }
+
+// Kulüp sitesinden girilen yoklama: sporcular okununca o güne yoklama yazılmışsa alındı sayılır (athletes/data.js)
+// athletes: [{ att: { 2026: { "10-13": "present" } } }]
+export function attTakenIn(athletes, date) {
+  const y = String(date || "").slice(0, 4);
+  const md = String(date || "").slice(5);
+  return !!date && (athletes || []).some((a) => a?.att?.[y]?.[md]);
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -36,6 +37,12 @@ export function OwnerHome() {
   const qr = useQuota("receipt");
   const inbox = useInbox();
   const setSheet = inbox.setOpen;
+  // Gidecek sayfası olmayan bildirime dokununca (/?bildirim=1) zil penceresi açılır, bildirimin tam metni orada
+  useEffect(() => {
+    if (!/[?&]bildirim=1/.test(window.location.search)) return;
+    setSheet(true);
+    window.history.replaceState(null, "", "/");
+  }, [setSheet]);
 
   const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
   const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });

@@ -29,12 +29,22 @@ async function sendAll(list, fn) {
 export async function POST(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
-  if (!adminReady() || !pushReady()) return NextResponse.json({ ok: false, skipped: "ayar eksik" });
+  if (!adminReady()) return NextResponse.json({ ok: false, skipped: "ayar eksik" });
   let body = {};
   try {
     body = await request.json();
   } catch {}
   const me = await profileOf(au.uid);
+
+  // ---- Bugünün yoklaması alındı: ana hesabın kaydına yazılır (attLast). Yoklama hatırlatması buna bakar (lib/attRemind.js).
+  //      Çalışan da yoklama alabildiği için sunucu yazar; kulüp sitesinden girilen yoklama sporcular okununca bildirilir ----
+  if (body?.event === "attTaken") {
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+    if (body.date !== today) return NextResponse.json({ ok: true, skipped: "bugün değil" });
+    await adminDb().collection("users").doc(me.orgId).set({ attLast: today }, { merge: true });
+    return NextResponse.json({ ok: true });
+  }
+  if (!pushReady()) return NextResponse.json({ ok: false, skipped: "ayar eksik" });
   // Gönderenin kendi cihazlarına hiç gitmez (aynı telefon başka bir hesapta da kayıtlı olabilir)
   const mine = new Set(me.devices);
   const sendTo = (u, payload) => sendPush(u, payload, mine);
@@ -120,7 +130,7 @@ export async function POST(request) {
       if (!to.length) continue;
       parents += to.length;
       const msg = remindPush(x, ym);
-      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `dues-${mid}-${ym}`, url: "/" }));
+      sent += await sendAll(to, (u) => sendTo(u, { ...msg, tag: `dues-${mid}-${ym}`, url: "/?bildirim=1" }));
       await ref.update({ [`duesSent.${ym}`]: new Date().toISOString() });
     }
     return NextResponse.json({ ok: true, sent, parents });

@@ -20,6 +20,7 @@ export const inboxDrop = (list, ids) => (ids ? (Array.isArray(list) ? list : [])
 // haftalık özet Takvim'e, doğum günü Doğum günleri'ne gider. Hâlâ yer yoksa "" (pencerede tam metin açılır).
 export function inboxLink(x) {
   const url = String(x?.url || "");
+  if (url.startsWith("/?bildirim")) return ""; // gidecek sayfası yok (ör. veliye aidat hatırlatması): tam metni açılır
   if (url && url !== "/") return url;
   const tag = String(x?.tag || "");
   if (/^(summary|evening|wind)-/.test(tag)) return "/plans";

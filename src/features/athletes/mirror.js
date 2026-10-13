@@ -7,6 +7,7 @@
 import { arrayUnion, deleteField, doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { todayStr } from "@/lib/utils/format";
+import { markAttTaken } from "./attTaken";
 
 const ref = (orgId, mid) => doc(db, "orgs", orgId, "athleteAtt", mid);
 
@@ -33,6 +34,7 @@ export async function mirrorChanges(orgId, members, date, changes) {
     .map(([id, v]) => setDoc(ref(orgId, linked.get(id).uid), { att: { [date]: v || deleteField() }, updatedAt: new Date().toISOString() }, { merge: true }));
   // Bugünün yoklaması alındı: sunucu kulüp yoklamasını okuyamadığı için yoklama hatırlatması buna bakar (lib/attRemind.js)
   const uid = auth.currentUser?.uid;
-  if (uid && date === todayStr()) jobs.push(setDoc(doc(db, "users", uid), { attLast: date }, { merge: true }));
+  // Ana hesap kendi kaydına hemen yazar (internetsiz de); çalışan aldıysa sunucu ana hesaba yazar (attTaken.js)
+  if (uid && date === todayStr()) jobs.push(setDoc(doc(db, "users", uid), { attLast: date }, { merge: true }), markAttTaken(date));
   await Promise.allSettled(jobs);
 }
