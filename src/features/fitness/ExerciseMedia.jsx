@@ -101,7 +101,42 @@ function Big({ orgId, m, onOpen }) {
   );
 }
 
-export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", big = false }) {
+// Antrenman ekranı: hareketin kendi videosu YouTube kartı gibi küçük kart (ilk kare + ▶ "Videoyu izle"),
+// dokununca kartın yerinde oynar (sesli, oynatma düğmeleriyle), "Küçült" ile kart olur.
+export function MediaVideo({ media = [], className = "" }) {
+  const { profile } = useAuth();
+  const m = (media || []).find((x) => !x.stock && x.kind === "video");
+  const { url, err, fail } = useBlobUrl(profile?.orgId, m);
+  const [play, setPlay] = useState(false);
+  if (!m || err) return null;
+  if (play && url) {
+    return (
+      <div className={className}>
+        <video src={url} controls autoPlay playsInline loop onError={fail} className="aspect-video w-full rounded-3xl bg-black object-contain" />
+        <button type="button" onClick={() => setPlay(false)} className="mt-1.5 flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
+          <Icon name="x" className="size-4" />
+          Küçült
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" onClick={() => url && setPlay(true)} className={`flex w-full items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-sm active:scale-[.99] ${className}`}>
+      <span className="relative block h-14 w-24 shrink-0 overflow-hidden rounded-xl bg-black">
+        {url ? <video src={`${url}#t=0.1`} muted playsInline preload="metadata" onError={fail} className="size-full object-cover" /> : <span className="shimmer block size-full" />}
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="grid size-7 place-items-center rounded-full bg-black/60 text-white">
+            <Icon name="video" className="size-3.5" />
+          </span>
+        </span>
+      </span>
+      <span className="text-[0.9375rem] font-semibold text-acc">{url ? "Videoyu izle" : "Video hazırlanıyor…"}</span>
+    </button>
+  );
+}
+
+// noVideo: ilk video MediaVideo ile ayrıca gösterildiği için küçük karelerde tekrar edilmez
+export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", big = false, noVideo = false }) {
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const [open, setOpen] = useState(null);
@@ -110,7 +145,9 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
   const photoRef = useRef(null);
   const videoRef = useRef(null);
   const added = useRef(new Set());
-  const list = (media || []).filter((m) => !m.stock);
+  const all = (media || []).filter((m) => !m.stock);
+  const firstVideo = noVideo && !edit ? all.find((m) => m.kind === "video") : null;
+  const list = firstVideo ? all.filter((m) => m !== firstVideo) : all;
   if (!edit && !list.length) return null;
 
   const pick = async (e) => {
@@ -124,7 +161,7 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
       setBusy("Yükleniyor…");
       const meta = await saveMedia(orgId, m, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`));
       added.current.add(meta.id);
-      onChange?.([...list, meta].slice(0, MEDIA_MAX));
+      onChange?.([...all, meta].slice(0, MEDIA_MAX));
     } catch (x) {
       setErr(/storage\/(unauthorized|unknown|retry|bucket|project)/.test(x?.code || "") ? "Yüklenemedi: Firebase Storage açık değil ya da kuralı yayınlanmadı." : x?.message || "Eklenemedi");
     } finally {
@@ -133,7 +170,7 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
   };
   // Bu açılışta eklenen dosya hemen silinir; önceden kaydedilmiş olan eski planlarda da kullanıldığı için durur
   const drop = (m) => {
-    onChange?.(list.filter((x) => x.id !== m.id));
+    onChange?.(all.filter((x) => x.id !== m.id));
     if (added.current.has(m.id)) dropMedia(orgId, m);
   };
 
