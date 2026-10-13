@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { exById } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, cleanItem, itemLine } from "@/lib/fitness/model";
+import { DOWS, DOW_LONG, GOALS, SPORTS, cleanItem, itemLine, labelOf, toName } from "@/lib/fitness/model";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { YtEdit } from "./YtVideo";
@@ -283,6 +283,44 @@ function Ready({ p, busy, onStart, onAll, onCancel }) {
   );
 }
 
+// Sporcu için hazırlanan program: koyu özet (kime, yaşı, sporu, hedefi, gün/hafta, başlangıç), günler tek tek
+// (dokununca o gün düzenlenir) ve tek düğme: kaydeder, sporcunun takvimine ekler, sporcuya bildirim gider.
+function AthleteReady({ p, busy, onStart, onDay, onCancel }) {
+  const start = p.start ? new Date(`${p.start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" }) : "";
+  return (
+    <div>
+      <section className="mt-2 rounded-[1.5rem] bg-deep px-5 py-4 text-white">
+        <h3 className="text-[1.375rem] font-bold leading-tight tracking-tight">{p.forName}</h3>
+        <p className="mt-1 text-[0.875rem] text-white/80">{[p.forAge ? `${p.forAge} yaş` : "", p.sport ? labelOf(SPORTS, p.sport) : "", p.goal ? labelOf(GOALS, p.goal) : ""].filter(Boolean).join(" · ")}</p>
+        <p className="mt-1 text-[0.875rem] text-white/80">{[`Haftada ${p.days.length} gün`, `${n(p.weeks)} hafta`, start && `başlangıç ${start}`].filter(Boolean).join(" · ")}</p>
+      </section>
+      <ul className={`${card} mt-3 divide-y divide-line px-4`}>
+        {p.days.map((d) => (
+          <li key={d.dow}>
+            <button type="button" onClick={() => onDay(d.dow)} className="flex w-full items-center gap-2 py-3.5 text-left">
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">
+                <b className="font-semibold">{[DOWS[d.dow], d.time].filter(Boolean).join(" ")}</b> · {d.name}
+              </span>
+              <small className="shrink-0 text-[0.8125rem] text-mut">{(d.items || []).length} hareket</small>
+              <Icon name="chev" className="size-4 shrink-0 text-mut" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 px-1 text-[0.8125rem] text-mut">Bir güne dokununca hareketleri değiştirirsin.</p>
+      <div className="mt-5 flex flex-col gap-1">
+        <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={onStart}>
+          <Icon name="check" className="size-5" />
+          {`Kaydet ve ${toName(p.forName)} gönder`}
+        </Button>
+        <button type="button" disabled={!!busy} onClick={onCancel} className="h-10 text-[0.875rem] font-semibold text-mut">
+          Vazgeç
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // prog: { id?, title, weeks, start, days, note, plansAt }. onSave(prog, addPlans)
 export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
   const [p, setP] = useState(prog);
@@ -304,6 +342,7 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
   const avgMin = p.days.length ? Math.round(p.days.reduce((s, d) => s + n(d.min), 0) / p.days.length) : 0;
   const total = p.days.length * n(p.weeks);
   const onCal = !!p.plansAt;
+  if (!all && p.for) return <AthleteReady p={p} busy={busy} onStart={() => onSave(p, true)} onDay={(dow) => (setSel(dow), setAll(true))} onCancel={onCancel} />;
   if (!all) return <Ready p={p} busy={busy} onStart={() => onSave(p, true)} onAll={() => setAll(true)} onCancel={onCancel} />;
   return (
     <div>
