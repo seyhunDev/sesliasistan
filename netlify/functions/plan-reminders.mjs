@@ -17,6 +17,7 @@ import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
+import { attRemindDue, attRemindText, sunsetHM } from "../../src/lib/attRemind.js";
 
 // Bildirim kutusuna yazar (ana sayfadaki "Bildirimler") ve simgedeki sayıyı ekler (lib/inbox)
 const withBadge = async (db, uid, msg) => JSON.stringify({ ...msg, badge: await recordInbox(db, uid, msg) });
@@ -25,7 +26,7 @@ export const config = { schedule: "*/5 * * * *" };
 
 // Okuma tasarrufu: bildirimle ilgili kullanıcılar her çalışmada tek sorguyla bir kez okunur (önceden 7 ayrı sorgu,
 // aynı kişi her birinde yeniden okunuyordu). Kulübün plan/görev sorguları da çalışma boyunca paylaşılır.
-const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt", "duesAt"];
+const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt", "duesAt", "attAt"];
 const hasAt = (d, k) => typeof d[k] === "string" && d[k] > "";
 async function notifyUsers(db) {
   const users = db.collection("users");
@@ -108,8 +109,9 @@ async function sendDueReminders() {
   const mails = await sendMailDigests(db, all).catch((e) => (console.error("[mail]", e.message), 0));
   const extras = await sendExtras(db, all, q).catch((e) => (console.error("[extras]", e.message), 0));
   const dues = await sendDuesRemind(db, all).catch((e) => (console.error("[aidat hatırlatma]", e.message), 0));
-  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat`);
-  return new Response(`ok ${sent} ${summaries} ${mails} ${extras} ${dues}`);
+  const att = await sendAttRemind(db, all, q).catch((e) => (console.error("[yoklama hatırlatma]", e.message), 0));
+  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama`);
+  return new Response(`ok ${sent} ${summaries} ${mails} ${extras} ${dues} ${att}`);
 }
 
 // Günlük özetler: sabah (o gün, istenirse yarın da) ve akşam (ertesi gün); her biri günde bir kez
@@ -262,6 +264,41 @@ async function sendDuesRemind(db, all) {
       );
     }
     await u.ref.update({ duesSent: ym });
+  }
+  return n;
+}
+
+// Yoklama hatırlatması (ana hesap; Ayarlar › Günlük özetler › Yoklama hatırlatması, users.attAt "on"): bugün antrenman varsa
+// ve bugünün yoklaması bu uygulamada girilmediyse (users.attLast, uygulama yazar) antrenman bitince, bitiş saati yoksa gün batımında
+// bir kez bildirim (lib/attRemind.js). Okuma: bugünün planları, diğer bildirimlerle paylaşılan sorgu.
+async function sendAttRemind(db, all, q) {
+  let n = 0;
+  for (const u of all.filter((x) => x.data().attAt === "on" && (x.data().role === "owner" || !x.data().orgId || x.data().orgId === x.id))) {
+    const d = u.data();
+    const subs = Object.entries(d.push || {});
+    if (!subs.length) continue;
+    const tz = d.reminders?.tz || "Europe/Istanbul";
+    const today = localNow(tz).date;
+    if (d.attRemindSent === today || d.attLast === today) continue;
+    const nowHM = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+    const org = db.collection("orgs").doc(u.id);
+    const snap = await q(`plans:${u.id}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14)));
+    const plans = snap.docs.map((x) => x.data());
+    const place = d.weatherPlace && Number.isFinite(+d.weatherPlace.lat) ? { lat: +d.weatherPlace.lat, lon: +d.weatherPlace.lon } : DIKILI;
+    if (!attRemindDue({ plans, today, nowHM, sunset: sunsetHM(today, place, tz), sent: d.attRemindSent, taken: d.attLast })) continue;
+    const msg = attRemindText(plans, today);
+    const payload = await withBadge(db, u.id, msg);
+    await Promise.all(
+      subs.map(async ([key, sub]) => {
+        try {
+          await sendDevice(sub, payload, { TTL: 4 * 3600 });
+          n++;
+        } catch (err) {
+          if (err.statusCode === 404 || err.statusCode === 410) await u.ref.update({ [`push.${key}`]: FieldValue.delete() });
+        }
+      }),
+    );
+    await u.ref.update({ attRemindSent: today });
   }
   return n;
 }

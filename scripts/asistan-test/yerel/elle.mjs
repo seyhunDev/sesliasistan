@@ -709,6 +709,29 @@ group("Aidat hatırlatması")([
   })],
 ]);
 
+// Yoklama hatırlatması (attRemind.js): antrenman bitince ya da gün batımında, yoklama girilmediyse bir kez
+const YH = await import("@/lib/attRemind");
+const YR = await import("@/lib/reminders");
+const AT = "2026-10-13";
+const APL = [{ title: "Optimist antrenmanı", date: AT, time: "16:00", durationMin: 90, cat: "Antrenman" }, { title: "Toplantı", date: AT, time: "19:00", durationMin: 60, cat: "Toplantı" }];
+const ASUN = YH.sunsetHM(AT, { lat: 39.0717, lon: 26.8886 });
+group("Yoklama hatırlatması")([
+  ["gün batımı", F("Dikili 13 Ekim ≈ 18:37, Haziran ≈ 20:40", () => /^18:3\d$/.test(ASUN) && /^20:[34]\d$/.test(YH.sunsetHM("2026-06-21", { lat: 39.0717, lon: 26.8886 })))],
+  ["bitiş saati", F("16:00 + 90 dk = 17:30; toplantı sayılmaz", () => YH.attRemindAt(APL, AT, ASUN) === "17:30")],
+  ["bitiş yok", F("saatsiz antrenman: gün batımı", () => YH.attRemindAt([{ title: "Antrenman", date: AT }], AT, "18:37") === "18:37")],
+  ["en geç biten", F("iki antrenmanda sonuncusu", () => YH.attRemindAt([...APL, { title: "Akşam idmanı", date: AT, time: "18:00", durationMin: 60 }], AT, ASUN) === "19:00")],
+  ["zamanı gelmedi", F("17:29'da gitmez", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "17:29", sunset: ASUN }) === "")],
+  ["zamanı geldi", F("17:30 sonrası gider", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "17:35", sunset: ASUN }) === "17:30")],
+  ["yoklama girildi", F("attLast bugün: gitmez", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "20:00", sunset: ASUN, taken: AT }) === "")],
+  ["bir kez", F("bugün gönderildiyse gitmez", () => YH.attRemindDue({ plans: APL, today: AT, nowHM: "20:00", sunset: ASUN, sent: AT }) === "")],
+  ["antrenman yok / iptal", F("gitmez", () => YH.attRemindDue({ plans: [APL[1], { ...APL[0], status: "cancelled" }], today: AT, nowHM: "22:00", sunset: ASUN }) === "")],
+  ["plan hatırlatması bağlantısı", F("dokununca o plan açılır", () => YR.reminderText({ id: "p1", title: "A", date: AT, time: "10:00" }, 60).url === "/?open=plan:p1")],
+  ["metin ve bağlantı", F("o günün yoklaması açılır", () => {
+    const m = YH.attRemindText(APL, AT);
+    return m.title === "Yoklama alınmadı" && /Optimist antrenmanı 16:00/.test(m.body) && m.url === `/athletes/attendance?gun=${AT}` && m.tag === `att-remind-${AT}`;
+  })],
+]);
+
 // Toplantı modu (lib/meeting/result.js): yapay zeka çıktısını temizleme, başlıklı özet, mesaj alıcısı
 const MR = await import("@/lib/meeting/result");
 const MPEOPLE = ["Ali Kaya", "Sanver Demir"];

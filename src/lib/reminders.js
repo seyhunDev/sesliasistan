@@ -50,5 +50,5 @@ export function dueReminders(plans, { lead, tz = DEFAULT_TZ, now = new Date(), w
 
 // Bildirim metni
 export function reminderText(plan, lead) {
-  return { ...reminderTextOf(plan, lead), tag: `plan-${plan.id}`, url: "/plans" };
+  return { ...reminderTextOf(plan, lead), tag: `plan-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
 }
