@@ -1,8 +1,8 @@
-Commit: a1ca1c8 · Fitness: sonradan eklenen video sporcuya gider, örnek fotoğraflar kalktı, hareket ekranında video ve tarif doğrudan (#356)
-Zaman: 2026-10-13-1528 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38397340957
+Commit: 307293e · Merge pull request #357 from seyhunDev/claude/project-thread-g3bpd3
+Zaman: 2026-10-13-1531 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38397696173
 
-TAM TEST · 13.10.2026 15:27:10
+TAM TEST · 13.10.2026 15:30:14
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 64 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
