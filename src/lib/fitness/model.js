@@ -129,7 +129,7 @@ export function cleanItem(it = {}) {
 export function linkMedia(text) {
   const url = String(text || "").trim();
   if (!/^https:\/\/[^\s]+$/i.test(url) || url.length > 1200) return null;
-  const kind = /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(url) ? "video" : "photo";
+  const kind = /\.(mp4|mov|webm|m4v|m3u8)(\?|#|$)/i.test(url) ? "video" : "photo";
   return { id: `lnk-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind, url, link: true };
 }
 // Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts, url }], en çok 3.

@@ -1894,3 +1894,16 @@ group("Fitness antrenman ekranı")([
   ["sonuç satırında erken geçilen", F("Plank … (2. set 0:18'de geçildi)", () => FMK.resLine({ items: [{ name: "Plank", kind: "time", sec: 30 }], res: { ex: [{ sets: [{ ok: true, sec: 30, took: 30, full: true }, { ok: true, sec: 30, took: 18 }] }] } }) === "Plank 2 × 30 sn (2. set 0:18'de geçildi)")],
   ["biten antrenman tablosu", F("set hapları, toplam set ve süre", () => { const r = FMK.resRows({ items: [{ name: "Plank", kind: "time", sec: 30 }, { name: "Squat", kind: "reps", reps: 10, sets: 2 }], res: { ex: [{ sets: [{ ok: true, sec: 30, took: 30, full: true }, { ok: true, sec: 30, took: 18 }] }, { sets: [{ ok: true, reps: 10, kg: 40 }, { ok: false }] }] } }); const [p, q] = r.rows; return p.line === "2 × 0:30" && p.sets[0].state === "full" && p.sets[1].text === "0:18 / 0:30" && q.line === "1 × 10 · 40 kg" && !q.sets.length && r.done === 3 && r.total === 4 && r.active === 48; })],
 ]);
+
+const PV = await import("@/lib/fitness/pageVideo");
+const PG = "https://www.muscleandstrength.com/exercises/hover.html";
+group("Fitness: başka sitedeki hareket videosu")([
+  ["gömülü YouTube", F("iframe embed → yt", () => PV.findPageVideo('<div><iframe src="https://www.youtube.com/embed/AbCdEfGhIjK?rel=0"></iframe></div>', PG)?.yt?.id === "AbCdEfGhIjK")],
+  ["sitenin kendi videosu", F("<video><source> göreli adres → tam https", () => PV.findPageVideo('<video poster="/p.jpg"><source src="/videos/hover.mp4" type="video/mp4"></video>', PG)?.video === "https://www.muscleandstrength.com/videos/hover.mp4")],
+  ["og:video", F("meta og:video mp4", () => PV.findPageVideo('<meta property="og:video" content="http://cdn.x.com/a/hover.mp4">', PG)?.video === "https://cdn.x.com/a/hover.mp4")],
+  ["JSON içindeki adres", F("kaçışlı \\/ yazımı", () => PV.findPageVideo('<script>var p={"file":"https:\\/\\/cdn.x.com\\/v\\/hover.m3u8"}</script>', PG)?.video === "https://cdn.x.com/v/hover.m3u8")],
+  ["önce gömülü oynatıcı", F("altbilgideki kanal bağlantısı seçilmez", () => PV.findPageVideo('<a href="https://www.youtube.com/watch?v=ZZZZZZZZZZZ">kanal</a><iframe data-src="https://www.youtube-nocookie.com/embed/AbCdEfGhIjK"></iframe>', PG)?.yt?.id === "AbCdEfGhIjK")],
+  ["video yoksa", F("null", () => PV.findPageVideo("<html><img src='/a.jpg'></html>", PG) === null)],
+  ["yerel ağ indirilmez", F("localhost, IP, iç ad reddedilir", () => !PV.publicPage("http://localhost/x") && !PV.publicPage("https://192.168.1.1/") && !PV.publicPage("https://a.internal/") && !!PV.publicPage(PG))],
+  ["dosya mı sayfa mı", F("mp4/jpg dosya, .html sayfa", () => PV.isFileLink("https://a.com/b.mp4") && PV.isFileLink("https://a.com/b.JPG?x=1") && !PV.isFileLink(PG))],
+]);
