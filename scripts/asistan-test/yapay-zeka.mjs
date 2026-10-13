@@ -37,7 +37,7 @@ const chatFocus = [
   "Ali Kök: Hazırlıyorum, 3 numaralı Optimist'in dümenine bakacağım.",
   "Sanver İmamoğulları: Ben 16:30'da iskelede olurum. Cumartesi için yedek yelken lazım, biri sipariş versin.",
 ].join("\n");
-const recordFocus = ["## AÇIK EKRAN", "Açık kayıt: Görev t:t2 | Römork lastiklerini kontrol et | son gün " + tom, "Varsayılan alıcı: Bu kaydın konuşması (kayıttaki kişiler görür)", "Kayıtta henüz mesaj yok."].join("\n");
+const recordFocus = ["## AÇIK EKRAN", "Açık kayıt: Görev t:t2 | Römork lastiklerini kontrol et | son gün " + tom].join("\n");
 
 // [söylenen, beklenen (açıklama), kontrol(r), bağlam]
 export const CASES = [
@@ -69,7 +69,6 @@ export const CASES = [
   ["bundan görev çıkar", "yedek yelken siparişi görevi", (r) => r.intent === "create" && /yelken/i.test(JSON.stringify(r.items)), chatFocus],
   ["tamam ben de 16:30'da orada olurum diye yaz", "Ekip'e mesaj (alıcı söylenmedi)", (r) => r.intent === "message" && r.send?.to === "Ekip", chatFocus],
   ["bu görevi tamamla", "açık kayıt t2 tamamlanır", (r) => r.intent === "action" && r.actions.some((a) => a.op === "complete_task" && a.id === "t2"), recordFocus],
-  ["buna lastik basıncını da kontrol edin yaz", "kaydın konuşmasına mesaj", (r) => r.intent === "message" && /kayd/i.test(r.send?.to || ""), recordFocus],
 ];
 
 // İnsan davranışları (tam testte: npm run test:hepsi): düzeltme, vazgeçme, "onu", yanlış ad, soru/komut, tekrar, uzun anlatım.
@@ -135,12 +134,12 @@ export default async function run(log, cases = CASES, { pause = 0, group = "" } 
     }
     if (pause && out.length) await new Promise((r) => setTimeout(r, pause)); // dakikalık token sınırı dolmasın
     const digest = [baseDigest, focus].filter(Boolean).join("\n\n");
-    const recipients = `## MESAJ ALICILARI\n${[...(focus === recordFocus ? ["Bu kaydın konuşması (kayıt)"] : []), ...contacts].join("\n")}`;
+    const recipients = `## MESAJ ALICILARI\n${contacts.join("\n")}`;
     const user = `${digest}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${hist ? historyBlock(hist) : "(yok)"}\n\n## KULLANICININ YENİ İSTEĞİ (Seyhun)\n"""\n${say}\n"""`;
     const t0 = Date.now();
     let row;
     try {
-      const r = parseAssistant(await ask(provider, user), people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")).concat(focus === recordFocus ? ["Bu kaydın konuşması"] : []), say);
+      const r = parseAssistant(await ask(provider, user), people, contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, "")), say);
       const pass = !!ok(r);
       const what = [r.intent, r.navigate && `sayfa=${r.navigate}`, r.openChat && `sohbet=${r.openChat}`, r.send && `mesaj→${r.send.to}: ${r.send.text}`, r.items.length && `kayıt=${r.items.map((i) => `${i.type}:${i.title}${i.time ? " " + i.time : ""}`).join(", ")}`, r.actions.length && `işlem=${r.actions.map((a) => `${a.op}:${a.id}`).join(", ")}`].filter(Boolean).join(" · ");
       const g = group || (focus ? (focus === chatFocus ? "Yapay zeka · sohbet bağlamı" : "Yapay zeka · kayıt bağlamı") : hist ? "Yapay zeka · konuşma geçmişi" : "Yapay zeka");

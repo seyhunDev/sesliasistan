@@ -10,7 +10,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
 import { cashOutFor, dropCashFor, setCashFor } from "@/features/dues/duesData";
-import { isNewFor, lockedFor, peopleFor, unseenNotes } from "@/lib/people";
+import { isNewFor, lockedFor, peopleFor } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
 import { seriesDates } from "@/lib/repeat";
@@ -387,27 +387,6 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
-  // Kayda mesaj yazar (replies.{uid} listesine): atanan kişi ya da ana hesap. İlgililere bildirim gider.
-  const addReply = useCallback(
-    async (kind, id, text) => {
-      const t = String(text || "").trim().slice(0, 1000);
-      if (!t) return;
-      const k = KEYS[kind];
-      const u = me.current.uid;
-      const rec = cur.current[k]?.find((x) => x.id === id);
-      if (!rec) return;
-      const list = [...(rec.replies?.[u] || []), { at: new Date().toISOString(), text: t }].slice(-50);
-      setData((p) => ({ ...p, [k]: p[k].map((x) => (x.id === id ? { ...x, replies: { ...(x.replies || {}), [u]: list } } : x)) }));
-      try {
-        await updateDoc(doc(db, "orgs", getOrgId(), k, id), { [`replies.${u}`]: list });
-        notifyEvent(kind, id, "reply");
-      } catch (e) {
-        fail(e, "Mesaj gönderme");
-      }
-    },
-    [getOrgId, fail],
-  );
-
   const toggleTask = useCallback(
     async (id) => {
       const target = cur.current.tasks.find((t) => t.id === id);
@@ -563,8 +542,6 @@ export function DataProvider({ children }) {
       const patch = {};
       // Başkasının eklediği kayıt ilk kez açıldı: görüldü (ve iletildi)
       if (rec.createdByUid && rec.createdByUid !== u && !rec.ack?.[u]?.r) Object.assign(patch, { [`ack.${u}.r`]: now, ...(rec.ack?.[u]?.d ? {} : { [`ack.${u}.d`]: now }) });
-      // Başkalarının yeni mesajları görüldü (ana sayfadaki "Yenilikler" kartından düşer)
-      if (unseenNotes(rec, u).length) patch[`ack.${u}.n`] = now;
       if (!Object.keys(patch).length) return;
       try {
         updateDoc(doc(db, "orgs", getOrgId(), k, id), patch).catch(() => {});
@@ -984,7 +961,7 @@ export function DataProvider({ children }) {
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
         saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, addReply, isLocked,
+        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked,
       }}
     >
       {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}

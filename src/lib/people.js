@@ -21,16 +21,10 @@ export function whoText(rec, myUid, nameOf) {
 export const doersOf = (rec, myUid) => [...new Set([...assigneesOf(rec), rec?.createdByUid])].filter((u) => u && u !== myUid);
 
 // ---- Atanan kişinin sınırları ----
-// Çalışan, başkasının (ana hesabın) eklediği kaydı değiştiremez/silemez: yalnızca kendisi için "tamamladım" der ve not ekler.
-// rec.doneBy = { [uid]: zaman }, rec.replies = { [uid]: [{ at, text }] }
+// Çalışan, başkasının (ana hesabın) eklediği kaydı değiştiremez/silemez: yalnızca kendisi için "tamamladım" der.
+// rec.doneBy = { [uid]: zaman }. Kayıtlarda mesajlaşma yok (2026-10-13); eski rec.replies verisi Firestore'da kalır.
 export const lockedFor = (rec, uid, isStaff) => !!(isStaff && rec?.createdByUid && rec.createdByUid !== uid);
 export const doneAtBy = (rec, uid) => rec?.doneBy?.[uid] || null;
-// Tüm notlar (eskiden yeniye): [{ uid, at, text }]
-export const repliesOf = (rec) =>
-  Object.entries(rec?.replies || {})
-    .flatMap(([uid, list]) => (Array.isArray(list) ? list : []).map((r) => ({ uid, at: r.at, text: r.text })))
-    .sort((a, b) => String(a.at).localeCompare(String(b.at)));
-
 // ---- İletildi / görüldü / tamamladı ----
 // rec.ack = { [uid]: { s: gönderildi (bildirim), d: iletildi (telefona ulaştı / uygulamada göründü), r: görüldü (açtı) } }
 export function ackState(rec, uid) {
@@ -54,17 +48,4 @@ export function isNewFor(rec, uid) {
   if (rec.ack?.[uid]?.r) return false;
   const t = Date.parse(rec.createdAt || "");
   return !t || Date.now() - t < 14 * 864e5;
-}
-
-// Bu kişinin henüz görmediği notlar: başkalarının yazdığı, bu kişinin son bakışından (ack.{uid}.n) sonra, son 14 günde.
-// Kişi kaydı ilk kez açmadıysa (yeni kayıt) de sayılır. En eskiden en yeniye.
-export function unseenNotes(rec, uid) {
-  if (!rec || !uid) return [];
-  const seen = rec.ack?.[uid]?.n || "";
-  const since = new Date(Date.now() - 14 * 864e5).toISOString();
-  return Object.entries(rec.replies || {})
-    .filter(([by]) => by !== uid)
-    .flatMap(([by, list]) => (Array.isArray(list) ? list : []).map((r) => ({ by, at: String(r.at || ""), text: r.text })))
-    .filter((r) => r.at > seen && r.at > since)
-    .sort((a, b) => a.at.localeCompare(b.at));
 }

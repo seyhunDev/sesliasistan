@@ -4,8 +4,7 @@ import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo as sendPush } from "@/lib/server/pushSend";
 import { TLk, totalOf } from "@/lib/receipts";
 import { payLine } from "@/lib/invoices";
-import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText, replyText } from "@/lib/notifyText";
-import { unseenNotes } from "@/lib/people";
+import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText } from "@/lib/notifyText";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 import { absentPush } from "@/lib/absent";
 import { remindPush, unpaidRoster } from "@/lib/duesRemind";
@@ -24,8 +23,8 @@ async function sendAll(list, fn) {
 // Bildirim gönderir:
 //   { receiptId }            -> fiş ödendi: fişi ekleyen kişiye
 //   { kind, id } (atama)     -> kayıt sorumlularına "sana atandı" (her kişiye bir kez); gönderim zamanı ack.{uid}.s olarak yazılır
-//   { kind, id, event }      -> "reply": kayda not eklendi, "done": kişi tamamladı. Kaydı veren, ana hesap ve diğer kişilere
-//                               (ekleyen hariç). Metin istemciden değil kayıttan okunur; yalnızca son 2 dakikadaki not/tamamlama.
+//   { kind, id, event }      -> "done": kişi tamamladı ("reply" artık yok sayılır). Kaydı veren, ana hesap ve diğer kişilere
+//                               (ekleyen hariç). Metin istemciden değil kayıttan okunur; yalnızca son 2 dakikadaki tamamlama.
 export async function POST(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
@@ -166,7 +165,9 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent });
   }
 
-  if (COLS[body?.kind] && (body.event === "reply" || body.event === "done")) {
+  // Kayıtlarda mesajlaşma kalktı (2026-10-13): eski uygulamadan gelen "reply" bildirimi gönderilmez
+  if (COLS[body?.kind] && body.event === "reply") return NextResponse.json({ ok: true, skipped: "kayıtta mesaj yok" });
+  if (COLS[body?.kind] && body.event === "done") {
     const kind = body.kind;
     const ref = org.collection(COLS[kind]).doc(String(body.id || ""));
     const r = (await ref.get()).data();
@@ -174,29 +175,10 @@ export async function POST(request) {
     const involved = me.role === "owner" || r.createdByUid === au.uid || (r.people || []).includes(au.uid) || (r.assignees || []).includes(au.uid);
     if (!involved) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
     const fresh = (at) => at && Date.now() - Date.parse(at) < 2 * 60e3;
-    let msg;
-    if (body.event === "reply") {
-      const last = (r.replies?.[au.uid] || []).at(-1);
-      if (!fresh(last?.at)) return NextResponse.json({ ok: true, skipped: "yeni not yok" });
-      msg = replyText({ kind, title: r.title, from: me.name, text: last.text });
-      // Rozet hesabı (pushSend unreadCount) eski kayıtlarda da yeni notu bulsun diye son not zamanı
-      await ref.update({ replyAt: last.at }).catch(() => {});
-    } else {
-      if (!fresh(r.doneBy?.[au.uid])) return NextResponse.json({ ok: true, skipped: "tamamlama yok" });
-      msg = doneText({ kind, title: r.title, from: me.name });
-    }
+    if (!fresh(r.doneBy?.[au.uid])) return NextResponse.json({ ok: true, skipped: "tamamlama yok" });
+    const msg = doneText({ kind, title: r.title, from: me.name });
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
-    const sent = await sendAll(to, async (u) => {
-      // Alıcı şu an bu kaydın konuşmasındaysa (uygulama açık, ekranda) telefona bildirim gönderilmez: mesaj zaten önünde
-      if (body.event === "reply") {
-        const v = (await db.collection("users").doc(u).get()).data()?.viewing;
-        if (v?.key === `${kind}-${ref.id}` && Date.now() - Date.parse(v.at || 0) < 75e3) return 0;
-      }
-      // Not: alıcının henüz görmediği not sayısı başlığa yazılır; aynı etiket telefonda öncekinin yerine geçer (yığılmaz)
-      const n = body.event === "reply" ? Math.max(1, unseenNotes(r, u).length) : 1;
-      const m = n > 1 ? replyText({ kind, title: r.title, from: me.name, text: (r.replies?.[au.uid] || []).at(-1)?.text, n }) : msg;
-      return sendTo(u, { ...m, tag: `${body.event}-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` });
-    });
+    const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `done-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` }));
     return NextResponse.json({ ok: true, sent });
   }
 
