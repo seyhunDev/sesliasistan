@@ -1617,6 +1617,20 @@ group("Fitness")([
       t.includes("Pazartesi 07:00 · Üst vücut (45 dk)") && t.includes("2. Şınav — 3 × 12") && t.includes("3 × 10 · 12 kg") && t.includes("Plank — 3 × 30 sn") && !t.includes("undefined") &&
       FM2.programText({ ...PROG }).startsWith("3 günlük");
   })],
+  ["devam ettir (seviye)", F("her seviye tekrara +2, en çok 5 seviye; süreli/kardiyo aynı; kimlik silinir", () => {
+    const src = { ...PROG, id: "p1", notifiedAt: 1, plansAt: 2, active: true, for: "u1" };
+    const a = FM2.levelUp(src, 1), c = FM2.levelUp(src, 3), z = FM2.levelUp(src, 9);
+    const r0 = PROG.days[0].items.find((i) => i.kind === "reps");
+    const r = (x) => x.days[0].items.find((i) => i.kind === "reps").reps;
+    return r(a) === r0.reps + 2 && r(c) === r0.reps + 6 && r(z) === r0.reps + 10 && FM2.LEVEL_MAX === 5 &&
+      a.days[1].items[1].sec === 30 && a.days[2].items[0].min === 20 && !a.id && !a.notifiedAt && !a.plansAt && a.for === "u1" && r(src) === r0.reps;
+  })],
+  ["başka sporcuya ver", F("kopya yeni sporcuya, yaş doğum tarihinden, başlangıç seçilen; bitiş tarihi", () => {
+    const src = { ...PROG, id: "p1", notifiedAt: 1, for: "u1", forName: "Ali Kaya" };
+    const k = FM2.copyFor(src, { uid: "u2", name: "Zeynep Demir", birth: "2014-03-01" }, "2026-10-20", "2026-10-15");
+    return !k.id && !k.notifiedAt && k.for === "u2" && k.forName === "Zeynep Demir" && k.forAge === 12 && k.start === "2026-10-20" &&
+      k.days.length === PROG.days.length && k.days[0].items !== src.days[0].items && FM2.progEnd({ start: "2026-10-12", weeks: 2 }) === "2026-10-26" && FM2.progEnd({}) === "";
+  })],
   ["sporcuya gönder (ad eki)", F("Ali'ye, Zeynep'e, Mete'ye, Efe'ye, Umut'a", () => ["Ali Kaya", "Zeynep Demir", "Mete", "Efe Öz", "Umut"].map(FM2.toName).join(",") === "Ali'ye,Zeynep'e,Mete'ye,Efe'ye,Umut'a")],
   ["program temizliği", F("aynı gün bir kez, saat 07:00, koşu dakika, adsız hareket atılır", () => PROG.days.length === 3 && PROG.days[0].time === "07:00" && PROG.days[2].items.length === 1 && PROG.days[2].items[0].kind === "cardio" && PROG.days[2].items[0].min === 20 && PROG.days[1].items[1].sec === 30)],
   ["takvim günleri", F("2 hafta × 3 gün = 6 antrenman, ilki Pzt 12 Ekim", () => { const s = FM2.sessionsOf(PROG); return s.length === 6 && s[0].date === "2026-10-12" && s[1].date === "2026-10-14" && s[5].date === "2026-10-23" && s[5].w === 2; })],
