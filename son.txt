@@ -1,8 +1,8 @@
-Commit: 6c5298f · Fitness: hareketlere örnek fotoğraf ve Türkçe tarif (#350)
-Zaman: 2026-10-13-1419 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38389236849
+Commit: 96aeddd · Sporcu ve öğrencide asistan, fitness mesaj alanı ve ders programında Söyle ya da yaz kaldırıldı (#351)
+Zaman: 2026-10-13-1436 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38391146253
 
-TAM TEST · 13.10.2026 14:18:17
+TAM TEST · 13.10.2026 14:34:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
