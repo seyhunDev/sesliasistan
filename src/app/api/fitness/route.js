@@ -131,12 +131,18 @@ async function handle(request) {
     body?.stats ? `Özet: ${S(body.stats, 600)}` : "",
     `Hareket listesi (id: ad):\n${exerciseCatalog()}`,
     `Kullanıcının söylediği:\n"""\n${text}\n"""`,
+    body?.want === "program" ? 'Bu istek "Program hazırla" formundan geldi: op MUTLAKA "program" olsun, soru sorma. Eksik bilgi (boy, kilo, yaş, seviye, ekipman) için makul varsayım yap ve note içinde kısaca söyle.' : "",
   ].filter(Boolean).join("\n\n");
 
   try {
     const t0 = Date.now();
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user, schema: SCHEMA, maxTokens: 6000, timeoutMs: 25000 });
-    const op = ["program", "log", "profile", "answer"].includes(raw?.op) ? raw.op : "answer";
+    let op = ["program", "log", "profile", "answer"].includes(raw?.op) ? raw.op : "answer";
+    // Formdan gelen istekte program şart: program geldiyse kabul, gelmediyse açık hata
+    if (body?.want === "program") {
+      if (raw?.program?.days?.length) op = "program";
+      else return bad(`Program hazırlanamadı: ${S(raw?.message, 200) || "yapay zeka program döndürmedi"}. Tekrar dene.`, 502);
+    }
     const out = { op, message: S(raw?.message, 400) };
     if (raw?.profile) out.profile = cleanProfile(raw.profile);
     if (op === "program") {

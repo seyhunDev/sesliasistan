@@ -234,12 +234,9 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // Program hazırla: 2 kısa soru (Hedef › Haftan). Gün sayısı, saat dilimi ve yer seçilir; gerisi varsayılanla
 // (günler gün sayısına göre, 45 dk, 4 hafta, bugün başlar, seviye profilden). Ayrıntılar kapalı "Ayrıntıları ayarla"da.
 // Sonunda yapay zekaya giden cümle ya da boş program. Serbest yazı kutusu yok (tek asistan kuralı).
-const STEPS = ["Hedef", "Haftan"];
 const DAY_SETS = { 2: [2, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
 // athletes: [{ uid, name }] (yalnız ana hesapta, hesabı olan sporcular); forUid: sporcunun sayfasından açıldıysa seçili sporcu
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal, athletes = [], forUid = "" }) {
-  // Tanıtımda hedef kartından gelindiyse hedef seçili, doğrudan 2. soru
-  const [step, setStep] = useState(goal ? 1 : 0);
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal, athletes = [], forUid = "", error = "" }) {
   const [days, setDays] = useState([1, 3, 5]);
   const [slot, setSlot] = useState("sabah");
   const [time, setTime] = useState("07:00");
@@ -308,175 +305,103 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
       .filter(Boolean)
       .join(" ");
   const pre = { days: sorted, time, weeks, min, start, ...(who ? { for: who, forName: whoName } : {}) };
-  const last = step === STEPS.length - 1;
+  // Eksik seçim: düğmenin üstünde yazar (önceden düğme yalnız soluk kalıyordu)
+  const missing = !sorted.length ? "En az bir gün seç." : !f.goal ? "Hedef seç." : !f.place ? "Nerede çalışılacağını seç." : !time ? "Saati seç." : who && !f.age ? "Sporcunun yaşını seç." : "";
   const startText = start === todayStr() ? "bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
 
+  const chips = (list, value, onPick) => (
+    <div className="flex flex-wrap gap-2">
+      {list.map(([k, l]) => (
+        <button key={k} type="button" aria-pressed={value === k} onClick={() => onPick(k)} className={pill(value === k)}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Tek ekran: kimin için, (sporcuda yaş ve spor), hedef, kaç gün, ne zaman, nerede; ayrıntılar kapalı
   return (
     <Sheet open={open} onClose={onClose} title="Program hazırla">
-      {!goal && (
-        <div className="sticky top-0 z-10 -mx-5 bg-card px-5 pb-3">
-          <div className="flex gap-1.5">
-            {STEPS.map((s, i) => (
-              <button key={s} type="button" aria-label={s} onClick={() => i < step && setStep(i)} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? "bg-acc" : "bg-line"}`} />
-            ))}
-          </div>
-        </div>
+      {athletes.length > 0 && (
+        <Box title="Kimin için">
+          {chips([["", "Ben"], ...athletes.map((a) => [a.uid, a.name])], who, pickWho)}
+          {who && <small className="mt-2 block text-[0.75rem] text-mut">Kaydedince {whoName} bildirim alır. Adı yapay zekaya gönderilmez.</small>}
+        </Box>
       )}
-
-      {step === 0 && (
-        <>
-          {athletes.length > 0 && (
-            <Box title="Kimin için">
-              <div className="flex flex-wrap gap-2">
-                {[{ uid: "", name: "Ben" }, ...athletes].map((a) => {
-                  const on = who === a.uid;
-                  return (
-                    <button key={a.uid || "me"} type="button" aria-pressed={on} onClick={() => pickWho(a.uid)} className={`h-10 rounded-full px-4 text-[0.875rem] font-semibold transition active:scale-[.97] ${on ? "bg-acc text-white" : "bg-bg"}`}>
-                      {a.name}
-                    </button>
-                  );
-                })}
-              </div>
-              {who && <small className="mt-2 block text-[0.75rem] text-mut">Program {whoName} için hazırlanır, kaydedince ona bildirim gider. Adı yapay zekaya gönderilmez.</small>}
-            </Box>
-          )}
-          {who && (
-            <>
-              <Box title="Yaşı" note={ageSrc === "birth" ? "Doğum tarihinden" : f.age ? "" : "Doğum tarihi yok, grup seç"}>
-                <div className="flex items-center gap-3">
-                  <button type="button" aria-label="Azalt" onClick={() => (set("age", Math.max(6, (f.age || 12) - 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">−</button>
-                  <span className="min-w-16 text-center text-[1.5rem] font-bold tabular-nums">{f.age ? `${f.age} yaş` : "—"}</span>
-                  <button type="button" aria-label="Artır" onClick={() => (set("age", Math.min(60, (f.age || 11) + 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">+</button>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {AGE_GROUPS.map(([k, v]) => (
-                    <button key={k} type="button" aria-pressed={group === k} onClick={() => (set("age", v), setAgeSrc("group"))} className={pill(group === k)}>
-                      {k}
-                    </button>
-                  ))}
-                </div>
-              </Box>
-              <Box title="Sporu" note="Program bu spora göre">
-                <div className="flex flex-wrap gap-2">
-                  {SPORTS.map(([k, l]) => (
-                    <button key={k} type="button" aria-pressed={f.sport === k} onClick={() => set("sport", k)} className={pill(f.sport === k)}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </Box>
-            </>
-          )}
-          <Q title={who ? "Hedefi ne?" : "Hedefin ne?"} sub="Program buna göre kurulur." />
-          <div className="space-y-2">
-            {GOALS.map(([k, l]) => (
-              <Option key={k} on={f.goal === k} icon={GOAL_UI[k][0]} title={l} sub={GOAL_UI[k][1]} onClick={() => set("goal", k)} />
-            ))}
+      {who && (
+        <Box title="Yaşı ve sporu" note={ageSrc === "birth" ? "Yaş doğum tarihinden" : f.age ? "" : "Doğum tarihi yok, yaş seç"}>
+          <div className="flex items-center gap-3">
+            <button type="button" aria-label="Azalt" onClick={() => (set("age", Math.max(6, (f.age || 12) - 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">−</button>
+            <span className="min-w-16 text-center text-[1.375rem] font-bold tabular-nums">{f.age ? `${f.age} yaş` : "—"}</span>
+            <button type="button" aria-label="Artır" onClick={() => (set("age", Math.min(60, (f.age || 11) + 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">+</button>
           </div>
-        </>
+          {!f.age || ageSrc === "group" ? <div className="mt-3">{chips(AGE_GROUPS.map(([k]) => [k, k]), group, (k) => (set("age", AGE_GROUPS.find(([x]) => x === k)[1]), setAgeSrc("group")))}</div> : null}
+          <div className="mt-3">{chips(SPORTS, f.sport, (k) => set("sport", k))}</div>
+        </Box>
       )}
+      <Box title={who ? "Hedefi" : "Hedefin"}>{chips(GOALS, f.goal, (k) => set("goal", k))}</Box>
+      <Box title="Haftada kaç gün" note={sorted.map((d) => DOWS[d]).join(", ")}>
+        <Segment list={[2, 3, 4, 5]} value={sorted.length} onChange={(n) => setDays(DAY_SETS[n])} unit="gün" />
+      </Box>
+      <Box title="Ne zaman" note={time}>{chips(SLOTS.map(([k, l]) => [k, l]), slot, (k) => pickSlot(SLOTS.find(([x]) => x === k)))}</Box>
+      <Box title="Nerede">{chips(PLACES, f.place, (k) => set("place", k))}</Box>
 
-      {step === 1 && (
+      {/* Ayrıntılar: varsayılanlar yazılı, istenirse açılır */}
+      <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="mt-3 flex w-full items-center gap-2 rounded-2xl px-1 py-2 text-left">
+        <span className="min-w-0 flex-1">
+          <b className="block text-[0.875rem] font-semibold text-acc">Ayrıntıları ayarla</b>
+          {!more && <small className="block truncate text-[0.75rem] text-mut">{`${min} dk · ${weeks} hafta · ${startText} başlar · ${labelOf(LEVELS, f.level)}`}</small>}
+        </span>
+        <Icon name="chev" className={`size-4 shrink-0 text-acc transition-transform ${more ? "-rotate-90" : "rotate-90"}`} />
+      </button>
+      {more && (
         <>
-          <Q title="Haftan nasıl?" sub="Üç kısa seçim yeter, gerisini biz ayarlarız." />
-          <Box title="Haftada kaç gün">
-            <Segment list={[2, 3, 4, 5]} value={sorted.length} onChange={(n) => setDays(DAY_SETS[n])} unit="gün" />
-            <small className="mt-2 block text-[0.75rem] text-mut">{sorted.map((d) => DOWS[d]).join(", ")}</small>
-          </Box>
-          <Box title="Ne zaman">
-            <div className="grid grid-cols-3 gap-2">
-              {SLOTS.map(([k, l, ic, t]) => {
-                const on = slot === k;
+          <Box title="Günler" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
+            <div className="grid grid-cols-7 gap-1.5">
+              {DOWS.slice(1).map((d, i) => {
+                const on = days.includes(i + 1);
                 return (
-                  <button key={k} type="button" aria-pressed={on} onClick={() => pickSlot([k, l, ic, t])} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg"}`}>
-                    <Icon name={ic} className={`size-5 ${on ? "" : "text-acc"}`} />
-                    <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
+                  <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+                    {d}
                   </button>
                 );
               })}
             </div>
+            <label className="mt-2 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+              <span className="text-[0.875rem] text-mut">Saat</span>
+              <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+            </label>
           </Box>
-          <Box title="Nerede">
-            <div className="grid grid-cols-3 gap-2">
-              {PLACES.map(([k, l]) => {
-                const on = f.place === k;
-                return (
-                  <button key={k} type="button" aria-pressed={on} onClick={() => set("place", k)} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border-2 transition active:scale-[.97] ${on ? "border-acc bg-acc text-white" : "border-transparent bg-bg"}`}>
-                    <Icon name={PLACE_UI[k]} className={`size-5 ${on ? "" : "text-acc"}`} />
-                    <b className="text-[0.8125rem] font-semibold leading-tight">{l}</b>
-                  </button>
-                );
-              })}
-            </div>
+          <Box title="Süre">
+            <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Her antrenman</small>
+            <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
+            <small className="mb-1.5 mt-3 block text-[0.75rem] font-semibold text-mut">Program</small>
+            <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
+            <label className="mt-3 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+              <span className="text-[0.875rem] text-mut">Başlangıç</span>
+              <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+            </label>
           </Box>
-
-          {/* Ayrıntılar: varsayılanlar yazılı, istenirse açılır */}
-          <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className="mt-3 flex w-full items-center gap-2 rounded-2xl px-1 py-2 text-left">
-            <span className="min-w-0 flex-1">
-              <b className="block text-[0.875rem] font-semibold text-acc">Ayrıntıları ayarla</b>
-              {!more && <small className="block truncate text-[0.75rem] text-mut">{`${min} dk · ${weeks} hafta · ${startText} başlar · ${labelOf(LEVELS, f.level)}`}</small>}
-            </span>
-            <Icon name="chev" className={`size-4 shrink-0 text-acc transition-transform ${more ? "-rotate-90" : "rotate-90"}`} />
-          </button>
-          {more && (
-            <>
-              <Box title="Günler" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {DOWS.slice(1).map((d, i) => {
-                    const on = days.includes(i + 1);
-                    return (
-                      <button key={d} type="button" aria-pressed={on} onClick={() => setDays(on ? days.filter((x) => x !== i + 1) : [...days, i + 1])} className={`aspect-square rounded-full text-[0.8125rem] font-bold transition active:scale-90 ${on ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-                        {d}
-                      </button>
-                    );
-                  })}
-                </div>
-                <label className="mt-2 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
-                  <span className="text-[0.875rem] text-mut">Saat</span>
-                  <input type="time" value={time} onChange={(e) => (setTime(e.target.value), setSlot(""))} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
-                </label>
-              </Box>
-              <Box title="Süre">
-                <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Her antrenman</small>
-                <Segment list={[30, 45, 60, 90]} value={min} onChange={setMin} unit="dk" />
-                <small className="mb-1.5 mt-3 block text-[0.75rem] font-semibold text-mut">Program</small>
-                <Segment list={[4, 6, 8, 12]} value={weeks} onChange={setWeeks} unit="hafta" />
-                <label className="mt-3 flex h-11 items-center justify-between rounded-xl bg-bg px-3">
-                  <span className="text-[0.875rem] text-mut">Başlangıç</span>
-                  <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
-                </label>
-              </Box>
-              <ProfileFields f={f} set={set} withGoal={!!goal} withPlace={false} />
-            </>
-          )}
+          <ProfileFields f={f} set={set} withGoal={false} withPlace={false} />
         </>
       )}
 
-      {/* Alt düğmeler */}
+      {/* Alt düğmeler; eksik ya da hata burada açıkça yazar */}
       <div className="sticky bottom-0 -mx-5 mt-5 bg-card px-5 pt-3">
-        {last ? (
-          <div className="flex flex-col gap-1">
-            <Button loading={busy} disabled={!sorted.length} onClick={() => onAsk(text(), f, pre)}>
-              <Icon name="spark" className="size-5" />
-              {who ? `${whoName} için hazırla` : "Programımı hazırla"}
-            </Button>
-            <div className="flex items-center justify-between">
-              {!goal ? (
-                <button type="button" disabled={busy} onClick={() => setStep(0)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
-                  Geri
-                </button>
-              ) : <span />}
-              <button type="button" disabled={busy || !sorted.length} onClick={() => onBlank(pre, f)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
-                Kendim hazırlayacağım
-              </button>
-            </div>
-          </div>
-        ) : (
-          <Button onClick={() => setStep(1)}>
-            Devam
-            <Icon name="chev" className="size-4" />
-          </Button>
+        {(missing || error) && (
+          <p role="alert" className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-[0.8125rem] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            {missing || error}
+          </p>
         )}
+        <div className="flex flex-col gap-1">
+          <Button loading={busy} disabled={!!missing} onClick={() => onAsk(text(), f, pre)}>
+            <Icon name="spark" className="size-5" />
+            {who ? `${whoName} için hazırla` : "Programımı hazırla"}
+          </Button>
+          <button type="button" disabled={busy || !!missing} onClick={() => onBlank(pre, f)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
+            Kendim hazırlayacağım
+          </button>
+        </div>
       </div>
     </Sheet>
   );

@@ -44,6 +44,7 @@ export function FitnessHome() {
     return p ? { prog: fixStart(p), fresh: !p.id, k: 1 } : null;
   }); // { prog, fresh, k }
   const [busy, setBusy] = useState("");
+  const [askErr, setAskErr] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [newGoal, setNewGoal] = useState("");
   const [profOpen, setProfOpen] = useState(false);
@@ -108,6 +109,7 @@ export function FitnessHome() {
   const newFor = (id) => {
     setForUid(id);
     setNewGoal("");
+    setAskErr("");
     setAthOpen(false);
     setNewOpen(true);
   };
@@ -142,11 +144,12 @@ export function FitnessHome() {
 
   async function ask(text, f, pre) {
     setBusy("ask");
+    setAskErr("");
     try {
       // Sporcu için: senin profiline yazılmaz, sporcunun adı yapay zekaya gitmez
       const pf = pre.for ? f : await saveProfile(uid, f).catch(() => f);
       if (!pre.for) setFitProf(pf);
-      const r = await askFitness({ text, profile: pf });
+      const r = await askFitness({ text, profile: pf, want: "program" });
       if (!r.program) throw new Error(r.message || "Program hazırlanamadı");
       // Seçilenler kesin: gün ve saatler formdakiyle aynı olsun
       const days = r.program.days.map((d) => ({ ...d, time: d.time || pre.time, min: d.min || pre.min }));
@@ -154,7 +157,8 @@ export function FitnessHome() {
       const who = pre.for ? { for: pre.for, forName: pre.forName } : {};
       setEdit({ prog: fixStart({ ...r.program, ...who, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
     } catch (e) {
-      toast(e.message || "Program hazırlanamadı");
+      // Hata pencerede kalır (önceden yalnız kısa bildirimdi, kaçırılıyordu)
+      setAskErr(e.message || "Program hazırlanamadı, tekrar dene.");
     } finally {
       setBusy("");
     }
@@ -259,7 +263,7 @@ export function FitnessHome() {
             setNewOpen(true);
           }}
         />
-        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
+        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} error={askErr} />
       </main>
     );
   }
@@ -378,7 +382,7 @@ export function FitnessHome() {
           if ((await drop(pg)) !== false) setAth("");
         }}
       />
-      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
+      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} error={askErr} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </main>
   );
