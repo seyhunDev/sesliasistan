@@ -1,8 +1,8 @@
-Commit: 774e311 · Fitness: Program hazırla tek ekran, eksikler ve hata pencerede (#344)
-Zaman: 2026-10-13-0901 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38354276446
+Commit: 806e647 · Merge pull request #345 from seyhunDev/claude/project-thread-z1u6hu
+Zaman: 2026-10-13-0910 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38355053873
 
-TAM TEST · 13.10.2026 09:00:07
+TAM TEST · 13.10.2026 09:08:42
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 86 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
