@@ -12,7 +12,7 @@ function useBlobUrl(orgId, m) {
   const [url, setUrl] = useState("");
   const [err, setErr] = useState(false);
   useEffect(() => {
-    if (!m?.id || !orgId) return undefined;
+    if (!m?.id || (!orgId && !m.url)) return undefined;
     let u = "";
     let live = true;
     loadMedia(orgId, m)
@@ -108,7 +108,27 @@ export function MediaVideo({ media = [], className = "" }) {
   const m = (media || []).find((x) => !x.stock && x.kind === "video");
   const { url, err, fail } = useBlobUrl(profile?.orgId, m);
   const [play, setPlay] = useState(false);
-  if (!m || err) return null;
+  if (!m) return null;
+  // Açılamayan video sessizce kaybolmaz: sporcu ne olduğunu görür, adres varsa telefonun oynatıcısında açar
+  if (err) {
+    const href = url || m.url;
+    return (
+      <div className={`flex w-full items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ${className}`}>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-bg text-mut">
+          <Icon name="video" className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-mut">
+          <b className="block text-[0.9375rem] text-fg">Video burada oynatılamadı</b>
+          {/webm/i.test(m.type || "") ? "Bu video biçimi (WebM) iPhone'da açılmıyor." : /quicktime|mov/i.test(m.type || "") ? "Bu video biçimi (MOV) bu telefonda açılmıyor." : "Bağlantı ya da biçim sorunu olabilir."}
+        </span>
+        {href && (
+          <a href={href} target="_blank" rel="noreferrer" className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
+            Aç
+          </a>
+        )}
+      </div>
+    );
+  }
   if (play && url) {
     return (
       <div className={className}>
