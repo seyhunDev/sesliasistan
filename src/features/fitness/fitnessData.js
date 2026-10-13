@@ -125,8 +125,8 @@ const tzName = () => {
 export async function syncPlans(orgId, uid, prog, plans, by = {}) {
   const today = todayStr();
   const old = (plans || []).filter((p) => p.fit?.prog === prog.id && p.date >= today && !p.fit?.res?.st);
-  const keep = new Set((plans || []).filter((p) => p.fit?.prog === prog.id && p.date >= today && p.fit?.res?.st).map((p) => p.date));
-  const drafts = planDrafts(prog, today).filter((d) => !keep.has(d.date));
+  const kept = new Set((plans || []).filter((p) => p.fit?.prog === prog.id && p.date >= today && p.fit?.res?.st).map((p) => p.date));
+  const drafts = planDrafts(prog, today).filter((d) => !kept.has(d.date));
   const who = prog.for || uid;
   const now = new Date().toISOString();
   const tz = tzName();

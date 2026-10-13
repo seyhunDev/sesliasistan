@@ -1,10 +1,7 @@
-// Hareketlerin hazır fotoğrafı ve adım adım tarifi. Kullanıcı harekete kendi fotoğrafını ya da videosunu ekleyene kadar
-// bu örnek fotoğraf gösterilir (geçici). Fotoğraflar free-exercise-db'den (github.com/yuhonas/free-exercise-db,
-// kamu malı / Unlicense); her harekette iki kare: başlangıç ve bitiş. Sabit bir sürüme bağlıdır, adres değişmez.
-// Fotoğrafı olmayan hareketlerde (burpee, yoga…) yalnız tarif görünür.
-const BASE = "https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises";
+// Hareketlerin adım adım tarifi (sporcunun hareket ekranında video/fotoğrafın altında görünür).
+// Hazır örnek fotoğraflar kaldırıldı; her kaydın ilk alanı (eski fotoğraf klasörü adı) artık kullanılmaz.
 
-// id: [fotoğraf klasörü ya da "", [adımlar]]
+// id: [kullanılmaz, [adımlar]]
 const G = {
   pushup: ["Pushups", ["Eller omuz genişliğinde yere, ayak uçları geride; baştan topuğa gövde düz", "Dirsekleri hafif geriye bükerek göğsü yere yaklaştır", "Göğüs yere bir yumruk kalınca kollarla it, başa dön", "Bel çökmesin, kalça havaya kalkmasın"]],
   "knee-pushup": ["", ["Dizler yerde, eller omuz genişliğinde", "Dizden başa gövde düz olsun", "Göğsü yere yaklaştır, kollarla it", "Kolaylaşınca normal şınava geç"]],
@@ -106,12 +103,6 @@ const G = {
   "foam-roll": ["", ["Silindiri çalışacağın kasın altına koy", "Vücut ağırlığınla yavaşça ileri geri yuvarlan", "Gergin yerde birkaç saniye bekle", "Her kasa 30-60 saniye"]],
   yoga: ["", ["Mata geç, birkaç derin nefesle başla", "Hareketleri nefesle birlikte yavaşça yap", "Her duruşta birkaç nefes bekle", "Sırt üstü dinlenerek bitir"]],
 };
-
-// Hareketin hazır fotoğrafları: [başlangıç, bitiş] adresleri (yoksa [])
-export function stockPhotos(id) {
-  const dir = G[id]?.[0];
-  return dir ? [`${BASE}/${dir}/0.jpg`, `${BASE}/${dir}/1.jpg`] : [];
-}
 
 // Hareketin adım adım tarifi (yoksa [])
 export const guideSteps = (id) => G[id]?.[1] || [];

@@ -126,6 +126,9 @@ export function FitnessHome() {
   async function save(p, withPlans) {
     setBusy(withPlans ? "plans" : "save");
     try {
+      // Takvimde bu programın gelecek planları varsa onlar da her kayıtta yenilenir (video, hareket değişikliği sporcuya gitsin)
+      const onPlans = (plansFor(p) || []).some((x) => p.id && x.fit?.prog === p.id && x.date >= todayStr() && !x.fit?.res?.st);
+      if (onPlans) withPlans = true;
       const saved = await saveProgram(orgId, uid, { ...p, active: true });
       let r = null;
       if (withPlans) r = await syncPlans(orgId, uid, saved, plansFor(saved), { name: profile.name });
