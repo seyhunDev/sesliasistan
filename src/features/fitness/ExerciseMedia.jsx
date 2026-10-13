@@ -83,7 +83,24 @@ function Viewer({ orgId, m, onClose }) {
   );
 }
 
-export function ExerciseMedia({ media = [], edit, onChange, className = "" }) {
+// Büyük gösterim (sporcunun "Nasıl yapılır" ekranı): ilk dosya kenardan kenara, video sessiz ve tekrar ederek oynar
+function Big({ orgId, m, onOpen }) {
+  const { url, err } = useBlobUrl(orgId, m);
+  if (err) return null;
+  return (
+    <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="block aspect-[4/3] w-full overflow-hidden rounded-3xl bg-black/5">
+      {!url ? (
+        <span className="shimmer block size-full" />
+      ) : m.kind === "video" ? (
+        <video src={url} autoPlay loop muted playsInline className="size-full object-cover" />
+      ) : (
+        <img src={url} alt="" className="size-full object-cover" />
+      )}
+    </button>
+  );
+}
+
+export function ExerciseMedia({ media = [], edit, onChange, className = "", big = false }) {
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const [open, setOpen] = useState(null);
@@ -118,6 +135,23 @@ export function ExerciseMedia({ media = [], edit, onChange, className = "" }) {
     onChange?.(list.filter((x) => x.id !== m.id));
     if (added.current.has(m.id)) dropMedia(orgId, m);
   };
+
+  if (big && !edit) {
+    const [first, ...more] = list;
+    return (
+      <div className={className}>
+        <Big orgId={orgId} m={first} onOpen={setOpen} />
+        {more.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 pt-2">
+            {more.map((m) => (
+              <Thumb key={m.id} orgId={orgId} m={m} onOpen={setOpen} />
+            ))}
+          </div>
+        )}
+        {open && <Viewer orgId={orgId} m={open} onClose={() => setOpen(null)} />}
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
