@@ -1,8 +1,8 @@
-Commit: bfb29de · Fitness: hareket videosu doğrudan, ilk açılışta kendiliğinden oynar (#369)
-Zaman: 2026-10-13-1839 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38423738281
+Commit: c1db105 · Fitness: hareket videosu kendi oranında, siyah boşluk yok (#370)
+Zaman: 2026-10-13-1851 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38425382972
 
-TAM TEST · 13.10.2026 18:38:23
+TAM TEST · 13.10.2026 18:50:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
