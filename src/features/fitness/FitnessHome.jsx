@@ -246,8 +246,8 @@ export function FitnessHome() {
     );
   }
 
-  // Hiç programı ve fitness antrenmanı yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
-  if (mine && !mine.length && !all.length && !rows.length) {
+  // Hiç programı, fitness antrenmanı ve program verilecek sporcusu yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
+  if (mine && !mine.length && !all.length && !rows.length && !athletes.length) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
