@@ -1010,6 +1010,36 @@ const PMOV = [
 ];
 const SY = { name: "Seyhun Yıldız", account: "" };
 const MBX = await import("@/lib/mailBoard");
+// Garanti BBVA kart harcaması mailleri → ödeme bekleyen fiş (garanti.js). Gerçek Garanti mailiyle denenmedi; örnekler uydurma.
+const GA = await import("@/lib/garanti");
+const RCx = await import("@/lib/receipts");
+const GM1 = { id: "m1", from: "bilgilendirme@garantibbva.com.tr", at: "2026-10-13T11:30:00Z", subject: "Kartınızla işlem yapıldı", text: "Değerli Müşterimiz,\n1234 ile biten kartınızla 13.10.2026 tarihinde saat 14:22'de MIGROS DIKILI işyerinden 1.245,90 TL tutarında harcama yapılmıştır.\nİşlemi siz yapmadıysanız iptal etmek için 444 0 333." };
+const GM2 = { id: "m2", from: "garanti@garanti.com.tr", at: "2026-10-12T06:10:00Z", subject: "Harcama bildirimi", text: "İşlem Tarihi: 12.10.2026 09:05\nİşyeri: OPET DIKILI\nTutar: 850,00 TL\nKart No: 5400 **** **** 9876" };
+const GM3 = { id: "m3", from: "bilgilendirme@garantibbva.com.tr", subject: "İade bilgilendirmesi", text: "Kartınıza 50,00 TL iade yapılmıştır." };
+const GM4 = { id: "m4", from: "bilgilendirme@garantibbva.com.tr", subject: "Kartınızla harcama yapıldı", text: "Bonus kartınızla harcama yapıldı. Detaylar uygulamada." };
+const gio = () => {
+  const db = {};
+  return { db, get: async (p) => db[p] || null, set: async (p, f) => void (db[p] = f) };
+};
+group("Garanti kart harcaması (fiş)")([
+  ["cümle biçimi", F("işyeri, tutar, tarih, saat, kart", () => { const s = GA.spendOf(GM1).spend; return s.merchant === "MIGROS DIKILI" && s.amount === 124590 && s.date === "2026-10-13" && s.time === "14:22" && s.last4 === "1234"; })],
+  ["etiketli biçim", F("İşyeri: / Tutar: / Kart No", () => { const s = GA.spendOf(GM2).spend; return s.merchant === "OPET DIKILI" && s.amount === 85000 && s.last4 === "9876" && s.date === "2026-10-12"; })],
+  ["iade fiş olmaz", F("skip", () => !!GA.spendOf(GM3).skip)],
+  ["reklam fiş olmaz", F("harcama değil", () => GA.spendOf({ subject: "Yeni fırsatlar", text: "Bonus kampanyası seni bekliyor" }) === null)],
+  ["okunamayan harcama", F("yapay zekaya", () => GA.spendOf(GM4)?.ai === true)],
+  ["gönderen", F("garantibbva.com.tr ve garanti.com.tr, İş Bankası değil", () => GA.isGaranti(GM1) && GA.isGaranti(GM2) && !GA.isGaranti({ from: "bilgilendirme@ileti.isbank.com.tr" }))],
+  ["yapay zeka denetimi", F("mailde geçen tutar ve işyeri alınır", () => GA.fromAi({ spend: true, merchant: "Migros Dikili", amount: 1245.9, last4: "1234" }, GM1)?.amount === 124590)],
+  ["uydurma alınmaz", F("mailde olmayan işyeri ya da tutar", () => !GA.fromAi({ spend: true, merchant: "A101", amount: 1245.9 }, GM1) && !GA.fromAi({ spend: true, merchant: "Migros", amount: 99 }, GM1))],
+  ["fiş alanları", F("ödeme bekliyor, Kişisel, Kart, Market", () => { const r = GA.garantiReceipt(GA.spendOf(GM1).spend, GM1, "u1"); return r.payStatus === "pending" && r.scope === "personal" && r.pay === "Kart" && r.cat === "Market" && r.src === "garanti" && r.card === "1234" && RCx.totalOf(r) === 124590 && r.people[0] === "u1" && r.createdBy.name === "Garanti BBVA"; })],
+  ["kulüp kartı", F("users.cardScope'taki kart Kulüp gelir", () => GA.garantiReceipt(GA.spendOf(GM1).spend, GM1, "u1", { 1234: "club" }).scope === "club")],
+  ["mail tarihi", F("metinde tarih yoksa mailin İstanbul saati", () => { const r = GA.garantiReceipt({ merchant: "X", amount: 100, currency: "TL" }, GM1, "u1"); return r.date === "2026-10-13" && r.time === "14:30"; })],
+  ["çalıştırıcı", F("yalnız Garanti mailleri, aynı mail iki kez fiş olmaz", async () => { const io = gio(); const a = await GA.runGaranti(io, "u1", [GM1, GM2, GM3, { ...GM2, id: "x", from: "bilgilendirme@ileti.isbank.com.tr" }]); const b = await GA.runGaranti(io, "u1", [GM1]); return a.added.length === 2 && Object.keys(io.db).length === 2 && !!io.db["orgs/u1/receipts/g-m1"] && b === null; })],
+  ["yapay zeka yolu", F("okunamayan mail yapay zekayla fiş olur", async () => { const m = { id: "m5", from: "a@garantibbva.com.tr", subject: "Kartınızla harcama yapıldı", text: "Kartınızla 320,00 TL harcama yapıldı.\nMAVI JEANS IZMIR" }; const io = { ...gio(), ai: async () => ({ spend: true, merchant: "Mavi Jeans", amount: 320 }) }; const r = await GA.runGaranti(io, "u1", [m]); return r?.added[0]?.amount === 32000 && GA.spendOf(m).ai === true; })],
+  ["bildirim", F("tek harcama ve çok harcama", () => { const one = GA.garantiText({ added: [{ merchant: "MIGROS DIKILI", amount: 124590 }] }); const two = GA.garantiText({ added: [{ merchant: "A", amount: 100 }, { merchant: "B", amount: 200 }] }); return one.title === "Kart harcaması: MIGROS DIKILI" && /1\.245,90 TL · ödeme bekliyor/.test(one.body) && /2 kart harcaması/.test(two.title) && GA.garantiText(null) === null; })],
+  ["Hesaplar › Kişisel", F("bu ayın kişisel fişleri ve bekleyenler", () => { const r = RCx.personalReceipts([{ scope: "personal", date: "2026-10-13", totals: { gross: 1000 }, payStatus: "pending" }, { scope: "personal", date: "2026-10-01", totals: { gross: 500 }, payStatus: "paid" }, { date: "2026-10-02", totals: { gross: 900 } }, { scope: "personal", date: "2026-09-30", totals: { gross: 50 } }], "2026-10"); return r.n === 2 && r.sum === 1500 && r.wait === 1 && r.waitSum === 1000; })],
+  ["kategori", F("Opet yakıt, Starbucks yemek", () => GA.catGuess("OPET DIKILI") === "Yakıt" && GA.catGuess("STARBUCKS IZMIR") === "Yemek" && GA.catGuess("XYZ LTD") === "Diğer")],
+]);
+
 group("Gelen ödemeler (kişisel hesap)")([
   ["Türkçe harfsiz ad", F("SEYHUN YILDIZ = Seyhun Yıldız", () => PY.hasName("EFT SEYHUN YILDIZ", "Seyhun Yıldız") && !PY.hasName("EFT SEYHUN KAYA", "Seyhun Yıldız"))],
   ["yalnız gelen ve adı geçen", F("4 ödeme, giden ve başka ad yok", () => PY.payeeMoves(PMOV, SY).length === 4)],

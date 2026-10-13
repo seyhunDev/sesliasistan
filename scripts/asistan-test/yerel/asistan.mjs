@@ -228,6 +228,21 @@ group("Mesaj silme (sesle)")([
   ["son mesajımı sil", { desc: "yol: msgDelete", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgDelete" }],
 ]);
 
+// Fiş Kişisel ↔ Kulüp sesle (assistMore.js receiptScopeCommand; Garanti kart mailinden gelen fişler Kişisel başlar)
+const RSM = await import("@/lib/assistMore");
+const RSC = (desc, ok) => ({ desc, fn: (s) => RSM.receiptScopeCommand(s), ok });
+group("Fiş Kişisel / Kulüp (sesle)")([
+  ["son Garanti fişini kulübe al", RSC("son fiş, kulüp", (r) => r?.scope === "club" && r.last)],
+  ["Migros fişini kişisel yap", RSC("işyeri adıyla, kişisel", (r) => r?.scope === "personal" && r.q === "migros")],
+  ["F-0012 fişini kulüp fişi yap", RSC("fiş numarasıyla", (r) => r?.scope === "club" && r.no === 12)],
+  ["Opet fişi kulübe ait olsun", RSC("olsun", (r) => r?.scope === "club" && r.q === "opet")],
+  ["kişisel fiş var mı?", RSC("soru değil", (r) => r === null)],
+  ["fişleri aç", RSC("sayfa açma değil", (r) => r === null)],
+  ["F-0012 fişini ödendi yap", RSC("ödeme değil", (r) => r === null)],
+  ["son Garanti fişini kulübe al", { desc: "yol: receiptScope (ana hesap)", fn: (s) => routeOfMd(s, { owner: true }), ok: (r) => r === "receiptScope" }],
+  ["Migros fişini kişisel yap", { desc: "yol: receiptScope (ana hesap)", fn: (s) => routeOfMd(s, { owner: true }), ok: (r) => r === "receiptScope" }],
+]);
+
 
 // Etkinlik planı isteği (eventWords.js): kamp, balık, gezi, konser…
 const EW = await import("@/features/events/eventWords");

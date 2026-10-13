@@ -10,7 +10,7 @@ import { soon } from "@/lib/soon";
 import { loadMovementsRange, loadConv } from "@/features/dues/duesData";
 import { payeeOf, payeeAnswer, payeeMoves } from "@/lib/payee";
 import { withoutConv } from "@/lib/cashbook";
-import { receiptPayCommand, invoiceTaskCommand, duesCommand, monthYm, cashCommand, incomeCommand } from "@/lib/assistMore";
+import { receiptPayCommand, receiptScopeCommand, invoiceTaskCommand, duesCommand, monthYm, cashCommand, incomeCommand } from "@/lib/assistMore";
 import { totalTL } from "@/lib/receipts";
 import { money } from "@/lib/bankSheet";
 import { deleteInvoice, ensureTask } from "@/features/invoices/invoiceData";
@@ -164,12 +164,44 @@ export async function receiptPayCmd(ctx, s, viaVoice) {
       reply(`${list.length} fiş ödeme bekliyor. Fiş numarasıyla ya da kimin fişi olduğunu söyle (ör. “Ali'nin fişlerini ödedim”).`, { engine: "local", nav: "receipts" }, viaVoice);
       return true;
     }
-    await Promise.all(list.map((x) => markPaid(x.id, rp.paid, rp.cash ? "cash" : "eft")));
+    // Kişisel fiş (Garanti kartı) kulüp kasasına dokunmaz
+    await Promise.all(list.map((x) => markPaid(x.id, rp.paid, x.scope === "personal" ? "card" : rp.cash ? "cash" : "eft")));
     const sum = list.reduce((t, x) => t + totalTL(x), 0);
     const kasa = rp.paid ? (rp.cash ? " Kasadan düştüm." : "") : list.some((x) => x.paidVia === "cash") ? " Kasaya geri ekledim." : "";
     done(`${list.length === 1 ? "Fiş" : `${list.length} fiş`} ${rp.paid ? (rp.cash ? "nakit ödendi" : "ödendi") : "ödeme bekliyor"} olarak işaretlendi${sum ? `, toplam ${money(sum).replace(/,00$/, "")} TL` : ""}.${kasa}${rp.paid ? " Ekleyene bildirim gitti." : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
     return true;
   }
+}
+
+// Fiş Kişisel ↔ Kulüp (ana hesap): "son Garanti fişini kulübe al", "Migros fişini kişisel yap", "F-0012'yi kulüp fişi yap".
+// Garanti fişinde o kartın sonraki harcamaları da bu seçimle gelir (setReceiptScope).
+export async function receiptScopeCmd(ctx, s, viaVoice) {
+  const { done, owner, receipts, reply, setReceiptScope } = ctx;
+  const rs = owner ? receiptScopeCommand(s) : null;
+  if (!rs) return undefined;
+  const newest = (a, b) => `${b.date}${b.time || ""}${b.createdAt || ""}`.localeCompare(`${a.date}${a.time || ""}${a.createdAt || ""}`);
+  const want = (rs.q ? rs.q.split(" ") : []).map((w) => w.slice(0, Math.max(3, w.length - 2)));
+  let list = [...receipts].sort(newest);
+  if (rs.no) list = list.filter((x) => Number(x.no) === rs.no);
+  else if (want.length) list = list.filter((x) => want.every((w) => `${x.merchant} ${x.note || ""}`.toLocaleLowerCase("tr-TR").includes(w)));
+  else if (/garanti|kart/u.test(s.toLocaleLowerCase("tr-TR"))) list = list.filter((x) => x.src === "garanti");
+  const r = list[0];
+  if (!r) {
+    reply(rs.no ? `F-${String(rs.no).padStart(4, "0")} numaralı fiş bulamadım.` : "O fişi bulamadım. İşyerinin adıyla ya da fiş numarasıyla söyle.", { engine: "local", nav: "receipts" }, viaVoice);
+    return true;
+  }
+  const label = rs.scope === "personal" ? "Kişisel" : "Kulüp";
+  if ((r.scope || "club") === rs.scope) {
+    done(`${r.merchant || "Fiş"} zaten ${label}.`, { engine: "local", nav: "receipts" }, viaVoice);
+    return true;
+  }
+  const ok = await setReceiptScope(r.id, rs.scope);
+  if (!ok) {
+    reply("Fişi kaydedemedim, tekrar dene.", { engine: "local" }, viaVoice);
+    return true;
+  }
+  done(`${r.merchant || "Fiş"} (${money(totalTL(r)).replace(/,00$/, "")} TL) ${label} yapıldı.${r.card ? ` Bu karttan (·${r.card}) sonraki harcamalar da ${label} gelecek.` : ""}`, { engine: "local", nav: "receipts" }, viaVoice);
+  return true;
 }
 
 export async function invoiceTaskCmd(ctx, s, viaVoice) {

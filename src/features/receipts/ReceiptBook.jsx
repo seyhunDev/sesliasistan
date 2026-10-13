@@ -60,6 +60,8 @@ export function ReceiptBook({ kind: start = "" }) {
   const [max, setMax] = useState("");
   const [review, setReview] = useState(false);
   const [state, setState] = useState(""); // "" | pending | paid
+  // "" | personal | club; /receipts?scope=kisisel Kişisel'i açar (Hesaplar › Kişisel'deki kart harcamaları)
+  const [scope, setScope] = useState(() => (typeof window !== "undefined" ? ({ kisisel: "personal", kulup: "club" })[new URLSearchParams(window.location.search).get("scope")] || "" : ""));
   const [open, setOpen] = useState(false);
   // Faturalar yalnız ana hesapta; çalışan yalnız fişleri görür
   const owner = !!profile && profile.role !== "staff";
@@ -68,7 +70,7 @@ export function ReceiptBook({ kind: start = "" }) {
   const shownKind = owner ? kind : "receipt";
 
   const users = useMemo(() => [...new Set(receipts.map((r) => r.createdBy?.name).filter(Boolean))], [receipts]);
-  const active = [pay, by, min, max, review, state].filter(Boolean).length;
+  const active = [pay, by, min, max, review, state, scope].filter(Boolean).length;
 
   const list = useMemo(() => {
     const lo = parseTL(min);
@@ -82,6 +84,7 @@ export function ReceiptBook({ kind: start = "" }) {
         if (by && r.createdBy?.name !== by) return false;
         if (review && r.status !== "review") return false;
         if (state && payOf(r) !== state) return false;
+        if (scope && (r.scope || "club") !== scope) return false;
         if (!Number.isNaN(lo) && t < lo) return false;
         if (!Number.isNaN(hi) && t > hi) return false;
         if (s && !`${noText(r.no)} ${r.no || ""} ${r.merchant} ${r.docNo || ""} ${r.taxId || ""} ${r.note || ""} ${(r.items || []).map((i) => i.n).join(" ")}`.toLocaleLowerCase("tr-TR").includes(s)) return false;
@@ -89,11 +92,11 @@ export function ReceiptBook({ kind: start = "" }) {
     };
     const byDate = (a, b) => `${b.date}${b.time || ""}`.localeCompare(`${a.date}${a.time || ""}`);
     return shownKind === "invoice" ? [] : receipts.filter(match).sort(byDate);
-  }, [receipts, month, q, cats, pay, by, min, max, review, state, shownKind]);
+  }, [receipts, month, q, cats, pay, by, min, max, review, state, scope, shownKind]);
 
   // Tümü'deki faturalar: fişe özgü süzgeçler (ödeme şekli, ekleyen, kontrol) seçiliyse girmez
   const invMatch = useMemo(() => {
-    if (shownKind !== "" || pay || by || review) return [];
+    if (shownKind !== "" || pay || by || review || scope) return [];
     const lo = parseTL(min);
     const hi = parseTL(max);
     const s = low(q.trim());
@@ -107,10 +110,10 @@ export function ReceiptBook({ kind: start = "" }) {
       if (s && !low(`${x.seller} ${x.no} ${x.taxId} ${x.desc} ${x.note}`).includes(s)) return false;
       return true;
     });
-  }, [desk.list, shownKind, month, q, pay, by, min, max, review, state]);
+  }, [desk.list, shownKind, month, q, pay, by, min, max, review, state, scope]);
   // Tümü'de ödenmemiş faturalar ayın dışında da en üstte ayrı bölümde (son güne göre), ödenenler gün listesinde
   const invOpen = useMemo(() => {
-    if (shownKind !== "" || pay || by || review || state === "paid") return [];
+    if (shownKind !== "" || pay || by || review || scope || state === "paid") return [];
     const lo = parseTL(min);
     const hi = parseTL(max);
     const s = low(q.trim());
@@ -119,7 +122,7 @@ export function ReceiptBook({ kind: start = "" }) {
       .filter((x) => (Number.isNaN(lo) || (x.amount || 0) >= lo) && (Number.isNaN(hi) || (x.amount || 0) <= hi))
       .filter((x) => !s || low(`${x.seller} ${x.no} ${x.taxId} ${x.desc} ${x.note}`).includes(s))
       .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
-  }, [desk.list, shownKind, q, pay, by, min, max, review, state]);
+  }, [desk.list, shownKind, q, pay, by, min, max, review, state, scope]);
   const invList = invMatch.filter((x) => x.status === "paid");
 
   const total = list.reduce((a, r) => a + totalOf(r), 0);
@@ -145,6 +148,7 @@ export function ReceiptBook({ kind: start = "" }) {
     setMax("");
     setReview(false);
     setState("");
+    setScope("");
   };
 
   // Muhasebeci için Excel: filtrelenmiş liste, fiş numarasıyla sıralı (Fişler + Kategoriler sayfası)
@@ -384,6 +388,15 @@ export function ReceiptBook({ kind: start = "" }) {
               </button>
             ))}
           </div>
+          {owner && (
+            <div className="flex rounded-xl bg-bg p-[0.1875rem]">
+              {[["", "Hepsi"], ["club", "Kulüp"], ["personal", "Kişisel"]].map(([v, l]) => (
+                <button key={v || "all"} onClick={() => setScope(v)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${scope === v ? "bg-card shadow-sm" : "text-mut"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <input className={inp} inputMode="decimal" placeholder="En az ₺" value={min} onChange={(e) => setMin(e.target.value)} />
             <input className={inp} inputMode="decimal" placeholder="En çok ₺" value={max} onChange={(e) => setMax(e.target.value)} />
@@ -458,7 +471,7 @@ export function ReceiptBook({ kind: start = "" }) {
                       {r.merchant || "İsimsiz"}
                     </b>
                     <small className="block truncate text-[0.8125rem] text-mut">
-                      {[r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
+                      {[r.time, r.cat, r.pay, r.scope === "personal" && "Kişisel"].filter(Boolean).join(" · ")}
                       {whoText(r, myUid, nameOf) && <span className="text-acc"> · {whoText(r, myUid, nameOf)}</span>}
                     </small>
                     {payOf(r) === "pending" ? <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small> : <small className="block text-[0.75rem] font-semibold text-ok">Ödendi</small>}

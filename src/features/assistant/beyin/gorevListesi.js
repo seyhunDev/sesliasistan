@@ -9,7 +9,7 @@ import { loadFixes, learnFixes } from "@/lib/sttFixes";
 import { wantsPost } from "@/features/posts/postModel";
 import { wantsRace } from "@/features/athletes/assistRace";
 import { wantsAttendance } from "@/features/athletes/access";
-import { absentNotifyCommand, cashCommand, incomeCommand, athleteCommand, duesCommand, receiptPayCommand, callCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, cashCommand, incomeCommand, athleteCommand, duesCommand, receiptPayCommand, receiptScopeCommand, callCommand } from "@/lib/assistMore";
 import { debtCommand } from "@/lib/debts";
 import { invoiceCommand } from "@/lib/invoices";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -159,7 +159,7 @@ export function flowOf(ctx, x) {
   if (owner && wantsFitness(x, false)) return "fitness";
   if (wantsSchedule(x, false)) return "schedule";
   if (shopCommand(x)) return "shopping";
-  if (receiptPayCommand(x)) return "receipt";
+  if (receiptPayCommand(x) || receiptScopeCommand(x)) return "receipt";
   if (callCommand(x)) return "call";
   if (localNavigate(x, { names: contacts.map((c) => c.name) })) return "nav";
   // Kurallar tanımadı: daha önce yapay zekanın görev listesinde öğrenilen benzer söz (lib/brain, "plan:<tür>")

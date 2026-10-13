@@ -29,6 +29,7 @@ import { AddIncome } from "@/features/bank/AddIncome";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { report } from "@/lib/bankAnalyze";
+import { personalReceipts } from "@/lib/receipts";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
 const hm = (iso) =>
@@ -58,7 +59,7 @@ const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 // okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {
   const { profile } = useAuth();
-  const { allMembers = [] } = useData();
+  const { allMembers = [], receipts = [] } = useData();
   const router = useRouter();
   const owner = profile?.role === "owner";
   const [mails, setMails] = useState(null);
@@ -295,7 +296,7 @@ export default function MailPage() {
       </div>
 
       {book === "personal" ? (
-        <PersonalBook book={personal} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} lent={<LentSection flat items={lent} kind="personal" title="Bana borçlu olanlar" onAdd={() => setDebtForm({ kind: "personal", date: todayStr() })} onOpen={setDebtOpen} />} />
+        <PersonalBook book={personal} cards={personalReceipts(receipts, todayStr().slice(0, 7))} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} lent={<LentSection flat items={lent} kind="personal" title="Bana borçlu olanlar" onAdd={() => setDebtForm({ kind: "personal", date: todayStr() })} onOpen={setDebtOpen} />} />
       ) : !mails ? (
         <Loading />
       ) : (

@@ -76,6 +76,8 @@ function receiptBody(d) {
     cat: d.cat || "Diğer",
     note: d.note || "",
     conf: d.conf || null,
+    // Kişisel (kendi harcaman, ör. Garanti kart maili) ya da Kulüp; eski fişlerde alan yok = Kulüp
+    scope: d.scope === "personal" ? "personal" : "club",
   };
   // Kullanıcı formu görüp kaydetti: yalnızca toplam uyuşmazlığı "kontrol" durumunda bırakır
   body.status = mismatch(body) ? "review" : "ok";
@@ -908,6 +910,27 @@ export function DataProvider({ children }) {
     [getOrgId, fail, members],
   );
 
+  // Fiş Kişisel ↔ Kulüp (fiş ekranı ve asistan). Garanti'den gelen fişte kartın son 4 hanesi hatırlanır:
+  // o karttan sonraki harcamalar da bu seçimle gelir (users.cardScope, garanti.js)
+  const setReceiptScope = useCallback(
+    async (id, scope) => {
+      const r = cur.current.receipts.find((x) => x.id === id);
+      if (!r) return false;
+      const v = scope === "personal" ? "personal" : "club";
+      const now = new Date().toISOString();
+      setData((p) => ({ ...p, receipts: p.receipts.map((x) => (x.id === id ? { ...x, scope: v, updatedAt: now } : x)) }));
+      try {
+        await updateDoc(doc(db, "orgs", getOrgId(), "receipts", id), { scope: v, updatedAt: now });
+        if (r.card && !me.current.staff && me.current.uid) updateDoc(doc(db, "users", me.current.uid), { [`cardScope.${r.card}`]: v }).catch(() => {});
+        return true;
+      } catch (e) {
+        fail(e, "Fiş güncelleme");
+        return false;
+      }
+    },
+    [getOrgId, fail],
+  );
+
   // Çalışan: ödendi bildirimini gördü
   const markPaySeen = useCallback(
     async (ids) => {
@@ -949,7 +972,7 @@ export function DataProvider({ children }) {
     <Ctx.Provider
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
-        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, markPaySeen, loadReceiptImage,
+        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, markPaySeen, loadReceiptImage,
         saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, addReply, isLocked,
       }}
     >

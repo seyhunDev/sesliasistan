@@ -13,6 +13,8 @@ import { movementsOf } from "../../src/lib/mailBoard.js";
 import { sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
 import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
+import { garantiText, runGaranti } from "../../src/lib/garanti.js";
+import { garantiAi } from "../../src/lib/ai/garantiAi.js";
 import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
@@ -334,15 +336,20 @@ async function sendMailDigests(db, all) {
       const dues = duesText(await runAutoDues(io, u.id, mails).catch((e) => (console.error("[aidat]", e.message), null)));
       // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
       const inv = invoiceText(await runAutoInvoices(io, u.id, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
+      // Garanti kart harcaması mailleri ödeme bekleyen fiş olur (garanti.js)
+      const withIds = snap.docs.map((x, i) => ({ id: x.id, ...mails[i] }));
+      const card = garantiText(await runGaranti({ ...io, ai: garantiAi }, u.id, withIds, d.cardScope).catch((e) => (console.error("[garanti]", e.message), null)));
       const tag = snap.docs[0].id;
       const payload = await withBadge(
         db,
         u.id,
         dues
-          ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${tag}`, url: "/dues" }
+          ? { ...dues, ...(inv || card ? { body: [dues.body, inv?.title, card?.title].filter(Boolean).join(" · ") } : {}), tag: `dues-${tag}`, url: "/dues" }
           : inv
-            ? { ...inv, tag: `inv-${tag}`, url: "/invoices" }
-            : { ...mailDigestText(mails), tag: `mail-${tag}`, url: "/mail" },
+            ? { ...inv, ...(card ? { body: `${inv.body} · ${card.title}` } : {}), tag: `inv-${tag}`, url: "/invoices" }
+            : card
+              ? { ...card, tag: `card-${tag}`, url: "/receipts" }
+              : { ...mailDigestText(mails), tag: `mail-${tag}`, url: "/mail" },
       );
       await Promise.all(
         Object.entries(d.push || {}).map(async ([key, sub]) => {
