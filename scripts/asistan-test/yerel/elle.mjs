@@ -32,6 +32,16 @@ group("Kendi bildirimi")([
   ["yalnız ortak telefon", F("hiç cihaz kalmaz", () => Object.keys(PD.otherDevices({ dA: {} }, new Set(["dA"]))).length === 0)],
 ]);
 
+// Sorumluya bildirim gitmedi (people.js ackState/pushWhy): neden plan ekranında görünür
+const PP = await import("@/lib/people");
+group("Sorumlu bildirimi gitmedi")([
+  ["kayıt yok", F("Bildirim gitmedi + Ayarlar › Bildirimler", () => { const s = PP.ackState({ ack: { u: { x: { why: "device", at: "t" } } } }, "u"); return s.key === "fail" && /Bildirimler/.test(s.why); })],
+  ["hesapsız kişi", F("hesap aç önerisi", () => /hesap/.test(PP.pushWhy({ why: "account" })))],
+  ["ortak telefon", F("kendi hesabıyla açsın", () => /kendi hesabıyla/.test(PP.pushWhy({ why: "same" })))],
+  ["yeniden gönderildi", F("x silinince Gönderildi", () => PP.ackState({ ack: { u: { s: "t" } } }, "u").key === "sent")],
+  ["özet en geride olan", F("biri gitmediyse özet 'gitmedi'", () => PP.ackSummary({ assignees: ["a", "b"], ack: { a: { r: "t" }, b: { x: { why: "device" } } } }).key === "fail")],
+]);
+
 // Android uygulaması bildirimi (fcmMessage.js): Web Push yükünden Firebase Cloud Messaging iletisi
 const FM = await import("@/lib/fcmMessage");
 group("Android bildirimi")([

@@ -62,7 +62,7 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
+  const { resendAssign, plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
   const { openAssistant } = useAssistant();
   const router = useRouter();
   const [drafts, setDrafts] = useState([]);
@@ -391,6 +391,7 @@ export function AddSheet({ open, onClose, seed }) {
                       .map((u) => ({ uid: u, name: nameOf(u) || "Kişi", ...ackState(rec, u) }))
                     : []
                 }
+                onResend={rec && !isStaff ? () => resendAssign(edit.kind, edit.id) : undefined}
               />
             )}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}

@@ -2,7 +2,7 @@ import { Icon } from "./Icon";
 
 // Görevli etiketi: baş harf + ad; birden fazla kişide "Sanver +1".
 // Görevli yoksa (names boş) iş ana hesaptadır: soluk "Ana hesap" etiketi.
-// status: sorumluların durumu ("sent" | "delivered" | "read" | "done" | "pending"); ana hesapta tik olarak görünür (done = yeşil)
+// status: sorumluların durumu ("fail" | "sent" | "delivered" | "read" | "done" | "pending"); ana hesapta tik olarak görünür (done = yeşil)
 export function WhoPill({ names = [], className = "", status }) {
   const owner = !names.length;
   const first = owner ? "Ana hesap" : names[0].split(" ")[0];
@@ -16,9 +16,9 @@ export function WhoPill({ names = [], className = "", status }) {
       {names.length > 1 && <span className="shrink-0">+{names.length - 1}</span>}
       {status && status !== "pending" && (
         <Icon
-          name={status === "sent" ? "check" : status === "done" ? "check" : "checks"}
-          className={`size-3.5 shrink-0 [stroke-width:2.5] ${status === "done" ? "text-ok" : status === "read" ? "text-sky-600" : "text-mut"}`}
-          aria-label={status === "done" ? "Tamamladı" : status === "read" ? "Görüldü" : status === "delivered" ? "İletildi" : "Gönderildi"}
+          name={status === "fail" ? "x" : status === "sent" ? "check" : status === "done" ? "check" : "checks"}
+          className={`size-3.5 shrink-0 [stroke-width:2.5] ${status === "done" ? "text-ok" : status === "read" ? "text-sky-600" : status === "fail" ? "text-rose-600" : "text-mut"}`}
+          aria-label={status === "fail" ? "Bildirim gitmedi" : status === "done" ? "Tamamladı" : status === "read" ? "Görüldü" : status === "delivered" ? "İletildi" : "Gönderildi"}
         />
       )}
     </span>

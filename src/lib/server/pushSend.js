@@ -23,20 +23,34 @@ export function pushError(e) {
   return `Bildirim gönderilemedi (kod ${c}).`;
 }
 
+// Bildirim neden gitmedi (atama ekranında sorumlunun yanında yazar; lib/people pushWhy)
+export const WHY = { account: "account", device: "device", same: "same", key: "key", error: "error" };
+
 // skip: gönderenin kendi cihaz anahtarları (lib/pushDevices)
-export async function sendTo(uid, payload, skip) {
+// out (isteğe bağlı): hiçbir cihaza gitmezse nedeni yazılır: out.why (WHY), out.msg (kısa açıklama)
+export async function sendTo(uid, payload, skip, out = {}) {
   const db = adminDb();
   const ref = db.collection("users").doc(uid);
+  const snap = await ref.get();
+  // Hesabı olmayan kişi (Kişiler'de hesapsız kayıt): telefonu yok, bildirim kutusu da yok
+  if (!snap.exists) {
+    out.why = WHY.account;
+    return 0;
+  }
   // Önce bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışların sayısı (lib/inbox)
   const badge = await recordInbox(db, uid, payload);
-  const user = (await ref.get()).data() || {};
+  const user = snap.data() || {};
   const push = otherDevices(user.push, skip);
-  if (!Object.keys(push).length) return 0;
+  if (!Object.keys(push).length) {
+    out.why = Object.keys(user.push || {}).length ? WHY.same : WHY.device;
+    return 0;
+  }
   if (payload.badge === undefined && badge !== undefined) payload = { ...payload, badge };
   try {
     webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
   } catch (e) {
     console.error("[push] VAPID anahtarları geçersiz:", e.message);
+    out.why = WHY.key;
     return 0; // bildirim gitmez ama kayıt işlemi sürer
   }
   const body = JSON.stringify(payload);
@@ -54,9 +68,11 @@ export async function sendTo(uid, payload, skip) {
           console.error("[push] gönderilemedi:", uid, key, e.statusCode, String(e.body || e.message).slice(0, 200));
           await ref.update({ [`push.${key}.err`]: { code: e.statusCode || 0, msg: pushError(e), at: new Date().toISOString() } }).catch(() => {});
         }
+        out.msg = e.statusCode === 404 || e.statusCode === 410 ? "" : pushError(e);
       }
     }),
   );
+  if (!sent) out.why = out.msg ? WHY.error : WHY.device; // 404/410: abonelik bitmiş, silindi; telefon yeniden kaydolmalı
   return sent;
 }
 
