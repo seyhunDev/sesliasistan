@@ -13,7 +13,7 @@ import { useData } from "@/features/data/DataProvider";
 import { rel } from "@/lib/utils/format";
 import Link from "next/link";
 import { WordCard } from "@/features/words/WordCard";
-import { assigneesOf, unseenNotes, whoText } from "@/lib/people";
+import { assigneesOf, whoText } from "@/lib/people";
 import { useWho } from "@/features/data/useWho";
 import { isLogNote } from "@/lib/trainingLog";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
@@ -79,7 +79,6 @@ export default function NotesPage() {
               <span className="truncate">{n.title}</span>
               <span className="ml-auto flex shrink-0 items-center gap-1.5">
                 {pill}
-                {unseenNotes(n, myUid).length > 0 && <span className="size-2 rounded-full bg-acc" aria-label="Yeni mesaj" />}
                 {n.pinned && <Icon name="star" className="size-3.5 fill-current text-amber-500" />}
               </span>
             </b>

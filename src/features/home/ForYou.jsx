@@ -9,7 +9,7 @@ import { Avatar, listTime } from "@/features/chat/bits";
 import { GROUPS } from "@/lib/kinds";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
-import { assigneesOf, isNewFor, unseenNotes } from "@/lib/people";
+import { assigneesOf, isNewFor } from "@/lib/people";
 import { TLk, totalOf } from "@/lib/receipts";
 import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -132,26 +132,6 @@ export function useForYou() {
         badge: c.unread,
         onOpen: () => router.push(`/messages?c=${c.id}`),
       });
-  // Mesaj: plan/görev/not konuşmaları
-  for (const [kind, r] of recs) {
-    const fresh = unseenNotes(r, myUid);
-    const last = fresh.at(-1);
-    if (last)
-      items.push({
-        id: `msg:${kind}:${r.id}:${last.at}`,
-        lead: <Avatar name={nameOf(last.by) || "Kişi"} size="size-11" />,
-        title: (
-          <>
-            {nameOf(last.by) || "Kişi"} <span className="font-normal text-mut">· {r.title}</span>
-          </>
-        ),
-        short: nameOf(last.by) || "Mesaj",
-        sub: last.text,
-        time: listTime(last.at),
-        badge: fresh.length,
-        onOpen: () => open(kind, r.id),
-      });
-  }
   // Fatura: son günü geçen ya da 3 gün içinde olan ödenmemiş fatura (ana hesap). Görevi ayrıca "Geciken" olarak çıkmaz.
   const invTasks = new Set();
   if (!isStaff)

@@ -47,14 +47,7 @@ export function reminderTextOf(plan, lead) {
   return { title: head(ev, t), body: line(plan.time, plan.place) };
 }
 
-// Kayda mesaj yazıldı (mesajlaşma uygulaması gibi): başlıkta kim ve hangi kayıt, gövdede mesajın kendisi.
-//   "Ali Kaya · Motor yağı" / "Yağ bitmiş, yarın alırım"   — görülmemiş birden çok mesaj: "3 mesaj · Yağ bitmiş…"
 const KIND_TR = { plan: "Plan", task: "Görev", note: "Not" };
-export function replyText({ kind, title, from, text, n = 1 }) {
-  const t = String(title || KIND_TR[kind] || "Kayıt").trim();
-  const msg = String(text || "").replace(/\s+/g, " ").trim();
-  return { title: cut(`${who(from) || "Biri"} · ${t}`, 44), body: cut(n > 1 ? `${n} mesaj · ${msg}` : msg, 120) };
-}
 // Atanan kişi işi bitirdi: "Ali Kaya tamamladı" / "Görev · Motor yağı"
 const DONE_PAST = { plan: "gerçekleşti dedi", task: "yaptı", note: "okudu" };
 export const doneText = ({ kind, title, from }) => ({

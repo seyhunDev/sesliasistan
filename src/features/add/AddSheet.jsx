@@ -14,12 +14,12 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useKind } from "@/features/auth/useKind";
 import { addDays, rel, todayStr } from "@/lib/utils/format";
 import { labelFromItems } from "@/lib/brain/model";
-import { ackState, assigneesOf, lockedFor, unseenNotes } from "@/lib/people";
+import { ackState, assigneesOf, lockedFor } from "@/lib/people";
 import { assigneeHints, assigneesInText, namesToUids, uidsToNames } from "@/lib/names";
 import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
 import { DraftCard } from "./DraftCard";
-import { AssignedView, Replies, ReplyComposer, recordFocus } from "./Assigned";
+import { AssignedView, recordFocus } from "./Assigned";
 import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
@@ -62,7 +62,7 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
+  const { plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
   const { openAssistant } = useAssistant();
   const router = useRouter();
   const [drafts, setDrafts] = useState([]);
@@ -88,11 +88,9 @@ export function AddSheet({ open, onClose, seed }) {
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
   const locked = !!edit && lockedFor(rec, myUid, isStaff);
-  // Sporcu ve öğrencide asistan yok; sporcunun kendi fitness antrenmanında ana hesaba mesaj alanı da yok (Seyhun, 2026-10-13)
+  // Sporcu ve öğrencide asistan yok (Seyhun, 2026-10-13). Kayıtlarda mesajlaşma yok: mesajlar Mesajlar'dan gider.
   const sk = useKind();
   const noAi = sk === "athlete" || sk === "student";
-  const fitMine = edit?.kind === "plan" && !!rec?.fit?.for && rec.fit.for === myUid;
-  const hasThread = !!rec && (assigneesOf(rec).some((u) => u !== rec.createdByUid) || !!rec.replies);
   const plan = drafts.find((d) => d.type === "plan");
   // Ana hesap her kayda sorumlu çalışan(lar) seçebilir; çalışanın eklediği kayıt yine onda kalır
   const canAssign = !isStaff && members.length > 0;
@@ -186,27 +184,6 @@ export function AddSheet({ open, onClose, seed }) {
       if (need || isQuestion) tts.maybeSpeak(pf.message);
     }
   }
-
-  // Kayıt açıkken: gelen mesajlar hemen "görüldü" olur (ana sayfada ve simgedeki sayıda birikmez) ve
-  // sunucuya "bu konuşmadayım" bilgisi gider (bu kayıttaki yeni mesaj için telefona bildirim gelmez)
-  const viewKey = open && edit && rec ? `${edit.kind}-${edit.id}` : "";
-  const unseen = rec && open ? unseenNotes(rec, myUid).length : 0;
-  useEffect(() => {
-    if (unseen && viewKey && document.visibilityState === "visible") markSeen(edit.kind, edit.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unseen, viewKey]);
-  useEffect(() => {
-    if (!viewKey) return;
-    const beat = () => setViewing(document.visibilityState === "visible" ? viewKey : null);
-    beat();
-    const t = setInterval(() => document.visibilityState === "visible" && beat(), 30e3);
-    document.addEventListener("visibilitychange", beat);
-    return () => {
-      clearInterval(t);
-      document.removeEventListener("visibilitychange", beat);
-      setViewing(null);
-    };
-  }, [viewKey, setViewing]);
 
   // Ekran kapanınca ses, dinleme ve bekleyen istek durur
   useEffect(() => {
@@ -310,7 +287,7 @@ export function AddSheet({ open, onClose, seed }) {
   // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
   // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
   const recDock = open && !!edit && !!rec && !noAi;
-  const baseFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
+  const baseFocus = recDock ? recordFocus(edit.kind, rec) : null;
   // Günlüğü yazılabilen antrenman planı: kubbedeki örnekler günlük üzerine (asistan bu plana yazar)
   const recFocus = baseFocus && edit.kind === "plan" && canLog(rec, todayStr()) ? { ...baseFocus, log: true } : baseFocus;
   const focusKey = recFocus ? JSON.stringify([recFocus, edit.kind, locked]) : "";
@@ -387,11 +364,6 @@ export function AddSheet({ open, onClose, seed }) {
               setMyDone(edit.kind, edit.id, on);
               toast(on ? doneOf(edit.kind).toast : "Geri alındı");
             }}
-            onReply={fitMine ? null : (t) => {
-              addReply(edit.kind, edit.id, t);
-              toast("Mesaj gönderildi");
-            }}
-            docked
             extra={edit.kind === "plan" && rec.fit?.for === myUid ? <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}`} rec={rec} by={by} hero /> : null}
           />
         ) : edit ? (
@@ -424,9 +396,7 @@ export function AddSheet({ open, onClose, seed }) {
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
             {edit.kind === "plan" && rec?.fit && !locked && <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}-${rec.fit.items?.length || 0}`} rec={rec} by={by} />}
             {edit.kind === "task" && rec?.invoice && <TaskInvoice inv={rec.invoice} />}
-            {/* Mesajlar (atananlar ve ana hesap) */}
-            {hasThread && <Replies key={rec.id} rec={rec} myUid={myUid} nameOf={nameOf} onSend={(t) => addReply(edit.kind, edit.id, t)} placeholder="Mesaj yaz…" docked />}
-            {/* Plan ve not: işlemler içerikten ayrı, mesajların altında; Sil en altta */}
+            {/* Plan ve not: işlemler içerikten ayrı; Sil en altta */}
             {edit.kind === "plan" && rec && !locked && (
               <PlanActions
                 key={`act-${rec.id}`}
@@ -528,28 +498,7 @@ export function AddSheet({ open, onClose, seed }) {
       </div>
 
       {/* Alt butonlar (sabit). Kayıt ekranının kendi asistanı yok: değişiklik için alttaki ana asistan kubbesi (recDock) */}
-      {edit && rec && (locked || hasThread) && !fitMine ? (
-        /* Mesajlaşma: yazma alanı altta sabit (WhatsApp gibi); değişiklik varsa üstünde Kaydet */
-        <footer data-pagebar className={`shrink-0 border-t border-line bg-bg px-4 pt-2.5 ${recDock ? "pb-2.5" : "pb-[calc(0.625rem+env(safe-area-inset-bottom))]"}`}>
-          {!locked && dirty && (
-            <button onClick={saveEdit} className="mb-2.5 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
-              Değişikliği kaydet
-            </button>
-          )}
-          <ReplyComposer
-            onSend={(t) => {
-              addReply(edit.kind, edit.id, t);
-              if (locked) toast("Mesaj gönderildi");
-            }}
-            placeholder={locked ? "Ana hesaba mesaj yaz…" : "Mesaj yaz…"}
-            kind={edit.kind}
-            rec={rec}
-            nameOf={nameOf}
-            myUid={myUid}
-            orb={false}
-          />
-        </footer>
-      ) : !locked && (edit || drafts.length > 0) && !((edit?.kind === "note" || edit?.kind === "plan") && !dirty) && (
+      {!locked && (edit || drafts.length > 0) && !((edit?.kind === "note" || edit?.kind === "plan") && !dirty) && (
         <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
           {edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>

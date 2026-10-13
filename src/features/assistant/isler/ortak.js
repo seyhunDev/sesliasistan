@@ -1,7 +1,6 @@
 // Asistanın ekranı ve işleri arasında ortak küçük yardımcılar
 import { isQuestion } from "@/lib/steps";
 
-export const RECORD_TO = "Bu kaydın konuşması";
 // Belirli bir numaraya WhatsApp mesajı (uygulamada hesabı olmayan kişi)
 export const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 export const TEAM_WORD = /^(ekip|ekibe|herkes|herkese|grup|gruba|ekip grubu|aile|aileye|sporcu|sporcular|sporculara|veli|veliler|velilere)/i;

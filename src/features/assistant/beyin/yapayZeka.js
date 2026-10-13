@@ -114,7 +114,7 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
       if (dest) {
         waitFor("to");
         askTo.current = to;
-        return reply(`${dest.team ? `${dest.label} grubuna` : dest.label === "kaydın konuşması" ? "Kayda" : `${dest.label} için`} ne yazayım?`, { engine: "rules", expect: true }, viaVoice);
+        return reply(`${dest.team ? `${dest.label} grubuna` : `${dest.label} için`} ne yazayım?`, { engine: "rules", expect: true }, viaVoice);
       }
     }
     if (mi?.send && (toTeam || mi.to || mi.unknown)) {

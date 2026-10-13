@@ -7,16 +7,15 @@ import { sameTo } from "@/lib/convoContext";
 import { waGroupFor } from "@/lib/waGroups";
 import { attSummary } from "@/features/athletes/assistAttendance";
 import { buildPatch } from "@/lib/assistantLocal";
-import { RECORD_TO, TEAM_WORD, groupOf, waTo } from "./ortak";
+import { TEAM_WORD, groupOf, waTo } from "./ortak";
 import { groupCreateCommand } from "@/lib/assistMore";
 
 // Alıcıyı sohbete çevirir: "Ekip" → ekip sohbeti; kişi → birebir sohbet (ilk mesajda oluşturulur)
 export function resolveTo(ctx, to) {
   const { contacts, focusRef, groupIds, myGroups, myUid, waPeople } = ctx;
   const f = focusRef.current;
-  const t = String(to || f?.to || "").trim() || (f?.rec ? RECORD_TO : "");
+  const t = String(to || f?.to || "").trim();
   if (!t) return null;
-  if (f?.rec && (t === RECORD_TO || /^bu kayd|^kayıt/i.test(t))) return { rec: f.rec, label: "kaydın konuşması" };
   // Kurulan grup ("Yelken Ekibi grubuna"): sabit grup kelimeleriyle başlasa da önce adıyla aranır
   const cg = matchGroup(t, myGroups);
   if (cg) return { cid: cg.id, label: cg.name, team: true, icon: "users" };
@@ -65,7 +64,7 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
 
 // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
 export async function confirmPending(ctx, fromText = false, waOpened = false) {
-  const { addReply, by, cards, chatRemove, chatSend, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
+  const { by, cards, chatRemove, chatSend, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
   const pend = cards.pending;
   if (!pend) return;
   if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
@@ -99,7 +98,7 @@ export async function confirmPending(ctx, fromText = false, waOpened = false) {
     return done(`WhatsApp'ı açtım; listeden ${label} grubunu seç, mesaj hazır gelir.`, { engine: "local" }, fromText && convo.current);
   }
   if (pend.send) {
-    const { cid, text: body, create, label, team, rec, wa } = pend.send;
+    const { cid, text: body, create, label, team, wa } = pend.send;
     if (!body.trim()) return reply("Mesaj boş; ne yazayım?", { engine: "local", expect: true }, fromText && convo.current);
     // Uygulamada olmayan kişi: WhatsApp mesajı hazır açılır, gönder düğmesine kişi kendisi basar
     if (wa) {
@@ -111,15 +110,6 @@ export async function confirmPending(ctx, fromText = false, waOpened = false) {
     }
     setCards((c) => ({ ...c, pending: null, awaiting: false }));
     setSteps([]);
-    if (rec) {
-      stepTo("Mesaj kaydın konuşmasına gönderiliyor");
-      const ok = await Promise.resolve(addReply?.(rec.kind, rec.id, body)).then(() => true, () => false);
-      if (ok) sentOk.current = true;
-      stepsEnd(ok);
-      toast(ok ? "Mesaj gönderildi" : sendErrorText());
-      if (nextStep(fromText && convo.current, ok ? "Gönderdim. " : "Mesajı gönderemedim. ")) return;
-      return (ok ? done : reply)(ok ? "Gönderdim, kayıttaki herkes görecek." : "Mesajı gönderemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
-    }
     stepTo(`Mesaj ${team ? `${label} grubuna` : label} gönderiliyor`);
     const ok = await chatSend?.(cid, body, { create });
     if (ok) sentOk.current = true;
