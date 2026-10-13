@@ -11,6 +11,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
 import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { useKind } from "@/features/auth/useKind";
 import { addDays, rel, todayStr } from "@/lib/utils/format";
 import { labelFromItems } from "@/lib/brain/model";
 import { ackState, assigneesOf, lockedFor, unseenNotes } from "@/lib/people";
@@ -87,6 +88,10 @@ export function AddSheet({ open, onClose, seed }) {
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
   const locked = !!edit && lockedFor(rec, myUid, isStaff);
+  // Sporcu ve öğrencide asistan yok; sporcunun kendi fitness antrenmanında ana hesaba mesaj alanı da yok (Seyhun, 2026-10-13)
+  const sk = useKind();
+  const noAi = sk === "athlete" || sk === "student";
+  const fitMine = edit?.kind === "plan" && !!rec?.fit?.for && rec.fit.for === myUid;
   const hasThread = !!rec && (assigneesOf(rec).some((u) => u !== rec.createdByUid) || !!rec.replies);
   const plan = drafts.find((d) => d.type === "plan");
   // Ana hesap her kayda sorumlu çalışan(lar) seçebilir; çalışanın eklediği kayıt yine onda kalır
@@ -304,7 +309,7 @@ export function AddSheet({ open, onClose, seed }) {
 
   // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
   // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
-  const recDock = open && !!edit && !!rec;
+  const recDock = open && !!edit && !!rec && !noAi;
   const baseFocus = recDock ? recordFocus(edit.kind, rec, nameOf, myUid) : null;
   // Günlüğü yazılabilen antrenman planı: kubbedeki örnekler günlük üzerine (asistan bu plana yazar)
   const recFocus = baseFocus && edit.kind === "plan" && canLog(rec, todayStr()) ? { ...baseFocus, log: true } : baseFocus;
@@ -382,7 +387,7 @@ export function AddSheet({ open, onClose, seed }) {
               setMyDone(edit.kind, edit.id, on);
               toast(on ? doneOf(edit.kind).toast : "Geri alındı");
             }}
-            onReply={(t) => {
+            onReply={fitMine ? null : (t) => {
               addReply(edit.kind, edit.id, t);
               toast("Mesaj gönderildi");
             }}
@@ -464,11 +469,15 @@ export function AddSheet({ open, onClose, seed }) {
               /* Başlangıç: elle ekleme için üç sade düğme; yazarak/konuşarak ekleme ana asistanla */
               <div className="pt-6">
                 <p className="px-1 text-[1.375rem] font-semibold leading-snug tracking-tight">Ne eklemek istersin?</p>
-                <p className="mt-1 px-1 text-[0.875rem] text-mut">Asistana söyle; plan, görev ya da not olarak o ayırır.</p>
-                <button type="button" onClick={toAssistant} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
-                  <Icon name="mic" className="size-5" />
-                  Asistana söyle
-                </button>
+                {!noAi && (
+                  <>
+                    <p className="mt-1 px-1 text-[0.875rem] text-mut">Asistana söyle; plan, görev ya da not olarak o ayırır.</p>
+                    <button type="button" onClick={toAssistant} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
+                      <Icon name="mic" className="size-5" />
+                      Asistana söyle
+                    </button>
+                  </>
+                )}
                 <div className="mt-8 flex items-center gap-2 px-1">
                   <span className="mr-1 text-[0.8125rem] text-mut">Elle ekle</span>
                   {MANUAL.map(([t, l, ic]) => (
@@ -519,7 +528,7 @@ export function AddSheet({ open, onClose, seed }) {
       </div>
 
       {/* Alt butonlar (sabit). Kayıt ekranının kendi asistanı yok: değişiklik için alttaki ana asistan kubbesi (recDock) */}
-      {edit && rec && (locked || hasThread) ? (
+      {edit && rec && (locked || hasThread) && !fitMine ? (
         /* Mesajlaşma: yazma alanı altta sabit (WhatsApp gibi); değişiklik varsa üstünde Kaydet */
         <footer data-pagebar className={`shrink-0 border-t border-line bg-bg px-4 pt-2.5 ${recDock ? "pb-2.5" : "pb-[calc(0.625rem+env(safe-area-inset-bottom))]"}`}>
           {!locked && dirty && (

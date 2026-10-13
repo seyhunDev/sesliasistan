@@ -282,7 +282,7 @@ function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, s
 // Yazarken kubbe klavyenin üstüne taşınır. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde sekmesiz ve
 // Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
-function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -576,16 +576,19 @@ function Dome({ bar, slim, rec, active, state, live, talk, typeNow, typing, onTy
           </div>
         ) : (
           // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
-          <div className="pt-4">
+          <div className={noAi ? "" : "pt-4"}>
             <nav aria-label="Sekmeler" className="atabbar relative pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
-              <div className="mx-auto grid h-14 max-w-[34rem] grid-cols-5 items-stretch">
+              {/* Sporcu tarafında asistan düğmesi yok, dört sekme (Seyhun: "sporcu sesli asistanı kullanmayacak", 2026-10-13) */}
+              <div className={`mx-auto grid h-14 max-w-[34rem] items-stretch ${noAi ? "grid-cols-4" : "grid-cols-5"}`}>
                 <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
                 <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-                <div className="relative">
-                  <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
-                    <VoiceLight state="idle" onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
-                  </span>
-                </div>
+                {!noAi && (
+                  <div className="relative">
+                    <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
+                      <VoiceLight state="idle" onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
+                    </span>
+                  </div>
+                )}
                 <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
                 <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
               </div>
@@ -631,6 +634,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const staff = profile?.role === "staff";
   const owner = profile?.role === "owner";
   const side = isAthleteSide(kind);
+  const noAi = kind === "athlete" || kind === "student"; // sporcu ve öğrenci: asistan yok (veli eskisi gibi)
   const athletes = canSeeAthletes(profile?.email);
   const to = (href) => () => router.push(href);
   const groups = [
@@ -685,10 +689,11 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   return (
     <>
       <Dome
+        noAi={noAi}
         bar={bar}
         slim={slim}
-        rec={rec}
-        active={active}
+        rec={rec && !noAi}
+        active={active && !noAi}
         state={state}
         live={live}
         talk={talk}
