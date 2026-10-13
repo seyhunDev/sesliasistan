@@ -242,7 +242,6 @@ function TrainingCard({ w, att, today }) {
   };
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
   const both = w.planned > 0 && w.fitN > 0;
-  const hint = att || w.fitN ? "Güne dokun · " : "";
   return (
     <div className={`px-4 pb-3.5 pt-3.5 ${CARD}`}>
       <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className="flex items-center gap-2.5">
@@ -281,7 +280,6 @@ function TrainingCard({ w, att, today }) {
         })}
       </span>
       <Link href="/training" className="mt-3 block truncate border-t border-line pt-2.5 text-[0.8125rem] text-mut">
-        {hint ? <span className="font-semibold text-acc">{hint}</span> : null}
         Bu ay <b className="font-semibold text-fg">{w.total}</b> antrenman
         {w.fitN > 0 && (
           <>
@@ -298,13 +296,14 @@ function TrainingCard({ w, att, today }) {
 }
 
 // Günün penceresi: YELKEN (planlar, Yoklamayı aç; plan yoksa Antrenman ekle, yoklamasını al) ve FİTNESS (sporcu satırları;
-// dokununca altında antrenmanın adı, süresi, hareketleri ya da sonucu açılır; küçük "Fitness'ta aç").
+// dokununca altında antrenmanın adı, süresi, hareketleri ya da sonucu açılır; "Antrenmanı aç" o sporcunun o günkü antrenmanını açar).
 const FIT_ST = { done: ["Yaptı", "bg-acc/12 text-acc"], missed: ["Yapmadı", "bg-rec/12 text-rec"], skip: ["Atladı", "bg-line text-mut"] };
 function DayPick({ day, att, today, onClose }) {
   const { saveDrafts } = useData();
   const { profile } = useAuth();
   const toast = useToast();
   const router = useRouter();
+  const { openAdd } = useAdd();
   const [open, setOpen] = useState(""); // Açık fitness satırı
   const [busy, setBusy] = useState(false);
   const info = day ? dayInfo(day, att, today) : { sail: [], fit: [] };
@@ -372,14 +371,10 @@ function DayPick({ day, att, today, onClose }) {
               <h3 className={head}>FİTNESS · {info.fit.length} kişi</h3>
               <ul className="divide-y divide-line">
                 {info.fit.map((f) => (
-                  <FitRow key={f.id || f.name} f={f} open={open === `${day.date}:${f.id || f.name}`} onTap={() => setOpen((o) => (o === `${day.date}:${f.id || f.name}` ? "" : `${day.date}:${f.id || f.name}`))} />
+                  <FitRow key={f.id || f.name} f={f} open={open === `${day.date}:${f.id || f.name}`} onTap={() => setOpen((o) => (o === `${day.date}:${f.id || f.name}` ? "" : `${day.date}:${f.id || f.name}`))}
+                    onOpen={f.plan?.id ? () => { onClose(); openAdd({ edit: { kind: "plan", id: f.plan.id } }); } : null} />
                 ))}
               </ul>
-              {info.fitHref && (
-                <button type="button" onClick={() => go(info.fitHref)} className="mt-2 block w-full text-center text-[0.8125rem] font-semibold text-acc">
-                  Fitness&apos;ta aç
-                </button>
-              )}
             </section>
           )}
         </div>
@@ -389,7 +384,7 @@ function DayPick({ day, att, today, onClose }) {
 }
 
 // Fitness satırı: baş harf, ad, antrenman, durum; dokununca hareketler (yapıldıysa sonuçlar)
-function FitRow({ f, open, onTap }) {
+function FitRow({ f, open, onTap, onOpen }) {
   const [t, c] = FIT_ST[f.st] || [f.plan?.time || "Bekliyor", "bg-bg text-mut"];
   const fit = f.plan?.fit || {};
   const items = fit.items || [];
@@ -425,6 +420,12 @@ function FitRow({ f, open, onTap }) {
             </ol>
           )}
           {fit.res?.note && <p className="mt-1.5 text-[0.8125rem] text-mut">Not: {fit.res.note}</p>}
+          {onOpen && (
+            <button type="button" data-press onClick={onOpen} className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-acc py-2.5 text-[0.875rem] font-semibold text-white">
+              Antrenmanı aç
+              <Icon name="chev" className="size-4" />
+            </button>
+          )}
         </div>
       )}
     </li>
