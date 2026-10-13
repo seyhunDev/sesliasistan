@@ -11,7 +11,7 @@ import { ExerciseMedia } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
-import { FEELS, cleanRes, estMinutes, groupsOf, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { FEELS, cleanRes, estMinutes, groupsOf, isTimed, itemLine, resLine, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -27,7 +27,7 @@ const n = (v) => (v === "" || v == null ? "" : String(v).replace(",", "."));
 function startSets(fit, plans, date) {
   return (fit.items || []).map((it, i) => {
     const saved = fit.res?.ex?.[i]?.sets;
-    if (saved?.length) return saved.map((s) => ({ reps: s.reps ?? "", kg: s.kg ?? "", sec: s.sec ?? "", min: s.min ?? "", ok: !!s.ok }));
+    if (saved?.length) return saved.map((s) => ({ reps: s.reps ?? "", kg: s.kg ?? "", sec: s.sec ?? "", min: s.min ?? "", ok: !!s.ok, ...(s.took ? { took: s.took, full: !!s.full } : {}) }));
     const t = targetFor(it, plans, date);
     return Array.from({ length: it.sets || 1 }, () => ({ reps: t.reps || "", kg: t.kg || "", sec: t.sec || "", min: t.min || "", ok: false }));
   });
@@ -53,6 +53,7 @@ export function FitWorkout({ rec, by, hero = false }) {
   const [extra, setExtra] = useState(!!(fit.res?.note || fit.res?.min));
   const [guide, setGuide] = useState(() => !fit.res?.st && isStart(rec.id)); // adım adım ekran (asistanla "antrenmana başla" açar)
   const [open, setOpen] = useState(-1); // açık hareket (nasıl yapılır, setler)
+  const [at, setAt] = useState(null); // adım adım ekran hangi setten açılsın (süreli sette listeden dokununca)
   const tick = useRef(null);
   useEffect(() => {
     if (isStart(rec.id)) clearStart();
@@ -81,8 +82,17 @@ export function FitWorkout({ rec, by, hero = false }) {
   const resOf = (patch = {}) => cleanRes({ ...(fit.res || {}), ex: sets.map((s) => ({ sets: s })), min: mins, feel, note, ...patch }, fit.items || []);
   const save = (res) => updateRecord("plan", rec.id, { fit: { ...fit, res } }, by);
 
-  function toggle(i, k, quiet = false) {
-    const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: quiet ? true : !x.ok } : x)) : s));
+  // quiet: adım adım ekrandan (yalnız işaretler); rec: süreli sette geri sayım kaydı { took, full }
+  function toggle(i, k, quiet = false, rec = null) {
+    const flip = (x) => {
+      const ok = quiet ? true : !x.ok;
+      if (!ok) {
+        const { took, full, ...rest } = x;
+        return { ...rest, ok };
+      }
+      return { ...x, ok, ...(rec || {}) };
+    };
+    const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? flip(x) : x)) : s));
     setSets(next);
     const on = next[i][k].ok;
     save(cleanRes({ ...(fit.res || {}), ex: next.map((s) => ({ sets: s })), st: fit.res?.st || "", at: fit.res?.at || new Date().toISOString() }, fit.items || []));
@@ -180,12 +190,16 @@ export function FitWorkout({ rec, by, hero = false }) {
         <FitGuided
           items={items}
           sets={sets}
-          onCheck={(i, k) => toggle(i, k, true)}
+          at={at}
+          onCheck={(i, k, r) => toggle(i, k, true, r)}
           onVal={lock ? null : setVal}
           feel={feel}
           setFeel={setFeel}
           onFinish={finish}
-          onClose={() => setGuide(false)}
+          onClose={() => {
+            setGuide(false);
+            setAt(null);
+          }}
         />
       )}
 
@@ -257,7 +271,8 @@ export function FitWorkout({ rec, by, hero = false }) {
                     {it.yt?.id && <YtLink yt={it.yt} />}
                     <div className="mt-2 space-y-1.5">
                       {s.map((x, k) => (
-                        <div key={k} className="flex items-center gap-2">
+                        <div key={k}>
+                        <div className="flex items-center gap-2">
                           <span className="w-9 shrink-0 text-[0.75rem] font-semibold text-mut">Set {k + 1}</span>
                           {!lock && cell === `${i}-${k}` ? (
                             <>
@@ -283,16 +298,22 @@ export function FitWorkout({ rec, by, hero = false }) {
                           )}
                           <button
                             type="button"
-                            aria-label={x.ok ? "Yapılmadı" : "Yapıldı"}
+                            aria-label={x.ok ? "Yapılmadı" : isTimed(it) ? "Süreyi başlat" : "Yapıldı"}
                             aria-pressed={x.ok}
                             onClick={() => {
                               setCell("");
-                              toggle(i, k);
+                              // Süreli sette geri sayım şart: adım adım ekran o setten açılır
+                              if (!x.ok && isTimed(it)) {
+                                setAt({ i, k });
+                                setGuide(true);
+                              } else toggle(i, k);
                             }}
                             className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-90 ${x.ok ? "bg-acc text-white" : "border-2 border-line text-transparent"}`}
                           >
-                            <Icon name="check" className="size-4" />
+                            <Icon name={!x.ok && isTimed(it) ? "clock" : "check"} className={`size-4 ${!x.ok && isTimed(it) ? "text-mut" : ""}`} />
                           </button>
+                        </div>
+                        {setTimeText(it, x) && <small className={`ml-11 block text-[0.75rem] ${x.full ? "text-acc" : "text-rec"}`}>{setTimeText(it, x)}</small>}
                         </div>
                       ))}
                     </div>

@@ -248,6 +248,10 @@ export function cleanRes(r = {}, items = []) {
       if (kg) o.kg = kg;
       if (sec) o.sec = sec;
       if (min) o.min = min;
+      // Süreli sette geri sayım kaydı: kaç saniye yapıldı, süre dolana kadar mı (full) yoksa erken mi geçildi
+      const took = num(s.took, 1, 36000);
+      if (took) o.took = took;
+      if (s.full) o.full = true;
       return o;
     });
     return { sets };
@@ -455,6 +459,35 @@ export function applyLog(fit, log = {}) {
   return { ...fit, items, res };
 }
 // Sonucun kısa yazısı: "Squat 3 × 10 · 60 kg, Şınav 3 × 12"
+// ---- Süreli hareket (geri sayım) ----
+// Hedef saniye: süreli harekette set süresi, kardiyoda dakika × 60
+export function goalSec(it = {}, set = {}) {
+  if (it.kind === "time") return +(set.sec || it.sec) || 30;
+  if (it.kind === "cardio") return (+(set.min || it.min) || 1) * 60;
+  return 0;
+}
+export const isTimed = (it) => it?.kind === "time" || it?.kind === "cardio";
+// 0:30 · 5:00 · 1:02:05
+export function clockText(sec) {
+  const t = Math.max(0, Math.round(+sec || 0));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const ss = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+// Setin süre kaydı: "Tamamlandı · 0:30" ya da "0:18'de geçildi (hedef 0:30)"; kayıt yoksa boş
+export function setTimeText(it, s = {}) {
+  if (!isTimed(it) || !s.took) return "";
+  return s.full ? `Tamamlandı · ${clockText(s.took)}` : `${clockText(s.took)}'de geçildi (hedef ${clockText(goalSec(it, s))})`;
+}
+// Süresi dolmadan geçilen setler: "2. set 0:18'de geçildi"
+function earlyText(it, sets = []) {
+  return sets
+    .map((s, k) => (s.ok && s.took && !s.full ? `${k + 1}. set ${clockText(s.took)}'de geçildi` : ""))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function resLine(fit) {
   const parts = (fit?.items || [])
     .map((it, i) => {
@@ -462,7 +495,8 @@ export function resLine(fit) {
       if (!sets.length) return "";
       const s = sets.at(-1);
       const per = it.kind === "cardio" ? `${s.min || it.min} dk` : it.kind === "time" ? `${sets.length} × ${s.sec || it.sec} sn` : `${sets.length} × ${s.reps || it.reps}${s.kg ? ` · ${kgText(s.kg)}` : ""}`;
-      return `${it.name} ${per}`;
+      const early = earlyText(it, fit.res?.ex?.[i]?.sets || []);
+      return `${it.name} ${per}${early ? ` (${early})` : ""}`;
     })
     .filter(Boolean);
   return parts.join(", ");
