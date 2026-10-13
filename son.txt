@@ -1,8 +1,8 @@
-Commit: c0d12ec · Fitness: sporcuya programda yaş doğum tarihinden ve spor seçimi (varsayılan yelken) (#343)
-Zaman: 2026-10-13-0826 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38351200869
+Commit: ec32361 · Merge pull request #342 from seyhunDev/claude/project-thread-byniq3
+Zaman: 2026-10-13-0834 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38351928633
 
-TAM TEST · 13.10.2026 08:25:05
+TAM TEST · 13.10.2026 08:32:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
