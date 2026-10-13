@@ -118,3 +118,60 @@ export const newWhoName = (name, options = []) => {
   const k = nameKey(name);
   return k && !options.some((o) => nameKey(o.name) === k) ? String(name).trim().replace(/\s+/g, " ") : "";
 };
+
+// Kasa kartı: hareketin türü süzgeci (all | in | out) ve ay ay gruplar (en yeni ay önce).
+// Her grup { ym "2026-10", label "Ekim 2026", in, out, items }; ayın girişi/çıkışı süzgeçten bağımsız.
+const AY = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const ymOf = (x) => {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(x?.date || "");
+  if (m) return `${m[3]}-${m[2]}`;
+  const d = new Date((x?.ts || 0) + 3 * 3600e3);
+  return x?.ts ? d.toISOString().slice(0, 7) : "";
+};
+export function kasaMonths(counted = [], filter = "all") {
+  const map = new Map();
+  for (const x of [...counted].sort((a, b) => (b.ts || 0) - (a.ts || 0))) {
+    const ym = ymOf(x);
+    if (!map.has(ym)) {
+      const [y, m] = ym.split("-");
+      map.set(ym, { ym, label: ym ? `${AY[Number(m) - 1]} ${y}` : "Tarihsiz", in: 0, out: 0, items: [] });
+    }
+    const g = map.get(ym);
+    if (x.amount > 0) g.in += x.amount;
+    else g.out += Math.abs(x.amount);
+    if (filter === "all" || (filter === "in" ? x.amount > 0 : x.amount < 0)) g.items.push(x);
+  }
+  return [...map.values()].filter((g) => g.items.length).sort((a, b) => (a.ym < b.ym ? 1 : -1));
+}
+// Bu ayın kasa girişi ve çıkışı (ay "2026-10")
+export function kasaMonth(counted = [], ym) {
+  let inn = 0;
+  let out = 0;
+  for (const x of counted) {
+    if (ymOf(x) !== ym) continue;
+    if (x.amount > 0) inn += x.amount;
+    else out += Math.abs(x.amount);
+  }
+  return { in: inn, out };
+}
+// Hareketin bağlı olduğu fiş/fatura: { kind "receipt"|"invoice", id, href } ya da null
+export function kasaLink(x) {
+  const m = /^(rc|inv):(.+)$/.exec(x?.src || "");
+  if (!m) return null;
+  return m[1] === "rc" ? { kind: "receipt", id: m[2], href: `/receipts/${m[2]}` } : { kind: "invoice", id: m[2], href: "/invoices" };
+}
+// Kasa satırının simgesi (Icon adı) türe göre
+const CAT_ICON = [
+  [/^fiş/i, "receipt"],
+  [/^fatura/i, "receipt"],
+  [/yakıt/i, "fuel"],
+  [/yemek/i, "utensils"],
+  [/ulaşım/i, "nav"],
+  [/malzeme/i, "box"],
+  [/avans|maaş/i, "user"],
+  [/borç/i, "wallet"],
+  [/aidat/i, "users"],
+  [/bağış/i, "star"],
+  [/bankadan/i, "coins"],
+];
+export const kasaIcon = (x) => (CAT_ICON.find(([re]) => re.test(x?.cat || "")) || [null, x?.amount > 0 ? "plus" : "up"])[1];

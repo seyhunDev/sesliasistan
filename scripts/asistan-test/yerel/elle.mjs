@@ -1128,6 +1128,18 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaOf(l, { from: "2026-10-10T00:00:00Z", skip: ["i:a"] });
     return k.total === 0 && k.old.length === 1 && k.old[0].id === "b" && k.archived.length === 1 && k.archived[0].id === "a";
   })],
+  ["kasa: ay ay gruplar ve süzgeç", F("en yeni ay önce, ayın giriş/çıkışı, Çıkış süzgeci, fiş bağlantısı ve simge", () => {
+    const l = [
+      { id: "a", amount: 1000, cat: "Aidat", date: "05.10.2026", ts: Date.parse("2026-10-05T09:00:00Z") },
+      { id: "b", amount: -250, cat: "Fiş", src: "rc:R1", date: "12.10.2026", ts: Date.parse("2026-10-12T09:00:00Z") },
+      { id: "c", amount: -100, cat: "Yakıt", date: "20.09.2026", ts: Date.parse("2026-09-20T09:00:00Z") },
+    ];
+    const g = KB.kasaMonths(l);
+    const o = KB.kasaMonths(l, "in");
+    const m = KB.kasaMonth(l, "2026-10");
+    const k = KB.kasaLink(l[1]);
+    return g.length === 2 && g[0].label === "Ekim 2026" && g[0].items[0].id === "b" && g[0].in === 1000 && g[0].out === 250 && o.length === 1 && o[0].items.length === 1 && m.in === 1000 && m.out === 250 && k.href === "/receipts/R1" && KB.kasaLink({ src: "inv:I9" }).kind === "invoice" && !KB.kasaLink(l[0]) && KB.kasaIcon(l[1]) === "receipt" && KB.kasaIcon(l[2]) === "fuel";
+  })],
   ["kasa: bankadan nakite çevirme", F("kasaya nakit giriş, kişisel hesaptan çıkar, tutarla bulunur", () => {
     const bank = [
       { id: "kaa1", amount: 20000, currency: "TL", who: "SEYHUN YILDIZ", desc: "Hesaba gelen", date: "11.10.2026 10:00", ts: Date.parse("2026-10-11T07:00:00Z") },

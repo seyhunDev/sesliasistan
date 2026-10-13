@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { money } from "@/lib/bankSheet";
+import { kasaIcon, kasaLink, kasaMonth, kasaMonths } from "@/lib/cashbook";
 
 const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
 const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
@@ -11,48 +12,85 @@ const shortDate = (x) => {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(x.date || "");
   return m ? new Date(`${m[3]}-${m[2]}-${m[1]}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "";
 };
-const SHOW = 5;
 
 // Hesaplar › Kulüp: Kasa (nakit). Sayılan girişler − çıkışlar; altta son nakitler ve kasa başlamadan önceki girişler
 // ("Nakit girdi olarak ekle"). Ayrıntı: src/lib/cashbook.js.
 export function KasaCard({ kasa, onAdd, onOpen, onInclude, onArchive, onUnarchive }) {
   const [oldOpen, setOldOpen] = useState(false);
   const [arcOpen, setArcOpen] = useState(false);
-  const [all, setAll] = useState(false);
-  const list = all ? kasa.counted : kasa.counted.slice(0, SHOW);
+  const [filter, setFilter] = useState("all");
+  const [more, setMore] = useState(1); // kaç ay açık
+  const [ym] = useState(() => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 7));
+  const month = kasaMonth(kasa.counted, ym);
+  const groups = kasaMonths(kasa.counted, filter);
+  const shown = groups.slice(0, more);
+  const monthName = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" });
   return (
     <section className="mt-6">
       <h2 className={title}>Kasa · nakit</h2>
       <div className={card}>
         <div className="px-4 pb-3 pt-3.5">
-          <p className={`text-[1.75rem] font-bold leading-tight tabular-nums tracking-tight ${kasa.total < 0 ? "text-rec" : ""}`}>
+          <p className="text-[0.75rem] font-semibold tracking-[.06em] text-mut">KASADA</p>
+          <p className={`text-[1.875rem] font-bold leading-tight tabular-nums tracking-tight ${kasa.total < 0 ? "text-rec" : ""}`}>
             {kasa.total < 0 ? "−" : ""}
             {money(Math.abs(kasa.total))} <span className="text-[1rem] font-semibold text-mut">TL</span>
           </p>
-          <p className="mt-0.5 text-[0.75rem] tabular-nums text-mut">
-            Giriş <span className="font-semibold text-ok">+{money(kasa.in)}</span> · Çıkış <span className="font-semibold text-rec">−{money(kasa.out)}</span>
-          </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => onAdd("in")} className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-ok/10 text-[0.875rem] font-semibold text-ok">
-              <Icon name="plus" className="size-4" /> Nakit giriş
-            </button>
-            <button type="button" onClick={() => onAdd("out")} className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
-              <Icon name="up" className="size-4" /> Nakit çıkış
-            </button>
+            <div className="rounded-xl bg-bg px-3 py-2">
+              <p className="text-[0.6875rem] font-semibold text-mut">{monthName} giriş</p>
+              <p className="text-[0.9375rem] font-semibold tabular-nums text-ok">+{money(month.in)}</p>
+            </div>
+            <div className="rounded-xl bg-bg px-3 py-2">
+              <p className="text-[0.6875rem] font-semibold text-mut">{monthName} çıkış</p>
+              <p className="text-[0.9375rem] font-semibold tabular-nums text-rec">−{money(month.out)}</p>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {[
+              ["in", "Nakit giriş", "plus", "bg-ok/10 text-ok"],
+              ["receipt", "Fişle çıkış", "camera", "bg-rec/10 text-rec"],
+              ["out", "Elle çıkış", "edit", "bg-rec/10 text-rec"],
+            ].map(([d, l, ic, cls]) => (
+              <button key={d} type="button" onClick={() => onAdd(d)} className={`flex h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-[0.75rem] font-semibold ${cls}`}>
+                <Icon name={ic} className="size-4" /> {l}
+              </button>
+            ))}
           </div>
         </div>
-        {list.length > 0 && (
-          <ul className="divide-y divide-line border-t border-line">
-            {list.map((x) => (
-              <Row key={x.id} x={x} onClick={() => onOpen(x)} />
+        {kasa.counted.length > 0 && (
+          <div className="flex gap-1 border-t border-line px-4 py-2">
+            {[
+              ["all", "Tümü"],
+              ["in", "Giriş"],
+              ["out", "Çıkış"],
+            ].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setFilter(k)} className={`h-8 flex-1 rounded-full text-[0.8125rem] font-semibold ${filter === k ? "bg-fg text-card" : "bg-bg text-mut"}`}>
+                {l}
+              </button>
             ))}
-          </ul>
+          </div>
         )}
-        {kasa.counted.length > SHOW && (
-          <button type="button" onClick={() => setAll((v) => !v)} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-acc">
-            {all ? "Daha az göster" : `Tüm kasa hareketleri (${kasa.counted.length})`}
+        {shown.map((g) => (
+          <div key={g.ym} className="border-t border-line">
+            <p className="flex items-baseline gap-2 bg-bg/60 px-4 py-1.5 text-[0.6875rem] font-semibold tracking-[.04em] text-mut">
+              <span className="min-w-0 flex-1 truncate">{g.label.toLocaleUpperCase("tr-TR")}</span>
+              <span className="shrink-0 tabular-nums">
+                <span className="text-ok">+{money(g.in)}</span> · <span className="text-rec">−{money(g.out)}</span>
+              </span>
+            </p>
+            <ul className="divide-y divide-line">
+              {g.items.map((x) => (
+                <KasaRow key={x.id} x={x} onClick={() => onOpen(x)} />
+              ))}
+            </ul>
+          </div>
+        ))}
+        {groups.length > shown.length && (
+          <button type="button" onClick={() => setMore((n) => n + 2)} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-acc">
+            Önceki aylar ({groups.length - shown.length})
           </button>
         )}
+        {kasa.counted.length > 0 && !groups.length && <p className="border-t border-line px-4 py-3 text-[0.8125rem] text-mut">{filter === "in" ? "Nakit giriş yok." : "Nakit çıkış yok."}</p>}
         {!kasa.counted.length && <p className="border-t border-line px-4 py-3 text-[0.8125rem] leading-snug text-mut">Bundan sonra girilen nakitler kasaya sayılır.</p>}
         {kasa.old.length > 0 && (
           <div className="border-t border-line">
@@ -229,6 +267,32 @@ export function PersonalBook({ book, payee, cards, onAdd, onOpen, lent }) {
         )}
       </section>
     </>
+  );
+}
+
+// Kasa satırı: türün simgesi, kime/ne, gün · tür · not; fişle ödenende "Fiş" etiketi
+function KasaRow({ x, onClick }) {
+  const link = kasaLink(x);
+  const inn = x.amount > 0;
+  return (
+    <li>
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-full ${inn ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
+          <Icon name={kasaIcon(x)} className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-medium">{x.who || x.note}</b>
+          <small className="block truncate text-[0.75rem] text-mut">
+            {link && <span className="mr-1 rounded bg-bg px-1 py-px text-[0.625rem] font-bold text-fg">{link.kind === "receipt" ? "FİŞ" : "FATURA"}</span>}
+            {[shortDate(x), x.who && x.note].filter(Boolean).join(" · ")}
+          </small>
+        </span>
+        <b className={`shrink-0 text-[0.9375rem] font-semibold tabular-nums ${inn ? "text-ok" : "text-rec"}`}>
+          {inn ? "+" : "−"}
+          {money(Math.abs(x.amount))}
+        </b>
+      </button>
+    </li>
   );
 }
 
