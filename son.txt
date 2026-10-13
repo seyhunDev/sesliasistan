@@ -1,8 +1,8 @@
-Commit: d417fdb · Görevliye bildirim gitmeyince nedeni ve yeniden gönder (#366)
-Zaman: 2026-10-13-1753 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38417006662
+Commit: 15d9d6b · Fitness: hareketin kendi videosu antrenman ekranında oynatılıyor (#367)
+Zaman: 2026-10-13-1811 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38419778656
 
-TAM TEST · 13.10.2026 17:52:07
+TAM TEST · 13.10.2026 18:10:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 54 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
