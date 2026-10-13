@@ -101,13 +101,36 @@ function Big({ orgId, m, onOpen }) {
   );
 }
 
-// Antrenman ekranı: hareketin kendi videosu YouTube kartı gibi küçük kart (ilk kare + ▶ "Videoyu izle"),
-// dokununca kartın yerinde oynar (sesli, oynatma düğmeleriyle), "Küçült" ile kart olur.
+// Antrenman ekranı: hareketin kendi videosu doğrudan, sayfanın içinde (kart ya da büyütme yok).
+// Bu cihazda ilk kez görülen video kendiliğinden (sessiz) oynar; sonra oynat düğmesiyle (sa-fit-seen, video kimliği).
+const SEEN = "sa-fit-seen";
+function seenSet() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SEEN) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function markSeen(id) {
+  try {
+    const s = seenSet();
+    if (s.has(id)) return;
+    s.add(id);
+    localStorage.setItem(SEEN, JSON.stringify([...s].slice(-300)));
+  } catch {}
+}
+
 export function MediaVideo({ media = [], className = "" }) {
   const { profile } = useAuth();
   const m = (media || []).find((x) => !x.stock && x.kind === "video");
   const { url, err, fail } = useBlobUrl(profile?.orgId, m);
-  const [play, setPlay] = useState(false);
+  // İlk görülüş açılışta bir kez okunur (aynı video için ekran açık kaldıkça değişmez)
+  const [first, setFirst] = useState({ id: "", on: false });
+  if (m?.id && first.id !== m.id) setFirst({ id: m.id, on: !seenSet().has(m.id) });
+  const auto = first.id === m?.id && first.on;
+  useEffect(() => {
+    if (m?.id) markSeen(m.id);
+  }, [m?.id]);
   if (!m) return null;
   // Açılamayan video sessizce kaybolmaz: sporcu ne olduğunu görür, adres varsa telefonun oynatıcısında açar
   if (err) {
@@ -129,29 +152,25 @@ export function MediaVideo({ media = [], className = "" }) {
       </div>
     );
   }
-  if (play && url) {
-    return (
-      <div className={className}>
-        <video src={url} controls autoPlay playsInline loop onError={fail} className="aspect-video w-full rounded-3xl bg-black object-contain" />
-        <button type="button" onClick={() => setPlay(false)} className="mt-1.5 flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
-          <Icon name="x" className="size-4" />
-          Küçült
-        </button>
-      </div>
-    );
-  }
   return (
-    <button type="button" onClick={() => url && setPlay(true)} className={`flex w-full items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-sm active:scale-[.99] ${className}`}>
-      <span className="relative block h-14 w-24 shrink-0 overflow-hidden rounded-xl bg-black">
-        {url ? <video src={`${url}#t=0.1`} muted playsInline preload="metadata" onError={fail} className="size-full object-cover" /> : <span className="shimmer block size-full" />}
-        <span className="absolute inset-0 grid place-items-center">
-          <span className="grid size-7 place-items-center rounded-full bg-black/60 text-white">
-            <Icon name="video" className="size-3.5" />
-          </span>
-        </span>
-      </span>
-      <span className="text-[0.9375rem] font-semibold text-acc">{url ? "Videoyu izle" : "Video hazırlanıyor…"}</span>
-    </button>
+    <div className={className}>
+      {url ? (
+        <video
+          key={m.id}
+          src={auto ? url : `${url}#t=0.1`}
+          controls
+          playsInline
+          loop
+          autoPlay={auto}
+          muted={auto}
+          preload="metadata"
+          onError={fail}
+          className="block h-52 w-full rounded-3xl bg-black object-contain"
+        />
+      ) : (
+        <span className="shimmer block h-52 w-full rounded-3xl" />
+      )}
+    </div>
   );
 }
 
