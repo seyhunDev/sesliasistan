@@ -7,6 +7,7 @@ import { TLk, totalOf } from "@/lib/receipts";
 import { payLine } from "@/lib/invoices";
 import { addedText, assignedText, cancelledText, changedText, doneText, paidText, receiptNewText } from "@/lib/notifyText";
 import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
+import { planRemind, reminderText } from "@/lib/reminders";
 import { absentPush } from "@/lib/absent";
 import { remindPush, unpaidRoster } from "@/lib/duesRemind";
 
@@ -181,6 +182,32 @@ export async function POST(request) {
     const to = [...new Set([r.createdByUid, me.orgId, ...(r.assignees || [])])].filter((u) => u && u !== au.uid);
     const sent = await sendAll(to, (u) => sendTo(u, { ...msg, tag: `done-${kind}-${ref.id}`, url: `/?open=${kind}:${ref.id}` }));
     return NextResponse.json({ ok: true, sent });
+  }
+
+  // ---- Plana özel hatırlatma gitmediyse "Yeniden gönder": hatırlatması gitmeyen kişilere şimdi gönderilir ----
+  if (body?.kind === "plan" && body.event === "remind") {
+    const ref = org.collection("plans").doc(String(body.id || ""));
+    const r = (await ref.get()).data();
+    if (!r) return NextResponse.json({ error: "Kayıt yok" }, { status: 404 });
+    if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    const to = Object.keys(r.remindFail || {});
+    if (!to.length) return NextResponse.json({ ok: true, sent: 0 });
+    const lead = planRemind(r) || 60;
+    const patch = {};
+    const fail = [];
+    const sent = await sendAll(to, async (u) => {
+      const out = {};
+      // Kendi hatırlatması da olabilir (ana hesap): bu cihaz hariç tutulmaz
+      const n = await sendPush(u, reminderText({ ...r, id: ref.id }, lead, { tz: r.tz || undefined }), new Set(), out);
+      if (n) patch[`remindFail.${u}`] = FieldValue.delete();
+      else {
+        patch[`remindFail.${u}`] = { why: out.why || "device", ...(out.msg ? { msg: String(out.msg).slice(0, 160) } : {}), at: Date.now() };
+        fail.push({ u, why: out.why || "device" });
+      }
+      return n;
+    });
+    if (Object.keys(patch).length) await ref.update(patch);
+    return NextResponse.json({ ok: true, sent, fail });
   }
 
   // ---- Atama ----

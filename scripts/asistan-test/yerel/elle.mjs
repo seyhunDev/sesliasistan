@@ -143,6 +143,20 @@ group("Plan hatırlatmaları")([
   ["saat değişince", { desc: "plan saati değişirse yeniden gider", fn: () => due({ ...RP, time: "11:00", reminded: { u1: RM.remindKey(RP, 60) } }, 60, "2026-10-05T07:05:00Z", "u1"), ok: (r) => r === 1 }],
 ]);
 
+// Plana özel "Hatırlat" (plan formu): kişinin ayarından bağımsız, sorumlulara ve ana hesaba
+const AP = await import("@/lib/repeat");
+const AL = await import("@/lib/assistantLocal");
+group("Plana özel hatırlatma")([
+  ["30 dk seçeneği", { desc: "Yok · 15 dk · 30 dk · 1 saat · 1 gün", fn: () => RM.REMIND_OPTS.map((o) => o.label).join(), ok: (r) => r === "Yok,15 dk,30 dk,1 saat,1 gün" }],
+  ["planın ayarı", { desc: "yok: null, 0: kapalı, 30: 30", fn: () => [RM.planRemind(RP), RM.planRemind({ ...RP, remind: 0 }), RM.planRemind({ ...RP, remind: 30 })].join(), ok: (r) => r === ",0,30" }],
+  ["kime gider", { desc: "sorumlular + ana hesap, tekrarsız", fn: () => RM.planRecipients({ ...RP, people: ["own", "ali"] }, "own").join(), ok: (r) => r === "own,ali" }],
+  ["fitness planı", { desc: "yalnız sporcusuna", fn: () => RM.planRecipients({ ...RP, people: ["own"], fit: { for: "s1" } }, "own").join(), ok: (r) => r === "s1" }],
+  ["30 dk önce zamanı", { desc: "09:31'de gider, 09:05'te gitmez", fn: () => [due(RP, 30, "2026-10-05T06:31:00Z", "ali"), due(RP, 30, "2026-10-05T06:05:00Z", "ali")].join(), ok: (r) => r === "1,0" }],
+  ["cümleden", { desc: "yarım saat / 1 saat kala / bir gün önceden / hatırlatma olmasın", fn: () => ["yarın 10'da antrenman, Ali'ye ver, yarım saat önce hatırlat", "toplantıyı 1 saat kala hatırlat", "bir gün önceden hatırlat", "hatırlatma olmasın", "tekneleri hazırlamayı hatırlat"].map(RM.remindOf).join(), ok: (r) => r === "30,60,1440,0," }],
+  ["taslağa yazılır", { desc: "plan taslağı remind 30 alır, görev almaz", fn: () => AP.applyRepeat([{ type: "plan", title: "A", date: "2026-10-05", time: "10:00" }, { type: "task", title: "B" }], "yarın 10'da antrenman yarım saat önce hatırlat", "2026-10-04").map((x) => x.remind ?? "-").join(), ok: (r) => r === "30,-" }],
+  ["var olan plan", { desc: "değişiklik remind'i yazar ve söyler", fn: () => [AL.buildPatch("plan", { remind: 30 }).remind, AL.describeAction({ op: "update", kind: "plan", patch: { remind: 30 } }, { title: "Antrenman" })].join("|"), ok: (r) => r === "30|Güncelle: Antrenman → 30 dk önce hatırlat" }],
+]);
+
 // Takvim, görev grupları, doğum günleri (agenda.js)
 const AG = await import("@/lib/agenda");
 const TT = [{ title: "a", due: "2026-10-01" }, { title: "b", due: "2026-10-03" }, { title: "c", due: "2026-10-04" }, { title: "d", due: "2026-10-08" }, { title: "e", due: "2026-10-20" }, { title: "f" }];

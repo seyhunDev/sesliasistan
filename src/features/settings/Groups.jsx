@@ -229,7 +229,7 @@ export function NotifyRow({ n }) {
 export function NotifyMoreRow({ n }) {
   if (!n.on) return null;
   return (
-    <Fold icon="clock" tone="amber" title="Plan hatırlatması" sub={`${LEADS.find((l) => l.min === n.st?.lead)?.label || "1 saat"} önce · deneme bildirimi`}>
+    <Fold icon="clock" tone="amber" title="Plan hatırlatması" sub={`${LEADS.find((l) => l.min === n.st?.lead)?.label || "1 saat önce"} · deneme bildirimi`}>
       <Chips value={n.st?.lead} options={LEADS.map((l) => [l.min, l.label])} onChange={n.pickLead} />
       <div className="px-4 pb-3.5 pl-[3.75rem]">
         <button type="button" onClick={n.test} className="h-10 rounded-xl bg-bg px-4 text-[0.875rem] font-semibold text-acc active:scale-95">

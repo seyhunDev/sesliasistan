@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { addDays, cap, todayStr } from "@/lib/utils/format";
 import { defaultUntil, repeatLabel, seriesDates } from "@/lib/repeat";
+import { REMIND_OPTS } from "@/lib/reminders";
 
 const TYPES = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "Not", "note"]];
 export const TIMES = ["09:00", "10:00", "12:00", "14:00", "18:00"];
@@ -45,6 +46,22 @@ export function Picker({ type, value, onChange, children, className }) {
         aria-label={type === "date" ? "Tarih seç" : "Saat seç"}
       />
     </label>
+  );
+}
+
+// Plana özel hatırlatma: Yok · 15 dk · 30 dk · 1 saat · 1 gün (önce). Sorumlulara ve ana hesaba gider.
+// value null: kişinin Ayarlar'daki hatırlatması geçerli.
+export const remindOf = (d) => d.remind ?? (d.assignees?.length ? 60 : null);
+export const remindText = (v) => (v === null ? "Ayarlardaki gibi" : v === 0 ? "Yok" : `${REMIND_OPTS.find((o) => o.min === v)?.label || `${v} dk`} önce`);
+export function RemindChips({ value, onPick }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {REMIND_OPTS.map((o) => (
+        <button key={o.min} type="button" onClick={() => onPick(o.min)} className={chip(value === o.min)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -239,6 +256,13 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
                 className="w-full bg-transparent text-[0.9375rem] text-fg outline-none placeholder:text-mut"
               />
             </Row>
+
+            {!editing && d.date && (
+              <Row icon="bell" top>
+                <p className="mb-1.5 text-[0.9375rem] font-medium">Hatırlat <span className="font-normal text-mut">· {remindText(remindOf(d))}</span></p>
+                <RemindChips value={remindOf(d)} onPick={(v) => put({ remind: v })} />
+              </Row>
+            )}
 
             {!editing && !multi && d.date && (
               <Row icon="repeat">
