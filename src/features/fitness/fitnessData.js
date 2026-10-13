@@ -53,7 +53,7 @@ export async function saveProgram(orgId, uid, prog) {
   const ref = prog.id ? doc(col(orgId), prog.id) : doc(col(orgId));
   const now = new Date().toISOString();
   const clean = cleanProgram(prog);
-  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
+  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", forAge: prog.for ? Math.min(Math.max(+prog.forAge || 0, 0), 99) : 0, sport: prog.for ? String(prog.sport || "").slice(0, 20) : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
   // Yeni etkin program: aynı kişinin önceki programları etkin olmaktan çıkar (planları silinmez)
   const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active && (p.for || "") === rec.for);
   // merge: sunucunun yazdığı notifiedAt (sporcuya bildirim gitti) silinmesin

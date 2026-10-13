@@ -12,7 +12,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  STATUS, addDays, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
+  STATUS, addDays, ageFrom, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { kindOf } from "@/lib/kinds";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
@@ -163,8 +163,8 @@ export function FitnessHome() {
       // Seçilenler kesin: gün ve saatler formdakiyle aynı olsun
       const days = r.program.days.map((d) => ({ ...d, time: d.time || pre.time, min: d.min || pre.min }));
       setNewOpen(false);
-      const who = pre.for ? { for: pre.for, forName: pre.forName } : {};
-      setEdit({ prog: fixStart({ ...r.program, ...who, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
+      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "" } : {};
+      setEdit({ prog: fixStart({ ...r.program, goal: r.program.goal || f.goal, level: r.program.level || f.level, place: r.program.place || f.place, ...who, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
     } catch (e) {
       // Hata pencerede kalır (önceden yalnız kısa bildirimdi, kaçırılıyordu)
       setAskErr(e.message || "Program hazırlanamadı, tekrar dene.");
@@ -177,8 +177,8 @@ export function FitnessHome() {
     if (!pre.for) saveProfile(uid, f).then(setFitProf).catch(() => {});
     setNewOpen(false);
     const days = pre.days.map((dow) => ({ dow, time: pre.time, min: pre.min, name: "Antrenman", items: [cleanItem({ ex: "warmup", min: 5 }), cleanItem({ ex: "stretch", min: 5 })] }));
-    const who = pre.for ? { for: pre.for, forName: pre.forName } : {};
-    setEdit({ prog: { ...cleanProgram({ title: pre.for ? `${pre.forName} · fitness` : "Fitness programım", weeks: pre.weeks, start: pre.start, days }), ...who }, fresh: true, k: Date.now() });
+    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f?.age || 0, sport: f?.sport || "" } : {};
+    setEdit({ prog: { ...cleanProgram({ title: pre.for ? `${pre.forName} · fitness` : "Fitness programım", goal: f?.goal, level: f?.level, place: f?.place, weeks: pre.weeks, start: pre.start, days }), ...who }, fresh: true, k: Date.now() });
   }
 
   async function saveBody(f) {
@@ -374,6 +374,7 @@ export function FitnessHome() {
         <Sheet open={progOpen} onClose={() => setProgOpen(false)} title="Programım">
           <ProgramCard
             bare
+            age={fitProf?.age || 0}
             prog={prog}
             today={today}
             onCal={onCal}
@@ -538,6 +539,7 @@ function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel,
           {row?.prog ? (
             <ProgramCard
               bare
+              age={ageFrom(athletes.find((a) => a.uid === sel)?.birth, today)}
               prog={row.prog}
               today={today}
               onCal={row.plans.filter((p) => p.fit?.prog === row.prog.id && p.date >= today).length}
