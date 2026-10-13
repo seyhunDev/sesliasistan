@@ -1,8 +1,8 @@
-Commit: bd823f9 · Sporcu hareket ekranı: küçük video kartı, arka plansız geri sayım, kaydırmasız (#362)
-Zaman: 2026-10-13-1636 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38406121104
+Commit: 33ded7d · Biten antrenman kartı: süre/set/his kutuları, hareket satırları, set süre hapları (#363)
+Zaman: 2026-10-13-1646 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38407481034
 
-TAM TEST · 13.10.2026 16:35:17
+TAM TEST · 13.10.2026 16:45:12
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 65 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
