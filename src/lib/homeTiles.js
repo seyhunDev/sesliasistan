@@ -138,12 +138,32 @@ export function trainingWeek(plans = [], today) {
 }
 // Instagram: kayıtlı gönderi varsa
 export const clubPosts = (sum, now) => (sum?.count ? postsTile(sum, now) : null);
-// Sıradaki yarış kartı (tam genişlik): nextInfo (raceHome.js) varsa { id (dokununca o yarışın sayfası), title, sub, left, days, when }; yoksa null
+// Sıradaki yarış kartı (tam genişlik): nextInfo (raceHome.js) varsa { id (dokununca o yarışın sayfası), title, sub ("17-19 Ekim · Foça · 6 sporcu"),
+// left (eksik iş), total, done (hazırlık çubuğu), day/mon (soldaki tarih kutusu: "17", "EKİ"), days, when }; yoksa null
+const MON = ["OCA", "ŞUB", "MAR", "NİS", "MAY", "HAZ", "TEM", "AĞU", "EYL", "EKİ", "KAS", "ARA"];
 export function clubRace(next) {
   if (!next) return null;
-  const sub = [next.dates, next.count ? `${next.count} sporcu` : ""].filter(Boolean).join(" · ");
-  return { id: next.id || "", title: next.title || `${next.name} yarışı`, sub, left: next.left || 0, days: /^\d/.test(next.when) ? parseInt(next.when, 10) : null, when: cap(next.when) };
+  const sub = [next.dates, next.place, next.count ? `${next.count} sporcu` : ""].filter(Boolean).join(" · ");
+  const d = /^\d{4}-(\d{2})-(\d{2})$/.exec(next.start || "");
+  const left = next.left || 0;
+  const total = Math.max(next.total || 0, left);
+  return {
+    id: next.id || "",
+    title: next.title || `${next.name} yarışı`,
+    sub,
+    left,
+    total,
+    done: total - left,
+    day: d ? String(Number(d[2])) : "",
+    mon: d ? MON[Number(d[1]) - 1] : "",
+    days: /^\d/.test(next.when) ? parseInt(next.when, 10) : null,
+    when: cap(next.when),
+  };
 }
+// Antrenman kartında güne dokununca o günün yoklaması (Seyhun: "güne tıkladım, o günün yoklaması açılsın"); gelecek gün yoklanmaz (null)
+export const attHref = (date, today) => (date && date <= today ? `/athletes/attendance?gun=${date}` : null);
+// Ana sayfa notları iki grupta: sabitlenenler ve diğerleri (sıra homeNotes'taki gibi)
+export const noteGroups = (list = []) => [["SABİT", list.filter((n) => n.pinned)], ["SON NOTLAR", list.filter((n) => !n.pinned)]].filter(([, l]) => l.length);
 
 // Ana sayfa › Şu an kartındaki Yarış planına ait yarış (dokununca yarışın sayfası açılsın): plan adı yarışın adıyla aynıysa o,
 // değilse bugün süren tek yarış. open: useRaceHome().open (bitmemiş yarışlar, ek okuma yok). Bulunamazsa null.
