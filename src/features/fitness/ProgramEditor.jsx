@@ -267,7 +267,7 @@ function Ready({ p, busy, onStart, onAll, onCancel }) {
         </section>
       )}
 
-      <div className="mt-5 flex flex-col gap-1">
+      <div className="sticky bottom-[var(--stage-h,6rem)] z-10 -mx-5 mt-5 flex flex-col gap-1 bg-bg/95 px-5 pb-2 pt-3 backdrop-blur">
         <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={onStart}>
           <Icon name="check" className="size-5" />
           {p.forName ? `Kaydet, ${p.forName} görsün` : "Tamam, başlayalım"}
@@ -308,7 +308,7 @@ function AthleteReady({ p, busy, onStart, onDay, onCancel }) {
         ))}
       </ul>
       <p className="mt-2 px-1 text-[0.8125rem] text-mut">Bir güne dokununca hareketleri değiştirirsin.</p>
-      <div className="mt-5 flex flex-col gap-1">
+      <div className="sticky bottom-[var(--stage-h,6rem)] z-10 -mx-5 mt-5 flex flex-col gap-1 bg-bg/95 px-5 pb-2 pt-3 backdrop-blur">
         <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={onStart}>
           <Icon name="check" className="size-5" />
           {`Kaydet ve ${toName(p.forName)} gönder`}
