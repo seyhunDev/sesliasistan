@@ -290,6 +290,22 @@ export function receiptPayCommand(raw) {
   return { paid: !unpaid, no: no ? Number(no[1] || no[2]) : 0, who: w ? w[1] : "", cash: !unpaid && /(^| )(nakit|elden|peşin)( |$)/u.test(t) };
 }
 
+// ---- Fiş Kişisel ↔ Kulüp: "son Garanti fişini kulübe al", "Migros fişini kişisel yap", "F-0012 kulüp fişi olsun" ----
+// → { scope, no, last, q (işyeri sözcükleri) } | null
+export function receiptScopeCommand(raw) {
+  const t = low(raw);
+  if (!/(^| )fiş/u.test(t) || QUESTION.test(t)) return null;
+  const scope = /(^| )kişisel/u.test(t) ? "personal" : /(^| )kulüb|(^| )kulüp/u.test(t) ? "club" : "";
+  if (!scope || !/(yap|al|taşı|geçir|olsun|say|işaretle|ekle|çevir)\p{L}*$/u.test(t)) return null;
+  const no = t.match(/(?:^| )f[- ]?(\d{1,5})(?: |$|['’])|(\d{1,5}) (?:numaralı|nolu|no'?lu) fiş/u);
+  const head = (t.match(/^(.+?) fiş/u)?.[1] || "").replace(/['’]\p{L}*/gu, "");
+  const q = head
+    .split(" ")
+    .filter((w) => w && !/^(son|en|bu|şu|o|garanti|kart|kartımın|harcama|bugünkü|dünkü|f-?\d+|\d+|numaralı|nolu)$/u.test(w))
+    .join(" ");
+  return { scope, no: no ? Number(no[1] || no[2]) : 0, last: !q && !no, q };
+}
+
 // ---- Yoklama sonrası: "gelmeyenlerin velilerine haber ver", "devamsızların velilerine bildir" (bugün; "dün" denirse dün) ----
 export function absentNotifyCommand(raw) {
   const t = low(raw);

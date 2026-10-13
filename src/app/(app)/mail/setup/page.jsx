@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { MANIFEST, gmailScript } from "@/features/mail/script";
 import { Group, Row } from "@/features/settings/ui";
 import { sendersOf } from "@/lib/bankSheet";
+import { GARANTI_SENDERS } from "@/lib/garanti";
 import { db } from "@/lib/firebase/clientApp";
 
 const VALID = /^([^\s@]+@)?[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
@@ -96,6 +97,9 @@ export default function MailSetupPage() {
     setFrom("");
   };
   const remove = (f) => save(own.filter((x) => x.from !== f), "Kaldırıldı");
+  // Garanti BBVA kart harcaması mailleri: tek dokunuşla iki alan adı eklenir, her harcama ödeme bekleyen fiş olur (garanti.js)
+  const garantiMissing = GARANTI_SENDERS.filter((g) => !rules.some((r) => r.from === g.from));
+  const addGaranti = () => save([...own, ...garantiMissing], "Garanti BBVA takip ediliyor");
 
   const code = gmailScript({ project: PROJECT, uid: profile.uid, site: siteOf() });
   const seen = profile.mailSeen;
@@ -111,6 +115,17 @@ export default function MailSetupPage() {
           tone={live ? "ok" : "slate"}
           title={live ? "Gmail bağlı" : seen ? "Gmail bir süredir bağlanmadı" : "Gmail henüz bağlanmadı"}
           sub={seen ? `Son kontrol ${ago(seen, now)} · 5 dakikada bir bakılır` : "Aşağıdaki kurulumu bir kez yap"}
+        />
+      </Group>
+
+      <Group title="Garanti BBVA kart harcamaları" footer="Garanti'den gelen her harcama maili Fişler'e ödeme bekleyen Kişisel fiş olarak eklenir. Garanti BBVA uygulamasında kart işlem bildirimleri için e-postayı aç; e-posta adresin bu Gmail olmalı.">
+        <Row
+          icon="receipt"
+          tone={garantiMissing.length ? "acc" : "ok"}
+          title={garantiMissing.length ? "Garanti BBVA'yı takip et" : "Garanti BBVA takip ediliyor"}
+          sub={garantiMissing.length ? "Harcama mailleri fiş olsun" : "Yeni harcama mailleri 5 dakika içinde fiş olur"}
+          onClick={garantiMissing.length ? addGaranti : undefined}
+          chevron={!!garantiMissing.length}
         />
       </Group>
 

@@ -119,3 +119,10 @@ export function accountingSheets(list = [], nameOf) {
   };
 }
 export const accountingName = (month) => `fisler-${month || "tumu"}.xlsx`;
+
+// Hesaplar › Kişisel: bu ayın kişisel fişleri (Garanti kart mailleri ve Kişisel seçilen fişler). Tutarlar kuruş.
+export function personalReceipts(list = [], ym = "") {
+  const mine = list.filter((r) => r?.scope === "personal" && (!ym || String(r.date || "").startsWith(ym)));
+  const wait = mine.filter((r) => payOf(r) === "pending");
+  return { n: mine.length, sum: mine.reduce((a, r) => a + totalOf(r), 0), wait: wait.length, waitSum: wait.reduce((a, r) => a + totalOf(r), 0) };
+}

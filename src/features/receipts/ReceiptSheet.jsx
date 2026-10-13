@@ -29,7 +29,7 @@ const newItem = (i = {}) => ({
 });
 const emptyForm = () => ({
   merchant: "", taxId: "", address: "", docType: "fis", docNo: "", date: todayStr(), time: "",
-  items: [newItem()], declared: "", pay: "Kart", cat: "Diğer", note: "",
+  items: [newItem()], declared: "", pay: "Kart", cat: "Diğer", note: "", scope: "club",
 });
 const fromDraft = (d) => ({
   merchant: d.merchant || "",
@@ -44,6 +44,7 @@ const fromDraft = (d) => ({
   pay: d.pay || "Kart",
   cat: d.cat || "Diğer",
   note: d.note || "",
+  scope: d.scope === "personal" ? "personal" : "club",
 });
 // Formdaki metinleri kayda uygun sayılara çevirir (tutarlar kuruş)
 const toDraft = (f) => ({
@@ -90,7 +91,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const router = useRouter();
   const path = usePathname();
   const { profile } = useAuth();
-  const { receipts, saveReceipt, updateReceipt, deleteRecord, loadReceiptImage, isStaff } = useData();
+  const { receipts, saveReceipt, updateReceipt, setReceiptScope, deleteRecord, loadReceiptImage, isStaff } = useData();
   const { maybeSpeak } = useTts();
   const editId = seed?.edit || null;
 
@@ -251,7 +252,10 @@ export function ReceiptSheet({ open, onClose, seed }) {
       img = undefined;
     }
     if (editId) {
+      const was = receipts.find((x) => x.id === editId);
       updateReceipt(editId, d, { by, image: img });
+      // Garanti kartının seçimi hatırlansın (sonraki harcamalar da böyle gelir)
+      if (was?.card && (was.scope || "club") !== d.scope) setReceiptScope(editId, d.scope);
       toast("Fiş güncellendi");
     } else {
       const res = saveReceipt(d, { by, image: img || null, src: aiImage ? "photo" : "manual" });
@@ -541,6 +545,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
 
             {/* Ödeme + kategori */}
             <section className="space-y-3">
+              {!isStaff && <Seg value={form.scope} options={[["club", "Kulüp"], ["personal", "Kişisel"]]} onChange={(v) => set({ scope: v })} />}
               <Seg value={form.pay} options={PAYS.map((p) => [p, p])} onChange={(v) => set({ pay: v })} />
               <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
                 {CATS.map((c) => (

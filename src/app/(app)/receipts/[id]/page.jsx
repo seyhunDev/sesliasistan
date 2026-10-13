@@ -37,7 +37,7 @@ function Kv({ k, v, sub, strong }) {
 
 export default function ReceiptDetailPage() {
   const { id } = useParams();
-  const { receipts, loading, loadReceiptImage } = useData();
+  const { receipts, loading, loadReceiptImage, isStaff, setReceiptScope } = useData();
   const { openReceipt } = useReceipt();
   const [img, setImg] = useState(null);
   const [zoom, setZoom] = useState(false);
@@ -100,6 +100,17 @@ export default function ReceiptDetailPage() {
 
       <PayBox r={r} />
 
+      {/* Kişisel / Kulüp: tek dokunuş. Garanti fişinde o kartın sonraki harcamaları da böyle gelir. */}
+      {!isStaff && (
+        <div className="mt-3 flex rounded-xl bg-bg p-[0.1875rem]" role="tablist" aria-label="Kimin harcaması">
+          {[["club", "Kulüp"], ["personal", "Kişisel"]].map(([v, l]) => (
+            <button key={v} type="button" role="tab" aria-selected={(r.scope || "club") === v} onClick={() => setReceiptScope(r.id, v)} className={`flex-1 rounded-[0.625rem] py-2 text-sm font-semibold transition ${(r.scope || "club") === v ? "bg-card text-fg shadow-sm" : "text-mut"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Sec title={`Kalemler (${(r.items || []).length})`}>
         {(r.items || []).map((i, k) => (
           <Kv key={k} k={i.n} sub={`${String(i.q).replace(".", ",")} × ${TLk(i.u)} · %${i.r}`} v={TLk(Math.round(i.q * i.u))} />
@@ -125,7 +136,7 @@ export default function ReceiptDetailPage() {
 
       <Sec title="Kayıt">
         <Kv k="Ekleyen" v={r.createdBy?.name} />
-        <Kv k="Kaynak" v={r.src === "photo" ? "Fotoğraf + AI" : "Elle"} />
+        <Kv k="Kaynak" v={r.src === "garanti" ? `Garanti maili${r.card ? ` · kart ·${r.card}` : ""}` : r.src === "photo" ? "Fotoğraf + AI" : "Elle"} />
         <Kv k="AI güveni" v={conf ? `%${Math.round((Object.values(conf).reduce((a, b) => a + b, 0) / Object.values(conf).length) * 100)}` : ""} />
         <Kv k="Eklendi" v={r.createdAt ? new Date(r.createdAt).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" }) : ""} />
         <Kv k="Güncellendi" v={r.updatedAt ? `${new Date(r.updatedAt).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}${r.updatedBy?.name ? ` · ${r.updatedBy.name}` : ""}` : ""} />

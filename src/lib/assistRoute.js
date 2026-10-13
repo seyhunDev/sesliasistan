@@ -22,7 +22,7 @@ import { shopCommand } from "@/features/shop/shopWords";
 import { wantsAttendance } from "@/features/athletes/access";
 import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
 import { localCommand } from "@/lib/commands";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, receiptScopeCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
@@ -46,6 +46,7 @@ export function moreKind(s, c = {}) {
   const onRace = /^\/athletes\/races\/[\w-]+$/.test(path) && !/\/new$/.test(path);
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
   if (owner && receiptPayCommand(s)) return "receiptPay";
+  if (owner && receiptScopeCommand(s)) return "receiptScope";
   if (owner && racer && absentNotifyCommand(s)) return "absent";
   if (shopClearCommand(s)) return "shopClear";
   if (birthdayDeleteCommand(s)) return "bdayDelete";

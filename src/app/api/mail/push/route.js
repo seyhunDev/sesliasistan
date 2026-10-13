@@ -6,6 +6,8 @@ import { restDb } from "@/lib/server/firestoreRest";
 import { duesText, runAutoDues } from "@/lib/duesAuto";
 import { invoiceText, runAutoInvoices } from "@/lib/invoices";
 import { movementsOf } from "@/lib/mailBoard";
+import { garantiText, runGaranti } from "@/lib/garanti";
+import { garantiAi } from "@/lib/ai/garantiAi";
 import { inboxAdd, inboxBadge } from "@/lib/inbox";
 import { deviceOk, sendDevice } from "@/lib/server/sendDevice";
 
@@ -35,7 +37,9 @@ export async function POST(request) {
   // Excel ekleri henüz okunmadıysa burada okunur: bildirimde bakiye görünsün
   let XLSX = null;
   const mails = [];
+  const withIds = [];
   for (const { id, data: m } of list) {
+    withIds.push({ id, ...m });
     if (!m.sheets && m.raw?.length) {
       XLSX ||= xlsxOf(await import("xlsx"));
       m.sheets = sheetsFromRaw(m.raw, XLSX);
@@ -58,15 +62,19 @@ export async function POST(request) {
   const dues = duesText(await runAutoDues(io, uid, mails).catch((e) => (console.error("[aidat]", e.message), null)));
   // Açık faturaya uyan giden ödeme varsa fatura ödendi yazılır (invoices.js)
   const inv = invoiceText(await runAutoInvoices(io, uid, movementsOf(mails)).catch((e) => (console.error("[fatura]", e.message), null)));
+  // Garanti kart harcaması mailleri ödeme bekleyen fiş olur (garanti.js)
+  const card = garantiText(await runGaranti({ ...io, ai: garantiAi }, uid, withIds, user.data.cardScope).catch((e) => (console.error("[garanti]", e.message), null)));
 
   const subs = Object.values(user.data.push || {}).filter(deviceOk);
   let sent = 0;
   const errors = [];
   const msg = dues
-    ? { ...dues, ...(inv ? { body: `${dues.body} · ${inv.title}` } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
+    ? { ...dues, ...(inv || card ? { body: [dues.body, inv?.title, card?.title].filter(Boolean).join(" · ") } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
     : inv
-      ? { ...inv, tag: `inv-${list[0].id}`, url: "/invoices" }
-      : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" };
+      ? { ...inv, ...(card ? { body: `${inv.body} · ${card.title}` } : {}), tag: `inv-${list[0].id}`, url: "/invoices" }
+      : card
+        ? { ...card, tag: `card-${list[0].id}`, url: "/receipts" }
+        : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" };
   // Bildirim kutusuna (ana sayfadaki "Bildirimler"); simgedeki sayı oradaki okunmamışlar (lib/inbox)
   const inbox = inboxAdd(user.data.inbox, msg);
   const badge = (await db.patch(`users/${uid}`, { inbox }).catch(() => 0)) === 200 ? inboxBadge(inbox, user.data.inboxSeen) : undefined;

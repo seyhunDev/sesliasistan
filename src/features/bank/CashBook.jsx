@@ -121,7 +121,7 @@ export function KasaCard({ kasa, onAdd, onOpen, onInclude, onArchive, onUnarchiv
 }
 
 // Hesaplar › Kişisel: kulüpten ayrı gelir, gider ve borçlar; bankadan aldığın ödemeler ayrı satırda (/payments)
-export function PersonalBook({ book, payee, onAdd, onOpen, lent }) {
+export function PersonalBook({ book, payee, cards, onAdd, onOpen, lent }) {
   const [all, setAll] = useState(false);
   const rest = book.moves.filter((x) => !(x.dir === "debt" && !x.paid)); // ödenmemiş borçlar yukarıda ayrı
   const list = all ? rest : rest.slice(0, 20);
@@ -186,6 +186,24 @@ export function PersonalBook({ book, payee, onAdd, onOpen, lent }) {
               <small className="block truncate text-[0.75rem] text-mut">{payee.n} ödeme · bankadan, kasaya girmez</small>
             </span>
             {payee.sum > 0 && <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-ok">+{money(payee.sum)}</b>}
+            <Icon name="chev" className="size-4 shrink-0 text-mut" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Kişisel fişler: Garanti kart harcaması mailleri (ödeme bekleyen fiş olarak gelir) ve Kişisel seçilen fişler */}
+      <section className="mt-6">
+        <h2 className={title}>Kart harcamaları</h2>
+        <div className={card}>
+          <Link href="/receipts?scope=kisisel" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-rec/10 text-rec">
+              <Icon name="receipt" className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block truncate text-[0.9375rem] font-semibold">Bu ay {cards?.n || 0} kişisel fiş</b>
+              <small className="block truncate text-[0.75rem] text-mut">{cards?.wait ? `${cards.wait} fiş ödeme bekliyor · ${money(cards.waitSum / 100)} TL` : cards?.n ? "Hepsi ödendi" : "Garanti kart harcaması mailleri buraya fiş olarak gelir"}</small>
+            </span>
+            {cards?.sum > 0 && <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-rec">−{money(cards.sum / 100)}</b>}
             <Icon name="chev" className="size-4 shrink-0 text-mut" />
           </Link>
         </div>
