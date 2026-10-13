@@ -8,39 +8,40 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { SHORTCUT_MAX, linkKey, shortcutsOf, toggleShortcut } from "@/lib/homeTiles";
-import { CARD, SectionHead } from "./ui";
+import { SectionHead } from "./ui";
 
 // Marka renkleri: yalnız tanınan sosyal medya düğmesinde (Instagram simgesi ve renk geçişi); diğerleri uygulamanın yeşil simgesi
 export const BRAND = {
   instagram: "bg-[linear-gradient(45deg,#f9a03a_0%,#e9583f_30%,#d62f6c_60%,#a23ab6_100%)] text-white",
 };
 
-// Düğme: üstte yuvarlatılmış kare simge (kart görünümünde), altında tek satır ad; kutu yok, simgeler ızgarada nefes alır
-const cls = "relative flex w-full flex-col items-center gap-2 text-center ";
+// Düğme (Seyhun: "butonları buton gibi yapalım"): kabarık kutu (.raised, globals.css; altında ince kenar gölgesi, basınca
+// aşağı iner), içinde açık yeşil kare simge ve tek satır ad. Instagram'da simge kendi renk geçişinde.
+const cls = "raised relative flex w-full flex-col items-center gap-1.5 px-1 pb-2 pt-2.5 text-center ";
 function Body({ icon, label, brand, badge }) {
   return (
     <>
-      <span className={`relative grid size-[3.75rem] shrink-0 place-items-center ${CARD} ${BRAND[brand] || "text-acc"}`}>
-        <Icon name={icon} className="size-6" />
-        {badge && (
-          <span className={`absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full text-white ring-2 ring-bg ${badge === "add" ? "bg-acc" : "bg-rose-600"}`}>
-            <Icon name={badge === "add" ? "plus" : "minus"} className="size-3" />
-          </span>
-        )}
+      <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${BRAND[brand] || "bg-acc/10 text-acc"}`}>
+        <Icon name={icon} className="size-[1.375rem]" />
       </span>
-      <span className="w-full truncate whitespace-nowrap text-[0.8125rem] font-medium leading-tight tracking-[-0.01em]">{label}</span>
+      {badge && (
+        <span className={`absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full text-white ring-2 ring-bg ${badge === "add" ? "bg-acc" : "bg-rose-600"}`}>
+          <Icon name={badge === "add" ? "plus" : "minus"} className="size-3" />
+        </span>
+      )}
+      <span className="w-full truncate whitespace-nowrap text-[0.75rem] font-semibold leading-tight tracking-[-0.01em]">{label}</span>
     </>
   );
 }
 function Tile({ a, onGo }) {
   if (a.href)
     return (
-      <Link href={a.href} onClick={onGo} className={cls}>
+      <Link href={a.href} onClick={onGo} data-press className={cls}>
         <Body {...a} />
       </Link>
     );
   return (
-    <button type="button" onClick={() => (onGo?.(), a.onClick?.())} className={cls}>
+    <button type="button" onClick={() => (onGo?.(), a.onClick?.())} data-press className={cls}>
       <Body {...a} />
     </button>
   );
@@ -82,7 +83,7 @@ export function HomeActions({ groups }) {
       )}
     </li>
   );
-  const grid = "grid grid-cols-4 gap-x-1.5 gap-y-4";
+  const grid = "grid grid-cols-4 gap-2.5";
   const head = "mb-3 px-1 text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-mut";
 
   return (

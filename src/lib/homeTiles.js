@@ -1,7 +1,7 @@
 // Ana sayfadaki büyük kartların (Aidatlar, Yarışlar, Instagram, Antrenman günlüğü) yazıları.
 // Firestore'a ek okuma yok: aidat ve gönderi özeti ilgili sayfa açılınca bu cihazda saklanır (sa-home-sum),
 // yarış bilgisi raceHome.js'in zaten yaptığı okumadan, antrenman bellekteki planlardan gelir.
-import { canLog, isLogNote, monthLog } from "./trainingLog";
+import { canLog, isLogNote, isTraining, monthLog } from "./trainingLog";
 import { monthRows } from "./dues";
 import { planState } from "./agenda";
 
@@ -100,6 +100,41 @@ export function clubFis(inv, receipts) {
 export function clubTraining(plans, today) {
   const t = trainingTile(plans, today);
   return /^0 /.test(t.big) && !t.warn ? null : { ...t, big: t.big.replace(/ antrenman$/, "") };
+}
+// Antrenman kartı (tam genişlik): bu haftanın 7 günü (Pzt–Paz) ve ayın özeti. Gün durumu: done (günlüğü yazıldı), miss (günü geçti,
+// günlük yok), today (bugün; has: bugün antrenman var), plan (ileride antrenman), none (antrenman yok). Bellekteki planlardan, ek okuma yok.
+// Bu hafta ve bu ay hiç antrenman yoksa (ve yazılmamış günlük yoksa) null: kart görünmez.
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+export function trainingWeek(plans = [], today) {
+  const base = new Date(`${today}T12:00:00`);
+  const start = new Date(base);
+  start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+  const tr = plans.filter((p) => isTraining(p) && p.status !== "cancelled" && p.date);
+  const days = DOW.map((w, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const date = ymd(d);
+    const on = tr.filter((p) => p.date === date);
+    const logged = on.length > 0 && on.every((p) => p.log);
+    const state = date === today ? (logged ? "done" : "today") : !on.length ? "none" : date > today ? "plan" : logged ? "done" : "miss";
+    return { date, d: d.getDate(), w, state, has: on.length > 0 };
+  });
+  const ym = today.slice(0, 7);
+  const m = monthLog(plans, ym);
+  const missing = plans.filter((p) => canLog(p, today) && !p.log && p.date >= `${ym}-01`).length;
+  const planned = days.filter((x) => x.has).length;
+  if (!planned && !m.total && !missing) return null;
+  return {
+    days,
+    planned,
+    done: days.filter((x) => x.state === "done").length,
+    total: m.total,
+    avgWind: m.avgWind,
+    missing,
+    month: cap(monthName(ym)),
+  };
 }
 // Instagram: kayıtlı gönderi varsa
 export const clubPosts = (sum, now) => (sum?.count ? postsTile(sum, now) : null);
