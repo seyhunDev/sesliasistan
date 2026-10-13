@@ -21,6 +21,15 @@ export function localReceipt(text) {
   return !/^(ler|lar)/.test(m[3]) && RECEIPT_OPEN.test(t);
 }
 
+// "kasadan fişle çıkış", "fişle nakit çıkış yap", "fişi kasadan öde": fiş kamerası kasa kipinde açılır
+// (fiş ödendi yazılır, kasadan nakit çıkış olur). Numaralı fiş ("F-12 fişini nakit ödedim") kendi akışında kalır.
+export function kasaReceipt(text) {
+  const t = lower(text).replace(/[.,!?'’]/g, " ").replace(/\s+/g, " ").trim();
+  if (!t || t.split(" ").length > 9 || QUESTION.test(t) || /ne kadar|(^|\s)m[ıi](\s|$)/.test(t) || /\bf\s?-?\s?\d/.test(t)) return false;
+  if (!/(^|\s)fiş/.test(t)) return false;
+  return /(^|\s)kasa/.test(t) || /nakit (çıkış|çıkışı)/.test(t);
+}
+
 // Evet/hayırdan sonra değişiklik isteniyorsa ("evet ama saati 11 yap", "hayır yarın değil cuma") onay ya da ret değildir
 const EDIT_TAIL = (s) => {
   const t = lower(String(s || "")).trim();

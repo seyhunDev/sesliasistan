@@ -98,6 +98,8 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const [stage, setStage] = useState("pick"); // pick | camera | reading | form | done
   const [done, setDone] = useState(null); // kaydedilen fiş: { id, no (sayı | "wait" | null), merchant, total, hint }
   const [form, setForm] = useState(emptyForm);
+  const kasa = !!seed?.kasa && !seed?.edit; // Hesaplar › Kasa'dan fişle çıkış: nakit, ödendiyse kasadan düşer
+  const [kasaPaid, setKasaPaid] = useState(true);
   const [conf, setConf] = useState(null);
   const [image, setImage] = useState(null); // gösterilen fotoğraf (dataURL)
   const [imageDirty, setImageDirty] = useState(false);
@@ -135,7 +137,8 @@ export function ReceiptSheet({ open, onClose, seed }) {
       if (rec?.hasImage) loadReceiptImage(editId).then((img) => img && setImage(img));
       return;
     }
-    setForm(emptyForm());
+    setForm(seed?.kasa ? { ...emptyForm(), pay: "Nakit" } : emptyForm());
+    setKasaPaid(true);
     setConf(null);
     setImage(null);
     setDone(null);
@@ -258,12 +261,13 @@ export function ReceiptSheet({ open, onClose, seed }) {
       if (was?.card && (was.scope || "club") !== d.scope) setReceiptScope(editId, d.scope);
       toast("Fiş güncellendi");
     } else {
-      const res = saveReceipt(d, { by, image: img || null, src: aiImage ? "photo" : "manual" });
+      const paidCash = kasa && kasaPaid && d.pay === "Nakit";
+      const res = saveReceipt(d, { by, image: img || null, src: aiImage ? "photo" : "manual", ...(kasa && d.pay === "Nakit" ? { kasa: paidCash } : {}) });
       navigator.vibrate?.([10, 40, 10]);
       setSaving(false);
       if (!res) return onClose();
       // Numara ekranda gösterilir: kullanıcı kâğıt fişin üstüne yazar
-      setDone({ id: res.id, no: "wait", merchant: d.merchant, total: hasDeclared ? declared : totals.gross, hint: hasDeclared && !matched });
+      setDone({ id: res.id, no: "wait", merchant: d.merchant, total: hasDeclared ? declared : totals.gross, hint: hasDeclared && !matched, kasa: kasa && d.pay === "Nakit" ? (paidCash ? "nakit ödendi · kasadan düştü" : "ödeme bekliyor") : "" });
       setStage("done");
       const late = new Promise((r) => setTimeout(() => r(null), 8000));
       Promise.race([res.no, late]).then((no) => {
@@ -290,7 +294,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
     if (path.startsWith(`/receipts/${editId}`)) goBack(router, "/receipts");
   }
 
-  const title = editId ? "Fişi düzenle" : "Fiş ekle";
+  const title = editId ? "Fişi düzenle" : kasa ? "Fişle nakit çıkış" : "Fiş ekle";
   const btn1 = "h-12 flex-1 rounded-xl border border-line bg-card text-base font-semibold transition active:scale-[.98]";
   const btn2 = "h-12 flex-[1.6] rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98] disabled:opacity-50";
 
@@ -328,7 +332,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
             </span>
             <p className="mt-4 text-[1.0625rem] font-semibold">Fiş kaydedildi</p>
             <p className="mt-0.5 text-[0.875rem] text-mut">
-              {[done.merchant, TLk(done.total)].filter(Boolean).join(" · ")} · {isStaff ? "ödeme bekliyor" : "ödendi"}
+              {[done.merchant, TLk(done.total)].filter(Boolean).join(" · ")} · {done.kasa || (isStaff ? "ödeme bekliyor" : "ödendi")}
             </p>
             <div className="mt-6 w-full max-w-[20rem] rounded-3xl border-2 border-dashed border-acc/50 bg-card px-5 py-5">
               <small className="block text-[0.8125rem] font-medium text-mut">Fiş numarası</small>
@@ -545,8 +549,14 @@ export function ReceiptSheet({ open, onClose, seed }) {
 
             {/* Ödeme + kategori */}
             <section className="space-y-3">
-              {!isStaff && <Seg value={form.scope} options={[["club", "Kulüp"], ["personal", "Kişisel"]]} onChange={(v) => set({ scope: v })} />}
+              {!isStaff && !kasa && <Seg value={form.scope} options={[["club", "Kulüp"], ["personal", "Kişisel"]]} onChange={(v) => set({ scope: v })} />}
               <Seg value={form.pay} options={PAYS.map((p) => [p, p])} onChange={(v) => set({ pay: v })} />
+              {kasa && form.pay === "Nakit" && (
+                <div>
+                  <p className="mb-1.5 text-[0.8125rem] font-medium text-mut">Ödendi mi?</p>
+                  <Seg value={kasaPaid ? "yes" : "no"} options={[["yes", "Ödendi · kasadan düş"], ["no", "Henüz ödenmedi"]]} onChange={(v) => setKasaPaid(v === "yes")} />
+                </div>
+              )}
               <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
                 {CATS.map((c) => (
                   <button
@@ -569,7 +579,8 @@ export function ReceiptSheet({ open, onClose, seed }) {
         <footer className="flex shrink-0 gap-2.5 border-t border-line bg-card px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <button
             onClick={() => {
-              setForm(emptyForm());
+              setForm(kasa ? { ...emptyForm(), pay: "Nakit" } : emptyForm());
+              setKasaPaid(true);
               setConf(null);
               setImage(null);
               setAiImage(null);

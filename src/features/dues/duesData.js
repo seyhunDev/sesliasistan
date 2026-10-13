@@ -1,6 +1,6 @@
 "use client";
 
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "firebase/firestore";
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, limit, orderBy, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
@@ -135,9 +135,18 @@ export const dropCashName = (orgId, name) => setDoc(doc(db, "orgs", orgId, "cash
 // Hesaplar › Bakiye'de gösterilecek hesaplar (hesap anahtarları)
 export const saveShownAccts = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "cash", "meta"), { accts: keys }, { merge: true });
 // Fiş ya da fatura nakit ödenince kulüp kasasından çıkış (src: "rc:<fiş>" | "inv:<fatura>"); ödeme geri alınınca silinir
-export const cashOutFor = (orgId, { src, cat, who, amount, note, date }) =>
-  addDoc(collection(db, "orgs", orgId, "incomes"), clean({ dir: "out", cat, who, amount, note, date: date || todayStr(), src, at: new Date().toISOString() }));
+// Fiş/fatura nakit ödemesinden gelen kasa kayıtları değişince açık Hesaplar sayfası yeniden okur
+const cashChanged = () => typeof window !== "undefined" && window.dispatchEvent(new Event("sa-cash-saved"));
+export const cashOutFor = (orgId, { src, cat, who, amount, note, date, book }) =>
+  addDoc(collection(db, "orgs", orgId, "incomes"), clean({ ...(book === "personal" ? { book } : {}), dir: "out", cat, who, amount, note, date: date || todayStr(), src, at: new Date().toISOString() })).then((r) => (cashChanged(), r));
+// Bağlı kasa çıkışını günceller (fişin tutarı ya da defteri değişince)
+export async function setCashFor(orgId, src, patch) {
+  const q = await getDocs(query(collection(db, "orgs", orgId, "incomes"), where("src", "==", src)));
+  await Promise.all(q.docs.map((d) => updateDoc(d.ref, patch)));
+  cashChanged();
+}
 export async function dropCashFor(orgId, src) {
   const q = await getDocs(query(collection(db, "orgs", orgId, "incomes"), where("src", "==", src)));
   await Promise.all(q.docs.map((d) => deleteDoc(d.ref)));
+  cashChanged();
 }

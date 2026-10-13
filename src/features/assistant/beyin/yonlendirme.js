@@ -412,11 +412,11 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
 
 // Hızlı komutlar (lib/commands): fiş kamerası, sayfa, yeni kayıt, görev tamamlama, özet
 export function runLocal(ctx, cmd, s, viaVoice) {
-  const { go, openMeeting, openReceipt, park, reply, startDrafts, toast, toggleTask } = ctx;
+  const { go, openMeeting, openReceipt, owner, park, reply, startDrafts, toast, toggleTask } = ctx;
   if (cmd.type === "receipt") {
     navigator.vibrate?.(8);
     park();
-    openReceipt({ camera: true, voice: viaVoice }); // kaydedince fiş numarası sesle de söylenir
+    openReceipt({ camera: true, voice: viaVoice, ...(cmd.kasa && owner ? { kasa: true } : {}) }); // kasa: fiş ödendi yazılır, kasadan nakit çıkış // kaydedince fiş numarası sesle de söylenir
   } else if (cmd.type === "meeting") {
     navigator.vibrate?.(8);
     park();
