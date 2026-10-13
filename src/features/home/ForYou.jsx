@@ -122,12 +122,12 @@ export function useForYou() {
         });
   // Mesaj: sohbetler (kişi, grup, Ekip) — okunmamış
   for (const c of chats)
-    if (c.unread > 0 && !c.mutedByMe && c.last && c.last.by !== myUid)
+    if (c.unread > 0 && !c.mutedByMe && c.last && !(c.last.deleted && c.unread < 2) && c.last.by !== myUid)
       items.push({
         id: `chat:${c.id}:${c.seq}`,
         lead: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} size="size-11" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
         title: c.title,
-        sub: `${c.type === "dm" ? "" : `${first(personName(c.last.by))}: `}${c.last.text}`,
+        sub: c.last.deleted ? "Bu mesaj silindi" : `${c.type === "dm" ? "" : `${first(personName(c.last.by))}: `}${c.last.text}`,
         time: listTime(c.last.at),
         badge: c.unread,
         onOpen: () => router.push(`/messages?c=${c.id}`),

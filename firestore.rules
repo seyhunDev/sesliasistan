@@ -189,7 +189,7 @@ service cloud.firestore {
         allow update: if inOrg(orgId) && memberOf(resource.data) && chatUpdateOk();
         allow delete: if false;
 
-        // Mesajlar: yalnızca sohbetin üyeleri. Kişi kendi mesajını yazar/siler; başkasının mesajına yalnızca kendi tepkisini koyar.
+        // Mesajlar: yalnızca sohbetin üyeleri. Kişi kendi mesajını yazar/siler (ana hesap her mesajı siler); başkasının mesajına yalnızca kendi tepkisini koyar.
         match /messages/{mid} {
           function chatNow() { return get(/databases/$(database)/documents/orgs/$(orgId)/chats/$(cid)).data; }
           allow read: if inOrg(orgId) && memberOf(chatNow());
@@ -199,7 +199,8 @@ service cloud.firestore {
                         && request.resource.data.at == request.time
                         && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 4000;
           allow update: if inOrg(orgId) && memberOf(chatNow()) && (
-            (resource.data.by == request.auth.uid
+            // Silme: kendi mesajı; ana hesap sohbetteki her mesajı
+            ((resource.data.by == request.auth.uid || isOwner(orgId))
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["deleted", "text"])
               && request.resource.data.deleted == true && request.resource.data.text == "")
             // Düzenleme: yalnızca kendi mesajı, gönderildikten sonraki 15 dakika içinde, silinmemişse

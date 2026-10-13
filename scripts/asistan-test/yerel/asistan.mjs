@@ -217,6 +217,17 @@ const REC = { plans: [{ id: "p", title: "Antrenman", createdByUid: "u1", created
 const LC = (kind, want) => ({ desc: `son: ${want}`, fn: () => lastCreated(REC, "u1", kind)?.rec.id || null, ok: (r) => r === want });
 group("Son eklenen kayıt")([["herhangi", LC("", "t")], ["plan", LC("plan", "p")], ["not", LC("note", null)]]);
 
+// Mesaj silme sesle (assistantLocal.js msgDeleteAsk, assistRoute.js msgDelete)
+const { msgDeleteAsk } = await import("@/lib/assistantLocal");
+const { routeOf: routeOfMd } = await import("@/lib/assistRoute");
+const MD = (mine) => ({ desc: mine === null ? "mesaj silme değil" : mine ? "kendi son mesajını sil" : "son mesajı sil", fn: (s) => msgDeleteAsk(s), ok: (r) => (mine === null ? r === null : r?.mine === mine) });
+group("Mesaj silme (sesle)")([
+  ["son mesajımı sil", MD(true)], ["az önce gönderdiğim mesajı sil", MD(true)], ["son yazdığım mesajı geri al", MD(true)], ["mesajımı sil", MD(true)],
+  ["son mesajı sil", MD(false)], ["Son mesajı kaldır.", MD(false)],
+  ["mesajı sil", MD(null)], ["Ali'ye mesaj at, yarın gelsin", MD(null)], ["son kaydı geri al", MD(null)], ["mesajları aç", MD(null)],
+  ["son mesajımı sil", { desc: "yol: msgDelete", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgDelete" }],
+]);
+
 
 // Etkinlik planı isteği (eventWords.js): kamp, balık, gezi, konser…
 const EW = await import("@/features/events/eventWords");

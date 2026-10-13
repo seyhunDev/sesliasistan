@@ -65,11 +65,19 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
 
 // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
 export async function confirmPending(ctx, fromText = false, waOpened = false) {
-  const { addReply, by, cards, chatSend, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
+  const { addReply, by, cards, chatRemove, chatSend, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
   const pend = cards.pending;
   if (!pend) return;
   if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
   if (pend.send && msgDraft.current) msgDraft.current = { ...msgDraft.current, text: pend.send.text, state: pend.send.waOnly || pend.send.wa ? "wa" : "sent" };
+  // Sohbetteki mesajı silme ("son mesajımı sil")
+  if (pend.msgDel) {
+    setCards((c) => ({ ...c, pending: null, awaiting: false }));
+    const ok = await chatRemove?.(pend.msgDel.chat, pend.msgDel.m);
+    toast(ok ? "Mesaj silindi" : "Mesaj silinemedi");
+    if (nextStep(fromText && convo.current, ok ? "Sildim. " : "Mesajı silemedim. ")) return;
+    return (ok ? done : reply)(ok ? "Sildim, herkesten kalktı." : "Mesajı silemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
+  }
   if (pend.att) {
     setCards((c) => ({ ...c, pending: null, awaiting: false }));
     setSteps([]);
@@ -160,7 +168,7 @@ export function cancelPending(ctx, fromText = false) {
   }
   if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
   queue.current = [];
-  done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+  done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.msgDel ? "Tamam, silmedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
 }
 
 export async function groupCreateCmd(ctx, s, viaVoice) {

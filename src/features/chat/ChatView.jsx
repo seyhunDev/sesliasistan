@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { Loader } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useNow } from "@/hooks/useNow";
 import { ConvoComposer } from "@/features/assistant/ConvoComposer";
-import { sendErrorText, toMs, useChat } from "./ChatProvider";
+import { sendErrorText, setOpenChat, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
@@ -304,6 +304,16 @@ export function ChatView({ cid }) {
 
   // Son mesaj başkasındansa hazır yanıtlar; dokununca kutuya yazılır, istersen düzeltip gönderirsin
   const last = msgs.at(-1);
+  // Asistan açık sohbeti ve mesajlarını bilir ("son mesajımı sil")
+  useEffect(() => {
+    setOpenChat(chat ? { chat, msgs } : null);
+  });
+  useEffect(() => () => setOpenChat(null), []);
+  // Son mesaj önceden silinmiş ama listedeki özet hâlâ yazıyorsa düzeltilir (eski silmeler)
+  const staleLast = !!(chat && last?.deleted && last.n && last.n === chat.seq && chat.last && !chat.last.deleted);
+  useEffect(() => {
+    if (staleLast) updateDoc(chatRef(cid), { "last.text": "", "last.deleted": true }).catch(() => {});
+  }, [staleLast, chatRef, cid]);
   const suggKey = CHAT_AI && last && last.by !== uid && !last.deleted && last.text && !last.pending ? `${cid}/${last.id}` : "";
   const [sugg, setSugg] = useState({ key: "", list: [] });
   useEffect(() => {
@@ -700,9 +710,9 @@ export function ChatView({ cid }) {
                   </button>
                 </li>
               )}
-              {act.by === uid && (
+              {(act.by === uid || myKind === "owner") && (
                 <li>
-                  <button type="button" onClick={() => (remove(cid, act), setAct(null))} className={`${ACT} text-rec`}>
+                  <button type="button" onClick={() => (remove(chat, act), setAct(null))} className={`${ACT} text-rec`}>
                     <Icon name="trash" className="size-5" /> Herkesten sil
                   </button>
                 </li>

@@ -17,6 +17,7 @@ import { attRetry } from "@/lib/attAsk";
 import { isLogAnswer, canLog } from "@/lib/trainingLog";
 import { todayStr, rel } from "@/lib/utils/format";
 import { postHandler } from "@/features/posts/posts";
+import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { routeFromAct, withAct } from "@/lib/actRun";
@@ -214,7 +215,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     races: races.current, raceNames: raceNames(), names: contacts.map((c) => c.name), logHere: !!logPlan || path === "/training",
     invPage, fitHere: path === "/fitness" || !!fp?.fit, foodHere: path === "/fitness" && /tab=food/.test(window.location.search), attHere, curRace, onPost: !!onPost, drafts: drafts.length > 0, pending: !!cards.pending, invAsk: ia, askTo: toWho,
     prefer: preferRef.current, skipRace: skipRace.current, shop: shopLists.length > 0, focus: !!focusRef.current, memo: memo.current, plans, tasks, notes,
-    guide: !!guideHandler(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
+    guide: !!guideHandler(), chatHere: !!openChat(), myFit: mine.length > 0, myFitToday: !!planOf(mine, todayStr()), fitPeople,
   });
   // Görev listesinin numaralı işi (4-15): yol önceden belli, komut alanlardan hazır (cümle yeniden okunmaz; actRun.js)
   const routes = chained ? withAct(found, routeFromAct(takeAct(ctx, DIRECT), { today: todayStr() })) : found;
@@ -303,6 +304,16 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         }
         park();
         openBirthday({ prefill: bday });
+        return true;
+      }
+      // Açık sohbette "son mesajımı sil": kendi son mesajı (ana hesap "son mesajı sil" derse kimin olursa); onaylanınca silinir
+      case "msgDelete": {
+        const oc = openChat() || (await lastSentChat(ctx));
+        const pick = oc && [...oc.msgs].reverse().find((m) => !m.deleted && !m.pending && m.text && (m.by === profile?.uid || (!r.md.mine && owner)));
+        if (!pick) return reply(openChat() ? "Bu sohbette silinecek mesajın görünmüyor." : "Silinecek son mesajını bulamadım; sohbeti açıp mesaja dokunarak silebilirsin.", { engine: "local" }, viaVoice), true;
+        const t = pick.text.length > 80 ? `${pick.text.slice(0, 80)}…` : pick.text;
+        const me = profile?.uid;
+        reply(`${pick.by === me ? "Son mesajın" : "Son mesaj"}: “${t}”. Herkesten silmemi onaylıyor musun?`, { engine: "local", pending: { msgDel: { chat: oc.chat, m: pick } } }, viaVoice);
         return true;
       }
       // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir
