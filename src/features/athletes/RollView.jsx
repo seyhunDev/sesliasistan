@@ -102,7 +102,7 @@ export function RollView({ date, today, onDate, list, classes, usedClasses, cls,
                     data-press
                     onClick={() => onTap(a, k)}
                     aria-pressed={s === k}
-                    className={`h-9 w-[3.25rem] rounded-[0.625rem] text-[0.8125rem] font-semibold ${s === k ? `${v.on} shadow-sm` : "text-mut"}`}
+                    className={`h-9 w-[3.25rem] rounded-[0.625rem] text-[0.8125rem] font-semibold ${s === k ? v.on : "text-mut"}`}
                   >
                     {v.short}
                   </button>
