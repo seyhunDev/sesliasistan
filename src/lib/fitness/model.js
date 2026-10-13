@@ -218,6 +218,21 @@ export function itemLine(it) {
   return `${it.sets} × ${per}${it.kg ? ` · ${kgText(it.kg)}` : ""}`;
 }
 
+// Tahmini süre (dk): set başına tekrar ~4 sn ya da süre + dinlenme, kardiyo dakikası; başa 5 dk ısınma, 5'e yuvarlanır
+export function estMinutes(items = []) {
+  const sec = (items || []).reduce((t, it) => {
+    if (!it) return t;
+    if (it.kind === "cardio") return t + (+it.min || 0) * 60;
+    const sets = +it.sets || 1;
+    const work = it.kind === "time" ? +it.sec || 30 : (+it.reps || 10) * 4;
+    return t + sets * (work + (+it.rest || 60));
+  }, 0);
+  if (!sec) return 0;
+  return Math.max(10, Math.round((sec / 60 + 5) / 5) * 5);
+}
+// Antrenmanda çalışılan kas grupları (sırayla, tekrarsız)
+export const groupsOf = (items = []) => [...new Set((items || []).map((it) => exById(it?.ex)?.group).filter(Boolean))];
+
 // ---- Fitness planları ve sonuçlar ----
 export const isFit = (p) => (p?.cat || p?.category) === FIT_CAT || !!p?.fit;
 export function cleanRes(r = {}, items = []) {
