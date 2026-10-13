@@ -246,11 +246,7 @@ function TrainingCard({ w, att, today }) {
   return (
     <div className={`px-4 pb-3.5 pt-3.5 ${CARD}`}>
       <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className="flex items-center gap-2.5">
-        <span className={`grid size-8 shrink-0 place-items-center rounded-[0.625rem] ${w.missing ? WARN_BG : "bg-acc/10 text-acc"}`}>
-          <Icon name="trend" className="size-[1.125rem]" />
-        </span>
         <b className="text-[0.9375rem] font-semibold">Antrenman</b>
-        <small className="text-[0.8125rem] text-mut">bu hafta</small>
         {w.planned > 0 && <b className="text-[0.8125rem] font-semibold tabular-nums">{w.done}/{w.planned}</b>}
         <span className={`ml-auto flex items-center gap-0.5 text-[0.8125rem] font-semibold ${w.missing ? WARN_TX : "text-acc"}`}>
           {w.missing ? "Günlük yaz" : "Tümü"}
