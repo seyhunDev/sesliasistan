@@ -122,7 +122,7 @@ export function raceForPlan(plan, open, today) {
 }
 
 // Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
-// races (Yarışlar ana sayfada), training, receipts, shop, lessons }. Toplantı bir sayfa değil: { id: "meeting" } döner.
+// races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
 // Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
 export function homeActions(o) {
   const groups = [
@@ -133,7 +133,7 @@ export function homeActions(o) {
       o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
       { href: "/birthdays", icon: "cake", label: "Doğum günü" },
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
-      !o.staff && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
+      (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
       o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
       { href: "/archive", icon: "archive", label: "Arşiv" },
     ]],

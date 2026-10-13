@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { exById } from "@/lib/fitness/exercises";
+import { FitGuided } from "./FitGuided";
 import { FEELS, cleanRes, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr } from "@/lib/utils/format";
 
@@ -43,6 +44,8 @@ export function FitWorkout({ rec, by }) {
   const [edit, setEdit] = useState(!fit.res?.st);
   const [cell, setCell] = useState(""); // düzenlenen set "i-k"
   const [extra, setExtra] = useState(!!(fit.res?.note || fit.res?.min));
+  const [guide, setGuide] = useState(false); // adım adım ekran
+  const [list, setList] = useState(false); // tüm hareketlerin set listesi
   const tick = useRef(null);
 
   // Dinlenme sayacı: süre dolunca titreşir ve kapanır
@@ -68,13 +71,13 @@ export function FitWorkout({ rec, by }) {
   const resOf = (patch = {}) => cleanRes({ ...(fit.res || {}), ex: sets.map((s) => ({ sets: s })), min: mins, feel, note, ...patch }, fit.items || []);
   const save = (res) => updateRecord("plan", rec.id, { fit: { ...fit, res } }, by);
 
-  function toggle(i, k) {
-    const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: !x.ok } : x)) : s));
+  function toggle(i, k, quiet = false) {
+    const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: quiet ? true : !x.ok } : x)) : s));
     setSets(next);
     const on = next[i][k].ok;
     save(cleanRes({ ...(fit.res || {}), ex: next.map((s) => ({ sets: s })), st: fit.res?.st || "", at: fit.res?.at || new Date().toISOString() }, fit.items || []));
     const r = fit.items[i]?.rest || 60;
-    if (on) startRest(r);
+    if (on && !quiet) startRest(r); // adım adım ekran kendi sayacını kullanır
   }
   const setVal = (i, k, key, v) => setSets((p) => p.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, [key]: n(v) } : x)) : s)));
   const addSet = (i) => setSets((p) => p.map((s, a) => (a === i ? [...s, { ...(s.at(-1) || {}), ok: false }] : s)));
@@ -86,6 +89,7 @@ export function FitWorkout({ rec, by }) {
     const res = resOf({ st: stv, ex, at: new Date().toISOString() });
     await save(res);
     setRest(null);
+    setGuide(false);
     setEdit(false);
     toast(stv === "done" ? "Antrenman kaydedildi" : "Atlandı olarak işaretlendi");
   }
@@ -122,7 +126,28 @@ export function FitWorkout({ rec, by }) {
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line/60">
         <div className="h-full rounded-full bg-acc transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
       </div>
-      {(fit.items || []).map((it, i) => {
+      {guide && (
+        <FitGuided
+          items={fit.items || []}
+          sets={sets}
+          onCheck={(i, k) => toggle(i, k, true)}
+          onVal={setVal}
+          feel={feel}
+          setFeel={setFeel}
+          onFinish={finish}
+          onClose={() => setGuide(false)}
+        />
+      )}
+      {total > 0 && (
+        <button type="button" onClick={() => setGuide(true)} className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.98]">
+          <Icon name="dumbbell" className="size-5" />
+          {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
+        </button>
+      )}
+      <button type="button" onClick={() => setList((v) => !v)} className="mt-2 flex h-10 w-full items-center justify-center gap-1 text-[0.875rem] font-semibold text-acc">
+        {list ? "Hareketleri gizle" : `Tüm hareketleri gör (${(fit.items || []).length})`}
+      </button>
+      {list && (fit.items || []).map((it, i) => {
         const ex = exById(it.ex);
         const t = targetFor(it, plans, rec.date);
         const s = sets[i] || [];

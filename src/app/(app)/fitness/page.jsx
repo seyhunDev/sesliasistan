@@ -1,19 +1,15 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { FitnessHome } from "@/features/fitness/FitnessHome";
+import { AthleteFitness } from "@/features/fitness/AthleteFitness";
 
-// Fitness: yapay zekayla antrenman programı, planlara ekleme, antrenman takibi (yalnız ana hesap; ilk sürüm)
+// Fitness: ana hesapta program hazırlama ve takip; sporcu ve diğer hesaplarda antrenörün hazırladığı program (salt okunur)
 export default function FitnessPage() {
   const { profile } = useAuth();
-  const router = useRouter();
-  const owner = !!profile && profile.role !== "staff";
-  useEffect(() => {
-    if (profile && !owner) router.replace("/");
-  }, [profile, owner, router]);
-  if (!owner || !profile?.orgId) return null;
+  if (!profile?.orgId) return null;
+  if (profile.role === "staff") return <AthleteFitness />;
   return (
     <Suspense fallback={null}>
       <FitnessHome />

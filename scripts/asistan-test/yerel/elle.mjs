@@ -1566,6 +1566,10 @@ group("Fitness")([
     return FC.forecast("kilo", { weight: 82 }) === null && k.then === "≈ 78-80 kg" && FC.bmiOf(me) === 26.8 && s.now === "Şu an VKİ 26,8 · Fazla kilolu" && m.then === "+1-1,5 kg kas" &&
       FC.forecast("kilo", { height: 175, weight: 60 }).then === "Kilon sağlıklı";
   })],
+  ["adım adım: sıradaki set", F("ilk yapılmamış set, sonraki harekete geçer, hepsi bitince null", () => { const s = [[{ ok: true }, { ok: false }], [{ ok: false }]]; return FM2.nextOpen(s)?.i === 0 && FM2.nextOpen(s).k === 1 && FM2.nextOpen(s, 0, 2)?.i === 1 && FM2.nextOpen([[{ ok: true }]]) === null; })],
+  ["adım adım: − / +", F("tekrar 1, kilo 2,5, saniye 5; sıfırın altına inmez", () => FM2.bump("10", "reps", 1) === "11" && FM2.bump("40", "kg", -1) === "37.5" && FM2.bump("30", "sec", 1) === "35" && FM2.bump("1", "reps", -1) === "")],
+  ["sporcu: bugünkü ya da sıradaki", F("yalnız kendi antrenmanı, yapılmışı atlar", () => { const u = "s1"; const ps = [FPL("2026-10-13", SQ, { st: "done" }, { id: "a", fit2: 1 }), FPL("2026-10-15", SQ, null, { id: "b" }), FPL("2026-10-14", SQ, null, { id: "c" })].map((p, n) => ({ ...p, fit: { ...p.fit, for: n === 2 ? "x" : u } })); const r = FM2.athleteNext(ps, u, "2026-10-13"); return r && !r.today && r.plan.date === "2026-10-15" && FM2.myFit(ps, u).length === 2 && FM2.athleteNext([], u, "2026-10-13") === null; })],
+  ["sporcu kısayolu", F("sporcuda yalnız antrenmanı varsa Fitness", async () => { const H = await import("@/lib/homeTiles"); const has = (o) => H.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness")); return has({ staff: false }) && !has({ staff: true }) && has({ staff: true, fit: true }); })],
 ]);
 
 // Fitness: ana hesabın sporcuya hazırladığı program (fit.for)

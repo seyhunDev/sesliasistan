@@ -398,3 +398,32 @@ export function progWeek(prog, today) {
   const n = Math.floor(Math.round(ms / 864e5) / 7) + 1;
   return { n: today < prog.start ? 0 : Math.min(n, prog.weeks + 1), of: prog.weeks };
 }
+
+// Adım adım antrenman: (i, k) hareket/set konumundan başlayarak yapılmamış ilk set; hepsi yapıldıysa null
+export function nextOpen(sets = [], i = 0, k = 0) {
+  for (let a = Math.max(0, i); a < sets.length; a++) {
+    const s = sets[a] || [];
+    for (let b = a === i ? Math.max(0, k) : 0; b < s.length; b++) if (!s[b]?.ok) return { i: a, k: b };
+  }
+  return null;
+}
+
+// Adım adım ekranda değerin − / + adımı: tekrar 1, kilo 2,5, saniye 5, dakika 1
+export const STEP = { reps: 1, kg: 2.5, sec: 5, min: 1 };
+export function bump(v, key, dir) {
+  const n = Number(String(v ?? "").replace(",", ".")) || 0;
+  const out = Math.max(0, Math.round((n + dir * (STEP[key] || 1)) * 2) / 2);
+  return out ? String(out) : "";
+}
+
+// Sporcunun antrenmanları (antrenörün hazırladığı, fit.for = sporcu)
+export const myFit = (plans = [], uid = "") => fitPlans(plans.filter((p) => p.fit?.for === uid));
+
+// Ana sayfa kartı: bugünkü yapılmamış antrenman, yoksa sıradaki; hiç yoksa null
+export function athleteNext(plans, uid, today) {
+  const all = myFit(plans, uid);
+  const now = all.find((p) => p.date === today && !p.fit?.res?.st);
+  if (now) return { plan: now, today: true };
+  const next = all.find((p) => p.date > today && !p.fit?.res?.st);
+  return next ? { plan: next, today: false } : null;
+}
