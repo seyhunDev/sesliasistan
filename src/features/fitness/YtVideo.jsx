@@ -23,12 +23,12 @@ function saveOff(set) {
   } catch {}
 }
 
-export function YtPlayer({ yt, className = "" }) {
+export function YtPlayer({ yt, className = "", auto = false }) {
   if (!yt?.id) return null;
   return (
     <div className={`aspect-video w-full overflow-hidden rounded-3xl bg-black ${className}`}>
       <iframe
-        src={ytEmbed(yt.id, yt.start)}
+        src={ytEmbed(yt.id, yt.start, auto)}
         title="Hareket videosu"
         className="size-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -71,6 +71,37 @@ export function YtToggle({ yt, className = "" }) {
         </button>
       </div>
     </div>
+  );
+}
+
+// Adım adım antrenman: video oynatılmıyorken küçük kart (resim + ▶), dokununca büyür ve oynar, "Küçült" ile kart olur.
+// Ekran kaydırmadan sığsın diye video kendiliğinden açılmaz.
+export function YtSmall({ yt, className = "" }) {
+  const [play, setPlay] = useState(false);
+  if (!yt?.id) return null;
+  if (play) {
+    return (
+      <div className={className}>
+        <YtPlayer yt={yt} auto />
+        <button type="button" onClick={() => setPlay(false)} className="mt-1.5 flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
+          <Icon name="x" className="size-4" />
+          Küçült
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" onClick={() => setPlay(true)} className={`flex w-full items-center gap-3 rounded-2xl bg-card p-2 text-left shadow-sm active:scale-[.99] ${className}`}>
+      <span className="relative block h-14 w-24 shrink-0 overflow-hidden rounded-xl bg-black">
+        <img src={ytThumb(yt.id)} alt="" className="size-full object-cover" />
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="grid size-7 place-items-center rounded-full bg-black/60 text-white">
+            <Icon name="video" className="size-3.5" />
+          </span>
+        </span>
+      </span>
+      <span className="text-[0.9375rem] font-semibold text-acc">Videoyu izle</span>
+    </button>
   );
 }
 
