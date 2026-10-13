@@ -1,8 +1,8 @@
-Commit: 2de2a8e · Fitness: sporcu varsa tanıtım yerine + ve Sporcular satırlı sayfa (#341)
-Zaman: 2026-10-13-0813 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38350149400
+Commit: c0d12ec · Fitness: sporcuya programda yaş doğum tarihinden ve spor seçimi (varsayılan yelken) (#343)
+Zaman: 2026-10-13-0826 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38351200869
 
-TAM TEST · 13.10.2026 08:11:59
+TAM TEST · 13.10.2026 08:25:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
