@@ -59,7 +59,7 @@ export function FitnessHome() {
     () =>
       members
         .filter((m) => m.account !== false && (kindOf(m) === "athlete" || kindOf(m) === "student"))
-        .map((m) => ({ uid: m.uid, name: m.name || "Sporcu" }))
+        .map((m) => ({ uid: m.uid, name: m.name || "Sporcu", birth: m.birth || "", athleteId: m.athleteId || "" }))
         .sort((a, b) => a.name.localeCompare(b.name, "tr")),
     [members],
   );

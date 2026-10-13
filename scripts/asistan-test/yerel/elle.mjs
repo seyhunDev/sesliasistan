@@ -1553,6 +1553,9 @@ group("Fitness")([
     return fit.res.st === "done" && fit.items.length === 2 && fit.items[1].ex === "run" && FM2.resLine(fit) === "Squat 3 × 10 · 60 kg, Koşu 20 dk";
   })],
   ["atlandı", F("yapamadım → atlandı", () => FM2.applyLog({ items: SQ }, { st: "skip" }).res.st === "skip")],
+  ["sporcu yaşı", F("doğum tarihinden yaş (doğum günü gelmeden bir eksik)", () => FM2.ageFrom("2013-11-20", "2026-10-13") === 12 && FM2.ageFrom("2013-10-13T00:00:00.000Z", "2026-10-13") === 13 && FM2.ageFrom("", "2026-10-13") === 0)],
+  ["sporcu yaşı", F("yaş grubu ve cinsiyet", () => FM2.ageGroupOf(12) === "11-12" && FM2.ageGroupOf(19) === "18+" && FM2.ageGroupOf(0) === "" && FM2.sexFrom("Kız") === "k" && FM2.sexFrom("Erkek") === "e")],
+  ["sporcu sporu", F("spor profilde kalır, bilinmeyen atılır", () => FM2.cleanProfile({ sport: "yelken", age: 9 }).sport === "yelken" && FM2.cleanProfile({ age: 9 }).age === 9 && FM2.cleanProfile({ sport: "golf" }).sport === "")],
   ["profil", F("bilinmeyen hedef atılır, kilo 82,5", () => { const p = FM2.cleanProfile({ goal: "uçmak", level: "orta", weight: "82,5", place: "ev", equip: ["dumbbell"] }); return p.goal === "" && p.level === "orta" && p.weight === 82.5 && !FM2.profileReady(p); })],
   ["fitness cümlesi", F("fitness, squat + set; yelken antrenmanı ve takvim planı değil", () =>
     FW.wantsFitness("haftada 3 gün fitness programı hazırla") && FW.wantsFitness("squat 3 set 10 tekrar 60 kilo yaptım") && FW.wantsFitness("şınav 3 set 15 tekrar") &&
