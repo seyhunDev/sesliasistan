@@ -389,7 +389,7 @@ function kafile(pdf, f, r, list, coach) {
 }
 
 // ---- 3) Seyahat dilekçesi ----
-function travel(pdf, f, r, list) {
+function travel(pdf, f, r, list, coach) {
   const page = pdf.addPage([W, H]);
   const p = painter(page);
   p.text(`${up(r.city)} GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE`, W / 2, 142, f.serifB, 12, "center");
@@ -412,7 +412,8 @@ function travel(pdf, f, r, list) {
   const ew = p.text("EKLER:", 42, e, f.serif, 12);
   p.line(42, e + 1.5, 42 + ew, e + 1.5, 0.6);
   p.text("1-Sporcu Seyahat İzin Belgesi", 52, e + 28, f.serif, 12);
-  p.text(`(${list.length} Adet)`, 236, e + 28, f.serif, 12);
+  // Ek sayısı kafiledeki kişi sayısı (EK-2 ile aynı: antrenör + sporcular)
+  p.text(`(${kafileRows(list, coach).length} Adet)`, 236, e + 28, f.serif, 12);
 
   const sx = 441;
   const st = Math.max(546, e + 160);
@@ -976,7 +977,7 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   const list = athletes.map(athleteInfo);
   if (only.includes("school")) schoolLetter(pdf, f, race, list);
   if (only.includes("kafile")) kafile(pdf, f, race, list, cleanCoach(coach));
-  if (only.includes("travel")) travel(pdf, f, race, list);
+  if (only.includes("travel")) travel(pdf, f, race, list, cleanCoach(coach));
   if (only.includes("parent")) list.forEach((a) => parentForm(pdf, f, race, a));
   if (only.includes("adult")) adultForm(pdf, f, race, cleanCoach(coach));
   if (only.includes("club")) {
