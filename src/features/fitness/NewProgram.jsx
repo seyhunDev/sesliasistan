@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { EQUIP } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, GOALS, LEVELS, PLACES, labelOf } from "@/lib/fitness/model";
+import { AGE_GROUPS, DOWS, DOW_LONG, GOALS, LEVELS, PLACES, SPORTS, ageFrom, ageGroupOf, labelOf, sexFrom } from "@/lib/fitness/model";
 import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { todayStr } from "@/lib/utils/format";
 
@@ -249,15 +249,46 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
   const [more, setMore] = useState(false);
   const base = { goal: "saglik", level: "yeni", place: "salon", equip: [] };
   const [who, setWho] = useState(forUid);
-  const [f, setF] = useState(() => (forUid ? base : { ...base, ...profile, ...(goal ? { goal } : {}) }));
+  // Sporcunun doğum tarihi Kişiler kaydındaysa yaşı hemen; yoksa kulüp kartından (aşağıda)
+  const birthAge = (id) => ageFrom(athletes.find((a) => a.uid === id)?.birth, todayStr());
+  const [f, setF] = useState(() => (forUid ? { ...base, sport: "yelken", ...(birthAge(forUid) ? { age: birthAge(forUid) } : {}) } : { ...base, ...profile, ...(goal ? { goal } : {}) }));
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   // Sporcu seçilince senin boy/kilo/seviyen ona taşınmaz: varsayılanlarla başlar
+  // Sporcu için spor (varsayılan yelken) ve yaş: doğum tarihinden ("birth"), bilinmezse yaş grubu seçilir ("group")
+  const [ageSrc, setAgeSrc] = useState(() => (forUid && birthAge(forUid) ? "birth" : ""));
   const pickWho = (id) => {
     if (id === who) return;
     setWho(id);
-    setF((x) => (id ? { ...base, goal: x.goal } : { ...base, ...profile, goal: x.goal }));
+    const age = id ? birthAge(id) : 0;
+    setAgeSrc(age ? "birth" : "");
+    setF((x) => (id ? { ...base, goal: x.goal, sport: "yelken", ...(age ? { age } : {}) } : { ...base, ...profile, goal: x.goal }));
   };
   const whoName = athletes.find((a) => a.uid === who)?.name || "";
+  // Sporcu seçilince yaş doğum tarihinden: önce Kişiler kaydı, yoksa kulüp kartı (3 dk bellekte, adı yapay zekaya gitmez)
+  useEffect(() => {
+    if (!who) return;
+    const a = athletes.find((x) => x.uid === who);
+    if (!a?.athleteId) return;
+    let stop = false;
+    const put = (birth, g) => {
+      const age = ageFrom(birth, todayStr());
+      if (stop) return;
+      setF((x) => ({ ...x, ...(age && !x.age ? { age } : {}), ...(sexFrom(g) ? { sex: sexFrom(g) } : {}) }));
+      if (age) setAgeSrc((s) => s || "birth");
+    };
+    if (a.athleteId)
+      import("@/features/athletes/data")
+        .then(({ loadAthletes }) => loadAthletes())
+        .then(({ athletes: list }) => {
+          const c = list.find((x) => x.id === a.athleteId);
+          if (c) put(a.birth || c.studentBirthDate, c.studentGender);
+        })
+        .catch(() => {});
+    return () => {
+      stop = true;
+    };
+  }, [who, athletes]);
+  const group = ageGroupOf(f.age);
   const pickSlot = ([k, , , t]) => {
     setSlot(k);
     setTime(t);
@@ -271,6 +302,8 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
       `Hedef: ${labelOf(GOALS, f.goal)}. Seviye: ${labelOf(LEVELS, f.level)}. Yer: ${labelOf(PLACES, f.place)}.`,
       f.place !== "salon" && (f.equip?.length ? `Ekipman: ${f.equip.map((k) => EQUIP[k]).join(", ")}.` : "Ekipman yok, yalnız vücut ağırlığı."),
       f.avoid && `Kaçınılacak: ${f.avoid}.`,
+      who && f.age && (ageSrc === "group" ? `Sporcu ${group} yaş grubunda.` : `Sporcu ${f.age} yaşında.`),
+      who && f.sport && `Spor: ${labelOf(SPORTS, f.sport)}. Program bu spora yardımcı olsun.`,
     ]
       .filter(Boolean)
       .join(" ");
@@ -306,6 +339,33 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
               </div>
               {who && <small className="mt-2 block text-[0.75rem] text-mut">Program {whoName} için hazırlanır, kaydedince ona bildirim gider. Adı yapay zekaya gönderilmez.</small>}
             </Box>
+          )}
+          {who && (
+            <>
+              <Box title="Yaşı" note={ageSrc === "birth" ? "Doğum tarihinden" : f.age ? "" : "Doğum tarihi yok, grup seç"}>
+                <div className="flex items-center gap-3">
+                  <button type="button" aria-label="Azalt" onClick={() => (set("age", Math.max(6, (f.age || 12) - 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">−</button>
+                  <span className="min-w-16 text-center text-[1.5rem] font-bold tabular-nums">{f.age ? `${f.age} yaş` : "—"}</span>
+                  <button type="button" aria-label="Artır" onClick={() => (set("age", Math.min(60, (f.age || 11) + 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">+</button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {AGE_GROUPS.map(([k, v]) => (
+                    <button key={k} type="button" aria-pressed={group === k} onClick={() => (set("age", v), setAgeSrc("group"))} className={pill(group === k)}>
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </Box>
+              <Box title="Sporu" note="Program bu spora göre">
+                <div className="flex flex-wrap gap-2">
+                  {SPORTS.map(([k, l]) => (
+                    <button key={k} type="button" aria-pressed={f.sport === k} onClick={() => set("sport", k)} className={pill(f.sport === k)}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </Box>
+            </>
           )}
           <Q title={who ? "Hedefi ne?" : "Hedefin ne?"} sub="Program buna göre kurulur." />
           <div className="space-y-2">

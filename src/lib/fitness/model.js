@@ -25,6 +25,39 @@ export const PLACES = [
   ["ev", "Ev"],
   ["dis", "Açık hava"],
 ];
+// Sporcunun branşı: program o sporu destekler (sporcu için varsayılan yelken)
+export const SPORTS = [
+  ["yelken", "Yelken"],
+  ["kano", "Kano"],
+  ["yuzme", "Yüzme"],
+  ["kosu", "Koşu"],
+  ["futbol", "Futbol"],
+  ["basketbol", "Basketbol"],
+  ["voleybol", "Voleybol"],
+  ["tenis", "Tenis"],
+  ["genel", "Genel"],
+];
+// Doğum tarihi bilinmezse yaş grubu seçilir (temsilî yaş yapay zekaya grup olarak gider)
+export const AGE_GROUPS = [
+  ["8-10", 9],
+  ["11-12", 12],
+  ["13-14", 14],
+  ["15-17", 16],
+  ["18+", 20],
+];
+export const ageGroupOf = (age) => (age ? AGE_GROUPS.find(([k]) => { const [a, b] = k.split(/[-+]/).map(Number); return age >= a && (!b || age <= b); })?.[0] || "" : "");
+// Doğum tarihinden yaş (YYYY-MM-DD ya da ISO; bilinmezse 0)
+export function ageFrom(birth, today = new Date().toISOString().slice(0, 10)) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(birth || ""));
+  const t = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(today || ""));
+  if (!m || !t) return 0;
+  let a = +t[1] - +m[1];
+  if (+t[2] < +m[2] || (+t[2] === +m[2] && +t[3] < +m[3])) a--;
+  return a >= 4 && a <= 100 ? a : 0;
+}
+// Kulüp kartındaki cinsiyet ("Erkek"/"Kız") → profil ("e"/"k")
+export const sexFrom = (g) => (/^(k|kız|kiz|kadın|f)/i.test(String(g || "").trim()) ? "k" : /^(e|erkek|m)/i.test(String(g || "").trim()) ? "e" : "");
+
 export const FEELS = [
   [1, "Zor"],
   [2, "İyi"],
@@ -58,9 +91,10 @@ export function cleanProfile(p = {}) {
     equip,
     height: num(p.height, 100, 230),
     weight: num(p.weight, 30, 250, 0.5),
-    age: num(p.age, 10, 100),
+    age: num(p.age, 6, 100),
     sex: p.sex === "e" || p.sex === "k" ? p.sex : "",
     avoid: S(p.avoid, 300),
+    sport: keyOf(SPORTS, p.sport),
   };
 }
 export const profileReady = (p) => !!(p?.goal && p?.level && p?.place);
