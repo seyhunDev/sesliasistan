@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
 import { ExerciseMedia } from "./ExerciseMedia";
-import { YtPlayer, YtToggle } from "./YtVideo";
+import { YtToggle } from "./YtVideo";
 import { guideSteps, stockPhotos } from "@/lib/fitness/exerciseGuide";
 import { FEELS, bump, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
@@ -90,7 +90,7 @@ function HowBody({ it }) {
   const how = howOf(it);
   return (
     <>
-      {it.yt?.id && <YtPlayer yt={it.yt} className="mt-4" />}
+      <YtToggle key={it.yt?.id} yt={it.yt} className="mt-4" />
       <ExerciseMedia media={it.media} ex={it.ex} big={!it.yt?.id} className="mt-4" />
       {how.length > 0 && (
         <ol className="mt-4 space-y-2.5">
