@@ -128,6 +128,12 @@ export function MediaVideo({ media = [], className = "" }) {
   const [first, setFirst] = useState({ id: "", on: false });
   if (m?.id && first.id !== m.id) setFirst({ id: m.id, on: !seenSet().has(m.id) });
   const auto = first.id === m?.id && first.on;
+  // Kutu videonun kendi oranını alır (siyah boşluk kalmaz); dikey video en çok 18rem boyda, ortada
+  const [ratio, setRatio] = useState(16 / 9);
+  const fit = (e) => {
+    const v = e.currentTarget;
+    if (v.videoWidth && v.videoHeight) setRatio(v.videoWidth / v.videoHeight);
+  };
   useEffect(() => {
     if (m?.id) markSeen(m.id);
   }, [m?.id]);
@@ -165,10 +171,12 @@ export function MediaVideo({ media = [], className = "" }) {
           muted={auto}
           preload="metadata"
           onError={fail}
-          className="block h-52 w-full rounded-3xl bg-black object-contain"
+          onLoadedMetadata={fit}
+          style={{ aspectRatio: ratio, maxWidth: `calc(18rem * ${ratio})` }}
+          className="mx-auto block max-h-[18rem] w-full rounded-3xl bg-black object-cover"
         />
       ) : (
-        <span className="shimmer block h-52 w-full rounded-3xl" />
+        <span className="shimmer block aspect-video w-full rounded-3xl" />
       )}
     </div>
   );
