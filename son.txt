@@ -1,8 +1,8 @@
-Commit: 730e6cc · Fitness: harekete fotoğraf ve kısa video (#340)
-Zaman: 2026-10-13-0803 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38349320461
+Commit: 2de2a8e · Fitness: sporcu varsa tanıtım yerine + ve Sporcular satırlı sayfa (#341)
+Zaman: 2026-10-13-0813 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38350149400
 
-TAM TEST · 13.10.2026 08:01:58
+TAM TEST · 13.10.2026 08:11:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 75 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
