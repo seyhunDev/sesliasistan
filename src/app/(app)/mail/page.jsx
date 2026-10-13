@@ -20,7 +20,7 @@ import { LedgerCard } from "@/features/bank/LedgerCard";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
 import { addIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
 import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
-import { canConv, convSet, debtMoves, inKasa, kasaOf, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
+import { canConv, convSet, debtMoves, inKasa, kasaLink, kasaOf, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { cleanDebt, newId, payDebt } from "@/lib/debts";
@@ -85,7 +85,6 @@ export default function MailPage() {
   const [bankPick, setBankPick] = useState(null); // dokunulan banka hareketi (nakite çevir)
   const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
   const [cashTick, setCashTick] = useState(0);
-  const [outPick, setOutPick] = useState(false); // Kasa › "Nakit çıkış": fişle mi elle mi
   const { openReceipt } = useReceipt() || {};
   // Fişle nakit çıkış ya da fiş/fatura nakit ödenince kasa yeniden okunur
   useEffect(() => {
@@ -392,7 +391,7 @@ export default function MailPage() {
             </ul>
           </Sheet>
 
-          <KasaCard kasa={kasa} onAdd={(dir) => (dir === "out" ? setOutPick(true) : setAdd({ book: "club", dir }))} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} onArchive={archive} onUnarchive={unarchive} />
+          <KasaCard kasa={kasa} onAdd={(dir) => (dir === "receipt" ? openReceipt?.({ camera: true, kasa: true }) : setAdd({ book: "club", dir }))} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} onArchive={archive} onUnarchive={unarchive} />
           <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
 
           {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}
@@ -612,25 +611,6 @@ export default function MailPage() {
         }}
       />
       <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} options={whoOpts} onDropName={dropName} onSave={saveIncome} />
-      <Sheet open={outPick} onClose={() => setOutPick(false)} title="Nakit çıkış">
-        <div className="space-y-2 pb-2">
-          <button type="button" onClick={() => (setOutPick(false), openReceipt?.({ camera: true, kasa: true }))} className="flex h-14 w-full items-center gap-3 rounded-xl bg-acc px-4 text-left text-white">
-            <Icon name="camera" className="size-5" />
-            <span>
-              <b className="block text-[0.9375rem] font-semibold">Fiş fotoğrafıyla</b>
-              <span className="block text-[0.75rem] opacity-80">Fiş kaydedilir, ödendi yazılır, kasadan düşer</span>
-            </span>
-          </button>
-          <button type="button" onClick={() => (setOutPick(false), setAdd({ book: "club", dir: "out" }))} className="flex h-14 w-full items-center gap-3 rounded-xl bg-bg px-4 text-left">
-            <Icon name="edit" className="size-5 text-mut" />
-            <span>
-              <b className="block text-[0.9375rem] font-semibold">Elle yaz</b>
-              <span className="block text-[0.75rem] text-mut">Fişsiz çıkış: kime, ne kadar</span>
-            </span>
-          </button>
-          <p className="px-1 pt-1 text-[0.75rem] leading-snug text-mut">Nakit ödenen fatura, faturanın “Nakit ödendi” düğmesiyle kasadan düşer.</p>
-        </div>
-      </Sheet>
       <Sheet open={!!bankPick} onClose={() => setBankPick(null)} title={bankPick?.amount > 0 ? "Gelen para" : "Giden para"}>
         {bankPick && (
           <div className="space-y-3 pb-2">
@@ -684,7 +664,15 @@ export default function MailPage() {
                 Sporcuyu aç
               </button>
             )}
-            {manual.manual && (
+            {kasaLink(manual) && (
+              <>
+                <button type="button" onClick={() => router.push(kasaLink(manual).href)} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
+                  {kasaLink(manual).kind === "receipt" ? "Fişi aç" : "Faturaları aç"}
+                </button>
+                <p className="text-[0.75rem] leading-snug text-mut">{kasaLink(manual).kind === "receipt" ? "Fiş nakit ödendi. Ödemeyi geri alırsan ya da fişi silersen kasadan da kalkar." : "Fatura nakit ödendi. “Ödenmedi yap” dersen kasadan da kalkar."}</p>
+              </>
+            )}
+            {manual.manual && !kasaLink(manual) && (
               <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
                 {manual.conv ? "Nakite çevirmeyi geri al" : "Sil"}
               </button>
