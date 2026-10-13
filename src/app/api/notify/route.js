@@ -126,6 +126,17 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent, parents });
   }
 
+  // ---- Fitness: ana hesabın sporcuya hazırladığı program (fitPrograms/{id}.for). Sporcuya tek bildirim, bir kez (notifiedAt) ----
+  if (body?.event === "fitProgram") {
+    if (me.role !== "owner") return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    const ref = org.collection("fitPrograms").doc(String(body.id || "").slice(0, 128) || "-");
+    const p = (await ref.get()).data();
+    if (!p?.for || p.notifiedAt) return NextResponse.json({ ok: true, skipped: p ? "gönderildi" : "program yok" });
+    const sent = await sendTo(p.for, { title: "Yeni fitness programın hazır", body: String(p.title || "Antrenman programı").slice(0, 80), tag: `fit-${ref.id}`, url: "/fitness" });
+    await ref.update({ notifiedAt: new Date().toISOString() });
+    return NextResponse.json({ ok: true, sent });
+  }
+
   // ---- Silme bildirim göndermez (Seyhun'un kuralı): silinen kayıt ve çalışanın silme isteği için bildirim yok.
   //      Silme isteği ana hesapta "Senin için" listesinde karar olarak görünür. Eski sürüm uygulamalar çağırırsa yok sayılır. ----
   if (body?.event === "deleted" || body?.event === "deleteReq") return NextResponse.json({ ok: true, skipped: "silme bildirimi yok" });

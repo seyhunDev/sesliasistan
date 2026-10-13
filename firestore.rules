@@ -58,6 +58,13 @@ service cloud.firestore {
       return request.resource.data.get(f, {}).diff(resource.data.get(f, {})).affectedKeys().hasOnly([request.auth.uid]);
     }
     // Başkasının (ana hesabın) verdiği kayıtta çalışan: yalnızca kendisi için tamamladı, not ve iletildi/görüldü
+    // Sporcuya hazırlanan fitness antrenmanı (plan, fit.for = sporcu): sporcu yalnız sonucu (fit.res) yazar
+    function fitResOnly() {
+      return resource.data.get("fit", null) != null
+          && resource.data.fit.get("for", "") == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["fit", "updatedAt", "updatedBy"])
+          && request.resource.data.fit.diff(resource.data.fit).affectedKeys().hasOnly(["res"]);
+    }
     function assignedOnly() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(["doneBy", "replies", "ack"])
           && ownKey("doneBy") && ownKey("replies") && ownKey("ack");
@@ -85,7 +92,7 @@ service cloud.firestore {
                       && pay(request.resource.data) in [null, "pending"];
         // Kendi eklediğini değiştirir; başkasının verdiğinde yalnızca tamamladı / not / görüldü
         allow update: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine() && lockedSame()
-                      && (resource.data.get("createdByUid", null) == request.auth.uid || assignedOnly());
+                      && (resource.data.get("createdByUid", null) == request.auth.uid || assignedOnly() || (col == "plans" && fitResOnly()));
         // Çalışan silemez: kendi eklediği kayda silme isteği (deleteReq) yazar, ana hesap onaylarsa ana hesap siler.
         // İstisna: doğum günleri ve ders programı kişiye özel; çalışan kendi eklediğini kendisi siler.
         allow delete: if col in ["birthdays", "lessons"] && isStaff(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;

@@ -220,7 +220,7 @@ function Ready({ p, busy, onStart, onAll, onCancel }) {
 
       {day && (
         <section className={`${card} mt-4 p-5`}>
-          <small className="block text-[0.75rem] font-bold tracking-[.06em] text-acc">İLK ANTRENMANIN</small>
+          <small className="block text-[0.75rem] font-bold tracking-[.06em] text-acc">{p.forName ? `İLK ANTRENMANI · ${p.forName.toLocaleUpperCase("tr-TR")}` : "İLK ANTRENMANIN"}</small>
           <h3 className="mt-1 text-[1.5rem] font-bold leading-tight tracking-tight">{day.name}</h3>
           <p className="mt-1 flex items-center gap-1.5 text-[0.875rem] text-mut">
             <Icon name="cal" className="size-4" />
@@ -243,7 +243,7 @@ function Ready({ p, busy, onStart, onAll, onCancel }) {
       <div className="mt-5 flex flex-col gap-1">
         <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={onStart}>
           <Icon name="check" className="size-5" />
-          Tamam, başlayalım
+          {p.forName ? `Kaydet, ${p.forName} görsün` : "Tamam, başlayalım"}
         </Button>
         <button type="button" disabled={!!busy} onClick={onAll} className="h-11 text-[0.9375rem] font-semibold text-acc">
           Tüm programı gör
@@ -371,9 +371,9 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
           <>
             <Button loading={busy === "plans"} disabled={!!busy || !p.days.length} onClick={() => onSave(p, true)} className="w-full">
               <Icon name="cal" className="size-5" />
-              Kaydet ve planlara ekle
+              {p.forName ? `Kaydet, ${p.forName} görsün` : "Kaydet ve planlara ekle"}
             </Button>
-            {total > 0 && <small className="mt-1.5 block text-center text-[0.75rem] text-mut">{total} antrenman takvimine eklenecek</small>}
+            {total > 0 && <small className="mt-1.5 block text-center text-[0.75rem] text-mut">{total} antrenman {p.forName ? `${p.forName} için takvime` : "takvimine"} eklenecek</small>}
           </>
         )}
         <div className="mt-2 grid grid-cols-2 gap-2">

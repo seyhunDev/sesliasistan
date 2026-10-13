@@ -236,7 +236,8 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // Sonunda yapay zekaya giden cümle ya da boş program. Serbest yazı kutusu yok (tek asistan kuralı).
 const STEPS = ["Hedef", "Haftan"];
 const DAY_SETS = { 2: [2, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal }) {
+// athletes: [{ uid, name }] (yalnız ana hesapta, hesabı olan sporcular); forUid: sporcunun sayfasından açıldıysa seçili sporcu
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal, athletes = [], forUid = "" }) {
   // Tanıtımda hedef kartından gelindiyse hedef seçili, doğrudan 2. soru
   const [step, setStep] = useState(goal ? 1 : 0);
   const [days, setDays] = useState([1, 3, 5]);
@@ -246,8 +247,17 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
   const [min, setMin] = useState(45);
   const [start, setStart] = useState(todayStr());
   const [more, setMore] = useState(false);
-  const [f, setF] = useState(() => ({ goal: "saglik", level: "yeni", place: "salon", equip: [], ...profile, ...(goal ? { goal } : {}) }));
+  const base = { goal: "saglik", level: "yeni", place: "salon", equip: [] };
+  const [who, setWho] = useState(forUid);
+  const [f, setF] = useState(() => (forUid ? base : { ...base, ...profile, ...(goal ? { goal } : {}) }));
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  // Sporcu seçilince senin boy/kilo/seviyen ona taşınmaz: varsayılanlarla başlar
+  const pickWho = (id) => {
+    if (id === who) return;
+    setWho(id);
+    setF((x) => (id ? { ...base, goal: x.goal } : { ...base, ...profile, goal: x.goal }));
+  };
+  const whoName = athletes.find((a) => a.uid === who)?.name || "";
   const pickSlot = ([k, , , t]) => {
     setSlot(k);
     setTime(t);
@@ -264,7 +274,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
     ]
       .filter(Boolean)
       .join(" ");
-  const pre = { days: sorted, time, weeks, min, start };
+  const pre = { days: sorted, time, weeks, min, start, ...(who ? { for: who, forName: whoName } : {}) };
   const last = step === STEPS.length - 1;
   const startText = start === todayStr() ? "bugün" : new Date(`${start}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
 
@@ -282,7 +292,22 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
 
       {step === 0 && (
         <>
-          <Q title="Hedefin ne?" sub="Program buna göre kurulur." />
+          {athletes.length > 0 && (
+            <Box title="Kimin için">
+              <div className="flex flex-wrap gap-2">
+                {[{ uid: "", name: "Ben" }, ...athletes].map((a) => {
+                  const on = who === a.uid;
+                  return (
+                    <button key={a.uid || "me"} type="button" aria-pressed={on} onClick={() => pickWho(a.uid)} className={`h-10 rounded-full px-4 text-[0.875rem] font-semibold transition active:scale-[.97] ${on ? "bg-acc text-white" : "bg-bg"}`}>
+                      {a.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {who && <small className="mt-2 block text-[0.75rem] text-mut">Program {whoName} için hazırlanır, kaydedince ona bildirim gider. Adı yapay zekaya gönderilmez.</small>}
+            </Box>
+          )}
+          <Q title={who ? "Hedefi ne?" : "Hedefin ne?"} sub="Program buna göre kurulur." />
           <div className="space-y-2">
             {GOALS.map(([k, l]) => (
               <Option key={k} on={f.goal === k} icon={GOAL_UI[k][0]} title={l} sub={GOAL_UI[k][1]} onClick={() => set("goal", k)} />
@@ -373,7 +398,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal 
           <div className="flex flex-col gap-1">
             <Button loading={busy} disabled={!sorted.length} onClick={() => onAsk(text(), f, pre)}>
               <Icon name="spark" className="size-5" />
-              Programımı hazırla
+              {who ? `${whoName} için hazırla` : "Programımı hazırla"}
             </Button>
             <div className="flex items-center justify-between">
               {!goal ? (

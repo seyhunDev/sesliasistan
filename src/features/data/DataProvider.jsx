@@ -673,6 +673,13 @@ export function DataProvider({ children }) {
     const out = {};
     for (const [kind, k] of Object.entries(KEYS)) out[k] = hidden.size ? data[k].filter((x) => !hidden.has(`${kind}:${x.id}`)) : data[k];
     if (staff) out.tasks = out.tasks.map((t) => (lockedFor(t, uid, true) ? { ...t, done: !!t.doneBy?.[uid], doneAt: t.doneBy?.[uid] || null } : t));
+    // Sporcuya hazırlanan fitness antrenmanları ana hesabın takvimine girmez; yalnız Fitness › Sporcular'da
+    out.fitOthers = [];
+    if (!staff) {
+      const others = (p) => !!p.fit?.for && p.fit.for !== uid;
+      out.fitOthers = out.plans.filter(others);
+      if (out.fitOthers.length) out.plans = out.plans.filter((p) => !others(p));
+    }
     return out;
   }, [data, hidden, staff, uid]);
 
