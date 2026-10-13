@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady, profileOf } from "@/lib/server/admin";
 import { ackSig, pushReady, sendTo as sendPush } from "@/lib/server/pushSend";
@@ -189,7 +190,8 @@ export async function POST(request) {
     const r = (await ref.get()).data();
     if (!r) return NextResponse.json({ error: "Kayıt yok" }, { status: 404 });
     if (me.role !== "owner" && r.createdByUid !== au.uid) return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
-    const to = (r.assignees || []).filter((u) => u !== au.uid && !r.notified?.[u]);
+    // retry ("Yeniden gönder"): telefonuna henüz gitmemiş sorumlulara yeniden dener
+    const to = (r.assignees || []).filter((u) => u !== au.uid && (body.retry ? !r.ack?.[u]?.s || r.ack?.[u]?.x : !r.notified?.[u]));
     // Kişinin (çalışan, sporcu…) az önce eklediği kayıt: ana hesaba "yeni kayıt" bildirimi (bir kez)
     const byMember = au.uid !== me.orgId && r.createdByUid === au.uid && !r.notified?.[me.orgId] && Date.now() - Date.parse(r.createdAt || 0) < 2 * 60e3;
     if (byMember && !to.includes(me.orgId)) to.push(me.orgId);
@@ -199,19 +201,35 @@ export async function POST(request) {
     const now = new Date().toISOString();
     const patch = {};
     const assignee = (u) => (r.assignees || []).includes(u);
+    const fail = []; // telefonuna gitmeyen sorumlular: ana hesaba hemen söylenir
     const sent = await sendAll(to, async (u) => {
-      const n = await sendTo(u, {
-        ...(byMember && u === me.orgId ? addedText(info) : msg),
-        tag: `${kind}-${ref.id}`,
-        url: `/?open=${kind}:${ref.id}`,
-        ...(assignee(u) && { ack: { o: me.orgId, c: COLS[kind], i: ref.id, u, s: ackSig(me.orgId, COLS[kind], ref.id, u) } }),
-      });
-      patch[`notified.${u}`] = now; // bir daha gönderilmesin
-      if (n && assignee(u)) patch[`ack.${u}.s`] = now; // en az bir cihaza gönderildi ("iletildi" yalnız sorumlular için)
+      const out = {};
+      const n = await sendPush(
+        u,
+        {
+          ...(byMember && u === me.orgId ? addedText(info) : msg),
+          tag: `${kind}-${ref.id}`,
+          url: `/?open=${kind}:${ref.id}`,
+          ...(assignee(u) && { ack: { o: me.orgId, c: COLS[kind], i: ref.id, u, s: ackSig(me.orgId, COLS[kind], ref.id, u) } }),
+        },
+        mine,
+        out,
+      );
+      // Gitmediyse işaretlenmez: kayıt sonra kaydedilince (ya da "Yeniden gönder") tekrar denenir. Neden ekranda yazar.
+      if (n) patch[`notified.${u}`] = now;
+      if (assignee(u)) {
+        if (n) {
+          patch[`ack.${u}.s`] = now; // en az bir cihaza gönderildi ("iletildi" yalnız sorumlular için)
+          if (r.ack?.[u]?.x) patch[`ack.${u}.x`] = FieldValue.delete();
+        } else {
+          patch[`ack.${u}.x`] = { why: out.why || "device", ...(out.msg ? { msg: String(out.msg).slice(0, 160) } : {}), at: now };
+          fail.push({ u, why: out.why || "device", ...(out.msg ? { msg: out.msg } : {}) });
+        }
+      }
       return n;
     });
-    await ref.update(patch);
-    return NextResponse.json({ ok: true, sent });
+    if (Object.keys(patch).length) await ref.update(patch);
+    return NextResponse.json({ ok: true, sent, fail });
   }
 
   const id = String(body?.receiptId || "");

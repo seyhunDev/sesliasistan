@@ -78,7 +78,7 @@ function DayChips({ value, onPick, onClear }) {
 // d: taslak, onChange(patch). meta: "Ali ekledi · dün". done/onToggleDone: yalnızca görev.
 // assign: ana hesabın çalışanları (boşsa "Çalışan ekle"), çalışan hesabında null (satır gösterilmez).
 // acks: kayıtlı sorumluların durumu [{ uid, name, key, label, at }] (ana hesapta gösterilir)
-export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [] }) {
+export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [], onResend }) {
   const [open, setOpen] = useState(""); // açık satır
   const toggle = (k) => () => setOpen((o) => (o === k ? "" : k));
   const put = (patch, close = true) => {
@@ -117,11 +117,15 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
             >
               {on && <Icon name="check" className="size-3.5" />}
               {m.name}
+              {m.account === false && <span className="text-[0.75rem] font-normal opacity-70">· hesapsız</span>}
             </button>
           );
         })}
       </div>
-      <p className="mt-2 text-[0.8125rem] text-mut">Birden fazla kişi seçebilirsin; seçilenler bu kaydı kendi listesinde görür.</p>
+      <p className="mt-2 text-[0.8125rem] text-mut">
+        Birden fazla kişi seçebilirsin; seçilenler bu kaydı kendi listesinde görür.
+        {assign.some((m) => m.account === false) && " Hesapsız kişilerin uygulaması yok, onlara bildirim gitmez."}
+      </p>
     </Row>
   );
   const ackList = acks.length > 0 && (
@@ -129,16 +133,32 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
     {acks.map((a) => (
       <p key={a.uid} className="flex items-center gap-2 py-1 text-[0.875rem]">
         <Icon
-          name={a.key === "sent" || a.key === "pending" || a.key === "done" ? "check" : "checks"}
-          className={`size-4 shrink-0 [stroke-width:2.5] ${a.key === "done" ? "text-ok" : a.key === "read" ? "text-sky-600" : a.key === "pending" ? "text-line" : "text-mut"}`}
+          name={a.key === "fail" ? "x" : a.key === "sent" || a.key === "pending" || a.key === "done" ? "check" : "checks"}
+          className={`size-4 shrink-0 [stroke-width:2.5] ${a.key === "done" ? "text-ok" : a.key === "read" ? "text-sky-600" : a.key === "fail" ? "text-rose-600" : a.key === "pending" ? "text-line" : "text-mut"}`}
         />
         <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
-        <span className={`shrink-0 text-[0.8125rem] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : "text-mut"}`}>
+        <span className={`shrink-0 text-[0.8125rem] ${a.key === "done" ? "font-semibold text-ok" : a.key === "read" ? "font-medium text-sky-700" : a.key === "fail" ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
           {a.label}
-          {a.at ? ` · ${stamp(a.at)}` : ""}
+          {a.at && a.key !== "fail" ? ` · ${stamp(a.at)}` : ""}
         </span>
       </p>
     ))}
+    {acks.some((a) => a.key === "fail") && (
+      <div className="border-t border-line pt-2 pb-1">
+        {acks
+          .filter((a) => a.key === "fail")
+          .map((a) => (
+            <p key={a.uid} className="py-0.5 text-[0.8125rem] leading-snug text-mut">
+              <span className="font-medium text-fg">{a.name.split(" ")[0]}:</span> {a.why}
+            </p>
+          ))}
+        {onResend && (
+          <button type="button" onClick={onResend} className="mt-1.5 text-[0.875rem] font-semibold text-acc">
+            Yeniden gönder
+          </button>
+        )}
+      </div>
+    )}
   </div>
   );
 

@@ -32,11 +32,27 @@ export function ackState(rec, uid) {
   if (rec?.doneBy?.[uid]) return { key: "done", label: "Tamamladı", at: rec.doneBy[uid] };
   if (a.r) return { key: "read", label: "Görüldü", at: a.r };
   if (a.d) return { key: "delivered", label: "İletildi", at: a.d };
-  if (a.s) return { key: "sent", label: "Gönderildi", at: a.s };
+  if (a.s && !a.x) return { key: "sent", label: "Gönderildi", at: a.s };
+  if (a.x) return { key: "fail", label: "Bildirim gitmedi", at: a.x.at || null, why: pushWhy(a.x) };
   return { key: "pending", label: "Henüz iletilmedi", at: null };
 }
+// Sorumluya bildirim neden gitmedi (sunucu ack.{uid}.x yazar; lib/server/pushSend WHY): ne yapılacağını söyler
+export function pushWhy(x) {
+  switch (x?.why) {
+    case "account":
+      return "Uygulamada hesabı yok. Kişiler'den hesap açılırsa bildirim gider.";
+    case "same":
+      return "Bu telefon senin hesabında da kayıtlı. O telefonda kendi hesabıyla uygulamayı bir kez açsın.";
+    case "key":
+      return "Bildirim anahtarı sunucuda geçersiz (Netlify VAPID ayarı).";
+    case "error":
+      return x.msg || "Bildirim sunucusu kabul etmedi.";
+    default:
+      return "Telefonunda bildirim kaydı yok. Ana ekrandaki uygulamayı açıp Ayarlar › Bildirimler'i açsın.";
+  }
+}
 // Sorumluların en geride olanına göre tek durum (hepsi gördüyse "Görüldü", hepsi bitirdiyse "Tamamladı")
-const RANK = { pending: 0, sent: 1, delivered: 2, read: 3, done: 4 };
+const RANK = { fail: -1, pending: 0, sent: 1, delivered: 2, read: 3, done: 4 };
 export function ackSummary(rec) {
   const list = assigneesOf(rec).filter((u) => u !== rec?.createdByUid);
   if (!list.length) return null;

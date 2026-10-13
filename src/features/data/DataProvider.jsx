@@ -10,7 +10,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
 import { cashOutFor, dropCashFor, setCashFor } from "@/features/dues/duesData";
-import { isNewFor, lockedFor, peopleFor } from "@/lib/people";
+import { isNewFor, lockedFor, peopleFor, pushWhy } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
 import { seriesDates } from "@/lib/repeat";
@@ -111,6 +111,10 @@ export function DataProvider({ children }) {
     if (owner && uid && attAt === null && canSeeAthletes(email)) updateDoc(doc(db, "users", uid), { attAt: "on" }).catch(() => {});
   }, [owner, uid, attAt, email]);
 
+  const memRef = useRef([]);
+  useEffect(() => {
+    memRef.current = members;
+  }, [members]);
   const me = useRef({});
   useEffect(() => {
     me.current = { uid, orgId, staff, name: profile?.name };
@@ -128,8 +132,27 @@ export function DataProvider({ children }) {
   };
 
   // Sorumlulara "sana atandı" bildirimi (sunucu her kişiye bir kez gönderir)
-  const notifyAssign = (kind, id) =>
-    authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id }) }).catch(() => {});
+  // Sorumlunun telefonuna gitmediyse ana hesaba hemen söylenir (neden kaydın Sorumlu bölümünde de yazar)
+  const notifyAssign = useCallback((kind, id) =>
+    authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id }) })
+      .then((r) => r.json())
+      .then((j) => {
+        const f = j?.fail?.[0];
+        if (!f) return;
+        const name = memRef.current.find((m) => m.uid === f.u)?.name?.split(" ")[0] || "Sorumlu";
+        toast(`${name}: bildirim gitmedi. ${pushWhy(f)}`);
+      })
+      .catch(() => {}), [toast]);
+  // "Yeniden gönder": telefonuna henüz gitmemiş sorumlulara yeniden dener (sonuç kayda yazılır, ekran canlı güncellenir)
+  const resendAssign = useCallback(async (kind, id) => {
+    try {
+      const res = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, retry: true }) });
+      const j = await res.json().catch(() => ({}));
+      toast(j.sent ? "Bildirim gönderildi." : "Yine gitmedi; nedeni altta yazıyor.");
+    } catch {
+      toast("İnternete ulaşılamadı, tekrar dene.");
+    }
+  }, [toast]);
   // Kayda not eklendi / kişi tamamladı: kaydı verene ve ana hesaba bildirim (metni sunucu kayıttan okur)
   const notifyEvent = (kind, id, event) =>
     authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, event }) }).catch(() => {});
@@ -360,7 +383,7 @@ export function DataProvider({ children }) {
       if (st === "slow") checkWrites(); // üstteki şerit: "kaydedildi, bağlantı gelince gönderilecek"
       return { ...count, ids, queued: st === "slow" && offline };
     },
-    [getOrgId, fail],
+    [getOrgId, fail, notifyAssign],
   );
 
   // Başkasının eklediği kayıt (çalışan için): değiştirilemez, silinemez
@@ -428,7 +451,7 @@ export function DataProvider({ children }) {
         fail(e, "Güncelleme");
       }
     },
-    [getOrgId, fail, isLocked, lockedMsg],
+    [getOrgId, fail, isLocked, lockedMsg, notifyAssign],
   );
 
   // Çalışan silemez: kendi eklediği kayıt için silme isteği gönderir (deleteReq), ana hesap onaylarsa silinir.
@@ -961,7 +984,7 @@ export function DataProvider({ children }) {
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
         saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, markPaySeen, loadReceiptImage,
-        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked,
+        saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked, resendAssign,
       }}
     >
       {/* Veriler gelene kadar açılış ekranı sürer (boş beyaz ekran görünmez) */}
