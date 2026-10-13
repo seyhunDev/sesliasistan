@@ -1593,6 +1593,32 @@ group("Fitness: sporcu programı")([
     return rows.length === 2 && rows[0].name === "Ali" && rows[0].prog?.title === "Ali programı" && rows[0].week.done === 1 && rows[0].week.planned === 2 &&
       rows[0].last?.date === "2026-10-12" && rows[0].next?.date === "2026-10-14" && rows[1].name === "Zeynep" && rows[1].prog === null;
   })],
+  ["günün listesi", F("o günün sporcu antrenmanları: önce bekleyen, sonra yapan; özet satırı", () => {
+    const pl = [
+      FPL("2026-10-13", SQ, null, { id: "a", fit: { prog: "pa", for: "ali", items: SQ, res: { st: "done", ex: [] } } }),
+      FPL("2026-10-13", SQ, null, { id: "b", fit: { prog: "pz", for: "zey", items: SQ } }),
+      FPL("2026-10-14", SQ, null, { id: "c", fit: { prog: "pz", for: "zey", items: SQ } }),
+    ];
+    const rows = FM2.dayRows(pl, [{ uid: "ali", name: "Ali" }, { uid: "zey", name: "Zeynep" }], "2026-10-13", "2026-10-13");
+    return rows.length === 2 && rows[0].name === "Zeynep" && rows[0].st === "today" && rows[1].st === "done" && FM2.dayLine(rows) === "Bugün 2 sporcu: 1 yaptı, 1 bekliyor" && FM2.dayLine([]) === "";
+  })],
+  ["sesli komutlar", F("sporcu: bugünkü ne / başla / yaptım; ana hesap: sporcular yaptı mı", async () => {
+    const W = await import("@/lib/fitness/words");
+    return W.fitLocal("bugünkü antrenmanım ne")?.op === "today" && W.fitLocal("antrenmana başla")?.op === "start" && W.fitLocal("bugünkü antrenmanı yaptım")?.op === "done" &&
+      W.fitLocal("sporcular bugün antrenman yaptı mı")?.op === "athletes" && W.fitLocal("kimler fitness antrenmanı yapmadı")?.op === "athletes" && W.fitLocal("Ali için fitness programı hazırla") === null;
+  })],
+  ["antrenman ekranı sözleri", F("tamam/sonraki, atla, 15 saniye, nasıl yapılır, bitir, zor geçti; uzun cümle değil", async () => {
+    const W = await import("@/lib/fitness/words");
+    const g = (x) => W.guideWord(x)?.op;
+    return g("tamam") === "done" && g("sonraki") === "done" && g("seti bitirdim") === "done" && g("set tamam") === "done" && g("bu hareketi atla") === "skip" && g("15 saniye ekle") === "more" &&
+      g("nasıl yapılır") === "how" && g("antrenmanı bitir") === "finish" && W.guideWord("zor geçti")?.k === 1 && W.guideWord("kolay")?.k === 3 && !g("yarın saat 10'da Ali'ye mesaj at");
+  })],
+  ["sporcu adı", F("cümlede geçen sporcu; adı yapay zekaya gitmez", async () => {
+    const W = await import("@/lib/fitness/words");
+    const P = [{ uid: "a", name: "Ali Kaya" }, { uid: "b", name: "Alişan Er" }, { uid: "c", name: "Zeynep Ak" }];
+    return W.athleteIn("Ali için program hazırla", P)?.uid === "a" && W.athleteIn("Alişan bu hafta kaç antrenman yaptı", P)?.uid === "b" && W.athleteIn("Zeynep'in antrenmanı", P)?.uid === "c" &&
+      W.athleteIn("program hazırla", P) === null && W.withoutName("Ali için haftada 3 gün program hazırla", "Ali Kaya") === "haftada 3 gün program hazırla";
+  })],
 ]);
 
 // Beslenme (lib/fitness/food.js): hedef, su/kilo/özet sözleri, yemek cümlesi, kilo eğilimi, gün temizliği

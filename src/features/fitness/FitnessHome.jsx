@@ -12,7 +12,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  STATUS, addDays, athleteRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
+  STATUS, addDays, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { kindOf } from "@/lib/kinds";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
@@ -64,7 +64,9 @@ export function FitnessHome() {
     [members],
   );
   const router = useRouter();
-  const tab = useSearchParams().get("tab") === "food" ? "food" : "train";
+  const sp = useSearchParams();
+  const tab = sp.get("tab") === "food" ? "food" : "train";
+  const athQ = sp.get("sporcular");
   const setTab = (t) => router.replace(t === "food" ? "/fitness?tab=food" : "/fitness", { scroll: false });
 
   const reload = useCallback(
@@ -90,6 +92,14 @@ export function FitnessHome() {
       window.removeEventListener(FIT_PREVIEW, onPreview);
     };
   }, [reload]);
+
+  useEffect(() => {
+    const show = () => (setAth(""), setAthOpen(true));
+    if (athQ) show();
+    // Asistan ("sporcular bugün antrenman yaptı mı") Fitness sayfası açıkken
+    window.addEventListener("sa-fit-athletes", show);
+    return () => window.removeEventListener("sa-fit-athletes", show);
+  }, [athQ]);
 
   const mine = list ? list.filter((p) => !p.for) : null;
   const prog = activeOf(mine);
@@ -297,7 +307,7 @@ export function FitnessHome() {
         <RowButton
           icon="users"
           title="Sporcular"
-          sub={rows.length ? `${rows.length} sporcunun programı var · bu hafta ${rows.reduce((t, r) => t + r.week.done, 0)}/${rows.reduce((t, r) => t + r.week.planned, 0)} yapıldı` : "Sporcuya program hazırla"}
+          sub={dayLine(dayRows(fitOthers, athletes, today, today)) || (rows.length ? `${rows.length} sporcunun programı var · bu hafta ${rows.reduce((t, r) => t + r.week.done, 0)}/${rows.reduce((t, r) => t + r.week.planned, 0)} yapıldı` : "Sporcuya program hazırla")}
           onClick={() => {
             setAth("");
             setAthOpen(true);
@@ -351,6 +361,7 @@ export function FitnessHome() {
         onClose={() => setAthOpen(false)}
         athletes={athletes}
         rows={rows}
+        plans={fitOthers}
         sel={ath}
         setSel={setAth}
         today={today}
@@ -419,7 +430,7 @@ function ProfileSheet({ open, onClose, value, onSave }) {
 
 // Sporcular penceresi: her sporcu bir satır (program, bu hafta yapılan/planlanan, son antrenman);
 // dokununca programı (düzenle, planlara ekle, sil) ve son antrenmanları. Programı olmayan sporcuya "Program hazırla".
-function AthletesSheet({ open, onClose, athletes, rows, sel, setSel, today, busy, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop }) {
+function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel, today, busy, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop }) {
   const row = rows.find((r) => r.uid === sel);
   const name = athletes.find((a) => a.uid === sel)?.name || row?.name || "";
   const rest = athletes.filter((a) => !rows.some((r) => r.uid === a.uid));
@@ -429,7 +440,8 @@ function AthletesSheet({ open, onClose, athletes, rows, sel, setSel, today, busy
     <Sheet open={open} onClose={onClose} title={sel ? name : "Sporcular"}>
       {!sel && (
         <>
-          <p className="text-[0.8125rem] leading-snug text-mut">Programı sen hazırlarsın; sporcu kendi Fitness sayfasında görür ve antrenmanı işaretler. Antrenmanları senin takviminde görünmez.</p>
+          {rows.length > 0 && <AthleteDay plans={plans} athletes={athletes} today={today} onOpen={(p) => (onClose(), onOpen(p))} onSel={setSel} />}
+          <p className="mt-4 text-[0.8125rem] leading-snug text-mut">Programı sen hazırlarsın; sporcu kendi Fitness sayfasında görür ve antrenmanı işaretler. Antrenmanları senin takviminde görünmez.</p>
           {rows.length > 0 && (
             <ul className="mt-3 divide-y divide-line">
               {rows.map((r) => (
@@ -518,5 +530,49 @@ function AthletesSheet({ open, onClose, athletes, rows, sel, setSel, today, busy
         </>
       )}
     </Sheet>
+  );
+}
+
+// Günün sporcu antrenmanları: ‹ gün › ile geçilir; her antrenman bir satır (sporcu, antrenman, durum).
+// Satıra dokununca antrenman açılır (yapılan setler görünür), adına dokununca sporcunun sayfası.
+const ST_COLOR = { done: "bg-acc/10 text-acc", skip: "bg-line/60 text-mut", missed: "bg-rose-500/10 text-rose-600 dark:text-rose-300", today: "bg-amber-500/10 text-amber-700 dark:text-amber-300", next: "bg-line/60 text-mut" };
+function AthleteDay({ plans, athletes, today, onOpen, onSel }) {
+  const [day, setDay] = useState(today);
+  const list = dayRows(plans, athletes, day, today);
+  const label = day === today ? "Bugün" : day === addDays(today, -1) ? "Dün" : day === addDays(today, 1) ? "Yarın" : new Date(`${day}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+  const arrow = "grid size-9 place-items-center rounded-full bg-bg text-mut active:scale-90";
+  return (
+    <div className="rounded-2xl bg-bg/60 p-3">
+      <div className="flex items-center gap-2">
+        <button type="button" aria-label="Önceki gün" onClick={() => setDay(addDays(day, -1))} className={arrow}>
+          <Icon name="chev" className="size-4 rotate-180" />
+        </button>
+        <span className="min-w-0 flex-1 text-center">
+          <b className="block text-[0.9375rem] font-semibold">{label}</b>
+          <small className="block text-[0.75rem] text-mut">{list.length ? dayLine(list, "").trim() : "Antrenman yok"}</small>
+        </span>
+        <button type="button" aria-label="Sonraki gün" onClick={() => setDay(addDays(day, 1))} className={arrow}>
+          <Icon name="chev" className="size-4" />
+        </button>
+      </div>
+      {list.length > 0 && (
+        <ul className="mt-2 divide-y divide-line">
+          {list.map((r) => (
+            <li key={r.plan.id} className="flex items-center gap-2 py-2">
+              <button type="button" onClick={() => onSel(r.uid)} className="grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc" aria-label={`${r.name} sayfası`}>
+                {r.name.slice(0, 1).toLocaleUpperCase("tr-TR")}
+              </button>
+              <button type="button" onClick={() => onOpen(r.plan)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
+                  <small className="block truncate text-[0.8125rem] text-mut">{[r.plan.time, r.plan.fit?.name || r.plan.title].filter(Boolean).join(" · ")}</small>
+                </span>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${ST_COLOR[r.st]}`}>{STATUS[r.st]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

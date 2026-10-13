@@ -1,8 +1,10 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
 import { todayStr } from "@/lib/utils/format";
-import { fitLocal } from "@/lib/fitness/words";
+import { fitLocal, athleteIn, withoutName } from "@/lib/fitness/words";
+import { kindOf } from "@/lib/kinds";
+import { markStart } from "@/features/fitness/guideVoice";
 import { activeOf as fitActive, loadPrograms as loadFitPrograms, syncPlans as fitSyncPlans, removePlans as fitRemovePlans, askFitness, saveProfile as saveFitProfile, showProgram as showFitProgram, addSession as fitAddSession } from "@/features/fitness/fitnessData";
-import { weekStats as fitWeek, monthStats as fitMonth, programLine as fitProgLine, planOf as fitPlanOf, applyLog, recentText as fitRecent, resLine as fitResLine } from "@/lib/fitness/model";
+import { weekStats as fitWeek, monthStats as fitMonth, programLine as fitProgLine, planOf as fitPlanOf, applyLog, recentText as fitRecent, resLine as fitResLine, myFit, athleteNext, dayRows, dayLine, STATUS } from "@/lib/fitness/model";
 import { foodLocal, targets as foodTargets, dayOf as foodDayOf, monthKey as foodMonth, dayLine as foodDayLine, totals as foodTotals } from "@/lib/fitness/food";
 import { saveWeight as saveFoodWeight, loadMonth as loadFoodMonth, addWater as foodAddWater, askFood, addMeals as foodAddMeals } from "@/features/fitness/foodData";
 
@@ -10,8 +12,70 @@ import { saveWeight as saveFoodWeight, loadMonth as loadFoodMonth, addWater as f
 // Fitness (yalnız ana hesap). Yerelde: "programı planlara ekle / takvimden kaldır", "bugünkü antrenmanı yaptım / atladım",
 // "bu hafta kaç antrenman yaptım". Diğerleri /api/fitness: program hazırlama ya da değiştirme Fitness sayfasında önizlemede
 // açılır (kaydetmeyi kullanıcı seçer); yapılan antrenman (set, tekrar, kilo) o günün fitness planına yazılır, plan yoksa açılır.
+// Sporcu (programını antrenör hazırlar): "bugünkü antrenmanım ne", "antrenmana başla" (adım adım ekran açılır),
+// "bugünkü antrenmanı yaptım / atladım", "bu hafta kaç antrenman yaptım". Program istemi yapay zekaya gitmez.
+// Ana hesap: "sporcular bugün antrenman yaptı mı" (gün listesi), "Ali bu hafta kaç antrenman yaptı",
+// "Ali için program hazırla" (sporcunun adı yapay zekaya gitmez; önizleme Ali için açılır).
+const dayText = (rows) => rows.map((r) => `${r.name} ${STATUS[r.st].toLocaleLowerCase("tr-TR")}`).join(", ");
+const exList = (p) => (p?.fit?.items || []).slice(0, 6).map((it) => it.name).filter(Boolean).join(", ");
+const whenOf = (p, today) => (p.date === today ? "Bugün" : p.date === addDay(today) ? "Yarın" : p.date.split("-").reverse().slice(0, 2).join("."));
+function addDay(d) {
+  const x = new Date(`${d}T12:00:00`);
+  x.setDate(x.getDate() + 1);
+  return x.toISOString().slice(0, 10);
+}
+function weekText(w, you = true) {
+  const v = you ? "yaptın" : "yaptı";
+  if (!w.planned && !w.done) return you ? "Bu hafta antrenmanın yok." : "Bu hafta antrenmanı yok.";
+  return `Bu hafta ${w.planned} antrenmandan ${w.done} tanesini ${v}${w.left ? `, ${w.left} tane kaldı` : ""}${w.missed ? `, ${w.missed} tanesi yapılmadı` : ""}.`;
+}
+
+function runAthleteFit(ctx, s, viaVoice, loc) {
+  const { myUid, openAdd, plans, profile, reply, updateRecord } = ctx;
+  const uid = profile?.uid || myUid;
+  const today = todayStr();
+  const mine = myFit(plans, uid);
+  if (!mine.length) return reply("Henüz fitness programın yok. Antrenörün program hazırlayınca burada görünür.", { engine: "local" }, viaVoice);
+  if (loc?.op === "stats") return reply(`${weekText(fitWeek(mine, today))} Bu ay ${fitMonth(mine, today.slice(0, 7), today).done} antrenman.`, { engine: "local" }, viaVoice);
+  if (loc?.op === "done" || loc?.op === "skip") {
+    const p = fitPlanOf(mine, today);
+    if (!p || p.fit?.res?.st) return reply("Bugün yapılacak antrenmanın yok.", { engine: "local" }, viaVoice);
+    const fit = applyLog(p.fit || { items: [] }, { st: loc.op });
+    return updateRecord("plan", p.id, { fit: { ...fit, for: p.fit.for } }, { name: profile?.name || "" }).then(
+      () => reply(`Yazdım: ${p.fit?.name || p.title} ${loc.op === "done" ? "yapıldı" : "atlandı"}.`, { engine: "local", show: [{ kind: "plan", id: p.id }] }, viaVoice),
+      () => reply("Yazamadım, bağlantıyı kontrol et.", { engine: "local", fail: true }, viaVoice),
+    );
+  }
+  const nx = athleteNext(plans, uid, today);
+  if (loc?.op === "start") {
+    const p = nx?.today ? nx.plan : fitPlanOf(mine, today);
+    if (!p || p.fit?.res?.st) return reply(nx ? `Bugün antrenmanın yok. Sıradaki: ${whenOf(nx.plan, today)}, ${nx.plan.fit?.name || nx.plan.title}.` : "Bugün antrenmanın yok.", { engine: "local" }, viaVoice);
+    markStart(p.id);
+    openAdd({ edit: { kind: "plan", id: p.id } });
+    return reply(`${p.fit?.name || p.title} başlıyor. Her seti bitirince “tamam” de; “atla”, “nasıl yapılır”, “15 saniye ekle” de olur.`, { engine: "local" }, viaVoice);
+  }
+  if (!nx) return reply("Şu an yapılacak antrenmanın yok.", { engine: "local" }, viaVoice);
+  const p = nx.plan;
+  const list = exList(p);
+  return reply(`${whenOf(p, today)}${p.time ? ` ${p.time}` : ""}: ${p.fit?.name || p.title}${p.durationMin ? `, ${p.durationMin} dakika` : ""}.${list ? ` Hareketler: ${list}.` : ""}${nx.today ? " Başlamak için “antrenmana başla” de." : ""}`, { engine: "local", show: [{ kind: "plan", id: p.id }] }, viaVoice);
+}
+
 export async function runFitness(ctx, s, viaVoice, focusFit) {
-  const { myUid, path, plans, profile, reply, router, runId, setPhase, setSteps, stepTo, stepsEnd, updateRecord } = ctx;
+  const { fitOthers = [], isStaff, members = [], myUid, path, plans, profile, reply, router, runId, setPhase, setSteps, stepTo, stepsEnd, updateRecord } = ctx;
+  if (isStaff) return runAthleteFit(ctx, s, viaVoice, fitLocal(s));
+  // Ana hesap: sporcular (uygulamada hesabı olan sporcu ve öğrenciler)
+  const athletes = members.filter((m) => m.account !== false && (kindOf(m) === "athlete" || kindOf(m) === "student")).map((m) => ({ uid: m.uid, name: m.name || "Sporcu" }));
+  const who = athleteIn(s, athletes);
+  if (fitLocal(s)?.op === "athletes" && !who) {
+    const today = todayStr();
+    const day = /\bdün\b/iu.test(s) ? new Date(Date.now() - 864e5).toLocaleDateString("sv-SE") : today;
+    const rows = dayRows(fitOthers, athletes, day, today);
+    if (path !== "/fitness") router.push("/fitness?sporcular=1");
+    else window.dispatchEvent(new Event("sa-fit-athletes"));
+    const when = day === today ? "Bugün" : "Dün";
+    return reply(rows.length ? `${dayLine(rows, when)}. ${dayText(rows)}.` : `${when} sporcuların fitness antrenmanı yok.`, { engine: "local" }, viaVoice);
+  }
+  if (who) return runForAthlete(ctx, s, viaVoice, who);
   const id = ++runId.current;
   const org = profile?.orgId || myUid;
   const uid = profile?.uid || myUid;
@@ -90,6 +154,41 @@ export async function runFitness(ctx, s, viaVoice, focusFit) {
     if (id !== runId.current) return;
     stepsEnd(false);
     reply(`${e.message || "Fitness isteği işlenemedi."} Fitness sayfasından elle de yapabilirsin.`, { fail: true, engine: "ai" }, viaVoice);
+  } finally {
+    if (id === runId.current) setPhase("idle");
+  }
+}
+
+// Ana hesap, cümlede sporcu adı var: istatistik yerelde; program yapay zekayla (ad gitmez), önizleme o sporcu için açılır
+async function runForAthlete(ctx, s, viaVoice, who) {
+  const { fitOthers = [], path, reply, router, runId, setPhase, setSteps, stepTo, stepsEnd } = ctx;
+  const today = todayStr();
+  const mine = fitOthers.filter((p) => p.fit?.for === who.uid);
+  const loc = fitLocal(s);
+  if (loc?.op === "stats" || loc?.op === "athletes" || /\b(kaç|yaptı mı|yapmış mı|durum)/iu.test(s)) {
+    const w = fitWeek(mine, today);
+    const last = fitPlanOf(mine, today);
+    return reply(mine.length ? `${who.name}: ${weekText(w, false)}${last && last.date === today ? ` Bugünkü antrenmanı: ${STATUS[last.fit?.res?.st === "done" ? "done" : last.fit?.res?.st === "skip" ? "skip" : "today"].toLocaleLowerCase("tr-TR")}.` : ""}` : `${who.name} için fitness programı yok.`, { engine: "local" }, viaVoice);
+  }
+  const id = ++runId.current;
+  setPhase("thinking");
+  setSteps([]);
+  try {
+    stepTo(`${who.name} için program hazırlanıyor`);
+    const r = await askFitness({ text: withoutName(s, who.name) || "Genel fitness programı hazırla", profile: {}, program: null, recent: "" });
+    if (id !== runId.current) return;
+    if (r.op !== "program" || !r.program) {
+      stepsEnd(false);
+      return reply(`${who.name} için program hazırlayamadım. Fitness › Sporcular'dan elle hazırlayabilirsin.`, { engine: "ai", fail: true }, viaVoice);
+    }
+    stepsEnd(true);
+    showFitProgram({ ...r.program, title: `${who.name} · fitness`, for: who.uid, forName: who.name });
+    if (path !== "/fitness") router.push("/fitness");
+    return reply(`${who.name} için programı hazırladım. Önizlemeyi açtım; kontrol edip “Kaydet ve planlara ekle”ye bas, ${who.name} bildirim alır.`, { engine: "ai" }, viaVoice);
+  } catch (e) {
+    if (id !== runId.current) return;
+    stepsEnd(false);
+    reply(`${e.message || "Program hazırlanamadı."} Fitness › Sporcular'dan elle de hazırlayabilirsin.`, { fail: true, engine: "ai" }, viaVoice);
   } finally {
     if (id === runId.current) setPhase("idle");
   }

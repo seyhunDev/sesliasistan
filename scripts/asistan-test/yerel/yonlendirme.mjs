@@ -28,6 +28,7 @@ function route(s, ctx = {}) {
     owner, isStaff: !owner, racer: owner, att: owner, athleteSide: !!ctx.athlete, path, today, races, raceNames: races.map((r) => r.name), names,
     logHere: path === "/training", fitHere: path === "/fitness", foodHere: !!ctx.food, invPage: path.startsWith("/inventory"), attHere: path === "/athletes/attendance",
     curRace: curRace && curRace !== "new" ? curRace : "", askedMore: !!ctx.askedMore, shop: true,
+    guide: !!ctx.guide, myFit: !!ctx.myFit, myFitToday: !!ctx.myFitToday, fitPeople: ctx.fitPeople || [],
   });
   return got === "person" && !owner ? "person(yetkisiz)" : got;
 }
@@ -210,6 +211,31 @@ group("Yönlendirme: karışma (iki işe benzeyen cümle)")(CROSS.map(([task, s,
 // Çalışan hesabı: yalnız ana hesaba açık akışlar başlamaz
 const STAFF = { desc: "çalışanda yalnız ana hesaba açık akış başlamaz", fn: (s) => route(s, { owner: false }), ok: (r) => !["inventory", "event", "post", "person", "invoice", "payee", "results", "attendance", "race", "raceOpen", "dues", "income", "athlete", "receiptPay", "absent", "personDelete", "invoiceTask", "raceHere", "hotel", "athleteOpen", "fitness", "food"].includes(r) };
 group("Yönlendirme: çalışan hesabı")(["envantere 3 Optimist teknesi ekle", "kamp planı yapmak istiyorum", "Foça yarışı için Instagram gönderisi hazırla", "bu ay ne kadar ödeme aldım", "Turkcell faturası ödendi", "yoklama al, Ali geldi", "Foça yarışını aç", "aidat hatırlatması gönder", "Ahmet'ten 2000 lira bağış geldi", "Ali Kaya'yı arşive al", "Ali'nin fişlerini ödedim", "gelmeyenlerin velilerine haber ver", "Ayşe Yılmaz'ı kişilerden sil", "squat 3 set 10 tekrar 60 kilo yaptım", "öğlen tavuk pilav yedim"].map((s) => [s, STAFF]));
+
+// Sporcu fitness (antrenörün hazırladığı program) ve adım adım antrenman ekranı
+const FP = [{ uid: "u1", name: "Ali Kaya" }, { uid: "u2", name: "Zeynep Ak" }];
+const RF = (want, ctx) => ({ desc: `yol: ${want}`, fn: (s) => route(s, ctx), ok: (r) => r === want });
+const ATH = { owner: false, myFit: true, myFitToday: true };
+group("Yönlendirme: sporcu fitness ve antrenman ekranı")([
+  ["tamam", RF("guide", { guide: true }), "ekran açık"],
+  ["sonraki", RF("guide", { guide: true, ...ATH }), "ekran açık"],
+  ["bu hareketi atla", RF("guide", { guide: true, ...ATH }), "ekran açık"],
+  ["15 saniye ekle", RF("guide", { guide: true, ...ATH }), "ekran açık"],
+  ["nasıl yapılır", RF("guide", { guide: true, ...ATH }), "ekran açık"],
+  ["antrenmanı bitir", RF("guide", { guide: true, ...ATH }), "ekran açık"],
+  ["bitti", RF("guide", { guide: true, ...ATH }), "ekran açıkken kapatmaz"],
+  ["bitti", RF("close", {}), "ekran yokken kapatır"],
+  ["bugünkü antrenmanım ne", RF("fitness", ATH), "sporcu"],
+  ["antrenmana başla", RF("fitness", ATH), "sporcu"],
+  ["bugünkü antrenmanı yaptım", RF("fitness", ATH), "sporcu, bugün antrenman var"],
+  ["bu hafta kaç antrenman yaptım", RF("fitness", ATH), "sporcu"],
+  ["bugünkü antrenmanım ne", { desc: "programı yoksa fitness değil", fn: (s) => route(s, { owner: false }), ok: (r) => r !== "fitness" }, "sporcu, program yok"],
+  ["sporcular bugün antrenman yaptı mı", RF("fitness", {}), "ana hesap"],
+  ["kimler bugün fitness antrenmanı yapmadı", RF("fitness", {}), "ana hesap"],
+  ["Ali bu hafta kaç antrenman yaptı", RF("fitness", { fitPeople: FP }), "ana hesap"],
+  ["Ali için fitness programı hazırla", RF("fitness", { fitPeople: FP }), "ana hesap"],
+  ["Ali için program hazırla", RF("fitness", { fitPeople: FP, path: "/fitness" }), "Fitness sayfası"],
+]);
 
 // Sıralı görev zinciri (lib/chain.js): "sonra" ile sıralanan işler bölünür, her parça kendi akışına gider
 const { splitChain, refersBack } = await import("@/lib/chain");

@@ -211,6 +211,24 @@ export function athleteRows(progs = [], plans = [], people = [], today) {
   return out.sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
 
+// Bir günün sporcu antrenmanları (Fitness › Sporcular › gün): her antrenman bir satır, durumuyla.
+// Sıra: yapılmayanlar/bekleyenler önce, sonra yapılanlar; ad sırasıyla.
+export function dayRows(plans = [], people = [], date, today) {
+  const nameOf = (uid) => people.find((a) => a.uid === uid)?.name || "Sporcu";
+  const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
+  return fitPlans(plans)
+    .filter((p) => p.fit?.for && p.date === date)
+    .map((p) => ({ uid: p.fit.for, name: nameOf(p.fit.for), plan: p, st: statusOf(p, today) }))
+    .sort((a, b) => rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
+}
+// "Bugün 3 sporcu: 1 yaptı, 2 bekliyor" (satır yoksa boş)
+export function dayLine(rows = [], when = "Bugün") {
+  if (!rows.length) return "";
+  const c = (k) => rows.filter((r) => r.st === k).length;
+  const wait = c("today") + c("next");
+  return `${when} ${rows.length} sporcu: ${[c("done") ? `${c("done")} yaptı` : "", wait ? `${wait} bekliyor` : "", c("missed") ? `${c("missed")} yapmadı` : "", c("skip") ? `${c("skip")} atladı` : ""].filter(Boolean).join(", ")}`;
+}
+
 export const fitPlans = (plans = []) => plans.filter((p) => isFit(p) && p.status !== "cancelled" && p.date).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
 
 // Sette yapılan iş: kg × tekrar
