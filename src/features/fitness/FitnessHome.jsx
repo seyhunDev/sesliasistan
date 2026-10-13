@@ -5,15 +5,17 @@ import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { card, Empty } from "@/components/ui/Page";
+import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  STATUS, addDays, ageFrom, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
+  GOALS, SPORTS, STATUS, addDays, ageFrom, athleteRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
+import { libList } from "@/lib/fitness/library";
+import { useFitLib } from "./useFitLib";
 import { kindOf } from "@/lib/kinds";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
@@ -124,6 +126,11 @@ export function FitnessHome() {
   const history = all.filter((p) => p.date < today || p.fit?.res?.st).reverse().slice(0, 12);
   const onCal = prog && all.filter((p) => p.fit?.prog === prog.id && p.date >= today).length;
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
+  const { lib } = useFitLib();
+  const libCount = useMemo(() => {
+    const l = libList(lib);
+    return { n: l.length, v: l.filter((x) => x.yt?.id || (x.media || []).some((m) => m.kind === "video")).length };
+  }, [lib]);
 
   async function save(p, withPlans) {
     setBusy(withPlans ? "plans" : "save");
@@ -309,6 +316,9 @@ export function FitnessHome() {
     return { date, dow: i + 1, st: p?.st || "", id: p?.id };
   });
 
+  const rest = athletes.filter((a) => !rows.some((r) => r.uid === a.uid));
+  const showMore = week.planned > 0 || recs.length > 0 || history.length > 0;
+
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <PageHeader title="Fitness" sub="Antrenman programın ve takibin">
@@ -320,48 +330,94 @@ export function FitnessHome() {
 
       {bodySheet}
 
-      <TodayCard plan={todays[0]} next={nextOne} week={prog && progWeek(prog, today)} today={today} onOpen={open} />
-      {todays.slice(1).map((p) => (
-        <button key={p.id} type="button" onClick={() => open(p)} className={`${card} mt-2 flex w-full items-center gap-3 px-4 py-3 text-left`}>
-          <Icon name="dumbbell" className="size-5 shrink-0 text-acc" />
-          <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{p.fit?.name || p.title}</span>
-          <span className="shrink-0 text-[0.8125rem] text-mut">{p.time || STATUS[statusOf(p, today)]}</span>
-        </button>
-      ))}
+      {rows.length > 0 && <AthletesSummary rows={rows} />}
 
-      {list && !prog && (
-        <div className="mt-1">
-          <Empty icon="dumbbell" title="Henüz programın yok" sub="Günlerini ve saatini seç, yapay zeka haftalık programını hazırlasın. Asistana da söyleyebilirsin: “Pazartesi, çarşamba, cuma sabah 7'de 4 haftalık program hazırla”." />
-          <Button className="mt-3" onClick={() => newFor("")}>
-            <Icon name="spark" className="size-5" />
-            Program hazırla
-          </Button>
-        </div>
-      )}
-
-      <WeekStrip week={week} strip={strip} today={today} onOpen={open} />
-      {prog && <RowButton icon="cal" title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} onClick={() => setProgOpen(true)} />}
       {athletes.length > 0 && (
-        <RowButton
-          icon="users"
-          title="Sporcular"
-          sub={dayLine(dayRows(fitOthers, athletes, today, today)) || (rows.length ? `${rows.length} sporcunun programı var · bu hafta ${rows.reduce((t, r) => t + r.week.done, 0)}/${rows.reduce((t, r) => t + r.week.planned, 0)} yapıldı` : "Sporcuya program hazırla")}
-          onClick={() => {
-            setAth("");
-            setAthOpen(true);
-          }}
-        />
+        <>
+          <Head title="SPORCULAR" action="+ Program" onAction={() => newFor("")} />
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {rows.map((r) => (
+              <li key={r.uid} className="px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAth(r.uid);
+                    setAthOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 text-left"
+                >
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.9375rem] font-bold text-acc">{initialsOf(r.name)}</span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[1rem] font-semibold">{r.name}</b>
+                    <small className={`block truncate text-[0.8125rem] ${/yapmadı/.test(nowLine(r, today)) ? "text-rec" : "text-mut"}`}>{nowLine(r, today)}</small>
+                  </span>
+                  {r.week.planned > 0 && <b className={`shrink-0 text-[0.9375rem] font-bold tabular-nums ${r.week.missed ? "text-rec" : "text-acc"}`}>{`${r.week.done}/${r.week.planned}`}</b>}
+                  <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                </button>
+                <WeekDots row={r} today={today} onOpen={open} />
+              </li>
+            ))}
+            {(rest.length > 0 || !rows.length) && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAth("");
+                    setAthOpen(true);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[0.875rem] text-mut">{rows.length ? `Programı yok: ${rest.map((a) => a.name.split(" ")[0]).join(", ")}` : "Henüz hiçbir sporcunun programı yok"}</span>
+                  <span className="shrink-0 text-[0.875rem] font-semibold text-acc">Tümü ›</span>
+                </button>
+              </li>
+            )}
+          </ul>
+        </>
       )}
-      {(prog || rows.length > 0 || all.length > 0) && <RowButton icon="dumbbell" title="Hareketler" sub="Numaralı liste · fotoğraf ve videolar" onClick={() => setLibOpen(true)} />}
+
+      <Head title="BENİM" />
+      {list && !prog && !todays.length ? (
+        <div className={`${card} flex items-center gap-3 px-4 py-3`}>
+          <Icon name="dumbbell" className="size-5 shrink-0 text-mut" />
+          <span className="min-w-0 flex-1 text-[0.9375rem] text-mut">Kendi programın yok</span>
+          <button type="button" onClick={() => newFor("")} className="h-9 shrink-0 rounded-full bg-acc/10 px-3.5 text-[0.875rem] font-semibold text-acc">
+            + Hazırla
+          </button>
+        </div>
+      ) : (
+        <>
+          <TodayCard plan={todays[0]} next={nextOne} week={prog && progWeek(prog, today)} today={today} onOpen={open} />
+          {todays.slice(1).map((p) => (
+            <button key={p.id} type="button" onClick={() => open(p)} className={`${card} mt-2 flex w-full items-center gap-3 px-4 py-3 text-left`}>
+              <Icon name="dumbbell" className="size-5 shrink-0 text-acc" />
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{p.fit?.name || p.title}</span>
+              <span className="shrink-0 text-[0.8125rem] text-mut">{p.time || STATUS[statusOf(p, today)]}</span>
+            </button>
+          ))}
+          <WeekStrip week={week} strip={strip} today={today} onOpen={open} />
+          {prog && <RowButton icon="cal" title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} onClick={() => setProgOpen(true)} />}
+        </>
+      )}
+
+      {(prog || rows.length > 0 || all.length > 0 || libCount.n > 0) && (
+        <>
+          <Head title="ARAÇLAR" />
+          <div className="grid grid-cols-2 gap-2.5">
+            <Tile icon="video" title="Hareketler" sub={libCount.n ? `${libCount.n} hareket · ${libCount.v} videolu` : "Fotoğraf ve videolar"} wide={!showMore} onClick={() => setLibOpen(true)} />
+            {showMore && <Tile icon="trend" title="Gelişim" sub="Seri, en iyiler, bu ay" on={more} onClick={() => setMore(!more)} />}
+          </div>
+        </>
+      )}
       <ExerciseLibrary
         open={libOpen}
         orgId={orgId}
+        progs={list || []}
         onClose={() => {
           setLibOpen(false);
           spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
         }}
       />
-      {(week.planned > 0 || recs.length > 0 || history.length > 0) && <RowButton icon="trend" title="Gelişim ve geçmiş" sub="Seri, en iyi değerler, bu ay" open={more} onClick={() => setMore(!more)} />}
       {more && (
         <>
           <WeekCard week={week} strip={strip} today={today} onOpen={open} />
@@ -487,8 +543,6 @@ function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel,
   const row = rows.find((r) => r.uid === sel);
   const name = athletes.find((a) => a.uid === sel)?.name || row?.name || "";
   const rest = athletes.filter((a) => !rows.some((r) => r.uid === a.uid));
-  const dayText = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
-  const recent = row ? row.plans.filter((p) => p.date <= today || p.fit?.res?.st).slice(-5).reverse() : [];
   return (
     <Sheet open={open} onClose={onClose} title={sel ? name : "Sporcular"}>
       {!sel && (
@@ -528,57 +582,20 @@ function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel,
         </>
       )}
       {sel && (
-        <>
-          <button type="button" onClick={() => setSel("")} className="mb-2 flex h-9 items-center gap-1 text-[0.875rem] font-semibold text-acc">
-            <Icon name="chev" className="size-4 rotate-180" />
-            Sporcular
-          </button>
-          {row?.prog ? (
-            <ProgramCard
-              bare
-              age={ageFrom(athletes.find((a) => a.uid === sel)?.birth, today)}
-              prog={row.prog}
-              today={today}
-              onCal={row.plans.filter((p) => p.fit?.prog === row.prog.id && p.date >= today).length}
-              busy={busy}
-              onEdit={() => onEdit(row.prog)}
-              onPlan={() => onPlan(row.prog)}
-              onUnplan={() => onUnplan(row.prog)}
-              onDrop={() => onDrop(row.prog)}
-            />
-          ) : (
-            <Button onClick={() => onNew(sel)}>
-              <Icon name="spark" className="size-5" />
-              Program hazırla
-            </Button>
-          )}
-          {row?.prog && (
-            <button type="button" onClick={() => onNew(sel)} className="mt-2 h-10 w-full text-[0.875rem] font-semibold text-acc">
-              Yeni program hazırla
-            </button>
-          )}
-          {row && (
-            <>
-              <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">{`BU HAFTA ${row.week.done}/${row.week.planned} · SON ANTRENMANLAR`}</small>
-              {recent.length ? (
-                <ul className="mt-1 divide-y divide-line">
-                  {recent.map((p) => (
-                    <li key={p.id}>
-                      <button type="button" onClick={() => (onClose(), onOpen(p))} className="flex w-full items-center gap-3 py-2.5 text-left">
-                        <span className="w-20 shrink-0 text-[0.8125rem] text-mut">{dayText(p.date)}</span>
-                        <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.fit?.name || p.title}</span>
-                        <span className={`shrink-0 text-[0.8125rem] font-semibold ${p.fit?.res?.st === "done" ? "text-acc" : "text-mut"}`}>{STATUS[statusOf(p, today)]}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-1 text-[0.8125rem] text-mut">Henüz antrenman günü gelmedi.</p>
-              )}
-              {row.next && <p className="mt-2 text-[0.8125rem] text-mut">Sıradaki: {dayText(row.next.date)}{row.next.time ? ` ${row.next.time}` : ""} · {row.next.fit?.name || row.next.title}</p>}
-            </>
-          )}
-        </>
+        <AthleteDetail
+          name={name}
+          row={row}
+          athlete={athletes.find((a) => a.uid === sel)}
+          today={today}
+          busy={busy}
+          onBack={() => setSel("")}
+          onNew={() => onNew(sel)}
+          onOpen={(p) => (onClose(), onOpen(p))}
+          onEdit={onEdit}
+          onPlan={onPlan}
+          onUnplan={onUnplan}
+          onDrop={onDrop}
+        />
       )}
     </Sheet>
   );
@@ -616,5 +633,218 @@ function WeekDots({ row, today, onOpen }) {
         );
       })}
     </div>
+  );
+}
+
+// Sporcu ayrıntısı: koyu kart (ad, yaş · spor · hedef, bu hafta 7 gün, programın kaçıncı haftası), üç işlem
+// (Düzenle, Liste olarak al, Yeni program), geçen ve gelecek haftanın antrenmanları, en altta Programı sil.
+function AthleteDetail({ name, row, athlete, today, busy, onBack, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop }) {
+  const [listOpen, setListOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [sure, setSure] = useState(false);
+  const prog = row?.prog;
+  const age = ageFrom(athlete?.birth, today) || prog?.forAge || 0;
+  const meta = [age ? `${age} yaş` : "", labelOf(SPORTS, prog?.sport), labelOf(GOALS, prog?.goal)].filter(Boolean).join(" · ");
+  const pw = prog && progWeek(prog, today);
+  const perWeek = prog ? (prog.days || []).length : 0;
+  const onCal = row && prog ? row.plans.filter((p) => p.fit?.prog === prog.id && p.date >= today).length : 0;
+  const mon = addDays(today, 1 - dowOf(today));
+  const from = addDays(today, -7);
+  const to = addDays(today, 7);
+  const list = row ? row.plans.filter((p) => p.date >= from && p.date <= to).slice(-8).reverse() : [];
+  const text = prog ? programText(prog, { age, sport: labelOf(SPORTS, prog.sport) }) : "";
+  const copy = () => {
+    navigator.clipboard?.writeText(text).then(() => setCopied(true)).catch(() => {});
+  };
+  const dayText = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+  const pill = (p) => {
+    const st = statusOf(p, today);
+    if (st === "done") return ["Yaptı", "bg-acc/12 text-acc"];
+    if (st === "missed") return ["Yapmadı", "bg-rec/12 text-rec"];
+    if (st === "skip") return ["Atladı", "bg-line text-mut"];
+    return [p.time || "Bekliyor", "bg-bg text-mut"];
+  };
+  return (
+    <>
+      <button type="button" onClick={onBack} className="mb-2 flex h-9 items-center gap-1 text-[0.875rem] font-semibold text-acc">
+        <Icon name="chev" className="size-4 rotate-180" />
+        Sporcular
+      </button>
+      <section className="rounded-[1.625rem] bg-deep p-5 text-white">
+        <div className="flex items-center gap-3">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white/15 text-[1rem] font-bold">{initialsOf(name)}</span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[1.125rem] font-semibold">{name}</b>
+            {meta && <small className="block truncate text-[0.8125rem] text-white/70">{meta}</small>}
+          </span>
+          {row?.week.planned > 0 && (
+            <span className="shrink-0 text-right">
+              <b className="block text-[1.25rem] font-bold tabular-nums leading-none">{`${row.week.done}/${row.week.planned}`}</b>
+              <small className="text-[0.6875rem] text-white/60">bu hafta</small>
+            </span>
+          )}
+        </div>
+        {row && (
+          <div className="mt-4 grid grid-cols-7 gap-1.5">
+            {Array.from({ length: 7 }, (_, i) => {
+              const date = addDays(mon, i);
+              const d = row.week.days.find((x) => x.date === date);
+              const plan = d && row.plans.find((p) => p.id === d.id);
+              const look = !d
+                ? "text-white/30"
+                : d.st === "done"
+                  ? "bg-[#bfe8d6] text-deep"
+                  : d.st === "missed"
+                    ? "bg-[#f3a39a] text-[#5a1610]"
+                    : d.st === "skip"
+                      ? "bg-white/15 text-white/70"
+                      : "border border-white/50 text-white";
+              return (
+                <button key={date} type="button" disabled={!plan} onClick={() => plan && onOpen(plan)} className="flex flex-col items-center gap-1">
+                  <small className={`text-[0.6875rem] ${date === today ? "font-bold text-white" : "text-white/60"}`}>{["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][i]}</small>
+                  <span className={`grid h-9 w-full place-items-center rounded-xl text-[0.8125rem] font-bold ${look} ${date === today && d ? "ring-2 ring-white" : ""}`}>
+                    {!d ? "·" : d.st === "done" ? <Icon name="check" className="size-4" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {prog && (
+          <p className="mt-4 border-t border-white/15 pt-3 text-[0.8125rem] text-white/75">
+            {[prog.title || "Program", pw && pw.n ? `${Math.min(pw.n, pw.of)}. hafta / ${pw.of}` : pw ? `${pw.of} hafta` : "", perWeek ? `Haftada ${perWeek} gün` : ""].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </section>
+
+      {prog ? (
+        <>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              ["edit", "Düzenle", () => onEdit(prog), false],
+              ["copy", "Liste olarak al", () => setListOpen(!listOpen), listOpen],
+              ["spark", "Yeni program", onNew, false],
+            ].map(([icon, label, fn, on]) => (
+              <button key={label} type="button" onClick={fn} className={`flex h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl text-[0.8125rem] font-semibold ${on ? "bg-acc text-white" : "bg-card text-fg shadow-[0_1px_0_rgba(0,0,0,.04)] ring-1 ring-line"}`}>
+                <Icon name={icon} className={`size-5 ${on ? "" : "text-acc"}`} />
+                {label}
+              </button>
+            ))}
+          </div>
+          {listOpen && (
+            <div className={`${card} mt-2 p-3`}>
+              <pre className="max-h-64 overflow-auto whitespace-pre-wrap font-sans text-[0.8125rem] leading-snug">{text}</pre>
+              <button type="button" onClick={copy} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white">
+                <Icon name={copied ? "check" : "copy"} className="size-4" />
+                {copied ? "Kopyalandı" : "Kopyala"}
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => (onCal > 0 ? onUnplan(prog) : onPlan(prog))}
+            className="mt-2 h-10 w-full rounded-xl text-[0.875rem] font-semibold text-acc disabled:opacity-50"
+          >
+            {onCal > 0 ? `Takvimden kaldır (${onCal} antrenman)` : "Planlara ekle"}
+          </button>
+        </>
+      ) : (
+        <div className="mt-3">
+          <Button onClick={onNew}>
+            <Icon name="spark" className="size-5" />
+            Program hazırla
+          </Button>
+        </div>
+      )}
+
+      {row && (
+        <>
+          <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">ANTRENMANLAR</small>
+          {list.length ? (
+            <ul className={`${card} mt-1.5 divide-y divide-line overflow-hidden`}>
+              {list.map((p) => {
+                const [t, c] = pill(p);
+                return (
+                  <li key={p.id}>
+                    <button type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                      <span className="w-[4.5rem] shrink-0 text-[0.8125rem] text-mut">{dayText(p.date)}</span>
+                      <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{p.fit?.name || p.title}</span>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${c}`}>{t}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-1 text-[0.8125rem] text-mut">Bu iki haftada antrenman yok.</p>
+          )}
+        </>
+      )}
+
+      {prog && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => (sure ? onDrop(prog) : setSure(true))}
+          className="mt-5 h-11 w-full rounded-xl text-[0.875rem] font-semibold text-rec disabled:opacity-50"
+        >
+          {sure ? "Emin misin? Silmek için yeniden dokun" : "Programı sil"}
+        </button>
+      )}
+    </>
+  );
+}
+
+// Fitness ana sayfasının üstü: bütün sporcuların bu haftası tek kartta (halka, yapılan, yapılmayan)
+function AthletesSummary({ rows }) {
+  const done = rows.reduce((n, r) => n + r.week.done, 0);
+  const planned = rows.reduce((n, r) => n + r.week.planned, 0);
+  const missed = rows.reduce((n, r) => n + r.week.missed, 0);
+  const pct = planned ? done / planned : 0;
+  const R = 26;
+  const C = 2 * Math.PI * R;
+  return (
+    <section className="mt-3 flex items-center gap-4 rounded-[1.625rem] bg-deep p-5 text-white">
+      <svg viewBox="0 0 64 64" className="size-16 shrink-0 -rotate-90">
+        <circle cx="32" cy="32" r={R} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="7" />
+        <circle cx="32" cy="32" r={R} fill="none" stroke="#bfe8d6" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${C * pct} ${C}`} />
+        <text x="32" y="32" transform="rotate(90 32 32)" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="15" fontWeight="700">{`${done}/${planned}`}</text>
+      </svg>
+      <span className="min-w-0 flex-1">
+        <small className="block text-[0.75rem] font-bold tracking-[.06em] text-white/60">SPORCULAR BU HAFTA</small>
+        <b className="mt-0.5 block text-[1rem] font-semibold">{`${rows.length} sporcu · ${done} antrenman yapıldı`}</b>
+        {missed > 0 ? <small className="block text-[0.8125rem] text-[#f3a39a]">{`${missed} antrenman yapılmadı`}</small> : <small className="block text-[0.8125rem] text-white/60">{planned ? "Kaçırılan yok" : "Bu hafta antrenman yok"}</small>}
+      </span>
+    </section>
+  );
+}
+
+// Bölüm başlığı (küçük harf aralıklı), sağda isteğe bağlı düğme
+function Head({ title, action, onAction }) {
+  return (
+    <div className="mb-2 mt-5 flex items-center justify-between">
+      <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">{title}</small>
+      {action && (
+        <button type="button" onClick={onAction} className="h-8 px-1 text-[0.875rem] font-semibold text-acc">
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Araç kutusu (Hareketler, Gelişim)
+function Tile({ icon, title, sub, wide, on, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className={`${card} flex items-center gap-3 px-4 py-3.5 text-left ${wide ? "col-span-2" : ""} ${on ? "ring-2 ring-acc" : ""}`}>
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+        <Icon name={icon} className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
+        <small className="block truncate text-[0.75rem] text-mut">{sub}</small>
+      </span>
+    </button>
   );
 }
