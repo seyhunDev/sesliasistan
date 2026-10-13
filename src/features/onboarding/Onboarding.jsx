@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useKind } from "@/features/auth/useKind";
 import { usePermissions } from "@/hooks/usePermissions";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { db } from "@/lib/firebase/clientApp";
@@ -54,8 +55,13 @@ const fits = (x, p) => (!x.owner || p.role === "owner") && (!x.athletes || canSe
 
 const pushGranted = () => typeof Notification !== "undefined" && Notification.permission === "granted";
 
+// Sporcu ve öğrenci uygulamanın çoğunu kullanmaz (plan, fiş, özet…): onlara slaytlar yerine tek ekranlık karşılama (AthleteWelcome).
+export const isSporcu = (k) => k === "athlete" || k === "student";
+
 export function Onboarding() {
   const { profile } = useAuth();
+  const kind = useKind();
+  const sporcu = isSporcu(kind);
   const { perms, request } = usePermissions();
   const router = useRouter();
   const [manual, setManual] = useState(false);
@@ -79,13 +85,29 @@ export function Onboarding() {
 
   // Görülmemiş slaytların hiçbiri bu kişiye uymuyorsa (ör. yarış slaytı, sporcu yetkisi yok) sürüm sessizce ilerler;
   // yoksa "Şimdi sen dene" (TryAssistant, introV >= INTRO_V ister) hiç çıkmaz.
-  const skip = !!profile?.onboarded && profile.introV < INTRO_V && !SLIDES.some((x) => x.v > profile.introV && fits(x, profile));
+  // Sporcuya yenilik slaytı gösterilmez.
+  const skip = !!profile?.onboarded && profile.introV < INTRO_V && (sporcu || !SLIDES.some((x) => x.v > profile.introV && fits(x, profile)));
   useEffect(() => {
     if (skip) updateDoc(doc(db, "users", profile.uid), { introV: INTRO_V }).catch(() => {});
   }, [skip, profile?.uid]);
 
   if (!profile || closed) return null;
   const fresh = profile.onboarded === false;
+  if (sporcu) {
+    if (!fresh && !manual) return null;
+    return (
+      <AthleteWelcome
+        profile={profile}
+        onDone={() => {
+          setClosed(true);
+          setManual(false);
+          dismissPrompt();
+          // "Şimdi sen dene" (antrenman ekle örneği) sporcuya uymaz: o da görülmüş sayılır
+          if (!profile.onboarded || profile.introV < INTRO_V || !profile.tourDone) updateDoc(doc(db, "users", profile.uid), { onboarded: true, introV: INTRO_V, tourDone: true }).catch(() => {});
+        }}
+      />
+    );
+  }
   const granted = (x) => (x.perm === "push" ? pushGranted() : x.perm ? perms[x.perm] === "granted" : false);
   // Yeni özellikler: görülmemiş slaytlar; izni zaten verilmiş olanlar atlanır
   const news = !manual && !fresh && profile.onboarded && profile.introV < INTRO_V ? SLIDES.filter((x) => x.v > profile.introV && !granted(x)) : [];
@@ -305,6 +327,71 @@ export function Onboarding() {
         </button>
         {((s.perm && !has) || s.href || (s.id === "races" && profile.races !== "on")) && (
           <button onClick={next} className="mt-2 h-11 w-full shrink-0 text-[0.9375rem] font-medium text-mut">
+            Şimdi değil
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Sporcunun yapabildikleri (karşılama ekranında)
+const ATHLETE_CAN = [
+  ["dumbbell", "Antrenmanın", "Antrenörün hazırlar. Ana sayfada görürsün, Başla'ya basıp adım adım yaparsın."],
+  ["check", "Yoklaman", "Bu ay kaç antrenmana geldiğin."],
+  ["chat", "Mesajlar", "Takımınla ve antrenörünle yazış."],
+];
+
+// Sporcu ve öğrenci ilk girişte bunu görür: tek ekran, yapabildikleri, bildirim izni (yeni antrenman gelince haber için).
+export function AthleteWelcome({ profile, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const name = String(profile.name || "").trim().split(/\s+/)[0];
+  const asked = pushGranted();
+
+  async function go() {
+    if (asked || !pushSupported()) return onDone();
+    if (needsInstall()) return setNote("Bildirim için önce Paylaş › Ana Ekrana Ekle ile uygulamayı ekle, oradan aç. Şimdilik devam edebilirsin.");
+    setBusy(true);
+    try {
+      await enableReminders(profile, 60);
+    } catch {
+      // izin verilmezse de devam
+    }
+    setBusy(false);
+    onDone();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col bg-bg pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-label="Hoş geldin">
+      <div className="mx-auto flex min-h-0 w-full max-w-[27.5rem] flex-1 flex-col px-6">
+        <div className="fade-in -mx-6 flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-4 text-center [&>*]:shrink-0 [&>:first-child]:mt-auto [&>:last-child]:mb-auto">
+          <span className="grid size-20 place-items-center rounded-[1.625rem] bg-acc/10 text-acc">
+            <Icon name="dumbbell" className="size-9" />
+          </span>
+          <h2 className="mt-7 text-[1.625rem] font-semibold tracking-tight">{name ? `Hoş geldin, ${name}` : "Hoş geldin"}</h2>
+          <p className="mt-2 max-w-[20rem] text-[1rem] leading-relaxed text-mut">Burada üç şey var:</p>
+          <ul className="mt-6 w-full max-w-[21.25rem] space-y-2 text-left">
+            {ATHLETE_CAN.map(([ic, t, d], k) => (
+              <li key={t} className="step-in flex items-center gap-3 rounded-2xl bg-card px-3.5 py-3 ring-1 ring-line" style={{ animationDelay: `${120 + k * 110}ms` }}>
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
+                  <Icon name={ic} className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <b className="block text-[0.9375rem] font-semibold">{t}</b>
+                  <small className="block text-[0.8125rem] leading-snug text-mut">{d}</small>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {note && <p className="mt-4 max-w-[20rem] rounded-xl bg-card px-4 py-2.5 text-[0.875rem] leading-snug ring-1 ring-line">{note}</p>}
+        </div>
+        {!asked && !note && <p className="mb-1 text-center text-[0.8125rem] text-mut">Yeni antrenman gelince haber verelim.</p>}
+        <button onClick={note ? onDone : go} disabled={busy} className="mt-2 h-14 w-full shrink-0 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white transition active:scale-[.98] disabled:opacity-60">
+          {busy ? "Bekleniyor…" : asked || note ? "Başla" : "Bildirimleri aç ve başla"}
+        </button>
+        {!asked && !note && (
+          <button onClick={onDone} className="mt-2 h-11 w-full shrink-0 text-[0.9375rem] font-medium text-mut">
             Şimdi değil
           </button>
         )}

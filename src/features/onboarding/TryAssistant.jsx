@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { db } from "@/lib/firebase/clientApp";
-import { INTRO_V } from "./Onboarding";
+import { useKind } from "@/features/auth/useKind";
+import { INTRO_V, isSporcu } from "./Onboarding";
 
 export const TRY_SENTENCE = "Yarın saat 10'da antrenman ekle";
 
@@ -14,10 +15,11 @@ export const TRY_SENTENCE = "Yarın saat 10'da antrenman ekle";
 // "Sonra" ile de kapanır. Ayarlar › Tanıtımı sıfırla ile yeniden görünür.
 export function TryAssistant() {
   const { profile } = useAuth();
+  const sporcu = isSporcu(useKind());
   const path = usePathname();
   const [gone, setGone] = useState(false);
   const [pos, setPos] = useState(null); // asistan küresinin ve sahnenin ekrandaki yeri
-  const show = !!profile && profile.onboarded === true && profile.introV >= INTRO_V && !profile.tourDone && !gone && path === "/";
+  const show = !!profile && profile.onboarded === true && profile.introV >= INTRO_V && !profile.tourDone && !sporcu && !gone && path === "/";
 
   const done = () => {
     setGone(true);
