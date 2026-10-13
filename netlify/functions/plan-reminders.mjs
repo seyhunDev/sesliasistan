@@ -18,6 +18,9 @@ import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
 
+// Sporcuya hazırlanan fitness antrenmanı (fit.for başka kişi): ana hesaba hatırlatma/özet gitmez, yalnız sporcuya
+const others = (p, uid) => !!p.fit?.for && p.fit.for !== uid;
+
 // Bildirim kutusuna yazar (ana sayfadaki "Bildirimler") ve simgedeki sayıyı ekler (lib/inbox)
 const withBadge = async (db, uid, msg) => JSON.stringify({ ...msg, badge: await recordInbox(db, uid, msg) });
 
@@ -86,7 +89,7 @@ async function sendDueReminders() {
     // Çalışan yalnızca kendisini ilgilendiren (people listesinde olduğu) planlar için bildirim alır.
     const oid = orgId || u.id;
     const snap = await q(`near:${oid}:${today}`, db.collection("orgs").doc(oid).collection("plans").where("date", ">=", today).where("date", "<=", addDays(today, 2)));
-    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && (role !== "staff" || (p.people || []).includes(u.id)));
+    const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => p.status !== "cancelled" && !p.done && (role !== "staff" || (p.people || []).includes(u.id)) && !others(p, u.id));
     for (const p of dueReminders(plans, { lead, tz, uid: u.id })) {
       const payload = await withBadge(db, u.id, reminderText(p, lead));
       await Promise.all(
@@ -128,7 +131,7 @@ async function sendSummaries(db, all, q) {
     const oid = d.orgId || u.id;
     const org = db.collection("orgs").doc(oid);
     const staff = d.role === "staff";
-    const mine = (x) => !staff || (x.people || []).includes(u.id);
+    const mine = (x) => (!staff || (x.people || []).includes(u.id)) && !others(x, u.id);
     const [p, t] = await Promise.all([
       q(`plans:${oid}:${today}`, org.collection("plans").where("date", ">=", addDays(today, -14))),
       q(`tasks:${oid}`, org.collection("tasks").where("done", "==", false)),
@@ -179,7 +182,7 @@ async function sendExtras(db, all, q) {
     const orgId = d.orgId || u.id;
     const org = db.collection("orgs").doc(orgId);
     const staff = d.role === "staff";
-    const mine = (x) => !staff || (x.people || []).includes(u.id);
+    const mine = (x) => (!staff || (x.people || []).includes(u.id)) && !others(x, u.id);
     const send = async (msg, tag, url = "/") => {
       const payload = await withBadge(db, u.id, { ...msg, tag, url });
       await Promise.all(

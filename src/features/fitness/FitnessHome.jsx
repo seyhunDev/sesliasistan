@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
@@ -12,9 +12,10 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  STATUS, addDays, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
+  STATUS, addDays, athleteRows, cleanItem, cleanProgram, dowOf, fitPlans, monthStats, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
-import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
+import { kindOf } from "@/lib/kinds";
+import { FIT_PREVIEW, FIT_SAVED, activeOf, askFitness, deleteProgram, loadPrograms, notifyProgram, removePlans, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
 import { ProgramEditor } from "./ProgramEditor";
 import { BodyStep, FitIntro } from "./FitIntro";
@@ -30,7 +31,7 @@ const fixStart = (p) => ({ ...p, start: p.start && (p.id || p.start >= todayStr(
 
 export function FitnessHome() {
   const { profile } = useAuth();
-  const { plans } = useData();
+  const { plans, fitOthers = [], members = [] } = useData();
   const { openAdd } = useAdd();
   const toast = useToast();
   const orgId = profile.orgId;
@@ -50,6 +51,18 @@ export function FitnessHome() {
   const [more, setMore] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
   const [fitProf, setFitProf] = useState(profile.fit || {});
+  const [forUid, setForUid] = useState(""); // Program hazırla bir sporcu için açıldıysa
+  const [athOpen, setAthOpen] = useState(false);
+  const [ath, setAth] = useState(""); // Sporcular penceresinde açık sporcu
+  // Program verilebilecek sporcular: uygulamada hesabı olan sporcu ve öğrenciler
+  const athletes = useMemo(
+    () =>
+      members
+        .filter((m) => m.account !== false && (kindOf(m) === "athlete" || kindOf(m) === "student"))
+        .map((m) => ({ uid: m.uid, name: m.name || "Sporcu" }))
+        .sort((a, b) => a.name.localeCompare(b.name, "tr")),
+    [members],
+  );
   const router = useRouter();
   const tab = useSearchParams().get("tab") === "food" ? "food" : "train";
   const setTab = (t) => router.replace(t === "food" ? "/fitness?tab=food" : "/fitness", { scroll: false });
@@ -78,7 +91,16 @@ export function FitnessHome() {
     };
   }, [reload]);
 
-  const prog = activeOf(list);
+  const mine = list ? list.filter((p) => !p.for) : null;
+  const prog = activeOf(mine);
+  const rows = athleteRows(list || [], fitOthers, athletes, today);
+  const plansFor = (p) => (p?.for ? fitOthers : plans);
+  const newFor = (id) => {
+    setForUid(id);
+    setNewGoal("");
+    setAthOpen(false);
+    setNewOpen(true);
+  };
   const week = weekStats(plans, today);
   const month = monthStats(plans, today.slice(0, 7), today);
   const recs = records(plans);
@@ -94,10 +116,13 @@ export function FitnessHome() {
     try {
       const saved = await saveProgram(orgId, uid, { ...p, active: true });
       let r = null;
-      if (withPlans) r = await syncPlans(orgId, uid, saved, plans, { name: profile.name });
+      if (withPlans) r = await syncPlans(orgId, uid, saved, plansFor(saved), { name: profile.name });
+      // Sporcuya tek bildirim: "Yeni fitness programın hazır" (sunucu bir kez gönderir)
+      if (saved.for && (withPlans || saved.plansAt)) notifyProgram(saved.id);
       setEdit(null);
       reload(false);
-      toast(r ? `Kaydedildi · takvimde ${r.added} antrenman` : "Program kaydedildi");
+      if (saved.for) toast(r ? `Kaydedildi · ${saved.forName} için ${r.added} antrenman` : "Program kaydedildi");
+      else toast(r ? `Kaydedildi · takvimde ${r.added} antrenman` : "Program kaydedildi");
     } catch (e) {
       toast(e.message || "Kaydedilemedi");
     } finally {
@@ -108,14 +133,16 @@ export function FitnessHome() {
   async function ask(text, f, pre) {
     setBusy("ask");
     try {
-      const pf = await saveProfile(uid, f).catch(() => f);
-      setFitProf(pf);
+      // Sporcu için: senin profiline yazılmaz, sporcunun adı yapay zekaya gitmez
+      const pf = pre.for ? f : await saveProfile(uid, f).catch(() => f);
+      if (!pre.for) setFitProf(pf);
       const r = await askFitness({ text, profile: pf });
       if (!r.program) throw new Error(r.message || "Program hazırlanamadı");
       // Seçilenler kesin: gün ve saatler formdakiyle aynı olsun
       const days = r.program.days.map((d) => ({ ...d, time: d.time || pre.time, min: d.min || pre.min }));
       setNewOpen(false);
-      setEdit({ prog: fixStart({ ...r.program, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
+      const who = pre.for ? { for: pre.for, forName: pre.forName } : {};
+      setEdit({ prog: fixStart({ ...r.program, ...who, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
     } catch (e) {
       toast(e.message || "Program hazırlanamadı");
     } finally {
@@ -124,10 +151,11 @@ export function FitnessHome() {
   }
 
   function blank(pre, f) {
-    saveProfile(uid, f).then(setFitProf).catch(() => {});
+    if (!pre.for) saveProfile(uid, f).then(setFitProf).catch(() => {});
     setNewOpen(false);
     const days = pre.days.map((dow) => ({ dow, time: pre.time, min: pre.min, name: "Antrenman", items: [cleanItem({ ex: "warmup", min: 5 }), cleanItem({ ex: "stretch", min: 5 })] }));
-    setEdit({ prog: cleanProgram({ title: "Fitness programım", weeks: pre.weeks, start: pre.start, days }), fresh: true, k: Date.now() });
+    const who = pre.for ? { for: pre.for, forName: pre.forName } : {};
+    setEdit({ prog: { ...cleanProgram({ title: pre.for ? `${pre.forName} · fitness` : "Fitness programım", weeks: pre.weeks, start: pre.start, days }), ...who }, fresh: true, k: Date.now() });
   }
 
   async function saveBody(f) {
@@ -139,21 +167,21 @@ export function FitnessHome() {
     }
   }
 
-  async function unplan() {
+  async function unplan(pg = prog) {
     setBusy("unplan");
     try {
-      const n = await removePlans(orgId, prog, plans);
+      const n = await removePlans(orgId, pg, plansFor(pg));
       toast(`Takvimden ${n} antrenman kaldırıldı`);
     } finally {
       setBusy("");
     }
   }
-  async function drop() {
-    if (!window.confirm("Program silinsin mi? Takvimdeki gelecek antrenmanları da kaldırılır; yapılanlar kalır.")) return;
+  async function drop(pg = prog) {
+    if (!window.confirm("Program silinsin mi? Takvimdeki gelecek antrenmanları da kaldırılır; yapılanlar kalır.")) return false;
     setBusy("drop");
     try {
-      await removePlans(orgId, prog, plans);
-      await deleteProgram(orgId, prog.id);
+      await removePlans(orgId, pg, plansFor(pg));
+      await deleteProgram(orgId, pg.id);
       toast("Program silindi");
     } finally {
       setBusy("");
@@ -163,7 +191,7 @@ export function FitnessHome() {
   if (edit) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <PageHeader title={edit.simple ? "Programın hazır" : edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
+        <PageHeader title={edit.prog.for ? `${edit.prog.forName} için program` : edit.simple ? "Programın hazır" : edit.fresh ? "Yeni program" : "Programı düzenle"} back="/fitness" />
         <ProgramEditor key={edit.k} prog={edit.prog} fresh={edit.fresh} simple={edit.simple} busy={busy} onSave={save} onCancel={() => setEdit(null)} />
       </main>
     );
@@ -209,7 +237,7 @@ export function FitnessHome() {
   }
 
   // Hiç programı ve fitness antrenmanı yoksa: tek ekran tanıtım, "Programımı hazırla" (hedef ve hafta pencerede sorulur)
-  if (list && !list.length && !all.length) {
+  if (mine && !mine.length && !all.length && !rows.length) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
         <PageHeader title="Fitness" sub="Antrenman programın ve takibin" />
@@ -221,7 +249,7 @@ export function FitnessHome() {
             setNewOpen(true);
           }}
         />
-        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
+        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       </main>
     );
   }
@@ -236,7 +264,7 @@ export function FitnessHome() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <PageHeader title="Fitness" sub="Antrenman programın ve takibin">
-        <button type="button" onClick={() => setNewOpen(true)} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)] active:scale-90">
+        <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)] active:scale-90">
           <Icon name="plus" className="size-5" />
         </button>
       </PageHeader>
@@ -256,7 +284,7 @@ export function FitnessHome() {
       {list && !prog && (
         <div className="mt-1">
           <Empty icon="dumbbell" title="Henüz programın yok" sub="Günlerini ve saatini seç, yapay zeka haftalık programını hazırlasın. Asistana da söyleyebilirsin: “Pazartesi, çarşamba, cuma sabah 7'de 4 haftalık program hazırla”." />
-          <Button className="mt-3" onClick={() => setNewOpen(true)}>
+          <Button className="mt-3" onClick={() => newFor("")}>
             <Icon name="spark" className="size-5" />
             Program hazırla
           </Button>
@@ -265,6 +293,17 @@ export function FitnessHome() {
 
       <WeekStrip week={week} strip={strip} today={today} onOpen={open} />
       {prog && <RowButton icon="cal" title={prog.title || "Programım"} sub={progSub(prog, today, onCal)} onClick={() => setProgOpen(true)} />}
+      {athletes.length > 0 && (
+        <RowButton
+          icon="users"
+          title="Sporcular"
+          sub={rows.length ? `${rows.length} sporcunun programı var · bu hafta ${rows.reduce((t, r) => t + r.week.done, 0)}/${rows.reduce((t, r) => t + r.week.planned, 0)} yapıldı` : "Sporcuya program hazırla"}
+          onClick={() => {
+            setAth("");
+            setAthOpen(true);
+          }}
+        />
+      )}
       {(week.planned > 0 || recs.length > 0 || history.length > 0) && <RowButton icon="trend" title="Gelişim ve geçmiş" sub="Seri, en iyi değerler, bu ay" open={more} onClick={() => setMore(!more)} />}
       {more && (
         <>
@@ -307,7 +346,28 @@ export function FitnessHome() {
         </Sheet>
       )}
 
-      <NewProgram key={newOpen ? "o" : "c"} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
+      <AthletesSheet
+        open={athOpen}
+        onClose={() => setAthOpen(false)}
+        athletes={athletes}
+        rows={rows}
+        sel={ath}
+        setSel={setAth}
+        today={today}
+        busy={!!busy}
+        onNew={newFor}
+        onOpen={open}
+        onEdit={(pg) => {
+          setAthOpen(false);
+          setEdit({ prog: pg, fresh: false, k: Date.now() });
+        }}
+        onPlan={(pg) => save(pg, true)}
+        onUnplan={unplan}
+        onDrop={async (pg) => {
+          if ((await drop(pg)) !== false) setAth("");
+        }}
+      />
+      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </main>
   );
@@ -353,6 +413,110 @@ function ProfileSheet({ open, onClose, value, onSave }) {
       >
         Kaydet
       </Button>
+    </Sheet>
+  );
+}
+
+// Sporcular penceresi: her sporcu bir satır (program, bu hafta yapılan/planlanan, son antrenman);
+// dokununca programı (düzenle, planlara ekle, sil) ve son antrenmanları. Programı olmayan sporcuya "Program hazırla".
+function AthletesSheet({ open, onClose, athletes, rows, sel, setSel, today, busy, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop }) {
+  const row = rows.find((r) => r.uid === sel);
+  const name = athletes.find((a) => a.uid === sel)?.name || row?.name || "";
+  const rest = athletes.filter((a) => !rows.some((r) => r.uid === a.uid));
+  const dayText = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+  const recent = row ? row.plans.filter((p) => p.date <= today || p.fit?.res?.st).slice(-5).reverse() : [];
+  return (
+    <Sheet open={open} onClose={onClose} title={sel ? name : "Sporcular"}>
+      {!sel && (
+        <>
+          <p className="text-[0.8125rem] leading-snug text-mut">Programı sen hazırlarsın; sporcu kendi Fitness sayfasında görür ve antrenmanı işaretler. Antrenmanları senin takviminde görünmez.</p>
+          {rows.length > 0 && (
+            <ul className="mt-3 divide-y divide-line">
+              {rows.map((r) => (
+                <li key={r.uid}>
+                  <button type="button" onClick={() => setSel(r.uid)} className="flex w-full items-center gap-3 py-3 text-left">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">{r.name.slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
+                      <small className="block truncate text-[0.8125rem] text-mut">
+                        {[r.prog?.title || "Program yok", r.week.planned ? `bu hafta ${r.week.done}/${r.week.planned}` : "", r.last ? `son ${dayText(r.last.date)}` : ""].filter(Boolean).join(" · ")}
+                      </small>
+                    </span>
+                    <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {rest.length > 0 && (
+            <>
+              <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">PROGRAMI OLMAYANLAR</small>
+              <ul className="mt-1 divide-y divide-line">
+                {rest.map((a) => (
+                  <li key={a.uid} className="flex items-center gap-3 py-2.5">
+                    <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
+                    <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white">
+                      Program hazırla
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+      {sel && (
+        <>
+          <button type="button" onClick={() => setSel("")} className="mb-2 flex h-9 items-center gap-1 text-[0.875rem] font-semibold text-acc">
+            <Icon name="chev" className="size-4 rotate-180" />
+            Sporcular
+          </button>
+          {row?.prog ? (
+            <ProgramCard
+              bare
+              prog={row.prog}
+              today={today}
+              onCal={row.plans.filter((p) => p.fit?.prog === row.prog.id && p.date >= today).length}
+              busy={busy}
+              onEdit={() => onEdit(row.prog)}
+              onPlan={() => onPlan(row.prog)}
+              onUnplan={() => onUnplan(row.prog)}
+              onDrop={() => onDrop(row.prog)}
+            />
+          ) : (
+            <Button onClick={() => onNew(sel)}>
+              <Icon name="spark" className="size-5" />
+              Program hazırla
+            </Button>
+          )}
+          {row?.prog && (
+            <button type="button" onClick={() => onNew(sel)} className="mt-2 h-10 w-full text-[0.875rem] font-semibold text-acc">
+              Yeni program hazırla
+            </button>
+          )}
+          {row && (
+            <>
+              <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">{`BU HAFTA ${row.week.done}/${row.week.planned} · SON ANTRENMANLAR`}</small>
+              {recent.length ? (
+                <ul className="mt-1 divide-y divide-line">
+                  {recent.map((p) => (
+                    <li key={p.id}>
+                      <button type="button" onClick={() => (onClose(), onOpen(p))} className="flex w-full items-center gap-3 py-2.5 text-left">
+                        <span className="w-20 shrink-0 text-[0.8125rem] text-mut">{dayText(p.date)}</span>
+                        <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.fit?.name || p.title}</span>
+                        <span className={`shrink-0 text-[0.8125rem] font-semibold ${p.fit?.res?.st === "done" ? "text-acc" : "text-mut"}`}>{STATUS[statusOf(p, today)]}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-[0.8125rem] text-mut">Henüz antrenman günü gelmedi.</p>
+              )}
+              {row.next && <p className="mt-2 text-[0.8125rem] text-mut">Sıradaki: {dayText(row.next.date)}{row.next.time ? ` ${row.next.time}` : ""} · {row.next.fit?.name || row.next.title}</p>}
+            </>
+          )}
+        </>
+      )}
     </Sheet>
   );
 }

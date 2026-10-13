@@ -1545,6 +1545,22 @@ group("Fitness")([
   })],
 ]);
 
+// Fitness: ana hesabın sporcuya hazırladığı program (fit.for)
+group("Fitness: sporcu programı")([
+  ["başkasının antrenmanı", F("fit.for başka kişi → ana hesabın takvimine girmez; kendisininki ve fit.for'suz girer", () =>
+    FM2.isOthers(FPL("2026-10-12", SQ, null, { fit: { prog: "p1", for: "ali" } }), "me") && !FM2.isOthers(FPL("2026-10-12", SQ, null, { fit: { prog: "p1", for: "ali" } }), "ali") && !FM2.isOthers(FPL("2026-10-12", SQ), "me"))],
+  ["sporcular listesi", F("programı ya da antrenmanı olan sporcu; bu hafta 1/2, son ve sıradaki; programsız sporcu listede yok", () => {
+    const pl = [
+      FPL("2026-10-12", SQ, { st: "done", ex: [] }, { id: "a", fit: { prog: "pa", for: "ali", items: SQ, res: { st: "done", ex: [] } } }),
+      FPL("2026-10-14", SQ, null, { id: "b", fit: { prog: "pa", for: "ali", items: SQ } }),
+      FPL("2026-10-14", SQ, null, { id: "c", fit: { prog: "pz", for: "zey", items: SQ } }),
+    ];
+    const rows = FM2.athleteRows([{ id: "pa", for: "ali", active: true, title: "Ali programı" }], pl, [{ uid: "zey", name: "Zeynep" }, { uid: "ali", name: "Ali" }, { uid: "can", name: "Can" }], "2026-10-13");
+    return rows.length === 2 && rows[0].name === "Ali" && rows[0].prog?.title === "Ali programı" && rows[0].week.done === 1 && rows[0].week.planned === 2 &&
+      rows[0].last?.date === "2026-10-12" && rows[0].next?.date === "2026-10-14" && rows[1].name === "Zeynep" && rows[1].prog === null;
+  })],
+]);
+
 // Beslenme (lib/fitness/food.js): hedef, su/kilo/özet sözleri, yemek cümlesi, kilo eğilimi, gün temizliği
 const FD = await import("@/lib/fitness/food");
 group("Beslenme")([

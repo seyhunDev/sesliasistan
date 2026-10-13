@@ -8,6 +8,8 @@ import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/m
 import { introKey } from "@/lib/fitness/forecast";
 
 // Fitness programları: orgs/{orgId}/fitPrograms/{id} (yalnız ana hesap; kural ana hesaba orgs altını zaten açıyor).
+// Sporcuya hazırlanan programda for = sporcunun hesabı, forName = adı (boşsa ana hesabın kendi programı). Sporcu programını
+// okumaz; antrenmanları kendi planları olarak gelir (people: [sporcu]).
 // Programlar tek sorguda okunur, 3 dakika bellekte kalır (sayfa ve asistan paylaşır). Antrenmanlar plan kaydıdır.
 const col = (orgId) => collection(db, "orgs", orgId, "fitPrograms");
 const TTL = 3 * 60_000;
@@ -49,10 +51,11 @@ export async function saveProgram(orgId, uid, prog) {
   const ref = prog.id ? doc(col(orgId), prog.id) : doc(col(orgId));
   const now = new Date().toISOString();
   const clean = cleanProgram(prog);
-  const rec = { ...clean, uid, active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
-  // Yeni etkin program: öncekiler etkin olmaktan çıkar (planları silinmez)
-  const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active);
-  await Promise.all([setDoc(ref, rec), ...(rec.active ? others.map((p) => updateDoc(doc(col(orgId), p.id), { active: false })) : [])]);
+  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
+  // Yeni etkin program: aynı kişinin önceki programları etkin olmaktan çıkar (planları silinmez)
+  const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active && (p.for || "") === rec.for);
+  // merge: sunucunun yazdığı notifiedAt (sporcuya bildirim gitti) silinmesin
+  await Promise.all([setDoc(ref, rec, { merge: true }), ...(rec.active ? others.map((p) => updateDoc(doc(col(orgId), p.id), { active: false })) : [])]);
   const out = { id: ref.id, ...rec };
   if (cache.org === orgId && cache.list) {
     cache.list = [out, ...cache.list.filter((p) => p.id !== out.id).map((p) => (rec.active ? { ...p, active: false } : p))].sort(byNew);
@@ -80,12 +83,14 @@ const tzName = () => {
 };
 
 // Programı takvime yazar: bu programın bugünden sonraki, yapılmamış planları silinir, programın günleri yeniden yazılır
-// (geçmişteki ve sonucu yazılmış antrenmanlara dokunulmaz). plans: cihazdaki planlar (useData). Dönüş: { added, removed }
+// (geçmişteki ve sonucu yazılmış antrenmanlara dokunulmaz). plans: cihazdaki planlar (useData; sporcu programında fitOthers).
+// Sporcu programında planlar sporcunun (people: [sporcu], fit.for); ana hesabın takviminde görünmez. Dönüş: { added, removed }
 export async function syncPlans(orgId, uid, prog, plans, by = {}) {
   const today = todayStr();
   const old = (plans || []).filter((p) => p.fit?.prog === prog.id && p.date >= today && !p.fit?.res?.st);
   const keep = new Set((plans || []).filter((p) => p.fit?.prog === prog.id && p.date >= today && p.fit?.res?.st).map((p) => p.date));
   const drafts = planDrafts(prog, today).filter((d) => !keep.has(d.date));
+  const who = prog.for || uid;
   const now = new Date().toISOString();
   const tz = tzName();
   // Firestore toplu yazma sınırı 500: parça parça
@@ -98,9 +103,9 @@ export async function syncPlans(orgId, uid, prog, plans, by = {}) {
         const ref = doc(collection(db, "orgs", orgId, "plans"));
         const timed = !!v.time;
         b.set(ref, {
-          ownerId: orgId, cat: FIT_CAT, src: "fitness", createdBy: by, createdAt: now, createdByUid: uid, assignees: [], people: [uid],
+          ownerId: orgId, cat: FIT_CAT, src: "fitness", createdBy: by, createdAt: now, createdByUid: uid, assignees: [], people: [who],
           title: v.title, date: v.date, endDate: "", time: timed ? v.time : "", allDay: !timed, durationMin: v.min || 45, tz,
-          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: v.fit,
+          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: prog.for ? { ...v.fit, for: prog.for } : v.fit,
         });
       }
     }
@@ -131,6 +136,13 @@ export async function removePlans(orgId, prog, plans) {
   }
   told();
   return old.length;
+}
+
+// Sporcuya "Yeni fitness programın hazır" bildirimi (sunucu programdan okur, bir program için bir kez gönderir)
+export async function notifyProgram(id) {
+  try {
+    await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitProgram", id }) });
+  } catch {}
 }
 
 // Tek seferlik antrenman (programsız gün: "bugün 30 dakika koştum")

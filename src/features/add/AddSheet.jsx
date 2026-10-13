@@ -61,7 +61,7 @@ export function AddSheet({ open, onClose, seed }) {
   const tts = useTts();
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
-  const { plans, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
+  const { plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, setViewing, myUid, setMyDone, addReply } = useData();
   const { openAssistant } = useAssistant();
   const router = useRouter();
   const [drafts, setDrafts] = useState([]);
@@ -80,8 +80,10 @@ export function AddSheet({ open, onClose, seed }) {
   const staffNames = !isStaff ? members.map((m) => m.name).filter(Boolean) : [];
 
   const edit = seed?.edit;
+  // Sporcuya hazırlanan fitness antrenmanları takvim listesinde yok; Fitness › Sporcular'dan açılınca bulunsun
+  const editPlans = fitOthers?.length ? [...plans, ...fitOthers] : plans;
   const by = { name: profile?.name ?? "Kullanıcı" };
-  const rec = edit ? ({ plan: plans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
+  const rec = edit ? ({ plan: editPlans, task: tasks, note: notes }[edit.kind] || []).find((x) => x.id === edit.id) : null;
   const linkedPlan = rec?.planId ? plans.find((p) => p.id === rec.planId)?.title : "";
   // Çalışan, başkasının verdiği kaydı değiştiremez: salt okunur görünüm + tamamladım + not
   const locked = !!edit && lockedFor(rec, myUid, isStaff);
@@ -222,7 +224,7 @@ export function AddSheet({ open, onClose, seed }) {
     setReply({ engine: "", message: "" });
     setVoice(!!seed?.voice);
     if (edit) {
-      const list = { plan: plans, task: tasks, note: notes }[edit.kind] || [];
+      const list = { plan: editPlans, task: tasks, note: notes }[edit.kind] || [];
       const r = list.find((x) => x.id === edit.id);
       const d0 = r ? fromRecord(edit.kind, r) : null;
       if (r) markSeen(edit.kind, edit.id); // başkası eklediyse: "görüldü"

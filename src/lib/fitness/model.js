@@ -1,8 +1,9 @@
 // Fitness: profil, program, antrenman sonucu ve takip hesapları (saf işlevler; testler de bunları sınar).
 // Kayıtlar:
 //   profil  users/{uid}.fit { goal, level, place, equip [], height, weight, age, sex, avoid }
-//   program orgs/{org}/fitPrograms/{id} { uid, title, goal, level, place, equip, start, weeks, days [{ dow, time, min, name, items [] }], note, active, plansAt }
-//   antrenman: her gün ayrı plan (cat "Fitness"), planda fit { prog, di, w, name, items [], res }
+//   program orgs/{org}/fitPrograms/{id} { uid, for, forName, title, goal, level, place, equip, start, weeks, days [{ dow, time, min, name, items [] }], note, active, plansAt, notifiedAt }
+//     for: programın sahibi sporcu (boşsa ana hesabın kendi programı)
+//   antrenman: her gün ayrı plan (cat "Fitness"), planda fit { prog, di, w, name, items [], res, for } (sporcunun planında people: [sporcu])
 //     res (yapılan): { st done|skip, at, min, feel 1-3, note, ex [{ sets [{ reps, kg, sec, min, ok }] }] } (items ile aynı sırada)
 // Takip ekranı planlardan hesaplanır (planlar zaten cihazda; ek okuma yok).
 import { EXERCISES, exById, findExercise, fold } from "./exercises";
@@ -191,6 +192,24 @@ export function statusOf(p, today) {
   return p.date === today ? "today" : "next";
 }
 export const STATUS = { done: "Yapıldı", skip: "Atlandı", missed: "Yapılmadı", today: "Bugün", next: "Sırada" };
+
+// Sporcunun planı mı (ana hesap hazırladı, sporcu yapar). Ana hesabın kendi takvimi ve takibi bunları saymaz.
+export const isOthers = (p, me) => !!p?.fit?.for && p.fit.for !== me;
+// Sporcu listesi (Fitness › Sporcular): her sporcunun etkin programı ve bu haftası.
+// progs: tüm programlar; plans: sporcuların fitness planları (fitOthers); people: [{ uid, name }]
+export function athleteRows(progs = [], plans = [], people = [], today) {
+  const out = [];
+  for (const a of people) {
+    const prog = progs.find((p) => p.for === a.uid && p.active) || null;
+    const mine = plans.filter((p) => p.fit?.for === a.uid);
+    if (!prog && !mine.length) continue;
+    const w = weekStats(mine, today);
+    const last = fitPlans(mine).filter((p) => p.fit?.res?.st === "done").at(-1) || null;
+    const next = fitPlans(mine).find((p) => p.date >= today && !p.fit?.res?.st) || null;
+    out.push({ uid: a.uid, name: a.name, prog, week: w, last, next, plans: mine });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name, "tr"));
+}
 
 export const fitPlans = (plans = []) => plans.filter((p) => isFit(p) && p.status !== "cancelled" && p.date).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || ""));
 
