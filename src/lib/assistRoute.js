@@ -3,7 +3,7 @@
 // derse sonrakine geçer), testler (yerel/yonlendirme.mjs) aynı işlevi sınar; böylece test ile uygulama ayrışamaz.
 // Bekleyen sorular (yarış sorusu, kişi, onay, günlük, taslak, kart) burada değil: onlar run()'da bu adaylardan önce
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
-import { isEnd, isNoMore, undoLast } from "@/lib/assistantLocal";
+import { isEnd, isNoMore, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -69,7 +69,7 @@ export function moreKind(s, c = {}) {
 //      guide (adım adım antrenman ekranı açık), myFit (sporcunun kendi fitness planı var), myFitToday (bugün var),
 //      fitPeople (ana hesap: fitness planı olan sporcular [{ uid, name }]),
 //      path, today, races, raceNames, names (kişi adları), logHere, invPage, fitHere (Fitness sayfası ya da açık fitness planı), foodHere (Fitness › Beslenme), attHere, curRace, onPost, drafts (taslak var), pending (onay kartı var),
-//      askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
+//      chatHere (sohbet ekranı açık), askedMore, invAsk, askTo, prefer, skipRace, shop (alışveriş listesi var), focus (açık kayıt/sohbet), memo (sohbet hafızası), plans, tasks, notes }
 // Dönen: [{ id, ...veri }] uygulanacak sırayla; son aday her zaman { id: "ai" }
 export function routesOf(s, c = {}) {
   const out = [];
@@ -114,6 +114,9 @@ export function routesOf(s, c = {}) {
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
   if (bday) add("birthday", { bday });
+  // "Son mesajımı sil": açık sohbette (yoksa en son mesaj attığın sohbette) onay sorulup silinir
+  const md = !c.drafts ? msgDeleteAsk(s) : null;
+  if (md) add("msgDelete", { md });
   const undo = !c.drafts && undoLast(s);
   if (undo) add("undo", { undo });
   const ia = c.invAsk;

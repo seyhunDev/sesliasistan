@@ -5,6 +5,8 @@ import {
   collection,
   deleteField,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   query,
   runTransaction,
@@ -237,7 +239,24 @@ export function ChatProvider({ children }) {
     (cid, m) => updateDoc(chatRef(cid), { pinned: m ? { id: m.id, text: String(m.text || "").slice(0, 140), by: m.by } : deleteField() }).catch(() => {}),
     [chatRef],
   );
-  const remove = useCallback((cid, m) => updateDoc(doc(chatRef(cid), "messages", m.id), { deleted: true, text: "" }).catch(() => {}), [chatRef]);
+  // Sil: kendi mesajı (ana hesap her mesajı). Son mesajsa listedeki ve ana sayfadaki özet de "silindi" olur, sabitliyse sabit kalkar.
+  // chat: sohbet ({ id, seq, pinned }). Dönüş: başarılı mı
+  const remove = useCallback(
+    async (chat, m) => {
+      const cid = chat.id;
+      try {
+        await updateDoc(doc(chatRef(cid), "messages", m.id), { deleted: true, text: "" });
+      } catch {
+        return false;
+      }
+      const patch = {};
+      if (m.n && chat.seq === m.n) Object.assign(patch, { "last.text": "", "last.deleted": true });
+      if (chat.pinned?.id === m.id) patch.pinned = deleteField();
+      if (Object.keys(patch).length) updateDoc(chatRef(cid), patch).catch(() => {});
+      return true;
+    },
+    [chatRef],
+  );
   const mute = useCallback((c, on) => updateDoc(chatRef(c.id), { [`muted.${uid}`]: on ? true : deleteField() }).catch(() => {}), [chatRef, uid]);
 
   const createGroup = useCallback(
@@ -287,3 +306,17 @@ export function ChatProvider({ children }) {
 }
 
 export const useChat = () => useContext(Ctx);
+
+// Ekranda açık sohbet (asistan "son mesajımı sil" için): { chat, msgs } ya da null. Sohbet ekranı yazar.
+let openNow = null;
+export const setOpenChat = (v) => (openNow = v);
+export const openChat = () => openNow;
+
+// Sohbet ekranı açık değilken: son mesajı benim olan en yeni sohbet ve o son mesaj (1 okuma). { chat, msgs } ya da null
+export async function lastSentChat({ chats = [], myUid, chatRef }) {
+  const c = chats.filter((x) => x.last?.by === myUid && !x.last.deleted && x.seq).sort((a, b) => toMs(b.last?.at) - toMs(a.last?.at))[0];
+  if (!c || !chatRef) return null;
+  const s = await getDocs(query(collection(chatRef(c.id), "messages"), where("n", "==", c.seq), limit(1))).catch(() => null);
+  const d = s?.docs[0];
+  return d ? { chat: c, msgs: [{ id: d.id, ...d.data() }] } : null;
+}

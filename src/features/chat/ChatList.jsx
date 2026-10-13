@@ -64,7 +64,7 @@ export function ChatList() {
             </span>
           )}
           {c.last.by === uid ? "" : c.type !== "dm" ? <b className="font-semibold">{personName(c.last.by).split(" ")[0]}: </b> : null}
-          {c.last.text}
+          {c.last.deleted ? <i className="opacity-70">Bu mesaj silindi</i> : c.last.text}
         </>
       ) : (
         <span className="text-mut">{GROUPS[c.id] ? "Gruptaki herkes · ilk mesajı yaz" : "Henüz mesaj yok"}</span>

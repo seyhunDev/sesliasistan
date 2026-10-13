@@ -134,6 +134,15 @@ export function undoLast(text) {
   return { kind: /^plan/.test(w) ? "plan" : /^görev/.test(w) ? "task" : /^not/.test(w) ? "note" : "" };
 }
 
+// Açık sohbette "son mesajımı sil", "az önce yazdığım mesajı sil", "son mesajı sil" (ana hesap: kimin olursa olsun son mesaj).
+// Dönüş: { mine: true } (yalnız kendi mesajı) | { mine: false } | null
+const MSG_DEL = /^(?:(?:son|sonuncu|en son|az önce|demin|biraz önce)\s+)?(?:(?:gönderdiğim|yazdığım|attığım)\s+)?(?:mesaj(?:ımı|imi|ı|i)|son mesaj(?:ımı|ı))\s+(?:sil\S*|kaldır\S*|geri al\S*)$/;
+export function msgDeleteAsk(text) {
+  const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!MSG_DEL.test(t) || !/(son|önce|demin|ımı|imi|ğım|ğim)/.test(t)) return null;
+  return { mine: /(ımı|imi|ğım|ğim)/.test(t) };
+}
+
 // Kişinin en son eklediği kayıt (plan, görev, not): { kind, rec } ya da null
 export function lastCreated({ plans = [], tasks = [], notes = [] }, uid, kind = "") {
   const all = [
