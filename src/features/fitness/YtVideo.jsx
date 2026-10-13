@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { cleanYt, ytEmbed, ytThumb, ytWatch } from "@/lib/fitness/youtube";
 import { linkMedia } from "@/lib/fitness/model";
+import { isFileLink } from "@/lib/fitness/pageVideo";
+import { authFetch } from "@/lib/authFetch";
 
 const MEDIA_MAX = 3;
 
@@ -105,26 +107,56 @@ export function YtSmall({ yt, className = "" }) {
   );
 }
 
-// Program düzenleme: bağlantı yapıştırılır. YouTube bağlantısı videonun yerine geçer; başka https bağlantısı
-// (fotoğraf ya da .mp4 video) hareketin fotoğraf/videolarına eklenir (en çok 3).
+// Program düzenleme: bağlantı yapıştırılır. YouTube bağlantısı videonun yerine geçer; fotoğraf ya da .mp4 dosyası
+// hareketin fotoğraf/videolarına eklenir (en çok 3). Başka bir sitenin hareket sayfası (ör. muscleandstrength.com)
+// verilirse sunucu sayfadaki videoyu bulur: YouTube ise videonun yerine, sitenin kendi videosuysa fotoğraf/videolara.
 export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const full = (media || []).filter((m) => !m.stock).length >= MEDIA_MAX;
+  const done = () => {
+    setErr("");
+    setText("");
+  };
+  const addMedia = (m) => {
+    if (full || !onMedia) return setErr(`En çok ${MEDIA_MAX} fotoğraf ya da video`);
+    done();
+    onMedia([...(media || []).filter((x) => !x.stock), m]);
+  };
+  const fromPage = async (v) => {
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await authFetch("/api/page-video", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: v.trim() }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) return setErr(d.error || "Sayfadaki video bulunamadı");
+      const y = cleanYt(d.yt);
+      if (y) {
+        done();
+        return onChange(y);
+      }
+      const m = linkMedia(d.video);
+      if (!m) return setErr("Sayfadaki video bulunamadı");
+      addMedia({ ...m, kind: "video" });
+    } catch {
+      setErr("Sayfaya ulaşılamadı");
+    } finally {
+      setBusy(false);
+    }
+  };
   const add = (v) => {
+    if (busy) return;
     if (!v.trim()) return setErr("");
     const y = cleanYt(v);
     if (y) {
-      setErr("");
-      setText("");
+      done();
       return onChange(y);
     }
     const m = linkMedia(v);
     if (!m) return setErr("Bağlantı https:// ile başlamalı");
-    if (full || !onMedia) return setErr(`En çok ${MEDIA_MAX} fotoğraf ya da video`);
-    setErr("");
-    setText("");
-    onMedia([...(media || []).filter((x) => !x.stock), m]);
+    if (!isFileLink(v)) return fromPage(v);
+    addMedia(m);
   };
   return (
     <div className={className}>
@@ -164,15 +196,16 @@ export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
             }
           }}
           onKeyDown={(e) => e.key === "Enter" && add(text)}
-          placeholder={yt?.id ? "Fotoğraf ya da video bağlantısı" : "Fotoğraf, video ya da YouTube bağlantısı"}
+          placeholder={yt?.id ? "Fotoğraf, video ya da sayfa bağlantısı" : "YouTube, video ya da hareket sayfası bağlantısı"}
           className="h-9 min-w-0 flex-1 rounded-full bg-bg px-3 text-[0.8125rem] outline-none"
         />
         {text.trim() && (
-          <button type="button" onClick={() => add(text)} className="h-9 rounded-full bg-acc px-3 text-[0.8125rem] font-semibold text-white">
-            Ekle
+          <button type="button" disabled={busy} onClick={() => add(text)} className="h-9 rounded-full bg-acc px-3 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
+            {busy ? "Aranıyor…" : "Ekle"}
           </button>
         )}
       </div>
+      {busy && <p className="mt-1 text-[0.75rem] text-mut">Sayfadaki video aranıyor…</p>}
       {err && <p className="mt-1 text-[0.75rem] font-semibold text-rec">{err}</p>}
     </div>
   );
