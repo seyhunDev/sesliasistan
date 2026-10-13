@@ -493,35 +493,32 @@ function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel,
     <Sheet open={open} onClose={onClose} title={sel ? name : "Sporcular"}>
       {!sel && (
         <>
-          {rows.length > 0 && <AthleteDay plans={plans} athletes={athletes} today={today} onOpen={(p) => (onClose(), onOpen(p))} onSel={setSel} />}
-          <p className="mt-4 text-[0.8125rem] leading-snug text-mut">Programı sen hazırlarsın; sporcu kendi Fitness sayfasında görür ve antrenmanı işaretler. Antrenmanları senin takviminde görünmez.</p>
           {rows.length > 0 && (
-            <ul className="mt-3 divide-y divide-line">
+            <ul className="divide-y divide-line">
               {rows.map((r) => (
-                <li key={r.uid}>
-                  <button type="button" onClick={() => setSel(r.uid)} className="flex w-full items-center gap-3 py-3 text-left">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">{r.name.slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
+                <li key={r.uid} className="py-3">
+                  <button type="button" onClick={() => setSel(r.uid)} className="flex w-full items-start gap-3 text-left">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">{initialsOf(r.name)}</span>
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
-                      <small className="block truncate text-[0.8125rem] text-mut">
-                        {[r.prog?.title || "Program yok", r.week.planned ? `bu hafta ${r.week.done}/${r.week.planned}` : "", r.last ? `son ${dayText(r.last.date)}` : ""].filter(Boolean).join(" · ")}
-                      </small>
+                      <small className={`block truncate text-[0.8125rem] ${/yapmadı/.test(nowLine(r, today)) ? "text-rec" : "text-mut"}`}>{nowLine(r, today)}</small>
                     </span>
-                    <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                    {r.week.planned > 0 && <b className={`shrink-0 text-[0.875rem] font-bold tabular-nums ${r.week.missed ? "text-rec" : "text-acc"}`}>{`${r.week.done}/${r.week.planned}`}</b>}
                   </button>
+                  <WeekDots row={r} today={today} onOpen={(p) => (onClose(), onOpen(p))} />
                 </li>
               ))}
             </ul>
           )}
           {rest.length > 0 && (
             <>
-              <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">PROGRAMI OLMAYANLAR</small>
+              <small className="mt-4 block text-[0.75rem] font-bold tracking-[.06em] text-mut">PROGRAMI YOK</small>
               <ul className="mt-1 divide-y divide-line">
                 {rest.map((a) => (
                   <li key={a.uid} className="flex items-center gap-3 py-2.5">
                     <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
-                    <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white">
-                      Program hazırla
+                    <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 px-1 text-[0.875rem] font-semibold text-acc">
+                      + Program
                     </button>
                   </li>
                 ))}
@@ -587,46 +584,37 @@ function AthletesSheet({ open, onClose, athletes, rows, plans = [], sel, setSel,
   );
 }
 
-// Günün sporcu antrenmanları: ‹ gün › ile geçilir; her antrenman bir satır (sporcu, antrenman, durum).
-// Satıra dokununca antrenman açılır (yapılan setler görünür), adına dokununca sporcunun sayfası.
-const ST_COLOR = { done: "bg-acc/10 text-acc", skip: "bg-line/60 text-mut", missed: "bg-rose-500/10 text-rose-600 dark:text-rose-300", today: "bg-amber-500/10 text-amber-700 dark:text-amber-300", next: "bg-line/60 text-mut" };
-function AthleteDay({ plans, athletes, today, onOpen, onSel }) {
-  const [day, setDay] = useState(today);
-  const list = dayRows(plans, athletes, day, today);
-  const label = day === today ? "Bugün" : day === addDays(today, -1) ? "Dün" : day === addDays(today, 1) ? "Yarın" : new Date(`${day}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
-  const arrow = "grid size-9 place-items-center rounded-full bg-bg text-mut active:scale-90";
+const initialsOf = (s) => String(s || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR");
+// Sporcu satırının alt yazısı: bugünün antrenmanı, yoksa bu haftanın kaçırılanı, hafta tamamsa "Bu hafta tamam", yoksa sıradaki
+function nowLine(r, today) {
+  const t = r.week.days.find((d) => d.date === today);
+  if (t) return `Bugün: ${t.name} · ${{ done: "yaptı", skip: "atladı", today: "bekliyor" }[t.st] || "bekliyor"}`;
+  const miss = r.week.days.filter((d) => d.st === "missed").at(-1);
+  if (miss) return `${new Date(`${miss.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long" })} yapmadı`;
+  if (r.week.planned && r.week.done === r.week.planned) return "Bu hafta tamam";
+  if (r.next) return `Sıradaki: ${new Date(`${r.next.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" })} · ${r.next.fit?.name || r.next.title}`;
+  return r.prog?.title || "Bu hafta antrenman yok";
+}
+// Bu hafta (pazartesiden) 7 gün: yapıldı ✓, yapılmadı ✕, atlandı –, bekleyen gün numarası, antrenmansız gün nokta.
+// Antrenmanlı güne dokununca antrenman açılır.
+function WeekDots({ row, today, onOpen }) {
+  const mon = addDays(today, 1 - dowOf(today));
   return (
-    <div className="rounded-2xl bg-bg/60 p-3">
-      <div className="flex items-center gap-2">
-        <button type="button" aria-label="Önceki gün" onClick={() => setDay(addDays(day, -1))} className={arrow}>
-          <Icon name="chev" className="size-4 rotate-180" />
-        </button>
-        <span className="min-w-0 flex-1 text-center">
-          <b className="block text-[0.9375rem] font-semibold">{label}</b>
-          <small className="block text-[0.75rem] text-mut">{list.length ? dayLine(list, "").trim() : "Antrenman yok"}</small>
-        </span>
-        <button type="button" aria-label="Sonraki gün" onClick={() => setDay(addDays(day, 1))} className={arrow}>
-          <Icon name="chev" className="size-4" />
-        </button>
-      </div>
-      {list.length > 0 && (
-        <ul className="mt-2 divide-y divide-line">
-          {list.map((r) => (
-            <li key={r.plan.id} className="flex items-center gap-2 py-2">
-              <button type="button" onClick={() => onSel(r.uid)} className="grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc" aria-label={`${r.name} sayfası`}>
-                {r.name.slice(0, 1).toLocaleUpperCase("tr-TR")}
-              </button>
-              <button type="button" onClick={() => onOpen(r.plan)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>
-                  <small className="block truncate text-[0.8125rem] text-mut">{[r.plan.time, r.plan.fit?.name || r.plan.title].filter(Boolean).join(" · ")}</small>
-                </span>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${ST_COLOR[r.st]}`}>{STATUS[r.st]}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="mt-2 grid grid-cols-7 pl-[3.25rem]">
+      {Array.from({ length: 7 }, (_, i) => {
+        const date = addDays(mon, i);
+        const d = row.week.days.find((x) => x.date === date);
+        const plan = d && row.plans.find((p) => p.id === d.id);
+        if (!d) return <span key={date} className="grid h-8 place-items-center"><span className="size-1 rounded-full bg-mut/40" /></span>;
+        const look = { done: "bg-acc text-white", missed: "bg-rec/15 text-rec", skip: "bg-line text-mut", today: "border-2 border-acc text-acc", next: "border border-line text-mut" }[d.st];
+        return (
+          <button key={date} type="button" aria-label={`${d.name} · ${STATUS[d.st]}`} onClick={() => plan && onOpen(plan)} className="grid h-8 place-items-center">
+            <span className={`grid size-7 place-items-center rounded-full text-[0.6875rem] font-bold ${look}`}>
+              {d.st === "done" ? <Icon name="check" className="size-3.5" /> : d.st === "missed" ? "✕" : d.st === "skip" ? "–" : +date.slice(8)}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

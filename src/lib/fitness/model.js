@@ -296,6 +296,15 @@ export function statusOf(p, today) {
 }
 export const STATUS = { done: "Yapıldı", skip: "Atlandı", missed: "Yapılmadı", today: "Bugün", next: "Sırada" };
 
+// "Ali Kaya" → "Ali'ye", "Zeynep" → "Zeynep'e", "Mete" → "Mete'ye" (ilk ad, yönelme eki)
+export function toName(full) {
+  const w = String(full || "").trim().split(/\s+/)[0] || "";
+  if (!w) return "";
+  const low = w.toLocaleLowerCase("tr-TR");
+  const v = [...low].reverse().find((c) => "aeıioöuü".includes(c)) || "e";
+  const e = "aıou".includes(v) ? "a" : "e";
+  return `${w}'${"aeıioöuü".includes(low.at(-1)) ? "y" : ""}${e}`;
+}
 // Sporcunun planı mı (ana hesap hazırladı, sporcu yapar). Ana hesabın kendi takvimi ve takibi bunları saymaz.
 export const isOthers = (p, me) => !!p?.fit?.for && p.fit.for !== me;
 // Sporcu listesi (Fitness › Sporcular): her sporcunun etkin programı ve bu haftası.
