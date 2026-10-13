@@ -146,6 +146,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   function voice(g) {
     if (!g) return "";
     if (g.op === "finish") {
+      if (done < total) return `Bitirmek için bütün setleri tamamla. ${total - done} set kaldı.`;
       onFinish("done");
       return "Antrenmanı bitirdim.";
     }
@@ -153,7 +154,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
       setFeel(g.k);
       return `Not ettim: ${FEELS.find(([k]) => k === g.k)?.[1] || ""}.${pos ? "" : " Bitirmek için \"antrenmanı bitir\" de."}`;
     }
-    if (!pos) return "Hepsi tamam. Nasıl geçti? Bitirmek için \"antrenmanı bitir\" de.";
+    if (!pos) return done < total ? `${total - done} set kaldı. Kalan setlere dönmek için ekrandaki düğmeye dokun.` : "Hepsi tamam. Nasıl geçti? Bitirmek için \"antrenmanı bitir\" de.";
     if (g.op === "how") {
       const h = howOf(items[pos.i]);
       return h.length ? `${items[pos.i]?.name}: ${h.join(". ")}.` : `${items[pos.i]?.name} için açıklama yok.`;
@@ -165,7 +166,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
     }
     if (g.op === "skip") {
       const n = skipEx();
-      return n ? `Geçtim. ${setText(n)}` : "Geçtim. Hepsi tamam. Nasıl geçti?";
+      return n ? `Geçtim. ${setText(n)}` : "Geçtim. Atladığın setler kaldı, bitirmek için onları da tamamla.";
     }
     if (g.op === "done") {
       if (rest.run) {
@@ -199,32 +200,43 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
     </div>
   );
 
-  // Hepsi bitti (ya da kalanlar atlandı): nasıl geçti + bitir
+  // Hepsi bitti: nasıl geçti + bitir. Atlanan set kaldıysa bitirilemez, kalanlara dönülür
   if (!pos) {
+    const left = total - done;
     return (
       <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
         {top}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 text-center">
-          <span className="grid size-20 place-items-center rounded-full bg-acc text-white">
-            <Icon name="check" className="size-10 [stroke-width:2.5]" />
+          <span className={`grid size-20 place-items-center rounded-full text-white ${left ? "bg-mut" : "bg-acc"}`}>
+            <Icon name={left ? "clock" : "check"} className="size-10 [stroke-width:2.5]" />
           </span>
-          <h2 className="mt-5 text-[1.5rem] font-bold">Bu kadar</h2>
+          <h2 className="mt-5 text-[1.5rem] font-bold">{left ? `${left} set kaldı` : "Bu kadar"}</h2>
           <p className="mt-1 text-[0.9375rem] text-mut">
-            {done} / {total} set yapıldı
+            {left ? "Antrenmanı bitirmek için bütün setleri tamamla" : `${done} / ${total} set yapıldı`}
           </p>
-          <p className="mt-6 text-[0.875rem] font-semibold text-mut">Nasıl geçti?</p>
-          <div className="mt-2 flex w-full max-w-xs gap-2">
-            {FEELS.map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-12 flex-1 rounded-xl text-[0.9375rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-card shadow-sm"}`}>
-                {l}
-              </button>
-            ))}
-          </div>
+          {!left && (
+            <>
+              <p className="mt-6 text-[0.875rem] font-semibold text-mut">Nasıl geçti?</p>
+              <div className="mt-2 flex w-full max-w-xs gap-2">
+                {FEELS.map(([k, l]) => (
+                  <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-12 flex-1 rounded-xl text-[0.9375rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-card shadow-sm"}`}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
-          <button type="button" onClick={() => onFinish("done")} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
-            Antrenmanı bitir
-          </button>
+          {left ? (
+            <button type="button" onClick={() => setPos(nextOpen(sets, 0, 0))} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              Kalan setlere dön
+            </button>
+          ) : (
+            <button type="button" onClick={() => onFinish("done")} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              Antrenmanı bitir
+            </button>
+          )}
         </div>
       </div>
     );

@@ -1869,3 +1869,11 @@ group("Fitness hareket kütüphanesi")([
     return LB.libList(lib, "2")[0]?.key === "wall-sit" && LB.libList(lib, "isinma")[0]?.key === "warmup";
   })],
 ]);
+
+// Sporcunun antrenman ekranı: tahmini süre, kas grupları, bitirme ancak bütün setler yapılınca
+group("Fitness antrenman ekranı")([
+  ["tahmini süre", F("3×10 squat + 3×30 sn plank ≈ 15 dk", () => FMK.estMinutes([{ ex: "squat", kind: "reps", sets: 3, reps: 10, rest: 60 }, { ex: "plank", kind: "time", sets: 3, sec: 30, rest: 45 }]) === 15)],
+  ["kardiyo süresi", F("20 dk koşu ≈ 25 dk", () => FMK.estMinutes([{ kind: "cardio", min: 20 }]) === 25)],
+  ["boş", F("hareket yoksa 0", () => FMK.estMinutes([]) === 0)],
+  ["kas grupları", F("tekrarsız, sırayla", () => { const g = FMK.groupsOf([{ ex: "squat" }, { ex: "lunge" }, { ex: "plank" }]); return g.length === new Set(g).size && g.length >= 1; })],
+]);

@@ -392,7 +392,7 @@ export function AddSheet({ open, onClose, seed }) {
               toast("Mesaj gönderildi");
             }}
             docked
-            extra={edit.kind === "plan" && rec.fit?.for === myUid ? <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}`} rec={rec} by={by} /> : null}
+            extra={edit.kind === "plan" && rec.fit?.for === myUid ? <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}`} rec={rec} by={by} hero /> : null}
           />
         ) : edit ? (
           <>

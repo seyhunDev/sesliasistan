@@ -11,8 +11,8 @@ import { ExerciseMedia } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
-import { FEELS, cleanRes, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
-import { todayStr } from "@/lib/utils/format";
+import { FEELS, cleanRes, estMinutes, groupsOf, itemLine, resLine, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
 // önerilen değer hazır gelir (geçen sefer bütün setler tamamsa biraz artırılmış; targetFor). Set işaretlenince dinlenme sayacı.
@@ -33,7 +33,7 @@ function startSets(fit, plans, date) {
   });
 }
 
-export function FitWorkout({ rec, by }) {
+export function FitWorkout({ rec, by, hero = false }) {
   const { plans, updateRecord } = useData();
   const toast = useToast();
   const fit = rec.fit || { items: [] };
@@ -52,7 +52,7 @@ export function FitWorkout({ rec, by }) {
   const [cell, setCell] = useState(""); // düzenlenen set "i-k"
   const [extra, setExtra] = useState(!!(fit.res?.note || fit.res?.min));
   const [guide, setGuide] = useState(() => !fit.res?.st && isStart(rec.id)); // adım adım ekran (asistanla "antrenmana başla" açar)
-  const [list, setList] = useState(false); // tüm hareketlerin set listesi
+  const [open, setOpen] = useState(-1); // açık hareket (nasıl yapılır, setler)
   const tick = useRef(null);
   useEffect(() => {
     if (isStart(rec.id)) clearStart();
@@ -109,13 +109,15 @@ export function FitWorkout({ rec, by }) {
 
   if (!edit && fit.res?.st) {
     return (
-      <div className={`${box} mt-3 p-4`}>
+      <div className={`${box} ${hero ? "" : "mt-3"} p-4`}>
         <div className="flex items-center justify-between gap-2">
           <span className={`rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${fit.res.st === "done" ? "bg-acc/10 text-acc" : "bg-rec/10 text-rec"}`}>{STATUS[fit.res.st]}</span>
           <Link href="/fitness" className="text-[0.8125rem] font-semibold text-acc">
             Fitness
           </Link>
         </div>
+        {hero && <h3 className="mt-2 text-[1.25rem] font-bold leading-snug">{fit.name || String(rec.title || "").replace(/^Fitness · /, "")}</h3>}
+        {hero && <p className="text-[0.8125rem] text-mut">{when(rec)}</p>}
         {fit.res.st === "done" && <p className="mt-2 text-[0.9375rem] leading-snug">{resLine(fit) || "Bütün hareketler"}</p>}
         <p className="mt-1 text-[0.8125rem] text-mut">{[fit.res.min && `${fit.res.min} dk`, fit.res.feel && FEELS.find(([k]) => k === fit.res.feel)?.[1], fit.res.note].filter(Boolean).join(" · ")}</p>
         <button type="button" onClick={() => setEdit(true)} className="mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
@@ -125,20 +127,58 @@ export function FitWorkout({ rec, by }) {
     );
   }
 
+  const items = fit.items || [];
+  const allDone = total > 0 && done === total;
+  const est = rec.durationMin || estMinutes(items);
+  const groups = groupsOf(items);
+  const name = fit.name || String(rec.title || "").replace(/^Fitness · /, "") || "Antrenman";
+
   return (
-    <div className="mt-3">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[0.75rem] font-bold tracking-[.08em] text-mut">ANTRENMAN · {STATUS[st].toLocaleUpperCase("tr-TR")}</span>
-        <span className="text-[0.8125rem] tabular-nums text-mut">
-          {done}/{total} set
-        </span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line/60">
-        <div className="h-full rounded-full bg-acc transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
-      </div>
+    <div className={hero ? "" : "mt-3"}>
+      {/* Üst kart: ne çalışılacak, ne kadar, tahmini süre; büyük "Antrenmana başla" */}
+      <section className="overflow-hidden rounded-[1.625rem] bg-deep p-5 text-white">
+        <div className="flex flex-wrap items-center gap-1.5 text-[0.75rem] font-semibold">
+          <span className="rounded-full bg-white/15 px-2.5 py-1">{when(rec)}</span>
+          {rec.place && <span className="max-w-full truncate rounded-full bg-white/10 px-2.5 py-1">{rec.place}</span>}
+          {st === "missed" && <span className="rounded-full bg-rec px-2.5 py-1">Günü geçti</span>}
+        </div>
+        <h3 className="mt-3 text-[1.5rem] font-bold leading-tight">{name}</h3>
+        {groups.length > 0 && <p className="mt-1 text-[0.875rem] text-white/75">{groups.join(" · ")}</p>}
+        <div className="mt-4 grid grid-cols-3 divide-x divide-white/15 rounded-2xl bg-white/10 py-3 text-center">
+          {[
+            [est ? `≈ ${est}` : "–", "dakika"],
+            [items.length, "hareket"],
+            [total, "set"],
+          ].map(([v, l]) => (
+            <div key={l}>
+              <b className="block text-[1.25rem] font-bold tabular-nums">{v}</b>
+              <small className="text-[0.75rem] text-white/70">{l}</small>
+            </div>
+          ))}
+        </div>
+        {done > 0 && (
+          <div className="mt-4">
+            <div className="flex justify-between text-[0.75rem] font-semibold text-white/80">
+              <span>{allDone ? "Bütün setler yapıldı" : "Devam ediyor"}</span>
+              <span className="tabular-nums">
+                {done}/{total} set
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(done / total) * 100}%` }} />
+            </div>
+          </div>
+        )}
+        {total > 0 && !allDone && (
+          <button type="button" onClick={() => setGuide(true)} className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-[1.0625rem] font-bold text-deep shadow-sm active:scale-[.98]">
+            <Icon name="dumbbell" className="size-5" />
+            {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
+          </button>
+        )}
+      </section>
       {guide && (
         <FitGuided
-          items={fit.items || []}
+          items={items}
           sets={sets}
           onCheck={(i, k) => toggle(i, k, true)}
           onVal={lock ? null : setVal}
@@ -148,88 +188,126 @@ export function FitWorkout({ rec, by }) {
           onClose={() => setGuide(false)}
         />
       )}
-      {total > 0 && (
-        <button type="button" onClick={() => setGuide(true)} className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.98]">
-          <Icon name="dumbbell" className="size-5" />
-          {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
-        </button>
-      )}
-      <button type="button" onClick={() => setList((v) => !v)} className="mt-2 flex h-10 w-full items-center justify-center gap-1 text-[0.875rem] font-semibold text-acc">
-        {list ? "Hareketleri gizle" : `Tüm hareketleri gör (${(fit.items || []).length})`}
-      </button>
-      {list && (fit.items || []).map((it, i) => {
-        const ex = exById(it.ex);
-        const t = targetFor(it, plans, rec.date);
-        const s = sets[i] || [];
-        const key = it.kind === "time" ? "sec" : it.kind === "cardio" ? "min" : "reps";
-        const unit = it.kind === "time" ? "sn" : it.kind === "cardio" ? "dk" : "tekrar";
-        const all = s.length > 0 && s.every((x) => x.ok);
-        return (
-          <section key={i} className={`${box} mt-3 p-3.5`}>
-            <div className="flex items-start gap-2">
-              <span className="min-w-0 flex-1">
-                <b className={`block text-[0.96875rem] font-semibold ${all ? "text-acc" : ""}`}>{it.name}</b>
-                <small className="block text-[0.8125rem] text-mut">
-                  Hedef {itemLine(it)}
-                  {t.up && <span className="ml-1 font-semibold text-acc">↑ geçen sefere göre artırıldı</span>}
-                </small>
-                {ex?.how && <small className="mt-0.5 line-clamp-1 block text-[0.75rem] leading-snug text-mut/80">{ex.how}</small>}
-              </span>
-              {all && <Icon name="check" className="mt-0.5 size-5 text-acc" />}
-            </div>
-            <ExerciseMedia media={it.media} ex={it.ex} />
-            {it.yt?.id && <YtLink yt={it.yt} />}
-            <div className="mt-2 space-y-1.5">
-              {s.map((x, k) => (
-                <div key={k} className="flex items-center gap-2">
-                  <span className="w-9 shrink-0 text-[0.75rem] font-semibold text-mut">Set {k + 1}</span>
-                  {!lock && cell === `${i}-${k}` ? (
-                    <>
-                      <label className="flex min-w-0 flex-1 items-center gap-1">
-                        <input autoFocus inputMode="numeric" aria-label={unit} value={x[key]} onChange={(e) => setVal(i, k, key, e.target.value)} onBlur={() => it.kind !== "reps" && setCell("")} className={inp} />
-                        <span className="w-10 shrink-0 text-[0.75rem] text-mut">{unit}</span>
-                      </label>
-                      {it.kind === "reps" && (
-                        <label className="flex min-w-0 flex-1 items-center gap-1">
-                          <input inputMode="decimal" aria-label="kilo" value={x.kg} onChange={(e) => setVal(i, k, "kg", e.target.value)} placeholder="–" className={inp} />
-                          <span className="w-5 shrink-0 text-[0.75rem] text-mut">kg</span>
-                        </label>
-                      )}
-                    </>
-                  ) : (
-                    lock ? (
-                      <span className={`flex h-9 min-w-0 flex-1 items-center truncate px-2 text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
-                        {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "–"}
-                      </span>
-                    ) : (
-                      <button type="button" onClick={() => setCell(`${i}-${k}`)} className={`h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
-                        {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "Değer yaz"}
-                      </button>
-                    )
-                  )}
-                  <button
-                    type="button"
-                    aria-label={x.ok ? "Yapılmadı" : "Yapıldı"}
-                    aria-pressed={x.ok}
-                    onClick={() => {
-                      setCell("");
-                      toggle(i, k);
-                    }}
-                    className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-90 ${x.ok ? "bg-acc text-white" : "border-2 border-line text-transparent"}`}
-                  >
-                    <Icon name="check" className="size-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {!lock && (
-              <button type="button" onClick={() => addSet(i)} className="mt-1.5 text-[0.75rem] font-semibold text-acc">
-                + Set
+
+      {/* Bitirme: yalnız bütün setler yapılınca (adım adım ekranda bitirmeyen sporcu buradan bitirir) */}
+      {allDone && (
+        <section className={`${box} mt-3 p-4`}>
+          <b className="block text-[1rem] font-semibold">Tebrikler, hepsi tamam</b>
+          <small className="mt-2 block text-[0.8125rem] font-semibold text-mut">Nasıl geçti?</small>
+          <div className="mt-1.5 flex gap-1.5">
+            {FEELS.map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-11 flex-1 rounded-xl text-[0.875rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-bg"}`}>
+                {l}
               </button>
-            )}
-          </section>
-        );
-      })}
+            ))}
+          </div>
+          {extra ? (
+            <div className="mt-2 flex gap-2">
+              {!lock && (
+                <label className="flex w-24 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
+                  <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
+                  <span className="text-[0.8125rem] text-mut">dk</span>
+                </label>
+              )}
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
+            </div>
+          ) : (
+            <button type="button" onClick={() => setExtra(true)} className="mt-2 px-1 text-[0.8125rem] font-semibold text-acc">
+              {lock ? "+ Not ekle" : "+ Süre ve not ekle"}
+            </button>
+          )}
+          <button type="button" onClick={() => finish("done")} className="mt-3 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+            Antrenmanı bitir
+          </button>
+        </section>
+      )}
+
+      {/* Hareketler: ne, ne kadar; dokununca nasıl yapılır, fotoğraf/video ve setler */}
+      {items.length > 0 && <p className="mt-5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">BU ANTRENMANDA</p>}
+      {items.length > 0 && (
+        <ul className={`${box} mt-2 divide-y divide-line`}>
+          {items.map((it, i) => {
+            const ex = exById(it.ex);
+            const t = targetFor(it, plans, rec.date);
+            const s = sets[i] || [];
+            const key = it.kind === "time" ? "sec" : it.kind === "cardio" ? "min" : "reps";
+            const unit = it.kind === "time" ? "sn" : it.kind === "cardio" ? "dk" : "tekrar";
+            const all = s.length > 0 && s.every((x) => x.ok);
+            const on = open === i;
+            return (
+              <li key={i}>
+                <button type="button" onClick={() => setOpen(on ? -1 : i)} aria-expanded={on} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <span className={`grid size-8 shrink-0 place-items-center rounded-full text-[0.8125rem] font-bold ${all ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
+                    {all ? <Icon name="check" className="size-4 [stroke-width:2.5]" /> : i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className={`block truncate text-[0.9375rem] font-semibold ${all ? "text-mut" : ""}`}>{it.name}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">
+                      {itemLine(it)}
+                      {t.up && <span className="ml-1 font-semibold text-acc">↑</span>}
+                    </small>
+                  </span>
+                  <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${on ? "rotate-90" : ""}`} />
+                </button>
+                {on && (
+                  <div className="px-4 pb-4">
+                    {ex?.how && <p className="text-[0.8125rem] leading-snug text-mut">{ex.how}</p>}
+                    {t.up && <p className="mt-1 text-[0.75rem] font-semibold text-acc">↑ geçen sefere göre artırıldı</p>}
+                    <ExerciseMedia media={it.media} ex={it.ex} />
+                    {it.yt?.id && <YtLink yt={it.yt} />}
+                    <div className="mt-2 space-y-1.5">
+                      {s.map((x, k) => (
+                        <div key={k} className="flex items-center gap-2">
+                          <span className="w-9 shrink-0 text-[0.75rem] font-semibold text-mut">Set {k + 1}</span>
+                          {!lock && cell === `${i}-${k}` ? (
+                            <>
+                              <label className="flex min-w-0 flex-1 items-center gap-1">
+                                <input autoFocus inputMode="numeric" aria-label={unit} value={x[key]} onChange={(e) => setVal(i, k, key, e.target.value)} onBlur={() => it.kind !== "reps" && setCell("")} className={inp} />
+                                <span className="w-10 shrink-0 text-[0.75rem] text-mut">{unit}</span>
+                              </label>
+                              {it.kind === "reps" && (
+                                <label className="flex min-w-0 flex-1 items-center gap-1">
+                                  <input inputMode="decimal" aria-label="kilo" value={x.kg} onChange={(e) => setVal(i, k, "kg", e.target.value)} placeholder="–" className={inp} />
+                                  <span className="w-5 shrink-0 text-[0.75rem] text-mut">kg</span>
+                                </label>
+                              )}
+                            </>
+                          ) : lock ? (
+                            <span className={`flex h-9 min-w-0 flex-1 items-center truncate px-2 text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
+                              {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "–"}
+                            </span>
+                          ) : (
+                            <button type="button" onClick={() => setCell(`${i}-${k}`)} className={`h-9 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-[0.9375rem] tabular-nums ${x.ok ? "text-mut" : ""}`}>
+                              {[x[key] ? `${x[key]} ${unit}` : "", x.kg ? `${String(x.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" · ") || "Değer yaz"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            aria-label={x.ok ? "Yapılmadı" : "Yapıldı"}
+                            aria-pressed={x.ok}
+                            onClick={() => {
+                              setCell("");
+                              toggle(i, k);
+                            }}
+                            className={`grid size-9 shrink-0 place-items-center rounded-full transition active:scale-90 ${x.ok ? "bg-acc text-white" : "border-2 border-line text-transparent"}`}
+                          >
+                            <Icon name="check" className="size-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {!lock && (
+                      <button type="button" onClick={() => addSet(i)} className="mt-1.5 text-[0.75rem] font-semibold text-acc">
+                        + Set
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {rest && (
         <div className="sticky bottom-[calc(var(--rec-h,6rem)+0.5rem)] z-10 mt-3 flex items-center gap-3 rounded-2xl bg-deep px-4 py-3 text-white shadow-lg">
@@ -249,39 +327,11 @@ export function FitWorkout({ rec, by }) {
         </div>
       )}
 
-      <section className={`${box} mt-3 p-3.5`}>
-        <small className="block px-1 text-[0.8125rem] font-semibold text-mut">Nasıl geçti?</small>
-        <div className="mt-1.5 flex gap-1.5">
-          {FEELS.map(([k, l]) => (
-            <button key={k} type="button" aria-pressed={feel === k} onClick={() => setFeel(feel === k ? 0 : k)} className={`h-10 flex-1 rounded-xl text-[0.8125rem] font-semibold ${feel === k ? "bg-acc text-white" : "bg-bg"}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-        {extra ? (
-          <div className="mt-2 flex gap-2">
-            {!lock && (
-              <label className="flex w-24 shrink-0 items-center gap-1 rounded-xl bg-bg pr-3">
-                <input inputMode="numeric" value={mins} onChange={(e) => setMins(n(e.target.value))} aria-label="Süre" className="h-10 w-full min-w-0 bg-transparent px-3 text-[0.9375rem] tabular-nums outline-none" />
-                <span className="text-[0.8125rem] text-mut">dk</span>
-              </label>
-            )}
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
-          </div>
-        ) : (
-          <button type="button" onClick={() => setExtra(true)} className="mt-1.5 px-1 text-[0.8125rem] font-semibold text-acc">
-            {lock ? "+ Not ekle" : "+ Süre ve not ekle"}
-          </button>
-        )}
-        <div className="mt-3 flex gap-2">
-          <button type="button" onClick={() => finish("skip")} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut">
-            Atladım
-          </button>
-          <button type="button" onClick={() => finish("done")} className="h-11 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
-            Antrenmanı bitir
-          </button>
-        </div>
-      </section>
+      {!allDone && total > 0 && (
+        <button type="button" onClick={() => finish("skip")} className="mt-4 h-10 w-full text-center text-[0.8125rem] font-semibold text-mut">
+          Bugün yapamayacağım
+        </button>
+      )}
     </div>
   );
 }

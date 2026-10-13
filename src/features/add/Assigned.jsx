@@ -191,6 +191,8 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
 
   return (
     <div>
+      {/* Sporcunun fitness antrenmanında genel kart yok: antrenman kartı (extra) zaman, yer ve içeriği kendisi gösterir */}
+      {!extra && (
       <div className="rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
         <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-acc">{KIND[kind]}</p>
         <h3 className="mt-1 text-[1.25rem] font-semibold leading-snug">{rec.title}</h3>
@@ -210,6 +212,7 @@ export function AssignedView({ kind, rec, planTitle, myUid, nameOf, onDone, onRe
           <Icon name="user" className="size-4" /> {by} verdi{rec.createdAt ? ` · ${stamp(rec.createdAt)}` : ""} · değiştiremezsin
         </p>
       </div>
+      )}
 
       {extra}
       {/* Yalnızca kendisi için */}
