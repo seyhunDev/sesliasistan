@@ -10,6 +10,8 @@ import { setGuideHandler } from "./guideVoice";
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
 // Değer hedeften farklıysa − / + ile düzeltilir. Süreli harekette "Süreyi başlat" geri sayar.
+// Her hareketin başında "Nasıl yapılır" ekranı (video/fotoğraf + açıklama, "Başla"); başladıktan sonra
+// başlıktaki "Nasıl yapılır" düğmesi aynısını pencerede açar.
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
 // Ana asistanla da yürür: ekran kayıt kubbesinin (z-55) altında durur; "tamam", "atla", "15 saniye ekle", "nasıl yapılır",
 // "zor geçti", "antrenmanı bitir" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
@@ -57,8 +59,53 @@ function Adjust({ label, value, unit, onChange }) {
   );
 }
 
+function howOf(it) {
+  return String(exById(it?.ex)?.how || "")
+    .split(/;\s*/)
+    .map((x) => x.trim().replace(/\.$/, ""))
+    .filter(Boolean);
+}
+const hasHow = (it) => howOf(it).length > 0 || (it?.media || []).length > 0;
+
+// Hedef: "3 set × 12 tekrar · 20 kg"
+function targetText(it, n) {
+  const key = KEY[it.kind] || "reps";
+  return [`${n} set`, it[key] ? `${it[key]} ${UNIT[key]}` : "", it.kg ? `${String(it.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" × ").replace(/ × (\S+ kg)$/, " · $1");
+}
+
+function HowBody({ it }) {
+  const how = howOf(it);
+  return (
+    <>
+      <ExerciseMedia media={it.media} big className="mt-4" />
+      {how.length > 0 && (
+        <ol className="mt-4 space-y-2.5">
+          {how.map((h, n) => (
+            <li key={h} className="flex gap-3 text-[1rem] leading-snug">
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-acc/15 text-[0.8125rem] font-bold text-acc">{n + 1}</span>
+              <span>{h}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  );
+}
+
 export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel, onFinish, onClose }) {
   const [pos, setPos] = useState(() => nextOpen(sets, 0, 0));
+  // Başlatılan hareketler; yarıda kalan hareket (ilk seti yapılmış) başlamış sayılır
+  const [seen, setSeen] = useState(() => {
+    const p = nextOpen(sets, 0, 0);
+    return new Set(p && sets[p.i]?.some((x) => x.ok) ? [p.i] : []);
+  });
+  const [howOpen, setHowOpen] = useState(false);
+  const intro = !!pos && !seen.has(pos.i) && hasHow(items[pos.i]);
+  const begin = () => {
+    if (!pos) return;
+    rest.stop();
+    setSeen((x) => new Set(x).add(pos.i));
+  };
   const rest = useCountdown();
   const timer = useCountdown();
   const total = sets.reduce((t, s) => t + s.length, 0);
@@ -107,6 +154,7 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
     }
     if (!pos) return "Hepsi tamam. Nasıl geçti? Bitirmek için \"antrenmanı bitir\" de.";
     if (g.op === "how") {
+      if (!intro && hasHow(items[pos.i])) setHowOpen(true);
       const h = String(exById(items[pos.i]?.ex)?.how || "").trim();
       return h ? `${items[pos.i]?.name}: ${h.replace(/;\s*/g, ". ")}` : `${items[pos.i]?.name} için açıklama yok.`;
     }
@@ -120,6 +168,10 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
       return n ? `Geçtim. ${setText(n)}` : "Geçtim. Hepsi tamam. Nasıl geçti?";
     }
     if (g.op === "done") {
+      if (intro) {
+        begin();
+        return `Başladık. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
+      }
       if (rest.run) {
         rest.stop();
         return `Dinlenme bitti. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
@@ -186,28 +238,43 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
   const s = sets[pos.i] || [];
   const cur = s[pos.k] || {};
   const key = KEY[it.kind] || "reps";
-  const how = String(exById(it.ex)?.how || "")
-    .split(/;\s*/)
-    .map((x) => x.trim().replace(/\.$/, ""))
-    .filter(Boolean);
   const val = cur[key] || it[key] || "";
+
+  // Hareket başlamadan önce: nasıl yapılır (video/fotoğraf + açıklama), sonra "Başla"
+  if (intro) {
+    return (
+      <div role="dialog" aria-label="Nasıl yapılır" className="fixed inset-0 z-[54] flex flex-col bg-bg">
+        {top}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-5">
+          <small className="block text-[0.75rem] font-bold tracking-[.08em] text-acc">NASIL YAPILIR</small>
+          <h2 className="mt-1 text-[1.625rem] font-bold leading-tight">{it.name}</h2>
+          <p className="mt-1 text-[0.9375rem] font-semibold text-mut">{targetText(it, s.length)}</p>
+          <HowBody it={it} />
+          {rest.run && <p className="mt-5 text-center text-[0.875rem] text-mut">Dinlenme: {rest.left} sn</p>}
+        </div>
+        <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
+          <button type="button" onClick={begin} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+            Başla
+          </button>
+          <button type="button" onClick={skipEx} className="mt-2 h-10 w-full text-[0.875rem] font-semibold text-mut">
+            Bu hareketi atla
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
       {top}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-5">
         <h2 className="text-[1.625rem] font-bold leading-tight">{it.name}</h2>
-        {how.length > 0 && (
-          <ul className="mt-2 space-y-1 text-[0.9375rem] leading-snug text-mut">
-            {how.map((h) => (
-              <li key={h} className="flex gap-2">
-                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-acc" />
-                <span>{h}</span>
-              </li>
-            ))}
-          </ul>
+        {hasHow(it) && (
+          <button type="button" onClick={() => setHowOpen(true)} className="mt-3 flex h-10 items-center gap-2 rounded-full bg-card px-4 text-[0.9375rem] font-semibold text-acc shadow-sm active:scale-95">
+            <Icon name={(it.media || []).some((m) => m.kind === "video") ? "video" : "book"} className="size-4.5" />
+            Nasıl yapılır
+          </button>
         )}
-        <ExerciseMedia media={it.media} className="mt-3" />
 
         {rest.run ? (
           <div className="mt-8 rounded-3xl bg-deep px-5 py-7 text-center text-white">
@@ -258,6 +325,27 @@ export function FitGuided({ items = [], sets = [], onCheck, onVal, feel, setFeel
           Bu hareketi atla
         </button>
       </div>
+      {howOpen && (
+        <div role="dialog" aria-label="Nasıl yapılır" className="fixed inset-0 z-[56] flex flex-col bg-bg">
+          <div className="flex items-center gap-3 px-5 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <span className="min-w-0 flex-1">
+              <small className="block text-[0.75rem] font-bold tracking-[.08em] text-acc">NASIL YAPILIR</small>
+              <b className="block truncate text-[1.25rem]">{it.name}</b>
+            </span>
+            <button type="button" onClick={() => setHowOpen(false)} aria-label="Kapat" className="grid size-10 place-items-center rounded-full bg-card text-mut shadow-sm active:scale-90">
+              <Icon name="x" className="size-5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+            <HowBody it={it} />
+          </div>
+          <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
+            <button type="button" onClick={() => setHowOpen(false)} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              Devam et
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
