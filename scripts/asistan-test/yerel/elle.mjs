@@ -613,7 +613,7 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
-  ["kulüp kartları", F("antrenman haftası: fitness günleri; yalnız yelken yoklama, yalnız fitness Fitness, ikisi seçim", () => {
+  ["kulüp kartları", F("antrenman haftası: gün penceresi (yelken yoklama, plansız gün antrenman ekle, fitness sporcuları)", () => {
     const today = "2026-10-14";
     const plans = [
       { cat: "Antrenman", date: "2026-10-13" },
@@ -629,15 +629,18 @@ group("Ana sayfa kartları")([
     const fit = HT.fitDays(plans, others, people, "me");
     const w = HT.trainingWeek(plans, today, fit);
     const [, mon, tue, wed, thu] = [null, w.days[1], w.days[2], w.days[3], w.days[4]];
-    const tMon = HT.dayTap(mon, true, today), tTue = HT.dayTap(tue, true, today), tWed = HT.dayTap(wed, true, today), tThu = HT.dayTap(thu, true, today);
-    const noAtt = HT.dayTap(tue, false, today);
+    const iMon = HT.dayInfo(mon, true, today), iTue = HT.dayInfo(tue, true, today), iWed = HT.dayInfo(wed, true, today), iThu = HT.dayInfo(thu, true, today);
+    const noAtt = HT.dayInfo(tue, false, today);
+    const sun = HT.dayInfo(w.days[6], true, today), sunNo = HT.dayInfo(w.days[6], false, today), past = HT.dayInfo(w.days[0], true, today);
     const onlyFit = HT.trainingWeek([], today, HT.fitDays([], others.slice(1, 2), people, "me"));
     return fit.length === 3 && tue.fit[0].name === "Ali Kaya" && tue.fit[0].st === "done" && w.fitN === 3 && w.fitDone === 1
-      && tMon.href === "/athletes/attendance?gun=2026-10-13" && !tMon.sheet
-      && tTue.sheet && tTue.sail === "/athletes/attendance?gun=2026-10-14" && tTue.fit === "/fitness?sporcular=1&gun=2026-10-14"
-      && tWed.href === "/fitness?tab=me" && wed.fit[0].name === "Sen"
-      && tThu.href === "/fitness?sporcular=1&gun=2026-10-16"
-      && !noAtt.sheet && noAtt.href === "/fitness?sporcular=1&gun=2026-10-14"
+      && iMon.tap && iMon.attHref === "/athletes/attendance?gun=2026-10-13" && iMon.sail.length === 1 && !iMon.add && !iMon.fit.length
+      && iTue.tap && iTue.sail.length === 1 && iTue.fitHref === "/fitness?sporcular=1&gun=2026-10-14"
+      && iWed.add && iWed.attHref === "" && iWed.fitHref === "/fitness?tab=me" && wed.fit[0].name === "Sen"
+      && iThu.add && iThu.fitHref === "/fitness?sporcular=1&gun=2026-10-16"
+      && past.tap && past.add && past.attHref === "/athletes/attendance?gun=2026-10-12"
+      && sun.tap && sun.add && !sunNo.tap
+      && noAtt.tap && !noAtt.add && noAtt.attHref === "" && noAtt.fit.length === 1
       && onlyFit && onlyFit.planned === 0 && onlyFit.fitN === 1;
   })],
   ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
