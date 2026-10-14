@@ -1,8 +1,8 @@
-Commit: 6a0bb3c · Testler GitHub'da çalışır, sonuç test-sonuclari dalına yazılır (#325)
-Zaman: 2026-10-12-1606 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38253206243
+Commit: af039f5 · Yoklama raporu Yoklama sayfasıyla aynı sade düzende (#385)
+Zaman: 2026-10-14-0316 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38489071841
 
-TAM TEST · 12.10.2026 16:05:20
+TAM TEST · 14.10.2026 03:15:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
