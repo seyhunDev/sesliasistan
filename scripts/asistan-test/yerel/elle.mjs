@@ -1347,6 +1347,10 @@ group("Rüzgâr haritası")([
   ["günler", F("bugün ve yarın, ilk saatleriyle", () => { const d = WM.daysOf(["2026-10-05T13:00", "2026-10-05T14:00", "2026-10-06T00:00"]); return d.length === 2 && d[1].date === "2026-10-06" && d[1].from === 2; })],
   ["renk", F("hafif mavi, sert turuncu, fırtına mor", () => WM.colorOf(2) === "#7aa6d6" && WM.colorOf(23) === "#ec7a35" && WM.colorOf(40) === "#a33b9c")],
   ["önbellek", F("aynı yer ve 30 dk içinde taze", () => { const p = { lat: 39.0717, lon: 26.8886 }; const c = { place: WM.placeId(p), at: 0, times: ["x"] }; return WM.fresh(c, p, 10 * 60e3) && !WM.fresh(c, p, 31 * 60e3) && !WM.fresh(c, { lat: 38.4, lon: 27.1 }, 1); })],
+  ["akış alanı", F("kuzey rüzgârı güneye akar", () => { const f = WM.fieldOf(WM.frameAt(WM.shapeMap(WJ, WPTS), 0)); const s = WM.sampleField(f, WPTS[0].lat, WPTS[0].lon); return f.rows === 6 && f.cols === 6 && s.v < 0 && Math.abs(s.kn - 8) < 0.01; })],
+  ["ara nokta", F("iki nokta arası karışır, dışarısı boş", () => { const fr = [{ r: 0, c: 0, lat: 39, lon: 26, kn: 10, gust: 10, dir: 0 }, { r: 0, c: 1, lat: 39, lon: 26 + WM.STEP_LON, kn: 20, gust: 20, dir: 0 }]; const f = WM.fieldOf(fr); const s = WM.sampleField(f, 39, 26 + WM.STEP_LON / 2); return Math.abs(s.kn - 15) < 0.01 && WM.sampleField(f, 40, 26) === null; })],
+  ["renk geçişi", F("ölçek renkleri arası", () => WM.rgbOf(0).join() === "122,166,214" && WM.rgbOf(100).join() === "163,59,156" && WM.rgbOf(11)[0] > 95 && WM.rgbOf(11)[0] < 201)],
+  ["günün en serti", F("o günün en yüksek knot'u", () => WM.dayMax({ w: [5, 12, null, 9] }, 0, 4) === 12 && WM.dayMax({ w: [null] }, 0, 1) === null)],
 ]);
 
 // İnternet göstergesi (netSync.js): üstteki şeridin yazısı

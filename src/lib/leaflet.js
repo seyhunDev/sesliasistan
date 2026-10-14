@@ -28,3 +28,7 @@ export function loadLeaflet() {
 // OpenStreetMap katmanı (ücretsiz)
 export const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>';
+
+// Koyu, sade harita (CARTO Dark Matter; ücretsiz, anahtarsız). Kaynak yazısı lisans gereği "i" düğmesinin içinde gösterilir.
+export const DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+export const DARK_ATTR = "© OpenStreetMap katkıcıları © CARTO";
