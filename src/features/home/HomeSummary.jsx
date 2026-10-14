@@ -231,7 +231,7 @@ function SkelRow({ tall }) {
 // Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu.
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
-// Fitness olan günün altında turuncu nokta. Sırada kartının (SiradaCard.jsx) içinde çizilir.
+// Fitness olan günün altında turuncu, başka planı olan günün altında yeşil nokta (pencerede PLANLAR). Sırada kartının (SiradaCard.jsx) içinde çizilir.
 export function WeekStrip({ w, att, today }) {
   const [pick, setPick] = useState(null); // Dokunulan gün: pencere
   const DAY = {
@@ -250,14 +250,17 @@ export function WeekStrip({ w, att, today }) {
           const fitOnly = !d.has && d.fit.length > 0;
           const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;
           const info = dayInfo(d, att, today);
-          const what = [d.has ? "yelken" : "", d.fit.length ? `fitness: ${d.fit.map((f) => f.name).join(", ")}` : ""].filter(Boolean).join(", ") || label[st];
+          const what = [d.has ? "yelken" : "", d.fit.length ? `fitness: ${d.fit.map((f) => f.name).join(", ")}` : "", d.other.length ? `plan: ${d.other.map((p) => p.title || "Plan").join(", ")}` : ""].filter(Boolean).join(", ") || label[st];
           const inner = (
             <>
               <small className={`text-[0.6875rem] ${d.state === "today" ? "font-semibold text-fg" : "text-mut"}`}>{d.w}</small>
               <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "bg-acc text-white" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
-              <span className={`h-1.5 w-1.5 rounded-full ${d.fit.length ? (d.fit.every((f) => f.st === "done") ? "bg-orange-500" : "bg-orange-400/70") : "bg-transparent"}`} />
+              <span className="flex h-1.5 items-center gap-0.5">
+                {d.other.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-acc" />}
+                {d.fit.length > 0 && <span className={`h-1.5 w-1.5 rounded-full ${d.fit.every((f) => f.st === "done") ? "bg-orange-500" : "bg-orange-400/70"}`} />}
+              </span>
             </>
           );
           const cls = "flex flex-col items-center gap-1 rounded-xl py-0.5";
@@ -287,7 +290,7 @@ function DayPick({ day, att, today, onClose }) {
   const router = useRouter();
   const { openAdd } = useAdd();
   const [busy, setBusy] = useState(false);
-  const info = day ? dayInfo(day, att, today) : { sail: [], fit: [] };
+  const info = day ? dayInfo(day, att, today) : { sail: [], fit: [], other: [] };
   const title = day ? new Date(`${day.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }) : "";
   const head = "mb-1 text-[0.75rem] font-bold tracking-[.06em] text-mut";
   const go = (href) => {
@@ -311,6 +314,25 @@ function DayPick({ day, att, today, onClose }) {
     <Sheet open={!!day} onClose={onClose} title={title}>
       {day && (
         <div className="space-y-4 pb-1">
+          {info.other.length > 0 && (
+            <section>
+              <h3 className={head}>PLANLAR</h3>
+              <ul className="divide-y divide-line">
+                {info.other.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" onClick={() => { onClose(); openAdd({ edit: { kind: "plan", id: p.id } }); }} className="flex w-full items-center gap-3 py-2.5 text-left">
+                      <span className="w-12 shrink-0 text-[0.8125rem] font-semibold tabular-nums text-acc">{p.time || "Gün"}</span>
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Plan"}</b>
+                        {p.place ? <small className="block truncate text-[0.8125rem] text-mut">{p.place}</small> : null}
+                      </span>
+                      <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {att || info.sail.length ? (
             <section>
               <h3 className={head}>YELKEN</h3>

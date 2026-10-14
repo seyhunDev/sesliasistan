@@ -115,7 +115,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div ref={root} className="space-y-6">
-      <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0} />
+      <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
