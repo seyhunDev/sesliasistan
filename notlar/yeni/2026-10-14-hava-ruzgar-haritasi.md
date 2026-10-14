@@ -5,3 +5,4 @@
 ## Sıradaki işler
 
 - Telefonda havaya dokun: harita görünüyor mu, gün değiştirince harita da değişiyor mu, haritada kaydırınca pencere kapanmıyor mu, ↗ tam sayfayı açıyor mu.
+- Hava penceresinin altındaki kaynak kutusu tek satır (Seyhun: "bilgilendirme info ikonuyla, karşılaştır düğmeleri başta gizli"): yer · ne zaman alındı, sağda "Karşılaştır" (açınca MGM / Windy), "i" (açınca kaynak ve model noktası) ve Yenile (DaySheet.jsx `cmp`, `about`). Örnek: `/mnt/project-files/hava/kaynak-satiri.png`.
