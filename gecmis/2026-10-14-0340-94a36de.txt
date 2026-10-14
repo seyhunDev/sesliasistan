@@ -1,8 +1,8 @@
-Commit: c35585b (kaydedilmemiş değişiklikle) · Mac'teki tam test sonucu da GitHub'a (test-sonuclari) gider (#326)
-Zaman: 2026-10-12-1613 (İstanbul)
-Çalıştırma: Mac (npm run test:hepsi)
+Commit: 94a36de · Ana sayfa: Aidat ve Hesaplar kartlarına ok, aidat yüzdesi büyük (#387)
+Zaman: 2026-10-14-0340 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38491319907
 
-TAM TEST · 12.10.2026 16:10:51
+TAM TEST · 14.10.2026 03:38:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -10,30 +10,9 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 3/4 Uygulama bu bilgisayarda açılıyor (ilk derleme 1-3 dakika sürebilir)…
     Sayfalar tarayıcıda açılıyor…
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
-    Görev listesi (/api/tasks)…
-  ✗ Atatürk Kupası yarışı oluru afişini hazirla ve bugün İlay antrenmana k
-  ✓ enes aidatini nakit verdi mehmet de geldi yoklamaya ekle
-  ✓ yoklamaya Ali'yi ekle pardon Ayşe'yi bir de listeye süt ekle
-  ✗ Enes aidatını nakit verdi 1500 yok yok 1000 verdi Mehmet de geldi yokl
-    Ana asistan…
-  Sağlayıcı: gemini · model gemini-3.1-flash-lite
-  ✓ yarın sabah dokuzda antrenman koy — 1.8 sn
-  ✓ Ali'ye yarın 10'da tekne bakımı olduğunu yaz ve takvime ekle — 5.0 sn
-  ✓ Ali'ye söyle yarın erken gelsin — 1.9 sn
-  ✓ geciken bir şey var mı — 1.3 sn
-  ✓ bu görevi tamamla — 1.5 sn
-  ✓ yarın değil cuma 10'da antrenman ekle — 1.8 sn
-  ✓ Ali'ye yaz yok yok Pınar'a yaz yarın erken gelsin — 1.0 sn
-  ✓ bölge yarışını pazara ertele yok ertelemeyelim kalsın — 1.2 sn
-  ✓ onu 11'e al — 1.3 sn
-  ✓ Ali Kük'e tekneleri yıkamasını söyle — 1.2 sn
-  ✓ motor yağı görevi bitti mi — 2.4 sn
-  ✓ şimdi şöyle bir şey diyecektim hani geçen hafta konuşmuştuk ya cumartesi sabah dokuzda bir tekne bakımı yapalım dedik onu bir takvime koy — 3.0 sn
-    16 yapay zeka isteği gönderildi (küçük örnek; tam set: npm run test:hepsi -- --yz-tam)
-  (Geliştirme önbelleği .next/dev silindi; sonraki npm run dev ilk açılışta biraz yavaş derler.)
 
 ======================================================================
-SONUÇ: 1237/1239 geçti · 2 kalan · 134 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -141,17 +120,8 @@ SONUÇ: 1237/1239 geçti · 2 kalan · 134 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 19/19
   ✓ Giriş ekranı: 2/2
 
-4. GERÇEK YAPAY ZEKA: 14/16
-  ✗ Görev listesi (gerçek yapay zeka): 2/4
-      ✗ “Atatürk Kupası yarışı oluru afişini hazirla ve bugün İlay antrenmana katıldı. onu yoklamaya ekle”
-          beklenen: yarış + Instagram gönderisi + yoklama
-          olan:     attendance: “yoklama: bugün İlay geldi” | post: “Atatürk Kupası için Instagram gönderisi hazırla” · 1.7 sn
-      ✗ “Enes aidatını nakit verdi 1500 yok yok 1000 verdi Mehmet de geldi yoklamaya ekle”
-          beklenen: nakit ödeme / bağış + yoklama
-          olan:     HATA: 502 Görev listesi çıkarılamadı. · 16.1 sn
-  ✓ Ana asistan: Yapay zeka: 4/4
-  ✓ Ana asistan: Yapay zeka · kayıt bağlamı: 1/1
-  ✓ Ana asistan: insan davranışı: 7/7
+4. GERÇEK YAPAY ZEKA: 0/0
+  – Gerçek yapay zeka: ATLANDI (--yzsiz)
 
 Okuma: ✓ geçti, ✗ kalan (hata var), – atlandı. “beklenen” asistanın yapması gereken, “olan” şu an yaptığı.
 “yapay zeka (plan/görev/not/mesaj/soru)”: cümle ana yapay zekaya gidiyor; plan, görev, not, mesaj ve sorular için doğru yer budur.

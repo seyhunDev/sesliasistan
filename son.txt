@@ -1,8 +1,8 @@
-Commit: 3b65f15 · Ana sayfa: üstte hafta şeridi ve Sırada listesi, sade notlar (#386)
-Zaman: 2026-10-14-0332 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38490594454
+Commit: 94a36de · Ana sayfa: Aidat ve Hesaplar kartlarına ok, aidat yüzdesi büyük (#387)
+Zaman: 2026-10-14-0340 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38491319907
 
-TAM TEST · 14.10.2026 03:31:05
+TAM TEST · 14.10.2026 03:38:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
