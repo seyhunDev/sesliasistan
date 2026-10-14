@@ -1,7 +1,7 @@
 "use client";
 
 // Yarış sonuç belgesi: PDF ya da fotoğraf yapay zekayla okunur (/api/race-results), bizim sporcular bulunur,
-// kategori ve kızlar sırası hesaplanır (lib/resultSheet.js). Belgenin kendisi talimat gibi parçalı saklanır (noticeFile.js).
+// kategori ve kızlar sırası hesaplanır (lib/resultSheet.js). Belgenin kendisi talimat gibi saklanır (noticeFile.js: Storage, olmazsa Firestore'da parçalı).
 import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { cleanSheet } from "@/lib/resultSheet";

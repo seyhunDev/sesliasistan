@@ -8,9 +8,10 @@
 //            owner "club" | "private", ownerName (özel teknenin sahibi), parent (bağlı olduğu teknenin id'si: salma, dümen, direk…),
 //            extra [{ k, v }] (serbest ek bilgiler: "Dümen: Hidrolik", "Motor gücü: 50 HP"),
 //            service [{ id, date, kind yaz|kis|periyodik|ariza|diger, what, cost, by }] (bakım kayıtları, en yenisi önde),
-//            assignee, price, checkAt, note, files [{ id, name, type, size, parts, label, at }] (belge/fotoğraf künyeleri, invFiles.js), updatedAt }],
+//            assignee, price, checkAt, note, files [{ id, name, type, size, parts, path, url, label, at }] (belge/fotoğraf künyeleri, invFiles.js), updatedAt }],
 //   log [{ at, op add|remove|edit|delete, no, name, qty, text, by }]   hareketler, en yenisi önde
 // }
+import { storedOf } from "@/lib/storedFile";
 
 export const KINDS = [
   ["normal", "Normal", "box"],
@@ -148,7 +149,7 @@ export const serviceText = (e) => (e ? [e.date ? e.date.split("-").reverse().joi
 
 const cleanFile = (f) =>
   okId(f?.id)
-    ? { id: f.id, name: S(f.name, 120) || "dosya", type: f.type === "application/pdf" ? "application/pdf" : "image/jpeg", size: int(f.size, 50_000_000), parts: Math.max(1, int(f.parts, 60)), label: S(f.label, 30), at: date(f.at) }
+    ? { id: f.id, name: S(f.name, 120) || "dosya", type: f.type === "application/pdf" ? "application/pdf" : "image/jpeg", size: int(f.size, 50_000_000), parts: Math.max(1, int(f.parts, 60)), label: S(f.label, 30), at: date(f.at), ...storedOf(f) }
     : null;
 
 export function cleanItem(x = {}) {

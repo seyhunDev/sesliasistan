@@ -1,12 +1,13 @@
 "use client";
 
-// Envanterdeki belge ve fotoğraflar (kütük belgesi, ruhsat, fatura, ürün fotoğrafı): her cihazdan açılsın diye Firestore'da.
-// Firebase Storage kullanılmadı (yeni Storage alanı ücretli plan ister). Dosya 900 KB'lık parçalara bölünür:
-// orgs/{org}/invFiles/{id}/parts/{000..} { data: Bytes }; ana kayıt en son yazılır. Üründe yalnız künye durur:
-// files [{ id, name, type, size, parts, label, at }]. Parçalar yalnız dosya açılınca okunur, sonra bu cihazda (IndexedDB) kalır.
-// Fotoğraflar telefonda küçültülür (en çok 1600 px, ~200-400 KB). Kural değişikliği yok (ana hesap orgs altına yazabiliyor).
+// Envanterdeki belge ve fotoğraflar (kütük belgesi, ruhsat, fatura, ürün fotoğrafı): Firebase Storage'da
+// orgs/{org}/invFiles/{id} (lib/firebase/fileStore.js). Üründe künye durur: files [{ id, name, type, size, path, url, label, at }].
+// Yükleme olmazsa (internet, kural) eski yol: Firestore'da 900 KB'lık parçalar orgs/{org}/invFiles/{id}/parts/{000..}
+// (künyede parts; parçalı dosya açılınca bu cihazda saklanır). Eski dosyalar parçalı yoldan okunmaya devam eder.
+// Fotoğraflar telefonda küçültülür (en çok 1600 px, ~200-400 KB).
 import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/raceFiles";
@@ -37,8 +38,14 @@ export async function prepFile(file) {
   return { blob: new Blob([bytes], { type: "image/jpeg" }), name, type: "image/jpeg", base64: img.base64, label: "Fotoğraf" };
 }
 
-// Dosyayı parçalar halinde yazar; künyeyi döndürür (ürünün files listesine)
+// Dosyayı Storage'a yükler (olmazsa parçalar halinde Firestore'a); künyeyi döndürür (ürünün files listesine)
 export async function saveInvFile(orgId, f) {
+  try {
+    const s = await putStored(orgId, "invFiles", f.blob, f.type);
+    return { id: s.id, name: String(f.name || "dosya").slice(0, 120), type: f.type, size: s.size, path: s.path, url: s.url, label: f.label || "", at: todayStr() };
+  } catch (e) {
+    console.warn("[invFiles] Storage'a yüklenemedi, Firestore'a yazılıyor", e?.code || e);
+  }
   const bytes = new Uint8Array(await f.blob.arrayBuffer());
   const ref = doc(col(orgId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -53,8 +60,9 @@ export async function saveInvFile(orgId, f) {
   return meta;
 }
 
-// Dosyayı getirir: önce bu cihazdan, yoksa Firestore'dan (parça sayısı kadar okuma)
+// Dosyayı getirir: Storage'dakini indirir; eskisini önce bu cihazdan, yoksa Firestore'dan (parça sayısı kadar okuma)
 export async function loadInvFile(orgId, meta) {
+  if (meta.path) return getStored(meta, meta.type);
   const hit = await getRaceFile(cacheKey(meta.id));
   if (hit?.blob) return hit.blob;
   const snap = await getDocs(collection(db, "orgs", orgId, "invFiles", meta.id, "parts"));
@@ -78,6 +86,7 @@ export async function openInvFile(orgId, meta) {
 // Siler (ürün ya da dosya silinince); hata sessiz
 export async function dropInvFile(orgId, meta) {
   if (!meta?.id) return;
+  if (meta.path) return dropStored(meta.path);
   try {
     const ref = doc(col(orgId), meta.id);
     const batch = writeBatch(db);

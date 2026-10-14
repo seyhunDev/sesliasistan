@@ -2,9 +2,11 @@
 
 // Faturalar: Firestore okuma/yazma (mantık src/lib/invoices.js). Yalnız ana hesap (kural değişikliği yok: ana hesap orgs
 // altındaki her koleksiyona yazabiliyor). Liste tek okumada gelir ve 3 dakika bellekte kalır.
-// Dosya (PDF/fotoğraf) parçalı: orgs/{org}/invoiceFiles/{id}/parts/{000..}; yalnız açılınca okunur, sonra cihazda kalır.
+// Dosya (PDF/fotoğraf) Firebase Storage'da orgs/{org}/invoiceFiles/{id} (künyede path, url; lib/firebase/fileStore.js).
+// Yükleme olmazsa ve eski faturalarda parçalı: orgs/{org}/invoiceFiles/{id}/parts/{000..}; açılınca cihazda saklanır.
 import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { authFetch, jsonOf } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { peopleFor } from "@/lib/people";
@@ -54,6 +56,12 @@ export async function readInvoice(prepared) {
 }
 
 async function saveFile(orgId, f) {
+  try {
+    const s = await putStored(orgId, "invoiceFiles", f.blob, f.type);
+    return { id: s.id, name: String(f.name || "fatura").slice(0, 120), type: f.type, size: s.size, path: s.path, url: s.url, at: todayStr() };
+  } catch (e) {
+    console.warn("[invoice] Storage'a yüklenemedi, Firestore'a yazılıyor", e?.code || e);
+  }
   const bytes = new Uint8Array(await f.blob.arrayBuffer());
   const ref = doc(fileCol(orgId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -69,6 +77,7 @@ async function saveFile(orgId, f) {
 }
 
 async function loadFile(orgId, meta) {
+  if (meta.path) return getStored(meta, meta.type);
   const hit = await getRaceFile(cacheKey(meta.id));
   if (hit?.blob) return hit.blob;
   const snap = await getDocs(collection(db, "orgs", orgId, "invoiceFiles", meta.id, "parts"));
@@ -100,6 +109,7 @@ export async function shareInvoiceFile(orgId, meta) {
 
 async function dropFile(orgId, meta) {
   if (!meta?.id) return;
+  if (meta.path) return dropStored(meta.path);
   try {
     const ref = doc(fileCol(orgId), meta.id);
     const batch = writeBatch(db);
