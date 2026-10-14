@@ -1,7 +1,7 @@
 // Faturalar (saf fonksiyonlar; sayfa, asistan, sunucu ve zamanlanmış görev ortak kullanır, test edilir).
 // Kayıt: orgs/{org}/invoices/{id} = { seller, taxId, no, date, due, amount, currency, iban, desc, note,
 //   status "open"|"paid", paidAt (YYYY-MM-DD), paidVia "bank"|"hand"|"task"|"cash" (cash: kasadan çıkış yazılır), paidMov { date, desc, amount },
-//   taskId, file { id, name, type, size, parts, at }, createdAt, createdBy }
+//   taskId, file { id, name, type, size, parts, at, path, url }, createdAt, createdBy }
 // Dosya (PDF/fotoğraf) parçalı: orgs/{org}/invoiceFiles/{id}/parts/{000..} (envanter belgeleri gibi).
 // Sunucu için açık faturaların kısa listesi tek belgede: orgs/{org}/invoiceIndex/open = { list [openRow], at }
 // (banka maili gelince tek okuma; sorgu yok). Sayfa her değişiklikte yeniden yazar.

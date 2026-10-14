@@ -1,12 +1,13 @@
 "use client";
 
-// Yarış talimatının kendisi: her cihazdan açılsın diye PDF olarak Firestore'da saklanır.
-// Fotoğraf ve yapıştırılan metin de PDF'e çevrilir. Belge 1 MB sınırına takılmasın diye dosya parçalara bölünür:
-// orgs/{org}/noticeFiles/{id}/parts/{000..} { data: Bytes }; ana kayıt en son yazılır. Yarışta yalnız künye durur:
-// noticeFile { id, name, size, parts, at }. Parçalar yalnız talimat açılınca okunur, sonra bu cihazda (IndexedDB) saklanır.
-// Kural değişikliği yok: ana hesap orgs altındaki her koleksiyona yazabiliyor (yarışlar gibi).
+// Yarış talimatının ve sonuç belgesinin kendisi: her cihazdan açılsın diye PDF olarak Firebase Storage'da
+// orgs/{org}/noticeFiles/{id} (lib/firebase/fileStore.js). Fotoğraf ve yapıştırılan metin de PDF'e çevrilir.
+// Yarışta künye durur: noticeFile { id, name, size, path, url, at } (sonuçlarda results.files).
+// Yükleme olmazsa eski yol: Firestore'da parçalar orgs/{org}/noticeFiles/{id}/parts/{000..} (künyede parts;
+// açılınca bu cihazda saklanır). Eski talimatlar parçalı yoldan okunmaya devam eder.
 import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
+import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "./raceFiles";
@@ -78,8 +79,14 @@ function textPages(pdf, font, text) {
   }
 }
 
-// Dosyayı parçalar halinde yazar; künyeyi döndürür (yarışın noticeFile alanına)
+// Dosyayı Storage'a yükler (olmazsa parçalar halinde Firestore'a); künyeyi döndürür (yarışın noticeFile alanına)
 export async function saveNoticeFile(orgId, blob, name) {
+  try {
+    const s = await putStored(orgId, "noticeFiles", blob, "application/pdf");
+    return { id: s.id, name: String(name || "talimat.pdf").slice(0, 120), size: s.size, path: s.path, url: s.url, at: todayStr() };
+  } catch (e) {
+    console.warn("[noticeFile] Storage'a yüklenemedi, Firestore'a yazılıyor", e?.code || e);
+  }
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const ref = doc(col(orgId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -97,6 +104,7 @@ export async function saveNoticeFile(orgId, blob, name) {
 // Talimatı getirir: önce bu cihazdan, yoksa Firestore'dan (parça sayısı kadar okuma)
 export async function loadNoticeFile(orgId, meta) {
   const name = meta.name || "talimat.pdf";
+  if (meta.path) return new File([await getStored(meta, "application/pdf")], name, { type: "application/pdf" });
   const hit = await getRaceFile(cacheKey(meta.id));
   if (hit?.blob) return new File([hit.blob], name, { type: "application/pdf" });
   const snap = await getDocs(collection(db, "orgs", orgId, "noticeFiles", meta.id, "parts"));
@@ -110,6 +118,7 @@ export async function loadNoticeFile(orgId, meta) {
 // Eski dosyayı siler (yenisi yüklenince ya da yarış silinince); hata sessiz
 export async function dropNoticeFile(orgId, meta) {
   if (!meta?.id) return;
+  if (meta.path) return dropStored(meta.path);
   try {
     const ref = doc(col(orgId), meta.id);
     const batch = writeBatch(db);

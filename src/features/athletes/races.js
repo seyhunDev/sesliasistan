@@ -9,6 +9,7 @@ import { cleanBudget, cleanRooms } from "./budget";
 import { rememberRaceNames } from "./raceNames";
 import { cleanAround } from "./raceAround";
 import { cleanWeather } from "./raceWeather";
+import { storedOf } from "@/lib/storedFile";
 
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
 // T.C., veli gibi kişisel bilgiler kopyalanmaz, belge üretilirken sporcu kartından okunur.
@@ -95,7 +96,7 @@ export function mergeHotels(own, incoming) {
 
 export const cleanNoticeFile = (f) =>
   f && typeof f === "object" && /^[\w-]{1,40}$/.test(f.id || "")
-    ? { id: f.id, name: String(f.name || "talimat.pdf").slice(0, 120), size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: String(f.at || "") }
+    ? { id: f.id, name: String(f.name || "talimat.pdf").slice(0, 120), size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: String(f.at || ""), ...storedOf(f) }
     : null;
 
 // Elle eklenen evrakın künyesi (dosya Storage'da); en çok 40, yalnız Firebase Storage adresi

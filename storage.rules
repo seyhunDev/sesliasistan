@@ -5,6 +5,7 @@ rules_version = '2';
 // raceFiles: yarışa eklenen evrak (src/features/athletes/raceStore.js); yalnız ana hesap.
 // receiptImages: fiş fotoğrafı (src/features/receipts/receiptPhoto.js); ana hesap hepsini, çalışan kendi eklediğini.
 // postPhotos: Instagram gönderisinin fotoğrafı (src/features/posts/posts.js); yalnız ana hesap.
+// invFiles, invoiceFiles, noticeFiles: envanter belgeleri, faturalar, yarış talimatı ve sonuç belgeleri (src/lib/firebase/fileStore.js); yalnız ana hesap.
 service firebase.storage {
   match /b/{bucket}/o {
     function me() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
@@ -43,6 +44,13 @@ service firebase.storage {
       allow create, update: if isOwner(orgId)
                             && request.resource.size < 10 * 1024 * 1024
                             && request.resource.contentType.matches('image/.*');
+    }
+
+    match /orgs/{orgId}/{kind}/{id} {
+      allow read, delete: if isOwner(orgId) && kind in ['invFiles', 'invoiceFiles', 'noticeFiles'];
+      allow create, update: if isOwner(orgId) && kind in ['invFiles', 'invoiceFiles', 'noticeFiles']
+                            && request.resource.size < 20 * 1024 * 1024
+                            && request.resource.contentType.matches('(image|application)/.*');
     }
 
     match /{all=**} {

@@ -1,9 +1,10 @@
 // Yarış sonuçları: yarışın results alanı { fleet: tekne sayısı, rows: { sporcuId: { place, note, … } }, files: [künye] }.
 // Satırda sonuç belgesinden gelenler de durur (resultSheet.js): cls sınıf, cat kategori (Senior/Junior/Bambino),
 // place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
-// files: yüklenen sonuç PDF'leri { id, name, size, parts, at } (noticeFile.js ile parçalı saklanır).
+// files: yüklenen sonuç PDF'leri { id, name, size, parts, at, path, url } (noticeFile.js; yeniler Storage'da, eskiler Firestore'da parçalı).
 // Sporcu kartında yarış geçmişi ve Instagram "sonuç" gönderisi buradan beslenir (saf fonksiyonlar, test edilir).
 import { resultLine } from "./resultSheet";
+import { storedOf } from "./storedFile";
 const int = (v, max) => {
   const n = Math.round(Number(String(v ?? "").replace(/[^\d]/g, "")));
   return Number.isFinite(n) && n > 0 && n <= max ? n : "";
@@ -30,7 +31,7 @@ export function cleanResults(v) {
   const files = (Array.isArray(v.files) ? v.files : [])
     .filter((f) => /^[\w-]{1,40}$/.test(f?.id || ""))
     .slice(0, 8)
-    .map((f) => ({ id: f.id, name: S(f.name, 120) || "sonuç.pdf", size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: S(f.at, 10) }));
+    .map((f) => ({ id: f.id, name: S(f.name, 120) || "sonuç.pdf", size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: S(f.at, 10), ...storedOf(f) }));
   if (!Object.keys(rows).length && !fleet && !files.length) return null;
   return files.length ? { fleet, rows, files } : { fleet, rows };
 }
