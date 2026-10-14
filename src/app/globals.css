@@ -283,11 +283,12 @@ select {
    konuşuyor); önde sohbet ve görev listesi, en altta aynı konuşma kutusu. iPhone'da takılmasın diye yalnız transform ve
    opacity hareket eder; bulanıklık (filter/backdrop-filter) yok, bulutlar hazır radyal geçiş. Açık ve koyu görünümde kendi tonları. */
 @property --ab-c { syntax: "<color>"; inherits: true; initial-value: #3fb592; }
-.afull { --ab-base1: #eef3f1; --ab-base2: #f7f5f0; --ab-b1: rgba(47, 160, 128, .30); --ab-b2: rgba(76, 140, 230, .22); --ab-b3: rgba(146, 112, 232, .17);
-  --ab-dot: rgba(31, 90, 75, .16); --ab-c: #3fb592; --ab-glow: .5; --ab-panel: color-mix(in srgb, var(--card) 88%, transparent);
+.afull { color-scheme: dark; color: var(--fg);
+  --bg: #121416; --card: #1c1f22; --fg: #e7e6e2; --mut: #9a9ea4; --line: #2e3236; --acc: #3b9680; --acc2: #3b9680; --rec: #e0675e;
+  --ok: #55a374; --fg2: #b3b4b1; --accbg: #22302c; --warn: #d0a25e; --warnbg: #2e281f;
+  --ab-base1: #070b0d; --ab-base2: #0e1519; --ab-b1: rgba(40, 170, 135, .32); --ab-b2: rgba(60, 120, 230, .26); --ab-b3: rgba(150, 100, 240, .20);
+  --ab-dot: rgba(160, 230, 210, .14); --ab-c: #3fb592; --ab-glow: .62; --ab-panel: rgba(28, 31, 34, .82);
   transition: --ab-c .6s ease; }
-html[data-theme="dark"] .afull { --ab-base1: #0a0e10; --ab-base2: #10161a; --ab-b1: rgba(40, 170, 135, .30); --ab-b2: rgba(60, 120, 230, .26); --ab-b3: rgba(150, 100, 240, .20);
-  --ab-dot: rgba(160, 230, 210, .13); --ab-glow: .62; --ab-panel: color-mix(in srgb, var(--card) 84%, transparent); }
 .afull[data-state="listening"] { --ab-c: #f26f60; }
 .afull[data-state="busy"] { --ab-c: #f1a93a; }
 .afull[data-state="speaking"] { --ab-c: #4ea4f0; }
@@ -320,7 +321,7 @@ html[data-theme="dark"] .afull { --ab-base1: #0a0e10; --ab-base2: #10161a; --ab-
 @keyframes abspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .abg i { animation: none !important; } }
 /* Önde: görev listesi ve kartlar hafif saydam panel (bulanıklık yok: arkadaki hareket her karede yeniden bulanıklaştırılmasın) */
-.afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line), 0 10px 30px -18px rgba(10, 40, 32, .35); }
+.afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .07), 0 12px 32px -16px rgba(0, 0, 0, .7); }
 .afull .asheet { background: transparent; box-shadow: none; }
 .afull .asheet::after { display: none; }
 .afull .asheet-input { background: var(--ab-panel); }

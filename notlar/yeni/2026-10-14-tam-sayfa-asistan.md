@@ -11,3 +11,5 @@
 ## Tasarım
 
 - Asistan açıkken tam sayfa: hareketli arka plan (renk bulutları + durum halkası), önünde konuşma ve görevler; alt konuşma kutusu aynı (2026-10-14).
+
+- Seyhun onayladı ("tek koyu tasarım olsun"): tam sayfa asistan, uygulama açık görünümde olsa da her zaman koyu (`.afull` içinde koyu renk değişkenleri, sarmalayıcıda `data-theme="dark"`).

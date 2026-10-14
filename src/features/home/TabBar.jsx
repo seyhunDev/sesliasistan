@@ -527,8 +527,9 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
           yalnız ses düğmesinin renginden anlaşılır (yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor). */}
       <div ref={inner} className={`absolute inset-x-0 bottom-0 ${active ? "h-[var(--vvh,100dvh)]" : ""}`}>
         {sheet ? (
-          // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu
-          <div data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? "afull afull-in relative flex h-full flex-col" : "contents"}>
+          // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
+          // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? "afull afull-in relative flex h-full flex-col" : "contents"}>
           {active && <AssistBg />}
           <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
