@@ -650,9 +650,90 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     r.planAdded
       ? { icon: "check", label: "Planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Yarış planlarda") }
       : { icon: "cal", label: "Planlara ekle", onClick: toPlan },
-    dueOpen > 0 && (r.notice?.planned ? { icon: "check", label: "Tarihler planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Son tarihler planlarda") } : { icon: "clock", label: "Son tarihler", onClick: noticePlan }),
     start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: toPost },
   ].filter(Boolean);
+  // Özet: Evrak gibi gruplu tek liste. Her grubun başında durumu (dokununca o sekme), altında o konunun işleri
+  const allTasks = [...steps, ...doneList.map((s) => ({ ...s, done: true }))].filter((s) => s.key !== "docs");
+  const tasksOf = (gr) => allTasks.filter((s) => s.group === gr);
+  const statOf = (to) => stat.find((x) => x[0] === to);
+  const groups = [
+    { id: "notice", label: "KAYIT · TALİMAT", tasks: tasksOf("notice") },
+    { id: "people", label: "SPORCU", head: statOf("people"), tasks: [] },
+    { id: "docs", label: "EVRAK", head: statOf("docs"), tasks: tasksOf("docs") },
+    { id: "trip", label: "YOLCULUK", head: statOf("trip"), tasks: tasksOf("abroad") },
+    { id: "budget", label: "BÜTÇE", head: statOf("budget"), tasks: [] },
+    { id: "own", label: "DİĞER İŞLER", tasks: tasksOf("own") },
+  ].filter((g) => g.head || g.tasks.length || g.id === "own" || (g.id === "notice" && dueOpen > 0));
+  const headRow = ([to, icon, title, sub, done, ask]) => {
+    const now = to === nextStep;
+    return (
+      <li key={`h-${to}`}>
+        <button type="button" onClick={() => setTab(to)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${now ? "bg-acc/[.07]" : ""}`}>
+          <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-ok/15 text-ok" : now ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+            <Icon name={done ? "check" : icon} className="size-[1.125rem]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[0.9375rem] font-semibold">{done ? sub : now ? ask : title}</b>
+            {!done && <span className={`block truncate text-[0.8125rem] ${now ? "text-acc" : "text-mut"}`}>{sub}</span>}
+          </span>
+          <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+        </button>
+      </li>
+    );
+  };
+  const taskRow = (s) => {
+    const left = s.date ? daysTo(s.date) : null;
+    return (
+      <li key={s.key} className="flex items-center gap-1 pl-1">
+        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
+          <span className="size-[1.375rem] rounded-full border-2 border-line" />
+        </button>
+        <span className="min-w-0 flex-1 py-3">
+          <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
+          {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
+        </span>
+        {left !== null && (
+          <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+            {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
+          </span>
+        )}
+        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut">
+          <Icon name="x" className="size-4" />
+        </button>
+      </li>
+    );
+  };
+  const doneRow = (s) => (
+    <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
+      <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
+        <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
+          <Icon name="check" className="size-3.5" />
+        </span>
+      </button>
+      <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut line-through decoration-mut/40">{s.label}</span>
+    </li>
+  );
+  const addRow = (
+    <li key="add" className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
+      <Icon name="plus" className="size-5 shrink-0 text-acc" />
+      <input
+        value={todo}
+        onChange={(e) => setTodo(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && addTodo()}
+        placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
+        className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
+      />
+      {todo.trim() && (
+        <span className="flex w-full items-center gap-2 pb-1 pl-7">
+          <span className="text-[0.8125rem] text-mut">Son tarih</span>
+          <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
+          <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+            Ekle
+          </button>
+        </span>
+      )}
+    </li>
+  );
   const actCls = "flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition active:scale-95 active:bg-bg";
   const actBody = (a) => (
     <>
@@ -817,82 +898,32 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
           {!over && (
             <>
-          <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>HAZIRLIK</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {stat.map(([to, icon, title, sub, done, ask]) => {
-              const now = to === nextStep;
-              return (
-                <li key={to}>
-                  <button type="button" onClick={() => setTab(to)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${now ? "bg-acc/[.07]" : ""}`}>
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-ok/15 text-ok" : now ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-                      <Icon name={done ? "check" : icon} className="size-[1.125rem]" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${done ? "text-mut" : ""}`}>{now ? ask : title}</b>
-                      <span className={`block truncate text-[0.8125rem] ${now ? "text-acc" : "text-mut"}`}>{now ? `Sıradaki · ${sub}` : sub}</span>
-                    </span>
-                    <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <Label right={steps.length || doneList.length ? `${steps.length} iş${doneList.length ? ` · ${doneList.length} yapıldı` : ""}` : ""}>YAPILACAKLAR</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {steps.map((s) => {
-              const left = s.date ? daysTo(s.date) : null;
-              return (
-                <li key={s.key} className="flex items-center gap-1 pl-1">
-                  <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
-                    <span className="size-[1.375rem] rounded-full border-2 border-line" />
-                  </button>
-                  <span className="min-w-0 flex-1 py-3">
-                    <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
-                    {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
-                  </span>
-                  {left !== null && (
-                    <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
-                      {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
-                    </span>
+          {groups.map((g) => {
+            const open = g.tasks.filter((t) => !t.done);
+            const right = g.tasks.length ? `${g.tasks.length - open.length}/${g.tasks.length}` : g.head ? (g.head[4] ? "tamam" : "eksik") : "";
+            return (
+              <div key={g.id}>
+                <Label right={right}>{g.label}</Label>
+                <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                  {g.head && headRow(g.head)}
+                  {open.map(taskRow)}
+                  {g.tasks.filter((t) => t.done).map(doneRow)}
+                  {g.id === "notice" && dueOpen > 0 && (
+                    <li>
+                      {r.notice?.planned ? (
+                        <span className="block py-3 pl-14 pr-4 text-[0.8125rem] font-semibold text-ok">Son tarihler planlarda</span>
+                      ) : (
+                        <button type="button" onClick={noticePlan} className="block w-full py-3 pl-14 pr-4 text-left text-[0.8125rem] font-semibold text-acc">
+                          Son tarihleri planlara ekle ›
+                        </button>
+                      )}
+                    </li>
                   )}
-                  <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut">
-                    <Icon name="x" className="size-4" />
-                  </button>
-                </li>
-              );
-            })}
-            {doneList.map((s) => (
-              <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
-                <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
-                  <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
-                    <Icon name="check" className="size-3.5" />
-                  </span>
-                </button>
-                <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut line-through decoration-mut/40">{s.label}</span>
-                <span className="shrink-0 rounded-lg bg-ok/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-ok">Yapıldı</span>
-              </li>
-            ))}
-            <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
-              <Icon name="plus" className="size-5 shrink-0 text-acc" />
-              <input
-                value={todo}
-                onChange={(e) => setTodo(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTodo()}
-                placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
-                className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
-              />
-              {todo.trim() && (
-                <span className="flex w-full items-center gap-2 pb-1 pl-7">
-                  <span className="text-[0.8125rem] text-mut">Son tarih</span>
-                  <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
-                  <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
-                    Ekle
-                  </button>
-                </span>
-              )}
-            </li>
-          </ul>
+                  {g.id === "own" && addRow}
+                </ul>
+              </div>
+            );
+          })}
           {hidden > 0 && (
             <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
               Çıkarılanları geri getir ({hidden})
