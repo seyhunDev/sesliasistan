@@ -211,6 +211,25 @@ export function peopleLines(athletes = []) {
   return cleanPeople(`${athletes.length} sporcumuz yarışta\n${athletes.map((a) => first(a.name)).join(", ")}`);
 }
 
+// Görselde açılıp kapatılabilen yazılar (başlık noHead, logo noBrand, yer-tarih meta ile)
+export const HIDE_KEYS = ["sub", "people", "wish", "tag"];
+// Yazı rengi seçenekleri: [anahtar, ad, renk]; "" standart
+export const INKS = [
+  ["", "Standart", ""],
+  ["white", "Beyaz", "#ffffff"],
+  ["yellow", "Sarı", "#f6c445"],
+  ["mint", "Yeşil", "#9ad7ae"],
+  ["orange", "Turuncu", "#f4a261"],
+  ["sky", "Mavi", "#9fd0f2"],
+  ["navy", "Lacivert", "#0b1f3f"],
+];
+export const inkOf = (k) => (INKS.find(([x]) => x === k) || INKS[0])[2];
+function cleanInk(v) {
+  const out = {};
+  for (const k of ["head", "sub", "meta", "wish"]) if (v && INKS.some(([x]) => x && x === v[k])) out[k] = v[k];
+  return out;
+}
+
 export function cleanPost(p = {}) {
   const thumb = typeof p.thumb === "string" && p.thumb.startsWith("data:image/") && p.thumb.length < 60_000 ? p.thumb : "";
   return {
@@ -226,6 +245,11 @@ export function cleanPost(p = {}) {
     noBrand: !!p.noBrand,
     headSize: Math.max(60, Math.min(150, Math.round(Number(p.headSize) / 5) * 5 || 100)),
     subSize: Math.max(80, Math.min(150, Math.round(Number(p.subSize) / 5) * 5 || 100)),
+    wishSize: Math.max(80, Math.min(150, Math.round(Number(p.wishSize) / 5) * 5 || 100)),
+    // Görselde gizlenen yazılar (yazısı saklı kalır); etiket varsayılan kapalı (Seyhun: "dursun ama boş olsun")
+    hide: Array.isArray(p.hide) ? HIDE_KEYS.filter((k) => p.hide.includes(k)) : ["tag"],
+    // Yazı renkleri: boş = standart (başlık, alt satır, yer-tarih beyaz; dilek vurgu rengi)
+    ink: cleanInk(p.ink),
     sub: S(p.sub, 200),
     people: cleanPeople(p.people),
     wish: S(p.wish, 60),
