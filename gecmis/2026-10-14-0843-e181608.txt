@@ -1,8 +1,8 @@
-Commit: 7f719e6 · Görev listesi: sunucu da sözü temizler, söylerken sayı düzeltmesi (#327)
-Zaman: 2026-10-12-1631 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38256090182
+Commit: e181608 · Merge pull request #389 from seyhunDev/claude/project-thread-g3bpd3
+Zaman: 2026-10-14-0843 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38518010614
 
-TAM TEST · 12.10.2026 16:30:12
+TAM TEST · 14.10.2026 08:42:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
