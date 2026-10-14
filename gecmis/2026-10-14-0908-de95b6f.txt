@@ -1,8 +1,8 @@
-Commit: a3ab228 · Numaralı işin alanları doğrudan işe: yoklama ve yarış ikinci kez yapay zekaya sormaz (#330)
-Zaman: 2026-10-12-1744 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38264886873
+Commit: de95b6f · Merge pull request #392 from seyhunDev/claude/project-thread-qa63p0
+Zaman: 2026-10-14-0908 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38520318584
 
-TAM TEST · 12.10.2026 17:43:01
+TAM TEST · 14.10.2026 09:07:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 84 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
