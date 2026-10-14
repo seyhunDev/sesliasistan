@@ -43,7 +43,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             plans={plans}
             onToggle={toggleTask}
             onOpen={(kind, id) => {
-              if (!embedded) park();
+              finish(true); // tam sayfa asistan kaydı örtmesin
               openAdd({ edit: { kind, id } });
             }}
           />
@@ -125,7 +125,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {/* Görev listesi (tek cümlede birden çok iş): yalnız işlerin adı ve sonucu; ara adımlar (sporcular yükleniyor…) görünmez.
             Biten iş soluk ve işaretli, süren iş parlıyor, sıradakiler silik (Seyhun, 2026-10-09) */}
         {plan.length > 0 && (
-          <ol className="fade-in mt-3 space-y-1.5 text-[0.9375rem]" aria-label="Görev listesi">
+          <ol className="apanel fade-in mt-3 space-y-2 rounded-2xl px-3.5 py-3 text-[0.9375rem]" aria-label="Görev listesi">
             {plan.map((x, i) => (
               <li key={i} className={`flex items-center gap-2 ${x.st === "run" ? "font-medium" : x.st === "done" ? "text-mut" : x.st === "fail" ? "text-rec" : x.st === "skip" ? "text-mut/60 line-through" : "text-mut/50"}`}>
                 <span className="grid size-4 shrink-0 place-items-center">
@@ -191,7 +191,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                   <Icon name="check" className="size-4" /> Kaydet
                 </button>
               )}
-              <button type="button" onClick={() => (!embedded && park(), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
+              <button type="button" onClick={() => (finish(true), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
                 Yoklamayı aç
               </button>
             </div>
@@ -220,7 +220,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               setTurns((p) => [...p, { role: "user", text: "Genel plan yap", chip: true }]);
               runEvent(text, false, true);
             }}
-            onOpen={() => (!embedded && park(), router.push(`/events/${cards.event.id}`))}
+            onOpen={() => (finish(true), router.push(`/events/${cards.event.id}`))}
             onDelete={() => eventDelete(cards.event)}
           />
         )}
@@ -229,7 +229,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         {cards.inv && (
           <InvCard
             v={cards.inv}
-            onOpen={() => (!embedded && park(), router.push(`/inventory/${cards.inv.id}`))}
+            onOpen={() => (finish(true), router.push(`/inventory/${cards.inv.id}`))}
             onDelete={() => invFlow.current && (setTurns((p) => [...p, { role: "user", text: "Sil", chip: true }]), invDelete(invFlow.current))}
             onKeep={() => {
               invFlow.current = null;

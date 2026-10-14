@@ -104,6 +104,14 @@ export function leave(ctx, message, viaVoice) {
   reply(message, { engine: "local" }, viaVoice);
 }
 
+// Tam sayfa asistan sayfayı örter: açıkça istenen sayfa açılınca asistan kapanır, sayfa görünür. Görev listesi ya da
+// sıradaki iş sürerken kapanmaz; sayfalar arkada değişir, sonuçtaki düğmelerle gidilir (Seyhun, 2026-10-14)
+export function showPage(ctx) {
+  const { chain, finish, planOn, queue } = ctx;
+  if (planOn.current || chain.current.length || queue.current.length) return;
+  setTimeout(() => finish(true), 700);
+}
+
 // Yapay zeka hatası: görev listesi sürüyorsa iş ✗ sayılır ve liste kalan işlerle sürer (önceden liste donuyordu;
 // denetim B5), değilse hata kutusu çıkar
 export function failNow(ctx, message, viaVoice) {

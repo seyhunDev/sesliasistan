@@ -78,12 +78,13 @@ export function nextStep(ctx, viaVoice, lead, msg = "") {
 }
 
 export function go(ctx, page, message, viaVoice = false) {
-  const { canOpen, leave, reply, router } = ctx;
+  const { canOpen, leave, reply, router, showPage } = ctx;
   if (!PAGES[page]) return reply("O sayfayı bulamadım.", { engine: "local" }, viaVoice);
   if (!canOpen(page)) return reply(`${PAGES[page].label} sayfası senin hesabında açık değil.`, { engine: "local" }, viaVoice);
   navigator.vibrate?.(8);
   router.push(PAGES[page].path);
   leave(message || `${PAGES[page].label} sayfasını açtım.`, viaVoice);
+  showPage();
 }
 
 // Görev listesini başlat: işler sırayla, her biri kendi akışında; listede yalnız işlerin adı ve sonucu görünür

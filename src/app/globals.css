@@ -277,6 +277,56 @@ select {
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
 .asheet-on { box-shadow: inset 0 0 0 1.5px rgba(224, 88, 75, .55); }
 .asheet .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .3); }
+/* TAM SAYFA ASİSTAN (Seyhun: "asistan tam sayfa açılsın; arka planda güzel animasyonlu bir şey, önünde görevler, yazılar net;
+   futuristik, profesyonel, modern", 2026-10-14). Asistan açıkken kubbe ekranın tamamı: arkada yavaş akan renk bulutları,
+   ince nokta ızgara ve duruma göre renk alan çekirdek ışık (yeşil bekliyor, mercan dinliyor, kehribar çalışıyor, mavi
+   konuşuyor); önde sohbet ve görev listesi, en altta aynı konuşma kutusu. iPhone'da takılmasın diye yalnız transform ve
+   opacity hareket eder; bulanıklık (filter/backdrop-filter) yok, bulutlar hazır radyal geçiş. Açık ve koyu görünümde kendi tonları. */
+@property --ab-c { syntax: "<color>"; inherits: true; initial-value: #3fb592; }
+.afull { --ab-base1: #eef3f1; --ab-base2: #f7f5f0; --ab-b1: rgba(47, 160, 128, .30); --ab-b2: rgba(76, 140, 230, .22); --ab-b3: rgba(146, 112, 232, .17);
+  --ab-dot: rgba(31, 90, 75, .16); --ab-c: #3fb592; --ab-glow: .5; --ab-panel: color-mix(in srgb, var(--card) 88%, transparent);
+  transition: --ab-c .6s ease; }
+html[data-theme="dark"] .afull { --ab-base1: #0a0e10; --ab-base2: #10161a; --ab-b1: rgba(40, 170, 135, .30); --ab-b2: rgba(60, 120, 230, .26); --ab-b3: rgba(150, 100, 240, .20);
+  --ab-dot: rgba(160, 230, 210, .13); --ab-glow: .62; --ab-panel: color-mix(in srgb, var(--card) 84%, transparent); }
+.afull[data-state="listening"] { --ab-c: #f26f60; }
+.afull[data-state="busy"] { --ab-c: #f1a93a; }
+.afull[data-state="speaking"] { --ab-c: #4ea4f0; }
+.abg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: linear-gradient(170deg, var(--ab-base1), var(--ab-base2)); contain: strict; }
+.abg i { position: absolute; display: block; border-radius: 9999px; will-change: transform; }
+.abg .ab-b1 { width: 130vmax; height: 130vmax; left: -55vmax; top: -60vmax; background: radial-gradient(closest-side, var(--ab-b1), transparent); animation: abdrift1 26s ease-in-out infinite alternate; }
+.abg .ab-b2 { width: 120vmax; height: 120vmax; right: -60vmax; top: -10vmax; background: radial-gradient(closest-side, var(--ab-b2), transparent); animation: abdrift2 31s ease-in-out infinite alternate; }
+.abg .ab-b3 { width: 110vmax; height: 110vmax; left: -30vmax; bottom: -70vmax; background: radial-gradient(closest-side, var(--ab-b3), transparent); animation: abdrift3 37s ease-in-out infinite alternate; }
+/* Nokta ızgara: ortada belirgin, kenarlara doğru söner; çok yavaş kayar */
+.abg .ab-grid { inset: -24px; border-radius: 0; background: radial-gradient(circle, var(--ab-dot) 1px, transparent 1.4px) 0 0 / 24px 24px;
+  -webkit-mask: radial-gradient(ellipse 75% 55% at 50% 34%, #000, transparent 75%); mask: radial-gradient(ellipse 75% 55% at 50% 34%, #000, transparent 75%); animation: abgrid 18s linear infinite; }
+/* Çekirdek: ekranın üst üçte birinde duruma göre renk alan ışık + yavaş dönen ince halka. Konuşma dolunca söner (yazı net kalsın) */
+.abg .ab-core { left: 50%; top: 30%; width: 19rem; height: 19rem; margin: -9.5rem 0 0 -9.5rem; transition: opacity .8s ease; }
+.abg .ab-glow { inset: 0; background: radial-gradient(closest-side, color-mix(in srgb, var(--ab-c) 70%, transparent), transparent); opacity: var(--ab-glow);
+  transform: scale(calc(.9 + var(--lvl, 0) * .35)); transition: transform .12s ease-out; animation: abbreath 6s ease-in-out infinite; }
+.abg .ab-ring { inset: 18%; background: conic-gradient(from 0deg, transparent 0 62%, color-mix(in srgb, var(--ab-c) 85%, transparent) 88%, transparent 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1px)); mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1px));
+  opacity: .8; animation: abspin 14s linear infinite; }
+.abg .ab-ring2 { inset: 30%; animation-duration: 22s; animation-direction: reverse; opacity: .5; }
+.afull[data-state="busy"] .ab-ring { animation-duration: 2.6s; }
+.afull[data-state="busy"] .ab-ring2 { animation-duration: 4s; }
+.afull[data-state="listening"] .ab-glow { animation: none; }
+.afull[data-filled] .ab-core { opacity: .35; }
+.afull[data-filled] .ab-grid { opacity: .55; }
+@keyframes abdrift1 { to { transform: translate3d(18vmax, 22vmax, 0) scale(1.12); } }
+@keyframes abdrift2 { to { transform: translate3d(-22vmax, 16vmax, 0) scale(.92); } }
+@keyframes abdrift3 { to { transform: translate3d(20vmax, -18vmax, 0) scale(1.1); } }
+@keyframes abgrid { to { transform: translate3d(24px, 24px, 0); } }
+@keyframes abbreath { 50% { opacity: calc(var(--ab-glow) * .7); } }
+@keyframes abspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .abg i { animation: none !important; } }
+/* Önde: görev listesi ve kartlar hafif saydam panel (bulanıklık yok: arkadaki hareket her karede yeniden bulanıklaştırılmasın) */
+.afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line), 0 10px 30px -18px rgba(10, 40, 32, .35); }
+.afull .asheet { background: transparent; box-shadow: none; }
+.afull .asheet::after { display: none; }
+.afull .asheet-input { background: var(--ab-panel); }
+.afull [data-user-bubble] { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line); }
+@keyframes afullin { from { opacity: 0; transform: translate3d(0, 2.5rem, 0); } }
+.afull-in { animation: afullin .42s cubic-bezier(.22, .8, .24, 1) both; }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
    klavye için verilen transform'u ezmesin) */
 @keyframes domerise { from { transform: translateY(100%); } }

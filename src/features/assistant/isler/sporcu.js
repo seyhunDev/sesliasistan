@@ -7,7 +7,7 @@ import { isPronoun } from "@/lib/convoContext";
 import { linkMember, unlinkMembers } from "@/features/athletes/memberSync";
 
 export async function athleteOpenCmd(ctx, s, viaVoice) {
-  const { leave, park, racer, router } = ctx;
+  const { leave, park, racer, router, showPage } = ctx;
   // Sporcu kartı: "Ali Kaya'nın sporcu kartını aç"
   const ao = racer ? athleteOpenCommand(s) : null;
   if (ao) {
@@ -18,6 +18,7 @@ export async function athleteOpenCmd(ctx, s, viaVoice) {
     park();
     router.push(`/athletes/${a.id}`);
     leave(`${a.studentName} kartını açtım.`, viaVoice);
+    showPage();
     return true;
   }
 }
