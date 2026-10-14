@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sailWindows, sky, windLevel, windName } from "./weather";
-import { Col, WindArrow } from "./parts";
+import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sky, windLevel, windName } from "./weather";
+import { Col } from "./parts";
 import { WindMapView } from "./WindMap";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
@@ -75,8 +75,6 @@ export function DayDetail({ date, rows, info }) {
   const min = Math.min(...rows.map((h) => h.t));
   const max = Math.max(...rows.map((h) => h.t));
   const code = info?.code ?? peak.code;
-  const lvl = windLevel(peak.wind);
-  const sail = sailWindows(rows);
 
   return (
     <div className="pb-2">
@@ -88,22 +86,6 @@ export function DayDetail({ date, rows, info }) {
           <p className="text-[0.8125rem] text-mut">{sky(code).label}</p>
         </div>
       </div>
-      <dl className="mt-3 grid gap-1.5 rounded-2xl bg-bg px-3.5 py-3 text-[0.8125rem]">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-mut">En sert</dt>
-          <dd className={`flex items-center gap-1 font-semibold tabular-nums ${lvl.tone}`}>
-            <WindArrow deg={peak.dir} />
-            {windName(peak.dir)[0]} {peak.wind} kn
-            <span className="font-normal text-mut">· sağanak {peak.gust} · {peak.hh}:00</span>
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-mut">Yelkene uygun</dt>
-          <dd className={`text-right font-semibold tabular-nums ${sail.length ? "text-ok" : "text-mut"}`}>
-            {sail.length ? sail.join(", ") : "uygun saat yok"}
-          </dd>
-        </div>
-      </dl>
 
       {/* Seçili saat */}
       <div className="mt-4">
