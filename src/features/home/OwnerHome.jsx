@@ -45,17 +45,18 @@ export function OwnerHome() {
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
 
-  const day = now.toLocaleDateString("tr-TR", { weekday: "long" });
-  const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
+  // Kısa tarih: "Sal 14 Eki" (göz yormayan düzen, uzun gün/ay adı yok)
+  const day = now.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
+  const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "short" }).replace(".", "");
 
   return (
-    <main className="relative mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+    <main className="calm relative mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
       <header className="flex items-start gap-3 px-1">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[1.625rem] font-semibold leading-tight tracking-tight">
-            <span className="capitalize">{day}</span> <span className="font-normal text-mut">{date}</span>
+          <h1 className="truncate text-[1.5rem] font-semibold leading-tight tracking-[-.015em]">
+            <span className="capitalize">{day}</span> {date}
           </h1>
-          <div className="mt-1">
+          <div className="mt-0.5">
             <HomeHero weather={weather} />
           </div>
           {staff && qa && qr && (
@@ -120,7 +121,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       </div>
       {side && <MyAttendanceCard kind={kind} />}
       {staff && <MyFitCard />}
-      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} invoices={owner} notes={notes} />
+      <HomeSummary title={owner && (athletes || race.on) ? "Kulüp" : "Özet"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} invoices={owner} notes={notes} />
       <HomeActions groups={actions} />
     </div>
   );

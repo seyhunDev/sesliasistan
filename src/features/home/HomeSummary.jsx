@@ -11,27 +11,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { dayInfo, clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum } from "@/lib/homeTiles";
-import { money } from "@/lib/bankSheet";
 import { rel, todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
-import { BRAND } from "./HomeActions";
-import { CARD, SectionHead } from "./ui";
+import { CALM, SectionHead } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › KULÜP / ÖZET: yalnız bilgisi olan kartlar görünür (Seyhun: "ne varsa onlar gösterilsin, yoksa gösterilmesin").
-// Üstte tam genişlik "Sıradaki yarış" kartı (ad, tarih, sporcu, eksik iş, kalan gün); altında iki sütun küçük kartlar:
-// Aidat (ödemeyen/onay bekleyen varsa), Fiş / Fatura (ödenmemiş fatura ya da bu ay fiş varsa), Banka,
-// Instagram (gönderi varsa). Bilgisi biten kart kendiliğinden gizlenir (clubDues, clubFis… homeTiles.js). Dikkat isteyen kart (warn)
-// kehribar simge ve yazıyla öne çıkar. Hiç kart yoksa bölüm görünmez.
-// Yarışın altında Notlar kartı (Seyhun: "notları da ana ekranda görebilmeliyim, kulüp kısmına"): en çok 3 not, önce sabitlenenler
-// sonra en yeni (homeNotes); Tümü › Notlar sayfası, + Not ekle; nota dokununca not açılır. Not yoksa kart görünmez. Bellekteki notlardan, ek okuma yok.
-// Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır (homeTiles.js), banka mailleri
-// eskiden de okunuyordu (useMoney), yarış raceHome.js'in okumasından, antrenman bellekteki planlardan.
-// İlk açılışta okuması süren kartın yerinde aynı boyda yanıp sönen iskelet durur (Skeleton); bilgi gelince kart yumuşakça belirir.
-// Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
-// yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
+// Ana sayfa › Kulüp / Özet (göz yormayan düzen, Seyhun 2026-10-14): tek sakin kartta yazı satırları: Sıradaki yarış (ad, tarih · yer · sp. · eksik iş, kalan gün),
+// Aidat · ay (ödeyen/sayı, %), Hesap (bakiye), Fiş / Fatura, Instagram. Yalnız bilgisi olan satır görünür (clubDues, clubFis… homeTiles.js).
+// Notlar ayrı bölüm: en çok 3 not (homeNotes), başlık ve altında "Sabit / tarih · ilk satır". Bellekteki notlardan, ek okuma yok.
+// Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır; banka mailleri useMoney; yarış raceHome.js.
+// Okuması süren satırın yerinde yanıp sönen iskelet (SkelRow); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
 const WAIT = 8000;
 export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes }) {
   const m = useMoney();
@@ -97,128 +88,143 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   }, [busy]);
   const skel = (k) => busy && wait[k];
   const raceCard = race && !skel("race") && clubRace(raceInfo.next);
-  // Sıra: dikkat isteyebilenler (aidat, fatura) önce; Antrenman ve Instagram altta tam genişlik kendi kartlarında
-  const tiles = [
-    skel("dues") ? ["dues"] : dues && ["/dues", "wallet", "Aidat", clubDues(sum.dues, ym), "dues"],
-    skel("inv") ? ["inv"] : (money || invoices) && ["/receipts", "receipt", "Fiş / Fatura", clubFis(inv, money && m.receipts), "inv"],
-    skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Hesaplar", m.bank, "bank"],
-  ].filter((x) => x && (x.length === 1 || x[3]));
+  const duesT = dues && !skel("dues") && clubDues(sum.dues, ym);
+  const fisT = (money || invoices) && !skel("inv") && clubFis(inv, money && m.receipts);
+  const bankT = money && !skel("bank") && m.bank;
   const post = posts && sum.posts?.count ? sum.posts : null;
-  const raceWait = skel("race");
   const note = homeNotes(notes || [], 3);
-  if (!raceCard && !raceWait && !tiles.length && !note.total && !post) return null;
+  const anyWait = ["race", "dues", "inv", "bank"].some(skel);
+  const club = raceCard || duesT || fisT || bankT || post || anyWait;
+  if (!club && !note.total) return null;
+  const mon = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "short" }).replace(".", "");
+  const show = (k) => (fade.has(k) ? "fade-in" : "");
 
   return (
-    <section aria-labelledby="home-sum" aria-busy={busy}>
-      {title === "KULÜP" ? (
-        <ClubHead month={new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" })} races={!!race} />
-      ) : (
-        <SectionHead id="home-sum" title={title} />
+    <>
+      {club && (
+        <section aria-labelledby="home-sum" aria-busy={busy}>
+          <SectionHead id="home-sum" title={title}>
+            {raceCard && (
+              <Link href="/athletes/races" className="text-acc">
+                Yarışlar ›
+              </Link>
+            )}
+          </SectionHead>
+          <div className={`px-3.5 py-0.5 ${CALM}`}>
+            <ul className="divide-y divide-line">
+              {skel("race") ? <SkelRow tall /> : raceCard && <RaceRow r={raceCard} cls={show("race")} />}
+              {skel("dues") ? (
+                <SkelRow />
+              ) : (
+                duesT && (
+                  <Row href="/dues" k={`Aidat · ${mon}`} cls={show("dues")} note={duesT.warn ? duesT.sub : ""}>
+                    {duesT.big} <small className="font-normal text-mut">%{Math.round((duesT.bar || 0) * 100)}</small>
+                  </Row>
+                )
+              )}
+              {skel("bank") ? <SkelRow /> : bankT && <Row href="/mail" k="Hesap" cls={show("bank")}>{bankT.big}</Row>}
+              {skel("inv") ? (
+                <SkelRow />
+              ) : (
+                fisT && (
+                  <Row href="/receipts" k="Fiş / Fatura" cls={show("inv")} warn={fisT.warn}>
+                    {fisT.big}
+                    {fisT.sub && <small className={`font-normal ${fisT.warn ? "" : "text-mut"}`}> · {fisT.sub}</small>}
+                  </Row>
+                )
+              )}
+              {post && (
+                <Row href={post.last?.id ? `/posts/${post.last.id}` : "/posts"} k="Instagram">
+                  <small className="font-normal text-mut">{postsTile(post).sub}</small>
+                </Row>
+              )}
+            </ul>
+          </div>
+        </section>
       )}
-      <div className="space-y-3">
-        {raceWait ? <Skeleton wide /> : raceCard && <RaceCard r={raceCard} fade={fade.has("race")} />}
-        {note.total > 0 && <NotesCard list={note.list} total={note.total} />}
-        {tiles.length > 0 && (
-          <ul className="grid grid-cols-2 gap-3">
-            {tiles.map(([href, icon, label, t, k], i) => {
-              const wide = tiles.length % 2 === 1 && i === tiles.length - 1 ? "col-span-2" : "";
-              if (!icon) return <Skeleton key={`s-${href}`} className={wide} />;
-              return (
-                <li key={href} className={`${wide} ${fade.has(k) ? "fade-in" : ""}`}>
-                  <Link href={href} data-press aria-label={`${label}: ${t.big}, ${t.sub}`} className={`flex h-full flex-col px-4 pb-3.5 pt-3.5 ${CARD}`}>
-                    <span className="flex items-center gap-2.5">
-                      <span className={`grid size-8 shrink-0 place-items-center rounded-[0.625rem] ${t.warn ? WARN_BG : "bg-acc/10 text-acc"}`}>
-                        <Icon name={icon} className="size-[1.125rem]" />
-                      </span>
-                      <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{label}</b>
-                      {(k === "dues" || k === "bank") && <Icon name="chev" className="size-4 shrink-0 text-mut" />}
-                    </span>
-                    {k === "dues" ? <DuesBody t={t} /> : k === "bank" ? <BankBody t={t} /> : <PlainBody t={t} />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {post && <PostsCard p={post} />}
-      </div>
+      {note.total > 0 && <NotesList list={note.list} total={note.total} />}
+    </>
+  );
+}
+
+// Anahtar · değer satırı (solda ad, sağda değer, ›); note: altında küçük uyarı yazısı
+function Row({ href, k, children, warn, note, cls = "" }) {
+  return (
+    <li className={cls}>
+      <Link href={href} className="flex items-baseline justify-between gap-3 py-2.5">
+        <span className="shrink-0 text-fg2">{k}</span>
+        <span className={`min-w-0 truncate text-right font-medium tabular-nums ${warn ? "text-warn" : ""}`}>
+          {children}
+          <span className="ml-1.5 font-normal text-mut">›</span>
+        </span>
+      </Link>
+      {note && <small className="-mt-1.5 block pb-2 text-right text-[0.8125rem] text-warn">{note}</small>}
+    </li>
+  );
+}
+
+// Sıradaki yarış: küçük "Sıradaki yarış", ad, "tarih · yer · 6 sp. · 2 iş eksik", sağda kalan gün hapı; dokununca yarışın sayfası
+function RaceRow({ r, cls }) {
+  const sub = (r.sub || "").replace(/(\d+) sporcu\b/, "$1 sp.");
+  return (
+    <li className={cls}>
+      <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className="flex items-center gap-3 py-2.5">
+        <span className="min-w-0 flex-1">
+          <small className="block text-[0.8125rem] text-mut">Sıradaki yarış</small>
+          <b className="block truncate text-base font-medium">{r.title}</b>
+          <small className="block truncate text-[0.875rem] text-mut">
+            {sub}
+            {r.left > 0 && <span className="text-warn">{sub ? " · " : ""}{r.left} iş eksik</span>}
+          </small>
+        </span>
+        <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.8125rem] font-medium text-acc">{r.days != null ? `${r.days} gün` : r.when}</span>
+      </Link>
+    </li>
+  );
+}
+
+// Notlar: başlık + Tümü + ekle; her not başlığı ve altında "Sabit / tarih · ilk satır"
+function NotesList({ list, total }) {
+  const { openAdd } = useAdd();
+  return (
+    <section aria-labelledby="home-notes">
+      <SectionHead id="home-notes" title="Notlar" count={total}>
+        <Link href="/notes" className="text-acc">
+          Tümü ›
+        </Link>
+        <button type="button" data-press aria-label="Not ekle" onClick={() => openAdd({ type: "note" })} className="raised grid size-7 place-items-center rounded-full text-acc">
+          <Icon name="plus" className="size-4" />
+        </button>
+      </SectionHead>
+      <ul className={`divide-y divide-line px-3.5 py-0.5 ${CALM}`}>
+        {list.map((n) => {
+          const when = n.pinned ? "Sabit" : n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
+          const first = String(n.body && n.body !== n.title ? n.body : "").split("\n").find((x) => x.trim()) || "";
+          const line = [when, first.trim()].filter(Boolean).join(" · ");
+          return (
+            <li key={n.id}>
+              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="block w-full py-2.5 text-left">
+                <b className="block truncate font-medium">{n.title || "Not"}</b>
+                {line && <small className="block truncate text-[0.875rem] text-mut">{line}</small>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
 
-const WARN_BG = "bg-amber-500/12 text-amber-700 dark:text-amber-300";
-const WARN_TX = "text-amber-700 dark:text-amber-300";
-
-function PlainBody({ t }) {
+// Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
+function SkelRow({ tall }) {
   return (
-    <>
-      <b className="mt-2.5 block truncate text-[1.375rem] font-bold leading-tight tabular-nums tracking-tight">{t.big}</b>
-      <small className={`mt-0.5 block truncate text-[0.8125rem] leading-snug ${t.warn ? `font-semibold ${WARN_TX}` : "text-mut"}`}>{t.sub}</small>
-    </>
-  );
-}
-
-// Aidat: büyük yüzde halkası, yanında "18/30 ödedi"; yalnız onay bekleyen varsa altta kehribar hap (Seyhun: "kişi ödemedi yazısını kaldıralım, yüzdeyi büyütelim")
-function DuesBody({ t }) {
-  const pct = Math.round((t.bar || 0) * 100);
-  const r = 15.5;
-  const c = 2 * Math.PI * r;
-  return (
-    <>
-      <span className="mt-3 flex items-center gap-3">
-        <span className="relative grid size-[4.5rem] shrink-0 place-items-center" aria-hidden="true">
-          <svg viewBox="0 0 36 36" className="absolute inset-0 size-full -rotate-90">
-            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--line)" strokeWidth="3.25" />
-            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--acc)" strokeWidth="3.25" strokeLinecap="round" strokeDasharray={`${(c * pct) / 100} ${c}`} />
-          </svg>
-          <b className="text-[1.0625rem] font-bold tabular-nums tracking-tight">%{pct}</b>
-        </span>
-        <span className="min-w-0 leading-tight">
-          <b className="block text-[1.25rem] font-bold tabular-nums tracking-tight">{t.big}</b>
-          <small className="block text-[0.75rem] text-mut">ödedi</small>
-        </span>
+    <li aria-hidden="true" className="flex items-center justify-between gap-3 py-3">
+      <span className="min-w-0 flex-1">
+        <span className="shimmer block h-3.5 w-24 rounded-full" />
+        {tall && <span className="shimmer mt-2 block h-4 w-44 max-w-full rounded-full" />}
       </span>
-      {t.warn && (
-        <span className={`mt-2.5 inline-flex max-w-full items-center self-start truncate rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${WARN_BG}`}>
-          <span className="truncate">{t.sub}</span>
-        </span>
-      )}
-    </>
-  );
-}
-
-// Hesaplar: bakiye, son 7 özetin küçük çizgi grafiği, altta değişim (artış yeşil ▲, azalış kırmızı ▼)
-function BankBody({ t }) {
-  const s = t.spark || [];
-  const up = (t.diff || 0) >= 0;
-  let path = "";
-  let area = "";
-  if (s.length > 1) {
-    const lo = Math.min(...s);
-    const hi = Math.max(...s);
-    const pts = s.map((v, i) => [(i / (s.length - 1)) * 100, hi === lo ? 14 : 26 - ((v - lo) / (hi - lo)) * 22]);
-    path = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
-    area = `${path} L100 30 L0 30 Z`;
-  }
-  const col = up ? "var(--acc)" : "var(--rec)";
-  return (
-    <>
-      <b className="mt-2.5 block truncate text-[1.25rem] font-bold leading-tight tabular-nums tracking-tight">{t.big}</b>
-      {path ? (
-        <>
-          <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="mt-1.5 block h-7 w-full" aria-hidden="true">
-            <path d={area} fill={col} opacity=".12" />
-            <path d={path} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-          </svg>
-          <small className={`mt-1 block truncate text-[0.75rem] font-semibold tabular-nums ${up ? "text-acc" : "text-rose-600 dark:text-rose-400"}`}>
-            {up ? "▲ +" : "▼ "}
-            {money(t.diff)} {t.cur} <span className="font-normal text-mut">· son 7 özet</span>
-          </small>
-        </>
-      ) : (
-        <small className="mt-0.5 block truncate text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
-      )}
-    </>
+      <span className="shimmer block h-3.5 w-16 rounded-full" />
+    </li>
   );
 }
 
@@ -229,11 +235,11 @@ function BankBody({ t }) {
 export function WeekStrip({ w, att, today }) {
   const [pick, setPick] = useState(null); // Dokunulan gün: pencere
   const DAY = {
-    done: "bg-acc text-white",
-    miss: "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/50 dark:text-amber-300",
-    today: "bg-fg text-bg",
+    done: "bg-accbg text-acc",
+    miss: "bg-warnbg text-warn",
+    today: "bg-acc text-white",
     plan: "ring-[1.5px] ring-acc text-acc",
-    none: "bg-line/60 text-mut",
+    none: "text-mut",
     fit: "bg-orange-500/12 text-orange-700 ring-1 ring-orange-500/50 dark:text-orange-300",
   };
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
@@ -247,8 +253,8 @@ export function WeekStrip({ w, att, today }) {
           const what = [d.has ? "yelken" : "", d.fit.length ? `fitness: ${d.fit.map((f) => f.name).join(", ")}` : ""].filter(Boolean).join(", ") || label[st];
           const inner = (
             <>
-              <small className={`text-[0.6875rem] ${d.state === "today" ? "font-bold text-fg" : "text-mut"}`}>{d.w}</small>
-              <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "ring-[1.5px] ring-fg" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
+              <small className={`text-[0.6875rem] ${d.state === "today" ? "font-semibold text-fg" : "text-mut"}`}>{d.w}</small>
+              <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "bg-acc text-white" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
               <span className={`h-1.5 w-1.5 rounded-full ${d.fit.length ? (d.fit.every((f) => f.st === "done") ? "bg-orange-500" : "bg-orange-400/70") : "bg-transparent"}`} />
@@ -373,181 +379,6 @@ function FitRow({ f, onOpen }) {
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${c}`}>{t}</span>
         <Icon name="chev" className="size-4 shrink-0 text-mut" />
       </button>
-    </li>
-  );
-}
-
-// Instagram (tam genişlik): son gönderinin küçük görseli, başlığı ve ne zaman; Yeni gönderi ve Aç
-function PostsCard({ p }) {
-  const last = p.last || {};
-  const when = postsTile(p).sub;
-  return (
-    <div className={`flex gap-3.5 p-3 ${CARD}`}>
-      <Link href={last.id ? `/posts/${last.id}` : "/posts"} data-press aria-label={`Son gönderi: ${last.title || "gönderi"}`} className="block size-[6.5rem] shrink-0 overflow-hidden rounded-xl">
-        {last.thumb ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={last.thumb} alt="" className="size-full object-cover" />
-        ) : (
-          <span className={`grid size-full place-items-center ${BRAND.instagram}`}>
-            <Icon name="instagram" className="size-9" />
-          </span>
-        )}
-      </Link>
-      <div className="flex min-w-0 flex-1 flex-col py-0.5">
-        <span className="flex items-center gap-2">
-          <span className={`grid size-6 shrink-0 place-items-center rounded-md ${BRAND.instagram}`}>
-            <Icon name="instagram" className="size-3.5" />
-          </span>
-          <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">SON GÖNDERİ</small>
-        </span>
-        <b className="mt-1 line-clamp-2 text-[0.9375rem] font-semibold leading-snug">{last.title || "Gönderi"}</b>
-        <small className="block truncate text-[0.8125rem] text-mut">
-          {when} · toplam {p.count}
-        </small>
-        <span className="mt-auto flex gap-2 pt-2">
-          <Link href="/posts/new" data-press className="flex items-center gap-1 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
-            <Icon name="plus" className="size-3.5" />
-            Yeni gönderi
-          </Link>
-          <Link href="/posts" data-press className="rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
-            Tümü
-          </Link>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Kulüp başlığı: büyük "Kulüp", altında "Dikili Yelken · Ekim", sağda Yarışlar ›
-function ClubHead({ month, races }) {
-  return (
-    <div className="mb-3 flex items-end justify-between gap-3 px-1">
-      <span className="min-w-0">
-        <h2 id="home-sum" className="text-[1.375rem] font-bold leading-tight tracking-tight">
-          Kulüp
-        </h2>
-        <small className="block truncate text-[0.8125rem] text-mut">Dikili Yelken · {month.charAt(0).toLocaleUpperCase("tr-TR") + month.slice(1)}</small>
-      </span>
-      {races && (
-        <Link href="/athletes/races" className="flex shrink-0 items-center gap-0.5 pb-0.5 text-[0.8125rem] font-semibold text-acc">
-          Yarışlar
-          <Icon name="chev" className="size-3.5" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
-// Sıradaki yarış: solda yeşil tarih kutusu (gün + ay), "SIRADAKİ YARIŞ" + "5 gün kaldı" hapı, ad, "tarih · yer · sporcu";
-// altta hazırlık çubuğu ("Hazırlık 7/9") ve eksik iş. Dokununca o yarışın sayfası (eski önbellekte id yoksa Yarışlar).
-function RaceCard({ r, fade }) {
-  const pct = r.total ? Math.round((r.done / r.total) * 100) : 100;
-  return (
-    <Link
-      href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"}
-      data-press
-      aria-label={`Sıradaki yarış: ${r.title}, ${r.days != null ? `${r.days} gün kaldı` : r.when}${r.left ? `, ${r.left} iş eksik` : ""}`}
-      className={`block p-3.5 ${CARD} ${fade ? "fade-in" : ""}`}
-    >
-      <span className="flex items-center gap-3.5">
-        <span className="grid w-[3.625rem] shrink-0 place-items-center self-stretch rounded-2xl bg-[linear-gradient(160deg,#2f7d6b,#1f5a4b)] py-2 text-white">
-          {r.day ? (
-            <span className="text-center leading-none">
-              <b className="block text-[1.625rem] font-bold tabular-nums">{r.day}</b>
-              <small className="mt-1 block text-[0.6875rem] font-semibold tracking-[.08em] opacity-85">{r.mon}</small>
-            </span>
-          ) : (
-            <Icon name="flag" className="size-6" />
-          )}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <small className="text-[0.6875rem] font-bold tracking-[.08em] text-acc">SIRADAKİ YARIŞ</small>
-            <small className="shrink-0 rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{r.days != null ? `${r.days} gün kaldı` : r.when}</small>
-          </span>
-          <b className="mt-0.5 block truncate text-[1.0625rem] font-semibold leading-snug">{r.title}</b>
-          {r.sub && <small className="block truncate text-[0.8125rem] leading-snug text-mut">{r.sub}</small>}
-        </span>
-      </span>
-      {r.total > 0 && (
-        <span className="mt-3 flex items-center gap-3">
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-line/70" aria-hidden="true">
-            <span className="block h-full rounded-full bg-acc" style={{ width: `${pct}%` }} />
-          </span>
-          <small className="shrink-0 text-[0.75rem] tabular-nums text-mut">
-            Hazırlık <b className="font-semibold text-fg">{r.done}/{r.total}</b>
-          </small>
-          <small className={`flex shrink-0 items-center gap-0.5 text-[0.75rem] font-semibold ${r.left ? WARN_TX : "text-acc"}`}>
-            {r.left ? `${r.left} iş eksik` : "Hazır"}
-            {r.left > 0 && <Icon name="chev" className="size-3" />}
-          </small>
-        </span>
-      )}
-    </Link>
-  );
-}
-
-// Notlar: başlık (simge, ad, sayı, Tümü ›, yuvarlak + ile not ekle); notlar iki grupta: SABİT (sağda yıldız) ve SON NOTLAR (solda kategori noktası, sağda tarih)
-function NotesCard({ list, total }) {
-  const { openAdd } = useAdd();
-  return (
-    <div className={`overflow-hidden ${CARD}`}>
-      <div className="flex items-center gap-2.5 px-4 pb-1.5 pt-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-[0.625rem] bg-acc/10 text-acc">
-          <Icon name="note" className="size-[1.125rem]" />
-        </span>
-        <b className="text-[0.9375rem] font-semibold">Notlar</b>
-        <span className="rounded-full bg-line/70 px-2 py-0.5 text-[0.75rem] font-semibold tabular-nums text-mut">{total}</span>
-        <Link href="/notes" className="ml-auto flex items-center gap-0.5 text-[0.8125rem] font-semibold text-acc">
-          Tümü
-          <Icon name="chev" className="size-3.5" />
-        </Link>
-        <button type="button" data-press aria-label="Not ekle" onClick={() => openAdd({ type: "note" })} className="raised grid size-7 shrink-0 place-items-center rounded-full text-acc">
-          <Icon name="plus" className="size-4" />
-        </button>
-      </div>
-      <ul>
-        {list.map((n) => {
-          const when = n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
-          return (
-            <li key={n.id} className="border-t border-line">
-              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
-                {n.pinned && <Icon name="star" className="size-4 shrink-0 fill-current text-amber-500" />}
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{n.title || "Not"}</span>
-                {!n.pinned && when && <small className="shrink-0 text-[0.75rem] text-mut">{when}</small>}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-// Kartla aynı boy ve düzende iskelet (renkler temaya göre, .shimmer globals.css); wide: yarış kartı
-function Skeleton({ wide, className = "" }) {
-  if (wide)
-    return (
-      <div aria-hidden="true" className={`p-3.5 ${CARD}`}>
-        <span className="flex items-center gap-3.5">
-          <span className="shimmer h-16 w-[3.625rem] shrink-0 rounded-2xl" />
-          <span className="min-w-0 flex-1">
-            <span className="shimmer block h-3 w-32 rounded-full" />
-            <span className="shimmer mt-2 block h-4 w-40 max-w-full rounded-full" />
-            <span className="shimmer mt-2 block h-3 w-44 max-w-full rounded-full" />
-          </span>
-        </span>
-        <span className="shimmer mt-3.5 block h-1.5 w-full rounded-full" />
-      </div>
-    );
-  return (
-    <li aria-hidden="true" className={`px-4 py-3.5 ${CARD} ${className}`}>
-      <span className="flex items-center gap-2.5">
-        <span className="shimmer size-8 shrink-0 rounded-[0.625rem]" />
-        <span className="shimmer block h-3.5 w-16 rounded-full" />
-      </span>
-      <span className="shimmer mt-3 block h-5 w-20 rounded-full" />
-      <span className="shimmer mt-2 block h-3 w-28 max-w-full rounded-full" />
     </li>
   );
 }

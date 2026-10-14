@@ -17,7 +17,7 @@ export function MyAttendanceCard({ kind }) {
 
   return (
     <section aria-label="Yoklama">
-      <SectionHead title={parent ? "YOKLAMA · BU AY" : "YOKLAMAM · BU AY"} />
+      <SectionHead title={parent ? "Yoklama · bu ay" : "Yoklamam · bu ay"} />
       <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
         {recs.map((r) => {
           const m = monthOf(r);
