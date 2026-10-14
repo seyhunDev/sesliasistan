@@ -19,15 +19,7 @@ export const shift = (d, n) => {
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
 export function RollView({ date, today, onDate, list, classes, usedClasses, cls, onCls, stateOf, onTap, onBulk, after }) {
-  const [menu, setMenu] = useState(false);
   const empty = list.filter((a) => !stateOf(a)).length;
-  const clsName = usedClasses.find((c) => c.id === cls)?.name || "Tümü";
-  useEffect(() => {
-    if (!menu) return;
-    const close = (e) => !e.target.closest?.("[data-cls-menu]") && setMenu(false);
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [menu]);
 
   return (
     <>
@@ -47,35 +39,7 @@ export function RollView({ date, today, onDate, list, classes, usedClasses, cls,
 
       {/* Sınıf seçimi (kapalı, dokununca açılır) ve toplu işaret aynı satırda */}
       <div className="mt-3 flex items-center gap-2 px-1">
-        <div data-cls-menu className="relative min-w-0 flex-1">
-          {usedClasses.length > 1 ? (
-            <button data-press onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="raised flex h-8 max-w-full items-center gap-1 px-3 text-[0.8125rem] font-semibold">
-              <span className="truncate">{clsName}</span>
-              <span className="shrink-0 tabular-nums text-mut">{list.length}</span>
-              <Icon name="chev" className={`size-3.5 shrink-0 text-mut transition-transform ${menu ? "-rotate-90" : "rotate-90"}`} />
-            </button>
-          ) : (
-            <span className="block truncate text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{list.length} sporcu</span>
-          )}
-          {menu && (
-            <ul className="absolute left-0 top-10 z-20 max-h-72 min-w-[11rem] overflow-y-auto rounded-2xl bg-card py-1 shadow-[0_8px_24px_rgba(38,40,44,.18)] ring-1 ring-line">
-              {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-                <li key={c.id || "all"}>
-                  <button
-                    onClick={() => {
-                      onCls(c.id);
-                      setMenu(false);
-                    }}
-                    className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[0.875rem] ${cls === c.id ? "font-semibold text-acc" : ""}`}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                    {cls === c.id && <Icon name="check" className="size-4 shrink-0" />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <ClassMenu classes={usedClasses} cls={cls} onCls={onCls} count={list.length} />
         <button data-press onClick={() => onBulk("present")} disabled={!list.length} className="raised h-8 shrink-0 px-3 text-[0.8125rem] font-semibold text-ok disabled:opacity-40">
           Hepsi geldi
         </button>
@@ -115,5 +79,48 @@ export function RollView({ date, today, onDate, list, classes, usedClasses, cls,
 
       {after}
     </>
+  );
+}
+
+// Sınıf seçimi: kapalı düğme, dokununca liste (yoklama ve yoklama raporu)
+export function ClassMenu({ classes, cls, onCls, count }) {
+  const [menu, setMenu] = useState(false);
+  const name = classes.find((c) => c.id === cls)?.name || "Tümü";
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e) => !e.target.closest?.("[data-cls-menu]") && setMenu(false);
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu]);
+  return (
+    <div data-cls-menu className="relative min-w-0 flex-1">
+      {classes.length > 1 ? (
+        <button data-press onClick={() => setMenu((m) => !m)} aria-expanded={menu} className="raised flex h-8 max-w-full items-center gap-1 px-3 text-[0.8125rem] font-semibold">
+          <span className="truncate">{name}</span>
+          <span className="shrink-0 tabular-nums text-mut">{count}</span>
+          <Icon name="chev" className={`size-3.5 shrink-0 text-mut transition-transform ${menu ? "-rotate-90" : "rotate-90"}`} />
+        </button>
+      ) : (
+        <span className="block truncate text-[0.75rem] font-semibold uppercase tracking-wide text-mut">{count} sporcu</span>
+      )}
+      {menu && (
+        <ul className="absolute left-0 top-10 z-20 max-h-72 min-w-[11rem] overflow-y-auto rounded-2xl bg-card py-1 shadow-[0_8px_24px_rgba(38,40,44,.18)] ring-1 ring-line">
+          {[{ id: "", name: "Tümü" }, ...classes].map((c) => (
+            <li key={c.id || "all"}>
+              <button
+                onClick={() => {
+                  onCls(c.id);
+                  setMenu(false);
+                }}
+                className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[0.875rem] ${cls === c.id ? "font-semibold text-acc" : ""}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                {cls === c.id && <Icon name="check" className="size-4 shrink-0" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

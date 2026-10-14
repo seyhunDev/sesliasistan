@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -12,6 +12,8 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { downloadExcel, monthLabel, monthReport, shiftMonth } from "@/features/athletes/attendanceReport";
+import { ClassMenu } from "@/features/athletes/RollView";
+import { usePress } from "@/hooks/usePress";
 import { todayStr } from "@/lib/utils/format";
 
 // Yoklama ay raporu: sporcu başına geldi / gelmedi / izinli ve devam oranı; Excel'e aktarılabilir.
@@ -37,6 +39,8 @@ function Report() {
   const [ym, setYm] = useState(thisMonth);
   const [cls, setCls] = useState("");
   const [busy, setBusy] = useState(false);
+  const root = useRef(null);
+  usePress(root);
 
   const classes = byId(data?.classes);
   const active = (data?.athletes || []).filter(isActive);
@@ -55,7 +59,7 @@ function Report() {
   }
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main ref={root} className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Yoklama raporu" sub={data && !err ? `${report.days.length} yoklama günü` : "Kulüp verisi"} back="/athletes/attendance" />
 
       {err?.code === "permission-denied" ? (
@@ -69,53 +73,40 @@ function Report() {
         <Loading label="Sporcular yükleniyor" />
       ) : (
         <>
-          {/* Ay */}
-          <div className="mt-1 flex items-center gap-2 rounded-2xl bg-card p-1.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-            <button onClick={() => setYm((m) => shiftMonth(m, -1))} aria-label="Önceki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg">
+          {/* Ay: tek ince satır */}
+          <section className="raised mt-1 flex items-center px-1 py-1">
+            <button data-press onClick={() => setYm((m) => shiftMonth(m, -1))} aria-label="Önceki ay" className="grid size-9 place-items-center rounded-full">
               <Icon name="back" className="size-5" />
             </button>
-            <button onClick={() => setYm(thisMonth)} className="min-w-0 flex-1 text-center">
-              <b className="block truncate text-[0.9375rem] font-semibold capitalize">{monthLabel(ym)}</b>
-              <small className={`text-[0.75rem] ${ym === thisMonth ? "text-acc" : "text-mut"}`}>{ym === thisMonth ? "Bu ay" : "Bu aya dön"}</small>
+            <button data-press onClick={() => setYm(thisMonth)} className="min-w-0 flex-1 truncate text-center text-[0.9375rem] font-semibold capitalize">
+              {monthLabel(ym)}
+              {ym !== thisMonth && <span className="ml-1.5 text-[0.75rem] font-medium normal-case text-acc">· Bu aya dön</span>}
             </button>
-            <button onClick={() => setYm((m) => shiftMonth(m, 1))} disabled={ym >= thisMonth} aria-label="Sonraki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg disabled:opacity-30">
+            <button data-press onClick={() => setYm((m) => shiftMonth(m, 1))} disabled={ym >= thisMonth} aria-label="Sonraki ay" className="grid size-9 place-items-center rounded-full disabled:opacity-30">
               <Icon name="chev" className="size-5" />
             </button>
-          </div>
+          </section>
 
-          {/* Sınıf */}
-          {usedClasses.length > 1 && (
-            <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
-              {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-                <button
-                  key={c.id || "all"}
-                  onClick={() => setCls(c.id)}
-                  className={`h-8 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-medium transition active:scale-95 ${cls === c.id ? "bg-acc text-white" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!report.days.length ? (
-            <p className="mt-6 rounded-2xl bg-card px-4 py-6 text-center text-[0.875rem] text-mut">Bu ay yoklama alınmamış.</p>
-          ) : (
-            <>
-              <button
-                onClick={excel}
-                disabled={busy}
-                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98] disabled:opacity-50"
-              >
-                <Icon name="chart" className="size-5" />
+          {/* Sınıf seçimi ve Excel aynı satırda */}
+          <div className="mt-3 flex items-center gap-2 px-1">
+            <ClassMenu classes={usedClasses} cls={cls} onCls={setCls} count={report.rows.length} />
+            {report.days.length > 0 && (
+              <button data-press onClick={excel} disabled={busy} className="raised flex h-8 shrink-0 items-center gap-1.5 px-3 text-[0.8125rem] font-semibold text-acc disabled:opacity-40">
+                <Icon name="chart" className="size-4" />
                 {busy ? "Hazırlanıyor…" : "Excel'e aktar"}
               </button>
+            )}
+          </div>
 
-              <div className="mt-3 flex items-center gap-2 px-1 text-[0.75rem] font-semibold text-mut">
+          {!report.days.length ? (
+            <p className="mt-4 rounded-2xl bg-card px-4 py-6 text-center text-[0.875rem] text-mut">Bu ay yoklama alınmamış.</p>
+          ) : (
+            <>
+              <div className="mt-2 flex items-center gap-2 px-1 text-[0.75rem] font-semibold text-mut">
                 <span className="min-w-0 flex-1">Sporcu</span>
                 <span className="w-9 text-center text-ok">Geldi</span>
                 <span className="w-9 text-center text-rec">Yok</span>
-                <span className="w-9 text-center text-amber-600">İzin</span>
+                <span className="w-9 text-center text-amber-600 dark:text-amber-400">İzin</span>
                 <span className="w-11 text-right">Devam</span>
               </div>
               <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
