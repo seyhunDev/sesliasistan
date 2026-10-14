@@ -411,3 +411,6 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 .box-caret { display: inline-block; width: 2px; height: 1.15em; margin-left: 2px; vertical-align: -0.2em; border-radius: 1px; background: var(--rec); animation: caret 1s steps(1) infinite; }
 @keyframes caret { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .box-caret { animation: none; } }
+
+/* Rüzgâr haritası: koyu zemin açılmazsa OpenStreetMap koyulaştırılır */
+.wind-osm { filter: invert(1) hue-rotate(180deg) brightness(.75) saturate(.4); }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { DARK, DARK_ATTR, loadLeaflet } from "@/lib/leaflet";
+import { DARK, DARK_ATTR, OSM, loadLeaflet } from "@/lib/leaflet";
 import { LEGEND, colorOf, dayMax, daysOf, fieldOf, frameAt, fresh, gridOf, mapUrl, nowIndex, placeId, rgbOf, sampleField, shapeMap } from "@/lib/windMap";
 import { PLACE, compareLinks, getPlace, placeLabel, samePlace, setPlace, windName } from "./weather";
 import { WindArrow } from "./parts";
@@ -81,7 +81,16 @@ function WindLeaflet({ data, frame, place, children }) {
       .then((L) => {
         if (!live || !box.current) return;
         const m = L.map(box.current, { zoomControl: false, attributionControl: false, scrollWheelZoom: false, tap: false });
-        L.tileLayer(DARK, { maxZoom: 14, subdomains: "abcd", attribution: DARK_ATTR }).addTo(m);
+        const dark = L.tileLayer(DARK, { maxZoom: 14 }).addTo(m);
+        // Koyu zemin açılmazsa (servis kapalı ya da anahtar isterse) OpenStreetMap'e geç, koyulaştırılmış
+        let ok = 0;
+        let bad = 0;
+        dark.on("tileload", () => ok++);
+        dark.on("tileerror", () => {
+          if (++bad < 3 || ok || !map.current) return;
+          m.removeLayer(dark);
+          L.tileLayer(OSM, { maxZoom: 14, className: "wind-osm" }).addTo(m);
+        });
         map.current = m;
         setReady(true);
       })
