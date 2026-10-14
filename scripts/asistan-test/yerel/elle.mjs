@@ -383,6 +383,13 @@ group("Instagram tasarım")([
     return a.headSize === 100 && a.subSize === 100 && a.noHead === false && b.headSize === 150 && b.subSize === 80 && b.noHead === true && PM.cleanPost({ headSize: 87 }).headSize === 85;
   })],
   ["logo kapatma", F("logo ve kulüp adı kapatılabilir; asistanla kaldır / geri getir", () => PM.cleanPost({ noBrand: true }).noBrand === true && PM.cleanPost({}).noBrand === false && PM.sizeAsk("logoyu kaldır").noBrand === true && PM.sizeAsk("logo ve kulüp adı olmasın").noBrand === true && PM.sizeAsk("logoyu geri getir").noBrand === false && PM.sizeAsk("kulüp adını kaldır").noBrand === true)],
+  ["yazılar aç/kapa ve standart", F("etiket varsayılan kapalı, yazılar gizlenebilir, renk ve dilek boyu standart; bozuk değer atılır", () => {
+    const a = PM.cleanPost({});
+    const b = PM.cleanPost({ hide: ["sub", "wish", "x"], ink: { head: "yellow", sub: "pembe" }, wishSize: 400 });
+    return JSON.stringify(a.hide) === '["tag"]' && JSON.stringify(a.ink) === "{}" && a.wishSize === 100 &&
+      JSON.stringify(b.hide) === '["sub","wish"]' && JSON.stringify(b.ink) === '{"head":"yellow"}' && b.wishSize === 150 &&
+      PM.cleanPost({ hide: [] }).hide.length === 0 && PM.inkOf("yellow") === "#f6c445" && PM.inkOf("") === "";
+  })],
   ["asistanla başlık", F("kaldır, geri getir, bir tık küçült, alt yazıyı büyüt; yeni başlık yazdırma yapay zekaya", () => {
     const p = { headSize: 100, subSize: 100 };
     const q = (t) => JSON.stringify(PM.sizeAsk(t, p));
