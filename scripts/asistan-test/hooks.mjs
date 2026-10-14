@@ -5,6 +5,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const SRC = fileURLToPath(new URL("../../src/", import.meta.url));
 const SRC_URL = pathToFileURL(SRC).href;
 const STUBS = { "@/lib/brain/store": new URL("./taklit-brain.mjs", import.meta.url).href, "@/lib/firebase/clientApp": new URL("./taklit-firebase.mjs", import.meta.url).href };
+// Bildirim testi: sunucu kodu sahte Firestore / push / oturumla çalışır (taklit-sunucu.mjs; hiçbir yere bağlanmaz)
+const SERVER = new URL("./taklit-sunucu.mjs", import.meta.url).href;
+for (const m of ["next/server", "firebase-admin/app", "firebase-admin/firestore", "firebase-admin/auth", "firebase-admin/messaging", "web-push", "@/lib/server/auth"]) STUBS[m] = SERVER;
 const withExt = (p) => (/\.[mc]?jsx?$/.test(p) && existsSync(p) ? p : existsSync(p + ".js") ? p + ".js" : existsSync(p + ".jsx") ? p + ".jsx" : existsSync(p + "/index.js") ? p + "/index.js" : p);
 export async function resolve(spec, ctx, next) {
   if (STUBS[spec]) return { url: STUBS[spec], shortCircuit: true };
