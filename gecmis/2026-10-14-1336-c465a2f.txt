@@ -1,8 +1,8 @@
-Commit: 37c9bd8 · Fitness: asistan komutları ve sporcuların gün listesi (3. adım) (#339)
-Zaman: 2026-10-13-0752 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38348472669
+Commit: c465a2f · Bildirim testi (npm run test:bildirim) (#401)
+Zaman: 2026-10-14-1336 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38550543226
 
-TAM TEST · 13.10.2026 07:51:40
+TAM TEST · 14.10.2026 13:35:03
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 60 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 102 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
