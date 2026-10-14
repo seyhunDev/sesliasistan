@@ -1,8 +1,8 @@
-Commit: 4c36303 · Ana sayfa göz yormayan düzen: sakin renkler, yazı satırları, kısaltmalar (#419)
-Zaman: 2026-10-14-1759 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38585133238
+Commit: c89755c · Mesajlar: klavye boşluğu kalktı, yeni mesaj hafifçe belirir (#420)
+Zaman: 2026-10-14-1839 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38591094863
 
-TAM TEST · 14.10.2026 17:57:49
+TAM TEST · 14.10.2026 18:38:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 58 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
