@@ -133,18 +133,25 @@ export function ChatView({ cid }) {
     html.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     let raf = 0;
+    // Klavyesiz tam yükseklik. Ana ekran uygulamasında iPhone klavye açılınca innerHeight'ı da küçültebiliyor;
+    // o zaman "klavye açık mı" yanlış çıkıyor, ev çizgisi payı klavyenin üstünde boşluk olarak kalıyordu.
+    let full = Math.max(window.innerHeight, v ? v.height : 0);
+    const turn = () => (full = 0);
     const fit = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const h = Math.round(v ? v.height : window.innerHeight);
+        const a = document.activeElement;
+        const typing = !!(a && el.contains(a) && /^(TEXTAREA|INPUT)$/.test(a.tagName));
+        if (!typing || !full) full = Math.max(full, window.innerHeight, h);
         el.style.height = `${h}px`;
-        // Klavye açıkken ev çizgisi payı gerekmez (yazma alanı klavyeye yapışık)
-        el.style.setProperty("--kb-pad", window.innerHeight - h > 120 ? "0.5rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
+        // Klavye açıkken ev çizgisi payı gerekmez: yazma alanı klavyeye yapışık
+        const kb = full - h > 120 || (typing && h < full - 80);
+        el.style.setProperty("--kb-pad", kb ? "0.375rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
         if (window.scrollY || (v && v.offsetTop)) {
           window.scrollTo(0, 0);
           // iPhone sayfayı geri alınca yazı imlecini eski yerinde (mesajların üstünde) bırakıyor; imleç yeniden çizdirilir
-          const a = document.activeElement;
-          if (a && el.contains(a) && /^(TEXTAREA|INPUT)$/.test(a.tagName)) {
+          if (typing) {
             a.style.transform = "translateZ(0)";
             requestAnimationFrame(() => {
               a.style.transform = "";
@@ -160,8 +167,14 @@ export function ChatView({ cid }) {
     v?.addEventListener("resize", fit);
     v?.addEventListener("scroll", fit);
     window.addEventListener("scroll", fit, { passive: true });
+    window.addEventListener("orientationchange", turn);
+    el.addEventListener("focusin", fit);
+    el.addEventListener("focusout", fit);
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("orientationchange", turn);
+      el.removeEventListener("focusin", fit);
+      el.removeEventListener("focusout", fit);
       v?.removeEventListener("resize", fit);
       v?.removeEventListener("scroll", fit);
       window.removeEventListener("scroll", fit);
@@ -169,6 +182,22 @@ export function ChatView({ cid }) {
       window.scrollTo(0, 0);
     };
   }, [!!chat]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Yeni mesaj hafifçe belirsin: yalnız açılıştan sonra sona eklenen mesajlar (önceki mesajlar yüklenince ya da
+  // sohbet açılırken canlandırılmaz). Sınıf boyamadan önce doğrudan eklenir, ekstra çizim olmaz.
+  const seen = useRef({ cid: null, ids: new Set(), last: null });
+  useLayoutEffect(() => {
+    const s = seen.current;
+    if (s.cid !== cid) Object.assign(s, { cid, ids: new Set(), last: null });
+    if (!msgs.length) return;
+    const lastAt = s.last ? msgs.findIndex((m) => m.id === s.last) : -1;
+    msgs.forEach((m, i) => {
+      if (s.ids.has(m.id)) return;
+      s.ids.add(m.id);
+      if (s.last && i > lastAt && lastAt >= 0) box.current?.querySelector(`[data-mid="${m.id}"]`)?.classList.add("msg-in");
+    });
+    s.last = msgs[msgs.length - 1].id;
+  }, [msgs, cid]);
 
   // Mesajlar (son 50; yukarı kaydırıp "Önceki mesajlar" ile daha fazlası)
   useEffect(() => {
