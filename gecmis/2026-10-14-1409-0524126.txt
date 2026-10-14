@@ -1,8 +1,8 @@
-Commit: 2de2a8e · Fitness: sporcu varsa tanıtım yerine + ve Sporcular satırlı sayfa (#341)
-Zaman: 2026-10-13-0813 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38350149400
+Commit: 0524126 · Yarış evrakı: seçim, ayar ve hazır evrak tek listede, gruplara ayrılmış (#404)
+Zaman: 2026-10-14-1409 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38554460752
 
-TAM TEST · 13.10.2026 08:11:59
+TAM TEST · 14.10.2026 14:08:42
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 67 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
