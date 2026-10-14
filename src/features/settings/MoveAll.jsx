@@ -6,12 +6,14 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
 import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
+import { moveAllMailFiles } from "@/features/mail/mailFiles";
 import { db } from "@/lib/firebase/clientApp";
 import { listMeetings } from "@/lib/meeting/store";
 import { Row } from "./ui";
 
 // Ayarlar › Telefondaki veriyi taşı: bu telefonda kalan her şeyi Firebase'e gönderir.
-// 1) Gönderilmeyi bekleyen kayıtlar (internetsizken yazılanlar) 2) yalnız bu telefonda duran yarış evrakı (Storage'a).
+// 1) Gönderilmeyi bekleyen kayıtlar (internetsizken yazılanlar) 2) yalnız bu telefonda duran yarış evrakı (Storage'a)
+// 3) banka maillerinin içinde kalan Excel ekleri (Storage'a, mailFiles.js).
 // Hepsi gidince "Telefondaki kopyaları sil" çıkar: hazırlanan evrak, talimat/fatura/envanter kopyaları ve uygulama dosyaları
 // silinir (gerekince yeniden hazırlanır ya da indirilir). Özetlenmemiş toplantılar Firebase'e kendiliğinden gidemez, silinmez.
 const withTimeout = (p, ms) => Promise.race([p.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
@@ -33,8 +35,10 @@ export function MoveAllRow() {
       let left = 0;
       if (owner) ({ moved, left } = await moveLocalExtras(profile.orgId || profile.uid, undefined, (p) => setBusy(`move:${Math.round(p * 100)}`)));
       else left = await localExtraCount().catch(() => 0);
+      let mails = { moved: 0, left: 0 };
+      if (owner) mails = await moveAllMailFiles(profile.uid).catch(() => ({ moved: 0, left: 1 }));
       const meetings = (await listMeetings().catch(() => [])).length;
-      setOut({ ok: writes && left === 0, writes, moved, left, meetings });
+      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left });
     } catch (e) {
       console.warn("[moveAll]", e);
       setOut({ ok: false, err: true });
@@ -67,6 +71,8 @@ export function MoveAllRow() {
           out.writes ? "Bekleyen kayıtlar gönderildi" : "Bekleyen kayıtlar gönderilemedi",
           out.moved ? `${out.moved} evrak taşındı` : "",
           out.left ? `${out.left} evrak taşınamadı` : "",
+          out.mailMoved ? `${out.mailMoved} mail eki taşındı` : "",
+          out.mailLeft ? "Bazı mail ekleri taşınamadı" : "",
           out.meetings ? `${out.meetings} toplantı özetlenmemiş (Notlar › Toplantı'dan özetle)` : "",
           out.ok ? (out.dropped ? "Kopyalar silindi" : "Hepsi Firebase'de") : "",
         ]
