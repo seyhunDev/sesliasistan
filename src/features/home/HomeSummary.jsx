@@ -245,7 +245,7 @@ export function WeekStrip({ w, att, today }) {
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
   return (
     <>
-      <div className="grid grid-cols-7 gap-1 px-2.5 pb-3 pt-3.5">
+      <div className="grid grid-cols-7 gap-1 px-2.5 pb-3 pt-1">
         {w.days.map((d) => {
           const fitOnly = !d.has && d.fit.length > 0;
           const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;

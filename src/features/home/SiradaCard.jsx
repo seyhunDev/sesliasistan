@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { Icon } from "@/components/ui/Icon";
@@ -15,7 +16,7 @@ import { WeekStrip } from "./HomeSummary";
 import { CALM } from "./ui";
 
 // Ana sayfanın en üstü (Seyhun: "şu an değil, sırada ne var önemli; antrenman takvimini en üste al, isim bile koymaya gerek yok").
-// Tek kart: üstte başlıksız hafta şeridi (antrenman takvimi; güne dokununca o günün penceresi, WeekStrip), altında SIRADA:
+// Tek kart: sağ üstte "Takvim ›" (Takvim sayfası; Seyhun: "takvim gibi oldu, takvim butonu olsun"), başlıksız hafta şeridi (antrenman takvimi; güne dokununca o günün penceresi, WeekStrip), altında SIRADA:
 // bugünden sonraki 4 plan (ŞİMDİ / BUGÜN / YARIN / gün adı, saat, başlık; yalnız ilk satırda yer ve rüzgâr). Satıra dokununca plan
 // açılır (Yarış planında yarışın sayfası). En altta "N şey seni bekliyor" şeridi (zil ile aynı pencere). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
@@ -44,6 +45,9 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 
   return (
     <section aria-label="Sırada" className={`overflow-hidden ${CALM}`}>
+      <div className="flex justify-end px-3.5 pt-2">
+        <Link href="/calendar" className="text-[0.8125rem] font-semibold text-acc">Takvim ›</Link>
+      </div>
       {week && <WeekStrip w={week} att={att} today={today} />}
       {rows.length ? (
         <ul>
