@@ -230,6 +230,10 @@ service cloud.firestore {
         allow create, update: if isStaff(orgId) && id.matches(request.auth.uid + "_[0-9]{4}-[0-9]{2}")
                               && request.resource.data.uid == request.auth.uid;
       }
+      // Asistan puan özeti (Ayarlar › Öğrenme raporu): her kişinin tek belgesi, yalnız kendisi okur/yazar
+      match /learnSum/{id} {
+        allow read, create, update: if isStaff(orgId) && id == request.auth.uid;
+      }
 
       // Sporcu yoklama kopyası (kulüp verisinden yalnızca ad + yoklama): sporcunun kendisi ve bağlı velileri okur; ana hesap yazar
       match /athleteAtt/{mid} {

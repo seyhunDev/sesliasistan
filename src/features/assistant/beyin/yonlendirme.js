@@ -6,6 +6,7 @@ import { isEnd, isNoMore, isNo, isYes, lastCreated, KIND, PAGES } from "@/lib/as
 import { splitChain } from "@/lib/chain";
 import { looksMulti, actCount, clausesOf, cachedPlan, localPlan, lastPagesPlan, orderPlan } from "@/lib/taskPlan";
 import { countHit, record } from "@/lib/brain/store";
+import { scoreStart } from "@/lib/brain/scoreStore";
 import { historyFor, DRAFT_AGE, isDraftEdit } from "@/lib/convoContext";
 import { isDrop } from "@/features/events/eventWords";
 import { QUESTION } from "../isler/ortak";
@@ -75,6 +76,8 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   }
   const chained = chainStep.current;
   chainStep.current = false;
+  // Puanlama (yalnız ölçer): yeni tur ya da bekleyen soruya cevap; önceki işi düzeltiyorsa o iş kötü sayılır
+  if (!chained) scoreStart(s, { awaiting: !!cards.awaiting || drafts.length > 0, yes: isYes(s) });
   // Kullanıcının yeni sözü: görev listesindeki numaralı iş artık geçerli değil
   if (!chained && ctx.actNow) ctx.actNow.current = null;
   // Tek cümlede birden çok iş ("Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit

@@ -2,6 +2,7 @@
 import { timingReply } from "@/lib/assistTiming";
 import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
 import { record } from "@/lib/brain/store";
+import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
 
 export function reply(ctx, message, extra = {}, viaVoice = false) {
@@ -41,6 +42,8 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks });
   if (races?.length) waitFor("raceChoice");
   raceChoices.current = races;
+  // Puanlama (yalnız ölçer): iş bitti mi, soru mu sordu, olmadı mı
+  scoreEnd({ engine, fail: !!(extra.fail ?? failed(message)), dropped: DROPPED.test(message), awaiting, card: !!pending || !!ok, final: !chain.current.length, ids: show.map((x) => x?.id) });
   // Görev listesi: iş bitti (soru sormadıysa) → ✓ ya da ✗, sıradaki başlar
   // Görev listesinin son işi bitti: liste ✓ ile kalır, mikrofon yeniden açılmaz, çalışma durur
   // (Seyhun: "o tik işaretini de almalı, sonra çalışmayı durdurmalı", 2026-10-09)
