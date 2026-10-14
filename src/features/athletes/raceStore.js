@@ -2,12 +2,13 @@
 
 // Yarışa elle eklenen evrak (kayıt formu, sağlık raporu, dekont…) Firebase Storage'da: orgs/{org}/raceFiles/{id}
 // (kural storage.rules: yalnız ana hesap). Yarışta künyesi durur: files [{ id, name, type, size, at, url }] (races.js cleanRaceFiles).
-// Açılan dosya bu cihazda da saklanır (IndexedDB "rf:<id>"), ikinci açılış internetsiz.
+// Telefonda kopya tutulmaz: yüklenen/taşınan dosya yalnız Storage'da durur, açılınca indirilir (tarayıcı önbelleği yeter).
+// Önceki sürümün bıraktığı kopyalar ("rf:<id>") dropRaceCopies ile silinir.
 // Eskiden bu evrak yalnız telefonda duruyordu ("<yarış>:extra", raceFiles.js); moveLocalExtras onları Storage'a taşır.
 import { arrayUnion, doc, getDoc, updateDoc } from "firebase/firestore";
 import { deleteObject, getStorage, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
-import { dropRaceFile, getRaceFile, listRaceFiles, saveRaceFile } from "./raceFiles";
+import { dropRaceFile, listRaceFiles, saveRaceFile } from "./raceFiles";
 
 export const RACE_FILE_MAX = 20 * 1024 * 1024;
 const store = () => getStorage(app);
@@ -24,19 +25,15 @@ export async function uploadRaceFile(orgId, blob, name, onProg) {
   const task = uploadBytesResumable(r, blob, { contentType: type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
   const url = await getDownloadURL(r);
-  saveRaceFile({ id: cacheKey(id), blob, name, type });
   return { id, name: String(name || "evrak").slice(0, 120), type, size: blob.size, at: new Date().toISOString(), url };
 }
 
-// Dosyanın kendisi: önce bu cihazdan, yoksa Storage'dan (indirilen saklanır). İndirilemezse null (çağıran adresi açar).
+// Dosyanın kendisi Storage'dan (telefonda saklanmaz). İndirilemezse null (çağıran adresi açar).
 export async function loadRaceFile(meta) {
-  const hit = await getRaceFile(cacheKey(meta.id));
-  if (hit?.blob) return new File([hit.blob], meta.name, { type: meta.type });
   try {
     const res = await fetch(meta.url);
     if (!res.ok) throw new Error(String(res.status));
     const blob = await res.blob();
-    saveRaceFile({ id: cacheKey(meta.id), blob, name: meta.name, type: meta.type });
     return new File([blob], meta.name, { type: meta.type });
   } catch (e) {
     console.warn("[raceStore] indirilemedi", e);
@@ -89,7 +86,15 @@ export async function moveLocalExtras(orgId, raceId, onProg) {
     if (keep.length) await saveRaceFile({ id: rec.id, files: keep });
     else await dropRaceFile(rec.id);
   }
+  await dropRaceCopies().catch(() => {});
   return { moved, left, added };
+}
+
+// Firebase'e giden evrakın telefonda kalan kopyalarını siler (önceki sürüm saklıyordu). Silinen sayısı.
+export async function dropRaceCopies() {
+  const recs = (await listRaceFiles()).filter((r) => String(r.id).startsWith("rf:"));
+  for (const r of recs) await dropRaceFile(r.id);
+  return recs.length;
 }
 
 // Bu telefonda Firebase'e gönderilmemiş evrak sayısı (yarış başına)
