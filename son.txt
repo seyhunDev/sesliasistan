@@ -1,8 +1,8 @@
-Commit: c465a2f · Bildirim testi (npm run test:bildirim) (#401)
-Zaman: 2026-10-14-1336 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38550543226
+Commit: ab6029e · Hazır evrak: sporcu başına ve herkes için tek belge ayrı bölümlerde (#403)
+Zaman: 2026-10-14-1351 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38552278450
 
-TAM TEST · 14.10.2026 13:35:03
+TAM TEST · 14.10.2026 13:50:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 102 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
