@@ -11,6 +11,7 @@ import { shareText } from "@/lib/cancelPlan";
 import { waMode } from "@/lib/steps";
 import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 import * as CX from "@/lib/convoContext";
+import { miniText, pullAction } from "@/lib/miniOrb";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -996,6 +997,15 @@ group("Temiz başlık ve sorusuz ekleme")([
       ["boş", C("oturum yoksa bölüm yok", () => CX.sessionsBlock([]), (t) => t === "")],
     ]);
   }
+  group("Küçülen asistan küresi")([
+    ["dinlerken", C("aşağı çekince küçülür", () => pullAction("listening"), (r) => r === "mini")],
+    ["çalışırken", C("aşağı çekince küçülür", () => pullAction("busy"), (r) => r === "mini")],
+    ["konuşurken", C("aşağı çekince küçülür", () => pullAction("speaking"), (r) => r === "mini")],
+    ["boşta", C("aşağı çekince kapanır", () => pullAction("idle"), (r) => r === "close")],
+    ["satır: dinliyor", C("söylenen yazı", () => miniText("listening", { heard: " yarın  10'da " }), (t) => t === "yarın 10'da")],
+    ["satır: iş", C("o anki iş", () => miniText("busy", { status: "Plan hazırlanıyor…", said: "x" }), (t) => t === "Plan hazırlanıyor…")],
+    ["satır: cevap", C("son cevap", () => miniText("idle", { lastReply: "Ekledim: Antrenman" }), (t) => t === "Ekledim: Antrenman")],
+  ]);
   group("Tek bekleyen soru")([
     ["yeni soru", C("yeni soru sorulunca diğer bütün sorular kapanır", () => CX.asksToClear("ok"), (r) => !r.includes("ok") && r.includes("person") && r.includes("raceChoice") && r.includes("to") && r.length === Object.keys(CX.ASK_EMPTY).length - 1)],
     ["sohbet bitti", C("hepsi kapanır", () => CX.asksToClear(), (r) => r.length === Object.keys(CX.ASK_EMPTY).length)],

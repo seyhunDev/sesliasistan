@@ -19,6 +19,7 @@ import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { miniText, pullAction } from "@/lib/miniOrb";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -299,7 +300,7 @@ function AssistBg() {
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -413,9 +414,11 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
   // kaydırmadır; yazarken (klavye) ve düğmelerden başlayan dokunuşta çalışmaz.
   const st = useRef(state);
   const close = useRef(onClose);
+  const mini = useRef(onMini);
   useLayoutEffect(() => {
     st.current = state;
     close.current = onClose;
+    mini.current = onMini;
   });
   useEffect(() => {
     const el = box.current;
@@ -454,7 +457,8 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
       const fast = dy / Math.max(1, Date.now() - t0) > 0.6 && dy > 50;
       const far = dy > (st.current === "listening" ? 160 : 110);
       // Kapanınca kubbe zaten boştaki boyuna iner; sürüklenen kubbe aynı anda yerine yumuşakça döner
-      if (fast || far) close.current?.();
+      // Konuşurken ya da iş sürerken çekilirse kapanmaz, sağ altta küçük küre olur (Seyhun, 2026-10-14)
+      if (fast || far) (pullAction(st.current) === "mini" && mini.current ? mini.current() : close.current?.());
       reset(true);
     };
     el.addEventListener("touchstart", start, { passive: true });
@@ -622,6 +626,21 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
   );
 }
 
+// Küçülmüş asistan: sağ altta, sekme çubuğunun üstünde durum renginde küre; yanında o anki iş ya da son cevap tek satır
+function MiniOrb({ state, live, onOpen, onClose }) {
+  const text = miniText(state, live);
+  return (
+    <div className="amini fixed right-3 z-[39] flex max-w-[calc(100vw-1.5rem)] items-center gap-2" style={{ bottom: "calc(var(--dome-h, 5rem) + 0.75rem)" }}>
+      {text && (
+        <button type="button" onClick={onOpen} className="amini-chip min-w-0 truncate rounded-full px-3.5 py-2 text-left text-[0.875rem]">
+          {text}
+        </button>
+      )}
+      <VoiceLight state={state} onTap={onOpen} onHold={onClose} size="size-14" compact />
+    </div>
+  );
+}
+
 // Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
 export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const path = usePathname();
@@ -642,7 +661,16 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   }, [typing]);
   const kind = useKind();
 
-  const active = !!live.open;
+  const open = !!live.open;
+  // Küçülen küre (Seyhun, 2026-10-14): konuşurken ya da iş sürerken aşağı çekilince asistan kapanmaz, sağ altta küre
+  // olarak dinlemeye ve çalışmaya devam eder; küreye dokununca tam ekran döner, basılı tutunca kapanır.
+  const [mini, setMini] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (!open) setMini(false); // konuşma kapanınca bir sonraki açılış tam ekran
+  }
+  const active = open && !mini;
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
 
   const go = (fn) => () => {
@@ -695,6 +723,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
 
   // Tek düğmenin işi duruma göre (VoiceLight'taki tablo)
   const talk = () => {
+    if (open && mini) return setMini(false);
     if (active) {
       if (state === "listening") return act.current.stop?.();
       if (state === "busy") return act.current.abort?.();
@@ -705,6 +734,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   // Yazarak sor ("Şimdi sen dene" yönlendirmesi de kapanır)
   const typeNow = () => {
     window.dispatchEvent(new Event("sa-assistant-open"));
+    setMini(false);
     setTyping(true);
   };
 
@@ -724,6 +754,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         onTypingDone={() => (setTyping(false), setTypeInit(""))}
         cfg={cfg}
         onClose={() => act.current.close?.()}
+        onMini={() => setMini(true)}
         voice={{
           cancel: () => act.current.cancel?.(),
           edit: () => act.current.edit?.(),
@@ -746,6 +777,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         path={path}
         unread={unreadTotal}
       />
+      {open && mini && !noAi && <MiniOrb state={state} live={live} onOpen={() => setMini(false)} onClose={() => act.current.close?.()} />}
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
         <div className="space-y-4">
           {sections.map(([title, list]) => (
