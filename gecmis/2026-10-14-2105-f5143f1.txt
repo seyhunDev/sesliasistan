@@ -1,8 +1,8 @@
-Commit: 33ded7d · Biten antrenman kartı: süre/set/his kutuları, hareket satırları, set süre hapları (#363)
-Zaman: 2026-10-13-1646 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38407481034
+Commit: f5143f1 · Asistan son 5 sohbeti hatırlıyor (#427)
+Zaman: 2026-10-14-2105 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38611904462
 
-TAM TEST · 13.10.2026 16:45:12
+TAM TEST · 14.10.2026 21:03:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
