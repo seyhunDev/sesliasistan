@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
-import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
+import { dropRaceCopies, localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
 import { listMeetings } from "@/lib/meeting/store";
 import { bytesOf, raceFileInfo, sizeText, storageBytes } from "@/lib/deviceData";
 import { Row } from "./ui";
@@ -29,10 +29,12 @@ async function measure() {
     local = storageBytes(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)]));
   } catch {}
   const raceBytes = files.reduce((n, f) => n + f.size, 0);
+  const copies = files.filter((f) => f.kind === "cache");
+  const copyBytes = copies.reduce((n, f) => n + f.size, 0);
   const meetBytes = bytesOf(meetings);
   const known = raceBytes + meetBytes + appBytes + local;
   const total = est?.usage || 0;
-  return { extras, files, raceBytes, meetings: meetings.length, meetBytes, appBytes, local, fb: fbNames.length > 0, fbBytes: total ? Math.max(0, total - known) : null, total: Math.max(total, known), quota: est?.quota || 0 };
+  return { extras, copies: copies.length, copyBytes, files, raceBytes, meetings: meetings.length, meetBytes, appBytes, local, fb: fbNames.length > 0, fbBytes: total ? Math.max(0, total - known) : null, total: Math.max(total, known), quota: est?.quota || 0 };
 }
 
 async function appCacheBytes() {
@@ -83,6 +85,15 @@ export function DeviceDataRow() {
     }
     setBusy("");
   };
+  // Firebase'de duran evrakın telefondaki kopyaları: gereksiz, açılınca yeniden indirilir
+  const dropCopies = async () => {
+    if (!confirm("Firebase'e gönderilen evrakın telefondaki kopyaları silinsin mi? Evrak Firebase'de kalır, açınca indirilir.")) return;
+    setBusy("copies");
+    const n = await dropRaceCopies().catch(() => 0);
+    await load();
+    setBusy("");
+    toast(`${n} kopya silindi`);
+  };
   const dropApp = async () => {
     if (!confirm("Uygulama dosyaları silinsin mi? Sonraki açılışta yeniden iner (internet gerekir).")) return;
     setBusy("app");
@@ -128,6 +139,17 @@ export function DeviceDataRow() {
                   </span>
                   <button type="button" disabled={!!busy} onClick={send} className="shrink-0 rounded-lg bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
                     {busy.startsWith("send") ? `Gönderiliyor… %${busy.split(":")[1] || 0}` : "Firebase'e gönder"}
+                  </button>
+                </div>
+              )}
+              {d.copies > 0 && (
+                <div className="mb-2 flex items-center gap-3 rounded-xl bg-bg px-3 py-2.5">
+                  <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
+                    <b className="block font-semibold">{d.copies} evrakın kopyası telefonda · {sizeText(d.copyBytes)}</b>
+                    <span className="text-mut">Asılları Firebase&apos;de, kopyaya gerek yok.</span>
+                  </span>
+                  <button type="button" disabled={!!busy} onClick={dropCopies} className="shrink-0 rounded-lg bg-rec/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-rec disabled:opacity-40">
+                    {busy === "copies" ? "Siliniyor…" : "Kopyaları sil"}
                   </button>
                 </div>
               )}
