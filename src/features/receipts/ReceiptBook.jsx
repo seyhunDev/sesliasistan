@@ -328,15 +328,18 @@ export function ReceiptBook({ kind: start = "" }) {
       )}
 
       {owner && (
-        <div className={`mt-3 grid gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
-          <button onClick={() => openReceipt()} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc active:scale-[.98]">
+        // Ekleme düğmeleri altta sabit, alt çubuğun hemen üstünde (globals.css body[data-dock] .fixed[data-pagebar])
+        <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
+        <div className={`mx-auto grid max-w-[26.25rem] gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
+          <button onClick={() => openReceipt()} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_2px_8px_rgba(38,40,44,.08)]">
             <Icon name="camera" className="size-5" /> Fiş ekle
           </button>
           {shownKind === "" && (
-          <button onClick={desk.pick} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc active:scale-[.98]">
+          <button onClick={desk.pick} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_2px_8px_rgba(38,40,44,.08)]">
             <Icon name="plus" className="size-5" /> Fatura ekle
           </button>
           )}
+        </div>
         </div>
       )}
 
