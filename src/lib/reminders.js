@@ -60,7 +60,9 @@ export function reminderText(plan, lead, { tz = DEFAULT_TZ, now = new Date() } =
     const left = wall(plan.date, plan.time) - localNow(tz, now).min;
     if (left > 0 && left < 60 && left < lead - 5) use = Math.max(5, Math.round(left / 5) * 5);
   }
-  return { ...reminderTextOf(plan, use), tag: `plan-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
+  // Etiket atama/değişiklik bildiriminden ("plan-<id>") ayrı: aynı etiket zilde okunmamış atama bildiriminin yerine geçiyor,
+  // simgedeki sayı artmıyordu. Aynı planın sonraki hatırlatması yine öncekinin yerine geçer.
+  return { ...reminderTextOf(plan, use), tag: `remind-${plan.id}`, url: `/?open=plan:${plan.id}` }; // dokununca o plan açılır
 }
 
 // Plana özel hatırlatma (plan formundaki "Hatırlat"): dakika. Yoksa null (kişinin kendi ayarı geçerli), 0 = bu plan hatırlatılmaz.
