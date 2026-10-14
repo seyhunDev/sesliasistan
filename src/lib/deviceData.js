@@ -27,6 +27,7 @@ export function sizeText(n) {
 export function raceFileInfo(rec, raceName = () => "") {
   const id = String(rec?.id || "");
   const size = bytesOf(rec);
+  if (id.startsWith("rf:")) return { id, kind: "cache", title: rec.name || "Evrak", sub: "Firebase'deki evrakın kopyası", size };
   if (id.startsWith("notice:")) return { id, kind: "notice", title: rec.name || "Yarış talimatı", sub: "Talimat kopyası", size };
   if (id.endsWith(":extra")) {
     const n = rec.files?.length || 0;

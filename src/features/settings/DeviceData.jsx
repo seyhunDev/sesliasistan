@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
+import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
 import { listMeetings } from "@/lib/meeting/store";
 import { bytesOf, raceFileInfo, sizeText, storageBytes } from "@/lib/deviceData";
 import { Row } from "./ui";
@@ -11,12 +13,13 @@ import { Row } from "./ui";
 // Yarış evrakı ve talimat kopyaları tek tek silinebilir (gerekince yeniden hazırlanır / indirilir);
 // uygulama dosyaları silinirse sonraki açılışta yeniden iner. Bekleyen toplantılar ve Firebase önbelleği yalnız gösterilir.
 async function measure() {
-  const [races, meetings, est, appBytes, fbNames] = await Promise.all([
+  const [races, meetings, est, appBytes, fbNames, extras] = await Promise.all([
     listRaceFiles().catch(() => []),
     listMeetings().catch(() => []),
     navigator.storage?.estimate?.().catch(() => null) ?? null,
     appCacheBytes(),
     indexedDB.databases ? indexedDB.databases().then((l) => l.map((d) => d.name || "").filter((n) => n.startsWith("firestore"))).catch(() => []) : [],
+    localExtraCount().catch(() => 0),
   ]);
   // Hazırlanan evrakın adı eklenen evrakta da görünsün
   const names = new Map(races.filter((r) => !String(r.id).includes(":")).map((r) => [r.id, String(r.name || "").replace(/-evrak\.pdf$/, "").replace(/-/g, " ")]));
@@ -29,7 +32,7 @@ async function measure() {
   const meetBytes = bytesOf(meetings);
   const known = raceBytes + meetBytes + appBytes + local;
   const total = est?.usage || 0;
-  return { files, raceBytes, meetings: meetings.length, meetBytes, appBytes, local, fb: fbNames.length > 0, fbBytes: total ? Math.max(0, total - known) : null, total: Math.max(total, known), quota: est?.quota || 0 };
+  return { extras, files, raceBytes, meetings: meetings.length, meetBytes, appBytes, local, fb: fbNames.length > 0, fbBytes: total ? Math.max(0, total - known) : null, total: Math.max(total, known), quota: est?.quota || 0 };
 }
 
 async function appCacheBytes() {
@@ -50,6 +53,8 @@ async function appCacheBytes() {
 
 export function DeviceDataRow() {
   const toast = useToast();
+  const { profile } = useAuth();
+  const owner = profile?.role !== "staff" && (profile?.orgId || profile?.uid) === profile?.uid;
   const [open, setOpen] = useState(false);
   const [d, setD] = useState(null);
   const [busy, setBusy] = useState("");
@@ -65,6 +70,18 @@ export function DeviceDataRow() {
     await load();
     setBusy("");
     toast("Silindi");
+  };
+  // Eklenen yarış evrakı (yalnız bu telefonda) Firebase Storage'a gider, yarışına bağlanır; Mac'ten de açılır.
+  const send = async () => {
+    setBusy("send");
+    try {
+      const out = await moveLocalExtras(profile.orgId || profile.uid, undefined, (p) => setBusy(`send:${Math.round(p * 100)}`));
+      await load();
+      toast(out.left ? `${out.moved} evrak gönderildi, ${out.left} gönderilemedi` : `${out.moved} evrak Firebase'e gönderildi`);
+    } catch {
+      toast("Gönderilemedi, internet bağlantısını kontrol et");
+    }
+    setBusy("");
   };
   const dropApp = async () => {
     if (!confirm("Uygulama dosyaları silinsin mi? Sonraki açılışta yeniden iner (internet gerekir).")) return;
@@ -103,6 +120,17 @@ export function DeviceDataRow() {
             <p className="py-2 text-[0.875rem] text-mut">Bu tarayıcı saklanan verileri göstermiyor.</p>
           ) : (
             <>
+              {owner && d.extras > 0 && (
+                <div className="mb-2 flex items-center gap-3 rounded-xl bg-amber-50 px-3 py-2.5 dark:bg-amber-500/10">
+                  <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
+                    <b className="block font-semibold">{d.extras} yarış evrakı yalnız bu telefonda</b>
+                    <span className="text-mut">Telefon değişirse kaybolur, Mac&apos;ten açılmaz.</span>
+                  </span>
+                  <button type="button" disabled={!!busy} onClick={send} className="shrink-0 rounded-lg bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
+                    {busy.startsWith("send") ? `Gönderiliyor… %${busy.split(":")[1] || 0}` : "Firebase'e gönder"}
+                  </button>
+                </div>
+              )}
               <ul className="divide-y divide-line">
                 {line("Yarış evrakı ve talimatlar", `${d.files.length} kayıt`, sizeText(d.raceBytes), d.files.length > 0 && del(() => drop(d.files.map((f) => f.id), "Tüm yarış evrakı"), "Tüm yarış evrakı"))}
                 {line("Bekleyen toplantılar", d.meetings ? `${d.meetings} kayıt (özetlenmemiş)` : "Yok", sizeText(d.meetBytes))}

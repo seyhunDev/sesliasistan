@@ -1,8 +1,8 @@
 rules_version = '2';
 
 // Firebase Storage kuralları (Firebase konsolu › Storage › Kurallar'a yapıştırılıp yayınlanır).
-// Yalnız fitness hareketlerinin fotoğraf ve videoları: orgs/{orgId}/fitMedia/{id} (src/features/fitness/fitMedia.js).
-// Ana hesap (uid == orgId, çalışan profili değil) yükler ve siler; aynı kulüpteki hesaplar (çalışan, sporcu) okur.
+// fitMedia: fitness hareketlerinin fotoğraf ve videoları (src/features/fitness/fitMedia.js); ana hesap yükler/siler, aynı kulüp okur.
+// raceFiles: yarışa eklenen evrak (src/features/athletes/raceStore.js); yalnız ana hesap.
 service firebase.storage {
   match /b/{bucket}/o {
     function me() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
@@ -20,6 +20,13 @@ service firebase.storage {
       allow create, update: if isOwner(orgId)
                             && request.resource.size < 90 * 1024 * 1024
                             && request.resource.contentType.matches('(image|video)/.*');
+    }
+
+    match /orgs/{orgId}/raceFiles/{id} {
+      allow read, delete: if isOwner(orgId);
+      allow create, update: if isOwner(orgId)
+                            && request.resource.size < 20 * 1024 * 1024
+                            && request.resource.contentType.matches('(image|application)/.*');
     }
 
     match /{all=**} {
