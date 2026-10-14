@@ -2,6 +2,7 @@
 // Sayfa başlığındaki geri düğmesi gelinen sayfaya döner (router.back); uygulama o sayfada
 // açıldıysa (önceki kayıt yoksa) sayfanın üst sayfasına gider. Böylece ana sayfadan
 // Yarışlar'a gelen kişi geri basınca Sporcular'a değil ana sayfaya döner.
+import { scoreBack } from "@/lib/brain/scoreStore";
 
 const KEY = "sa-nav-trail";
 const MAX = 50;
@@ -87,6 +88,7 @@ let pending = 0;
 let timer = 0;
 export function goBack(router, href = "/") {
   if (typeof window === "undefined") return;
+  scoreBack(); // puanlama: asistanın açtığı sayfadan hemen geri dönüldüyse
   if (pending && Date.now() - pending < WAIT) return;
   if (!canGoBack()) {
     router.replace(href);

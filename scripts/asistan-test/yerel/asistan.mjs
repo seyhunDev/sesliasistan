@@ -1053,3 +1053,33 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["cümle", { desc: "asistan cevabı", fn: () => athleteDuesText("Ali Kaya", late), ok: (r) => /Ekim aidatı eksik ödendi/.test(r) && /2 ay/.test(r) }],
   ]);
 }
+
+// Asistan puanlaması (1. adım: yalnız ölçüm)
+{
+  const S = await import("@/lib/brain/score");
+  const now = Date.UTC(2026, 9, 14, 10);
+  const sum = { pats: {}, weeks: {} };
+  const k = S.patternKey("yarın 10'da antrenman ekle");
+  S.applyEvent(sum, { k, x: "yarın 10'da antrenman ekle", e: "ai", n: 1, p: 1, t: now });
+  S.applyEvent(sum, { k, x: "yarın 10'da antrenman ekle", e: "ai", o: "fix", b: 1, p: -2, t: now });
+  S.applyEvent(sum, { k: "kx", x: "eski", n: 1, b: 1, p: -1, t: now - 70 * 864e5 });
+  const r = S.report(sum, now);
+  group("Puanlama")([
+    ["aynı kalıp", { desc: "gün ve saat farkı aynı kalıp", fn: () => S.patternKey("cuma 9'da antrenman ekle") === k, ok: (x) => x === true }],
+    ["farklı kalıp", { desc: "başka iş başka kalıp", fn: () => S.patternKey("Ali'ye mesaj at") === k, ok: (x) => x === false }],
+    ["benzer söz", { desc: "yeniden söylenen cümle", fn: () => S.similar("yarın antrenman ekle", "yarın antrenman ekle lütfen"), ok: (x) => x === true }],
+    ["benzemeyen söz", { desc: "farklı cümle", fn: () => S.similar("yarın antrenman ekle", "Ali'ye mesaj at"), ok: (x) => x === false }],
+    ["Ali değil Ayşe", { desc: "düzeltme", fn: () => S.isCorrection("Ali değil Ayşe"), ok: (x) => x === true }],
+    ["geri al", { desc: "düzeltme", fn: () => S.isCorrection("geri al"), ok: (x) => x === true }],
+    ["hayır 10 değil 11", { desc: "düzeltme", fn: () => S.isCorrection("hayır 10 değil 11"), ok: (x) => x === true }],
+    ["iyi değil mi", { desc: "soru düzeltme değil", fn: () => S.isCorrection("hava iyi değil mi"), ok: (x) => x === false }],
+    ["yarın antrenman ekle", { desc: "düz istek düzeltme değil", fn: () => S.isCorrection("yarın antrenman ekle"), ok: (x) => x === false }],
+    ["hafta", { desc: "ISO hafta", fn: () => S.weekOf(now), ok: (x) => x === "2026-W42" }],
+    ["yıl başı haftası", { desc: "1 Ocak 2027 cuma → 2026-W53", fn: () => S.weekOf(new Date(2027, 0, 1, 12).getTime()), ok: (x) => x === "2026-W53" }],
+    ["kalıp toplamı", { desc: "1 komut, 1 hatalı, puan −1", fn: () => sum.pats[k], ok: (x) => x.n === 1 && x.b === 1 && x.p === -1 }],
+    ["rapor", { desc: "bu hafta %0, eski kalıp sayılmaz", fn: () => r, ok: (x) => x.week.n === 1 && x.week.ok === 0 && x.worst.length === 1 && x.pats === 1 }],
+    ["rapor metni", { desc: "kopyalanacak metin", fn: () => S.reportText(r), ok: (x) => /bu hafta 1 komut/.test(x) && /En çok hata/.test(x) }],
+    ["bitiş puanı", { desc: "soru sorulmadan bitti +1, ✗ −1", fn: () => [S.endPoints({})[0].p, S.endPoints({ fail: true })[0].p, S.endPoints({ asked: true }).length], ok: (x) => x.join() === "1,-1,0" }],
+    ["sınır", { desc: "fazla kalıpta en eskiler", fn: () => S.oldestKeys({ a: { t: 1 }, b: { t: 3 }, c: { t: 2 } }, 2), ok: (x) => x.join() === "a" }],
+  ]);
+}

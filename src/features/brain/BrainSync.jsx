@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { flush, initBrain } from "@/lib/brain/store";
+import { flushScore, initScore } from "@/lib/brain/scoreStore";
 
 // Oturum açılınca öğrenme verisini hazırlar (çalışan: kendi öğrenmesi, ana hesap: ekibin tamamı);
 // uygulama arka plana geçince bekleyenleri gönderir
@@ -16,9 +17,14 @@ export function BrainSync() {
   useEffect(() => {
     if (!uid || !orgId) return;
     initBrain({ uid, orgId, role, brainOff, brainResetAt });
-    const onHide = () => document.visibilityState === "hidden" && flush();
+    initScore({ uid, orgId, brainOff });
+    const onHide = () => document.visibilityState === "hidden" && (flush(), flushScore(true));
+    const tick = setInterval(() => flushScore(), 2 * 60e3);
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    return () => {
+      clearInterval(tick);
+      document.removeEventListener("visibilitychange", onHide);
+    };
   }, [uid, orgId, role, brainOff, brainResetAt]);
   return null;
 }

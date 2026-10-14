@@ -32,6 +32,7 @@ import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { canLog } from "@/lib/trainingLog";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
 import { seeInbox } from "@/features/home/InboxSeen";
+import { scoreEdit } from "@/lib/brain/scoreStore";
 
 const TIME_CHIPS = [["Sabah 09:00", "09:00"], ["Öğleden sonra 14:00", "14:00"], ["Akşam 18:00", "18:00"]];
 
@@ -276,6 +277,7 @@ export function AddSheet({ open, onClose, seed }) {
     const e = d ? check(d) : "Kayıt bulunamadı";
     if (e) return toast(e);
     updateRecord(edit.kind, edit.id, { ...toPatch(d), ...(canAssign ? { assignees: d.assignees || [] } : {}) }, by);
+    scoreEdit(edit.id);
     toast("Güncellendi");
     onClose();
   }

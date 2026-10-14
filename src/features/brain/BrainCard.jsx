@@ -5,6 +5,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { Switch } from "@/features/settings/ui";
 import { LABELS } from "@/lib/brain/model";
 import { flush, guess, missedLocal, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
+import { reportText } from "@/lib/brain/score";
+import { resetScore, scoreReport, subscribeScore } from "@/lib/brain/scoreStore";
 
 const kb = (b) => (b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`);
 const labelName = (l) => LABELS[l] || (l.startsWith("nav:") ? `Sayfa: ${l.slice(4)}` : l);
@@ -16,10 +18,16 @@ export function BrainCard({ bare, owner }) {
   const [q, setQ] = useState("");
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [r, setR] = useState(null);
   useEffect(() => {
     const up = () => setS(stats());
     up();
     return subscribe(up);
+  }, []);
+  useEffect(() => {
+    const up = () => setR(scoreReport());
+    up();
+    return subscribeScore(up);
   }, []);
   if (!s) return null;
   const g = q.trim() ? guess(q) : null;
@@ -42,6 +50,7 @@ export function BrainCard({ bare, owner }) {
     setBusy(true);
     try {
       const n = await resetBrain();
+      await resetScore();
       toast(`Sıfırlandı · ${n} örnek silindi`);
       setAsk(false);
     } catch {
@@ -85,6 +94,45 @@ export function BrainCard({ bare, owner }) {
           </p>
         )}
       </div>
+
+      {/* Asistan puanı: işler ne kadar doğru bitti (kullanıcı düzeltti mi, yeniden söyledi mi, geri döndü mü) */}
+      {r && (
+        <div className="mt-2 rounded-lg bg-card px-2.5 py-2 text-[0.8125rem] ring-1 ring-line">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-mut">Asistan puanı · bu hafta</p>
+            {r.week.n + r.weeks[1].n > 0 && (
+              <button
+                onClick={() => navigator.clipboard?.writeText(reportText(r)).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))}
+                className="font-semibold text-acc"
+              >
+                Kopyala
+              </button>
+            )}
+          </div>
+          <p className="mt-0.5 font-semibold tabular-nums">
+            {r.week.n ? `${r.week.n} komut · %${r.week.ok} doğru · puan ${r.week.p}` : "Bu hafta komut yok"}
+          </p>
+          <p className="mt-0.5 text-mut tabular-nums">
+            {r.weeks
+              .slice(1)
+              .map((w) => `${w.w.slice(5)} ${w.n ? `%${w.ok}` : "–"}`)
+              .join(" · ")}
+          </p>
+          {r.worst.length > 0 && (
+            <>
+              <p className="mt-1.5 text-mut">En çok hata</p>
+              <ul className="mt-0.5 space-y-0.5">
+                {r.worst.slice(0, 5).map((x) => (
+                  <li key={x.x} className="flex justify-between gap-2">
+                    <span className="truncate">“{x.x}”</span>
+                    <span className="shrink-0 text-mut tabular-nums">{x.b}/{x.n}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
 
       <dl className="mt-2 grid grid-cols-2 gap-2 text-[0.8125rem]">
         {[
