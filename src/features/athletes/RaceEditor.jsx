@@ -14,7 +14,7 @@ import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { placeText as resPlace, resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
-import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, rangeText } from "./raceDocs";
+import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, phoneMissing, rangeText } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
@@ -182,6 +182,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const chosen = r.athleteIds.map((id) => byId.get(id)).filter(Boolean);
   const lost = r.athleteIds.length - chosen.length;
   const incomplete = chosen.filter((a) => missing(a, docs).length);
+  const noPhone = phoneMissing(chosen, docs);
   // TYF formları: sporcunun tekne sınıfı (ILCA 4…) kulüp uygulamasındaki sınıfından; sınıf başına ayrı form
   const className = Object.fromEntries(classes.map((c) => [c.id, c.name]));
   const forDocs = chosen.map((a) => ({ ...a, boatClass: className[a.currentClassId] || "" }));
@@ -274,6 +275,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     ["Kulüp yetkilisinin adı", !!r.signer.trim(), "docs"],
     [chosen.length ? `${chosen.length} sporcu seçildi` : "Sporcu seçilmedi", chosen.length > 0, "people"],
     [incomplete.length ? `${incomplete.length} sporcunun bilgisi eksik (belgede boş kalır)` : "Sporcu bilgileri tamam", !incomplete.length, "people", true],
+    ...(noPhone.length ? [[`Veli telefonu eksik: ${noPhone.map((a) => a.studentName).join(", ")} (veli izin belgesine yazılır)`, false, "phone"]] : []),
     ...(expired.length ? [[`${expired.length} sporcunun lisans, sağlık raporu ya da sigortası yarışta geçersiz`, false, "people", true]] : []),
     ...(coachLack.length ? [[`Antrenör bilgisi eksik: ${coachLack.join(", ")} (formda boş kalır)`, false, "docs", true]] : []),
   ];
@@ -282,6 +284,10 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
   const make = async () => {
     const bad = ready.find(([, ok, , soft]) => !ok && !soft);
+    if (bad && bad[2] === "phone") {
+      setFix(noPhone[0]);
+      return toast(`${noPhone[0].studentName}: veli telefonunu yaz`);
+    }
     if (bad) {
       go(bad[2]);
       return toast(bad[2] === "people" ? "En az bir sporcu seç" : `Eksik: ${bad[0].toLocaleLowerCase("tr-TR")}`);

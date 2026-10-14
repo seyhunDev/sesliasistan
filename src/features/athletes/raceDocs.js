@@ -137,7 +137,8 @@ export function athleteInfo(a) {
     schoolPlace: up(a.studentSchoolPlace),
     parents: [up(a.fatherName), up(a.motherName)].filter(Boolean).join("/"),
     birth: [up(a.studentBirthPlace), b && !Number.isNaN(b.getTime()) ? dmy(a.studentBirthDate, "-") : ""].filter(Boolean).join("/"),
-    phone: a.studentPhone || "",
+    // Sporcunun kendi telefonu yoksa veli telefonu (veli izin belgesinde İrtibat Telefonu boş kalmasın)
+    phone: a.studentPhone || a.parentPhone || "",
     parentName: up(a.parentName),
     parentTc: a.parentTc || "",
     parentPhone: a.parentPhone || "",
@@ -187,6 +188,9 @@ export const missing = (a, docs = DOCS.map(([k]) => k)) =>
   NEEDS.filter(([k, , only]) => !only || docs.includes(only))
     .filter(([k]) => (k === "school" ? !(a.studentSchool || a.studentSchoolAndClass) : k === "studentClass" ? !(a.studentClass || classOf(a.studentSchoolAndClass)) : !a[k]))
     .map(([, l]) => l);
+
+// Veli izin belgesi (EK-3/D) telefonsuz hazırlanmaz: veli telefonu sporcu bilgilerine bir kez yazılır
+export const phoneMissing = (list, docs = DOCS.map(([k]) => k)) => (docs.includes("parent") ? list.filter((a) => !String(a.parentPhone || "").trim()) : []);
 
 // ---- Çizim yardımcıları (y değerleri sayfanın üstünden ölçülür) ----
 function painter(page) {
