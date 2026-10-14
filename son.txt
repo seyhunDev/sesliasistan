@@ -1,8 +1,8 @@
-Commit: 5b59dbf · Ana sayfada hafta şeridine Takvim düğmesi (#423)
-Zaman: 2026-10-14-1848 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38592335467
+Commit: 1896f0a · Merge pull request #422 from seyhunDev/claude/project-thread-hivv0n
+Zaman: 2026-10-14-1856 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38593396007
 
-TAM TEST · 14.10.2026 18:47:07
+TAM TEST · 14.10.2026 18:54:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 58 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
