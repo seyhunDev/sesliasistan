@@ -31,6 +31,8 @@ export const RACE_FIELDS = [
   "notice",
   // Talimatın kendisi (PDF) noticeFiles'ta; burada künyesi { id, name, size, parts, at } (noticeFile.js)
   "noticeFile",
+  // Elle eklenen evrak (Storage'da orgs/{org}/raceFiles/{id}); burada künyesi [{ id, name, type, size, at, url }] (raceStore.js)
+  "files",
   // Elle eklenen işler [{ title, date }]
   "todos",
   // Bütçe (budget.js)
@@ -95,6 +97,13 @@ export const cleanNoticeFile = (f) =>
   f && typeof f === "object" && /^[\w-]{1,40}$/.test(f.id || "")
     ? { id: f.id, name: String(f.name || "talimat.pdf").slice(0, 120), size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: String(f.at || "") }
     : null;
+
+// Elle eklenen evrakın künyesi (dosya Storage'da); en çok 40, yalnız Firebase Storage adresi
+export const cleanRaceFiles = (l) =>
+  (Array.isArray(l) ? l : [])
+    .filter((f) => f && /^[\w-]{1,40}$/.test(f.id || "") && /^https:\/\/firebasestorage\.googleapis\.com\//.test(f.url || ""))
+    .slice(0, 40)
+    .map((f) => ({ id: f.id, name: String(f.name || "evrak").slice(0, 120), type: String(f.type || "").slice(0, 80), size: Number(f.size) || 0, at: String(f.at || ""), url: String(f.url).slice(0, 600) }));
 
 // Yarış öncesi yapılacaklar: tek düz liste. Her iş: { key, label, date?, detail?, group }.
 // İşaretleme yok: yapılan ya da gerekmeyen iş × ile listeden çıkarılır (skips; elle eklenen iş silinir).
@@ -221,6 +230,8 @@ const clean = (r) =>
               ? cleanNotice(r[k])
             : k === "noticeFile"
               ? cleanNoticeFile(r[k])
+            : k === "files"
+              ? cleanRaceFiles(r[k])
             : k === "skips"
               ? cleanSkips(r[k])
             : k === "done"
@@ -254,7 +265,7 @@ export function freshRace(last = {}, today = "") {
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, results: null,
   };
 }
 

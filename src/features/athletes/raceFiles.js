@@ -2,8 +2,8 @@
 
 // Hazırlanan yarış evrakı bu cihazda (IndexedDB) saklanır: sayfaya dönünce yeniden hazırlamak gerekmez.
 // Kayıt: { id (yarış), blob, name, docs, pages, at, mailText, parts: [{ key, title, blob, pages }] } (her belge ayrı da).
-// Elle eklenen evrak "<yarış>:extra" kaydında: { id, files: [{ id, name, type, blob, at }] }; bilgi değişince silinmez. Firebase'e yazılmaz: PDF'te T.C., veli gibi
-// kişisel bilgiler var; bunlar yalnız sporcu kartında durur, başka yere kopyalanmaz.
+// Elle eklenen evrak "<yarış>:extra" kaydında: { id, files: [{ id, name, type, blob, at }] }; bilgi değişince silinmez. Bu eski düzen:
+// yeni eklenen evrak Firebase Storage'a gider (raceStore.js), eski kayıtlar "Firebase'e gönder" ile taşınır. Hazırlanan evrak (T.C., veli bilgisi) yine yalnız cihazda.
 // Belgeyi değiştiren bir bilgi değişince kayıt silinir (RaceEditor › dropFile).
 const DB = "sa-race-docs";
 const STORE = "d";

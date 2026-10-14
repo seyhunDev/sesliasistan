@@ -28,6 +28,7 @@ import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
+import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { DateBadge, initials, leftText, placeText } from "./RaceList";
 
@@ -169,7 +170,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
   const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
   const [parts, setParts] = useState([]); // her belge ayrı PDF: [{ key, title, file, pages }]
-  const [extras, setExtras] = useState([]); // elle eklenen evrak: [{ id, name, type, blob, at }]
+  const [extras, setExtras] = useState([]); // eski düzen: yalnız bu telefonda kalan eklenen evrak [{ id, name, type, blob, at }] (Firebase'e gönderilir)
   // Hazır PDF bu cihazda saklıdır; sayfaya dönünce yeniden hazırlamak gerekmez
   useEffect(() => {
     let live = true;
@@ -413,24 +414,61 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
   const [docView, setDocView] = useState(null);
   const openPdf = (f = file) => setDocView(f);
-  // Elle evrak ekleme (PDF, fotoğraf…): bu cihazda yarışa bağlı saklanır
+  // Elle evrak ekleme (PDF, fotoğraf…): Firebase Storage'a yüklenir, yarışta künyesi durur (her cihazdan açılır; raceStore.js)
   const pickExtra = useRef(null);
+  const [upload, setUpload] = useState(null); // yükleme sürerken 0..1
+  const addFiles = (metas) => setR((p) => ({ ...p, files: [...(p.files || []).filter((f) => !metas.some((m) => m.id === f.id)), ...metas] }));
   const addExtras = async (list) => {
     await queue.current.catch(() => {});
     if (!id.current) return toast("Önce yarış adını yaz");
-    const add = [...list].filter((f) => f.size <= 25 * 1024 * 1024).map((f) => ({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: f.name || "evrak", type: f.type || "application/octet-stream", blob: f, at: new Date().toISOString() }));
-    if (add.length < list.length) toast("25 MB'tan büyük dosya eklenmedi");
-    if (!add.length) return;
-    const next = [...extras, ...add];
-    setExtras(next);
-    await saveExtras(id.current, next);
-    toast(add.length > 1 ? `${add.length} evrak eklendi` : "Evrak eklendi");
+    const ok = [...list].filter((f) => f.size <= RACE_FILE_MAX);
+    if (ok.length < list.length) toast("20 MB'tan büyük dosya eklenmedi");
+    if (!ok.length) return;
+    const metas = [];
+    setUpload(0);
+    try {
+      for (const [i, f] of ok.entries()) metas.push(await uploadRaceFile(orgId, f, f.name || "evrak", (p) => setUpload((i + p) / ok.length)));
+    } catch (e) {
+      console.warn("[race] evrak yüklenemedi", e);
+      toast(metas.length ? `${metas.length} evrak eklendi, kalanı yüklenemedi` : "Evrak yüklenemedi. İnterneti kontrol et.");
+    }
+    setUpload(null);
+    if (!metas.length) return;
+    addFiles(metas);
+    if (metas.length === ok.length) toast(metas.length > 1 ? `${metas.length} evrak eklendi` : "Evrak eklendi");
+  };
+  const removeStored = async (x) => {
+    if (!confirm(`"${x.name}" silinsin mi?`)) return;
+    setR((p) => ({ ...p, files: (p.files || []).filter((f) => f.id !== x.id) }));
+    dropRaceStored(orgId, x);
+  };
+  // Kayıtlı evrakı aç/paylaş: dosya bu cihazda yoksa indirilir; indirilemezse adresi açılır
+  const storedFile = async (x, then) => {
+    const f = await loadRaceFile(x);
+    if (f) return then(f);
+    window.open(x.url, "_blank");
   };
   const removeExtra = async (x) => {
     if (!confirm(`"${x.name}" silinsin mi?`)) return;
     const next = extras.filter((e) => e.id !== x.id);
     setExtras(next);
     await saveExtras(id.current, next);
+  };
+  // Eski düzen: yalnız bu telefonda kalan evrakı Firebase'e gönderir
+  const sendLocal = async () => {
+    await queue.current.catch(() => {});
+    if (!id.current) return;
+    setUpload(0);
+    try {
+      const out = await moveLocalExtras(orgId, id.current, setUpload);
+      if (out.added[id.current]) addFiles(out.added[id.current]);
+      setExtras(await getExtras(id.current));
+      toast(out.left ? `${out.moved} evrak gönderildi, ${out.left} gönderilemedi` : `${out.moved} evrak Firebase'e gönderildi`);
+    } catch (e) {
+      console.warn("[race] gönderilemedi", e);
+      toast("Gönderilemedi. İnterneti kontrol et.");
+    }
+    setUpload(null);
   };
   // Instagram gönderisi: yarış bilgisi ve seçili sporcuların yalnız adı ve sınıfı gönderi sayfasına cihaz içinde geçer (ek okuma yok)
   const toPost = () => {
@@ -541,6 +579,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     await queue.current.catch(() => {});
     dropRaceFile(id.current);
     dropExtras(id.current);
+    for (const f of latest.current.files || []) dropRaceStored(orgId, f);
     dropNoticeFile(orgId, latest.current.noticeFile);
     for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
     await onDelete(id.current);
@@ -1435,29 +1474,51 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </div>
           )}
 
-          <Label right={extras.length ? `${extras.length}` : ""}>EKLENEN EVRAK</Label>
+          <Label right={(r.files || []).length + extras.length ? `${(r.files || []).length + extras.length}` : ""}>EKLENEN EVRAK</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {r.noticeFile && (
               <FileRow tag="PDF" title="Yarış talimatı" sub={`${sizeText(r.noticeFile.size)} · her cihazdan açılır`} onOpen={noticeOpen} onShare={noticeOpen} />
+            )}
+            {(r.files || []).map((x) => (
+              <FileRow
+                key={x.id}
+                tag={/pdf/.test(x.type) ? "PDF" : /image/.test(x.type) ? "FOTO" : "DOSYA"}
+                title={x.name}
+                sub={`${sizeText(x.size)} · ${madeText(x.at)}`}
+                onOpen={() => storedFile(x, (f) => (/pdf/.test(x.type) ? setDocView(f) : openFile(f, false)))}
+                onShare={() => storedFile(x, shareFile)}
+                onRemove={() => removeStored(x)}
+              />
+            ))}
+            {extras.length > 0 && (
+              <li className="flex items-center gap-3 bg-amber-50 px-4 py-3 dark:bg-amber-400/10">
+                <span className="min-w-0 flex-1 text-[0.8125rem] text-amber-900 dark:text-amber-200">
+                  <b className="block text-[0.875rem] font-semibold">{extras.length} evrak yalnız bu telefonda</b>
+                  Telefon değişirse kaybolur, Mac&apos;ten açılmaz.
+                </span>
+                <button type="button" disabled={upload != null} onClick={sendLocal} className="shrink-0 rounded-full bg-acc px-3.5 py-2 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
+                  Firebase&apos;e gönder
+                </button>
+              </li>
             )}
             {extras.map((x) => (
               <FileRow
                 key={x.id}
                 tag={/pdf/.test(x.type) ? "PDF" : /image/.test(x.type) ? "FOTO" : "DOSYA"}
                 title={x.name}
-                sub={`${sizeText(x.blob.size)} · ${madeText(x.at)}`}
+                sub={`${sizeText(x.blob.size)} · yalnız bu telefonda`}
                 onOpen={() => (/pdf/.test(x.type) ? setDocView(asFile(x)) : openFile(asFile(x), false))}
                 onShare={() => shareFile(asFile(x))}
                 onRemove={() => removeExtra(x)}
               />
             ))}
             <li>
-              <button type="button" onClick={() => pickExtra.current?.click()} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+              <button type="button" disabled={upload != null} onClick={() => pickExtra.current?.click()} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
                   <Icon name="plus" className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold text-acc">Evrak ekle</b>
+                  <b className="block text-[0.9375rem] font-semibold text-acc">{upload != null ? `Yükleniyor… %${Math.round(upload * 100)}` : "Evrak ekle"}</b>
                   <span className="block text-[0.8125rem] text-mut">Kayıt formu, sağlık raporu, dekont… (PDF ya da fotoğraf)</span>
                 </span>
               </button>
