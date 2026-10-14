@@ -1,8 +1,8 @@
-Commit: b225fb7 · Fitness: fotoğraf ve video Storage'da, program silinince antrenmanları da silinir, Fitness'ı sıfırla (#349)
-Zaman: 2026-10-13-1356 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38386588457
+Commit: 7bb6033 · Instagram fotoğrafları Storage'a, Ayarlar'da telefondaki veriyi taşı ve sil (#412)
+Zaman: 2026-10-14-1523 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38563209416
 
-TAM TEST · 13.10.2026 13:55:05
+TAM TEST · 14.10.2026 15:21:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 70 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 62 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
