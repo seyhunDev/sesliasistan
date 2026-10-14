@@ -1,8 +1,8 @@
-Commit: d8c412e · Sporcu fitness antrenmanında değer, set ve süre değiştiremez (#352)
-Zaman: 2026-10-13-1439 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38391471603
+Commit: 5915618 · Telefondaki veriyi taşı: adımı ve nedeni göster, takılı kalmasın (#415)
+Zaman: 2026-10-14-1543 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38565754237
 
-TAM TEST · 13.10.2026 14:37:40
+TAM TEST · 14.10.2026 15:42:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…

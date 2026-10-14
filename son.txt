@@ -1,8 +1,8 @@
-Commit: 8b8c8a4 · Banka maili ekleri Storage'a taşınıyor (Storage 5. adım) (#414)
-Zaman: 2026-10-14-1534 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38564626623
+Commit: 5915618 · Telefondaki veriyi taşı: adımı ve nedeni göster, takılı kalmasın (#415)
+Zaman: 2026-10-14-1543 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38565754237
 
-TAM TEST · 14.10.2026 15:33:04
+TAM TEST · 14.10.2026 15:42:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 62 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 85 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
