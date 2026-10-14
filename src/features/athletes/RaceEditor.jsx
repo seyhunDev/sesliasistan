@@ -85,39 +85,32 @@ function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
   );
 }
 
-// Sporcu başına belge: başlığa dokununca altında sporcular açılır; ada dokun aç, okla paylaş
-function PersonPart({ part, open, onToggle, openPdf, share }) {
+// Belgeler gruplara ayrılır; her belgenin seçimi, ayarı ve hazır dosyası tek satırda
+const DOC_GROUPS = [
+  ["İL MÜDÜRLÜĞÜ · RESMİ", ["kafile", "travel", "school"]],
+  ["VELİ VE OKUL · HER SPORCUYA AYRI", ["parent", "club", "hotel"]],
+  ["ANTRENÖR", ["adult"]],
+  ["FEDERASYON (TYF)", ["coach", "entry"]],
+];
+const DOC_TITLE = Object.fromEntries(DOCS);
+const DOC_SET = ["travel", "club", "hotel", "entry"]; // açılınca ayarı olan belgeler
+
+// Sporcu başına sayfalar: ada dokun aç, okla paylaş
+function PeopleList({ people, openPdf, share }) {
   return (
-    <li>
-      <div className="flex items-center gap-1 pl-4 pr-1.5">
-        <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">PDF</span>
-          <span className="min-w-0 flex-1">
-            <b className="block truncate text-[0.9375rem] font-semibold">{part.title}</b>
-            <span className="block truncate text-[0.8125rem] text-mut">{part.people.length} sporcu · her biri ayrı sayfa</span>
-          </span>
-          <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />
-        </button>
-        <button type="button" onClick={() => share(part.file)} aria-label={`${part.title} hepsini paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
-          <Icon name="up" className="size-5" />
-        </button>
-      </div>
-      {open && (
-        <ul className="mb-2 ml-[4.25rem] mr-1.5 divide-y divide-line border-l-2 border-acc/30">
-          {part.people.map((p) => (
-            <li key={p.id} className="flex items-center gap-1 pl-3">
-              <button type="button" onClick={() => openPdf(p.file)} className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
-              </button>
-              <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
-                <Icon name="up" className="size-5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </li>
+    <ul className="divide-y divide-line">
+      {people.map((p) => (
+        <li key={p.id} className="flex items-center gap-1 pl-1">
+          <button type="button" onClick={() => openPdf(p.file)} className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
+            <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
+          </button>
+          <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+            <Icon name="up" className="size-5" />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -239,6 +232,16 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const forDocs = chosen.map((a) => ({ ...a, boatClass: className[a.currentClassId] || "" }));
   const autoClasses = [...new Set(forDocs.map((a) => a.boatClass).filter(Boolean))];
   const groupCount = (r.entryClass || "").trim() ? 1 : Math.max(1, new Set(forDocs.map((a) => a.boatClass)).size);
+  // Belge satırındaki kısa bilgi
+  const docSub = (k, part) => {
+    const n = chosen.length;
+    const pg = part?.pages ? `${part.pages} sayfa · ` : "";
+    if (k === "parent") return `${pg}${n} sporcu, her biri ayrı`;
+    if (k === "club") return `${pg}${n} sporcu · her sporcunun okuluna`;
+    if (k === "hotel") return `${part ? "" : "1 sayfa · "}${pg}${n} veli imzalar`;
+    if ((k === "coach" || k === "entry") && groupCount > 1) return `${pg}${groupCount} form · her sınıfa ayrı`;
+    return part ? `${part.pages ? `${part.pages} sayfa` : "Hazır"}` : DOC_INFO[k][1];
+  };
   // Antrenör bilgileri hesapta saklanır (her yarışta aynı); yazdıkça kısa süre sonra kaydedilir
   const [coach, setCoach] = useState(() => cleanCoach(savedCoach));
   const coachDirty = useRef(false);
@@ -405,6 +408,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setMailing(false);
   };
   const share = (f = file) => shareFile(f);
+  const [signOpen, setSignOpen] = useState(false);
   const [openPart, setOpenPart] = useState(null); // sporcuları açık belge (veli izni, kulüp izni)
   // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
   const [docView, setDocView] = useState(null);
@@ -1129,41 +1133,26 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </div>
           )}
 
+          {/* Özet: hazır evrak tek kartta */}
           {file && (
-            <>
-              <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIR EVRAK</Label>
-              <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf()} onShare={() => share()} />
-              </ul>
-              {parts.some((x) => x.people.length > 1) && (
-                <>
-                  <Label>HER SPORCUYA AYRI</Label>
-                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                    {parts.filter((x) => x.people.length > 1).map((x) => (
-                      <PersonPart key={x.key} part={x} open={openPart === x.key} onToggle={() => setOpenPart(openPart === x.key ? null : x.key)} openPdf={openPdf} share={share} />
-                    ))}
-                  </ul>
-                </>
-              )}
-              {parts.some((x) => x.people.length <= 1) && (
-                <>
-                  <Label>HERKES İÇİN TEK BELGE</Label>
-                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                    {parts.filter((x) => x.people.length <= 1).map((x) => (
-                      <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />
-                    ))}
-                  </ul>
-                </>
-              )}
-              <div className="mt-2 flex items-start gap-3 px-1">
-                <p className="flex-1 text-[0.75rem] text-mut">Bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen yeniden hazırla.</p>
-                <button type="button" onClick={make} disabled={busy} className="h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
-                  {busy ? "Hazırlanıyor…" : "Yenile"}
+            <div className="mt-4 rounded-3xl bg-deep px-5 py-4 text-white">
+              <p className="truncate text-[0.6875rem] font-semibold uppercase tracking-wider text-white/70">Evrak · {r.name || "yarış"}</p>
+              <b className="mt-0.5 block text-[1.375rem] font-bold">{parts.length} belge hazır</b>
+              <span className="block text-[0.8125rem] text-white/80">{[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}</span>
+              <div className="mt-3 flex gap-2">
+                <button type="button" onClick={() => openPdf()} className="h-10 flex-1 rounded-full bg-white text-[0.875rem] font-semibold text-deep">Tümünü aç</button>
+                <button type="button" onClick={() => share()} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold">Paylaş</button>
+                {onMail && (
+                  <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 disabled:opacity-50">
+                    <Icon name="mail" className="size-5" />
+                  </button>
+                )}
+                <button type="button" onClick={make} disabled={busy} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold disabled:opacity-50">
+                  {busy ? "…" : "Yenile"}
                 </button>
               </div>
-            </>
+            </div>
           )}
-
 
           {/* Eksikler tek yerde; çoğu burada doldurulur */}
           {(lacks > 0 || signerAsk) && (
@@ -1225,28 +1214,44 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             </>
           )}
 
-          <Label right={`${docs.length}/${DOCS.length} seçili`}>BELGELER</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {DOCS.map(([k, label]) => {
-              const on = docs.includes(k);
-              const [icon, sub] = DOC_INFO[k];
-              return (
-                <li key={k}>
-                  <button
-                    type="button"
-                    onClick={() => pickDoc(k, !on)}
-                    aria-pressed={on}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left"
-                  >
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${on ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
-                      <Icon name={icon} className="size-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                      <span className="block text-[0.8125rem] leading-snug text-mut">{k === "parent" && chosen.length ? `${chosen.length} sayfa · veli imzalar` : k === "club" && chosen.length ? `${chosen.length} sayfa · her sporcunun okuluna` : k === "hotel" && chosen.length ? `1 sayfa · ${chosen.length} veli imzalar` : (k === "coach" || k === "entry") && groupCount > 1 ? `${groupCount} form · her sınıfa ayrı` : sub}</span>
-                    </span>
-                    <Check on={on} tone="acc" />
-                  </button>
+          {/* Belgeler kategorilere göre: seçim, durum, ayarlar ve sporcular tek satırda */}
+          {DOC_GROUPS.map(([gTitle, keys]) => (
+            <div key={gTitle}>
+              <Label right={`${keys.filter((x) => docs.includes(x)).length}/${keys.length}`}>{gTitle}</Label>
+              <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                {keys.map((k) => {
+                  const label = DOC_TITLE[k];
+                  const on = docs.includes(k);
+                  const part = parts.find((x) => x.key === k);
+                  const people = part?.people || [];
+                  const more = on && (DOC_SET.includes(k) || (k === "coach" && !docs.includes("entry")) || people.length > 0);
+                  const open = more && openPart === k;
+                  const warn = on && k === "hotel" && !(r.hotelName || "").trim() ? "Otel adı boş, elle yazılacak" : "";
+                  const status = !on ? "Seçili değil" : warn || (part ? `Hazır · ${docSub(k, part)}` : docSub(k));
+                  const main = () => (!on ? pickDoc(k, true) : more ? setOpenPart(open ? null : k) : part ? openPdf(part.file) : pickDoc(k, false));
+                  return (
+                    <li key={k}>
+                      <div className="flex items-center gap-1 pl-2 pr-1.5">
+                        <button type="button" onClick={() => pickDoc(k, !on)} aria-pressed={on} aria-label={`${label} ${on ? "çıkar" : "seç"}`} className="grid size-10 shrink-0 place-items-center">
+                          <span className={`grid size-6 place-items-center rounded-md ring-2 ${on ? "bg-acc text-white ring-acc" : "ring-line"}`}>
+                            {on && <Icon name="check" className="size-4 [stroke-width:3]" />}
+                          </span>
+                        </button>
+                        <button type="button" onClick={main} aria-expanded={more ? open : undefined} className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
+                          <span className="min-w-0 flex-1">
+                            <b className={`block truncate text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
+                            <span className={`block truncate text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
+                          </span>
+                          {more && <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />}
+                        </button>
+                        {part && (
+                          <button type="button" onClick={() => openPdf(part.file)} aria-label={`${label} aç`} className="grid size-10 shrink-0 place-items-center text-acc">
+                            <Icon name="print" className="size-5" />
+                          </button>
+                        )}
+                      </div>
+                      {open && (
+                        <div className="border-t border-line bg-bg/40 pb-1 pt-3">
                   {on && k === "travel" && (
                     <div className="mx-4 mb-3 divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
                       <Row label="Seyahat türü">{field("travel", "Kendi İmkanları İle")}</Row>
@@ -1319,26 +1324,51 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                       </p>
                     </div>
                   )}
-                </li>
-              );
-            })}
-          </ul>
+                          {people.length > 0 && (
+                            <div className="mx-4 mb-3">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-[0.6875rem] font-semibold uppercase tracking-wider text-mut">Sporcular</span>
+                                <button type="button" onClick={() => share(part.file)} className="text-[0.8125rem] font-semibold text-acc">Hepsini paylaş</button>
+                              </div>
+                              <PeopleList people={people} openPdf={openPdf} share={share} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+          {file && <p className="mt-2 px-1 text-[0.75rem] text-mut">Hazır evrak bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen {"Yenile'ye bas."}</p>}
 
-          <Label>İMZA VE TARİHLER</Label>
-          <Group>
-            {!signerAsk && (
-              <Pair>
-                <Row label="İmzalayan (kulüp yetkilisi)">{field("signer", "Ad Soyad")}</Row>
-                <Row label="Görevi">{field("signerTitle", "Başkan")}</Row>
-              </Pair>
+          <Label>ORTAK BİLGİLER</Label>
+          <div className={`${card} overflow-hidden`}>
+            <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <Icon name="edit" className="size-5 shrink-0 text-acc" />
+              <span className="min-w-0 flex-1">
+                <b className="block text-[0.9375rem] font-semibold">İmza ve tarih</b>
+                <span className="block truncate text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
+              </span>
+              <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${signOpen ? "rotate-90" : ""}`} />
+            </button>
+            {signOpen && (
+              <div className="divide-y divide-line border-t border-line">
+                {!signerAsk && (
+                  <Pair>
+                    <Row label="İmzalayan (kulüp yetkilisi)">{field("signer", "Ad Soyad")}</Row>
+                    <Row label="Görevi">{field("signerTitle", "Başkan")}</Row>
+                  </Pair>
+                )}
+                <Row label="Evrak tarihi">{field("letterDate", "", "date")}</Row>
+                <Pair>
+                  <Row label="Okul izni başlangıcı">{field("leaveStart", "", "date")}</Row>
+                  <Row label="Okul izni bitişi">{field("leaveEnd", "", "date")}</Row>
+                </Pair>
+              </div>
             )}
-            <Row label="Evrak tarihi">{field("letterDate", "", "date")}</Row>
-            <Pair>
-              <Row label="Okul izni başlangıcı">{field("leaveStart", "", "date")}</Row>
-              <Row label="Okul izni bitişi">{field("leaveEnd", "", "date")}</Row>
-            </Pair>
-          </Group>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">Evrak tarihi ilk hazırlamada bugün yazılır. İzin yarıştan bir gün önce başlar, bir gün sonra biter.</p>
+          </div>
 
           {coachOn && (
             <div ref={coachRef} className="scroll-mt-4">
@@ -1417,7 +1447,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       )}
 
       {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${tab !== "docs" ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
+      <div data-pagebar="" className={`${tab !== "docs" || file ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
