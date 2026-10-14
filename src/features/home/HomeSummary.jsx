@@ -130,7 +130,8 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
                       <span className={`grid size-8 shrink-0 place-items-center rounded-[0.625rem] ${t.warn ? WARN_BG : "bg-acc/10 text-acc"}`}>
                         <Icon name={icon} className="size-[1.125rem]" />
                       </span>
-                      <b className="min-w-0 truncate text-[0.9375rem] font-semibold">{label}</b>
+                      <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{label}</b>
+                      {(k === "dues" || k === "bank") && <Icon name="chev" className="size-4 shrink-0 text-mut" />}
                     </span>
                     {k === "dues" ? <DuesBody t={t} /> : k === "bank" ? <BankBody t={t} /> : <PlainBody t={t} />}
                   </Link>
@@ -157,32 +158,31 @@ function PlainBody({ t }) {
   );
 }
 
-// Aidat: solda yüzde halkası, yanında "18/30 ödedi"; altta hap: onay bekleyen (kehribar) ya da ödemeyen sayısı
+// Aidat: büyük yüzde halkası, yanında "18/30 ödedi"; yalnız onay bekleyen varsa altta kehribar hap (Seyhun: "kişi ödemedi yazısını kaldıralım, yüzdeyi büyütelim")
 function DuesBody({ t }) {
   const pct = Math.round((t.bar || 0) * 100);
   const r = 15.5;
   const c = 2 * Math.PI * r;
   return (
     <>
-      <span className="mt-2.5 flex items-center gap-2.5">
-        <span className="relative grid size-11 shrink-0 place-items-center" aria-hidden="true">
+      <span className="mt-3 flex items-center gap-3">
+        <span className="relative grid size-[4.5rem] shrink-0 place-items-center" aria-hidden="true">
           <svg viewBox="0 0 36 36" className="absolute inset-0 size-full -rotate-90">
-            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--line)" strokeWidth="3.5" />
-            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--acc)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${(c * pct) / 100} ${c}`} />
+            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--line)" strokeWidth="3.25" />
+            <circle cx="18" cy="18" r={r} fill="none" stroke="var(--acc)" strokeWidth="3.25" strokeLinecap="round" strokeDasharray={`${(c * pct) / 100} ${c}`} />
           </svg>
-          <b className="text-[0.6875rem] font-bold tabular-nums">%{pct}</b>
+          <b className="text-[1.0625rem] font-bold tabular-nums tracking-tight">%{pct}</b>
         </span>
         <span className="min-w-0 leading-tight">
-          <b className="block text-[1.375rem] font-bold tabular-nums tracking-tight">{t.big}</b>
+          <b className="block text-[1.25rem] font-bold tabular-nums tracking-tight">{t.big}</b>
           <small className="block text-[0.75rem] text-mut">ödedi</small>
         </span>
       </span>
-      <span
-        className={`mt-2.5 inline-flex max-w-full items-center gap-1 self-start truncate rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${t.warn ? WARN_BG : "bg-line/60 text-mut"}`}
-      >
-        <span className="truncate">{t.sub}</span>
-        {t.warn && <Icon name="chev" className="size-3 shrink-0" />}
-      </span>
+      {t.warn && (
+        <span className={`mt-2.5 inline-flex max-w-full items-center self-start truncate rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${WARN_BG}`}>
+          <span className="truncate">{t.sub}</span>
+        </span>
+      )}
     </>
   );
 }
