@@ -8,7 +8,7 @@
 //   wish (görselde başarı satırı: "Sporcularımıza başarılar!"), info (görselde yer · tarih), classes (yarışın sınıfları, virgülle; görselde değil, başlıkta geçer), meta (görselde yarış yeri ve tarihi), style (STYLES),
 //   caption (açıklama), hashtags [#etiket],
 //   format "square" 1080x1080 | "portrait" 1080x1350 | "story" 1080x1920 (hikâye) | "reels" 1080x1920 (reels kapağı), theme (fotoğraf yokken zemin), pos "bottom" | "top", focus 0-100 (fotoğrafı dikey kaydırma), fx 0-100 (yatay kaydırma), zoom 100-250 (fotoğrafı büyütme, %), shade 0-100 (fotoğrafı karartma, yazı okunsun diye),
-//   hasPhoto (fotoğraf ayrı belgede: orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
+//   photoPath + photoUrl (fotoğraf Storage'da: orgs/{orgId}/postPhotos/{id}_{zaman}.jpg), hasPhoto (eski: fotoğraf Firestore'da orgs/{orgId}/postPhotos/{id}), thumb (listede görünen küçük görsel, ~15 KB)
 // }
 
 import { withResults } from "@/lib/raceResults";
@@ -272,6 +272,9 @@ export function cleanPost(p = {}) {
     zoom: Math.max(100, Math.min(250, Math.round(Number(p.zoom ?? 100)) || 100)),
     shade: Math.max(0, Math.min(100, Math.round(Number(p.shade ?? 55)))),
     hasPhoto: !!p.hasPhoto,
+    // Fotoğraf Firebase Storage'da (posts.js); boşsa eski yer: orgs/{orgId}/postPhotos/{id} belgesi
+    photoPath: typeof p.photoPath === "string" && p.photoPath.startsWith("orgs/") ? p.photoPath.slice(0, 200) : "",
+    photoUrl: typeof p.photoUrl === "string" && p.photoUrl.startsWith("https://") ? p.photoUrl.slice(0, 600) : "",
     // Kullanılmış gönderi arşive kaldırılır: listeden çıkar, Arşiv sekmesinde durur
     archived: !!p.archived,
     // Dikili Yelken sitesindeki "Kulüpten haberler" kaydı (clubNews.js)

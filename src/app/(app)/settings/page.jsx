@@ -10,6 +10,7 @@ import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
+import { MoveAllRow } from "@/features/settings/MoveAll";
 import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
@@ -80,6 +81,7 @@ export default function SettingsPage() {
 
       <Group>
         <Row icon="clock" tone="slate" title="Sürüm" sub={buildLine()} />
+        <MoveAllRow />
         <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
       </Group>
 
