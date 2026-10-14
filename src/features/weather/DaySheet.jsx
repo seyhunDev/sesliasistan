@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sailWindows, sky, windLevel, windName } from "./weather";
 import { Col, WindArrow } from "./parts";
+import { WindMapView } from "./WindMap";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -150,6 +150,8 @@ export function WeatherDetail({ w, refresh, busy }) {
   const info = days.find((d) => d.date === sel);
   const place = getPlace();
   const links = compareLinks(place);
+  const [about, setAbout] = useState(false);
+  const [cmp, setCmp] = useState(false);
   return (
     <div>
       {/* Gün seçici: bugün + 5 gün */}
@@ -174,30 +176,56 @@ export function WeatherDetail({ w, refresh, busy }) {
         })}
       </div>
 
+      {/* Rüzgâr haritası: seçili gün; ↗ tam sayfayı açar */}
+      <div className="mt-3">
+        <WindMapView embed date={sel} />
+      </div>
+
       <div className="mt-4">{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
 
-      {/* Kaynak ve doğrulama */}
-      <div className="mt-2 rounded-2xl bg-bg px-3.5 py-3 text-[0.75rem] leading-snug text-mut">
-        <p>
-          <b className="font-semibold text-fg">{placeLabel(place)}</b> · Kaynak: Open-Meteo (ECMWF, ICON, GFS gibi resmi meteoroloji modellerinin birleşimi) ·{" "}
-          {ago(w.at)} alındı
-          {w.model?.elevation != null ? ` · model noktası ${w.model.lat?.toFixed(2)}, ${w.model.lon?.toFixed(2)} (${Math.round(w.model.elevation)} m)` : ""}
-        </p>
-        <p className="mt-2 flex flex-wrap items-center gap-2">
-          <span>Karşılaştır:</span>
-          <a href={links.mgm} target="_blank" rel="noopener noreferrer" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
-            MGM
-          </a>
-          <a href={links.windy} target="_blank" rel="noopener noreferrer" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
-            Windy
-          </a>
-          <Link href="/wind" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
-            Rüzgâr haritası
-          </Link>
-          <button type="button" onClick={() => refresh(true)} disabled={busy} className="ml-auto rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line disabled:opacity-50">
-            Yenile
+      {/* Kaynak: tek satır. "Karşılaştır" MGM ve Windy'yi, "i" kaynak ayrıntısını açar */}
+      <div className="mt-2 rounded-2xl bg-bg px-3.5 py-2 text-[0.75rem] leading-snug text-mut">
+        <div className="flex items-center gap-1.5">
+          <span className="min-w-0 flex-1 truncate">
+            <b className="font-semibold text-fg">{placeLabel(place)}</b> · {ago(w.at)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCmp((v) => !v)}
+            aria-expanded={cmp}
+            className={`h-8 rounded-full px-3 font-semibold ring-1 ${cmp ? "bg-acc text-white ring-acc" : "bg-card text-acc ring-line"}`}
+          >
+            Karşılaştır
           </button>
-        </p>
+          <button
+            type="button"
+            onClick={() => setAbout((v) => !v)}
+            aria-label="Kaynak"
+            aria-expanded={about}
+            className={`grid size-8 place-items-center rounded-full text-[0.875rem] font-bold italic ring-1 ${about ? "bg-acc text-white ring-acc" : "bg-card text-acc ring-line"}`}
+          >
+            i
+          </button>
+          <button type="button" onClick={() => refresh(true)} disabled={busy} aria-label="Yenile" className="grid size-8 place-items-center rounded-full bg-card text-acc ring-1 ring-line disabled:opacity-50">
+            <Icon name="load" className={`size-3.5 ${busy ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+        {cmp && (
+          <p className="mt-2 flex gap-2 border-t border-line pt-2">
+            <a href={links.mgm} target="_blank" rel="noopener noreferrer" className="flex h-8 flex-1 items-center justify-center rounded-full bg-card font-semibold text-acc ring-1 ring-line">
+              MGM
+            </a>
+            <a href={links.windy} target="_blank" rel="noopener noreferrer" className="flex h-8 flex-1 items-center justify-center rounded-full bg-card font-semibold text-acc ring-1 ring-line">
+              Windy
+            </a>
+          </p>
+        )}
+        {about && (
+          <p className="mt-2 border-t border-line pt-2">
+            Kaynak: Open-Meteo (ECMWF, ICON, GFS gibi resmi meteoroloji modellerinin birleşimi)
+            {w.model?.elevation != null ? ` · model noktası ${w.model.lat?.toFixed(2)}, ${w.model.lon?.toFixed(2)} (${Math.round(w.model.elevation)} m)` : ""}
+          </p>
+        )}
       </div>
     </div>
   );
