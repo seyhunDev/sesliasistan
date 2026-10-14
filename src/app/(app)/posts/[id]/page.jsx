@@ -52,7 +52,7 @@ function Post({ orgId, uid }) {
       loadPost(orgId, id).then(
         async (p) => {
           if (!p) return live && setMissing(true);
-          const photo = p.hasPhoto ? await loadPhoto(orgId, id).catch(() => "") : "";
+          const photo = p.hasPhoto ? await loadPhoto(orgId, p).catch(() => "") : "";
           if (live) setState({ post: p, photo });
         },
         () => live && setMissing(true),
