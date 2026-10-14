@@ -3,7 +3,7 @@
 // derse sonrakine geçer), testler (yerel/yonlendirme.mjs) aynı işlevi sınar; böylece test ile uygulama ayrışamaz.
 // Bekleyen sorular (yarış sorusu, kişi, onay, günlük, taslak, kart) burada değil: onlar run()'da bu adaylardan önce
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
-import { isEnd, isNoMore, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
+import { isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -116,7 +116,9 @@ export function routesOf(s, c = {}) {
   const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
   if (bday) add("birthday", { bday });
   // "Son mesajımı sil": açık sohbette (yoksa en son mesaj attığın sohbette) onay sorulup silinir
-  const md = !c.drafts ? msgDeleteAsk(s) : null;
+  const ma = !c.drafts ? msgArchAsk(s) : null;
+  if (ma) add("msgArch", { ma });
+  const md = !c.drafts && !ma ? msgDeleteAsk(s) : null;
   if (md) add("msgDelete", { md });
   const undo = !c.drafts && undoLast(s);
   if (undo) add("undo", { undo });

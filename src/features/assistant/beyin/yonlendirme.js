@@ -41,7 +41,7 @@ import { myFit, planOf } from "@/lib/fitness/model";
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
 
 export async function run(ctx, t, viaVoice = false, fresh = false) {
-  const { askAI, askAll, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
+  const { askAI, askAll, chatRestore, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
   const s = cleanSay(t); // dolgu söz, kekemelik, Türkçe harfsiz yazım, bozuk iş fiilleri ("şey ııı", "foca yarisini ac", "yarışı oluru")
   if (!s) return toast("Yaz veya mikrofona bas");
   timingStart(s, viaVoice);
@@ -313,7 +313,23 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         if (!pick) return reply(openChat() ? "Bu sohbette silinecek mesajın görünmüyor." : "Silinecek son mesajını bulamadım; sohbeti açıp mesaja dokunarak silebilirsin.", { engine: "local" }, viaVoice), true;
         const t = pick.text.length > 80 ? `${pick.text.slice(0, 80)}…` : pick.text;
         const me = profile?.uid;
-        reply(`${pick.by === me ? "Son mesajın" : "Son mesaj"}: “${t}”. Herkesten silmemi onaylıyor musun?`, { engine: "local", pending: { msgDel: { chat: oc.chat, m: pick } } }, viaVoice);
+        const how = owner ? "Arşive kaldırmamı (kimse görmeyecek) onaylıyor musun?" : "Senden kaldırmamı onaylıyor musun?";
+        reply(`${pick.by === me ? "Son mesajın" : "Son mesaj"}: “${t}”. ${how}`, { engine: "local", pending: { msgDel: { chat: oc.chat, m: pick } } }, viaVoice);
+        return true;
+      }
+      // Açık sohbetin arşivi: son arşivlenen mesajı geri al (hemen) ya da kalıcı sil (yalnız ana hesap, onayla)
+      case "msgArch": {
+        const oc = openChat();
+        if (!oc) return reply("Önce sohbeti aç; arşivdeki mesajlar sohbetin üstünde görünür.", { engine: "local" }, viaVoice), true;
+        const list = oc.archived || [];
+        const purge = r.ma.op === "purge";
+        if (purge && !owner) return reply("Kalıcı silme yalnız ana hesapta. Mesajı senden kaldırabilirim.", { engine: "local" }, viaVoice), true;
+        const pick = [...list].reverse().find((m) => !purge || m.arch);
+        if (!pick) return reply("Bu sohbetin arşivinde mesaj yok.", { engine: "local" }, viaVoice), true;
+        const t = String(pick.text || "").length > 80 ? `${pick.text.slice(0, 80)}…` : pick.text || "";
+        if (purge) return reply(`Arşivdeki son mesaj: “${t}”. Kalıcı silmemi onaylıyor musun? Geri alınamaz.`, { engine: "local", pending: { msgPurge: { chat: oc.chat, m: pick } } }, viaVoice), true;
+        const ok = await chatRestore?.(oc.chat.id, pick);
+        reply(ok ? `Geri aldım: “${t}”. Sohbette yeniden görünüyor.` : "Mesajı geri alamadım; tekrar dene.", { engine: "local" }, viaVoice);
         return true;
       }
       // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir

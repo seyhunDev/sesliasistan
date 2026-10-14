@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { Loader } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
@@ -14,6 +14,7 @@ import { sendErrorText, setOpenChat, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
+import { inArchive, shownMsg } from "@/lib/chatArchive";
 import { canCall } from "@/lib/call";
 import { useCall } from "@/features/call/CallProvider";
 import { authFetch } from "@/lib/authFetch";
@@ -77,7 +78,7 @@ const toneOf = (uid = "") => NAME_TONES[[...uid].reduce((a, c) => a + c.charCode
 export function ChatView({ cid }) {
   const router = useRouter();
   const toast = useToast();
-  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, edit, pin, ready, myKind } = useChat();
+  const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, restore, purge, edit, pin, ready, myKind } = useChat();
   const { setViewing } = useData();
   const { startCall, busy } = useCall() || {};
   const now = useNow(2000);
@@ -97,7 +98,13 @@ export function ChatView({ cid }) {
   const otherP = chat?.type === "dm" ? allPeople.find((p) => p.uid === chat.other) : null;
 
   const [raw, setRaw] = useState(() => MSGS.get(cid) || null); // null: henüz okunmadı (boş sohbetle karışmasın)
-  const msgs = raw || [];
+  const all = raw || [];
+  const owner = myKind === "owner";
+  // Arşivlenen mesajlar sohbette görünmez: ana hesabın arşivi herkes için, diğerlerinin yalnız kendileri için
+  const msgs = all.filter((m) => shownMsg(m, uid));
+  const archived = all.filter((m) => inArchive(m, uid, owner));
+  const [archOpen, setArchOpen] = useState(false);
+  const [purgeAsk, setPurgeAsk] = useState("");
   const [cached] = useState(() => MSGS.has(cid)); // bellekten geldiyse belirme animasyonu yok
   const [lim, setLim] = useState(PAGE);
   const [text, setText] = useState("");
@@ -255,7 +262,7 @@ export function ChatView({ cid }) {
     if (!el) return;
     atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (atBottom.current && newBelow) setNewBelow(0);
-    if (el.scrollTop < 240 && msgs.length >= lim && !older.current) {
+    if (el.scrollTop < 240 && all.length >= lim && !older.current) {
       older.current = true;
       prevH.current = el.scrollHeight;
       setLim((n) => n + PAGE);
@@ -306,14 +313,9 @@ export function ChatView({ cid }) {
   const last = msgs.at(-1);
   // Asistan açık sohbeti ve mesajlarını bilir ("son mesajımı sil")
   useEffect(() => {
-    setOpenChat(chat ? { chat, msgs } : null);
+    setOpenChat(chat ? { chat, msgs, archived } : null);
   });
   useEffect(() => () => setOpenChat(null), []);
-  // Son mesaj önceden silinmiş ama listedeki özet hâlâ yazıyorsa düzeltilir (eski silmeler)
-  const staleLast = !!(chat && last?.deleted && last.n && last.n === chat.seq && chat.last && !chat.last.deleted);
-  useEffect(() => {
-    if (staleLast) updateDoc(chatRef(cid), { "last.text": "", "last.deleted": true }).catch(() => {});
-  }, [staleLast, chatRef, cid]);
   const suggKey = CHAT_AI && last && last.by !== uid && !last.deleted && last.text && !last.pending ? `${cid}/${last.id}` : "";
   const [sugg, setSugg] = useState({ key: "", list: [] });
   useEffect(() => {
@@ -461,9 +463,16 @@ export function ChatView({ cid }) {
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
         >
         <div ref={box} className={`relative flex min-h-full flex-col justify-end px-3.5 pb-3 pt-2 ${raw && !cached ? "msgs-in" : ""}`}>
-          {msgs.length >= lim && (
+          {all.length >= lim && (
             <div className="flex justify-center py-2" aria-label="Önceki mesajlar yükleniyor">
               <Loader size="sm" className="text-mut" />
+            </div>
+          )}
+          {archived.length > 0 && (
+            <div className="flex justify-center pb-1 pt-1">
+              <button type="button" onClick={() => setArchOpen(true)} className="flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[0.75rem] font-medium text-mut shadow-sm ring-1 ring-line">
+                <Icon name="archive" className="size-3.5" /> Arşivde {archived.length} mesaj
+              </button>
             </div>
           )}
           {exists && !raw && <MsgSkeleton />}
@@ -710,10 +719,10 @@ export function ChatView({ cid }) {
                   </button>
                 </li>
               )}
-              {(act.by === uid || myKind === "owner") && (
+              {!act.pending && (
                 <li>
-                  <button type="button" onClick={() => (remove(chat, act), setAct(null))} className={`${ACT} text-rec`}>
-                    <Icon name="trash" className="size-5" /> Herkesten sil
+                  <button type="button" onClick={() => (remove(chat, act), setAct(null), toast(owner ? "Mesaj arşive kaldırıldı, kimse görmüyor" : "Mesaj senden kaldırıldı"))} className={`${ACT} text-rec`}>
+                    <Icon name="trash" className="size-5" /> {owner ? "Sil (arşive kaldır)" : "Benden kaldır"}
                   </button>
                 </li>
               )}
@@ -735,6 +744,41 @@ export function ChatView({ cid }) {
             )}
           </div>
         )}
+      </Sheet>
+
+      {/* Arşiv: ana hesap herkesten kaldırdıklarını ve kendi gizlediklerini görür; diğerleri yalnız kendi gizlediklerini */}
+      <Sheet open={archOpen && archived.length > 0} onClose={() => (setArchOpen(false), setPurgeAsk(""))} title="Arşivdeki mesajlar">
+        <p className="mb-2 px-1 text-[0.8125rem] leading-snug text-mut">
+          {owner ? "Arşivdeki mesajları sohbette kimse görmez. Geri alabilir ya da kalıcı silebilirsin." : "Bu mesajları yalnız sen görmüyorsun. Geri alınca sohbette yeniden görünür."}
+        </p>
+        <ul className="space-y-2">
+          {[...archived].reverse().map((m) => {
+            const all = owner && m.arch;
+            return (
+              <li key={m.id} className="rounded-2xl bg-bg px-3 py-2.5">
+                <p className="text-[0.75rem] text-mut">
+                  {m.by === uid ? "Sen" : personName(m.by)} · {dayText(m.at)} {hm(m.at)}
+                  {owner && <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[0.6875rem]">{all ? "Herkesten" : "Yalnız senden"}</span>}
+                </p>
+                <p className="mt-0.5 whitespace-pre-wrap text-[0.875rem] [overflow-wrap:anywhere]">{m.text || "(boş mesaj)"}</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => restore(cid, m).then((ok) => toast(ok ? "Mesaj geri geldi" : "Geri alınamadı"))} className="h-9 flex-1 rounded-xl bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+                    Geri al
+                  </button>
+                  {all && (
+                    <button
+                      type="button"
+                      onClick={() => (purgeAsk === m.id ? (setPurgeAsk(""), purge(cid, m).then((ok) => toast(ok ? "Mesaj kalıcı silindi" : "Silinemedi"))) : setPurgeAsk(m.id))}
+                      className={`h-9 flex-1 rounded-xl text-[0.8125rem] font-semibold ${purgeAsk === m.id ? "bg-rec text-white" : "bg-card text-rec ring-1 ring-line"}`}
+                    >
+                      {purgeAsk === m.id ? "Emin misin? Sil" : "Kalıcı sil"}
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </Sheet>
 
       {/* Ek: fotoğraf, kamera, dosya, sesli mesaj. Gönderim şimdilik kapalı (yakında) */}

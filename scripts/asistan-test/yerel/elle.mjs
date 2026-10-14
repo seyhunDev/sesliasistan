@@ -2026,3 +2026,15 @@ group("Fitness: başka sitedeki hareket videosu")([
   ["yerel ağ indirilmez", F("localhost, IP, iç ad reddedilir", () => !PV.publicPage("http://localhost/x") && !PV.publicPage("https://192.168.1.1/") && !PV.publicPage("https://a.internal/") && !!PV.publicPage(PG))],
   ["dosya mı sayfa mı", F("mp4/jpg dosya, .html sayfa", () => PV.isFileLink("https://a.com/b.mp4") && PV.isFileLink("https://a.com/b.JPG?x=1") && !PV.isFileLink(PG))],
 ]);
+
+// Mesaj arşivi (lib/chatArchive.js): ana hesabın arşivi herkesten, diğerlerinin yalnız kendinden
+const CA = await import("@/lib/chatArchive");
+const AM = [{ id: "a", text: "bir" }, { id: "b", text: "iki", arch: true }, { id: "c", text: "üç", hide: { u2: true } }, { id: "d", text: "dört" }];
+group("Mesaj arşivi")([
+  ["herkesten arşiv", F("kimse görmez", () => !CA.shownMsg(AM[1], "u1") && !CA.shownMsg(AM[1], "u2"))],
+  ["kendinden gizle", F("yalnız gizleyen görmez", () => !CA.shownMsg(AM[2], "u2") && CA.shownMsg(AM[2], "u1"))],
+  ["arşiv listesi: ana hesap", F("herkesten arşivlenen görünür", () => AM.filter((m) => CA.inArchive(m, "u1", true)).map((m) => m.id).join() === "b")],
+  ["arşiv listesi: kullanıcı", F("yalnız kendi gizledikleri", () => AM.filter((m) => CA.inArchive(m, "u2", false)).map((m) => m.id).join() === "c")],
+  ["son mesaj arşivlenince özet", F("bir önceki görünen mesaj", () => CA.prevShown([AM[0], AM[1], AM[3]], AM[3])?.id === "a")],
+  ["hiç kalmazsa", F("null", () => CA.prevShown([AM[1]], AM[1]) === null)],
+]);

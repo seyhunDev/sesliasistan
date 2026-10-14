@@ -127,7 +127,7 @@ export function useForYou() {
         id: `chat:${c.id}:${c.seq}`,
         lead: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} size="size-11" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
         title: c.title,
-        sub: c.last.deleted ? "Bu mesaj silindi" : `${c.type === "dm" ? "" : `${first(personName(c.last.by))}: `}${c.last.text}`,
+        sub: c.last.deleted ? "Mesaj silindi" : `${c.type === "dm" ? "" : `${first(personName(c.last.by))}: `}${c.last.text}`,
         time: listTime(c.last.at),
         badge: c.unread,
         onOpen: () => router.push(`/messages?c=${c.id}`),
