@@ -54,21 +54,25 @@ export async function moveMailFiles(uid, m) {
   }
 }
 
-// Ekleri hâlâ mailde duran bütün mailleri taşır (50'şer). Dönüş { moved, left }
+// Ekleri hâlâ mailde duran bütün mailleri taşır. Mailler ekiyle büyük olduğu için 5'er okunur
+// (50'si birden telefonda dakikalarca inebiliyordu). Okuma 60 sn'de gelmezse durur. Dönüş { moved, left, err }
+const BATCH = 5;
+const late = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("zaman aşımı"), { code: "zaman aşımı" })), ms))]);
 export async function moveAllMailFiles(uid, onProg) {
   let moved = 0;
   let left = 0;
-  for (let round = 0; round < 40; round++) {
+  for (let round = 0; round < 400; round++) {
     onProg?.(moved, "ara");
-    const snap = await getDocs(query(collection(db, "orgs", uid, "mails"), where("raw", "!=", null), limit(50)));
+    const snap = await late(getDocs(query(collection(db, "orgs", uid, "mails"), where("raw", "!=", null), limit(BATCH))), 60e3);
     const todo = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.raw?.length);
     if (!todo.length) break;
     let ok = 0;
     for (const m of todo) {
-      if (await moveMailFiles(uid, m)) ok += 1;
       onProg?.(moved + ok);
+      if (await late(moveMailFiles(uid, m), 90e3).catch(() => false)) ok += 1;
     }
     moved += ok;
+    onProg?.(moved);
     if (ok < todo.length) {
       left = todo.length - ok;
       break;

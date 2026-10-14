@@ -61,8 +61,8 @@ export function MoveAllRow() {
       if (owner) {
         setBusy("Mail ekleri aranıyor…");
         const r = await withValue(
-          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri aranıyor… (${n} taşındı)` : `Mail ekleri taşınıyor… ${n}`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
-          5 * 60e3,
+          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri aranıyor… (${n} taşındı)` : `Mail ekleri taşınıyor… ${n} taşındı`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
+          20 * 60e3,
         );
         mails = r || { moved: 0, left: 1, err: "zaman aşımı" };
         if (mails.left) why ||= errText(mails.err || mailMoveErr());
