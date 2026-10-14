@@ -1,8 +1,8 @@
-Commit: af2be62 · Zildeki bildirim, işi başka yoldan açılınca da görüldü oluyor (#425)
-Zaman: 2026-10-14-1904 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38594706830
+Commit: a090798 · Aidatlar: liste odaklı yeni düzen, ayarlar tek pencerede (#426)
+Zaman: 2026-10-14-1927 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38597984445
 
-TAM TEST · 14.10.2026 19:03:19
+TAM TEST · 14.10.2026 19:26:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 62 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
