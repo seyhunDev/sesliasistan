@@ -1,8 +1,8 @@
-Commit: 5a96c63 · Görev listesinde numaralı iş kataloğu: yapay zeka numara + alan verir, komutu uygulama yazar (#329)
-Zaman: 2026-10-12-1723 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38262413850
+Commit: 716a377 · Rüzgâr haritası: anahtarsız koyu zemin (Esri), açılmazsa OpenStreetMap (#391)
+Zaman: 2026-10-14-0858 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38519344538
 
-TAM TEST · 12.10.2026 17:22:38
+TAM TEST · 14.10.2026 08:56:51
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 64 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
