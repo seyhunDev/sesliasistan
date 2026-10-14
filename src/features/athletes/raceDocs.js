@@ -138,7 +138,7 @@ export function athleteInfo(a) {
     parents: [up(a.fatherName), up(a.motherName)].filter(Boolean).join("/"),
     birth: [up(a.studentBirthPlace), b && !Number.isNaN(b.getTime()) ? dmy(a.studentBirthDate, "-") : ""].filter(Boolean).join("/"),
     // Sporcunun kendi telefonu yoksa veli telefonu (veli izin belgesinde İrtibat Telefonu boş kalmasın)
-    phone: a.studentPhone || a.parentPhone || "",
+    phone: a.parentPhone || "", // İrtibat telefonu: velinin numarası (Seyhun), sporcununki değil
     parentName: up(a.parentName),
     parentTc: a.parentTc || "",
     parentPhone: a.parentPhone || "",
@@ -996,6 +996,20 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
     if (only.includes("entry")) groups.forEach((g) => entryForm(pdf, f, r, c, g.cls, g.list));
   }
   return pdf.save();
+}
+
+// Çok sayfalı PDF'i sayfa sayfa ayırır (sporcu başına bir sayfalık belgeler: tek sporcunun sayfası paylaşılsın)
+export async function splitPages(bytes) {
+  const { PDFDocument } = await import("pdf-lib");
+  const src = await PDFDocument.load(bytes);
+  const out = [];
+  for (const i of src.getPageIndices()) {
+    const one = await PDFDocument.create();
+    const [pg] = await one.copyPages(src, [i]);
+    one.addPage(pg);
+    out.push(await one.save());
+  }
+  return out;
 }
 
 // Kulüp izin yazısının bilgileri: boş bırakılanlar yarıştan gelir
