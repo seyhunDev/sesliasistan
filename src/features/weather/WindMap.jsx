@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
-import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
-import { LEGEND, cellOf, colorOf, daysOf, frameAt, frameSummary, fresh, gridOf, mapUrl, nowIndex, placeId, shapeMap } from "@/lib/windMap";
-import { PLACE, compareLinks, getPlace, placeLabel, samePlace, setPlace, windLevel, windName } from "./weather";
+import { DARK, DARK_ATTR, loadLeaflet } from "@/lib/leaflet";
+import { LEGEND, colorOf, dayMax, daysOf, fieldOf, frameAt, fresh, gridOf, mapUrl, nowIndex, placeId, rgbOf, sampleField, shapeMap } from "@/lib/windMap";
+import { PLACE, compareLinks, getPlace, placeLabel, samePlace, setPlace, windName } from "./weather";
 import { WindArrow } from "./parts";
 import { useAuth } from "@/features/auth/AuthProvider";
 
-// Rüzgâr haritası: konumun (varsayılan Dikili) çevresinde 6×6 noktada saat saat rüzgâr okları ve renkli alan.
-// Veri Open-Meteo'dan tek istekte (3 gün), cihazda 30 dk saklanır; Firestore'a dokunmaz.
+// Rüzgâr haritası: koyu harita, üstünde şiddete göre renk geçişi ve rüzgârla akan çizgiler (Windy gibi).
+// Veri Open-Meteo'dan tek istekte (6×6 nokta, 3 gün), cihazda 30 dk saklanır; Firestore'a dokunmaz.
 const KEY = "sa-wind-map";
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -48,31 +48,40 @@ async function loadMap(p, force) {
   return data;
 }
 
-// Ok: rüzgârın estiği yöne bakar (meteoroloji geldiği yönü verir, +180°); altında knot
-const arrow = (L, x) =>
-  L.divIcon({
-    className: "",
-    iconSize: [34, 40],
-    iconAnchor: [17, 17],
-    html: `<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none">
-<svg width="26" height="26" viewBox="0 0 24 24" style="transform:rotate(${x.dir + 180}deg);filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))"><path d="M12 3v18M12 3l-6 7M12 3l6 7" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-<span style="margin-top:-1px;font:700 11px/1 system-ui;color:#fff;text-shadow:0 0 3px rgba(0,0,0,.7),0 1px 2px rgba(0,0,0,.6)">${x.kn}</span></div>`,
-  });
+const GLASS = "bg-[rgba(17,24,32,.72)] text-white backdrop-blur-md";
+const CELL = 6; // renk ve akış ızgarası (px)
+const SPEED = 0.07; // knot başına kare başı px
 
-function WindLeaflet({ data, frame, place }) {
+function fitCanvas(cv, w, h, dpr) {
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    cv.style.width = `${w}px`;
+    cv.style.height = `${h}px`;
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+function WindLeaflet({ data, frame, place, children }) {
   const box = useRef(null);
+  const fieldCv = useRef(null);
+  const flowCv = useRef(null);
+  const topCv = useRef(null);
   const map = useRef(null);
-  const layer = useRef(null);
+  const grid = useRef(null);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   useEffect(() => {
     let live = true;
     loadLeaflet()
       .then((L) => {
         if (!live || !box.current) return;
-        const m = L.map(box.current, { zoomControl: true, attributionControl: true, scrollWheelZoom: false, tap: false });
-        L.tileLayer(OSM, { maxZoom: 14, attribution: OSM_ATTR }).addTo(m);
+        const m = L.map(box.current, { zoomControl: false, attributionControl: false, scrollWheelZoom: false, tap: false });
+        L.tileLayer(DARK, { maxZoom: 14, subdomains: "abcd", attribution: DARK_ATTR }).addTo(m);
         map.current = m;
         setReady(true);
       })
@@ -91,25 +100,155 @@ function WindLeaflet({ data, frame, place }) {
     if (!m || !data.spots.length) return;
     const lats = data.spots.map((s) => s.lat);
     const lons = data.spots.map((s) => s.lon);
-    m.fitBounds([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], { padding: [18, 18] });
+    m.fitBounds([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], { padding: [10, 10] });
   }, [spotsKey, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Seçili saatin renkli alanı ve okları
+  // Renk geçişi, knot sayıları ve akış ızgarası (saat değişince, harita kayınca)
   useEffect(() => {
     const m = map.current;
-    const L = typeof window !== "undefined" ? window.L : null;
-    if (!m || !L) return;
-    layer.current?.remove();
-    const g = L.layerGroup();
-    for (const x of frame) L.rectangle(cellOf(x), { stroke: false, fillColor: colorOf(x.kn), fillOpacity: 0.5, interactive: false }).addTo(g);
-    for (const x of frame) L.marker([x.lat, x.lon], { icon: arrow(L, x), interactive: false, keyboard: false }).addTo(g);
-    L.circleMarker([place.lat, place.lon], { radius: 5, color: "#fff", weight: 2, fillColor: "#0f172a", fillOpacity: 1, interactive: false }).addTo(g);
-    g.addTo(m);
-    layer.current = g;
+    if (!m) return;
+    const f = fieldOf(frame);
+    const draw = () => {
+      const { x: w, y: h } = m.getSize();
+      if (!w || !h || !fieldCv.current) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const cols = Math.ceil(w / CELL);
+      const rows = Math.ceil(h / CELL);
+      const u = new Float32Array(cols * rows);
+      const v = new Float32Array(cols * rows);
+      const ok = new Uint8Array(cols * rows);
+      const img = new ImageData(cols, rows);
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < cols; x++) {
+          const ll = m.containerPointToLatLng([x * CELL + CELL / 2, y * CELL + CELL / 2]);
+          const s = sampleField(f, ll.lat, ll.lng);
+          if (!s) continue;
+          const k = y * cols + x;
+          u[k] = s.u;
+          v[k] = s.v;
+          ok[k] = 1;
+          const [r, g, b] = rgbOf(s.kn);
+          img.data.set([r, g, b, 150], k * 4);
+        }
+      grid.current = { w, h, cols, rows, u, v, ok, dpr };
+
+      const small = document.createElement("canvas");
+      small.width = cols;
+      small.height = rows;
+      small.getContext("2d").putImageData(img, 0, 0);
+      const fc = fitCanvas(fieldCv.current, w, h, dpr);
+      fc.clearRect(0, 0, w, h);
+      fc.imageSmoothingEnabled = true;
+      fc.drawImage(small, 0, 0, cols * CELL, rows * CELL);
+
+      const fl = fitCanvas(flowCv.current, w, h, dpr);
+      fl.clearRect(0, 0, w, h);
+
+      const tc = fitCanvas(topCv.current, w, h, dpr);
+      tc.clearRect(0, 0, w, h);
+      tc.font = "700 11px system-ui, sans-serif";
+      tc.textAlign = "center";
+      tc.textBaseline = "middle";
+      tc.lineWidth = 3;
+      tc.strokeStyle = "rgba(0,0,0,.55)";
+      tc.fillStyle = "#fff";
+      for (const x of frame) {
+        const p = m.latLngToContainerPoint([x.lat, x.lon]);
+        tc.strokeText(String(x.kn), p.x, p.y);
+        tc.fillText(String(x.kn), p.x, p.y);
+      }
+      const p = m.latLngToContainerPoint([place.lat, place.lon]);
+      tc.beginPath();
+      tc.arc(p.x, p.y + 12, 4.5, 0, Math.PI * 2);
+      tc.fillStyle = "#3ddc97";
+      tc.fill();
+      tc.lineWidth = 2;
+      tc.strokeStyle = "#fff";
+      tc.stroke();
+      setMoving(false);
+    };
+    const start = () => {
+      grid.current = null;
+      setMoving(true);
+    };
+    draw();
+    m.on("movestart zoomstart", start);
+    m.on("moveend zoomend resize", draw);
+    return () => {
+      m.off("movestart zoomstart", start);
+      m.off("moveend zoomend resize", draw);
+    };
   }, [frame, ready, place.lat, place.lon]);
 
-  if (err) return <div className="grid h-24 place-items-center rounded-2xl bg-card px-4 text-center text-[0.8125rem] text-mut">Harita yüklenemedi. Aşağıdaki saatlik rüzgâr yine güncel.</div>;
-  return <div ref={box} className="isolate h-[52vh] max-h-[30rem] min-h-[18rem] w-full overflow-hidden rounded-2xl bg-line/40" />;
+  // Rüzgârla akan çizgiler (hareketi azalt açıksa yok)
+  useEffect(() => {
+    if (!ready || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    let parts = [];
+    const spawn = (G) => ({ x: Math.random() * G.w, y: Math.random() * G.h, age: Math.floor(Math.random() * 80) });
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const G = grid.current;
+      const cv = flowCv.current;
+      if (!G || !cv) return;
+      const ctx = cv.getContext("2d");
+      const want = Math.min(900, Math.round((G.w * G.h) / 450));
+      if (parts.length !== want) parts = Array.from({ length: want }, () => spawn(G));
+      ctx.globalCompositeOperation = "destination-in";
+      ctx.fillStyle = "rgba(0,0,0,.9)";
+      ctx.fillRect(0, 0, G.w, G.h);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let i = 0; i < parts.length; i++) {
+        const q = parts[i];
+        const cx = Math.floor(q.x / CELL);
+        const cy = Math.floor(q.y / CELL);
+        const k = cy * G.cols + cx;
+        if (q.age++ > 90 || cx < 0 || cy < 0 || cx >= G.cols || cy >= G.rows || !G.ok[k]) {
+          parts[i] = spawn(G);
+          parts[i].age = 0;
+          continue;
+        }
+        const nx = q.x + G.u[k] * SPEED;
+        const ny = q.y - G.v[k] * SPEED;
+        ctx.moveTo(q.x, q.y);
+        ctx.lineTo(nx, ny);
+        q.x = nx;
+        q.y = ny;
+      }
+      ctx.stroke();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [ready]);
+
+  const zoom = (d) => map.current?.[d > 0 ? "zoomIn" : "zoomOut"]();
+
+  return (
+    <div className="relative isolate h-[46vh] max-h-[26rem] min-h-[17rem] w-full overflow-hidden rounded-[1.375rem] bg-[#1b2128]">
+      <div ref={box} className="absolute inset-0 isolate z-0" />
+      <canvas ref={fieldCv} className={`pointer-events-none absolute left-0 top-0 z-10 transition-opacity ${moving ? "opacity-0" : ""}`} />
+      <canvas ref={flowCv} className="pointer-events-none absolute left-0 top-0 z-20" />
+      <canvas ref={topCv} className={`pointer-events-none absolute left-0 top-0 z-30 ${moving ? "opacity-0" : ""}`} />
+      {err && <div className="absolute inset-0 z-40 grid place-items-center px-6 text-center text-[0.8125rem] text-white/70">Harita yüklenemedi</div>}
+      <div className="pointer-events-none absolute inset-0 z-[1000]">
+        <div className="pointer-events-auto absolute right-3 top-3 flex flex-col gap-2">
+          <div className={`flex flex-col overflow-hidden rounded-full ${GLASS}`}>
+            <button type="button" onClick={() => zoom(1)} aria-label="Yakınlaştır" className="grid size-9 place-items-center text-[1.125rem] font-semibold">
+              +
+            </button>
+            <span className="mx-2 h-px bg-white/15" />
+            <button type="button" onClick={() => zoom(-1)} aria-label="Uzaklaştır" className="grid size-9 place-items-center text-[1.125rem] font-semibold">
+              −
+            </button>
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 // Seçili günün saatleri (konumdaki noktada): çubuk boyu rüzgâr, rengi şiddet; dokununca o saat seçilir
@@ -118,7 +257,7 @@ function HourBars({ spot, from, to, sel, onSel, nowI }) {
   for (let i = from; i < to; i++) idx.push(i);
   const top = Math.max(15, ...idx.map((i) => spot.g[i] ?? 0));
   return (
-    <div className="flex h-24 items-end gap-[2px]" role="group" aria-label="Saatlik rüzgâr">
+    <div className="flex h-20 items-end gap-[2px]" role="group" aria-label="Saatlik rüzgâr">
       {idx.map((i) => {
         const kn = spot.w[i] ?? 0;
         const on = i === sel;
@@ -131,15 +270,20 @@ function HourBars({ spot, from, to, sel, onSel, nowI }) {
             aria-pressed={on}
             className="relative flex h-full flex-1 flex-col justify-end"
           >
-            <span className="block w-full rounded-t-[3px]" style={{ height: `${Math.max(4, (kn / top) * 100)}%`, background: colorOf(kn), opacity: on ? 1 : 0.6 }} />
-            {on && <span className="absolute -top-0.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-fg" />}
-            {i === nowI && !on && <span className="absolute -top-0.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-acc" />}
+            <span className="block w-full rounded-t-[3px]" style={{ height: `${Math.max(4, (kn / top) * 100)}%`, background: colorOf(kn), opacity: on ? 1 : 0.45 }} />
+            {i === nowI && <span className="absolute -top-0.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-acc" />}
           </button>
         );
       })}
     </div>
   );
 }
+
+const PlayIcon = () => (
+  <svg viewBox="0 0 24 24" className="ml-0.5 size-[1.125rem]" aria-hidden>
+    <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
+  </svg>
+);
 
 export function WindMapView() {
   // Konum profilde de saklanır (başka cihazda seçildiyse burada da uygulanır; useWeather ile aynı)
@@ -153,6 +297,7 @@ export function WindMapView() {
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState(null);
   const [play, setPlay] = useState(false);
+  const [info, setInfo] = useState(false);
 
   const refresh = useCallback(async (force) => {
     const p = getPlace();
@@ -216,63 +361,121 @@ export function WindMapView() {
   // Konuma en yakın nokta
   const spot = data.spots.reduce((a, b) => ((b.lat - place.lat) ** 2 + (b.lon - place.lon) ** 2 < (a.lat - place.lat) ** 2 + (a.lon - place.lon) ** 2 ? b : a));
   const here = spot.w[sel] != null ? { kn: spot.w[sel], gust: spot.g[sel] ?? spot.w[sel], dir: spot.d[sel] } : null;
-  const sum = frameSummary(frame);
   const links = compareLinks(place);
+  const grad = `linear-gradient(90deg, ${LEGEND.map((l, i) => `${l.color} ${(i / (LEGEND.length - 1)) * 100}%`).join(", ")})`;
 
   return (
     <div className="mt-2 space-y-3">
-      <WindLeaflet data={data} frame={frame} place={place} />
-
-      {/* Seçili saat: konumdaki rüzgâr ve haritanın geneli */}
-      <section className="rounded-2xl bg-card p-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <div className="flex items-baseline justify-between gap-2">
-          <b className="text-[1rem] font-semibold capitalize">
-            {dayLabel(t.slice(0, 10), today)} {t.slice(11, 16)}
-          </b>
-          {sel !== nowI && (
-            <button type="button" onClick={() => setSel(nowI)} className="text-[0.8125rem] font-semibold text-acc">
-              Şimdi
-            </button>
-          )}
-        </div>
+      <WindLeaflet data={data} frame={frame} place={place}>
+        {/* Konumdaki rüzgâr */}
         {here && (
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[0.9375rem]">
-            <span className="flex items-center gap-1 font-semibold" style={{ color: colorOf(here.kn) }}>
-              <WindArrow deg={here.dir} className="size-4" />
-              {windName(here.dir)[0]} ({windName(here.dir)[1]}) {here.kn} kn
+          <div className={`absolute left-3 top-3 flex items-center gap-2 rounded-full py-1.5 pl-3 pr-3.5 ${GLASS}`}>
+            <b className="text-[1.375rem] font-bold leading-none tabular-nums" style={{ color: colorOf(here.kn) }}>
+              {here.kn}
+            </b>
+            <span className="text-[0.6875rem] font-semibold text-white/60">kn</span>
+            <WindArrow deg={here.dir} className="size-4" />
+            <span className="text-[0.8125rem] leading-tight">
+              <b className="font-semibold">{windName(here.dir)[0]}</b>
+              <span className="block text-[0.6875rem] text-white/60">sağanak {here.gust}</span>
             </span>
-            <span className="text-mut">
-              sağanak {here.gust} kn · {windLevel(here.kn).label} · {place.name}
-            </span>
-          </p>
-        )}
-        {sum && (
-          <p className="mt-1 text-[0.8125rem] text-mut">
-            Haritanın geneli: {sum.min}–{sum.max} kn, en sert sağanak {sum.gust} kn, çoğunlukla {windName(sum.dir)[0]}
-          </p>
+          </div>
         )}
 
-        {/* Gün seçimi */}
-        <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
-          {days.map((d) => {
+        {/* Bilgi */}
+        <button
+          type="button"
+          onClick={() => setInfo((v) => !v)}
+          aria-label="Bilgi"
+          aria-expanded={info}
+          className={`pointer-events-auto absolute right-3 top-[6.25rem] grid size-9 place-items-center rounded-full text-[0.9375rem] font-bold italic ${GLASS}`}
+        >
+          i
+        </button>
+        {info && (
+          <div className={`pointer-events-auto absolute right-14 top-3 w-[min(15rem,calc(100%-5rem))] rounded-2xl p-3 text-[0.75rem] ${GLASS}`}>
+            <b className="block text-[0.8125rem] font-semibold">{placeLabel(place)}</b>
+            <p className="mt-1 text-white/60">Rüzgâr Open-Meteo · {DARK_ATTR}</p>
+            <div className="mt-2.5 flex gap-1.5">
+              <a href={links.windy} target="_blank" rel="noreferrer" className="flex h-8 flex-1 items-center justify-center gap-1 rounded-full bg-white/15 font-semibold">
+                <Icon name="map" className="size-3.5" /> Windy
+              </a>
+              <button
+                type="button"
+                onClick={() => refresh(true)}
+                disabled={busy}
+                className="flex h-8 flex-1 items-center justify-center gap-1 rounded-full bg-white/15 font-semibold disabled:opacity-50"
+              >
+                <Icon name="load" className={`size-3.5 ${busy ? "animate-spin" : ""}`} /> Yenile
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Ölçek ve oynatma */}
+        <div className="pointer-events-auto absolute inset-x-3 bottom-3">
+          <div className="mb-1.5 px-1">
+            <div className="h-1.5 rounded-full" style={{ background: grad }} />
+            <div className="mt-0.5 flex justify-between text-[0.625rem] font-semibold text-white/80 tabular-nums [text-shadow:0_1px_2px_rgba(0,0,0,.7)]">
+              {LEGEND.map((l) => (
+                <span key={l.kn}>{l.kn}</span>
+              ))}
+            </div>
+          </div>
+          <div className={`flex items-center gap-2 rounded-full p-1.5 pr-3 ${GLASS}`}>
+            <button
+              type="button"
+              onClick={() => setPlay((v) => !v)}
+              aria-label={play ? "Durdur" : "Oynat"}
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#111820]"
+            >
+              {play ? <Icon name="stop" className="size-4" /> : <PlayIcon />}
+            </button>
+            <button type="button" onClick={() => setSel(nowI)} className="shrink-0 text-left text-[0.75rem] leading-tight">
+              <b className="block font-semibold capitalize">{dayLabel(t.slice(0, 10), today)}</b>
+              <span className="tabular-nums text-white/70">{t.slice(11, 16)}</span>
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={data.times.length - 1}
+              value={sel ?? 0}
+              onChange={(e) => {
+                setPlay(false);
+                setSel(+e.target.value);
+              }}
+              aria-label="Saat"
+              className="h-9 min-w-0 flex-1 accent-white"
+            />
+          </div>
+        </div>
+      </WindLeaflet>
+
+      {/* Gün ve saat seçimi */}
+      <section className="rounded-2xl bg-card p-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+          {days.map((d, k) => {
             const on = d === day;
+            const max = dayMax(spot, d.from, days[k + 1]?.from ?? data.times.length);
             return (
               <button
                 key={d.date}
                 type="button"
                 onClick={() => setSel(d.date === today ? nowI : Math.min(d.from + 12, data.times.length - 1))}
                 aria-pressed={on}
-                className={`h-9 rounded-full text-[0.8125rem] font-semibold capitalize transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
+                className={`flex h-12 flex-col items-center justify-center rounded-xl text-[0.8125rem] font-semibold capitalize ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
               >
                 {dayLabel(d.date, today)}
+                {max != null && <span className={`text-[0.6875rem] font-medium tabular-nums ${on ? "text-white/80" : "text-mut"}`}>en çok {max} kn</span>}
               </button>
             );
           })}
         </div>
-
-        {/* Saatlik çubuklar (konumda) ve kaydırıcı */}
         <div className="mt-3">
-          <HourBars spot={spot} from={day.from} to={dayEnd} sel={sel} onSel={setSel} nowI={nowI} />
+          <HourBars spot={spot} from={day.from} to={dayEnd} sel={sel} onSel={(i) => {
+              setPlay(false);
+              setSel(i);
+            }} nowI={nowI} />
           <div className="mt-1 flex justify-between text-[0.6875rem] text-mut tabular-nums">
             <span>00</span>
             <span>06</span>
@@ -281,69 +484,7 @@ export function WindMapView() {
             <span>23</span>
           </div>
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPlay((v) => !v)}
-            aria-label={play ? "Durdur" : "Oynat"}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-acc text-white active:scale-95"
-          >
-            {play ? (
-              <Icon name="stop" className="size-[1.125rem]" />
-            ) : (
-              <svg viewBox="0 0 24 24" className="ml-0.5 size-[1.125rem]" aria-hidden>
-                <path d="M7 4.5v15l12.5-7.5z" fill="currentColor" />
-              </svg>
-            )}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={data.times.length - 1}
-            value={sel ?? 0}
-            onChange={(e) => {
-              setPlay(false);
-              setSel(+e.target.value);
-            }}
-            aria-label="Saat"
-            className="h-10 min-w-0 flex-1 accent-[var(--acc)]"
-          />
-        </div>
       </section>
-
-      {/* Renk ölçeği */}
-      <section className="rounded-2xl bg-card px-4 py-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <div className="flex h-2.5 overflow-hidden rounded-full">
-          {LEGEND.map((l) => (
-            <span key={l.kn} className="flex-1" style={{ background: l.color }} />
-          ))}
-        </div>
-        <div className="mt-1 flex text-[0.6875rem] text-mut tabular-nums">
-          {LEGEND.map((l) => (
-            <span key={l.kn} className="flex-1">
-              {l.kn}
-            </span>
-          ))}
-        </div>
-        <p className="mt-1.5 text-[0.75rem] text-mut">
-          Oklar rüzgârın estiği yönü, sayılar knot’u gösterir. Kaynak Open-Meteo; ızgara aralığı yaklaşık 5 km.
-        </p>
-      </section>
-
-      <div className="flex gap-2">
-        <a href={links.windy} target="_blank" rel="noreferrer" className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-card text-[0.875rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-95">
-          <Icon name="map" className="size-4" /> Windy’de aç
-        </a>
-        <button
-          type="button"
-          onClick={() => refresh(true)}
-          disabled={busy}
-          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-card text-[0.875rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-95 disabled:opacity-50"
-        >
-          <Icon name="load" className={`size-4 ${busy ? "animate-spin" : ""}`} /> Yenile
-        </button>
-      </div>
-      <p className="px-1 text-center text-[0.75rem] text-mut">{placeLabel(place)} · konumu Ayarlar › Hava durumu konumu’ndan değiştirebilirsin</p>
     </div>
   );
 }

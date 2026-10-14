@@ -4,8 +4,8 @@
 
 export const ROWS = 6;
 export const COLS = 6;
-const STEP_LAT = 0.05; // ≈ 5,5 km
-const STEP_LON = 0.06; // ≈ 5,2 km (39° enlemde)
+export const STEP_LAT = 0.05; // ≈ 5,5 km
+export const STEP_LON = 0.06; // ≈ 5,2 km (39° enlemde)
 export const DAYS = 3;
 
 // Konumun çevresinde ROWS × COLS nokta (kuzeyden güneye, batıdan doğuya). Dikili'de körfez ve Midilli kanalı girer.
@@ -77,6 +77,52 @@ export function frameSummary(f) {
   return { avg: r(kn.reduce((a, b) => a + b, 0) / kn.length), min: Math.min(...kn), max: Math.max(...kn), gust: Math.max(...f.map((x) => x.gust)), dir };
 }
 
+// Akan çizgiler ve renk geçişi için alan: saatin noktaları ızgaraya dizilir, aradaki her yer çift doğrusal hesaplanır.
+// u doğuya, v kuzeye doğru hız (knot); rüzgâr geldiği yönden estiği yöne akar.
+export function fieldOf(frame) {
+  if (!frame.length) return null;
+  const rows = Math.max(...frame.map((x) => x.r)) + 1;
+  const cols = Math.max(...frame.map((x) => x.c)) + 1;
+  const cell = Array.from({ length: rows }, () => Array(cols).fill(null));
+  let lat0 = -Infinity;
+  let lon0 = Infinity;
+  for (const x of frame) {
+    const a = (x.dir * Math.PI) / 180;
+    cell[x.r][x.c] = { u: -Math.sin(a) * x.kn, v: -Math.cos(a) * x.kn, kn: x.kn };
+    lat0 = Math.max(lat0, x.lat + x.r * STEP_LAT);
+    lon0 = Math.min(lon0, x.lon - x.c * STEP_LON);
+  }
+  return { rows, cols, cell, lat0, lon0 };
+}
+
+// Bir yerdeki rüzgâr { u, v, kn }; ızgaranın yarım hücre dışı ve eksik nokta null
+export function sampleField(f, lat, lon) {
+  if (!f) return null;
+  const fr = (f.lat0 - lat) / STEP_LAT;
+  const fc = (lon - f.lon0) / STEP_LON;
+  if (fr < -0.5 || fc < -0.5 || fr > f.rows - 0.5 || fc > f.cols - 0.5) return null;
+  const r0 = Math.min(Math.max(Math.floor(fr), 0), f.rows - 1);
+  const c0 = Math.min(Math.max(Math.floor(fc), 0), f.cols - 1);
+  const r1 = Math.min(r0 + 1, f.rows - 1);
+  const c1 = Math.min(c0 + 1, f.cols - 1);
+  const tr = Math.min(Math.max(fr - r0, 0), 1);
+  const tc = Math.min(Math.max(fc - c0, 0), 1);
+  const a = f.cell[r0][c0];
+  const b = f.cell[r0][c1];
+  const c = f.cell[r1][c0];
+  const d = f.cell[r1][c1];
+  if (!a || !b || !c || !d) return a || b || c || d || null;
+  const mix = (k) => (a[k] * (1 - tc) + b[k] * tc) * (1 - tr) + (c[k] * (1 - tc) + d[k] * tc) * tr;
+  return { u: mix("u"), v: mix("v"), kn: mix("kn") };
+}
+
+// Günün en sert rüzgârı (gün düğmesinde)
+export function dayMax(spot, from, to) {
+  let m = null;
+  for (let i = from; i < to; i++) if (spot.w[i] != null) m = Math.max(m ?? 0, spot.w[i]);
+  return m;
+}
+
 // Şiddete göre renk (Windy'ye benzer sıra: mavi → yeşil → sarı → turuncu → kırmızı → mor)
 const SCALE = [
   [0, "#7aa6d6"],
@@ -94,6 +140,21 @@ export function colorOf(kn) {
   return c;
 }
 export const LEGEND = SCALE.map(([k, col]) => ({ kn: k, color: col }));
+
+// Renk geçişi için [r, g, b] (ölçekteki iki renk arası karışır)
+const RGB = SCALE.map(([k, col]) => [k, [1, 3, 5].map((i) => parseInt(col.slice(i, i + 2), 16))]);
+export function rgbOf(kn) {
+  if (kn <= RGB[0][0]) return RGB[0][1];
+  for (let i = 1; i < RGB.length; i++) {
+    const [k1, c1] = RGB[i];
+    const [k0, c0] = RGB[i - 1];
+    if (kn < k1) {
+      const t = (kn - k0) / (k1 - k0);
+      return c0.map((x, j) => Math.round(x + (c1[j] - x) * t));
+    }
+  }
+  return RGB[RGB.length - 1][1];
+}
 
 // Gün düğmeleri için: [{ date, from (ilk saatin sırası) }]
 export function daysOf(times) {
