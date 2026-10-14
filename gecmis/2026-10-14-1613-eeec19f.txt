@@ -1,8 +1,8 @@
-Commit: 73242fc · Merge pull request #355 from seyhunDev/claude/project-thread-g3bpd3
-Zaman: 2026-10-13-1526 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38397124525
+Commit: eeec19f · Mail ekleri saklanmaz, eskiler sunucuda silinir (Ayarlar › Mail eklerini sil) (#418)
+Zaman: 2026-10-14-1613 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38569789506
 
-TAM TEST · 13.10.2026 15:25:31
+TAM TEST · 14.10.2026 16:12:18
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
