@@ -240,6 +240,10 @@ select {
 }
 /* Sohbette mesajlar ilk kez okununca: iskeletten mesajlara yumuşak geçiş (bellekten gelince animasyon yok) */
 .msgs-in { animation: pagein .22s ease-out backwards; }
+/* Yeni gelen ya da gönderilen mesaj: hafifçe aşağıdan belirir (yalnız yeni mesajlarda, ChatView) */
+@keyframes msgin { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.msg-in { animation: msgin .26s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) { .msg-in { animation: softin .15s ease-out both; } }
 
 
 /* Bekleyen alan: soldan sağa akan ince ışık (yükleniyor) */
