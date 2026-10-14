@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Seg, card } from "@/components/ui/Page";
@@ -70,7 +71,7 @@ function legacyCopy(t) {
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
+export function PostEditor({ title, back, start: given, startPhoto = "", onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
   const toast = useToast();
   const [start] = useState(() => withInfo(given));
   const [p, setP] = useState(start);
@@ -110,12 +111,13 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   // Önizleme ekranın üstünde sabit (sayfa başlığının altında); yazı yazarken küçülür, klavyeye yer kalsın
   const [typing, setTyping] = useState(false);
   const [top, setTop] = useState(0);
+  const headRef = useRef(null);
   useEffect(() => {
-    const head = () => setTop(canvas.current?.closest("main")?.querySelector(":scope > .sticky")?.offsetHeight || 0);
+    const head = () => setTop(headRef.current?.nextElementSibling?.offsetHeight || 0);
     head();
     window.addEventListener("resize", head);
     return () => window.removeEventListener("resize", head);
-  }, []);
+  }, [step]);
   // Yapay zekanın son yazdığı açıklama: elle değiştirilmediyse tür değişince yeni türe göre yeniden yazılır (kayıtlı gönderide elle sayılır)
   const autoCap = useRef(start.id ? null : start.caption);
   const [set, setSet] = useState([]); // üç boyut: [{ f, thumb }]; dosyalar setFiles'ta
@@ -687,6 +689,8 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
   // 1. adım: ne paylaşacaksın
   if (step === "kind")
     return (
+      <>
+      <PageHeader title={title} back={back} />
       <div className="mt-2 pb-6">
         <h2 className="text-[1.5rem] font-extrabold leading-tight">Ne paylaşacaksın?</h2>
         <p className="mt-1 text-[0.875rem] text-mut">Seç, yazıları ben hazırlayayım.</p>
@@ -759,30 +763,24 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
         </div>
         {fileBox}
       </div>
+      </>
     );
 
-  // 2. adım: önizleme ve dört düğme üstte sabit, altında seçili düğmenin ayarları
+  // 2. adım: başlıkta Kaydet; önizleme ve dört düğme üstte sabit, altında seçili düğmenin ayarları
   return (
+    <>
+    <span ref={headRef} hidden />
+    <PageHeader title={title} back={back}>
+      <button type="button" onClick={() => save(false)} disabled={!!busy || (!dirty && !!pid)} className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold transition ${dirty || !pid ? "bg-acc text-white" : "bg-card text-mut ring-1 ring-line"}`}>
+        <Icon name="check" className="size-[1.125rem]" />
+        {busy === "save" ? "Kaydediliyor…" : !dirty && pid ? "Kaydedildi" : "Kaydet"}
+      </button>
+    </PageHeader>
     <div
       className="mt-1 pb-6"
       onFocusCapture={(e) => /^(TEXTAREA|INPUT)$/.test(e.target.tagName) && !/^(range|checkbox|file|button)$/.test(e.target.type) && setTyping(true)}
       onBlurCapture={() => setTyping(false)}
     >
-      {/* Üst satır: tür ve yarış (dokununca 1. adım), sağda her zaman görünen Kaydet */}
-      <div className="mb-1 flex items-center gap-2">
-        <button type="button" onClick={toKind} className="flex min-w-0 flex-1 items-center gap-2 rounded-xl px-1 py-1.5 text-left">
-          <Icon name={kindOf(post.kind)[2]} className="size-[1.125rem] shrink-0 text-acc" />
-          <span className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold">
-            {post.kind === "ozel" && dayOf(post.day) ? dayOf(post.day).name : kindOf(post.kind)[1]}
-            {race && <span className="font-normal text-mut"> · {race.name}</span>}
-          </span>
-        </button>
-        <button type="button" onClick={() => save(false)} disabled={!!busy || (!dirty && !!pid)} className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold transition ${dirty || !pid ? "bg-acc text-white" : "bg-card text-mut ring-1 ring-line"}`}>
-          <Icon name="check" className="size-[1.125rem]" />
-          {busy === "save" ? "Kaydediliyor…" : !dirty && pid ? "Kaydedildi" : "Kaydet"}
-        </button>
-      </div>
-
       {/* Önizleme üstte sabit kalır; ayarlar altında, değişiklik hep görünür */}
       <div className="sticky z-[9] -mx-5 bg-bg/95 px-5 pb-2 pt-1 backdrop-blur [container-type:inline-size]" style={{ top }}>
         <div className={`${card} overflow-hidden`}>
@@ -952,6 +950,15 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
 
         {tool === "look" &&
           list([
+            <button key="kind" type="button" onClick={toKind} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="min-w-0 flex-1">
+                <b className="block text-[0.9375rem] font-semibold">Tür</b>
+                <span className="block truncate text-[0.75rem] text-mut">
+                  {[post.kind === "ozel" && dayOf(post.day) ? dayOf(post.day).name : kindOf(post.kind)[1], race?.name].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+              <Icon name="chev" className="size-5 shrink-0 text-mut" />
+            </button>,
             item("theme", "Renk", themeOf(post.theme)[1], {
               body: (
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1076,5 +1083,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
       </div>
       {fileBox}
     </div>
+    </>
   );
 }
