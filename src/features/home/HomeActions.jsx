@@ -88,7 +88,7 @@ export function HomeActions({ groups }) {
 
   return (
     <nav aria-labelledby="home-act">
-      <SectionHead id="home-act" title="KISAYOLLAR" />
+      <SectionHead id="home-act" title="Kısayollar" />
       <ul className={grid}>
         {short.map((a) => (
           <li key={linkKey(a)}>

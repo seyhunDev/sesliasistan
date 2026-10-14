@@ -174,13 +174,13 @@ export function InboxSheet({ inbox, open, onClose }) {
         {!actions.length && !history.length && <p className="px-1 py-6 text-center text-[0.875rem] text-mut">Yeni bir şey yok.</p>}
         {actions.length > 0 && (
           <section aria-label="Yapılacaklar">
-            <SectionHead title="YAPILACAKLAR" count={actions.length} />
+            <SectionHead title="Yapılacaklar" count={actions.length} />
             <List rows={actions.map(go)} onHide={hide} />
           </section>
         )}
         {history.length > 0 && (
           <section aria-label="Bildirimler">
-            <SectionHead title="BİLDİRİMLER">
+            <SectionHead title="Bildirimler">
               <button type="button" onClick={clearAll} className="font-semibold text-acc">
                 Tümünü temizle
               </button>
