@@ -19,6 +19,8 @@ import { canCall } from "@/lib/call";
 import { useCall } from "@/features/call/CallProvider";
 import { authFetch } from "@/lib/authFetch";
 import { goBack } from "@/lib/navTrail";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { seeInbox } from "@/features/home/InboxSeen";
 
 const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
@@ -223,6 +225,11 @@ export function ChatView({ cid }) {
     if (readAt.current === null) readAt.current = chat.read?.[uid] || 0;
     if (document.visibilityState === "visible") markRead(chat);
   }, [exists, chat?.seq, markRead]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sohbet açıkken bu sohbetin zildeki bildirimi de görüldü olur (açıkken gelen yeni bildirim de)
+  const inboxTop = useAuth().profile?.inbox?.[0]?.at || "";
+  useEffect(() => {
+    if (cid && exists && document.visibilityState === "visible") seeInbox({ tag: `chat-${cid}` });
+  }, [cid, exists, chat?.seq, inboxTop]);
   useEffect(() => {
     const key = `chat-${cid}`;
     const beat = () => {

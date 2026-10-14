@@ -31,6 +31,7 @@ import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { canLog } from "@/lib/trainingLog";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
+import { seeInbox } from "@/features/home/InboxSeen";
 
 const TIME_CHIPS = [["Sabah 09:00", "09:00"], ["Öğleden sonra 14:00", "14:00"], ["Akşam 18:00", "18:00"]];
 
@@ -210,6 +211,7 @@ export function AddSheet({ open, onClose, seed }) {
       const r = list.find((x) => x.id === edit.id);
       const d0 = r ? fromRecord(edit.kind, r) : null;
       if (r) markSeen(edit.kind, edit.id); // başkası eklediyse: "görüldü"
+      if (r) seeInbox({ id: edit.id }); // zildeki bildirimi de görüldü
       orig.current = d0 ? editKey(d0) : "";
       setDrafts(d0 ? [d0] : []);
       return;

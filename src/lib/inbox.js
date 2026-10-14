@@ -35,7 +35,33 @@ export function inboxClearAsk(s) {
   return t.split(" ").length <= 7 && /bildirim\p{L}*/u.test(t) && /(temizle|sil|kaldır|boşalt)\p{L}*/u.test(t) && !/ m[iıuü](\s|$)|bildirim(ini|i) (aç|kapat)/u.test(t);
 }
 
-export const isUnread = (x, seen) => !!x?.at && (!seen || String(x.at) > String(seen));
+// Okunmamış: zil açıldığından (seen) sonra geldi ve kendisi başka yoldan görülmedi (read: sohbeti ya da kaydı açınca)
+export const isUnread = (x, seen) => !!x?.at && !x.read && (!seen || String(x.at) > String(seen));
+
+// Bildirimin işi başka yoldan açıldı mı: aynı sohbet/kayıt etiketi, etiketin sonundaki kayıt kimliği (plan-ID, done-task-ID,
+// pay-ID…) ya da bildirimin gittiği sayfa (here: yol + sorgu). Seyhun: "mesajı Mesajlar'dan okudum, zildeki bildirim kaldı".
+export function inboxMatch(x, { tag, id, here } = {}) {
+  const t = String(x?.tag || "");
+  if (tag && t === tag) return true;
+  if (id && t.endsWith(`-${id}`)) return true;
+  if (here) {
+    const link = inboxLink(x);
+    if (link && link !== "/" && link === here) return true;
+  }
+  return false;
+}
+
+// Eşleşen okunmamış bildirimleri görüldü işaretler. Değişen yoksa aynı listeyi döndürür (yazma gerekmez).
+export function inboxSeeOne(list, match, seen, now = new Date().toISOString()) {
+  const arr = Array.isArray(list) ? list : [];
+  let hit = false;
+  const out = arr.map((x) => {
+    if (!isUnread(x, seen) || !inboxMatch(x, match)) return x;
+    hit = true;
+    return { ...x, read: now };
+  });
+  return hit ? out : list;
+}
 export const inboxUnread = (list, seen) => (Array.isArray(list) ? list.filter((x) => isUnread(x, seen)) : []);
 export const inboxBadge = (list, seen) => Math.min(inboxUnread(list, seen).length, 99);
 

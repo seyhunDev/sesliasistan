@@ -12,6 +12,7 @@ import { CallProvider } from "@/features/call/CallProvider";
 import { AddProvider } from "@/features/add/AddProvider";
 import { BirthdayProvider } from "@/features/birthdays/BirthdayProvider";
 import { OpenFromUrl } from "@/features/add/OpenFromUrl";
+import { InboxSeen } from "@/features/home/InboxSeen";
 import { ReceiptProvider } from "@/features/receipts/ReceiptProvider";
 import { AssistantProvider } from "@/features/assistant/AssistantProvider";
 import { DockProvider, TabBarHost } from "@/features/home/TabBar";
@@ -73,6 +74,7 @@ export default function AppLayout({ children }) {
                   <TabBarHost />
                   <BrainSync />
                   <OpenFromUrl />
+                  <InboxSeen />
                   <Onboarding />
                   <TryAssistant />
                  </DockProvider>
