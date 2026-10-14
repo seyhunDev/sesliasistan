@@ -53,12 +53,13 @@ export async function openRace(ctx, s, viaVoice) {
 }
 
 export function goRace(ctx, r, viaVoice) {
-  const { chainRace, curRace, leave, memoSet, router } = ctx;
+  const { chainRace, curRace, leave, memoSet, router, showPage } = ctx;
   navigator.vibrate?.(8);
   chainRace.current = r.id; // sohbetin yarışı: "bunun için gönderi hazırla", "yarışa Ali'yi de ekle"
   memoSet("race", r.name);
   if (curRace !== r.id) router.push(`/athletes/races/${r.id}`);
   leave(curRace === r.id ? `${r.name} sayfası açık.` : `${r.name} yarışını açtım.`, viaVoice);
+  showPage();
 }
 
 // ---- Elle yapılan diğer işler (lib/assistMore.js): fiş ödendi, gelmeyenlerin velilerine haber, alınanları temizle,

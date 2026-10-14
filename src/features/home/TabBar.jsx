@@ -278,10 +278,27 @@ function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, s
 // Önceki düzen (Seyhun "Karışık" seçti): altta sabit, solda Oluştur,
 // ortada yazı kutusu, kutunun içinde küçük renkli ses ışığı; altında sekmeler (her sayfada aynı). Asistan açılınca sekmeler
 // çekilir, Oluştur yerine Kapat gelir; söylenen söz kutunun içine yazılır, cevaplar ve kartlar kutunun üstünde balon olarak
-// akar. Konuşma alanı mesajlarla büyür (en çok ekranın %45'i), sonra içeride kayar. Kürenin boyu hiç değişmez.
+// akar. Asistan açılınca tam sayfa olur (hareketli arka plan, önünde konuşma), alan dolunca içeride kayar. Kürenin boyu hiç değişmez.
 // Yazarken kubbe klavyenin üstüne taşınır. rec: plan/görev/not ekranı açık (AddSheet); kubbe o ekranın üstünde sekmesiz ve
 // Oluştur'suz görünür, asistan o kaydı bilir (focus).
 const noop = () => () => {};
+// Tam sayfa asistanın zemini: üç yavaş renk bulutu, nokta ızgara, duruma göre renk alan çekirdek ışık (globals.css .abg)
+function AssistBg() {
+  return (
+    <div className="abg" aria-hidden="true">
+      <i className="ab-b1" />
+      <i className="ab-b2" />
+      <i className="ab-b3" />
+      <i className="ab-grid" />
+      <i className="ab-core">
+        <i className="ab-glow" />
+        <i className="ab-ring" />
+        <i className="ab-ring ab-ring2" />
+      </i>
+    </div>
+  );
+}
+
 function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
@@ -456,7 +473,7 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
 
   const heard = active && (state === "listening" || live.transcribing) && live.heard; // gönderilirken de yazı kalır
   // Kubbe asistan başlayınca yükselmez: konuşma alanında ilk yazı (duyulan söz, mesaj, kart) ya da iş yazısı belirince açılır,
-  // sonra mesajlar geldikçe büyür, ekranın %45'inde durur ve içeride kaydırma başlar (Seyhun, 2026-10-06). Bir kez açılınca
+  // tam sayfada mesajlar alttan yukarı dolar, dolunca içeride kayar (Seyhun, 2026-10-14). Bir kez açılınca
   // konuşma bitene kadar küçülmez (cevaplar arasında inip kalkmasın).
   const body = useRef(null);
   const [filled, setFilled] = useState(false);
@@ -508,11 +525,15 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
           düğmesi (dokun: konuş, basılı tut: yaz). Asistan açılınca çubuğun yerine alttan beyaz bir sayfa (ChatGPT, Gemini
           gibi) gelir: üstte tutamaç ve kapat, ortada sohbet balonları, altta Oluştur, yazı kutusu ve ses düğmesi. Durum
           yalnız ses düğmesinin renginden anlaşılır (yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor). */}
-      <div ref={inner} className="absolute inset-x-0 bottom-0">
+      <div ref={inner} className={`absolute inset-x-0 bottom-0 ${active ? "h-[var(--vvh,100dvh)]" : ""}`}>
         {sheet ? (
-          <div className="asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))]">
+          // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
+          // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? "afull afull-in relative flex h-full flex-col" : "contents"}>
+          {active && <AssistBg />}
+          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
-              <div className="flex h-6 items-end justify-center">
+              <div className="flex h-6 shrink-0 items-end justify-center">
                 {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
@@ -520,8 +541,8 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
             {active && (
               <div
                 ref={pane}
-                // Sohbet alanı mesajlar geldikçe büyür, görünen ekranın %45'inde durur ve içeride kayar (Seyhun, 2026-10-06)
-                className="max-h-[min(calc(var(--vvh,100dvh)-env(safe-area-inset-top)-9rem),calc(var(--vvh,100dvh)*.45))] overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,#000_1rem)] [scrollbar-width:none]"
+                // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem)] [scrollbar-width:none]"
               >
                 <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-2" : ""}`}>
                   <div ref={setSlot} />
@@ -573,6 +594,7 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
               )}
             </div>
             )}
+          </div>
           </div>
         ) : (
           // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
