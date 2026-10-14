@@ -1,0 +1,8 @@
+## Nerede kaldım
+
+- Mesaj silme artık arşiv (Seyhun: "silinenler arşivlensin, sonra arşivden kalıcı silelim; her kullanıcı kendi için arşivleyebilir, silme yetkilisi ana hesap"; telefonda denenmedi): mesaja dokun › ana hesapta "Sil (arşive kaldır)" mesajı sohbetten herkes için kaldırır (`arch`, `archBy`, `archAt`); diğer hesaplarda "Benden kaldır" yalnız o kişiden gizler (`hide.<uid>`), başkasının mesajı da olabilir. Sohbetin üstünde "Arşivde N mesaj" düğmesi: pencerede Geri al, ana hesapta herkesten kaldırılanlarda "Kalıcı sil" (ikinci dokunuşla onay; belge silinir). "Bu mesaj silindi" balonu artık yok. Ana hesap son mesajı arşivlerse sohbet listesindeki özet bir önceki mesaja döner. Mesaj listesinde ve ana sayfada eski silmelerin "Mesaj silindi" yazısı kesilmeden görünür (eğik yazı kalktı). Asistan: "son mesajımı sil" (onayla arşive), "arşivdeki mesajı geri al", "arşivdeki mesajı kalıcı sil" (yalnız ana hesap, onayla) (`msgArchAsk`, route `msgArch`; `src/lib/chatArchive.js`, ChatProvider `remove`/`restore`/`purge`). Not: arşivlenen mesaj ekranda gizlidir ama Firestore'da üyeler için okunabilir kalır (gerçek gizlilik için kalıcı sil). Arşiv düğmesi yalnız sohbette yüklü son mesajları sayar. Kural değişikliği VAR: mesaj güncellemede `arch`/`hide`, ana hesaba arşivdeki mesajı silme izni. Testleri `test:elle` › "Mesaj arşivi", `test:asistan` › "Mesaj arşivi (sesle)".
+
+## Sıradaki işler
+
+- Kuralları yayınla, sonra bir sohbette mesajı sil: sohbetten kalkmalı, üstte "Arşivde 1 mesaj" çıkmalı; Geri al ve Kalıcı sil'i dene. Başka hesaptan "Benden kaldır" yalnız o hesapta gizlemeli.
+- Mesajlar sayfası tasarım geçişi: örnek hazırlanıp onay bekleniyor.

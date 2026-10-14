@@ -3,11 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDocs,
   limit,
   onSnapshot,
+  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -20,11 +22,12 @@ import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { GROUPS, GROUP_IDS, canTalk, inGroup, kindOf, ownerOnly } from "@/lib/kinds";
+import { prevShown } from "@/lib/chatArchive";
 
 // Mesajlaşma: kişi kişiye (dm_<uid1>_<uid2>), gruplar ve türe göre sabit gruplar: Ekip (team), Aile (family), Sporcular (athletes).
 // Kim kiminle yazışır ve hangi sabit gruptadır: lib/kinds.js (kurallar da aynı).
 // Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, recv{uid:n}, typing{uid:zaman}, muted{uid:true} }
-//       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, replyTo{id,by,text}, reactions{uid:emoji}, deleted, editedAt }
+//       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, replyTo{id,by,text}, reactions{uid:emoji}, arch, archBy, archAt, hide{uid:true}, editedAt } (arşiv: lib/chatArchive.js)
 //       chats/{id}.pinned { id, text, by }: sabitlenen mesaj
 //       orgs/{işletme}/directory/{uid} { name, role, lastSeen } — sohbet listesindeki adlar ve "çevrimiçi"
 // Kurallar (firestore.rules): sohbeti yalnızca üyeleri okur; kimse (ana hesap dahil) başkasının konuşmasını göremez.
@@ -241,24 +244,40 @@ export function ChatProvider({ children }) {
     (cid, m) => updateDoc(chatRef(cid), { pinned: m ? { id: m.id, text: String(m.text || "").slice(0, 140), by: m.by } : deleteField() }).catch(() => {}),
     [chatRef],
   );
-  // Sil: kendi mesajı (ana hesap her mesajı). Son mesajsa listedeki ve ana sayfadaki özet de "silindi" olur, sabitliyse sabit kalkar.
+  // Arşivle (mesajı sil): ana hesap herkesten kaldırır, diğerleri yalnız kendisinden (lib/chatArchive.js).
+  // Ana hesap son mesajı arşivlerse listedeki ve ana sayfadaki özet bir önceki mesaja döner; sabitliyse sabit kalkar.
   // chat: sohbet ({ id, seq, pinned }). Dönüş: başarılı mı
   const remove = useCallback(
     async (chat, m) => {
       const cid = chat.id;
+      const owner = orgId === uid;
+      const mref = doc(chatRef(cid), "messages", m.id);
       try {
-        await updateDoc(doc(chatRef(cid), "messages", m.id), { deleted: true, text: "" });
+        await updateDoc(mref, owner ? { arch: true, archBy: uid, archAt: serverTimestamp() } : { [`hide.${uid}`]: true });
       } catch {
         return false;
       }
+      if (!owner) return true;
       const patch = {};
-      if (m.n && chat.seq === m.n) Object.assign(patch, { "last.text": "", "last.deleted": true });
+      if (m.n && chat.seq === m.n) {
+        const s = await getDocs(query(collection(chatRef(cid), "messages"), orderBy("at", "desc"), limit(15))).catch(() => null);
+        const list = s ? s.docs.map((d) => ({ ...d.data(), id: d.id })).reverse() : [];
+        const p = prevShown(list, m);
+        patch.last = p ? { text: String(p.text).slice(0, 140), by: p.by, at: p.at } : deleteField();
+      }
       if (chat.pinned?.id === m.id) patch.pinned = deleteField();
       if (Object.keys(patch).length) updateDoc(chatRef(cid), patch).catch(() => {});
       return true;
     },
-    [chatRef],
+    [chatRef, orgId, uid],
   );
+  // Arşivden geri al: ana hesap herkes için, diğerleri kendi gizlediğini
+  const restore = useCallback(
+    (cid, m) => updateDoc(doc(chatRef(cid), "messages", m.id), orgId === uid && m.arch ? { arch: deleteField(), archBy: deleteField(), archAt: deleteField() } : { [`hide.${uid}`]: deleteField() }).then(() => true, () => false),
+    [chatRef, orgId, uid],
+  );
+  // Kalıcı sil: yalnız ana hesap, yalnız arşivdeki mesaj
+  const purge = useCallback((cid, m) => deleteDoc(doc(chatRef(cid), "messages", m.id)).then(() => true, () => false), [chatRef]);
   const mute = useCallback((c, on) => updateDoc(chatRef(c.id), { [`muted.${uid}`]: on ? true : deleteField() }).catch(() => {}), [chatRef, uid]);
 
   const createGroup = useCallback(
@@ -297,6 +316,8 @@ export function ChatProvider({ children }) {
     setTyping,
     react,
     remove,
+    restore,
+    purge,
     edit,
     pin,
     mute,

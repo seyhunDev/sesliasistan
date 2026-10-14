@@ -155,6 +155,16 @@ export function msgDeleteAsk(text) {
   return { mine: /(ımı|imi|ğım|ğim)/.test(t) };
 }
 
+// Mesaj arşivi (açık sohbet): "arşivdeki mesajı geri al", "son sildiğim mesajı geri getir" → restore;
+// "arşivdeki mesajı kalıcı sil", "son mesajı kalıcı sil" → purge (yalnız ana hesap). Dönüş: { op } | null
+export function msgArchAsk(text) {
+  const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!/mesaj/.test(t)) return null;
+  if (/kalıcı|tamamen|temelli|büsbütün/.test(t) && /\b(sil|kaldır)\S*$/.test(t) && /(arşiv|son|sildiğim)/.test(t)) return { op: "purge" };
+  if (/(arşiv\S*|sildiğim|kaldırdığım)/.test(t) && /(geri (al|getir|yükle)|arşivden çıkar)\S*$/.test(t)) return { op: "restore" };
+  return null;
+}
+
 // Kişinin en son eklediği kayıt (plan, görev, not): { kind, rec } ya da null
 export function lastCreated({ plans = [], tasks = [], notes = [] }, uid, kind = "") {
   const all = [

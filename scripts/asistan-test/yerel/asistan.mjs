@@ -228,6 +228,15 @@ group("Mesaj silme (sesle)")([
   ["mesajı sil", MD(null)], ["Ali'ye mesaj at, yarın gelsin", MD(null)], ["son kaydı geri al", MD(null)], ["mesajları aç", MD(null)],
   ["son mesajımı sil", { desc: "yol: msgDelete", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgDelete" }],
 ]);
+const { msgArchAsk } = await import("@/lib/assistantLocal");
+const MA = (op) => ({ desc: op || "arşiv işi değil", fn: (s) => msgArchAsk(s), ok: (r) => (op ? r?.op === op : r === null) });
+group("Mesaj arşivi (sesle)")([
+  ["arşivdeki mesajı geri al", MA("restore")], ["son sildiğim mesajı geri getir", MA("restore")], ["mesajı arşivden çıkar", MA("restore")], ["arşivdeki mesajı arşivden çıkar", MA("restore")],
+  ["arşivdeki mesajı kalıcı sil", MA("purge")], ["son mesajı kalıcı olarak sil", MA("purge")],
+  ["son mesajımı sil", MA(null)], ["son yazdığım mesajı geri al", MA(null)], ["Ali'ye mesaj at", MA(null)],
+  ["arşivdeki mesajı kalıcı sil", { desc: "yol: msgArch", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgArch" }],
+  ["son mesajımı sil", { desc: "yol hâlâ msgDelete", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgDelete" }],
+]);
 
 // Fiş Kişisel ↔ Kulüp sesle (assistMore.js receiptScopeCommand; Garanti kart mailinden gelen fişler Kişisel başlar)
 const RSM = await import("@/lib/assistMore");
