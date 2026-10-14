@@ -14,7 +14,7 @@ import { useQuota } from "@/lib/quota";
 import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxBell, InboxSheet, useInbox } from "./Inbox";
-import { NowCard } from "./NowCard";
+import { SiradaCard } from "./SiradaCard";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -27,7 +27,7 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
-// Ana sayfa (sade): gün ve tarih, altında tek satır hava; sağ üstte zil (Senin için penceresi) ve Ayarlar. Akış (HomeFeed): Şu an kartı,
+// Ana sayfa (sade): gün ve tarih, altında tek satır hava; sağ üstte zil (Senin için penceresi) ve Ayarlar. Akış (HomeFeed): Sırada kartı,
 // "N şey seni bekliyor" satırı (zil ile aynı pencere), doğum günü, sporcu/veli: Yoklamam, Kulüp/Özet satırları, Kısayollar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
 export function OwnerHome() {
   const { profile } = useAuth();
@@ -80,7 +80,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Şu an (altında "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra: Sırada (hafta şeridi, sıradaki planlar, "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
@@ -114,13 +114,13 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div ref={root} className="space-y-6">
-      <NowCard weather={weather} inbox={inbox} onInbox={onInbox} />
+      <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0} />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
       {side && <MyAttendanceCard kind={kind} />}
       {staff && <MyFitCard />}
-      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} training={training || fit.length > 0} fit={fit} plans={plans} invoices={owner} notes={notes} att={athletes} />
+      <HomeSummary title={owner && (athletes || race.on) ? "KULÜP" : "ÖZET"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} invoices={owner} notes={notes} />
       <HomeActions groups={actions} />
     </div>
   );

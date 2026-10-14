@@ -10,8 +10,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { dayInfo, clubDues, clubFis, clubRace, duesLive, homeNotes, noteGroups, postsTile, readSum, saveSum, trainingWeek } from "@/lib/homeTiles";
-import { catStyle } from "@/components/ui/Page";
+import { dayInfo, clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum } from "@/lib/homeTiles";
 import { money } from "@/lib/bankSheet";
 import { rel, todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
@@ -23,7 +22,7 @@ import { invoiceTile } from "@/lib/invoices";
 
 // Ana sayfa › KULÜP / ÖZET: yalnız bilgisi olan kartlar görünür (Seyhun: "ne varsa onlar gösterilsin, yoksa gösterilmesin").
 // Üstte tam genişlik "Sıradaki yarış" kartı (ad, tarih, sporcu, eksik iş, kalan gün); altında iki sütun küçük kartlar:
-// Aidat (ödemeyen/onay bekleyen varsa), Fiş / Fatura (ödenmemiş fatura ya da bu ay fiş varsa), Banka, Antrenman (bu ay varsa),
+// Aidat (ödemeyen/onay bekleyen varsa), Fiş / Fatura (ödenmemiş fatura ya da bu ay fiş varsa), Banka,
 // Instagram (gönderi varsa). Bilgisi biten kart kendiliğinden gizlenir (clubDues, clubFis… homeTiles.js). Dikkat isteyen kart (warn)
 // kehribar simge ve yazıyla öne çıkar. Hiç kart yoksa bölüm görünmez.
 // Yarışın altında Notlar kartı (Seyhun: "notları da ana ekranda görebilmeliyim, kulüp kısmına"): en çok 3 not, önce sabitlenenler
@@ -34,7 +33,7 @@ import { invoiceTile } from "@/lib/invoices";
 // Önbellekte bilgi varsa iskelet hiç çıkmaz, son bilinen bilgi gösterilip gelen bilgiyle değişir: aidat, gönderi, banka (Firestore önbelleği),
 // yarış ve açık faturalar (bugün bu cihazda görülen, sa-home-sum `race`/`inv`; ertesi gün "5 gün kaldı" yanlış olmasın diye yalnız aynı gün); en çok WAIT ms beklenir, sonra kart kendi boş hâliyle çizilir.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, training, fit, plans, invoices, notes, att }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -104,11 +103,10 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
     skel("inv") ? ["inv"] : (money || invoices) && ["/receipts", "receipt", "Fiş / Fatura", clubFis(inv, money && m.receipts), "inv"],
     skel("bank") ? ["bank"] : money && ["/mail", "wallet", "Hesaplar", m.bank, "bank"],
   ].filter((x) => x && (x.length === 1 || x[3]));
-  const week = training ? trainingWeek(plans || [], today, fit || []) : null;
   const post = posts && sum.posts?.count ? sum.posts : null;
   const raceWait = skel("race");
   const note = homeNotes(notes || [], 3);
-  if (!raceCard && !raceWait && !tiles.length && !note.total && !week && !post) return null;
+  if (!raceCard && !raceWait && !tiles.length && !note.total && !post) return null;
 
   return (
     <section aria-labelledby="home-sum" aria-busy={busy}>
@@ -141,7 +139,6 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, trainin
             })}
           </ul>
         )}
-        {week && <TrainingCard w={week} att={att} today={today} />}
         {post && <PostsCard p={post} />}
       </div>
     </section>
@@ -225,11 +222,11 @@ function BankBody({ t }) {
   );
 }
 
-// Antrenman (tam genişlik): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu; altta ayın özeti.
+// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu.
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
-// Fitness olan günün altında turuncu nokta; başlık ve alt satır Antrenman günlüğüne gider.
-function TrainingCard({ w, att, today }) {
+// Fitness olan günün altında turuncu nokta. Sırada kartının (SiradaCard.jsx) içinde çizilir.
+export function WeekStrip({ w, att, today }) {
   const [pick, setPick] = useState(null); // Dokunulan gün: pencere
   const DAY = {
     done: "bg-acc text-white",
@@ -240,18 +237,9 @@ function TrainingCard({ w, att, today }) {
     fit: "bg-orange-500/12 text-orange-700 ring-1 ring-orange-500/50 dark:text-orange-300",
   };
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
-  const both = w.planned > 0 && w.fitN > 0;
   return (
-    <div className={`px-4 pb-3.5 pt-3.5 ${CARD}`}>
-      <Link href="/training" data-press aria-label={`Antrenman: bu hafta ${w.done}/${w.planned}, bu ay ${w.total} antrenman${w.missing ? `, ${w.missing} günlük yazılmadı` : ""}`} className="flex items-center gap-2.5">
-        <b className="text-[0.9375rem] font-semibold">Antrenman</b>
-        {w.planned > 0 && <b className="text-[0.8125rem] font-semibold tabular-nums">{w.done}/{w.planned}</b>}
-        <span className={`ml-auto flex items-center gap-0.5 text-[0.8125rem] font-semibold ${w.missing ? WARN_TX : "text-acc"}`}>
-          {w.missing ? "Günlük yaz" : "Tümü"}
-          <Icon name="chev" className="size-3.5" />
-        </span>
-      </Link>
-      <span className="mt-3 grid grid-cols-7 gap-1">
+    <>
+      <div className="grid grid-cols-7 gap-1 px-2.5 pb-3 pt-3.5">
         {w.days.map((d) => {
           const fitOnly = !d.has && d.fit.length > 0;
           const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;
@@ -277,20 +265,9 @@ function TrainingCard({ w, att, today }) {
             </span>
           );
         })}
-      </span>
-      <Link href="/training" className="mt-3 block truncate border-t border-line pt-2.5 text-[0.8125rem] text-mut">
-        Bu ay <b className="font-semibold text-fg">{w.total}</b> antrenman
-        {w.fitN > 0 && (
-          <>
-            {" · "}
-            <span className="text-orange-700 dark:text-orange-300">bu hafta {w.fitDone}/{w.fitN} fitness</span>
-          </>
-        )}
-        {!both && w.avgWind != null && ` · ortalama ${w.avgWind} kn rüzgâr`}
-        {w.missing > 0 && <span className={`font-semibold ${WARN_TX}`}> · {w.missing} günlük yazılmadı</span>}
-      </Link>
+      </div>
       <DayPick day={pick} att={att} today={today} onClose={() => setPick(null)} />
-    </div>
+    </>
   );
 }
 
@@ -515,7 +492,7 @@ function NotesCard({ list, total }) {
   const { openAdd } = useAdd();
   return (
     <div className={`overflow-hidden ${CARD}`}>
-      <div className="flex items-center gap-2.5 px-4 pb-1 pt-3">
+      <div className="flex items-center gap-2.5 px-4 pb-1.5 pt-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-[0.625rem] bg-acc/10 text-acc">
           <Icon name="note" className="size-[1.125rem]" />
         </span>
@@ -525,43 +502,24 @@ function NotesCard({ list, total }) {
           Tümü
           <Icon name="chev" className="size-3.5" />
         </Link>
-        <button
-          type="button"
-          data-press
-          aria-label="Not ekle"
-          onClick={() => openAdd({ type: "note" })}
-          className="grid size-7 shrink-0 place-items-center rounded-full bg-acc text-white shadow-[0_2px_0_#1f5a4b]"
-        >
+        <button type="button" data-press aria-label="Not ekle" onClick={() => openAdd({ type: "note" })} className="raised grid size-7 shrink-0 place-items-center rounded-full text-acc">
           <Icon name="plus" className="size-4" />
         </button>
       </div>
-      {noteGroups(list).map(([head, items]) => (
-        <div key={head}>
-          <small className="block px-4 pb-1 pt-2.5 text-[0.6875rem] font-bold tracking-[.08em] text-mut">{head}</small>
-          <ul>
-            {items.map((n) => {
-              const text = n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : "";
-              const when = n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
-              return (
-                <li key={n.id} className="border-t border-line first:border-t-0">
-                  <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-                    {!n.pinned && <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${n.cat && n.cat !== "Genel" ? catStyle(n.cat).bar : "bg-acc/60"}`} />}
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[0.9375rem] font-semibold">{n.title || "Not"}</b>
-                      {text && <small className="block truncate text-[0.8125rem] text-mut">{text}</small>}
-                    </span>
-                    {n.pinned ? (
-                      <Icon name="star" className="size-4 shrink-0 fill-current text-amber-500" />
-                    ) : (
-                      when && <small className="shrink-0 text-[0.75rem] text-mut">{when}</small>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+      <ul>
+        {list.map((n) => {
+          const when = n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
+          return (
+            <li key={n.id} className="border-t border-line">
+              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
+                {n.pinned && <Icon name="star" className="size-4 shrink-0 fill-current text-amber-500" />}
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{n.title || "Not"}</span>
+                {!n.pinned && when && <small className="shrink-0 text-[0.75rem] text-mut">{when}</small>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
