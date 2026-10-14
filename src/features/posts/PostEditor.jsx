@@ -776,7 +776,6 @@ export function PostEditor({ start: given, startPhoto = "", onSave, onDelete, on
             {post.kind === "ozel" && dayOf(post.day) ? dayOf(post.day).name : kindOf(post.kind)[1]}
             {race && <span className="font-normal text-mut"> · {race.name}</span>}
           </span>
-          <Icon name="chev" className="size-4 shrink-0 text-mut" />
         </button>
         <button type="button" onClick={() => save(false)} disabled={!!busy || (!dirty && !!pid)} className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold transition ${dirty || !pid ? "bg-acc text-white" : "bg-card text-mut ring-1 ring-line"}`}>
           <Icon name="check" className="size-[1.125rem]" />
