@@ -12,7 +12,7 @@ import { useData } from "@/features/data/DataProvider";
 import { db } from "@/lib/firebase/clientApp";
 import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
 import { accountsOf, shownAccounts, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
-import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
+import { mailFileBytes, moveMailFiles } from "@/features/mail/mailFiles";
 import { dayLabel, todayIn } from "@/lib/notifyText";
 import { monthOf } from "@/lib/dues";
 import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
@@ -57,7 +57,7 @@ const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
 //   hesaplar (son bakiye, toplam, kişisel hesabın aldıkları) › özet (bugüne kadar gelen/giden, kim ne kadar ödedi) ›
 //   banka defteri (yalnız Ayarlar › Banka defteri kartı açıksa; users.ledgerCard) › son hareketler › gelen mailler (kapalı) › durum
 // Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
-// okuyup tabloyu (sheets) aynı belgeye kaydeder. Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
+// tabloyu (sheets) okur, ekleri Storage'a taşır ve mailden siler (mailFiles.js). Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
 export default function MailPage() {
   const { profile } = useAuth();
   const { allMembers = [], receipts = [] } = useData();
@@ -150,24 +150,20 @@ export default function MailPage() {
     return () => window.removeEventListener("sa-debts-saved", load);
   }, [owner, profile?.uid]);
 
-  // Excel ekleri henüz okunmamış mailler: tarayıcıda oku, sonucu kaydet (bir kez)
+  // Ekleri hâlâ mailin içinde duran mailler: tablo okunur, ekler Storage'a taşınır, mailden silinir (mailFiles.js; bir kez)
   const pending = (mails || [])
-    .filter((m) => m.raw?.length && !m.sheets)
+    .filter((m) => m.raw?.length)
     .map((m) => m.id)
     .join(",");
   useEffect(() => {
     if (!owner || !pending) return;
     let live = true;
-    import("xlsx").then((mod) => {
-      const XLSX = xlsxOf(mod);
+    (async () => {
       for (const m of mails.filter((x) => pending.split(",").includes(x.id))) {
         if (!live) return;
-        const sheets = sheetsFromRaw(m.raw, XLSX);
-        updateDoc(doc(db, "orgs", profile.uid, "mails", m.id), {
-          sheets,
-        }).catch((e) => console.warn("[mail] tablo kaydedilemedi", e?.code));
+        await moveMailFiles(profile.uid, m);
       }
-    });
+    })();
     return () => {
       live = false;
     };
@@ -853,19 +849,13 @@ function MailRow({ m, today, head }) {
           ) : (
             <p className="mx-4 mb-3 whitespace-pre-wrap rounded-xl bg-bg px-3.5 py-3 text-[0.875rem] leading-snug text-fg/85">{m.text || "İçerik yok"}</p>
           )}
-          {m.raw?.length > 0 && (
+          {(m.rawFiles || m.raw)?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-              {m.raw.map((f) => (
+              {(m.rawFiles || m.raw).map((f) => (
                 <button
                   key={f.name}
                   type="button"
-                  onClick={() =>
-                    download(
-                      f.name,
-                      Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0)),
-                      "application/vnd.ms-excel",
-                    )
-                  }
+                  onClick={() => mailFileBytes(f).then((b) => download(f.name, b, "application/vnd.ms-excel"), () => (f.url ? window.open(f.url, "_blank") : alert("Ek indirilemedi")))}
                   className="flex h-8 max-w-full items-center gap-1.5 rounded-full bg-bg px-3 text-[0.75rem] font-semibold text-mut active:scale-95"
                 >
                   <Icon name="up" className="size-3.5 shrink-0 rotate-180" /> <span className="truncate">{f.name}</span>
