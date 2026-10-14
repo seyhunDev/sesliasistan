@@ -1,8 +1,8 @@
-Commit: b5449ac · Yarış evrakı Firebase'e gidince telefonda kopya kalmıyor, kopyaları sil düğmesi (#410)
-Zaman: 2026-10-14-1508 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38561411844
+Commit: 82527b6 · Fiş fotoğrafları Firebase Storage'a yükleniyor (#411)
+Zaman: 2026-10-14-1517 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38562451805
 
-TAM TEST · 14.10.2026 15:07:22
+TAM TEST · 14.10.2026 15:15:57
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 65 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
