@@ -1,8 +1,8 @@
-Commit: c4e20a3 · Açılışta ana sayfanın bir an kaybolup gelmesi düzeltildi (#328)
-Zaman: 2026-10-12-1704 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38260028557
+Commit: 721ab69 · Merge pull request #390 from seyhunDev/claude/project-thread-g3bpd3
+Zaman: 2026-10-14-0856 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38519187226
 
-TAM TEST · 12.10.2026 17:02:58
+TAM TEST · 14.10.2026 08:55:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 67 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
