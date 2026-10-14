@@ -273,17 +273,29 @@ export function homeNotes(notes = [], n = 5) {
   return { list, total: live.length };
 }
 
-// Ana sayfa › ŞU AN kartı: bugünün süren ya da sıradaki planı (main) ve ondan sonraki (after). Bugün kalan plan yoksa
-// yarının ilk planı "tomorrow" olarak gelir. İptal edilen ve saati geçen planlar sayılmaz. Bellekteki planlardan, ek okuma yok.
-// Dönüş: { main: { p, when: "now" | "next" | "tomorrow" } | null, after: { p, tomorrow } | null }
-export function nowPlans(plans = [], today, tomorrow, now = new Date()) {
-  const on = (d) =>
-    plans
-      .filter((p) => p && p.date && p.status !== "cancelled" && !p.done && p.date <= d && (p.endDate || p.date) >= d)
+// Ana sayfa › SIRADA: bugünden başlayıp 7 gün içindeki sıradaki n plan (Seyhun: "şu an değil, sırada ne var önemli").
+// İptal edilen, bitti işaretlenen ve bugün saati geçen planlar sayılmaz; çok günlü plan yalnız ilk görüldüğü günde bir kez.
+// label: süren plan "ŞİMDİ", sonra "BUGÜN", "YARIN" ya da haftanın günü ("CUMA"). Bellekteki planlardan, ek okuma yok.
+// Dönüş: [{ p, day, label, now }]
+export function upcoming(plans = [], today, now = new Date(), n = 4, days = 7) {
+  const out = [];
+  const seen = new Set();
+  const base = new Date(`${today}T12:00:00`);
+  for (let i = 0; i < days && out.length < n; i++) {
+    const dt = new Date(base);
+    dt.setDate(base.getDate() + i);
+    const d = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    const list = plans
+      .filter((p) => p && p.date && !seen.has(p.id) && p.status !== "cancelled" && !p.done && p.date <= d && (p.endDate || p.date) >= d)
+      .filter((p) => i > 0 || planState(p, now) !== "past")
       .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-  const left = on(today).filter((p) => planState(p, now) !== "past");
-  const next = on(tomorrow);
-  const main = left[0] ? { p: left[0], when: planState(left[0], now) === "now" ? "now" : "next" } : next[0] ? { p: next[0], when: "tomorrow" } : null;
-  const rest = main?.when === "tomorrow" ? next.slice(1).map((p) => [p, true]) : [...left.slice(1).map((p) => [p, false]), ...next.map((p) => [p, true])];
-  return { main, after: rest[0] ? { p: rest[0][0], tomorrow: rest[0][1] } : null };
+    for (const p of list) {
+      if (out.length >= n) break;
+      seen.add(p.id);
+      const live = i === 0 && planState(p, now) === "now";
+      const label = live ? "ŞİMDİ" : i === 0 ? "BUGÜN" : i === 1 ? "YARIN" : dt.toLocaleDateString("tr-TR", { weekday: "long" }).toLocaleUpperCase("tr-TR");
+      out.push({ p, day: d, label, now: live });
+    }
+  }
+  return out;
 }

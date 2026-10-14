@@ -713,7 +713,7 @@ group("Ana sayfa kartları")([
     const rest = g.flatMap((x) => x.items).map(HT.linkKey).filter((k) => !keys.includes(k));
     return keys.length === 7 && rest.length > 0 && rest.every((k) => !keys.includes(k)) && keys.length + rest.length === g.flatMap((x) => x.items).length;
   })],
-  ["şu an kartı", F("süren plan önce, sonra sıradaki; bugün kalmadıysa yarının ilki; iptal ve geçen sayılmaz", () => {
+  ["sırada listesi", F("süren plan ŞİMDİ, sonra bugün/yarın/gün adı; iptal ve geçen sayılmaz; en çok n", () => {
     const now = new Date("2026-10-07T14:20:00");
     const ps = [
       { id: "a", title: "Sabah", date: "2026-10-07", time: "09:00" },
@@ -721,13 +721,15 @@ group("Ana sayfa kartları")([
       { id: "c", title: "İptal", date: "2026-10-07", time: "16:00", status: "cancelled" },
       { id: "d", title: "Toplantı", date: "2026-10-07", time: "18:30" },
       { id: "e", title: "Bakım", date: "2026-10-08", time: "10:00" },
-      { id: "f", title: "Yarış", date: "2026-10-08", time: "12:00" },
+      { id: "f", title: "Foça'ya çıkış", date: "2026-10-09" },
+      { id: "g", title: "Uzak", date: "2026-10-20", time: "10:00" },
     ];
-    const r = HT.nowPlans(ps, "2026-10-07", "2026-10-08", now);
-    const late = HT.nowPlans(ps, "2026-10-07", "2026-10-08", new Date("2026-10-07T21:00:00"));
-    const none = HT.nowPlans([], "2026-10-07", "2026-10-08", now);
-    return r.main.p.id === "b" && r.main.when === "now" && r.after.p.id === "d" && !r.after.tomorrow &&
-      late.main.p.id === "e" && late.main.when === "tomorrow" && late.after.p.id === "f" && none.main === null && none.after === null;
+    const r = HT.upcoming(ps, "2026-10-07", now, 4);
+    const ids = r.map((x) => x.p.id).join();
+    const two = HT.upcoming(ps, "2026-10-07", now, 2);
+    const none = HT.upcoming([], "2026-10-07", now, 4);
+    return ids === "b,d,e,f" && r[0].label === "ŞİMDİ" && r[0].now && r[1].label === "BUGÜN" && r[2].label === "YARIN" && r[3].label === "CUMA" &&
+      two.length === 2 && none.length === 0;
   })],
 ]);
 
@@ -1867,9 +1869,9 @@ group("Plan bitti ve kelime kartı", [
     const r = PA.planReopenPatch();
     return d.done === true && d.doneAt === "2026-10-10T10:00:00Z" && r.done === false && r.doneAt === null && PA.isPlanDone(d) && !PA.isPlanDone(r);
   })],
-  ["Şu an kartı bitenleri saymaz", F("biten plan atlanır", () => {
+  ["Sırada listesi bitenleri saymaz", F("biten plan atlanır", () => {
     const ps = [{ id: "a", title: "Bitti", date: "2026-10-10", time: "23:00", done: true }, { id: "b", title: "Açık", date: "2026-10-10", time: "23:30" }];
-    return HTP.nowPlans(ps, "2026-10-10", "2026-10-11", new Date("2026-10-10T20:00:00")).main?.p.id === "b";
+    return HTP.upcoming(ps, "2026-10-10", new Date("2026-10-10T20:00:00"), 4)[0]?.p.id === "b";
   })],
   ["hatırlatma bitenleri atlar", F("biten plana hatırlatma yok", () => RM.dueReminders([{ ...RP, done: true }], { lead: 30, now: new Date("2026-10-05T09:31:00") }).length === 0)],
   ["kelime listesi", F("en az 150, alanlar dolu, tekrar yok", () => {
