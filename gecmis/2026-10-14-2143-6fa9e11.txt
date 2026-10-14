@@ -1,8 +1,8 @@
-Commit: d417fdb · Görevliye bildirim gitmeyince nedeni ve yeniden gönder (#366)
-Zaman: 2026-10-13-1753 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38417006662
+Commit: 6fa9e11 · Küçülen asistan alttaki küreyi kullanıyor, üstünde mesaj balonu; tam ekranda üstte boşluk ve soluklaşma (#430)
+Zaman: 2026-10-14-2143 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38617086721
 
-TAM TEST · 13.10.2026 17:52:07
+TAM TEST · 14.10.2026 21:40:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 140 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
