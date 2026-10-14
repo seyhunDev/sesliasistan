@@ -48,9 +48,9 @@ export function restDb(token) {
       const r = await call("GET", path);
       return r.status === 200 ? { status: 200, id: path.split("/").pop(), data: fromFields(r.data.fields) } : { status: r.status };
     },
-    // Yalnızca verilen alanları günceller
-    async patch(path, fields) {
-      const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
+    // Yalnızca verilen alanları günceller; drop'taki alanlar silinir
+    async patch(path, fields, drop = []) {
+      const mask = [...Object.keys(fields), ...drop].map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
       return (await call("PATCH", `${path}?${mask}&currentDocument.exists=true`, { fields: toFields(fields) })).status;
     },
     // Yalnızca verilen alanları yazar; belge yoksa oluşturur

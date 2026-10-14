@@ -13,7 +13,7 @@ import { Row } from "./ui";
 
 // Ayarlar › Telefondaki veriyi taşı: bu telefonda kalan her şeyi Firebase'e gönderir.
 // 1) Gönderilmeyi bekleyen kayıtlar (internetsizken yazılanlar) 2) yalnız bu telefonda duran yarış evrakı (Storage'a)
-// 3) banka maillerinin içinde kalan Excel ekleri (Storage'a, mailFiles.js).
+// 3) banka maillerinin Excel ekleri: tablosu tam okunan ek silinir, okunamayan Storage'da kalır (mailFiles.js).
 // Hepsi gidince "Telefondaki kopyaları sil" çıkar: hazırlanan evrak, talimat/fatura/envanter kopyaları ve uygulama dosyaları
 // silinir (gerekince yeniden hazırlanır ya da indirilir). Özetlenmemiş toplantılar Firebase'e kendiliğinden gidemez, silinmez.
 const withTimeout = (p, ms) => Promise.race([p.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
@@ -59,9 +59,9 @@ export function MoveAllRow() {
       } else left = await localExtraCount().catch(() => 0);
       let mails = { moved: 0, left: 0 };
       if (owner) {
-        setBusy("Mail ekleri aranıyor…");
+        setBusy("Mail ekleri temizleniyor…");
         const r = await withValue(
-          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri aranıyor… (${n} taşındı)` : `Mail ekleri taşınıyor… ${n} taşındı`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
+          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri temizleniyor… (${n} silindi)` : `Mail ekleri temizleniyor… ${n} silindi`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
           20 * 60e3,
         );
         mails = r || { moved: 0, left: 1, err: "zaman aşımı" };
@@ -69,7 +69,7 @@ export function MoveAllRow() {
       }
       if (left && !why) why = errText(mailMoveErr()) || "Bazı evrak yüklenemedi";
       const meetings = (await listMeetings().catch(() => [])).length;
-      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left, why });
+      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left, mailKept: mails.kept || 0, why });
     } catch (e) {
       console.warn("[moveAll]", e);
       setOut({ ok: false, err: true, why: errText(e?.code || e?.message) });
@@ -102,7 +102,8 @@ export function MoveAllRow() {
           out.writes ? "Bekleyen kayıtlar gönderildi" : "Bekleyen kayıtlar gönderilemedi",
           out.moved ? `${out.moved} evrak taşındı` : "",
           out.left ? `${out.left} evrak taşınamadı` : "",
-          out.mailMoved ? `${out.mailMoved} mail eki taşındı` : "",
+          out.mailMoved ? `${out.mailMoved} mail eki silindi (tablosu kayıtlı)` : "",
+          out.mailKept ? `${out.mailKept} ek okunamadığı için Storage'da saklandı` : "",
           out.mailLeft ? "Bazı mail ekleri taşınamadı" : "",
           out.why || "",
           out.meetings ? `${out.meetings} toplantı özetlenmemiş (Notlar › Toplantı'dan özetle)` : "",

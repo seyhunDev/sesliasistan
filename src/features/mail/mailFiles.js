@@ -1,13 +1,14 @@
 "use client";
 
-// Banka maillerinin Excel ekleri Firebase Storage'da: orgs/{uid}/mailFiles/{mail id}_{sıra}_{ad} (kural storage.rules: yalnız ana hesap).
-// Gmail betiği ekleri yine ham (base64, `raw`) yazar; sunucu bildirim için onlardan tabloyu (`sheets`) okur.
-// Uygulama ham ekleri Storage'a taşır: mailde `rawFiles [{ name, path, url, size }]` kalır, `raw` silinir (Firestore'da yer kaplamasın).
-// Eski maillerin ekleri de ilk açılışta / Ayarlar › Telefondaki veriyi taşı ile taşınır.
-import { collection, deleteField, doc, getDocs, limit, query, updateDoc, where } from "firebase/firestore";
-import { getDownloadURL, getStorage, ref as sref, uploadBytes } from "firebase/storage";
+// Banka maillerinin Excel ekleri. Gmail betiği ekleri ham (base64, `raw`) yazar; içindeki tablo (`sheets`) maile yazılır.
+// Bakiye, aidat, fatura ve banka defteri yalnız tabloyu kullanır, orijinal dosya Gmail'de durur.
+// Bu yüzden tablo tam okunduysa (rawDone, mailParse.js) ham ek silinir. Okunamayan ek (başka biçim, tablo bulunamadı)
+// silinmez, Storage'a konur: orgs/{uid}/mailFiles/{mail id}_{sıra}_{ad}; mailde `rawFiles [{ name, path, url, size }]`.
+// Önceden Storage'a taşınan ekler de (cleanStoredMail) yeniden okunur, tablo tamsa Storage'dan silinir.
+import { collection, deleteField, doc, getDocs, limit, query, startAfter, updateDoc, where } from "firebase/firestore";
+import { deleteObject, getBytes, getDownloadURL, getStorage, ref as sref, uploadBytes } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
-import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
+import { MAIL_ROWS, rawDone, sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 
 const store = () => {
   const s = getStorage(app);
@@ -18,21 +19,29 @@ const store = () => {
 const safe = (s) => String(s || "ek").replace(/[^\w.-]+/g, "_").slice(0, 80);
 const typeOf = (name) => (/\.xlsx$/i.test(name) ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : /\.xls$/i.test(name) ? "application/vnd.ms-excel" : "application/octet-stream");
 const bytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+function b64Of(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 
 let XLSX = null;
 let lastErr = "";
 export const mailMoveErr = () => lastErr;
 const busy = new Set();
 
-// Tek mailin eklerini taşır. true: taşındı (ya da taşınacak bir şey yoktu)
+// Tek mailin eklerini temizler. true: ek silindi ya da Storage'a kondu (ya da yapılacak bir şey yoktu)
 export async function moveMailFiles(uid, m) {
   if (!m?.raw?.length || busy.has(m.id)) return !m?.raw?.length;
   busy.add(m.id);
   try {
-    const patch = {};
-    if (!m.sheets) {
-      XLSX ||= xlsxOf(await import("xlsx"));
-      patch.sheets = sheetsFromRaw(m.raw, XLSX);
+    XLSX ||= xlsxOf(await import("xlsx"));
+    const read = sheetsFromRaw(m.raw, XLSX, MAIL_ROWS);
+    const patch = read.length || !m.sheets ? { sheets: read } : {};
+    // Tablo tam: yalnız tablo kalır, ham ek silinir
+    if (rawDone(m.raw, read)) {
+      await updateDoc(doc(db, "orgs", uid, "mails", m.id), { ...patch, raw: deleteField() });
+      return true;
     }
     const files = [];
     for (const [i, f] of m.raw.entries()) {
@@ -54,8 +63,28 @@ export async function moveMailFiles(uid, m) {
   }
 }
 
-// Ekleri hâlâ mailde duran bütün mailleri taşır. Mailler ekiyle büyük olduğu için 5'er okunur
-// (50'si birden telefonda dakikalarca inebiliyordu). Okuma 60 sn'de gelmezse durur. Dönüş { moved, left, err }
+// Önceden Storage'a taşınmış ekler: dosya indirilip yeniden okunur, tablo tamsa maile yazılır, sonra Storage'dan silinir.
+// true: temizlendi, false: okunamadı (dosya Storage'da kalır)
+export async function cleanStoredMail(uid, m) {
+  if (!m?.rawFiles?.length) return true;
+  try {
+    const raw = [];
+    for (const f of m.rawFiles) raw.push({ name: f.name, data: b64Of(new Uint8Array(await getBytes(sref(store(), f.path)))) });
+    XLSX ||= xlsxOf(await import("xlsx"));
+    const read = sheetsFromRaw(raw, XLSX, MAIL_ROWS);
+    if (!rawDone(raw, read)) return false;
+    await updateDoc(doc(db, "orgs", uid, "mails", m.id), { sheets: read, rawFiles: deleteField() });
+    for (const f of m.rawFiles) await deleteObject(sref(store(), f.path)).catch(() => {});
+    return true;
+  } catch (e) {
+    console.warn("[mailFiles] Storage eki okunamadı", m.id, e?.code || e);
+    lastErr = e?.code || e?.message || "hata";
+    return false;
+  }
+}
+
+// Ekleri hâlâ mailde duran bütün mailleri temizler. Mailler ekiyle büyük olduğu için 5'er okunur
+// (50'si birden telefonda dakikalarca inebiliyordu). Okuma 60 sn'de gelmezse durur. Dönüş { moved, left, kept }
 const BATCH = 5;
 const late = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("zaman aşımı"), { code: "zaman aşımı" })), ms))]);
 export async function moveAllMailFiles(uid, onProg) {
@@ -78,7 +107,23 @@ export async function moveAllMailFiles(uid, onProg) {
       break;
     }
   }
-  return { moved, left };
+  if (left) return { moved, left, kept: 0 };
+  // Storage'daki eski ekler; okunamayanlar orada kalır (kept), sonraki sayfaya geçilir
+  let kept = 0;
+  let after = null;
+  for (let round = 0; round < 400; round++) {
+    onProg?.(moved, "ara");
+    const q = [collection(db, "orgs", uid, "mails"), where("rawFiles", "!=", null), ...(after ? [startAfter(after)] : []), limit(BATCH)];
+    const snap = await late(getDocs(query(...q)), 60e3);
+    if (!snap.docs.length) break;
+    after = snap.docs[snap.docs.length - 1];
+    for (const d of snap.docs) {
+      onProg?.(moved);
+      if (await late(cleanStoredMail(uid, { id: d.id, ...d.data() }), 90e3).catch(() => false)) moved += 1;
+      else kept += 1;
+    }
+  }
+  return { moved, left, kept };
 }
 
 // Ek dosyasının baytları: Storage'dan ya da (taşınmamış mailde) mailin içinden

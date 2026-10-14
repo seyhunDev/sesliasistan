@@ -2058,3 +2058,15 @@ group("Sporcu boy ve kilo")([
   ["son değerler ayrı", F("son boy eski tarihten", () => { const b = SBK.lastBody([{ d: "2026-09-01", h: 149, kg: 42 }, { d: "2026-10-01", kg: 43 }]); return b.h === 149 && b.hd === "2026-09-01" && b.kg === 43; })],
   ["yazı", F("151 cm · 42,5 kg", () => SBK.bodyText({ h: 151, kg: 42.5 }) === "151 cm · 42,5 kg")],
 ]);
+
+// Banka mail ekleri (mailParse.js rawDone): tablo tam okunduysa ham ek silinir, okunamayan ya da kesilen ek kalır
+const MLP = await import("@/lib/mailParse");
+const SH = (file, n) => ({ file, columns: ["Tarih", "Tutar"], rows: Array.from({ length: n }, () => ({ v: ["01.10.2026", "10"] })) });
+group("Mail eki silme (veri kaybı yok)")([
+  ["tablo tam", F("ek silinir", () => MLP.rawDone([{ name: "HesapOzeti.xls", data: "x" }], [SH("HesapOzeti.xls", 40)]))],
+  ["PDF ek", F("silinmez", () => !MLP.rawDone([{ name: "ekstre.pdf", data: "x" }], []))],
+  ["tablo okunamadı", F("silinmez", () => !MLP.rawDone([{ name: "a.xlsx", data: "x" }], []))],
+  ["satır sınırı doldu", F("kesilmiş olabilir, silinmez", () => !MLP.rawDone([{ name: "a.xlsx", data: "x" }], [SH("a.xlsx", MLP.MAIL_ROWS)]))],
+  ["iki ekten biri okunamadı", F("silinmez", () => !MLP.rawDone([{ name: "a.xlsx", data: "x" }, { name: "b.xlsx", data: "y" }], [SH("a.xlsx", 3)]))],
+  ["başlıksız tablo", F("silinmez", () => !MLP.rawDone([{ name: "a.xlsx", data: "x" }], [{ file: "a.xlsx", columns: [], rows: [{ v: [1] }] }]))],
+]);
