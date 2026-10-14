@@ -1,8 +1,8 @@
-Commit: 4817937 · Merge pull request #408 from seyhunDev/claude/instagram-modern-tasarimlar-u1damg
-Zaman: 2026-10-14-1435 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38557475641
+Commit: f2bb08a · Yarışa eklenen evrak Firebase Storage'da; telefondakiler için Firebase'e gönder (#409)
+Zaman: 2026-10-14-1459 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38560352769
 
-TAM TEST · 14.10.2026 14:34:31
+TAM TEST · 14.10.2026 14:58:40
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
