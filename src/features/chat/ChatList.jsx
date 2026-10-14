@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { dmId, toMs, useChat } from "./ChatProvider";
+import { toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, isOnline, listTime } from "./bits";
 import { NewChatSheet } from "./NewChatSheet";
 import { prefetchChat } from "./ChatView";
@@ -21,6 +21,7 @@ export function ChatList() {
   const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef } = useChat();
   const [filter, setFilter] = useState("all"); // all | unread | groups
   const [q, setQ] = useState("");
+  const [find, setFind] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
 
   const now = useNow(3000).getTime();
@@ -74,10 +75,12 @@ export function ChatList() {
   });
 
   const needle = fold(q.trim());
+  // Tümü'de sabit gruplar üstte kart; listede yalnız diğer sohbetler
+  const cards = !needle && filter === "all";
   // Plan/görev/not konuşmaları burada gösterilmez: kendi kayıtlarında ve ana sayfadaki "Senin için"de
   // Ekip, mesajı yokken listede yer tutmaz (kişiler şeridinin başında her zaman var)
   const rows = chatRows
-    .filter((x) => !(GROUPS[x.c.id] && !x.c.last))
+    .filter((x) => !(GROUPS[x.c.id] && (!x.c.last || cards)))
     .filter((x) => (filter === "unread" ? x.unread > 0 : filter === "groups" ? x.group : true))
     .filter((x) => !needle || fold(x.title).includes(needle))
     .sort((a, b) => b.at - a.at);
@@ -99,30 +102,41 @@ export function ChatList() {
             <Icon name="edit" className="size-5" />
           </button>
         </div>
-        <label className="mt-2.5 flex h-10 items-center gap-2.5 rounded-xl bg-line/60 px-3.5">
-          <Icon name="search" className="size-[1.125rem] text-mut" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-mut" />
-        </label>
-        <div className="mt-2.5 flex gap-2">
-          {[
-            ["all", "Tümü"],
-            ["unread", "Okunmamış", unreadCount],
-            ["groups", "Gruplar"],
-          ].map(([k, label, n]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setFilter(k)}
-              aria-pressed={filter === k}
-              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[0.875rem] font-semibold transition active:scale-95 ${
-                filter === k ? "bg-deep text-white" : "bg-card text-fg ring-1 ring-line"
-              }`}
-            >
-              {label}
-              {n > 0 && <span className={`tabular-nums ${filter === k ? "text-white/75" : "text-acc"}`}>{n}</span>}
+        {find ? (
+          <label className="mt-2.5 flex h-10 items-center gap-2.5 rounded-xl bg-line/60 px-3.5">
+            <Icon name="search" className="size-[1.125rem] text-mut" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" autoFocus className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-mut" />
+            <button type="button" onClick={() => (setQ(""), setFind(false))} aria-label="Aramayı kapat" className="-mr-1.5 grid size-8 place-items-center rounded-full text-mut">
+              <Icon name="x" className="size-4" />
             </button>
-          ))}
-        </div>
+          </label>
+        ) : (
+          <div className="mt-2.5 flex items-center gap-1.5">
+            <button type="button" onClick={() => setFind(true)} aria-label="Ara" className="grid h-9 w-10 shrink-0 place-items-center rounded-xl bg-line/60 text-mut">
+              <Icon name="search" className="size-[1.125rem]" />
+            </button>
+            <div className="flex min-w-0 flex-1 rounded-xl bg-line/60 p-[3px]">
+              {[
+                ["all", "Tümü"],
+                ["unread", "Okunmamış", unreadCount],
+                ["groups", "Gruplar"],
+              ].map(([k, label, n]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setFilter(k)}
+                  aria-pressed={filter === k}
+                  className={`flex h-[1.875rem] min-w-0 flex-1 items-center justify-center gap-1 rounded-[0.5625rem] text-[0.8125rem] font-semibold transition ${
+                    filter === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.14)]" : "text-mut"
+                  }`}
+                >
+                  <span className="truncate">{label}</span>
+                  {n > 0 && <span className="tabular-nums text-acc">{n}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {denied && (
@@ -134,30 +148,28 @@ export function ChatList() {
         </div>
       )}
 
-      {/* Kişiler: dokun, birebir yaz */}
-      {!q && filter === "all" && (
-        <div className="flex gap-4 overflow-x-auto px-5 pb-2 pt-1 [scrollbar-width:none]">
-          {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye */}
+      {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye; kişiye kalemle ya da aramayla yazılır */}
+      {cards && groupIds.length > 0 && (
+        <div className={`grid gap-2 px-5 pb-1 pt-1.5 ${groupIds.length >= 3 ? "grid-cols-3" : groupIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
           {groupIds.map((g) => {
             const c = chats.find((x) => x.id === g);
+            const at = toMs(c?.last?.at);
             return (
-              <button key={g} type="button" onPointerDown={() => warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex w-[3.75rem] shrink-0 flex-col items-center gap-1.5 active:scale-95">
-                <Avatar icon={GROUPS[g].icon} size="size-[3.75rem]" tone="bg-deep text-white" />
+              <button key={g} type="button" onPointerDown={() => warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex min-w-0 items-center gap-2 rounded-2xl bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(38,40,44,.06)]">
+                <Avatar icon={GROUPS[g].icon} size="size-[2.125rem]" tone="bg-deep text-white" />
+                <span className="min-w-0">
+                  <b className="block truncate text-[0.8125rem] font-semibold leading-tight">{GROUPS[g].name}</b>
+                  <small className={`block truncate text-[0.6875rem] ${c?.unread ? "font-semibold text-acc" : "text-mut"}`}>{at ? listTime(at) : "Yaz"}</small>
+                </span>
                 {c?.unread > 0 && !c.mutedByMe && (
-                  <span className="absolute -right-1 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">{c.unread > 99 ? "99+" : c.unread}</span>
+                  <span className="absolute -right-1 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">{c.unread > 99 ? "99+" : c.unread}</span>
                 )}
-                <span className="w-full truncate text-center text-[0.75rem] font-semibold text-fg">{GROUPS[g].name}</span>
               </button>
             );
           })}
-          {people.map((p) => (
-            <button key={p.uid} type="button" onClick={() => router.push(`/messages?c=${dmId(uid, p.uid)}`)} className="relative flex w-[3.75rem] shrink-0 flex-col items-center gap-1.5 active:scale-95">
-              <Avatar name={p.name} online={isOnline(p)} size="size-[3.75rem]" text="text-[1.0625rem]" />
-              <span className="w-full truncate text-center text-[0.75rem] font-medium text-fg">{(p.name || "").split(" ")[0]}</span>
-            </button>
-          ))}
         </div>
       )}
+      {cards && rows.length > 0 && <p className="px-5 pb-1 pt-3.5 text-[0.6875rem] font-bold tracking-[0.06em] text-mut">SOHBETLER</p>}
 
       {rows.length ? (
         <ul className="mt-1">
@@ -203,7 +215,7 @@ export function ChatList() {
             <Icon name="chat" className="size-7" />
           </span>
           <p className="mt-3 max-w-[16rem] text-[0.9375rem] leading-snug text-mut">
-            {q ? `“${q}” bulunamadı.` : filter === "unread" ? "Okunmamış mesaj yok." : "Henüz sohbet yok. Yukarıdan bir kişiye dokun ya da kalemle yeni sohbet başlat."}
+            {q ? `“${q}” bulunamadı.` : filter === "unread" ? "Okunmamış mesaj yok." : "Henüz sohbet yok. Kalemle yeni sohbet başlat."}
           </p>
         </div>
       )}
