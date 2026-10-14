@@ -1,8 +1,8 @@
-Commit: c35585b · Mac'teki tam test sonucu da GitHub'a (test-sonuclari) gider (#326)
-Zaman: 2026-10-12-1612 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38253825098
+Commit: 3b65f15 · Ana sayfa: üstte hafta şeridi ve Sırada listesi, sade notlar (#386)
+Zaman: 2026-10-14-0332 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38490594454
 
-TAM TEST · 12.10.2026 16:10:47
+TAM TEST · 14.10.2026 03:31:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

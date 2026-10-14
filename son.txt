@@ -1,8 +1,8 @@
-Commit: af039f5 · Yoklama raporu Yoklama sayfasıyla aynı sade düzende (#385)
-Zaman: 2026-10-14-0316 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38489071841
+Commit: 3b65f15 · Ana sayfa: üstte hafta şeridi ve Sırada listesi, sade notlar (#386)
+Zaman: 2026-10-14-0332 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38490594454
 
-TAM TEST · 14.10.2026 03:15:29
+TAM TEST · 14.10.2026 03:31:05
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
