@@ -37,6 +37,7 @@ import { DROP, SAVE, focusBody } from "./ortak";
 import { guideHandler } from "@/features/fitness/guideVoice";
 import { guideWord } from "@/lib/fitness/words";
 import { myFit, planOf } from "@/lib/fitness/model";
+import { wantsRead } from "@/lib/readAloud";
 
 // Numaralı işlerden doğrudan yola gidenler (1-3 kendi akışlarında alınır: yaris.js, yoklama.js)
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
@@ -76,6 +77,8 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   }
   const chained = chainStep.current;
   chainStep.current = false;
+  // Okuma isteği ("notları oku", "bugün hangi planlar var"): cevap sesli okunur, okuma bitince mikrofon açılır (cevap.js)
+  if (!chained && ctx.readMode) ctx.readMode.current = wantsRead(s);
   // Puanlama (yalnız ölçer): yeni tur ya da bekleyen soruya cevap; önceki işi düzeltiyorsa o iş kötü sayılır
   if (!chained) scoreStart(s, { awaiting: !!cards.awaiting || drafts.length > 0, yes: isYes(s) });
   // Kullanıcının yeni sözü: görev listesindeki numaralı iş artık geçerli değil

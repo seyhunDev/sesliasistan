@@ -6,7 +6,7 @@ import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
 
 export function reply(ctx, message, extra = {}, viaVoice = false) {
-  const { aiLesson, chain, convo, enqueueSay, eventFlow, holdIfTalking, inflight, invFlow, listenOnce, live, nextInChain, okFlow, personFlow, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, raceChoices, raceFailed, reply, setCards, setPhase, setPlan, setStreamText, setTurns, sp, startAuto, streamSaid, waitFor } = ctx;
+  const { aiLesson, chain, convo, readMode, tts, enqueueSay, eventFlow, holdIfTalking, inflight, invFlow, listenOnce, live, nextInChain, okFlow, personFlow, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, raceChoices, raceFailed, reply, setCards, setPhase, setPlan, setStreamText, setTurns, sp, startAuto, streamSaid, waitFor } = ctx;
   // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
   // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
   if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
@@ -17,6 +17,11 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   if (live.current.spStatus === "listening") sp.cancel(); // düşünürken açılan mikrofon: konuşulmadı, kapat
   const { show = [], pending = null, nav = "", chat = "", share = "", wa = "", att = null, engine = "", expect = false, races = [], person = null, event = null, inv = null, ok = null, picks = [], listen = false } = extra;
   const awaiting = expect || !!pending || !!ok;
+  // Sesli okuma isteği ("notları oku", "bugün hangi planlar var"): cevap okunur, bitince mikrofon bir kez açılır.
+  // Sesli yanıt kapalıysa okunmaz, "Sesli yanıtı aç" düğmesi çıkar (Seyhun, 2026-10-14)
+  const read = !awaiting && !!readMode?.current;
+  if (read) readMode.current = false;
+  const readAsk = read && !tts?.enabled && tts?.supported ? message : "";
   // Görev listesinin son işi: yapılamayanlar elle yapılsın diye söylenir
   // İşin sonucu: akış açıkça "olmadı" dediyse (fail) ya da cevapta başarısızlık sözü varsa ✗
   const badStep = !awaiting && planOn.current && (extra.fail ?? failed(message));
@@ -39,7 +44,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
   const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
   setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
-  setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks });
+  setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks, readAsk });
   if (races?.length) waitFor("raceChoice");
   raceChoices.current = races;
   // Puanlama (yalnız ölçer): iş bitti mi, soru mu sordu, olmadı mı
@@ -82,7 +87,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   const said = streamSaid.current;
   streamSaid.current = "";
   const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
-  enqueueSay(rest, planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
+  enqueueSay(rest, read && tts?.enabled ? listenOnce : planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
 }
 
 export function done(ctx, message, extra = {}, viaVoice = false) {

@@ -17,7 +17,7 @@ import { waTo } from "./isler/ortak";
 import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
-  const { WA_PICK, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait } = useAssistant({ open, onClose, seed, onLive, onAct });
+  const { WA_PICK, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait } = useAssistant({ open, onClose, seed, onLive, onAct });
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
   const shownOf = (show = []) =>
@@ -135,6 +135,24 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               </li>
             ))}
           </ol>
+        )}
+
+        {/* Sesli okuma istendi ama sesli yanıt kapalı: dokununca açılır ve cevap okunur, sonra mikrofon açılır */}
+        {cards.readAsk && (
+          <div className="fade-in mt-3 flex">
+            <button
+              type="button"
+              onClick={() => {
+                const t = cards.readAsk;
+                setCards((c) => ({ ...c, readAsk: "" }));
+                tts.enable();
+                tts.speak(t, listenOnce);
+              }}
+              className="h-10 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]"
+            >
+              Sesli yanıtı aç
+            </button>
+          </div>
         )}
 
         {/* Onay: geri alınamayan iş (arama, sporcu silme, aidat hatırlatması); sesle "evet / vazgeç" de olur */}
