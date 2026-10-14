@@ -105,6 +105,9 @@ function Check({ on, tone = "ok" }) {
   );
 }
 
+// Özet'te ilk görünen iş sayısı; fazlası "N iş daha" ile açılır
+const STEP_SHOW = 6;
+
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
@@ -586,6 +589,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const restoreSteps = () => setR((p) => ({ ...p, skips: [], checks: p.checks?.docs && file ? { docs: true } : {} }));
   // Elle iş ekleme (her yarışa ayrı)
   const [todo, setTodo] = useState("");
+  const [allSteps, setAllSteps] = useState(false);
+  const [showDone, setShowDone] = useState(false);
   const [todoDate, setTodoDate] = useState("");
   const addTodo = () => {
     const title = todo.trim();
@@ -604,15 +609,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     dueOpen > 0 && (r.notice?.planned ? { icon: "check", label: "Tarihler planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Son tarihler planlarda") } : { icon: "clock", label: "Son tarihler", onClick: noticePlan }),
     start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: toPost },
   ].filter(Boolean);
-  const actCls = "flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition active:scale-95 active:bg-bg";
-  const actBody = (a) => (
-    <>
-      <span className={`grid size-11 place-items-center rounded-full ${a.tone || "bg-acc/10 text-acc"}`}>
-        <Icon name={a.icon} className="size-5" />
-      </span>
-      <span className="w-full truncate text-center text-[0.8125rem] font-medium">{a.label}</span>
-    </>
-  );
+  const pillCls = (a) => `flex h-10 items-center rounded-full px-4 text-[0.875rem] font-semibold ${a.tone ? "bg-ok/10 text-ok" : "bg-acc/10 text-acc"}`;
   if (!begun) {
     const form = r.notice || manual;
     return (
@@ -768,30 +765,9 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
           {!over && (
             <>
-          <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>HAZIRLIK</Label>
+          <Label right={steps.length ? `${steps.length} iş` : ""}>YAPILACAKLAR</Label>
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {stat.map(([to, icon, title, sub, done, ask]) => {
-              const now = to === nextStep;
-              return (
-                <li key={to}>
-                  <button type="button" onClick={() => setTab(to)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${now ? "bg-acc/[.07]" : ""}`}>
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-ok/15 text-ok" : now ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-                      <Icon name={done ? "check" : icon} className="size-[1.125rem]" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${done ? "text-mut" : ""}`}>{now ? ask : title}</b>
-                      <span className={`block truncate text-[0.8125rem] ${now ? "text-acc" : "text-mut"}`}>{now ? `Sıradaki · ${sub}` : sub}</span>
-                    </span>
-                    <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-
-          <Label right={steps.length || doneList.length ? `${steps.length} iş${doneList.length ? ` · ${doneList.length} yapıldı` : ""}` : ""}>YAPILACAKLAR</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {steps.map((s) => {
+            {(allSteps ? steps : steps.slice(0, STEP_SHOW)).map((s) => {
               const left = s.date ? daysTo(s.date) : null;
               return (
                 <li key={s.key} className="flex items-center gap-1 pl-1">
@@ -803,76 +779,107 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                     {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
                   </span>
                   {left !== null && (
-                    <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+                    <span className={`shrink-0 text-[0.75rem] font-semibold tabular-nums ${left < 0 ? "text-mut" : left <= 7 ? "text-rec" : "text-amber-700"}`}>
                       {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
                     </span>
                   )}
-                  <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut">
-                    <Icon name="x" className="size-4" />
+                  <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut/50">
+                    <Icon name="x" className="size-3.5" />
                   </button>
                 </li>
               );
             })}
-            {doneList.map((s) => (
-              <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
-                <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
-                  <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
-                    <Icon name="check" className="size-3.5" />
-                  </span>
+            {!allSteps && steps.length > STEP_SHOW && (
+              <li>
+                <button type="button" onClick={() => setAllSteps(true)} className="h-11 w-full text-[0.8125rem] font-semibold text-acc">
+                  {steps.length - STEP_SHOW} iş daha
                 </button>
-                <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut line-through decoration-mut/40">{s.label}</span>
-                <span className="shrink-0 rounded-lg bg-ok/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-ok">Yapıldı</span>
               </li>
-            ))}
-            <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-2">
-              <Icon name="plus" className="size-5 shrink-0 text-acc" />
+            )}
+            {!steps.length && <li className="px-4 py-3 text-[0.9375rem] text-mut">Yapılacak iş kalmadı.</li>}
+            <li className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-4 py-1.5">
               <input
                 value={todo}
                 onChange={(e) => setTodo(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addTodo()}
-                placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
-                className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
+                placeholder="+ İş ekle"
+                className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-acc"
               />
               {todo.trim() && (
-                <span className="flex w-full items-center gap-2 pb-1 pl-7">
+                <span className="flex w-full items-center gap-2 pb-1">
                   <span className="text-[0.8125rem] text-mut">Son tarih</span>
                   <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
-                  <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+                  <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white">
                     Ekle
                   </button>
                 </span>
               )}
             </li>
           </ul>
-          {hidden > 0 && (
-            <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
-              Çıkarılanları geri getir ({hidden})
-            </button>
+          {(doneList.length > 0 || hidden > 0) && (
+            <div className="mt-2 flex gap-4 px-1">
+              {doneList.length > 0 && (
+                <button type="button" onClick={() => setShowDone((v) => !v)} className="text-[0.8125rem] font-semibold text-acc">
+                  {showDone ? "Yapılanları gizle" : `${doneList.length} yapıldı`}
+                </button>
+              )}
+              {hidden > 0 && (
+                <button type="button" onClick={restoreSteps} className="text-[0.8125rem] font-semibold text-mut">
+                  Çıkarılanları geri getir ({hidden})
+                </button>
+              )}
+            </div>
           )}
+          {showDone && doneList.length > 0 && (
+            <ul className={`${card} mt-2 divide-y divide-line overflow-hidden`}>
+              {doneList.map((s) => (
+                <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
+                  <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
+                    <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
+                      <Icon name="check" className="size-3.5" />
+                    </span>
+                  </button>
+                  <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut line-through decoration-mut/40">{s.label}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Label>HAZIRLIK</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {stat.map(([to, , title, sub, done]) => (
+              <button key={to} type="button" onClick={() => setTab(to)} className={`${card} min-w-0 px-3.5 py-3 text-left`}>
+                <b className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
+                  {title}
+                  {done && <Icon name="check" className="size-4 text-ok" />}
+                </b>
+                <span className={`mt-0.5 block truncate text-[0.8125rem] ${done ? "text-mut" : to === nextStep ? "text-acc" : "text-amber-700"}`}>{sub}</span>
+              </button>
+            ))}
+          </div>
             </>
           )}
 
           <Label>NOT</Label>
-          <div className={`${card} px-4 py-3`}>
+          <div className={`${card} px-4 py-2.5`}>
             <textarea
               value={r.note}
               onChange={(e) => put("note", e.target.value)}
-              placeholder="Konaklama, ulaşım, kayıt ücreti, tekne taşıma…"
-              rows={3}
+              placeholder="Not yaz"
+              rows={2}
               className="block w-full resize-none bg-transparent text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/60"
             />
           </div>
 
-          <Label>İŞLEMLER</Label>
-          <div className={`${card} grid gap-1 p-1.5`} style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }}>
+          <div className="mt-4 flex flex-wrap gap-2">
             {acts.map((a) =>
               a.href ? (
-                <Link key={a.label} href={a.href} onClick={a.onClick} className={actCls}>
-                  {actBody(a)}
+                <Link key={a.label} href={a.href} onClick={a.onClick} className={pillCls(a)}>
+                  {a.label}
                 </Link>
               ) : (
-                <button key={a.label} type="button" onClick={a.onClick} className={actCls}>
-                  {actBody(a)}
+                <button key={a.label} type="button" onClick={a.onClick} className={pillCls(a)}>
+                  {a.label}
                 </button>
               ),
             )}
@@ -880,10 +887,8 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
           {r.notice && (
             <>
-              <button type="button" onClick={() => setNoticeInfo((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
-                <Icon name="book" className="size-5 shrink-0 text-acc" />
-                <span className="shrink-0 text-[0.9375rem] font-semibold">Talimat bilgileri</span>
-                <span className="min-w-0 flex-1 truncate text-right text-[0.8125rem] text-mut">program, ücret, iletişim</span>
+              <button type="button" onClick={() => setNoticeInfo((v) => !v)} className={`${card} mt-4 flex w-full items-center gap-3 px-4 py-3 text-left`}>
+                <span className="flex-1 text-[0.9375rem] font-semibold">Talimat bilgileri</span>
                 <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${noticeInfo ? "rotate-90" : ""}`} />
               </button>
               {noticeInfo && <NoticeDetails n={r.notice} />}
