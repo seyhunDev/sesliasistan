@@ -1,8 +1,8 @@
-Commit: c89755c · Mesajlar: klavye boşluğu kalktı, yeni mesaj hafifçe belirir (#420)
-Zaman: 2026-10-14-1839 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38591094863
+Commit: bfcdda7 · Ana sayfa hafta şeridinde planlar da görünür (#421)
+Zaman: 2026-10-14-1844 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38591734129
 
-TAM TEST · 14.10.2026 18:38:45
+TAM TEST · 14.10.2026 18:43:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 58 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

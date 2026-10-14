@@ -1,8 +1,8 @@
-Commit: 93f5d57 · Fitness hareket kütüphanesi: numaralı hareketler, aynı harekete aynı video (#358)
-Zaman: 2026-10-13-1547 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38399677498
+Commit: bfcdda7 · Ana sayfa hafta şeridinde planlar da görünür (#421)
+Zaman: 2026-10-14-1844 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38591734129
 
-TAM TEST · 13.10.2026 15:46:02
+TAM TEST · 14.10.2026 18:43:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
