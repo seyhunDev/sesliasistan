@@ -54,8 +54,8 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
           {rows.map(({ p, label, day, now: live }, i) => (
             <li key={p.id} className={i || week ? "border-t border-line" : ""}>
               <button type="button" onClick={() => open(p)} className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left">
-                <span className={`w-[3.875rem] shrink-0 text-[0.875rem] leading-snug tabular-nums ${live ? "font-semibold text-acc" : "text-fg2"}`}>
-                  {p.time || "—"}
+                <span className={`w-[3.875rem] shrink-0 whitespace-nowrap text-[0.875rem] leading-snug tabular-nums ${live ? "font-semibold text-acc" : "text-fg2"}`}>
+                  {p.time || "Tüm gün"}
                   <small className={`block text-[0.78125rem] ${live ? "text-acc" : "font-normal text-mut"}`}>{shortLabel(label, day)}</small>
                 </span>
                 <span className="min-w-0 flex-1">

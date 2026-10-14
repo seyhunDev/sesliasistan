@@ -152,10 +152,10 @@ export function groupByDay(plans, today, upcoming = true) {
   return days.map((day) => ({ day, items: map.get(day).sort(byStart) }));
 }
 
-// Takvim: o güne düşen planlar (çok günlüler dahil, saate göre) ve son tarihi o gün olan görevler
+// Takvim: o güne düşen planlar (çok günlüler dahil, saate göre; biten plan "Bitti" yok, arşivde) ve son tarihi o gün olan görevler
 export function dayItems(plans, tasks, day) {
   return {
-    plans: plans.filter((p) => p.date && p.date <= day && (p.endDate || p.date) >= day).sort(byStart),
+    plans: plans.filter((p) => !p.done && p.date && p.date <= day && (p.endDate || p.date) >= day).sort(byStart),
     tasks: tasks.filter((t) => t.due === day).sort((a, b) => Number(a.done) - Number(b.done)),
   };
 }

@@ -25,7 +25,7 @@ export function addDay(date, n = 1) {
 // Bir günün kayıtları: o günkü planlar (saate göre), o gün biten görevler, (istenirse) gecikenler
 export function dayItems({ plans = [], tasks = [], date, uid, late = false }) {
   const ps = plans
-    .filter((p) => p.date <= date && (p.endDate || p.date) >= date)
+    .filter((p) => !p.done && p.date <= date && (p.endDate || p.date) >= date)
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const open = tasks.filter((t) => !(t.done || t.doneBy?.[uid]));
   return { plans: ps, due: open.filter((t) => t.due === date), late: late ? open.filter((t) => t.due && t.due < date) : [] };

@@ -638,6 +638,13 @@ group("Ana sayfa kartları")([
     return w.otherN === 2 && thu.other.map((p) => p.id).join() === "p2,p1" && i.tap && !fri.tap && w.days[5].other.length === 0
       && only && only.otherN === 1 && HT.dayInfo(only.days[6], false, today).tap;
   })],
+  ["kulüp kartları", F("takvim: biten plan görünmez", async () => {
+    const AG = await import("@/lib/agenda");
+    const SM = await import("@/lib/summary");
+    const plans = [{ id: "a", title: "Açık", date: "2026-10-14" }, { id: "b", title: "Bitti", date: "2026-10-14", done: true }];
+    return AG.dayItems(plans, [], "2026-10-14").plans.map((p) => p.id).join() === "a"
+      && SM.dayItems({ plans, date: "2026-10-14" }).plans.map((p) => p.id).join() === "a";
+  })],
   ["kulüp kartları", F("antrenman haftası: gün penceresi (yelken yoklama, plansız gün antrenman ekle, fitness sporcuları)", () => {
     const today = "2026-10-14";
     const plans = [

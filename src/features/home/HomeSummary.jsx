@@ -321,7 +321,7 @@ function DayPick({ day, att, today, onClose }) {
                 {info.other.map((p) => (
                   <li key={p.id}>
                     <button type="button" onClick={() => { onClose(); openAdd({ edit: { kind: "plan", id: p.id } }); }} className="flex w-full items-center gap-3 py-2.5 text-left">
-                      <span className="w-12 shrink-0 text-[0.8125rem] font-semibold tabular-nums text-acc">{p.time || "Gün"}</span>
+                      <span className="w-14 shrink-0 whitespace-nowrap text-[0.8125rem] font-semibold tabular-nums text-acc">{p.time || "Tüm gün"}</span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Plan"}</b>
                         {p.place ? <small className="block truncate text-[0.8125rem] text-mut">{p.place}</small> : null}
