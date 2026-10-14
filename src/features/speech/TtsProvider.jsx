@@ -15,7 +15,7 @@ const VOICE_KEY = "sa_tts_voice";
 const RATE_KEY = "sa_tts_rate";
 export const RATES = [["0.9", "Yavaş"], ["1", "Normal"], ["1.1", "Hızlı"]];
 export const SAMPLE = "Merhaba, ben asistanın. Yarın saat 10:30'da antrenman var, rüzgar 12 knot.";
-const NOOP = { supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
+const NOOP = { supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, enable() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
 const Ctx = createContext(NOOP);
 
 const canDevice = () => typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance !== "undefined";
@@ -272,7 +272,14 @@ export function TtsProvider({ children }) {
     else stop();
   }, [enabled, speak, stop]);
 
-  return <Ctx.Provider value={{ supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
+  // Sesli yanıtı sessizce aç (asistandaki "Sesli yanıtı aç" düğmesi; ardından okunacak cevap hemen okunur)
+  const enable = useCallback(() => {
+    on.current = true;
+    setEnabled(true);
+    try { localStorage.setItem(KEY, "1"); } catch { }
+  }, []);
+
+  return <Ctx.Provider value={{ supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
 }
 
 export const useTts = () => useContext(Ctx);

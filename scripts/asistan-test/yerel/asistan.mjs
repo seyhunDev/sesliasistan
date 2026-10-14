@@ -12,6 +12,7 @@ import { waMode } from "@/lib/steps";
 import { cleanWaLink, waGroupFor, cleanWaGroups } from "@/lib/waGroups";
 import * as CX from "@/lib/convoContext";
 import { miniText, pullAction } from "@/lib/miniOrb";
+import { wantsRead } from "@/lib/readAloud";
 
 const { group, results } = suite("asistan");
 const cmd = (s) => localCommand(s, data, today);
@@ -19,6 +20,13 @@ const T = (desc, ok) => ({ desc, fn: cmd, ok });
 const isType = (type, more = () => true) => T(type, (r) => r?.type === type && more(r));
 const toAI = T("yapay zekaya gider (yerelde çözülmez)", (r) => r === null);
 const Y = (desc, fn, exp) => ({ desc, fn, ok: (r) => r === exp });
+
+const READ = Y("sesli okunur", wantsRead, true);
+const NO_READ = Y("okuma değil", wantsRead, false);
+group("Sesli okuma (oku, söyle, anlat)")([
+  ...["notları oku", "bana notları okur musun", "okuyabilir misin notları", "son mesajları oku", "notlarımı seslendir", "bugün hangi planlarımız var", "yarın neler var", "bugün ne var", "yarın toplantı var mı", "bu hafta kaç görevim var", "bugünkü planları söyle", "görevlerimi anlat", "bugünü bana anlat", "haftayı özetle"].map((x) => [x, READ]),
+  ...["ali'ye söyle yarın gelsin", "Ali'ye yaz yarın gel", "ekibe anlat kamp planını", "yarın 10'da antrenman ekle", "listeye süt ekle", "motor yağı görevini tamamla", "notları aç", "planlara git", "okul toplantısı ekle", "okunmamış mesajlar", "kapat", "sesli yanıtı kapat"].map((x) => [x, NO_READ]),
+]);
 
 group("Yardım")([["yardım", isType("reply", (r) => /hemen yaparım/.test(r.message))], ["neler yapabilirsin", isType("reply")], ["komutlar", isType("reply")], ["ne yapabilirsin bana anlatır mısın", isType("reply"), "uzun söyleyiş de yardım"]]);
 group("Fiş kamerası")([["fiş yükle", isType("receipt")], ["fatura çek", isType("receipt")], ["kamerayı aç", isType("receipt")], ["şu fişi okut", isType("receipt")], ["yeni fiş", isType("receipt")],
