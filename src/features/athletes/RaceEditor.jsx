@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
@@ -84,6 +84,51 @@ function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
     </li>
   );
 }
+
+// Sporcu başına belge: başlığa dokununca altında sporcular açılır; ada dokun aç, okla paylaş
+function PersonPart({ part, open, onToggle, openPdf, share }) {
+  return (
+    <li>
+      <div className="flex items-center gap-1 pl-4 pr-1.5">
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">PDF</span>
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[0.9375rem] font-semibold">{part.title}</b>
+            <span className="block truncate text-[0.8125rem] text-mut">{part.people.length} sporcu · her biri ayrı sayfa</span>
+          </span>
+          <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />
+        </button>
+        <button type="button" onClick={() => share(part.file)} aria-label={`${part.title} hepsini paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+          <Icon name="up" className="size-5" />
+        </button>
+      </div>
+      {open && (
+        <ul className="mb-2 ml-[4.25rem] mr-1.5 divide-y divide-line border-l-2 border-acc/30">
+          {part.people.map((p) => (
+            <li key={p.id} className="flex items-center gap-1 pl-3">
+              <button type="button" onClick={() => openPdf(p.file)} className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
+              </button>
+              <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+                <Icon name="up" className="size-5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+const initialsOf = (n) =>
+  String(n || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toLocaleUpperCase("tr-TR"))
+    .join("");
 
 // Etiketli satır (gruplu kart içinde)
 function Row({ label, children, className = "" }) {
@@ -1089,15 +1134,27 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <Label right={made?.at ? `${madeText(made.at)} hazırlandı` : ""}>HAZIR EVRAK</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
                 <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf()} onShare={() => share()} />
-                {parts.map((x) => (
-                  <Fragment key={x.key}>
-                    <FileRow tag="PDF" title={x.title} sub={x.people.length > 1 ? `${x.pages} sayfa · ${openPart === x.key ? "sporcuları gizle" : "tek sporcununkini seç"}` : `${x.pages} sayfa`} onOpen={() => (x.people.length > 1 ? setOpenPart(openPart === x.key ? null : x.key) : openPdf(x.file))} onShare={() => share(x.file)} />
-                    {openPart === x.key && <FileRow tag="PDF" title={`Hepsi · ${x.people.length} sporcu`} sub={x.title} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />}
-                    {openPart === x.key &&
-                      x.people.map((p) => <FileRow key={p.id} tag="PDF" title={p.name} sub={x.title} onOpen={() => openPdf(p.file)} onShare={() => share(p.file)} />)}
-                  </Fragment>
-                ))}
               </ul>
+              {parts.some((x) => x.people.length > 1) && (
+                <>
+                  <Label>HER SPORCUYA AYRI</Label>
+                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                    {parts.filter((x) => x.people.length > 1).map((x) => (
+                      <PersonPart key={x.key} part={x} open={openPart === x.key} onToggle={() => setOpenPart(openPart === x.key ? null : x.key)} openPdf={openPdf} share={share} />
+                    ))}
+                  </ul>
+                </>
+              )}
+              {parts.some((x) => x.people.length <= 1) && (
+                <>
+                  <Label>HERKES İÇİN TEK BELGE</Label>
+                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                    {parts.filter((x) => x.people.length <= 1).map((x) => (
+                      <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />
+                    ))}
+                  </ul>
+                </>
+              )}
               <div className="mt-2 flex items-start gap-3 px-1">
                 <p className="flex-1 text-[0.75rem] text-mut">Bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen yeniden hazırla.</p>
                 <button type="button" onClick={make} disabled={busy} className="h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
