@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
 import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sailWindows, sky, windLevel, windName } from "./weather";
 import { Col, WindArrow } from "./parts";
+import { WindMapView } from "./WindMap";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
@@ -174,6 +174,11 @@ export function WeatherDetail({ w, refresh, busy }) {
         })}
       </div>
 
+      {/* Rüzgâr haritası: seçili gün; ↗ tam sayfayı açar */}
+      <div className="mt-3">
+        <WindMapView embed date={sel} />
+      </div>
+
       <div className="mt-4">{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
 
       {/* Kaynak ve doğrulama */}
@@ -191,9 +196,6 @@ export function WeatherDetail({ w, refresh, busy }) {
           <a href={links.windy} target="_blank" rel="noopener noreferrer" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
             Windy
           </a>
-          <Link href="/wind" className="rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line">
-            Rüzgâr haritası
-          </Link>
           <button type="button" onClick={() => refresh(true)} disabled={busy} className="ml-auto rounded-full bg-card px-3 py-1 font-semibold text-acc ring-1 ring-line disabled:opacity-50">
             Yenile
           </button>

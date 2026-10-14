@@ -8,6 +8,7 @@ import { LEGEND, colorOf, dayMax, daysOf, fieldOf, frameAt, fresh, gridOf, mapUr
 import { PLACE, compareLinks, getPlace, placeLabel, samePlace, setPlace, windName } from "./weather";
 import { WindArrow } from "./parts";
 import { useAuth } from "@/features/auth/AuthProvider";
+import Link from "next/link";
 
 // Rüzgâr haritası: koyu harita, üstünde şiddete göre renk geçişi ve rüzgârla akan çizgiler (Windy gibi).
 // Veri Open-Meteo'dan tek istekte (6×6 nokta, 3 gün), cihazda 30 dk saklanır; Firestore'a dokunmaz.
@@ -64,7 +65,7 @@ function fitCanvas(cv, w, h, dpr) {
   return ctx;
 }
 
-function WindLeaflet({ data, frame, place, children }) {
+function WindLeaflet({ data, frame, place, small, children }) {
   const box = useRef(null);
   const fieldCv = useRef(null);
   const flowCv = useRef(null);
@@ -92,6 +93,10 @@ function WindLeaflet({ data, frame, place, children }) {
           L.tileLayer(OSM, { maxZoom: 14, className: "wind-osm" }).addTo(m);
         });
         map.current = m;
+        // Kutu boyu değişince (alttan açılan pencere, döndürme) haritayı yeniden ölç
+        const ro = new ResizeObserver(() => map.current?.invalidateSize());
+        ro.observe(box.current);
+        m.on("unload", () => ro.disconnect());
         setReady(true);
       })
       .catch(() => live && setErr(true));
@@ -236,14 +241,17 @@ function WindLeaflet({ data, frame, place, children }) {
   const zoom = (d) => map.current?.[d > 0 ? "zoomIn" : "zoomOut"]();
 
   return (
-    <div className="relative isolate h-[46vh] max-h-[26rem] min-h-[17rem] w-full overflow-hidden rounded-[1.375rem] bg-[#1b2128]">
+    <div
+      onTouchStart={(e) => e.stopPropagation()}
+      className={`relative isolate w-full overflow-hidden rounded-[1.375rem] bg-[#1b2128] ${small ? "h-[16rem]" : "h-[46vh] max-h-[26rem] min-h-[17rem]"}`}
+    >
       <div ref={box} className="absolute inset-0 isolate z-0" />
       <canvas ref={fieldCv} className={`pointer-events-none absolute left-0 top-0 z-10 transition-opacity ${moving ? "opacity-0" : ""}`} />
       <canvas ref={flowCv} className="pointer-events-none absolute left-0 top-0 z-20" />
       <canvas ref={topCv} className={`pointer-events-none absolute left-0 top-0 z-30 ${moving ? "opacity-0" : ""}`} />
       {err && <div className="absolute inset-0 z-40 grid place-items-center px-6 text-center text-[0.8125rem] text-white/70">Harita yüklenemedi</div>}
       <div className="pointer-events-none absolute inset-0 z-[1000]">
-        <div className="pointer-events-auto absolute right-3 top-3 flex flex-col gap-2">
+        <div className={`pointer-events-auto absolute right-3 flex flex-col gap-2 ${small ? "top-14" : "top-3"}`}>
           <div className={`flex flex-col overflow-hidden rounded-full ${GLASS}`}>
             <button type="button" onClick={() => zoom(1)} aria-label="Yakınlaştır" className="grid size-9 place-items-center text-[1.125rem] font-semibold">
               +
@@ -294,7 +302,15 @@ const PlayIcon = () => (
   </svg>
 );
 
-export function WindMapView() {
+const OpenIcon = () => (
+  <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M7 17 17 7" />
+    <path d="M8 7h9v9" />
+  </svg>
+);
+
+// embed: hava durumu penceresinde küçük harita (gün ve saat çubukları yok, ↗ ile tam sayfa); date: o günü göster
+export function WindMapView({ embed = false, date = null }) {
   // Konum profilde de saklanır (başka cihazda seçildiyse burada da uygulanır; useWeather ile aynı)
   const saved = useAuth().profile?.weatherPlace;
   useEffect(() => {
@@ -350,6 +366,15 @@ export function WindMapView() {
     return () => clearInterval(t);
   }, [play, data]);
 
+  // Hava durumunda seçilen gün değişince haritayı o güne al (bugünse şimdiki saat, değilse öğlen)
+  const [shown, setShown] = useState(null);
+  const wantDay = embed && date && data ? daysOf(data.times).find((x) => x.date === date) : null;
+  if (wantDay && shown !== date) {
+    setShown(date);
+    setPlay(false);
+    setSel(date === nowStr().slice(0, 10) ? nowIndex(data.times, nowStr()) : Math.min(wantDay.from + 12, data.times.length - 1));
+  }
+
   const frame = useMemo(() => (data && sel != null ? frameAt(data, sel) : []), [data, sel]);
   if (!data) {
     return err ? (
@@ -357,7 +382,7 @@ export function WindMapView() {
         Rüzgâr alınamadı · tekrar dene
       </button>
     ) : (
-      <Loading className="py-16" />
+      <Loading className={embed ? "py-10" : "py-16"} />
     );
   }
 
@@ -374,8 +399,17 @@ export function WindMapView() {
   const grad = `linear-gradient(90deg, ${LEGEND.map((l, i) => `${l.color} ${(i / (LEGEND.length - 1)) * 100}%`).join(", ")})`;
 
   return (
-    <div className="mt-2 space-y-3">
-      <WindLeaflet data={data} frame={frame} place={place}>
+    <div className={embed ? "" : "mt-2 space-y-3"}>
+      <WindLeaflet data={data} frame={frame} place={place} small={embed}>
+        {embed && (
+          <Link
+            href="/wind"
+            aria-label="Rüzgâr haritasını aç"
+            className={`pointer-events-auto absolute right-3 top-3 grid size-9 place-items-center rounded-full ${GLASS}`}
+          >
+            <OpenIcon />
+          </Link>
+        )}
         {/* Konumdaki rüzgâr */}
         {here && (
           <div className={`absolute left-3 top-3 flex items-center gap-2 rounded-full py-1.5 pl-3 pr-3.5 ${GLASS}`}>
@@ -397,12 +431,12 @@ export function WindMapView() {
           onClick={() => setInfo((v) => !v)}
           aria-label="Bilgi"
           aria-expanded={info}
-          className={`pointer-events-auto absolute right-3 top-[6.25rem] grid size-9 place-items-center rounded-full text-[0.9375rem] font-bold italic ${GLASS}`}
+          className={`pointer-events-auto absolute ${embed ? "right-14 top-3" : "right-3 top-[6.25rem]"} grid size-9 place-items-center rounded-full text-[0.9375rem] font-bold italic ${GLASS}`}
         >
           i
         </button>
         {info && (
-          <div className={`pointer-events-auto absolute right-14 top-3 w-[min(15rem,calc(100%-5rem))] rounded-2xl p-3 text-[0.75rem] ${GLASS}`}>
+          <div className={`pointer-events-auto absolute right-14 ${embed ? "top-14" : "top-3"} w-[min(15rem,calc(100%-5rem))] rounded-2xl p-3 text-[0.75rem] ${GLASS}`}>
             <b className="block text-[0.8125rem] font-semibold">{placeLabel(place)}</b>
             <p className="mt-1 text-white/60">Rüzgâr Open-Meteo · {DARK_ATTR}</p>
             <div className="mt-2.5 flex gap-1.5">
@@ -461,7 +495,7 @@ export function WindMapView() {
       </WindLeaflet>
 
       {/* Gün ve saat seçimi */}
-      <section className="rounded-2xl bg-card p-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      {!embed && <section className="rounded-2xl bg-card p-3 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
         <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
           {days.map((d, k) => {
             const on = d === day;
@@ -493,7 +527,7 @@ export function WindMapView() {
             <span>23</span>
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }
