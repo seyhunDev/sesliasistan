@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
@@ -14,7 +14,7 @@ import { EXPIRY, raceExpired } from "@/lib/expiry";
 import { placeText as resPlace, resultsOpen, withResults } from "@/lib/raceResults";
 import { RaceResults } from "./RaceResults";
 import { isActive } from "./data";
-import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, phoneMissing, rangeText } from "./raceDocs";
+import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, phoneMissing, rangeText, splitPages } from "./raceDocs";
 import { raceNames } from "./raceNames";
 import { applyNotice, kindOf, noticeDiff, readNotice, readNoticeText } from "./raceNotice";
 import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile } from "./noticeFile";
@@ -37,6 +37,12 @@ const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayS
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const partName = (all, title) => `${all.replace(/-evrak\.pdf$/, "")}-${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.pdf`;
+// Saklanan parçadan dosyalar: belge + (sporcu başına belgede) her sporcunun tek sayfası
+const partFiles = (all, x) => ({
+  ...x,
+  file: new File([x.blob], partName(all, x.title), { type: "application/pdf" }),
+  people: (x.people || []).map((p) => ({ ...p, file: new File([p.blob], partName(all, `${x.title} ${p.name}`), { type: "application/pdf" }) })),
+});
 const asFile = (x) => new File([x.blob], x.name, { type: x.type });
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 const input = "mt-0.5 block h-7 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60";
@@ -135,7 +141,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       if (Array.isArray(f.docs) && f.docs.length && !startDocs) setDocs(cleanDocs(f.docs));
       setMailText(f.mailText || "");
       setMade({ at: f.at, pages: f.pages });
-      setParts((f.parts || []).map((x) => ({ ...x, file: new File([x.blob], partName(f.name, x.title), { type: "application/pdf" }) })));
+      setParts((f.parts || []).map((x) => partFiles(f.name, x)));
     });
     getExtras(start.id).then((l) => live && setExtras(l));
     return () => void (live = false);
@@ -320,14 +326,16 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       const each = [];
       for (const [k, title] of DOCS.filter(([k]) => docs.includes(k))) {
         const b = await buildRaceDocs(docR, forDocs, fonts, [k], coach);
-        each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : k === "coach" || k === "entry" ? groupCount : 1 });
+        // Veli izni ve kulüp izin yazısı sporcu başına bir sayfa: her sporcunun sayfası ayrıca paylaşılabilir
+        const people = k === "parent" || k === "club" ? (await splitPages(b)).map((one, i) => ({ id: chosen[i]?.id || String(i), name: chosen[i]?.studentName || `${i + 1}. sporcu`, blob: new Blob([one], { type: "application/pdf" }) })) : [];
+        each.push({ key: k, title, blob: new Blob([b], { type: "application/pdf" }), pages: k === "parent" || k === "club" ? chosen.length : k === "coach" || k === "entry" ? groupCount : 1, people });
       }
       const at = new Date().toISOString();
       setFile(new File([bytes], name, { type: "application/pdf" }));
       setStale(false);
       setMailText(text);
       setMade({ at, pages });
-      setParts(each.map((x) => ({ ...x, file: new File([x.blob], partName(name, x.title), { type: "application/pdf" }) })));
+      setParts(each.map((x) => partFiles(name, x)));
       await queue.current.catch(() => {});
       if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
       setTab("docs");
@@ -352,6 +360,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setMailing(false);
   };
   const share = (f = file) => shareFile(f);
+  const [openPart, setOpenPart] = useState(null); // sporcuları açık belge (veli izni, kulüp izni)
   // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
   const [docView, setDocView] = useState(null);
   const openPdf = (f = file) => setDocView(f);
@@ -1081,7 +1090,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
                 <FileRow tag="PDF" title="Tümü (tek dosya)" sub={`${made?.pages || pages} sayfa · yazdır, imzala, gönder`} onOpen={() => openPdf()} onShare={() => share()} />
                 {parts.map((x) => (
-                  <FileRow key={x.key} tag="PDF" title={x.title} sub={`${x.pages} sayfa`} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />
+                  <Fragment key={x.key}>
+                    <FileRow tag="PDF" title={x.title} sub={x.people.length > 1 ? `${x.pages} sayfa · ${openPart === x.key ? "sporcuları gizle" : "tek sporcununkini seç"}` : `${x.pages} sayfa`} onOpen={() => (x.people.length > 1 ? setOpenPart(openPart === x.key ? null : x.key) : openPdf(x.file))} onShare={() => share(x.file)} />
+                    {openPart === x.key && <FileRow tag="PDF" title={`Hepsi · ${x.people.length} sporcu`} sub={x.title} onOpen={() => openPdf(x.file)} onShare={() => share(x.file)} />}
+                    {openPart === x.key &&
+                      x.people.map((p) => <FileRow key={p.id} tag="PDF" title={p.name} sub={x.title} onOpen={() => openPdf(p.file)} onShare={() => share(p.file)} />)}
+                  </Fragment>
                 ))}
               </ul>
               <div className="mt-2 flex items-start gap-3 px-1">
