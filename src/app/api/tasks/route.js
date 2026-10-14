@@ -6,7 +6,7 @@ import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
 import { cleanSay } from "@/lib/speech/normalize";
 import { ARGS_SCHEMA, actsPrompt } from "@/lib/actCatalog";
-import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
+import { draftBlock, historyBlock, memoBlock, sessionsBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -78,12 +78,13 @@ async function handle(request) {
   const memo = memoBlock(body?.memo);
   const history = historyBlock(body?.history);
   const draft = draftBlock(body?.draft);
+  const sessions = sessionsBlock(body?.sessions);
   const race = String(body?.race ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
   const hints = hintBlock(body);
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1400, timeoutMs: 16000, attemptMs: 8000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${sessions ? `\n\n${sessions}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1400, timeoutMs: 16000, attemptMs: 8000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     const fixes = (Array.isArray(raw?.fixes) ? raw.fixes : []).map((f) => ({ heard: line(f?.heard), meant: line(f?.meant) })).filter((f) => f.heard && f.meant).slice(0, 10);

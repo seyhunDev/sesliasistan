@@ -80,7 +80,7 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     if (id !== runId.current) return;
     countHit("ai");
     timingMark("ai");
-    const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
+    const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), sessions: ctx.sessionsNow?.() || [], people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
     if (id !== runId.current) return;
     timingMark("aiDone");
     setPhase("preparing");

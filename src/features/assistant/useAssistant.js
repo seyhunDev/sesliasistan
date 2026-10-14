@@ -17,7 +17,8 @@ import { rel, todayStr } from "@/lib/utils/format";
 import { seriesDates } from "@/lib/repeat";
 import { pastTense } from "@/lib/assistTasks";
 import { useWaitLines } from "./WaitLines";
-import { ASK_EMPTY, PAST_MS, asksToClear, remember } from "@/lib/convoContext";
+import { ASK_EMPTY, PAST_MS, asksToClear, remember, sessionOf, sessionsFor } from "@/lib/convoContext";
+import { loadSessions, saveSession } from "@/lib/sessionStore";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
@@ -70,6 +71,9 @@ export const KIND_ICON = { plan: "cal", task: "task", note: "note" };
 // Ekrandan kalkan konuşma (keepPast): son 12 tur, taslak ve hafızayla birlikte, saklandığı an
 export const recentPast = (p) => Date.now() - p.at < PAST_MS;
 export const pastSnap = (prev, list, msgDraft, memo) => ({ turns: [...prev, ...list.filter((t) => t && !t.pre)].slice(-12), at: Date.now(), msgDraft, memo });
+
+// Saat (render dışında, olay ve etkilerde çağrılır)
+const nowMs = () => Date.now();
 
 export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const ctx = {}; // taşınan işlerin bağlamı (sonda doldurulur)
@@ -349,7 +353,15 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const pastTurns = () => (pastOn() ? past.current.turns : []);
   function keepPast(list) {
     past.current = pastSnap(pastTurns(), list, msgDraft.current, memo.current);
+    // Son 5 oturum (Seyhun, 2026-10-14): bu açılışın konuşması kısa özet olarak cihazda kalır, sonraki isteklerde yapay zekaya gider
+    saveSession(dataUid, sessionOf(list, memo.current, { id: openId.current, at: past.current.at }));
   }
+  const openId = useRef(0);
+  useEffect(() => {
+    if (open) openId.current = nowMs();
+  }, [open]);
+  // Yapay zekaya giden son oturumlar (az önceki, zaten geçmiş olarak giden oturum hariç)
+  const sessionsNow = () => sessionsFor(loadSessions(dataUid), nowMs(), pastOn() ? past.current.at : 0);
   // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
   const ASK_REFS = { attName: attAsk, raceChoice: raceChoices, to: askTo, log: logFlow, person: personFlow, invoice: invAsk, ok: okFlow, athlete: athAsk, raceFollow, event: eventFlow, inv: invFlow };
   function waitFor(kind = "") {
@@ -831,6 +843,6 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Tek görünüm: konuşma alttaki yeşil kubbenin (TabBar › Dome) içindeki yuvaya çizilir; ayrı pencere yok
   // Taşınan işler (isler/, beyin/) bileşenin durumuna ve yardımcılarına ctx ile ulaşır; her çizimde yenilenir
   // eslint-disable-next-line react-hooks/refs -- ref nesneleri yalnız iletilir; .current olaylarda okunur
-  Object.assign(ctx, { showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
+  Object.assign(ctx, { sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
   return { WA_PICK, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait };
 }
