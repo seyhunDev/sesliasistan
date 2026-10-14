@@ -400,11 +400,18 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
   [data-press][data-pressed], .raised[data-pressed] { transform: none; }
 }
 
-/* Sayfa geçişinde üstteki ilerleme çizgisi (NavProgress.jsx) */
-.navbar-run { animation: navgrow 6s cubic-bezier(.1, .7, .2, 1) forwards; }
-.navbar-done { transform: scaleX(1); opacity: 0; transition: transform .2s ease-out, opacity .3s ease .15s; }
-@keyframes navgrow { from { transform: scaleX(0); } 15% { transform: scaleX(.45); } to { transform: scaleX(.9); } }
-@media (prefers-reduced-motion: reduce) { .navbar-run { animation: none; transform: scaleX(.6); } }
+/* Sayfa geçişinde ortada sade yükleniyor çemberi (NavProgress.jsx). Hızlı açılışta görünmesin diye 0,35 sn sonra belirir. */
+.navspin {
+  width: 2rem; height: 2rem; border-radius: 9999px;
+  border: 2.5px solid color-mix(in srgb, var(--acc) 16%, transparent);
+  border-top-color: var(--acc);
+  opacity: 0;
+  animation: navspin .75s linear infinite, navspin-in .2s ease-out .35s forwards;
+}
+.navspin-done { animation: navspin .75s linear infinite; opacity: 0; transition: opacity .15s; }
+@keyframes navspin { to { transform: rotate(360deg); } }
+@keyframes navspin-in { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .navspin { animation: navspin-in .2s ease-out .35s forwards; } }
 /* Kubbedeki sohbette senin mesajın: sağda belirgin buzlu balon (mesajlaşma uygulamaları gibi) */
 
 /* Konuşma kutusunda dinlerken yanıp sönen imleç (durum yazısı yerine; Seyhun, 2026-10-10) */
