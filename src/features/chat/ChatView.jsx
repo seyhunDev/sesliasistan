@@ -505,7 +505,7 @@ export function ChatView({ cid }) {
               <div key={m.id} data-mid={m.id}>
                 {(!prev || !sameDay(prev.at, m.at)) && (
                   <p className="my-3 text-center">
-                    <span className="rounded-full bg-card/90 px-3.5 py-1 text-[0.75rem] font-semibold text-mut shadow-[0_1px_2px_rgba(38,40,44,.08)]">{dayText(m.at)}</span>
+                    <span className="text-[0.75rem] font-semibold text-mut">{dayText(m.at)}</span>
                   </p>
                 )}
                 {i === firstUnread && (
@@ -529,7 +529,7 @@ export function ChatView({ cid }) {
                       }}
                       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !m.deleted && (e.preventDefault(), setAct(m))}
                       className={`relative cursor-pointer select-none [-webkit-touch-callout:none] min-w-[4.5rem] px-3 pb-2 pt-1.5 text-left text-[1rem] leading-[1.35] shadow-[0_1px_1.5px_rgba(38,40,44,.08)] transition active:scale-[.99] ${
-                        mine ? `bg-deep text-white ${tail ? "rounded-[1.25rem] rounded-br-md" : "rounded-[1.25rem]"}` : `bg-card text-fg ${tail ? "rounded-[1.25rem] rounded-bl-md" : "rounded-[1.25rem]"}`
+                        mine ? `bg-deep text-white rounded-[1.25rem] rounded-br-md ${head ? "" : "rounded-tr-md"}` : `bg-card text-fg rounded-[1.25rem] rounded-bl-md ${head ? "" : "rounded-tl-md"}`
                       }`}
                     >
                       {showName && <span className={`mb-0.5 block text-[0.8125rem] font-semibold ${toneOf(m.by)}`}>{personName(m.by)}</span>}
