@@ -129,14 +129,19 @@ export function fitHref(date, fit = []) {
 export function dayInfo(day, att, today) {
   const sail = day.sail || [];
   const fit = day.fit || [];
+  const other = day.other || [];
   const yok = att ? attHref(day.date, today) || "" : "";
-  return { tap: sail.length > 0 || fit.length > 0 || !!att, sail, attHref: yok, add: !!att && !sail.length, fit, fitHref: fitHref(day.date, fit) };
+  return { other, tap: sail.length > 0 || fit.length > 0 || other.length > 0 || !!att, sail, attHref: yok, add: !!att && !sail.length, fit, fitHref: fitHref(day.date, fit) };
 }
 export function trainingWeek(plans = [], today, fit = []) {
   const base = new Date(`${today}T12:00:00`);
   const start = new Date(base);
   start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
   const tr = plans.filter((p) => isTraining(p) && p.status !== "cancelled" && p.date);
+  // Antrenman ve fitness dışındaki planlar (iptal ve bitenler hariç), saat sırasıyla
+  const others = plans
+    .filter((p) => p.date && !isTraining(p) && !isFit(p) && p.status !== "cancelled" && !p.done)
+    .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const days = DOW.map((w, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
@@ -147,14 +152,15 @@ export function trainingWeek(plans = [], today, fit = []) {
     const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
     const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
     f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
-    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f };
+    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f, other: others.filter((p) => p.date === date) };
   });
   const ym = today.slice(0, 7);
   const m = monthLog(plans, ym);
   const missing = plans.filter((p) => canLog(p, today) && !p.log && p.date >= `${ym}-01`).length;
   const planned = days.filter((x) => x.has).length;
   const fitN = days.reduce((t, x) => t + x.fit.length, 0);
-  if (!planned && !m.total && !missing && !fitN) return null;
+  const otherN = days.reduce((t, x) => t + x.other.length, 0);
+  if (!planned && !m.total && !missing && !fitN && !otherN) return null;
   return {
     days,
     planned,
@@ -163,6 +169,7 @@ export function trainingWeek(plans = [], today, fit = []) {
     avgWind: m.avgWind,
     missing,
     fitN,
+    otherN,
     fitDone: days.reduce((t, x) => t + x.fit.filter((f) => f.st === "done").length, 0),
     month: cap(monthName(ym)),
   };

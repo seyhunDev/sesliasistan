@@ -621,6 +621,23 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
+  ["kulüp kartları", F("antrenman haftası: diğer planlar da (iptal, biten, antrenman, fitness hariç)", () => {
+    const today = "2026-10-14";
+    const plans = [
+      { id: "p1", cat: "Toplantı", title: "Toplantı", date: "2026-10-15", time: "14:00" },
+      { id: "p2", title: "Kahvaltı", date: "2026-10-15", time: "09:00" },
+      { id: "p3", title: "İptal", date: "2026-10-16", status: "cancelled" },
+      { id: "p4", title: "Bitti", date: "2026-10-16", done: true },
+      { id: "p5", cat: "Antrenman", date: "2026-10-17" },
+      { id: "p6", cat: "Fitness", date: "2026-10-17", fit: {} },
+    ];
+    const w = HT.trainingWeek(plans, today);
+    const thu = w.days[3];
+    const i = HT.dayInfo(thu, false, today), fri = HT.dayInfo(w.days[4], false, today);
+    const only = HT.trainingWeek([{ id: "x", title: "Doktor", date: "2026-10-18" }], today);
+    return w.otherN === 2 && thu.other.map((p) => p.id).join() === "p2,p1" && i.tap && !fri.tap && w.days[5].other.length === 0
+      && only && only.otherN === 1 && HT.dayInfo(only.days[6], false, today).tap;
+  })],
   ["kulüp kartları", F("antrenman haftası: gün penceresi (yelken yoklama, plansız gün antrenman ekle, fitness sporcuları)", () => {
     const today = "2026-10-14";
     const plans = [
