@@ -6,14 +6,13 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
 import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
-import { mailMoveErr, moveAllMailFiles } from "@/features/mail/mailFiles";
+import { cleanMailFiles } from "@/features/mail/mailFiles";
 import { db } from "@/lib/firebase/clientApp";
 import { listMeetings } from "@/lib/meeting/store";
 import { Row } from "./ui";
 
 // Ayarlar › Telefondaki veriyi taşı: bu telefonda kalan her şeyi Firebase'e gönderir.
 // 1) Gönderilmeyi bekleyen kayıtlar (internetsizken yazılanlar) 2) yalnız bu telefonda duran yarış evrakı (Storage'a)
-// 3) banka maillerinin Excel ekleri: tablosu tam okunan ek silinir, okunamayan Storage'da kalır (mailFiles.js).
 // Hepsi gidince "Telefondaki kopyaları sil" çıkar: hazırlanan evrak, talimat/fatura/envanter kopyaları ve uygulama dosyaları
 // silinir (gerekince yeniden hazırlanır ya da indirilir). Özetlenmemiş toplantılar Firebase'e kendiliğinden gidemez, silinmez.
 const withTimeout = (p, ms) => Promise.race([p.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
@@ -57,19 +56,9 @@ export function MoveAllRow() {
           why = "Yarış evrakı zamanında yüklenemedi";
         }
       } else left = await localExtraCount().catch(() => 0);
-      let mails = { moved: 0, left: 0 };
-      if (owner) {
-        setBusy("Mail ekleri temizleniyor…");
-        const r = await withValue(
-          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri temizleniyor… (${n} silindi)` : `Mail ekleri temizleniyor… ${n} silindi`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
-          20 * 60e3,
-        );
-        mails = r || { moved: 0, left: 1, err: "zaman aşımı" };
-        if (mails.left) why ||= errText(mails.err || mailMoveErr());
-      }
-      if (left && !why) why = errText(mailMoveErr()) || "Bazı evrak yüklenemedi";
+      if (left && !why) why = "Bazı evrak yüklenemedi";
       const meetings = (await listMeetings().catch(() => [])).length;
-      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left, mailKept: mails.kept || 0, why });
+      setOut({ ok: writes && left === 0, writes, moved, left, meetings, why });
     } catch (e) {
       console.warn("[moveAll]", e);
       setOut({ ok: false, err: true, why: errText(e?.code || e?.message) });
@@ -102,9 +91,6 @@ export function MoveAllRow() {
           out.writes ? "Bekleyen kayıtlar gönderildi" : "Bekleyen kayıtlar gönderilemedi",
           out.moved ? `${out.moved} evrak taşındı` : "",
           out.left ? `${out.left} evrak taşınamadı` : "",
-          out.mailMoved ? `${out.mailMoved} mail eki silindi (tablosu kayıtlı)` : "",
-          out.mailKept ? `${out.mailKept} ek okunamadığı için Storage'da saklandı` : "",
-          out.mailLeft ? "Bazı mail ekleri taşınamadı" : "",
           out.why || "",
           out.meetings ? `${out.meetings} toplantı özetlenmemiş (Notlar › Toplantı'dan özetle)` : "",
           out.ok ? (out.dropped ? "Kopyalar silindi" : "Hepsi Firebase'de") : "",
@@ -123,5 +109,34 @@ export function MoveAllRow() {
         </div>
       )}
     </Row>
+  );
+}
+
+// Ayarlar › Mail eklerini sil: banka maillerinin eski Excel ekleri sunucuda silinir, önce Storage'dakiler, sonra maillerin
+// içindekiler (mailFiles.js cleanMailFiles). Tablolar mailde kalır; bakiye, aidat, fatura ve banka defteri onları kullanır.
+export function MailFilesRow() {
+  const toast = useToast();
+  const { profile } = useAuth();
+  const owner = profile?.role !== "staff" && (profile?.orgId || profile?.uid) === profile?.uid;
+  const [busy, setBusy] = useState("");
+  const [out, setOut] = useState("");
+  if (!owner) return null;
+
+  const run = async () => {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return toast("İnternet yok, bağlanınca dene");
+    if (!confirm("Banka maillerinin eski Excel ekleri silinsin mi? Tablolar kayıtlı kalır, orijinaller Gmail'de durur.")) return;
+    setOut("");
+    setBusy("Storage'daki ekler siliniyor…");
+    try {
+      const r = await cleanMailFiles((mode, n) => setBusy(mode === "files" ? `Storage'daki ekler siliniyor… ${n} silindi` : `Maillerdeki ekler siliniyor… ${n} silindi`));
+      setOut(r.files + r.raw ? `Storage'dan ${r.files}, maillerden ${r.raw} ek silindi` : "Silinecek ek yok");
+    } catch (e) {
+      setOut(`Durdu: ${String(e?.message || e).slice(0, 120)}. Yeniden dokun, kaldığı yerden sürer.`);
+    }
+    setBusy("");
+  };
+
+  return (
+    <Row icon="trash" tone="slate" title="Mail eklerini sil" sub={busy || out || "Banka maillerinin eski Excel eklerini siler"} onClick={busy ? undefined : run} />
   );
 }

@@ -150,7 +150,7 @@ export default function MailPage() {
     return () => window.removeEventListener("sa-debts-saved", load);
   }, [owner, profile?.uid]);
 
-  // Ekleri hâlâ mailin içinde duran mailler: tablo okunur, ekler Storage'a taşınır, mailden silinir (mailFiles.js; bir kez)
+  // Ekleri hâlâ mailin içinde duran mailler: tablo okunur (yoksa), ek silinir (mailFiles.js; bir kez)
   const pending = (mails || [])
     .filter((m) => m.raw?.length)
     .map((m) => m.id)

@@ -10,7 +10,7 @@ import { due, eveningText, morningText } from "../../src/lib/summary.js";
 import { WIND_KN, birthdayText, isMonday, weeklyText, windAlert, windRows, windUrl } from "../../src/lib/notifyExtra.js";
 import { mailDigestText } from "../../src/lib/bankSheet.js";
 import { movementsOf } from "../../src/lib/mailBoard.js";
-import { MAIL_ROWS, rawDone, sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
+import { MAIL_ROWS, sheetsFromRaw, xlsxOf } from "../../src/lib/mailParse.js";
 import { duesText, runAutoDues } from "../../src/lib/duesAuto.js";
 import { invoiceText, runAutoInvoices } from "../../src/lib/invoices.js";
 import { garantiText, runGaranti } from "../../src/lib/garanti.js";
@@ -373,14 +373,14 @@ async function sendMailDigests(db, all) {
     if (Date.now() - Date.parse(d.mailLastAt || 0) < MAIL_QUIET) continue;
     const snap = await db.collection("orgs").doc(u.id).collection("mails").where("notified", "==", false).get();
     if (!snap.empty) {
-      // Excel ekleri tabloya çevrilir; tablo tam okunduysa ham ek silinir (/api/mail/push ile aynı)
+      // Excel ekleri tabloya çevrilir, ham ek silinir (/api/mail/push ile aynı)
       const mails = await Promise.all(
         snap.docs.map(async (x) => {
           const m = x.data();
           if (!m.raw?.length) return m;
           const read = sheetsFromRaw(m.raw, xlsxOf(await import("xlsx")), MAIL_ROWS);
           const sheets = read.length || !m.sheets ? read : m.sheets;
-          await x.ref.update({ sheets, ...(rawDone(m.raw, read) ? { raw: FieldValue.delete() } : {}) }).catch(() => {});
+          await x.ref.update({ sheets, raw: FieldValue.delete() }).catch(() => {});
           return { ...m, sheets };
         }),
       );

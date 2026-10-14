@@ -23,12 +23,5 @@ export function sheetsFromRaw(raw, XLSX, maxRows = 500) {
 }
 // Mail eklerinden okunan en çok satır (günlük hesap özeti birkaç satır; sınır yalnız bozuk dosyaya karşı)
 export const MAIL_ROWS = 5000;
-// Ham ekler silinebilir mi: her ek Excel/CSV, her biri tablo olarak okundu (başlık bulundu) ve satırlar kesilmedi.
-// Değilse ek silinmez (Storage'da saklanır): okunamayan bir biçim veri kaybı olmasın.
-export function rawDone(raw, sheets) {
-  const files = (raw || []).filter((f) => f?.data);
-  if (!files.length) return false;
-  return files.every((f) => /\.(xlsx?|csv)$/i.test(f.name || "") && (sheets || []).some((s) => s.file === f.name && s.columns?.length && (s.rows?.length || 0) < MAIL_ROWS));
-}
 // SheetJS modülünü her ortamda aynı biçimde verir (ESM/CJS farkı)
 export const xlsxOf = (m) => (m?.read ? m : m?.default);
