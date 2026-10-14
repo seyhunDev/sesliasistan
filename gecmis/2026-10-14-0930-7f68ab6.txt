@@ -1,8 +1,8 @@
-Commit: caffe27 · Instagram: tek tasarım (Afiş), 5 tür, düğmeler önizlemenin altında (#333)
-Zaman: 2026-10-12-2030 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38284505416
+Commit: 7f68ab6 · Hava penceresinde En sert / Yelkene uygun kutusu kaldırıldı (#395)
+Zaman: 2026-10-14-0930 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38522434622
 
-TAM TEST · 12.10.2026 20:29:31
+TAM TEST · 14.10.2026 09:29:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

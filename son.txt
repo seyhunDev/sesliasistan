@@ -1,8 +1,8 @@
-Commit: e762b42 · Rüzgâr haritası hava penceresinde, kaynak bilgisi i simgesinde (#394)
-Zaman: 2026-10-14-0920 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38521529023
+Commit: 7f68ab6 · Hava penceresinde En sert / Yelkene uygun kutusu kaldırıldı (#395)
+Zaman: 2026-10-14-0930 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38522434622
 
-TAM TEST · 14.10.2026 09:19:45
+TAM TEST · 14.10.2026 09:29:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 66 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
