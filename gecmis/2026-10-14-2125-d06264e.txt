@@ -1,8 +1,8 @@
-Commit: 58b73c2 · Hareket videosu başka sitenin sayfasından: sunucu sayfadaki videoyu bulur (#365)
-Zaman: 2026-10-13-1742 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38415466946
+Commit: d06264e · Asistan puanlaması: 1. adım ölçüm ve Öğrenme raporu (#429)
+Zaman: 2026-10-14-2125 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38614744030
 
-TAM TEST · 13.10.2026 17:41:26
+TAM TEST · 14.10.2026 21:23:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

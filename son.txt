@@ -1,8 +1,8 @@
-Commit: 6833444 · Asistan aşağı çekilince küçülüp sağ altta küre olarak çalışmaya devam ediyor (#428)
-Zaman: 2026-10-14-2112 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38612995851
+Commit: d06264e · Asistan puanlaması: 1. adım ölçüm ve Öğrenme raporu (#429)
+Zaman: 2026-10-14-2125 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38614744030
 
-TAM TEST · 14.10.2026 21:11:33
+TAM TEST · 14.10.2026 21:23:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
