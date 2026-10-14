@@ -1,8 +1,8 @@
-Commit: 6fa9e11 · Küçülen asistan alttaki küreyi kullanıyor, üstünde mesaj balonu; tam ekranda üstte boşluk ve soluklaşma (#430)
-Zaman: 2026-10-14-2143 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38617086721
+Commit: 4733f60 · Sesli okuma: oku/söyle/anlat ve liste sorularında cevap okunur, sonra mikrofon açılır (#431)
+Zaman: 2026-10-14-2149 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38618166293
 
-TAM TEST · 14.10.2026 21:40:47
+TAM TEST · 14.10.2026 21:48:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 140 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
