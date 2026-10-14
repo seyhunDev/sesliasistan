@@ -11,7 +11,12 @@ import { app, db } from "@/lib/firebase/clientApp";
 import { dropRaceFile, listRaceFiles, saveRaceFile } from "./raceFiles";
 
 export const RACE_FILE_MAX = 20 * 1024 * 1024;
-const store = () => getStorage(app);
+const store = () => {
+  const s = getStorage(app);
+  s.maxUploadRetryTime = 60e3; // bağlantı ya da kural sorununda 10 dk takılı kalmasın
+  s.maxOperationRetryTime = 30e3;
+  return s;
+};
 const path = (orgId, id) => `orgs/${orgId}/raceFiles/${id}`;
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const cacheKey = (id) => `rf:${id}`;

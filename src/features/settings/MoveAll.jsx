@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
 import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
-import { moveAllMailFiles } from "@/features/mail/mailFiles";
+import { mailMoveErr, moveAllMailFiles } from "@/features/mail/mailFiles";
 import { db } from "@/lib/firebase/clientApp";
 import { listMeetings } from "@/lib/meeting/store";
 import { Row } from "./ui";
@@ -17,6 +17,17 @@ import { Row } from "./ui";
 // Hepsi gidince "Telefondaki kopyaları sil" çıkar: hazırlanan evrak, talimat/fatura/envanter kopyaları ve uygulama dosyaları
 // silinir (gerekince yeniden hazırlanır ya da indirilir). Özetlenmemiş toplantılar Firebase'e kendiliğinden gidemez, silinmez.
 const withTimeout = (p, ms) => Promise.race([p.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
+const withValue = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
+// Firebase hata kodunu kullanıcının anlayacağı cümleye çevirir
+function errText(code) {
+  const c = String(code || "");
+  if (!c) return "";
+  if (/unauthorized|permission/.test(c)) return "Firebase izin vermedi: Storage kuralları yayınlanmamış olabilir";
+  if (/retry-limit|deadline|zaman/.test(c)) return "Yükleme zamanında bitmedi: bağlantı zayıf";
+  if (/bucket|project-not-found|not-found/.test(c)) return "Firebase Storage açık değil";
+  if (/quota/.test(c)) return "Firebase kotası doldu";
+  return `Hata: ${c.slice(0, 60)}`;
+}
 
 export function MoveAllRow() {
   const toast = useToast();
@@ -27,21 +38,41 @@ export function MoveAllRow() {
 
   const move = async () => {
     if (typeof navigator !== "undefined" && navigator.onLine === false) return toast("İnternet yok, bağlanınca dene");
-    setBusy("move");
+    setBusy("Bekleyen kayıtlar gönderiliyor…");
     setOut(null);
     try {
       const writes = await withTimeout(waitForPendingWrites(db), 20e3);
       let moved = 0;
       let left = 0;
-      if (owner) ({ moved, left } = await moveLocalExtras(profile.orgId || profile.uid, undefined, (p) => setBusy(`move:${Math.round(p * 100)}`)));
-      else left = await localExtraCount().catch(() => 0);
+      let why = "";
+      if (owner) {
+        setBusy("Yarış evrakı taşınıyor…");
+        const r = await withValue(
+          moveLocalExtras(profile.orgId || profile.uid, undefined, (p) => setBusy(`Yarış evrakı taşınıyor… %${Math.round(p * 100)}`)),
+          5 * 60e3,
+        );
+        if (r) ({ moved, left } = r);
+        else {
+          left = await localExtraCount().catch(() => 1);
+          why = "Yarış evrakı zamanında yüklenemedi";
+        }
+      } else left = await localExtraCount().catch(() => 0);
       let mails = { moved: 0, left: 0 };
-      if (owner) mails = await moveAllMailFiles(profile.uid).catch(() => ({ moved: 0, left: 1 }));
+      if (owner) {
+        setBusy("Mail ekleri aranıyor…");
+        const r = await withValue(
+          moveAllMailFiles(profile.uid, (n, step) => setBusy(step === "ara" ? `Mail ekleri aranıyor… (${n} taşındı)` : `Mail ekleri taşınıyor… ${n}`)).catch((e) => ({ moved: 0, left: 1, err: e?.code || e?.message })),
+          5 * 60e3,
+        );
+        mails = r || { moved: 0, left: 1, err: "zaman aşımı" };
+        if (mails.left) why ||= errText(mails.err || mailMoveErr());
+      }
+      if (left && !why) why = errText(mailMoveErr()) || "Bazı evrak yüklenemedi";
       const meetings = (await listMeetings().catch(() => [])).length;
-      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left });
+      setOut({ ok: writes && left === 0 && !mails.left, writes, moved, left, meetings, mailMoved: mails.moved, mailLeft: mails.left, why });
     } catch (e) {
       console.warn("[moveAll]", e);
-      setOut({ ok: false, err: true });
+      setOut({ ok: false, err: true, why: errText(e?.code || e?.message) });
     }
     setBusy("");
   };
@@ -66,13 +97,14 @@ export function MoveAllRow() {
   const text = !out
     ? "Bu telefonda kalan kayıt ve evrakı Firebase'e gönderir"
     : out.err
-      ? "Taşınamadı, internet bağlantısını kontrol et"
+      ? out.why || "Taşınamadı, internet bağlantısını kontrol et"
       : [
           out.writes ? "Bekleyen kayıtlar gönderildi" : "Bekleyen kayıtlar gönderilemedi",
           out.moved ? `${out.moved} evrak taşındı` : "",
           out.left ? `${out.left} evrak taşınamadı` : "",
           out.mailMoved ? `${out.mailMoved} mail eki taşındı` : "",
           out.mailLeft ? "Bazı mail ekleri taşınamadı" : "",
+          out.why || "",
           out.meetings ? `${out.meetings} toplantı özetlenmemiş (Notlar › Toplantı'dan özetle)` : "",
           out.ok ? (out.dropped ? "Kopyalar silindi" : "Hepsi Firebase'de") : "",
         ]
@@ -81,7 +113,7 @@ export function MoveAllRow() {
 
   return (
     <Row icon="cloud" tone="slate" title="Telefondaki veriyi taşı" sub={text} onClick={busy ? undefined : move}>
-      {busy.startsWith("move") && <p className="px-4 pb-3 text-[0.875rem] text-mut">Taşınıyor… {busy.includes(":") ? `%${busy.split(":")[1]}` : ""}</p>}
+      {busy && busy !== "drop" && <p className="px-4 pb-3 text-[0.875rem] text-mut">{busy}</p>}
       {out?.ok && !out.dropped && (
         <div className="px-4 pb-3">
           <button type="button" disabled={!!busy} onClick={drop} className="w-full rounded-xl bg-rec/10 py-2.5 text-[0.9375rem] font-semibold text-rec disabled:opacity-40">

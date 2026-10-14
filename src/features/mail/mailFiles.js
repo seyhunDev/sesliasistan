@@ -9,11 +9,19 @@ import { getDownloadURL, getStorage, ref as sref, uploadBytes } from "firebase/s
 import { app, db } from "@/lib/firebase/clientApp";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 
+const store = () => {
+  const s = getStorage(app);
+  s.maxUploadRetryTime = 60e3;
+  s.maxOperationRetryTime = 30e3;
+  return s;
+};
 const safe = (s) => String(s || "ek").replace(/[^\w.-]+/g, "_").slice(0, 80);
 const typeOf = (name) => (/\.xlsx$/i.test(name) ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : /\.xls$/i.test(name) ? "application/vnd.ms-excel" : "application/octet-stream");
 const bytesOf = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
 let XLSX = null;
+let lastErr = "";
+export const mailMoveErr = () => lastErr;
 const busy = new Set();
 
 // Tek mailin eklerini taşır. true: taşındı (ya da taşınacak bir şey yoktu)
@@ -30,7 +38,7 @@ export async function moveMailFiles(uid, m) {
     for (const [i, f] of m.raw.entries()) {
       if (!f?.data) continue;
       const path = `orgs/${uid}/mailFiles/${m.id}_${i}_${safe(f.name)}`;
-      const r = sref(getStorage(app), path);
+      const r = sref(store(), path);
       const data = bytesOf(f.data);
       await uploadBytes(r, data, { contentType: typeOf(f.name), cacheControl: "private, max-age=31536000" });
       files.push({ name: String(f.name || "ek").slice(0, 120), path, url: await getDownloadURL(r), size: data.length });
@@ -39,6 +47,7 @@ export async function moveMailFiles(uid, m) {
     return true;
   } catch (e) {
     console.warn("[mailFiles] taşınamadı", m.id, e?.code || e);
+    lastErr = e?.code || e?.message || "hata";
     return false;
   } finally {
     busy.delete(m.id);
@@ -50,6 +59,7 @@ export async function moveAllMailFiles(uid, onProg) {
   let moved = 0;
   let left = 0;
   for (let round = 0; round < 40; round++) {
+    onProg?.(moved, "ara");
     const snap = await getDocs(query(collection(db, "orgs", uid, "mails"), where("raw", "!=", null), limit(50)));
     const todo = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((m) => m.raw?.length);
     if (!todo.length) break;
