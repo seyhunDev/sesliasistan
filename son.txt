@@ -1,8 +1,8 @@
-Commit: f2bb08a · Yarışa eklenen evrak Firebase Storage'da; telefondakiler için Firebase'e gönder (#409)
-Zaman: 2026-10-14-1459 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38560352769
+Commit: b5449ac · Yarış evrakı Firebase'e gidince telefonda kopya kalmıyor, kopyaları sil düğmesi (#410)
+Zaman: 2026-10-14-1508 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38561411844
 
-TAM TEST · 14.10.2026 14:58:40
+TAM TEST · 14.10.2026 15:07:22
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 65 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
