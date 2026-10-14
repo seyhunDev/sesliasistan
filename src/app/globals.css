@@ -502,9 +502,10 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 /* Rüzgâr haritası: koyu zemin açılmazsa OpenStreetMap koyulaştırılır */
 .wind-osm { filter: invert(1) hue-rotate(180deg) brightness(.75) saturate(.4); }
 
-/* KÜÇÜLEN ASİSTAN (Seyhun, 2026-10-14): aşağı çekilen ama çalışan asistan sağ altta küre olarak kalır */
+/* KÜÇÜLEN ASİSTAN (Seyhun, 2026-10-14): aşağı çekilen ama çalışan asistan alttaki kürede, üstünde mesaj balonu */
 .amini { animation: aminiIn .3s cubic-bezier(.22, .8, .24, 1); }
 .amini .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .35); }
-.amini-chip { background: rgba(22, 30, 28, .92); color: #eef3f1; box-shadow: 0 8px 22px -10px rgba(0, 0, 0, .5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.amini-bubble { background: rgba(22, 30, 28, .94); color: #eef3f1; box-shadow: 0 10px 26px -12px rgba(0, 0, 0, .55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.amini-tail { position: absolute; left: 50%; bottom: -6px; width: 14px; height: 14px; margin-left: -7px; transform: rotate(45deg); border-radius: 0 0 3px 0; background: rgba(22, 30, 28, .94); }
 @keyframes aminiIn { from { opacity: 0; transform: translateY(12px) scale(.9); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .amini { animation: none; } }

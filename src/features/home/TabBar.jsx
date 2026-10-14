@@ -300,7 +300,7 @@ function AssistBg() {
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -546,9 +546,10 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
               <div
                 ref={pane}
                 // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem)] [scrollbar-width:none]"
+                // Üstte boşluk ve yukarı doğru soluklaşma (Seyhun: "yazı yukarı gittikçe soluklaşsın, üstte biraz boşluk", 2026-10-14)
+                className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
               >
-                <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-2" : ""}`}>
+                <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-10" : ""}`}>
                   <div ref={setSlot} />
                 </div>
               </div>
@@ -586,7 +587,7 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
                       {said || cfg.ph}
                     </span>
                   </button>
-                  <VoiceLight state={active ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
+                  <VoiceLight state={active || small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
                 </div>
               )}
               {/* Kapat: en altta, sabit yerde ve büyük (Seyhun: "üstteki X zor basılıyor, kayıyor", 2026-10-07). Üstteki yer
@@ -611,7 +612,8 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
                 {!noAi && (
                   <div className="relative">
                     <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
-                      <VoiceLight state="idle" onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
+                      {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}
+                      <VoiceLight state={small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
                     </span>
                   </div>
                 )}
@@ -626,17 +628,25 @@ function Dome({ noAi = false, bar, slim, rec, active, state, live, talk, typeNow
   );
 }
 
-// Küçülmüş asistan: sağ altta, sekme çubuğunun üstünde durum renginde küre; yanında o anki iş ya da son cevap tek satır
-function MiniOrb({ state, live, onOpen, onClose }) {
+// Küçülmüş asistan (Seyhun, 2026-10-14): alttaki asıl küre durum rengini alır, hemen üstünde mesaj balonu. Balon uzadıkça
+// son kısmı görünür (eski satırlar yukarıda soluklaşıp kaybolur). Küre görünmüyorsa (açık sohbet) sağ altta yedek küre.
+function MiniBubble({ state, live, bottom, orb, tail, onOpen, onClose }) {
   const text = miniText(state, live);
   return (
-    <div className="amini fixed right-3 z-[39] flex max-w-[calc(100vw-1.5rem)] items-center gap-2" style={{ bottom: "calc(var(--dome-h, 5rem) + 0.75rem)" }}>
+    <div className={`amini pointer-events-none fixed z-[39] flex flex-col items-center ${orb ? "right-3 items-end" : "left-1/2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2"}`} style={{ bottom }}>
       {text && (
-        <button type="button" onClick={onOpen} className="amini-chip min-w-0 truncate rounded-full px-3.5 py-2 text-left text-[0.875rem]">
-          {text}
+        <button type="button" onClick={onOpen} className={`amini-bubble pointer-events-auto relative max-w-full rounded-[1.25rem] px-4 py-2.5 text-left ${orb ? "mb-2" : ""}`}>
+          <span className="flex max-h-[4.6rem] flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_1.6rem)]">
+            <span className="block text-[0.9375rem] leading-snug">{text}</span>
+          </span>
+          {tail && <span className="amini-tail" aria-hidden="true" />}
         </button>
       )}
-      <VoiceLight state={state} onTap={onOpen} onHold={onClose} size="size-14" compact />
+      {orb && (
+        <span className="pointer-events-auto">
+          <VoiceLight state={state} onTap={onOpen} onHold={onClose} size="size-14" compact />
+        </span>
+      )}
     </div>
   );
 }
@@ -663,7 +673,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
 
   const open = !!live.open;
   // Küçülen küre (Seyhun, 2026-10-14): konuşurken ya da iş sürerken aşağı çekilince asistan kapanmaz, sağ altta küre
-  // olarak dinlemeye ve çalışmaya devam eder; küreye dokununca tam ekran döner, basılı tutunca kapanır.
+  // olarak (alttaki asıl küre) dinlemeye ve çalışmaya devam eder; küreye dokununca tam ekran döner, basılı tutunca kapanır.
   const [mini, setMini] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
@@ -746,6 +756,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         slim={slim}
         rec={rec && !noAi}
         active={active && !noAi}
+        small={open && mini && !noAi}
         state={state}
         live={live}
         talk={talk}
@@ -777,7 +788,17 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         path={path}
         unread={unreadTotal}
       />
-      {open && mini && !noAi && <MiniOrb state={state} live={live} onOpen={() => setMini(false)} onClose={() => act.current.close?.()} />}
+      {open && mini && !noAi && (
+        <MiniBubble
+          state={state}
+          live={live}
+          orb={!bar && !rec}
+          tail={bar && !rec}
+          bottom={rec ? "calc(var(--rec-h, 4rem) + 0.5rem)" : bar ? "calc(var(--dome-h, 5rem) + 1.25rem)" : "calc(env(safe-area-inset-bottom) + 1rem)"}
+          onOpen={() => setMini(false)}
+          onClose={() => act.current.close?.()}
+        />
+      )}
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
         <div className="space-y-4">
           {sections.map(([title, list]) => (
