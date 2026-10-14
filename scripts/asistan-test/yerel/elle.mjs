@@ -2038,3 +2038,16 @@ group("Mesaj arşivi")([
   ["son mesaj arşivlenince özet", F("bir önceki görünen mesaj", () => CA.prevShown([AM[0], AM[1], AM[3]], AM[3])?.id === "a")],
   ["hiç kalmazsa", F("null", () => CA.prevShown([AM[1]], AM[1]) === null)],
 ]);
+
+// Sporcu boy ve kilo (lib/athleteBody.js; sporcu sayfası ve asistan "Mete'nin kilosu 52")
+const SBK = await import("@/lib/athleteBody");
+group("Sporcu boy ve kilo")([
+  ["kilo cümlesi", F("ad + kilo", () => { const r = SBK.bodyCommand("Mete'nin kilosu 52"); return r?.name === "Mete" && r.kg === 52 && !r.h && r.explicit; })],
+  ["metre boy", F("1.52 → 152 cm", () => SBK.bodyCommand("Ali Kaya'nın boyu 1.52")?.h === 152)],
+  ["boy ve kilo birlikte", F("148 cm, 40,5 kg", () => { const r = SBK.bodyCommand("Zeynep'in boyu 148 kilosu 40,5"); return r?.h === 148 && r.kg === 40.5; })],
+  ["soru", F("kaydetmez, sorar", () => SBK.bodyCommand("Ali'nin kilosu kaç")?.op === "ask")],
+  ["kendi kilom değil", F("beslenmeye kalır", () => SBK.bodyCommand("kilom 82") === null)],
+  ["aynı gün birleşir", F("boy kalır, kilo güncellenir", () => { const l = SBK.addBody(SBK.addBody([], { d: "2026-10-14", h: 150 }), { d: "2026-10-14", kg: 44 }); return l.length === 1 && l[0].h === 150 && l[0].kg === 44; })],
+  ["son değerler ayrı", F("son boy eski tarihten", () => { const b = SBK.lastBody([{ d: "2026-09-01", h: 149, kg: 42 }, { d: "2026-10-01", kg: 43 }]); return b.h === 149 && b.hd === "2026-09-01" && b.kg === 43; })],
+  ["yazı", F("151 cm · 42,5 kg", () => SBK.bodyText({ h: 151, kg: 42.5 }) === "151 cm · 42,5 kg")],
+]);

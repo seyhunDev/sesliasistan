@@ -6,6 +6,7 @@ import { dikiliAuth, dikiliDb } from "./dikili";
 import { EXPIRY_KEYS } from "@/lib/expiry";
 import { attTakenIn, markAttTaken } from "./attTaken";
 import { todayStr } from "@/lib/utils/format";
+import { addBody, cleanBody, dropBody } from "@/lib/athleteBody";
 
 // Firestore değerlerini düz hale getirir (Timestamp -> ISO tarih)
 function plain(v) {
@@ -57,6 +58,8 @@ async function fetchAthletes() {
       ...Object.fromEntries(DOC_FIELDS.map((k) => [k, a[k] || ""])),
       // Lisans vizesi, sağlık raporu, sigorta bitiş tarihleri (YYYY-MM-DD)
       ...Object.fromEntries(EXPIRY_KEYS.map((k) => [k, typeof a[k] === "string" ? a[k] : ""])),
+      // Boy ve kilo ölçümleri [{ d, h, kg }] (sporcu sayfası, fitness programı)
+      body: cleanBody(a.body),
       // Yoklama: { 2026: { "09-29": "present" } }
       att: Object.fromEntries(Object.entries(a).filter(([k]) => /^attendance_\d{4}$/.test(k)).map(([k, v]) => [k.slice(11), v || {}])),
     });
@@ -131,6 +134,18 @@ export async function updateAthlete(id, before, patch, names) {
   }
   for (const l of logs) await addDoc(collection(db, "athletes", id, "history"), { ...l, date: new Date() });
   forget();
+}
+
+// Boy / kilo ölçümü ekle (m: { d, h, kg }) ya da sil (drop: tarih). Güncel liste sunucudan okunup yazılır.
+export async function saveBody(id, m, drop = "") {
+  await ready();
+  const ref = doc(dikiliDb(), "athletes", id);
+  const snap = await getDoc(ref);
+  const cur = snap.exists() ? snap.data().body : [];
+  const body = drop ? dropBody(cur, drop) : addBody(cur, m);
+  await updateDoc(ref, { body });
+  forget();
+  return body;
 }
 
 // Yeni sporcu (kulüp projesine, kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.

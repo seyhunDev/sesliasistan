@@ -20,6 +20,8 @@ import { historyOf } from "@/lib/raceResults";
 import { Loading } from "@/components/ui/Loader";
 import { athleteDues, lastMonths } from "@/lib/dues";
 import { loadDuesRange } from "@/features/dues/duesData";
+import { saveBody } from "@/features/athletes/data";
+import { bodyText, cleanBody, heightOf, lastBody, weightOf } from "@/lib/athleteBody";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const STATE = {
@@ -64,6 +66,78 @@ function Row({ label, value, href, mono }) {
       <span className="shrink-0 text-[0.8125rem] text-mut">{label}</span>
       {href ? <a href={href} className="min-w-0 break-words text-right">{v}</a> : v}
     </div>
+  );
+}
+
+// Boy ve kilo: son değer, "+" ile yeni ölçüm (tarih bugün), geçmiş ölçümler (× ile silinir)
+function BodyCard({ a }) {
+  const toast = useToast();
+  const [mine, setList] = useState(null);
+  const list = mine || cleanBody(a.body);
+  const [form, setForm] = useState(null);
+  const [all, setAll] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const last = lastBody(list);
+  const open = () => setForm({ d: todayStr(), h: last.h ? String(last.h) : "", kg: "" });
+  async function save(m, drop = "") {
+    setBusy(true);
+    try {
+      setList(await saveBody(a.id, m, drop));
+      setForm(null);
+    } catch (e) {
+      toast(e?.code === "permission-denied" ? "Kulüp hesabının yazma izni yok." : "Kaydedemedim, tekrar dene.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const ok = form && form.d && (heightOf(form.h) || weightOf(form.kg));
+  const rows = [...list].reverse();
+  const field = "w-full min-w-0 appearance-none rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] tabular-nums outline-none";
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.75rem] font-semibold uppercase tracking-wide text-mut">Boy / Kilo</p>
+          <p className="mt-0.5 text-[1.0625rem] font-semibold tabular-nums">{bodyText(last) || "—"}</p>
+        </div>
+        {!form && (
+          <button onClick={open} aria-label="Ölçüm ekle" className="grid size-9 shrink-0 place-items-center rounded-full bg-acc text-white">
+            <Icon name="plus" className="size-5" />
+          </button>
+        )}
+      </div>
+      {form && (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <input type="date" value={form.d} onChange={(e) => setForm({ ...form, d: e.target.value })} className={`${field} col-span-3`} />
+          <input inputMode="numeric" placeholder="Boy cm" value={form.h} onChange={(e) => setForm({ ...form, h: e.target.value })} className={field} />
+          <input inputMode="decimal" placeholder="Kilo kg" value={form.kg} onChange={(e) => setForm({ ...form, kg: e.target.value })} className={field} autoFocus />
+          <button disabled={!ok || busy} onClick={() => save(form)} className="rounded-xl bg-acc text-[0.875rem] font-semibold text-white disabled:opacity-40">
+            Kaydet
+          </button>
+          <button onClick={() => setForm(null)} className="col-span-3 py-1 text-[0.8125rem] text-mut">
+            Vazgeç
+          </button>
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div className="mt-2 border-t border-line pt-1">
+          {(all ? rows : rows.slice(0, 4)).map((m) => (
+            <div key={m.d} className="flex items-center justify-between gap-3 py-1.5 text-[0.875rem]">
+              <span className="text-mut">{fmtDate(m.d)}</span>
+              <span className="ml-auto tabular-nums">{bodyText(m)}</span>
+              <button disabled={busy} onClick={() => save(null, m.d)} aria-label="Ölçümü sil" className="-mr-1 grid size-7 place-items-center rounded-full text-mut">
+                <Icon name="x" className="size-4" />
+              </button>
+            </div>
+          ))}
+          {rows.length > 4 && (
+            <button onClick={() => setAll(!all)} className="py-1 text-[0.8125rem] font-medium text-acc">
+              {all ? "Daha az" : `Tümü (${rows.length})`}
+            </button>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -209,6 +283,8 @@ function Detail() {
         <Row label="Yelken sınıfı" value={cls || "Atanmamış"} />
         <Row label="Antrenör" value={coach || "Atanmamış"} />
       </Card>
+
+      <BodyCard a={a} />
 
       {/* Sağlık */}
       <Card title="Sağlık" icon="alert" tone={a.studentHealthNotes ? "bg-rec/10" : ""}>

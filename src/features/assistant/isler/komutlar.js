@@ -8,6 +8,7 @@ import * as kisi from "./kisi";
 import * as mesaj from "./mesaj";
 import * as sporcu from "./sporcu";
 import * as arama from "./arama";
+import * as boykilo from "./boykilo";
 
 const first = async (list, ctx, s, viaVoice) => {
   for (const f of list) {
@@ -19,8 +20,8 @@ const first = async (list, ctx, s, viaVoice) => {
 
 // Yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
 const EXTRA = [yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
-// Otel, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
-const MORE = [yaris.hotelAddCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
+// Sporcu boy/kilo, otel, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
+const MORE = [boykilo.athleteBodyCmd, yaris.hotelAddCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 
 export function runExtra(ctx, s, viaVoice) {
   return first(EXTRA, ctx, s, viaVoice);
