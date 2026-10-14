@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
 import { mailDigestText } from "@/lib/bankSheet";
-import { MAIL_ROWS, rawDone, sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
+import { MAIL_ROWS, sheetsFromRaw, xlsxOf } from "@/lib/mailParse";
 import { restDb } from "@/lib/server/firestoreRest";
 import { duesText, runAutoDues } from "@/lib/duesAuto";
 import { invoiceText, runAutoInvoices } from "@/lib/invoices";
@@ -34,7 +34,7 @@ export async function POST(request) {
   const list = await db.where(`orgs/${uid}`, "mails", "notified", false, 30);
   if (!list.length) return NextResponse.json({ sent: 0, mails: 0 });
 
-  // Excel ekleri burada tabloya (sheets) çevrilip maile yazılır; tablo tam okunduysa ham ek silinir (Firestore'da yer kaplamasın).
+  // Excel ekleri burada tabloya (sheets) çevrilip maile yazılır, ham ek silinir (saklanmaz).
   // Bakiye, aidat, fatura ve banka defteri yalnız tabloyu kullanır; orijinal dosya Gmail'de durur.
   let XLSX = null;
   const mails = [];
@@ -44,8 +44,7 @@ export async function POST(request) {
       XLSX ||= xlsxOf(await import("xlsx"));
       const sheets = sheetsFromRaw(m.raw, XLSX, MAIL_ROWS);
       if (sheets.length || !m.sheets) m.sheets = sheets;
-      const done = rawDone(m.raw, sheets);
-      await db.patch(`orgs/${uid}/mails/${id}`, { sheets: m.sheets }, done ? ["raw"] : []).catch(() => {});
+      await db.patch(`orgs/${uid}/mails/${id}`, { sheets: m.sheets }, ["raw"]).catch(() => {});
     }
     withIds.push({ id, ...m });
     mails.push(m);
