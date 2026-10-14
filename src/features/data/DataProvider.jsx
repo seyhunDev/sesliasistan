@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Splash } from "@/components/ui/Splash";
 import { checkWrites } from "@/features/pwa/netWatch";
 import { db } from "@/lib/firebase/clientApp";
@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
 import { cashOutFor, dropCashFor, setCashFor } from "@/features/dues/duesData";
+import { dropReceiptPhoto, forgetPending, pendingPhoto, uploadReceiptPhoto } from "@/features/receipts/receiptPhoto";
 import { isNewFor, lockedFor, peopleFor, pushWhy } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
 import { inboxBadge } from "@/lib/inbox";
@@ -555,7 +556,11 @@ export function DataProvider({ children }) {
           tasks.filter((t) => t.planId === id).forEach((t) => batch.update(doc(db, "orgs", ownerId, "tasks", t.id), { planId: null }));
           notes.filter((n) => n.planId === id).forEach((n) => batch.update(doc(db, "orgs", ownerId, "notes", n.id), { planId: null }));
         }
-        if (kind === "receipt") batch.delete(doc(db, "orgs", ownerId, "receiptImages", id));
+        if (kind === "receipt") {
+          batch.delete(doc(db, "orgs", ownerId, "receiptImages", id));
+          forgetPending(id);
+          dropReceiptPhoto(cur.current.receipts.find((x) => x.id === id)?.imgPath);
+        }
         if (kind === "receipt" && cur.current.receipts.find((x) => x.id === id)?.paidVia === "cash") dropCashFor(ownerId, `rc:${id}`).catch(() => {});
         await batch.commit(); // ya hepsi ya hiçbiri
       } catch (e) {
@@ -828,7 +833,20 @@ export function DataProvider({ children }) {
     if (Object.keys(nos).length) setData((p) => ({ ...p, receipts: p.receipts.map((x) => (nos[x.id] ? { ...x, no: nos[x.id] } : x)) }));
     return nos;
   };
-  // Fotoğraf ayrı belgede tutulur (orgs/{uid}/receiptImages/{id}); liste hafif kalır.
+  // Fotoğraf Firebase Storage'a yüklenir, fişe adresi yazılır (receiptPhoto.js); liste hafif kalır.
+  // Yüklenemezse (internet yok, kural yayınlanmamış) eski yol: ayrı Firestore belgesi orgs/{uid}/receiptImages/{id}.
+  // oldPath: yükleme olunca silinecek önceki fotoğraf.
+  const putPhoto = (ownerId, id, image, who, now, oldPath) =>
+    uploadReceiptPhoto(ownerId, who.createdByUid, id, image)
+      .then(async (u) => {
+        await updateDoc(doc(db, "orgs", ownerId, "receipts", id), u);
+        dropReceiptPhoto(oldPath);
+      })
+      .catch((e) => {
+        console.warn("[DataProvider] fotoğraf Storage'a yüklenemedi, Firestore'a yazılıyor:", e?.code || e?.message);
+        return setDoc(doc(db, "orgs", ownerId, "receiptImages", id), { data: image, createdAt: now, ...who }).then(() => dropReceiptPhoto(oldPath));
+      })
+      .catch((e) => fail(e, "Fiş fotoğrafı"));
   // image: dataURL | undefined (değişmedi) | null (kaldır)
   const saveReceipt = useCallback(
     // kasa: Hesaplar › Kasa'dan fiş fotoğrafıyla çıkış. true → nakit ödendi, kasadan çıkış yazılır (src "rc:<id>"); false → ödeme bekliyor
@@ -853,8 +871,8 @@ export function DataProvider({ children }) {
             : newPay(me.current.staff, me.current.name, now);
       const body = receiptBody(d);
       batch.set(ref, { ...body, hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, ...pay });
-      if (image) batch.set(doc(db, "orgs", ownerId, "receiptImages", ref.id), { data: image, createdAt: now, ...who });
       const saved = batch.commit();
+      if (image) putPhoto(ownerId, ref.id, image, who, now);
       if (kasa === true) cashOutFor(ownerId, { src: `rc:${ref.id}`, book: body.scope, cat: "Fiş", who: body.merchant, amount: totalOf(body) / 100, note: [body.cat, body.note].filter(Boolean).join(" · "), date: body.date }).catch((e) => fail(e, "Kasa çıkışı"));
       saved
         .then(() => kasa === undefined && pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
@@ -890,16 +908,20 @@ export function DataProvider({ children }) {
       }
       const now = new Date().toISOString();
       const patch = { ...receiptBody(d), updatedAt: now, updatedBy: by };
-      if (image !== undefined) patch.hasImage = !!image;
+      const rec = cur.current.receipts.find((x) => x.id === id);
+      if (image !== undefined) Object.assign(patch, { hasImage: !!image, imgPath: null, imgUrl: null });
       setData((p) => ({ ...p, receipts: p.receipts.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
       const batch = writeBatch(db);
       batch.update(doc(db, "orgs", ownerId, "receipts", id), patch);
       const imgRef = doc(db, "orgs", ownerId, "receiptImages", id);
-      const rec = cur.current.receipts.find((x) => x.id === id);
       const who = rec?.people ? { people: rec.people, createdByUid: rec.createdByUid, ...(rec.assignees ? { assignees: rec.assignees } : {}) } : owners();
-      if (image) batch.set(imgRef, { data: image, createdAt: now, ...who });
-      else if (image === null) batch.delete(imgRef);
+      if (image !== undefined) batch.delete(imgRef); // eski yoldaki fotoğraf da kalkar
       batch.commit().catch((e) => fail(e, "Fiş güncelleme"));
+      if (image) putPhoto(ownerId, id, image, who, now, rec?.imgPath); // yazmalar sırayla gider: adres bu güncellemeden sonra yazılır
+      else if (image === null) {
+        forgetPending(id);
+        dropReceiptPhoto(rec?.imgPath);
+      }
       // Nakit ödenmiş fiş: kasadaki çıkış da yeni tutar ve deftere göre düzelir
       if (rec?.paidVia === "cash" && (totalOf(rec) !== totalOf(patch) || (rec.scope || "club") !== patch.scope))
         setCashFor(ownerId, `rc:${id}`, { amount: totalOf(patch) / 100, book: patch.scope }).catch(() => {});
@@ -980,8 +1002,12 @@ export function DataProvider({ children }) {
     [members],
   );
 
-  // Fiş fotoğrafını ayrı belgeden okur (yalnızca detay ve düzenlemede)
+  // Fiş fotoğrafı (yalnızca detay ve düzenlemede): yükleniyorsa bellekten, Storage'daysa adresi, eskiyse Firestore belgesinden
   const loadReceiptImage = useCallback(async (id) => {
+    const wait = pendingPhoto(id);
+    if (wait) return wait;
+    const url = cur.current.receipts.find((x) => x.id === id)?.imgUrl;
+    if (url) return url;
     try {
       const snap = await getDoc(doc(db, "orgs", getOrgId(), "receiptImages", id));
       return snap.exists() ? snap.data().data : null;
