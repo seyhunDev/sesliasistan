@@ -10,6 +10,7 @@ import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
+import { bodyCommand } from "@/lib/athleteBody";
 import { wantsPost } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
 import { wantsPerson } from "@/features/people/assistPerson";
@@ -53,6 +54,8 @@ export function moreKind(s, c = {}) {
   if (owner && personDeleteCommand(s)) return "personDelete";
   if (groupCreateCommand(s)) return "groupCreate";
   if (onRace && racer && hotelAddCommand(s)) return "hotel";
+  const bc = owner && racer ? bodyCommand(s) : null;
+  if (bc && (bc.explicit || bc.op === "ask" || matchPerson(bc.name, names))) return "athleteBody";
   const ao = racer && athleteOpenCommand(s);
   if (ao && matchPerson(ao.name, names)) return "athleteOpen";
   if (owner && invoiceTaskCommand(s)) return "invoiceTask";
@@ -90,15 +93,17 @@ export function routesOf(s, c = {}) {
   if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
   if (!mf && !isStaff && wantsEvent(s)) add("event");
   if (!mf && !isStaff && wantsInventory(s, !!c.invPage) && !nav(s)) add("inventory");
+  // "Mete'nin kilosu 52" sporcunun ölçümüdür: Fitness sayfasında da beslenme/fitness'a gitmez
+  const bodyFirst = owner && racer && bodyCommand(s)?.explicit;
   // Beslenme fitness'tan önce: Fitness sayfasında "öğlen tavuk pilav yedim", "kilom 82" yemek/kilo kaydıdır
-  if (!mf && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
+  if (!mf && !bodyFirst && owner && !isStaff && wantsFood(s, !!c.foodHere) && !nav(s)) add("food");
   // Ana hesap: "sporcular bugün antrenman yaptı mı" her yerde. Sporcu (antrenörün hazırladığı programı varsa):
   // "bugünkü antrenmanım ne", "antrenmana başla", "bu hafta kaç antrenman yaptım"; yaptım/atladım bugün fitness antrenmanı varsa
   const fl = !mf ? fitLocal(s) : null;
   const myFitOp = isStaff && c.myFit && fl && (["today", "start", "stats"].includes(fl.op) || (c.myFitToday && ["done", "skip"].includes(fl.op)));
   // Ana hesap: "Ali bu hafta kaç antrenman yaptı" (Ali'nin fitness planı varsa)
   const fitWho = owner && !isStaff && c.fitPeople?.length && athleteIn(s, c.fitPeople) && /\b(antrenman|idman|fitness)\w*/.test(fold(s)) && /\b(yapt|yapmis|yapmadi|kac\b|durum)/.test(fold(s));
-  if (!mf && ((owner && !isStaff && (wantsFitness(s, !!c.fitHere) || fl?.op === "athletes" || fitWho)) || (isStaff && c.myFit && (myFitOp || wantsFitness(s, !!c.fitHere)))) && !nav(s)) add("fitness");
+  if (!mf && !bodyFirst && ((owner && !isStaff && (wantsFitness(s, !!c.fitHere) || fl?.op === "athletes" || fitWho)) || (isStaff && c.myFit && (myFitOp || wantsFitness(s, !!c.fitHere)))) && !nav(s)) add("fitness");
   if (!c.drafts && !c.pending && BARE_SAVE.test(s)) add("bareSave");
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   const ra = !mf && owner && racer ? resultsAsk(s) : null;

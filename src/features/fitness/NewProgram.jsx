@@ -1,5 +1,6 @@
 "use client";
 
+import { lastBody } from "@/lib/athleteBody";
 import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -265,10 +266,18 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
     const a = athletes.find((x) => x.uid === who);
     if (!a?.athleteId) return;
     let stop = false;
-    const put = (birth, g) => {
+    const put = (birth, g, body) => {
       const age = ageFrom(birth, todayStr());
       if (stop) return;
-      setF((x) => ({ ...x, ...(age && !x.age ? { age } : {}), ...(sexFrom(g) ? { sex: sexFrom(g) } : {}) }));
+      // Son boy/kilo sporcu sayfasındaki ölçümlerden (boşsa)
+      const { h, kg } = lastBody(body);
+      setF((x) => ({
+        ...x,
+        ...(age && !x.age ? { age } : {}),
+        ...(sexFrom(g) ? { sex: sexFrom(g) } : {}),
+        ...(h && !Number(x.height) ? { height: h } : {}),
+        ...(kg && !Number(x.weight) ? { weight: kg } : {}),
+      }));
       if (age) setAgeSrc((s) => s || "birth");
     };
     if (a.athleteId)
@@ -276,7 +285,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
         .then(({ loadAthletes }) => loadAthletes())
         .then(({ athletes: list }) => {
           const c = list.find((x) => x.id === a.athleteId);
-          if (c) put(a.birth || c.studentBirthDate, c.studentGender);
+          if (c) put(a.birth || c.studentBirthDate, c.studentGender, c.body);
         })
         .catch(() => {});
     return () => {
