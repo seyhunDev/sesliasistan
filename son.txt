@@ -1,8 +1,8 @@
-Commit: 0545a6a · Mesajlar: silme yerine arşiv, arşivden geri alma ve kalıcı silme, kesik silindi yazısı (#396)
-Zaman: 2026-10-14-0933 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38522772429
+Commit: b464e51 · Mesajlar: grup kartları, küçük arama düğmesi, tek parça süzgeç, birleşik balonlar (#397)
+Zaman: 2026-10-14-1010 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38526343934
 
-TAM TEST · 14.10.2026 09:32:26
+TAM TEST · 14.10.2026 10:09:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 67 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

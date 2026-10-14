@@ -1,8 +1,8 @@
-Commit: 3177dba · Fitness: ana hesap sporculara program hazırlar (1. adım) (#336)
-Zaman: 2026-10-13-0728 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38346427818
+Commit: b464e51 · Mesajlar: grup kartları, küçük arama düğmesi, tek parça süzgeç, birleşik balonlar (#397)
+Zaman: 2026-10-14-1010 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38526343934
 
-TAM TEST · 13.10.2026 07:26:40
+TAM TEST · 14.10.2026 10:09:20
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 85 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 67 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
