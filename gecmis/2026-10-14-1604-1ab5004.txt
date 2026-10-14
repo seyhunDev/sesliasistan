@@ -1,8 +1,8 @@
-Commit: 6fe88d2 · Fitness: Nasıl yapılır ekranında YouTube videosu gizlenebilir (#354)
-Zaman: 2026-10-13-1505 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38394630648
+Commit: 1ab5004 · Mail ekleri: tablo tam okununca ek silinir, okunamayan Storage'da kalır (#417)
+Zaman: 2026-10-14-1604 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38568527131
 
-TAM TEST · 13.10.2026 15:04:43
+TAM TEST · 14.10.2026 16:02:55
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 84 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
