@@ -41,6 +41,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const KINDS = [["", "Tümü"], ["receipt", "Fişler"], ["invoice", "Faturalar"]];
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
 
+// Faturanın listedeki günü: ödenen fatura ödendiği gün (ayın dışında kalıp Faturalar'dakinden eksik görünmesin), ödenmeyen faturanın tarihi
+const invDay = (x) => (x.status === "paid" && x.paidAt) || x.date || x.due || "";
+
 // Fişler ve faturalar tek sayfada; kind ilk seçim (/invoices "invoice" ile açar)
 export function ReceiptBook({ kind: start = "" }) {
   const { receipts, loading, myUid, nameOf } = useData();
@@ -101,8 +104,7 @@ export function ReceiptBook({ kind: start = "" }) {
     const hi = parseTL(max);
     const s = low(q.trim());
     return (desk.list || []).filter((x) => {
-      const day = x.date || x.due || "";
-      if (month && !day.startsWith(month)) return false;
+      if (month && !invDay(x).startsWith(month)) return false;
       if (state === "pending" && x.status === "paid") return false;
       if (state === "paid" && x.status !== "paid") return false;
       if (!Number.isNaN(lo) && (x.amount || 0) < lo) return false;
@@ -135,7 +137,7 @@ export function ReceiptBook({ kind: start = "" }) {
   const groups = {};
   list.forEach((r) => (groups[r.date] = [...(groups[r.date] || []), r]));
   invList.forEach((x) => {
-    const d = x.date || x.due || "";
+    const d = invDay(x);
     groups[d] = [...(groups[d] || []), { id: `inv:${x.id}`, inv: x }];
   });
   const days = Object.keys(groups).sort().reverse();
