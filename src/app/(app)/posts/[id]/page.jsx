@@ -75,15 +75,16 @@ function Post({ orgId, uid }) {
     goBack(router, "/posts");
   };
 
+  const head = id === "new" ? "Yeni gönderi" : "Gönderi";
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={id === "new" ? "Yeni gönderi" : "Gönderi"} back="/posts" />
+      {(missing || !state) && <PageHeader title={head} back="/posts" />}
       {missing ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">Gönderi bulunamadı.</p>
       ) : !state ? (
         <Loading label="Gönderi yükleniyor" />
       ) : (
-        <PostEditor start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={(pid, nid) => setPostNews(orgId, pid, nid)} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
+        <PostEditor title={head} back="/posts" start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={(pid, nid) => setPostNews(orgId, pid, nid)} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
       )}
     </main>
   );
