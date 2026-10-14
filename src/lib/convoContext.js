@@ -129,3 +129,66 @@ export const ASK_EMPTY = { attName: null, raceChoice: [], to: null, log: null, p
 export function asksToClear(kind = "") {
   return Object.keys(ASK_EMPTY).filter((k) => k !== kind);
 }
+
+// ---- Son sohbetler (Seyhun, 2026-10-14: "son 5 oturumu tutalım, gerektiğinde yapay zekaya gönderelim"): asistan her
+// kapanınca o oturumun kısa özeti (son birkaç tur + hafıza) bu cihazda saklanır, en çok SESSIONS_MAX; her istekte küçük bir
+// blok olarak gider. "Az önceki yarışın tarihini değiştir" saatler sonra da anlaşılır.
+export const SESSIONS_MAX = 5;
+const SESSION_TURNS = 6;
+const SESSION_LINE = 160;
+const SESSIONS_TOTAL = 1800;
+// Bir oturumun özeti: { id, at, lines: ["K: …", "A: …"], memo? }; kullanıcı hiç konuşmadıysa null
+export function sessionOf(turns, memo, { id = 0, at = Date.now() } = {}) {
+  const rows = (Array.isArray(turns) ? turns : []).filter((t) => t && !t.pre && String(t.text || "").trim());
+  if (!rows.some((t) => t.role === "user")) return null;
+  const lines = rows.slice(-SESSION_TURNS).map((t) => `${t.role === "assistant" ? "A" : "K"}: ${cut(t.text, SESSION_LINE)}`);
+  const m = memoFor(memo);
+  return { id, at, lines, ...(m ? { memo: m } : {}) };
+}
+// Listeye ekler: aynı açılışın (id) parçaları birleşir, en eskiler düşer
+export function addSession(list, s, max = SESSIONS_MAX) {
+  const prev = (Array.isArray(list) ? list : []).filter((x) => x && Array.isArray(x.lines));
+  if (!s) return prev.slice(-max);
+  const same = s.id ? prev.find((x) => x.id === s.id) : null;
+  const merged = same ? { ...s, lines: [...same.lines, ...s.lines].slice(-SESSION_TURNS), memo: s.memo || same.memo } : s;
+  return [...prev.filter((x) => x !== same), merged].sort((a, b) => a.at - b.at).slice(-max);
+}
+// "az önce", "25 dk önce", "3 saat önce", "dün 14:30", "12 Eki 09:05"
+export function whenText(at, now = Date.now()) {
+  const min = Math.max(0, Math.round((now - at) / 60e3));
+  if (min < 2) return "az önce";
+  if (min < 60) return `${min} dk önce`;
+  if (min < 6 * 60) return `${Math.round(min / 60)} saat önce`;
+  const d = new Date(at);
+  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const day = (x) => new Date(x).toDateString();
+  if (day(at) === day(now)) return `bugün ${hm}`;
+  if (day(at) === day(now - 864e5)) return `dün ${hm}`;
+  return `${d.getDate()} ${["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"][d.getMonth()]} ${hm}`;
+}
+// Telefon → sunucu: eskiden yeniye; skipAt: zaten konuşma geçmişi olarak giden (PAST_MS içindeki) oturum
+export function sessionsFor(list, now = Date.now(), skipAt = 0) {
+  return (Array.isArray(list) ? list : [])
+    .filter((s) => s && Array.isArray(s.lines) && s.lines.length && s.at !== skipAt)
+    .slice(-SESSIONS_MAX)
+    .map((s) => ({ when: whenText(s.at, now), lines: s.lines.slice(-SESSION_TURNS).map((l) => cut(l, SESSION_LINE + 3)), ...(s.memo ? { memo: s.memo } : {}) }));
+}
+// Sunucu: istem bölümü (yoksa ""); en yeniler önce sığdırılır
+export function sessionsBlock(raw) {
+  if (!Array.isArray(raw) || !raw.length) return "";
+  const clean = (v, n) => String(v ?? "").replace(/"""/g, "”").replace(/[\n\r#]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+  const parts = [];
+  let used = 0;
+  for (const s of raw.slice(-SESSIONS_MAX).reverse()) {
+    const lines = (Array.isArray(s?.lines) ? s.lines : []).slice(-SESSION_TURNS).map((l) => clean(l, SESSION_LINE + 3)).filter(Boolean);
+    if (!lines.length) continue;
+    const memo = s?.memo && typeof s.memo === "object" ? Object.entries(MEMO_KEYS).filter(([k]) => clean(s.memo[k], 80)).map(([k, label]) => `${label}: ${clean(s.memo[k], 80)}`) : [];
+    const text = `### ${clean(s?.when, 30) || "önceki"}\n${lines.map((l) => l.replace(/^K:/, "Kullanıcı:").replace(/^A:/, "Asistan:")).join("\n")}${memo.length ? `\n(${memo.join(", ")})` : ""}`;
+    if (used + text.length > SESSIONS_TOTAL && parts.length) break;
+    used += text.length;
+    parts.unshift(text);
+  }
+  return parts.length
+    ? `## SON SOHBETLER (asistan kapatılıp açılmadan önceki oturumlar, eskiden yeniye)\nKullanıcı önceki bir işe dönerse ("az önce eklediğim", "geçen seferki yarış", "onun saatini değiştir") buradan anla. Aksi halde YOK SAY: buradaki işleri yeniden yapma, cevabında anma.\n${parts.join("\n")}`
+    : "";
+}

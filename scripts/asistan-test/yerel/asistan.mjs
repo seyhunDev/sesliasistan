@@ -978,6 +978,24 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["onu", C("gönderme sözü", () => ["onu", "bunu", "o sporcu", "bu kişiyi", "Onu."].every(CX.isPronoun), (r) => r === true)],
     ["ad", C("gerçek ad gönderme değil", () => ["Ali", "Onur Kaya", "Ozan"].some(CX.isPronoun), (r) => r === false)],
   ]);
+  {
+    const T = [{ role: "user", text: "yarın 10'da antrenman ekle" }, { role: "assistant", text: "Tamam.", pre: true }, { role: "assistant", text: "Ekledim: Antrenman, Yarın, 10:00." }];
+    const s1 = CX.sessionOf(T, { race: "Foça" }, { id: 1, at: 1000 });
+    let L = [];
+    for (let i = 1; i <= 7; i++) L = CX.addSession(L, { id: i, at: i * 1000, lines: ["K: söz " + i] });
+    const merged = CX.addSession(CX.addSession([], { id: 9, at: 1, lines: ["K: a"] }), { id: 9, at: 2, lines: ["K: b"] });
+    const now = new Date(2026, 9, 14, 15, 0).getTime();
+    group("Son sohbetler (5 oturum)")([
+      ["oturum", C("ön cevap atılır, K/A satırları", () => s1, (r) => r.lines.length === 2 && r.lines[0].startsWith("K: ") && r.lines[1].startsWith("A: Ekledim") && r.memo)],
+      ["konuşmasız", C("kullanıcı konuşmadıysa saklanmaz", () => CX.sessionOf([{ role: "assistant", text: "Merhaba" }], {}, { id: 1, at: 1 }), (r) => r === null)],
+      ["en çok 5", C("eskiler düşer", () => L, (r) => r.length === 5 && r[0].id === 3 && r[4].id === 7)],
+      ["aynı açılış", C("aynı açılışın parçaları birleşir", () => merged, (r) => r.length === 1 && r[0].lines.join() === "K: a,K: b")],
+      ["zaman", C("az önce / dk önce / dün", () => [CX.whenText(now - 30000, now), CX.whenText(now - 600000, now), CX.whenText(now - 26 * 3600000, now)], (r) => r[0] === "az önce" && r[1] === "10 dk önce" && r[2].startsWith("dün"))],
+      ["şimdiki atlanır", C("15 dakikalık geçmişte olan oturum ikinci kez gitmez", () => CX.sessionsFor(L, 8000, 7000), (r) => r.length === 4)],
+      ["istem bölümü", C("temizlenir, kısa kalır, yeniden yapma uyarısı", () => CX.sessionsBlock([{ when: "dün 10:00", lines: ['K: "x"\n## Y ' + "a".repeat(3000)] }]), (t) => /SON SOHBETLER/.test(t) && /YOK SAY/.test(t) && !/## Y/.test(t) && t.length < 2200)],
+      ["boş", C("oturum yoksa bölüm yok", () => CX.sessionsBlock([]), (t) => t === "")],
+    ]);
+  }
   group("Tek bekleyen soru")([
     ["yeni soru", C("yeni soru sorulunca diğer bütün sorular kapanır", () => CX.asksToClear("ok"), (r) => !r.includes("ok") && r.includes("person") && r.includes("raceChoice") && r.includes("to") && r.length === Object.keys(CX.ASK_EMPTY).length - 1)],
     ["sohbet bitti", C("hepsi kapanır", () => CX.asksToClear(), (r) => r.length === Object.keys(CX.ASK_EMPTY).length)],

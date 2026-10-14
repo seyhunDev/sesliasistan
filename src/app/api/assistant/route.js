@@ -6,7 +6,7 @@ import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/l
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
-import { draftBlock, historyBlock, memoBlock } from "@/lib/convoContext";
+import { draftBlock, historyBlock, memoBlock, sessionsBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
 
@@ -70,6 +70,7 @@ async function handle(request) {
   const history = historyBlock(body?.history);
   const memo = memoBlock(body?.memo);
   const draft = draftBlock(body?.draft);
+  const sessions = sessionsBlock(body?.sessions);
 
   // Ön cevap: telefon kullanıcıya hemen kısa bir giriş söyledi; yanıt onun devamı olmalı (tekrar etmemeli)
   const precue = String(body?.precue ?? "").slice(0, 500);
@@ -81,7 +82,7 @@ async function handle(request) {
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n${sessions ? `${sessions}\n\n` : ""}## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
   const forPeople = contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, ""));
