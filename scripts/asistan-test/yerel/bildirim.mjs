@@ -302,6 +302,22 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "zil açıldı (görüldü)", "simge 0", inbox.inboxBadge(list, t(3)) === 0);
   list = inbox.inboxAdd(list, { title: "Yeni", tag: "task-9" }, t(4));
   add(G, "açtıktan sonra bir bildirim daha geldi", "simgede 1", inbox.inboxBadge(list, t(3)) === 1);
+  // Seyhun: "mesaj geldi, Mesajlar'dan açıp okudum, zildeki bildirim kaldı" (zili açmadan, işi başka yoldan görünce)
+  let k = [];
+  k = inbox.inboxAdd(k, { title: "Ali Kaya", body: "Yarın gel", tag: "chat-c1", url: "/messages?c=c1" }, t(0));
+  k = inbox.inboxAdd(k, { title: "Yeni görev: Motor", tag: "task-T1", url: "/?open=task:T1" }, t(1));
+  k = inbox.inboxAdd(k, { title: "Fiş ödendi", tag: "paid-R1", url: "/receipts/R1" }, t(2));
+  let s1 = inbox.inboxSeeOne(k, { tag: "chat-c1" }, "", t(5));
+  add(G, "mesajı zile dokunmadan Mesajlar'dan okudu", "o bildirim görüldü, simge 3 → 2", inbox.inboxBadge(k, "") === 3 && inbox.inboxBadge(s1, "") === 2 && !inbox.inboxUnread(s1, "").some((x) => x.tag === "chat-c1"));
+  s1 = inbox.inboxSeeOne(s1, { id: "T1" }, "", t(6));
+  add(G, "görevi Görevler listesinden açtı", "görev bildirimi de görüldü, simge 1", inbox.inboxBadge(s1, "") === 1);
+  s1 = inbox.inboxSeeOne(s1, { here: "/receipts/R1" }, "", t(7));
+  add(G, "fişin sayfasına başka yoldan gitti", "fiş bildirimi de görüldü, simge 0", inbox.inboxBadge(s1, "") === 0);
+  add(G, "başka bir sohbeti açtı", "bildirim değişmez, yazma gerekmez", inbox.inboxSeeOne(k, { tag: "chat-c2" }, "", t(5)) === k);
+  const k2 = inbox.inboxAdd(s1, { title: "Ali Kaya", body: "Bir şey daha", tag: "chat-c1", url: "/messages?c=c1" }, t(8));
+  add(G, "okuduktan sonra aynı sohbetten yeni mesaj geldi", "yeniden okunmamış, simge 1", inbox.inboxBadge(k2, "") === 1);
+  add(G, "zil açıldıktan sonra sohbeti okudu", "zaten görülmüş, yazma gerekmez", inbox.inboxSeeOne(k2, { tag: "chat-c1" }, t(9), t(10)) === k2);
+
   let big = [];
   for (let i = 0; i < 40; i++) big = inbox.inboxAdd(big, { title: `B${i}`, tag: `t-${i}` }, t(10 + i));
   add(G, "40 bildirim birikti", `zil en çok ${inbox.INBOX_MAX} tutar, en yenisi üstte`, big.length === inbox.INBOX_MAX && big[0].title === "B39");
