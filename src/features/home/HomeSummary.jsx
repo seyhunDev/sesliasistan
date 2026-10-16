@@ -18,11 +18,12 @@ import { CALM, SectionHead } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › Kulüp / Özet (göz yormayan düzen, Seyhun 2026-10-14): tek sakin kartta yazı satırları: Sıradaki yarış (ad, tarih · yer · sp. · eksik iş, kalan gün),
-// Aidat · ay (ödeyen/sayı, %), Hesap (bakiye), Fiş / Fatura, Instagram. Yalnız bilgisi olan satır görünür (clubDues, clubFis… homeTiles.js).
+// Ana sayfa › Kulüp / Özet (Seyhun 2026-10-16: "çok yer kaplıyor, toparlayalım"): tek sakin kart. Üstte Sıradaki yarış iki satır (ad + kalan gün;
+// tarih · yer · sp. · eksik iş), altında iki sütun küçük kutular: Aidat · ay (ödeyen/sayı, %), Hesap, Fiş / Fatura, Instagram; tek kalan kutu tam genişlik.
+// Yalnız bilgisi olan kutu görünür (clubDues, clubFis… homeTiles.js).
 // Notlar ayrı bölüm: en çok 3 not (homeNotes), başlık ve altında "Sabit / tarih · ilk satır". Bellekteki notlardan, ek okuma yok.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır; banka mailleri useMoney; yarış raceHome.js.
-// Okuması süren satırın yerinde yanıp sönen iskelet (SkelRow); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
+// Okuması süren kutunun yerinde yanıp sönen iskelet (Tile skel, SkelRace); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
 const WAIT = 8000;
 export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes }) {
   const m = useMoney();
@@ -98,6 +99,17 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   if (!club && !note.total) return null;
   const mon = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "short" }).replace(".", "");
   const show = (k) => (fade.has(k) ? "fade-in" : "");
+  // Yarışın altındaki küçük kutular (iki sütun): yalnız bilgisi olan ya da okuması süren
+  const tiles = [
+    skel("dues")
+      ? { key: "dues", skel: true }
+      : duesT && { key: "dues", href: "/dues", k: `Aidat · ${mon}`, cls: show("dues"), v: duesT.big, sm: `%${Math.round((duesT.bar || 0) * 100)}`, note: duesT.warn ? duesT.sub : "", nw: true },
+    skel("bank") ? { key: "bank", skel: true } : bankT && { key: "bank", href: "/mail", k: "Hesap", cls: show("bank"), v: bankT.big },
+    skel("inv")
+      ? { key: "inv", skel: true }
+      : fisT && { key: "inv", href: "/receipts", k: "Fiş / Fatura", cls: show("inv"), v: fisT.big, warn: fisT.warn, note: fisT.sub || "", nw: fisT.warn },
+    post && { key: "post", href: post.last?.id ? `/posts/${post.last.id}` : "/posts", k: "Instagram", v: postsTile(post).big, note: postsTile(post).sub },
+  ].filter(Boolean);
 
   return (
     <>
@@ -110,35 +122,15 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
               </Link>
             )}
           </SectionHead>
-          <div className={`px-3.5 py-0.5 ${CALM}`}>
-            <ul className="divide-y divide-line">
-              {skel("race") ? <SkelRow tall /> : raceCard && <RaceRow r={raceCard} cls={show("race")} />}
-              {skel("dues") ? (
-                <SkelRow />
-              ) : (
-                duesT && (
-                  <Row href="/dues" k={`Aidat · ${mon}`} cls={show("dues")} note={duesT.warn ? duesT.sub : ""}>
-                    {duesT.big} <small className="font-normal text-mut">%{Math.round((duesT.bar || 0) * 100)}</small>
-                  </Row>
-                )
-              )}
-              {skel("bank") ? <SkelRow /> : bankT && <Row href="/mail" k="Hesap" cls={show("bank")}>{bankT.big}</Row>}
-              {skel("inv") ? (
-                <SkelRow />
-              ) : (
-                fisT && (
-                  <Row href="/receipts" k="Fiş / Fatura" cls={show("inv")} warn={fisT.warn}>
-                    {fisT.big}
-                    {fisT.sub && <small className={`font-normal ${fisT.warn ? "" : "text-mut"}`}> · {fisT.sub}</small>}
-                  </Row>
-                )
-              )}
-              {post && (
-                <Row href={post.last?.id ? `/posts/${post.last.id}` : "/posts"} k="Instagram">
-                  <small className="font-normal text-mut">{postsTile(post).sub}</small>
-                </Row>
-              )}
-            </ul>
+          <div className={`overflow-hidden ${CALM}`}>
+            {skel("race") ? <SkelRace /> : raceCard && <RaceRow r={raceCard} cls={show("race")} />}
+            {tiles.length > 0 && (
+              <ul className={`grid grid-cols-2 gap-px bg-line ${raceCard || skel("race") ? "border-t border-line" : ""}`}>
+                {tiles.map((t, i) => (
+                  <Tile key={t.key} {...t} wide={i === tiles.length - 1 && tiles.length % 2 === 1} />
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       )}
@@ -147,39 +139,53 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   );
 }
 
-// Anahtar · değer satırı (solda ad, sağda değer, ›); note: altında küçük uyarı yazısı
-function Row({ href, k, children, warn, note, cls = "" }) {
+// Küçük kutu: üstte ad, altında değer (ve küçük ek), en altta tek satır not; tek kalan kutu iki sütunu kaplar
+function Tile({ href, k, v, sm, note, nw, warn, cls = "", skel, wide }) {
+  const span = wide ? "col-span-2" : "";
+  if (skel)
+    return (
+      <li aria-hidden="true" className={`bg-card px-3.5 py-2.5 ${span}`}>
+        <span className="shimmer block h-3 w-16 rounded-full" />
+        <span className="shimmer mt-2 block h-4 w-20 rounded-full" />
+      </li>
+    );
   return (
-    <li className={cls}>
-      <Link href={href} className="flex items-baseline justify-between gap-3 py-2.5">
-        <span className="shrink-0 text-fg2">{k}</span>
-        <span className={`min-w-0 truncate text-right font-medium tabular-nums ${warn ? "text-warn" : ""}`}>
-          {children}
-          <span className="ml-1.5 font-normal text-mut">›</span>
-        </span>
+    <li className={`bg-card ${span} ${cls}`}>
+      <Link href={href} className="block px-3.5 py-2.5">
+        <small className="block truncate text-[0.75rem] text-mut">{k}</small>
+        <b className={`block truncate font-medium tabular-nums ${warn ? "text-warn" : ""}`}>
+          {v}
+          {sm && <small className="ml-1 font-normal text-mut">{sm}</small>}
+        </b>
+        {note && <small className={`block truncate text-[0.75rem] ${nw ? "text-warn" : "text-mut"}`}>{note}</small>}
       </Link>
-      {note && <small className="-mt-1.5 block pb-2 text-right text-[0.8125rem] text-warn">{note}</small>}
     </li>
   );
 }
 
-// Sıradaki yarış: küçük "Sıradaki yarış", ad, "tarih · yer · 6 sp. · 2 iş eksik", sağda kalan gün hapı; dokununca yarışın sayfası
+// Sıradaki yarış, iki satır: ad ve kalan gün hapı; altında "tarih · yer · 6 sp. · 2 iş eksik". Dokununca yarışın sayfası
 function RaceRow({ r, cls }) {
   const sub = (r.sub || "").replace(/(\d+) sporcu\b/, "$1 sp.");
   return (
-    <li className={cls}>
-      <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className="flex items-center gap-3 py-2.5">
-        <span className="min-w-0 flex-1">
-          <small className="block text-[0.8125rem] text-mut">Sıradaki yarış</small>
-          <b className="block truncate text-base font-medium">{r.title}</b>
-          <small className="block truncate text-[0.875rem] text-mut">
-            {sub}
-            {r.left > 0 && <span className="text-warn">{sub ? " · " : ""}{r.left} iş eksik</span>}
-          </small>
-        </span>
-        <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.8125rem] font-medium text-acc">{r.days != null ? `${r.days} gün` : r.when}</span>
-      </Link>
-    </li>
+    <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className={`flex items-center gap-3 px-3.5 py-2.5 ${cls}`}>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate font-medium">{r.title}</b>
+        <small className="block truncate text-[0.8125rem] text-mut">
+          {sub}
+          {r.left > 0 && <span className="text-warn">{sub ? " · " : ""}{r.left} iş eksik</span>}
+        </small>
+      </span>
+      <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.8125rem] font-medium text-acc">{r.days != null ? `${r.days} gün` : r.when}</span>
+    </Link>
+  );
+}
+
+function SkelRace() {
+  return (
+    <div aria-hidden="true" className="px-3.5 py-3">
+      <span className="shimmer block h-4 w-44 max-w-full rounded-full" />
+      <span className="shimmer mt-2 block h-3 w-32 rounded-full" />
+    </div>
   );
 }
 
@@ -216,18 +222,6 @@ function NotesList({ list, total }) {
 }
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
-function SkelRow({ tall }) {
-  return (
-    <li aria-hidden="true" className="flex items-center justify-between gap-3 py-3">
-      <span className="min-w-0 flex-1">
-        <span className="shimmer block h-3.5 w-24 rounded-full" />
-        {tall && <span className="shimmer mt-2 block h-4 w-44 max-w-full rounded-full" />}
-      </span>
-      <span className="shimmer block h-3.5 w-16 rounded-full" />
-    </li>
-  );
-}
-
 // Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu.
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.

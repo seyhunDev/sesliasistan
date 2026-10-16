@@ -11,8 +11,8 @@ const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
 const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: PLACE.tz });
 
 // Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = sağanak; 7/17/22 kn çizgileri yelken eşikleri.
-// Parmakla sürükleyince seçilen saatin değerleri üstte yazar.
-function WindChart({ rows, sel, onSel, nowIdx }) {
+// Parmakla sürükleyince seçilen saatin değerleri üstte yazar. Bugünde "şimdi" noktası şu anki dakikaya göre çizginin üstünde durur.
+function WindChart({ rows, sel, onSel, nowAt = -1 }) {
   const W = 340, H = 150, L = 22, R = 6, T = 8, B = 18;
   const n = rows.length;
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust)) + 2) / 5) * 5);
@@ -26,6 +26,11 @@ function WindChart({ rows, sel, onSel, nowIdx }) {
     onSel(Math.max(0, Math.min(n - 1, Math.round(((px - L) / (W - L - R)) * (n - 1)))));
   };
   const s = rows[sel];
+  // Şimdi: saatler arası doğrusal ara değer (14:30 → 14 ile 15'in ortası)
+  const nowI = Math.floor(nowAt);
+  const nowV = nowAt >= 0 && rows[nowI] ? rows[nowI].wind + ((rows[nowI + 1]?.wind ?? rows[nowI].wind) - rows[nowI].wind) * (nowAt - nowI) : null;
+  const nx = nowV != null ? L + (nowAt * (W - L - R)) / Math.max(1, n - 1) : 0;
+  const ny = nowV != null ? y(nowV) : 0;
 
   return (
     <svg
@@ -52,23 +57,31 @@ function WindChart({ rows, sel, onSel, nowIdx }) {
       <path d={area} className="text-acc" fill="currentColor" fillOpacity=".14" />
       <path d={line("wind")} className="text-acc" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d={line("gust")} className="text-mut" fill="none" stroke="currentColor" strokeWidth="1.25" strokeDasharray="3 3" />
-      {nowIdx >= 0 && <line x1={x(nowIdx)} x2={x(nowIdx)} y1={T} y2={y(0)} className="text-rec" stroke="currentColor" strokeOpacity=".5" />}
       {s && (
         <g>
-          <line x1={x(sel)} x2={x(sel)} y1={T} y2={y(0)} className="text-fg" stroke="currentColor" strokeOpacity=".35" />
+          <line x1={x(sel)} x2={x(sel)} y1={T} y2={y(0)} className="text-fg" stroke="currentColor" strokeOpacity=".3" />
           <circle cx={x(sel)} cy={y(s.gust)} r="2.5" className="fill-mut" />
           <circle cx={x(sel)} cy={y(s.wind)} r="3.5" className="fill-acc stroke-card" strokeWidth="1.5" />
+        </g>
+      )}
+      {nowV != null && (
+        <g className="text-rec">
+          <line x1={nx} x2={nx} y1={ny} y2={y(0)} stroke="currentColor" strokeOpacity=".45" strokeDasharray="2 2" />
+          <circle cx={nx} cy={ny} r="8" fill="currentColor" fillOpacity=".18" />
+          <circle cx={nx} cy={ny} r="4.5" fill="currentColor" className="stroke-card" strokeWidth="2" />
+          <text x={Math.min(W - R - 12, Math.max(L + 12, nx))} y={Math.max(T + 7, ny - 11)} textAnchor="middle" fontSize="9" fontWeight="700" fill="currentColor">şimdi</text>
         </g>
       )}
     </svg>
   );
 }
 
-// Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava
-export function DayDetail({ date, rows, info }) {
+// Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.
+export function DayDetail({ date, rows, info, cur }) {
   const now = useNow();
   const isToday = YMD.format(now) === date;
   const nowIdx = isToday ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
+  const nowAt = nowIdx >= 0 ? Math.min(rows.length - 1, nowIdx + now.getMinutes() / 60) : -1;
   const peak = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
   const [sel, setSel] = useState(nowIdx >= 0 ? nowIdx : rows.indexOf(peak));
   const s = rows[sel] || peak;
@@ -78,14 +91,28 @@ export function DayDetail({ date, rows, info }) {
 
   return (
     <div className="pb-2">
-      {/* Özet */}
-      <div className="flex items-center gap-3">
-        <Icon name={sky(code).icon} className="size-8 shrink-0 text-acc" />
-        <div className="min-w-0">
-          <p className="text-[1.25rem] font-semibold leading-tight tabular-nums">{min}–{max}°</p>
-          <p className="text-[0.8125rem] text-mut">{sky(code).label}</p>
+      {/* Özet: bugünde şimdiki hava büyük, yanında gün içi en düşük–en yüksek ve şimdiki rüzgâr */}
+      {isToday && cur ? (
+        <div className="flex items-center gap-3">
+          <Icon name={sky(cur.code, cur.day).icon} className="size-11 shrink-0 text-acc" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[2rem] font-semibold leading-none tabular-nums">{cur.t}°</p>
+            <p className="mt-1 text-[0.8125rem] text-mut">{sky(cur.code, cur.day).label} · <span className="tabular-nums">{min}–{max}°</span></p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className={`text-[1.125rem] font-semibold leading-none tabular-nums ${windLevel(cur.wind).tone}`}>{cur.wind} kn</p>
+            <p className="mt-1 text-[0.75rem] text-mut tabular-nums">{windName(cur.dir)[0]} · sağanak {cur.gust}</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <Icon name={sky(code).icon} className="size-8 shrink-0 text-acc" />
+          <div className="min-w-0">
+            <p className="text-[1.25rem] font-semibold leading-tight tabular-nums">{min}–{max}°</p>
+            <p className="text-[0.8125rem] text-mut">{sky(code).label}</p>
+          </div>
+        </div>
+      )}
 
       {/* Seçili saat */}
       <div className="mt-4">
@@ -97,12 +124,12 @@ export function DayDetail({ date, rows, info }) {
         </p>
       </div>
       <div className="mt-1">
-        <WindChart rows={rows} sel={sel} onSel={setSel} nowIdx={nowIdx} />
+        <WindChart rows={rows} sel={sel} onSel={setSel} nowAt={nowAt} />
       </div>
       <p className="flex items-center justify-end gap-2 text-[0.6875rem] text-mut">
         <span className="inline-block h-0.5 w-3 rounded bg-acc" /> rüzgâr
         <span className="inline-block w-3 border-t border-dashed border-mut" /> sağanak
-        {nowIdx >= 0 && <><span className="inline-block h-2.5 w-px bg-rec/60" /> şimdi</>}
+        {nowIdx >= 0 && <><span className="inline-block size-2 rounded-full bg-rec" /> şimdi</>}
         <span>· parmağınla kaydır</span>
       </p>
 
@@ -123,7 +150,7 @@ const ago = (ms) => {
   return m < 2 ? "az önce" : m < 60 ? `${m} dk önce` : `${Math.round(m / 60)} sa önce`;
 };
 
-// Hava detayı: bugün + 5 gün seçici, seçilen günün saat saat ayrıntısı; altta kaynak ve karşılaştırma
+// Hava detayı: önce seçili günün özeti ve rüzgâr grafiği (bugün açılır), altında gün seçici, rüzgâr haritası, kaynak
 export function WeatherDetail({ w, refresh, busy }) {
   const today = w.today?.date;
   const days = [{ date: today, code: w.today.code, min: w.today.min, max: w.today.max, wind: w.today.wind }, ...(w.days || [])].filter((d) => d.date);
@@ -136,8 +163,10 @@ export function WeatherDetail({ w, refresh, busy }) {
   const [cmp, setCmp] = useState(false);
   return (
     <div>
+      <div>{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} cur={sel === today ? w.now : null} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
+
       {/* Gün seçici: bugün + 5 gün */}
-      <div className="-mx-1 grid grid-cols-6 gap-1">
+      <div className="-mx-1 mt-2 grid grid-cols-6 gap-1 border-t border-line pt-3">
         {days.map((d, i) => {
           const on = d.date === sel;
           return (
@@ -162,8 +191,6 @@ export function WeatherDetail({ w, refresh, busy }) {
       <div className="mt-3">
         <WindMapView embed date={sel} />
       </div>
-
-      <div className="mt-4">{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
 
       {/* Kaynak: tek satır. "Karşılaştır" MGM ve Windy'yi, "i" kaynak ayrıntısını açar */}
       <div className="mt-2 rounded-2xl bg-bg px-3.5 py-2 text-[0.75rem] leading-snug text-mut">

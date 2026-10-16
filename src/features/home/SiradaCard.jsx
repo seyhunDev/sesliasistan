@@ -16,9 +16,10 @@ import { WeekStrip } from "./HomeSummary";
 import { CALM } from "./ui";
 
 // Ana sayfanın en üstü (Seyhun: "şu an değil, sırada ne var önemli; antrenman takvimini en üste al, isim bile koymaya gerek yok").
-// Tek kart: sağ üstte "Takvim ›" (Takvim sayfası; Seyhun: "takvim gibi oldu, takvim butonu olsun"), başlıksız hafta şeridi (antrenman takvimi; güne dokununca o günün penceresi, WeekStrip), altında SIRADA:
-// bugünden sonraki 4 plan (ŞİMDİ / BUGÜN / YARIN / gün adı, saat, başlık; yalnız ilk satırda yer ve rüzgâr). Satıra dokununca plan
-// açılır (Yarış planında yarışın sayfası). En altta "N şey seni bekliyor" şeridi (zil ile aynı pencere). Bellekteki planlardan, ek okuma yok.
+// Tek kart: başlıksız hafta şeridi (antrenman takvimi; güne dokununca o günün penceresi, WeekStrip), altında sıradaki 3 plan,
+// her biri tek satır (Seyhun: "çok yer kaplıyor, yazıların gösterilme şekli"): solda "bugün 17:00", ortada başlık, ilk satırda sağda
+// yer/rüzgâr. Satıra dokununca plan açılır (Yarış planında yarışın sayfası). En altta tek satır: "N şey seni bekliyor" (zil ile aynı
+// pencere) ve "Takvim ›" (Seyhun: "takvim butonu olsun"). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
 export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const { profile } = useAuth();
@@ -30,7 +31,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   if (!profile) return null;
   const today = todayStr();
   const week = training ? trainingWeek(plans, today, fit || []) : null;
-  const rows = upcoming(plans, today, now, 4);
+  const rows = upcoming(plans, today, now, 3);
   const open = (p) => {
     const race = raceForPlan(p, races.open, today);
     if (race) router.push(`/athletes/races/${race}`);
@@ -41,33 +42,27 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const first = rows[0];
   const wx = first && first.day === today && WIND_CATS.includes(first.p.cat || first.p.category) ? planWind(hours, first.p) : null;
   const windy = overWind(wx, profile.windKn || WIND_KN);
-  const sub = first && [first.p.place, wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ");
+  const sub = first && [first.p.place, wx && `${wx.wind} kn${windy ? ` · sağanak ${wx.gust}` : ""}`].filter(Boolean).join(" · ");
 
   return (
     <section aria-label="Sırada" className={`overflow-hidden ${CALM}`}>
-      <div className="flex justify-end px-3.5 pt-2">
-        <Link href="/calendar" className="text-[0.8125rem] font-semibold text-acc">Takvim ›</Link>
-      </div>
       {week && <WeekStrip w={week} att={att} today={today} />}
       {rows.length ? (
         <ul>
           {rows.map(({ p, label, day, now: live }, i) => (
             <li key={p.id} className={i || week ? "border-t border-line" : ""}>
-              <button type="button" onClick={() => open(p)} className="flex w-full items-start gap-3 px-3.5 py-2.5 text-left">
-                <span className={`w-[3.875rem] shrink-0 whitespace-nowrap text-[0.875rem] leading-snug tabular-nums ${live ? "font-semibold text-acc" : "text-fg2"}`}>
-                  {p.time || "Tüm gün"}
-                  <small className={`block text-[0.78125rem] ${live ? "text-acc" : "font-normal text-mut"}`}>{shortLabel(label, day)}</small>
+              <button type="button" onClick={() => open(p)} className="flex w-full items-baseline gap-2.5 px-3.5 py-2 text-left">
+                <span className={`w-[5.75rem] shrink-0 whitespace-nowrap text-[0.8125rem] tabular-nums ${live ? "font-semibold text-acc" : "text-fg2"}`}>
+                  <span className={live ? "" : "text-mut"}>{shortLabel(label, day)}</span> {p.time || "tüm gün"}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block truncate font-medium">{p.title}</b>
-                  {i === 0 && sub && <small className={`block truncate text-[0.875rem] ${windy ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>{sub}</small>}
-                </span>
+                <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{p.title}</b>
+                {i === 0 && sub && <small className={`max-w-[40%] shrink-0 truncate text-[0.75rem] ${windy ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>{sub}</small>}
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <div className={`flex items-center justify-between gap-3 px-4 py-3 ${week ? "border-t border-line" : ""}`}>
+        <div className={`flex items-center justify-between gap-3 px-3.5 py-2.5 ${week ? "border-t border-line" : ""}`}>
           <span className="text-mut">Plan yok</span>
           <button type="button" data-press onClick={() => openAdd({ type: "plan" })} className="raised flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
             <Icon name="plus" className="size-4" />
@@ -75,7 +70,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
           </button>
         </div>
       )}
-      <WaitBar inbox={inbox} onAll={onInbox} />
+      <Foot inbox={inbox} onAll={onInbox} />
     </section>
   );
 }
@@ -87,14 +82,19 @@ function shortLabel(label, day) {
   return new Date(`${day}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
 }
 
-// Kartın altındaki satır: "3 şey seni bekliyor ›" (bekleyen yoksa çizilmez; ayrıntı zil penceresinde)
-function WaitBar({ inbox, onAll }) {
-  const list = inbox?.list || [];
-  if (!list.length) return null;
+// Kartın altındaki tek satır: solda "3 şey seni bekliyor ›" (yoksa boş; ayrıntı zil penceresinde), sağda "Takvim ›"
+function Foot({ inbox, onAll }) {
+  const n = inbox?.list?.length || 0;
   return (
-    <button type="button" onClick={onAll} className="flex w-full items-center gap-2 border-t border-line px-3.5 py-2.5 text-left text-[0.875rem] text-fg2">
-      <span className="min-w-0 flex-1 truncate">{list.length} şey seni bekliyor</span>
-      <span aria-hidden="true" className="text-mut">›</span>
-    </button>
+    <div className="flex items-center gap-2 border-t border-line px-3.5 py-2 text-[0.8125rem]">
+      {n ? (
+        <button type="button" onClick={onAll} className="min-w-0 flex-1 truncate text-left font-medium text-fg2">
+          {n} şey seni bekliyor <span aria-hidden="true" className="text-mut">›</span>
+        </button>
+      ) : (
+        <span className="flex-1" />
+      )}
+      <Link href="/calendar" className="shrink-0 font-semibold text-acc">Takvim ›</Link>
+    </div>
   );
 }
