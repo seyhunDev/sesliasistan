@@ -2129,12 +2129,20 @@ group("Fitness: program ayrıntıları ve şablon")([
     const d = FMI.planDrafts(p);
     return d.length === 4 && d[0].fit.items[0].sets === 3 && !d[0].fit.phase && d[3].fit.items[0].sets === 2 && d[3].fit.phase === "Hafif" && d[3].fit.note === "gün notu · az";
   })],
-  ["hazır şablon", F("Yelken ev kuvveti: 3 gün, bütün hareketler, 12 hafta, evreler ve kurallar korunur", () => {
+  ["hazır şablon", F("Yelken ev kuvveti: 7 gün (kuvvet, mikrodoz, reset), bütün hareketler, 12 hafta, evreler ve kurallar korunur", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
-    const [a, b, c] = p.days;
+    const at = (n) => p.days.find((d) => d.dow === n);
+    const [a, b, c] = [at(2), at(4), at(5)];
     const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
-    return p.weeks === 12 && p.days.length === 3 && a.dow === 2 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 6 &&
-      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 36;
+    return p.weeks === 12 && p.days.length === 7 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 6 &&
+      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
+  })],
+  ["hazır şablon reset", F("Pazartesi 8 dk reset, Çarşamba nefes/mobilite, hafta sonu yelken sonrası toparlanma", () => {
+    const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
+    const at = (n) => p.days.find((d) => d.dow === n);
+    const r = at(1), w = at(3), s = at(6), z = at(7);
+    return r.name === "8 dk reset" && r.time === "19:00" && r.items.length === 8 && r.items.every((x) => x.part === "soguma") && r.items[0].note === "4 sn al, 6 sn ver" &&
+      w.items.length === 4 && s.items.length === 6 && s.items[0].sec === 60 && z.name === "Yelken sonrası toparlanma" && !z.time;
   })],
   ["program listesi", F("ayrıntılar ve evreler düz yazıda", () => {
     const t = FMI.programText(FTPL.fromTemplate("yelken-ev-12", "2026-10-19"));
