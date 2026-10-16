@@ -113,11 +113,25 @@ export function cleanItem(it = {}) {
   if (kind === "reps") out.reps = num(it.reps, 1, 100) || 10;
   if (kind === "time") out.sec = num(it.sec, 5, 600, 5) || 30;
   if (kind === "cardio") out.min = num(it.min, 1, 180) || 10;
+  // Aralık (8–12 tekrar, 20–30 sn): üst sınır yalnız alttan büyükse
+  const repsTo = kind === "reps" ? num(it.repsTo, 1, 100) : 0;
+  if (repsTo > out.reps) out.repsTo = repsTo;
+  const secTo = kind === "time" ? num(it.secTo, 5, 600, 5) : 0;
+  if (secTo > out.sec) out.secTo = secTo;
+  if (it.side === true || it.side === "true" || it.side === 1) out.side = true; // tek taraf: her yan için (8/yan)
   const kg = num(it.kg, 0.5, 500, 0.5);
   if (kg && kind === "reps") out.kg = kg;
+  const bag = num(it.bag, 0.5, 100, 0.5); // sırt çantasına konan ağırlık (her türde olabilir)
+  if (bag) out.bag = bag;
   const rest = num(it.rest, 0, 300, 5);
   if (rest) out.rest = rest;
-  const note = S(it.note, 120);
+  const part = PARTS.some(([k]) => k === it.part) ? it.part : "";
+  if (part) out.part = part;
+  for (const [k, n] of [["breath", 60], ["tempo", 30], ["rpe", 20], ["alt", 120]]) {
+    const v = S(it[k], n);
+    if (v) out[k] = v;
+  }
+  const note = S(it.note, 200);
   if (note) out.note = note;
   const media = cleanMedia(it.media);
   if (media.length) out.media = media;
@@ -147,16 +161,50 @@ export function cleanMedia(list) {
     })
     .filter(Boolean);
 }
+// Antrenmanın bölümü: hazırlık/ısınma, ana bölüm, soğuma (boşsa ana)
+export const PARTS = [
+  ["isinma", "Hazırlık"],
+  ["ana", "Ana bölüm"],
+  ["soguma", "Soğuma"],
+];
+export const DAY_ITEMS = 30;
 export function cleanDay(d = {}) {
   const dow = num(d.dow, 1, 7);
   if (!dow) return null;
-  return {
+  const out = {
     dow,
     time: TIME.test(padTime(d.time)) ? padTime(d.time) : "",
-    min: num(d.min, 10, 240, 5) || 45,
+    min: num(d.min, 5, 240, 5) || 45,
     name: S(d.name, 40) || "Antrenman",
-    items: (Array.isArray(d.items) ? d.items : []).map(cleanItem).filter(Boolean).slice(0, 20),
+    items: (Array.isArray(d.items) ? d.items : []).map(cleanItem).filter(Boolean).slice(0, DAY_ITEMS),
   };
+  const note = S(d.note, 300); // ör. "2 tur, geçiş 20 sn · yalnız yeşil günde"
+  if (note) out.note = note;
+  return out;
+}
+// Haftalara göre evre: { from, to, name, sets (yüzde 30-100; hafif haftada setler azalır), note }
+export function cleanPhases(list, weeks = 26) {
+  return (Array.isArray(list) ? list : [])
+    .map((x) => {
+      const from = num(x?.from, 1, weeks);
+      if (!from) return null;
+      const to = Math.max(from, num(x?.to, 1, weeks) || from);
+      const o = { from, to, name: S(x?.name, 40) || `${from}. hafta` };
+      const sets = num(x?.sets, 30, 100, 5);
+      if (sets && sets < 100) o.sets = sets;
+      const note = S(x?.note, 200);
+      if (note) o.note = note;
+      return o;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.from - b.from)
+    .slice(0, 12);
+}
+export const phaseOf = (prog, w) => (prog?.phases || []).find((p) => w >= p.from && w <= p.to) || null;
+// Evrenin set yüzdesine göre hareketler (en az 1 set; kardiyo değişmez)
+export function phaseItems(items = [], ph) {
+  if (!ph?.sets || ph.sets >= 100) return items;
+  return items.map((it) => (it.kind === "cardio" ? it : { ...it, sets: Math.max(1, Math.round(((+it.sets || 1) * ph.sets) / 100)) }));
 }
 export function cleanProgram(p = {}) {
   const days = (Array.isArray(p.days) ? p.days : []).map(cleanDay).filter(Boolean).slice(0, 7);
@@ -171,6 +219,8 @@ export function cleanProgram(p = {}) {
     weeks: num(p.weeks, 1, 26) || 4,
     days: uniq,
     note: S(p.note, 600),
+    phases: cleanPhases(p.phases, num(p.weeks, 1, 26) || 4),
+    rules: String(p.rules ?? "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1500), // ilerleme, güvenlik, trafik ışığı…
   };
 }
 
@@ -201,7 +251,11 @@ export function planDrafts(prog, from = "") {
     .filter((s) => !from || s.date >= from)
     .map(({ date, di, w }) => {
       const d = prog.days[di];
-      return { title: sessionTitle(d), date, time: d.time, min: d.min, fit: { prog: prog.id || "", di, w, name: d.name, items: d.items } };
+      const ph = phaseOf(prog, w);
+      const fit = { prog: prog.id || "", di, w, name: d.name, items: phaseItems(d.items, ph) };
+      if (ph) fit.phase = ph.name;
+      if (d.note || ph?.note) fit.note = [d.note, ph?.note].filter(Boolean).join(" · ");
+      return { title: sessionTitle(d), date, time: d.time, min: d.min, fit };
     });
 }
 // Programı seviye artırarak devam ettir: her seviye tekrarlı harekete +2 tekrar (en çok 5 seviye).
@@ -247,10 +301,14 @@ export function programText(prog, { age = 0, sport = "" } = {}) {
   ].filter(Boolean);
   const days = (prog.days || []).map((d) => {
     const top = `${DOW_LONG[d.dow]}${d.time ? ` ${d.time}` : ""} · ${d.name}${d.min ? ` (${d.min} dk)` : ""}`;
-    const items = (d.items || []).map((it, i) => `${i + 1}. ${it.name || exById(it.ex)?.name || "Hareket"} — ${itemLine(it)}`);
-    return [top, ...items].join("\n");
+    const items = (d.items || []).map((it, i) => {
+      const more = [itemMore(it), it.note, it.alt ? `alternatif: ${it.alt}` : ""].filter(Boolean).join(" · ");
+      return `${i + 1}. ${it.name || exById(it.ex)?.name || "Hareket"} — ${itemLine(it)}${more ? ` (${more})` : ""}`;
+    });
+    return [top, ...(d.note ? [d.note] : []), ...items].join("\n");
   });
-  return [head.join("\n"), ...days, prog.note ? `Not: ${prog.note}` : ""].filter(Boolean).join("\n\n");
+  const phases = (prog.phases || []).map((p) => `${p.from === p.to ? `${p.from}. hafta` : `${p.from}-${p.to}. hafta`}: ${p.name}${p.sets ? ` (setler %${p.sets})` : ""}${p.note ? ` · ${p.note}` : ""}`);
+  return [head.join("\n"), ...days, phases.length ? phases.join("\n") : "", prog.note ? `Not: ${prog.note}` : "", prog.rules || ""].filter(Boolean).join("\n\n");
 }
 
 // ---- Hareket satırı ----
@@ -258,8 +316,14 @@ const kgText = (kg) => `${String(kg).replace(".", ",")} kg`;
 export function itemLine(it) {
   if (!it) return "";
   if (it.kind === "cardio") return `${it.min} dk`;
-  const per = it.kind === "time" ? `${it.sec} sn` : `${it.reps}`;
-  return `${it.sets} × ${per}${it.kg ? ` · ${kgText(it.kg)}` : ""}`;
+  const side = it.side ? "/yan" : "";
+  const per = it.kind === "time" ? `${it.sec}${it.secTo ? `–${it.secTo}` : ""} sn${side}` : `${it.reps}${it.repsTo ? `–${it.repsTo}` : ""}${side}`;
+  return `${it.sets} × ${per}${it.kg ? ` · ${kgText(it.kg)}` : ""}${it.bag ? ` · çanta ${kgText(it.bag)}` : ""}`;
+}
+// Hareketin ayrıntıları (satır altında): dinlenme, tempo, zorluk, nefes
+export function itemMore(it) {
+  if (!it) return "";
+  return [it.rest ? `dinlenme ${it.rest} sn` : "", it.tempo ? `tempo ${it.tempo}` : "", it.rpe ? `RPE ${it.rpe}` : "", it.breath ? `nefes: ${it.breath}` : ""].filter(Boolean).join(" · ");
 }
 
 // Tahmini süre (dk): set başına tekrar ~4 sn ya da süre + dinlenme, kardiyo dakikası; başa 5 dk ısınma, 5'e yuvarlanır

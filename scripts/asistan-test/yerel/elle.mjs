@@ -763,6 +763,33 @@ group("Ana sayfa kartları")([
     return ids === "b,d,e,f" && r[0].label === "ŞİMDİ" && r[0].now && r[1].label === "BUGÜN" && r[2].label === "YARIN" && r[3].label === "CUMA" &&
       two.length === 2 && none.length === 0;
   })],
+  ["takvim iki gün", F("bugün + en yakın dolu gün, kalanlar sırada", () => {
+    const now = new Date("2026-10-07T15:00:00");
+    const ps = [
+      { id: "a", title: "Sabah", date: "2026-10-07", time: "09:00" },
+      { id: "b", title: "Toplantı", date: "2026-10-07", time: "18:30" },
+      { id: "c", title: "Kamp", date: "2026-10-10" },
+      { id: "d", title: "Bakım", date: "2026-10-10", time: "10:00" },
+      { id: "e", title: "Yarış", date: "2026-10-12", time: "08:00" },
+      { id: "f", title: "Bitti", date: "2026-10-09", done: true },
+    ];
+    const r = HT.twoDays(ps, "2026-10-07", now, 4);
+    const tom = HT.twoDays([{ id: "x", title: "X", date: "2026-10-08" }], "2026-10-07", now);
+    const empty = HT.twoDays([], "2026-10-07", now);
+    return r.days.length === 2 && r.days[0].label === "Bugün" && r.days[0].rows.map((x) => x.p.id).join() === "b" &&
+      r.days[1].day === "2026-10-10" && r.days[1].label.startsWith("Cmt") && r.days[1].rows.map((x) => x.p.id).join() === "c,d" &&
+      r.rest.map((x) => x.p.id).join() === "e" && tom.days[1].label === "Yarın" && empty.days.length === 1 && !empty.rest.length;
+  })],
+  ["kişi şeridi", F("doğum günü önde, silinen yok, sporcu kartı", () => {
+    const ms = [
+      { uid: "1", name: "Zeki", kind: "staff" },
+      { uid: "2", name: "Ali Kaya", kind: "athlete", athleteId: "A9" },
+      { uid: "3", name: "Eski", kind: "staff", status: "left" },
+      { uid: "4", name: "Ayşe", kind: "family" },
+    ];
+    const r = HT.storyPeople(ms, [{ memberUid: "4" }]);
+    return r.map((x) => x.id).join() === "4,1,2" && r[0].bday && r[2].href === "/athletes/A9" && r[0].href === "/people/family";
+  })],
 ]);
 
 // Günlük banka mailinden aidatın kendiliğinden yazılması ve bildirimi
@@ -2081,4 +2108,36 @@ group("Sporcu boy ve kilo")([
   ["aynı gün birleşir", F("boy kalır, kilo güncellenir", () => { const l = SBK.addBody(SBK.addBody([], { d: "2026-10-14", h: 150 }), { d: "2026-10-14", kg: 44 }); return l.length === 1 && l[0].h === 150 && l[0].kg === 44; })],
   ["son değerler ayrı", F("son boy eski tarihten", () => { const b = SBK.lastBody([{ d: "2026-09-01", h: 149, kg: 42 }, { d: "2026-10-01", kg: 43 }]); return b.h === 149 && b.hd === "2026-09-01" && b.kg === 43; })],
   ["yazı", F("151 cm · 42,5 kg", () => SBK.bodyText({ h: 151, kg: 42.5 }) === "151 cm · 42,5 kg")],
+]);
+
+// Fitness: PDF/metinden içe aktarılan program ayrıntıları ve hazır şablon (model.js, templates.js)
+const FMI = await import("@/lib/fitness/model");
+const FTPL = await import("@/lib/fitness/templates");
+group("Fitness: program ayrıntıları ve şablon")([
+  ["aralık ve yan", F("8–12/yan, 20–30 sn/yan; üst sınır alttan küçükse atılır", () => {
+    const a = FMI.cleanItem({ ex: "", name: "Split squat", sets: 3, reps: 8, repsTo: 12, side: true, rest: 75 });
+    const b = FMI.cleanItem({ ex: "", name: "Side plank", sets: 2, sec: 20, secTo: 30, side: true });
+    const c = FMI.cleanItem({ ex: "", name: "X", reps: 10, repsTo: 6 });
+    return FMI.itemLine(a) === "3 × 8–12/yan" && FMI.itemLine(b) === "2 × 20–30 sn/yan" && !c.repsTo && a.rest === 75;
+  })],
+  ["çanta ve nefes", F("çantadaki ağırlık her türde; nefes, tempo, zorluk, not, alternatif", () => {
+    const a = FMI.cleanItem({ ex: "", name: "Squat", sets: 3, reps: 10, bag: 2.5, breath: "4 sn al 6 sn ver", tempo: "3-1-1", rpe: "7 · RIR 3", rest: 60, note: "Topuk aktif", alt: "Goblet squat", part: "ana" });
+    return FMI.itemLine(a) === "3 × 10 · çanta 2,5 kg" && FMI.itemMore(a) === "dinlenme 60 sn · tempo 3-1-1 · RPE 7 · RIR 3 · nefes: 4 sn al 6 sn ver" && a.note === "Topuk aktif" && a.alt === "Goblet squat" && a.part === "ana";
+  })],
+  ["evre", F("hafif haftada setler azalır, planda evrenin adı ve notu", () => {
+    const p = FMI.cleanProgram({ start: "2026-10-19", weeks: 4, days: [{ dow: 2, time: "17:45", name: "A", note: "gün notu", items: [{ ex: "", name: "Row", sets: 3, reps: 10 }] }], phases: [{ from: 4, to: 4, name: "Hafif", sets: 70, note: "az" }] });
+    const d = FMI.planDrafts(p);
+    return d.length === 4 && d[0].fit.items[0].sets === 3 && !d[0].fit.phase && d[3].fit.items[0].sets === 2 && d[3].fit.phase === "Hafif" && d[3].fit.note === "gün notu · az";
+  })],
+  ["hazır şablon", F("Yelken ev kuvveti: 3 gün, bütün hareketler, 12 hafta, evreler ve kurallar korunur", () => {
+    const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
+    const [a, b, c] = p.days;
+    const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
+    return p.weeks === 12 && p.days.length === 3 && a.dow === 2 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 6 &&
+      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 36;
+  })],
+  ["program listesi", F("ayrıntılar ve evreler düz yazıda", () => {
+    const t = FMI.programText(FTPL.fromTemplate("yelken-ev-12", "2026-10-19"));
+    return t.includes("Sırt çantalı split squat — 3 × 8–12/yan (dinlenme 75 sn") && t.includes("4. hafta: Hafif hafta (setler %70)") && t.includes("alternatif: Glute bridge");
+  })],
 ]);

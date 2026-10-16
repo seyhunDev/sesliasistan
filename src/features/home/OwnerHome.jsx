@@ -15,6 +15,7 @@ import { initials } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxBell, InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
+import { BirthdayBadge, PeopleStrip } from "./PeopleStrip";
 import { HomeHero } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
@@ -65,6 +66,7 @@ export function OwnerHome() {
             </p>
           )}
         </div>
+        <BirthdayBadge />
         <InboxBell inbox={inbox} onOpen={() => setSheet(true)} />
         <Link href="/settings" aria-label="Ayarlar" className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc active:scale-90">
           {initials(profile?.name)}
@@ -115,6 +117,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div ref={root} className="space-y-6">
+      <PeopleStrip />
       <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
       <div className="empty:hidden">
         <BirthdayStrip />

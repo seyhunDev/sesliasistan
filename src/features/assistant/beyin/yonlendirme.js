@@ -38,6 +38,7 @@ import { guideHandler } from "@/features/fitness/guideVoice";
 import { guideWord } from "@/lib/fitness/words";
 import { myFit, planOf } from "@/lib/fitness/model";
 import { wantsRead } from "@/lib/readAloud";
+import { briefOf, briefText } from "@/lib/brief";
 
 // Numaralı işlerden doğrudan yola gidenler (1-3 kendi akışlarında alınır: yaris.js, yoklama.js)
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
@@ -81,6 +82,26 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   if (!chained && ctx.readMode) ctx.readMode.current = wantsRead(s);
   // Puanlama (yalnız ölçer): yeni tur ya da bekleyen soruya cevap; önceki işi düzeltiyorsa o iş kötü sayılır
   if (!chained) scoreStart(s, { awaiting: !!cards.awaiting || drafts.length > 0, yes: isYes(s) });
+  // Hızlı bilgi isteği ("notlarımı oku", "yarın planda neler var", "haftalık özet çıkar"): uzun cümlenin içinde de olsa
+  // yapay zekaya gitmeden telefonda cevaplanır ve okunur; cümlede başka iş varsa o kısım cevap okunduktan sonra kendi yoluna gider
+  const brief = !chained && !msgFirst && !cards.awaiting && !drafts.length ? briefOf(s) : null;
+  if (brief) {
+    if (ctx.readMode) ctx.readMode.current = !brief.rest; // kalan iş varsa okuma bitince mikrofon açılmaz, iş sürer
+    setTurns((p) => [...p, { role: "user", text: s }]);
+    setHeard(s);
+    setText("");
+    const said = briefText(brief.asks, { plans: ctx.plans, tasks: ctx.tasks, notes: ctx.notes, uid: ctx.dataUid || ctx.myUid, today: todayStr() });
+    reply(said, { engine: "local" }, viaVoice);
+    if (brief.rest) {
+      const id = ctx.runId.current;
+      await new Promise((ok) => setTimeout(ok, 300));
+      for (let i = 0; i < 80 && (ctx.sayQ.current.busy || ctx.speakingRef.current); i++) await new Promise((ok) => setTimeout(ok, 150));
+      if (id !== ctx.runId.current) return;
+      chainStep.current = true;
+      return ctx.run(brief.rest, viaVoice);
+    }
+    return;
+  }
   // Kullanıcının yeni sözü: görev listesindeki numaralı iş artık geçerli değil
   if (!chained && ctx.actNow) ctx.actNow.current = null;
   // Tek cümlede birden çok iş ("Atatürk Kupası adında yarış oluştur. Bugün antrenmana Mustafa geldi. Enes aidatını nakit

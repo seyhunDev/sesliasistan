@@ -1,5 +1,6 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { NextResponse } from "next/server";
+import { countAi } from "@/lib/server/aiUsage";
 
 export const runtime = "nodejs";
 
@@ -52,12 +53,55 @@ async function generate(model, text) {
   }
 }
 
+// Google Cloud seslendirme (Seyhun, 2026-10-14: "ücretsiz daha iyi bir seslendirme"): ayda ~1 milyon harf ücretsiz.
+// Anahtar Netlify'da GOOGLE_TTS_KEY (Google Cloud › Text-to-Speech API açık). Ses GOOGLE_TTS_VOICE ile değişir;
+// ilk ses kabul edilmezse sıradaki denenir.
+const GVOICES = () => [...new Set([process.env.GOOGLE_TTS_VOICE, "tr-TR-Chirp3-HD-Aoede", "tr-TR-Wavenet-E", "tr-TR-Standard-E"].filter(Boolean))];
+
+async function google(text, rate) {
+  let last = "";
+  for (const name of GVOICES()) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const audioConfig = { audioEncoding: "MP3" };
+      if (!/Chirp/i.test(name)) audioConfig.speakingRate = rate;
+      const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(process.env.GOOGLE_TTS_KEY)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ input: { text }, voice: { languageCode: "tr-TR", name }, audioConfig }),
+        signal: ctrl.signal,
+      });
+      const raw = await res.text();
+      if (!res.ok) {
+        last = `${name}: ${res.status} ${raw.slice(0, 160)}`;
+        console.error("[tts] google", last);
+        if (res.status === 400 || res.status === 404) continue; // ses yok: sıradakini dene
+        break;
+      }
+      const b64 = JSON.parse(raw).audioContent;
+      if (!b64) throw new Error("ses verisi yok");
+      return Buffer.from(b64, "base64");
+    } catch (e) {
+      last = `${name}: ${e.name === "AbortError" ? "zaman aşımı" : e.message}`;
+      console.error("[tts] google", last);
+      break;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error(last || "olmadı");
+}
+
 export async function POST(request) {
-  // TTS_ENGINE=device: Gemini ses kotası harcanmaz, istemci cihazın kendi sesiyle okur
-  if (process.env.TTS_ENGINE === "device") return NextResponse.json({ error: "Sunucu sesi kapalı" }, { status: 501 });
+  // Google anahtarı yoksa ve TTS_ENGINE=device ise istemci cihazın kendi sesiyle okur (anahtar konunca Google sesi açılır)
+  if (process.env.TTS_ENGINE === "device" && !process.env.GOOGLE_TTS_KEY) return NextResponse.json({ error: "Sunucu sesi kapalı" }, { status: 501 });
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
-  if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "Ses anahtarı yok" }, { status: 501 });
+  const hasGoogle = !!process.env.GOOGLE_TTS_KEY;
+  // Gemini sesi yavaş (birkaç saniye); yalnız TTS_ENGINE=gemini ile açılır
+  const useGemini = process.env.TTS_ENGINE === "gemini" && !!process.env.GEMINI_API_KEY;
+  if (!hasGoogle && !useGemini) return NextResponse.json({ error: "Ses anahtarı yok" }, { status: 501 });
 
   let body;
   try {
@@ -68,8 +112,19 @@ export async function POST(request) {
   const text = String(body?.text ?? "").replace(/\s+/g, " ").trim();
   if (!text) return NextResponse.json({ error: "Metin boş" }, { status: 400 });
   if (text.length > 400) return NextResponse.json({ error: "Metin çok uzun" }, { status: 400 });
+  const rate = Math.min(1.4, Math.max(0.7, Number(body?.rate) || 1));
 
   let last = "";
+  if (hasGoogle) {
+    try {
+      const mp3 = await google(text, rate);
+      countAi(au, "tts-chr", text.length);
+      return new Response(new Uint8Array(mp3), { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+    } catch (e) {
+      last = `google: ${e.message}`;
+      if (!useGemini) return NextResponse.json({ error: "Ses üretilemedi", detail: last }, { status: 502 });
+    }
+  }
   for (const m of MODELS()) {
     try {
       const wav = await generate(m, text);

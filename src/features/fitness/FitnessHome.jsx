@@ -19,6 +19,8 @@ import { useFitLib } from "./useFitLib";
 import { kindOf } from "@/lib/kinds";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, dropFrom, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms } from "./fitnessData";
 import { NewProgram, ProfileFields } from "./NewProgram";
+import { importFile, importText } from "./fitImport";
+import { TEMPLATES, fromTemplate } from "@/lib/fitness/templates";
 import { ProgramEditor } from "./ProgramEditor";
 import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
@@ -207,6 +209,35 @@ export function FitnessHome() {
     }
   }
 
+  // Elindeki program (PDF, fotoğraf, metin): yapay zeka okur, düzenleme ekranında tam açılır
+  async function importProg({ file, text, ask: extra }, f, pre) {
+    setBusy("import");
+    setAskErr("");
+    try {
+      const opt = { ask: extra, age: pre.for ? f.age || 0 : 0, sport: pre.for ? f.sport || "" : "" };
+      const r = file ? await importFile(file, opt) : await importText(text, opt);
+      if (!r.program?.days?.length) throw new Error(r.message || "Programda antrenman bulunamadı");
+      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "" } : {};
+      setNewOpen(false);
+      setEdit({ prog: fixStart({ ...cleanProgram(r.program), ...who, start: pre.start }), fresh: true, k: Date.now() });
+      if (r.message) toast(r.message);
+    } catch (e) {
+      setAskErr(e.message || "Program okunamadı, tekrar dene.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  // Hazır program: seçili sporcuya tek dokunuş, kaydetmeden önce düzenleme ekranında
+  function template(id, f, pre) {
+    const t = TEMPLATES.find((x) => x.id === id);
+    const p = fromTemplate(id, pre.start);
+    if (!t || !p) return;
+    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || t.forAge || 0, sport: f.sport || t.sport || "" } : {};
+    setNewOpen(false);
+    setEdit({ prog: fixStart({ ...p, ...who, title: pre.for ? `${pre.forName} · ${t.title}` : p.title }), fresh: true, k: Date.now() });
+  }
+
   function blank(pre, f) {
     if (!pre.for) saveProfile(uid, f).then(setFitProf).catch(() => {});
     setNewOpen(false);
@@ -331,7 +362,7 @@ export function FitnessHome() {
             setNewOpen(true);
           }}
         />
-        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} error={askErr} />
+        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       </main>
     );
   }
@@ -359,7 +390,7 @@ export function FitnessHome() {
           spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
         }}
       />
-      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} busy={busy === "ask"} error={askErr} />
+      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </>
   );

@@ -20,6 +20,7 @@ export const AI_LABELS = {
   "training-log": "Antrenman günlüğü",
   fitness: "Fitness",
   "fitness-intro": "Fitness tanıtım kartları",
+  "fitness-import": "Fitness programı (PDF/metin)",
   food: "Beslenme (yemek okuma)",
   "bank-analyze": "Banka Excel incelemesi",
   "post-caption": "Instagram yazısı",
@@ -41,6 +42,13 @@ export const STT_PRICE_MIN = 0.005;
 export function sttUsage(doc) {
   const min = Math.round(((Number(doc?.["stt-sec"]) || 0) / 60) * 10) / 10;
   return { min, cost: min * STT_PRICE_MIN };
+}
+
+// Google seslendirme (Cloud Text-to-Speech): seslendirilen harf sayılır; ayda 1 milyon harf ücretsiz (Chirp 3 HD)
+export const TTS_FREE = 1000000;
+export function ttsUsage(doc) {
+  const chars = Number(doc?.["tts-chr"]) || 0;
+  return { chars, pct: Math.round((chars / TTS_FREE) * 100) };
 }
 
 // Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller

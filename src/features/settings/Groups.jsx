@@ -93,7 +93,7 @@ export function VoiceRow() {
                 onChange={(e) => tts.setVoice(e.target.value)}
                 className="min-w-0 flex-1 rounded-full bg-bg px-3 py-1.5 text-[0.8125rem] font-medium text-fg"
               >
-                <option value="">Otomatik{best ? ` (${voiceLabel(best)})` : ""}</option>
+                <option value="">{tts.cloud ? "Otomatik (Google sesi)" : `Otomatik${best ? ` (${voiceLabel(best)})` : ""}`}</option>
                 {tts.voices.map((v) => (
                   <option key={v.voiceURI} value={v.voiceURI}>{voiceLabel(v)}</option>
                 ))}
@@ -116,7 +116,7 @@ export function VoiceRow() {
               Dene
             </button>
           </div>
-          {(!using || voiceQuality(using) < 3 || using.localService === false) && (
+          {!(tts.cloud && !tts.voiceUri) && (!using || voiceQuality(using) < 3 || using.localService === false) && (
             <p className="text-[0.75rem] leading-snug text-mut">
               {!tts.voices.length ? "Bu cihazda Türkçe ses bulunamadı. " : ""}
               Daha doğal ses için {typeof navigator !== "undefined" && voiceHelp(navigator.userAgent, navigator.maxTouchPoints)}

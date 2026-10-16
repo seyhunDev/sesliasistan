@@ -676,7 +676,9 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const staff = profile?.role === "staff";
   const owner = profile?.role === "owner";
   const side = isAthleteSide(kind);
-  const noAi = kind === "athlete" || kind === "student"; // sporcu ve öğrenci: asistan yok (veli eskisi gibi)
+  // Sporcu ve öğrenci: asistan yok (veli eskisi gibi). Fitness sayfalarında da şimdilik yok (Seyhun, 2026-10-16:
+  // "simdilik sesli asistani fitness sayfalarinda kullanmayacagiz"; program yapay zekayla sayfanın kendi düğmelerinden).
+  const noAi = kind === "athlete" || kind === "student" || String(path || "").startsWith("/fitness");
   const athletes = canSeeAthletes(profile?.email);
   const to = (href) => () => router.push(href);
   const groups = [
