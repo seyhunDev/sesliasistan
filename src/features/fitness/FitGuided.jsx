@@ -164,13 +164,20 @@ function howOf(it) {
 // Hedef: "3 set × 12 tekrar · 20 kg"
 function targetText(it, n) {
   const key = KEY[it.kind] || "reps";
-  return [`${n} set`, it[key] ? `${it[key]} ${UNIT[key]}` : "", it.kg ? `${String(it.kg).replace(".", ",")} kg` : ""].filter(Boolean).join(" × ").replace(/ × (\S+ kg)$/, " · $1");
+  const to = key === "reps" ? it.repsTo : key === "sec" ? it.secTo : 0;
+  const kg = (v) => `${String(v).replace(".", ",")} kg`;
+  const head = [`${n} set`, it[key] ? `${it[key]}${to ? `–${to}` : ""} ${UNIT[key]}${it.side ? " (her yan)" : ""}` : ""].filter(Boolean).join(" × ");
+  return [head, it.kg ? kg(it.kg) : "", it.bag ? `çanta ${kg(it.bag)}` : ""].filter(Boolean).join(" · ");
 }
 
 function HowBody({ it }) {
   const how = howOf(it);
+  const more = [it.breath ? `Nefes: ${it.breath}` : "", it.tempo ? `Tempo: ${it.tempo}` : "", it.note || ""].filter(Boolean);
   return (
     <>
+      {more.length > 0 && (
+        <p className="mt-2 rounded-xl bg-acc/10 px-3 py-2 text-[0.875rem] leading-snug text-fg">{more.join(" · ")}</p>
+      )}
       <MediaVideo media={it.media} className="mt-3" />
       <YtPlayer key={it.yt?.id} yt={it.yt} className="mt-2" />
       <ExerciseMedia media={it.media} ex={it.ex} noVideo className="mt-2" />
