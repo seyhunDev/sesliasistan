@@ -1091,3 +1091,47 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["sınır", { desc: "fazla kalıpta en eskiler", fn: () => S.oldestKeys({ a: { t: 1 }, b: { t: 3 }, c: { t: 2 } }, 2), ok: (x) => x.join() === "a" }],
   ]);
 }
+
+// Hızlı bilgi isteği: uzun cümlenin içinde de "notlarımı oku", "yarın planda neler var" yapay zekasız cevaplanır
+{
+  const B = await import("@/lib/brief");
+  const A = (what, when) => ({ desc: `${what}${when ? "/" + when : ""}`, fn: B.briefOf, ok: (r) => r?.asks?.[0]?.what === what && (when === undefined || r.asks[0].when === when) });
+  const NONE = { desc: "bilgi isteği değil", fn: B.briefOf, ok: (r) => r === null };
+  group("Hızlı bilgi isteği")([
+    ["bana notlarımı oku", A("notes")],
+    ["Bugün planda neler var?", A("plans", "today")],
+    ["yarın planda neler var", A("plans", "tomorrow")],
+    ["bana haftalık özet çıkar", A("summary", "week")],
+    ["bugün hangi planlarımız var", A("plans", "today")],
+    ["yarın neler var", A("plans", "tomorrow")],
+    ["görevlerimi oku", A("tasks")],
+    ["yarını anlat", A("plans", "tomorrow")],
+    ["günlük özet ver", A("summary", "today")],
+    ["Tamam şimdi bir şey soracağım, uzun bir gün oldu, yarın planda neler var acaba bir bak", A("plans", "tomorrow")],
+    ["not al: yarın yelkenleri kontrol et", NONE],
+    ["yarınki planı sil", NONE],
+    ["motor yağı görevini Gökhan'a ver", NONE],
+    ["bugün rüzgar ne var", NONE],
+    ["kasada ne kadar var", NONE],
+    ["bugün kimler geldi", NONE],
+    ["yarın 10'da antrenman ekle", NONE],
+    ["notları aç", NONE],
+    ["Ali'ye söyle notlarını getirsin", NONE],
+    ["notlarımı oku sonra Ali'ye yarın erken gel diye yaz", { desc: "not + kalan iş", fn: B.briefOf, ok: (r) => r?.asks?.[0]?.what === "notes" && /Ali/.test(r.rest) }],
+    ["metin: yarın", { desc: "yarın planı okunur", fn: () => B.briefText([{ what: "plans", when: "tomorrow" }], { ...data, uid: "u", today }), ok: (x) => /^Yarın/.test(x) }],
+    ["metin: not yok", { desc: "boş not", fn: () => B.briefText([{ what: "notes" }], { notes: [], today }), ok: (x) => x === "Hiç notun yok." }],
+    ["bugün eklediğim notları oku", A("notes", "today")],
+    ["dün aldığım notları oku", A("notes", "yesterday")],
+    ["metin: bugün eklenen notlar", { desc: "yalnız bugünkü not", fn: () => B.briefText([{ what: "notes", when: "today" }], { notes: [{ title: "Eski", createdAt: Date.parse("2020-01-01T10:00:00") }, { title: "Yeni", createdAt: Date.now() }], today: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })() }), ok: (x) => /Yeni/.test(x) && !/Eski/.test(x) }],
+  ]);
+  // Hazır cümle setindeki okuma işlerinin bütün söyleyişleri hızlı yoldan cevaplanır, "not" cümleleri cevaplanmaz
+  const { SEED } = await import("@/lib/brain/seedPhrases");
+  const MAP = { "notes.read": ["notes"], "plans.today": ["plans", "summary"], "plans.tomorrow": ["plans"], "plans.week": ["plans", "summary"], "tasks.list": ["tasks"], "day.summary": ["summary", "plans"] };
+  const rows = [];
+  for (const t of SEED.filter((x) => MAP[x.id])) {
+    for (const say of t.say) rows.push([say, { desc: MAP[t.id].join("|"), fn: B.briefOf, ok: (r) => MAP[t.id].includes(r?.asks?.[0]?.what) }]);
+    // "not" cümlesi bu işe ait değil (başka okuma işine gidebilir, ör. "yarın neler var")
+    for (const no of t.not || []) rows.push([no, { desc: `${t.id} değil`, fn: B.briefOf, ok: (r) => !r || !(t.id === "notes.read" ? r.asks.some((a) => a.what === "notes") : r.asks.some((a) => a.what === "plans" && a.when === t.id.split(".")[1])) }]);
+  }
+  group("Hızlı bilgi isteği: hazır cümle seti")(rows);
+}
