@@ -7,9 +7,8 @@ import { Icon } from "@/components/ui/Icon";
 import { TodayWind, WeatherDetail } from "@/features/weather/DaySheet";
 import { dayHours, getPlace, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
-import { CALM } from "./ui";
 
-// Başlığın altındaki hava hapı: simge, sıcaklık, gökyüzü, rüzgâr ve ›; dokunulabildiği belli olsun diye çerçeveli.
+// Başlığın altındaki hava satırı: simge, sıcaklık, gökyüzü, rüzgâr ve yeşil ›; çerçevesiz (Seyhun: "kenarlık gerek yok"), dokunulabildiği yeşil oktan belli.
 // Dokununca bugünün özeti ve rüzgâr grafiği açılır.
 export function HomeHero({ weather }) {
   const { w, err, refresh } = weather;
@@ -23,7 +22,7 @@ export function HomeHero({ weather }) {
         type="button"
         onClick={() => (w ? setOpen(true) : refresh(true))}
         aria-label="Bugünün hava ayrıntısı"
-        className="mt-1 flex max-w-full items-center gap-1.5 rounded-full border border-line bg-card py-1 pl-2 pr-2.5 text-left text-[0.8125rem] text-mut"
+        className="-ml-0.5 mt-0.5 flex max-w-full items-center gap-1.5 py-0.5 text-left text-[0.8125rem] text-mut"
       >
         {w ? (
           <>
@@ -35,7 +34,7 @@ export function HomeHero({ weather }) {
         ) : (
           <span className="truncate">{err ? "Hava durumu alınamadı · dokun, yenile" : `${place.name} havası yükleniyor…`}</span>
         )}
-        <span aria-hidden className="shrink-0 text-[0.9375rem] leading-none text-mut">›</span>
+        <span aria-hidden className="shrink-0 text-[1rem] font-semibold leading-none text-acc">›</span>
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title={`Hava durumu · ${place.name}`}>
@@ -46,7 +45,7 @@ export function HomeHero({ weather }) {
 }
 
 // Başlığın altında bugünün rüzgâr grafiği (Seyhun: "ana sayfadaki hava alanında o grafik, hangi saatteysek orada nokta").
-// Dokununca hava penceresi açılır. Hava gelmediyse çizilmez.
+// Çerçevesiz, başlığın hemen altında; dokununca hava penceresi açılır ("Ayrıntı ›"). Hava gelmediyse çizilmez.
 export function HomeWind({ weather }) {
   const { w, refresh } = weather;
   const [open, setOpen] = useState(false);
@@ -55,10 +54,10 @@ export function HomeWind({ weather }) {
   const place = getPlace();
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label="Bugünün rüzgârı, ayrıntı" className={`block w-full overflow-hidden px-2 pb-1 pt-2 text-left ${CALM}`}>
-        <span className="flex items-center justify-between px-1.5 text-[0.8125rem] text-mut">
+      <button type="button" onClick={() => setOpen(true)} aria-label="Bugünün rüzgârı, ayrıntı" className="mt-1 block w-full overflow-hidden text-left">
+        <span className="flex items-center justify-between px-1 text-[0.8125rem] text-mut">
           <span><b className="font-semibold text-fg">Rüzgâr</b> · bugün, kn</span>
-          <span aria-hidden className="text-[0.9375rem] leading-none">›</span>
+          <span className="font-medium text-acc">Ayrıntı <span aria-hidden className="text-[1rem] leading-none">›</span></span>
         </span>
         <TodayWind rows={rows} />
       </button>
