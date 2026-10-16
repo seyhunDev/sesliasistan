@@ -1,8 +1,8 @@
-Commit: 4733f60 · Sesli okuma: oku/söyle/anlat ve liste sorularında cevap okunur, sonra mikrofon açılır (#431)
-Zaman: 2026-10-14-2149 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38618166293
+Commit: 49d7df0 · Hazır cümle seti: önemli işler için Türkçe söyleyiş kalıpları ve eşleştirici (#432)
+Zaman: 2026-10-16-1908 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38929418926
 
-TAM TEST · 14.10.2026 21:48:02
+TAM TEST · 16.10.2026 19:07:39
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
