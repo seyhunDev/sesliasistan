@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { authFetch } from "@/lib/authFetch";
-import { monthName, sttUsage, usageRows, usd } from "@/lib/aiUsage";
+import { monthName, sttUsage, ttsUsage, usageRows, usd } from "@/lib/aiUsage";
 import { Row } from "./ui";
 
 // Ayarlar › Kullanım (ana hesap): bu ay yapay zekaya kaç istek gitti (işe göre), geçen ay, Instagram görselleri ve yaklaşık maliyet.
@@ -28,6 +28,7 @@ export function UsageRow() {
   const prev = usageRows(d?.ai?.prev);
   const img = d?.img;
   const stt = sttUsage(d?.ai?.month);
+  const tts = ttsUsage(d?.ai?.month);
   const textCost = (n) => n * (d?.textPrice || 0.001);
   return (
     <Row icon="chart" tone="sky" title="Kullanım" sub="Yapay zeka istekleri ve yaklaşık maliyet" onClick={toggle} chevron>
@@ -56,6 +57,11 @@ export function UsageRow() {
               {stt.min > 0 && (
                 <p className="mt-2 text-mut">
                   Gemini ses tanıma: bu ay {stt.min.toLocaleString("tr-TR")} dk (≈ {usd(stt.cost)})
+                </p>
+              )}
+              {tts.chars > 0 && (
+                <p className="mt-2 text-mut">
+                  Google seslendirme: bu ay {tts.chars.toLocaleString("tr-TR")} harf {`(ücretsiz 1 milyonun %${tts.pct}'i)`}
                 </p>
               )}
               {img && <p className="mt-2 text-mut">Instagram görseli: bugün {img.today}/{img.limit}, bu ay {img.month} (≈ {usd(img.cost)})</p>}
