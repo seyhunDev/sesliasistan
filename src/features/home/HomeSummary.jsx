@@ -283,7 +283,7 @@ export function WeekStrip({ w, att, today }) {
 // Günün penceresi: YELKEN (planlar, Yoklamayı aç; plan yoksa Antrenman ekle, yoklamasını al) ve FİTNESS (sporcu satırları;
 // dokununca o sporcunun o günkü planı açılır).
 const FIT_ST = { done: ["Yaptı", "bg-acc/12 text-acc"], missed: ["Yapmadı", "bg-rec/12 text-rec"], skip: ["Atladı", "bg-line text-mut"] };
-function DayPick({ day, att, today, onClose }) {
+export function DayPick({ day, att, today, onClose }) {
   const { saveDrafts } = useData();
   const { profile } = useAuth();
   const toast = useToast();
