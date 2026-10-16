@@ -306,3 +306,41 @@ export function upcoming(plans = [], today, now = new Date(), n = 4, days = 7) {
   }
   return out;
 }
+
+// Ana sayfa takvimi iki gün (Seyhun: "bugün ve en yakın tarih; yarın varsa yarın"): bugün (geçmiş saatler hariç) ve
+// planı olan en yakın sonraki gün; kalan planlar "Sırada seni bekleyenler" (rest, en çok n). Gün başlığı: Bugün, Yarın ya da "Cum 17 Eki".
+export function twoDays(plans = [], today, now = new Date(), n = 4, horizon = 60) {
+  const all = upcoming(plans, today, now, 200, horizon);
+  const later = all.find((r) => r.day > today)?.day || "";
+  const pick = (day) => all.filter((r) => r.day === day).map(({ p, now: live }) => ({ p, now: live }));
+  const days = [{ day: today, label: "Bugün", rows: pick(today) }];
+  if (later) days.push({ day: later, label: dayHead(later, today), rows: pick(later) });
+  const rest = all.filter((r) => r.day !== today && r.day !== later).slice(0, n);
+  return { days, rest };
+}
+export function dayHead(day, today) {
+  const t = new Date(`${today}T12:00:00`);
+  t.setDate(t.getDate() + 1);
+  if (day === ymd(t)) return "Yarın";
+  const d = new Date(`${day}T12:00:00`);
+  return `${d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
+}
+
+// Kişinin sayfası (kişi sayfası ayrı işte yapılıyor; o gelene kadar: sporcu kartı ya da Kişiler'deki grubu). Tek yerde değişir.
+export function personHref(m) {
+  if (!m) return "/people/staff";
+  if (m.athleteId) return `/athletes/${m.athleteId}`;
+  const g = { athlete: "athletes", student: "athletes", parent: "athletes", family: "family", other: "other" }[m.kind] || "staff";
+  return `/people/${g}`;
+}
+
+// Ana sayfadaki yuvarlak kişi şeridi (Instagram hikâyeleri gibi): bugün doğum günü olanlar önde, sonra çalışan, aile, sporcu, diğer; ada göre.
+// Silinen kişi (status left) girmez. bdays: bugünkü doğum günü kayıtları (memberUid ile bağlı).
+export function storyPeople(members = [], bdays = []) {
+  const born = new Set(bdays.map((b) => b.memberUid).filter(Boolean));
+  const rank = { staff: 1, family: 2, athlete: 3, student: 3, parent: 4, other: 5 };
+  return members
+    .filter((m) => m && m.name && m.status !== "left")
+    .map((m) => ({ id: m.uid, name: m.name, href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1 }))
+    .sort((a, b) => (b.bday - a.bday) || a.r - b.r || a.name.localeCompare(b.name, "tr"));
+}
