@@ -82,7 +82,8 @@ export function useDock(cfg) {
   }, [setPage, ph, prefer, createKey]);
 }
 
-// Yazma satırı (sahnenin içinde, koyu): yazı alanı · mikrofon (söyleneni kutuya yazar) · gönder
+// Yazarak sorma: sesle aynı kutu (sade tasarım, 2026-10-16). Üstte yazı alanı, altta × (yazmayı bırak) ve tek ana düğme:
+// yazı varken ↑ gönder, boşken 🎤 (söyleneni kutuya yazar, dokununca durur).
 function Composer({ cfg, onDone, init = "" }) {
   const { openAssistant } = useAssistant();
   const toast = useToast();
@@ -90,7 +91,6 @@ function Composer({ cfg, onDone, init = "" }) {
   const input = useRef(null);
   const sp = useSpeech({ onFinal: (t) => setText((p) => (p ? `${p} ${t}` : t)), onFail: (m) => toast(m) });
   const listening = sp.status === "listening";
-  const keep = (e) => e.preventDefault(); // düğmeye basınca klavye kapanmasın
   useEffect(() => input.current?.focus(), []);
 
   const send = () => {
@@ -101,32 +101,38 @@ function Composer({ cfg, onDone, init = "" }) {
     onDone();
     openAssistant({ text: t, prefer: cfg.prefer, examples: cfg.ex, focus: cfg.focus, dock: true });
   };
+  const has = !!text.trim();
 
   return (
-    <div className="flex h-11 min-w-0 flex-1 items-center gap-1">
+    <AssistBox
+      mode={listening ? "listening" : "typing"}
+      onX={() => (listening ? sp.stop("edit") : onDone())}
+      xLabel={listening ? "Dinlemeyi bırak" : "Yazmayı bırak"}
+      onMain={listening ? () => sp.stop("edit") : has ? send : () => sp.start({ autoStop: 8000 })}
+      mainIcon={listening ? "check" : has ? "up" : "mic"}
+      mainLabel={listening ? "Bitti" : has ? "Gönder" : "Sesle yaz"}
+    >
       {listening ? (
-        <p className="min-w-0 flex-1 truncate text-[0.9375rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
+        <p className="min-h-[3.5rem] px-5 pb-1 pt-4 text-[1.0625rem] leading-snug">
+          {`${text ? `${text} ` : ""}${sp.finalText || ""}${sp.interim || ""}`}
+          <i className="box-caret" aria-hidden="true" />
+        </p>
       ) : (
-        <input
+        <textarea
           ref={input}
           value={text}
+          rows={1}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && send()}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), send())}
           onBlur={() => setTimeout(() => !text.trim() && input.current !== document.activeElement && onDone(), 150)}
           placeholder={cfg.ph}
           aria-label={cfg.ph}
           enterKeyHint="send"
           autoCapitalize="sentences"
-          className="min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-[0.9375rem] placeholder:text-mut"
+          className="block max-h-[7.5rem] min-h-[3.5rem] w-full resize-none bg-transparent px-5 pb-1 pt-4 text-[1.0625rem] leading-snug text-fg outline-none [field-sizing:content] placeholder:text-mut"
         />
       )}
-      <button type="button" onPointerDown={keep} onClick={() => (listening ? sp.stop("edit") : sp.start({ autoStop: 8000 }))} aria-label={listening ? "Bitti" : "Sesle yaz"} className="grid size-9 shrink-0 place-items-center rounded-full text-acc active:bg-line/50">
-        <Icon name={listening ? "check" : "mic"} className="size-[1.375rem]" />
-      </button>
-      <button type="button" onPointerDown={keep} onClick={send} disabled={!text.trim()} aria-label="Gönder" className="grid size-9 shrink-0 place-items-center rounded-full bg-acc text-white transition active:scale-90 disabled:opacity-35">
-        <Icon name="up" className="size-5" />
-      </button>
-    </div>
+    </AssistBox>
   );
 }
 
@@ -203,14 +209,15 @@ function NavTab({ href, icon, label, active, badge }) {
   );
 }
 
-// Asistan kutusu (Seyhun'un örneği, 2026-10-09: "bastıktan sonra bütün asistan alanı yeni tasarımda olmalı"): asistan
-// açıkken her durumda aynı geniş yuvarlak kutu. Üstte söylenen yazı (dinlerken canlı, gönderilince ve iş yapılırken
-// söylenen cümle), altta × · noktalı dalga · durum düğmesi · ↑. mode: listening | sending | busy | speaking | idle.
-//   listening: × sözü siler, dalga sesle oynar, ■ durdurur (göndermez), ↑ gönderir
-//   sending / busy: noktalar yavaşça parlar, ■ işi durdurur; speaking: ■ okumayı keser ve dinler
-//   idle (iş bitti): kutuya dokun yaz, 🎤 konuş, + Oluştur; × asistanı kapatır
-const DOTS = "mx-1 h-7 min-w-0 flex-1 bg-[length:7px_7px] bg-[position:center] bg-repeat-x";
-function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, sendOn, onType }) {
+// Asistan kutusu, sade (Seyhun: "daha sade, daha kullanıcı dostu", 2026-10-16). Sesle ve yazarak aynı kutu: üstte yazı,
+// altta yalnız iki düğme: solda ×, sağda duruma göre tek ana düğme. Arada dinlerken ses dalgası, iş yapılırken noktalar.
+//   idle      × kapatır (taslak varsa siler)  · ana düğme 🎤 konuş (taslak varsa ↑ gönder) · kutuya dokun: yaz
+//   listening × sözü siler                    · ↑ gönder · yazıya dokun: dinlemeyi durdur, düzelt (göndermez)
+//   sending / busy  × kapatır                 · ■ durdur
+//   speaking  × kapatır                       · ■ okumayı kes, dinle
+// mode: listening | sending | busy | speaking | idle | typing (klavye; children yazı alanı)
+const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
+function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, children }) {
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
@@ -218,55 +225,44 @@ function AssistBox({ mode, text, ph, rec, onX, onMenu, onStop, onTalk, onSend, s
   }, [text]);
   const listening = mode === "listening";
   const working = mode === "busy" || mode === "sending";
-  const round = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
+  const keep = (e) => mode === "typing" && e.preventDefault(); // yazarken düğmeye basınca klavye kapanmasın
   return (
     <div className="px-3 pb-1 pt-2">
-      <div data-mode={mode} className={`asheet-input rounded-[1.625rem] ${listening ? "asheet-on" : ""}`}>
-        <div
-          ref={box}
-          onClick={onType}
-          className={`max-h-[7.5rem] min-h-[3.25rem] overflow-hidden px-[1.125rem] pb-1 pt-3.5 text-[1.0625rem] leading-snug ${onType ? "cursor-text" : ""}`}
-        >
-          {text ? (
-            <span className={mode === "busy" ? "text-fg/60" : "text-fg"}>
-              {text}
-              {listening && <i className="box-caret" aria-hidden="true" />}
-            </span>
-          ) : listening ? (
-            <i className="box-caret" aria-label="Dinliyor" />
-          ) : (
-            <span className="text-mut">{ph}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 px-2 pb-2">
-          <button type="button" onClick={onX} aria-label={listening ? "Sil ve dinlemeyi bırak" : "Konuşmayı bitir"} className={`${round} bg-fg/[.07] text-fg`}>
+      <div data-mode={mode} className={`asheet-input rounded-[1.75rem] ${listening ? "asheet-on" : ""}`}>
+        {children || (
+          <div
+            ref={box}
+            onClick={onText}
+            className={`max-h-[7.5rem] min-h-[3.5rem] overflow-hidden px-5 pb-1 pt-4 text-[1.0625rem] leading-snug ${onText ? "cursor-text" : ""}`}
+          >
+            {text ? (
+              <span className={working ? "text-fg/60" : "text-fg"}>
+                {text}
+                {listening && <i className="box-caret" aria-hidden="true" />}
+              </span>
+            ) : listening ? (
+              <i className="box-caret" aria-label="Dinliyor" />
+            ) : (
+              <span className="text-mut">{ph}</span>
+            )}
+          </div>
+        )}
+        <div className="flex items-center gap-3 px-2 pb-2">
+          <button type="button" onPointerDown={keep} onClick={onX} aria-label={xLabel} className={`${ROUND} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
-          {mode === "idle" && !rec && (
-            <button type="button" onClick={onMenu} aria-label="Oluştur" className={`${round} bg-fg/[.07] text-fg`}>
-              <Icon name="plus" className="size-[1.375rem]" />
-            </button>
-          )}
           {listening ? (
-            <ListenWave line className="mx-1 text-mut" />
-          ) : (
-            // Dinlemiyor: dalga noktalara iner; iş yapılırken yavaşça parlar, konuşurken yeşil
+            <ListenWave line className="min-w-0 flex-1 text-mut" />
+          ) : working || mode === "speaking" ? (
             <span
-              className={`${DOTS} ${mode === "speaking" ? "animate-pulse bg-[radial-gradient(circle,var(--acc)_1.75px,transparent_1.85px)]" : `bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] ${working ? "animate-pulse opacity-70" : "opacity-50"}`}`}
+              className={`h-7 min-w-0 flex-1 animate-pulse bg-[length:8px_8px] bg-[position:center] bg-repeat-x ${mode === "speaking" ? "bg-[radial-gradient(circle,var(--acc)_1.75px,transparent_1.85px)]" : "bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] opacity-70"}`}
               aria-hidden="true"
             />
-          )}
-          {mode === "idle" ? (
-            <button type="button" onClick={onTalk} aria-label="Konuş" className={`${round} bg-fg/[.07] text-fg`}>
-              <Icon name="mic" className="size-[1.25rem]" />
-            </button>
           ) : (
-            <button type="button" onClick={onStop} aria-label={listening ? "Dinlemeyi durdur, gönderme" : mode === "speaking" ? "Okumayı kes" : "Durdur"} className={`${round} bg-fg/[.07]`}>
-              <span className="size-4 rounded-[3px] bg-fg" aria-hidden="true" />
-            </button>
+            <span className="min-w-0 flex-1" />
           )}
-          <button type="button" onClick={onSend} disabled={!sendOn} aria-label="Gönder" className={`${round} bg-acc text-white disabled:opacity-40`}>
-            <Icon name="up" className="size-5" />
+          <button type="button" onPointerDown={keep} onClick={onMain} disabled={!mainOn} aria-label={mainLabel} className={`${ROUND} size-12 bg-acc text-white disabled:opacity-40`}>
+            {mainIcon === "stop" ? <span className="size-4 rounded-[3px] bg-white" aria-hidden="true" /> : <Icon name={mainIcon} className="size-[1.375rem]" />}
           </button>
         </div>
       </div>
@@ -537,7 +533,13 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
           {active && <AssistBg />}
           <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
-              <div className="flex h-6 shrink-0 items-end justify-center">
+              <div className="relative flex h-12 shrink-0 items-center justify-center px-3">
+                {/* Oluştur üstte solda, sabit (sade tasarım, 2026-10-16: alttaki kutuda yalnız iki düğme kalsın) */}
+                {!rec && (
+                  <button type="button" onClick={onMenu} aria-label="Oluştur" className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
+                    <Icon name="plus" className="size-5" />
+                  </button>
+                )}
                 {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
@@ -554,50 +556,30 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
                 </div>
               </div>
             )}
-            {box2 ? (
+            {typing ? (
+              <Composer cfg={cfg} onDone={onTypingDone} init={typeInit} />
+            ) : box2 ? (
               <AssistBox
                 mode={mode}
                 text={boxText}
                 ph={boxPh}
-                rec={rec}
                 onX={mode === "listening" || draft ? voice.cancel : onClose}
-                onMenu={onMenu}
-                onStop={mode === "listening" ? voice.edit : mode === "busy" ? voice.abort : talk}
-                onTalk={talk}
-                onSend={mode === "listening" ? voice.stop : voice.send}
-                sendOn={mode === "listening" || (mode === "idle" && !!draft)}
-                onType={mode === "idle" ? (draft ? voice.type : typeNow) : undefined}
+                xLabel={mode === "listening" ? "Sil ve dinlemeyi bırak" : draft ? "Yazıyı sil" : "Konuşmayı bitir"}
+                onMain={mode === "listening" ? voice.stop : mode === "idle" ? (draft ? voice.send : talk) : mode === "speaking" ? talk : voice.abort}
+                mainIcon={mode === "listening" || (mode === "idle" && draft) ? "up" : mode === "idle" ? "mic" : "stop"}
+                mainLabel={mode === "listening" || (mode === "idle" && draft) ? "Gönder" : mode === "idle" ? "Konuş" : mode === "speaking" ? "Okumayı kes" : "Durdur"}
+                onText={mode === "listening" ? voice.edit : mode === "idle" ? (draft ? voice.type : typeNow) : undefined}
               />
             ) : (
-            <div className={`flex min-h-[3.75rem] items-end gap-2 px-3 py-2 ${active ? "" : "pt-2"}`}>
-              {!rec && (
-                <button type="button" onClick={onMenu} aria-label="Oluştur" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
-                  <Icon name="plus" className="size-[1.375rem]" />
-                </button>
-              )}
-              {typing ? (
-                <div className="asheet-input flex h-11 min-w-0 flex-1 items-center rounded-full pl-2 pr-1">
-                  <Composer cfg={cfg} onDone={onTypingDone} init={typeInit} />
-                </div>
-              ) : (
-                <div className={`asheet-input flex min-h-11 min-w-0 flex-1 items-center gap-1 rounded-[1.375rem] pl-4 pr-1 ${state === "listening" && active ? "asheet-on" : ""}`}>
-                  {/* Söylenen yazı kutusunda bütünüyle görünür (en çok 4 satır; uzarsa son kısmı görünür) */}
-                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="flex max-h-[5.75rem] min-h-11 min-w-0 flex-1 flex-col justify-end overflow-hidden py-2.5 text-left">
-                    <span className={`block text-[0.9375rem] leading-snug ${said && said !== "Dinliyorum…" ? "text-fg" : "line-clamp-1 text-mut"}`}>
-                      {said || cfg.ph}
-                    </span>
+              // Plan/görev/not ekranının üstünde (rec), asistan kapalıyken: tek satır kutu, dokun yaz, ışığa dokun konuş
+              <div className="px-3 py-2">
+                <div className="asheet-input flex min-h-12 items-center gap-1 rounded-full pl-5 pr-1.5">
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-mut">
+                    {said || cfg.ph}
                   </button>
-                  <VoiceLight state={active || small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
+                  <VoiceLight state={small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
                 </div>
-              )}
-              {/* Kapat: en altta, sabit yerde ve büyük (Seyhun: "üstteki X zor basılıyor, kayıyor", 2026-10-07). Üstteki yer
-                  sohbet büyüdükçe kayıyordu. */}
-              {active && (
-                <button type="button" onClick={onClose} aria-label="Konuşmayı bitir" className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90 active:bg-fg/[.14]">
-                  <Icon name="x" className="size-[1.375rem]" />
-                </button>
-              )}
-            </div>
+              </div>
             )}
           </div>
           </div>
@@ -694,7 +676,9 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
   const staff = profile?.role === "staff";
   const owner = profile?.role === "owner";
   const side = isAthleteSide(kind);
-  const noAi = kind === "athlete" || kind === "student"; // sporcu ve öğrenci: asistan yok (veli eskisi gibi)
+  // Sporcu ve öğrenci: asistan yok (veli eskisi gibi). Fitness sayfalarında da şimdilik yok (Seyhun, 2026-10-16:
+  // "simdilik sesli asistani fitness sayfalarinda kullanmayacagiz"; program yapay zekayla sayfanın kendi düğmelerinden).
+  const noAi = kind === "athlete" || kind === "student" || String(path || "").startsWith("/fitness");
   const athletes = canSeeAthletes(profile?.email);
   const to = (href) => () => router.push(href);
   const groups = [

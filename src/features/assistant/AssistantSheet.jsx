@@ -17,7 +17,7 @@ import { waTo } from "./isler/ortak";
 import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
-  const { WA_PICK, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait } = useAssistant({ open, onClose, seed, onLive, onAct });
+  const { abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait } = useAssistant({ open, onClose, seed, onLive, onAct });
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
   const shownOf = (show = []) =>
@@ -95,16 +95,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   const convoView = (embedded) => (
     <>
-        {!embedded && turns.length === 0 && !listening && !busy && !transcribing && (
-          <div className="pt-3">
-            {/* Hazır örnek düğmeleri yok: öneriler, hızlı öğrenme verisi hazır olunca gelecek */}
-            <p className="text-[0.8125rem] text-mut">
-              {prefer
-                ? `Yeni ${{ plan: "plan", task: "görev", note: "not" }[prefer] || "kayıt"}: söyle ya da yaz, ben hazırlayayım; sonra “kaydet” de. Soru da sorabilirsin.`
-                : "Arka arkaya isteyebilirsin; bitince “bitir” de."}
-            </p>
-          </div>
-        )}
+        {/* Boş sohbette açıklama yazısı yok (sade tasarım, 2026-10-16): kutudaki "Yaz ya da konuş…" yeter */}
 
         <Thread turns={hideSaid ? turns.slice(0, -1) : turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
@@ -258,10 +249,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
         )}
 
         {error && (
-          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
-            <p className="flex items-center gap-2 text-[0.875rem] font-semibold"><Icon name="alert" className="size-4" /> Şu an yanıt veremedim</p>
-            <p className="mt-0.5 text-[0.8125rem] opacity-90">{error}</p>
-            <button type="button" onClick={() => run(heard, voice, true)} className="mt-2 h-9 rounded-xl bg-amber-900 px-3 text-[0.8125rem] font-semibold text-white active:scale-95">Tekrar dene</button>
+          <div className="apanel fade-in mt-3 rounded-2xl p-3">
+            <p className="flex items-center gap-2 text-[0.875rem] font-semibold"><Icon name="alert" className="size-4 text-rec" /> Şu an yanıt veremedim</p>
+            <p className="mt-0.5 text-[0.8125rem] text-mut">{error}</p>
+            <button type="button" onClick={() => run(heard, voice, true)} className="mt-2 h-9 rounded-xl bg-fg/[.08] px-3 text-[0.8125rem] font-semibold">Tekrar dene</button>
           </div>
         )}
 
@@ -366,13 +357,16 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 Vazgeç
               </button>
             </div>
-            <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">Metne dokunup düzeltebilir ya da sesle değişiklik söyleyebilirsin.{cards.pending.send.wa ? " Bu kişi uygulamada değil; mesaj WhatsApp'ta hazır açılır." : cards.pending.send.waOnly ? ` Yalnız WhatsApp grubuna. ${WA_PICK}.` : cards.pending.send.team && cards.pending.send.alsoWa ? ` Uygulamadaki gruba gider, WhatsApp da açılır. ${WA_PICK}.` : cards.pending.send.team ? " WhatsApp grubuna da göndermek için yeşil düğmeye dokun." : ""}</p>
+            {/* Kısa not (sade tasarım, 2026-10-16): yalnız WhatsApp'a gidecekse ne olacağı */}
+            {(cards.pending.send.wa || cards.pending.send.waOnly || (cards.pending.send.team && cards.pending.send.alsoWa)) && (
+              <p className="border-t border-line px-3 py-1.5 text-[0.75rem] text-mut">{cards.pending.send.wa ? "Bu kişi uygulamada değil, WhatsApp'ta açılır." : "WhatsApp'ta grubu seç, mesaj hazır gelir."}</p>
+            )}
           </div>
         )}
 
         {cards.pending?.actions && (
-          <div className="fade-in mt-3 rounded-2xl bg-amber-50 p-3 text-amber-900 ring-1 ring-amber-200">
-            <p className="text-[0.8125rem] font-semibold">Onayına sunuyorum</p>
+          <div className="apanel fade-in mt-3 rounded-2xl p-3">
+            <p className="text-[0.8125rem] font-semibold">Onayını bekliyor</p>
             <ul className="mt-1 space-y-0.5 text-[0.8125rem]">
               {cards.pending.actions.map((a, i) => <li key={i}>• {describeAction(a, find(a.kind, a.id))}</li>)}
             </ul>

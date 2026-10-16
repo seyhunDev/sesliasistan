@@ -11,7 +11,7 @@ import { ExerciseMedia, MediaVideo } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
-import { FEELS, clockText, cleanRes, estMinutes, groupsOf, isTimed, itemLine, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { FEELS, clockText, cleanRes, estMinutes, groupsOf, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -248,6 +248,9 @@ export function FitWorkout({ rec, by, hero = false }) {
                 {on && (
                   <div className="px-4 pb-4">
                     {ex?.how && <p className="text-[0.8125rem] leading-snug text-mut">{ex.how}</p>}
+                    {itemMore(it) && <p className="mt-1 text-[0.8125rem] leading-snug text-mut">{itemMore(it)}</p>}
+                    {it.note && <p className="mt-1 text-[0.875rem] leading-snug">{it.note}</p>}
+                    {it.alt && <p className="mt-1 text-[0.8125rem] leading-snug text-mut">Kolay seçenek: {it.alt}</p>}
                     {t.up && <p className="mt-1 text-[0.75rem] font-semibold text-acc">↑ geçen sefere göre artırıldı</p>}
                     <MediaVideo media={it.media} className="mt-2" />
                     <ExerciseMedia media={it.media} ex={it.ex} noVideo />
