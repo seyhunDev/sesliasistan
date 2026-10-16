@@ -1,8 +1,8 @@
-Commit: a57571f · Fitness: programı kopyalanabilir liste olarak alma (#371)
-Zaman: 2026-10-13-2041 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38440449341
+Commit: f5ed56e · Ana sayfa: hava hapı, bugünün rüzgâr grafiği, sade Sırada ve Kulüp (#433)
+Zaman: 2026-10-16-1930 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38932194631
 
-TAM TEST · 13.10.2026 20:40:05
+TAM TEST · 16.10.2026 19:28:42
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 90 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
