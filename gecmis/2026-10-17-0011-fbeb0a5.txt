@@ -1,8 +1,8 @@
-Commit: 03b1540 · Fitness sayfası yeni düzen: sekmeler, sporcu sayfası, menü (#376)
-Zaman: 2026-10-13-2226 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38454636817
+Commit: fbeb0a5 · Hazır yelken programına reset, mobilite ve yelken sonrası toparlanma günleri (#440)
+Zaman: 2026-10-17-0011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38967359312
 
-TAM TEST · 13.10.2026 22:25:18
+TAM TEST · 17.10.2026 00:09:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

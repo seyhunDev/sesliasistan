@@ -1,8 +1,8 @@
-Commit: a65212f · Ana sayfa: hava satırı ve rüzgâr grafiği çerçevesiz, aradaki boşluk kalktı, yeşil ok ile dokunulabilir (#439)
-Zaman: 2026-10-16-2006 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38936933550
+Commit: fbeb0a5 · Hazır yelken programına reset, mobilite ve yelken sonrası toparlanma günleri (#440)
+Zaman: 2026-10-17-0011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38967359312
 
-TAM TEST · 16.10.2026 20:05:21
+TAM TEST · 17.10.2026 00:09:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
