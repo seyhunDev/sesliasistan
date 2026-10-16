@@ -4,6 +4,27 @@ import { cleanProgram } from "./model";
 
 const prep = (name, more = {}) => ({ ex: "", name, sets: 1, part: "isinma", ...more });
 const main = (name, more = {}) => ({ ex: "", name, part: "ana", ...more });
+const cool = (name, more = {}) => ({ ex: "", name, sets: 1, part: "soguma", ...more });
+
+// Programdaki günlük 8 dk reset (atletizm ve yelken günlerinde düşük yük)
+const RESET = [
+  cool("Burun nefesi", { sec: 60, note: "4 sn al, 6 sn ver" }),
+  cool("Ayak tabanı ve baldır", { sec: 30, side: true }),
+  cool("90 90 kalça geçişi", { reps: 6 }),
+  cool("Open book", { reps: 5, side: true }),
+  cool("Wall slide", { reps: 8 }),
+  cool("Dead bug", { reps: 6, side: true }),
+  cool("Child pose yan uzanma", { sec: 30, side: true }),
+  cool("Bacaklar yukarı", { sec: 60, note: "5 sakin nefes" }),
+];
+const AFTER_SAIL = [
+  cool("Yürüyüş ve burun nefesi", { sec: 60 }),
+  cool("Baldır esnetme", { sec: 60 }),
+  cool("Kalça fleksör esnetme", { sec: 60 }),
+  cool("Adduktor esnetme", { sec: 60 }),
+  cool("Torakal rotasyon", { sec: 60 }),
+  cool("Uzun verişli nefes", { sec: 60 }),
+];
 
 // RIP · 12 haftalık yelken ev kuvveti (İlay İmamoğulları programı, 14 yaş). Salı A, Perşembe B, Cuma isteğe bağlı mikrodoz.
 const YELKEN_EV = {
@@ -77,6 +98,10 @@ const YELKEN_EV = {
         main("Bear plank shoulder tap", { sets: 2, reps: 6, side: true, rest: 20, note: "Anti rotasyon ve omuz kontrolü" }),
       ],
     },
+    { dow: 1, time: "19:00", min: 10, name: "8 dk reset", note: "Atletizmden sonra · düşük yük, yorgunluk ve ağrı kontrolü.", items: RESET },
+    { dow: 3, time: "19:00", min: 5, name: "Nefes ve mobilite", note: "Atletizmden sonra 5 dk · düşük yük.", items: RESET.slice(0, 4) },
+    { dow: 6, time: "16:00", min: 5, name: "Yelken sonrası toparlanma", note: "Yelkenden sonra 6 dk · her biri 1 dk.", items: AFTER_SAIL },
+    { dow: 7, time: "", min: 5, name: "Yelken sonrası toparlanma", note: "Yelken ya da yarıştan sonra 6 dk · her biri 1 dk.", items: AFTER_SAIL },
   ],
   phases: [
     { from: 1, to: 3, name: "Temeli kur", note: "2–3 set · RPE 6 · RIR 4 · tüm tekrarlar temiz, ertesi gün ağrı yok" },
@@ -98,7 +123,7 @@ const YELKEN_EV = {
 };
 
 export const TEMPLATES = [
-  { id: "yelken-ev-12", title: "Yelken ev kuvveti", sub: "12 hafta · Salı, Perşembe + Cuma mikrodoz · 14 yaş için", forAge: 14, sport: "yelken", prog: YELKEN_EV },
+  { id: "yelken-ev-12", title: "Yelken ev kuvveti", sub: "12 hafta · Salı, Perşembe kuvvet + Cuma mikrodoz, diğer günler reset · 14 yaş için", forAge: 14, sport: "yelken", prog: YELKEN_EV },
 ];
 
 // Şablondan yeni program (kayıtsız): başlangıç verilen gün, kimin için bilgisi ayrı eklenir
