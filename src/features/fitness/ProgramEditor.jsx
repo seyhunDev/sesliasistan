@@ -5,7 +5,8 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { exById } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, GOALS, SPORTS, cleanItem, itemLine, labelOf, toName } from "@/lib/fitness/model";
+import { DOWS, DOW_LONG, GOALS, PARTS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, toName } from "@/lib/fitness/model";
+import { editProgram } from "./fitImport";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { YtEdit } from "./YtVideo";
@@ -14,8 +15,9 @@ import { useFitLib } from "./useFitLib";
 
 // Program düzenleme (yapay zekanın hazırladığı önizleme ya da kayıtlı program). Üstte özet (ad, gün/hafta, dakika, hafta,
 // başlangıç), altında haftanın günleri şeridi: antrenman günü dokununca açılır, boş güne dokununca o güne antrenman eklenir.
-// Seçili günün hareketleri kart kart; dokununca − / + ile set, tekrar/süre, kilo, dinlenme, sıralama, çıkarma.
-// Değişiklik sesle de söylenir (alttaki asistan).
+// Seçili günün hareketleri kart kart; dokununca − / + ile set, tekrar/süre (aralık), kilo, çanta ağırlığı, dinlenme,
+// her yan için, bölüm, nefes, tempo, zorluk, not, kolay seçenek; sıralama, çıkarma.
+// Yazılı değişiklik yapay zekaya da gönderilir ("Yapay zekayla değiştir"); fitness sayfalarında sesli asistan yok.
 const n = (v) => (v === "" || v == null ? 0 : +String(v).replace(",", ".") || 0);
 const GROUP_ICON = { Kardiyo: "flame", Esneme: "wind", Karın: "zap", "Tüm vücut": "spark", Bacak: "trend", Kalça: "trend" };
 const iconOf = (it) => (it.kind === "cardio" ? "flame" : GROUP_ICON[exById(it.ex)?.group] || "dumbbell");
@@ -79,6 +81,9 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
             {no ? <Chip tone="bg-bg text-mut">No {no}</Chip> : null}
             <Chip tone="bg-acc/10 text-acc">{itemLine(it).split(" · ")[0]}</Chip>
             {it.kg ? <Chip>{String(it.kg).replace(".", ",")} kg</Chip> : null}
+            {it.bag ? <Chip tone="bg-amber-500/15 text-amber-700 dark:text-amber-300">Çanta {String(it.bag).replace(".", ",")} kg</Chip> : null}
+            {it.part && it.part !== "ana" ? <Chip tone="bg-bg text-mut">{labelOf(PARTS, it.part)}</Chip> : null}
+            {it.breath ? <Chip tone="bg-sky-500/10 text-sky-700 dark:text-sky-300">Nefes</Chip> : null}
             {it.rest ? <Chip tone="bg-bg text-mut">{it.rest} sn dinlen</Chip> : null}
             {it.yt?.id ? (
               <Chip tone="bg-rec/10 text-rec">
@@ -96,14 +101,68 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
       </button>
       {open && (
         <div className="px-3 pb-3">
+          {!ex && (
+            <div className="mb-2 grid grid-cols-2 gap-1 rounded-2xl bg-bg p-1">
+              {[
+                ["reps", "Tekrarlı"],
+                ["time", "Süreli"],
+              ].map(([k, l]) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={it.kind === k}
+                  onClick={() => onChange(k === "time" ? { ...it, kind: "time", sec: it.sec || 30, reps: undefined, repsTo: undefined, kg: undefined } : { ...it, kind: "reps", reps: it.reps || 10, sec: undefined, secTo: undefined })}
+                  className={`h-9 rounded-xl text-[0.8125rem] font-semibold ${it.kind === k ? "bg-card text-fg shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]" : "text-mut"}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             {it.kind !== "cardio" && <Step label="Set" value={it.sets} min={1} max={10} onChange={(v) => set("sets", v)} />}
             {it.kind === "reps" && <Step label="Tekrar" value={it.reps} min={1} max={100} onChange={(v) => set("reps", v)} />}
+            {it.kind === "reps" && <Step label="Tekrar en çok" value={it.repsTo} min={0} max={100} onChange={(v) => set("repsTo", v)} />}
             {it.kind === "time" && <Step label="Süre" unit="sn" value={it.sec} step={5} min={5} max={600} onChange={(v) => set("sec", v)} />}
+            {it.kind === "time" && <Step label="Süre en çok" unit="sn" value={it.secTo} step={5} min={0} max={600} onChange={(v) => set("secTo", v)} />}
             {it.kind === "cardio" && <Step label="Süre" unit="dk" value={it.min} min={1} max={180} onChange={(v) => set("min", v)} />}
-            {it.kind === "reps" && <Step label="Kilo" unit="kg" dec value={it.kg} step={2.5} max={500} onChange={(v) => set("kg", v)} />}
+            {it.kind === "reps" && <Step label="Kilo (elde)" unit="kg" dec value={it.kg} step={2.5} max={500} onChange={(v) => set("kg", v)} />}
+            <Step label="Çantaya ağırlık" unit="kg" dec value={it.bag} step={1} max={100} onChange={(v) => set("bag", v)} />
             <Step label="Dinlenme" unit="sn" value={it.rest} step={15} max={300} onChange={(v) => set("rest", v)} />
           </div>
+          {it.kind !== "cardio" && (
+            <label className="mt-2 flex h-11 items-center justify-between rounded-2xl bg-bg px-3 text-[0.875rem] font-semibold">
+              Her yan için (sağ ve sol ayrı)
+              <input type="checkbox" checked={!!it.side} onChange={(e) => set("side", e.target.checked)} className="size-5 accent-[var(--acc)]" />
+            </label>
+          )}
+          <div className="mt-2 grid grid-cols-3 gap-1 rounded-2xl bg-bg p-1">
+            {PARTS.map(([k, l]) => {
+              const on = (it.part || "ana") === k;
+              return (
+                <button key={k} type="button" aria-pressed={on} onClick={() => set("part", k)} className={`h-9 rounded-xl text-[0.8125rem] font-semibold ${on ? "bg-card text-fg shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]" : "text-mut"}`}>
+                  {l}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {[
+              ["breath", "Nefes", "4 sn al, 6 sn ver", 60],
+              ["tempo", "Tempo", "3 sn iniş", 30],
+              ["rpe", "Zorluk (RPE)", "6–7 · RIR 3", 20],
+              ["alt", "Kolay seçenek", "Band yoksa…", 120],
+            ].map(([k, l, ph, max]) => (
+              <label key={k} className="block min-w-0 rounded-2xl bg-bg px-3 py-1.5">
+                <small className="block text-[0.6875rem] font-semibold text-mut">{l}</small>
+                <input value={it[k] || ""} maxLength={max} onChange={(e) => set(k, e.target.value)} placeholder={ph} className="h-7 w-full min-w-0 bg-transparent text-[0.875rem] outline-none" />
+              </label>
+            ))}
+          </div>
+          <label className="mt-2 block rounded-2xl bg-bg px-3 py-1.5">
+            <small className="block text-[0.6875rem] font-semibold text-mut">Not</small>
+            <textarea value={it.note || ""} maxLength={200} rows={2} onChange={(e) => set("note", e.target.value)} placeholder="Diz ikinci parmağa, bel boşluğunu koru…" className="w-full resize-none bg-transparent text-[0.875rem] leading-snug outline-none" />
+          </label>
           {ex?.how && (
             <p className="mt-2 flex gap-2 rounded-xl bg-bg px-3 py-2 text-[0.8125rem] leading-snug text-mut">
               <Icon name="spark" className="mt-0.5 size-3.5 shrink-0 text-acc" />
@@ -169,6 +228,11 @@ function DayPanel({ d, onChange, onDrop }) {
         </div>
       </div>
 
+      <label className="mt-2 block rounded-2xl bg-bg px-3 py-1.5">
+        <small className="block text-[0.6875rem] font-semibold text-mut">Günün notu</small>
+        <textarea value={d.note || ""} maxLength={300} rows={2} onChange={(e) => set("note", e.target.value)} placeholder="2 tur, geçiş 20 sn · yalnız yeşil günde…" className="w-full resize-none bg-transparent text-[0.875rem] leading-snug outline-none" />
+      </label>
+
       <div className="mb-2 mt-4 flex items-baseline justify-between">
         <b className="text-[0.8125rem] font-bold tracking-[.06em] text-mut">HAREKETLER</b>
         <small className="text-[0.8125rem] text-mut">
@@ -209,6 +273,90 @@ function DayPanel({ d, onChange, onDrop }) {
           setOpen(items.length);
         }}
       />
+    </section>
+  );
+}
+
+// Haftalara göre evreler (salt okunur) ve programın kuralları (ilerleme, güvenlik, trafik ışığı); kurallar düzenlenir
+function PlanNotes({ p, onChange }) {
+  const phases = p.phases || [];
+  return (
+    <section className={`${card} mt-3 p-4`}>
+      {phases.length > 0 && (
+        <>
+          <b className="text-[0.8125rem] font-bold tracking-[.06em] text-mut">HAFTALAR</b>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {phases.map((x) => (
+              <li key={`${x.from}-${x.to}`} className="rounded-2xl bg-bg px-3 py-2">
+                <b className="text-[0.875rem]">
+                  {x.from === x.to ? `${x.from}. hafta` : `${x.from}–${x.to}. hafta`} · {x.name}
+                  {x.sets ? <small className="font-medium text-mut"> · setler %{x.sets}</small> : null}
+                </b>
+                {x.note && <small className="block text-[0.8125rem] leading-snug text-mut">{x.note}</small>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <label className={`block ${phases.length ? "mt-3" : ""}`}>
+        <b className="text-[0.8125rem] font-bold tracking-[.06em] text-mut">KURALLAR VE NOTLAR</b>
+        <textarea
+          value={p.rules || ""}
+          maxLength={1500}
+          rows={p.rules ? 6 : 2}
+          onChange={(e) => onChange((x) => ({ ...x, rules: e.target.value }))}
+          placeholder="İlerleme, ağrıda ne yapılır, nefes, günlük esneme…"
+          className="mt-1.5 w-full resize-y rounded-2xl bg-bg px-3 py-2 text-[0.875rem] leading-snug outline-none"
+        />
+      </label>
+    </section>
+  );
+}
+
+// Programa yazılı değişiklik: yapay zeka bütün programı yeni hâliyle döndürür; kimin için, başlangıç ve kayıt bilgisi korunur
+function AiEdit({ p, onChange }) {
+  const [ask, setAsk] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const run = async () => {
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const r = await editProgram(p, ask, { age: p.forAge, sport: p.sport });
+      if (!r.program?.days?.length) throw new Error(r.message || "Değişiklik yapılamadı");
+      const keep = {};
+      for (const k of ["id", "for", "forName", "forAge", "sport", "start", "plansAt", "notifiedAt", "template", "createdAt"]) if (p[k] != null) keep[k] = p[k];
+      onChange({ ...cleanProgram({ ...r.program, start: p.start }), ...keep });
+      setMsg(r.message || "Değiştirdim. Kontrol edip kaydet.");
+      setAsk("");
+    } catch (e) {
+      setErr(e.message || "Değişiklik yapılamadı, tekrar dene.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className={`${card} mt-3 p-4`}>
+      <b className="flex items-center gap-1.5 text-[0.8125rem] font-bold tracking-[.06em] text-mut">
+        <Icon name="spark" className="size-4 text-acc" />
+        YAPAY ZEKAYLA DEĞİŞTİR
+      </b>
+      <textarea
+        value={ask}
+        onChange={(e) => setAsk(e.target.value)}
+        rows={3}
+        maxLength={1500}
+        placeholder="Perşembeyi 18:30'a al, squatta çantayı 4 kg yap, cuma gününü kaldır…"
+        className="mt-2 w-full resize-none rounded-2xl bg-bg px-3 py-2 text-[0.9375rem] leading-snug outline-none"
+      />
+      {err && <p className="mt-1 text-[0.8125rem] font-semibold text-rec">{err}</p>}
+      {msg && <p className="mt-1 text-[0.8125rem] text-acc">{msg}</p>}
+      <Button loading={busy} disabled={busy || !ask.trim()} onClick={run} variant="ghost" className="mt-2 w-full">
+        Değişikliği gönder
+      </Button>
+      <small className="mt-1 block text-center text-[0.75rem] text-mut">Yalnız yazdığın değişir; sonra kaydetmeyi unutma.</small>
     </section>
   );
 }
@@ -424,13 +572,9 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
         <p className={`${card} mt-3 p-5 text-center text-[0.9375rem] text-mut`}>Henüz antrenman günü yok. Yukarıdan bir güne dokun.</p>
       )}
 
-      <p className="mt-4 flex gap-2 px-1 text-[0.8125rem] leading-snug text-mut">
-        <Icon name="mic" className="mt-0.5 size-4 shrink-0" />
-        <span>
-          Alttaki asistana da söyleyebilirsin: “çarşambayı bacak günü yap”, “plank ekle”, “45 dakikaya indir”.
-          {onCal && " Kaydedince takvimdeki gelecek antrenmanlar da güncellenir."}
-        </span>
-      </p>
+      <PlanNotes p={p} onChange={setP} />
+      <AiEdit p={p} onChange={setP} />
+      {onCal && <p className="mt-3 px-1 text-[0.8125rem] leading-snug text-mut">Kaydedince takvimdeki gelecek antrenmanlar da güncellenir.</p>}
 
       <div className={`${card} mt-3 p-3`}>
         {!onCal && (

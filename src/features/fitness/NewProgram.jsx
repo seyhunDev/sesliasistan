@@ -9,6 +9,7 @@ import { EQUIP } from "@/lib/fitness/exercises";
 import { AGE_GROUPS, DOWS, DOW_LONG, GOALS, LEVELS, PLACES, SPORTS, ageFrom, ageGroupOf, labelOf, sexFrom } from "@/lib/fitness/model";
 import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { todayStr } from "@/lib/utils/format";
+import { TEMPLATES } from "@/lib/fitness/templates";
 
 // Seçenek kartlarının simgesi ve kısa açıklaması (yazı model.js'teki listelerden)
 const GOAL_UI = {
@@ -235,7 +236,13 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // Program hazırla, tek ekran: kimin için, ne için, günler ve saat. Gerisi varsayılanla (45 dk, 4 hafta, bugün başlar,
 // yer ve seviye profilden) ve kapalı "Ayrıntılar"da. Sonunda yapay zekaya giden cümle ya da boş program. Serbest yazı kutusu yok (tek asistan kuralı).
 // athletes: [{ uid, name }] (yalnız ana hesapta, hesabı olan sporcular); forUid: sporcunun sayfasından açıldıysa seçili sporcu
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal, athletes = [], forUid = "", error = "" }) {
+// Üç yol: yapay zeka seçimlere göre hazırlar ("ai"), elindeki programı (PDF, fotoğraf, metin) okur ("file"), hazır program ("tpl").
+// onImport({ file, text, ask }, f, pre), onTemplate(id, f, pre): sonuç kaydedilmeden düzenleme ekranında açılır.
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "" }) {
+  const [mode, setMode] = useState("ai");
+  const [file, setFile] = useState(null);
+  const [paste, setPaste] = useState("");
+  const [ask, setAsk] = useState("");
   const [days, setDays] = useState([1, 3, 5]);
   const [slot, setSlot] = useState("sabah");
   const [time, setTime] = useState("07:00");
@@ -356,6 +363,61 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
           {chips(AGE_GROUPS.map(([k]) => [k, k]), group, (k) => (set("age", AGE_GROUPS.find(([x]) => x === k)[1]), setAgeSrc("group")))}
         </Box>
       )}
+      <div className="mt-3 grid grid-cols-3 rounded-2xl bg-bg p-1">
+        {[["ai", "Yapay zeka"], ["file", "PDF / metin"], ["tpl", "Hazır program"]].map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)} className={`h-11 rounded-xl text-[0.8125rem] font-semibold transition ${mode === k ? "bg-card text-acc shadow-[0_2px_8px_-4px_rgba(0,0,0,.25)]" : "text-mut"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {mode === "file" && (
+        <>
+          <Box title="Elindeki program" note="PDF, fotoğraf ya da metin">
+            <label className="flex h-12 cursor-pointer items-center gap-2.5 rounded-xl bg-bg px-3 text-[0.875rem] font-semibold">
+              <Icon name="paperclip" className="size-5 shrink-0 text-acc" />
+              <span className="min-w-0 flex-1 truncate">{file ? file.name : "PDF ya da fotoğraf seç"}</span>
+              {file && (
+                <button type="button" aria-label="Dosyayı kaldır" onClick={(e) => (e.preventDefault(), setFile(null))} className="grid size-7 place-items-center rounded-full text-mut">
+                  <Icon name="x" className="size-4" />
+                </button>
+              )}
+              <input type="file" accept="application/pdf,image/*,text/plain,.pdf,.txt" className="hidden" onChange={(e) => (setFile(e.target.files?.[0] || null), (e.target.value = ""))} />
+            </label>
+            <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={5} placeholder="ya da programın metnini buraya yapıştır" className="mt-2 w-full min-w-0 resize-y rounded-xl bg-bg px-3 py-2.5 text-[0.875rem] outline-none" />
+            <p className="mt-2 text-[0.75rem] leading-snug text-mut">Yapay zeka bütün antrenmanları, set, tekrar, süre, dinlenme, nefes, çanta ağırlığı ve notlarla okur. Sonra düzenleyip kaydedersin.</p>
+          </Box>
+          <Box title="Eklemek istediğin" note="İsteğe bağlı">
+            <textarea value={ask} onChange={(e) => setAsk(e.target.value)} rows={2} placeholder="ör. Salı ve perşembe 17:45, 4 hafta; Cuma günü olmasın" className="w-full min-w-0 resize-y rounded-xl bg-bg px-3 py-2.5 text-[0.875rem] outline-none" />
+          </Box>
+        </>
+      )}
+      {mode === "tpl" && (
+        <Box title="Hazır programlar" note={who ? `${whoName} için` : ""}>
+          <div className="space-y-2">
+            {TEMPLATES.map((t) => (
+              <div key={t.id} className="rounded-2xl bg-bg p-3">
+                <b className="block text-[0.9375rem] font-semibold">{t.title}</b>
+                <small className="mt-0.5 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
+                <Button className="mt-2.5" loading={busy} onClick={() => onTemplate?.(t.id, f, pre)}>
+                  <Icon name="plus" className="size-5" />
+                  Örnek programı ekle
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[0.75rem] leading-snug text-mut">Program düzenleme ekranında açılır; günleri, saati ve hareketleri değiştirip kaydedersin.</p>
+        </Box>
+      )}
+      {mode !== "ai" && (
+        <Box title="Başlangıç">
+          <label className="flex h-11 items-center justify-between rounded-xl bg-bg px-3">
+            <span className="text-[0.875rem] text-mut">İlk hafta</span>
+            <input type="date" value={start} min={todayStr()} onChange={(e) => setStart(e.target.value)} className="appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none" />
+          </label>
+        </Box>
+      )}
+      {mode === "ai" && (
+      <>
       <Box title="Ne için">{chips(GOALS, f.goal, (k) => set("goal", k))}</Box>
       <Box title="Günler ve saat" note={sorted.length ? `Haftada ${sorted.length} gün` : "En az bir gün seç"}>
         <div className="grid grid-cols-7 gap-1.5">
@@ -414,14 +476,26 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
           <ProfileFields f={f} set={set} withGoal={false} withPlace={false} />
         </>
       )}
+      </>
+      )}
 
       {/* Alt düğmeler; eksik ya da hata burada açıkça yazar */}
       <div className="sticky bottom-0 -mx-5 mt-5 bg-card px-5 pt-3">
-        {(missing || error) && (
+        {((mode === "ai" && missing) || error) && (
           <p role="alert" className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-[0.8125rem] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-            {missing || error}
+            {(mode === "ai" && missing) || error}
           </p>
         )}
+        {mode === "file" && (
+          <div className="flex flex-col gap-1 pb-2">
+            <Button loading={busy} disabled={!file && paste.trim().length < 30} onClick={() => onImport?.({ file, text: paste, ask }, f, pre)}>
+              <Icon name="spark" className="size-5" />
+              Programı oku
+            </Button>
+            {busy && <small className="text-center text-[0.75rem] text-mut">Uzun programlarda bir dakika sürebilir.</small>}
+          </div>
+        )}
+        {mode === "ai" && (
         <div className="flex flex-col gap-1">
           <Button loading={busy} disabled={!!missing} onClick={() => onAsk(text(), f, pre)}>
             <Icon name="spark" className="size-5" />
@@ -431,6 +505,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, busy, goal,
             Kendim hazırlayacağım
           </button>
         </div>
+        )}
       </div>
     </Sheet>
   );
