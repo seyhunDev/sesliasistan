@@ -1,8 +1,8 @@
-Commit: a29ec88 · Sporcu antrenmanında YouTube videosu düğmesiz, hep büyük (#374)
-Zaman: 2026-10-13-2124 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38446296625
+Commit: 2c18c74 · Merge pull request #438 from seyhunDev/claude/project-thread-6oti94
+Zaman: 2026-10-16-1954 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38935354950
 
-TAM TEST · 13.10.2026 21:23:29
+TAM TEST · 16.10.2026 19:53:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
