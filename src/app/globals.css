@@ -320,6 +320,13 @@ select {
 @keyframes abbreath { 50% { opacity: calc(var(--ab-glow) * .7); } }
 @keyframes abspin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .abg i { animation: none !important; } }
+/* Sade zemin (Seyhun: "daha sade", 2026-10-16): ızgara ve dönen halkalar yok, renk bulutları daha silik; yalnız durum
+   rengini alan yumuşak ışık kalır. Geri almak için bu blok silinir. */
+.abg .ab-grid, .abg .ab-ring { display: none; }
+.abg :is(.ab-b1, .ab-b2, .ab-b3) { opacity: .55; }
+.afull { --ab-glow: .4; }
+.afull[data-filled] .ab-core { opacity: .2; }
+
 /* Önde: görev listesi ve kartlar hafif saydam panel (bulanıklık yok: arkadaki hareket her karede yeniden bulanıklaştırılmasın) */
 .afull .apanel { background: var(--ab-panel); box-shadow: 0 0 0 .5px rgba(255, 255, 255, .07), 0 12px 32px -16px rgba(0, 0, 0, .7); }
 .afull .asheet { background: transparent; box-shadow: none; }
