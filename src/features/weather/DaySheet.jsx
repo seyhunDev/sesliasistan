@@ -12,8 +12,9 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 
 // Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = sağanak; 7/17/22 kn çizgileri yelken eşikleri.
 // Parmakla sürükleyince seçilen saatin değerleri üstte yazar. Bugünde "şimdi" noktası şu anki dakikaya göre çizginin üstünde durur.
-function WindChart({ rows, sel, onSel, nowAt = -1 }) {
-  const W = 340, H = 150, L = 22, R = 6, T = 8, B = 18;
+// mini: ana sayfadaki küçük hâli (alçak, dokunuşla seçim yok; dokununca pencere açılır).
+function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
+  const W = 340, H = mini ? 84 : 150, L = 22, R = 6, T = mini ? 14 : 8, B = 16;
   const n = rows.length;
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust)) + 2) / 5) * 5);
   const x = (i) => L + (i * (W - L - R)) / Math.max(1, n - 1);
@@ -35,10 +36,10 @@ function WindChart({ rows, sel, onSel, nowAt = -1 }) {
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full touch-pan-y select-none"
-      onPointerDown={pick}
-      onPointerMove={pick}
-      onTouchStart={(e) => e.stopPropagation()}
+      className={`w-full select-none ${mini ? "pointer-events-none" : "touch-pan-y"}`}
+      onPointerDown={mini ? undefined : pick}
+      onPointerMove={mini ? undefined : pick}
+      onTouchStart={mini ? undefined : (e) => e.stopPropagation()}
       role="img"
       aria-label="Saatlik rüzgâr grafiği"
     >
@@ -57,7 +58,7 @@ function WindChart({ rows, sel, onSel, nowAt = -1 }) {
       <path d={area} className="text-acc" fill="currentColor" fillOpacity=".14" />
       <path d={line("wind")} className="text-acc" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d={line("gust")} className="text-mut" fill="none" stroke="currentColor" strokeWidth="1.25" strokeDasharray="3 3" />
-      {s && (
+      {s && !mini && (
         <g>
           <line x1={x(sel)} x2={x(sel)} y1={T} y2={y(0)} className="text-fg" stroke="currentColor" strokeOpacity=".3" />
           <circle cx={x(sel)} cy={y(s.gust)} r="2.5" className="fill-mut" />
@@ -74,6 +75,16 @@ function WindChart({ rows, sel, onSel, nowAt = -1 }) {
       )}
     </svg>
   );
+}
+
+// Ana sayfadaki bugünün rüzgâr grafiği (Seyhun: "ana sayfadaki hava alanında o grafiği gösterelim, hangi saatteysek orada nokta").
+// Şu anki dakikaya göre kırmızı "şimdi" noktası; dokununca üstteki sarmalayıcı hava penceresini açar.
+export function TodayWind({ rows }) {
+  const now = useNow();
+  if (!rows?.length) return null;
+  const i = rows.findIndex((h) => h.hh === HOUR.format(now));
+  const nowAt = i >= 0 ? Math.min(rows.length - 1, i + now.getMinutes() / 60) : -1;
+  return <WindChart rows={rows} sel={-1} onSel={() => {}} nowAt={nowAt} mini />;
 }
 
 // Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.

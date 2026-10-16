@@ -13,11 +13,11 @@ import { useNow } from "@/hooks/useNow";
 import { dayHead, dayInfo, raceForPlan, trainingWeek, twoDays } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
-import { DayPick } from "./HomeSummary";
+import { DayPick, WeekStrip } from "./HomeSummary";
 import { CALM } from "./ui";
 
 // Ana sayfanın en üstü (Seyhun: "takvimde bugün ve yarın gösterilsin, en fazla iki gün; yarın yoksa en yakın gün; altında sırada seni bekleyenler").
-// Tek kart: sağ üstte "Takvim ›", iki gün (Bugün ve planı olan en yakın gün; saat ya da "Tüm gün", başlık), altında "Sırada seni bekleyenler":
+// Tek kart: üstte hafta şeridi (gün daireleri ve noktalar, WeekStrip; Seyhun: "o aynı şekilde olmaya devam etsin"), sağ üstte "Takvim ›", iki gün (Bugün ve planı olan en yakın gün; saat ya da "Tüm gün", başlık), altında "Sırada seni bekleyenler":
 // sonraki 4 plan ve "N şey seni bekliyor" şeridi (zil ile aynı pencere). Gün başlığına dokununca o günün penceresi (yoklama, fitness; DayPick).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
@@ -49,11 +49,12 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 
   return (
     <section aria-label="Takvim" className={`overflow-hidden ${CALM}`}>
+      {week && <WeekStrip w={week} att={att} today={today} />}
       {days.map(({ day, label, rows }, k) => {
         const d = wd(day);
         const tap = d && dayInfo(d, att, today).tap;
         return (
-          <div key={day} className={k ? "border-t border-line" : ""}>
+          <div key={day} className={k || week ? "border-t border-line" : ""}>
             <div className="flex items-center justify-between gap-3 px-3.5 pt-2.5">
               {tap ? (
                 <button type="button" onClick={() => setPick(d)} className="text-[0.875rem] font-semibold text-fg">

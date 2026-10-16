@@ -16,7 +16,7 @@ import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxBell, InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
 import { BirthdayBadge, PeopleStrip } from "./PeopleStrip";
-import { HomeHero } from "./HomeHero";
+import { HomeHero, HomeWind } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
@@ -73,6 +73,7 @@ export function OwnerHome() {
         </Link>
       </header>
 
+      <HomeWind weather={weather} />
       <PaidNotice />
 
       <div className="mt-5">
