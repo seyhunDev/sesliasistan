@@ -1,8 +1,8 @@
-Commit: bfb29de · Fitness: hareket videosu doğrudan, ilk açılışta kendiliğinden oynar (#369)
-Zaman: 2026-10-13-1839 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38423738281
+Commit: d3b0787 · Google seslendirmesi ve uzun cümlede hızlı bilgi isteği (notlar, planlar, özet) hazır cümle setiyle (#434)
+Zaman: 2026-10-16-1914 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38930123281
 
-TAM TEST · 13.10.2026 18:38:23
+TAM TEST · 16.10.2026 19:12:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 73 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
