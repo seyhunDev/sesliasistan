@@ -15,7 +15,7 @@ async function orgOf(uid) {
   return o;
 }
 
-// n: artış (çoğunlukla 1; "stt-sec" ses saniyesi sayar ve kişi sayacına girmez)
+// n: artış (çoğunlukla 1; "stt-sec" ses saniyesi, "tts-chr" seslendirilen harf sayar ve kişi sayacına girmez)
 export function countAi(au, kind, n = 1) {
   if (!adminOn() || !au?.uid || !/^[a-z-]{2,20}$/.test(kind) || !(n > 0)) return;
   (async () => {
@@ -26,7 +26,7 @@ export function countAi(au, kind, n = 1) {
     await adminDb()
       .collection("usage")
       .doc(`ai_${org}_${month}`)
-      .set({ month, org, [kind]: FieldValue.increment(n), ...(kind === "stt-sec" ? {} : { by: { [au.uid]: FieldValue.increment(1) } }) }, { merge: true });
+      .set({ month, org, [kind]: FieldValue.increment(n), ...(kind === "stt-sec" || kind === "tts-chr" ? {} : { by: { [au.uid]: FieldValue.increment(1) } }) }, { merge: true });
   })().catch((e) => console.warn("[aiUsage]", e?.message));
 }
 

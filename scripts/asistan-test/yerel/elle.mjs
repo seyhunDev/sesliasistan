@@ -763,6 +763,33 @@ group("Ana sayfa kartları")([
     return ids === "b,d,e,f" && r[0].label === "ŞİMDİ" && r[0].now && r[1].label === "BUGÜN" && r[2].label === "YARIN" && r[3].label === "CUMA" &&
       two.length === 2 && none.length === 0;
   })],
+  ["takvim iki gün", F("bugün + en yakın dolu gün, kalanlar sırada", () => {
+    const now = new Date("2026-10-07T15:00:00");
+    const ps = [
+      { id: "a", title: "Sabah", date: "2026-10-07", time: "09:00" },
+      { id: "b", title: "Toplantı", date: "2026-10-07", time: "18:30" },
+      { id: "c", title: "Kamp", date: "2026-10-10" },
+      { id: "d", title: "Bakım", date: "2026-10-10", time: "10:00" },
+      { id: "e", title: "Yarış", date: "2026-10-12", time: "08:00" },
+      { id: "f", title: "Bitti", date: "2026-10-09", done: true },
+    ];
+    const r = HT.twoDays(ps, "2026-10-07", now, 4);
+    const tom = HT.twoDays([{ id: "x", title: "X", date: "2026-10-08" }], "2026-10-07", now);
+    const empty = HT.twoDays([], "2026-10-07", now);
+    return r.days.length === 2 && r.days[0].label === "Bugün" && r.days[0].rows.map((x) => x.p.id).join() === "b" &&
+      r.days[1].day === "2026-10-10" && r.days[1].label.startsWith("Cmt") && r.days[1].rows.map((x) => x.p.id).join() === "c,d" &&
+      r.rest.map((x) => x.p.id).join() === "e" && tom.days[1].label === "Yarın" && empty.days.length === 1 && !empty.rest.length;
+  })],
+  ["kişi şeridi", F("doğum günü önde, silinen yok, sporcu kartı", () => {
+    const ms = [
+      { uid: "1", name: "Zeki", kind: "staff" },
+      { uid: "2", name: "Ali Kaya", kind: "athlete", athleteId: "A9" },
+      { uid: "3", name: "Eski", kind: "staff", status: "left" },
+      { uid: "4", name: "Ayşe", kind: "family" },
+    ];
+    const r = HT.storyPeople(ms, [{ memberUid: "4" }]);
+    return r.map((x) => x.id).join() === "4,1,2" && r[0].bday && r[2].href === "/athletes/A9" && r[0].href === "/people/family";
+  })],
 ]);
 
 // Günlük banka mailinden aidatın kendiliğinden yazılması ve bildirimi

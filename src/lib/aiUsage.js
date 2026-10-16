@@ -44,6 +44,13 @@ export function sttUsage(doc) {
   return { min, cost: min * STT_PRICE_MIN };
 }
 
+// Google seslendirme (Cloud Text-to-Speech): seslendirilen harf sayılır; ayda 1 milyon harf ücretsiz (Chirp 3 HD)
+export const TTS_FREE = 1000000;
+export function ttsUsage(doc) {
+  const chars = Number(doc?.["tts-chr"]) || 0;
+  return { chars, pct: Math.round((chars / TTS_FREE) * 100) };
+}
+
 // Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller
 export const usd = (n) => `$${(Math.round(n * 100) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const monthName = (ym) => (ym ? new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) : "");
