@@ -1,8 +1,8 @@
-Commit: 84b92c2 · Plana özel hatırlatma: Hatırlat seçeneği, sorumlulara bildirim, yeniden gönder (#372)
-Zaman: 2026-10-13-2043 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38440789273
+Commit: c9c92ab · Merge pull request #437 from seyhunDev/claude/project-thread-hanznf
+Zaman: 2026-10-16-1942 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38933883509
 
-TAM TEST · 13.10.2026 20:42:36
+TAM TEST · 16.10.2026 19:41:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
