@@ -5,7 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { bestVoice, rankVoices, speechChunks, speechText } from "@/lib/speech/speakText";
 import { timingSpeak } from "@/lib/assistTiming";
 
-// Yanıtları sesli okur. Önce sunucudan doğal ses (Gemini) ister, olmazsa cihazın kendi sesine düşer.
+// Yanıtları sesli okur. Ses "Otomatik"teyse önce sunucudan doğal ses (Google Cloud, /api/tts) ister; sunucuda anahtar
+// yoksa, yanıt 4 sn'de gelmezse ya da çalınamazsa cihazın kendi sesine düşer. Ayarlar'da cihaz sesi seçilirse hep o.
 // speak(text, onDone): okuma bitince onDone çağrılır (durdurulursa veya yeni bir okuma başlarsa çağrılmaz).
 // Cihaz sesi: en doğal Türkçe ses (Premium > Gelişmiş > Kompakt) seçilir, metin Türkçe okunuşa çevrilir
 // (saat, para, birim, emoji; lib/speech/speakText.js) ve kısa parçalar halinde aralıksız okunur.
@@ -15,7 +16,7 @@ const VOICE_KEY = "sa_tts_voice";
 const RATE_KEY = "sa_tts_rate";
 export const RATES = [["0.9", "Yavaş"], ["1", "Normal"], ["1.1", "Hızlı"]];
 export const SAMPLE = "Merhaba, ben asistanın. Yarın saat 10:30'da antrenman var, rüzgar 12 knot.";
-const NOOP = { supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, enable() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
+const NOOP = { cloud: false, supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, enable() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
 const Ctx = createContext(NOOP);
 
 const canDevice = () => typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance !== "undefined";
@@ -54,7 +55,8 @@ export function TtsProvider({ children }) {
   const cancelAt = useRef(0);
   const audio = useRef(null); // kalıcı ses öğesi
   const cache = useRef(new Map()); // aynı metin tekrar istenmesin
-  const serverOk = useRef(false); // Gemini TTS çok yavaş olduğu için varsayılan olarak cihaz sesi kullanıyoruz
+  const serverOk = useRef(true); // sunucuda ses anahtarı yoksa (501) false olur, bir daha denenmez
+  const [cloud, setCloud] = useState(true);
   const rid = useRef(0);
   const unlocked = useRef(false);
   const on = useRef(false);
@@ -62,7 +64,11 @@ export function TtsProvider({ children }) {
 
   const stop = useCallback(() => {
     rid.current += 1; // bekleyen isteklerin ve bitiş bildirimlerinin sonucunu geçersiz kılar
-    try { audio.current?.pause(); } catch { }
+    const a = audio.current;
+    try { a?.pause(); } catch { }
+    const wake = a?.onended; // bekleyen sunucu sesi okumasını bitir (pause'da onended gelmez)
+    if (a) a.onended = a.onerror = null;
+    wake?.();
     if (canDevice()) {
       const s = window.speechSynthesis;
       // Yalnız konuşuyorsa sustur: iOS'ta cancel'dan hemen sonraki konuşma düşebiliyor, boşuna bekletmeyelim
@@ -192,6 +198,82 @@ export function TtsProvider({ children }) {
     else go();
   }, []);
 
+  // Bir parçanın sesi (önbellekte varsa oradan). İlk parça en çok 4 sn beklenir, sonrakiler çalarken hazırlanır.
+  const fetchPart = useCallback((p, ms) => {
+    const key = `${rateRef.current}|${p}`;
+    const hit = cache.current.get(key);
+    if (hit) return hit;
+    const job = (async () => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      try {
+        const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: p, rate: rateRef.current }), signal: ctrl.signal });
+        if (!res.ok) {
+          const e = new Error(`tts ${res.status}`);
+          e.status = res.status;
+          throw e;
+        }
+        return URL.createObjectURL(await res.blob());
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
+    cache.current.set(key, job);
+    job.catch(() => cache.current.delete(key));
+    if (cache.current.size > 60) cache.current.delete(cache.current.keys().next().value);
+    return job;
+  }, []);
+
+  // Sunucu sesiyle parça parça okur. Okunamazsa kalan kısım cihaz sesiyle okunur. Çalmaya başladıysa true.
+  const playServer = useCallback(async (t, id, onDone) => {
+    const parts = speechChunks(speechText(t), 280);
+    if (!parts.length) return false;
+    const a = audio.current;
+    setSpeaking(true);
+    let started = false;
+    for (let i = 0; i < parts.length; i++) {
+      let url;
+      try {
+        url = await fetchPart(parts[i], i === 0 ? 4000 : 12000);
+      } catch (e) {
+        if (e.status === 501) {
+          serverOk.current = false; // sunucuda ses anahtarı yok: bir daha deneme
+          setCloud(false);
+        }
+        if (id !== rid.current) return true;
+        if (!started) {
+          setSpeaking(false);
+          return false;
+        }
+        speakDevice(parts.slice(i).join(" "), id, onDone);
+        return true;
+      }
+      if (id !== rid.current) return true; // arada başka bir okuma başladı veya durduruldu
+      if (i + 1 < parts.length) fetchPart(parts[i + 1], 12000).catch(() => { }); // sıradaki parça çalarken hazırlansın
+      const done = await new Promise((ok) => {
+        a.onended = () => ok(true);
+        a.onerror = () => ok(false);
+        a.src = url;
+        a.play().then(() => {
+          if (!started) timingSpeak(); // süre kaydı: okuma başladı
+          started = true;
+        }, () => ok(false));
+      });
+      if (id !== rid.current) return true;
+      if (!done) {
+        if (!started) {
+          setSpeaking(false);
+          return false;
+        }
+        speakDevice(parts.slice(i).join(" "), id, onDone);
+        return true;
+      }
+    }
+    setSpeaking(false);
+    onDone?.();
+    return true;
+  }, [fetchPart, speakDevice]);
+
   const speak = useCallback(
     async (text, onDone) => {
       const t = plain(text || "");
@@ -202,44 +284,13 @@ export function TtsProvider({ children }) {
       stop();
       const id = rid.current;
 
-      if (serverOk.current && audio.current) {
-        setSpeaking(true);
-        try {
-          let url = cache.current.get(t);
-          if (!url) {
-            const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: t }) });
-            if (!res.ok) {
-              const e = new Error(`tts ${res.status}`);
-              e.status = res.status;
-              throw e;
-            }
-            url = URL.createObjectURL(await res.blob());
-            cache.current.set(t, url);
-          }
-          if (id !== rid.current) return; // arada başka bir okuma başladı veya durduruldu
-          const a = audio.current;
-          a.onended = () => {
-            if (id !== rid.current) return;
-            setSpeaking(false);
-            onDone?.();
-          };
-          a.onerror = () => {
-            if (id !== rid.current) return;
-            setSpeaking(false);
-            speakDevice(t, id, onDone);
-          };
-          a.src = url;
-          await a.play();
-          return;
-        } catch (e) {
-          if (e.status === 501) serverOk.current = false; // sunucuda ses anahtarı yok: bir daha deneme
-          if (id !== rid.current) return;
-          setSpeaking(false);
-        }
+      if (serverOk.current && audio.current && !read(VOICE_KEY)) {
+        const ok = await playServer(t, id, onDone);
+        if (ok || id !== rid.current) return;
       }
       speakDevice(t, id, onDone); // yedek: cihazın kendi sesi
     },
-    [stop, speakDevice],
+    [stop, speakDevice, playServer],
   );
 
   const maybeSpeak = useCallback((text) => {
@@ -279,7 +330,7 @@ export function TtsProvider({ children }) {
     try { localStorage.setItem(KEY, "1"); } catch { }
   }, []);
 
-  return <Ctx.Provider value={{ supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ cloud, supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
 }
 
 export const useTts = () => useContext(Ctx);
