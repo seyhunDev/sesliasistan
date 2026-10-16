@@ -1,8 +1,8 @@
-Commit: 19d9e1f · Fitness: program hazırla tek ekran, sporcuya Hazır ekranı, sporcular listesinde hafta noktaları (#373)
-Zaman: 2026-10-13-2101 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38443091855
+Commit: f3e58d3 · Merge pull request #436 from seyhunDev/claude/project-thread-sngvzr
+Zaman: 2026-10-16-1945 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38934194130
 
-TAM TEST · 13.10.2026 20:59:44
+TAM TEST · 16.10.2026 19:43:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 76 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
