@@ -8,7 +8,7 @@ import { TodayWind, WeatherDetail } from "@/features/weather/DaySheet";
 import { dayHours, getPlace, nowOf, sky, skyTone, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 
-// Başlığın altındaki hava: solda havaya göre simge (güneş, ay, bulut, yağmur…; kendi renginde, skyTone), büyük sıcaklık, yanında durum ve
+// Hava kartının üstü (OwnerHome): solda havaya göre simge (güneş, ay, bulut, yağmur…; kendi renginde, skyTone), büyük sıcaklık, yanında durum ve
 // "Karayel 11 kn · 9° / 22°" (rüzgârın adı ve hızı, günün en düşük/en yüksek sıcaklığı); çerçevesiz, ok yok (Seyhun: "o oku da kaldır"). Değerler nowOf ile bu saatin.
 // Dokununca bugünün özeti ve rüzgâr grafiği açılır.
 export function HomeHero({ weather }) {
@@ -26,13 +26,13 @@ export function HomeHero({ weather }) {
         type="button"
         onClick={() => (w ? setOpen(true) : refresh(true))}
         aria-label="Bugünün hava ayrıntısı"
-        className="-ml-0.5 mt-1.5 flex max-w-full items-center gap-2.5 py-0.5 text-left"
+        className="flex max-w-full items-center gap-3 text-left"
       >
         {n ? (
           <>
-            <Icon name={s.icon} className={`size-8 shrink-0 ${skyTone(s.icon)}`} />
-            <span className="shrink-0 text-[1.875rem] font-semibold leading-none tracking-[-.02em] tabular-nums text-fg">{n.t}°</span>
-            <span className="min-w-0 text-[0.84375rem] leading-tight">
+            <Icon name={s.icon} className={`size-9 shrink-0 ${skyTone(s.icon)}`} />
+            <span className="shrink-0 text-[2.5rem] font-light leading-none tracking-[-.02em] tabular-nums text-fg">{n.t}°</span>
+            <span className="min-w-0 text-[0.875rem] leading-snug">
               <b className="block truncate font-semibold text-fg">{s.label}</b>
               <span className="block truncate tabular-nums text-mut">
                 {windName(n.dir)[0]} {n.wind} kn{day ? ` · ${day.min}° / ${day.max}°` : ""}
