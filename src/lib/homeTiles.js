@@ -321,6 +321,18 @@ export function twoDays(plans = [], today, now = new Date(), n = 4, horizon = 60
   const rest = all.filter((r) => r.day !== today && r.day !== later).slice(0, n);
   return { days, rest };
 }
+// Süren planın bitişi: "12:00'ye kadar", "10:30'a kadar" (saat + durationMin, varsayılan 60 dk). Ek, sayının okunuşunun son sözcüğüne göre.
+const ONES = ["", "e", "ye", "e", "e", "e", "ya", "ye", "e", "a"];
+const TENS = ["a", "a", "ye", "a", "a", "ye"];
+const dative = (n) => (n === 0 ? "a" : n % 10 ? ONES[n % 10] : TENS[n / 10]);
+export function untilText(time, durationMin = 60) {
+  if (!/^\d{1,2}:\d{2}$/.test(time || "")) return "";
+  const [h, m] = time.split(":").map(Number);
+  const t = (h * 60 + m + (durationMin || 60)) % 1440;
+  const eh = Math.floor(t / 60);
+  const em = t % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}'${dative(em || eh)} kadar`;
+}
 export function dayHead(day, today) {
   const t = new Date(`${today}T12:00:00`);
   t.setDate(t.getDate() + 1);

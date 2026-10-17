@@ -2264,6 +2264,15 @@ group("Hava satırı")([
   })],
 ]);
 
+// Ana sayfa saat çizgisi: süren planın bitişi "12:00'ye kadar" (sayının okunuşuna göre ek)
+group("Bitiş saati")([
+  ["ekler", F("10:00+60 → 11:00'e, 11:00 → 12:00'ye, 09:00+30 → 09:30'a, 16:00 → 17:00'ye, 20:00+60 → 21:00'e, 05:00 → 06:00'ya, 23:30 → 00:30'a", () =>
+    HT.untilText("10:00") === "11:00'e kadar" && HT.untilText("11:00") === "12:00'ye kadar" && HT.untilText("09:00", 30) === "09:30'a kadar"
+    && HT.untilText("16:00") === "17:00'ye kadar" && HT.untilText("20:00") === "21:00'e kadar" && HT.untilText("05:00") === "06:00'ya kadar"
+    && HT.untilText("23:30") === "00:30'a kadar" && HT.untilText("10:00", 20) === "10:20'ye kadar")],
+  ["saatsiz", F("boş", () => HT.untilText("") === "" && HT.untilText(undefined) === "")],
+]);
+
 // Profil fotoğrafı (avatar.js): yalnız kişinin kendi Storage klasöründeki adres kabul edilir (/api/photo)
 const AVT = await import("@/lib/avatar");
 const AVB = "proj.firebasestorage.app";

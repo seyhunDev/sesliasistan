@@ -14,7 +14,7 @@ import { dayInfo, planTone, clubDues, clubFis, clubRace, duesLive, homeNotes, po
 import { rel, todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
-import { CALM, SectionHead } from "./ui";
+import { CALM, GROUP, SectionHead } from "./ui";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
@@ -121,7 +121,8 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
               </Link>
             )}
           </SectionHead>
-          <div className={`overflow-hidden ${CALM}`}>
+          {/* Kulüp kartı şimdiki sakin görünümüyle kalır (Seyhun: "Kulüp kısmı şu anki haliyle kalsın"): içte .calm, gruplu sayfanın renklerini geri alır */}
+          <div className={`calm overflow-hidden ${CALM}`}>
             {skel("race") ? <SkelRace /> : raceCard && <RaceRow r={raceCard} cls={show("race")} />}
             {tiles.length > 0 && (
               <ul className={`grid grid-cols-2 gap-px bg-line ${raceCard || skel("race") ? "border-t border-line" : ""}`}>
@@ -227,7 +228,7 @@ function NotesList({ list, total }) {
           <Icon name="plus" className="size-4" />
         </button>
       </SectionHead>
-      <ul className={`divide-y divide-line px-3.5 py-0.5 ${CALM}`}>
+      <ul className={`divide-y divide-line px-3.5 py-0.5 ${GROUP}`}>
         {list.map((n) => {
           const when = n.pinned ? "Sabit" : n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
           const first = String(n.body && n.body !== n.title ? n.body : "").split("\n").find((x) => x.trim()) || "";
@@ -247,16 +248,16 @@ function NotesList({ list, total }) {
 }
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
-// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): dünden başlayan üç haftalık günler (bugün ikinci sırada, kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün koyu.
+// Ana sayfanın gün şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): dünden başlayan üç haftalık günler (bugün ikinci sırada, kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün kırmızı daire (gruplu sayfanın --red'i).
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
-// Fitness olan günün altında turuncu, başka planı olan günün altında plan türünün renginde nokta (planTone; pencerede PLANLAR). Sırada kartının (SiradaCard.jsx) içinde çizilir.
+// Fitness olan günün altında turuncu, başka planı olan günün altında plan türünün renginde nokta (planTone; pencerede PLANLAR). Kendi gruplu kartında, SiradaCard.jsx çizer.
 export function WeekStrip({ w, att, today }) {
   const [pick, setPick] = useState(null); // Dokunulan gün: pencere
   const DAY = {
     done: "bg-accbg text-acc",
     miss: "bg-warnbg text-warn",
-    today: "bg-acc text-white",
+    today: "bg-[var(--red,var(--acc))] text-white",
     plan: "ring-[1.5px] ring-acc text-acc",
     none: "text-mut",
     fit: "bg-orange-500/12 text-orange-700 ring-1 ring-orange-500/50 dark:text-orange-300",
@@ -265,7 +266,7 @@ export function WeekStrip({ w, att, today }) {
   return (
     <>
       {/* Kaydırılan şerit (Seyhun: "iki hafta daha gidebilmeliyim, sonra Tümü"): dünden başlar, her gün kartın yedide biri, gün gün durur; ayın 1'inde gün adı yerine ay adı; en sonda Tümü (Takvim) */}
-      <div className="flex snap-x snap-mandatory scroll-px-2.5 overflow-x-auto px-2.5 pb-3 pt-1 [scrollbar-width:none]">
+      <div className="flex snap-x snap-mandatory scroll-px-2.5 overflow-x-auto px-2.5 [scrollbar-width:none]">
         {w.days.map((d, i) => {
           const fitOnly = !d.has && d.fit.length > 0;
           const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;
@@ -275,8 +276,8 @@ export function WeekStrip({ w, att, today }) {
           const tones = [...new Set(d.other.map(planTone))].slice(0, 2);
           const inner = (
             <>
-              <small className={`text-[0.6875rem] capitalize ${mon ? "font-semibold text-acc" : d.state === "today" ? "font-semibold text-fg" : "text-mut"}`}>{mon || d.w}</small>
-              <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "bg-acc text-white" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
+              <small className={`text-[0.6875rem] font-medium capitalize ${mon ? "font-semibold text-acc" : d.state === "today" ? "text-[var(--red,var(--fg))]" : "text-mut"}`}>{mon || d.w}</small>
+              <span className={`relative grid size-[2.125rem] place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? DAY.today : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
               <span className="flex h-1.5 items-center gap-0.5">
@@ -287,7 +288,7 @@ export function WeekStrip({ w, att, today }) {
               </span>
             </>
           );
-          const cls = `flex w-[calc((min(100vw,30rem)-3.375rem)/7)] shrink-0 flex-col items-center gap-1 snap-start rounded-xl py-0.5`;
+          const cls = `flex w-[calc((min(100vw,30rem)-3.25rem)/7)] shrink-0 flex-col items-center gap-1 snap-start rounded-xl py-0.5`;
           return info.tap ? (
             <button key={d.date} type="button" data-press onClick={() => setPick(d)} aria-label={`${d.d} ${d.w}: ${what}`} className={cls}>
               {inner}

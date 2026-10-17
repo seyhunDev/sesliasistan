@@ -7,15 +7,18 @@ export const TAP = `${CARD} transition active:scale-[.97]`;
 // Göz yormayan kart (.calm sayfaları): gölgesiz, ince çizgi; içi yazı satırları
 export const CALM = "rounded-[1.125rem] border border-line bg-card";
 
-// Bölüm başlığı: solda sade ad ("Kulüp", isteğe bağlı sayı), sağda tek eylem (Tümü, Kapat…)
+// Gruplu ana sayfa kartı (.calm.grouped, iPhone ayarlar düzeni): çerçevesiz, küçük köşe; içindeki satırlar ince çizgiyle ayrılır
+export const GROUP = "overflow-hidden rounded-xl bg-card";
+
+// Bölüm başlığı (iPhone gruplu liste gibi): solda küçük büyük harfli gri ad ("KULÜP", isteğe bağlı sayı), sağda tek eylem (Tümü, Kapat…)
 export function SectionHead({ id, title, count, children }) {
   return (
-    <div className="mb-2 flex min-h-7 items-center justify-between gap-3 px-1">
-      <h2 id={id} className="text-[0.9375rem] font-semibold text-fg2">
+    <div className="mb-1.5 flex min-h-6 items-center justify-between gap-3 px-3.5">
+      <h2 id={id} className="text-[0.8125rem] font-normal uppercase tracking-[.02em] text-mut">
         {title}
         {count > 0 && <span className="ml-1.5 font-normal tabular-nums text-mut">{count}</span>}
       </h2>
-      {children && <span className="flex shrink-0 items-center gap-3 text-[0.8125rem]">{children}</span>}
+      {children && <span className="flex shrink-0 items-center gap-3 text-[0.8125rem] font-semibold">{children}</span>}
     </div>
   );
 }

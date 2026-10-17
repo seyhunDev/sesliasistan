@@ -7,7 +7,7 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useData } from "@/features/data/DataProvider";
 import { birthdaysOn, nextBirthday } from "@/lib/agenda";
 import { addDays, todayStr } from "@/lib/utils/format";
-import { CARD } from "./ui";
+import { GROUP } from "./ui";
 
 // Kapatılanlar bu cihazda o gün gizli kalır
 const hideKey = () => `sa-bday-${todayStr()}`;
@@ -72,7 +72,7 @@ export function BirthdayStrip() {
   };
 
   return (
-    <section aria-label="Doğum günleri" className={`divide-y divide-line overflow-hidden ${CARD}`}>
+    <section aria-label="Doğum günleri" className={`divide-y divide-line ${GROUP}`}>
       {rows.map(({ b, day }) => {
         const isToday = day === today;
         const age = nextBirthday(b, day).age;

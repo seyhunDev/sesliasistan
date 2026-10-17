@@ -10,6 +10,7 @@ import { useData } from "@/features/data/DataProvider";
 import { birthdaysOn } from "@/lib/agenda";
 import { personHref, storyPeople } from "@/lib/homeTiles";
 import { initials, todayStr } from "@/lib/utils/format";
+import { SectionHead } from "./ui";
 
 // Bugün doğum günü olanlar; kişiye bağlı kayıtta kişinin sayfası, bağsızda Doğum günleri
 function useBirthdaysToday() {
@@ -63,20 +64,23 @@ export function PeopleStrip() {
   const list = storyPeople(members, birthdaysOn(birthdays, todayStr()));
   if (!list.length) return null;
   return (
-    <section aria-label="Kişiler" className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none]">
-      <ul className="flex w-max gap-3.5">
-        {list.map((p) => (
-          <li key={p.id}>
-            <Link href={p.href} className="flex w-14 flex-col items-center gap-1">
-              <span className={`grid size-14 place-items-center rounded-full text-[0.9375rem] font-semibold ${p.tone ? `tone-${p.tone} tone-chip` : "bg-card text-fg2 ring-1 ring-line"} ${p.bday ? "ring-2 ring-acc ring-offset-2 ring-offset-bg" : ""} relative overflow-hidden`}>
-                {initials(p.name)}
-                {p.photo && <FadeImg src={p.photo} className="size-full rounded-full object-cover" />}
-              </span>
-              <small className="w-full truncate text-center text-[0.75rem] text-fg2">{p.name.split(" ")[0]}</small>
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <section aria-labelledby="home-people">
+      <SectionHead id="home-people" title="Kişiler" />
+      <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none]">
+        <ul className="flex w-max gap-3.5">
+          {list.map((p) => (
+            <li key={p.id}>
+              <Link href={p.href} className="flex w-14 flex-col items-center gap-1">
+                <span className={`grid size-14 place-items-center rounded-full text-[0.9375rem] font-semibold ${p.tone ? `tone-${p.tone} tone-chip` : "bg-card text-fg2 ring-1 ring-line"} ${p.bday ? "ring-2 ring-acc ring-offset-2 ring-offset-bg" : ""} relative overflow-hidden`}>
+                  {initials(p.name)}
+                  {p.photo && <FadeImg src={p.photo} className="size-full rounded-full object-cover" />}
+                </span>
+                <small className="w-full truncate text-center text-[0.75rem] text-fg2">{p.name.split(" ")[0]}</small>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

@@ -97,6 +97,12 @@ html[data-theme="dark"] .calm {
   --acc: #6fae9c; --accbg: #22302c; --warn: #d0a25e; --warnbg: #2e281f;
 }
 html[data-theme="dark"] .calm .bg-card { box-shadow: none; }
+/* GRUPLU ANA SAYFA (.calm.grouped; Seyhun 2026-10-17: "2'deki gibi"): iPhone ayarlar düzeni, açık gri zemin, çerçevesiz beyaz kartlar,
+   küçük büyük harfli bölüm başlıkları; bugün kırmızı (--red). Kulüp kartı içte .calm ile eski sakin görünümde kalır (HomeSummary). */
+.calm.grouped { --bg: #f2f2f7; --card: #ffffff; --fg: #1c1c1e; --fg2: #3c3c43; --mut: #8e8e93; --line: #dcdce1; --red: #ff3b30; }
+html[data-theme="dark"] .calm.grouped { --bg: #111214; --card: #1d1f22; --fg: #e4e4e2; --fg2: #bdbdbb; --mut: #8e8e93; --line: #2e3135; --red: #ff5a50; }
+body:has(main.grouped) { background: #f2f2f7; }
+html[data-theme="dark"] body:has(main.grouped) { background: #111214; }
 
 html {
   height: 100%;
@@ -551,3 +557,4 @@ html[data-theme="dark"] .tone-fit { --tbg: #33261b; --tfg: #e0a46c; }
 html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
 .tone-chip { background: var(--tbg); color: var(--tfg); }
 .tone-bar { background: var(--tfg); }
+.tone-fg { color: var(--tfg); }
