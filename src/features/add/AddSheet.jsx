@@ -378,7 +378,7 @@ export function AddSheet({ open, onClose, seed }) {
                 meta={recMeta}
                 planTitle={linkedPlan}
                 done={!!rec?.done}
-                pinned={!!rec?.pinned}
+                noteState={edit.kind === "note" && rec && (rec.done || rec.archived) ? `${rec.done ? "Yapıldı" : "Arşivde"}${rec.doneAt || rec.archivedAt ? ` ${relLow(rec.doneAt || rec.archivedAt)}` : ""}` : ""}
                 cancelled={edit.kind === "plan" && rec?.status === "cancelled"}
                 repeat={edit.kind === "plan" && rec?.seriesId ? repeatLabel(rec.repeat?.until) : ""}
                 onToggleDone={() => {
@@ -425,7 +425,6 @@ export function AddSheet({ open, onClose, seed }) {
                 }
               />
             )}
-            {edit.kind === "note" && rec && !locked && <NoteActions rec={rec} by={by} onDone={onClose} onDelete={removeRecord} />}
             <div className="mt-3" />
           </>
         ) : (
@@ -505,9 +504,21 @@ export function AddSheet({ open, onClose, seed }) {
       </div>
 
       {/* Alt butonlar (sabit). Kayıt ekranının kendi asistanı yok: değişiklik için alttaki ana asistan kubbesi (recDock) */}
-      {!locked && (edit || drafts.length > 0) && !((edit?.kind === "note" || edit?.kind === "plan") && !dirty) && (
+      {!locked && (edit || drafts.length > 0) && !(edit?.kind === "plan" && !dirty) && !(edit?.kind === "note" && !rec) && (
         <footer data-pagebar className={`flex shrink-0 gap-2.5 bg-bg px-5 pt-3 ${padB}`}>
-          {edit ? (
+          {edit?.kind === "note" && !dirty ? (
+            /* Not: işlemler hep burada (kaydırmadan); yazınca yerine Vazgeç + Kaydet */
+            <NoteActions rec={rec} by={by} onDone={onClose} onDelete={removeRecord} />
+          ) : edit?.kind === "note" ? (
+            <>
+              <button onClick={() => setDrafts([fromRecord("note", rec)])} className="h-12 flex-1 rounded-xl bg-card text-base font-semibold text-fg ring-1 ring-line transition active:scale-[.98]">
+                Vazgeç
+              </button>
+              <button onClick={saveEdit} className={primary}>
+                Kaydet
+              </button>
+            </>
+          ) : edit ? (
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>
               {dirty ? "Kaydet" : "Değişiklik yok"}
             </button>

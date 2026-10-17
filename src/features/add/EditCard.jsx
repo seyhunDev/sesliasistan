@@ -41,12 +41,12 @@ function Row({ icon, label, value, tone, open, onToggle, children }) {
         disabled={!expandable}
         className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left transition active:bg-bg disabled:active:bg-transparent"
       >
-        <Icon name={icon} className="size-5 shrink-0 text-mut" />
+        {icon && <Icon name={icon} className="size-5 shrink-0 text-mut" />}
         <span className="shrink-0 text-[0.9375rem]">{label}</span>
         <span className={`ml-auto min-w-0 truncate text-right text-[0.9375rem] ${tone || "text-mut"}`}>{value}</span>
         {expandable && <Icon name="chev" className={`size-4 shrink-0 text-mut/70 transition-transform ${open ? "rotate-90" : ""}`} />}
       </button>
-      {open && <div className="animate-pop px-4 pb-3.5 pl-12">{children}</div>}
+      {open && <div className={`animate-pop px-4 pb-3.5 ${icon ? "pl-12" : ""}`}>{children}</div>}
     </li>
   );
 }
@@ -79,7 +79,7 @@ function DayChips({ value, onPick, onClear }) {
 // assign: ana hesabın çalışanları (boşsa "Çalışan ekle"), çalışan hesabında null (satır gösterilmez).
 // acks: kayıtlı sorumluların durumu [{ uid, name, key, label, at }] (ana hesapta gösterilir)
 // remindFails: plana özel hatırlatması gitmeyenler [{ uid, name, why }] (ana hesapta), onRemindResend: yeniden dene
-export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [], onResend, remindFails = [], onRemindResend }) {
+export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repeat, onToggleDone, assign, onAddStaff, onChange, acks = [], onResend, remindFails = [], onRemindResend }) {
   const [open, setOpen] = useState(""); // açık satır
   const toggle = (k) => () => setOpen((o) => (o === k ? "" : k));
   const put = (patch, close = true) => {
@@ -93,9 +93,9 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
   const rel = (v) => (v && v >= today ? leftLabel(v, today) : "");
 
   // Sorumlu satırı ve sorumluların durumu: not ve diğer kayıtlarda aynı
-  const who = assign && assign.length > 0 && (
+  const whoRow = (icon) => assign && assign.length > 0 && (
     <Row
-      icon="users"
+      icon={icon}
       label="Sorumlu"
       value={names.length ? names.join(", ") : "Genel"}
       tone={names.length ? "font-medium text-acc" : undefined}
@@ -129,6 +129,7 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
       </p>
     </Row>
   );
+  const who = whoRow("users");
   const ackList = acks.length > 0 && (
     <div className="mt-3 rounded-2xl bg-card px-4 py-2.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
     {acks.map((a) => (
@@ -311,11 +312,15 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
       </div>
     );
 
-  // Not: kısa içerik tek kartta (başlık büyük, metin hemen altında); kim/ne zaman ve etiket küçük, kartın altında
+  // Not: başlık ve metin tek kartta (metin alanı geniş, boş yere dokununca yazılır); altında tek bilgi satırı
+  // (durum, kategori, kim ekledi / ne zaman). Sabit olduğu alttaki düğmede görünür, burada tekrarlanmaz. Simge yok.
   if (d.type === "note")
     return (
       <div className="pb-2">
-        <div className="rounded-2xl bg-card px-4 pb-4 pt-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+        <div
+          onClick={(e) => e.target === e.currentTarget && e.currentTarget.querySelectorAll("textarea")[1]?.focus()}
+          className="min-h-[16rem] cursor-text rounded-2xl bg-card px-4 pb-4 pt-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]"
+        >
           <Grow
             value={d.title}
             onChange={(e) => onChange({ title: cap(e.target.value) })}
@@ -333,22 +338,13 @@ export function EditCard({ d, meta, planTitle, done, pinned, cancelled, repeat, 
             className="mt-2 min-h-[1.75rem] text-[1.0625rem] leading-relaxed text-fg/85 placeholder:text-mut/60"
           />
         </div>
-        {(meta || d.cat || pinned) && (
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[0.8125rem] text-mut">
-            {pinned && (
-              <span className="inline-flex items-center gap-1 font-medium text-amber-600">
-                <Icon name="star" className="size-3.5" />
-                Sabit
-              </span>
-            )}
-            {d.cat && <span className="rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-medium text-acc">{d.cat}</span>}
-            {meta && <span>{meta}</span>}
-          </p>
+        {(meta || (d.cat && d.cat !== "Genel") || noteState) && (
+          <p className="mt-2 px-1 text-[0.8125rem] text-mut">{[noteState, d.cat && d.cat !== "Genel" ? d.cat : "", meta].filter(Boolean).join(" · ")}</p>
         )}
         {((assign && assign.length > 0) || planTitle) && (
           <ul className="mt-4 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
-            {who}
-            {planTitle && <Row icon="cal" label="Bağlı plan" value={planTitle} tone="text-fg" />}
+            {whoRow(null)}
+            {planTitle && <Row label="Bağlı plan" value={planTitle} tone="text-fg" />}
           </ul>
         )}
         {ackList}
