@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { exById } from "@/lib/fitness/exercises";
-import { ExerciseMedia, MediaVideo } from "./ExerciseMedia";
+import { MediaShow } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
 import { FEELS, bump, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
@@ -178,9 +178,8 @@ function HowBody({ it }) {
       {more.length > 0 && (
         <p className="mt-2 rounded-xl bg-acc/10 px-3 py-2 text-[0.875rem] leading-snug text-fg">{more.join(" · ")}</p>
       )}
-      <MediaVideo media={it.media} className="mt-3" />
+      <MediaShow media={it.media} className="mt-3" />
       <YtPlayer key={it.yt?.id} yt={it.yt} className="mt-2" />
-      <ExerciseMedia media={it.media} ex={it.ex} noVideo className="mt-2" />
       {how.length > 0 && (
         <ol className="mt-3 space-y-1.5">
           {how.map((h, n) => (
