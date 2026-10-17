@@ -1,8 +1,8 @@
-Commit: c4ffffd · Kişi sayfası: her kişinin kendi sayfası, Mesajlar ve ana sayfadan bağlantı, asistanla açma (#443)
-Zaman: 2026-10-17-0442 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38991900945
+Commit: 2e607b9 · Fitness: nefes/mobilite antrenman sayılmaz, fotoğraflar video boyunda büyük (#445)
+Zaman: 2026-10-17-0507 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38993602407
 
-TAM TEST · 17.10.2026 04:41:32
+TAM TEST · 17.10.2026 05:06:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 66 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
