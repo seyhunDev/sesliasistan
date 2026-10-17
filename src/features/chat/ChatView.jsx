@@ -167,14 +167,20 @@ export function ChatView({ cid }) {
       });
     };
     // iPhone kutuyu taşıyınca ya da kısaltınca yazı imlecini eski yerinde (kutunun dışında, mesajların üstünde)
-    // bırakıyor; imleç yeniden çizdirilir
+    // bırakıyor; imleç yeniden çizdirilir. Aynı yeri yeniden seçmek iPhone'da imleci yerinden oynatmıyor (sohbete ilk
+    // girişte ilk dokunuşta imleç dışarıda kalıyordu): yazı bir an değiştirilip imleç başka yere, sonra geri konur.
     const caret = (a) => {
       if (!a || document.activeElement !== a) return;
       a.style.transform = "translateZ(0)";
       requestAnimationFrame(() => {
         a.style.transform = "";
+        const { value, selectionStart: s, selectionEnd: e } = a;
+        if (document.activeElement !== a) return;
         try {
-          a.setSelectionRange(a.selectionStart, a.selectionEnd);
+          a.value = `${value} `;
+          a.setSelectionRange(value.length + 1, value.length + 1);
+          a.value = value;
+          a.setSelectionRange(s, e);
         } catch {}
       });
     };
@@ -190,7 +196,7 @@ export function ChatView({ cid }) {
       if (!/^(TEXTAREA|INPUT)$/.test(a?.tagName || "")) return;
       timers.forEach(clearTimeout);
       timers.length = 0;
-      for (const ms of [320, 700]) timers.push(setTimeout(() => caret(a), ms));
+      for (const ms of [120, 320, 700, 1200]) timers.push(setTimeout(() => caret(a), ms));
     };
     fit();
     v?.addEventListener("resize", fit);
