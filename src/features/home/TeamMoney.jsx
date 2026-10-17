@@ -6,12 +6,17 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { money } from "@/lib/bankSheet";
 import { db } from "@/lib/firebase/clientApp";
-import { accountsOf, balanceOf, totalsOf } from "@/lib/mailBoard";
+import { accountsOf, balanceOf, shownAccounts, totalsOf } from "@/lib/mailBoard";
 import { TLk, totalOf } from "@/lib/receipts";
+import { debtMoves, kasaOf } from "@/lib/cashbook";
+import { loadCash } from "@/features/dues/duesData";
+import { loadDebts } from "@/features/debts/debtData";
+import { cashMonth, readSum, saveSum } from "@/lib/homeTiles";
 
-// Ana sayfa özet kartları için para: banka (hesap özetlerinden, yalnız ana hesap) ve bu ayın fişleri.
-// Banka Mailler sayfasıyla aynı hesabı gösterir: aynı mailler (son 40), aynı hesaplar (accountsOf), TL toplamı;
-// değişim son 7 özetteki toplam bakiyeye göre. Dönüş: { bank: {big, sub, warn, spark (son 7 özetin toplam bakiyesi), diff (bu sürede değişim), cur} | null, receipts: {big, sub} | false (bu ay fiş yok), loading (banka okunuyor) }
+// Ana sayfa Hesap alanı için para (Seyhun 2026-10-17: "Hesaplar'daki gibi: toplam, altında banka ve kasa ayrı ayrı, yüzde artış, giriş varsa").
+// Banka: hesap özetlerinden (yalnız ana hesap), Hesaplar sayfasıyla aynı hesaplar (seçilenler, shownAccounts), TL toplamı; değişim son 7 özetteki
+// toplam bakiyeye göre. Kasa: Hesaplar'daki kasa (nakit girişler + kulüp borçları, kasaOf), açılışta bir kez ve kasa değişince okunur; son değer bu cihazda
+// saklanır, okuma bitene kadar o gösterilir. Dönüş: { bank: {big (banka+kasa), sub, warn, spark, diff, cur, bankTL, kasa, month} | null, receipts: {big, sub} | false, loading }
 export function useMoney() {
   const { profile } = useAuth();
   const { receipts, isStaff } = useData();
@@ -32,9 +37,32 @@ export function useMoney() {
       },
     );
   }, [owner, profile?.uid]);
+  // Kasa (Hesaplar sayfasıyla aynı hesap): nakit hareketler + kulüp borçları; meta.accts gösterilen banka hesapları
+  const [cash, setCash] = useState(() => readSum().cash || null);
+  useEffect(() => {
+    if (!owner) return;
+    let live = true;
+    const load = () =>
+      Promise.all([loadCash(profile.uid), loadDebts(profile.uid).catch(() => [])])
+        .then(([c, lent]) => {
+          if (!live) return;
+          const k = kasaOf([...c.moves, ...debtMoves(lent)], c.meta);
+          const next = { total: k.total, accts: c.meta?.accts || null, ...cashMonth(k.counted) };
+          saveSum("cash", next);
+          setCash(next);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener("sa-cash-saved", load);
+    return () => {
+      live = false;
+      window.removeEventListener("sa-cash-saved", load);
+    };
+  }, [owner, profile?.uid]);
 
-  const accounts = accountsOf(mails);
-  const tot = totalsOf(accounts)[0];
+  const accounts = shownAccounts(accountsOf(mails), cash?.accts);
+  const totals = totalsOf(accounts);
+  const tot = totals.find((t) => !t.currency || /^(TL|TRY)$/i.test(t.currency)) || totals[0];
   const cur = tot?.currency || "";
   // Her özette o para birimindeki hesapların son bilinen bakiyelerinin toplamı (en eski özetten başlayarak birikir)
   const series = [];
@@ -62,8 +90,26 @@ export function useMoney() {
   const monthName = now.toLocaleDateString("tr-TR", { month: "long" });
   const sign = `${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%`;
 
+  // Toplam: banka (TL) + kasa; alt satır "Banka … · Kasa …", altında bankanın değişimi ve bu ayın kasa girişleri
+  const isTL = !cur || /^(TL|TRY)$/i.test(cur);
+  const bankTL = acc && isTL ? tot.total : 0;
+  const kasa = cash?.total || 0;
+  const has = acc || cash;
   return {
-    bank: owner && acc ? { big: `${money(tot.total)} ${cur}`, sub: spark.length > 1 ? `Bakiye · ${sign}` : tot.n > 1 ? `${tot.n} hesabın bakiyesi` : "Hesap bakiyesi", warn: spark.length > 1 && pct < 0, spark, diff: spark.length > 1 ? tot.total - first : 0, cur } : null,
+    bank:
+      owner && has
+        ? {
+            big: `${money(bankTL + kasa)} ₺`,
+            sub: [acc && isTL ? `Banka ${money(bankTL)}` : "", cash ? `Kasa ${money(kasa)}` : ""].filter(Boolean).join(" · "),
+            change: [spark.length > 1 ? `Banka ${sign}` : "", cash?.inSum ? `bu ay kasaya +${money(cash.inSum)} ₺` : ""].filter(Boolean).join(" · "),
+            warn: spark.length > 1 && pct < 0,
+            spark,
+            diff: spark.length > 1 ? tot.total - first : 0,
+            cur,
+            bankTL,
+            kasa,
+          }
+        : null,
     loading: owner && !got,
     receipts: spend > 0 && { big: TLk(spend), sub: `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} harcaması${isStaff ? " (senin)" : ""}` },
   };

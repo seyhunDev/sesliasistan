@@ -321,6 +321,13 @@ export function twoDays(plans = [], today, now = new Date(), n = 4, horizon = 60
   const rest = all.filter((r) => r.day !== today && r.day !== later).slice(0, n);
   return { days, rest };
 }
+// Ana sayfa Hesap alanı: kasanın bu ayki girişleri (sayılan nakit hareketlerinden, ts ms). Dönüş { inSum, inN, outSum }
+export function cashMonth(counted = [], now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const m = counted.filter((x) => (x.ts || 0) >= start);
+  const sum = (f) => Math.round(m.filter(f).reduce((n, x) => n + Math.abs(x.amount), 0) * 100) / 100;
+  return { inSum: sum((x) => x.amount > 0), inN: m.filter((x) => x.amount > 0).length, outSum: sum((x) => x.amount < 0) };
+}
 // Süren planın bitişi: "12:00'ye kadar", "10:30'a kadar" (saat + durationMin, varsayılan 60 dk). Ek, sayının okunuşunun son sözcüğüne göre.
 const ONES = ["", "e", "ye", "e", "e", "e", "ya", "ye", "e", "a"];
 const TENS = ["a", "a", "ye", "a", "a", "ye"];

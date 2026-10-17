@@ -2324,6 +2324,17 @@ group("Bitiş saati")([
   ["saatsiz", F("boş", () => HT.untilText("") === "" && HT.untilText(undefined) === "")],
 ]);
 
+// Ana sayfa Hesap alanı: kasanın bu ayki girişi (geçen ayınki sayılmaz)
+group("Kasa bu ay")([
+  ["giriş ve çıkış", F("bu ay 2 giriş 1.500, çıkış 200; geçen ayki giriş sayılmaz", () => {
+    const now = new Date(2026, 9, 17, 12);
+    const t = (d) => new Date(2026, 9, d, 10).getTime();
+    const r = HT.cashMonth([{ amount: 1000, ts: t(3) }, { amount: 500, ts: t(15) }, { amount: -200, ts: t(10) }, { amount: 900, ts: new Date(2026, 8, 28).getTime() }], now);
+    return r.inSum === 1500 && r.inN === 2 && r.outSum === 200;
+  })],
+  ["boş", F("sıfır", () => HT.cashMonth([]).inSum === 0)],
+]);
+
 // Profil fotoğrafı (avatar.js): yalnız kişinin kendi Storage klasöründeki adres kabul edilir (/api/photo)
 const AVT = await import("@/lib/avatar");
 const AVB = "proj.firebasestorage.app";
