@@ -10,7 +10,6 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakToggle } from "@/features/speech/SpeakToggle";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useKind } from "@/features/auth/useKind";
 import { addDays, rel, todayStr } from "@/lib/utils/format";
 import { labelFromItems } from "@/lib/brain/model";
@@ -19,7 +18,7 @@ import { assigneeHints, assigneesInText, namesToUids, uidsToNames } from "@/lib/
 import { record } from "@/lib/brain/store";
 import { spokenDay, spokenTime } from "@/lib/utils/speak";
 import { DraftCard } from "./DraftCard";
-import { AssignedView, recordFocus } from "./Assigned";
+import { AssignedView } from "./Assigned";
 import { EditCard } from "./EditCard";
 import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
@@ -29,7 +28,6 @@ import { TrainingLog } from "./TrainingLog";
 import { FitWorkout } from "@/features/fitness/FitWorkout";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
-import { canLog } from "@/lib/trainingLog";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
 import { seeInbox } from "@/features/home/InboxSeen";
 import { scoreEdit } from "@/lib/brain/scoreStore";
@@ -65,7 +63,6 @@ export function AddSheet({ open, onClose, seed }) {
   const { stop: stopTts } = tts;
   const { profile } = useAuth();
   const { resendAssign, resendRemind, plans, fitOthers, tasks, notes, saveDrafts, updateRecord, removeWithUndo, deleteSeries, toggleTask, members, isStaff, nameOf, markSeen, myUid, setMyDone } = useData();
-  const { openAssistant } = useAssistant();
   const router = useRouter();
   const [drafts, setDrafts] = useState([]);
   const [voice, setVoice] = useState(false);
@@ -227,11 +224,6 @@ export function AddSheet({ open, onClose, seed }) {
   const changeType = (i, type) => update(i, { type, ...(type === "note" && !drafts[i].body ? { body: drafts[i].title } : {}) });
 
   const shut = () => onClose();
-  // Yazarak/konuşarak ekleme ana asistanla: bu ekran kapanır, asistan dinlemeye başlar (kayıt ekranının kendi asistanı yok)
-  const toAssistant = () => {
-    onClose();
-    openAssistant({ listen: true });
-  };
 
   // Kaydet: sorumlusu olmayan kayıt varsa önce "Sorumlu eklemek ister misin?" sorulur (ana hesap, çalışan varken).
   // Yapay zeka görevliyi anlamadıysa buradan elle seçilir.
@@ -288,25 +280,9 @@ export function AddSheet({ open, onClose, seed }) {
     onClose();
   }
 
-  // Kayıt ekranında ana asistan (alttaki kubbe) bu kaydı bilerek çalışır: değiştir, ertele, tamamla, sil, birine yaz.
-  // Kubbe TabBar'da; açık kaydı olayla öğrenir ve bu ekranın üstünde görünür. Alttaki boşluk kubbe kadar (--rec-h).
-  const recDock = open && !!edit && !!rec && !noAi;
-  const baseFocus = recDock ? recordFocus(edit.kind, rec) : null;
-  // Günlüğü yazılabilen antrenman planı: kubbedeki örnekler günlük üzerine (asistan bu plana yazar)
-  const recFocus = baseFocus && edit.kind === "plan" && canLog(rec, todayStr()) ? { ...baseFocus, log: true } : baseFocus;
-  const focusKey = recFocus ? JSON.stringify([recFocus, edit.kind, locked]) : "";
-  useEffect(() => {
-    if (!focusKey) return;
-    const [focus, kind, ro] = JSON.parse(focusKey);
-    const examples = ro
-      ? ["Bunu tamamladım", "Bu konuşmayı özetle", "Ana hesaba hazır olduğunu yaz"]
-      : focus.log
-        ? ["Günlüğe yaz: 12 knot poyraz, start çalıştık", "Çok iyi geçti, 90 dakika sürdü", "Saatini 10 yap"]
-        : [kind === "task" ? "Bu görevi tamamla" : kind === "plan" ? "Saatini 10 yap" : "Bundan görev çıkar", "Yarına ertele", "Ali'ye bununla ilgili yaz"];
-    const say = (detail) => window.dispatchEvent(new CustomEvent("sa-record-focus", { detail }));
-    say({ focus, examples });
-    return () => say(null);
-  }, [focusKey]);
+  // Kayıt ekranında ayrı asistan girişi yok (Seyhun, 2026-10-17: "planlarda ayrı bir asistan gösteriyor, kaldıralım");
+  // bu kayıtla ilgili her şey sekme çubuğundaki ana asistana söylenir (adıyla: "antrenman planının saatini 10 yap")
+  const recDock = false;
 
   // Kayıt başka yerden (ana asistan, başka cihaz) değişince elle değişiklik yoksa ekrandaki bilgiler güncellenir; silinirse ekran kapanır
   const recKey = edit && rec ? editKey(fromRecord(edit.kind, rec)) : "";
@@ -442,18 +418,9 @@ export function AddSheet({ open, onClose, seed }) {
                 </button>
               </>
             ) : !chat ? (
-              /* Başlangıç: elle ekleme için üç sade düğme; yazarak/konuşarak ekleme ana asistanla */
+              /* Başlangıç: elle ekleme için üç sade düğme (sesle ekleme sekme çubuğundaki ana asistanla) */
               <div className="pt-6">
                 <p className="px-1 text-[1.375rem] font-semibold leading-snug tracking-tight">Ne eklemek istersin?</p>
-                {!noAi && (
-                  <>
-                    <p className="mt-1 px-1 text-[0.875rem] text-mut">Asistana söyle; plan, görev ya da not olarak o ayırır.</p>
-                    <button type="button" onClick={toAssistant} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
-                      <Icon name="mic" className="size-5" />
-                      Asistana söyle
-                    </button>
-                  </>
-                )}
                 <div className="mt-8 flex items-center gap-2 px-1">
                   <span className="mr-1 text-[0.8125rem] text-mut">Elle ekle</span>
                   {MANUAL.map(([t, l, ic]) => (

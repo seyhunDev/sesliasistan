@@ -10,8 +10,6 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useDock } from "@/features/home/TabBar";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
-import { useAssistant } from "@/features/assistant/AssistantProvider";
-import { useKind } from "@/features/auth/useKind";
 import { SCHEDULE_KEY, askSchedule, takeSchedule } from "@/features/schedule/assistSchedule";
 import { weekdayOf } from "@/lib/agenda";
 import { compressImage } from "@/lib/image";
@@ -61,7 +59,6 @@ export default function SchedulePage() {
     window.addEventListener(SCHEDULE_KEY, on);
     return () => window.removeEventListener(SCHEDULE_KEY, on);
   }, []);
-  const { openAssistant } = useAssistant();
 
   async function onPhoto(e) {
     const file = e.target.files?.[0];
@@ -79,10 +76,6 @@ export default function SchedulePage() {
     fileRef.current?.click();
   }
   const newLesson = () => setEdit({ title: "", day, start: "09:00", end: "09:45", place: "", teacher: "" });
-  const listen = () => openAssistant({ listen: true });
-  // Sporcu ve öğrencide asistan yok: ders programı fotoğrafla ya da tek tek elle girilir (Seyhun, 2026-10-13)
-  const kind = useKind();
-  const noAi = kind === "athlete" || kind === "student";
 
   const list = lessons.filter((l) => l.day === day).sort(byTime);
   const counts = SHORT.map((_, i) => lessons.filter((l) => l.day === i + 1).length);
@@ -178,10 +171,9 @@ export default function SchedulePage() {
       ) : lessons.length ? (
         <Empty icon="book" title="Bu gün ders yok" />
       ) : (
-        /* Hiç ders yok: üç yol (sporcuda iki) */
+        /* Hiç ders yok: iki yol (sesle ekleme ana asistanla, sayfada ayrı giriş yok) */
         <div className="space-y-2">
           <Way icon="camera" title="Fotoğrafını çek" sub="Ders programının fotoğrafından çıkarırım" onClick={pickPhoto} />
-          {!noAi && <Way icon="mic" title="Söyle ya da yaz" sub="“Pazartesi 9’da matematik, 10:30’da fizik…”" onClick={listen} />}
           <Way icon="plus" title="Tek tek ekle" sub="Ders, gün ve saatleri kendin gir" onClick={newLesson} />
         </div>
       )}
