@@ -1,8 +1,8 @@
-Commit: 5fbc2e6 · Ana sayfa hava satırı: havaya göre renkli simge, büyük sıcaklık, rüzgâr adı ve en düşük/en yüksek (#449)
-Zaman: 2026-10-17-0530 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38995052460
+Commit: bbae40f · Fitness: değerlendirme raporu uygulama içinde (Kapat/Yazdır), kulüp logosu ve antrenörle (#450)
+Zaman: 2026-10-17-0533 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38995250557
 
-TAM TEST · 17.10.2026 05:28:50
+TAM TEST · 17.10.2026 05:31:50
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 82 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
