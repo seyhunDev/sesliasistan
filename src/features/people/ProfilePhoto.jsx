@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytes } from "firebase/storage";
+import { Loader } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
@@ -20,8 +21,9 @@ async function save(uid, body) {
 async function drop(path) {
   if (path) await deleteObject(sref(getStorage(app), path)).catch(() => {});
 }
-export async function setPhoto(orgId, uid, file, oldPath = "") {
+export async function setPhoto(orgId, uid, file, oldPath = "", onPreview) {
   const { dataUrl } = await compressImage(file, 400, 0.8);
+  onPreview?.(dataUrl);
   const blob = await (await fetch(dataUrl)).blob();
   const path = avatarPath(orgId, uid);
   const r = sref(getStorage(app), path);
@@ -45,12 +47,16 @@ export function ProfilePhoto({ orgId, uid, name, photo, photoPath, size = "size-
   const input = useRef(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Seçilen fotoğraf: yüklenirken ve kayıttaki adres değişene kadar bu gösterilir ({ url, was: o anki adres })
+  const [pre, setPre] = useState(null);
+  const preview = pre && pre.was === photo ? pre.url : null;
   async function run(fn) {
     setOpen(false);
     setBusy(true);
     try {
       await fn();
     } catch (e) {
+      setPre(null);
       toast(e.message || "Fotoğraf kaydedilemedi");
     } finally {
       setBusy(false);
@@ -59,12 +65,17 @@ export function ProfilePhoto({ orgId, uid, name, photo, photoPath, size = "size-
   const pick = (e) => {
     const f = e.target.files?.[0];
     e.target.value = "";
-    if (f) run(() => setPhoto(orgId, uid, f, photoPath));
+    if (f) run(() => setPhoto(orgId, uid, f, photoPath, (url) => setPre({ url, was: photo })));
   };
   return (
     <>
-      <button type="button" onClick={() => (photo ? setOpen(true) : input.current?.click())} disabled={busy || !orgId} aria-label="Profil fotoğrafı" className={`relative grid ${size} shrink-0 place-items-center overflow-hidden rounded-full ${tone} ${text} font-semibold transition active:scale-95 ${busy ? "opacity-50" : ""}`}>
-        {photo ? <img src={photo} alt="" className="size-full object-cover" /> : initials(name)}
+      <button type="button" onClick={() => (photo ? setOpen(true) : input.current?.click())} disabled={busy || !orgId} aria-label="Profil fotoğrafı" className={`relative grid ${size} shrink-0 place-items-center overflow-hidden rounded-full ${tone} ${text} font-semibold transition active:scale-95`}>
+        {preview || photo ? <img src={preview || photo} alt="" className={`size-full object-cover transition ${busy ? "opacity-50" : ""}`} /> : <span className={busy ? "opacity-40" : ""}>{initials(name)}</span>}
+        {busy && (
+          <span className="absolute inset-0 grid place-items-center bg-black/25">
+            <Loader size="sm" className="text-white" label="Fotoğraf yükleniyor" />
+          </span>
+        )}
       </button>
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={pick} />
       <Sheet open={open} onClose={() => setOpen(false)} title="Profil fotoğrafı">
