@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { addDays } from "@/lib/fitness/model";
 import { TEMPLATES } from "@/lib/fitness/templates";
-import { cleanReview, cleanTrack, planSummary, printHtml, reviewFilled, rowKind, valueText, weekLabel, weekOf, weekPlans } from "@/lib/fitness/review";
+import { REPORT_CSS, cleanReview, cleanTrack, planSummary, reportHtml, reviewFilled, rowKind, valueText, weekLabel, weekOf, weekPlans } from "@/lib/fitness/review";
 import { loadReviews, saveReview } from "./fitnessData";
 
 // Sporcunun haftalık değerlendirmesi (Fitness › Sporcular › sporcu › Değerlendirme): hafta seçilir (Pzt–Paz),
@@ -17,8 +19,10 @@ import { loadReviews, saveReview } from "./fitnessData";
 const FALLBACK = TEMPLATES[0]?.prog?.review || { rows: [], ask: [] };
 const FEEL = ["", "Zor", "İyi", "Kolay"];
 
-export function FitReview({ orgId, uid, name, prog, plans = [], today, onBack }) {
+export function FitReview({ orgId, uid, name, meta = "", prog, plans = [], today, onBack }) {
   const toast = useToast();
+  const { profile } = useAuth();
+  const [report, setReport] = useState("");
   const [week, setWeek] = useState(() => weekOf(today));
   const [list, setList] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -71,14 +75,11 @@ export function FitReview({ orgId, uid, name, prog, plans = [], today, onBack })
     }
   }
 
+  // Rapor uygulamanın içinde açılır (yeni pencere ana ekran uygulamasında kapanmıyordu); Kapat ve Yazdır üstte
   async function print() {
-    // Pencere dokunuşla hemen açılır (iPhone sonradan açılanı engeller); kayıt sonra
-    const w = window.open("", "_blank");
-    if (!w) return toast("Yazdırma penceresi açılamadı");
-    if (pick.review && dirty && !(await save())) return w.close();
-    w.document.write(printHtml({ name, prog, plans, review: cleanReview(rev, rev), week, pick, today }));
-    w.document.close();
+    if (pick.review && dirty && !(await save())) return;
     setPrintOpen(false);
+    setReport(reportHtml({ name, prog, plans, review: cleanReview(rev, rev), week, pick, today, coach: profile?.coach?.name || profile?.name || "", meta }));
   }
 
   const inp = "w-16 rounded-xl bg-bg px-2 py-2 text-right text-[0.9375rem] tabular-nums outline-none";
@@ -251,6 +252,30 @@ export function FitReview({ orgId, uid, name, prog, plans = [], today, onBack })
           Yazdır
         </Button>
       </Sheet>
+      {report && <Report html={report} onClose={() => setReport("")} />}
     </>
+  );
+}
+
+// Tam ekran rapor: body'nin doğrudan altında; yazdırırken yalnız rapor çıkar (sayfanın geri kalanı gizlenir)
+function Report({ html, onClose }) {
+  return createPortal(
+    <div id="fit-report" className="fixed inset-0 z-[80] flex flex-col bg-[#e9ebe7]">
+      <style>{`${REPORT_CSS}
+@media print{body>*:not(#fit-report){display:none!important}#fit-report{position:static!important;display:block!important;background:#fff!important}#fit-report .bar{display:none!important}#fit-report .scroll{overflow:visible!important}.fr{padding:0;max-width:none}@page{margin:14mm}}`}</style>
+      <div className="bar flex items-center gap-2 bg-card px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm">
+        <button type="button" onClick={onClose} className="h-10 rounded-full bg-bg px-4 text-[0.9375rem] font-semibold">
+          Kapat
+        </button>
+        <span className="flex-1" />
+        <button type="button" onClick={() => window.print()} className="h-10 rounded-full bg-acc px-5 text-[0.9375rem] font-semibold text-white">
+          Yazdır
+        </button>
+      </div>
+      <div className="scroll min-h-0 flex-1 overflow-auto p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="fr rounded-xl shadow-sm" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
+    </div>,
+    document.body,
   );
 }
