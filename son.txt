@@ -1,8 +1,8 @@
-Commit: 896b694 · Ana sayfa: kısa yollar yerine canlı alanlar (Sporcular, Fitness, Notlar, yarış, aidat, fiş, hesap, mesajlar, toplantı, Instagram) (#472)
-Zaman: 2026-10-17-1924 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39049130864
+Commit: d07e86d · Ana sayfa Hesap: banka + kasa toplamı, altında ayrı ayrı, değişim ve bu ayki kasa girişi (#473)
+Zaman: 2026-10-17-1937 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39050101908
 
-TAM TEST · 17.10.2026 19:22:59
+TAM TEST · 17.10.2026 19:36:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
