@@ -174,7 +174,6 @@ export function FitWorkout({ rec, by, hero = false }) {
           sets={sets}
           at={at}
           onCheck={(i, k, r) => toggle(i, k, true, r)}
-          onVal={lock ? null : setVal}
           feel={feel}
           setFeel={setFeel}
           onFinish={finish}
