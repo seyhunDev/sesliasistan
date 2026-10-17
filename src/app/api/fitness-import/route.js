@@ -4,7 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { exerciseCatalog, fold } from "@/lib/fitness/exercises";
-import { DOW_LONG, cleanProgram } from "@/lib/fitness/model";
+import { DOW_LONG, cleanProgram, dropRoutines } from "@/lib/fitness/model";
 
 export const runtime = "nodejs";
 
@@ -16,16 +16,18 @@ const SYSTEM = `Sen bir yelken kulübünün antrenörüne yardım eden fitness a
 2) "edit": verilen programda antrenörün yazdığı değişikliği yaparsın; TAM programı döndürürsün, istenmeyen hiçbir şeyi değiştirmezsin (gün, saat, hareket, sıra, set, tekrar, not aynen kalır).
 
 Kesin kurallar:
-- Belgedeki HER antrenman gününü ve HER hareketi al: hazırlık/ısınma, ana bölüm, mikrodoz, reset, soğuma, nefes çalışmaları dahil. Sırayı koru. Hiçbir hareketi atlama, birleştirme, kısaltma. Belgede olmayan hareket, ısınma ya da esneme EKLEME.
+- Belgedeki HER antrenman gününü ve antrenmandaki HER hareketi al: hazırlık/ısınma (içindeki nefes ve mobilite hareketleri dahil), ana bölüm, mikrodoz, soğuma. Sırayı koru. Hiçbir hareketi atlama, birleştirme, kısaltma. Belgede olmayan hareket, ısınma ya da esneme EKLEME.
 - Rakamları belgedeki gibi yaz, yuvarlama ya da "iyileştirme" yapma.
 - Antrenörün ek isteği (ask) varsa belgeden önce gelir, harfiyen uygula (gün, saat, hafta sayısı, başlangıç, değişiklik).
 - Bütün yazılar Türkçe; hareket adı belgedeki gibi (İngilizce terimler belgede öyleyse kalsın: "Dead bug", "Pallof press").
 
 Gün (days):
 - dow 1 Pazartesi … 7 Pazar. Haftalık planda hangi gün hangi antrenman yazıyorsa o güne koy. Her gün tek kayıt; aynı güne iki rutin düşerse sırayla tek günde birleştir ve adı ikisini anlatsın.
-- Hareket listesi verilmemiş günler (yalnız "atletizm", "yelken antrenmanı" gibi başka spor) gün olarak eklenmez; ama o güne belgede bir rutin (ör. "8 dk reset", "yelken sonrası 6 dk") bağlanmışsa o rutin o günün antrenmanı olur.
-- time: başlangıç saati HH:MM ("17.45–18.25" → 17:45). min: süre dakika ("17.45–18.25" → 40; "8 dk" → 10'a değil 8'e en yakın 5'in katı: 10; "12 dk" → 10 ya da 15'ten belgeye yakın olan; en az 5).
-- name: kısa ad ("Kuvvet A", "Kuvvet B", "Yelken mikrodozu", "8 dk reset").
+- Hareket listesi verilmemiş günler (yalnız "atletizm", "yelken antrenmanı" gibi başka spor) gün olarak eklenmez.
+- Nefes, mobilite, reset, toparlanma, yelken sonrası esneme gibi kısa rutinler ANTRENMAN DEĞİLDİR: tek başına gün olarak eklenmez, süreleri hiçbir güne eklenmez. Bunları rules'a başlığıyla tek satır yaz ("Her gün 8 dk reset: burun nefesi 4 sn al 6 sn ver · open book 5/yan …").
+- Antrenmanın içindeki bölüm başlıkları ("Nefes ve mobilite · 6 dk", "Hazırlık 8 dk", "Isınma", "Soğuma") hareket DEĞİLDİR: başlığı hareket olarak yazma, başlığın süresini hareket ya da gün süresi olarak yazma; başlığın altındaki hareketleri o bölümün part'ıyla al.
+- time: başlangıç saati HH:MM ("17.45–18.25" → 17:45). min: antrenmanın süresi dakika, belgedeki saat aralığından ("17.45–18.25" → 40; bölüm sürelerini toplama; "8 dk" → 10'a değil 8'e en yakın 5'in katı: 10; "12 dk" → 10 ya da 15'ten belgeye yakın olan; en az 5).
+- name: kısa ad ("Kuvvet A", "Kuvvet B", "Yelken mikrodozu").
 - note: günün düzeni ve şartları kısa ("2 tur, hareketler arası 20 sn geçiş", "İsteğe bağlı · yalnız yeşil günde", "RPE 6–7").
 
 Hareket (items), her biri:
@@ -134,7 +136,7 @@ async function handle(request) {
     // Değişiklikte: süre/hafta/başlangıç söylenmediyse eskisi; fotoğraf/video ve YouTube aynı adlı harekete geri takılır
     const media = new Map((cur?.days || []).flatMap((d) => d.items).filter((it) => it.media || it.yt).map((it) => [fold(it.name), { media: it.media, yt: it.yt }]));
     const days = (Array.isArray(rp.days) ? rp.days : []).map((d) => ({ ...d, items: (Array.isArray(d.items) ? d.items : []).map((it) => ({ ...it, ex: it.ex || "", ...(media.get(fold(it.name)) || {}) })) }));
-    const p = cleanProgram({ ...(cur || {}), ...rp, days, start: DAY.test(rp.start || "") ? rp.start : cur?.start || "" });
+    const p = cleanProgram({ ...(cur || {}), ...rp, days: edit ? days : dropRoutines(days), start: DAY.test(rp.start || "") ? rp.start : cur?.start || "" });
     const count = p.days.reduce((t, d) => t + d.items.length, 0);
     if (!p.days.length || !count) return bad(edit ? "Değişiklik yapılamadı, daha açık yazıp tekrar dene." : "Programdan antrenman okunamadı. Metni yapıştırmayı dene.", 422);
     console.log(`[fitness-import] ${Date.now() - t0} ms, ${edit ? "edit" : "read"}, gün=${p.days.length}, hareket=${count}`);

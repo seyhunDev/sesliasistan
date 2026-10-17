@@ -206,6 +206,16 @@ export function phaseItems(items = [], ph) {
   if (!ph?.sets || ph.sets >= 100) return items;
   return items.map((it) => (it.kind === "cardio" ? it : { ...it, sets: Math.max(1, Math.round(((+it.sets || 1) * ph.sets) / 100)) }));
 }
+// Belgeden okunan programda nefes/mobilite/reset gibi rutinler antrenman değildir:
+// bölüm başlığı hareket olarak gelmişse (ör. "Nefes ve mobilite 6 dk") çıkarılır; yalnız rutinden oluşan gün eklenmez.
+const HEAD = /^(\d+ (dk|dakika) )?(nefes( ve)? mobilite|mobilite( ve)? nefes|mobilite|hazirlik|isinma|soguma|ana bolum|reset|toparlanma)( \d+ (dk|dakika))?$/;
+const ROUTINE = /reset|nefes|mobilite|toparlanma|esneme|yelken sonrasi/;
+export const isHeading = (name) => HEAD.test(fold(name).replace(/\s+/g, " ").trim());
+export function dropRoutines(days = []) {
+  return (Array.isArray(days) ? days : [])
+    .map((d) => ({ ...d, items: (Array.isArray(d?.items) ? d.items : []).filter((it) => !isHeading(it?.name)) }))
+    .filter((d) => d.items.length && !(ROUTINE.test(fold(d.name)) && d.items.every((it) => !(+it.sets >= 2))));
+}
 export function cleanProgram(p = {}) {
   const days = (Array.isArray(p.days) ? p.days : []).map(cleanDay).filter(Boolean).slice(0, 7);
   const seen = new Set();

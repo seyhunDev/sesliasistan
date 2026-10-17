@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useKind } from "@/features/auth/useKind";
 import { exById } from "@/lib/fitness/exercises";
-import { ExerciseMedia, MediaVideo } from "./ExerciseMedia";
+import { MediaShow } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
@@ -252,8 +252,7 @@ export function FitWorkout({ rec, by, hero = false }) {
                     {it.note && <p className="mt-1 text-[0.875rem] leading-snug">{it.note}</p>}
                     {it.alt && <p className="mt-1 text-[0.8125rem] leading-snug text-mut">Kolay seçenek: {it.alt}</p>}
                     {t.up && <p className="mt-1 text-[0.75rem] font-semibold text-acc">↑ geçen sefere göre artırıldı</p>}
-                    <MediaVideo media={it.media} className="mt-2" />
-                    <ExerciseMedia media={it.media} ex={it.ex} noVideo />
+                    <MediaShow media={it.media} className="mt-2" />
                     <YtPlayer yt={it.yt} className="mt-2" />
                     <div className="mt-2 space-y-1.5">
                       {s.map((x, k) => (
