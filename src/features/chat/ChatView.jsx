@@ -21,6 +21,8 @@ import { authFetch } from "@/lib/authFetch";
 import { goBack } from "@/lib/navTrail";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { seeInbox } from "@/features/home/InboxSeen";
+import { uploadChatFile } from "./chatUpload";
+import { VOICE_MAX_SEC, fileLabel, secText, sizeText, voiceType } from "@/lib/chatFile";
 
 const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
@@ -112,7 +114,13 @@ export function ChatView({ cid }) {
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [editing, setEditing] = useState(null); // düzenlenen mesaj (yazı kutuda)
-  const [attach, setAttach] = useState(false); // ek menüsü (fotoğraf, dosya, sesli mesaj: yakında)
+  const [attach, setAttach] = useState(false); // ek menüsü (fotoğraf, kamera, dosya, sesli mesaj)
+  const [upload, setUpload] = useState(null); // yüklenen ek { label, p }
+  const [rec, setRec] = useState(null); // sesli mesaj kaydı { sec }
+  const recRef = useRef(null);
+  const pickPhoto = useRef(null);
+  const pickCam = useRef(null);
+  const pickFile = useRef(null);
   const [act, setAct] = useState(null); // dokunulan mesaj (işlem menüsü)
   const [info, setInfo] = useState(false);
   const [newBelow, setNewBelow] = useState(0);
@@ -152,30 +160,51 @@ export function ChatView({ cid }) {
         el.style.setProperty("--kb-pad", kb ? "0.375rem" : "max(0.5rem, calc(env(safe-area-inset-bottom) - 0.5rem))");
         if (window.scrollY || (v && v.offsetTop)) {
           window.scrollTo(0, 0);
-          // iPhone sayfayı geri alınca yazı imlecini eski yerinde (mesajların üstünde) bırakıyor; imleç yeniden çizdirilir
-          if (typing) {
-            a.style.transform = "translateZ(0)";
-            requestAnimationFrame(() => {
-              a.style.transform = "";
-              try {
-                a.setSelectionRange(a.selectionStart, a.selectionEnd);
-              } catch {}
-            });
-          }
+          if (typing) caret(a);
         }
+        // Klavye açılırken kutu kısaldıkça imleç eski yerinde kalabiliyor: klavye durunca bir kez daha çizdirilir
+        if (typing) settle(a);
       });
+    };
+    // iPhone kutuyu taşıyınca ya da kısaltınca yazı imlecini eski yerinde (kutunun dışında, mesajların üstünde)
+    // bırakıyor; imleç yeniden çizdirilir
+    const caret = (a) => {
+      if (!a || document.activeElement !== a) return;
+      a.style.transform = "translateZ(0)";
+      requestAnimationFrame(() => {
+        a.style.transform = "";
+        try {
+          a.setSelectionRange(a.selectionStart, a.selectionEnd);
+        } catch {}
+      });
+    };
+    let settleT = 0;
+    const settle = (a) => {
+      clearTimeout(settleT);
+      settleT = setTimeout(() => caret(a), 140);
+    };
+    const timers = [];
+    const onFocus = (e) => {
+      fit();
+      const a = e.target;
+      if (!/^(TEXTAREA|INPUT)$/.test(a?.tagName || "")) return;
+      timers.forEach(clearTimeout);
+      timers.length = 0;
+      for (const ms of [320, 700]) timers.push(setTimeout(() => caret(a), ms));
     };
     fit();
     v?.addEventListener("resize", fit);
     v?.addEventListener("scroll", fit);
     window.addEventListener("scroll", fit, { passive: true });
     window.addEventListener("orientationchange", turn);
-    el.addEventListener("focusin", fit);
+    el.addEventListener("focusin", onFocus);
     el.addEventListener("focusout", fit);
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(settleT);
+      timers.forEach(clearTimeout);
       window.removeEventListener("orientationchange", turn);
-      el.removeEventListener("focusin", fit);
+      el.removeEventListener("focusin", onFocus);
       el.removeEventListener("focusout", fit);
       v?.removeEventListener("resize", fit);
       v?.removeEventListener("scroll", fit);
@@ -388,8 +417,8 @@ export function ChatView({ cid }) {
     const r = replyTo;
     setReplyTo(null);
     const ok = await send(cid, t, {
-      replyTo: r ? { id: r.id, by: r.by, text: r.text } : null,
-      create: chat.type === "dm" ? { type: "dm", members: [...chat.members].sort() } : { type: "team" },
+      replyTo: r ? { id: r.id, by: r.by, text: r.text || fileLabel(r.file) } : null,
+      create: createOf(),
     });
     if (!ok) {
       setText(t);
@@ -397,6 +426,79 @@ export function ChatView({ cid }) {
     }
     input.current?.focus();
   }
+
+  const createOf = () => (chat.type === "dm" ? { type: "dm", members: [...chat.members].sort() } : { type: "team" });
+
+  // Ek gönderme: önce Storage'a yüklenir, sonra mesaj yalnız künyeyle yazılır
+  async function sendFile(file, { sec } = {}) {
+    if (!file || !chat || !orgId || upload) return;
+    const label = fileLabel({ kind: /^image\//.test(file.type) ? "photo" : /^audio\//.test(file.type) ? "voice" : "file", name: file.name, sec });
+    setUpload({ label, p: 0 });
+    const r = replyTo;
+    try {
+      const f = await uploadChatFile(orgId, cid, uid, file, { sec, onProgress: (p) => setUpload({ label, p }) });
+      setReplyTo(null);
+      const ok = await send(cid, "", { file: f, replyTo: r ? { id: r.id, by: r.by, text: r.text || fileLabel(r.file) } : null, create: createOf() });
+      if (!ok) toast(sendErrorText());
+    } catch (e) {
+      toast(e?.message || "Dosya gönderilemedi.");
+    } finally {
+      setUpload(null);
+    }
+  }
+
+  function onPick(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    setAttach(false);
+    if (f) sendFile(f);
+  }
+
+  // Sesli mesaj: basınca kayıt başlar, Gönder ile durur ve gider, Vazgeç ile atılır. En çok 5 dakika.
+  async function startVoice() {
+    setAttach(false);
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) return toast("Bu cihazda ses kaydı yapılamıyor.");
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      return toast("Mikrofona izin verilmedi.");
+    }
+    const type = voiceType();
+    const mr = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    const parts = [];
+    const t0 = Date.now();
+    const st = { mr, stream, parts, t0, send: false, timer: 0 };
+    mr.ondataavailable = (ev) => ev.data?.size && parts.push(ev.data);
+    mr.onstop = () => {
+      clearInterval(st.timer);
+      stream.getTracks().forEach((t) => t.stop());
+      recRef.current = null;
+      setRec(null);
+      const sec = Math.round((Date.now() - t0) / 1000);
+      if (!st.send) return;
+      if (sec < 1 || !parts.length) return toast("Kayıt çok kısa kaldı.");
+      const mime = (mr.mimeType || type || "audio/mp4").split(";")[0];
+      sendFile(new File(parts, "sesli-mesaj", { type: mime }), { sec });
+    };
+    st.timer = setInterval(() => {
+      const sec = Math.round((Date.now() - t0) / 1000);
+      setRec({ sec });
+      if (sec >= VOICE_MAX_SEC) stopVoice(true);
+    }, 250);
+    recRef.current = st;
+    mr.start(1000);
+    setRec({ sec: 0 });
+  }
+
+  function stopVoice(sendIt) {
+    const st = recRef.current;
+    if (!st) return;
+    st.send = sendIt;
+    if (st.mr.state !== "inactive") st.mr.stop();
+  }
+
+  useEffect(() => () => stopVoice(false), []);
 
   const typers = Object.entries(chat?.typing || {})
     .filter(([u, t]) => u !== uid && now.getTime() - toMs(t) < TYPING_MS)
@@ -572,7 +674,7 @@ export function ChatView({ cid }) {
                       {m.replyTo && !m.deleted && (
                         <span className={`mb-1 block rounded-lg border-l-[3px] px-2 py-1 text-[0.8125rem] ${mine ? "border-white/70 bg-white/15" : "border-acc bg-bg"}`}>
                           <b className="block text-[0.75rem] font-semibold">{m.replyTo.by === uid ? "Sen" : personName(m.replyTo.by)}</b>
-                          <span className="line-clamp-2 opacity-90">{m.replyTo.text}</span>
+                          <span className="line-clamp-2 opacity-90">{m.replyTo.text || "(ek)"}</span>
                         </span>
                       )}
                       {m.deleted ? (
@@ -580,7 +682,10 @@ export function ChatView({ cid }) {
                           <Icon name="x" className="size-3.5" /> Bu mesaj silindi
                         </span>
                       ) : (
-                        <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{linkify(m.text, mine)}</span>
+                        <>
+                          {m.file && <FileBody f={m.file} mine={mine} />}
+                          {m.text && <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{linkify(m.text, mine)}</span>}
+                        </>
                       )}
 {/* Saat sağ altta sabit; metnin son satırında onun kadar görünmez yer ayrılır (sığmazsa alt satıra geçer) */}
                       <span aria-hidden="true" className="invisible ml-2 inline-flex gap-1 text-[0.6875rem]">
@@ -644,11 +749,22 @@ export function ChatView({ cid }) {
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-card px-3 py-2 shadow-sm">
               <span className="min-w-0 flex-1 border-l-[3px] border-acc pl-2">
                 <b className="block text-[0.75rem] font-semibold text-acc">{replyTo.by === uid ? "Kendine yanıt" : `${personName(replyTo.by)} yanıtlanıyor`}</b>
-                <span className="block truncate text-[0.8125rem] text-mut">{replyTo.text}</span>
+                <span className="block truncate text-[0.8125rem] text-mut">{replyTo.text || fileLabel(replyTo.file)}</span>
               </span>
               <button type="button" onClick={() => setReplyTo(null)} aria-label="Yanıtı kaldır" className="grid size-8 place-items-center rounded-full text-mut active:bg-bg">
                 <Icon name="x" className="size-4" />
               </button>
+            </div>
+          )}
+          {upload && (
+            <div className="mb-2 rounded-xl bg-card px-3 py-2 text-[0.8125rem] shadow-sm">
+              <span className="flex justify-between">
+                <span className="truncate">{upload.label} gönderiliyor</span>
+                <span className="tabular-nums text-mut">%{Math.round(upload.p * 100)}</span>
+              </span>
+              <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-line">
+                <span className="block h-full bg-acc transition-[width]" style={{ width: `${Math.round(upload.p * 100)}%` }} />
+              </span>
             </div>
           )}
           {replies.length > 0 && (
@@ -731,7 +847,7 @@ export function ChatView({ cid }) {
                   <Icon name="chat" className="size-5" /> Yanıtla
                 </button>
               </li>
-              <li>
+              {act.text && <li>
                 <button
                   type="button"
                   onClick={() => {
@@ -742,13 +858,13 @@ export function ChatView({ cid }) {
                 >
                   <Icon name="note" className="size-5" /> Kopyala
                 </button>
-              </li>
+              </li>}
               <li>
                 <button type="button" onClick={() => (pin(cid, chat.pinned?.id === act.id ? null : act), setAct(null))} className={ACT}>
                   <Icon name="pushpin" className="size-5" /> {chat.pinned?.id === act.id ? "Sabitlemeyi kaldır" : "Sabitle"}
                 </button>
               </li>
-              {act.by === uid && now.getTime() - toMs(act.at) < EDIT_MS && (
+              {act.by === uid && act.text && now.getTime() - toMs(act.at) < EDIT_MS && (
                 <li>
                   <button type="button" onClick={() => (startEdit(act), setAct(null))} className={ACT}>
                     <Icon name="edit" className="size-5" /> Düzenle
@@ -796,7 +912,7 @@ export function ChatView({ cid }) {
                   {m.by === uid ? "Sen" : personName(m.by)} · {dayText(m.at)} {hm(m.at)}
                   {owner && <span className="ml-1.5 rounded-full bg-card px-1.5 py-0.5 text-[0.6875rem]">{all ? "Herkesten" : "Yalnız senden"}</span>}
                 </p>
-                <p className="mt-0.5 whitespace-pre-wrap text-[0.875rem] [overflow-wrap:anywhere]">{m.text || "(boş mesaj)"}</p>
+                <p className="mt-0.5 whitespace-pre-wrap text-[0.875rem] [overflow-wrap:anywhere]">{m.text || fileLabel(m.file) || "(boş mesaj)"}</p>
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => restore(cid, m).then((ok) => toast(ok ? "Mesaj geri geldi" : "Geri alınamadı"))} className="h-9 flex-1 rounded-xl bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
                     Geri al
@@ -817,37 +933,76 @@ export function ChatView({ cid }) {
         </ul>
       </Sheet>
 
-      {/* Ek: fotoğraf, kamera, dosya, sesli mesaj. Gönderim şimdilik kapalı (yakında) */}
+      {/* Ek: fotoğraf, kamera, dosya, sesli mesaj (Storage; kural storage.rules › chatFiles) */}
+      <input ref={pickPhoto} type="file" accept="image/*" hidden onChange={onPick} />
+      <input ref={pickCam} type="file" accept="image/*" capture="environment" hidden onChange={onPick} />
+      <input ref={pickFile} type="file" hidden onChange={onPick} />
       <Sheet open={attach} onClose={() => setAttach(false)} title="Gönder">
-        <div className="grid grid-cols-4 gap-2 pb-2">
+        <div className="grid grid-cols-4 gap-2 pb-3">
           {[
-            ["image", "Fotoğraf"],
-            ["camera", "Kamera"],
-            ["paperclip", "Dosya"],
-            ["mic", "Sesli mesaj"],
-          ].map(([icon, label]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => {
-                setAttach(false);
-                toast(`${label} gönderme yakında açılacak`);
-              }}
-              className="flex flex-col items-center gap-1.5 rounded-2xl py-2 active:bg-bg"
-            >
-              <span className="relative grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
+            ["image", "Fotoğraf", () => pickPhoto.current?.click()],
+            ["camera", "Kamera", () => pickCam.current?.click()],
+            ["paperclip", "Dosya", () => pickFile.current?.click()],
+            ["mic", "Sesli mesaj", startVoice],
+          ].map(([icon, label, go]) => (
+            <button key={label} type="button" onClick={go} className="flex flex-col items-center gap-1.5 rounded-2xl py-2">
+              <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
                 <Icon name={icon} className="size-6" />
               </span>
               <span className="text-[0.75rem] font-medium">{label}</span>
-              <span className="-mt-1 rounded-full bg-line px-1.5 text-[0.5625rem] font-semibold uppercase tracking-wide text-mut">yakında</span>
             </button>
           ))}
         </div>
-        <p className="px-1 pb-2 text-[0.75rem] text-mut">Fotoğraf, dosya ve sesli mesaj gönderme hazırlanıyor. Şimdilik yazı gönderebilir, mikrofonla sesle yazdırabilirsin.</p>
+      </Sheet>
+
+      {/* Sesli mesaj kaydı */}
+      <Sheet open={!!rec} onClose={() => stopVoice(false)} title="Sesli mesaj">
+        <div className="flex flex-col items-center gap-4 pb-3">
+          <span className="flex items-center gap-2 text-[1.75rem] font-semibold tabular-nums">
+            <span className="size-3 animate-pulse rounded-full bg-rose-500" />
+            {secText(rec?.sec)}
+          </span>
+          <div className="grid w-full grid-cols-2 gap-2">
+            <button type="button" onClick={() => stopVoice(false)} className="h-12 rounded-2xl border border-line font-medium">
+              Vazgeç
+            </button>
+            <button type="button" onClick={() => stopVoice(true)} className="h-12 rounded-2xl bg-acc font-semibold text-white">
+              Gönder
+            </button>
+          </div>
+        </div>
       </Sheet>
 
       <ChatInfoSheet open={info} onClose={() => setInfo(false)} chat={chat} members={members} people={people} exists={exists} />
     </main>
+  );
+}
+
+// Mesajdaki ek: fotoğraf (dokununca büyük açılır), sesli mesaj (oynatıcı), dosya (ad ve boyut, dokununca açılır)
+function FileBody({ f, mine }) {
+  const stop = (e) => e.stopPropagation();
+  if (f.kind === "photo")
+    return (
+      <a href={f.url} target="_blank" rel="noreferrer" onClick={stop} className="-mx-1.5 mb-1 mt-0.5 block overflow-hidden rounded-2xl">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={f.url} alt="Fotoğraf" loading="lazy" className="block max-h-80 w-full max-w-[16rem] bg-line object-cover" style={f.w && f.h ? { aspectRatio: `${f.w} / ${f.h}` } : undefined} />
+      </a>
+    );
+  if (f.kind === "voice")
+    return (
+      <span className="mb-1 mt-0.5 flex flex-col gap-1" onClick={stop}>
+        <audio src={f.url} controls preload="metadata" className="h-10 w-60 max-w-full" />
+        {f.sec > 0 && <span className={`text-[0.75rem] ${mine ? "text-white/70" : "text-mut"}`}>Sesli mesaj · {secText(f.sec)}</span>}
+      </span>
+    );
+  return (
+    <a href={f.url} target="_blank" rel="noreferrer" onClick={stop} className={`mb-1 mt-0.5 flex items-center gap-2 rounded-xl px-2.5 py-2 ${mine ? "bg-white/15" : "bg-bg"}`}>
+      <Icon name="paperclip" className="size-5 shrink-0" />
+      <span className="min-w-0">
+        <span className="block truncate text-[0.875rem] font-medium">{f.name || "Dosya"}</span>
+        <span className={`block text-[0.75rem] ${mine ? "text-white/70" : "text-mut"}`}>{sizeText(f.size)}</span>
+      </span>
+    </a>
   );
 }
 

@@ -15,6 +15,6 @@ export const archiveScope = (owner) => (owner ? "all" : "me");
 // Son mesaj arşivlenince listedeki özet: geriye doğru ilk görünen mesaj (uid: herkese göre bakılır, kişisel gizleme sayılmaz)
 export function prevShown(list, m) {
   const i = list.findIndex((x) => x.id === m.id);
-  const before = (i < 0 ? list : list.slice(0, i)).filter((x) => x.id !== m.id && !x.arch && !x.deleted && x.text);
+  const before = (i < 0 ? list : list.slice(0, i)).filter((x) => x.id !== m.id && !x.arch && !x.deleted && (x.text || x.file));
   return before.at(-1) || null;
 }

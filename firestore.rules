@@ -200,10 +200,16 @@ service cloud.firestore {
           function chatNow() { return get(/databases/$(database)/documents/orgs/$(orgId)/chats/$(cid)).data; }
           allow read: if inOrg(orgId) && memberOf(chatNow());
           allow create: if inOrg(orgId) && memberOf(getAfter(/databases/$(database)/documents/orgs/$(orgId)/chats/$(cid)).data)
-                        && request.resource.data.keys().hasOnly(["by", "text", "at", "n", "replyTo"])
+                        && request.resource.data.keys().hasOnly(["by", "text", "at", "n", "replyTo", "file"])
                         && request.resource.data.by == request.auth.uid
                         && request.resource.data.at == request.time
-                        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 4000;
+                        && request.resource.data.text is string && request.resource.data.text.size() <= 4000
+                        // Ek (fotoğraf, dosya, sesli mesaj) varsa yazı boş olabilir; dosya Storage'da kendi klasöründe
+                        && (!("file" in request.resource.data)
+                            || (request.resource.data.file is map
+                                && request.resource.data.file.path is string
+                                && request.resource.data.file.path.matches("orgs/" + orgId + "/chatFiles/" + cid + "/" + request.auth.uid + "/.*")))
+                        && (request.resource.data.text.size() > 0 || "file" in request.resource.data);
           allow update: if inOrg(orgId) && memberOf(chatNow()) && (
             // Arşiv (herkesten): yalnız ana hesap; arşive kaldırır ya da geri alır
             (isOwner(orgId)
