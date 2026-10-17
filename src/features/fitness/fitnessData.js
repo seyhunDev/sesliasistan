@@ -61,7 +61,8 @@ export async function saveProgram(orgId, uid, prog) {
   await Promise.all([setDoc(ref, rec, { merge: true }), ...(rec.active ? others.map((p) => updateDoc(doc(col(orgId), p.id), { active: false })) : [])]);
   const out = { id: ref.id, ...rec };
   if (cache.org === orgId && cache.list) {
-    cache.list = [out, ...cache.list.filter((p) => p.id !== out.id).map((p) => (rec.active ? { ...p, active: false } : p))].sort(byNew);
+    // Yalnız aynı kişinin önceki programı etkinlikten çıkar (başka sporcunun programı etkin kalır)
+    cache.list = [out, ...cache.list.filter((p) => p.id !== out.id).map((p) => (rec.active && (p.for || "") === rec.for ? { ...p, active: false } : p))].sort(byNew);
     keep(orgId, cache.list);
   }
   told();

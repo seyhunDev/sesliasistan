@@ -1867,6 +1867,11 @@ group("Fitness: sporcu programı")([
     return rows.length === 2 && rows[0].name === "Ali" && rows[0].prog?.title === "Ali programı" && rows[0].week.done === 1 && rows[0].week.planned === 2 &&
       rows[0].last?.date === "2026-10-12" && rows[0].next?.date === "2026-10-14" && rows[1].name === "Zeynep" && rows[1].prog === null;
   })],
+  ["kopya program", F("başka sporcuya verilen program etkin görünmese de sporcunun programı sayılır (Programı düzenle, Değerlendirme çıkar)", () => {
+    const progs = [{ id: "pb", for: "zey", active: false, title: "Kopya" }, { id: "pa", for: "ali", active: true, title: "Ali" }, { id: "po", for: "ali", active: false, title: "Eski" }];
+    const rows = FM2.athleteRows(progs, [], [{ uid: "zey", name: "Zeynep" }, { uid: "ali", name: "Ali" }], "2026-10-13");
+    return rows.length === 2 && rows.find((r) => r.uid === "zey").prog?.id === "pb" && rows.find((r) => r.uid === "ali").prog?.id === "pa";
+  })],
   ["günün listesi", F("o günün sporcu antrenmanları: önce bekleyen, sonra yapan; özet satırı", () => {
     const pl = [
       FPL("2026-10-13", SQ, null, { id: "a", fit: { prog: "pa", for: "ali", items: SQ, res: { st: "done", ex: [] } } }),
