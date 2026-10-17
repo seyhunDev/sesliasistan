@@ -2113,6 +2113,7 @@ group("Sporcu boy ve kilo")([
 // Fitness: PDF/metinden içe aktarılan program ayrıntıları ve hazır şablon (model.js, templates.js)
 const FMI = await import("@/lib/fitness/model");
 const FTPL = await import("@/lib/fitness/templates");
+const FRV = await import("@/lib/fitness/review");
 group("Fitness: program ayrıntıları ve şablon")([
   ["aralık ve yan", F("8–12/yan, 20–30 sn/yan; üst sınır alttan küçükse atılır", () => {
     const a = FMI.cleanItem({ ex: "", name: "Split squat", sets: 3, reps: 8, repsTo: 12, side: true, rest: 75 });
@@ -2149,6 +2150,39 @@ group("Fitness: program ayrıntıları ve şablon")([
       { dow: 5, name: "Yelken mikrodozu", min: 15, items: [{ name: "Hazırlık", sets: 1 }, { name: "Band rope pull", sets: 2, reps: 10 }] },
     ]);
     return days.length === 2 && days[0].items.length === 2 && days[0].items[0].name === "90 90 nefes" && days[1].items.length === 1 && FMI.isHeading("Isınma 8 dk") && !FMI.isHeading("Burun nefesi");
+  })],
+  ["takip listesi", F("hazır programda 8 satırlık haftalık takip ve 5 pazar sorusu; programla birlikte kaydedilir, boşsa hiç yazılmaz", () => {
+    const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
+    const r = p.review;
+    return r.rows.length === 8 && r.ask.length === 5 && r.rows[0].label === "Uyku ortalaması" && r.rows[7].unit === "Evet / Hayır" &&
+      FMI.cleanProgram({ ...p, review: { rows: [{ label: "" }], ask: [" "] } }).review === undefined && FMI.cleanProgram(p).review.rows.length === 8;
+  })],
+  ["takip satırı", F("kayıt biçimi: saat, / 2, Evet / Hayır; değer sınırı ve yazısı", () => {
+    const [a, b, c] = [{ label: "Uyku", unit: "saat" }, { label: "Ev", unit: "/ 2" }, { label: "RPE", unit: "Evet / Hayır" }];
+    return FRV.rowKind(a.unit).unit === "saat" && FRV.rowKind(b.unit).of === 2 && FRV.rowKind(c.unit).yn &&
+      FRV.cleanValue(a, "8,5") === 8.5 && FRV.cleanValue(b, 5) === 2 && FRV.cleanValue(c, "x") === "" && FRV.cleanValue(b, "") === "" &&
+      FRV.valueText({ ...a, v: 8.5 }) === "8,5 saat" && FRV.valueText({ ...b, v: 1 }) === "1 / 2" && FRV.valueText({ ...c, v: "e" }) === "Evet";
+  })],
+  ["değerlendirme", F("hafta pazartesiden; liste kayda kopyalanır, eski değerler korunur, sorulara cevap", () => {
+    const track = FTPL.fromTemplate("yelken-ev-12", "2026-10-19").review;
+    const r = FRV.cleanReview({ for: "u1", week: "2026-10-18", rows: [{ label: "Uyku ortalaması", v: "8,5" }, { label: "Yok", v: 3 }], ask: [{ q: "Okulda enerji ve odak nasıldı?", a: "İyi" }], note: "  güzel hafta " }, track);
+    return r.week === "2026-10-12" && r.rows.length === 8 && r.rows[0].v === 8.5 && r.rows[1].v === "" && r.ask[2].a === "İyi" && r.note === "güzel hafta" &&
+      FRV.reviewId("u1", r.week) === "u1_2026-10-12" && FRV.weekLabel("2026-10-12") === "12–18 Eki" && FRV.weekLabel("2026-10-26") === "26 Eki – 1 Kas" && FRV.reviewFilled(r);
+  })],
+  ["değerlendirme yazdır", F("bu hafta, bütün antrenmanlar ve değerlendirme seçilerek yazdırılır; sonuçlar ve saniyeler görünür", () => {
+    const fit = (name, res) => ({ prog: "p", name, for: "u1", items: [{ name: "Plank", kind: "time", sets: 2, sec: 30 }, { name: "Squat", kind: "reps", sets: 2, reps: 10 }], res });
+    const plans = [
+      { id: "a", cat: "Fitness", date: "2026-10-06", fit: fit("Kuvvet A", { st: "done", min: 35, feel: 2, ex: [{ sets: [{ ok: true, took: 30, full: true }, { ok: true, took: 18 }] }, { sets: [{ ok: true, reps: 10 }, { ok: true, reps: 9 }] }] }) },
+      { id: "b", cat: "Fitness", date: "2026-10-14", fit: fit("Kuvvet B", { st: "done", min: 40, ex: [{ sets: [{ ok: true, took: 30, full: true }] }, { sets: [] }] }) },
+      { id: "c", cat: "Fitness", date: "2026-10-16", fit: fit("Kuvvet A") },
+    ];
+    const s = FRV.planSummary(plans[1], "2026-10-17");
+    const rev = FRV.cleanReview({ week: "2026-10-12", rows: [{ label: "Ev kuvveti", v: 1 }], note: "Not <b>" }, { rows: [{ label: "Ev kuvveti", goal: "2 seans", unit: "/ 2" }], ask: [] });
+    const week = FRV.printHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { week: true }, today: "2026-10-17" });
+    const all = FRV.printHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { all: true, review: true }, today: "2026-10-17" });
+    return FRV.weekPlans(plans, "2026-10-12").length === 2 && s.st === "done" && s.rows[0].line === "1 × 0:30" && s.rows[1].line === "Yapılmadı" &&
+      week.includes("Kuvvet B") && !week.includes("Değerlendirme ·") && week.includes("1 / 2 antrenman yapıldı") &&
+      all.includes("Bütün antrenmanlar") && all.includes("0:18 / 0:30") && all.includes("Değerlendirme · 12–18 Eki") && all.includes("1 / 2</td>") && all.includes("Not &lt;b&gt;");
   })],
   ["program listesi", F("ayrıntılar ve evreler düz yazıda", () => {
     const t = FMI.programText(FTPL.fromTemplate("yelken-ev-12", "2026-10-19"));

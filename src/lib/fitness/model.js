@@ -216,6 +216,17 @@ export function dropRoutines(days = []) {
     .map((d) => ({ ...d, items: (Array.isArray(d?.items) ? d.items : []).filter((it) => !isHeading(it?.name)) }))
     .filter((d) => d.items.length && !(ROUTINE.test(fold(d.name)) && d.items.every((it) => !(+it.sets >= 2))));
 }
+// Haftalık takip listesi (değerlendirme sayfası, review.js): { rows [{ label, goal, unit }], ask [soru] }; boşsa null
+export const REVIEW_ROWS = 12;
+export const REVIEW_ASK = 8;
+export function cleanTrack(r = {}) {
+  const rows = (Array.isArray(r?.rows) ? r.rows : [])
+    .map((x) => ({ label: S(x?.label, 40), goal: S(x?.goal, 80), unit: S(x?.unit, 20) }))
+    .filter((x) => x.label)
+    .slice(0, REVIEW_ROWS);
+  const ask = (Array.isArray(r?.ask) ? r.ask : []).map((q) => S(q, 160)).filter(Boolean).slice(0, REVIEW_ASK);
+  return rows.length || ask.length ? { rows, ask } : null;
+}
 export function cleanProgram(p = {}) {
   const days = (Array.isArray(p.days) ? p.days : []).map(cleanDay).filter(Boolean).slice(0, 7);
   const seen = new Set();
@@ -231,6 +242,7 @@ export function cleanProgram(p = {}) {
     note: S(p.note, 600),
     phases: cleanPhases(p.phases, num(p.weeks, 1, 26) || 4),
     rules: String(p.rules ?? "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1500), // ilerleme, güvenlik, trafik ışığı…
+    ...(cleanTrack(p.review) ? { review: cleanTrack(p.review) } : {}),
   };
 }
 

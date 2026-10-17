@@ -26,6 +26,7 @@ import { ExerciseLibrary } from "./ExerciseLibrary";
 import { BodyStep, FitIntro } from "./FitIntro";
 import { HistoryCard, MonthCard, ProgramCard, ProgressCard, RowButton, TodayCard, WeekCard, WeekStrip, progSub } from "./FitDashboard";
 import { FoodView } from "./FoodView";
+import { FitReview } from "./FitReview";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Fitness sayfası (yalnız ana hesap), sade: bugünkü antrenman (Başla), bu hafta (7 gün), "Programım" satırı (pencerede günler, düzenle,
@@ -64,6 +65,7 @@ export function FitnessHome() {
   const [forUid, setForUid] = useState(""); // Program hazırla bir sporcu için açıldıysa
   const [libOpen, setLibOpen] = useState(false);
   const [ath, setAth] = useState(""); // Açık sporcu sayfası
+  const [revOpen, setRevOpen] = useState(false); // sporcunun Değerlendirme sayfası
   // Program verilebilecek sporcular: uygulamada hesabı olan sporcu ve öğrenciler
   const athletes = useMemo(
     () =>
@@ -395,6 +397,15 @@ export function FitnessHome() {
     </>
   );
 
+  // Sporcunun haftalık değerlendirmesi (sporcu sayfasındaki Değerlendirme): tam sayfa, geri ile sporcu sayfasına
+  if (ath && revOpen && (selRow || selAth)) {
+    return (
+      <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+        <FitReview orgId={orgId} uid={ath} name={selAth?.name || selRow?.name || ""} prog={selRow?.prog} plans={selRow?.plans || []} today={today} onBack={() => setRevOpen(false)} />
+      </main>
+    );
+  }
+
   // Sporcu sayfası (Sporcular listesinden): tam sayfa, geri ile listeye
   if (ath && (selRow || selAth)) {
     return (
@@ -406,6 +417,7 @@ export function FitnessHome() {
           today={today}
           busy={!!busy}
           onBack={() => setAth("")}
+          onReview={() => setRevOpen(true)}
           onNew={() => newFor(ath)}
           onOpen={open}
           onEdit={editProg}
@@ -480,7 +492,7 @@ export function FitnessHome() {
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
                 {rows.map((r) => (
                   <li key={r.uid} className="px-4 py-3">
-                    <button type="button" onClick={() => setAth(r.uid)} className="flex w-full items-center gap-3 text-left">
+                    <button type="button" onClick={() => (setRevOpen(false), setAth(r.uid))} className="flex w-full items-center gap-3 text-left">
                       <span className="grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.9375rem] font-bold text-acc">{initialsOf(r.name)}</span>
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[1rem] font-semibold">{r.name}</b>
@@ -680,7 +692,7 @@ function WeekDots({ row, today, onOpen }) {
 
 // Sporcu sayfası: üstte geri ve ⋯, koyu kart (ad, yaş · spor · hedef, bu hafta 7 gün, programın kaçıncı haftası),
 // tek ana işlem "Programı düzenle", geçen ve gelecek haftanın antrenmanları. Seyrek işler ⋯ penceresinde.
-function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop, onCard, others = [], onContinue, onGive }) {
+function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew, onOpen, onEdit, onPlan, onUnplan, onDrop, onCard, others = [], onContinue, onGive }) {
   const [cont, setCont] = useState(false);
   const [give, setGive] = useState(false);
   const [listOpen, setListOpen] = useState(false);
@@ -773,6 +785,9 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onNew, onOpen, o
             <Button onClick={() => onEdit(prog)}>
               <Icon name="edit" className="size-5" />
               Programı düzenle
+            </Button>
+            <Button variant="secondary" onClick={onReview} className="mt-2">
+              Değerlendirme
             </Button>
           </div>
           {listOpen && (
