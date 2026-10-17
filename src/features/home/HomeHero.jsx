@@ -5,7 +5,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Loading } from "@/components/ui/Loader";
 import { Icon } from "@/components/ui/Icon";
 import { TodayWind, WeatherDetail } from "@/features/weather/DaySheet";
-import { dayHours, getPlace, sky, windName } from "@/features/weather/weather";
+import { dayHours, getPlace, nowOf, sky, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 
 // Başlığın altındaki hava satırı: simge, sıcaklık, gökyüzü, rüzgâr ve yeşil ›; çerçevesiz (Seyhun: "kenarlık gerek yok"), dokunulabildiği yeşil oktan belli.
@@ -13,7 +13,8 @@ import { todayStr } from "@/lib/utils/format";
 export function HomeHero({ weather }) {
   const { w, err, refresh } = weather;
   const [open, setOpen] = useState(false);
-  const s = w ? sky(w.now.code, w.now.day) : null;
+  const n = nowOf(w);
+  const s = n ? sky(n.code, n.day) : null;
   const place = getPlace();
 
   return (
@@ -24,11 +25,11 @@ export function HomeHero({ weather }) {
         aria-label="Bugünün hava ayrıntısı"
         className="-ml-0.5 mt-0.5 flex max-w-full items-center gap-1.5 py-0.5 text-left text-[0.8125rem] text-mut"
       >
-        {w ? (
+        {n ? (
           <>
             <Icon name={s.icon} className="size-4 shrink-0 text-acc" />
             <span className="truncate tabular-nums">
-              <b className="font-semibold text-fg">{w.now.t}°</b> · {s.label} · {w.now.wind} kn {windName(w.now.dir)[1]}
+              <b className="font-semibold text-fg">{n.t}°</b> · {s.label} · {n.wind} kn {windName(n.dir)[1]}
             </span>
           </>
         ) : (

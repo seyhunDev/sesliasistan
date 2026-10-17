@@ -129,6 +129,19 @@ export function dayHours(w, date) {
     .map(([time, t, code, day, wind, gust, dir]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir }));
 }
 
+// Şu anki hava: veri 20 dakikadan yeniyse alındığı andaki değer (w.now); eskiyse (uygulama sabah açıldı, yenileme gelmedi ya da bağlantı yok)
+// saatlik tahminden bu saatin satırı. Böylece başlıktaki satır dünkü ya da saatler önceki değeri göstermez, rüzgâr grafiğiyle aynı saati söyler.
+const pad2 = (n) => String(n).padStart(2, "0");
+export function nowOf(w, at = new Date()) {
+  if (!w) return null;
+  if (w.now && at.getTime() - (w.at || 0) < 20 * 60e3) return w.now;
+  const key = `${at.getFullYear()}-${pad2(at.getMonth() + 1)}-${pad2(at.getDate())}T${pad2(at.getHours())}`;
+  const row = (w.hourly || []).find(([t]) => t.startsWith(key));
+  if (!row) return w.now || null;
+  const [, t, code, day, wind, gust, dir] = row;
+  return { t, code, day: !!day, wind, gust, dir };
+}
+
 // Yelkene uygun saat aralıkları: gündüz, 7–16 kn, sağanak 22 kn altı. Örn. ["11–17"]
 export function sailWindows(rows) {
   const out = [];

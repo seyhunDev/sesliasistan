@@ -2235,3 +2235,20 @@ group("Kişi sayfası")([
   ["bugünkü doğum günleri", F("yalnız bugün", () => AGD.birthdaysToday([{ name: "A", month: 10, day: 17 }, { name: "B", month: 10, day: 18 }], "2026-10-17").map((b) => b.name).join() === "A")],
   ["ana sayfa yuvarlakları", F("kişi sayfasına gider", () => HTP.personHref(KPM) === "/people/p/u1" && HTP.personHref(null) === "/people/staff")],
 ]);
+
+// Ana sayfadaki hava satırı: eski veride (sabah açılış, bağlantı yok) bu saatin tahmini, yeni veride alındığı andaki değer
+const WXN = await import("@/features/weather/weather");
+group("Hava satırı")([
+  ["şimdi", F("veri 20 dakikadan eskiyse bu saatin satırı, yeniyse anlık değer; satır yoksa eldeki", () => {
+    const at = new Date(2026, 9, 17, 9, 30);
+    const w = {
+      at: new Date(2026, 9, 16, 22, 0).getTime(),
+      now: { t: 18, code: 0, day: false, wind: 3, gust: 5, dir: 45 },
+      hourly: [["2026-10-17T08:00", 14, 1, 1, 6, 9, 300], ["2026-10-17T09:00", 16, 2, 1, 11, 15, 315], ["2026-10-17T10:00", 18, 2, 1, 13, 18, 315]],
+    };
+    const old = WXN.nowOf(w, at);
+    const fresh = WXN.nowOf({ ...w, at: at.getTime() - 5 * 60e3 }, at);
+    const none = WXN.nowOf({ ...w, hourly: [] }, at);
+    return old.t === 16 && old.wind === 11 && old.day === true && fresh.t === 18 && none.wind === 3 && WXN.nowOf(null) === null;
+  })],
+]);
