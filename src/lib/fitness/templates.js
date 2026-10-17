@@ -97,6 +97,26 @@ const YELKEN_EV = {
     "Yelken sonrası 6 dk: yürüyüş ve burun nefesi, baldır, kalça fleksör, adduktor, torakal rotasyon, uzun verişli nefes (her biri 1 dk).",
     "Keskin ağrı, göğüs ağrısı, bayılma hissi, nefes darlığı ya da çarpıntıda antrenman durur, aileye ve sağlık profesyoneline bilgi verilir.",
   ].join("\n"),
+  // Her pazar doldurulan haftalık takip ve geri bildirim (Değerlendirme sayfası)
+  review: {
+    rows: [
+      { label: "Uyku ortalaması", goal: "8,5 saat ve üzeri", unit: "saat" },
+      { label: "Ev kuvveti", goal: "2 seans", unit: "/ 2" },
+      { label: "Atletizm", goal: "Teknik kalite ve enerji", unit: "/ 2" },
+      { label: "Yelken", goal: "Antrenman sonunda enerji 3/5 ve üzeri", unit: "/ 5" },
+      { label: "Ağrı", goal: "0–2/10", unit: "/ 10" },
+      { label: "Okul dönüşü ara öğün", goal: "5 okul günü", unit: "/ 5" },
+      { label: "Su", goal: "İdrar rengi açık • düzenli tüketim", unit: "/ 7" },
+      { label: "RPE toparlanması", goal: "Ertesi gün normale dönüş", unit: "Evet / Hayır" },
+    ],
+    ask: [
+      "Bu hafta en güçlü hissettiğim an neydi?",
+      "Yelken veya atletizm sonrası hangi bölgede gerginlik oldu?",
+      "Okulda enerji ve odak nasıldı?",
+      "Salı ve perşembe seanslarında hangi hareket kolaylaştı?",
+      "Bir sonraki hafta sınav, yarış, yolculuk veya ekstra yük var mı?",
+    ],
+  },
 };
 
 export const TEMPLATES = [

@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Thread } from "@/features/add/Thread";
 import { rel } from "@/lib/utils/format";
 import { shareGroup } from "@/lib/cancelPlan";
-import { WaitLines } from "./WaitLines";
+import { PastSessions } from "./PastSessions";
 import { ATT_LABEL } from "@/features/athletes/assistAttendance";
 import { PAGES, describeAction } from "@/lib/assistantLocal";
 import { RecordList } from "./RecordList";
@@ -17,7 +17,7 @@ import { waTo } from "./isler/ortak";
 import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
-  const { abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait } = useAssistant({ open, onClose, seed, onLive, onAct });
+  const { busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice, history } = useAssistant({ open, onClose, seed, onLive, onAct });
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
   const shownOf = (show = []) =>
@@ -97,11 +97,12 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
     <>
         {/* Boş sohbette açıklama yazısı yok (sade tasarım, 2026-10-16): kutudaki "Yaz ya da konuş…" yeter */}
 
+        <PastSessions list={history} />
+
         <Thread turns={hideSaid ? turns.slice(0, -1) : turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
-        {/* Cevabın yeri: gelene kadar sıralı durum yazıları (Seyhun: "hızlıysa hemen göster, uzun sürerse hazır yazıları
-            sırayla göster; sade, hafif soluk, parlayan", 2026-10-09). Yanıt akmaya başlayınca ya da adımlar görünürken yok */}
-        {wait && <WaitLines lines={wait} onCancel={embedded ? null : transcribing && !busy ? sp.cancel : abort} />}
+        {/* Bekleme yazıları burada yok: çalışırken durum yalnız üstteki halkada (Seyhun: "iki farklı yerde bilgilendirme
+            mesajları oluyor. Olmasın o", 2026-10-17); durdurmak için alttaki kutunun düğmesi */}
 
         {/* Akışta gelen yanıt: kelime kelime; bitince yerini asıl yanıt alır */}
         {busy && streamText && (

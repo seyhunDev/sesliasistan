@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { exById } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, GOALS, PARTS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, toName } from "@/lib/fitness/model";
+import { DOWS, DOW_LONG, GOALS, PARTS, REVIEW_ASK, REVIEW_ROWS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, toName } from "@/lib/fitness/model";
 import { editProgram } from "./fitImport";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
@@ -313,6 +313,47 @@ function PlanNotes({ p, onChange }) {
   );
 }
 
+// Haftalık takip listesi (sporcunun Değerlendirme sayfası): gösterge · hedef · kayıt ("saat", "/ 2", "Evet / Hayır") ve pazar soruları
+function TrackEdit({ p, onChange }) {
+  const t = p.review || { rows: [], ask: [] };
+  const set = (f) => onChange((x) => ({ ...x, review: f(x.review || { rows: [], ask: [] }) }));
+  const row = (i, k, v) => set((r) => ({ ...r, rows: r.rows.map((x, j) => (j === i ? { ...x, [k]: v } : x)) }));
+  const inp = "min-w-0 rounded-xl bg-bg px-2.5 py-2 text-[0.875rem] outline-none";
+  return (
+    <section className={`${card} mt-3 p-4`}>
+      <b className="text-[0.8125rem] font-bold tracking-[.06em] text-mut">HAFTALIK TAKİP</b>
+      <ul className="mt-2 flex flex-col gap-2">
+        {t.rows.map((x, i) => (
+          <li key={i} className="flex items-start gap-1.5">
+            <span className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+              <input value={x.label} maxLength={40} onChange={(e) => row(i, "label", e.target.value)} placeholder="Gösterge" className={inp} />
+              <input value={x.unit} maxLength={20} onChange={(e) => row(i, "unit", e.target.value)} placeholder="Kayıt" className={inp} />
+              <input value={x.goal} maxLength={80} onChange={(e) => row(i, "goal", e.target.value)} placeholder="Hedef" className={`${inp} col-span-2`} />
+            </span>
+            <button type="button" aria-label="Satırı sil" onClick={() => set((r) => ({ ...r, rows: r.rows.filter((_, j) => j !== i) }))} className="grid size-9 shrink-0 place-items-center rounded-full text-mut">
+              <Icon name="x" className="size-4" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {t.rows.length < REVIEW_ROWS && (
+        <button type="button" onClick={() => set((r) => ({ ...r, rows: [...r.rows, { label: "", goal: "", unit: "" }] }))} className="mt-2 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold text-acc">
+          Satır ekle
+        </button>
+      )}
+      <label className="mt-3 block">
+        <b className="text-[0.8125rem] font-bold tracking-[.06em] text-mut">PAZAR SORULARI</b>
+        <textarea
+          value={(t.ask || []).join("\n")}
+          rows={Math.max(2, (t.ask || []).length + 1)}
+          onChange={(e) => set((r) => ({ ...r, ask: e.target.value.split("\n").slice(0, REVIEW_ASK) }))}
+          className="mt-1.5 w-full resize-y rounded-2xl bg-bg px-3 py-2 text-[0.875rem] leading-snug outline-none"
+        />
+      </label>
+    </section>
+  );
+}
+
 // Programa yazılı değişiklik: yapay zeka bütün programı yeni hâliyle döndürür; kimin için, başlangıç ve kayıt bilgisi korunur
 function AiEdit({ p, onChange }) {
   const [ask, setAsk] = useState("");
@@ -573,6 +614,7 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
       )}
 
       <PlanNotes p={p} onChange={setP} />
+      <TrackEdit p={p} onChange={setP} />
       <AiEdit p={p} onChange={setP} />
       {onCal && <p className="mt-3 px-1 text-[0.8125rem] leading-snug text-mut">Kaydedince takvimdeki gelecek antrenmanlar da güncellenir.</p>}
 

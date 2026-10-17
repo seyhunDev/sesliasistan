@@ -361,6 +361,9 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   useEffect(() => {
     if (open) openId.current = nowMs();
   }, [open]);
+  // Ekranda, yeni konuşmanın üstünde son 3 oturum (Seyhun: "önceki birkaç sohbet gösterirsin her zaman", 2026-10-17)
+  const [history, setHistory] = useState([]);
+  const loadHistory = () => setHistory(loadSessions(dataUid).slice(-3));
   // Yapay zekaya giden son oturumlar (az önceki, zaten geçmiş olarak giden oturum hariç)
   const sessionsNow = () => sessionsFor(loadSessions(dataUid), nowMs(), pastOn() ? past.current.at : 0);
   // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
@@ -703,7 +706,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps });
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0 });
   }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
@@ -714,6 +717,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     const asking = cards.awaiting || cards.pending || drafts.length || planOn.current || (!askedMore.current && /\?\s*$/.test(lastAsk));
     if (!asking && turns.length && phase === "idle") {
       keepPast(turns);
+      loadHistory(); // kalkan konuşma önceki sohbetlerin arasında görünür
       setTurns([]);
       setCards(EMPTY);
       setSteps([]);
@@ -792,6 +796,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
       return () => clearTimeout(t);
     }
     if (startedFor.current === seed?.id) return;
+    if (!startedFor.current) loadHistory(); // bu açılış: önceki sohbetler bir kez okunur
     const cont = seed?.cont && startedFor.current !== null;
     startedFor.current = seed?.id;
     preferRef.current = seed?.prefer || "";
@@ -845,5 +850,5 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Taşınan işler (isler/, beyin/) bileşenin durumuna ve yardımcılarına ctx ile ulaşır; her çizimde yenilenir
   // eslint-disable-next-line react-hooks/refs -- ref nesneleri yalnız iletilir; .current olaylarda okunur
   Object.assign(ctx, { readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
-  return { WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait };
+  return { WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
 }
