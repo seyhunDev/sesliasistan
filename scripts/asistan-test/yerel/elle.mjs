@@ -526,6 +526,36 @@ group("Aidat tablosu")([
     const p2 = DU.pendingOf([a, b], { "2026-09": { paid: { a1: [{ amt: 1500, mov: DU.movKey(a) }] } } }, DA, DCFG, ["2026-09", "2026-10"]);
     return p.length === 2 && p[0].ym === "2026-10" && p[0].r.picks[0].id === "a4" && p2.length === 1;
   })],
+  ["başka aya yazılan hareket", F("used ile bekleyenlere düşmez", () => {
+    const a = mvt("FAST AYSE SAHIN", 1500, "03.10.2026 09:00");
+    return DU.pendingOf([a], { "2026-10": { used: [DU.movKey(a)] } }, DA, DCFG, ["2026-10"]).length === 0;
+  })],
+  ["dağıtma: en eski borçlu ay", F("3000 → Ağu + Eyl, Ekim boş kalır", () => {
+    const yms = ["2026-08", "2026-09", "2026-10"];
+    const r = DU.allocate(3000, DA[0], DCFG, { "2026-10": {} }, yms);
+    return r.map((x) => `${x.ym}:${x.amt}`).join() === "2026-08:1500,2026-09:1500";
+  })],
+  ["dağıtma: kısmi ve artan", F("eksik ay tamamlanır, artan son aya", () => {
+    const yms = ["2026-09", "2026-10"];
+    const m = { "2026-09": { paid: { a1: [{ amt: 1000 }] } } };
+    const r = DU.allocate(500, DA[0], DCFG, m, yms);
+    const r2 = DU.allocate(4000, DA[0], DCFG, m, yms);
+    return r.length === 1 && r[0].ym === "2026-09" && r[0].amt === 500 && r2.at(-1).ym === "2026-10" && r2.at(-1).amt === 3500;
+  })],
+  ["dağıtma: seçilen aylar, borç yok", F("seçilen aylara aidat kadar; borç yoksa son aya", () => {
+    const r = DU.allocate(3000, DA[0], DCFG, {}, ["2026-09", "2026-10"], ["2026-10", "2026-09"]);
+    const all = { "2026-09": { paid: { a1: [{ amt: 1500 }] } }, "2026-10": { paid: { a1: [{ amt: 1500 }] } } };
+    const n = DU.allocate(700, DA[0], DCFG, all, ["2026-09", "2026-10"]);
+    const z = DU.allocate(700, DA[0], {}, {}, ["2026-09", "2026-10"]);
+    return r.map((x) => `${x.ym}:${x.amt}`).join() === "2026-09:1500,2026-10:1500" && n[0].ym === "2026-10" && n[0].amt === 700 && z[0].ym === "2026-10";
+  })],
+  ["ödeme geçmişi", F("bir ödemenin parçaları tek satır, silince ikisi de gider", () => {
+    const m = { "2026-09": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05", grp: "g1", at: "x1" }] } }, "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05", grp: "g1", at: "x2" }, { amt: 200, via: "eft", mov: "m9", date: "2026-10-07" }] }, used: ["m9"] } };
+    const h = DU.historyOf(DA[0], m, ["2026-09", "2026-10"]);
+    const d = DU.dropGroup(DA[0], m, h.find((g) => g.key === "g1"));
+    const d2 = DU.dropGroup(DA[0], m, h.find((g) => g.key === "m9"));
+    return h.length === 2 && h[0].key === "m9" && h[1].amt === 3000 && h[1].months.join() === "2026-09,2026-10" && !d["2026-09"].paid.a1 && d["2026-10"].paid.a1.length === 1 && d2["2026-10"].used.length === 0;
+  })],
 ]);
 
 // Ana sayfadaki özet kartları (Aidat, Yarış, Instagram, Antrenman) ve İşlemler düğmeleri
@@ -813,18 +843,19 @@ group("Ana sayfa kartları")([
 
 // Günlük banka mailinden aidatın kendiliğinden yazılması ve bildirimi
 const DAU = await import("@/lib/duesAuto");
+const DAR = DA.map((a) => ({ ...a, from: "2026-10" }));
 group("Aidat otomatik")([
   ["emin ve tutar tutuyor", F("AYSE SAHIN 1500 → Deniz'e yazılır, gönderen öğrenilir", () => {
-    const r = DAU.autoDues([mvt("FAST AYSE SAHIN EKIM AIDAT")], { ...DCFG, roster: DA }, {});
+    const r = DAU.autoDues([mvt("FAST AYSE SAHIN EKIM AIDAT")], { ...DCFG, roster: DAR }, {});
     const p = r.months["2026-10"]?.paid?.a1?.[0];
     return r.paid.length === 1 && p?.amt === 1500 && p.by === "auto" && r.payers?.a1?.[0] === "AYSE SAHIN" && r.open === 0;
   })],
   ["tutar tutmuyor ya da emin değil", F("onaya kalır, open sayılır", () => {
-    const r = DAU.autoDues([mvt("FAST AYSE SAHIN", 900), mvt("HAVALE MEHMET YILMAZ"), mvt("EFT BILINMEYEN KISI")], { ...DCFG, roster: DA }, {});
+    const r = DAU.autoDues([mvt("FAST AYSE SAHIN", 900), mvt("HAVALE MEHMET YILMAZ"), mvt("EFT BILINMEYEN KISI")], { ...DCFG, roster: DAR }, {});
     return r.paid.length === 0 && r.open === 2 && !Object.keys(r.months).length;
   })],
   ["kardeşler toplamı", F("2500 → Ege 1500 + Ada 1000", () => {
-    const r = DAU.autoDues([mvt("HAVALE MEHMET YILMAZ", 2500)], { ...DCFG, roster: DA }, {});
+    const r = DAU.autoDues([mvt("HAVALE MEHMET YILMAZ", 2500)], { ...DCFG, roster: DAR }, {});
     const m = r.months["2026-10"]?.paid || {};
     return m.a2?.[0].amt === 1500 && m.a3?.[0].amt === 1000 && r.paid[0].names.length === 2;
   })],
@@ -834,6 +865,11 @@ group("Aidat otomatik")([
     const b = DAU.autoDues([m], { ...DCFG, roster: DA }, { "2026-10": { ignored: [DU.movKey(m)] } });
     return !a.paid.length && !b.paid.length && !b.open;
   })],
+  ["en eski borçlu ay", F("Eylül borçluyken Ekim'de gelen para Eylül'e, Ekim'de used", () => {
+    const m = mvt("FAST AYSE SAHIN");
+    const r = DAU.autoDues([m], { ...DCFG, roster: DA.map((a) => ({ ...a, from: "2026-09" })) }, {});
+    return r.months["2026-09"]?.paid?.a1?.[0]?.amt === 1500 && !r.months["2026-10"]?.paid?.a1 && r.months["2026-10"]?.used?.includes(DU.movKey(m));
+  })],
   ["liste yoksa hiçbir şey", F("Aidatlar sayfası açılmamış", () => DAU.autoDues([mvt("FAST AYSE SAHIN")], DCFG, {}).paid.length === 0 && DAU.duesText(DAU.autoDues([], DCFG)) === null)],
   ["bildirim metni", F("Aidat geldi: Deniz Şahin / 2 sporcu · onay bekliyor", () => {
     const a = DAU.duesText({ paid: [{ names: ["Deniz Şahin"], amount: 1500 }], open: 0 });
@@ -842,7 +878,7 @@ group("Aidat otomatik")([
     return a.title === "Aidat geldi: Deniz Şahin" && a.body === "Deniz Şahin 1.500 TL" && b.title === "Aidat geldi: 2 sporcu" && b.body === "Ege Yılmaz ve Ada Yılmaz 2.500 TL · 1 ödeme onay bekliyor" && c.title === "Aidat: 2 ödeme onay bekliyor";
   })],
   ["maildeki hesap özetinden yazma", F("runAutoDues ayar + ay okur, ayı ve gönderenleri yazar", async () => {
-    const store = { "orgs/u1/dues/settings": { ...DCFG, roster: DAU.rosterOf(DA) } };
+    const store = { "orgs/u1/dues/settings": { ...DCFG, roster: DAU.rosterOf(DAR) } };
     const io = { get: async (p) => store[p] || null, set: async (p, f) => void (store[p] = { ...(store[p] || {}), ...f }) };
     const mail = { at: "2026-10-05T07:00:00Z", sheets: [{ columns: ["Tarih", "Açıklama", "Tutar", "Bakiye"], rows: [{ v: ["05.10.2026 10:12", "FAST AYSE SAHIN", 1500, 9000] }, { v: ["05.10.2026 11:00", "KIRA", -3000, 6000] }], sum: { currency: "TL" } }] };
     const r = await DAU.runAutoDues(io, "u1", [mail]);
@@ -1257,6 +1293,10 @@ group("Hesaplar arama ve eklenen adlar")([
   ["nakit aidat gelir", F("nakitler hareket olur, EFT'ler girmez", () => {
     const l = D.cashMoves({ settings: { roster: [] }, "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05" }, { amt: 1500, via: "eft", mov: "m1" }] } }, "2026-09": { paid: { a1: [{ amt: 1000, via: "cash", at: "2026-09-03T10:00:00Z" }] } } }, [{ id: "a1", studentName: "Deniz Şahin" }]);
     return l.length === 2 && l[0].cash && l[0].who === "Deniz Şahin" && l[0].amount === 1500 && l[0].date === "05.10.2026" && D.monthOf(l[0]) === "2026-10" && l[1].note === "Eylül 2026 aidatı" && PY.nameMoves(l, "Deniz Şahin").length === 2 && PY.topPayers(l)[0].sum === 2500;
+  })],
+  ["nakit aidat birden çok aya", F("tek ödeme Hesaplar'da tek satır", () => {
+    const l = D.cashMoves({ "2026-09": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05", grp: "g1", at: "x1" }] } }, "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-05", grp: "g1", at: "x2" }] } } }, []);
+    return l.length === 1 && l[0].amount === 3000 && l[0].note === "Eylül, Ekim aidatı";
   })],
   ["elle nakit gelir", F("tür, kişi, tarih; Hesaplar'da hareket", () => {
     const [m] = D.incomeMoves([{ id: "x1", who: "Ali Kaya", amount: 2500, cat: "Kano eğitimi", note: "2 ders", date: "2026-10-08" }, { id: "x2", amount: 0 }]);

@@ -53,6 +53,16 @@ export function cashMoves(months = {}, roster = []) {
       (Array.isArray(list) ? list : []).forEach((p, i) => {
         const amt = Number(p?.amt);
         if (p?.via !== "cash" || !(amt > 0)) return;
+        // Birden çok aya dağıtılan tek nakit ödeme (grp) Hesaplar'da tek satır
+        if (p.grp) {
+          const g = out.find((x) => x.grp === p.grp && x.athleteId === id);
+          if (g) {
+            g.amount = Math.round((g.amount + amt) * 100) / 100;
+            g.yms = [...g.yms, ym].sort();
+            g.note = g.yms.length > 1 ? `${g.yms.map((y) => AY[Number(y.slice(5)) - 1]).join(", ")} aidatı` : g.note;
+            return;
+          }
+        }
         const day = /^\d{4}-\d{2}-\d{2}/.test(p.date || "") ? p.date.slice(0, 10) : /^\d{4}-\d{2}-\d{2}/.test(p.at || "") ? p.at.slice(0, 10) : `${ym}-01`;
         const [y, m, d] = day.split("-");
         out.push({
@@ -72,11 +82,12 @@ export function cashMoves(months = {}, roster = []) {
           desc: "Nakit aidat",
           date: `${d}.${m}.${y}`,
           ts: Date.parse(`${day}T09:00:00Z`) || 0,
+          ...(p.grp ? { grp: p.grp, yms: [ym] } : {}),
         });
       });
     }
   }
-  return out.sort((a, b) => b.ts - a.ts);
+  return out.map(({ grp, yms, ...m }) => m).sort((a, b) => b.ts - a.ts);
 }
 
 // Hesaplar › "+ Gelir ekle" türleri (Diğer seçilince tür elle yazılır). Aidat seçilirse ödeme aidat kaydına yazılır.
@@ -200,7 +211,73 @@ export function monthRows(athletes, month = {}, cfg = {}, ym = "") {
 }
 
 // Bir sporcuya yazılmış EFT hareketlerinin anahtarları (aynı hareket iki kez sayılmasın)
-export const usedKeys = (month = {}) => new Set(Object.values(month.paid || {}).flat().map((p) => p.mov).filter(Boolean));
+// month.used: o ay gelip başka (eski borçlu) aya yazılan hareketlerin anahtarları
+export const usedKeys = (month = {}) => new Set([...Object.values(month.paid || {}).flat().map((p) => p.mov), ...(month.used || [])].filter(Boolean));
+// Yüklenen bütün ayların kullanılmış hareketleri (ödeme geldiği aydan başka aya yazılmış olabilir)
+export const allUsed = (months = {}) => new Set(Object.values(months || {}).flatMap((m) => [...usedKeys(m || {})]));
+
+const r2 = (n) => Math.round(n * 100) / 100;
+// Sporcunun o ayda kalan aidatı (sayılmayan ay ve tutarsız aidat 0)
+export function restOf(a, cfg = {}, months = {}, ym) {
+  const fee = feeOf(a, cfg);
+  const month = months[ym] || {};
+  if (!fee || offOf(a, cfg, ym, month)) return 0;
+  const paid = (month.paid?.[a.id] || []).reduce((s, p) => s + (Number(p.amt) || 0), 0);
+  return Math.max(0, r2(fee - paid));
+}
+// Ödemeyi aylara dağıtır → [{ ym, amt }]. picked verilmezse en eski borçlu aydan başlar (yms en eskiden yeniye);
+// her aya kalan aidatı kadar yazılır, artan son aya eklenir. Borçlu ay yoksa ya da tutar ayarlı değilse tamamı fallback ayına.
+export function allocate(amount, a, cfg = {}, months = {}, yms = [], picked = null, fallback = yms.at(-1)) {
+  const list = picked?.length ? [...picked].sort() : yms.filter((ym) => restOf(a, cfg, months, ym) > 0);
+  let left = r2(Number(amount) || 0);
+  const out = [];
+  for (const ym of list) {
+    if (left <= 0) break;
+    const rest = restOf(a, cfg, months, ym) || (picked?.length ? feeOf(a, cfg) : 0);
+    const amt = r2(Math.min(rest || left, left));
+    if (amt <= 0) continue;
+    out.push({ ym, amt });
+    left = r2(left - amt);
+  }
+  if (left > 0) {
+    if (out.length) out.at(-1).amt = r2(out.at(-1).amt + left);
+    else out.push({ ym: picked?.[0] || fallback, amt: left });
+  }
+  return out;
+}
+// Sporcunun ödemeleri (en yeni önce): aynı ödemeden birden çok aya yazılanlar tek satır (grp ya da banka hareketi)
+// → [{ key, date "YYYY-MM-DD", amt, via, desc, months [ym], parts [{ ym, at, mov }] }]
+export function historyOf(a, months = {}, yms = []) {
+  const map = new Map();
+  for (const ym of yms) {
+    (months[ym]?.paid?.[a.id] || []).forEach((p, i) => {
+      const key = p.grp || p.mov || `${ym}:${p.at || i}`;
+      const g = map.get(key) || { key, date: isoDay(p.date || p.at) || `${ym}-01`, amt: 0, via: p.via === "cash" ? "cash" : "eft", desc: p.desc || "", by: p.by || "", months: [], parts: [] };
+      g.amt = r2(g.amt + (Number(p.amt) || 0));
+      if (!g.months.includes(ym)) g.months.push(ym);
+      g.parts.push({ ym, at: p.at || "", mov: p.mov || "", i });
+      map.set(key, g);
+    });
+  }
+  return [...map.values()].map((g) => ({ ...g, months: g.months.sort() })).sort((x, y) => y.date.localeCompare(x.date) || y.months.at(-1).localeCompare(x.months.at(-1)));
+}
+// Ödeme grubunu ay kayıtlarından siler → { ym: yeni ay kaydı }. Başka aya yazılan banka hareketinin "used" işareti de kalkar.
+export function dropGroup(a, months = {}, g) {
+  const out = {};
+  for (const ym of Object.keys(months)) {
+    const month = months[ym] || {};
+    const list = month.paid?.[a.id] || [];
+    const keep = list.filter((p, i) => !g.parts.some((x) => x.ym === ym && (x.at ? x.at === p.at : x.i === i) && (x.mov || "") === (p.mov || "")));
+    const movs = g.parts.map((x) => x.mov).filter(Boolean);
+    const used = (month.used || []).filter((k) => !movs.includes(k));
+    if (keep.length === list.length && used.length === (month.used || []).length) continue;
+    const paid = { ...(month.paid || {}) };
+    if (keep.length) paid[a.id] = keep;
+    else delete paid[a.id];
+    out[ym] = { ...month, paid, used };
+  }
+  return out;
+}
 
 // Ödemeyi sporculara böler: kardeşlere aidat oranında, tek sporcuya tamamı
 export function splitAmount(amount, picks, cfg = {}) {
@@ -213,7 +290,7 @@ export function splitAmount(amount, picks, cfg = {}) {
 
 // Ayın ödemeleri tek listede (en yeni önce): bankadan gelen ve sporcuya yazılan ya da sporcuyla eşleşen EFT'ler + nakitler.
 // state: "ok" (onaylı), "guess" (öneri, onay bekliyor), "cash" (nakit). Aidat değil denenler ve sporcuyla ilgisiz paralar girmez.
-export function paymentsOf(movements, month = {}, athletes = [], cfg = {}, ym) {
+export function paymentsOf(movements, month = {}, athletes = [], cfg = {}, ym, months = null) {
   const byId = new Map(athletes.map((a) => [a.id, a]));
   const confirmed = new Map(); // hareket anahtarı -> [sporcu adı]
   const out = [];
@@ -221,7 +298,13 @@ export function paymentsOf(movements, month = {}, athletes = [], cfg = {}, ym) {
     for (const p of list) {
       const name = byId.get(id)?.studentName || "Sporcu";
       if (p.via === "cash") out.push({ key: `c${id}${p.at}`, state: "cash", date: p.date || "", ts: Date.parse(p.at) || 0, amount: p.amt, names: [name], desc: "Nakit" });
-      else if (p.mov) confirmed.set(p.mov, [...(confirmed.get(p.mov) || []), name]);
+    }
+  }
+  // Banka ödemesi geldiği aydan başka (eski borçlu) aya yazılmış olabilir: bütün aylara bakılır
+  for (const mo of months ? Object.values(months) : [month]) {
+    for (const [id, list] of Object.entries(mo?.paid || {})) {
+      const name = byId.get(id)?.studentName || "Sporcu";
+      for (const p of list) if (p.via !== "cash" && p.mov && !(confirmed.get(p.mov) || []).includes(name)) confirmed.set(p.mov, [...(confirmed.get(p.mov) || []), name]);
     }
   }
   const ignored = month.ignored || [];
@@ -291,9 +374,10 @@ export function gridOf(athletes, months, cfg, yms) {
 // Eşleşme bekleyen gelen paralar (aylara göre, en yeni ay önce): [{ ym, m, r }]
 export function pendingOf(movements, months, athletes, cfg, yms) {
   const out = [];
+  const used = allUsed(months);
   for (const ym of [...yms].reverse()) {
     const month = months[ym] || {};
-    for (const m of incomingOf(movements, ym, usedKeys(month), month.ignored || [])) out.push({ ym, m, r: matchMovement(m, athletes, cfg) });
+    for (const m of incomingOf(movements, ym, used, month.ignored || [])) out.push({ ym, m, r: matchMovement(m, athletes, cfg) });
   }
   return out;
 }
