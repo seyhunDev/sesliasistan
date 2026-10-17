@@ -1,8 +1,8 @@
-Commit: f04416e · Fitness: sporcu sayfasında antrenmanlar yakından uzağa, haftalık Daha fazla (#469)
-Zaman: 2026-10-17-1858 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39047327588
+Commit: 4364bef · Aidatlar: sporcu listesi, geçmiş ödeme ekleme, banka en eski borçlu aya (#471)
+Zaman: 2026-10-17-1920 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39048841077
 
-TAM TEST · 17.10.2026 18:58:01
+TAM TEST · 17.10.2026 19:19:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 57 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 64 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
