@@ -1,8 +1,8 @@
-Commit: 724aff9 · Ana sayfa: kişi şeridi takvimden sonra (#459)
-Zaman: 2026-10-17-0629 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38998865848
+Commit: 253dc04 · Ana sayfa rüzgâr grafiği: altında üç saatte bir hava simgesi (#460)
+Zaman: 2026-10-17-0637 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38999377250
 
-TAM TEST · 17.10.2026 06:28:28
+TAM TEST · 17.10.2026 06:35:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 73 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
