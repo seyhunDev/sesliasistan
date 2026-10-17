@@ -13,7 +13,7 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Değişiklikler GitHub'a gönderilir (bulut oturumunda dal + PR).
 - Testler: `npm test` (tüm yerel testler + derleme); derlemesiz hepsi `npm run test:hizli`; alan alan `npm run test:asistan` / `test:ses` / `test:elle` / `test:yaris` (dosyalar `scripts/asistan-test/yerel/<alan>.mjs`, yeni özelliğin testi kendi alanına eklenir); yapay zeka `npm run test:yz`; canlı `npm run test:canli` (hesap sorar). Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
 - Yapay zeka: Gemini 3.x için `thinkingLevel: "minimal"`, eskiler için `thinkingBudget: 0` (lib/ai/gemini.js). Hata türleri lib/ai/errors.js.
-- Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (aşağıda otomatik yüklenir) ve henüz taşınmamış `notlar/yeni/*.md` dosyalarında (oturum başında bunlara da bak). Yeni not ve kalıcı karar `notlar/yeni/` altına yeni dosya olarak yazılır, NOTLAR.md elle değiştirilmez.
+- Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (otomatik yüklenmez, gerekeni bölüm bölüm oku) ve henüz taşınmamış `notlar/yeni/*.md` dosyalarında (oturum başında bunlara da bak). Yeni not ve kalıcı karar `notlar/yeni/` altına yeni dosya olarak yazılır, NOTLAR.md elle değiştirilmez.
 - Token: tüm dosyaları tarama, haritadan ilgili dosyaya git.
 
 ## Harita
@@ -27,4 +27,4 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Diğer özellikler `src/features/<ad>` (athletes, chat, mail, receipts, meeting, weather, staff…); ortak arayüz `src/components/ui`.
 - Bildirim zamanlayıcı: `netlify/functions/plan-reminders.mjs`; betikler: `scripts/`.
 
-@NOTLAR.md
+NOTLAR.md çok büyük (≈590 KB), bütün okuma; gerektiğinde ilgili başlığı grep ile bulup yalnız o bölümü Read ile (offset/limit) oku.
