@@ -1,8 +1,8 @@
-Commit: d07e86d · Ana sayfa Hesap: banka + kasa toplamı, altında ayrı ayrı, değişim ve bu ayki kasa girişi (#473)
-Zaman: 2026-10-17-1937 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39050101908
+Commit: 0ba0e8a · Sayfa içi ayrı asistan girişleri kaldırıldı: kayıt ekranı çubuğu, Ekle'deki "Asistana söyle", Dersler'deki "Söyle ya da yaz" (#474)
+Zaman: 2026-10-17-2011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39052527124
 
-TAM TEST · 17.10.2026 19:36:09
+TAM TEST · 17.10.2026 20:10:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

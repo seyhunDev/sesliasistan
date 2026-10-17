@@ -1,8 +1,8 @@
-Commit: aac5d36 · Merge pull request #407 from seyhunDev/claude/instagram-modern-tasarimlar-u1damg
-Zaman: 2026-10-14-1428 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38556597153
+Commit: 0ba0e8a · Sayfa içi ayrı asistan girişleri kaldırıldı: kayıt ekranı çubuğu, Ekle'deki "Asistana söyle", Dersler'deki "Söyle ya da yaz" (#474)
+Zaman: 2026-10-17-2011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39052527124
 
-TAM TEST · 14.10.2026 14:27:03
+TAM TEST · 17.10.2026 20:10:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
