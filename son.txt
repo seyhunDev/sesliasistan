@@ -1,8 +1,8 @@
-Commit: faf7261 · Fitness: bir sporcunun programı kaydedilince diğer sporcuların programı kaybolmuyor (#457)
-Zaman: 2026-10-17-0601 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38997094811
+Commit: 724aff9 · Ana sayfa: kişi şeridi takvimden sonra (#459)
+Zaman: 2026-10-17-0629 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38998865848
 
-TAM TEST · 17.10.2026 06:00:46
+TAM TEST · 17.10.2026 06:28:28
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
