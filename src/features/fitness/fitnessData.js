@@ -6,6 +6,7 @@ import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
 import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/model";
 import { introKey } from "@/lib/fitness/forecast";
+import { cleanReview, reviewId } from "@/lib/fitness/review";
 import { cleanLib, customCatalog, itemsWithLib, libAdd, libMediaIds, progWithLib, sameMedia } from "@/lib/fitness/library";
 import { dropAllMedia, dropMedia } from "./fitMedia";
 
@@ -338,4 +339,18 @@ export async function spreadLib(orgId, plans = []) {
   }
   if (ops.length) told();
   return { progs: progs.length, plans: ps.length };
+}
+
+// Haftalık değerlendirmeler: orgs/{orgId}/fitReviews/{sporcu}_{pazartesi} (yalnız ana hesap yazar ve okur; review.js)
+const revCol = (orgId) => collection(db, "orgs", orgId, "fitReviews");
+export async function loadReviews(orgId, forUid) {
+  const snap = await getDocs(query(revCol(orgId), where("for", "==", forUid)));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.week).localeCompare(String(a.week)));
+}
+export async function saveReview(orgId, rev) {
+  const id = reviewId(rev.for, rev.week);
+  const now = new Date().toISOString();
+  const rec = { ...cleanReview(rev, rev), createdAt: rev.createdAt || now, updatedAt: now };
+  await setDoc(doc(revCol(orgId), id), rec);
+  return { id, ...rec };
 }

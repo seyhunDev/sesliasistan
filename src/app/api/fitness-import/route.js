@@ -4,7 +4,7 @@ import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { exerciseCatalog, fold } from "@/lib/fitness/exercises";
-import { DOW_LONG, cleanProgram, dropRoutines } from "@/lib/fitness/model";
+import { DOW_LONG, cleanProgram, cleanTrack, dropRoutines } from "@/lib/fitness/model";
 
 export const runtime = "nodejs";
 
@@ -48,6 +48,7 @@ Program:
 - phases: haftalara göre evreler varsa { from, to, name, sets (o haftalarda setlerin yüzdesi; "setleri ~%30 azalt" → 70, "hacim %40 düşük" → 60; değişmiyorsa 100), note (RPE/RIR, ne yapılır) }.
 - rules: ilerleme kuralı, güvenlik/dur kuralları, trafik ışığı gibi genel kurallar; kısa satırlar, her satır "- " ile, en çok 12 satır.
 - note: programın amacı 1-2 cümle.
+- review: belgede haftalık takip/kontrol listesi ya da değerlendirme tablosu varsa (ör. "Takip ve İletişim": Gösterge · Hedef · Haftalık kayıt; "Her pazar geri bildirim" soruları) rows [{ label: gösterge, goal: hedef, unit: kayıt biçimi ("saat", "/ 2", "/ 10", "Evet / Hayır") }] ve ask [sorular] olarak AYNEN al; yoksa boş bırak. Antrenörün isteğinde takip listesi değişikliği varsa uygula.
 - message: antrenöre 1 kısa cümle (ne okundu: kaç gün, kaç hareket; edit'te ne değişti). Belge bir antrenman programı değilse isProgram false.`;
 
 const s = { type: "string" };
@@ -70,6 +71,7 @@ const SCHEMA = {
       type: "object",
       properties: {
         title: s, weeks: n, start: s, note: s, rules: s,
+        review: { type: "object", properties: { rows: { type: "array", items: { type: "object", properties: { label: s, goal: s, unit: s }, required: ["label"] } }, ask: { type: "array", items: s } } },
         phases: { type: "array", items: { type: "object", properties: { from: n, to: n, name: s, sets: n, note: s }, required: ["from", "to", "name"] } },
         days: { type: "array", items: { type: "object", properties: { dow: n, time: s, min: n, name: s, note: s, items: { type: "array", items: ITEM } }, required: ["dow", "name", "items"] } },
       },
@@ -89,7 +91,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const KEEP = ["part", "ex", "name", "sets", "reps", "repsTo", "sec", "secTo", "min", "side", "kg", "bag", "rest", "rpe", "tempo", "breath", "note", "alt"];
 const progJson = (p) =>
   JSON.stringify({
-    title: p.title, weeks: p.weeks, start: p.start, note: p.note, rules: p.rules, phases: p.phases,
+    title: p.title, weeks: p.weeks, start: p.start, note: p.note, rules: p.rules, phases: p.phases, review: p.review,
     days: p.days.map(({ dow, time, min, name, note, items }) => ({ dow, time, min, name, note, items: items.map((it) => Object.fromEntries(KEEP.filter((k) => it[k] !== undefined && it[k] !== "").map((k) => [k, it[k]]))) })),
   });
 
@@ -136,7 +138,7 @@ async function handle(request) {
     // Değişiklikte: süre/hafta/başlangıç söylenmediyse eskisi; fotoğraf/video ve YouTube aynı adlı harekete geri takılır
     const media = new Map((cur?.days || []).flatMap((d) => d.items).filter((it) => it.media || it.yt).map((it) => [fold(it.name), { media: it.media, yt: it.yt }]));
     const days = (Array.isArray(rp.days) ? rp.days : []).map((d) => ({ ...d, items: (Array.isArray(d.items) ? d.items : []).map((it) => ({ ...it, ex: it.ex || "", ...(media.get(fold(it.name)) || {}) })) }));
-    const p = cleanProgram({ ...(cur || {}), ...rp, days: edit ? days : dropRoutines(days), start: DAY.test(rp.start || "") ? rp.start : cur?.start || "" });
+    const p = cleanProgram({ ...(cur || {}), ...rp, days: edit ? days : dropRoutines(days), review: cleanTrack(rp.review) || cur?.review, start: DAY.test(rp.start || "") ? rp.start : cur?.start || "" });
     const count = p.days.reduce((t, d) => t + d.items.length, 0);
     if (!p.days.length || !count) return bad(edit ? "Değişiklik yapılamadı, daha açık yazıp tekrar dene." : "Programdan antrenman okunamadı. Metni yapıştırmayı dene.", 422);
     console.log(`[fitness-import] ${Date.now() - t0} ms, ${edit ? "edit" : "read"}, gün=${p.days.length}, hareket=${count}`);
