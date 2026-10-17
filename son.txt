@@ -1,8 +1,8 @@
-Commit: 629d663 · Uygulama dik kalsın: manifest orientation portrait, iOS yatayda yazı büyütmesin (#463)
-Zaman: 2026-10-17-0758 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39004421228
+Commit: 1176df1 · Merge pull request #464 from seyhunDev/claude/project-thread-d5ov9m
+Zaman: 2026-10-17-1621 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39036118773
 
-TAM TEST · 17.10.2026 07:56:44
+TAM TEST · 17.10.2026 16:20:23
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
