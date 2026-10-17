@@ -1,4 +1,5 @@
 import { Icon } from "@/components/ui/Icon";
+import { FadeImg } from "@/components/ui/FadeImg";
 import { toMs } from "./ChatProvider";
 
 export const ONLINE_MS = 3 * 60e3;
@@ -57,7 +58,8 @@ export const toneFor = (key = "") => TONES[[...String(key)].reduce((a, c) => a +
 export function Avatar({ name, icon, online, size = "size-12", tone, text = "text-[0.9375rem]", photo }) {
   return (
     <span className={`relative grid ${size} shrink-0 place-items-center rounded-full ${tone || toneFor(name)} ${text} font-semibold tracking-tight`}>
-      {icon ? <Icon name={icon} className="size-[45%]" /> : photo ? <img src={photo} alt="" className="size-full rounded-full object-cover" /> : initialsOf(name)}
+      {icon ? <Icon name={icon} className="size-[45%]" /> : initialsOf(name)}
+      {!icon && photo && <FadeImg src={photo} className="size-full rounded-full object-cover" />}
       {online && <span className="absolute bottom-0 right-0 size-[28%] min-h-2.5 min-w-2.5 rounded-full bg-[#34a853] ring-2 ring-bg" />}
     </span>
   );
