@@ -14,13 +14,14 @@ import { loadDuesRange } from "@/features/dues/duesData";
 import { dmId } from "@/features/chat/ChatProvider";
 import { CALM, SectionHead } from "@/features/home/ui";
 import { PersonSheet } from "./PersonSheet";
+import { ProfilePhoto } from "./ProfilePhoto";
 import { athleteDues, lastMonths } from "@/lib/dues";
 import { dueLabel } from "@/lib/agenda";
 import { groupOfKind, kindOf, shownLogin, waPhone } from "@/lib/kinds";
 import { ageOf, attendanceOf, bdayInfo, bdayLine, birthOf, clubSide, personPath, receiptsOf, subLine, todoOf } from "@/lib/personPage";
 import { historyOf } from "@/lib/raceResults";
 import { TLk } from "@/lib/receipts";
-import { initials, todayStr } from "@/lib/utils/format";
+import { todayStr } from "@/lib/utils/format";
 
 const short = (iso) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }).replace(".", "") : "");
 const planWhen = (p) => `${new Date(`${p.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")} ${short(p.date)}${p.time ? ` ${p.time}` : ""}`;
@@ -162,7 +163,7 @@ export function PersonPage({ uid }) {
       </BackLink>
 
       <header className="mt-2 flex flex-col items-center text-center">
-        <span className="grid size-20 place-items-center rounded-full bg-acc/10 text-[1.75rem] font-semibold text-acc">{initials(m.name)}</span>
+        <ProfilePhoto orgId={orgId} uid={uid} name={m.name} photo={m.photo} photoPath={m.photoPath} />
         <h1 className="mt-3 text-[1.5rem] font-semibold leading-tight">{m.name}</h1>
         <p className="mt-0.5 text-[0.9375rem] text-mut">{subLine(m, age)}</p>
         {line && <p className="mt-2 rounded-full bg-acc/10 px-3 py-1 text-[0.875rem] text-acc">{line}</p>}

@@ -55,7 +55,7 @@ export function NewChatSheet({ open, onClose }) {
               {people.map((p) => (
                 <li key={p.uid}>
                   <button type="button" onClick={() => go(dmId(uid, p.uid))} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-card">
-                    <Avatar name={p.name} online={isOnline(p)} size="size-11" />
+                    <Avatar name={p.name} photo={p.photo} online={isOnline(p)} size="size-11" />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[0.9375rem] font-semibold">{p.name}</b>
                       <small className="block truncate text-[0.75rem] text-mut">{p.role === "owner" ? "Ana hesap" : "Çalışan"}{seenText(p.lastSeen) ? ` · ${seenText(p.lastSeen)}` : ""}</small>
@@ -77,7 +77,7 @@ export function NewChatSheet({ open, onClose }) {
               return (
                 <li key={p.uid}>
                   <button type="button" role="checkbox" aria-checked={on} onClick={() => setSel((x) => (on ? x.filter((u) => u !== p.uid) : [...x, p.uid]))} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-card">
-                    <Avatar name={p.name} size="size-10" />
+                    <Avatar name={p.name} photo={p.photo} size="size-10" />
                     <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{p.name}</b>
                     <span className={`grid size-6 place-items-center rounded-full border-2 ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-3.5 [stroke-width:3]" />}</span>
                   </button>

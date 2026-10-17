@@ -359,6 +359,6 @@ export function storyPeople(members = [], bdays = []) {
   const rank = { staff: 1, family: 2, athlete: 3, student: 3, parent: 4, other: 5 };
   return members
     .filter((m) => m && m.name && m.status !== "left")
-    .map((m) => ({ id: m.uid, name: m.name, href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1, tone: personTone(m.kind) }))
+    .map((m) => ({ id: m.uid, name: m.name, photo: m.photo || "", href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1, tone: personTone(m.kind) }))
     .sort((a, b) => (b.bday - a.bday) || a.r - b.r || a.name.localeCompare(b.name, "tr"));
 }

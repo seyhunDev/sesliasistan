@@ -455,7 +455,7 @@ export function ChatView({ cid }) {
             <Icon name="back" className="size-5" />
           </button>
           <button type="button" onClick={() => (owner && chat.type === "dm" && otherP && otherP.role !== "owner" ? router.push(`/people/p/${chat.other}`) : setInfo(true))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-            <Avatar name={chat.title} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
+            <Avatar name={chat.title} photo={otherP?.photo} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
             <span className="min-w-0">
               <b className="flex items-center gap-1.5 truncate text-[1rem] font-semibold leading-tight">
                 <span className="truncate">{chat.title}</span>
@@ -552,7 +552,7 @@ export function ChatView({ cid }) {
                 <div className={`flex items-end gap-2 ${mine ? "justify-end" : ""} ${head ? "mt-3" : "mt-[3px]"}`}>
                   {!mine && chat.type !== "dm" && (
                     <span className={tail ? "" : "invisible"}>
-                      <Avatar name={personName(m.by)} size="size-8" text="text-[0.75rem]" />
+                      <Avatar name={personName(m.by)} photo={allPeople.find((p) => p.uid === m.by)?.photo} size="size-8" text="text-[0.75rem]" />
                     </span>
                   )}
                   <SwipeReply className={`flex min-w-0 max-w-[78%] flex-col ${mine ? "items-end" : "items-start"}`} onReply={() => !m.deleted && startReply(m)}>

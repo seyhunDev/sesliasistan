@@ -18,7 +18,7 @@ import { TimingRow } from "@/features/settings/Timing";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
-import { initials } from "@/lib/utils/format";
+import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
 // Ayarlar: profil, sık kullanılanlar (boyut, bildirim, özet, ses, mail, kişiler), diğer ayarlar (dokununca açılır), çıkış
 export default function SettingsPage() {
@@ -35,7 +35,7 @@ export default function SettingsPage() {
 
       {/* Profil */}
       <section className="mt-2 flex items-center gap-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <span className="grid size-14 shrink-0 place-items-center rounded-full bg-acc text-[1.1875rem] font-semibold text-white">{initials(profile.name)}</span>
+        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
           <span className="block truncate text-[0.875rem] text-mut">{user?.email}</span>

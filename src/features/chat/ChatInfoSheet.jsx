@@ -88,7 +88,7 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
                 const p = byUid(u);
                 return (
                   <li key={u} className="flex items-center gap-3 px-3.5 py-2.5">
-                    <Avatar name={p?.name || personName(u)} online={u !== uid && isOnline(p)} size="size-10" />
+                    <Avatar name={p?.name || personName(u)} photo={p?.photo} online={u !== uid && isOnline(p)} size="size-10" />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[0.9375rem] font-semibold">
                         {u === uid ? "Sen" : personName(u)}
