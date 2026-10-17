@@ -12,7 +12,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { todayStr } from "@/lib/utils/format";
 import {
-  GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
+  GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, upcomingList, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, labelOf, monthStats, programText, progWeek, records, statusOf, weekStats,
 } from "@/lib/fitness/model";
 import { libList } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
@@ -708,9 +708,8 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
   const perWeek = prog ? (prog.days || []).length : 0;
   const onCal = row && prog ? row.plans.filter((p) => p.fit?.prog === prog.id && p.date >= today).length : 0;
   const mon = addDays(today, 1 - dowOf(today));
-  const from = addDays(today, -7);
-  const to = addDays(today, 7);
-  const list = row ? row.plans.filter((p) => p.date >= from && p.date <= to).slice(-8).reverse() : [];
+  const [weeks, setWeeks] = useState(1);
+  const { list, more: later } = upcomingList(row?.plans || [], today, weeks);
   const text = prog ? programText(prog, { age, sport: labelOf(SPORTS, prog.sport) }) : "";
   const copy = () => {
     navigator.clipboard?.writeText(text).then(() => setCopied(true)).catch(() => {});
@@ -833,7 +832,12 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
               })}
             </ul>
           ) : (
-            <p className="mt-1 text-[0.8125rem] text-mut">Bu iki haftada antrenman yok.</p>
+            <p className="mt-1 text-[0.8125rem] text-mut">Bu hafta antrenman yok.</p>
+          )}
+          {later && (
+            <button type="button" onClick={() => setWeeks((w) => w + 1)} className="mt-1.5 h-11 w-full rounded-2xl text-[0.9375rem] font-semibold text-acc">
+              Daha fazla
+            </button>
           )}
         </>
       )}
