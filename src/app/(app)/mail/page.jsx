@@ -3,114 +3,109 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { arrayUnion, collection, doc, limit, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { db } from "@/lib/firebase/clientApp";
-import { money, ruleFor, sendersOf, statementCsv } from "@/lib/bankSheet";
-import { accountsOf, shownAccounts, balanceOf, movementsOf, previewOf, totalsOf } from "@/lib/mailBoard";
-import { mailFileBytes, moveMailFiles } from "@/features/mail/mailFiles";
-import { dayLabel, todayIn } from "@/lib/notifyText";
-import { monthOf } from "@/lib/dues";
-import { inOut, moveHas, nameMoves, namesOf, payeeMoves, payeeOf, searchMoves, topPayers, whoIn } from "@/lib/payee";
-import { LedgerCard } from "@/features/bank/LedgerCard";
+import { accountsOf, shownAccounts, movementsOf, totalsOf } from "@/lib/mailBoard";
+import { moveMailFiles } from "@/features/mail/mailFiles";
+import { todayIn } from "@/lib/notifyText";
+import { inOut, payeeMoves, payeeOf, received, searchMoves, whoIn } from "@/lib/payee";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
 import { addIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
-import { KasaCard, PersonalBook } from "@/features/bank/CashBook";
 import { canConv, convSet, debtMoves, inKasa, kasaLink, kasaOf, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
-import { DebtDetail, DebtForm, LentSection } from "@/features/debts/DebtViews";
+import { DebtDetail, DebtForm } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
-import { cleanDebt, newId, payDebt } from "@/lib/debts";
+import { cleanDebt, leftOf, newId, paidOf, payDebt, splitDebts } from "@/lib/debts";
 import { todayStr } from "@/lib/utils/format";
 import { AddIncome } from "@/features/bank/AddIncome";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
-import { report } from "@/lib/bankAnalyze";
-import { personalReceipts } from "@/lib/receipts";
+import { noText, payOf, totalOf } from "@/lib/receipts";
+import { useInvoiceDesk } from "@/features/invoices/InvoicesView";
+import { STATE, stateOf } from "@/lib/invoices";
+import { AddBar, Choose, Fold, Group, MonthList, card } from "@/features/bank/HesapViews";
+import { amt, dayText, para } from "@/lib/hesapRows";
 
 const localDate = (iso) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(iso));
-const hm = (iso) =>
-  new Intl.DateTimeFormat("tr-TR", {
-    timeZone: "Europe/Istanbul",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
-const when = (iso, today) => `${dayLabel(localDate(iso), today)} ${hm(iso)}`;
-const shortDay = (d) =>
-  new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-  });
-const cash = (n, cur) => `${money(n)}${cur ? ` ${cur}` : ""}`;
+// Hareketin günü "YYYY-MM-DD": zamandan, yoksa "17.10.2026" yazımından
+const dayOf = (x) => {
+  if (x?.ts) return localDate(new Date(x.ts).toISOString());
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(x?.date || "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+};
+const sortOf = (x) => (x?.ts ? new Date(x.ts).toISOString() : dayOf(x));
+const cash = (n, cur) => `${para(n)}${cur ? ` ${cur}` : ""}`;
 const signed = (n, cur) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${cash(Math.abs(n), cur)}`;
-const PAGE = 40;
-const SHOW = 20; // hareketler ilk açılışta
-const MORE = 50; // "Daha fazla göster" her basışta
-const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
-const title = "px-1 pb-2 text-[0.8125rem] font-semibold text-mut";
+const PAY_TEXT = { Nakit: "Kasadan", Kart: "Kartla", Havale: "Bankadan" };
+// Faturanın listedeki günü: ödenen fatura ödendiği gün, ödenmeyenin tarihi
+const invDay = (x) => (x.status === "paid" && x.paidAt) || x.date || x.due || "";
+const TABS = [
+  ["banka", "Banka"],
+  ["kasa", "Kasa"],
+  ["fis", "Fişler"],
+  ["borc", "Borçlar"],
+  ["kisi", "Kişisel"],
+];
 
-// Hesaplar (adres /mail, yalnızca ana hesap), banka uygulaması düzeninde, sade:
-//   hesaplar (son bakiye, toplam, kişisel hesabın aldıkları) › özet (bugüne kadar gelen/giden, kim ne kadar ödedi) ›
-//   banka defteri (yalnız Ayarlar › Banka defteri kartı açıksa; users.ledgerCard) › son hareketler › gelen mailler (kapalı) › durum
-// Gmail betiği mailleri doğrudan kişinin kendi verisine yazar (orgs/{uid}/mails); Excel ekleri ham (base64) gelir, bu sayfa
-// tabloyu (sheets) okur, ekleri Storage'a taşır ve mailden siler (mailFiles.js). Sayfa veritabanını canlı dinler; yeni mail kendiliğinden görünür.
+// Hesaplar (adres /mail, yalnızca ana hesap). Seyhun 2026-10-17 "sade, kullanışlı": üstte kulüp toplamı (banka + kasa),
+// beş sekme Banka · Kasa · Fişler · Borçlar · Kişisel; her sekme aylara göre tek liste (satır: kayıt + durum, dokununca
+// ayrıntı) ve tek ekleme düğmesi. Gelen mailler, Gmail durumu ve banka defteri Mail ayarlarında (/mail/setup).
+// Gmail betiği mailleri orgs/{uid}/mails'e yazar; bu sayfa bakiyeleri okur, Excel eklerini Storage'a taşır (mailFiles.js).
 export default function MailPage() {
   const { profile } = useAuth();
-  const { allMembers = [], receipts = [] } = useData();
+  const { allMembers = [], receipts = [], loading } = useData();
   const router = useRouter();
   const owner = profile?.role === "owner";
   const [mails, setMails] = useState(null);
-  const [max, setMax] = useState(PAGE);
-  const [now] = useState(() => Date.now());
-  const [acct, setAcct] = useState("");
-  const [acctPick, setAcctPick] = useState(false); // gösterilen hesapları seçme penceresi // hareketleri tek hesaba süz
-  const [dir, setDir] = useState(""); // hareketler: "" hepsi, "in" gelen, "out" giden
-  const [tab, setTab] = useState("all"); // Ödemeler sekmesi: all (tüm ödemeler) | top (en çok ödeyenler)
-  const [shownMax, setShownMax] = useState(SHOW); // hareketler sayfa sayfa (sınır yok)
-  const [from, setFrom] = useState(""); // gelen kutusunu tek gönderene süz
-  const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri (defterin başından bu aya)
-  const [ledgerBusy, setLedgerBusy] = useState(true); // özet okunurken iskelet gösterilir
+  const [acctPick, setAcctPick] = useState(false); // gösterilen banka hesaplarını seçme penceresi
+  const [ledger, setLedger] = useState(null); // banka defterinin bütün hareketleri
   const [cashData, setCashData] = useState({ moves: [], personal: [], meta: {}, roster: [], cfg: {} }); // nakitler + kişisel defter
   const cashList = cashData.moves;
-  // Üstteki sekme: club (kulüp) | personal (kişisel); /mail?tab=kisisel Kişisel'i açar (eski Borçlar bağlantısı, asistan)
-  const [book, setBook] = useState(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "kisisel" ? "personal" : "club"));
+  // Sekme; /mail?tab=kisisel Kişisel'i açar (asistan, eski bağlantılar), ?tab=borc Borçlar'ı
+  const [tab, setTab] = useState(() => {
+    const t = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : "";
+    return t === "kisisel" ? "kisi" : TABS.some(([k]) => k === t) ? t : "banka";
+  });
   const [lent, setLent] = useState([]); // verilen borçlar (debts/book)
   const [debtForm, setDebtForm] = useState(null); // yeni ya da düzenlenen verilen borç
   const [debtOpen, setDebtOpen] = useState(null); // ayrıntısı açık verilen borç
-  const [add, setAdd] = useState(null); // "+": { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
+  const [add, setAdd] = useState(null); // { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
+  const [choose, setChoose] = useState(false); // sekmenin ekleme seçenekleri
   const [bankPick, setBankPick] = useState(null); // dokunulan banka hareketi (nakite çevir)
   const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
   const [cashTick, setCashTick] = useState(0);
+  const [q, setQ] = useState(""); // Banka'da arama
   const { openReceipt } = useReceipt() || {};
+  // Faturalar Fişler sekmesi ilk açılınca okunur (sonra sekme değişse de dinlemeye devam eder)
+  const [fisSeen, setFisSeen] = useState(tab === "fis");
+  const desk = useInvoiceDesk(owner && fisSeen ? profile.orgId || profile.uid : null);
+  const toast = useToast();
   // Fişle nakit çıkış ya da fiş/fatura nakit ödenince kasa yeniden okunur
   useEffect(() => {
     const on = () => setCashTick((n) => n + 1);
     window.addEventListener("sa-cash-saved", on);
     return () => window.removeEventListener("sa-cash-saved", on);
   }, []);
-  const toast = useToast();
-  const [inboxOpen, setInboxOpen] = useState(false);
-  const [tick, setTick] = useState(0);
-  const [q, setQ] = useState(""); // Son hareketler'de arama
-  const [adding, setAdding] = useState(false); // Hesaplar › "İsim ekle"
 
   useEffect(() => {
     if (profile && !owner) router.replace("/");
   }, [profile, owner, router]);
+  // Son 40 mail: hesap bakiyeleri ve eki taşınacak mailler için (gelen kutusu Mail ayarlarında)
   useEffect(() => {
     if (!owner) return;
     return onSnapshot(
-      query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(max)),
+      query(collection(db, "orgs", profile.uid, "mails"), orderBy("at", "desc"), limit(40)),
       (s) => setMails(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setMails([]),
     );
-  }, [owner, profile?.uid, max]);
+  }, [owner, profile?.uid]);
 
-  // Banka defteri (bu ay + geçen ay): yeni mail gelince ya da Excel eklenince yeniden okunur
+  // Banka defteri: yeni mail gelince yeniden okunur
   const newest = mails?.[0]?.id || "";
   const loaded = mails !== null;
   useEffect(() => {
@@ -122,13 +117,12 @@ export default function MailPage() {
       .then(
         (r) => live && setLedger(r.movements),
         () => live && setLedger(null),
-      )
-      .finally(() => live && setLedgerBusy(false));
+      );
     return () => {
       live = false;
     };
-  }, [owner, loaded, profile?.uid, newest, tick]);
-  // Nakit aidatlar: sayfa açılınca bir kez (aidat ay kayıtları, ay sayısı kadar okuma)
+  }, [owner, loaded, profile?.uid, newest]);
+  // Nakitler ve kişisel defter
   useEffect(() => {
     if (!owner) return;
     let live = true;
@@ -139,7 +133,7 @@ export default function MailPage() {
     return () => {
       live = false;
     };
-  }, [owner, profile?.uid, tick, cashTick]);
+  }, [owner, profile?.uid, cashTick]);
 
   // Verilen borçlar: sayfa açılınca bir kez (1 okuma); asistan kaydedince yenilenir
   useEffect(() => {
@@ -171,51 +165,23 @@ export default function MailPage() {
   }, [owner, pending]);
   if (!owner) return null;
 
-  const today = todayIn();
   const list = mails || [];
-  const rules = sendersOf(profile.mailFrom); // İş Bankası sabit + eklenenler
-  const ready = !!profile.mailSeen; // betik en az bir kez bağlandı
-  const seen = profile.mailSeen;
-  const live = seen && now - Date.parse(seen) < 20 * 60e3;
-  const lastMail =
-    list
-      .map((m) => m.receivedAt || m.at)
-      .sort()
-      .at(-1) || "";
-
   const allAccts = accountsOf(list);
   const accounts = shownAccounts(allAccts, cashData.meta?.accts); // yalnız seçilen hesaplar (seçim yoksa bakiyesi olanlar)
-  const hiddenN = allAccts.length - accounts.length;
   const totals = totalsOf(accounts);
-  const shownKeys = new Set(accounts.map((a) => a.key));
+  const tlTotal = totals.find((t) => !t.currency || /^(TL|TRY)$/i.test(t.currency));
+  const bankTL = tlTotal?.total || 0;
+  const otherCur = totals.filter((t) => t !== tlTotal);
   const bankMoves = ledger || movementsOf(list);
-  const moves = cashList.length ? [...bankMoves, ...cashList].sort((a, b) => (b.ts || 0) - (a.ts || 0)) : bankMoves;
-  const picked = accounts.find((a) => a.key === acct);
-  const acctMoves = picked ? moves.filter((x) => x.account === acct) : moves;
-  const shown = (q.trim() ? searchMoves(acctMoves, q) : acctMoves).filter((x) => (dir === "in" ? x.amount > 0 : dir === "out" ? x.amount < 0 : true));
-  const shownSum = inOut(shown);
-  // Bakiye kartında bugünkü hareketler (yalnız gösterilen banka hesapları)
-  const todayMoves = bankMoves.filter((x) => shownKeys.has(x.account) && x.ts && localDate(new Date(x.ts).toISOString()) === today);
-  const todaySum = inOut(todayMoves);
-  // En çok ödeyenler: defterin başından bugüne bütün gelen paralar (seçili hesap ve arama uygulanır)
-  const allPayers = topPayers(acctMoves);
-  const payers = q.trim() ? allPayers.filter((w) => moveHas({ who: w.who }, q)) : allPayers;
-  const firstTs = moves.reduce((a, x) => (x.ts && (!a || x.ts < a) ? x.ts : a), 0);
-  const payersFrom = firstTs ? new Date(firstTs).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Istanbul" }) : "";
-  // Kişisel hesap (/payments): bu ayın toplamı yalnız yüklü mailler ayın başını kapsıyorsa yazılır (eksik sayı göstermesin)
   const payee = payeeOf(profile);
-  const ym = today.slice(0, 7);
-  const covered = !!ledger || (list.length > 0 && localDate(list.at(-1).at).slice(0, 7) < ym);
   const conv = convSet(cashData.meta); // nakite çevrilen banka hareketleri: kişisel hesapta sayılmaz
-  const payeeMonth = payeeMoves(withoutConv(moves, conv), payee).filter((x) => monthOf(x) === ym);
-  const payeeSum = payeeMonth.reduce((n, x) => n + x.amount, 0);
-  const payeeAll = payeeMoves(withoutConv(moves, conv), payee);
-  const inbox = from ? list.filter((m) => ruleFor(m.from, [{ from }])) : list;
-  const realCash = cashList.filter((x) => !x.conv); // bankadan nakite çevrilen para yeniden "gelen" sayılmaz
-  const cashIn = realCash.filter((x) => x.amount > 0);
-  const rep = ledger?.length || cashList.length ? { ...report([...withoutConv(ledger || [], conv), ...realCash], payee, 1000), cashN: cashIn.length, cashSum: cashIn.reduce((n, x) => n + x.amount, 0) } : null;
+  const payeeAll = payeeMoves(withoutConv(bankMoves, conv), payee);
   const kasa = kasaOf([...cashList, ...debtMoves(lent)].sort((a, b) => (b.ts || 0) - (a.ts || 0)), cashData.meta);
+  const personal = personalOf(cashData.personal || []);
   const curDebt = lent.find((d) => d.id === debtOpen);
+  const whoOpts = whoOptions(allMembers, cashData.meta?.names); // Kişiler (sporcular hariç) + elle yazılan adlar
+  const debtNames = [...new Set([...lent.map((d) => d.who), ...whoOpts.map((o) => o.name)].filter(Boolean))].slice(0, 300);
+
   const saveDebts = async (fn, ok) => {
     try {
       setLent(await updateDebts(profile.uid, fn));
@@ -226,7 +192,6 @@ export default function MailPage() {
       return false;
     }
   };
-  const whoOpts = whoOptions(allMembers, cashData.meta?.names); // Kişiler (sporcular hariç) + elle yazılan adlar
   const toggleAcct = (key) => {
     const cur = new Set(accounts.map((a) => a.key));
     if (cur.has(key)) cur.delete(key);
@@ -234,18 +199,13 @@ export default function MailPage() {
     if (!cur.size) return toast("En az bir hesap görünmeli");
     const keys = allAccts.filter((a) => cur.has(a.key)).map((a) => a.key);
     setCashData((c) => ({ ...c, meta: { ...c.meta, accts: keys } }));
-    if (!keys.includes(acct)) setAcct("");
     saveShownAccts(profile.uid, keys).catch(() => toast("Kaydedilemedi, tekrar dene"));
   };
-  const debtNames = [...new Set([...lent.map((d) => d.who), ...whoOpts.map((o) => o.name)].filter(Boolean))].slice(0, 300);
   const dropName = (name) =>
     dropCashName(profile.uid, name).then(
       () => (setCashData((c) => ({ ...c, meta: { ...c.meta, names: (c.meta?.names || []).filter((n) => n !== name) } })), toast("Seçeneklerden silindi")),
       () => toast("Silinemedi, tekrar dene"),
     );
-  const personal = personalOf(cashData.personal || []);
-  // Eklenen diğer adlar: her biri ayrı satır (gelen/giden toplamı), dokununca /payments?ad=…
-  const others = namesOf(profile).map((name) => ({ name, ...inOut(nameMoves(moves, name)) }));
   const saveIncome = (x) =>
     addIncome(profile.uid, x).then(
       () => (
@@ -264,326 +224,264 @@ export default function MailPage() {
   const dropIncome = (x) => after(x.conv ? undoConvert(profile.uid, x.conv) : deleteIncome(profile.uid, x.incomeId), x.conv ? "Geri alındı, banka hareketi yine kişisel hesapta" : "Silindi");
   const toCash = (m) => after(convertToCash(profile.uid, m), "Kulüp kasasına nakit olarak eklendi").then(() => setBankPick(null));
   const unConv = (m) => after(undoConvert(profile.uid, m.id), "Geri alındı").then(() => setBankPick(null));
-  const archive = (list) => after(archiveCash(profile.uid, list.map((x) => x.key)), list.length > 1 ? `${list.length} giriş arşivlendi` : "Arşivlendi");
-  const unarchive = (list) => after(unarchiveCash(profile.uid, list.map((x) => x.key)), "Arşivden çıkarıldı");
+  const archive = (xs) => after(archiveCash(profile.uid, xs.map((x) => x.key)), xs.length > 1 ? `${xs.length} giriş arşivlendi` : "Arşivlendi");
+  const unarchive = (xs) => after(unarchiveCash(profile.uid, xs.map((x) => x.key)), "Arşivden çıkarıldı");
   const include = (x, on) => after(setInKasa(profile.uid, x.key, on), on ? "Kasaya eklendi" : "Kasadan çıkarıldı");
-  const payDebt = (x) => after(setDebtPaid(profile.uid, x.incomeId, !x.paid), x.paid ? "Ödenmedi olarak işaretlendi" : "Borç ödendi");
-  const addName = (name) => {
-    const n = name.trim();
-    if (!n) return setAdding(false);
-    updateDoc(doc(db, "users", profile.uid), { payeeNames: arrayUnion(n) })
-      .then(() => setAdding(false))
-      .catch(() => {});
+  const payMyDebt = (x) => after(setDebtPaid(profile.uid, x.incomeId, !x.paid), x.paid ? "Ödenmedi olarak işaretlendi" : "Borç ödendi");
+  const openReceiptPage = (r) => router.push(`/receipts/${r.id}`);
+
+  // Satırlar ------------------------------------------------------------------
+  const bankRow = (x) => ({
+    id: x.id,
+    day: dayOf(x),
+    sort: sortOf(x),
+    amount: x.amount,
+    title: whoIn(x) || x.note || x.desc,
+    sub: [dayText(dayOf(x)), whoIn(x) && (x.note || x.desc), x.currency && !/^(TL|TRY)$/i.test(x.currency) && x.currency].filter(Boolean).join(" · "),
+    status: conv.has(x.id) ? "Kasaya geçti" : received(x, payee) ? "Kişisel" : x.cat || x.kind || "",
+    onClick: () => setBankPick(x),
+  });
+  const cashRow = (x) => {
+    const link = kasaLink(x);
+    return {
+      id: x.id,
+      day: dayOf(x),
+      sort: sortOf(x),
+      amount: x.amount,
+      title: x.who || x.note,
+      sub: [dayText(dayOf(x)), x.who && x.note].filter(Boolean).join(" · "),
+      status: link ? (link.kind === "receipt" ? "Fiş" : "Fatura") : x.conv ? "Bankadan" : x.cat || "",
+      onClick: () => (x.debtId ? setDebtOpen(x.debtId) : setManual(x)),
+    };
   };
+  const receiptRow = (r) => ({
+    id: `rc-${r.id}`,
+    day: r.date || "",
+    sort: `${r.date || ""}T${r.time || "00:00"}`,
+    amount: -totalOf(r) / 100,
+    title: r.merchant || "İsimsiz",
+    sub: [dayText(r.date), noText(r.no), r.cat].filter(Boolean).join(" · "),
+    status: payOf(r) === "pending" ? "Ödeme bekliyor" : PAY_TEXT[r.pay] || "Ödendi",
+    warn: payOf(r) === "pending",
+    onClick: () => openReceiptPage(r),
+  });
+  const invoiceRow = (x) => {
+    const st = stateOf(x, desk.today);
+    return {
+      id: `inv-${x.id}`,
+      day: invDay(x),
+      sort: invDay(x),
+      amount: -(x.amount || 0),
+      title: x.seller || "Fatura",
+      sub: [st === "paid" ? dayText(x.paidAt) : x.due && `Son gün ${dayText(x.due)}`, x.no && `Fatura ${x.no}`, x.desc].filter(Boolean).join(" · "),
+      status: st === "paid" ? "Fatura ödendi" : STATE[st],
+      warn: st === "late",
+      onClick: () => desk.open(x.id),
+    };
+  };
+  const debtRow = (d) => {
+    const l = leftOf(d);
+    return {
+      id: `d-${d.id}`,
+      amount: l || d.amount,
+      title: d.who,
+      sub: [dayText(d.date), d.note, paidOf(d) > 0 && l > 0 && `${para(d.amount)} ₺ verildi`].filter(Boolean).join(" · "),
+      status: !l ? "Ödendi" : d.kind === "club" ? "Kulüpten" : "Kişisel",
+      done: !l,
+      onClick: () => setDebtOpen(d.id),
+    };
+  };
+  const personalRow = (x) => ({
+    id: x.id,
+    day: dayOf(x),
+    sort: sortOf(x),
+    amount: x.dir === "debt" ? -Math.abs(x.amount) : x.amount,
+    title: x.who || x.note,
+    sub: [dayText(dayOf(x)), x.who && x.note].filter(Boolean).join(" · "),
+    status: x.dir === "debt" ? (x.paid ? "Borç ödendi" : "Ödenmedi") : x.dir === "out" ? "Gider" : "Gelir",
+    warn: x.dir === "debt" && !x.paid,
+    onClick: () => setManual(x),
+  });
+
+  // Sekmelerin içeriği ------------------------------------------------------------
+  const bankShown = q.trim() ? searchMoves(bankMoves, q) : bankMoves;
+  const qSum = inOut(bankShown);
+  const clubReceipts = receipts.filter((r) => (r.scope || "club") !== "personal");
+  const invList = desk.list || [];
+  const toPay = [...invList.filter((x) => x.status !== "paid").sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999")).map(invoiceRow), ...clubReceipts.filter((r) => payOf(r) === "pending").map(receiptRow)];
+  const toPaySum = toPay.reduce((n, r) => n + Math.abs(r.amount), 0);
+  const fisRows = [...clubReceipts.filter((r) => payOf(r) !== "pending").map(receiptRow), ...invList.filter((x) => x.status === "paid").map(invoiceRow)];
+  const lentOpen = [...splitDebts(lent, "club").open, ...splitDebts(lent, "personal").open].sort((a, b) => `${b.date || ""}${b.at || ""}`.localeCompare(`${a.date || ""}${a.at || ""}`));
+  const lentClosed = [...splitDebts(lent, "club").closed, ...splitDebts(lent, "personal").closed];
+  const lentSum = lentOpen.reduce((n, d) => n + leftOf(d), 0);
+  const kisiRows = [
+    ...personal.moves.filter((x) => !(x.dir === "debt" && !x.paid)).map(personalRow),
+    ...payeeAll.map((x) => ({ ...bankRow(x), status: x.amount > 0 ? "Bankadan" : "Bankaya" })),
+    ...receipts.filter((r) => r.scope === "personal").map(receiptRow),
+  ];
+
+  const addFor = {
+    banka: ["Gelir ekle", () => setAdd({ book: "club", dir: "in" })],
+    kasa: ["Nakit giriş ya da çıkış", () => setChoose(true)],
+    fis: ["Fiş ya da fatura ekle", () => setChoose(true)],
+    borc: ["Borç ekle", () => setChoose(true)],
+    kisi: ["Gelir ya da gider ekle", () => setChoose(true)],
+  }[tab];
+  const chooseFor = {
+    kasa: [
+      ["Nakit giriş", () => setAdd({ book: "club", dir: "in" })],
+      ["Fişle çıkış", () => openReceipt?.({ camera: true, kasa: true })],
+      ["Elle çıkış", () => setAdd({ book: "club", dir: "out" })],
+    ],
+    fis: [
+      ["Fiş fotoğrafı", () => openReceipt?.()],
+      ["Elle fiş", () => openReceipt?.({ manual: true })],
+      ["Fatura", () => desk.pick()],
+    ],
+    borc: [
+      ["Borç verdim", () => setDebtForm({ kind: "club", date: todayStr() })],
+      ["Borç aldım", () => setAdd({ book: "personal", dir: "debt" })],
+    ],
+    kisi: [
+      ["Gelir", () => setAdd({ book: "personal", dir: "in" })],
+      ["Gider", () => setAdd({ book: "personal", dir: "out" })],
+    ],
+  }[tab];
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Hesaplar" sub={live ? "Gmail bağlı · 5 dakikada bir bakılır" : ready ? "Gmail bir süredir bağlanmadı" : "Kurulum gerekli"}>
-        <button type="button" onClick={() => setAdd({ book, dir: "in" })} aria-label={book === "personal" ? "Kişisel gelir ya da gider ekle" : "Nakit giriş ya da çıkış ekle"} className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_1px_3px_rgba(38,40,44,.12)] active:scale-95">
-          <Icon name="plus" className="size-5" />
-        </button>
-        <Link href="/mail/setup" aria-label="Mail ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
-          <Icon name="wrench" className="size-5" />
+      <PageHeader title="Hesaplar">
+        <Link href="/mail/setup" className="flex h-10 items-center rounded-full border border-line bg-card px-4 text-[0.875rem] font-semibold text-fg active:scale-95">
+          Ayarlar
         </Link>
       </PageHeader>
 
-      {/* Kulüp (banka, kasa, ödemeler) ve Kişisel (kendi gelir, gider, borç) birbirinden ayrı */}
-      <div role="tablist" className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-line/50 p-1">
-        {[
-          ["club", "Kulüp"],
-          ["personal", "Kişisel"],
-        ].map(([k, l]) => (
-          <button key={k} type="button" role="tab" aria-selected={book === k} onClick={() => setBook(k)} className={`h-9 rounded-lg text-[0.9375rem] font-semibold ${book === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
+      {/* Üstte tek toplam: kulüp (banka + kasa); Kişisel sekmesinde kendi gelir − gider */}
+      {tab === "kisi" ? (
+        <section className={`${card} mt-3 px-4 py-3.5`}>
+          <p className="text-[0.8125rem] font-semibold text-mut">Kişisel toplam</p>
+          <p className="mt-0.5 text-[1.875rem] font-semibold leading-tight tabular-nums tracking-tight">
+            {personal.net < 0 ? "−" : ""}
+            {para(Math.abs(personal.net))} ₺
+          </p>
+          <p className="mt-1 text-[0.8125rem] tabular-nums text-mut">
+            Gelir {para(personal.in)} ₺ · Gider {para(personal.out)} ₺
+          </p>
+        </section>
+      ) : (
+        <button type="button" onClick={() => allAccts.length > 1 && setAcctPick(true)} className={`${card} mt-3 block w-full px-4 py-3.5 text-left`}>
+          <span className="block text-[0.8125rem] font-semibold text-mut">Kulüp toplam</span>
+          <span className="mt-0.5 block text-[1.875rem] font-semibold leading-tight tabular-nums tracking-tight">{mails === null ? "…" : `${para(bankTL + kasa.total)} ₺`}</span>
+          <span className="mt-1 block truncate text-[0.8125rem] tabular-nums text-mut">
+            {[`Banka ${para(bankTL)} ₺`, `Kasa ${para(kasa.total)} ₺`, ...otherCur.map((t) => `${para(t.total)} ${t.currency}`)].join(" · ")}
+          </span>
+        </button>
+      )}
+
+      <div role="tablist" className="mt-3 grid grid-cols-5 gap-1 rounded-xl bg-line/50 p-1">
+        {TABS.map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => (setTab(k), k === "fis" && setFisSeen(true))} className={`h-9 rounded-lg text-[0.8125rem] font-semibold ${tab === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
             {l}
           </button>
         ))}
       </div>
 
-      {book === "personal" ? (
-        <PersonalBook book={personal} cards={personalReceipts(receipts, todayStr().slice(0, 7))} payee={{ name: payee.name, n: payeeAll.length, sum: payeeAll.reduce((n, x) => n + x.amount, 0) }} onAdd={(dir) => setAdd({ book: "personal", dir })} onOpen={setManual} lent={<LentSection flat items={lent} kind="personal" title="Bana borçlu olanlar" onAdd={() => setDebtForm({ kind: "personal", date: todayStr() })} onOpen={setDebtOpen} />} />
-      ) : !mails ? (
-        <Loading />
-      ) : (
-        <>
-          {/* Bakiye: tek kart. Tek hesapta bakiye bir kez yazılır, altında hesabın adı ve bugünkü hareketler; birden çok
-              hesapta altında hesap listesi (dokununca hareketler o hesaba süzülür). Sağ üstteki + ile gösterilen hesaplar seçilir. */}
-          {accounts.length > 0 && (
-            <section className={`${card} mt-4`}>
-              <div className="bg-acc px-4 pb-4 pt-3.5 text-white">
-                <div className="flex items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[0.75rem] font-semibold tracking-[.06em] text-white/75">{accounts.length === 1 ? "BAKİYE" : "TOPLAM BAKİYE"}</p>
-                    {totals.map((t, i) => (
-                      <p key={t.currency} className={`tabular-nums tracking-tight ${i === 0 ? "mt-0.5 text-[1.875rem] font-bold leading-tight" : "text-[1.0625rem] font-semibold text-white/90"}`}>
-                        {money(t.total)} <span className={i === 0 ? "text-[1rem] font-semibold text-white/80" : "text-white/75"}>{t.currency}</span>
-                      </p>
-                    ))}
-                  </div>
-                  {allAccts.length > 1 && (
-                    <button type="button" onClick={() => setAcctPick(true)} aria-label={hiddenN > 0 ? `Hesap ekle (${hiddenN} gizli)` : "Gösterilen hesapları seç"} className="grid size-9 shrink-0 place-items-center rounded-full bg-white/15 text-[1.375rem] font-semibold leading-none text-white">
-                      +
-                    </button>
-                  )}
-                </div>
-                <p className="mt-1 truncate text-[0.75rem] text-white/75">
-                  {accounts.length === 1
-                    ? [accounts[0].name, accounts[0].last4 && `·${accounts[0].last4}`, `son özet ${when(accounts[0].at, today)}`].filter(Boolean).join(" · ")
-                    : `${accounts.length} hesap · son özet ${when(
-                        accounts
-                          .map((a) => a.at)
-                          .sort()
-                          .at(-1),
-                        today,
-                      )}`}
-                </p>
-                <p className="mt-2 border-t border-white/15 pt-2 text-[0.8125rem] font-semibold tabular-nums">
-                  {todayMoves.length ? (
-                    <>
-                      Bugün{todaySum.in > 0 && <span className="text-white"> · gelen +{money(todaySum.in)}</span>}
-                      {todaySum.out > 0 && <span className="text-white/85"> · giden −{money(todaySum.out)}</span>}
-                    </>
-                  ) : (
-                    <span className="font-normal text-white/75">Bugün hareket yok</span>
-                  )}
-                </p>
-              </div>
-              {accounts.length > 1 && (
-              <ul className="divide-y divide-line">
-                {accounts.map((a) => (
-                  <li key={a.key}>
-                    <button type="button" onClick={() => (setAcct((k) => (k === a.key ? "" : a.key)), setShownMax(SHOW))} aria-pressed={acct === a.key} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                      <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold ${acct === a.key ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>{a.currency || "₺"}</span>
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
-                        <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, when(a.at, today)].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="shrink-0 text-right">
-                        <b className="block text-[0.9375rem] font-semibold tabular-nums">{cash(a.balance, a.currency)}</b>
-                        {a.change !== null && a.change !== 0 && <small className={`block text-[0.75rem] font-semibold tabular-nums ${a.change > 0 ? "text-ok" : "text-rec"}`}>{signed(a.change, "")}</small>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              )}
-            </section>
-          )}
-          <Sheet open={acctPick} onClose={() => setAcctPick(false)} title="Gösterilen hesaplar">
-            <ul className="divide-y divide-line px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-              {allAccts.map((a) => {
-                const on = accounts.some((x) => x.key === a.key);
-                return (
-                  <li key={a.key}>
-                    <button type="button" onClick={() => toggleAcct(a.key)} aria-pressed={on} className="flex w-full items-center gap-3 py-3 text-left">
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
-                        <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, cash(a.balance, a.currency)].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className={`grid size-6 shrink-0 place-items-center rounded-md border ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-4" />}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Sheet>
-
-          <KasaCard kasa={kasa} onAdd={(dir) => (dir === "receipt" ? openReceipt?.({ camera: true, kasa: true }) : setAdd({ book: "club", dir }))} onOpen={(x) => (x.debtId ? setDebtOpen(x.debtId) : setManual(x))} onInclude={include} onArchive={archive} onUnarchive={unarchive} />
-          <LentSection items={lent} kind="club" title="Kulübün verdiği borçlar" onAdd={() => setDebtForm({ kind: "club", date: todayStr() })} onOpen={setDebtOpen} />
-
-          {/* Kişiler: Seyhun Yıldız'ın aldığı ödemeler ve eklenen adlar; dokununca o kişinin bütün ödemeleri */}
-          <section className="mt-6">
-            <h2 className={title}>Kişiler</h2>
-            <ul className={`${card} divide-y divide-line`}>
-              <li>
-                <Person href="/payments" name={payee.name || "Kişisel hesap"} sub={covered && payeeMonth.length ? `Bu ay ${payeeMonth.length} ödeme · +${money(payeeSum)} TL` : `${payeeAll.length} ödeme aldı`} amount={payeeAll.length ? `+${money(payeeAll.reduce((n, x) => n + x.amount, 0))}` : ""} main />
-              </li>
-              {others.map((o) => (
-                <li key={o.name}>
-                  <Person
-                    href={`/payments?ad=${encodeURIComponent(o.name)}`}
-                    name={o.name}
-                    sub={o.in || o.out ? [o.in && `Gelen +${money(o.in)}`, o.out && `Giden −${money(o.out)}`].filter(Boolean).join(" · ") : "Bu adla hareket yok"}
-                  />
-                </li>
-              ))}
-              <li>
-                {adding ? (
-                  <AddName onAdd={addName} onClose={() => setAdding(false)} />
-                ) : (
-                  <button type="button" onClick={() => setAdding(true)} className="flex h-12 w-full items-center gap-3 px-4 text-left text-[0.875rem] font-semibold text-acc">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full border border-dashed border-acc/40">
-                      <Icon name="plus" className="size-4" />
-                    </span>
-                    Kişi ekle
-                  </button>
-                )}
-              </li>
-            </ul>
-          </section>
-
-          {ledgerBusy && !ledger ? <SummarySkeleton /> : rep && <Summary rep={rep} />}
-
-          {profile.ledgerCard && <LedgerCard uid={profile.uid} self={payee.name} payee={payee} onSaved={() => (setLedger(null), setLedgerBusy(true), setTick((n) => n + 1))} />}
-
-          {/* Ödemeler: banka defterinin tamamı (Excel + günlük mailler, en baştan; sınır yok). İki sekme:
-              Tüm ödemeler (Tümü/Gelen/Giden, sayfa sayfa) ve En çok ödeyenler (bütün gelen paralar, gönderene göre). Arama ikisinde de. */}
-          {moves.length > 0 && (
-            <section className="mt-6">
-              <div className="flex items-center gap-2 px-1 pb-2">
-                <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">{picked ? `Ödemeler · ${picked.label}` : "Ödemeler"}</h2>
-                {picked && (
-                  <button type="button" onClick={() => setAcct("")} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc">
-                    Tüm hesaplar <Icon name="x" className="size-3.5" />
-                  </button>
-                )}
-              </div>
-              <div role="tablist" className="grid grid-cols-2 border-b border-line">
-                {[
-                  ["all", "Tüm ödemeler"],
-                  ["top", "En çok ödeyenler"],
-                ].map(([k, l]) => (
-                  <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => (setTab(k), setShownMax(SHOW))} className={`-mb-px h-11 border-b-2 text-[0.9375rem] font-semibold ${tab === k ? "border-acc text-fg" : "border-transparent text-mut"}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <label className="mt-3 flex h-11 items-center gap-2 rounded-2xl bg-card px-3.5 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <div className="mt-4">
+        {tab === "banka" &&
+          (mails === null ? (
+            <Loading />
+          ) : (
+            <>
+              <label className={`${card} flex h-11 items-center gap-2 px-3.5`}>
                 <Icon name="search" className="size-4 shrink-0 text-mut" />
-                <input
-                  type="search"
-                  value={q}
-                  onChange={(e) => (setQ(e.target.value), setShownMax(SHOW))}
-                  placeholder={tab === "top" ? "Ödeyen ara" : "İsim ya da açıklama ara"}
-                  enterKeyHint="search"
-                  className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden"
-                />
+                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad ya da açıklama ara" enterKeyHint="search" className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden" />
                 {q && (
                   <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" className="grid size-7 shrink-0 place-items-center rounded-full bg-bg text-mut">
                     <Icon name="x" className="size-3.5" />
                   </button>
                 )}
               </label>
-              {tab === "all" ? (
-                <>
-                  <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-line/50 p-1">
-                    {[
-                      ["", "Tümü"],
-                      ["in", "Gelen"],
-                      ["out", "Giden"],
-                    ].map(([k, l]) => (
-                      <button key={k} type="button" onClick={() => (setDir(k), setShownMax(SHOW))} aria-pressed={dir === k} className={`h-8 rounded-lg text-[0.8125rem] font-semibold ${dir === k ? "bg-card text-fg shadow-[0_1px_2px_rgba(38,40,44,.08)]" : "text-mut"}`}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="px-1 pb-2 pt-2.5 text-[0.75rem] text-mut">
-                    {shown.length
-                      ? `${shown.length} hareket${shownSum.in ? ` · gelen +${money(shownSum.in)}` : ""}${shownSum.out ? ` · giden −${money(shownSum.out)}` : ""} TL`
-                      : "Bu aramayla hareket bulunamadı."}
-                  </p>
-                  {shown.length > 0 && (
-                    <div className={card}>
-                      <Moves list={shown.slice(0, shownMax)} today={today} onManual={setManual} onBank={setBankPick} conv={conv} />
-                      {shown.length > shownMax && (
-                        <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
-                          Daha fazla göster ({shown.length - shownMax} kaldı)
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className="px-1 pb-2 pt-2.5 text-[0.75rem] text-mut">
-                    {ledgerBusy && !ledger
-                      ? "Bütün ödemeler okunuyor…"
-                      : payers.length
-                        ? `${payers.length} kişi · bütün gelen ödemeler${payersFrom ? ` · ilk kayıt ${payersFrom}` : ""}`
-                        : "Bu aramayla ödeyen bulunamadı."}
-                  </p>
-                  {payers.length > 0 && (
-                    <div className={card}>
-                      <ol className="divide-y divide-line">
-                        {payers.slice(0, shownMax).map((w, i) => (
-                          <li key={w.who}>
-                            <button type="button" onClick={() => (setQ(w.who), setTab("all"), setDir("in"), setShownMax(SHOW))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-                              <span className={`grid size-8 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold tabular-nums ${i < 3 && !q ? "bg-acc text-white" : "bg-bg text-mut"}`}>{i + 1}</span>
-                              <span className="min-w-0 flex-1">
-                                <b className="block truncate text-[0.9375rem] font-semibold">{w.who}</b>
-                                <small className="block text-[0.75rem] text-mut">{w.n} ödeme · son {shortDay(localDate(new Date(w.last).toISOString()))}</small>
-                              </span>
-                              <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-ok">+{money(w.sum)}</b>
-                            </button>
-                          </li>
-                        ))}
-                      </ol>
-                      {payers.length > shownMax && (
-                        <button type="button" onClick={() => setShownMax((n) => n + MORE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
-                          Daha fazla göster ({payers.length - shownMax} kaldı)
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
-          {/* Gelen kutusu: gönderene göre süz; dokununca mail açılır */}
-          <section className="mt-6">
-            <button type="button" onClick={() => setInboxOpen((v) => !v)} aria-expanded={inboxOpen} className="flex w-full items-center gap-2 px-1 pb-2 text-left">
-              <h2 className="min-w-0 flex-1 text-[0.8125rem] font-semibold text-mut">Gelen mailler ({list.length})</h2>
-              <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${inboxOpen ? "rotate-90" : ""}`} />
-            </button>
-            {inboxOpen && (
-              <>
-                <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none]">
-                  <Chip on={!from} onClick={() => setFrom("")} label="Tümü" n={list.length} />
-                  {rules.map((r) => (
-                    <Chip key={r.from} on={from === r.from} onClick={() => setFrom(r.from)} label={r.name} n={list.filter((m) => ruleFor(m.from, [r])).length} />
-                  ))}
+              {q.trim() && (
+                <div className={`${card} mt-3 flex items-center gap-3 px-4 py-3`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.9375rem] font-medium">{q.trim()}</span>
+                    <span className="block text-[0.8125rem] text-mut">{bankShown.length} hareket</span>
+                  </span>
+                  <span className="shrink-0 text-right text-[0.9375rem] font-semibold tabular-nums">
+                    {qSum.in > 0 && <span className="block text-ok">+{para(qSum.in)}</span>}
+                    {qSum.out > 0 && <span className="block">−{para(qSum.out)}</span>}
+                  </span>
                 </div>
-                {inbox.length ? (
-                  <div className={card}>
-                    <ul className="divide-y divide-line">
-                      {inbox.map((m, i) => (
-                        <MailRow key={m.id} m={m} today={today} head={i === 0 || localDate(inbox[i - 1].at) !== localDate(m.at)} />
-                      ))}
-                    </ul>
-                    {list.length >= max && (
-                      <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
-                        Daha eski mailler
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <p className={`${card} px-4 py-6 text-center text-[0.875rem] leading-snug text-mut`}>
-                    {!ready
-                      ? "Gmail'ini bağlayınca bankadan gelen hesap özetleri burada görünür."
-                      : from
-                        ? "Bu gönderenden mail yok."
-                        : "Henüz mail gelmedi. Seçtiğin gönderenlerden mail gelince burada görünür ve telefonuna bildirim gelir."}
-                  </p>
-                )}
-              </>
-            )}
-          </section>
+              )}
+              <div className="mt-4">
+                <MonthList key={q} rows={bankShown.map(bankRow)} empty={q.trim() ? "Bu aramayla hareket yok" : "Banka hareketi yok"} />
+              </div>
+            </>
+          ))}
 
-          {/* Durum ve ayarlar */}
-          <div className="mt-4 flex items-center gap-3 px-1">
-            <p className={`min-w-0 flex-1 text-[0.75rem] leading-snug ${ready && !live ? "text-rec" : "text-mut"}`}>
-              {!ready
-                ? "Gmail bağlı değil. Kurulumu bir kez yapman yeterli."
-                : live
-                  ? `Son mail ${lastMail ? when(lastMail, today) : "yok"} · Gmail 5 dakikada bir kendiliğinden kontrol edilir.`
-                  : "Gmail bir süredir kontrol edilmedi. Apps Script'te kur'u yeniden çalıştır."}
-            </p>
-            <Link href="/mail/setup" className="flex h-9 shrink-0 items-center rounded-xl bg-card px-3.5 text-[0.8125rem] font-semibold shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98]">
-              {ready ? "Gönderenler" : "Kurulumu yap"}
-            </Link>
-          </div>
-        </>
-      )}
+        {tab === "kasa" && (
+          <>
+            <MonthList rows={kasa.counted.map(cashRow)} empty="Kasada hareket yok" />
+            <Fold title="Kasaya sayılmayan girişler" rows={kasa.old.map(cashRow)}>
+              {kasa.old.length > 1 && (
+                <li>
+                  <button type="button" onClick={() => archive(kasa.old)} className="h-11 w-full text-[0.875rem] font-semibold text-mut">
+                    Hepsini arşivle
+                  </button>
+                </li>
+              )}
+            </Fold>
+            <Fold title="Arşiv" rows={kasa.archived.map(cashRow)} />
+          </>
+        )}
+
+        {tab === "fis" &&
+          (loading ? (
+            <Loading />
+          ) : (
+            <>
+              <Group title="Ödenecek" total={toPaySum} rows={toPay} className="mb-5" />
+              <MonthList rows={fisRows} empty={toPay.length ? "" : "Fiş ya da fatura yok"} />
+              <Link href="/receipts" className={`${card} mt-5 flex h-11 items-center justify-center text-[0.875rem] font-semibold text-acc`}>
+                Filtre ve Excel
+              </Link>
+            </>
+          ))}
+
+        {tab === "borc" && (
+          <>
+            <Group title="Geri gelecek" total={lentSum} rows={lentOpen.map(debtRow)} className="mb-5" />
+            <Group title="Benim borcum" total={personal.debt} rows={personal.debts.map(personalRow)} className="mb-5" />
+            {!lentOpen.length && !personal.debts.length && <p className={`${card} px-4 py-5 text-center text-[0.9375rem] text-mut`}>Açık borç yok</p>}
+            <Fold title="Ödenenler" rows={lentClosed.map(debtRow)} />
+          </>
+        )}
+
+        {tab === "kisi" && <MonthList rows={kisiRows} empty="Kişisel kayıt yok" />}
+      </div>
+
+      {addFor && <AddBar label={addFor[0]} onClick={addFor[1]} />}
+      <Choose open={choose && !!chooseFor} onClose={() => setChoose(false)} title={addFor?.[0] || ""} options={chooseFor} />
+      {desk.sheets}
+
+      <Sheet open={acctPick} onClose={() => setAcctPick(false)} title="Gösterilen hesaplar">
+        <ul className="divide-y divide-line px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          {allAccts.map((a) => {
+            const on = accounts.some((x) => x.key === a.key);
+            return (
+              <li key={a.key}>
+                <button type="button" onClick={() => toggleAcct(a.key)} aria-pressed={on} className="flex w-full items-center gap-3 py-3 text-left">
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
+                    <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, cash(a.balance, a.currency)].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-md border ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-4" />}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Sheet>
       <DebtForm
         key={debtForm ? debtForm.id || `new-${debtForm.kind}` : "off"}
         value={debtForm}
@@ -599,7 +497,7 @@ export default function MailPage() {
         key={curDebt?.id || "off"}
         debt={curDebt}
         onClose={() => setDebtOpen(null)}
-        onPay={(amt) => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? payDebt(y, amt, todayStr()) : y)), curDebt.kind === "club" ? "Ödeme kasaya girdi" : "Ödeme yazıldı")}
+        onPay={(n) => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? payDebt(y, n, todayStr()) : y)), curDebt.kind === "club" ? "Ödeme kasaya girdi" : "Ödeme yazıldı")}
         onUndo={() => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? { ...y, paid: [] } : y)), "Ödemeler geri alındı")}
         onEdit={() => (setDebtForm(curDebt), setDebtOpen(null))}
         onDelete={async () => {
@@ -609,26 +507,26 @@ export default function MailPage() {
       <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} options={whoOpts} onDropName={dropName} onSave={saveIncome} />
       <Sheet open={!!bankPick} onClose={() => setBankPick(null)} title={bankPick?.amount > 0 ? "Gelen para" : "Giden para"}>
         {bankPick && (
-          <div className="space-y-3 pb-2">
-            <p className={`text-[1.5rem] font-bold tabular-nums ${bankPick.amount > 0 ? "text-ok" : ""}`}>{signed(bankPick.amount, bankPick.currency)}</p>
+          <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+            <p className={`text-[1.5rem] font-semibold tabular-nums ${bankPick.amount > 0 ? "text-ok" : ""}`}>{signed(bankPick.amount, bankPick.currency)}</p>
             <p className="text-[0.9375rem]">{[whoIn(bankPick) && <b key="w" className="font-semibold">{whoIn(bankPick)}</b>, bankPick.note || bankPick.desc, bankPick.date, bankPick.accountLabel].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
             {conv.has(bankPick.id) ? (
               <>
-                <p className="text-[0.8125rem] leading-snug text-mut">Nakite çevrildi, kulüp kasasında. Kişisel hesabında sayılmıyor.</p>
+                <p className="text-[0.8125rem] text-mut">Nakite çevrildi, kulüp kasasında.</p>
                 <button type="button" onClick={() => unConv(bankPick)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
                   Geri al
                 </button>
               </>
-            ) : canConv(bankPick) ? (
-              <>
-                <p className="text-[0.8125rem] leading-snug text-mut">Bu parayı nakite çevirdiysen kulüp kasasına {money(Math.abs(bankPick.amount))} TL nakit giriş olarak eklenir. Maaş ya da sana gelen ödeme sayılmaz.</p>
-                <button type="button" onClick={() => toCash(bankPick)} className="h-11 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
-                  Nakite çevir · kulüp kasasına
-                </button>
-              </>
             ) : (
-              <p className="text-[0.8125rem] text-mut">Bu hareket nakite çevrilemez.</p>
+              canConv(bankPick) && (
+                <button type="button" onClick={() => toCash(bankPick)} className="h-11 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+                  Nakite çevir · kasaya {para(Math.abs(bankPick.amount))} ₺
+                </button>
+              )
             )}
+            <button type="button" onClick={() => (setTab("banka"), setQ(whoIn(bankPick) || ""), setBankPick(null))} disabled={!whoIn(bankPick)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold disabled:hidden">
+              Bu kişinin bütün hareketleri
+            </button>
           </div>
         )}
       </Sheet>
@@ -636,23 +534,28 @@ export default function MailPage() {
       <Sheet open={!!manual} onClose={() => setManual(null)} title={manual?.book === "personal" ? (manual.dir === "debt" ? "Borcum" : manual.dir === "out" ? "Kişisel gider" : "Kişisel gelir") : manual?.amount < 0 ? "Nakit çıkış" : "Nakit giriş"}>
         {manual && (
           <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-            <p className={`text-[1.5rem] font-bold tabular-nums ${manual.amount > 0 ? "text-ok" : manual.dir === "debt" ? "text-amber-700" : "text-rec"}`}>
-              {manual.amount > 0 ? "+" : "−"}
-              {money(Math.abs(manual.amount))} TL
-            </p>
+            <p className={`text-[1.5rem] font-semibold tabular-nums ${manual.amount > 0 ? "text-ok" : manual.dir === "debt" ? "text-amber-700" : ""}`}>{amt(manual.dir === "debt" ? -Math.abs(manual.amount) : manual.amount)} ₺</p>
             {manual.conv && <p className="text-[0.8125rem] text-mut">Bankadan nakite çevrildi.</p>}
             <p className="text-[0.9375rem]">{[manual.who && <b key="w" className="font-semibold">{manual.who}</b>, manual.note, manual.date].filter(Boolean).reduce((acc, x, i) => (i ? [...acc, " · ", x] : [x]), [])}</p>
-            {manual.cash && manual.key && (
-              <p className="text-[0.8125rem] text-mut">{inKasa(manual, cashData.meta) ? "Kasaya sayılıyor." : "Kasaya sayılmıyor."}</p>
-            )}
+            {manual.cash && manual.key && <p className="text-[0.8125rem] text-mut">{inKasa(manual, cashData.meta) ? "Kasaya sayılıyor." : kasa.archived.some((x) => x.key === manual.key) ? "Arşivde, kasaya sayılmıyor." : "Kasaya sayılmıyor."}</p>}
             {manual.dir === "debt" && (
-              <button type="button" onClick={() => payDebt(manual)} className="h-11 w-full rounded-xl bg-ok/10 text-[0.875rem] font-semibold text-ok">
+              <button type="button" onClick={() => payMyDebt(manual)} className="h-11 w-full rounded-xl bg-ok/10 text-[0.875rem] font-semibold text-ok">
                 {manual.paid ? "Ödenmedi olarak işaretle" : "Borcu ödedim"}
               </button>
             )}
-            {manual.cash && manual.key && (
+            {manual.cash && manual.key && !kasa.archived.some((x) => x.key === manual.key) && (
               <button type="button" onClick={() => include(manual, !inKasa(manual, cashData.meta))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
-                {inKasa(manual, cashData.meta) ? "Kasadan çıkar" : "Nakit girdi olarak ekle"}
+                {inKasa(manual, cashData.meta) ? "Kasadan çıkar" : "Kasaya ekle"}
+              </button>
+            )}
+            {kasa.old.some((x) => x.key === manual.key) && (
+              <button type="button" onClick={() => archive([manual])} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                Arşivle
+              </button>
+            )}
+            {kasa.archived.some((x) => x.key === manual.key) && (
+              <button type="button" onClick={() => unarchive([manual])} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                Arşivden çıkar
               </button>
             )}
             {manual.athleteId && (
@@ -661,12 +564,9 @@ export default function MailPage() {
               </button>
             )}
             {kasaLink(manual) && (
-              <>
-                <button type="button" onClick={() => router.push(kasaLink(manual).href)} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
-                  {kasaLink(manual).kind === "receipt" ? "Fişi aç" : "Faturaları aç"}
-                </button>
-                <p className="text-[0.75rem] leading-snug text-mut">{kasaLink(manual).kind === "receipt" ? "Fiş nakit ödendi. Ödemeyi geri alırsan ya da fişi silersen kasadan da kalkar." : "Fatura nakit ödendi. “Ödenmedi yap” dersen kasadan da kalkar."}</p>
-              </>
+              <button type="button" onClick={() => (kasaLink(manual).kind === "invoice" ? (setManual(null), setTab("fis"), setFisSeen(true)) : router.push(kasaLink(manual).href))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
+                {kasaLink(manual).kind === "receipt" ? "Fişi aç" : "Faturaları aç"}
+              </button>
             )}
             {manual.manual && !kasaLink(manual) && (
               <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
@@ -677,299 +577,5 @@ export default function MailPage() {
         )}
       </Sheet>
     </main>
-  );
-}
-
-// Özet: banka defterinin tamamı (tarih sınırı yok): gelen/giden toplam. En çok ödeyenler Ödemeler'de ayrı sekmede.
-function Summary({ rep }) {
-  return (
-    <section className="mt-6">
-      <h2 className={title}>Özet · bütün kayıtlar</h2>
-      <div className={`${card} grid grid-cols-2 divide-x divide-line`}>
-        <div className="px-4 py-3">
-          <p className="text-[0.75rem] font-semibold text-mut">Gelen · {rep.inN}</p>
-          <p className="mt-0.5 truncate text-[1.125rem] font-bold tabular-nums text-ok">+{money(rep.inSum)}</p>
-          {rep.cashN > 0 && <p className="mt-0.5 truncate text-[0.75rem] text-mut">nakit {rep.cashN} · +{money(rep.cashSum)}</p>}
-        </div>
-        <div className="px-4 py-3">
-          <p className="text-[0.75rem] font-semibold text-mut">Giden · {rep.outN}</p>
-          <p className="mt-0.5 truncate text-[1.125rem] font-bold tabular-nums">−{money(-rep.outSum)}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// Kişiler satırı
-function Person({ href, name, sub, amount, main }) {
-  return (
-    <Link href={href} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-      <span className={`grid size-9 shrink-0 place-items-center rounded-full text-[0.8125rem] font-bold ${main ? "bg-ok/10 text-ok" : "bg-acc/10 text-acc"}`}>{initials(name)}</span>
-      <span className="min-w-0 flex-1">
-        <b className="block truncate text-[0.9375rem] font-semibold">{name}</b>
-        <small className="block truncate text-[0.75rem] text-mut">{sub}</small>
-      </span>
-      {amount && <b className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-ok">{amount}</b>}
-      <Icon name="chev" className="size-4 shrink-0 text-mut" />
-    </Link>
-  );
-}
-const initials = (name) =>
-  String(name || "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toLocaleUpperCase("tr-TR") || "")
-    .join("") || "?";
-
-// Özet okunurken: aynı düzende yanıp sönen iskelet (sayfa bir anda kaymasın)
-function SummarySkeleton() {
-  const bar = (w, h = "h-3") => <span className={`shimmer block rounded-full ${h} ${w}`} />;
-  return (
-    <section className="mt-6" aria-busy="true" aria-label="Özet yükleniyor">
-      <h2 className={`${title} flex items-center gap-2`}>
-        Özet <span className="text-[0.75rem] font-medium">hesaplanıyor…</span>
-      </h2>
-      <div className={`${card} px-4 py-3.5`}>
-        <div className="grid grid-cols-2 gap-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="space-y-2 rounded-xl bg-bg px-3 py-2.5">
-              {bar("w-14", "h-2.5")}
-              {bar("w-24", "h-4")}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Chip({ on, onClick, label, n }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={`flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold active:scale-95 ${on ? "bg-fg text-card" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
-    >
-      {label}
-      <span className={`tabular-nums ${on ? "text-card/70" : "text-mut"}`}>{n}</span>
-    </button>
-  );
-}
-
-// Hesaplar › "İsim ekle": yazılan adla ilgili ödemeler ayrı satırda görünür (users/{uid}.payeeNames)
-function AddName({ onAdd, onClose }) {
-  const [name, setName] = useState("");
-  return (
-    <form onSubmit={(e) => (e.preventDefault(), onAdd(name))} className="flex items-center gap-2 px-4 py-2.5">
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Ad Soyad (bankadaki gibi)"
-        enterKeyHint="done"
-        className="h-10 min-w-0 flex-1 rounded-xl bg-bg px-3 text-[1rem] outline-none"
-      />
-      <button type="button" onClick={onClose} className="h-10 shrink-0 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold">
-        Vazgeç
-      </button>
-      <button type="submit" disabled={!name.trim()} className="h-10 shrink-0 rounded-xl bg-acc px-3.5 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
-        Ekle
-      </button>
-    </form>
-  );
-}
-
-// Hareket satırları, gün başlıklarıyla (banka uygulamasındaki gibi)
-function Moves({ list, today, onManual, onBank, conv }) {
-  const dayOf = (x) => localDate(new Date(x.ts).toISOString());
-  return (
-    <ul>
-      {list.map((x, i) => {
-        const d = dayOf(x);
-        const head = i === 0 || dayOf(list[i - 1]) !== d;
-        const t = /\d{1,2}:\d{2}/.exec(x.date)?.[0] || "";
-        return (
-          <li key={x.id}>
-            {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-            <div onClick={x.cash ? (onManual ? () => onManual(x) : undefined) : onBank ? () => onBank(x) : undefined} className={`flex h-14 items-center gap-3 px-4 ${(x.cash ? onManual : onBank) ? "cursor-pointer" : ""}`}>
-              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${x.cash ? "bg-amber-500/15 text-[0.9375rem] font-bold text-amber-700" : x.amount > 0 ? "bg-ok/10 text-ok" : "bg-rec/10 text-rec"}`}>
-                {x.cash ? "₺" : <Icon name="up" className={`size-4 ${x.amount > 0 ? "rotate-180" : ""}`} />}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <b className="truncate text-[0.9375rem] font-medium">{whoIn(x) || x.note || x.desc}</b>
-                  {x.cash && <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-px text-[0.6875rem] font-semibold text-amber-700">{x.conv ? "Bankadan nakit" : x.amount < 0 ? "Nakit verildi" : "Nakit ödendi"}</span>}
-                  {!x.cash && conv?.has(x.id) && <span className="shrink-0 rounded-full bg-acc/10 px-1.5 py-px text-[0.6875rem] font-semibold text-acc">Nakite çevrildi</span>}
-                </span>
-                <small className="block truncate text-[0.75rem] text-mut">{[t, whoIn(x) && (x.note || x.desc), !x.cash && (x.cat || x.kind)].filter(Boolean).join(" · ")}</small>
-              </span>
-              <span className="shrink-0 text-right">
-                <b className={`block text-[0.9375rem] font-semibold tabular-nums ${x.amount > 0 ? "text-ok" : ""}`}>{signed(x.amount, x.currency)}</b>
-                {typeof x.balance === "number" && <small className="block text-[0.6875rem] tabular-nums text-mut">{cash(x.balance, "")}</small>}
-              </span>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// Gelen kutusu satırı: gönderen, saat, konu, tek satır önizleme; dokununca açılır (hesap özeti ya da metin, ekler)
-function MailRow({ m, today, head }) {
-  const [open, setOpen] = useState(false);
-  const sheets = m.sheets || [];
-  const who = m.rule || m.fromName || m.from;
-  const d = localDate(m.at);
-  return (
-    <li>
-      {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-start gap-3 px-4 py-3 text-left">
-        <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${sheets.length ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
-          <Icon name={sheets.length ? "wallet" : "mail"} className="size-[1.125rem]" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-baseline gap-2">
-            <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{who}</b>
-            <time className="shrink-0 text-[0.75rem] tabular-nums text-mut">{hm(m.at)}</time>
-          </span>
-          <span className="block truncate text-[0.875rem]">{m.subject || "(Konu yok)"}</span>
-          <span className="flex items-center gap-1.5 text-[0.8125rem] text-mut">
-            <span className="min-w-0 flex-1 truncate">{previewOf(m, money) || "İçerik yok"}</span>
-            {m.files?.length > 0 && <span className="shrink-0 rounded bg-bg px-1.5 text-[0.6875rem] font-semibold">Ek {m.files.length}</span>}
-          </span>
-        </span>
-      </button>
-      {open && (
-        <div className="fade-in pb-1">
-          {sheets.length ? (
-            sheets.map((s, i) => <Statement key={i} s={s} m={m} />)
-          ) : (
-            <p className="mx-4 mb-3 whitespace-pre-wrap rounded-xl bg-bg px-3.5 py-3 text-[0.875rem] leading-snug text-fg/85">{m.text || "İçerik yok"}</p>
-          )}
-          {(m.rawFiles || m.raw)?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-              {(m.rawFiles || m.raw).map((f) => (
-                <button
-                  key={f.name}
-                  type="button"
-                  onClick={() => mailFileBytes(f).then((b) => download(f.name, b, "application/vnd.ms-excel"), () => (f.url ? window.open(f.url, "_blank") : alert("Ek indirilemedi")))}
-                  className="flex h-8 max-w-full items-center gap-1.5 rounded-full bg-bg px-3 text-[0.75rem] font-semibold text-mut active:scale-95"
-                >
-                  <Icon name="up" className="size-3.5 shrink-0 rotate-180" /> <span className="truncate">{f.name}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </li>
-  );
-}
-
-// Dosya adı: Türkçe harfler sade Latin harfe (bazı tarayıcılar ASCII dışı adı yok sayıp "download" der)
-const TR = {
-  ç: "c",
-  ğ: "g",
-  ı: "i",
-  İ: "I",
-  ö: "o",
-  ş: "s",
-  ü: "u",
-  Ç: "C",
-  Ğ: "G",
-  Ö: "O",
-  Ş: "S",
-  Ü: "U",
-};
-const fileName = (s) => s.replace(/[çğıİöşüÇĞÖŞÜ]/g, (c) => TR[c]).replace(/[^\w.-]+/g, "-");
-
-// CSV dosyası indir (Excel açar)
-function download(name, text, type = "text/csv;charset=utf-8") {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const a = Object.assign(document.createElement("a"), {
-    href: url,
-    download: fileName(name),
-  });
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-// Hesap özeti: bakiye, hareket sayısı, giren/çıkan; dokununca hareketler ve hesap bilgileri
-function Statement({ s, m }) {
-  const [open, setOpen] = useState(false);
-  const { sum = {}, columns = [], rows = [], meta = {} } = s;
-  const col = (re) => columns.findIndex((c) => re.test(c));
-  const c = {
-    date: col(/tarih|date/i),
-    desc: col(/açıklama|aciklama|description/i),
-    amount: col(/tutar|amount/i),
-    bal: col(/bakiye|balance/i),
-    type: col(/[iİ]şlem tipi|^[iİ]şlem$/i),
-  };
-  const cur = sum.currency || "";
-  return (
-    <div className="px-4 pb-3">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="block w-full rounded-xl bg-bg px-3.5 py-3 text-left active:scale-[.99]" aria-expanded={open}>
-        <span className="flex items-center justify-between gap-2 text-[0.75rem] text-mut">
-          <span className="truncate">{[sum.product || "Hesap", sum.last4 && `·${sum.last4}`].filter(Boolean).join(" ")}</span>
-          <Icon name="chev" className={`size-4 shrink-0 transition ${open ? "rotate-90" : ""}`} />
-        </span>
-        <b className="mt-0.5 block text-[1.375rem] font-bold tracking-tight">
-          {balanceOf(s) === null ? "—" : money(balanceOf(s))} <span className="text-[0.875rem] font-semibold text-mut">{cur}</span>
-        </b>
-        <span className="mt-1.5 flex flex-wrap gap-1.5 text-[0.75rem] font-semibold">
-          <span className="rounded-full bg-card px-2 py-0.5 text-mut">{sum.count ? `${sum.count} hareket` : "Hareket yok"}</span>
-          {sum.inSum > 0 && <span className="rounded-full bg-ok/10 px-2 py-0.5 text-ok">+{money(sum.inSum)}</span>}
-          {sum.outSum < 0 && <span className="rounded-full bg-rec/10 px-2 py-0.5 text-rec">−{money(-sum.outSum)}</span>}
-        </span>
-      </button>
-      {open && (
-        <div className="fade-in mt-2">
-          {rows.length > 0 && (
-            <ul className="divide-y divide-line">
-              {rows.map(({ v }, i) => {
-                const amt = typeof v[c.amount] === "number" ? v[c.amount] : null;
-                return (
-                  <li key={i} className="flex items-start gap-3 py-2.5">
-                    <span className="min-w-0 flex-1">
-                      <b className="block text-[0.875rem] font-medium leading-snug">{(c.desc >= 0 && v[c.desc]) || (c.type >= 0 && v[c.type]) || "İşlem"}</b>
-                      <small className="block text-[0.75rem] text-mut">{[c.date >= 0 && v[c.date], c.type >= 0 && c.desc >= 0 && v[c.type]].filter(Boolean).join(" · ")}</small>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <b className={`block text-[0.875rem] font-semibold tabular-nums ${amt > 0 ? "text-ok" : amt < 0 ? "text-rec" : ""}`}>
-                        {amt === null ? String(v[c.amount] ?? "") : `${amt > 0 ? "+" : "−"}${money(Math.abs(amt))}`}
-                      </b>
-                      {c.bal >= 0 && <small className="block text-[0.75rem] tabular-nums text-mut">{typeof v[c.bal] === "number" ? money(v[c.bal]) : v[c.bal]}</small>}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {Object.keys(meta).length > 0 && (
-            <dl className="mt-2 space-y-1 rounded-xl bg-bg px-3.5 py-2.5 text-[0.75rem]">
-              {Object.entries(meta).map(([k, val]) => (
-                <div key={k} className="flex gap-2">
-                  <dt className="w-[42%] shrink-0 text-mut">{k}</dt>
-                  <dd className="min-w-0 break-words">{val}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          <button
-            type="button"
-            onClick={() => download(`${(m.rule || "hesap").replace(/\s+/g, "-")}_${sum.currency || ""}_${localDate(m.at)}.csv`, statementCsv(s, m.subject))}
-            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]"
-          >
-            <Icon name="up" className="size-4 rotate-180" /> Excel olarak indir
-          </button>
-        </div>
-      )}
-    </div>
   );
 }

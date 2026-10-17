@@ -1242,6 +1242,7 @@ const HMOV = [
 ];
 const D = await import("@/lib/dues");
 const KB = await import("@/lib/cashbook");
+const HR = await import("@/lib/hesapRows");
 group("Hesaplar arama ve eklenen adlar")([
   ["isimle arama", F("ahmet → 3 hareket (Türkçe harfsiz, kelime başı)", () => PY.searchMoves(HMOV, "ahm").length === 3 && PY.searchMoves(HMOV, "Ahmet Kaya").length === 3)],
   ["açıklamada arama", F("aidat → 2", () => PY.searchMoves(HMOV, "aidat").length === 2)],
@@ -1276,6 +1277,10 @@ group("Hesaplar arama ve eklenen adlar")([
   ["kasa: nakit aidat anahtarı", F("aidat nakitleri kasaya at ile girer", () => {
     const l = D.cashMoves({ "2026-10": { paid: { a1: [{ amt: 1500, via: "cash", date: "2026-10-11", at: "2026-10-11T08:00:00Z" }] } } }, []);
     return l[0].key === "d:2026-10:a1:2026-10-11T08:00:00Z" && KB.kasaOf(l, { from: "2026-10-10T00:00:00Z" }).total === 1500;
+  })],
+  ["Hesaplar sekme listesi", F("aylara göre en yeni önce, ay toplamları, kısa gün", () => {
+    const g = HR.byMonth([{ id: "a", day: "2026-09-30", amount: 100 }, { id: "b", day: "2026-10-02", sort: "2026-10-02T08:00", amount: -40 }, { id: "c", day: "2026-10-05", amount: 300 }]);
+    return g.length === 2 && g[0].ym === "2026-10" && g[0].rows[0].id === "c" && g[0].in === 300 && g[0].out === 40 && g[1].in === 100 && HR.dayText("2026-10-17") === "17 Eki" && HR.monthText("2025-03") === "Mart 2025" && HR.amt(-300) === "−300" && HR.amt(1200).startsWith("+");
   })],
   ["kasa: kulübün verdiği borç", F("borç kasadan düşer, geri ödeme girer; kişisel borç kasaya girmez; eski borç sayılmaz", () => {
     const items = [
