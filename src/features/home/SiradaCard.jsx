@@ -117,7 +117,7 @@ function TimeRow({ p, live, warn, sub, date, onOpen }) {
   return (
     <li>
       <button type="button" onClick={onOpen} className={`tone-${planTone(p)} grid w-full grid-cols-[3.25rem_1fr] text-left`}>
-        <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.8125rem] font-semibold text-fg2"}`}>
+        <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
           {p.time || "Tüm gün"}
           {date && <small className="block text-[0.75rem] font-normal text-mut">{date}</small>}
         </span>
