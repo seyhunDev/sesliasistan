@@ -247,7 +247,7 @@ function NotesList({ list, total }) {
 }
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
-// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu hafta ve sonraki iki hafta (kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün koyu.
+// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): dünden başlayan üç haftalık günler (bugün ikinci sırada, kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün koyu.
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
 // Fitness olan günün altında turuncu, başka planı olan günün altında plan türünün renginde nokta (planTone; pencerede PLANLAR). Sırada kartının (SiradaCard.jsx) içinde çizilir.
@@ -264,7 +264,7 @@ export function WeekStrip({ w, att, today }) {
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
   return (
     <>
-      {/* Kaydırılan şerit (Seyhun: "iki hafta daha gidebilmeliyim, sonra Tümü"): her gün kartın yedide biri, hafta başında durur; ayın 1'inde gün adı yerine ay adı; en sonda Tümü (Takvim) */}
+      {/* Kaydırılan şerit (Seyhun: "iki hafta daha gidebilmeliyim, sonra Tümü"): dünden başlar, her gün kartın yedide biri, gün gün durur; ayın 1'inde gün adı yerine ay adı; en sonda Tümü (Takvim) */}
       <div className="flex snap-x snap-mandatory scroll-px-2.5 overflow-x-auto px-2.5 pb-3 pt-1 [scrollbar-width:none]">
         {w.days.map((d, i) => {
           const fitOnly = !d.has && d.fit.length > 0;
@@ -287,7 +287,7 @@ export function WeekStrip({ w, att, today }) {
               </span>
             </>
           );
-          const cls = `flex w-[calc((min(100vw,30rem)-3.375rem)/7)] shrink-0 flex-col items-center gap-1 rounded-xl py-0.5 ${i % 7 === 0 ? "snap-start" : ""}`;
+          const cls = `flex w-[calc((min(100vw,30rem)-3.375rem)/7)] shrink-0 flex-col items-center gap-1 snap-start rounded-xl py-0.5`;
           return info.tap ? (
             <button key={d.date} type="button" data-press onClick={() => setPick(d)} aria-label={`${d.d} ${d.w}: ${what}`} className={cls}>
               {inner}

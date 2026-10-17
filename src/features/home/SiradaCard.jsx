@@ -17,7 +17,7 @@ import { DayPick, WeekStrip } from "./HomeSummary";
 import { CALM } from "./ui";
 
 // Ana sayfanın en üstü (Seyhun: "takvimde bugün ve yarın gösterilsin, en fazla iki gün; yarın yoksa en yakın gün; altında sırada seni bekleyenler").
-// Tek kart: üstte hafta şeridi (gün daireleri ve noktalar, WeekStrip; üç hafta kaydırılır, sonunda Tümü › Takvim), iki gün (Bugün ve planı olan en yakın gün; saat ya da "Tüm gün", başlık), altında "Sırada seni bekleyenler":
+// Tek kart: üstte gün şeridi (gün daireleri ve noktalar, WeekStrip; dünden başlar, bugün ikinci sırada; üç hafta kaydırılır, sonunda Tümü › Takvim), iki gün (Bugün ve planı olan en yakın gün; saat ya da "Tüm gün", başlık), altında "Sırada seni bekleyenler":
 // sonraki 4 plan ve "N şey seni bekliyor" şeridi (zil ile aynı pencere). Gün başlığına dokununca o günün penceresi (yoklama, fitness; DayPick).
 // Canlı satırlar (Seyhun: "buraları daha canlı yapalım"): solda plan türünün renginde çizgi (planTone), Bugün/Yarın'da sağda tür etiketi,
 // süren plan yeşil zeminli; gün başlığının yanında plan sayısı. Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
@@ -32,7 +32,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const [pick, setPick] = useState(null);
   if (!profile) return null;
   const today = todayStr();
-  const week = training ? trainingWeek(plans, today, fit || [], 3) : null;
+  const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
   const { days, rest } = twoDays(plans, today, now, 4);
   const open = (p) => {
     const race = raceForPlan(p, races.open, today);

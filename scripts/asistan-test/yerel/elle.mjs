@@ -621,12 +621,16 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
-  ["kulüp kartları", F("ana sayfa şeridi üç hafta: sonraki ay da, planı orada olan gün görünür", () => {
+  ["kulüp kartları", F("ana sayfa şeridi üç hafta: sonraki ay da, planı orada olan gün görünür; dünden başlayınca bugün ikinci", () => {
     const today = "2026-10-17";
     const w = HT.trainingWeek([{ id: "x", title: "Doktor", date: "2026-10-30" }, { id: "y", cat: "Antrenman", date: "2026-11-01" }], today, [], 3);
     const last = w.days[20];
+    // Ana sayfa: dünden başlar, bugün ikinci sırada, gün adları doğru
+    const y = HT.trainingWeek([{ id: "z", cat: "Antrenman", date: "2026-11-05" }], today, [], 3, true);
     return w.days.length === 21 && w.days[0].date === "2026-10-12" && w.days[7].w === "Pzt" && last.date === "2026-11-01" && last.d === 1
-      && last.state === "plan" && w.days[18].other.length === 1 && HT.trainingWeek([], today, [], 3) === null;
+      && last.state === "plan" && w.days[18].other.length === 1 && HT.trainingWeek([], today, [], 3) === null
+      && y.days[0].date === "2026-10-16" && y.days[0].w === "Cum" && y.days[1].state === "today" && y.days[1].w === "Cmt" && y.days[2].w === "Paz"
+      && y.days[20].date === "2026-11-05" && y.days[20].state === "plan" && y.days.length === 21;
   })],
   ["kulüp kartları", F("renk tonları: çalışan/sporcu/veli farklı, plan türüne göre çizgi ve etiket", () => {
     const k = ["staff", "athlete", "student", "parent", "family", undefined, "other"].map(HT.personTone).join();
