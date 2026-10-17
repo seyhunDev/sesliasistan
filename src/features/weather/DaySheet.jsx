@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, placeLabel, sky, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, windLevel, windName } from "./weather";
+import { todayStr } from "@/lib/utils/format";
 import { Col } from "./parts";
 import { WindMapView } from "./WindMap";
 
@@ -163,8 +164,11 @@ const ago = (ms) => {
 
 // Hava detayı: önce seçili günün özeti ve rüzgâr grafiği (bugün açılır), altında gün seçici, rüzgâr haritası, kaynak
 export function WeatherDetail({ w, refresh, busy }) {
-  const today = w.today?.date;
-  const days = [{ date: today, code: w.today.code, min: w.today.min, max: w.today.max, wind: w.today.wind }, ...(w.days || [])].filter((d) => d.date);
+  // Veri dünden kaldıysa (gece yarısını geçti, yenileme gelmedi) gün listesi bugünden başlar
+  const now = todayStr();
+  const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind }, ...(w.days || [])].filter((d) => d.date && d.date >= now);
+  const days = all.length ? all : [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind }];
+  const today = days[0].date;
   const [sel, setSel] = useState(today);
   const rows = dayHours(w, sel) || [];
   const info = days.find((d) => d.date === sel);
@@ -174,7 +178,7 @@ export function WeatherDetail({ w, refresh, busy }) {
   const [cmp, setCmp] = useState(false);
   return (
     <div>
-      <div>{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} cur={sel === today ? w.now : null} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
+      <div>{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} cur={sel === today ? nowOf(w) : null} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
 
       {/* Gün seçici: bugün + 5 gün */}
       <div className="-mx-1 mt-2 grid grid-cols-6 gap-1 border-t border-line pt-3">
