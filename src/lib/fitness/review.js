@@ -80,7 +80,8 @@ export function planSummary(p, today) {
     name: p.fit?.name || p.title || "Antrenman",
     st,
     status: STATUS[st],
-    rows: st === "done" ? r.rows.map((x) => ({ name: x.name, line: x.line, sets: x.sets.map((s) => s.text).join(" · ") })) : [],
+    // Set süreleri yalnız erken geçilen set varsa yazılır (hepsi tamamsa satır zaten söylüyor)
+    rows: st === "done" ? r.rows.map((x) => ({ name: x.name, line: x.line, sets: x.sets.some((s) => s.state === "early") ? x.sets.map((s) => s.text).join(" · ") : "" })) : [],
     min: st === "done" ? p.fit?.res?.min || 0 : 0,
     feel: p.fit?.res?.feel || 0,
     note: S(p.fit?.res?.note, 300),
@@ -110,18 +111,48 @@ function reviewHtml(r) {
   return `<h2>Değerlendirme · ${esc(weekLabel(r.week))}</h2>${rows ? `<table><tr class="th"><td>Gösterge</td><td>Hedef</td><td>Haftalık kayıt</td></tr>${rows}</table>` : ""}${ask ? `<h3>Pazar geri bildirimi</h3>${ask}` : ""}${r.note ? `<h3>Antrenör notu</h3><p>${esc(r.note).replace(/\n/g, "<br>")}</p>` : ""}`;
 }
 
-// Yazdırılacak sayfa: pick { week, all, review } (en az biri). plans: sporcunun fitness planları
-export function printHtml({ name, prog, plans = [], review, week, pick = {}, today }) {
+export const CLUB = "Dikili Yelken Spor Kulübü";
+export const CLUB_LOGO = "/club-logo.png";
+
+// Rapor (uygulama içinde önizlenir ve yazdırılır): kulüp başlığı ve logosu, sporcu, program, hafta, antrenör; seçilen bölümler; imza.
+// pick { week, all, review } (en az biri). plans: sporcunun fitness planları. Biçim REPORT_CSS (yalnız .fr içinde geçerli).
+export function reportHtml({ name, prog, plans = [], review, week, pick = {}, today, coach = "", meta = "" }) {
   const parts = [];
   if (pick.week) parts.push(plansHtml(`Bu haftanın antrenmanları · ${weekLabel(week)}`, weekPlans(plans, week).map((p) => planSummary(p, today))));
   if (pick.all) parts.push(plansHtml("Bütün antrenmanlar", fitPlans(plans).filter((p) => p.date <= today || p.fit?.res?.st).map((p) => planSummary(p, today))));
   if (pick.review && review) parts.push(reviewHtml(review));
-  const title = `${name || "Sporcu"} · ${prog?.title || "Fitness"}`;
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
-body{font:12px -apple-system,Arial,sans-serif;color:#222;margin:24px}h1{font-size:18px;margin:0 0 2px}h2{font-size:15px;margin:22px 0 4px}h3{font-size:13px;margin:16px 0 6px}
-.m{color:#666}table{width:100%;border-collapse:collapse}td{border-bottom:1px solid #ddd;padding:5px 4px;vertical-align:top;text-align:left}
-tr.h td{font-weight:600;border-top:2px solid #444;padding-top:8px}tr.th td{font-weight:600;border-bottom:2px solid #444}td.v{width:30%}
-.q{margin:0 0 10px}.q p{margin:3px 0 0;min-height:18px;border-bottom:1px solid #ddd}
-</style></head><body><h1>${esc(title)}</h1><p class="m">Yazdırma: ${esc(dm(today))} ${esc(today.slice(0, 4))}</p>${parts.join("")}
-<script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`;
+  const info = [
+    ["Sporcu", [name, meta].filter(Boolean).join(" · ")],
+    ["Program", prog?.title || "Fitness"],
+    ["Hafta", weekLabel(week)],
+    ["Antrenör", coach],
+  ]
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b></div>`)
+    .join("");
+  return `<header><img src="${CLUB_LOGO}" alt=""><div><b>${esc(CLUB.toLocaleUpperCase("tr-TR"))}</b><span>Sporcu antrenman raporu</span></div><time>${esc(dm(today))} ${esc(today.slice(0, 4))}</time></header>
+<section class="info">${info}</section>${parts.join("")}
+<footer><div><span>Antrenör</span><b>${esc(coach) || "&nbsp;"}</b><i>İmza</i></div><div><span>Sporcu / Veli</span><b>${esc(name) || "&nbsp;"}</b><i>İmza</i></div></footer>`;
 }
+
+export const REPORT_CSS = `
+.fr{font:12px/1.45 -apple-system,"Helvetica Neue",Arial,sans-serif;color:#2b2d31;background:#fff;max-width:760px;margin:0 auto;padding:28px 26px}
+.fr header{display:flex;align-items:center;gap:14px;padding-bottom:12px;border-bottom:2px solid #2f7d6b}
+.fr header img{width:58px;height:58px;object-fit:contain}
+.fr header div{flex:1;display:flex;flex-direction:column}
+.fr header b{font-size:16px;letter-spacing:.04em;color:#1f3a5f}
+.fr header span{font-size:13px;color:#2f7d6b;font-weight:600}
+.fr header time{font-size:11px;color:#777;align-self:flex-start}
+.fr .info{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin:14px 0 4px;padding:10px 12px;background:#f4f6f3;border-radius:10px}
+.fr .info div{display:flex;flex-direction:column}.fr .info small{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.06em}.fr .info b{font-weight:600}
+.fr h2{font-size:14px;margin:20px 0 4px;color:#1f3a5f}.fr h3{font-size:12.5px;margin:14px 0 6px;color:#1f3a5f}
+.fr .m{color:#6b6e73}.fr p{margin:0 0 6px}
+.fr table{width:100%;border-collapse:collapse;page-break-inside:auto}.fr tr{page-break-inside:avoid}
+.fr td{border-bottom:1px solid #e3e5e1;padding:5px 4px;vertical-align:top;text-align:left}
+.fr tr.h td{font-weight:600;border-top:1.5px solid #9aa39c;padding-top:7px}
+.fr tr.th td{font-weight:600;font-size:11px;color:#555;border-bottom:1.5px solid #9aa39c}.fr td.v{width:28%;font-weight:600}
+.fr .q{margin:0 0 9px;page-break-inside:avoid}.fr .q p{margin:3px 0 0;min-height:18px;border-bottom:1px solid #e3e5e1}
+.fr footer{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:34px;page-break-inside:avoid}
+.fr footer div{display:flex;flex-direction:column;border-top:1px solid #9aa39c;padding-top:6px}
+.fr footer span{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.06em}.fr footer i{font-style:normal;font-size:10px;color:#999;margin-top:22px}
+`;

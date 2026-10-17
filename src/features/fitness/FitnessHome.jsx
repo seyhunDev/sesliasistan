@@ -33,6 +33,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 // planlara ekle, profil) ve kapalı "Gelişim ve geçmiş" (halka, seri, gelişim, bu ay, geçmiş; parçalar FitDashboard.jsx). Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
 // Program yapay zekayla hazırlanır (Program hazırla: günler, saat, hafta, süre, profil) ya da asistana söylenir; önizlemede açılır.
 // İlk antrenman: başlangıçtan sonraki ilk seçili gün (yeni programda başlangıç geçmişteyse bugün)
+// Raporda sporcunun altı: "14 yaş · Yelken"
+const athMeta = (a, prog, today) => [ageFrom(a?.birth, today) || prog?.forAge ? `${ageFrom(a?.birth, today) || prog?.forAge} yaş` : "", labelOf(SPORTS, prog?.sport)].filter(Boolean).join(" · ");
 const fixStart = (p) => ({ ...p, start: p.start && (p.id || p.start >= todayStr()) ? p.start : todayStr() });
 
 export function FitnessHome() {
@@ -401,7 +403,7 @@ export function FitnessHome() {
   if (ath && revOpen && (selRow || selAth)) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-        <FitReview orgId={orgId} uid={ath} name={selAth?.name || selRow?.name || ""} prog={selRow?.prog} plans={selRow?.plans || []} today={today} onBack={() => setRevOpen(false)} />
+        <FitReview orgId={orgId} uid={ath} name={selAth?.name || selRow?.name || ""} meta={athMeta(selAth, selRow?.prog, today)} prog={selRow?.prog} plans={selRow?.plans || []} today={today} onBack={() => setRevOpen(false)} />
       </main>
     );
   }

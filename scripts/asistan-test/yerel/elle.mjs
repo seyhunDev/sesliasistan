@@ -2183,7 +2183,7 @@ group("Fitness: program ayrıntıları ve şablon")([
     return r.week === "2026-10-12" && r.rows.length === 8 && r.rows[0].v === 8.5 && r.rows[1].v === "" && r.ask[2].a === "İyi" && r.note === "güzel hafta" &&
       FRV.reviewId("u1", r.week) === "u1_2026-10-12" && FRV.weekLabel("2026-10-12") === "12–18 Eki" && FRV.weekLabel("2026-10-26") === "26 Eki – 1 Kas" && FRV.reviewFilled(r);
   })],
-  ["değerlendirme yazdır", F("bu hafta, bütün antrenmanlar ve değerlendirme seçilerek yazdırılır; sonuçlar ve saniyeler görünür", () => {
+  ["değerlendirme yazdır", F("bu hafta, bütün antrenmanlar ve değerlendirme seçilerek yazdırılır; sonuçlar, saniyeler, kulüp logosu ve antrenör görünür", () => {
     const fit = (name, res) => ({ prog: "p", name, for: "u1", items: [{ name: "Plank", kind: "time", sets: 2, sec: 30 }, { name: "Squat", kind: "reps", sets: 2, reps: 10 }], res });
     const plans = [
       { id: "a", cat: "Fitness", date: "2026-10-06", fit: fit("Kuvvet A", { st: "done", min: 35, feel: 2, ex: [{ sets: [{ ok: true, took: 30, full: true }, { ok: true, took: 18 }] }, { sets: [{ ok: true, reps: 10 }, { ok: true, reps: 9 }] }] }) },
@@ -2192,11 +2192,12 @@ group("Fitness: program ayrıntıları ve şablon")([
     ];
     const s = FRV.planSummary(plans[1], "2026-10-17");
     const rev = FRV.cleanReview({ week: "2026-10-12", rows: [{ label: "Ev kuvveti", v: 1 }], note: "Not <b>" }, { rows: [{ label: "Ev kuvveti", goal: "2 seans", unit: "/ 2" }], ask: [] });
-    const week = FRV.printHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { week: true }, today: "2026-10-17" });
-    const all = FRV.printHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { all: true, review: true }, today: "2026-10-17" });
+    const week = FRV.reportHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { week: true }, today: "2026-10-17" });
+    const all = FRV.reportHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { all: true, review: true }, today: "2026-10-17", coach: "Seyhun Yıldız", meta: "14 yaş · Yelken" });
     return FRV.weekPlans(plans, "2026-10-12").length === 2 && s.st === "done" && s.rows[0].line === "1 × 0:30" && s.rows[1].line === "Yapılmadı" &&
       week.includes("Kuvvet B") && !week.includes("Değerlendirme ·") && week.includes("1 / 2 antrenman yapıldı") &&
-      all.includes("Bütün antrenmanlar") && all.includes("0:18 / 0:30") && all.includes("Değerlendirme · 12–18 Eki") && all.includes("1 / 2</td>") && all.includes("Not &lt;b&gt;");
+      all.includes("Bütün antrenmanlar") && all.includes("0:18 / 0:30") && all.includes("Değerlendirme · 12–18 Eki") && all.includes("1 / 2</td>") && all.includes("Not &lt;b&gt;") &&
+      all.includes("DİKİLİ YELKEN SPOR KULÜBÜ") && all.includes("/club-logo.png") && all.includes("Seyhun Yıldız") && all.includes("İlay · 14 yaş · Yelken") && !week.includes("Antrenör</small>");
   })],
   ["program listesi", F("ayrıntılar ve evreler düz yazıda", () => {
     const t = FMI.programText(FTPL.fromTemplate("yelken-ev-12", "2026-10-19"));
