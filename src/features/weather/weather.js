@@ -60,6 +60,10 @@ export function sky(code, day = true) {
   return { label: "—", icon: "cloud" };
 }
 
+// Hava simgesinin rengi (ana sayfa hava satırı ve rüzgâr grafiğindeki saat simgeleri): güneş sarı, ay gri-mavi, bulut gri, yağmur mavi…
+const SKY_TONE = { sun: "text-[#d39a2c]", moon: "text-[#7f8daa]", cloudSun: "text-[#c9953a]", cloud: "text-[#8a9099]", fog: "text-[#8a9099]", rain: "text-[#4f7fae]", storm: "text-[#5d6f9e]", snow: "text-[#7fa6c9]" };
+export const skyTone = (icon) => SKY_TONE[icon] || "text-acc";
+
 // Rüzgâr yönü (geldiği yön, derece) -> Türkçe rüzgâr adı ve kısa yön
 const WINDS = [
   ["Yıldız", "K"], ["Poyraz", "KD"], ["Gündoğusu", "D"], ["Keşişleme", "GD"],
