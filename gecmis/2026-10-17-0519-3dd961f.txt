@@ -1,8 +1,8 @@
-Commit: cef700d · Ana sayfa Antrenman kartında fitness antrenmanları ve gün seçimi (#380)
-Zaman: 2026-10-14-0139 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38479104665
+Commit: 3dd961f · Asistan: çalışırken durum tek yerde, açılışta önceki sohbetler, kapanış animasyonu (#444)
+Zaman: 2026-10-17-0519 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38994330408
 
-TAM TEST · 14.10.2026 01:38:38
+TAM TEST · 17.10.2026 05:18:01
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
