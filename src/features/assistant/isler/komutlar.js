@@ -20,8 +20,8 @@ const first = async (list, ctx, s, viaVoice) => {
 
 // Yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
 const EXTRA = [yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
-// Sporcu boy/kilo, otel, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
-const MORE = [boykilo.athleteBodyCmd, yaris.hotelAddCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
+// Sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
+const MORE = [boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 
 export function runExtra(ctx, s, viaVoice) {
   return first(EXTRA, ctx, s, viaVoice);

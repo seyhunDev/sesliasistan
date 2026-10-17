@@ -16,6 +16,7 @@ const pick = ({ name, kind, relation, title, phone, email, birth }) => ({ name, 
 import { seenText } from "@/features/staff/StaffCard";
 import { KIND_LABEL, PEOPLE_GROUPS, kindOf, missingOf, shownLogin } from "@/lib/kinds";
 import { initials } from "@/lib/utils/format";
+import { personPath } from "@/lib/personPage";
 
 // Bir grubun kişileri (Çalışanlar / Aile / Sporcular / Diğer): giriş bilgisi ve "Gönder" (WhatsApp), hesap aç, düzenle
 export function PeopleList({ group }) {
@@ -63,7 +64,7 @@ export function PeopleList({ group }) {
             const login = shownLogin(m.loginName || m.email);
             return (
               <li key={m.uid} className="flex items-center gap-2 pr-3">
-                <button type="button" onClick={() => setEdit({ person: m })} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-bg">
+                <Link href={personPath(m.uid)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-bg">
                   <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">
                     {initials(m.name)}
                     {acc && <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-card ${online ? "bg-ok" : "bg-line"}`} />}
@@ -76,7 +77,7 @@ export function PeopleList({ group }) {
                     <small className={`block truncate text-[0.8125rem] ${acc ? "font-medium text-fg" : "text-mut"}`}>{acc ? `Giriş: ${login || "—"}` : "Uygulama hesabı yok"}</small>
                     {miss.length > 0 && <small className="block truncate text-[0.75rem] font-medium text-amber-700">Eksik: {miss.join(", ")}</small>}
                   </span>
-                </button>
+                </Link>
                 {acc ? (
                   <button type="button" onClick={() => setSend(m)} className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-[#25d366]/12 px-3 text-[0.8125rem] font-semibold text-[#128c4a] active:scale-95">
                     <Icon name="whatsapp" className="size-4" /> Gönder

@@ -780,7 +780,7 @@ group("Ana sayfa kartları")([
       r.days[1].day === "2026-10-10" && r.days[1].label.startsWith("Cmt") && r.days[1].rows.map((x) => x.p.id).join() === "c,d" &&
       r.rest.map((x) => x.p.id).join() === "e" && tom.days[1].label === "Yarın" && empty.days.length === 1 && !empty.rest.length;
   })],
-  ["kişi şeridi", F("doğum günü önde, silinen yok, sporcu kartı", () => {
+  ["kişi şeridi", F("doğum günü önde, silinen yok, kişi sayfası", () => {
     const ms = [
       { uid: "1", name: "Zeki", kind: "staff" },
       { uid: "2", name: "Ali Kaya", kind: "athlete", athleteId: "A9" },
@@ -788,7 +788,7 @@ group("Ana sayfa kartları")([
       { uid: "4", name: "Ayşe", kind: "family" },
     ];
     const r = HT.storyPeople(ms, [{ memberUid: "4" }]);
-    return r.map((x) => x.id).join() === "4,1,2" && r[0].bday && r[2].href === "/athletes/A9" && r[0].href === "/people/family";
+    return r.map((x) => x.id).join() === "4,1,2" && r[0].bday && r[2].href === "/people/p/2" && r[0].href === "/people/p/4";
   })],
 ]);
 
@@ -2148,4 +2148,36 @@ group("Fitness: program ayrıntıları ve şablon")([
     const t = FMI.programText(FTPL.fromTemplate("yelken-ev-12", "2026-10-19"));
     return t.includes("Sırt çantalı split squat — 3 × 8–12/yan (dinlenme 75 sn") && t.includes("4. hafta: Hafif hafta (setler %70)") && t.includes("alternatif: Glute bridge");
   })],
+]);
+
+// Kişi sayfası (personPage.js): doğum günü satırı, alt satır, açık işler, fişler, yoklama; ana sayfa bağlantısı
+const PPG = await import("@/lib/personPage");
+const AGD = await import("@/lib/agenda");
+const KPM = { uid: "u1", name: "Mete Ok", kind: "athlete", title: "Optimist", athleteId: "a1", birth: "2013-10-17" };
+group("Kişi sayfası")([
+  ["doğum günü bugün", F("14 yaşına giriyor", () => PPG.bdayLine(PPG.birthOf(KPM, []), "2026-10-17") === "Bugün doğum günü · 13 yaşına giriyor")],
+  ["doğum günü yarın", F("yarın satırı", () => PPG.bdayLine(PPG.birthOf(KPM, []), "2026-10-16") === "Yarın doğum günü · 13 yaşına giriyor")],
+  ["doğum günü uzak", F("vurgulu satır yok", () => PPG.bdayLine(PPG.birthOf(KPM, []), "2026-10-01") === "")],
+  ["bağlı doğum günü kaydı önce", F("kayıttaki gün", () => PPG.birthOf(KPM, [{ memberUid: "u1", month: 3, day: 12 }]).month === 3)],
+  ["yaş", F("doğum gününden önce 12", () => PPG.ageOf(PPG.birthOf(KPM, []), "2026-10-16") === 12 && PPG.ageOf(PPG.birthOf(KPM, []), "2026-10-17") === 13)],
+  ["alt satır", F("Sporcu · Optimist · 13 yaş", () => PPG.subLine(KPM, 13) === "Sporcu · Optimist · 13 yaş" && PPG.subLine({ kind: "family", relation: "Eş" }, null) === "Aile bireyi · Eş")],
+  ["kulüp satırları", F("sporcuda var, çalışanda ve velide yok", () => PPG.clubSide(KPM) && !PPG.clubSide({ kind: "staff" }) && !PPG.clubSide({ kind: "parent" }))],
+  ["açık işler", F("yalnız ona verilen, bitmemiş, gelecek", () => {
+    const r = PPG.todoOf("u1", {
+      tasks: [{ id: "t1", assignees: ["u1"], due: "2026-10-20" }, { id: "t2", assignees: ["u1"], due: "2026-10-10" }, { id: "t3", assignees: ["u1"], done: true }, { id: "t4", assignees: ["u2"] }],
+      plans: [{ id: "p1", assignees: ["u1"], date: "2026-10-18" }, { id: "p2", assignees: ["u1"], date: "2026-10-01" }, { id: "p3", assignees: ["u1"], date: "2026-10-19", done: true }],
+      notes: [{ id: "n1", assignees: ["u1"] }, { id: "n2", assignees: ["u1"], archived: true }],
+    }, "2026-10-17");
+    return r.tasks.map((t) => t.id).join() === "t2,t1" && r.plans.map((p) => p.id).join() === "p1" && r.notes.length === 1;
+  })],
+  ["fişler", F("ödenen 1, bekleyen 1, toplam", () => {
+    const r = PPG.receiptsOf("u1", [{ createdByUid: "u1", payStatus: "pending", declared: 64000 }, { createdByUid: "u1" }, { createdByUid: "u2", payStatus: "pending", declared: 5 }]);
+    return r.paid === 1 && r.pending === 1 && r.pendingTotal === 64000;
+  })],
+  ["yoklama", F("2 geldi 1 gelmedi %67", () => {
+    const r = PPG.attendanceOf({ attendance_2026: { "10-01": "present", "10-03": "absent", "10-05": "present" } }, 2026);
+    return r.present === 2 && r.absent === 1 && r.pct === 67 && r.last[0].day === "2026-10-05";
+  })],
+  ["bugünkü doğum günleri", F("yalnız bugün", () => AGD.birthdaysToday([{ name: "A", month: 10, day: 17 }, { name: "B", month: 10, day: 18 }], "2026-10-17").map((b) => b.name).join() === "A")],
+  ["ana sayfa yuvarlakları", F("kişi sayfasına gider", () => HTP.personHref(KPM) === "/people/p/u1" && HTP.personHref(null) === "/people/staff")],
 ]);

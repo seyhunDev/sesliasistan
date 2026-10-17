@@ -4,7 +4,8 @@ import { nextQuestion, findDuplicates, summarySay, loginIn, wantsPerson, applyAn
 import { isNo, isYes, undoLast } from "@/lib/assistantLocal";
 import { validUsername, KIND_LABEL, groupOfKind } from "@/lib/kinds";
 import { QUESTION } from "./ortak";
-import { birthdayDeleteCommand, personDeleteCommand } from "@/lib/assistMore";
+import { birthdayDeleteCommand, personDeleteCommand, personOpenCommand } from "@/lib/assistMore";
+import { personPath } from "@/lib/personPage";
 import { matchPerson } from "@/lib/names";
 import { setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -170,10 +171,30 @@ export function personEdit(ctx) {
   const { park, personFlow, reply, router } = ctx;
   const f = personFlow.current;
   if (!f) return;
-  askOpen(f.uid ? { uid: f.uid } : { prefill: f.draft });
   park();
+  if (f.uid) {
+    router.push(personPath(f.uid));
+    return reply(`${f.draft.name} sayfasını açtım.`, { engine: "local" });
+  }
+  askOpen({ prefill: f.draft });
   router.push(`/people/${groupOfKind(f.draft.kind || "other")}`);
-  reply(f.uid ? `${f.draft.name} kişi kartını açtım.` : "Kişi formunu doldurup açtım; kontrol edip “Ekle”ye bas.", { engine: "local" });
+  reply("Kişi formunu doldurup açtım; kontrol edip “Ekle”ye bas.", { engine: "local" });
+}
+
+// Kişi sayfası: "Ali'nin sayfasını aç" (yalnız ana hesap). Kişilerde yoksa sporcu kartına bırakır (sporcu.js).
+export function personOpenCmd(ctx, s, viaVoice) {
+  const { leave, members, owner, park, router, showPage } = ctx;
+  const po = owner ? personOpenCommand(s) : null;
+  if (!po) return undefined;
+  const list = (members || []).filter((m) => m.name && m.status !== "left");
+  const hit = matchPerson(po.name, list.map((m) => m.name));
+  const m = hit ? list.find((x) => x.name === hit) : null;
+  if (!m) return undefined;
+  park();
+  router.push(personPath(m.uid));
+  leave(`${m.name} sayfasını açtım.`, viaVoice);
+  showPage?.();
+  return true;
 }
 
 export function personUndoAsk(ctx, viaVoice = false) {
