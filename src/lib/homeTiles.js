@@ -133,7 +133,8 @@ export function dayInfo(day, att, today) {
   const yok = att ? attHref(day.date, today) || "" : "";
   return { other, tap: sail.length > 0 || fit.length > 0 || other.length > 0 || !!att, sail, attHref: yok, add: !!att && !sail.length, fit, fitHref: fitHref(day.date, fit) };
 }
-export function trainingWeek(plans = [], today, fit = []) {
+// weeks: kaç hafta (ana sayfa şeridi 3: bu hafta ve sonraki iki hafta, kaydırılır; özet sayıları tüm günlerden).
+export function trainingWeek(plans = [], today, fit = [], weeks = 1) {
   const base = new Date(`${today}T12:00:00`);
   const start = new Date(base);
   start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
@@ -142,7 +143,8 @@ export function trainingWeek(plans = [], today, fit = []) {
   const others = plans
     .filter((p) => p.date && !isTraining(p) && !isFit(p) && p.status !== "cancelled" && !p.done)
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
-  const days = DOW.map((w, i) => {
+  const days = Array.from({ length: 7 * weeks }, (_, i) => {
+    const w = DOW[i % 7];
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const date = ymd(d);
@@ -332,6 +334,24 @@ export function personHref(m) {
   return `/people/p/${m.uid}`;
 }
 
+// Renk tonu (globals.css .tone-*): kişi türü ve plan türü ayırt edilsin diye (Seyhun: "sporcular, çalışanlar, veliler farklı renk").
+// Kişi: çalışan yeşil, sporcu/öğrenci mavi, veli lila, aile açık kahve, diğer tonsuz. Plan: antrenman yeşil, yarış mavi, toplantı lila, kamp kahve, fitness turuncu, diğer gri.
+const KIND_TONE = { staff: "st", athlete: "sp", student: "sp", parent: "ve", family: "fa" };
+export const personTone = (kind) => KIND_TONE[kind || "staff"] || "";
+const CAT_TONE = { Antrenman: "st", Yarış: "sp", Toplantı: "ve", Kamp: "fa" };
+export function planTone(p) {
+  if (!p) return "gen";
+  if (isFit(p)) return "fit";
+  return CAT_TONE[p.cat || p.category] || "gen";
+}
+// Plan türünün kısa adı (Bugün/Yarın satırındaki etiket); Genel ve türsüz planda boş
+export function planTag(p) {
+  if (!p) return "";
+  if (isFit(p)) return "Fitness";
+  const c = p.cat || p.category || "";
+  return c && c !== "Genel" ? c : "";
+}
+
 // Ana sayfadaki yuvarlak kişi şeridi (Instagram hikâyeleri gibi): bugün doğum günü olanlar önde, sonra çalışan, aile, sporcu, diğer; ada göre.
 // Silinen kişi (status left) girmez. bdays: bugünkü doğum günü kayıtları (memberUid ile bağlı).
 export function storyPeople(members = [], bdays = []) {
@@ -339,6 +359,6 @@ export function storyPeople(members = [], bdays = []) {
   const rank = { staff: 1, family: 2, athlete: 3, student: 3, parent: 4, other: 5 };
   return members
     .filter((m) => m && m.name && m.status !== "left")
-    .map((m) => ({ id: m.uid, name: m.name, href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1 }))
+    .map((m) => ({ id: m.uid, name: m.name, href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1, tone: personTone(m.kind) }))
     .sort((a, b) => (b.bday - a.bday) || a.r - b.r || a.name.localeCompare(b.name, "tr"));
 }
