@@ -248,7 +248,7 @@ function NotesList({ list, total }) {
 }
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
-// Ana sayfanın gün şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): dünden başlayan üç haftalık günler (bugün ikinci sırada, kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün kırmızı daire (gruplu sayfanın --red'i).
+// Ana sayfanın gün şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): dünden başlayan üç haftalık günler (bugün ikinci sırada, kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün yeşil daire (Seyhun: "kırmızı yapmayalım").
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
 // Fitness olan günün altında turuncu, başka planı olan günün altında plan türünün renginde nokta (planTone; pencerede PLANLAR). Kendi gruplu kartında, SiradaCard.jsx çizer.
@@ -257,7 +257,7 @@ export function WeekStrip({ w, att, today }) {
   const DAY = {
     done: "bg-accbg text-acc",
     miss: "bg-warnbg text-warn",
-    today: "bg-[var(--red,var(--acc))] text-white",
+    today: "bg-acc text-white",
     plan: "ring-[1.5px] ring-acc text-acc",
     none: "text-mut",
     fit: "bg-orange-500/12 text-orange-700 ring-1 ring-orange-500/50 dark:text-orange-300",
@@ -276,7 +276,7 @@ export function WeekStrip({ w, att, today }) {
           const tones = [...new Set(d.other.map(planTone))].slice(0, 2);
           const inner = (
             <>
-              <small className={`text-[0.6875rem] font-medium capitalize ${mon ? "font-semibold text-acc" : d.state === "today" ? "text-[var(--red,var(--fg))]" : "text-mut"}`}>{mon || d.w}</small>
+              <small className={`text-[0.6875rem] font-medium capitalize ${mon ? "font-semibold text-acc" : d.state === "today" ? "font-semibold text-acc" : "text-mut"}`}>{mon || d.w}</small>
               <span className={`relative grid size-[2.125rem] place-items-center rounded-full text-[0.9375rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? DAY.today : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
