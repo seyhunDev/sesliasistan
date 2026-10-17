@@ -433,6 +433,14 @@ export function athleteRows(progs = [], plans = [], people = [], today) {
   return out.sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
 
+// Sporcu sayfasındaki antrenman listesi: bugünden ileriye, yakından uzağa; ilk hafta (7 gün), "Daha fazla" her dokunuşta bir hafta.
+// Dönüş: { list, more } (more: sonrasında da antrenman var)
+export function upcomingList(plans = [], today, weeks = 1) {
+  const all = fitPlans(plans).filter((p) => p.date >= today);
+  const to = addDays(today, 7 * Math.max(1, weeks) - 1);
+  const list = all.filter((p) => p.date <= to);
+  return { list, more: all.length > list.length };
+}
 // Bir günün sporcu antrenmanları (Fitness › Sporcular › gün): her antrenman bir satır, durumuyla.
 // Sıra: yapılmayanlar/bekleyenler önce, sonra yapılanlar; ad sırasıyla.
 export function dayRows(plans = [], people = [], date, today) {

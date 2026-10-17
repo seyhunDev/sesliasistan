@@ -1868,6 +1868,12 @@ group("Fitness: sporcu programı")([
     return rows.length === 2 && rows[0].name === "Ali" && rows[0].prog?.title === "Ali programı" && rows[0].week.done === 1 && rows[0].week.planned === 2 &&
       rows[0].last?.date === "2026-10-12" && rows[0].next?.date === "2026-10-14" && rows[1].name === "Zeynep" && rows[1].prog === null;
   })],
+  ["sporcu antrenman listesi", F("bugünden ileriye yakından uzağa; ilk hafta, Daha fazla ile her seferinde bir hafta", () => {
+    const P = (date) => ({ id: date, cat: "Fitness", date, fit: { prog: "p", for: "ali", items: [] } });
+    const pl = [P("2026-10-24"), P("2026-10-15"), P("2026-10-19"), P("2026-10-29"), P("2026-10-23"), P("2026-11-06")];
+    const a = FM2.upcomingList(pl, "2026-10-17", 1), b = FM2.upcomingList(pl, "2026-10-17", 2), c = FM2.upcomingList(pl, "2026-10-17", 3);
+    return a.list.map((p) => p.date.slice(8)).join(",") === "19,23" && a.more && b.list.map((p) => p.date.slice(8)).join(",") === "19,23,24,29" && b.more && c.list.length === 5 && !c.more;
+  })],
   ["kopya program", F("başka sporcuya verilen program etkin görünmese de sporcunun programı sayılır (Programı düzenle, Değerlendirme çıkar)", () => {
     const progs = [{ id: "pb", for: "zey", active: false, title: "Kopya" }, { id: "pa", for: "ali", active: true, title: "Ali" }, { id: "po", for: "ali", active: false, title: "Eski" }];
     const rows = FM2.athleteRows(progs, [], [{ uid: "zey", name: "Zeynep" }, { uid: "ali", name: "Ali" }], "2026-10-13");
