@@ -529,3 +529,19 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 .aring-check { stroke-dasharray: 70; stroke-dashoffset: 70; animation: aringcheck .45s .2s ease-out forwards; }
 @keyframes aringcheck { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .aring-creep, .aring-bar { animation: none; } .aring-check { animation: none; stroke-dashoffset: 0; } .aring-arc { transition: none; } }
+
+/* Renk tonları (ana sayfa: kişi türü ve plan türü; homeTiles personTone/planTone). Yumuşak zemin + koyu yazı; .tone-chip zemin, .tone-bar düz çizgi/nokta. */
+.tone-st { --tbg: #e1eee8; --tfg: #2f7360; }
+.tone-sp { --tbg: #e2ebf4; --tfg: #3b6590; }
+.tone-ve { --tbg: #efe7f3; --tfg: #7a5a8c; }
+.tone-fa { --tbg: #f5e8de; --tfg: #8f5f3e; }
+.tone-fit { --tbg: #fbeadb; --tfg: #a65f20; }
+.tone-gen { --tbg: #eceae5; --tfg: #8a8e94; }
+html[data-theme="dark"] .tone-st { --tbg: #22302c; --tfg: #8fc4b3; }
+html[data-theme="dark"] .tone-sp { --tbg: #1f2a36; --tfg: #8fb3d9; }
+html[data-theme="dark"] .tone-ve { --tbg: #2c2433; --tfg: #c3a6d4; }
+html[data-theme="dark"] .tone-fa { --tbg: #33271f; --tfg: #d6ad8c; }
+html[data-theme="dark"] .tone-fit { --tbg: #33261b; --tfg: #e0a46c; }
+html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
+.tone-chip { background: var(--tbg); color: var(--tfg); }
+.tone-bar { background: var(--tfg); }

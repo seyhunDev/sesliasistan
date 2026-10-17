@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { dayInfo, clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum } from "@/lib/homeTiles";
+import { dayInfo, planTone, clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum } from "@/lib/homeTiles";
 import { rel, todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
@@ -108,7 +108,6 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
     skel("inv")
       ? { key: "inv", skel: true }
       : fisT && { key: "inv", href: "/receipts", k: "Fiş / Fatura", cls: show("inv"), v: fisT.big, warn: fisT.warn, note: fisT.sub || "", nw: fisT.warn },
-    post && { key: "post", href: post.last?.id ? `/posts/${post.last.id}` : "/posts", k: "Instagram", v: postsTile(post).big, note: postsTile(post).sub },
   ].filter(Boolean);
 
   return (
@@ -131,6 +130,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
                 ))}
               </ul>
             )}
+            {post && <PostRow post={post} line={raceCard || skel("race") || tiles.length > 0} />}
           </div>
         </section>
       )}
@@ -160,6 +160,31 @@ function Tile({ href, k, v, sm, note, nw, warn, cls = "", skel, wide }) {
         {note && <small className={`block truncate text-[0.75rem] ${nw ? "text-warn" : "text-mut"}`}>{note}</small>}
       </Link>
     </li>
+  );
+}
+
+// Instagram satırı (tam genişlik): solda "4 gönderi ›" ve "Sonuncusu dün" (dokununca gönderiler sayfası), sağda son gönderinin
+// küçük görseli (dokununca o gönderi; Seyhun: "son gönderiye tıklanınca ona gidilsin, gönderi sayısına tıklanınca gönderilere"). Görsel yoksa yalnız yazı.
+function PostRow({ post, line }) {
+  const t = postsTile(post);
+  const id = post.last?.id;
+  const thumb = post.last?.thumb;
+  return (
+    <div className={`flex items-center gap-3 pr-2.5 ${line ? "border-t border-line" : ""}`}>
+      <Link href="/posts" className="min-w-0 flex-1 px-3.5 py-2.5">
+        <small className="block truncate text-[0.75rem] text-mut">Instagram</small>
+        <b className="block truncate font-medium tabular-nums">
+          {t.big} <span aria-hidden="true" className="font-normal text-mut">›</span>
+        </b>
+        {t.sub && <small className="block truncate text-[0.75rem] text-mut">{t.sub}</small>}
+      </Link>
+      {id && thumb && (
+        <Link href={`/posts/${id}`} aria-label="Son gönderiyi aç" className="my-2.5 shrink-0 overflow-hidden rounded-[0.625rem] ring-1 ring-line">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={thumb} alt="" className="block h-20 w-16 object-cover" />
+        </Link>
+      )}
+    </div>
   );
 }
 
@@ -222,10 +247,10 @@ function NotesList({ list, total }) {
 }
 
 // Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
-// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu haftanın 7 günü, günlüğü yazılan ✓, yazılmayan !, bugün koyu.
+// Ana sayfanın en üstündeki hafta şeridi (başlıksız; Seyhun: "isim bile koymaya gerek yok"): bu hafta ve sonraki iki hafta (kaydırılır), günlüğü yazılan ✓, yazılmayan !, bugün koyu.
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın"): o günün yelken
 // antrenmanı (yoklama), yelken planı yoksa "Antrenman ekle, yoklamasını al", fitness yapan sporcular (dokununca hareketleri). dayInfo, homeTiles.js.
-// Fitness olan günün altında turuncu, başka planı olan günün altında yeşil nokta (pencerede PLANLAR). Sırada kartının (SiradaCard.jsx) içinde çizilir.
+// Fitness olan günün altında turuncu, başka planı olan günün altında plan türünün renginde nokta (planTone; pencerede PLANLAR). Sırada kartının (SiradaCard.jsx) içinde çizilir.
 export function WeekStrip({ w, att, today }) {
   const [pick, setPick] = useState(null); // Dokunulan gün: pencere
   const DAY = {
@@ -239,25 +264,30 @@ export function WeekStrip({ w, att, today }) {
   const label = { done: "yapıldı", miss: "günlük yok", today: "bugün", plan: "planlı", none: "antrenman yok", fit: "fitness" };
   return (
     <>
-      <div className="grid grid-cols-7 gap-1 px-2.5 pb-3 pt-1">
-        {w.days.map((d) => {
+      {/* Kaydırılan şerit (Seyhun: "iki hafta daha gidebilmeliyim, sonra Tümü"): her gün kartın yedide biri, hafta başında durur; ayın 1'inde gün adı yerine ay adı; en sonda Tümü (Takvim) */}
+      <div className="flex snap-x snap-mandatory scroll-px-2.5 overflow-x-auto px-2.5 pb-3 pt-1 [scrollbar-width:none]">
+        {w.days.map((d, i) => {
           const fitOnly = !d.has && d.fit.length > 0;
           const st = fitOnly ? "fit" : d.state === "today" && !d.has ? "none" : d.state;
           const info = dayInfo(d, att, today);
           const what = [d.has ? "yelken" : "", d.fit.length ? `fitness: ${d.fit.map((f) => f.name).join(", ")}` : "", d.other.length ? `plan: ${d.other.map((p) => p.title || "Plan").join(", ")}` : ""].filter(Boolean).join(", ") || label[st];
+          const mon = d.d === 1 && i > 0 ? new Date(`${d.date}T12:00`).toLocaleDateString("tr-TR", { month: "short" }).replace(".", "") : "";
+          const tones = [...new Set(d.other.map(planTone))].slice(0, 2);
           const inner = (
             <>
-              <small className={`text-[0.6875rem] ${d.state === "today" ? "font-semibold text-fg" : "text-mut"}`}>{d.w}</small>
+              <small className={`text-[0.6875rem] capitalize ${mon ? "font-semibold text-acc" : d.state === "today" ? "font-semibold text-fg" : "text-mut"}`}>{mon || d.w}</small>
               <span className={`relative grid size-8 place-items-center rounded-full text-[0.8125rem] font-semibold tabular-nums ${DAY[st]} ${d.state === "today" && !d.has && !fitOnly ? "bg-acc text-white" : ""} ${d.state === "today" && fitOnly ? "ring-2" : ""}`}>
                 {st === "done" ? <Icon name="check" className="size-4" /> : st === "miss" ? "!" : d.d}
               </span>
               <span className="flex h-1.5 items-center gap-0.5">
-                {d.other.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-acc" />}
+                {tones.map((t) => (
+                  <span key={t} className={`tone-${t} tone-bar h-1.5 w-1.5 rounded-full`} />
+                ))}
                 {d.fit.length > 0 && <span className={`h-1.5 w-1.5 rounded-full ${d.fit.every((f) => f.st === "done") ? "bg-orange-500" : "bg-orange-400/70"}`} />}
               </span>
             </>
           );
-          const cls = "flex flex-col items-center gap-1 rounded-xl py-0.5";
+          const cls = `flex w-[calc((min(100vw,30rem)-3.375rem)/7)] shrink-0 flex-col items-center gap-1 rounded-xl py-0.5 ${i % 7 === 0 ? "snap-start" : ""}`;
           return info.tap ? (
             <button key={d.date} type="button" data-press onClick={() => setPick(d)} aria-label={`${d.d} ${d.w}: ${what}`} className={cls}>
               {inner}
@@ -268,6 +298,9 @@ export function WeekStrip({ w, att, today }) {
             </span>
           );
         })}
+        <Link href="/calendar" className="ml-1 shrink-0 snap-end self-center rounded-full bg-accbg px-3.5 py-1.5 text-[0.8125rem] font-semibold text-acc">
+          Tümü ›
+        </Link>
       </div>
       <DayPick day={pick} att={att} today={today} onClose={() => setPick(null)} />
     </>

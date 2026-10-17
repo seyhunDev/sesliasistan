@@ -621,6 +621,20 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
+  ["kulüp kartları", F("ana sayfa şeridi üç hafta: sonraki ay da, planı orada olan gün görünür", () => {
+    const today = "2026-10-17";
+    const w = HT.trainingWeek([{ id: "x", title: "Doktor", date: "2026-10-30" }, { id: "y", cat: "Antrenman", date: "2026-11-01" }], today, [], 3);
+    const last = w.days[20];
+    return w.days.length === 21 && w.days[0].date === "2026-10-12" && w.days[7].w === "Pzt" && last.date === "2026-11-01" && last.d === 1
+      && last.state === "plan" && w.days[18].other.length === 1 && HT.trainingWeek([], today, [], 3) === null;
+  })],
+  ["kulüp kartları", F("renk tonları: çalışan/sporcu/veli farklı, plan türüne göre çizgi ve etiket", () => {
+    const k = ["staff", "athlete", "student", "parent", "family", undefined, "other"].map(HT.personTone).join();
+    const t = [{ cat: "Antrenman" }, { cat: "Yarış" }, { category: "Toplantı" }, { cat: "Genel" }, { cat: "Fitness", fit: {} }, {}].map(HT.planTone).join();
+    const tags = [{ cat: "Yarış" }, { cat: "Genel" }, {}, { cat: "Fitness", fit: {} }].map(HT.planTag).join("|");
+    const s = HT.storyPeople([{ uid: "1", name: "Ali", kind: "athlete" }, { uid: "2", name: "Ayşe", kind: "parent" }]);
+    return k === "st,sp,sp,ve,fa,st," && t === "st,sp,ve,gen,fit,gen" && tags === "Yarış|||Fitness" && s.map((p) => p.tone).join() === "sp,ve";
+  })],
   ["kulüp kartları", F("antrenman haftası: diğer planlar da (iptal, biten, antrenman, fitness hariç)", () => {
     const today = "2026-10-14";
     const plans = [
