@@ -54,7 +54,7 @@ export function ChatList() {
       unread: c.unread,
       group: c.type !== "dm",
       open: () => router.push(`/messages?c=${c.id}`),
-      avatar: <Avatar name={c.title} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-[3.25rem]" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
+      avatar: <Avatar name={c.title} photo={c.type === "dm" ? other?.photo : undefined} icon={GROUPS[c.id]?.icon || (c.type === "group" ? "chat" : null)} online={isOnline(other)} size="size-[3.25rem]" tone={GROUPS[c.id] ? "bg-deep text-white" : undefined} />,
       preview: typers.length ? (
         <span className="font-medium text-acc">{c.type === "dm" ? "yazıyor…" : `${typers.join(", ")} yazıyor…`}</span>
       ) : c.last ? (

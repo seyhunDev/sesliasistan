@@ -25,7 +25,7 @@ export async function POST(request) {
   for (const d of members.docs) {
     const m = d.data();
     if (m.account === false) continue;
-    batch.set(dir.doc(d.id), { name: m.name || "Kişi", role: "staff", kind: kindOf(m), ...(m.status === "left" ? { left: true } : {}) }, { merge: true });
+    batch.set(dir.doc(d.id), { name: m.name || "Kişi", role: "staff", kind: kindOf(m), ...(m.photo ? { photo: m.photo } : {}), ...(m.status === "left" ? { left: true } : {}) }, { merge: true });
   }
   await batch.commit();
   return NextResponse.json({ ok: true, count: members.size + 1 });

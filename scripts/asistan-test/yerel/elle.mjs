@@ -2252,3 +2252,18 @@ group("Hava satırı")([
     return old.t === 16 && old.wind === 11 && old.day === true && fresh.t === 18 && none.wind === 3 && WXN.nowOf(null) === null;
   })],
 ]);
+
+// Profil fotoğrafı (avatar.js): yalnız kişinin kendi Storage klasöründeki adres kabul edilir (/api/photo)
+const AVT = await import("@/lib/avatar");
+const AVB = "proj.firebasestorage.app";
+const AVP = "orgs/o1/avatars/u1/abc.jpg";
+const AVU = (p) => `https://firebasestorage.googleapis.com/v0/b/${AVB}/o/${encodeURIComponent(p)}?alt=media&token=t`;
+group("Profil fotoğrafı")([
+  ["kendi klasörü", F("kabul", () => AVT.avatarOk(AVU(AVP), AVP, "o1", "u1", AVB))],
+  ["başkasının klasörü", F("ret", () => !AVT.avatarOk(AVU("orgs/o1/avatars/u2/abc.jpg"), "orgs/o1/avatars/u2/abc.jpg", "o1", "u1", AVB))],
+  ["başka işletme", F("ret", () => !AVT.avatarOk(AVU("orgs/o2/avatars/u1/abc.jpg"), "orgs/o2/avatars/u1/abc.jpg", "o1", "u1", AVB))],
+  ["başka site", F("ret", () => !AVT.avatarOk(`https://ornek.com/x?${AVP}`, AVP, "o1", "u1", AVB))],
+  ["yol ile adres uyuşmuyor", F("ret", () => !AVT.avatarOk(AVU("orgs/o1/avatars/u1/zzz.jpg"), AVP, "o1", "u1", AVB))],
+  ["yeni yol", F("kişinin klasöründe .jpg", () => /^orgs\/o1\/avatars\/u1\/[a-z0-9]+\.jpg$/.test(AVT.avatarPath("o1", "u1")))],
+  ["ana sayfa yuvarlağında fotoğraf", F("adres taşınır", () => HTP.storyPeople([{ uid: "1", name: "Ali", kind: "staff", photo: "https://x/y.jpg" }], [])[0].photo === "https://x/y.jpg")],
+]);
