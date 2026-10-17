@@ -2272,3 +2272,21 @@ group("Profil fotoğrafı")([
   ["yeni yol", F("kişinin klasöründe .jpg", () => /^orgs\/o1\/avatars\/u1\/[a-z0-9]+\.jpg$/.test(AVT.avatarPath("o1", "u1")))],
   ["ana sayfa yuvarlağında fotoğraf", F("adres taşınır", () => HTP.storyPeople([{ uid: "1", name: "Ali", kind: "staff", photo: "https://x/y.jpg" }], [])[0].photo === "https://x/y.jpg")],
 ]);
+
+// Profil fotoğrafı kırpma (avatar.js coverBox/clampPan): ortalı açılır, çerçevede boşluk kalmaz
+group("Profil fotoğrafı kırpma")([
+  ["dikey fotoğraf ortalı", F("genişlik çerçeve kadar, dikeyde ortada", () => {
+    const b = AVT.coverBox(300, 600, 260);
+    return b.w === 260 && b.h === 520 && b.left === 0 && b.top === -130;
+  })],
+  ["yatay fotoğraf ortalı", F("yükseklik çerçeve kadar, yatayda ortada", () => {
+    const b = AVT.coverBox(800, 400, 260);
+    return b.h === 260 && b.w === 520 && b.top === 0 && b.left === -130;
+  })],
+  ["büyütme", F("2 kat", () => AVT.coverBox(400, 400, 260, 2).w === 520)],
+  ["kaydırma sınırı", F("kenar boşluğu kalmaz", () => {
+    const b = AVT.coverBox(300, 600, 260);
+    const p = AVT.clampPan({ x: 50, y: 500 }, b, 260);
+    return p.x === 0 && p.y === 130;
+  })],
+]);

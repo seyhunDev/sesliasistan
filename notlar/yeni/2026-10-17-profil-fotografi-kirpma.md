@@ -1,0 +1,2 @@
+## Nerede kaldım
+- Profil fotoğrafı kırpma (Seyhun: "fotoğraf ortalanmalı, ben istersem kaydırıp büyütüp küçültebileyim, sonra kaydedeyim"; telefonda denenmedi): fotoğraf seçilince "Fotoğrafı yerleştir" ekranı açılır; fotoğraf yuvarlak çerçeveyi dolduracak şekilde ortalanmış gelir, parmakla kaydırılır, iki parmakla ya da sürgüyle büyütülür, "Kaydet" çerçevedeki kısmı 400×400 kaydeder (`ProfilePhoto.jsx` Cropper, hesap `lib/avatar.js` coverBox/clampPan). Tarayıcıda (Chromium) ortalama, kaydırma ve büyütme denendi; iki parmak hareketi gerçek telefonda denenmedi.
