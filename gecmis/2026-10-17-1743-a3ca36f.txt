@@ -1,8 +1,8 @@
-Commit: 125b89b · Yarış evrakı: irtibat telefonu velinin, tek sporcunun evrakını paylaşma (#399)
-Zaman: 2026-10-14-1327 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38549461801
+Commit: a3ca36f · Fitness: adım adım antrenmanda artı/eksi düğmeleri kaldırıldı (#466)
+Zaman: 2026-10-17-1743 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39041835356
 
-TAM TEST · 14.10.2026 13:25:47
+TAM TEST · 17.10.2026 17:41:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 70 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
