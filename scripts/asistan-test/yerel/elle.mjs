@@ -2196,6 +2196,18 @@ group("Fitness: program ayrıntıları ve şablon")([
     const c = FMI.cleanItem({ ex: "", name: "X", reps: 10, repsTo: 6 });
     return FMI.itemLine(a) === "3 × 8–12/yan" && FMI.itemLine(b) === "2 × 20–30 sn/yan" && !c.repsTo && a.rest === 75;
   })],
+  ["toplu dinlenme", F("programdaki bütün hareketler 20 sn olur, kardiyo değişmez; tek gün seçilebilir; ortak değer en çok kullanılan", () => {
+    const p = FMI.cleanProgram({ start: "2026-10-19", weeks: 2, days: [
+      { dow: 2, name: "A", items: [{ ex: "", name: "Isınma", min: 5 }, { ex: "", name: "Row", sets: 3, reps: 10, rest: 60 }, { ex: "", name: "Plank", sets: 2, sec: 30 }] },
+      { dow: 4, name: "B", items: [{ ex: "", name: "Squat", sets: 3, reps: 8, rest: 90 }] },
+    ] });
+    const a = FMI.setRestAll(p, 20);
+    const b = FMI.setRestAll(p, 45, 4);
+    const all = a.days.flatMap((d) => d.items);
+    const d = FMI.planDrafts(a);
+    return FMI.restOf(p) === 60 && FMI.restOf(a) === 20 && all.filter((x) => x.kind !== "cardio").every((x) => x.rest === 20) && !all[0].rest &&
+      b.days[0].items[1].rest === 60 && b.days[1].items[0].rest === 45 && FMI.setRestAll(p, 22).days[1].items[0].rest === 20 && d[0].fit.items[1].rest === 20;
+  })],
   ["çanta ve nefes", F("çantadaki ağırlık her türde; nefes, tempo, zorluk, not, alternatif", () => {
     const a = FMI.cleanItem({ ex: "", name: "Squat", sets: 3, reps: 10, bag: 2.5, breath: "4 sn al 6 sn ver", tempo: "3-1-1", rpe: "7 · RIR 3", rest: 60, note: "Topuk aktif", alt: "Goblet squat", part: "ana" });
     return FMI.itemLine(a) === "3 × 10 · çanta 2,5 kg" && FMI.itemMore(a) === "dinlenme 60 sn · tempo 3-1-1 · RPE 7 · RIR 3 · nefes: 4 sn al 6 sn ver" && a.note === "Topuk aktif" && a.alt === "Goblet squat" && a.part === "ana";

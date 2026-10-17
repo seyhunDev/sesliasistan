@@ -333,6 +333,24 @@ export function programText(prog, { age = 0, sport = "" } = {}) {
   return [head.join("\n"), ...days, phases.length ? phases.join("\n") : "", prog.note ? `Not: ${prog.note}` : "", prog.rules || ""].filter(Boolean).join("\n\n");
 }
 
+// ---- Dinlenme ----
+// Antrenmanda setten sonraki geri sayım hareketin rest alanından; boşsa REST_DEFAULT. Kardiyoda (tek blok) dinlenme yok.
+export const REST_DEFAULT = 60;
+const restable = (it) => it && it.kind !== "cardio";
+// Programın ortak dinlenmesi: en çok kullanılan değer (boşlar REST_DEFAULT sayılır)
+export function restOf(prog) {
+  const c = new Map();
+  for (const d of prog?.days || []) for (const it of d.items || []) if (restable(it)) { const r = +it.rest || REST_DEFAULT; c.set(r, (c.get(r) || 0) + 1); }
+  let best = REST_DEFAULT, n = 0;
+  for (const [r, k] of c) if (k > n) [best, n] = [r, k];
+  return best;
+}
+// Toplu: bütün günlerdeki (ya da yalnız dow günündeki) hareketlerin dinlenmesi sec olur (5–300 sn, 5'in katı)
+export function setRestAll(prog, sec, dow = null) {
+  const r = Math.min(300, Math.max(5, Math.round((+sec || REST_DEFAULT) / 5) * 5));
+  return { ...prog, days: (prog?.days || []).map((d) => (dow != null && d.dow !== dow ? d : { ...d, items: (d.items || []).map((it) => (restable(it) ? { ...it, rest: r } : it)) })) };
+}
+
 // ---- Hareket satırı ----
 const kgText = (kg) => `${String(kg).replace(".", ",")} kg`;
 export function itemLine(it) {
