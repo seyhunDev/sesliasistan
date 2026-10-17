@@ -211,13 +211,15 @@ function FisWidget({ t, spend, cls }) {
   );
 }
 
-// Kare alan: hesap bakiyesi, değişim ve son özetlerin küçük çizgisi (useMoney spark). Dokununca Hesaplar
+// Kare alan: Hesap (Seyhun: "Hesaplar'daki gibi"): büyük toplam (banka + kasa), altında "Banka … · Kasa …", bankanın değişimi ve bu ayki
+// kasa girişi, en altta bakiyenin küçük çizgisi (useMoney spark). Dokununca Hesaplar
 function BankWidget({ b, cls }) {
   return (
     <Link href="/mail" className={`${WIDGET} ${cls}`}>
       <WHead tone="st" title="Hesap" />
       <b className="mt-2 block truncate text-[1.375rem] font-semibold leading-tight tracking-[-.02em] tabular-nums">{b.big}</b>
-      <small className={`block truncate text-[0.8125rem] ${b.warn ? "text-warn" : "text-mut"}`}>{b.sub}</small>
+      {b.sub && <small className="block truncate text-[0.8125rem] tabular-nums text-fg2">{b.sub}</small>}
+      {b.change && <small className={`block truncate text-[0.75rem] ${b.warn ? "text-warn" : "text-mut"}`}>{b.change}</small>}
       {b.spark?.length > 1 && <Spark v={b.spark} />}
     </Link>
   );
