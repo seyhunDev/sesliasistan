@@ -326,12 +326,10 @@ export function dayHead(day, today) {
   return `${d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
 }
 
-// Kişinin sayfası (kişi sayfası ayrı işte yapılıyor; o gelene kadar: sporcu kartı ya da Kişiler'deki grubu). Tek yerde değişir.
+// Kişinin sayfası (/people/p/<uid>): ad, Mesaj · Ara · WhatsApp, yapılacaklar, para, kulüp, bilgiler. Tek yerde değişir.
 export function personHref(m) {
-  if (!m) return "/people/staff";
-  if (m.athleteId) return `/athletes/${m.athleteId}`;
-  const g = { athlete: "athletes", student: "athletes", parent: "athletes", family: "family", other: "other" }[m.kind] || "staff";
-  return `/people/${g}`;
+  if (!m?.uid) return "/people/staff";
+  return `/people/p/${m.uid}`;
 }
 
 // Ana sayfadaki yuvarlak kişi şeridi (Instagram hikâyeleri gibi): bugün doğum günü olanlar önde, sonra çalışan, aile, sporcu, diğer; ada göre.

@@ -65,6 +65,7 @@ export const TASKS = [
   { id: "inventory", group: "Kulüp", name: "Envanter (ekle, çıkar, değiştir, sil, sor)", say: "envantere 3 Optimist teknesi ekle", who: "ana", by: "yz-ayrı", doing: "Tamam, envantere ekliyorum.", work: "Envantere ekleniyor" },
   { id: "invoice", group: "Kulüp", name: "Fatura ödendi işaretleme", say: "Turkcell faturası ödendi", who: "ana", by: "yerel" },
   { id: "athlete", group: "Kulüp", name: "Sporcu ekleme, arşive alma, silme (silme onayla)", say: "yeni sporcu ekle: Ali Kaya, 2014 doğumlu; Ali Kaya'yı arşive al", who: "ana", by: "yerel", confirm: true },
+  { id: "personOpen", group: "Diğer", name: "Kişi sayfasını açma", say: "Ali'nin sayfasını aç", who: "ana", by: "yerel" },
   { id: "athleteOpen", group: "Kulüp", name: "Sporcu kartını açma", say: "Ali Kaya'nın sporcu kartını aç", who: "sporcu", by: "yerel" },
   { id: "athleteBody", group: "Kulüp", name: "Sporcu boy ve kilo", say: "Mete'nin kilosu 52; Mete'nin boyu 1.52", who: "ana", by: "yerel" },
   { id: "raceHere", group: "Kulüp", name: "Açık yarışta: sporcu çıkarma, sonuç, ödeme, bilgi notu, plana ekleme, silme (onayla)", say: "Ali 3. oldu; bilgi notunu hazırla; yarışı sil", who: "sporcu", by: "yerel", confirm: true },

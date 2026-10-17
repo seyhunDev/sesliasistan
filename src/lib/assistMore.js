@@ -250,6 +250,15 @@ export function athleteOpenCommand(raw) {
   return name && name.split(" ").length <= 3 ? { name } : null;
 }
 
+// ---- Kişi sayfası: "Ali'nin sayfasını aç", "Ayşe Yılmaz'ın kişi sayfasını göster" (iyelik eki şart: "planlar sayfasını aç" sayfa açmadır) ----
+export function personOpenCommand(raw) {
+  const t = low(raw);
+  const m = t.match(/^(?:kişi(?:ler)?(?:den|de)? )?(.+?)(?:['’]n?[ıiuü]n|(?<=\p{L})n?[ıiuü]n) (?:kişi )?sayfasını (?:aç|göster|getir)$/u);
+  if (!m || QUESTION.test(t)) return null;
+  const name = nameOf(m[1]);
+  return name && name.split(" ").length <= 3 ? { name } : null;
+}
+
 // ---- Yarışa otel (yarış sayfasında): "otel ekle: Foça Palas, 0232 812 34 56", "Foça Palas otelini ekle, telefonu 0532…" ----
 export function hotelAddCommand(raw) {
   const t = low(raw);

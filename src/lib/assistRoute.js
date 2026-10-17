@@ -23,7 +23,7 @@ import { shopCommand } from "@/features/shop/shopWords";
 import { wantsAttendance } from "@/features/athletes/access";
 import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
 import { localCommand } from "@/lib/commands";
-import { absentNotifyCommand, athleteCommand, athleteOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, receiptScopeCommand, shopClearCommand } from "@/lib/assistMore";
+import { absentNotifyCommand, athleteCommand, athleteOpenCommand, personOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, receiptScopeCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
 import { versionAsk } from "@/lib/buildInfo";
@@ -56,6 +56,8 @@ export function moreKind(s, c = {}) {
   if (onRace && racer && hotelAddCommand(s)) return "hotel";
   const bc = owner && racer ? bodyCommand(s) : null;
   if (bc && (bc.explicit || bc.op === "ask" || matchPerson(bc.name, names))) return "athleteBody";
+  const po = owner && personOpenCommand(s);
+  if (po && matchPerson(po.name, names)) return "personOpen";
   const ao = racer && athleteOpenCommand(s);
   if (ao && matchPerson(ao.name, names)) return "athleteOpen";
   if (owner && invoiceTaskCommand(s)) return "invoiceTask";
@@ -110,7 +112,8 @@ export function routesOf(s, c = {}) {
   if (ra) add("results", { ra });
   if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
   if (wantsPerson(s) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
-  const n = !(racer && athleteOpenCommand(s)) && nav(s);
+  const po = owner && personOpenCommand(s);
+  const n = !(racer && athleteOpenCommand(s)) && !(po && matchPerson(po.name, c.names || [])) && nav(s);
   if (n) add("navigate", { nav: n });
   // Borçlar (yalnız ana hesap): "Ali'ye 500 lira borç verdim", "Ali borcunu ödedi", "kime ne kadar borç verdim"
   const dq = owner && !isStaff ? debtAsk(s) : null;

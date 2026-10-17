@@ -201,3 +201,5 @@ export function upcomingBirthdays(birthdays, today, days = 30) {
 export const weekdayOf = (day) => ((new Date(`${day}T00:00`).getDay() + 6) % 7) + 1;
 export const lessonsOn = (lessons, day) =>
   lessons.filter((l) => l.day === weekdayOf(day)).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+// Bugün doğum günü olanlar (ana sayfa rozeti, kişi sayfası)
+export const birthdaysToday = (birthdays = [], today) => birthdaysOn(birthdays, today);

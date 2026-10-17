@@ -454,7 +454,7 @@ export function ChatView({ cid }) {
           <button type="button" onClick={() => goBack(router, "/messages")} aria-label="Geri" className="grid size-10 shrink-0 place-items-center rounded-full active:bg-line">
             <Icon name="back" className="size-5" />
           </button>
-          <button type="button" onClick={() => setInfo(true)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <button type="button" onClick={() => (owner && chat.type === "dm" && otherP && otherP.role !== "owner" ? router.push(`/people/p/${chat.other}`) : setInfo(true))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <Avatar name={chat.title} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
             <span className="min-w-0">
               <b className="flex items-center gap-1.5 truncate text-[1rem] font-semibold leading-tight">
