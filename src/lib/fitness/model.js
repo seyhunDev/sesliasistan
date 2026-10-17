@@ -421,7 +421,8 @@ export const isOthers = (p, me) => !!p?.fit?.for && p.fit.for !== me;
 export function athleteRows(progs = [], plans = [], people = [], today) {
   const out = [];
   for (const a of people) {
-    const prog = progs.find((p) => p.for === a.uid && p.active) || null;
+    // Etkin program; hiçbiri etkin görünmüyorsa sporcunun en son programı (progs yeniden eskiye sıralı)
+    const prog = progs.find((p) => p.for === a.uid && p.active) || progs.find((p) => p.for === a.uid) || null;
     const mine = plans.filter((p) => p.fit?.for === a.uid);
     if (!prog && !mine.length) continue;
     const w = weekStats(mine, today);
