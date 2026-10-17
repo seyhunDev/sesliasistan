@@ -4,6 +4,9 @@ export default function manifest() {
         short_name: "Asistan",
         start_url: "/",
         display: "standalone",
+        // Uygulama dik kullanılır. Android buna uyar; iPhone ana ekran uygulamasında bunu yok sayar
+        // (Safari yön kilitlemeye izin vermez), orada yan çevirince dik düzen ortada aynen kalır.
+        orientation: "portrait",
         background_color: "#f4f3ef",
         theme_color: "#f4f3ef",
         icons: [

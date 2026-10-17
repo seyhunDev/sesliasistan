@@ -98,7 +98,13 @@ html[data-theme="dark"] .calm {
 }
 html[data-theme="dark"] .calm .bg-card { box-shadow: none; }
 
-html { height: 100%; color-scheme: light; }
+html {
+  height: 100%;
+  color-scheme: light;
+  /* iPhone yan çevrilince yazıları kendiliğinden büyütmesin; yatayda da dik düzen aynı boyutta kalsın. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 /* Yazı ve simge boyutu (Ayarlar › Görünüm): tüm ölçüler rem olduğundan kök boyut her şeyi birlikte büyütür.
    Seçim cihazda da tutulur; sayfa çizilmeden önce <html data-size> olarak uygulanır (bkz. app/layout.jsx). */
 html[data-size="l"] { font-size: 112.5%; }
