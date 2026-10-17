@@ -1,8 +1,8 @@
-Commit: 6a7bb13 · Fitness: programı devam ettir (seviye) ve başka sporcuya ver (#377)
-Zaman: 2026-10-13-2256 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38458603790
+Commit: 3a17439 · Asistanda ilerleme halkası (#442)
+Zaman: 2026-10-17-0434 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38991334687
 
-TAM TEST · 13.10.2026 22:55:09
+TAM TEST · 17.10.2026 04:33:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 82 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
