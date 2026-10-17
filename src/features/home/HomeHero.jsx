@@ -54,7 +54,8 @@ export function HomeHero({ weather }) {
 }
 
 // Başlığın altında bugünün rüzgâr grafiği (Seyhun: "ana sayfadaki hava alanında o grafik, hangi saatteysek orada nokta").
-// Çerçevesiz, başlığın hemen altında; dokununca hava penceresi açılır ("Ayrıntı ›"). Hava gelmediyse çizilmez.
+// Çerçevesiz, başlığın hemen altında, üstünde yazı yok (Seyhun: "bir tane buton olması lazım"; hava penceresinin tek düğmesi hava satırındaki ›).
+// Grafiğe dokununca da aynı pencere açılır. Hava gelmediyse çizilmez.
 export function HomeWind({ weather }) {
   const { w, refresh } = weather;
   const [open, setOpen] = useState(false);
@@ -63,11 +64,7 @@ export function HomeWind({ weather }) {
   const place = getPlace();
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label="Bugünün rüzgârı, ayrıntı" className="mt-1 block w-full overflow-hidden text-left">
-        <span className="flex items-center justify-between px-1 text-[0.8125rem] text-mut">
-          <span><b className="font-semibold text-fg">Rüzgâr</b> · bugün, kn</span>
-          <span className="font-medium text-acc">Ayrıntı <span aria-hidden className="text-[1rem] leading-none">›</span></span>
-        </span>
+      <button type="button" onClick={() => setOpen(true)} aria-label="Bugünün rüzgârı, ayrıntı" className="mt-2 block w-full overflow-hidden text-left">
         <TodayWind rows={rows} />
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={`Hava durumu · ${place.name}`}>
