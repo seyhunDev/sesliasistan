@@ -18,8 +18,7 @@ import { GROUP, SectionHead } from "./ui";
 // 1) gün şeridi (WeekStrip; dünden başlar, bugün kırmızı daire, üç hafta kaydırılır, sonunda Tümü › Takvim; güne dokununca o günün penceresi),
 // 2) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
 //    nokta ve alt satırda "yer · 12:00'ye kadar · şimdi"; ilk satırda antrenman/yarışın rüzgârı (eşik geçilirse kırmızımsı); sağda tür adı,
-// 3) "YARIN" (ya da planı olan en yakın gün) başlığı ve satırları: solda türün renginde saat karesi, ad, "09:00 · yer",
-// 4) "SIRADA": sonraki en çok 4 plan, 5) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
+// 3) "YARIN · PAZAR" (ya da planı olan en yakın gün) ve 4) "SIRADA" (sonraki en çok 4 plan, saatin altında gün): bugünkü gibi saat çizgisinde (Seyhun: "3. örnekteki gibi olmalıydı"), 5) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
 export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
@@ -47,10 +46,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const empty = !td.rows.length && !next;
   // Sıradakilerin tarihi: bu aydaysa "Sal 20", değilse "Pzt 3 Kas"
   const short = (day) => (day.slice(0, 7) === today.slice(0, 7) ? dayHead(day, today).replace(/ \S+$/, "") : dayHead(day, today));
-  const full = (day) => {
-    const d = new Date(`${day}T12:00:00`);
-    return `${d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
-  };
+  const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
 
   return (
     <section aria-label="Takvim" className="space-y-2.5">
@@ -63,37 +59,16 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
       <div className={`px-3.5 py-1.5 ${GROUP}`}>
         {td.rows.length ? (
           <ul>
-            {td.rows.map(({ p, now: live }, i) => {
-              const tag = planTag(p);
-              const sub = [p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ");
-              return (
-                <li key={p.id}>
-                  <button type="button" onClick={() => open(p)} className={`tone-${planTone(p)} grid w-full grid-cols-[3.25rem_1fr] text-left`}>
-                    <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.8125rem] font-semibold text-fg2"}`}>{p.time || "Tüm gün"}</span>
-                    <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
-                      <span
-                        aria-hidden="true"
-                        className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
-                      />
-                      <span className="flex min-w-0 items-baseline gap-1.5">
-                        <b className={`min-w-0 truncate ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-                        {tag && <span className="tone-fg shrink-0 text-[0.75rem] font-semibold">{tag}</span>}
-                      </span>
-                      {(sub || live) && (
-                        <small className={`block truncate text-[0.84375rem] ${i === 0 && windy ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
-                          {sub}
-                          {live && (
-                            <span className="font-semibold text-[var(--red)]">
-                              {sub ? " · " : ""}şimdi
-                            </span>
-                          )}
-                        </small>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {td.rows.map(({ p, now: live }, i) => (
+              <TimeRow
+                key={p.id}
+                p={p}
+                live={live}
+                warn={i === 0 && windy}
+                sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
+                onOpen={() => open(p)}
+              />
+            ))}
           </ul>
         ) : (
           <div className="flex items-center justify-between gap-3 py-1.5">
@@ -110,10 +85,10 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 
       {next && (
         <div className="pt-3">
-          <SectionHead title={next.label}>{next.label === "Yarın" && <span className="font-normal uppercase text-mut">{full(next.day)}</span>}</SectionHead>
-          <ul className={GROUP}>
+          <SectionHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
+          <ul className={`px-3.5 py-1.5 ${GROUP}`}>
             {next.rows.map(({ p }) => (
-              <PlanRow key={p.id} p={p} sub={[p.time, p.place].filter(Boolean).join(" · ") || "Tüm gün"} onOpen={() => open(p)} />
+              <TimeRow key={p.id} p={p} sub={p.place} onOpen={() => open(p)} />
             ))}
           </ul>
         </div>
@@ -122,9 +97,9 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
       {rest.length > 0 && (
         <div className="pt-3">
           <SectionHead title="Sırada" />
-          <ul className={GROUP}>
+          <ul className={`px-3.5 py-1.5 ${GROUP}`}>
             {rest.map(({ p, day }) => (
-              <PlanRow key={p.id} p={p} sub={[short(day), p.time, p.place].filter(Boolean).join(" · ")} onOpen={() => open(p)} />
+              <TimeRow key={p.id} p={p} date={short(day)} sub={p.place} onOpen={() => open(p)} />
             ))}
           </ul>
         </div>
@@ -135,17 +110,36 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   );
 }
 
-// Gruplu kart satırı: solda plan türünün renginde kare içinde saat ("09"; saatsizde nokta), ad ve alt satır; satırlar arası çizgi kareden sonra başlar
-function PlanRow({ p, sub, onOpen }) {
+// Saat çizgisi satırı (Bugün, Yarın, Sırada aynı; 3. örnek): solda saat (Sırada'da altında gün), dikey çizgi üstünde plan türünün renginde halka,
+// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad ve sağında tür adı, altında yer (warn: rüzgâr eşiği geçti, kırmızımsı)
+function TimeRow({ p, live, warn, sub, date, onOpen }) {
+  const tag = planTag(p);
   return (
-    <li className="relative not-first:before:absolute not-first:before:left-14 not-first:before:right-0 not-first:before:top-0 not-first:before:border-t not-first:before:border-line">
-      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} flex w-full items-center gap-3 px-3.5 py-2.5 text-left`}>
-        <span aria-hidden="true" className="tone-bar grid size-[1.875rem] shrink-0 place-items-center rounded-lg text-[0.75rem] font-bold tabular-nums text-white dark:text-[#111214]">
-          {p.time ? p.time.slice(0, 2) : "·"}
+    <li>
+      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} grid w-full grid-cols-[3.25rem_1fr] text-left`}>
+        <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
+          {p.time || "Tüm gün"}
+          {date && <small className="block text-[0.75rem] font-normal text-mut">{date}</small>}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate">{p.title}</span>
-          {sub && <small className="block truncate text-[0.875rem] text-mut">{sub}</small>}
+        <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
+          <span
+            aria-hidden="true"
+            className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
+          />
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <b className={`min-w-0 truncate ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
+            {tag && <span className="tone-fg shrink-0 text-[0.75rem] font-semibold">{tag}</span>}
+          </span>
+          {(sub || live) && (
+            <small className={`block truncate text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+              {sub}
+              {live && (
+                <span className="font-semibold text-[var(--red)]">
+                  {sub ? " · " : ""}şimdi
+                </span>
+              )}
+            </small>
+          )}
         </span>
       </button>
     </li>
