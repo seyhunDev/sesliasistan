@@ -335,6 +335,9 @@ select {
 .afull [data-user-bubble] { background: var(--ab-panel); box-shadow: 0 0 0 .5px var(--line); }
 @keyframes afullin { from { opacity: 0; transform: translate3d(0, 2.5rem, 0); } }
 .afull-in { animation: afullin .42s cubic-bezier(.22, .8, .24, 1) both; }
+/* Kapanırken ve küçülürken aşağı inerek kaybolur (TabBar LEAVE_MS ile aynı süre) */
+@keyframes afullout { to { opacity: 0; transform: translate3d(0, 3rem, 0); } }
+.afull-out { animation: afullout .34s cubic-bezier(.4, 0, .6, 1) forwards; pointer-events: none; }
 /* Uygulama yüklenince kubbe alttan yükselerek gelir (yalnız ilk açılışta; dolgu modu "backwards": bittikten sonra
    klavye için verilen transform'u ezmesin) */
 @keyframes domerise { from { transform: translateY(100%); } }
