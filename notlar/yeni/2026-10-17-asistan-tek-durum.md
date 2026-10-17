@@ -1,6 +1,6 @@
 ## Nerede kaldım
 
-- Asistan denetimi (Seyhun, 2026-10-17: "çalışırken iki farklı yerde bilgilendirme mesajları oluyor"): çalışırken durum yazısı yalnız üstteki ilerleme halkasında. Sohbetteki sıralı bekleme satırı (WaitLines, "… hazırlanıyor · Vazgeç") kaldırıldı; durdurmak için alttaki kutunun düğmesi. Görev listesi ekrandayken halka süren işin adını tekrar yazmaz, "Yapıyorum · 2 / 3" der (`ringOf({ shown })`).
+- Asistan denetimi (Seyhun, 2026-10-17: "çalışırken iki farklı yerde bilgilendirme mesajları oluyor"): çalışırken durum yazısı yalnız üstteki ilerleme halkasında. Sohbetteki sıralı bekleme satırı (WaitLines, "… hazırlanıyor · Vazgeç") kaldırıldı; durdurmak için alttaki kutunun düğmesi. Görev listesi ekrandayken ilerlemeyi liste anlatır; halka yalnız dolar, yazı yazmaz (`ringOf({ shown })`). Tek işte halka + tek satır.
 - Açılışta son 3 oturum (cihazdaki kısa özet, `sessionStore`) yeni konuşmanın üstünde soluk satırlar olarak görünür (`PastSessions.jsx`); halka bunları saymaz, açılışta büyük kalır.
 - Kapanırken ve aşağı çekilip küçülürken tam ekran aşağı inerek kaybolur (`.afull-out`, TabBar `LEAVE_MS`); parmakla çekince bıraktığı yerden aşağı iner. Açılış animasyonu (`.afull-in`) her açılışta.
 - Halkanın "konuşma doldu mu" ölçümü artık yalnız sohbet içeriğine bakıyor (eskiden alanın tamamını ölçüyordu).

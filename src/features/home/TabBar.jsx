@@ -325,11 +325,11 @@ function ProgressRing({ r, big }) {
       <p className="min-h-5 px-6 text-sm text-mut">{r.sub}</p>
     </div>
   );
-  if (!r.label) return null;
+  if (!r.label && !r.fill && !r.bars) return null;
   return (
     <div className="pointer-events-none mx-4 flex shrink-0 items-center gap-3" aria-live="polite">
       {svg}
-      <div className="min-w-0">
+      <div className="min-w-0" hidden={!r.label}>
         <p className="truncate text-[0.9375rem] font-semibold text-fg">{r.label}</p>
         {r.sub && <p className="truncate text-[0.8125rem] text-mut">{r.sub}</p>}
       </div>

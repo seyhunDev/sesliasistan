@@ -13,13 +13,18 @@ export function progressOf(list = []) {
 }
 
 // state: listening | busy | speaking | idle; status: şu an yapılan işin yazısı; talked: sohbette en az bir tur var;
-// shown: liste ekranda görünüyor (görev listesi): süren işin adı orada parlıyor, halkada ikinci kez yazılmaz.
+// shown: görev listesi ekranda: ilerlemeyi liste anlatır (✓ biten, parlayan süren, silik sıradaki); halka yalnız dolar,
+// yazı yazmaz (aynı bilgi iki yerde olmasın).
 // Çalışırken durum yazısı yalnız halkada (Seyhun: "çalışırken iki farklı yerde bilgilendirme mesajları oluyor", 2026-10-17)
 export function ringOf({ state = "idle", transcribing = false, status = "", list = [], talked = false, shown = false } = {}) {
   const p = progressOf(list);
+  if (shown && p.total > 1 && state !== "listening" && state !== "speaking") {
+    const r = ringOf({ state, transcribing, status, list, talked });
+    return { ...r, label: "", sub: "" };
+  }
   if (state === "listening") return { tone: "listen", fill: 0, label: "Dinliyorum", sub: "", bars: true };
   if (state === "busy" || transcribing) {
-    if (p.total > 1) return { tone: "work", fill: Math.max(0.08, p.fill), label: (!shown && status) || "Yapıyorum", sub: `${Math.min(p.total, p.done + (p.run ? 1 : 0)) || 1} / ${p.total}` };
+    if (p.total > 1) return { tone: "work", fill: Math.max(0.08, p.fill), label: status || "Yapıyorum", sub: `${Math.min(p.total, p.done + (p.run ? 1 : 0)) || 1} / ${p.total}` };
     if (status && !transcribing) return { tone: "work", fill: 0.12, label: "Yapıyorum", sub: status, creep: true };
     return { tone: "work", fill: 0.12, label: "Düşünüyorum", sub: transcribing ? "" : "İstek inceleniyor", creep: true };
   }
