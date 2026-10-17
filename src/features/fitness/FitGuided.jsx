@@ -6,12 +6,12 @@ import { exById } from "@/lib/fitness/exercises";
 import { MediaShow } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
-import { FEELS, bump, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
+import { FEELS, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
 
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
-// Değer hedeften farklıysa − / + ile düzeltilir.
+// Sayılar programdaki gibi gösterilir (− / + yok).
 // Süreli harekette (süre ve kardiyo, 5 dk dahil) set geri sayımla yapılır: Başlat › Duraklat/Devam › süre dolunca set kendiliğinden
 // tamamlanır; erken "Bitirdim" denirse kaç saniyede geçildiği yazılır (sette took, full; setTimeText).
 // Hareketin videosu (YouTube ya da eklenen video/fotoğraf) ve açıklaması hareket ekranında doğrudan görünür,
@@ -126,28 +126,12 @@ function useSetClock(onEnd) {
   };
 }
 
-function Adjust({ label, value, unit, onChange }) {
-  // onChange yoksa (sporcu) yalnız değer görünür, − / + yok
-  if (!onChange) {
-    return (
-      <div className="text-center">
-        <b className="block text-[2.75rem] font-bold leading-none tabular-nums">{value ? String(value).replace(".", ",") : "–"}</b>
-        <small className="mt-1 block text-[0.8125rem] text-mut">{unit}</small>
-      </div>
-    );
-  }
+// Programdaki sayı olduğu gibi görünür; antrenmanda artırılıp azaltılmaz
+function Adjust({ value, unit }) {
   return (
-    <div className="flex items-center justify-center gap-4">
-      <button type="button" aria-label={`${label} azalt`} onClick={() => onChange(-1)} className="grid size-11 place-items-center rounded-full bg-card text-[1.375rem] font-semibold shadow-sm active:scale-90">
-        −
-      </button>
-      <span className="min-w-[6.5rem] text-center">
-        <b className="block text-[2.75rem] font-bold leading-none tabular-nums">{value ? String(value).replace(".", ",") : "–"}</b>
-        <small className="mt-1 block text-[0.8125rem] text-mut">{unit}</small>
-      </span>
-      <button type="button" aria-label={`${label} artır`} onClick={() => onChange(1)} className="grid size-11 place-items-center rounded-full bg-card text-[1.375rem] font-semibold shadow-sm active:scale-90">
-        +
-      </button>
+    <div className="text-center">
+      <b className="block text-[2.75rem] font-bold leading-none tabular-nums">{value ? String(value).replace(".", ",") : "–"}</b>
+      <small className="mt-1 block text-[0.8125rem] text-mut">{unit}</small>
     </div>
   );
 }
@@ -194,7 +178,7 @@ function HowBody({ it }) {
   );
 }
 
-export function FitGuided({ items = [], sets = [], at = null, onCheck, onVal, feel, setFeel, onFinish, onClose }) {
+export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, setFeel, onFinish, onClose }) {
   const [pos, setPos] = useState(() => (at && !sets[at.i]?.[at.k]?.ok ? at : nextOpen(sets, 0, 0)));
   const rest = useCountdown();
   const timer = useSetClock((took, full) => complete({ took, full }));
@@ -383,14 +367,14 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, onVal, fe
             {timed ? (
               <Clock left={timer.run ? timer.left : goal} total={goal} run={timer.run} going={timer.going} />
             ) : null}
-            {!timer.run && (!timed || onVal) && (
+            {!timer.run && !timed && (
               <div className="mt-4">
-                <Adjust label={UNIT[key]} value={val} unit={UNIT[key]} onChange={onVal ? (d) => onVal(pos.i, pos.k, key, bump(val, key, d)) : null} />
+                <Adjust value={val} unit={UNIT[key]} />
               </div>
             )}
             {it.kind === "reps" && (cur.kg || it.kg) ? (
               <div className="mt-4">
-                <Adjust label="kilo" value={cur.kg || it.kg} unit="kg" onChange={onVal ? (d) => onVal(pos.i, pos.k, "kg", bump(cur.kg || it.kg, "kg", d)) : null} />
+                <Adjust value={cur.kg || it.kg} unit="kg" />
               </div>
             ) : null}
 
