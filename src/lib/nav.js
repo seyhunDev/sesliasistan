@@ -19,7 +19,7 @@ export const PAGES = {
   invoices: { path: "/invoices", label: "Faturalar", need: "owner" },
   payments: { path: "/payments", label: "Gelen ödemeler", need: "owner" },
   accounts: { path: "/mail", label: "Hesaplar", need: "owner" },
-  debts: { path: "/mail?tab=kisisel", label: "Hesaplar › Borçlar", need: "owner" },
+  debts: { path: "/mail?tab=borc", label: "Hesaplar › Borçlar", need: "owner" },
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
