@@ -516,3 +516,13 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 .amini-tail { position: absolute; left: 50%; bottom: -6px; width: 14px; height: 14px; margin-left: -7px; transform: rotate(45deg); border-radius: 0 0 3px 0; background: rgba(22, 30, 28, .94); }
 @keyframes aminiIn { from { opacity: 0; transform: translateY(12px) scale(.9); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .amini { animation: none; } }
+
+/* İlerleme halkası (onaylı örnek, 2026-10-17): dolma yumuşak geçer; düşünürken yavaşça ilerler; dinlerken çubuklar sesle oynar */
+.aring-arc { transition: stroke-dashoffset .7s cubic-bezier(.22,.8,.24,1), stroke .5s ease, opacity .3s ease; }
+.aring-creep { animation: aringcreep 12s cubic-bezier(.1,.6,.3,1) forwards; }
+@keyframes aringcreep { from { stroke-dashoffset: calc(var(--aring-c) * .92); } to { stroke-dashoffset: calc(var(--aring-c) * .62); } }
+.aring-bar { transform-box: fill-box; transform-origin: center; animation: aringbar .9s ease-in-out infinite alternate; }
+@keyframes aringbar { from { transform: scaleY(.55); } to { transform: scaleY(1.1); } }
+.aring-check { stroke-dasharray: 70; stroke-dashoffset: 70; animation: aringcheck .45s .2s ease-out forwards; }
+@keyframes aringcheck { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .aring-creep, .aring-bar { animation: none; } .aring-check { animation: none; stroke-dashoffset: 0; } .aring-arc { transition: none; } }
