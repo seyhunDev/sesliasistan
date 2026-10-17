@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -10,22 +10,24 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { dayInfo, planTone, clubDues, clubFis, clubRace, duesLive, homeNotes, postsTile, readSum, saveSum } from "@/lib/homeTiles";
-import { rel, todayStr } from "@/lib/utils/format";
+import { dayInfo, planTone, clubDues, clubFis, clubRace, duesLive, postsTile, readSum, saveSum } from "@/lib/homeTiles";
+import { todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
-import { CALM, GROUP, SectionHead } from "./ui";
+import { SectionHead } from "./ui";
+import { FadeImg } from "@/components/ui/FadeImg";
+import { NotesWidget, PageChips, WHead, WIDGET } from "./HomeWidgets";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › Kulüp / Özet (Seyhun 2026-10-16: "çok yer kaplıyor, toparlayalım"): tek sakin kart. Üstte Sıradaki yarış iki satır (ad + kalan gün;
-// tarih · yer · sp. · eksik iş), altında iki sütun küçük kutular: Aidat · ay (ödeyen/sayı, %), Hesap, Fiş / Fatura, Instagram; tek kalan kutu tam genişlik.
-// Yalnız bilgisi olan kutu görünür (clubDues, clubFis… homeTiles.js).
-// Notlar ayrı bölüm: en çok 3 not (homeNotes), başlık ve altında "Sabit / tarih · ilk satır". Bellekteki notlardan, ek okuma yok.
+// Ana sayfa › Kulüp / Özet canlı alanları (Seyhun 2026-10-17: "kısa yolları güzel tasarımla ayrı ayrı alanlar yapalım"; örnek 7-canli-alanlar-notlar.png):
+// iki sütunlu ızgara; önce tam genişlik alanlar (lead: Sporcular, Fitness; HomeWidgets.jsx), sonra kare alanlar: Sıradaki yarış, Aidat (halka),
+// Fiş / Fatura, Hesap (bakiye çizgisi); tek kalan kare iki sütunu kaplar. Sonra Notlar, tail (Mesajlar, Toplantı) ve Instagram (son üç gönderi).
+// Yalnız bilgisi olan alan görünür (clubDues, clubFis… homeTiles.js). Alanlar yalnız ilgili sayfayı açar.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır; banka mailleri useMoney; yarış raceHome.js.
-// Okuması süren kutunun yerinde yanıp sönen iskelet (Tile skel, SkelRace); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
+// Okuması süren alanın yerinde yanıp sönen iskelet (SkelWidget); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes, lead, tail, pages = [], hide = [] }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -93,157 +95,197 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   const fisT = (money || invoices) && !skel("inv") && clubFis(inv, money && m.receipts);
   const bankT = money && !skel("bank") && m.bank;
   const post = posts && sum.posts?.count ? sum.posts : null;
-  const note = homeNotes(notes || [], 3);
-  const anyWait = ["race", "dues", "inv", "bank"].some(skel);
-  const club = raceCard || duesT || fisT || bankT || post || anyWait;
-  if (!club && !note.total) return null;
-  const mon = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "short" }).replace(".", "");
+  const mon = new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", {
+    month: "long",
+  });
   const show = (k) => (fade.has(k) ? "fade-in" : "");
-  // Yarışın altındaki küçük kutular (iki sütun): yalnız bilgisi olan ya da okuması süren
-  const tiles = [
+  // Kare alanlar (iki sütun): yalnız bilgisi olan ya da okuması süren; tek kalan sonuncu iki sütunu kaplar
+  const squares = [
+    skel("race")
+      ? { key: "race", skel: true }
+      : raceCard && {
+          key: "race",
+          el: (w) => <RaceWidget r={raceCard} cls={`${show("race")} ${w}`} />,
+        },
     skel("dues")
       ? { key: "dues", skel: true }
-      : duesT && { key: "dues", href: "/dues", k: `Aidat · ${mon}`, cls: show("dues"), v: duesT.big, sm: `%${Math.round((duesT.bar || 0) * 100)}`, note: duesT.warn ? duesT.sub : "", nw: true },
-    skel("bank") ? { key: "bank", skel: true } : bankT && { key: "bank", href: "/mail", k: "Hesap", cls: show("bank"), v: bankT.big },
+      : duesT && {
+          key: "dues",
+          el: (w) => <DuesWidget t={duesT} mon={mon} cls={`${show("dues")} ${w}`} />,
+        },
     skel("inv")
       ? { key: "inv", skel: true }
-      : fisT && { key: "inv", href: "/receipts", k: "Fiş / Fatura", cls: show("inv"), v: fisT.big, warn: fisT.warn, note: fisT.sub || "", nw: fisT.warn },
+      : fisT && {
+          key: "inv",
+          el: (w) => <FisWidget t={fisT} spend={invoices && inv && money ? m.receipts : null} cls={`${show("inv")} ${w}`} />,
+        },
+    skel("bank")
+      ? { key: "bank", skel: true }
+      : bankT && {
+          key: "bank",
+          el: (w) => <BankWidget b={bankT} cls={`${show("bank")} ${w}`} />,
+        },
   ].filter(Boolean);
+
+  // Alttaki sayfa düğmeleri: alanı görünen sayfa (yarış, aidat, fiş, hesap, Instagram) tekrar düğme olmaz; alanı yoksa düğme kalır
+  const shown = {
+    race: "/athletes/races",
+    dues: "/dues",
+    inv: "/receipts",
+    bank: "/mail",
+  };
+  const gone = [...hide, ...squares.map((t) => shown[t.key]), ...(post ? ["/posts"] : [])];
 
   return (
     <>
-      {club && (
-        <section aria-labelledby="home-sum" aria-busy={busy}>
-          <SectionHead id="home-sum" title={title}>
-            {raceCard && (
-              <Link href="/athletes/races" className="text-acc">
-                Yarışlar ›
-              </Link>
-            )}
-          </SectionHead>
-          {/* Kulüp kartı şimdiki sakin görünümüyle kalır (Seyhun: "Kulüp kısmı şu anki haliyle kalsın"): içte .calm, gruplu sayfanın renklerini geri alır */}
-          <div className={`calm overflow-hidden ${CALM}`}>
-            {skel("race") ? <SkelRace /> : raceCard && <RaceRow r={raceCard} cls={show("race")} />}
-            {tiles.length > 0 && (
-              <ul className={`grid grid-cols-2 gap-px bg-line ${raceCard || skel("race") ? "border-t border-line" : ""}`}>
-                {tiles.map((t, i) => (
-                  <Tile key={t.key} {...t} wide={i === tiles.length - 1 && tiles.length % 2 === 1} />
-                ))}
-              </ul>
-            )}
-            {post && <PostRow post={post} line={raceCard || skel("race") || tiles.length > 0} />}
-          </div>
-        </section>
-      )}
-      {note.total > 0 && <NotesList list={note.list} total={note.total} />}
+      <section aria-labelledby="home-sum" aria-busy={busy}>
+        <SectionHead id="home-sum" title={title} />
+        <div className="grid grid-cols-2 gap-2.5">
+          {lead}
+          {squares.map((t, i) => {
+            const wide = i === squares.length - 1 && squares.length % 2 === 1 ? "col-span-2" : "";
+            return t.skel ? <SkelWidget key={t.key} cls={wide} /> : <Fragment key={t.key}>{t.el(wide)}</Fragment>;
+          })}
+          <NotesWidget notes={notes} />
+          {tail}
+          {post && <PostsWidget post={post} />}
+        </div>
+      </section>
+      <PageChips groups={pages} hide={gone} />
     </>
   );
 }
 
-// Küçük kutu: üstte ad, altında değer (ve küçük ek), en altta tek satır not; tek kalan kutu iki sütunu kaplar
-function Tile({ href, k, v, sm, note, nw, warn, cls = "", skel, wide }) {
-  const span = wide ? "col-span-2" : "";
-  if (skel)
-    return (
-      <li aria-hidden="true" className={`bg-card px-3.5 py-2.5 ${span}`}>
-        <span className="shimmer block h-3 w-16 rounded-full" />
-        <span className="shimmer mt-2 block h-4 w-20 rounded-full" />
-      </li>
-    );
+// Kare alan: sıradaki yarış (ad, tarih · sporcu, büyük kalan gün, eksik iş). Dokununca yarışın sayfası
+function RaceWidget({ r, cls }) {
+  const sub = r.sub || "";
   return (
-    <li className={`bg-card ${span} ${cls}`}>
-      <Link href={href} className="block px-3.5 py-2.5">
-        <small className="block truncate text-[0.75rem] text-mut">{k}</small>
-        <b className={`block truncate font-medium tabular-nums ${warn ? "text-warn" : ""}`}>
-          {v}
-          {sm && <small className="ml-1 font-normal text-mut">{sm}</small>}
-        </b>
-        {note && <small className={`block truncate text-[0.75rem] ${nw ? "text-warn" : "text-mut"}`}>{note}</small>}
-      </Link>
-    </li>
-  );
-}
-
-// Instagram satırı (tam genişlik): solda "4 gönderi ›" ve "Sonuncusu dün" (dokununca gönderiler sayfası), sağda son gönderinin
-// küçük görseli (dokununca o gönderi; Seyhun: "son gönderiye tıklanınca ona gidilsin, gönderi sayısına tıklanınca gönderilere"). Görsel yoksa yalnız yazı.
-function PostRow({ post, line }) {
-  const t = postsTile(post);
-  const id = post.last?.id;
-  const thumb = post.last?.thumb;
-  return (
-    <div className={`flex items-center gap-3 pr-2.5 ${line ? "border-t border-line" : ""}`}>
-      <Link href="/posts" className="min-w-0 flex-1 px-3.5 py-2.5">
-        <small className="block truncate text-[0.75rem] text-mut">Instagram</small>
-        <b className="block truncate font-medium tabular-nums">
-          {t.big} <span aria-hidden="true" className="font-normal text-mut">›</span>
-        </b>
-        {t.sub && <small className="block truncate text-[0.75rem] text-mut">{t.sub}</small>}
-      </Link>
-      {id && thumb && (
-        <Link href={`/posts/${id}`} aria-label="Son gönderiyi aç" className="my-2.5 shrink-0 overflow-hidden rounded-[0.625rem] ring-1 ring-line">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={thumb} alt="" className="block h-20 w-16 object-cover" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
-// Sıradaki yarış, iki satır: ad ve kalan gün hapı; altında "tarih · yer · 6 sp. · 2 iş eksik". Dokununca yarışın sayfası
-function RaceRow({ r, cls }) {
-  const sub = (r.sub || "").replace(/(\d+) sporcu\b/, "$1 sp.");
-  return (
-    <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className={`flex items-center gap-3 px-3.5 py-2.5 ${cls}`}>
-      <span className="min-w-0 flex-1">
-        <b className="block truncate font-medium">{r.title}</b>
-        <small className="block truncate text-[0.8125rem] text-mut">
-          {sub}
-          {r.left > 0 && <span className="text-warn">{sub ? " · " : ""}{r.left} iş eksik</span>}
-        </small>
+    <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className={`${WIDGET} ${cls}`}>
+      <WHead tone="sp" title="Sıradaki yarış" />
+      <b className="mt-2 block truncate text-[0.96875rem] font-semibold">{r.title}</b>
+      <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
+      <span className="mt-auto flex items-baseline justify-between gap-2 pt-2">
+        <span className="text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
+          {r.days != null ? r.days : r.when}
+          {r.days != null && <span className="ml-1 text-[0.9375rem] font-medium">gün</span>}
+        </span>
+        {r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
       </span>
-      <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.8125rem] font-medium text-acc">{r.days != null ? `${r.days} gün` : r.when}</span>
     </Link>
   );
 }
 
-function SkelRace() {
+// Kare alan: bu ayın aidatı (ödeyenlerin halkası, 9/14, ödemeyen ya da onay bekleyen). Dokununca Aidatlar
+function DuesWidget({ t, mon, cls }) {
+  const [paid, count] = t.big.split("/");
   return (
-    <div aria-hidden="true" className="px-3.5 py-3">
-      <span className="shimmer block h-4 w-44 max-w-full rounded-full" />
-      <span className="shimmer mt-2 block h-3 w-32 rounded-full" />
+    <Link href="/dues" className={`${WIDGET} ${cls}`}>
+      <WHead tone="st" title={`Aidat · ${mon}`} />
+      <span className="mt-2.5 flex items-center gap-2.5">
+        <Ring p={t.bar || 0} label={`%${Math.round((t.bar || 0) * 100)}`} />
+        <span className="min-w-0">
+          <b className="block text-[1.5rem] font-semibold leading-tight tabular-nums">
+            {paid}
+            <span className="text-[1rem] text-mut">/{count}</span>
+          </b>
+          <small className={`block text-[0.8125rem] leading-snug ${t.warn ? "text-warn" : "text-mut"}`}>{t.sub}</small>
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+// Kare alan: fiş / fatura (ödenmemiş fatura sayısı ve tutarı, yoksa ayın fiş harcaması; altında ayın harcaması). Dokununca Fiş / Fatura
+function FisWidget({ t, spend, cls }) {
+  return (
+    <Link href="/receipts" className={`${WIDGET} ${cls}`}>
+      <WHead tone="fa" title="Fiş / Fatura" />
+      <b className={`mt-2 block text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums ${t.warn ? "text-warn" : ""}`}>{t.big}</b>
+      <small className="mt-1 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
+      {spend && (
+        <small className="mt-auto block truncate pt-2 text-[0.8125rem] text-mut">
+          {spend.sub}: {spend.big}
+        </small>
+      )}
+    </Link>
+  );
+}
+
+// Kare alan: hesap bakiyesi, değişim ve son özetlerin küçük çizgisi (useMoney spark). Dokununca Hesaplar
+function BankWidget({ b, cls }) {
+  return (
+    <Link href="/mail" className={`${WIDGET} ${cls}`}>
+      <WHead tone="st" title="Hesap" />
+      <b className="mt-2 block truncate text-[1.375rem] font-semibold leading-tight tracking-[-.02em] tabular-nums">{b.big}</b>
+      <small className={`block truncate text-[0.8125rem] ${b.warn ? "text-warn" : "text-mut"}`}>{b.sub}</small>
+      {b.spark?.length > 1 && <Spark v={b.spark} />}
+    </Link>
+  );
+}
+
+function Spark({ v }) {
+  const lo = Math.min(...v);
+  const hi = Math.max(...v);
+  const pts = v.map((x, i) => `${((i / (v.length - 1)) * 120).toFixed(1)},${(30 - ((x - lo) / (hi - lo || 1)) * 26).toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true" className="mt-auto block h-8 w-full pt-1">
+      <polygon points={`0,34 ${pts} 120,34`} className="fill-acc/10" />
+      <polyline points={pts} fill="none" className="stroke-acc" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function Ring({ p, label }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 52 52" aria-hidden="true" className="size-[3.25rem] shrink-0">
+      <circle cx="26" cy="26" r={r} fill="none" className="stroke-line" strokeWidth="6" />
+      <circle cx="26" cy="26" r={r} fill="none" className="stroke-acc" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} transform="rotate(-90 26 26)" />
+      <text x="26" y="27" textAnchor="middle" dominantBaseline="middle" className="fill-fg text-[0.6875rem] font-bold">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+function SkelWidget({ cls }) {
+  return (
+    <div aria-hidden="true" className={`${WIDGET} ${cls}`}>
+      <span className="shimmer block h-3 w-20 rounded-full" />
+      <span className="shimmer mt-3 block h-6 w-24 rounded-full" />
+      <span className="shimmer mt-2 block h-3 w-28 rounded-full" />
     </div>
   );
 }
 
-// Notlar: başlık + Tümü + ekle; her not başlığı ve altında "Sabit / tarih · ilk satır"
-function NotesList({ list, total }) {
-  const { openAdd } = useAdd();
+// Tam genişlik: Instagram (gönderi sayısı, sonuncusu ne zaman; son üç gönderinin görseli, dokununca o gönderi). Görsel yoksa yalnız yazı
+function PostsWidget({ post }) {
+  const t = postsTile(post);
+  const recent = (post.recent?.length ? post.recent : post.last ? [post.last] : []).filter((x) => x?.id && x.thumb).slice(0, 3);
   return (
-    <section aria-labelledby="home-notes">
-      <SectionHead id="home-notes" title="Notlar" count={total}>
-        <Link href="/notes" className="text-acc">
-          Tümü ›
-        </Link>
-        <button type="button" data-press aria-label="Not ekle" onClick={() => openAdd({ type: "note" })} className="raised grid size-7 place-items-center rounded-full text-acc">
-          <Icon name="plus" className="size-4" />
-        </button>
-      </SectionHead>
-      <ul className={`divide-y divide-line px-3.5 py-0.5 ${GROUP}`}>
-        {list.map((n) => {
-          const when = n.pinned ? "Sabit" : n.createdAt ? rel((n.updatedAt || n.createdAt).slice(0, 10)) : "";
-          const first = String(n.body && n.body !== n.title ? n.body : "").split("\n").find((x) => x.trim()) || "";
-          const line = [when, first.trim()].filter(Boolean).join(" · ");
-          return (
-            <li key={n.id}>
-              <button type="button" onClick={() => openAdd({ edit: { kind: "note", id: n.id } })} className="block w-full py-2.5 text-left">
-                <b className="block truncate font-medium">{n.title || "Not"}</b>
-                {line && <small className="block truncate text-[0.875rem] text-mut">{line}</small>}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <div className={`${WIDGET} col-span-2 min-h-0`}>
+      <WHead
+        tone="ve"
+        title="Instagram"
+        count={t.big}
+        right={
+          <Link href="/posts" className="text-acc">
+            Tümü ›
+          </Link>
+        }
+      />
+      {t.sub && <small className="mt-0.5 block text-[0.8125rem] text-mut">{t.sub}</small>}
+      {recent.length > 0 && (
+        <span className="mt-2.5 grid grid-cols-3 gap-2">
+          {recent.map((x) => (
+            <Link key={x.id} href={`/posts/${x.id}`} aria-label="Gönderiyi aç" className="relative block aspect-[4/5] overflow-hidden rounded-[0.625rem] bg-line">
+              <FadeImg src={x.thumb} className="size-full object-cover" />
+            </Link>
+          ))}
+        </span>
+      )}
+    </div>
   );
 }
 

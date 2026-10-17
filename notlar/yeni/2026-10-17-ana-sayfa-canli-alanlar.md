@@ -1,0 +1,5 @@
+## Nerede kaldım
+- Ana sayfa canlı alanlar (Seyhun: "kısa yolları canlı alanlara çevirelim", "notlar da önemli", "fitness'ta aynı gün birkaç sporcu"; örnek ana-sayfa/yeniden/7-canli-alanlar-notlar.png onaylandı; telefonda denenmedi): Kulüp kartı ve Kısayollar ızgarası yerine iki sütunlu alanlar. HomeWidgets.jsx: Sporcular (fotoğraflar, bugünkü antrenman, Yoklama al, Sporculara mesaj), Fitness (bugünün ya da en yakın günün sporcuları alt alta, en çok 3, "+N", sonraki gün bağlantısı), Notlar (3 not, +), Mesajlar (son sohbet, okunmamış), Toplantı (kaydı başlat), PageChips (kalan sayfalar küçük düğmeler; alanı görünen sayfa düğme olmaz). HomeSummary.jsx: Sıradaki yarış, Aidat (halka), Fiş / Fatura, Hesap (bakiye çizgisi), Instagram (son 3 gönderi; posts sayfası özetine `recent` eklendi). Kişi şeridi ve kısayol düzenleme (homeLinks) ana sayfadan kalktı. Aidat "Hatırlat" ve Fiş "+" düğmeleri örnekte vardı, karşılığı olmadığından konmadı (alan sayfayı açar).
+
+## Sıradaki işler
+0. Telefonda ana sayfa alanları: koyu görünüm, Instagram görselleri (Gönderiler sayfası bir kez açılınca gelir), Fitness çok sporculu gün.

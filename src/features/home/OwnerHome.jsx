@@ -11,16 +11,16 @@ import { useWeather } from "@/features/weather/useWeather";
 import { useNow } from "@/hooks/useNow";
 import { fitDays, homeActions } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
-import { initials } from "@/lib/utils/format";
+import { initials, todayStr } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxBell, InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
-import { BirthdayBadge, PeopleStrip } from "./PeopleStrip";
+import { BirthdayBadge } from "./PeopleStrip";
 import { HomeHero, HomeWind } from "./HomeHero";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { HomeActions } from "./HomeActions";
+import { AthletesWidget, FitWidget, TalkWidgets } from "./HomeWidgets";
 import { GROUP } from "./ui";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
@@ -84,7 +84,9 @@ export function OwnerHome() {
   );
 }
 
-// Sıra (Seyhun: "grafiğin altına takvim, takvimden sonra profiller"): Sırada (gün şeridi, sıradaki planlar, "seni bekliyor" şeridi) › kişi şeridi › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra: Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
+// "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › kalan sayfalar küçük düğmeler (PageChips).
+// Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
@@ -119,14 +121,29 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   return (
     <div ref={root} className="space-y-6">
       <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
-      <PeopleStrip />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
       {side && <MyAttendanceCard kind={kind} />}
       {staff && <MyFitCard />}
-      <HomeSummary title={owner && (athletes || race.on) ? "Kulüp" : "Özet"} money={canReceipts(kind)} race={race.on && race} dues={athletes && owner} posts={!staff} invoices={owner} notes={notes} />
-      <HomeActions groups={actions} />
+      <HomeSummary
+        title={owner && (athletes || race.on) ? "Kulüp" : "Özet"}
+        money={canReceipts(kind)}
+        race={race.on && race}
+        dues={athletes && owner}
+        posts={!staff}
+        invoices={owner}
+        notes={notes}
+        lead={
+          <>
+            {athletes && owner && <AthletesWidget att={athletes} />}
+            {!side && <FitWidget fit={fit} />}
+          </>
+        }
+        tail={<TalkWidgets meeting={!side} />}
+        pages={actions}
+        hide={["/notes", ...(!side ? ["meeting"] : []), ...(athletes && owner ? ["/athletes", "/athletes/attendance"] : []), ...(!side && fit.some((f) => f.date >= todayStr()) ? ["/fitness"] : [])]}
+      />
     </div>
   );
 }
