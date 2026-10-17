@@ -84,7 +84,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Sırada (hafta şeridi, sıradaki planlar, "seni bekliyor" şeridi) › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
+// Sıra (Seyhun: "grafiğin altına takvim, takvimden sonra profiller"): Sırada (gün şeridi, sıradaki planlar, "seni bekliyor" şeridi) › kişi şeridi › doğum günü › Yoklamam › Kulüp/Özet (yarış, notlar, kartlar) › Kısayollar. Kartlar ortak görünümde (ui.jsx).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
   const { profile } = useAuth();
@@ -118,8 +118,8 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div ref={root} className="space-y-6">
-      <PeopleStrip />
       <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
+      <PeopleStrip />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
