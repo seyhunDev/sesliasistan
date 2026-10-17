@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { exById } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, GOALS, PARTS, REVIEW_ASK, REVIEW_ROWS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, toName } from "@/lib/fitness/model";
+import { DOWS, DOW_LONG, GOALS, PARTS, REVIEW_ASK, REVIEW_ROWS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, restOf, setRestAll, toName } from "@/lib/fitness/model";
 import { editProgram } from "./fitImport";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
@@ -128,7 +128,7 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
             {it.kind === "cardio" && <Step label="Süre" unit="dk" value={it.min} min={1} max={180} onChange={(v) => set("min", v)} />}
             {it.kind === "reps" && <Step label="Kilo (elde)" unit="kg" dec value={it.kg} step={2.5} max={500} onChange={(v) => set("kg", v)} />}
             <Step label="Çantaya ağırlık" unit="kg" dec value={it.bag} step={1} max={100} onChange={(v) => set("bag", v)} />
-            <Step label="Dinlenme" unit="sn" value={it.rest} step={15} max={300} onChange={(v) => set("rest", v)} />
+            <Step label="Dinlenme" unit="sn" value={it.rest} step={5} max={300} onChange={(v) => set("rest", v)} />
           </div>
           {it.kind !== "cardio" && (
             <label className="mt-2 flex h-11 items-center justify-between rounded-2xl bg-bg px-3 text-[0.875rem] font-semibold">
@@ -278,6 +278,26 @@ function DayPanel({ d, onChange, onDrop }) {
 }
 
 // Haftalara göre evreler (salt okunur) ve programın kuralları (ilerleme, güvenlik, trafik ışığı); kurallar düzenlenir
+// Toplu dinlenme: değişince bütün programdaki hareketlere uygulanır; tek tek değiştirmek hareketin içinden
+function RestAll({ p, onChange }) {
+  const [typed, setTyped] = useState(null);
+  const put = (x) => {
+    if (typeof x === "string") setTyped(x);
+    if (+x >= 5) onChange((q) => setRestAll(q, x));
+  };
+  return (
+    <section className={`${card} mt-3 flex items-center gap-3 p-3`}>
+      <span className="min-w-0 flex-1 pl-1">
+        <b className="block text-[0.9375rem] font-semibold">Dinlenme</b>
+        <small className="block text-[0.8125rem] text-mut">Bütün hareketler</small>
+      </span>
+      <span className="w-44 shrink-0" onBlur={() => setTyped(null)}>
+        <Step label="Setler arası" unit="sn" value={typed ?? restOf(p)} step={5} min={5} max={300} onChange={put} />
+      </span>
+    </section>
+  );
+}
+
 function PlanNotes({ p, onChange }) {
   const phases = p.phases || [];
   return (
@@ -613,6 +633,7 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
         <p className={`${card} mt-3 p-5 text-center text-[0.9375rem] text-mut`}>Henüz antrenman günü yok. Yukarıdan bir güne dokun.</p>
       )}
 
+      <RestAll p={p} onChange={setP} />
       <PlanNotes p={p} onChange={setP} />
       <TrackEdit p={p} onChange={setP} />
       <AiEdit p={p} onChange={setP} />
