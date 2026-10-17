@@ -12,6 +12,9 @@ import { Group, Row } from "@/features/settings/ui";
 import { sendersOf } from "@/lib/bankSheet";
 import { GARANTI_SENDERS } from "@/lib/garanti";
 import { db } from "@/lib/firebase/clientApp";
+import { payeeOf } from "@/lib/payee";
+import { LedgerCard } from "@/features/bank/LedgerCard";
+import { MailInbox } from "@/features/mail/MailInbox";
 
 const VALID = /^([^\s@]+@)?[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
 const PROJECT = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "";
@@ -117,6 +120,11 @@ export default function MailSetupPage() {
           sub={seen ? `Son kontrol ${ago(seen, now)} · 5 dakikada bir bakılır` : "Aşağıdaki kurulumu bir kez yap"}
         />
       </Group>
+
+      {/* Hesaplar'dan taşındı: banka defteri (Ayarlar'da açıksa) ve gelen mailler */}
+      {profile.ledgerCard && <LedgerCard uid={profile.uid} self={payeeOf(profile).name} payee={payeeOf(profile)} />}
+      <MailInbox uid={profile.uid} mailFrom={profile.mailFrom} ready={!!seen} />
+      <div className="mt-6" />
 
       <Group title="Garanti BBVA kart harcamaları" footer="Garanti'den gelen her harcama maili Fişler'e ödeme bekleyen Kişisel fiş olarak eklenir. Garanti BBVA uygulamasında kart işlem bildirimleri için e-postayı aç; e-posta adresin bu Gmail olmalı.">
         <Row

@@ -1,62 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
-import { DEBT_KINDS, leftOf, paidOf, splitDebts, tl } from "@/lib/debts";
+import { DEBT_KINDS, leftOf, tl } from "@/lib/debts";
 
-// Verilen borçlar Hesaplar'da (ayrı Borçlar sayfası kalktı, Seyhun: "tek şey olsun"): Kulüp sekmesinde kulübün verdikleri
-// (kasadan düşer), Kişisel'de "Bana borçlu olanlar". Kayıt ve asistan aynı (debts.js, debtData.js).
+// Verilen borçlar Hesaplar › Borçlar sekmesinde (Geri gelecek: kulübün verdikleri kasadan düşer, kişisel olanlar düşmez).
+// Kayıt ve asistan aynı (debts.js, debtData.js).
 const dateText = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
-const initials = (s) => s.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toLocaleUpperCase("tr-TR");
-const card = "overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]";
-
-// Verilen borçların listesi (tek tür): açıklar, kalan toplam, ödenenler katlanır; "+ Borç ver"
-export function LentSection({ items, kind, title, onAdd, onOpen, flat }) {
-  const [showClosed, setShowClosed] = useState(false);
-  const { open, closed } = splitDebts(items || [], kind);
-  const left = open.reduce((n, d) => n + leftOf(d), 0);
-  const row = (d) => {
-    const l = leftOf(d);
-    return (
-      <li key={d.id}>
-        <button type="button" onClick={() => onOpen(d.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sky-100 text-[0.75rem] font-bold text-sky-800 dark:bg-sky-900/40 dark:text-sky-200">{initials(d.who)}</span>
-          <span className="min-w-0 flex-1">
-            <b className={`block truncate text-[0.9375rem] font-medium ${l ? "" : "text-mut line-through"}`}>{d.who}</b>
-            <small className="block truncate text-[0.75rem] text-mut">{[dateText(d.date), d.note, paidOf(d) > 0 && l > 0 && `${tl(d.amount)} verildi`].filter(Boolean).join(" · ")}</small>
-          </span>
-          <b className={`shrink-0 text-[0.9375rem] font-semibold tabular-nums ${l ? "text-sky-700 dark:text-sky-300" : "text-mut"}`}>{l ? tl(l) : "Ödendi"}</b>
-        </button>
-      </li>
-    );
-  };
-  return (
-    <div className={flat ? "" : "mt-6"}>
-      <div className="flex items-center gap-2 px-1 pb-2">
-        <h2 className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-mut">
-          {title}
-          {left > 0 ? ` · ${tl(left)}` : ""}
-        </h2>
-        <button type="button" onClick={onAdd} className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-2.5 text-[0.75rem] font-semibold text-acc shadow-[0_1px_2px_rgba(38,40,44,.06)]">
-          <Icon name="plus" className="size-3.5" /> Borç ver
-        </button>
-      </div>
-      <div className={card}>
-        {open.length ? <ul className="divide-y divide-line">{open.map(row)}</ul> : <p className="px-4 py-3 text-[0.8125rem] text-mut">{closed.length ? "Hepsi geri ödendi." : "Açık borç yok."}</p>}
-        {closed.length > 0 && (
-          <>
-            <button type="button" onClick={() => setShowClosed((v) => !v)} aria-expanded={showClosed} className="flex h-10 w-full items-center gap-2 border-t border-line px-4 text-left text-[0.8125rem] font-semibold text-mut">
-              <span className="flex-1">Ödenenler ({closed.length})</span>
-              <Icon name="chev" className={`size-4 transition ${showClosed ? "rotate-90" : ""}`} />
-            </button>
-            {showClosed && <ul className="divide-y divide-line border-t border-line">{closed.map(row)}</ul>}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // Ekle / düzenle: kime, tutar, tür; tarih ve not isteğe bağlı
 export function DebtForm({ value, names, onClose, onSave }) {

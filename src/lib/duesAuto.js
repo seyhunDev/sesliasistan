@@ -3,8 +3,9 @@
 // yalnız eşleştirme için gereken adlarını dues/settings.roster'a yazar ({ id, studentName, parentName, motherName, fatherName }).
 // Kendiliğinden yazılan: eşleşmesi emin (öğrenilmiş gönderen, soyadı + veli adı ya da sporcu adı) VE tutarı sporcunun
 // (kardeşlerde toplam) aidatına eşit olan para. Gerisi Aidatlar › "eşleşmeyi bekliyor"da onaya kalır.
+// Para geldiği aya değil, sporcunun en eski borçlu ayına yazılır (son 12 ay); geldiği ayda used işareti kalır.
 import { movementsOf } from "./mailBoard.js";
-import { feeOf, matchMovement, startOf, monthOf, movKey, payerOf, splitAmount, usedKeys } from "./dues.js";
+import { allocate, allUsed, feeOf, lastMonths, matchMovement, startOf, monthOf, movKey, payerOf, splitAmount } from "./dues.js";
 import { money } from "./bankSheet.js";
 
 const TL = (n) => `${money(n).replace(/,00$/, "")} TL`;
@@ -22,22 +23,33 @@ export function autoDues(movements, cfg = {}, months = {}, now = new Date().toIS
   const out = { months: {}, payers: null, paid: [], open: 0 };
   if (!roster.length) return out;
   const payers = { ...(cfg.payers || {}) };
+  const all = () => ({ ...months, ...out.months });
   for (const m of movements) {
     if (!(m.amount > 0) || (m.currency && m.currency !== "TL")) continue;
     const ym = monthOf(m);
     if (!ym) continue;
     const month = out.months[ym] || months[ym] || {};
     const k = movKey(m);
-    if ((month.ignored || []).includes(k) || usedKeys(month).has(k)) continue;
+    if ((month.ignored || []).includes(k) || allUsed(all()).has(k)) continue;
     const r = matchMovement(m, roster, cfg);
     const fees = r.picks.reduce((s, a) => s + feeOf(a, cfg), 0);
     if (!r.sure || !r.picks.length || !fees || Math.abs(fees - m.amount) >= 1) {
       if (r.list.length) out.open++;
       continue;
     }
-    const paid = { ...(month.paid || {}) };
-    for (const [a, amt] of splitAmount(m.amount, r.picks, cfg)) paid[a.id] = [...(paid[a.id] || []), { amt, via: "eft", date: m.date, mov: k, desc: String(m.desc).slice(0, 120), by: "auto", at: now }];
-    out.months[ym] = { ...month, paid };
+    // Her sporcunun payı en eski borçlu aya (geldiği aya kadar son 12 ay) yazılır
+    const yms = lastMonths(ym, 12);
+    for (const [a, amt] of splitAmount(m.amount, r.picks, cfg)) {
+      for (const part of allocate(amt, a, cfg, all(), yms, null, ym)) {
+        const mo = out.months[part.ym] || months[part.ym] || {};
+        const paid = { ...(mo.paid || {}) };
+        paid[a.id] = [...(paid[a.id] || []), { amt: part.amt, via: "eft", date: m.date, mov: k, desc: String(m.desc).slice(0, 120), by: "auto", at: now }];
+        out.months[part.ym] = { ...mo, paid };
+      }
+    }
+    // Geldiği aya yazılmadıysa orada "kullanıldı" işareti (yeniden eşleştirilmesin)
+    const arr = out.months[ym] || months[ym] || {};
+    if (!(arr.paid && Object.values(arr.paid).flat().some((p) => p.mov === k))) out.months[ym] = { ...arr, used: [...new Set([...(arr.used || []), k])] };
     for (const a of r.picks) {
       const p = payerOf(m.desc, a);
       if (p && !(payers[a.id] || []).includes(p)) {
@@ -68,10 +80,11 @@ export async function runAutoDues(io, uid, mails) {
   if (!movs.length) return null;
   const cfg = await io.get(`orgs/${uid}/dues/settings`);
   if (!cfg?.roster?.length) return null;
-  const yms = [...new Set(movs.map(monthOf).filter(Boolean))];
+  // Geldiği aylar ve öncesindeki 11 ay (ödeme en eski borçlu aya yazılır)
+  const yms = [...new Set(movs.map(monthOf).filter(Boolean).flatMap((ym) => lastMonths(ym, 12)))];
   const months = Object.fromEntries(await Promise.all(yms.map(async (ym) => [ym, (await io.get(`orgs/${uid}/dues/${ym}`)) || {}])));
   const res = autoDues(movs, cfg, months);
-  for (const [ym, m] of Object.entries(res.months)) await io.set(`orgs/${uid}/dues/${ym}`, { paid: m.paid });
+  for (const [ym, m] of Object.entries(res.months)) await io.set(`orgs/${uid}/dues/${ym}`, m.used?.length ? { paid: m.paid || {}, used: m.used } : { paid: m.paid || {} });
   if (res.payers) await io.set(`orgs/${uid}/dues/settings`, { payers: res.payers });
   return res;
 }
