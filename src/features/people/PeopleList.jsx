@@ -1,5 +1,6 @@
 "use client";
 
+import { FadeImg } from "@/components/ui/FadeImg";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
@@ -66,7 +67,8 @@ export function PeopleList({ group }) {
               <li key={m.uid} className="flex items-center gap-2 pr-3">
                 <Link href={personPath(m.uid)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-bg">
                   <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.875rem] font-bold text-acc">
-                    {m.photo ? <img src={m.photo} alt="" className="size-full rounded-full object-cover" /> : initials(m.name)}
+                    {initials(m.name)}
+                    {m.photo && <FadeImg src={m.photo} className="size-full rounded-full object-cover" />}
                     {acc && <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-card ${online ? "bg-ok" : "bg-line"}`} />}
                   </span>
                   <span className="min-w-0 flex-1">

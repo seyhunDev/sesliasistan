@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FadeImg } from "@/components/ui/FadeImg";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useData } from "@/features/data/DataProvider";
@@ -56,7 +57,7 @@ export function BirthdayBadge() {
 }
 
 // Instagram hikâyeleri gibi yuvarlak kişi şeridi (Seyhun: "ana sayfada yuvarlak kişiler, sporcular"): baş harf, altında ilk ad;
-// bugün doğum günü olan önde ve yeşil halkalı. Zemin kişi türüne göre (Seyhun: "sporcular, çalışanlar, veliler farklı renk"): çalışan yeşil, sporcu mavi, veli lila, aile kahve. Dokununca kişinin sayfası. Kişi listesi yoksa (çalışan hesabı) çizilmez.
+// bugün doğum günü olan önde ve yeşil halkalı. Fotoğraf varsa baş harflerin üstünde, inince yumuşakça belirir (FadeImg). Zemin kişi türüne göre (Seyhun: "sporcular, çalışanlar, veliler farklı renk"): çalışan yeşil, sporcu mavi, veli lila, aile kahve. Dokununca kişinin sayfası. Kişi listesi yoksa (çalışan hesabı) çizilmez.
 export function PeopleStrip() {
   const { birthdays, members } = useData();
   const list = storyPeople(members, birthdaysOn(birthdays, todayStr()));
@@ -67,7 +68,10 @@ export function PeopleStrip() {
         {list.map((p) => (
           <li key={p.id}>
             <Link href={p.href} className="flex w-14 flex-col items-center gap-1">
-              <span className={`grid size-14 place-items-center rounded-full text-[0.9375rem] font-semibold ${p.tone ? `tone-${p.tone} tone-chip` : "bg-card text-fg2 ring-1 ring-line"} ${p.bday ? "ring-2 ring-acc ring-offset-2 ring-offset-bg" : ""} overflow-hidden`}>{p.photo ? <img src={p.photo} alt="" className="size-full object-cover" /> : initials(p.name)}</span>
+              <span className={`grid size-14 place-items-center rounded-full text-[0.9375rem] font-semibold ${p.tone ? `tone-${p.tone} tone-chip` : "bg-card text-fg2 ring-1 ring-line"} ${p.bday ? "ring-2 ring-acc ring-offset-2 ring-offset-bg" : ""} relative overflow-hidden`}>
+                {initials(p.name)}
+                {p.photo && <FadeImg src={p.photo} className="size-full rounded-full object-cover" />}
+              </span>
               <small className="w-full truncate text-center text-[0.75rem] text-fg2">{p.name.split(" ")[0]}</small>
             </Link>
           </li>
