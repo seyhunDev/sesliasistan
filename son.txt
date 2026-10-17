@@ -1,8 +1,8 @@
-Commit: 07fa529 · Ana sayfa canlı: kişi türü renkleri, üç hafta kaydırılan şerit ve Tümü, renkli plan satırları, Instagram son gönderi görseli (#447)
-Zaman: 2026-10-17-0521 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38994470598
+Commit: c33a3e9 · Ana sayfa hava satırı: eski veride bu saatin tahmini, hava penceresi bugünden başlar (#448)
+Zaman: 2026-10-17-0527 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38994894121
 
-TAM TEST · 17.10.2026 05:19:52
+TAM TEST · 17.10.2026 05:26:17
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 77 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
