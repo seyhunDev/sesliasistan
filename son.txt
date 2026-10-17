@@ -1,8 +1,8 @@
-Commit: 1176df1 · Merge pull request #464 from seyhunDev/claude/project-thread-d5ov9m
-Zaman: 2026-10-17-1621 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39036118773
+Commit: 3f9b4e3 · Ana sayfa: gruplu düzen, bugün saat çizgisi, Yarın/Sırada grupları (#465)
+Zaman: 2026-10-17-1648 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39037989915
 
-TAM TEST · 17.10.2026 16:20:23
+TAM TEST · 17.10.2026 16:47:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
