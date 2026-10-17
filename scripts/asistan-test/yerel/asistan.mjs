@@ -1134,4 +1134,20 @@ group("Temiz başlık ve sorusuz ekleme")([
     for (const no of t.not || []) rows.push([no, { desc: `${t.id} değil`, fn: B.briefOf, ok: (r) => !r || !(t.id === "notes.read" ? r.asks.some((a) => a.what === "notes") : r.asks.some((a) => a.what === "plans" && a.when === t.id.split(".")[1])) }]);
   }
   group("Hızlı bilgi isteği: hazır cümle seti")(rows);
+
+  const { ringOf } = await import("@/lib/assistRing");
+  const R = (desc, ok) => ({ desc, fn: ringOf, ok });
+  const L3 = (a, b, c) => [{ label: "Notlar", st: a }, { label: "Planlar", st: b }, { label: "Mesaj", st: c }];
+  group("İlerleme halkası")([
+    ["dinlerken", R("kırmızı, çubuklu", (r) => r.tone === "listen" && r.bars && r.label === "Dinliyorum")].map((x) => x),
+  ].map(([n, t]) => [n, { ...t, fn: () => ringOf({ state: "listening" }) }]).concat([
+    ["düşünürken", { desc: "kehribar, az dolu", fn: () => ringOf({ state: "busy" }), ok: (r) => r.tone === "work" && r.label === "Düşünüyorum" && r.fill > 0 && r.fill < 0.3 }],
+    ["yazıya çevrilirken", { desc: "düşünüyorum, alt yazısız", fn: () => ringOf({ state: "busy", transcribing: true }), ok: (r) => r.label === "Düşünüyorum" && !r.sub }],
+    ["tek iş sürüyor", { desc: "yapıyorum + işin yazısı", fn: () => ringOf({ state: "busy", status: "Plan hazırlanıyor" }), ok: (r) => r.label === "Yapıyorum" && r.sub === "Plan hazırlanıyor" }],
+    ["3 işten 2. sürüyor", { desc: "yarı dolu, 2 / 3", fn: () => ringOf({ state: "busy", status: "Planlar hazırlanıyor", list: L3("done", "run", "wait") }), ok: (r) => Math.abs(r.fill - 0.5) < 0.01 && r.sub === "2 / 3" && r.label === "Planlar hazırlanıyor" }],
+    ["hepsi bitti", { desc: "yeşil onay, 3 iş bitti", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "done", "done") }), ok: (r) => r.tone === "ok" && r.check && r.fill === 1 && r.sub === "3 iş bitti" }],
+    ["biri olmadı", { desc: "olmayan sayılır", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "fail", "done") }), ok: (r) => r.sub === "2 iş bitti, 1 olmadı" }],
+    ["konuşma yok", { desc: "boş halka, yazı yok", fn: () => ringOf({}), ok: (r) => r.fill === 0 && !r.label }],
+    ["okurken", { desc: "mavi", fn: () => ringOf({ state: "speaking" }), ok: (r) => r.tone === "speak" }],
+  ]));
 }

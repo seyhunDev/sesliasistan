@@ -20,6 +20,7 @@ import { ListenWave } from "@/features/speech/ListenWave";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
+import { ringOf } from "@/lib/assistRing";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -296,6 +297,45 @@ function AssistBg() {
   );
 }
 
+// İlerleme halkası (onaylı örnek, 2026-10-17): dinlerken kırmızı + ses çubukları, düşünürken/işlerken kehribar ve işlerin
+// sayısıyla dolar, bitince yeşil onay. Konuşma yokken ekranın üstünde büyük, konuşma dolunca üstte küçük satır.
+const RING_C = { listen: "#e8705f", work: "#f0c36b", speak: "#6aaef0", ok: "#6fc39b", idle: "#6fc39b" };
+function ProgressRing({ r, big }) {
+  const C = 2 * Math.PI * 62;
+  const c = RING_C[r.tone] || RING_C.idle;
+  const svg = (
+    <svg viewBox="0 0 200 200" className={big ? "size-[11.5rem]" : "size-11 shrink-0"} aria-hidden="true">
+      <circle cx="100" cy="100" r="62" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="9" />
+      <circle
+        cx="100" cy="100" r="62" fill="none" stroke={c} strokeWidth="9" strokeLinecap="round" transform="rotate(-90 100 100)"
+        strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - (r.fill || 0))}
+        className={`aring-arc ${r.creep ? "aring-creep" : ""}`} style={{ "--aring-c": C, opacity: r.fill ? 1 : 0 }}
+      />
+      {r.bars && [14, 26, 38, 26, 14].map((h, i) => (
+        <rect key={i} x={73 + i * 12} y={100 - h / 2} width="6" height={h} rx="3" fill={c} className="aring-bar" style={{ animationDelay: `${i * 0.12}s` }} />
+      ))}
+      {r.check && <path d="M78 101 l15 15 l30 -32" fill="none" stroke={c} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" className="aring-check" />}
+    </svg>
+  );
+  if (big) return (
+    <div className="pointer-events-none flex shrink-0 flex-col items-center pt-[6vh] text-center" aria-live="polite">
+      {svg}
+      <p className="mt-3 min-h-7 px-6 text-xl font-semibold text-fg">{r.label}</p>
+      <p className="min-h-5 px-6 text-sm text-mut">{r.sub}</p>
+    </div>
+  );
+  if (!r.label) return null;
+  return (
+    <div className="pointer-events-none mx-4 flex shrink-0 items-center gap-3" aria-live="polite">
+      {svg}
+      <div className="min-w-0">
+        <p className="truncate text-[0.9375rem] font-semibold text-fg">{r.label}</p>
+        {r.sub && <p className="truncate text-[0.8125rem] text-mut">{r.sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
@@ -544,6 +584,7 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
             )}
+            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked })} />}
             {active && (
               <div
                 ref={pane}
