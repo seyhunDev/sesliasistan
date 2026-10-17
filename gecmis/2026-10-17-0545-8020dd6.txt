@@ -1,8 +1,8 @@
-Commit: 94a36de · Ana sayfa: Aidat ve Hesaplar kartlarına ok, aidat yüzdesi büyük (#387)
-Zaman: 2026-10-14-0340 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38491319907
+Commit: 8020dd6 · Profil fotoğrafı yüklenirken seçilen fotoğraf ve yükleme animasyonu görünür (#454)
+Zaman: 2026-10-17-0545 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38996057999
 
-TAM TEST · 14.10.2026 03:38:56
+TAM TEST · 17.10.2026 05:44:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 70 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

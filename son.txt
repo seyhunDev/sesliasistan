@@ -1,8 +1,8 @@
-Commit: 22ad7f0 · Ana sayfa hava alanı: tek düğme, grafiğin üstündeki yazı kalktı (#453)
-Zaman: 2026-10-17-0540 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38995761933
+Commit: 8020dd6 · Profil fotoğrafı yüklenirken seçilen fotoğraf ve yükleme animasyonu görünür (#454)
+Zaman: 2026-10-17-0545 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38996057999
 
-TAM TEST · 17.10.2026 05:39:27
+TAM TEST · 17.10.2026 05:44:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 55 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 70 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
