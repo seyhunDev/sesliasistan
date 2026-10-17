@@ -1,8 +1,8 @@
-Commit: 07a6b82 · Ana sayfa: profesyonel kartlar (aidat halkası, hesap grafiği, antrenman haftası, son Instagram gönderisi), kabarık düğmeler ve dokunma hissi (#378)
-Zaman: 2026-10-14-0100 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38474564181
+Commit: c4ffffd · Kişi sayfası: her kişinin kendi sayfası, Mesajlar ve ana sayfadan bağlantı, asistanla açma (#443)
+Zaman: 2026-10-17-0442 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38991900945
 
-TAM TEST · 14.10.2026 00:59:21
+TAM TEST · 17.10.2026 04:41:32
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 82 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
