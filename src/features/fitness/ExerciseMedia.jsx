@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { MEDIA_MAX, dropMedia, loadMedia, prepMedia, saveMedia } from "./fitMedia";
 
-// Hareketin fotoğraf ve videoları: küçük kareler (fotoğraf ya da ▶), dokununca tam ekran.
+// Hareketin fotoğraf ve videoları: küçük kareler (fotoğraf ya da ▶), dokununca tam ekran (düzenleme ve kütüphane; antrenmanda MediaShow büyük gösterir).
 // edit: ana hesap programı düzenlerken "Fotoğraf" ve "Video" düğmeleri (galeri ya da kamera; telefon sorar), × ile çıkarılır.
 // Dosya seçilir seçilmez yüklenir; künye onChange ile harekete yazılır, program kaydedilince plana gider.
 function useBlobUrl(orgId, m) {
@@ -120,15 +120,47 @@ function markSeen(id) {
   } catch {}
 }
 
-export function MediaVideo({ media = [], className = "" }) {
+// Antrenman ekranı: hareketin bütün fotoğraf ve videoları büyük, ortada, aynı boyda (en çok 18rem boy, oval köşe).
+// Fotoğrafa dokununca tam ekran açılır.
+export function MediaShow({ media = [], className = "" }) {
   const { profile } = useAuth();
-  const m = (media || []).find((x) => !x.stock && x.kind === "video");
-  const { url, err, fail } = useBlobUrl(profile?.orgId, m);
+  const [open, setOpen] = useState(null);
+  const list = (media || []).filter((x) => !x.stock && (x.kind === "video" || x.kind === "photo"));
+  if (!list.length) return null;
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {list.map((m) => (m.kind === "video" ? <OneVideo key={m.id} orgId={profile?.orgId} m={m} /> : <OnePhoto key={m.id} orgId={profile?.orgId} m={m} onOpen={setOpen} />))}
+      {open && <Viewer orgId={profile?.orgId} m={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+
+// Kutu dosyanın kendi oranını alır (siyah boşluk kalmaz); dikey olan en çok 18rem boyda, ortada
+const boxStyle = (ratio) => ({ aspectRatio: ratio, maxWidth: `calc(18rem * ${ratio})` });
+const BOX = "mx-auto block max-h-[18rem] w-full overflow-hidden rounded-3xl";
+
+function OnePhoto({ orgId, m, onOpen }) {
+  const { url, err, fail } = useBlobUrl(orgId, m);
+  const [ratio, setRatio] = useState(4 / 3);
+  const fit = (e) => {
+    const i = e.currentTarget;
+    if (i.naturalWidth && i.naturalHeight) setRatio(i.naturalWidth / i.naturalHeight);
+  };
+  if (err) return null;
+  if (!url) return <span className="shimmer block aspect-video w-full rounded-3xl" />;
+  return (
+    <button type="button" onClick={() => onOpen(m)} aria-label="Fotoğrafı büyüt" style={boxStyle(ratio)} className={`${BOX} bg-bg`}>
+      <img src={url} alt="" onLoad={fit} onError={fail} className="size-full object-cover" />
+    </button>
+  );
+}
+
+function OneVideo({ orgId, m }) {
+  const { url, err, fail } = useBlobUrl(orgId, m);
   // İlk görülüş açılışta bir kez okunur (aynı video için ekran açık kaldıkça değişmez)
   const [first, setFirst] = useState({ id: "", on: false });
   if (m?.id && first.id !== m.id) setFirst({ id: m.id, on: !seenSet().has(m.id) });
   const auto = first.id === m?.id && first.on;
-  // Kutu videonun kendi oranını alır (siyah boşluk kalmaz); dikey video en çok 18rem boyda, ortada
   const [ratio, setRatio] = useState(16 / 9);
   const fit = (e) => {
     const v = e.currentTarget;
@@ -137,12 +169,11 @@ export function MediaVideo({ media = [], className = "" }) {
   useEffect(() => {
     if (m?.id) markSeen(m.id);
   }, [m?.id]);
-  if (!m) return null;
   // Açılamayan video sessizce kaybolmaz: sporcu ne olduğunu görür, adres varsa telefonun oynatıcısında açar
   if (err) {
     const href = url || m.url;
     return (
-      <div className={`flex w-full items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ${className}`}>
+      <div className="flex w-full items-center gap-3 rounded-2xl bg-card p-3 shadow-sm">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-bg text-mut">
           <Icon name="video" className="size-5" />
         </span>
@@ -158,32 +189,26 @@ export function MediaVideo({ media = [], className = "" }) {
       </div>
     );
   }
+  if (!url) return <span className="shimmer block aspect-video w-full rounded-3xl" />;
   return (
-    <div className={className}>
-      {url ? (
-        <video
-          key={m.id}
-          src={auto ? url : `${url}#t=0.1`}
-          controls
-          playsInline
-          loop
-          autoPlay={auto}
-          muted={auto}
-          preload="metadata"
-          onError={fail}
-          onLoadedMetadata={fit}
-          style={{ aspectRatio: ratio, maxWidth: `calc(18rem * ${ratio})` }}
-          className="mx-auto block max-h-[18rem] w-full rounded-3xl bg-black object-cover"
-        />
-      ) : (
-        <span className="shimmer block aspect-video w-full rounded-3xl" />
-      )}
-    </div>
+    <video
+      key={m.id}
+      src={auto ? url : `${url}#t=0.1`}
+      controls
+      playsInline
+      loop
+      autoPlay={auto}
+      muted={auto}
+      preload="metadata"
+      onError={fail}
+      onLoadedMetadata={fit}
+      style={boxStyle(ratio)}
+      className={`${BOX} bg-black object-cover`}
+    />
   );
 }
 
-// noVideo: ilk video MediaVideo ile ayrıca gösterildiği için küçük karelerde tekrar edilmez
-export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", big = false, noVideo = false }) {
+export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", big = false }) {
   const { profile } = useAuth();
   const orgId = profile?.orgId;
   const [open, setOpen] = useState(null);
@@ -192,9 +217,7 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
   const photoRef = useRef(null);
   const videoRef = useRef(null);
   const added = useRef(new Set());
-  const all = (media || []).filter((m) => !m.stock);
-  const firstVideo = noVideo && !edit ? all.find((m) => m.kind === "video") : null;
-  const list = firstVideo ? all.filter((m) => m !== firstVideo) : all;
+  const list = (media || []).filter((m) => !m.stock);
   if (!edit && !list.length) return null;
 
   const pick = async (e) => {
@@ -208,7 +231,7 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
       setBusy("Yükleniyor…");
       const meta = await saveMedia(orgId, m, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`));
       added.current.add(meta.id);
-      onChange?.([...all, meta].slice(0, MEDIA_MAX));
+      onChange?.([...list, meta].slice(0, MEDIA_MAX));
     } catch (x) {
       setErr(/storage\/(unauthorized|unknown|retry|bucket|project)/.test(x?.code || "") ? "Yüklenemedi: Firebase Storage açık değil ya da kuralı yayınlanmadı." : x?.message || "Eklenemedi");
     } finally {
@@ -217,7 +240,7 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
   };
   // Bu açılışta eklenen dosya hemen silinir; önceden kaydedilmiş olan eski planlarda da kullanıldığı için durur
   const drop = (m) => {
-    onChange?.(all.filter((x) => x.id !== m.id));
+    onChange?.(list.filter((x) => x.id !== m.id));
     if (added.current.has(m.id)) dropMedia(orgId, m);
   };
 
