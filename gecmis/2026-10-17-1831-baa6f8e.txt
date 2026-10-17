@@ -1,8 +1,8 @@
-Commit: c465a2f · Bildirim testi (npm run test:bildirim) (#401)
-Zaman: 2026-10-14-1336 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38550543226
+Commit: baa6f8e · Ana sayfa: bugün yeşil, saat sütunu biraz geniş (#468)
+Zaman: 2026-10-17-1831 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39045319794
 
-TAM TEST · 14.10.2026 13:35:03
+TAM TEST · 17.10.2026 18:30:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 102 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 61 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
