@@ -34,6 +34,7 @@ group("Kendi bildirimi")([
 
 // Sorumluya bildirim gitmedi (people.js ackState/pushWhy): neden plan ekranında görünür
 const PP = await import("@/lib/people");
+const CF = await import("@/lib/chatFile");
 group("Sorumlu bildirimi gitmedi")([
   ["kayıt yok", F("Bildirim gitmedi + Ayarlar › Bildirimler", () => { const s = PP.ackState({ ack: { u: { x: { why: "device", at: "t" } } } }, "u"); return s.key === "fail" && /Bildirimler/.test(s.why); })],
   ["hesapsız kişi", F("hesap aç önerisi", () => /hesap/.test(PP.pushWhy({ why: "account" })))],
@@ -2294,4 +2295,15 @@ group("Profil fotoğrafı kırpma")([
     const p = AVT.clampPan({ x: 50, y: 500 }, b, 260);
     return p.x === 0 && p.y === 130;
   })],
+]);
+
+// Mesaj ekleri (chatFile.js): fotoğraf, dosya, sesli mesaj
+group("Mesaj ekleri")([
+  ["fotoğraf adı", F("📷 Fotoğraf", () => CF.fileLabel({ kind: "photo" }) === "📷 Fotoğraf")],
+  ["sesli mesaj adı", F("süreyle", () => CF.fileLabel({ kind: "voice", sec: 75 }) === "🎤 Sesli mesaj 1:15")],
+  ["dosya adı", F("dosya adıyla", () => CF.fileLabel({ kind: "file", name: "a.pdf" }) === "📎 a.pdf")],
+  ["adressiz künye", F("kaydedilmez", () => CF.cleanChatFile({ kind: "photo", path: "x" }) === null)],
+  ["fotoğraf sınırı", F("11 MB fazla", () => CF.tooBig("photo", 11 * 1024 * 1024) !== "")],
+  ["dosya sınırı", F("15 MB olur", () => CF.tooBig("file", 15 * 1024 * 1024) === "")],
+  ["tür", F("ses ve görüntü", () => CF.kindOfFile("audio/mp4") === "voice" && CF.kindOfFile("image/png") === "photo" && CF.kindOfFile("application/pdf") === "file")],
 ]);

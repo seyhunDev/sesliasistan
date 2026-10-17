@@ -7,6 +7,8 @@ rules_version = '2';
 // postPhotos: Instagram gönderisinin fotoğrafı (src/features/posts/posts.js); yalnız ana hesap.
 // invFiles, invoiceFiles, noticeFiles: envanter belgeleri, faturalar, yarış talimatı ve sonuç belgeleri (src/lib/firebase/fileStore.js); yalnız ana hesap.
 // mailFiles: banka maillerinin Excel ekleri (src/features/mail/mailFiles.js); yalnız ana hesap.
+// chatFiles: Mesajlar'da gönderilen fotoğraf, dosya ve sesli mesaj (src/features/chat/chatUpload.js); yalnız sohbetin üyeleri okur,
+//   gönderen kendi klasörüne yükler; fotoğraf ve ses en çok 10 MB, dosya 20 MB. Silme: gönderen ya da ana hesap.
 // avatars: profil fotoğrafları (src/features/people/ProfilePhoto.jsx); herkes kendisininkini, ana hesap herkesinkini yükler/siler, aynı kulüp okur.
 service firebase.storage {
   match /b/{bucket}/o {
@@ -46,6 +48,30 @@ service firebase.storage {
       allow create, update: if isOwner(orgId)
                             && request.resource.size < 10 * 1024 * 1024
                             && request.resource.contentType.matches('image/.*');
+    }
+
+    // Sohbet üyeliği (firestore.rules › chats ile aynı): sabit gruplarda türe göre, birebirde sohbet kimliğine göre, grupta members listesine göre
+    function myKind() { return me().get("role", "owner") != "staff" ? "owner" : me().get("kind", "staff"); }
+    function inChat(orgId, cid) {
+      let uid = request.auth.uid;
+      let path = /databases/(default)/documents/orgs/$(orgId)/chats/$(cid);
+      return inOrg(orgId) && (
+        isOwner(orgId) && cid in ["team", "family", "athletes"]
+        || (cid == "team" && myKind() == "staff")
+        || (cid == "family" && myKind() == "family")
+        || (cid == "athletes" && myKind() in ["staff", "athlete", "student", "parent"])
+        || (cid.matches("dm_.*") && cid.split("_").size() == 3 && uid in cid.split("_"))
+        || (!(cid in ["team", "family", "athletes"]) && !cid.matches("dm_.*") && firestore.exists(path)
+            && uid in firestore.get(path).data.get("members", [])));
+    }
+
+    match /orgs/{orgId}/chatFiles/{cid}/{by}/{name} {
+      allow read: if inChat(orgId, cid);
+      allow delete: if inOrg(orgId) && (request.auth.uid == by || isOwner(orgId));
+      allow create: if inChat(orgId, cid) && request.auth.uid == by
+                    && (request.resource.contentType.matches('(image|audio)/.*')
+                          ? request.resource.size < 10 * 1024 * 1024
+                          : request.resource.size < 20 * 1024 * 1024);
     }
 
     match /orgs/{orgId}/avatars/{who}/{name} {

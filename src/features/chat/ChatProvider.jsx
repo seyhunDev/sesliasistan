@@ -23,11 +23,13 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { GROUPS, GROUP_IDS, canTalk, inGroup, kindOf, ownerOnly } from "@/lib/kinds";
 import { prevShown } from "@/lib/chatArchive";
+import { cleanChatFile, fileLabel } from "@/lib/chatFile";
+import { dropChatFile } from "@/features/chat/chatUpload";
 
 // Mesajlaşma: kişi kişiye (dm_<uid1>_<uid2>), gruplar ve türe göre sabit gruplar: Ekip (team), Aile (family), Sporcular (athletes).
 // Kim kiminle yazışır ve hangi sabit gruptadır: lib/kinds.js (kurallar da aynı).
 // Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, recv{uid:n}, typing{uid:zaman}, muted{uid:true} }
-//       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, replyTo{id,by,text}, reactions{uid:emoji}, arch, archBy, archAt, hide{uid:true}, editedAt } (arşiv: lib/chatArchive.js)
+//       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, file{kind,name,type,size,path,url,w,h,sec}, replyTo{id,by,text}, reactions{uid:emoji}, arch, archBy, archAt, hide{uid:true}, editedAt } (arşiv: lib/chatArchive.js)
 //       chats/{id}.pinned { id, text, by }: sabitlenen mesaj
 //       orgs/{işletme}/directory/{uid} { name, role, lastSeen } — sohbet listesindeki adlar ve "çevrimiçi"
 // Kurallar (firestore.rules): sohbeti yalnızca üyeleri okur; kimse (ana hesap dahil) başkasının konuşmasını göremez.
@@ -174,19 +176,20 @@ export function ChatProvider({ children }) {
 
   // Mesaj gönder: sohbet yoksa (ilk mesaj) oluşturulur; mesaj numarası (n) sayaçtan alınır, gönderen kendi mesajını okumuş sayılır
   const send = useCallback(
-    async (cid, text, { replyTo, create, quiet } = {}) => {
+    async (cid, text, { replyTo, create, quiet, file } = {}) => {
       const t = String(text || "").trim().slice(0, 4000);
-      if (!t || !chatsCol) return false;
+      const f = cleanChatFile(file);
+      if ((!t && !f) || !chatsCol) return false;
       const cref = chatRef(cid);
       const mref = doc(collection(cref, "messages"));
       try {
         await runTransaction(db, async (tx) => {
           const snap = await tx.get(cref);
           const n = (snap.exists() ? snap.data().seq || 0 : 0) + 1;
-          const last = { text: t.slice(0, 140), by: uid, at: serverTimestamp() };
+          const last = { text: (t || fileLabel(f)).slice(0, 140), by: uid, at: serverTimestamp() };
           if (!snap.exists()) tx.set(cref, { ...(create || { type: "team" }), seq: n, last, read: { [uid]: n }, createdAt: serverTimestamp() });
           else tx.update(cref, { seq: n, last, [`read.${uid}`]: n, [`typing.${uid}`]: deleteField() });
-          tx.set(mref, { by: uid, text: t, at: serverTimestamp(), n, ...(replyTo ? { replyTo: { id: replyTo.id, by: replyTo.by, text: String(replyTo.text || "").slice(0, 120) } } : {}) });
+          tx.set(mref, { by: uid, text: t, at: serverTimestamp(), n, ...(f ? { file: f } : {}), ...(replyTo ? { replyTo: { id: replyTo.id, by: replyTo.by, text: String(replyTo.text || "").slice(0, 120) } } : {}) });
         });
         if (!quiet) authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "chat", chat: cid, mid: mref.id }) }).catch(() => {});
         return true;
@@ -241,7 +244,7 @@ export function ChatProvider({ children }) {
   );
   // Sabitle / kaldır (sohbetin tepesinde görünür)
   const pin = useCallback(
-    (cid, m) => updateDoc(chatRef(cid), { pinned: m ? { id: m.id, text: String(m.text || "").slice(0, 140), by: m.by } : deleteField() }).catch(() => {}),
+    (cid, m) => updateDoc(chatRef(cid), { pinned: m ? { id: m.id, text: String(m.text || fileLabel(m.file)).slice(0, 140), by: m.by } : deleteField() }).catch(() => {}),
     [chatRef],
   );
   // Arşivle (mesajı sil): ana hesap herkesten kaldırır, diğerleri yalnız kendisinden (lib/chatArchive.js).
@@ -263,7 +266,7 @@ export function ChatProvider({ children }) {
         const s = await getDocs(query(collection(chatRef(cid), "messages"), orderBy("at", "desc"), limit(15))).catch(() => null);
         const list = s ? s.docs.map((d) => ({ ...d.data(), id: d.id })).reverse() : [];
         const p = prevShown(list, m);
-        patch.last = p ? { text: String(p.text).slice(0, 140), by: p.by, at: p.at } : deleteField();
+        patch.last = p ? { text: String(p.text || fileLabel(p.file)).slice(0, 140), by: p.by, at: p.at } : deleteField();
       }
       if (chat.pinned?.id === m.id) patch.pinned = deleteField();
       if (Object.keys(patch).length) updateDoc(chatRef(cid), patch).catch(() => {});
@@ -277,7 +280,17 @@ export function ChatProvider({ children }) {
     [chatRef, orgId, uid],
   );
   // Kalıcı sil: yalnız ana hesap, yalnız arşivdeki mesaj
-  const purge = useCallback((cid, m) => deleteDoc(doc(chatRef(cid), "messages", m.id)).then(() => true, () => false), [chatRef]);
+  const purge = useCallback(
+    (cid, m) =>
+      deleteDoc(doc(chatRef(cid), "messages", m.id)).then(
+        () => {
+          if (m.file?.path) dropChatFile(m.file.path);
+          return true;
+        },
+        () => false,
+      ),
+    [chatRef],
+  );
   const mute = useCallback((c, on) => updateDoc(chatRef(c.id), { [`muted.${uid}`]: on ? true : deleteField() }).catch(() => {}), [chatRef, uid]);
 
   const createGroup = useCallback(

@@ -10,6 +10,7 @@ import { GROUPS, GROUP_IDS, kindOf } from "@/lib/kinds";
 import { planRemind, reminderText } from "@/lib/reminders";
 import { absentPush } from "@/lib/absent";
 import { remindPush, unpaidRoster } from "@/lib/duesRemind";
+import { fileLabel } from "@/lib/chatFile";
 
 export const runtime = "nodejs";
 
@@ -74,7 +75,7 @@ export async function POST(request) {
     if (!m || m.by !== au.uid || Date.now() - at > 2 * 60e3) return NextResponse.json({ ok: true, skipped: "mesaj yok" });
     const from = me.name || (au.uid === me.orgId ? "Ana hesap" : "Kişi");
     const title = c.type === "dm" ? from : GROUPS[cid]?.name || c.name || "Grup";
-    const text = String(m.text || "").replace(/\s+/g, " ").slice(0, 160);
+    const text = String(m.text || fileLabel(m.file) || "").replace(/\s+/g, " ").slice(0, 160);
     // Herkese aynı anda: sırayla gönderilince kalabalık grupta süre doluyor, son kişilere bildirim gitmiyordu
     const sent = await sendAll(
       [...new Set(everyone)].filter((x) => x && x !== au.uid && !c.muted?.[x]),
