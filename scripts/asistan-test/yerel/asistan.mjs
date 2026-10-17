@@ -1145,6 +1145,8 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["yazıya çevrilirken", { desc: "düşünüyorum, alt yazısız", fn: () => ringOf({ state: "busy", transcribing: true }), ok: (r) => r.label === "Düşünüyorum" && !r.sub }],
     ["tek iş sürüyor", { desc: "yapıyorum + işin yazısı", fn: () => ringOf({ state: "busy", status: "Plan hazırlanıyor" }), ok: (r) => r.label === "Yapıyorum" && r.sub === "Plan hazırlanıyor" }],
     ["3 işten 2. sürüyor", { desc: "yarı dolu, 2 / 3", fn: () => ringOf({ state: "busy", status: "Planlar hazırlanıyor", list: L3("done", "run", "wait") }), ok: (r) => Math.abs(r.fill - 0.5) < 0.01 && r.sub === "2 / 3" && r.label === "Planlar hazırlanıyor" }],
+    ["liste ekranda", { desc: "halka yalnız dolar, yazı listede", fn: () => ringOf({ state: "busy", status: "Planlar hazırlanıyor", list: L3("done", "run", "wait"), shown: true }), ok: (r) => !r.label && !r.sub && Math.abs(r.fill - 0.5) < 0.01 }],
+    ["liste ekranda, bitti", { desc: "yeşil onay, yazı listede", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "done", "done"), shown: true }), ok: (r) => r.check && !r.label }],
     ["hepsi bitti", { desc: "yeşil onay, 3 iş bitti", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "done", "done") }), ok: (r) => r.tone === "ok" && r.check && r.fill === 1 && r.sub === "3 iş bitti" }],
     ["biri olmadı", { desc: "olmayan sayılır", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "fail", "done") }), ok: (r) => r.sub === "2 iş bitti, 1 olmadı" }],
     ["konuşma yok", { desc: "boş halka, yazı yok", fn: () => ringOf({}), ok: (r) => r.fill === 0 && !r.label }],

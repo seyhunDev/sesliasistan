@@ -299,6 +299,7 @@ function AssistBg() {
 
 // İlerleme halkası (onaylı örnek, 2026-10-17): dinlerken kırmızı + ses çubukları, düşünürken/işlerken kehribar ve işlerin
 // sayısıyla dolar, bitince yeşil onay. Konuşma yokken ekranın üstünde büyük, konuşma dolunca üstte küçük satır.
+const LEAVE_MS = 340; // globals.css › .afull-out
 const RING_C = { listen: "#e8705f", work: "#f0c36b", speak: "#6aaef0", ok: "#6fc39b", idle: "#6fc39b" };
 function ProgressRing({ r, big }) {
   const C = 2 * Math.PI * 62;
@@ -324,11 +325,11 @@ function ProgressRing({ r, big }) {
       <p className="min-h-5 px-6 text-sm text-mut">{r.sub}</p>
     </div>
   );
-  if (!r.label) return null;
+  if (!r.label && !r.fill && !r.bars) return null;
   return (
     <div className="pointer-events-none mx-4 flex shrink-0 items-center gap-3" aria-live="polite">
       {svg}
-      <div className="min-w-0">
+      <div className="min-w-0" hidden={!r.label}>
         <p className="truncate text-[0.9375rem] font-semibold text-fg">{r.label}</p>
         {r.sub && <p className="truncate text-[0.8125rem] text-mut">{r.sub}</p>}
       </div>
@@ -336,7 +337,7 @@ function ProgressRing({ r, big }) {
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -494,7 +495,13 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
       const far = dy > (st.current === "listening" ? 160 : 110);
       // Kapanınca kubbe zaten boştaki boyuna iner; sürüklenen kubbe aynı anda yerine yumuşakça döner
       // Konuşurken ya da iş sürerken çekilirse kapanmaz, sağ altta küçük küre olur (Seyhun, 2026-10-14)
-      if (fast || far) (pullAction(st.current) === "mini" && mini.current ? mini.current() : close.current?.());
+      if (fast || far) {
+        (pullAction(st.current) === "mini" && mini.current ? mini.current() : close.current?.());
+        // Parmağın bıraktığı yerden aşağı iner (yukarı geri sıçramaz); kapanış bitince temizlik aşağıda
+        el.style.transition = "transform .32s cubic-bezier(.4,0,.6,1)";
+        el.style.transform = "translate3d(0,100%,0)";
+        return;
+      }
       reset(true);
     };
     el.addEventListener("touchstart", start, { passive: true });
@@ -516,12 +523,17 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
   // tam sayfada mesajlar alttan yukarı dolar, dolunca içeride kayar (Seyhun, 2026-10-14). Bir kez açılınca
   // konuşma bitene kadar küçülmez (cevaplar arasında inip kalkmasın).
   const body = useRef(null);
+  const feed = useRef(null);
   const [filled, setFilled] = useState(false);
   useEffect(() => {
-    const el = body.current;
+    const el = feed.current;
     if (!active || !el || typeof ResizeObserver === "undefined") return;
-    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı sayılmaz
-    const ro = new ResizeObserver(() => el.offsetHeight > 8 && setFilled(true));
+    // Gözlemci ilk ölçümü kendisi de verir; yuvanın kendi 4 px'lik payı ve önceki sohbetler sayılmaz (açılışta halka büyük
+    // kalır, ilk yeni yazıda küçülür)
+    const ro = new ResizeObserver(() => {
+      const past = el.querySelector("[data-past]");
+      if (el.offsetHeight - (past ? past.offsetHeight + 16 : 0) > 8) setFilled(true);
+    });
     ro.observe(el);
     return () => {
       ro.disconnect();
@@ -569,7 +581,7 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
         {sheet ? (
           // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
           // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
-          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? "afull afull-in relative flex h-full flex-col" : "contents"}>
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-full flex-col` : "contents"}>
           {active && <AssistBg />}
           <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
@@ -584,7 +596,7 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
             )}
-            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked })} />}
+            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown })} />}
             {active && (
               <div
                 ref={pane}
@@ -593,7 +605,9 @@ function Dome({ noAi = false, bar, slim, rec, active, small = false, state, live
                 className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
               >
                 <div ref={body} className={`flex min-h-full flex-col justify-end ${open ? "pb-1 pt-10" : ""}`}>
-                  <div ref={setSlot} />
+                  <div ref={feed}>
+                    <div ref={setSlot} />
+                  </div>
                 </div>
               </div>
             )}
@@ -704,6 +718,18 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
     if (!open) setMini(false); // konuşma kapanınca bir sonraki açılış tam ekran
   }
   const active = open && !mini;
+  // Kapanış ve küçülme animasyonu (Seyhun, 2026-10-17): tam ekran bir an daha çizilir, aşağı inerek kaybolur
+  const [wasActive, setWasActive] = useState(active);
+  const [leaving, setLeaving] = useState(false);
+  if (wasActive !== active) {
+    setWasActive(active);
+    setLeaving(!active);
+  }
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(false), LEAVE_MS);
+    return () => clearTimeout(t);
+  }, [leaving]);
   const state = live.listening ? "listening" : live.busy || live.transcribing || live.booting ? "busy" : live.speaking ? "speaking" : "idle";
 
   const go = (fn) => () => {
@@ -780,7 +806,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         bar={bar}
         slim={slim}
         rec={rec && !noAi}
-        active={active && !noAi}
+        active={(active || leaving) && !noAi}
+        leaving={leaving && !active}
         small={open && mini && !noAi}
         state={state}
         live={live}
