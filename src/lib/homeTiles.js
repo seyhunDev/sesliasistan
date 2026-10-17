@@ -133,20 +133,21 @@ export function dayInfo(day, att, today) {
   const yok = att ? attHref(day.date, today) || "" : "";
   return { other, tap: sail.length > 0 || fit.length > 0 || other.length > 0 || !!att, sail, attHref: yok, add: !!att && !sail.length, fit, fitHref: fitHref(day.date, fit) };
 }
-// weeks: kaç hafta (ana sayfa şeridi 3: bu hafta ve sonraki iki hafta, kaydırılır; özet sayıları tüm günlerden).
-export function trainingWeek(plans = [], today, fit = [], weeks = 1) {
+// weeks: kaç haftalık gün (ana sayfa şeridi 3, kaydırılır; özet sayıları tüm günlerden). fromYesterday: Pazartesi yerine dünden başlar
+// (Seyhun: "bulunduğumuz gün" önde olsun; bugün ikinci sırada, solda dün).
+export function trainingWeek(plans = [], today, fit = [], weeks = 1, fromYesterday = false) {
   const base = new Date(`${today}T12:00:00`);
   const start = new Date(base);
-  start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+  start.setDate(base.getDate() - (fromYesterday ? 1 : (base.getDay() + 6) % 7));
   const tr = plans.filter((p) => isTraining(p) && p.status !== "cancelled" && p.date);
   // Antrenman ve fitness dışındaki planlar (iptal ve bitenler hariç), saat sırasıyla
   const others = plans
     .filter((p) => p.date && !isTraining(p) && !isFit(p) && p.status !== "cancelled" && !p.done)
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const days = Array.from({ length: 7 * weeks }, (_, i) => {
-    const w = DOW[i % 7];
     const d = new Date(start);
     d.setDate(start.getDate() + i);
+    const w = DOW[(d.getDay() + 6) % 7];
     const date = ymd(d);
     const on = tr.filter((p) => p.date === date);
     const logged = on.length > 0 && on.every((p) => p.log);
