@@ -9,7 +9,7 @@ import { dayHours, getPlace, nowOf, sky, windName } from "@/features/weather/wea
 import { todayStr } from "@/lib/utils/format";
 
 // Başlığın altındaki hava: solda havaya göre simge (güneş, ay, bulut, yağmur…; kendi renginde), büyük sıcaklık, yanında durum ve
-// "Karayel 11 kn · 9° / 22°" (rüzgârın adı ve hızı, günün en düşük/en yüksek sıcaklığı) ve yeşil ›; çerçevesiz. Değerler nowOf ile bu saatin.
+// "Karayel 11 kn · 9° / 22°" (rüzgârın adı ve hızı, günün en düşük/en yüksek sıcaklığı); çerçevesiz, ok yok (Seyhun: "o oku da kaldır"). Değerler nowOf ile bu saatin.
 // Dokununca bugünün özeti ve rüzgâr grafiği açılır.
 const SKY_TONE = { sun: "text-[#d39a2c]", moon: "text-[#7f8daa]", cloudSun: "text-[#c9953a]", cloud: "text-[#8a9099]", fog: "text-[#8a9099]", rain: "text-[#4f7fae]", storm: "text-[#5d6f9e]", snow: "text-[#7fa6c9]" };
 export function HomeHero({ weather }) {
@@ -43,7 +43,6 @@ export function HomeHero({ weather }) {
         ) : (
           <span className="truncate text-[0.8125rem] text-mut">{err ? "Hava durumu alınamadı · dokun, yenile" : `${place.name} havası yükleniyor…`}</span>
         )}
-        <span aria-hidden className="shrink-0 text-[1rem] font-semibold leading-none text-acc">›</span>
       </button>
 
       <Sheet open={open} onClose={() => setOpen(false)} title={`Hava durumu · ${place.name}`}>
@@ -54,7 +53,7 @@ export function HomeHero({ weather }) {
 }
 
 // Başlığın altında bugünün rüzgâr grafiği (Seyhun: "ana sayfadaki hava alanında o grafik, hangi saatteysek orada nokta").
-// Çerçevesiz, başlığın hemen altında, üstünde yazı yok (Seyhun: "bir tane buton olması lazım"; hava penceresinin tek düğmesi hava satırındaki ›).
+// Çerçevesiz, başlığın hemen altında, üstünde yazı yok (Seyhun: "bir tane buton olması lazım"; hava penceresini hava satırı ya da grafiğe dokunmak açar).
 // Grafiğe dokununca da aynı pencere açılır. Hava gelmediyse çizilmez.
 export function HomeWind({ weather }) {
   const { w, refresh } = weather;
