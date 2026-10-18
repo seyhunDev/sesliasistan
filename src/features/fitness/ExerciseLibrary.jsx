@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { exById, fold } from "@/lib/fitness/exercises";
-import { exKey, libAdd, libList } from "@/lib/fitness/library";
+import { libAdd, libDupes, libKey, libList } from "@/lib/fitness/library";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { ExercisePicker } from "./ExercisePicker";
 import { YtEdit } from "./YtVideo";
@@ -16,7 +16,7 @@ import { useFitLib } from "./useFitLib";
 const hasVideo = (x) => !!(x.yt?.id || (x.media || []).some((m) => m.kind === "video"));
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
-  const { lib, setMedia } = useFitLib();
+  const { lib, setMedia, merge } = useFitLib();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState("");
   const [pick, setPick] = useState(false);
@@ -28,11 +28,12 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
     const m = {};
     for (const pr of progs) {
       const keys = new Set();
-      for (const d of pr.days || []) for (const it of d.items || []) keys.add(exKey(it));
+      for (const d of pr.days || []) for (const it of d.items || []) keys.add(libKey(lib, it));
       for (const k of keys) m[k] = (m[k] || 0) + 1;
     }
     return m;
-  }, [progs]);
+  }, [progs, lib]);
+  const dupes = libDupes(lib);
   const e = sel ? list.find((x) => x.key === sel) || libList(lib).find((x) => x.key === sel) : null;
   const it = e ? { ex: e.ex, name: e.name, kind: e.kind } : null;
   const add = async (p) => {
@@ -86,6 +87,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
               </button>
             ))}
           </div>
+          {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
           <ul className="mt-2 divide-y divide-line">
             {list.map((x) => {
               const v = hasVideo(x);
@@ -116,5 +118,68 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
       )}
       <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={add} />
     </Sheet>
+  );
+}
+
+// Aynı adlı hareketler: hangisi kalacak (fotoğrafı/videosu çok olan), birleştirince programlar kalanı kullanır.
+// Fotoğraf ve videolar silinmez, hepsi kalana geçer.
+const mediaText = (x) => {
+  const m = [...(x.media || []), ...(x.spare || [])];
+  const ph = m.filter((y) => y.kind === "photo").length;
+  const vd = m.filter((y) => y.kind === "video").length + (x.yt?.id ? 1 : 0);
+  return [ph ? `${ph} fotoğraf` : "", vd ? `${vd} video` : ""].filter(Boolean).join(" · ") || "Fotoğraf yok";
+};
+function Dupes({ groups, uses, onMerge }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState("");
+  const run = async (list) => {
+    const names = list.map((g) => g.name).join(", ");
+    if (!confirm(`${names} birleştirilsin mi? Fotoğraf ve videolar silinmez, kalan harekete geçer.`)) return;
+    setBusy(list.length > 1 ? "*" : list[0].keep);
+    try {
+      for (const g of list) await onMerge(g.keep, g.items.map((x) => x.key));
+    } catch (e) {
+      console.warn("[fitness] birleştirilemedi", e);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <section className="mt-3 rounded-2xl border border-line">
+      <button type="button" onClick={() => setOpen(!open)} className="flex h-12 w-full items-center justify-between px-3 text-left">
+        <b className="text-[0.9375rem] font-semibold">Aynı adlı hareketler · {groups.length}</b>
+        <Icon name="chev" className={`size-4 text-mut transition ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3">
+          <ul className="flex flex-col gap-2">
+            {groups.map((g) => (
+              <li key={g.keep} className="rounded-xl bg-bg p-3">
+                <b className="block text-[0.9375rem] font-semibold">{g.name}</b>
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {g.items.map((x, i) => (
+                    <li key={x.key} className="flex items-baseline justify-between gap-2 text-[0.8125rem]">
+                      <span className="min-w-0 truncate">
+                        No {x.no} · {mediaText(x)}
+                        {uses[x.key] ? ` · ${uses[x.key]} programda` : ""}
+                      </span>
+                      <span className={`shrink-0 font-semibold ${i ? "text-mut" : "text-acc"}`}>{i ? "Birleşecek" : "Kalacak"}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" disabled={!!busy} onClick={() => run([g])} className="mt-2 h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc disabled:opacity-60">
+                  {busy === g.keep ? "Birleştiriliyor…" : "Birleştir"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {groups.length > 1 && (
+            <button type="button" disabled={!!busy} onClick={() => run(groups)} className="mt-2 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-60">
+              {busy === "*" ? "Birleştiriliyor…" : `Hepsini birleştir (${groups.length})`}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

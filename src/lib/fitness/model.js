@@ -148,10 +148,10 @@ export function linkMedia(text) {
 }
 // Hareketin fotoğraf/video künyesi (dosyalar fitMedia.js): [{ id, kind photo|video, type, size, parts, url }], en çok 3.
 // Bağlantıyla eklenen: { id, kind, url, link: true } (dosya bizde değil, adres olduğu gibi açılır)
-export function cleanMedia(list) {
+export function cleanMedia(list, max = 3) {
   return (Array.isArray(list) ? list : [])
     .filter((m) => m && typeof m.id === "string" && m.id && (m.kind === "photo" || m.kind === "video"))
-    .slice(0, 3)
+    .slice(0, max)
     .map((m) => {
       if (m.link) return typeof m.url === "string" && /^https:\/\/\S+$/.test(m.url) && m.url.length <= 1200 ? { id: m.id.slice(0, 40), kind: m.kind, url: m.url, link: true } : null;
       const o = { id: m.id.slice(0, 40), kind: m.kind, type: String(m.type || "").slice(0, 40), size: Math.max(0, +m.size || 0), parts: Math.min(40, Math.max(1, Math.round(+m.parts) || 1)) };
