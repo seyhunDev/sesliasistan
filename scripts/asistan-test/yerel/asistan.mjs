@@ -41,7 +41,7 @@ group("Yeni kayıt (yerel)")([
   ["tekneleri hazırla görevi ekle", isType("create", (r) => r.items[0].type === "task")],
   ["not al malzeme odası dolu", isType("create", (r) => r.items[0].type === "note")],
   ["yarın sabah 9'da tekne yükleyeceğimizi not al", isType("create", (r) => r.items.length === 2 && r.items[0].type === "plan" && r.items[1].type === "note")],
-  ["haftaya salı kamp planla", isType("create", (r) => /Saat kaçta/.test(r.message))],
+  ["haftaya salı kamp planla", isType("create", (r) => !/\?/.test(r.message) && r.items[0].date && !r.items[0].time)], // onaysız: saat sorulmaz
   ["görev: yelkenleri kontrol et", isType("create", (r) => r.items[0].type === "task")],
   ["yarın saat 10 antrenman var", isType("create", (r) => r.items[0].time === "10:00")],
   ["yarın 9'da antrenman ve sonra tekneleri yıkayın", toAI, "iki iş → yapay zeka"],
@@ -1134,6 +1134,15 @@ group("Temiz başlık ve sorusuz ekleme")([
     for (const no of t.not || []) rows.push([no, { desc: `${t.id} değil`, fn: B.briefOf, ok: (r) => !r || !(t.id === "notes.read" ? r.asks.some((a) => a.what === "notes") : r.asks.some((a) => a.what === "plans" && a.when === t.id.split(".")[1])) }]);
   }
   group("Hızlı bilgi isteği: hazır cümle seti")(rows);
+
+  const { autoFill } = await import("@/features/add/drafts");
+  const AF = (d) => autoFill([{ type: "plan", title: "Kamp", date: "", time: "", endDate: "", allDay: false, ...d }], "2026-10-18")[0];
+  group("Onaysız kayıt: eksik gün/saat")([
+    ["saatsiz plan", { desc: "tüm gün", fn: () => AF({ date: "2026-10-20" }), ok: (r) => r.allDay && r.date === "2026-10-20" }],
+    ["günsüz plan", { desc: "bugün, tüm gün", fn: () => AF({}), ok: (r) => r.date === "2026-10-18" && r.allDay }],
+    ["saatli plan", { desc: "değişmez", fn: () => AF({ date: "2026-10-20", time: "10:00" }), ok: (r) => !r.allDay && r.time === "10:00" }],
+    ["görev", { desc: "dokunulmaz", fn: () => autoFill([{ type: "task", title: "X", date: "" }], "2026-10-18")[0], ok: (r) => r.date === "" }],
+  ]);
 
   const { ringOf } = await import("@/lib/assistRing");
   const R = (desc, ok) => ({ desc, fn: ringOf, ok });

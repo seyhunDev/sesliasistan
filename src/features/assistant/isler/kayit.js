@@ -1,5 +1,5 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
-import { firstNeed, fresh, isBlank, pub, carry, check, tidy } from "@/features/add/drafts";
+import { autoFill, firstNeed, fresh, isBlank, pub, carry, check, tidy } from "@/features/add/drafts";
 import { applyRepeat } from "@/lib/repeat";
 import { keepNotes } from "@/lib/steps";
 import { todayStr } from "@/lib/utils/format";
@@ -23,7 +23,7 @@ export function startDrafts(ctx, items, s, msg, engine, viaVoice, lead = "") {
   const { draftSay, draftSrc, ready, reply, saveDraftsNow, setDrafts, withAssignees } = ctx;
   // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
   draftSrc.current = s;
-  let next = applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh);
+  let next = autoFill(applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh), todayStr());
   const need = firstNeed(next);
   if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
   if (ready(next)) return saveDraftsNow(viaVoice, next, msg, lead);
@@ -61,7 +61,7 @@ export async function refineDrafts(ctx, s, viaVoice) {
     const r = await interpretText(s, firstName, c.signal, { mode: "create", drafts: known.map((d) => pub(d, staff)), last, history }, staffNames);
     if (id !== runId.current) return;
     const items = applyRepeat(keepNotes(r.items, s, known.filter((d) => d.type === "note").length), s, todayStr()).map((x) => withAssignees(x, s));
-    let next = items.length ? carry(known, items) : drafts;
+    let next = autoFill(items.length ? carry(known, items) : drafts, todayStr());
     const need = firstNeed(next);
     if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
     if (ready(next)) return saveDraftsNow(viaVoice, next, r.message);

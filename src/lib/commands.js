@@ -124,7 +124,6 @@ const TYPE_W = [
 ];
 // Tür söylendiyse başlıktan atılacak komut kelimeleri ("hatırlat" kalır, kural motoru "…mayı hatırlat" kalıbını çözer)
 const STRIP = /(^|\s)(?:yeni|bir|olarak|diye|lütfen|ekle\S*|oluştur\S*|kaydet\S*|not al\S*|not düş\S*|not et|notlara|notu|not|görevlere|görevi|görev|planla(?!r)\S*|plana|planı|plan|takvime|listeye)(?=\s|$)/gi;
-const KIND_W = { plan: "planı", task: "görevi", note: "notu" };
 
 // "yükleyeceğimizi" -> "yükleme" (plan başlığı), "yükleyeceğiz" (not metni)
 const FUT = /(\S+?)y?(eceğimizi|acağımızı|eceğimiz|acağımız|eceğiz|acağız|eceğini|acağını|ecek|acak)$/iu;
@@ -163,8 +162,7 @@ export function localCreate(raw, today = todayStr()) {
       if (!p.date) p.date = today;
       const nb = noteText(body.replace(/\ssaat (\d{2}):(\d{2})/, (x, h, m) => ` saat ${+h}${m === "00" ? "" : `.${m}`}`));
       const n = { type: "note", title: p.title, body: nb.charAt(0).toLocaleUpperCase("tr-TR") + nb.slice(1), date: "", endDate: "", time: "", place: "", link: true, cat: p.cat };
-      const need = !p.time && !p.endDate ? " Saat kaçta olsun?" : " Kontrol edip kaydedebilirsin.";
-      return { type: "create", items: [p, n], message: `Tamam, “${p.title}” için takvime plan ve not hazırladım.${need}` };
+      return { type: "create", items: [p, n], message: "" };
     }
   }
 
@@ -173,8 +171,8 @@ export function localCreate(raw, today = todayStr()) {
   const d = items[0];
   if (d.type === "plan") d.title = planTitle(d.title);
   if (!d.title || words(norm(d.title)) > 8) return null;
-  const need = d.type !== "plan" ? "" : !d.date ? " Hangi gün olsun?" : !d.time && !d.endDate ? " Saat kaçta olsun?" : "";
-  return { type: "create", items, message: `Tamam, “${d.title}” ${KIND_W[d.type]} hazırladım.${need || " Kontrol edip kaydedebilirsin."}` };
+  // Onaysız kayıt: "Ekledim: …" cümlesini kayıt işi söyler (eksik gün/saat varsayılanla dolar, isler/kayit.js autoFill)
+  return { type: "create", items, message: "" };
 }
 
 // Yapay zekaya ulaşılamadığında: öğrenilmiş örneklerden en yakın niyeti tahmin et, komuta çevir.
