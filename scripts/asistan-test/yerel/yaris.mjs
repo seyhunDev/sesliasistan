@@ -337,6 +337,23 @@ group("Yarış multimedya")([
   ["an yazısı", { desc: "rozet ve uzun yazı", fn: () => [RL.momentBadge({ phase: "last", sec: -42 }), RL.momentText({ phase: "last", sec: -42 }), RL.momentBadge({ phase: "race", sec: 750 }), RL.momentText({ phase: "race", sec: 750 }), RL.momentText({ phase: "pre", sec: -192 }), RL.momentBadge({})], ok: (r) => r.join("|") === "−0:42|Son 1 dakika · 0:42 kala|+12:30|Yarış sırasında · 12:30|Start öncesi · 3:12 kala|" }],
   ["yarış ve ana göre gruplar", { desc: "sayaçla çekilen kendi yarışına (start daha yazılmadıysa sıradakine) ve evresine düşer; an kayıtta kalır", fn: () => { const S = RL.cleanStarts([{ id: "s1", day: "2026-10-19", n: 1, at: at("11:05") }]); const end2 = at("12:20"); const M = RL.cleanMedia([{ id: "a", url: "https://x", at: at("11:03"), phase: "pre", sec: -120, end: at("11:05") }, { id: "b", url: "https://x", at: at("11:30") }, { id: "c", url: "https://x", at: at("12:19"), phase: "last", sec: -40, end: end2 }, { id: "d", url: "https://x", at: at("12:16"), phase: "pre", sec: -240, end: end2 }, { id: "e", url: "https://x", at: at("11:04"), phase: "bozuk", sec: 1, end: end2 }]); return [RL.mediaGroups(M, S, "2026-10-19").map((g) => `${g.title}:${g.items.map((x) => x.id).join("")}`).join("|"), M.find((x) => x.id === "c").sec]; }, ok: ([g, sec]) => g === "2. yarış · Son 1 dakika:c|2. yarış · Start öncesi:d|1. yarış · Yarış sırasında:b|1. yarış · Start öncesi:a|Start öncesi:e" && sec === -40 }],
   ["startan beri sınırı", { desc: "ileri sayım 59:59'da durur, eksiye düşmez", fn: () => [RL.upSec(0, 125_400), RL.upSec(0, 3_599_999), RL.upSec(0, 7_200_000), RL.upSec(1000, 0)], ok: (r) => r.join() === "125,3599,3599,0" }],
+  ["yarışı iptal", { desc: "genel geri çağırılan 2. yarış numarayı bırakır, tekrarı yine 2. yarış; çekimler ayrı başlıkta, iptalden sonrakiler ona düşmez", fn: () => {
+    const ms = (h) => Date.parse(at(h));
+    let st = RL.beginRace([], ms("10:55"), ms("11:00")).starts;
+    st = RL.finishRace(st, st[0].id, ms("11:40"));
+    const b = RL.beginRace(st, ms("11:50"), ms("11:55"));
+    const voided = RL.voidRace(b.starts, b.id, "Genel geri çağırma", ms("11:56"));
+    const label = `${RL.nextRaceNo(voided)}. yarış`;
+    const c = RL.beginRace(voided, ms("12:05"), ms("12:10"));
+    const v = c.starts.find((x) => x.id === b.id);
+    const inVoid = RL.momentAt(at("11:53"), c.starts);
+    const after = RL.momentAt(at("11:58"), c.starts);
+    const re = RL.momentAt(at("12:09"), c.starts);
+    const media = [{ id: "m1", url: "https://x/1", at: at("11:53"), ...inVoid }, { id: "m2", url: "https://x/2", at: at("12:09"), ...re }];
+    const g = RL.mediaGroups(RL.cleanMedia(media), c.starts, "2026-10-19").map((x) => x.title);
+    const old = RL.cleanStarts([{ id: "s1", day: "2026-10-19", at: at("11:00"), flag: "Ertelendi" }])[0];
+    return { label, ns: c.starts.map((x) => x.n).join(), title: RL.raceTitle(v), time: RL.raceTime(v), inVoid: inVoid?.rid === b.id && inVoid.phase, after, g, old: [old.void, old.flag], undo: RL.voidRace(voided, b.id, "", 0).map((x) => x.n).join() };
+  }, ok: (r) => r.label === "2. yarış" && r.ns === "1,2,2" && r.title === "Genel geri çağırma · 2. yarış" && r.time === "" && r.inVoid === "pre" && r.after === null && r.g.join("|") === "2. yarış · Son 1 dakika|Genel geri çağırma · 2. yarış · Start öncesi" && r.old.join() === "Tehir," && r.undo === "1,2" }],
   ["yarış dışı gün", { desc: "yarış günleri dışında çekilen ya da start verilen gün de listede (yoksa çekilen görünmezdi)", fn: () => RL.liveDays(["2026-10-25", "2026-10-26"], { media: [{ at: at("11:00") }, { at: "x" }], starts: [{ at: "2026-10-25T09:00:00.000Z" }] }), ok: (d) => d.join() === "2026-10-19,2026-10-25,2026-10-26" }],
   ["yarış akışı", { desc: "Başlat yarışı açar, +1 dk kaydırır, 0 rüzgârı yazar, bitir süreyi verir; ertesi gün numara devam eder", fn: () => {
     const prev = RL.renumber([{ id: "d1", day: "2026-10-18", at: new Date("2026-10-18T11:00:00").toISOString() }, { id: "d2", day: "2026-10-18", at: new Date("2026-10-18T12:00:00").toISOString() }, { id: "d3", day: "2026-10-18", at: new Date("2026-10-18T13:00:00").toISOString() }]);

@@ -224,7 +224,7 @@ export function TimerSound() {
 // her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
 // Bipler TimerSound'da (her sayfada çalışır); bu ekran gösterir ve düğmeleri tutar.
 // race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
-// (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish). Her biri önceki sayaç kaydını verir
+// (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish) ve yanında "İptal" (onVoid). Her biri önceki sayaç kaydını verir
 // (Geri al için, writeTimer ile geri yazılır). race.label: sıradaki yarışın adı.
 export function Countdown({ mode = "", presets = PRESETS, onZero, race = null }) {
   const client = useClient();
@@ -249,6 +249,11 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
   const finish = () => {
     save({ dur: t.dur, end: null, left: null, zero: t.end });
     race.onFinish(t);
+  };
+  // Startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
+  const voidIt = () => {
+    save({ dur: t.dur, end: null, left: null, zero: t.end });
+    race.onVoid(t);
   };
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
@@ -305,12 +310,19 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
       </div>
       <Pick open={pick} dur={t.dur} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       <Bar>
-        <button
-          onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
-          className={`h-14 w-full rounded-2xl text-[1.0625rem] font-semibold active:translate-y-px ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
-        >
-          {race ? (up ? "Yarışı bitir" : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
-        </button>
+        <div className="flex gap-2">
+          {race && up && (
+            <button onClick={voidIt} className="h-14 shrink-0 rounded-2xl border border-line bg-card px-5 text-[1.0625rem] font-semibold text-rec active:translate-y-px">
+              İptal
+            </button>
+          )}
+          <button
+            onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
+            className={`h-14 min-w-0 flex-1 rounded-2xl text-[1.0625rem] font-semibold active:translate-y-px ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
+          >
+            {race ? (up ? "Yarışı bitir" : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
+          </button>
+        </div>
       </Bar>
     </section>
   );
