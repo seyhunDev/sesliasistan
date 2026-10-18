@@ -283,7 +283,7 @@ select {
 .atabbar::after, .asheet::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 6rem; background: inherit; }
 .acenter { background: var(--card); box-shadow: 0 -0.5px 0 var(--line), 0 8px 22px -10px rgba(20, 90, 70, .45); }
 /* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
-.acenter .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .35); }
+.acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .35); }
 .asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
   box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
@@ -563,3 +563,27 @@ html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
 
 /* Kamera açıkken bildirim (Geri al) kameranın üst şeridini (sayaç, Başlat/İptal) örtmesin: görüntünün üstüne iner */
 body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)); }
+
+/* Geniş ekran (Seyhun 2026-10-18: "cep telefonu, tablet ve web uyumlu olsun"). Telefonda hiçbir şey değişmez.
+   Dik tablet: sayfalar ve alt çubuk 40rem'e genişler. Bilgisayar ve yatay tablet (SideNav.jsx WIDE): alt sekme çubuğu yerine
+   solda sabit menü; sayfa, sabit alt düğmeler, alttan açılan pencereler ve tam ekranlar menünün sağında ortalanır.
+   Tam ekran asistan her yeri kaplar. Sayfaların içi aynı kalır. */
+@media (min-width: 48rem) {
+  main.max-w-\[30rem\], [data-screen] > div, [data-sheet], main.fixed > div.max-w-\[30rem\] { max-width: 40rem; }
+  .atabbar > div { max-width: 40rem; }
+}
+@media (min-width: 64rem) {
+  .sidenav { display: flex; }
+  body[data-side] { padding-left: 15rem; }
+  body[data-side] main.max-w-\[30rem\], body[data-side] [data-screen] > div, body[data-side] main.fixed > div.max-w-\[30rem\] { max-width: 44rem; }
+  body[data-side] .atabbar-wrap { display: none; }
+  body[data-side] :is(.fixed[data-pagebar], [data-screen], main.fixed), body[data-side] > [data-bar] { left: 15rem; }
+  body[data-side] .dome:not([data-on]) { left: 15rem; }
+  body[data-side] > [role="status"].fixed, body[data-side] [role="status"].fixed.inset-x-0 { left: 15rem; }
+  body[data-side] main { padding-bottom: calc(var(--stage-h, 0px) + 2.5rem); }
+  body[data-side] main:has(.fixed[data-pagebar]:not(.hidden)), body[data-side]:has(> [data-bar]) main { padding-bottom: 7rem; }
+  /* Alttan açılan pencere: menünün sağında ortada, dört köşesi yuvarlak kutu */
+  body[data-side] [data-sheet] { left: 15rem; bottom: 1.5rem; }
+  body[data-side] [data-sheet] > div { border-radius: 1.5rem; max-height: calc(100dvh - 3rem); padding-bottom: 1.25rem; }
+  body[data-side] [data-sheet].translate-y-full { translate: 0 calc(100% + 2rem); }
+}

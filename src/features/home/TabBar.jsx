@@ -21,6 +21,7 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
+import { SideNav, useWide } from "./SideNav";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -641,7 +642,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           </div>
         ) : (
           // Boşta: alt sekme çubuğu, ortada asistan düğmesi (çubuktan yukarı taşar; üstündeki saydam pay dokunuş almaz)
-          <div className={noAi ? "" : "pt-4"}>
+          <div className={`atabbar-wrap ${noAi ? "" : "pt-4"}`}>
             <nav aria-label="Sekmeler" className="atabbar relative pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
               {/* Sporcu tarafında asistan düğmesi yok, dört sekme (Seyhun: "sporcu sesli asistanı kullanmayacak", 2026-10-13) */}
               <div className={`mx-auto grid h-14 max-w-[34rem] items-stretch ${noAi ? "grid-cols-4" : "grid-cols-5"}`}>
@@ -690,8 +691,9 @@ function MiniBubble({ state, live, bottom, orb, tail, onOpen, onClose }) {
 }
 
 // Alt kubbe + Oluştur menüsü. bar: bu sayfada sekmeler görünür (değilse kubbe yalnız asistan çalışırken çıkar).
-export function TabBar({ cfg, bar, slim = false, rec = false }) {
+export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false }) {
   const path = usePathname();
+  const wide = useWide();
   const router = useRouter();
   const { openAssistant, live, act, setSlot } = useAssistant();
   const { openAdd } = useAdd();
@@ -845,11 +847,27 @@ export function TabBar({ cfg, bar, slim = false, rec = false }) {
         <MiniBubble
           state={state}
           live={live}
-          orb={!bar && !rec}
-          tail={bar && !rec}
+          orb={(!bar || wide) && !rec}
+          tail={bar && !rec && !wide}
           bottom={rec ? "calc(var(--rec-h, 4rem) + 0.5rem)" : bar ? "calc(var(--dome-h, 5rem) + 1.25rem)" : "calc(env(safe-area-inset-bottom) + 1rem)"}
           onOpen={() => setMini(false)}
           onClose={() => act.current.close?.()}
+        />
+      )}
+      {sideNav && wide && (
+        <SideNav
+          path={path}
+          unread={unreadTotal}
+          orb={
+            noAi ? null : (
+              <>
+                <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
+                <button type="button" onClick={typeNow} className="min-w-0 flex-1 truncate rounded-xl px-2 py-2 text-left text-[0.875rem] font-medium text-fg hover:bg-fg/[.04]">
+                  Yazarak sor
+                </button>
+              </>
+            )
+          }
         />
       )}
       <Sheet open={menu} onClose={() => setMenu(false)} title="Oluştur">
@@ -921,7 +939,7 @@ function Host() {
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
     : { ...(PAGES[path] || (isPost(path) ? POST : isInv(path) ? INV : race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} />;
+  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} sideNav={!isMedia(path)} />;
 }
 export function TabBarHost() {
   return (
