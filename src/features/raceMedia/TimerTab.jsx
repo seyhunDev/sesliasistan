@@ -3,49 +3,110 @@
 import { useState } from "react";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
-import { Countdown } from "@/features/training/Countdown";
+import { useToast } from "@/components/ui/ToastProvider";
+import { Countdown, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { saveStarts } from "@/features/athletes/raceLiveStore";
-import { COURSES, FLAGS, atOf, dirShort, hm, newStart, renumber, startsOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, atOf, beginRace, dirShort, dropRace, finishRace, hm, newStart, nextRaceNo, raceName, raceTime, renumber, shiftRace, startsOn } from "@/lib/raceLive";
 
-// Süre: start sayacı (Countdown, yarış dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip).
-// Bipler her sayfada çalar (Countdown.jsx TimerSound); sayaç 0 olunca (RaceMedia) o günün sıradaki yarışı start saati
-// ve o anki rüzgârla (son elle kayıt) kendiliğinden yazılır.
-// Yarışa dokununca saat, parkur, bayrak (ertelendi, geri çağırma, iptal) ve not yazılır; "Yarış ekle" elle ekler.
+// Süre (Seyhun 2026-10-18): yarış akışı. "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; 0'da yarış başlar (RaceMedia onZero,
+// o anki rüzgârla); "Yarışı bitir" bitiş saatini yazar. Geri sayımda Duraklat yok: "Geri sayımı iptal et" (ertelendi / geri çağırma).
+// Yarışlar bütün seri boyunca numaralanır (2. gün 4. yarıştan devam eder); adı ve saatleri dokununca değişir.
+// Yanlış dokunuşa karşı her adımdan sonra birkaç saniye "Geri al" (önceki liste ve sayaç geri yazılır).
+// Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip (bipler her sayfada: TimerSound).
 const PRESETS = [60, 120, 300];
+const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 export function TimerTab({ orgId, race, day, live, onChange }) {
-  const [edit, setEdit] = useState(null); // düzenlenen start
-  const list = startsOn(live.starts, day);
+  const toast = useToast();
+  const tr = useTimerRun();
+  const timer = tr.t;
+  const [edit, setEdit] = useState(null); // düzenlenen yarış
   const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, race.id, next));
+  const undo = (msg, before, prevT) =>
+    toast(msg, { duration: 8000, action: { label: "Geri al", onClick: () => (save(before), prevT && writeTimer(prevT)) } });
+  const ridOf = (t) => t?.rid || live.starts.find((x) => t?.end && Math.abs(Date.parse(x.at) - t.end) < 5000)?.id || "";
+  const cur = timer.end != null ? live.starts.find((x) => x.id === ridOf(timer)) : null;
+  const flow = {
+    label: `${nextRaceNo(live.starts)}. yarış`,
+    onStart: (end, rid, prevT) => {
+      const before = live.starts;
+      const got = beginRace(live.starts, Date.now(), end);
+      save(got.starts);
+      undo(`${raceName(got.starts.find((x) => x.id === got.id))} geri sayımı başladı`, before, prevT);
+    },
+    onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end)),
+    onCancel: (prevT) => {
+      const before = live.starts;
+      const id = ridOf(prevT);
+      const s = live.starts.find((x) => x.id === id);
+      if (s && !s.fin && Date.parse(s.at) > Date.now()) save(dropRace(live.starts, id)); // başlamamış yarış silinir
+      undo("Geri sayım iptal edildi", before, prevT);
+    },
+    onFinish: (prevT) => {
+      const before = live.starts;
+      const id = ridOf(prevT);
+      const next = id ? finishRace(live.starts, id, Date.now()) : live.starts;
+      save(next);
+      const s = next.find((x) => x.id === id);
+      undo(s ? `${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}` : "Yarış bitti", before, prevT);
+    },
+  };
   const add = () => {
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind);
     if (s) setEdit({ ...s, fresh: true });
   };
+  // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
+  const days = [...new Set(live.starts.map((x) => x.day))].sort((a, b) => (a === day ? -1 : b === day ? 1 : b.localeCompare(a)));
+  const state = (s) => (s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   return (
     <>
-      <Countdown mode="start" presets={PRESETS} />
-      <Label right={list.length || ""}>Bugün</Label>
-      <ul className={`${card} divide-y divide-line overflow-hidden`}>
-        {list.map((s) => (
-          <li key={s.id}>
-            <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
-              <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold">{s.n}. yarış</b>
-                {(s.course || s.flag || s.note) && <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, s.note].filter(Boolean).join(" · ")}</span>}
-              </span>
-              <span className="shrink-0 text-[0.875rem] text-mut tabular-nums">{[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}</span>
-            </button>
-          </li>
-        ))}
-        <li>
-          <button type="button" onClick={add} className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc active:bg-bg">
-            Yarış ekle
-          </button>
-        </li>
-      </ul>
-      <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? `${edit.n}. yarış` : ""}>
+      {cur && <p className="mt-3 text-center text-[0.9375rem] font-semibold">{raceName(cur)}</p>}
+      <Countdown mode="start" presets={PRESETS} race={flow} />
+      {!days.includes(day) && (
+        <>
+          <Label>{dayLabel(day)}</Label>
+          <p className={`${card} px-4 py-4 text-center text-[0.875rem] text-mut`}>Bu gün yarış yok. Sıradaki: {flow.label}</p>
+        </>
+      )}
+      {days.map((d) => {
+        const list = startsOn(live.starts, d);
+        return (
+          <section key={d}>
+            <Label right={list.length}>{dayLabel(d)}</Label>
+            <ul className={`${card} divide-y divide-line overflow-hidden`}>
+              {[...list].reverse().map((s) => (
+                <li key={s.id}>
+                  <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                    <span className="min-w-0 flex-1">
+                      <b className="block text-[0.9375rem] font-semibold">{raceName(s)}</b>
+                      {(s.course || s.flag || s.note) && <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, s.note].filter(Boolean).join(" · ")}</span>}
+                    </span>
+                    <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
+                      {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
+                      {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {d === day && (
+                <li>
+                  <button type="button" onClick={add} className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc active:bg-bg">
+                    Yarış ekle
+                  </button>
+                </li>
+              )}
+            </ul>
+          </section>
+        );
+      })}
+      {!days.includes(day) && (
+        <button type="button" onClick={add} className="mt-2 w-full py-2 text-[0.9375rem] font-semibold text-acc">
+          Yarış ekle
+        </button>
+      )}
+      <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceName(edit) : ""}>
         {edit && (
           <StartForm
             s={edit}
@@ -58,8 +119,9 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
               edit.fresh
                 ? null
                 : () => {
-                    if (!confirm(`${edit.n}. yarış silinsin mi?`)) return;
-                    save(renumber(live.starts.filter((o) => o.id !== edit.id)));
+                    const before = live.starts;
+                    save(dropRace(live.starts, edit.id));
+                    undo(`${raceName(edit)} silindi`, before);
                     setEdit(null);
                   }
             }
@@ -71,11 +133,19 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
 }
 
 function StartForm({ s, onSave, onDrop }) {
-  const [x, setX] = useState({ ...s, time: hm(s.at) });
+  const [x, setX] = useState({ ...s, time: hm(s.at), finTime: s.fin ? hm(s.fin) : "" });
   const put = (k) => (v) => setX((o) => ({ ...o, [k]: o[k] === v ? "" : v }));
   const chip = (on) => `h-9 rounded-full px-3.5 text-[0.875rem] font-medium active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
   return (
     <div className="pb-2">
+      <label className="flex items-center justify-between gap-3 border-b border-line py-3 text-[0.9375rem]">
+        <span className="shrink-0 text-mut">Ad</span>
+        <input value={x.name} placeholder={`${s.n}. yarış`} onChange={(e) => setX((o) => ({ ...o, name: e.target.value }))} className="min-w-0 flex-1 bg-transparent text-right font-semibold outline-none placeholder:text-fg2" />
+      </label>
+      <label className="flex items-center justify-between border-b border-line py-3 text-[0.9375rem]">
+        <span className="text-mut">Bitiş saati</span>
+        <input type="time" value={x.finTime} onChange={(e) => setX((o) => ({ ...o, finTime: e.target.value }))} className="bg-transparent text-right font-semibold tabular-nums outline-none" />
+      </label>
       <label className="flex items-center justify-between border-b border-line py-3 text-[0.9375rem]">
         <span className="text-mut">Start saati</span>
         <input type="time" value={x.time} onChange={(e) => setX((o) => ({ ...o, time: e.target.value }))} className="bg-transparent text-right font-semibold tabular-nums outline-none" />
@@ -94,7 +164,7 @@ function StartForm({ s, onSave, onDrop }) {
       </div>
       <p className="mb-2 mt-4 text-[0.875rem] font-semibold text-fg2">Not</p>
       <textarea value={x.note} onChange={(e) => setX((o) => ({ ...o, note: e.target.value }))} rows={2} className="w-full rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] outline-none focus:ring-1 focus:ring-acc" />
-      <button type="button" onClick={() => onSave({ ...x, at: atOf(x.day, x.time), time: undefined })} className="mt-4 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">
+      <button type="button" onClick={() => onSave({ ...x, at: atOf(x.day, x.time), fin: x.finTime ? atOf(x.day, x.finTime) : "", time: undefined, finTime: undefined })} className="mt-4 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">
         Kaydet
       </button>
       {onDrop && (

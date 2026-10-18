@@ -54,6 +54,8 @@ export function useTimer() {
 }
 
 // Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır (mode "start": yarış dizisi)
+// Geri al: önceki sayaç kaydı olduğu gibi geri yazılır
+export const writeTimer = (t) => write(t);
 export function startTimer(sec, mode = "") {
   write({ dur: sec, end: Date.now() + sec * 1000, left: null, mode, zero: readTimer().zero });
 }
@@ -120,13 +122,13 @@ export function useTimerRun({ onZero } = {}) {
       setNow(n);
       if (n >= t.end && zeroed.current !== t.end) {
         zeroed.current = t.end;
-        zeroFn.current?.(t.end);
+        zeroFn.current?.(t.end, { mode: t.mode, rid: t.rid });
       }
     };
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end]);
+  }, [running, t.end, t.mode, t.rid]);
 
   return { t, now, running, rem, up };
 }
@@ -212,7 +214,10 @@ export function TimerSound() {
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
 // her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
 // Bipler TimerSound'da (her sayfada çalışır); bu ekran gösterir ve düğmeleri tutar.
-export function Countdown({ mode = "", presets = PRESETS, onZero }) {
+// race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
+// (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish). Her biri önceki sayaç kaydını verir
+// (Geri al için, writeTimer ile geri yazılır). race.label: sıradaki yarışın adı.
+export function Countdown({ mode = "", presets = PRESETS, onZero, race = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -223,11 +228,26 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
     audio();
     const left = t.left ?? t.dur;
     if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
-    save({ ...t, mode, end: Date.now() + left * 1000, left: null });
+    const end = Date.now() + left * 1000;
+    const rid = race ? `s${end.toString(36)}` : undefined;
+    save({ ...t, mode, end, left: null, rid });
+    race?.onStart(end, rid, t);
+  };
+  const cancel = () => {
+    save({ dur: t.dur, end: null, left: null, zero: t.zero });
+    race.onCancel(t);
+  };
+  const finish = () => {
+    save({ dur: t.dur, end: null, left: null, zero: t.end });
+    race.onFinish(t);
   };
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
-  const add = (s) => (running ? save({ ...t, end: t.end + s * 1000 }) : save({ ...t, left: (t.left ?? t.dur) + s }));
+  const add = (s) => {
+    if (!running) return save({ ...t, left: (t.left ?? t.dur) + s });
+    save({ ...t, end: t.end + s * 1000 });
+    race?.onShift(t.end + s * 1000, t.rid);
+  };
   const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero });
   const custom = !presets.includes(t.dur);
 
@@ -270,17 +290,17 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
                 <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
               </>
             )}
-            <button onClick={reset} className={chip(false)}>Sıfırla</button>
+            {!race && <button onClick={reset} className={chip(false)}>Sıfırla</button>}
           </>
         )}
       </div>
       <Pick open={pick} dur={t.dur} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       <Bar>
         <button
-          onClick={up ? reset : running ? pause : start}
+          onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
           className={`h-14 w-full rounded-2xl text-[1.0625rem] font-semibold active:translate-y-px ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
         >
-          {up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
+          {race ? (up ? "Yarışı bitir" : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
         </button>
       </Bar>
     </section>
