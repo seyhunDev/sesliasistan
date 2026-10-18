@@ -78,8 +78,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending, last })
     c.height = h;
     const ctx = c.getContext("2d");
     ctx.drawImage(v, 0, 0, w, h);
-    const at = new Date().toISOString();
-    drawStamp(ctx, w, h, fns.current.stampFor(at));
+    const at = new Date().toISOString(); // fotoğrafa yazı Kaydet'te basılır (yarışı ve anı değiştirilebilsin)
     setFlash(true);
     setTimeout(() => setFlash(false), 120);
     c.toBlob((b) => b && fns.current.onShot({ blob: b, type: "image/jpeg", kind: "photo", at }), "image/jpeg", 0.8);
