@@ -317,9 +317,10 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
 }
 
 // Eylem düğmesi sekme çubuğunun hemen üstünde sabit
+// data-bar: şerit açıkken sayfanın alt boşluğu şerit kadar büyür (globals.css), en alttakiler düğmenin altında kalmaz (Seyhun 2026-10-18)
 export function Bar({ children }) {
   if (!useClient()) return null;
-  return createPortal(<div className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
+  return createPortal(<div data-bar className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
 }
 
 // Ayarla: dakika ve saniye (iPhone'da çark olarak açılır)
