@@ -71,7 +71,7 @@ function legacyCopy(t) {
 // Yapay zeka ayrı kutuda değil: yarış bağlanınca açıklama kendiliğinden yazılır, değişiklikler ana asistana söylenir
 // ("daha kısa yaz", "Mete 2. oldu diye ekle", "gün batımında teknelerle görsel üret"; setPostHandler).
 // onSave(post, photo) → kimlik; photo undefined: fotoğraf değişmedi, "": kaldırıldı, dataURL: yeni.
-export function PostEditor({ title, back, start: given, startPhoto = "", onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
+export function PostEditor({ title, back, start: given, startPhoto = "", photoLost = false, onSave, onDelete, onArchive, onNews, onRaces, onAthletes }) {
   const toast = useToast();
   const [start] = useState(() => withInfo(given));
   const [p, setP] = useState(start);
@@ -835,7 +835,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", onSave,
       <div className="mt-2 space-y-3">
         {tool === "photo" &&
           list([
-            item("ph", "Fotoğraf", busy === "photo" ? "Hazırlanıyor…" : photo ? "Seçildi" : "Yok, sade zemin", {
+            item("ph", "Fotoğraf", busy === "photo" ? "Hazırlanıyor…" : photo ? "Seçildi" : photoLost ? "Açılamadı, yeniden seç" : "Yok, sade zemin", {
               body: (
                 <>
                   <div className="flex gap-2">

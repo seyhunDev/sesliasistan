@@ -16,6 +16,7 @@ const photoDoc = (orgId, id) => doc(db, "orgs", orgId, "postPhotos", id);
 const store = () => {
   const s = getStorage(app);
   s.maxUploadRetryTime = 30e3;
+  s.maxOperationRetryTime = 10e3;
   return s;
 };
 const photoPath = (orgId, id) => `orgs/${orgId}/postPhotos/${id}_${Date.now().toString(36)}.jpg`;
@@ -53,17 +54,39 @@ export async function loadPost(orgId, id) {
   return s.exists() ? { id, ...cleanPost(s.data()) } : null;
 }
 
-// Fotoğraf dataURL olarak (görsel telefonda çizilir). post: { id, photoPath }
+// Bir işi en çok ms bekler (Storage ağ hatasında kendi kendine dakikalarca yeniden dener, sayfa "yükleniyor"da kalmasın)
+const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("zaman aşımı")), ms))]);
+
+// Sunucudan (yönetici erişimi): kural/CORS sorunu olsa da okur, kaydı yarıda kalmış fotoğrafı da bulur
+async function serverPhoto(id) {
+  const res = await authFetch(`/api/post-photo?id=${encodeURIComponent(id)}`, { timeout: 20e3 });
+  if (!res.ok) throw new Error(String(res.status));
+  return String((await res.json()).data || "");
+}
+
+// Fotoğraf dataURL olarak (görsel telefonda çizilir). post: { id, photoPath }. Bulunamazsa "" (hiç takılmaz).
 export async function loadPhoto(orgId, post) {
   if (post.photoPath) {
     try {
-      return await dataUrlOf(await getBlob(sref(store(), post.photoPath)));
+      return await within(getBlob(sref(store(), post.photoPath)).then(dataUrlOf), 8e3);
     } catch (e) {
-      console.warn("[posts] Storage'dan okunamadı", e?.code || e);
+      console.warn("[posts] Storage'dan okunamadı", e?.code || e?.message || e);
+    }
+  } else {
+    try {
+      const s = await within(getDoc(photoDoc(orgId, post.id)), 8e3);
+      const data = s.exists() ? String(s.data().data || "") : "";
+      if (data) return data;
+    } catch (e) {
+      console.warn("[posts] eski fotoğraf okunamadı", e?.message || e);
     }
   }
-  const s = await getDoc(photoDoc(orgId, post.id));
-  return s.exists() ? String(s.data().data || "") : "";
+  try {
+    return await serverPhoto(post.id);
+  } catch (e) {
+    console.warn("[posts] sunucudan da okunamadı", e?.message || e);
+    return "";
+  }
 }
 
 // photo: undefined → fotoğrafa dokunma; "" → sil; dataURL → yaz. Kimliği döndürür.
@@ -71,7 +94,8 @@ export async function savePost(orgId, uid, post, photo) {
   const keep = photo === undefined;
   // Fotoğraf adresine yalnız fotoğraf değişince dokunulur (ekrandaki kopya eski adresi taşıyabilir)
   const { photoPath: _p, photoUrl: _u, ...clean } = cleanPost({ ...post, hasPhoto: keep ? post.hasPhoto : !!photo });
-  const data = { ...clean, ...(keep ? {} : { photoPath: "", photoUrl: "" }), updatedAt: serverTimestamp() };
+  // Yeni fotoğrafta eski adres yüklenene kadar kalır (kayıt yarıda kalırsa gönderi eski fotoğrafla açılır)
+  const data = { ...clean, ...(keep || photo ? {} : { photoPath: "", photoUrl: "" }), updatedAt: serverTimestamp() };
   let id = post.id;
   // Değişen fotoğrafın eski yeri kayıttan (tek okuma)
   const cur = !keep && id ? (await getDoc(doc(col(orgId), id)).catch(() => null))?.data() || {} : {};
@@ -94,7 +118,10 @@ export async function savePost(orgId, uid, post, photo) {
     if (put) {
       await updateDoc(doc(col(orgId), id), put);
       if (cur.hasPhoto) await deleteDoc(photoDoc(orgId, id)).catch(() => {});
-    } else await setDoc(photoDoc(orgId, id), { data: photo, updatedAt: serverTimestamp() });
+    } else {
+      await setDoc(photoDoc(orgId, id), { data: photo, updatedAt: serverTimestamp() });
+      await updateDoc(doc(col(orgId), id), { photoPath: "", photoUrl: "" });
+    }
   } else if (cur.hasPhoto) await deleteDoc(photoDoc(orgId, id)).catch(() => {});
   if (old) await dropStored(old);
   return id;
