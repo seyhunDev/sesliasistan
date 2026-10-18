@@ -34,6 +34,7 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs
   const line = (k) => path(rows.map((h, i) => [i, h[k]]));
   const area = `${line("wind")}L${x(n - 1)},${y(0)}L${x(0)},${y(0)}Z`;
   const oLine = path(got.map((o) => [o.i, o.wind]));
+  const oGust = path(got.filter((o) => o.gust != null).map((o) => [o.i, o.gust])); // ölçülen sağanak: mavi kesik çizgi
   const pick = (e) => {
     const b = e.currentTarget.getBoundingClientRect();
     const px = ((e.clientX - b.left) / b.width) * W;
@@ -98,6 +99,7 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs
       )}
       <path d={line("wind")} className="text-acc" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d={line("gust")} className="text-mut" fill="none" stroke="currentColor" strokeWidth="1.25" strokeDasharray="3 3" />
+      {oGust && <path d={oGust} fill="none" stroke={OBS} strokeWidth="1.4" strokeDasharray="3 3" strokeLinejoin="round" />}
       {s && !mini && (
         <g>
           <line x1={x(sel)} x2={x(sel)} y1={T} y2={y(0)} className="text-fg" stroke="currentColor" strokeOpacity=".3" />
@@ -229,10 +231,11 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
             : `Yakında ölçüm istasyonu yok (en yakını ${Math.round(ob.station.km)} km); yalnız tahmin`}
         </p>
       )}
-      <p className="flex items-center justify-end gap-2 text-[0.6875rem] text-mut">
+      <p className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-mut">
         {last && <><span className="inline-block h-2 w-3 rounded-sm" style={{ background: OBS, opacity: 0.45 }} /> ölçülen</>}
+        {last && <><span className="inline-block w-3 border-t border-dashed" style={{ borderColor: OBS }} /> ölçülen sağanak</>}
         <span className="inline-block h-0.5 w-3 rounded bg-acc" /> {last ? "tahmin" : "rüzgâr"}
-        <span className="inline-block w-3 border-t border-dashed border-mut" /> sağanak
+        <span className="inline-block w-3 border-t border-dashed border-mut" /> {last ? "tahmin sağanak" : "sağanak"}
         {nowIdx >= 0 && <><span className="inline-block size-2 rounded-full bg-rec" /> şimdi</>}
         {marks.length > 0 && <><span className="inline-block size-2 rounded-full border border-fg" /> ölçülen</>}
         <span>· parmağınla kaydır</span>
