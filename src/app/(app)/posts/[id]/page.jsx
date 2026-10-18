@@ -53,7 +53,7 @@ function Post({ orgId, uid }) {
         async (p) => {
           if (!p) return live && setMissing(true);
           const photo = p.hasPhoto ? await loadPhoto(orgId, p).catch(() => "") : "";
-          if (live) setState({ post: p, photo });
+          if (live) setState({ post: p, photo, lost: p.hasPhoto && !photo });
         },
         () => live && setMissing(true),
       );
@@ -84,7 +84,7 @@ function Post({ orgId, uid }) {
       ) : !state ? (
         <Loading label="Gönderi yükleniyor" />
       ) : (
-        <PostEditor title={head} back="/posts" start={state.post} startPhoto={state.photo} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={(pid, nid) => setPostNews(orgId, pid, nid)} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
+        <PostEditor title={head} back="/posts" start={state.post} startPhoto={state.photo} photoLost={state.lost} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={(pid, nid) => setPostNews(orgId, pid, nid)} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
       )}
     </main>
   );

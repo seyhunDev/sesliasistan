@@ -226,3 +226,25 @@ group("Ad düzeltmeleri (öğrenilen)")([
   ["kelime içinde değişmez", { desc: "Sametçik kalır", fn: () => applyFixes("Sametçik geldi, Samet gelmedi", [{ heard: "Samet", meant: "Samver" }]), ok: (r) => r === "Sametçik geldi, Samver gelmedi" }],
   ["düzeltme yoksa metin aynı", { desc: "aynı", fn: () => applyFixes("yarın antrenman", []), ok: (r) => r === "yarın antrenman" }],
 ]);
+
+// Telefonun kendi tanıması: ana ekrandaki uygulamada varsayılan kapalı (yazı vermiyordu, 2026-10-18); açıkça açılırsa açık
+{
+  const { nativeOn } = await import("@/lib/speech/detect");
+  const env = (standalone, stored) => () => {
+    const store = stored == null ? {} : { "sa-stt-native": stored };
+    globalThis.window = { navigator: { standalone }, matchMedia: () => ({ matches: false }) };
+    globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem() {} };
+    try {
+      return nativeOn();
+    } finally {
+      delete globalThis.window;
+      delete globalThis.localStorage;
+    }
+  };
+  group("Telefonun ses tanıması (varsayılan)")([
+    ["ana ekran, ayar yok", { desc: "kapalı", fn: env(true), ok: (r) => r === false }],
+    ["Safari sekmesi, ayar yok", { desc: "açık", fn: env(false), ok: (r) => r === true }],
+    ["ana ekran, açıkça açık", { desc: "açık", fn: env(true, "on"), ok: (r) => r === true }],
+    ["kendiliğinden kapandı", { desc: "kapalı", fn: env(false, "off"), ok: (r) => r === false }],
+  ]);
+}
