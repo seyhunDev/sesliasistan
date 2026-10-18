@@ -67,8 +67,9 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs
       {rows.map((h, i) => (
         <path
           key={`a${h.time}`}
+          // Ok aşağı (güneye) bakar; meteoroloji yönü "geldiği yön" olduğu için yönün kendisi kadar döndürülür (kuzeyden esen → güneye bakan ok)
           d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3"
-          transform={`translate(${x(i).toFixed(1)},12) rotate(${(((obs[i]?.dir ?? h.dir ?? 0) + 180) % 360).toFixed(0)})`}
+          transform={`translate(${x(i).toFixed(1)},12) rotate(${((obs[i]?.dir ?? h.dir ?? 0) % 360).toFixed(0)})`}
           fill="none"
           stroke={h.wind >= 17 ? "#d9822b" : "#2f8f76"}
           strokeWidth={i === sel ? 2 : 1.4}
