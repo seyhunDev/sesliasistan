@@ -5,6 +5,8 @@ import "./yonlendirme.mjs";
 import "./ses.mjs";
 import "./elle.mjs";
 import "./yaris.mjs";
+import "./cumleler.mjs";
+import "./bildirim.mjs";
 import { results, settle } from "./ortak.mjs";
 
 await settle();

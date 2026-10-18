@@ -483,7 +483,7 @@ export default function MailPage() {
         </ul>
       </Sheet>
       <DebtForm
-        key={debtForm ? debtForm.id || `new-${debtForm.kind}` : "off"}
+        key={debtForm ? `form-${debtForm.id || `new-${debtForm.kind}`}` : "form-off"}
         value={debtForm}
         names={debtNames}
         onClose={() => setDebtForm(null)}
@@ -494,7 +494,7 @@ export default function MailPage() {
         }}
       />
       <DebtDetail
-        key={curDebt?.id || "off"}
+        key={`detail-${curDebt?.id || "off"}`}
         debt={curDebt}
         onClose={() => setDebtOpen(null)}
         onPay={(n) => saveDebts((list) => list.map((y) => (y.id === curDebt.id ? payDebt(y, n, todayStr()) : y)), curDebt.kind === "club" ? "Ödeme kasaya girdi" : "Ödeme yazıldı")}
