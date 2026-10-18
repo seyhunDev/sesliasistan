@@ -10,17 +10,18 @@ export function WindArrow({ deg, className = "size-3" }) {
   );
 }
 
-// Tek sütun: üstte etiket, ortada simge + sıcaklık, altta rüzgâr (kn)
-export function Col({ label, icon, temp, wind, dir, strong }) {
+// Tek sütun: üstte etiket, ortada simge + sıcaklık, altta yön oku ve rüzgâr–sağanak (kn, Seyhun: "rüzgâr ve sağanak yan yana, 4-12 gibi")
+export function Col({ label, icon, temp, wind, gust, dir, strong }) {
   const l = windLevel(wind);
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className={`text-[0.6875rem] ${strong ? "font-semibold text-fg" : "text-mut"}`}>{label}</span>
       <Icon name={icon} className="my-0.5 size-[1.125rem] text-fg/75" />
       <span className="text-[0.8125rem] font-medium tabular-nums">{temp}°</span>
-      <span className={`flex items-center gap-0.5 text-[0.6875rem] font-semibold tabular-nums ${l.tone}`}>
-        <WindArrow deg={dir} />
+      <WindArrow deg={dir} className={`size-3 ${l.tone}`} />
+      <span className={`whitespace-nowrap text-[0.6875rem] font-semibold tabular-nums tracking-tight ${l.tone}`}>
         {wind}
+        {gust != null && gust > wind && <span className="font-normal text-mut">–{gust}</span>}
       </span>
     </div>
   );
