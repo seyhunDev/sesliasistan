@@ -1,8 +1,8 @@
-Commit: 2cb1bad · Yarış multimedya: video 2 dk sınırı ve zorunlu sıkıştırma, sporcu etiketi, gün özeti kartı (#483)
-Zaman: 2026-10-18-1705 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39134329282
+Commit: 84c16a4 · Yarış multimedya: start sayacı bütün sekmelerde sürer ve öter, sekmelerin altında süre satırı (#484)
+Zaman: 2026-10-18-1720 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39135426071
 
-TAM TEST · 18.10.2026 17:04:28
+TAM TEST · 18.10.2026 17:19:18
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

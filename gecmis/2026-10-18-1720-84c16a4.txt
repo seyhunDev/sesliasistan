@@ -1,8 +1,8 @@
-Commit: 1ab5004 · Mail ekleri: tablo tam okununca ek silinir, okunamayan Storage'da kalır (#417)
-Zaman: 2026-10-14-1604 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38568527131
+Commit: 84c16a4 · Yarış multimedya: start sayacı bütün sekmelerde sürer ve öter, sekmelerin altında süre satırı (#484)
+Zaman: 2026-10-18-1720 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39135426071
 
-TAM TEST · 14.10.2026 16:02:55
+TAM TEST · 18.10.2026 17:19:18
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 84 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
