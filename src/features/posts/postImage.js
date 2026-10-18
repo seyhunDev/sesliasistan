@@ -461,6 +461,210 @@ async function drawAfis(ctx, post, photo, W, H) {
   ctx.shadowColor = "transparent";
 }
 
+// Resmi yarış afişi (yarış bağlıyken her zaman bu): kulüp önde. Üstte ortada logo ve kulüp adı, altında kısa başlık,
+// ince çizgili resmi bilgi tablosu (yarış, yer, tarih, sınıflar), sporcuların adları (sınıfıyla), en altta dilek.
+// Zemin seçili rengin koyusu, kenarda ince çerçeve; fotoğraf varsa üstte görünür, aşağı doğru zemine kararır.
+const upTr = (s) => String(s || "").toLocaleUpperCase("tr-TR");
+function spaced(ctx, text, x, y, px, align) {
+  if ("letterSpacing" in ctx) ctx.letterSpacing = `${px}px`;
+  const w = ctx.measureText(text).width - px;
+  ctx.fillText(text, align === "center" ? x - w / 2 : x, y);
+  if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+}
+function resmiRows(post) {
+  const [place, ...rest] = String(post.info || "").split(/\s*·\s*/);
+  const rows = [];
+  if (post.race?.name) rows.push(["Yarış", post.race.name]);
+  if (post.meta && place) rows.push(["Yer", place]);
+  if (post.meta && rest.join(" · ")) rows.push(["Tarih", rest.join(" · ")]);
+  if (post.classes) rows.push(["Sınıflar", String(post.classes).split(/\s*,\s*/).filter(Boolean).join(", ")]);
+  return rows;
+}
+function measureResmi(ctx, post, maxW, k) {
+  const z = (n) => Math.round(n * k);
+  const items = [];
+  const label = post.kind === "sonuc" ? "YARIŞ SONUCU" : "YARIŞ DUYURUSU";
+  items.push({ t: "label", text: label, size: z(28), h: z(34), gap: 0 });
+  if (post.headline) {
+    const hk = sizeK(post.headSize);
+    const head = fit(ctx, post.headline, maxW, 2, z(112 * hk), z(64 * hk), 800);
+    const lh = Math.round(head.size * 1.06);
+    items.push({ t: "head", ...head, lh, h: head.lines.length * lh, gap: z(16) });
+  }
+  const rows = resmiRows(post);
+  if (rows.length) {
+    const lw = z(200);
+    const vw = maxW - lw;
+    const size = z(33);
+    const lh = Math.round(size * 1.3);
+    const rs = rows.map(([l, v], i) => {
+      ctx.font = `${i ? 400 : 700} ${size}px ${FONT}`;
+      const lines = wrap(ctx, v, vw).slice(0, 2);
+      return { l, lines, bold: !i, h: lines.length * lh + z(40) };
+    });
+    items.push({ t: "table", rows: rs, lw, size, lh, h: rs.reduce((a, r) => a + r.h, 0), gap: z(56) });
+  }
+  const all = post.hide?.includes("people") ? [] : post.race?.athletes || [];
+  if (all.length) {
+    const max = 12;
+    const list = all.length > max ? all.slice(0, max - 1) : all;
+    const cols = list.length > 4 ? 2 : 1;
+    const size = z(cols > 1 ? 33 : 38);
+    const ph = Math.round(size * 1.62);
+    const rowsN = Math.ceil(list.length / cols) + (all.length > max ? 1 : 0);
+    items.push({ t: "plabel", text: list.length === 1 ? "SPORCUMUZ" : "SPORCULARIMIZ", size: z(26), h: z(32), gap: z(54) });
+    items.push({ t: "names", list, more: all.length - list.length, cols, size, ph, h: rowsN * ph, gap: z(20) });
+  }
+  const body = items.reduce((a, x, i) => a + x.h + (i ? x.gap : 0), 0);
+  let wish = null;
+  if (post.wish) {
+    const wk = sizeK(post.wishSize);
+    wish = fit(ctx, post.wish, maxW, 2, z(38 * wk), z(26 * wk), 700);
+    wish.lh = Math.round(wish.size * 1.28);
+    wish.h = wish.lines.length * wish.lh;
+  }
+  return { items, body, wish, z, h: body + (wish ? wish.h + z(70) : 0) };
+}
+function paintResmi(ctx, m, x, y, maxW, c) {
+  const { z } = m;
+  const cx = x + maxW / 2;
+  ctx.textBaseline = "top";
+  for (const [i, it] of m.items.entries()) {
+    if (i) y += it.gap;
+    if (it.t === "label" || it.t === "plabel") {
+      ctx.fillStyle = c.accent;
+      ctx.font = `700 ${it.size}px ${FONT}`;
+      spaced(ctx, it.text, cx, y + (it.h - it.size) / 2, z(7), "center");
+    } else if (it.t === "head") {
+      ctx.fillStyle = c.head || "#ffffff";
+      ctx.font = `800 ${it.size}px ${FONT}`;
+      for (const [j, l] of it.lines.entries()) ctx.fillText(l, cx - ctx.measureText(l).width / 2, y + j * it.lh);
+    } else if (it.t === "table") {
+      let ry = y;
+      ctx.fillStyle = "rgba(255,255,255,.28)";
+      ctx.fillRect(x, ry, maxW, 2);
+      for (const r of it.rows) {
+        ctx.fillStyle = c.accent;
+        ctx.font = `600 ${z(25)}px ${FONT}`;
+        spaced(ctx, upTr(r.l), x, ry + z(20) + (it.size - z(25)) / 2 + z(3), z(3));
+        ctx.fillStyle = c.meta || "#ffffff";
+        ctx.font = `${r.bold ? 700 : 400} ${it.size}px ${FONT}`;
+        for (const [j, l] of r.lines.entries()) ctx.fillText(l, x + it.lw, ry + z(20) + j * it.lh);
+        ry += r.h;
+        ctx.fillStyle = "rgba(255,255,255,.28)";
+        ctx.fillRect(x, ry - 1, maxW, 2);
+      }
+    } else if (it.t === "names") {
+      const colW = it.cols > 1 ? maxW / 2 : maxW;
+      const n = Math.ceil(it.list.length / it.cols);
+      for (const [j, a] of it.list.entries()) {
+        const col = it.cols > 1 ? Math.floor(j / n) : 0;
+        const row = it.cols > 1 ? j % n : j;
+        const py = y + row * it.ph + (it.ph - it.size) / 2;
+        ctx.font = `600 ${it.size}px ${FONT}`;
+        const name = a.name || "";
+        const cls = a.cls ? `  ${a.cls}` : "";
+        const nw = ctx.measureText(name).width;
+        ctx.font = `400 ${Math.round(it.size * 0.74)}px ${FONT}`;
+        const cw = ctx.measureText(cls).width;
+        const left = it.cols > 1 ? x + col * colW + z(24) : cx - (nw + cw) / 2;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `600 ${it.size}px ${FONT}`;
+        ctx.fillText(name, left, py);
+        ctx.globalAlpha = 0.7;
+        ctx.font = `400 ${Math.round(it.size * 0.74)}px ${FONT}`;
+        ctx.fillText(cls, left + nw, py + it.size * 0.2);
+        ctx.globalAlpha = 1;
+      }
+      if (it.more > 0) {
+        ctx.globalAlpha = 0.8;
+        ctx.font = `400 ${Math.round(it.size * 0.8)}px ${FONT}`;
+        const t = `ve ${it.more} sporcumuz daha`;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(t, cx - ctx.measureText(t).width / 2, y + n * it.ph + (it.ph - it.size) / 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+    y += it.h;
+  }
+}
+async function drawResmi(ctx, post, photo, W, H) {
+  const [, , , c2] = themeOf(post.theme);
+  const { t: safeT, b: safeB, r: safeR, l: safeL } = safeOf(post.format);
+  const mood = afisMood(post);
+  const dark = mixRgb(c2, mood.dark, 0.55);
+  const navy = (rgb, a) => rgb.replace("rgb", "rgba").replace(")", `,${a.toFixed(3)})`);
+  // Zemin: düz koyu renk; fotoğraf varsa üstte, aşağı doğru zemine karışır
+  ctx.fillStyle = dark;
+  ctx.fillRect(0, 0, W, H);
+  if (photo) {
+    cover(ctx, photo, W, H, post);
+    const k = post.shade / 100;
+    ctx.fillStyle = navy(dark, 0.35 + k * 0.25);
+    ctx.fillRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, H * 0.18, 0, H * 0.62);
+    g.addColorStop(0, navy(dark, 0));
+    g.addColorStop(1, navy(dark, 0.97));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    const r = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, H * 0.75);
+    r.addColorStop(0, "rgba(255,255,255,.10)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // İnce çerçeve
+  const F = 34;
+  ctx.strokeStyle = navy(mixRgb(mood.accent, "#ffffff", 0), 0.55);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(F + safeL, F + safeT, W - F * 2 - safeL - safeR, H - F * 2 - safeT - safeB);
+
+  // Üstte ortada logo ve kulüp adı
+  const cx = (W + safeL - safeR) / 2;
+  let y = PAD - 6 + safeT;
+  const R = 74;
+  if (!post.noBrand) {
+    const logo = await loadLogo();
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(cx, y + R, R, 0, Math.PI * 2);
+    ctx.fill();
+    if (logo) {
+      ctx.clip();
+      ctx.drawImage(logo, cx - R + 6, y + 6, R * 2 - 12, R * 2 - 12);
+    }
+    ctx.restore();
+    y += R * 2 + 30;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `700 42px ${FONT}`;
+    ctx.textBaseline = "top";
+    spaced(ctx, CLUB, cx, y, 5, "center");
+    y += 52;
+    ctx.fillStyle = mood.accent;
+    ctx.fillRect(cx - 45, y + 12, 90, 4);
+    y += 16;
+  }
+  // Orta blok: başlık, tablo, sporcular; dilek en altta
+  const maxW = W - PAD * 2 - 24 - safeL - safeR;
+  const x = (W - maxW + safeL - safeR) / 2;
+  const top = y + 40;
+  const bottom = H - PAD - safeB;
+  let m = measureResmi(ctx, post, maxW, 1);
+  for (let k = 0.94; m.h > bottom - top && k >= 0.55; k -= 0.06) m = measureResmi(ctx, post, maxW, k);
+  const wishH = m.wish ? m.wish.h : 0;
+  const free = bottom - top - wishH - (m.wish ? m.z(70) : 0) - m.body;
+  const ink = post.ink || {};
+  paintResmi(ctx, m, x, top + Math.max(0, free) * 0.42, maxW, { accent: mood.accent, head: inkOf(ink.head), meta: inkOf(ink.meta) });
+  if (m.wish) {
+    ctx.fillStyle = inkOf(ink.wish) || mood.accent;
+    ctx.font = `700 ${m.wish.size}px ${FONT}`;
+    ctx.textBaseline = "top";
+    for (const [j, l] of m.wish.lines.entries()) ctx.fillText(l, cx - ctx.measureText(l).width / 2, bottom - wishH + j * m.wish.lh);
+  }
+}
+
 // post: cleanPost; photo: yüklenmiş Image ya da null
 export async function drawPost(canvas, post, photo) {
   await loadFonts();
@@ -485,7 +689,11 @@ export async function drawPost(canvas, post, photo) {
     }
     return canvas;
   }
-  // Tek tasarım: Afiş (Klasik, Kart, Bant ve Modern kaldırıldı)
+  // Yarış bağlıysa resmi yarış afişi; diğerleri (özel günler dahil) Afiş
+  if (post.race && post.kind !== "ozel") {
+    await drawResmi(ctx, post, photo, W, H);
+    return canvas;
+  }
   await drawAfis(ctx, post, photo, W, H);
   return canvas;
 }
