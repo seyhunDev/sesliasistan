@@ -283,3 +283,29 @@ group("Bütçe: harcanan")([
   ["toplam", RF("1500 + 2500,50", () => BG.spentTotal(RCP, ["f1", "f2"], RC.totalTL) === 4000.5)],
   ["temizlik", RF("geçersiz kimlik atılır, tekrar yok", () => BG.cleanBudget({ items: [], spent: ["f1", "f1", "x/y", 5] }).spent.join() === "f1")],
 ]);
+
+// Antrenman yarışları (raceScore.js): düşük puan sistemi, DNC/DNF = katılan + 1, 4 yarıştan sonra en kötüsü atılır, eşitlik (A8)
+const TY = await import("@/lib/raceScore");
+const TP = ["a", "b", "c", "d"].map((id) => ({ id, name: id.toUpperCase() }));
+const tfin = (...ids) => ids.map((x) => (Array.isArray(x) ? { id: x[0], name: x[0].toUpperCase(), code: x[1] } : { id: x, name: x.toUpperCase() }));
+const TR3 = [
+  { id: "y1", name: "Yarış 1", finishes: tfin("a", "b", "c") }, // d gelmedi → DNC
+  { id: "y2", name: "Yarış 2", finishes: tfin("b", ["a", "DNF"], "c", "d") }, // a DNF, c 2. olur
+  { id: "y3", name: "Yarış 3", finishes: tfin("c", "a", "b", ["d", "BFD"]) },
+];
+const trow = (s, id) => s.rows.find((r) => r.id === id);
+group("Antrenman yarışları")([
+  ["kodlu yer almaz", { desc: "DNF'nin arkasındaki bir sıra öne geçer", fn: () => TY.places(TR3[1]), ok: (r) => r.b === 1 && r.c === 2 && r.d === 3 && !r.a }],
+  ["ceza puanı", { desc: "4 katılan → DNC/DNF/BFD 5 puan", fn: () => TY.standings(TR3, TP), ok: (s) => s.penalty === 5 && trow(s, "d").cells[0].code === "DNC" && trow(s, "d").cells[0].pts === 5 && trow(s, "a").cells[1].pts === 5 && trow(s, "d").cells[2].code === "BFD" }],
+  ["toplam ve sıra", { desc: "c 3+2+1=6, b 2+1+3=6 (eşit, son yarışta c önde), a 1+5+2=8, d 5+3+5=13", fn: () => TY.standings(TR3, TP), ok: (s) => s.rows.map((r) => `${r.id}${r.net}`).join() === "c6,b6,a8,d13" && s.discard === 0 }],
+  ["yoklamada olmayan", { desc: "yarışa eklenen herkes katılan sayılır", fn: () => TY.standings([{ id: "y1", finishes: tfin("a", "e") }], TP.slice(0, 2)), ok: (s) => s.n === 3 && s.penalty === 4 && trow(s, "b").cells[0].code === "DNC" }],
+  ["sonuç atma", { desc: "4 yarışta en kötü sonuç atılır", fn: () => TY.standings([...TR3, { id: "y4", finishes: tfin("d", "a", "b", "c") }], TP), ok: (s) => s.discard === 1 && trow(s, "a").cells[1].drop && trow(s, "a").net === 1 + 2 + 2 && trow(s, "a").total === 10 }],
+  ["eşitlik: iyi derece", { desc: "eşit puanda daha iyi sonucu olan önde", fn: () => TY.standings([{ id: "1", finishes: tfin("a", "b", "c") }, { id: "2", finishes: tfin("c", "a", "b") }, { id: "3", finishes: tfin("b", "c", "a") }].map((r) => ({ ...r, finishes: r.finishes })), TP.slice(0, 3)), ok: (s) => s.rows.every((r) => r.net === 6) && s.rows[0].id === "b" }],
+  ["eşitlik: son yarış", { desc: "sonuçlar aynıysa son yarışta önde olan", fn: () => TY.standings([{ id: "1", finishes: tfin("a", "b") }, { id: "2", finishes: tfin("b", "a") }], TP.slice(0, 2)), ok: (s) => s.rows[0].id === "b" }],
+  ["bitiş ve süre", { desc: "start varsa süre yazılır, aynı sporcu iki kez eklenmez", fn: () => { let r = { id: "y1", startAt: 1000, finishes: [] }; r = TY.addFinish(r, TP[0], 76000); r = TY.addFinish(r, TP[0], 90000); return r; }, ok: (r) => r.finishes.length === 1 && r.finishes[0].t === 75 }],
+  ["sayaçsız yarış", { desc: "start yoksa süre yok", fn: () => TY.addFinish({ id: "y1", finishes: [] }, TP[0], 5000), ok: (r) => !("t" in r.finishes[0]) }],
+  ["sayaçtan start", { desc: "son 2 saatte 0 olan sayaç; başka yarışın startıysa alınmaz", fn: () => [TY.startFor({ id: "y2" }, [], 1000, 5000), TY.startFor({ id: "y2" }, [{ id: "y1", startAt: 1000 }], 1000, 5000), TY.startFor({ id: "y2" }, [], 1000, 1000 + 3 * 3600e3), TY.startFor({ id: "y2" }, [], 9000, 5000)], ok: ([a, b, c, d]) => a === 1000 && b === null && c === null && d === null }],
+  ["kod, sıra, çıkar", { desc: "DNF ver/kaldır, yukarı taşı, çıkar", fn: () => { let r = { id: "y", finishes: tfin("a", "b", "c") }; r = TY.setCode(r, "b", "DNF"); const coded = r.finishes[1].code; r = TY.setCode(r, "b", ""); r = TY.moveFinish(r, "c", -1); r = TY.removeFinish(r, "a"); return [coded, r.finishes.map((f) => f.id).join(), "code" in r.finishes[1]]; }, ok: ([c, ids, has]) => c === "DNF" && ids === "c,b" && !has }],
+  ["kayıt temizliği", { desc: "bilinmeyen kod, tekrar eden sporcu ve boş ad atılır", fn: () => TY.cleanRaces([{ name: " ", finishes: [{ id: "a", name: "A", code: "XYZ" }, { id: "a", name: "A" }, { id: "b", name: "" }] }]), ok: (r) => r[0].name === "Yarış 1" && r[0].finishes.length === 1 && !r[0].finishes[0].code }],
+  ["yeni yarış", { desc: "sıradaki ad ve kimlik", fn: () => TY.newRace([{ id: "y1" }, { id: "y3" }]), ok: (r) => r.name === "Yarış 3" && r.id === "y4" }],
+]);
