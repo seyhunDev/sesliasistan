@@ -156,7 +156,7 @@ export async function loadRaceDay(r, date, force = false) {
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);
-  const out = { at: Date.now(), place: place.name, rows: rowsFrom(await res.json(), date) };
+  const out = { at: Date.now(), place: place.name, lat: place.lat, lon: place.lon, rows: rowsFrom(await res.json(), date) };
   if (!out.rows.length) throw new Error("Bu gün için tahmin yok");
   try {
     localStorage.setItem(key, JSON.stringify(out));

@@ -19,7 +19,7 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
   useEffect(() => {
     let on = true;
     loadRaceDay(race, day).then(
-      (d) => on && setWx({ day, rows: d.rows, place: d.place, err: "" }),
+      (d) => on && setWx({ day, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null, err: "" }),
       (e) => on && setWx({ day, rows: null, err: e?.message || "Hava tahmini alınamadı" }),
     );
     return () => {
@@ -40,7 +40,7 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
     <>
       <section className={`${card} mt-3 px-4 pb-3 pt-4`}>
         {rows ? (
-          <DayDetail date={day} rows={rows} marks={marks} place={wx.place} />
+          <DayDetail date={day} rows={rows} marks={marks} place={wx.place} at={wx.at} />
         ) : wx.day === day && wx.err ? (
           <p className="py-6 text-center text-[0.875rem] text-mut">{wx.err}</p>
         ) : (
