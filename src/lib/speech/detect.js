@@ -26,11 +26,14 @@ export const recorderAvailable = () =>
 // kendiliğinden "off" yazılır ve kayıt + sunucu yoluna dönülür; Ayarlar › Ses testi'nden değiştirilir
 // (Seyhun: "sesi telefonda anında yazıya çevirelim, sunucuya göndermeyelim", 2026-10-10)
 const NATIVE_KEY = "sa-stt-native";
+// Ana ekrandaki uygulamada (iPhone) telefonun tanıması çoğu zaman hiç yazı vermiyor: dinliyor görünür, dalga oynar, yazı gelmez
+// (Seyhun, 2026-10-18). Orada varsayılan kayıt + sunucu; Ayarlar › Ses testi'nden açıkça açılırsa telefonunki denenir.
 export const nativeOn = () => {
   try {
-    return localStorage.getItem(NATIVE_KEY) !== "off";
+    const v = localStorage.getItem(NATIVE_KEY);
+    return v ? v !== "off" : !isStandalone();
   } catch {
-    return true;
+    return !isStandalone();
   }
 };
 export const setNative = (on) => {
