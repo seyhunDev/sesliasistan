@@ -126,6 +126,10 @@ export function fitHref(date, fit = []) {
 // Güne dokununca alttan pencere açılır (Seyhun: "fitness sayfasına gitmeye gerek yok, alttan bir yer açılsın; plan yoksa antrenman ekle, yoklamasını al").
 // tap: dokunulur mu (yelken planı, fitness ya da yoklama yetkisi). sail: o günün yelken planları. attHref: yoklama (yetki ve gün geçmiş/bugün).
 // add: yelken planı yok ve yetki var → "Antrenman ekle" (gün geldiyse yoklamayla birlikte). fit: kimlerin fitness'ı, fitHref: Fitness'ta aç.
+// Gün şeridindeki ünlemin sebebi: günü geçmiş, günlüğü yazılmamış antrenman (trainingWeek "miss" ile aynı kural)
+export function needsLog(p, today) {
+  return !!p && isTraining(p) && p.status !== "cancelled" && !!p.date && p.date < today && !p.log;
+}
 export function dayInfo(day, att, today) {
   const sail = day.sail || [];
   const fit = day.fit || [];
@@ -151,7 +155,7 @@ export function trainingWeek(plans = [], today, fit = [], weeks = 1, fromYesterd
     const date = ymd(d);
     const on = tr.filter((p) => p.date === date);
     const logged = on.length > 0 && on.every((p) => p.log);
-    const state = date === today ? (logged ? "done" : "today") : !on.length ? "none" : date > today ? "plan" : logged ? "done" : "miss";
+    const state = date === today ? (logged ? "done" : "today") : !on.length ? "none" : date > today ? "plan" : on.some((p) => needsLog(p, today)) ? "miss" : "done";
     const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
     const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
     f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
