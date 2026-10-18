@@ -283,13 +283,14 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         {/* Az önce kaydedilenler: yalnız Düzenle (değişiklik sesle de söylenebilir) */}
         {saved.length > 0 && !drafts.length && (
-          <div className="fade-in mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
+          // Kaydedildi animasyonu (Seyhun'un onayladığı örnek, 2026-10-18): kart yeşil parıltıyla aşağı kayarak gelir, ✓ büyüyerek belirir
+          <div key={saved.map((x) => x.id).join()} className="asaved mt-3 overflow-hidden rounded-[1.25rem] bg-card shadow-[0_1px_2px_rgba(38,40,44,.05),0_10px_28px_-16px_rgba(38,40,44,.3)]">
             <ul className="divide-y divide-line">
               {saved.map((x) => (
                 <li key={x.id} className="flex items-center gap-3 px-3.5 py-3">
                   <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
                     <Icon name={KIND_ICON[x.type]} className="size-[1.125rem]" />
-                    <span className="absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-ok text-white ring-2 ring-card"><Icon name="check" className="size-2.5 [stroke-width:3]" /></span>
+                    <span className="asaved-badge absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-ok text-white ring-2 ring-card"><Icon name="check" className="size-2.5 [stroke-width:3]" /></span>
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.875rem] font-semibold">{x.title}</b>

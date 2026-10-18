@@ -1158,6 +1158,7 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["liste ekranda, bitti", { desc: "yeşil onay, yazı listede", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "done", "done"), shown: true }), ok: (r) => r.check && !r.label }],
     ["hepsi bitti", { desc: "yeşil onay, 3 iş bitti", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "done", "done") }), ok: (r) => r.tone === "ok" && r.check && r.fill === 1 && r.sub === "3 iş bitti" }],
     ["biri olmadı", { desc: "olmayan sayılır", fn: () => ringOf({ state: "idle", talked: true, list: L3("done", "fail", "done") }), ok: (r) => r.sub === "2 iş bitti, 1 olmadı" }],
+    ["kayıt eklendi", { desc: "yeşil onay, Kaydedildi", fn: () => ringOf({ state: "idle", talked: true, saved: true }), ok: (r) => r.check && r.label === "Kaydedildi" }],
     ["konuşma yok", { desc: "boş halka, yazı yok", fn: () => ringOf({}), ok: (r) => r.fill === 0 && !r.label }],
     ["okurken", { desc: "mavi", fn: () => ringOf({ state: "speaking" }), ok: (r) => r.tone === "speak" }],
   ]));

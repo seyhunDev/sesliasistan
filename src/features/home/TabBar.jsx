@@ -597,7 +597,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
             )}
-            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown })} />}
+            {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved })} />}
             {active && (
               <div
                 ref={pane}
