@@ -56,3 +56,9 @@ export const check = (d) => {
   if (d.type === "plan" && !d.date) return "Plan için tarih seç";
   return "";
 };
+
+// Asistanla ekleme onaysız (Seyhun, 2026-10-18: "ekle dedim mi direkt kaydedilsin, onay almaya gerek yok"): planın günü
+// söylenmediyse bugün, saati söylenmediyse tüm gün; soru sorulmaz, kayıt hemen yapılır, değişiklik sonra söylenir
+// ("saatini 10 yap") ya da kayıttaki Düzenle ile. Silme, para, mesaj gibi geri alınamaz işler onaylı kalır.
+export const autoFill = (list, today) =>
+  list.map((d) => (d.type !== "plan" ? d : { ...d, date: d.date || today, allDay: !!d.allDay || (!d.time && !d.endDate) }));
