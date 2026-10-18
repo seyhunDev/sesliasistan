@@ -387,3 +387,21 @@ group("Yarış multimedya")([
 group("Yarış günü havası")([
   ["günün saatleri", { desc: "yalnız istenen gün, yağmur %", fn: () => RW.rowsFrom({ hourly: { ...WJ.hourly, precipitation_probability: HRS.map(() => 30) } }, "2026-10-08"), ok: (r) => r.length === 24 && r[0].hh === "00" && r[0].rain === 30 && r[12].wind === 12 && r[0].time === "2026-10-08T00:00" }],
 ]);
+
+// Yarış multimedya: kalan küçük hesaplar (gün/saat, elle eklenen günler, günün rüzgârı ve startları, yön kısaltması, iptal sebepleri)
+group("Yarış multimedya: yardımcılar")([
+  ["gün ve saat", { desc: "telefon saatine göre; saatsiz gün öğlen", fn: () => [RL.dayOf(RL.atOf("2026-10-19", "09:05")), RL.hm(RL.atOf("2026-10-19", "09:05")), RL.hm(RL.atOf("2026-10-19", "")), RL.hm(RL.atOf("2026-10-19", "9:5"))], ok: (r) => r.join() === "2026-10-19,09:05,12:00,12:00" }],
+  ["elle eklenen günler", { desc: "bozuk tarih atılır, tekrar teke iner, sıralanır", fn: () => RL.cleanDays(["2026-10-21", "x", "2026-10-19", "2026-10-21", null, "2026-1-1"]), ok: (r) => r.join() === "2026-10-19,2026-10-21" }],
+  ["günün rüzgârı ve startları", { desc: "yalnız o güne ait olanlar", fn: () => {
+    const w = RL.cleanWind([{ at: RL.atOf("2026-10-19", "10:00"), dir: 300, kn: 10 }, { at: RL.atOf("2026-10-20", "10:00"), dir: 300, kn: 12 }]);
+    const s = [{ day: "2026-10-19", id: "a" }, { day: "2026-10-20", id: "b" }];
+    return [RL.windOn(w, "2026-10-20").map((x) => x.kn).join(), RL.startsOn(s, "2026-10-19").map((x) => x.id).join(), RL.windOn(null, "2026-10-19").length];
+  }, ok: (r) => r.join() === "12,a,0" }],
+  ["yön kısaltması", { desc: "315 KB, 0 K, -90 B, 359 K, yazıyla sayı", fn: () => [315, 0, -90, 359, "45"].map(RL.dirShort).join(), ok: (r) => r === "KB,K,B,K,KD" }],
+  ["iptal sebepleri", { desc: "eski 'Ertelendi' bayrağı Tehir olur; bilinmeyen sebep geçersiz sayılmaz", fn: () => RL.cleanStarts([{ id: "s1", day: "2026-10-19", at: RL.atOf("2026-10-19", "11:00"), flag: "Ertelendi" }, { id: "s2", day: "2026-10-19", at: RL.atOf("2026-10-19", "12:00"), void: "Kafamda" }]).map((x) => x.void || "-").join(), ok: (r) => r === "Tehir,-" }],
+  ["evre adları", { desc: "dört evre, üç rota, üç iptal sebebi", fn: () => [Object.keys(RL.PHASES).length, RL.COURSES.length, RL.VOIDS.join("/")], ok: ([p, c, v]) => p === 4 && c === 3 && v === "Tehir/Genel geri çağırma/İptal" }],
+  ["bağsız çekimin yarışı", { desc: "starta 5 sn yakınsa o yarış; değilse o günün önceki startlarından sonraki", fn: () => {
+    const S = RL.cleanStarts([{ id: "r1", day: "2026-10-19", n: 1, at: RL.atOf("2026-10-19", "11:00") }, { id: "r2", day: "2026-10-19", n: 2, at: RL.atOf("2026-10-19", "12:00") }]);
+    return [RL.momentRace({ end: RL.atOf("2026-10-19", "12:00") }, S), RL.momentRace({ end: RL.atOf("2026-10-19", "13:00") }, S), RL.momentRace({ rid: "r1", end: RL.atOf("2026-10-19", "13:00") }, S)].join();
+  }, ok: (r) => r === "2,3,1" }],
+]);
