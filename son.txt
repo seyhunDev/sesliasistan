@@ -1,8 +1,8 @@
-Commit: 84d1247 · Yarış medya: uygulama içi kamera, bipler her sayfada, fotoğraflar start'a göre (#485)
-Zaman: 2026-10-18-1741 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39137008832
+Commit: 0426a47 · Yarış kamerası iPhone düzeninde ve yatay uyumlu, çekilenler telefonda saklanıp yüklenir, hata görünür; YouTube'u durduran ses oturumu yalnız geri sayımda (#486)
+Zaman: 2026-10-18-1758 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39138260499
 
-TAM TEST · 18.10.2026 17:40:12
+TAM TEST · 18.10.2026 17:57:16
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 56 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
