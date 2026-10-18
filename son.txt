@@ -1,8 +1,8 @@
-Commit: 90cfda3 · Yarış multimedya Hava: yer adı grafiğin üstünde (#497)
-Zaman: 2026-10-18-2035 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39150130214
+Commit: b9d6eed · Asistan: plan/görev/not ekleme onaysız; eksik gün bugün, eksik saat tüm gün (#498)
+Zaman: 2026-10-18-2037 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39150339257
 
-TAM TEST · 18.10.2026 20:34:01
+TAM TEST · 18.10.2026 20:36:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 67 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
