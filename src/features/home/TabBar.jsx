@@ -50,6 +50,7 @@ const PAGES = {
 // Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path);
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");
@@ -893,8 +894,9 @@ function Host() {
   const race = isRace(path) || isPost(path) || isInv(path);
   // Kubbe her sayfada ana sayfadaki gibi: sekmeleri, büyük küresi, kaydırınca incelmesi aynı (Seyhun: "asistanın kubbenin
   // tasarımı diğer sayfalarda da aynı olsun", 2026-10-06). Önceden dört ana sekme dışında yalnız küreli ince hâliyle duruyordu.
-  // Sohbet ekranında yok (kendi yazma satırı var).
-  const bar = !(path.startsWith("/messages") && chat);
+  // Sohbet ekranında yok (kendi yazma satırı var). Yarış multimedya sayfasında da yok: sayfa tam ekran multimedya işlerine
+  // ayrılır (Seyhun 2026-10-18), asistan yalnız çalışırken küre olarak görünür.
+  const bar = !(path.startsWith("/messages") && chat) && !isMedia(path);
   const slim = false;
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
@@ -904,6 +906,13 @@ function Host() {
     return () => window.removeEventListener("sa-record-focus", on);
   }, []);
   useEffect(() => setStageOn(bar || !!rec), [bar, rec, setStageOn]);
+  useEffect(() => {
+    if (bar || slim) return;
+    // Çubuk yokken sabit düğme şeritleri (Countdown Bar) önceki sayfanın çubuk yüksekliğinde havada kalmasın
+    const r = document.documentElement.style;
+    r.setProperty("--dome-h", "env(safe-area-inset-bottom)");
+    r.setProperty("--stage-h", "env(safe-area-inset-bottom)");
+  }, [bar, slim]);
   useEffect(() => {
     if (!bar && !slim) return;
     document.body.dataset.dock = "1";
