@@ -70,6 +70,7 @@ export function Sheet({ open, onClose, title, children }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        data-sheet=""
         style={open && dragging ? { transform: `translateY(${dy}px)`, transition: "none" } : undefined}
         className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[30rem] transition-transform duration-300 ease-out ${open ? "translate-y-0" : "translate-y-full"}`}
       >
