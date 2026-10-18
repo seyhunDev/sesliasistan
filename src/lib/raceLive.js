@@ -29,7 +29,12 @@ export const atOf = (day, time) => new Date(`${day}T${/^\d{2}:\d{2}$/.test(time 
 
 export function cleanWind(list) {
   return (Array.isArray(list) ? list : [])
-    .map((w) => ({ at: ISO(w?.at), dir: num(w?.dir, 359), kn: num(w?.kn, 80), gust: num(w?.gust, 99), src: S(w?.src, 20) || "elle" }))
+    .map((w) => {
+      const ckn = Number(w?.ckn);
+      const cur = Number.isFinite(ckn) && ckn > 0 && ckn <= 10 ? Math.round(ckn * 10) / 10 : null;
+      // Akıntı (Seyhun 2026-10-18): hız knot (ondalıklı) ve nereye aktığı; not: serbest ayrıntı
+      return { at: ISO(w?.at), dir: num(w?.dir, 359), kn: num(w?.kn, 80), gust: num(w?.gust, 99), src: S(w?.src, 20) || "elle", ckn: cur, cdir: cur ? num(w?.cdir, 359) : null, note: S(w?.note, 200) };
+    })
     .filter((w) => w.at && w.dir !== null && w.kn !== null)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-500);
