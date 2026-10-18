@@ -120,7 +120,11 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "" }) {
   const nowIdx = isToday ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
   const nowAt = nowIdx >= 0 ? Math.min(rows.length - 1, nowIdx + now.getMinutes() / 60) : -1;
   const peak = rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]);
-  const [sel, setSel] = useState(nowIdx >= 0 ? nowIdx : rows.indexOf(peak));
+  // Dokunulmadıkça seçili saat şimdiyi izler (sayfa saatlerce açık kalsa da), grafikte ayrı yeşil çizgi çıkmaz: işaret kırmızı "şimdi" noktası.
+  // Parmakla saat seçilince o saat kalır; "Şimdi" düğmesi yeniden izlemeye döndürür (Seyhun: "şimdiyle neden o çizgi farklı yerde?").
+  const [pick, setPick] = useState(null);
+  const follow = pick == null && nowIdx >= 0;
+  const sel = pick ?? (nowIdx >= 0 ? nowIdx : rows.indexOf(peak));
   const s = rows[sel] || peak;
   const min = Math.min(...rows.map((h) => h.t));
   const max = Math.max(...rows.map((h) => h.t));
@@ -163,14 +167,14 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "" }) {
           {got && <span className="font-semibold"> · ölçülen {got.kn} kn</span>}
         </p>
         {/* Grafikte gezindikten sonra tek dokunuşla şimdiye dönüş (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
-        {nowIdx >= 0 && sel !== nowIdx && (
-          <button type="button" onClick={() => setSel(nowIdx)} className="shrink-0 rounded-full bg-rec/10 px-3 py-1 text-[0.75rem] font-semibold text-rec active:scale-95">
+        {nowIdx >= 0 && !follow && (
+          <button type="button" onClick={() => setPick(null)} className="shrink-0 rounded-full bg-rec/10 px-3 py-1 text-[0.75rem] font-semibold text-rec active:scale-95">
             Şimdi
           </button>
         )}
       </div>
       <div className="mt-1">
-        <WindChart rows={rows} sel={sel} onSel={setSel} nowAt={nowAt} marks={marks} />
+        <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} />
       </div>
       <p className="flex items-center justify-end gap-2 text-[0.6875rem] text-mut">
         <span className="inline-block h-0.5 w-3 rounded bg-acc" /> rüzgâr
