@@ -733,6 +733,18 @@ group("Ana sayfa kartları")([
       && noAtt.tap && !noAtt.add && noAtt.attHref === "" && noAtt.fit.length === 1
       && onlyFit && onlyFit.planned === 0 && onlyFit.fitN === 1;
   })],
+  ["kulüp kartları", F("takvim: günün fitness antrenmanları (kendi + sporcular) saat sırasıyla, iptal yok", async () => {
+    const AG = await import("@/lib/agenda");
+    const plans = [{ id: "m1", cat: "Fitness", date: "2026-10-15", time: "18:00", fit: { name: "Bacak" } }, { id: "p1", cat: "Antrenman", date: "2026-10-15" }];
+    const others = [
+      { id: "a1", cat: "Fitness", date: "2026-10-15", time: "09:00", fit: { for: "u1" } },
+      { id: "a2", cat: "Fitness", date: "2026-10-15", fit: { for: "u2" }, status: "cancelled" },
+      { id: "a3", cat: "Fitness", date: "2026-10-16", fit: { for: "u2" } },
+    ];
+    const fit = HT.fitDays(plans, others, [{ uid: "u1", name: "Ali Kaya" }, { uid: "u2", name: "Ayşe Ak" }], "me");
+    const day = AG.fitOn(fit, "2026-10-15");
+    return day.map((f) => f.id).join() === "a1,m1" && day[0].name === "Ali Kaya" && day[1].mine && AG.fitOn(fit, "2026-10-17").length === 0;
+  })],
   ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
     const open = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-09" }, { id: "r2", name: "Çeşme Ligi", startDate: "2026-10-20" }];
     const t = "2026-10-10";
