@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
 import { todayStr } from "@/lib/utils/format";
-import { Col, WindArrow } from "./parts";
-import { WindMapView } from "./WindMap";
+import { WindArrow } from "./parts";
 import { useWindObs } from "./useWindObs";
 
 const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: PLACE.tz });
@@ -23,8 +22,9 @@ const HM = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit"
 // ölçülen onun arkasında mavi gölge olarak gelir (Seyhun: "tahmin kendi çizgisinde devam etsin, gerçekleşen arkadan gölge gibi gelsin, kırılma olmasın").
 const W = 340, L = 22, R = 6; // grafik genişliği ve sol/sağ boşluk (saat simgeleri de buna göre dizilir)
 export const OBS = "#3f74ad";
-function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs = [] }) {
-  const H = mini ? 110 : 182, T = 40, B = 16;
+// hourly: hava penceresinde saat yazıları ve gökyüzü grafiğin altındaki saatlik satırda (HourRow); grafik kendi saat yazısını ve gökyüzü şeridini çizmez.
+function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs = [], hourly = false }) {
+  const H = mini ? 110 : hourly ? 160 : 182, T = hourly ? 22 : 40, B = hourly ? 4 : 16;
   const n = rows.length;
   const got = obs.map((o, i) => o && { i, ...o }).filter(Boolean);
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust), ...marks.map((m) => m.kn), ...got.map((o) => o.gust ?? o.wind)) + 2) / 5) * 5);
@@ -77,12 +77,12 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs
           strokeLinejoin="round"
         />
       ))}
-      {rows.map((h, i) => {
+      {!hourly && rows.map((h, i) => {
         const half = (W - L - R) / Math.max(1, n - 1) / 2;
         const a = Math.max(L, x(i) - half), b = Math.min(W - R, x(i) + half);
         return <rect key={`s${h.time}`} x={a.toFixed(1)} y="24" width={(b - a + 0.4).toFixed(1)} height="7" fill={skyBand(h.code, h.rain)} />;
       })}
-      {rows.map((h, i) =>
+      {!hourly && rows.map((h, i) =>
         +h.hh % 6 === 0 ? (
           <text key={h.time} x={x(i)} y={H - 4} textAnchor="middle" fontSize="9" className="fill-mut">{h.hh}</text>
         ) : null,
@@ -209,7 +209,24 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
         </div>
       </div>
       <div className="mt-1">
-        <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} obs={obs} />
+        <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} obs={obs} hourly />
+        {/* Grafiğin parçası: 3 saatte bir saat, gökyüzü, sıcaklık ve rüzgâr–sağanak, grafikteki saatin tam altında
+            (Seyhun: "saatlik satır grafikle bir bütün olsun"; yön üstteki oklarda, ayrı sütun listesi yok) */}
+        <div className="relative h-[4.25rem]">
+          {rows.map((h, k) =>
+            +h.hh % 3 === 0 ? (
+              <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-0.5" style={{ left: `${((L + (k * (W - L - R)) / Math.max(1, rows.length - 1)) / W) * 100}%` }}>
+                <span className="text-[0.6875rem] text-mut tabular-nums">{h.hh}</span>
+                <Icon name={sky(h.code, h.day).icon} className={`size-4 ${skyTone(sky(h.code, h.day).icon)}`} />
+                <span className="text-[0.75rem] font-medium tabular-nums">{h.t}°</span>
+                <span className={`whitespace-nowrap text-[0.6875rem] font-semibold tabular-nums tracking-tight ${windLevel(h.wind).tone}`}>
+                  {h.wind}
+                  {h.gust > h.wind && <span className="font-normal text-mut">–{h.gust}</span>}
+                </span>
+              </span>
+            ) : null,
+          )}
+        </div>
       </div>
       {ob?.station && (
         <p className="text-[0.6875rem] text-mut tabular-nums">
@@ -227,18 +244,6 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
         {marks.length > 0 && <><span className="inline-block size-2 rounded-full border border-fg" /> ölçülen</>}
         <span>· parmağınla kaydır</span>
       </p>
-      <p className="mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-mut">
-        {[["#e9b949", "açık"], ["#f1d37e", "az bulutlu"], ["#c9cfd6", "parçalı"], ["#8f98a3", "kapalı"], ["#4f7fae", "yağmur"]].map(([c, t]) => (
-          <span key={t} className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-sm" style={{ background: c }} />{t}</span>
-        ))}
-      </p>
-
-      {/* 3 saatte bir */}
-      <div className="mt-3 grid grid-cols-8 gap-0.5 border-t border-line pt-2.5">
-        {rows.filter((h) => +h.hh % 3 === 0).map((h) => (
-          <Col key={h.time} label={h.hh} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} gust={h.gust} dir={h.dir} />
-        ))}
-      </div>
       <p className="mt-3 text-center text-[0.6875rem] text-mut">rüzgâr knot · yelken: 7–16 kn uygun, 17–21 sert, 22+ riskli</p>
     </div>
   );
@@ -288,11 +293,6 @@ export function WeatherDetail({ w, refresh, busy }) {
             </button>
           );
         })}
-      </div>
-
-      {/* Rüzgâr haritası: seçili gün; ↗ tam sayfayı açar */}
-      <div className="mt-3">
-        <WindMapView embed date={sel} />
       </div>
 
       {/* Kaynak: tek satır. "Karşılaştır" MGM ve Windy'yi, "i" kaynak ayrıntısını açar */}
