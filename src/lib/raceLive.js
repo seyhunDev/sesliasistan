@@ -69,6 +69,10 @@ export function cleanMedia(list) {
 export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media) });
 
 // Günün kayıtları
+// Sayfadaki günler: yarışın günleri + çekim ya da start olan başka günler (deneme, erteleme). Yoksa o gün çekilen kaydedilir ama
+// hiçbir gün seçilemediği için görünmezdi (Seyhun 2026-10-18: "kaydet dediğimde kaydedilmedi").
+export const liveDays = (days, live) =>
+  [...new Set([...(days || []), ...[...(live?.media || []), ...(live?.starts || [])].map((x) => dayOf(x.at)).filter((d) => /^\d{4}-/.test(d))])].sort();
 export const windOn = (wind, day) => (wind || []).filter((w) => dayOf(w.at) === day);
 export const startsOn = (starts, day) => (starts || []).filter((x) => x.day === day);
 

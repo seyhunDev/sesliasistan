@@ -32,6 +32,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
   const [last, setLast] = useState(null); // kamerada köşedeki son çekilen: { id, kind, url, state: up | ok | err, err }
   const [reviewing, setReviewing] = useState([]); // çekildi, kaydetmeden önce gözden geçirilecek
   const [review, setReview] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [reviewErr, setReviewErr] = useState("");
   const [cam, setCam] = useState(""); // açık uygulama içi kamera: "photo" | "video"
   const [native, setNative] = useState(false); // uygulama içi kamera açılamadı: telefonun kamerası
   const [openId, setOpen] = useState("");
@@ -50,9 +52,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
   // Yüklenemezse kaybolmaz: "telefonda bekliyor" kartı, sayfa açılınca ve internet gelince yeniden denenir.
   const errText = (e) =>
     e?.code === "storage/unauthorized" ? "Storage kuralı yayınlanmamış olabilir (Firebase › Storage › Rules)." : /network|retry-limit|offline/i.test(`${e?.code} ${e?.message}`) || !navigator.onLine ? "İnternet yok." : e?.message || "Yüklenemedi.";
-  const send = async (rec) => {
-    if (inflight.current.has(rec.id) || done.current.has(rec.id)) return; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
+  // review: "Kaydetmeden önce" listesinden; yüklenemezse listede kalır (sebebiyle), "telefonda bekliyor"a düşmez
+  const send = async (rec, review = null) => {
+    if (inflight.current.has(rec.id) || done.current.has(rec.id)) return true; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
     inflight.current.add(rec.id);
+    let ok = false;
     try {
       setBusy("Yükleniyor…");
       const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), rec.mom);
@@ -61,19 +65,30 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
       onChange((l) => ({ media: [...l.media, meta] }));
       setWaiting((w) => w.filter((x) => x.id !== rec.id));
       setLast((l) => (l?.id === rec.id ? { ...l, state: "ok" } : l));
-      if (!cam) toast(rec.kind === "video" && rec.before > rec.blob.size ? `Video kaydedildi · ${sizeText(rec.before)} → ${sizeText(rec.blob.size)}` : rec.kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi");
+      ok = true;
+      if (!cam && !review) toast(rec.kind === "video" && rec.before > rec.blob.size ? `Video kaydedildi · ${sizeText(rec.before)} → ${sizeText(rec.blob.size)}` : rec.kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi");
     } catch (e) {
       const err = errText(e);
-      await putPending({ ...rec, err });
+      console.warn("[raceMedia] yüklenemedi", e);
+      if (review) {
+        await putPending({ ...review, err });
+        setReviewing((l) => l.map((x) => (x.id === rec.id ? { ...x, st: "err", err } : x)));
+        setReviewErr(err);
+      } else {
+        await putPending({ ...rec, err });
       setWaiting((w) => [...w.filter((x) => x.id !== rec.id), { ...rec, err }]);
-      setLast((l) => (l?.id === rec.id ? { ...l, state: "err", err } : l));
+        setLast((l) => (l?.id === rec.id ? { ...l, state: "err", err } : l));
+      }
     }
     inflight.current.delete(rec.id);
     setBusy("");
+    return ok;
   };
-  const enqueue = (rec) => {
+  const enqueue = (rec, review) => {
     setPending((n) => n + 1);
-    queue.current = queue.current.then(() => send(rec)).finally(() => setPending((n) => n - 1));
+    const p = queue.current.then(() => send(rec, review)).finally(() => setPending((n) => n - 1));
+    queue.current = p.catch(() => {});
+    return p;
   };
   // Çekilen telefonda saklanır ve "Kaydetmeden önce" listesine girer (ReviewSheet); Kaydet'e basılınca yüklenir
   const keep = async (m, at, mom, before = 0) => {
@@ -87,15 +102,26 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
     dropPending(id);
     setReviewing((l) => l.filter((r) => r.id !== id));
   };
+  // Kaydet: liste açık kalır, sırayla yüklenir; yüklenen listeden düşer. Hepsi bitince kapanır; yüklenemeyen sebebiyle listede kalır.
   const confirmAll = async () => {
-    const list = reviewing;
-    setReviewing([]);
-    setReview(false);
+    const list = reviewing.filter((r) => r.st !== "up");
+    setSaving(true);
+    setReviewErr("");
+    setReviewing((l) => l.map((x) => ({ ...x, st: "up", err: "" })));
+    let ok = 0;
     for (const r of list) {
-      const rec = { ...r, review: false };
+      const { st: _st, err: _err, ...base } = r;
+      const rec = { ...base, review: false };
       if (rec.kind === "photo" && rec.mom) rec.blob = await stampBlob(rec.blob, linesFor(rec.mom, rec.at)); // seçilen yarış ve an basılır
-      await putPending(rec);
-      enqueue(rec);
+      if (await enqueue(rec, base)) {
+        ok += 1;
+        setReviewing((l) => l.filter((x) => x.id !== r.id));
+      }
+    }
+    setSaving(false);
+    if (ok === list.length) {
+      setReview(false);
+      toast(ok === 1 ? (list[0].kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi") : `${ok} çekim kaydedildi`);
     }
   };
   const retry = () => waiting.forEach((r) => enqueue(r));
@@ -105,7 +131,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
     listPending(race.id).then((all) => {
       if (!on || !all.length) return;
       const l = all.filter((r) => !r.review);
-      setReviewing(all.filter((r) => r.review));
+      setReviewing(all.filter((r) => r.review).map((r) => (r.err ? { ...r, st: "err" } : r)));
       setWaiting(l);
       l.forEach((r) => enqueue(r));
     });
@@ -269,7 +295,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
           </div>
         )}
       </Bar>
-      <ReviewSheet open={review && !cam} items={reviewing} starts={live.starts} onMom={setMom} onDrop={discard} onSave={confirmAll} onClose={() => setReview(false)} />
+      <ReviewSheet open={review && !cam} items={reviewing} starts={live.starts} saving={saving} err={reviewErr} onMom={setMom} onDrop={discard} onSave={confirmAll} onClose={() => setReview(false)} />
       <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), reviewing.length && setReview(true))} onShot={shot} onFail={camFail} stampFor={stampFor} pending={pending} last={last} />
     </>
   );
