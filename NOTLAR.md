@@ -5,6 +5,9 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Yarış multimedya › "Kaydetmeden önce" sade: satırda küçük resim, yarış tek dokunuşla açılan seçici (iPhone çarkı), evre dört parçalı düğme (Öncesi · Son 1 dk · Sırasında · Sonrası), Sil.
+- Kaydet'e basınca liste açık kalır, her çekimde yükleniyor / ! görünür, yüklenemezse kırmızı sebep üstte ve düğme "Tekrar dene"; hepsi yüklenince kapanır ("n çekim kaydedildi").
+- Hata: yarış günleri dışında (ör. yarıştan önce denerken) çekilen kaydediliyordu ama o gün listede olmadığı için görünmüyordu. Artık çekim ya da start olan her gün gün listesine eklenir (`liveDays`, lib/raceLive.js).
 - Uygulama içi kamera iPhone kamerası gibi (Seyhun: "iPhone tasarımı olması lazım... yan çevrildiğinde uyumlu"; telefonda denenmedi): dikte üst/alt siyah şerit, altta solda "Bitti", ortada deklanşör (fotoğraf beyaz, video kırmızı, kayıtta kare), sağda son çekilen; üstünde VİDEO · FOTOĞRAF (seçili sarı). Yan çevrilince şerit sağa geçer, sayaç görüntünün sol üstünde (Tailwind `landscape:`). CameraSheet.jsx.
 - "Çekilenler kaydedilmemiş": kamera açıkken hata yazısı (toast z-60) kameranın (z-80) altında kalıyordu, hata görünmüyordu. Artık her çekilen önce telefonda saklanır (pendingStore.js, IndexedDB `sa-race-media`), sonra yüklenir, yüklenince silinir. Yüklenemezse kamerada kırmızı yazı + köşede "!" (dokununca sebep), Medya sekmesinde "n kayıt telefonda bekliyor · sebep · Tekrar dene"; sayfa açılınca ve internet gelince yeniden denenir. En olası sebep Storage kuralının konsolda yayınlanmaması (storage/unauthorized → "Storage kuralı yayınlanmamış olabilir").
 - YouTube durması (Seyhun: "uygulamayı açınca arka planda YouTube duruyor"): #485'teki ses oturumu, bitmiş ama "Bitir"e basılmamış sayaçta (ileri sayan "Startan beri") her dokunuşta "playback" alıyordu. Artık ses oturumu, dokunuş dinleyicisi ve ekran kilidi yalnız geri sayım sürerken (0'dan 3 sn sonrasına kadar); sayaç yokken/bitince "auto" ve ses bağlamı askıya alınır (Countdown.jsx TimerSound).
@@ -780,6 +783,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+- Telefonda dene: yarıştan önceki bir gün fotoğraf çek, Kaydet, bugünün günü seçili gelip fotoğraf görünmeli. Kırmızı yazı çıkarsa metnini Seyhun'dan iste (Storage kuralı yayınlandı mı?).
 1. Seyhun Firebase › Storage › Rules'u yayınlamalı (`pbcopy < storage.rules`); yayınlanınca bekleyen kayıtlar Medya sekmesi açılınca kendiliğinden yüklenir.
 2. Telefonda dene: kamerayı dik ve yan tut, Bitti, son çekilen; YouTube açıkken uygulamayı aç (durmamalı), sayaç başlatınca bipler.
 1. Telefonda dene: 5. yarışı başlat, iptal + Geri al, 0, Yarışı bitir + Geri al; ertesi gün numara; kamerayla çek → Bitti → düzelt → Kaydet.
