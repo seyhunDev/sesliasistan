@@ -5,6 +5,15 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Uygulama içi kamera iPhone kamerası gibi (Seyhun: "iPhone tasarımı olması lazım... yan çevrildiğinde uyumlu"; telefonda denenmedi): dikte üst/alt siyah şerit, altta solda "Bitti", ortada deklanşör (fotoğraf beyaz, video kırmızı, kayıtta kare), sağda son çekilen; üstünde VİDEO · FOTOĞRAF (seçili sarı). Yan çevrilince şerit sağa geçer, sayaç görüntünün sol üstünde (Tailwind `landscape:`). CameraSheet.jsx.
+- "Çekilenler kaydedilmemiş": kamera açıkken hata yazısı (toast z-60) kameranın (z-80) altında kalıyordu, hata görünmüyordu. Artık her çekilen önce telefonda saklanır (pendingStore.js, IndexedDB `sa-race-media`), sonra yüklenir, yüklenince silinir. Yüklenemezse kamerada kırmızı yazı + köşede "!" (dokununca sebep), Medya sekmesinde "n kayıt telefonda bekliyor · sebep · Tekrar dene"; sayfa açılınca ve internet gelince yeniden denenir. En olası sebep Storage kuralının konsolda yayınlanmaması (storage/unauthorized → "Storage kuralı yayınlanmamış olabilir").
+- YouTube durması (Seyhun: "uygulamayı açınca arka planda YouTube duruyor"): #485'teki ses oturumu, bitmiş ama "Bitir"e basılmamış sayaçta (ileri sayan "Startan beri") her dokunuşta "playback" alıyordu. Artık ses oturumu, dokunuş dinleyicisi ve ekran kilidi yalnız geri sayım sürerken (0'dan 3 sn sonrasına kadar); sayaç yokken/bitince "auto" ve ses bağlamı askıya alınır (Countdown.jsx TimerSound).
+- Yarış akışı (Seyhun: "seri boyunca yarışları oluşturalım, ertesi gün dünden devam, yanlış dokunmaya karşı geri alma, yüklemeden önce değişiklik"; telefonda denenmedi):
+  - Süre sekmesi: "Başlat · 5. yarış" geri sayımı başlatır ve yarış satırını açar (`cd` geri sayım başı, `at` start); +30 sn/+1 dk start anını kaydırır; geri sayımda Duraklat yerine "Geri sayımı iptal et" (başlamamış satır silinir); 0'da o anki rüzgâr yazılır; startan sonra "Yarışı bitir" bitiş saatini (`fin`) yazar, süre satırda görünür. Her adımdan sonra 8 sn "Geri al" (önceki liste + sayaç geri yazılır, `writeTimer`). Sayaç kaydında `rid` yarışı bağlar. Countdown.jsx `race` prop'u; TimerTab.jsx; lib/raceLive.js `beginRace/shiftRace/zeroRace/finishRace/dropRace/raceName/raceTime/nextRaceNo`.
+  - Numara bütün seri boyunca (`renumber`): 1. gün 3 yarış → 2. gün 4. yarış. Ad elle değişir (boşsa "4. yarış"), bitiş saati de düzenlenir. Liste gün gün, seçili gün üstte.
+  - Asistanla başlatılan sayaç (rid yok) multimedya sayfası açıkken yarışa bağlanır (RaceMedia).
+  - Fotoğraf/video anı artık yarış satırlarından (`momentAt`): geri sayımda Start öncesi / Son 1 dakika, startan bitişe Yarış sırasında, bitişten 30 dk Yarış sonrası; künyede `rid`. Gruplar "4. yarış · Yarış sırasında".
+  - Kaydetmeden önce (ReviewSheet.jsx): kamerada çekilenler telefonda bekler; Bitti'ye basınca liste açılır, her birinin yarışı (ya da Yarışsız) ve anı değiştirilir/silinir, "Kaydet" yükler. Fotoğrafa yazı Kaydet'te seçilene göre basılır; videoya süre çekerken basılır. Kapatılırsa Medya'da "n çekim kaydedilmeyi bekliyor · Gözden geçir".
 - Yarış multimedya sayfasında start sayacı artık sayfada yürüyor (Seyhun: "diğer sekmeleri dolaşırken de süreyi göstermeliyiz... sesler de çalışmalı"; telefonda denenmedi): Countdown.jsx'te `useTimer` (telefondaki kaydı olayla okur) ve `useTimerRun` (saat, bipler, onZero, ekran açık) ayrıldı; RaceMedia `useTimerRun({ mode: "start" })` çalıştırır, Süre sekmesindeki Countdown `run={false}` yalnız gösterir. Sayaç sürerken diğer sekmelerde sekmelerin altında "Start sayacı 3:42" satırı (son 10 sn kırmızı, 0'dan sonra "Startan beri"); dokununca Süre. Sayaç 0 olunca yarış satırı yazma da sayfaya taşındı.
 - Gün seçimi: bugün yarış günlerinden biriyse o gün açılır; yarıştan önce ilk gün, sonra son gün.
 - Antrenman sayacı değişmedi (Countdown kendi yürütür).
@@ -771,6 +780,10 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+1. Seyhun Firebase › Storage › Rules'u yayınlamalı (`pbcopy < storage.rules`); yayınlanınca bekleyen kayıtlar Medya sekmesi açılınca kendiliğinden yüklenir.
+2. Telefonda dene: kamerayı dik ve yan tut, Bitti, son çekilen; YouTube açıkken uygulamayı aç (durmamalı), sayaç başlatınca bipler.
+1. Telefonda dene: 5. yarışı başlat, iptal + Geri al, 0, Yarışı bitir + Geri al; ertesi gün numara; kamerayla çek → Bitti → düzelt → Kaydet.
+2. Yüklenmiş fotoğrafın yarışını/anını sonradan değiştirmek yok (istenirse görüntüleyiciye eklenir).
 1. Telefonda dene: Süre'de 5 dk başlat, Hava/Medya'ya geç; 4:00, 1:00 ve son 10 sn bipleri geliyor mu, satıra dokununca Süre açılıyor mu. iPhone sessiz modda ve uygulama arka plandayken ses çıkmaz.
 1. Telefonda dene: Süre'de 5 dk başlat, Medya'da uygulama içi kamerayla fotoğraf/video çek; bipler kesilmeden geliyor mu, üstteki süre ve fotoğrafa basılan yazı doğru mu; sessiz modda bip.
 2. Kamera izni iPhone PWA'da her açılışta sorulabilir; can sıkarsa bakılacak.
