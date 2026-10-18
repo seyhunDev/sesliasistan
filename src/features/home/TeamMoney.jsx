@@ -16,7 +16,7 @@ import { cashMonth, readSum, saveSum } from "@/lib/homeTiles";
 // Ana sayfa Hesap alanı için para (Seyhun 2026-10-17: "Hesaplar'daki gibi: toplam, altında banka ve kasa ayrı ayrı, yüzde artış, giriş varsa").
 // Banka: hesap özetlerinden (yalnız ana hesap), Hesaplar sayfasıyla aynı hesaplar (seçilenler, shownAccounts), TL toplamı; değişim son 7 özetteki
 // toplam bakiyeye göre. Kasa: Hesaplar'daki kasa (nakit girişler + kulüp borçları, kasaOf), açılışta bir kez ve kasa değişince okunur; son değer bu cihazda
-// saklanır, okuma bitene kadar o gösterilir. Dönüş: { bank: {big (banka+kasa), sub, warn, spark, diff, cur, bankTL, kasa, month} | null, receipts: {big, sub} | false, loading }
+// saklanır, okuma bitene kadar o gösterilir. Dönüş: { bank: {big (kasa, yoksa banka), label, sub (küçük banka), warn, spark, diff, cur, bankTL, kasa, month} | null, receipts: {big, sub} | false, loading }
 export function useMoney() {
   const { profile } = useAuth();
   const { receipts, isStaff } = useData();
@@ -88,9 +88,8 @@ export function useMoney() {
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const spend = receipts.filter((r) => (r.date || "").startsWith(ym)).reduce((a, r) => a + totalOf(r), 0);
   const monthName = now.toLocaleDateString("tr-TR", { month: "long" });
-  const sign = `${pct >= 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%`;
 
-  // Toplam: banka (TL) + kasa; alt satır "Banka … · Kasa …", altında bankanın değişimi ve bu ayın kasa girişleri
+  // Seyhun 2026-10-18: "kasadaki nakit ön planda, banka küçük, çok detaya gerek yok": büyük sayı kasa (kasa yoksa banka), altında küçük banka
   const isTL = !cur || /^(TL|TRY)$/i.test(cur);
   const bankTL = acc && isTL ? tot.total : 0;
   const kasa = cash?.total || 0;
@@ -99,9 +98,9 @@ export function useMoney() {
     bank:
       owner && has
         ? {
-            big: `${money(bankTL + kasa)} ₺`,
-            sub: [acc && isTL ? `Banka ${money(bankTL)}` : "", cash ? `Kasa ${money(kasa)}` : ""].filter(Boolean).join(" · "),
-            change: [spark.length > 1 ? `Banka ${sign}` : "", cash?.inSum ? `bu ay kasaya +${money(cash.inSum)} ₺` : ""].filter(Boolean).join(" · "),
+            big: `${money(cash ? kasa : bankTL)} ₺`,
+            label: cash ? "Kasada nakit" : "Banka",
+            sub: cash && acc && isTL ? `Banka ${money(bankTL)} ₺` : "",
             warn: spark.length > 1 && pct < 0,
             spark,
             diff: spark.length > 1 ? tot.total - first : 0,

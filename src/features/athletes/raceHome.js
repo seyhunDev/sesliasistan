@@ -29,7 +29,7 @@ const gap = (s) => Math.round((Date.parse(`${s}T12:00:00`) - Date.parse(`${today
 
 // Sıradaki yarış: henüz başlamamış en yakın yarış. Bugün başlayan ya da süren yarış "şu an"dır (Şu an kartında plan olarak görünür),
 // sıradaki ondan sonraki yarıştır (Seyhun: "sıradaki bir sonraki olmalı"). { id, name (ilçe ya da adın ilk kelimesi), when, left (bitmemiş iş),
-// title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün) } (ana sayfa yarış kartı)
+// steps (ilk 3 eksik işin adı), title (tam ad), dates ("17-19 Ekim"), count (sporcu sayısı), days (kalan gün) } (ana sayfa yarış kartı)
 export function nextInfo(list) {
   const r = list.filter((x) => x.startDate && gap(x.startDate) > 0).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   if (!r) return null;
@@ -40,6 +40,7 @@ export function nextInfo(list) {
     name: r.district || String(r.name || "").split(" ")[0] || "Yarış",
     when,
     left: stepsOf(r).length,
+    steps: stepsOf(r).slice(0, 3).map((s) => s.label).filter(Boolean),
     total: stepTotal(r),
     start: r.startDate,
     place: r.district || "",

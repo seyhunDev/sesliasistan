@@ -113,12 +113,6 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
           key: "dues",
           el: (w) => <DuesWidget t={duesT} mon={mon} cls={`${show("dues")} ${w}`} />,
         },
-    skel("inv")
-      ? { key: "inv", skel: true }
-      : fisT && {
-          key: "inv",
-          el: (w) => <FisWidget t={fisT} spend={invoices && inv && money ? m.receipts : null} cls={`${show("inv")} ${w}`} />,
-        },
     skel("bank")
       ? { key: "bank", skel: true }
       : bankT && {
@@ -126,6 +120,12 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
           el: (w) => <BankWidget b={bankT} cls={`${show("bank")} ${w}`} />,
         },
   ].filter(Boolean);
+  // Fiş / Fatura: kare değil, en altta ince tam genişlik satır
+  const fis = skel("inv") ? { key: "inv", skel: true } : fisT && { key: "inv", el: () => <FisWidget t={fisT} spend={invoices && inv && money ? m.receipts : null} cls={show("inv")} /> };
+  // Dizilim (Seyhun 2026-10-18: "sıradaki yarışı dikey uzun, aidat ve hesabı yan yana"): yarış + aidat + hesap üçü de varsa yarış solda iki satır
+  // boyu, sağda aidat ve hesap üst üste; değilse iki sütun, tek kalan sonuncu iki sütunu kaplar
+  const tall = squares.length === 3 && squares[0].key === "race";
+  const span = (i) => (tall && i === 0 ? "row-span-2" : !tall && i === squares.length - 1 && squares.length % 2 === 1 ? "col-span-2" : "");
 
   // Alttaki sayfa düğmeleri: alanı görünen sayfa (yarış, aidat, fiş, hesap, Instagram) tekrar düğme olmaz; alanı yoksa düğme kalır
   const shown = {
@@ -134,7 +134,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
     inv: "/receipts",
     bank: "/mail",
   };
-  const gone = [...hide, ...squares.map((t) => shown[t.key]), ...(post ? ["/posts"] : [])];
+  const gone = [...hide, ...[...squares, fis].filter(Boolean).map((t) => shown[t.key]), ...(post ? ["/posts"] : [])];
 
   return (
     <>
@@ -142,10 +142,8 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
         <SectionHead id="home-sum" title={title} />
         <div className="grid grid-cols-2 gap-2.5">
           {lead}
-          {squares.map((t, i) => {
-            const wide = i === squares.length - 1 && squares.length % 2 === 1 ? "col-span-2" : "";
-            return t.skel ? <SkelWidget key={t.key} cls={wide} /> : <Fragment key={t.key}>{t.el(wide)}</Fragment>;
-          })}
+          {squares.map((t, i) => (t.skel ? <SkelWidget key={t.key} cls={span(i)} /> : <Fragment key={t.key}>{t.el(span(i))}</Fragment>))}
+          {fis && (fis.skel ? <SkelWidget cls="col-span-2 min-h-0" /> : fis.el())}
           <NotesWidget notes={notes} />
           {tail}
           {post && <PostsWidget post={post} />}
@@ -156,23 +154,44 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   );
 }
 
-// Kare alan: sıradaki yarış (ad, tarih · sporcu, büyük kalan gün, eksik iş). Dokununca yarışın sayfası;
+// Kare alan: sıradaki yarış (ad, tarih · yer · sporcu, büyük kalan gün, eksik iş sayısı; uzunken ilk üç eksik işin adı). Dokununca yarışın sayfası;
+// sağ üstte "Tümü ›" Yarışlar sayfası (Seyhun 2026-10-18: "yarışlara ana sayfadan ulaşamıyoruz"),
 // altta "Multimedyayı aç" yarış günü sayfasını açar (Seyhun 2026-10-18: "ana sayfadan ilgili yarışın multimedya sayfasına ulaşabilirim")
 function RaceWidget({ r, cls }) {
   const sub = r.sub || "";
+  const tall = cls.includes("row-span-2");
   return (
     <div className={`${WIDGET} ${cls}`}>
+      <WHead
+        tone="sp"
+        title="Sıradaki yarış"
+        right={
+          <Link href="/athletes/races" className="text-acc">
+            Tümü ›
+          </Link>
+        }
+      />
       <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className="flex flex-1 flex-col">
-        <WHead tone="sp" title="Sıradaki yarış" />
         <b className="mt-2 block truncate text-[0.96875rem] font-semibold">{r.title}</b>
-        <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
-        <span className="mt-auto flex items-baseline justify-between gap-2 pt-2">
+        <small className={`block text-[0.8125rem] text-mut ${tall ? "" : "truncate"}`}>{sub}</small>
+        <span className={`flex items-baseline justify-between gap-2 pt-2 ${tall ? "mt-2" : "mt-auto"}`}>
           <span className="text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
             {r.days != null ? r.days : r.when}
             {r.days != null && <span className="ml-1 text-[0.9375rem] font-medium">gün</span>}
           </span>
-          {r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
+          {!tall && r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
         </span>
+        {tall && r.left > 0 && (
+          <span className="mt-2.5 block">
+            <small className="block text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>
+            {r.steps?.map((x) => (
+              <small key={x} className="mt-1 flex items-start gap-1.5 text-[0.8125rem] leading-snug">
+                <span aria-hidden="true" className="mt-[0.4rem] size-1.5 shrink-0 rounded-full bg-warn" />
+                <span className="line-clamp-2 min-w-0">{x}</span>
+              </small>
+            ))}
+          </span>
+        )}
       </Link>
       {r.id && (
         <Link href={`/athletes/races/${r.id}/media`} className="mt-2.5 grid h-9 place-items-center rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:translate-y-px">
@@ -206,42 +225,32 @@ function DuesWidget({ t, mon, cls }) {
 // Kare alan: fiş / fatura (ödenmemiş fatura sayısı ve tutarı, yoksa ayın fiş harcaması; altında ayın harcaması). Dokununca Fiş / Fatura
 function FisWidget({ t, spend, cls }) {
   return (
-    <Link href="/receipts" className={`${WIDGET} ${cls}`}>
-      <WHead tone="fa" title="Fiş / Fatura" />
-      <b className={`mt-2 block text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums ${t.warn ? "text-warn" : ""}`}>{t.big}</b>
-      <small className="mt-1 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
-      {spend && (
-        <small className="mt-auto block truncate pt-2 text-[0.8125rem] text-mut">
-          {spend.sub}: {spend.big}
-        </small>
-      )}
+    <Link href="/receipts" className={`col-span-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-card px-3.5 py-3 text-left ${cls}`}>
+      <span className="shrink-0">
+        <WHead tone="fa" title="Fiş / Fatura" />
+      </span>
+      <span className="ml-auto min-w-0 text-right">
+        <b className={`block truncate text-[0.9375rem] font-semibold tabular-nums ${t.warn ? "text-warn" : ""}`}>{[t.big, t.sub].filter(Boolean).join(" · ")}</b>
+        {spend && (
+          <small className="block truncate text-[0.78125rem] text-mut">
+            {spend.sub}: {spend.big}
+          </small>
+        )}
+      </span>
     </Link>
   );
 }
 
-// Kare alan: Hesap (Seyhun: "Hesaplar'daki gibi"): büyük toplam (banka + kasa), altında "Banka … · Kasa …", bankanın değişimi ve bu ayki
-// kasa girişi, en altta bakiyenin küçük çizgisi (useMoney spark). Dokununca Hesaplar
+// Kare alan: Hesap (Seyhun 2026-10-18: "kasadaki nakit ön planda, banka küçük, çok detaya gerek yok"): büyük kasa (kasa yoksa banka), altında
+// "Kasada nakit", en altta küçük "Banka … ₺" (useMoney). Dokununca Hesaplar
 function BankWidget({ b, cls }) {
   return (
     <Link href="/mail" className={`${WIDGET} ${cls}`}>
       <WHead tone="st" title="Hesap" />
-      <b className="mt-2 block truncate text-[1.375rem] font-semibold leading-tight tracking-[-.02em] tabular-nums">{b.big}</b>
-      {b.sub && <small className="block truncate text-[0.8125rem] tabular-nums text-fg2">{b.sub}</small>}
-      {b.change && <small className={`block truncate text-[0.75rem] ${b.warn ? "text-warn" : "text-mut"}`}>{b.change}</small>}
-      {b.spark?.length > 1 && <Spark v={b.spark} />}
+      <b className="mt-2 block truncate text-[1.5rem] font-semibold leading-tight tracking-[-.02em] tabular-nums">{b.big}</b>
+      {b.label && <small className="block truncate text-[0.8125rem] text-mut">{b.label}</small>}
+      {b.sub && <small className="mt-auto block truncate pt-2 text-[0.8125rem] tabular-nums text-fg2">{b.sub}</small>}
     </Link>
-  );
-}
-
-function Spark({ v }) {
-  const lo = Math.min(...v);
-  const hi = Math.max(...v);
-  const pts = v.map((x, i) => `${((i / (v.length - 1)) * 120).toFixed(1)},${(30 - ((x - lo) / (hi - lo || 1)) * 26).toFixed(1)}`).join(" ");
-  return (
-    <svg viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true" className="mt-auto block h-8 w-full pt-1">
-      <polygon points={`0,34 ${pts} 120,34`} className="fill-acc/10" />
-      <polyline points={pts} fill="none" className="stroke-acc" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
   );
 }
 
