@@ -62,13 +62,13 @@ export async function prepRaceMedia(file, onProg) {
   }
 }
 
-// Yükler ve yarışa yazar; künyeyi döndürür. at: çekildiği an (ISO)
-export async function addRaceMedia(orgId, id, m, at, onProg) {
+// Yükler ve yarışa yazar; künyeyi döndürür. at: çekildiği an (ISO); extra: start sayacına göre an (lib/raceLive.js momentOf)
+export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const mid = newId();
   const r = sref(store(), mpath(orgId, mid));
   const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
-  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at }])[0];
+  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, ...extra }])[0];
   await setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
   return meta;
 }
