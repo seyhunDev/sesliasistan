@@ -9,8 +9,10 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadLive } from "@/features/athletes/raceLiveStore";
-import { cleanLive } from "@/lib/raceLive";
+import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
+import { cleanLive, newStart, renumber } from "@/lib/raceLive";
+import { mmss } from "@/lib/raceScore";
+import { audio, useTimerRun } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { WeatherTab } from "./WeatherTab";
 import { TimerTab } from "./TimerTab";
@@ -22,6 +24,7 @@ import { DaySummarySheet } from "./DaySummarySheet";
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
 // ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
+// Start sayacı sayfada yürür: başka sekmedeyken de bipler çalar, sekmelerin altında küçük süre satırı görünür (dokununca Süre).
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
 const TABS = [["wx", "Hava"], ["sure", "Süre"], ["res", "Sonuçlar"], ["media", "Medya"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -72,6 +75,23 @@ export function RaceMedia({ orgId, id }) {
     [toast],
   );
 
+  // Sayaç 0 olunca günün sıradaki yarışı start saati ve son elle yazılan rüzgârla yazılır
+  const onZero = useCallback(
+    (end) => {
+      if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
+      const at = new Date(end).toISOString();
+      change((l) => {
+        const s = newStart(l.starts, at, l.wind);
+        if (!s) return {};
+        const next = renumber([...l.starts, s]);
+        saveStarts(orgId, id, next).catch(() => {});
+        return { starts: next };
+      });
+    },
+    [change, orgId, id],
+  );
+  const timer = useTimerRun({ mode: "start", onZero, run: !!race });
+
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
@@ -92,7 +112,15 @@ export function RaceMedia({ orgId, id }) {
         </button>
       }
     >
-      <Seg value={tab} onChange={setTab} options={TABS} className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2" />
+      <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2" onPointerDown={() => timer.running && audio()}>
+        <Seg value={tab} onChange={setTab} options={TABS} />
+        {timer.running && tab !== "sure" && (
+          <button type="button" onClick={() => setTab("sure")} className={`mt-2 flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
+            <span className="text-[0.875rem]">{timer.up ? "Startan beri" : "Start sayacı"}</span>
+            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? Math.floor((timer.now - timer.t.end) / 1000) : Math.max(0, timer.rem))}</b>
+          </button>
+        )}
+      </div>
       {days.length > 1 && (
         <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
           {days.map((d, i) => (

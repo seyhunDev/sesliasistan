@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Countdown } from "@/features/training/Countdown";
@@ -8,7 +8,8 @@ import { saveStarts } from "@/features/athletes/raceLiveStore";
 import { COURSES, FLAGS, atOf, dirShort, hm, newStart, renumber, startsOn } from "@/lib/raceLive";
 
 // Süre: start sayacı (Countdown, yarış dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip).
-// Sayaç 0 olunca o günün sıradaki yarışı start saati ve o anki rüzgârla (son elle kayıt) kendiliğinden yazılır.
+// Sayacı ve biplerini sayfa yürütür (RaceMedia, sekmeler arasında da sürer); 0 olunca o günün sıradaki yarışı start saati
+// ve o anki rüzgârla (son elle kayıt) kendiliğinden yazılır.
 // Yarışa dokununca saat, parkur, bayrak (ertelendi, geri çağırma, iptal) ve not yazılır; "Yarış ekle" elle ekler.
 const PRESETS = [60, 120, 300];
 
@@ -16,20 +17,6 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
   const [edit, setEdit] = useState(null); // düzenlenen start
   const list = startsOn(live.starts, day);
   const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, race.id, next));
-  const onZero = useCallback(
-    (end) => {
-      if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
-      const at = new Date(end).toISOString();
-      onChange((l) => {
-        const s = newStart(l.starts, at, l.wind);
-        if (!s) return {};
-        const next = renumber([...l.starts, s]);
-        saveStarts(orgId, race.id, next).catch(() => {});
-        return { starts: next };
-      });
-    },
-    [onChange, orgId, race.id],
-  );
   const add = () => {
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind);
@@ -38,7 +25,7 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
 
   return (
     <>
-      <Countdown mode="start" presets={PRESETS} onZero={onZero} />
+      <Countdown mode="start" presets={PRESETS} run={false} />
       <Label right={list.length || ""}>Bugün</Label>
       <ul className={`${card} divide-y divide-line overflow-hidden`}>
         {list.map((s) => (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
@@ -20,29 +20,47 @@ const useClient = () => useSyncExternalStore(noop, () => true, () => false);
 export function lastZero(t = readTimer(), now = Date.now()) {
   return t.end != null && t.end <= now ? t.end : (t.zero ?? null);
 }
-export function readTimer() {
+const parse = (raw) => {
   try {
-    const t = JSON.parse(localStorage.getItem(KEY) || "null");
+    const t = JSON.parse(raw || "null");
     return t && Number.isFinite(t.dur) ? t : blank;
   } catch {
     return blank;
   }
-}
+};
+const raw = () => {
+  try {
+    return localStorage.getItem(KEY) || "";
+  } catch {
+    return "";
+  }
+};
+export const readTimer = () => parse(raw());
+// Her yazış olay yayar: aynı sayfadaki bütün okuyucular (sayaç ekranı, sekmelerdeki küçük süre satırı) hemen güncellenir
 const write = (t) => {
   try {
     localStorage.setItem(KEY, JSON.stringify(t));
   } catch {}
+  window.dispatchEvent(new Event(KEY));
 };
+const sub = (f) => {
+  window.addEventListener(KEY, f);
+  window.addEventListener("storage", f);
+  return () => (window.removeEventListener(KEY, f), window.removeEventListener("storage", f));
+};
+export function useTimer() {
+  const r = useSyncExternalStore(sub, raw, () => "");
+  return useMemo(() => parse(r), [r]);
+}
 
-// Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır; açık sayaç ekranı olayla yeniden okur
+// Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır
 export function startTimer(sec) {
   write({ dur: sec, end: Date.now() + sec * 1000, left: null, zero: readTimer().zero });
-  window.dispatchEvent(new Event(KEY));
 }
 
 let ctx = null;
-// iPhone sesi ancak dokunuşla açar: Başlat'a basınca hazırlanır
-function audio() {
+// iPhone sesi ancak dokunuşla açar: Başlat'a basınca hazırlanır (sayaç sürerken her dokunuşta yeniden uyandırılır)
+export function audio() {
   try {
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
     if (ctx.state === "suspended") ctx.resume();
@@ -68,31 +86,19 @@ function beep(kind) {
   o.stop(t + d + 0.02);
 }
 
-// mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
-// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
-// onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez); çağıran aynı anı iki kez yazmamalı.
-export function Countdown({ mode = "", presets = PRESETS, onZero }) {
-  const client = useClient();
-  const [st, setT] = useState(null); // null: telefondaki kayıttan okunur
-  const t = st ?? (client ? readTimer() : blank);
+// Sayacı yürüten kanca: saat (200 ms), zamanında bipler, onZero ve ekranın açık kalması. Yalnız bir yerde çalışmalı (yoksa bip iki kez çalar):
+// antrenmanda Countdown'ın kendisi, yarış multimedya sayfasında sayfanın kendisi (sekmeler arasında da çalsın; Countdown run={false}).
+// mode "start": yelken start dizisi (lib/raceLive.js beepAt). onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez).
+export function useTimerRun({ mode = "", onZero, run = true } = {}) {
+  const t = useTimer();
   const [now, setNow] = useState(0);
-  const [pick, setPick] = useState(false);
   const last = useRef(null); // son bip çalan saniye
   const lock = useRef(null);
-  useEffect(() => {
-    const fresh = () => setT(null);
-    window.addEventListener(KEY, fresh);
-    return () => window.removeEventListener(KEY, fresh);
-  }, []);
   const zeroed = useRef(null); // onZero çağrılan bitiş anı
   const zeroFn = useRef(onZero);
   useEffect(() => {
     zeroFn.current = onZero;
   }, [onZero]);
-  const save = (x) => {
-    setT(x);
-    write(x);
-  };
 
   const running = t.end != null;
   const rem = running ? Math.ceil((t.end - now) / 1000) : t.left ?? t.dur;
@@ -101,9 +107,11 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
   // Saat: çalışırken 200 ms'de bir; bipler yalnız zamanında (geç kalan bip çalmaz)
   useEffect(() => {
     if (!running) return;
+    last.current = null;
     const tick = () => {
       const n = Date.now();
       setNow(n);
+      if (!run) return;
       const s = Math.ceil((t.end - n) / 1000);
       const late = (t.end - n) / 1000 - (s - 1); // bu saniyeye girileli geçen
       const kind = beepAt(s, mode);
@@ -119,11 +127,11 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end, mode]);
+  }, [running, t.end, mode, run]);
 
   // Ekran açık kalsın (geri sayım sürerken); uygulamaya dönünce yeniden istenir
   useEffect(() => {
-    if (!running || up || !("wakeLock" in navigator)) return;
+    if (!run || !running || up || !("wakeLock" in navigator)) return;
     let off = false;
     const ask = () => {
       if (document.visibilityState !== "visible") return;
@@ -140,11 +148,23 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
       lock.current?.release().catch(() => {});
       lock.current = null;
     };
-  }, [running, up]);
+  }, [run, running, up]);
+
+  return { t, now, running, rem, up };
+}
+
+// mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
+// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
+// run={false}: sayacı sayfa yürütüyor (useTimerRun), bu ekran yalnız gösterir ve düğmeleri tutar.
+export function Countdown({ mode = "", presets = PRESETS, onZero, run = true }) {
+  const client = useClient();
+  const { t: st, now, running, rem, up } = useTimerRun({ mode, onZero, run });
+  const t = client ? st : blank;
+  const [pick, setPick] = useState(false);
+  const save = write;
 
   const start = () => {
     audio();
-    last.current = null;
     const left = t.left ?? t.dur;
     if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
     save({ ...t, end: Date.now() + left * 1000, left: null });
