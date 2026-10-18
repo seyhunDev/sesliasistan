@@ -90,7 +90,7 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
 
 // Rüzgâr kaydı: nereden esiyor (8 yön), knot, saat (şimdi), sağanak (isteğe bağlı)
 const GRID = ["KB", "K", "KD", "B", "", "D", "GB", "G", "GD"];
-function WindSheet({ open, onClose, day, last, onSave }) {
+export function WindSheet({ open, onClose, day, last, onSave }) {
   return (
     <Sheet open={open} onClose={onClose} title="Rüzgar">
       {open && <WindForm day={day} last={last} onSave={onSave} />}

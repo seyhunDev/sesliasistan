@@ -222,6 +222,38 @@ export function TimerSound() {
 
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
 // her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
+// Sayaç düğmelerinin işi (Countdown ve uygulama içi kamera aynı yolu kullanır, CameraSheet). race: yarış akışı (TimerTab useRaceFlow);
+// her biri o anki sayaç kaydını okur, yazar ve akışa önceki kaydı verir (Geri al için).
+function plainStart(mode) {
+  const t = readTimer();
+  audio();
+  const left = t.left ?? t.dur;
+  if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
+  const end = Date.now() + left * 1000;
+  return { t, end };
+}
+export function raceStart(race, mode = "start") { // race yoksa düz sayaç (antrenman)
+  const { t, end } = plainStart(mode);
+  const rid = race ? `s${end.toString(36)}` : undefined;
+  write({ ...t, mode, end, left: null, rid });
+  race?.onStart(end, rid, t);
+}
+export function raceCancel(race) {
+  const t = readTimer();
+  write({ dur: t.dur, end: null, left: null, zero: t.zero });
+  race.onCancel(t);
+}
+export function raceFinish(race) {
+  const t = readTimer();
+  write({ dur: t.dur, end: null, left: null, zero: t.end });
+  race.onFinish(t);
+}
+export function raceVoid(race) {
+  const t = readTimer();
+  write({ dur: t.dur, end: null, left: null, zero: t.end });
+  race.onVoid(t);
+}
+
 // Bipler TimerSound'da (her sayfada çalışır); bu ekran gösterir ve düğmeleri tutar.
 // race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
 // (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish) ve yanında "İptal" (onVoid). Her biri önceki sayaç kaydını verir
@@ -233,28 +265,10 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
   const [pick, setPick] = useState(false);
   const save = write;
 
-  const start = () => {
-    audio();
-    const left = t.left ?? t.dur;
-    if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
-    const end = Date.now() + left * 1000;
-    const rid = race ? `s${end.toString(36)}` : undefined;
-    save({ ...t, mode, end, left: null, rid });
-    race?.onStart(end, rid, t);
-  };
-  const cancel = () => {
-    save({ dur: t.dur, end: null, left: null, zero: t.zero });
-    race.onCancel(t);
-  };
-  const finish = () => {
-    save({ dur: t.dur, end: null, left: null, zero: t.end });
-    race.onFinish(t);
-  };
-  // Startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
-  const voidIt = () => {
-    save({ dur: t.dur, end: null, left: null, zero: t.end });
-    race.onVoid(t);
-  };
+  const start = () => raceStart(race, mode);
+  const cancel = () => raceCancel(race);
+  const finish = () => raceFinish(race);
+  const voidIt = () => raceVoid(race); // startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
   const add = (s) => {

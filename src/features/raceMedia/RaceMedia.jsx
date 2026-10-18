@@ -15,6 +15,7 @@ import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { WeatherTab } from "./WeatherTab";
+import { VoidSheet, useRaceFlow } from "./useRaceFlow";
 import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
@@ -26,13 +27,15 @@ import { DaySummarySheet } from "./DaySummarySheet";
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
 // Start sayacı başka sekmede ve sayfada da öter (Countdown.jsx TimerSound); sayfanın diğer sekmelerinde küçük süre satırı görünür (dokununca Süre).
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
-const TABS = [["wx", "Hava"], ["sure", "Süre"], ["res", "Sonuçlar"], ["media", "Medya"]];
+// Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Hava · Sonuçlar; yarış günü Süre'yle, başka gün Hava'yla açılır
+const TABS = [["sure", "Süre"], ["media", "Medya"], ["wx", "Hava"], ["res", "Sonuçlar"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
-  const [tab, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "wx");
+  const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
+  const [cam, setCam] = useState(null); // Süre'den açılan kamera: { kind, back }
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
   const [live, setLive] = useState(() => cleanLive({}));
@@ -90,6 +93,7 @@ export function RaceMedia({ orgId, id }) {
     [change, orgId, id],
   );
   const timer = useTimerRun({ onZero });
+  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change });
   // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)
   const tEnd = timer.t.end;
   const tFree = timer.t.mode === "start" && tEnd != null && !timer.t.rid;
@@ -117,6 +121,8 @@ export function RaceMedia({ orgId, id }) {
   const n = rdays.indexOf(cur) + 1;
   const sub = [race.district || race.city, n > 0 && rdays.length > 1 ? `${n}. gün` : "", dayLabel(cur)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
+  const tab = tabPick || (rdays.includes(today) || live.starts.some((x) => x.day === today) ? "sure" : "wx");
+  const openCam = (kind) => (setCam({ kind, back: tab }), setTab("media"));
 
   return (
     <Shell
@@ -148,9 +154,22 @@ export function RaceMedia({ orgId, id }) {
         </div>
       )}
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
-      {tab === "media" && <MediaTab orgId={orgId} race={race} day={cur} live={live} ours={ours} onChange={change} />}
+      {tab === "media" && (
+        <MediaTab
+          orgId={orgId}
+          race={race}
+          day={cur}
+          live={live}
+          ours={ours}
+          onChange={change}
+          rf={rf}
+          cam0={cam?.kind || ""}
+          onCamClose={() => cam && (setTab(cam.back), setCam(null))}
+        />
+      )}
+      <VoidSheet ask={rf.ask} onChoose={rf.choose} />
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );

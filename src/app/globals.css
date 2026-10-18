@@ -560,3 +560,6 @@ html[data-theme="dark"] .tone-gen { --tbg: #26292c; --tfg: #8b8f94; }
 .tone-chip { background: var(--tbg); color: var(--tfg); }
 .tone-bar { background: var(--tfg); }
 .tone-fg { color: var(--tfg); }
+
+/* Kamera açıkken bildirim (Geri al) kameranın üst şeridini (sayaç, Başlat/İptal) örtmesin: görüntünün üstüne iner */
+body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)); }

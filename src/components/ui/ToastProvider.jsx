@@ -35,7 +35,8 @@ export function ToastProvider({ children }) {
       {children}
       <div
         role="status"
-        className={`fixed left-1/2 top-[calc(0.875rem_+_env(safe-area-inset-top))] z-[60] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pl-[1.125rem] text-sm font-medium text-bg shadow-lg transition duration-300 ${
+        data-toast
+        className={`fixed left-1/2 top-[calc(0.875rem_+_env(safe-area-inset-top))] z-[90] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pl-[1.125rem] text-sm font-medium text-bg shadow-lg transition duration-300 ${
           t.action ? "pr-2" : "pr-[1.125rem]"
         } ${show ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-6 opacity-0"}`}
       >

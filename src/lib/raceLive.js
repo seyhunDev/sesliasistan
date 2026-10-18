@@ -227,6 +227,16 @@ export function mediaGroups(media, starts, day) {
     .map(({ key, title, items }) => ({ key, title, items: items.reverse() }));
 }
 
+// Sonradan düzeltme (büyük açınca "Düzelt"): çekimin yarışı ve anı değişir; mom null: yarışsız. Dönüş yeni liste
+export function fixMedia(media, id, mom) {
+  return cleanMedia(
+    (media || []).map((m) => {
+      if (m.id !== id) return m;
+      const { phase: _p, sec: _s, end: _e, rid: _r, ...rest } = m;
+      return mom ? { ...rest, ...mom } : rest;
+    }),
+  );
+}
 // Sporcu etiketi: dokunulan sporcu varsa çıkar, yoksa ekler. Dönüş yeni liste
 export function tagMedia(media, id, athId) {
   return cleanMedia((media || []).map((m) => (m.id !== id ? m : { ...m, ath: m.ath?.includes(athId) ? m.ath.filter((x) => x !== athId) : [...(m.ath || []), athId] })));

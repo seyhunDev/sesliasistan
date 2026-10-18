@@ -354,6 +354,12 @@ group("Yarış multimedya")([
     const old = RL.cleanStarts([{ id: "s1", day: "2026-10-19", at: at("11:00"), flag: "Ertelendi" }])[0];
     return { label, ns: c.starts.map((x) => x.n).join(), title: RL.raceTitle(v), time: RL.raceTime(v), inVoid: inVoid?.rid === b.id && inVoid.phase, after, g, old: [old.void, old.flag], undo: RL.voidRace(voided, b.id, "", 0).map((x) => x.n).join() };
   }, ok: (r) => r.label === "2. yarış" && r.ns === "1,2,2" && r.title === "Genel geri çağırma · 2. yarış" && r.time === "" && r.inVoid === "pre" && r.after === null && r.g.join("|") === "2. yarış · Son 1 dakika|Genel geri çağırma · 2. yarış · Start öncesi" && r.old.join() === "Tehir," && r.undo === "1,2" }],
+  ["sonradan düzelt", { desc: "çekimin yarışı/anı değişir, yarışsız yapılınca an silinir, etiket ve süre kalır", fn: () => {
+    const media = RL.cleanMedia([{ id: "m1", url: "https://x/1", at: at("11:04"), ath: ["a1"], dur: 42, phase: "last", sec: -40, end: at("11:05"), rid: "s1" }]);
+    const a = RL.fixMedia(media, "m1", { rid: "s2", phase: "race", sec: 120, end: at("11:02") })[0];
+    const b = RL.fixMedia(media, "m1", null)[0];
+    return { a, b };
+  }, ok: ({ a, b }) => a.rid === "s2" && a.phase === "race" && a.sec === 120 && a.ath[0] === "a1" && a.dur === 42 && !b.phase && !b.rid && b.ath[0] === "a1" }],
   ["yarış dışı gün", { desc: "yarış günleri dışında çekilen ya da start verilen gün de listede (yoksa çekilen görünmezdi)", fn: () => RL.liveDays(["2026-10-25", "2026-10-26"], { media: [{ at: at("11:00") }, { at: "x" }], starts: [{ at: "2026-10-25T09:00:00.000Z" }] }), ok: (d) => d.join() === "2026-10-19,2026-10-25,2026-10-26" }],
   ["yarış akışı", { desc: "Başlat yarışı açar, +1 dk kaydırır, 0 rüzgârı yazar, bitir süreyi verir; ertesi gün numara devam eder", fn: () => {
     const prev = RL.renumber([{ id: "d1", day: "2026-10-18", at: new Date("2026-10-18T11:00:00").toISOString() }, { id: "d2", day: "2026-10-18", at: new Date("2026-10-18T12:00:00").toISOString() }, { id: "d3", day: "2026-10-18", at: new Date("2026-10-18T13:00:00").toISOString() }]);

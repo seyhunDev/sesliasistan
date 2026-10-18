@@ -3,17 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { hm } from "@/lib/raceLive";
+import { MomentPicker } from "./MomentPicker";
 
 // Tam ekran görüntüleyici (Seyhun 2026-10-18: "tıklandığında tam ekran olsun, yan çevirip izleyebilmeliyim"): iPhone Fotoğraflar gibi
-// siyah zemin, fotoğraf/video ekrana sığar. Dikte üstte Kapat, an ve sıra; altta "Kimler var" ve Paylaş · Sil. Yan çevrilince görüntü
-// bütün ekranı kaplar, tek ince üst şerit (Kapat · an · Paylaş · Sil) üstünde durur. onShare verilmezse Paylaş yok (kaydetmeden önce ön izleme). Görüntüye dokununca çubuklar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
-export function MediaViewer({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop }) {
-  if (!id) return null;
-  return createPortal(<View items={items} id={id} onPick={onPick} onClose={onClose} label={label} ours={ours} onTag={onTag} onShare={onShare} onDrop={onDrop} />, document.body);
+// siyah zemin, fotoğraf/video ekrana sığar. Dikte üstte Kapat, an ve sıra; altta "Kimler var" ve Paylaş · Düzelt · Sil (Düzelt: yarış
+// ve an, MomentPicker). Yan çevrilince görüntü bütün ekranı kaplar, tek ince üst şerit (Kapat · an · Paylaş · Sil) üstünde durur.
+// Görüntüye dokununca çubuklar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
+export function MediaViewer(props) {
+  if (!props.id) return null;
+  return createPortal(<View {...props} />, document.body);
 }
 
-function View({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop }) {
+function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop, starts = [], onFix }) {
   const [ui, setUi] = useState(true);
+  const [fixing, setFixing] = useState(false);
   const start = useRef(null);
   const i = Math.max(0, items.findIndex((m) => m.id === id));
   const m = items[i];
@@ -69,7 +72,12 @@ function View({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop 
       </div>
       {ui && (
         <div className={`shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 landscape:hidden ${side}`}>
-          {ours.length > 0 && (
+          {fixing && onFix && (
+            <div className="pb-3">
+              <MomentPicker at={m.at} mom={m.phase ? { rid: m.rid, phase: m.phase, sec: m.sec, end: m.end } : null} starts={starts} onChange={(mom) => onFix(m, mom)} />
+            </div>
+          )}
+          {ours.length > 0 && !fixing && (
             <div className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
               {ours.map((a) => {
                 const on = m.ath.includes(a.id);
@@ -88,6 +96,11 @@ function View({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop 
               </button>
             ) : (
               <span />
+            )}
+            {onFix && (
+              <button type="button" onClick={() => setFixing((v) => !v)} aria-pressed={fixing} className={`h-10 text-[1.0625rem] ${fixing ? "font-semibold" : ""}`}>
+                {fixing ? "Tamam" : "Düzelt"}
+              </button>
             )}
             <button type="button" onClick={() => onDrop(m)} className="h-10 text-[1.0625rem] text-[#FF453A]">
               Sil
