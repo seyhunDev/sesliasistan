@@ -1,8 +1,8 @@
-Commit: 0268168 · Antrenman sayfası: geri sayım, yoklama, günlük ve antrenman yarışları (puan durumu) (#480)
-Zaman: 2026-10-18-1341 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39120122598
+Commit: 3c7adb1 · Ana sayfa: alttaki sayfa düğmelerine Antrenman sayfası (#481)
+Zaman: 2026-10-18-1514 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39126338029
 
-TAM TEST · 18.10.2026 13:40:01
+TAM TEST · 18.10.2026 15:12:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
