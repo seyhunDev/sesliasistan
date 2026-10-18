@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -18,14 +18,18 @@ import { presentNames, syncAttendance } from "@/features/training/logAi";
 // Katılanlar yoklamayla eşleşir (sporcu yetkisi olanda): form açılınca o günün yoklamasında gelenler gelir,
 // kaydedince yazılan katılanlar yoklamada "geldi" olur.
 // Ayrıntılar (katılanlar, deniz, sonraki antrenman, diğer) de buradan düzenlenir; boş temel alanlar "Eksik" görünür.
+// Antrenman sayfasında pencere içinde açık başlar (startOpen); kaydedince ya da vazgeçince onDone.
 const asText = (v) => (Array.isArray(v) ? v.join(", ") : v || "");
-export function TrainingLog({ rec, by }) {
+export function TrainingLog({ rec, by, startOpen = false, onDone }) {
   const { updateRecord, members } = useData();
   const { profile } = useAuth();
   const racer = canSeeAthletes(profile?.email);
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState(() => ({ wind: "", dir: "", topics: [], min: rec.durationMin || "", rating: null, note: "", ...(rec.log || {}) }));
+  useEffect(() => {
+    if (startOpen) openForm();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!canLog(rec, todayStr())) return null;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggle = (t) => set("topics", f.topics.includes(t) ? f.topics.filter((x) => x !== t) : [...f.topics, t]);
@@ -48,6 +52,7 @@ export function TrainingLog({ rec, by }) {
     }
     await updateRecord("plan", rec.id, { log }, by);
     setOpen(false);
+    onDone?.();
     toast(log ? `Günlük kaydedildi${said ? `. ${said}` : ""}` : "Günlük silindi");
   }
 
@@ -67,11 +72,13 @@ export function TrainingLog({ rec, by }) {
 
   const chip = (on) => `rounded-full px-3 py-1.5 text-[0.8125rem] font-medium active:scale-95 ${on ? "bg-acc text-white" : "bg-bg"}`;
   return (
-    <div className="mt-3 rounded-2xl bg-card p-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <div className="flex items-center justify-between">
-        <p className="text-[0.9375rem] font-semibold">Antrenman günlüğü</p>
-        <Link href="/training" className="text-[0.8125rem] font-semibold text-acc">Tümü</Link>
-      </div>
+    <div className={startOpen ? "pb-2" : "mt-3 rounded-2xl bg-card p-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]"}>
+      {!startOpen && (
+        <div className="flex items-center justify-between">
+          <p className="text-[0.9375rem] font-semibold">Antrenman günlüğü</p>
+          <Link href="/training" className="text-[0.8125rem] font-semibold text-acc">Tümü</Link>
+        </div>
+      )}
       <div className="mt-3 flex gap-2">
         <label className="flex flex-1 items-center gap-2 rounded-xl bg-bg px-3">
           <Icon name="wind" className="size-4 text-mut" />
@@ -123,7 +130,7 @@ export function TrainingLog({ rec, by }) {
       <textarea value={f.note} onChange={(e) => set("note", e.target.value)} rows={3} placeholder="Not: kim ne yaptı, sonraki antrenmanda ne çalışılacak…" className="mt-3 w-full resize-none rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] leading-snug outline-none" />
       <div className="mt-3 flex gap-2">
         <button type="button" onClick={save} className="h-11 flex-1 rounded-full bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Kaydet</button>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
+        <button type="button" onClick={() => (setOpen(false), onDone?.())} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
           <Icon name="x" className="size-5" />
         </button>
       </div>

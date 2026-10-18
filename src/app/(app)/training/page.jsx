@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAdd } from "@/features/add/AddProvider";
@@ -46,7 +47,13 @@ export default function TrainingPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
-      <PageHeader title="Antrenman günlüğü" />
+      <PageHeader title="Antrenman günlüğü">
+        {racer && (
+          <Link href="/training/day" className="raised flex h-10 items-center rounded-full px-4 text-[0.875rem] font-semibold text-acc">
+            Bugün
+          </Link>
+        )}
+      </PageHeader>
       <div className="mt-2 flex items-center justify-between rounded-2xl bg-card px-2 py-2 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
         <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} className="grid size-10 place-items-center rounded-full active:scale-95">
           <Icon name="back" className="size-5" />

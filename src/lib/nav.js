@@ -24,6 +24,7 @@ export const PAGES = {
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
   training: { path: "/training", label: "Antrenman günlüğü" },
+  trainingDay: { path: "/training/day", label: "Antrenman sayfası (sayaç, yoklama, yarışlar)", need: "athletes" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   dues: { path: "/dues", label: "Aidatlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
@@ -67,6 +68,7 @@ const TARGETS = [
   ["fitness", /(^|\s)(fitness?\S*|fitnes\S*|spor salon\S*|egzersiz\S*)/],
   ["myAttendance", /(^|\s)(yoklamam\S*|yoklama geçmişim\S*|devamsızlığım\S*)(?=\s|$)/],
   ["attendance", /(^|\s)yoklama\S*/],
+  ["trainingDay", /(^|\s)(antrenman sayfa\S*|antrenman ekran\S*|sayaç\S*|geri sayım\S*)/],
   ["training", /(^|\s)(antrenman günlü\S*|günlü(k|ğü|ğe)\S*)(?=\s|$)/],
   ["dues", /(^|\s)(aidat\S*)(?=\s|$)/],
   ["races", /(^|\s)(yarış evrak\S*|yarışlar\S*|yarış sayfa\S*|evrak\S*)/],
@@ -94,7 +96,7 @@ const TARGETS = [
 ];
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
-const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
+const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy)( sayfası| ekranı)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;

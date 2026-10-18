@@ -25,6 +25,8 @@ import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { PlanActions } from "./PlanActions";
 import { TrainingLog } from "./TrainingLog";
+import { canLog } from "@/lib/trainingLog";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { FitWorkout } from "@/features/fitness/FitWorkout";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
@@ -375,6 +377,24 @@ export function AddSheet({ open, onClose, seed }) {
                 remindFails={edit.kind === "plan" && rec && !isStaff ? Object.entries(rec.remindFail || {}).map(([u, x]) => ({ uid: u, name: u === myUid ? "Sen" : nameOf(u) || "Kişi", why: pushWhy(x) })) : []}
                 onRemindResend={rec && !isStaff ? () => resendRemind(edit.id) : undefined}
               />
+            )}
+            {/* Antrenman sayfası: sayaç, yoklama, yarışlar, günlük (sporcu yetkisi olanda) */}
+            {edit.kind === "plan" && rec && !locked && canLog(rec, todayStr()) && canSeeAthletes(profile?.email) && (
+              <button
+                type="button"
+                onClick={() => {
+                  shut();
+                  router.push(`/training/day?id=${rec.id}`);
+                }}
+                className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.99]"
+              >
+                <Icon name="clock" className="size-5 shrink-0 text-acc" />
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[0.9375rem] font-medium">Antrenman sayfası</b>
+                  <small className="block truncate text-[0.8125rem] text-mut">{rec.races?.length ? `${rec.races.length} yarış` : "Sayaç, yoklama, yarışlar"}</small>
+                </span>
+                <Icon name="chev" className="size-4 text-mut" />
+              </button>
             )}
             {edit.kind === "plan" && rec && !locked && <TrainingLog key={`log-${rec.id}`} rec={rec} by={by} />}
             {edit.kind === "plan" && rec?.fit && !locked && <FitWorkout key={`fit-${rec.id}-${rec.fit.res?.st || ""}-${rec.fit.items?.length || 0}`} rec={rec} by={by} />}
