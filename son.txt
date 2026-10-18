@@ -1,8 +1,8 @@
-Commit: e64cbd9 · Yarış multimedya: yarışı sebebiyle iptal (tehir, genel geri çağırma, iptal); çekim başlıklarında sebep (#492)
-Zaman: 2026-10-18-1844 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39141700143
+Commit: 4b9f193 · Yarış multimedya: videolarda süre, kaydetmeden önce tam ekran ön izleme (#493)
+Zaman: 2026-10-18-1945 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39146303917
 
-TAM TEST · 18.10.2026 18:42:58
+TAM TEST · 18.10.2026 19:43:51
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 89 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 70 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
