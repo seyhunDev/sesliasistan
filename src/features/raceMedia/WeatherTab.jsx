@@ -40,14 +40,14 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
     <>
       <section className={`${card} mt-3 px-4 pb-3 pt-4`}>
         {rows ? (
-          <DayDetail date={day} rows={rows} marks={marks} />
+          <DayDetail date={day} rows={rows} marks={marks} place={wx.place} />
         ) : wx.day === day && wx.err ? (
           <p className="py-6 text-center text-[0.875rem] text-mut">{wx.err}</p>
         ) : (
           <Loading label="Hava yükleniyor" className="py-8" />
         )}
       </section>
-      {wx.place && rows && <p className="mt-1.5 px-1 text-right text-[0.6875rem] text-mut">{wx.place} · Open-Meteo</p>}
+      {wx.place && rows && <p className="mt-1.5 px-1 text-right text-[0.6875rem] text-mut">Open-Meteo</p>}
 
       {list.length > 0 && (
         <>
