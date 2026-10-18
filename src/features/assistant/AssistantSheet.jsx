@@ -90,8 +90,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const say = (t) => run(t, false);
 
   // Konuşma akışı: tam panelde ve sahnenin içinde aynı (embedded: sahnede; tanıtım yazısı yok, panel küçülmez)
-  // İşler yapılırken söylenen cümle alttaki kutuda yazar; üstte ayrıca balon olarak gösterilmez (Seyhun'un seçimi, 2026-10-09)
-  const hideSaid = docked && busy && turns.at(-1)?.role === "user" && !turns.at(-1)?.chip;
+  // Söylenen cümle hemen sohbete balon olarak düşer; alttaki kutu iş sürerken yazı göstermez (2026-10-18)
 
   const convoView = (embedded) => (
     <>
@@ -99,7 +98,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         <PastSessions list={history} />
 
-        <Thread turns={hideSaid ? turns.slice(0, -1) : turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
 
         {/* Bekleme yazıları burada yok: çalışırken durum yalnız üstteki halkada (Seyhun: "iki farklı yerde bilgilendirme
             mesajları oluyor. Olmasın o", 2026-10-17); durdurmak için alttaki kutunun düğmesi */}

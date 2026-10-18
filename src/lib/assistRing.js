@@ -23,7 +23,8 @@ export function ringOf({ state = "idle", transcribing = false, status = "", list
     const r = ringOf({ state, transcribing, status, list, talked, saved });
     return { ...r, label: "", sub: "" };
   }
-  if (state === "listening") return { tone: "listen", fill: 0, label: "Dinliyorum", sub: "", bars: true };
+  // Dinlerken halkada yazı yok: "Dinliyorum" alttaki çubukta, dalganın yanında (2026-10-18)
+  if (state === "listening") return { tone: "listen", fill: 0, label: "", sub: "", bars: true };
   if (state === "busy" || transcribing) {
     if (p.total > 1) return { tone: "work", fill: Math.max(0.08, p.fill), label: status || "Yapıyorum", sub: `${Math.min(p.total, p.done + (p.run ? 1 : 0)) || 1} / ${p.total}` };
     if (status && !transcribing) return { tone: "work", fill: 0.12, label: "Yapıyorum", sub: status, creep: true };
