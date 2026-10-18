@@ -65,7 +65,7 @@ export function cleanStarts(list) {
 
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
-    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ath: cleanIds(m?.ath), ...cleanMoment(m) }))
+    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ath: cleanIds(m?.ath), ...(Number(m?.dur) > 0 ? { dur: Math.min(600, Math.round(m.dur)) } : {}), ...cleanMoment(m) }))
     .filter((m) => m.id && m.url && m.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-400);

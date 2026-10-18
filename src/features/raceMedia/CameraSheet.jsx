@@ -107,7 +107,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending, last })
     r.onstop = () => {
       cancelAnimationFrame(raf);
       const blob = new Blob(parts, { type: type.split(";")[0] });
-      if (blob.size) fns.current.onShot({ blob, type: blob.type, kind: "video", at });
+      if (blob.size) fns.current.onShot({ blob, type: blob.type, kind: "video", at, dur: Math.round((Date.now() - Date.parse(at)) / 1000) });
     };
     const cut = setTimeout(() => stop(), MAX_SEC * 1000);
     rec.current = {

@@ -7,6 +7,7 @@ import { addRaceMedia, dropRaceMedia, prepRaceMedia, saveMedia } from "@/feature
 import { Bar } from "@/features/training/Countdown";
 import { dayOf, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
+import { Thumb } from "./Thumb";
 import { ReviewSheet } from "./ReviewSheet";
 import { CameraSheet } from "./CameraSheet";
 import { stampBlob } from "./stamp";
@@ -59,7 +60,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
     let ok = false;
     try {
       setBusy("Yükleniyor…");
-      const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), rec.mom);
+      const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), { ...rec.mom, dur: rec.dur });
       done.current.add(rec.id);
       await dropPending(rec.id);
       onChange((l) => ({ media: [...l.media, meta] }));
@@ -92,7 +93,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
   };
   // Çekilen telefonda saklanır ve "Kaydetmeden önce" listesine girer (ReviewSheet); Kaydet'e basılınca yüklenir
   const keep = async (m, at, mom, before = 0) => {
-    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, mom, before, err: "", review: true };
+    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, dur: m.dur || 0, mom, before, err: "", review: true };
     await putPending(rec);
     setReviewing((l) => [...l, rec]);
     setLast((l) => (l?.url && URL.revokeObjectURL(l.url), { id: rec.id, kind: rec.kind, url: URL.createObjectURL(rec.blob), state: "saved" }));
@@ -234,15 +235,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
           <div className={`${card} grid grid-cols-3 gap-1 overflow-hidden p-1`}>
             {g.items.map((m) => (
               <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
-                {m.kind === "video" ? (
-                  <>
-                    <video src={`${m.url}#t=0.3`} muted playsInline preload="metadata" className="size-full object-cover" />
-                    <span className="absolute bottom-1 right-1.5 text-[0.6875rem] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">video</span>
-                  </>
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={m.url} alt="" loading="lazy" className="size-full object-cover" />
-                )}
+                <Thumb kind={m.kind} url={m.url} dur={m.dur} />
                 {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
               </button>
             ))}
@@ -255,7 +248,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
-        label={(m) => [m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m)}` : "", hm(m.at)].filter(Boolean).join(" · ")}
+        label={(m) => (m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m)}` : hm(m.at))}
         ours={ours}
         onTag={tag}
         onShare={share}

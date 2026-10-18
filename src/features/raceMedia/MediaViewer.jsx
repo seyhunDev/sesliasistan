@@ -6,8 +6,8 @@ import { hm } from "@/lib/raceLive";
 
 // Tam ekran görüntüleyici (Seyhun 2026-10-18: "tıklandığında tam ekran olsun, yan çevirip izleyebilmeliyim"): iPhone Fotoğraflar gibi
 // siyah zemin, fotoğraf/video ekrana sığar. Dikte üstte Kapat, an ve sıra; altta "Kimler var" ve Paylaş · Sil. Yan çevrilince görüntü
-// bütün ekranı kaplar, tek ince üst şerit (Kapat · an · Paylaş · Sil) üstünde durur. Görüntüye dokununca çubuklar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
-export function MediaViewer({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop }) {
+// bütün ekranı kaplar, tek ince üst şerit (Kapat · an · Paylaş · Sil) üstünde durur. onShare verilmezse Paylaş yok (kaydetmeden önce ön izleme). Görüntüye dokununca çubuklar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
+export function MediaViewer({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop }) {
   if (!id) return null;
   return createPortal(<View items={items} id={id} onPick={onPick} onClose={onClose} label={label} ours={ours} onTag={onTag} onShare={onShare} onDrop={onDrop} />, document.body);
 }
@@ -49,9 +49,11 @@ function View({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop 
           </button>
           <p className="min-w-0 flex-1 truncate text-center text-[0.875rem] font-semibold">{label(m) || hm(m.at)}</p>
           <span className="w-12 shrink-0 text-right text-[0.8125rem] tabular-nums text-white/60">{items.length > 1 ? `${i + 1}/${items.length}` : ""}</span>
-          <button type="button" onClick={() => onShare(m)} className="h-10 shrink-0 text-[1.0625rem] portrait:hidden">
-            Paylaş
-          </button>
+          {onShare && (
+            <button type="button" onClick={() => onShare(m)} className="h-10 shrink-0 text-[1.0625rem] portrait:hidden">
+              Paylaş
+            </button>
+          )}
           <button type="button" onClick={() => onDrop(m)} className="h-10 shrink-0 text-[1.0625rem] text-[#FF453A] portrait:hidden">
             Sil
           </button>
@@ -80,9 +82,13 @@ function View({ items, id, onPick, onClose, label, ours, onTag, onShare, onDrop 
             </div>
           )}
           <div className="flex items-center justify-between">
-            <button type="button" onClick={() => onShare(m)} className="h-10 text-[1.0625rem]">
-              Paylaş
-            </button>
+            {onShare ? (
+              <button type="button" onClick={() => onShare(m)} className="h-10 text-[1.0625rem]">
+                Paylaş
+              </button>
+            ) : (
+              <span />
+            )}
             <button type="button" onClick={() => onDrop(m)} className="h-10 text-[1.0625rem] text-[#FF453A]">
               Sil
             </button>
