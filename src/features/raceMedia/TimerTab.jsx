@@ -8,7 +8,7 @@ import { saveStarts } from "@/features/athletes/raceLiveStore";
 import { COURSES, FLAGS, atOf, dirShort, hm, newStart, renumber, startsOn } from "@/lib/raceLive";
 
 // Süre: start sayacı (Countdown, yarış dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip).
-// Sayacı ve biplerini sayfa yürütür (RaceMedia, sekmeler arasında da sürer); 0 olunca o günün sıradaki yarışı start saati
+// Bipler her sayfada çalar (Countdown.jsx TimerSound); sayaç 0 olunca (RaceMedia) o günün sıradaki yarışı start saati
 // ve o anki rüzgârla (son elle kayıt) kendiliğinden yazılır.
 // Yarışa dokununca saat, parkur, bayrak (ertelendi, geri çağırma, iptal) ve not yazılır; "Yarış ekle" elle ekler.
 const PRESETS = [60, 120, 300];
@@ -25,7 +25,7 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
 
   return (
     <>
-      <Countdown mode="start" presets={PRESETS} run={false} />
+      <Countdown mode="start" presets={PRESETS} />
       <Label right={list.length || ""}>Bugün</Label>
       <ul className={`${card} divide-y divide-line overflow-hidden`}>
         {list.map((s) => (

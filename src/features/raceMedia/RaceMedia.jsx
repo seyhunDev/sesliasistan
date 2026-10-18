@@ -12,7 +12,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
 import { cleanLive, newStart, renumber } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
-import { audio, useTimerRun } from "@/features/training/Countdown";
+import { useTimerRun } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { WeatherTab } from "./WeatherTab";
 import { TimerTab } from "./TimerTab";
@@ -24,7 +24,7 @@ import { DaySummarySheet } from "./DaySummarySheet";
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
 // ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
-// Start sayacı sayfada yürür: başka sekmedeyken de bipler çalar, sekmelerin altında küçük süre satırı görünür (dokununca Süre).
+// Start sayacı başka sekmede ve sayfada da öter (Countdown.jsx TimerSound); sayfanın diğer sekmelerinde küçük süre satırı görünür (dokununca Süre).
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
 const TABS = [["wx", "Hava"], ["sure", "Süre"], ["res", "Sonuçlar"], ["media", "Medya"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -90,7 +90,7 @@ export function RaceMedia({ orgId, id }) {
     },
     [change, orgId, id],
   );
-  const timer = useTimerRun({ mode: "start", onZero, run: !!race });
+  const timer = useTimerRun({ onZero });
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
@@ -112,7 +112,7 @@ export function RaceMedia({ orgId, id }) {
         </button>
       }
     >
-      <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2" onPointerDown={() => timer.running && audio()}>
+      <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
         <Seg value={tab} onChange={setTab} options={TABS} />
         {timer.running && tab !== "sure" && (
           <button type="button" onClick={() => setTab("sure")} className={`mt-2 flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>

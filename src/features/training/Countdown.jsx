@@ -53,23 +53,35 @@ export function useTimer() {
   return useMemo(() => parse(r), [r]);
 }
 
-// Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır
-export function startTimer(sec) {
-  write({ dur: sec, end: Date.now() + sec * 1000, left: null, zero: readTimer().zero });
+// Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır (mode "start": yarış dizisi)
+export function startTimer(sec, mode = "") {
+  write({ dur: sec, end: Date.now() + sec * 1000, left: null, mode, zero: readTimer().zero });
 }
 
 let ctx = null;
-// iPhone sesi ancak dokunuşla açar: Başlat'a basınca hazırlanır (sayaç sürerken her dokunuşta yeniden uyandırılır)
+// iPhone ses oturumu (Safari 16.4+): "auto" iken bipler zil/sessiz düğmesine uyar ve sessiz modda hiç çalmaz (YouTube açıkken çalması
+// bundan: oturum o an çalma kipindeydi). Sayaç sürerken "playback": sessiz modda da çalar (arka plandaki müzik durabilir); bitince "auto".
+// Mikrofon açılırken lib/speech/audioSession.js micReset kipi zaten "auto"ya döndürür.
+function session(on) {
+  try {
+    const s = navigator.audioSession;
+    if (s && s.type !== (on ? "playback" : "auto") && (on || s.type === "playback")) s.type = on ? "playback" : "auto";
+  } catch {}
+}
+// iPhone sesi ancak dokunuşla açar: Başlat'a basınca hazırlanır (sayaç sürerken her dokunuşta yeniden uyandırılır).
+// Başka bir ses (arama, video, ekran kilidi) araya girince bağlam "interrupted"/"suspended" olur: her bipten önce yeniden uyandırılır.
 export function audio() {
   try {
+    session(true);
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume();
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
   } catch {}
   return ctx;
 }
 // kind: short (kısa), mid (yarım saniye: start dizisinde 4 ve 1 dakika kala), long (0'da)
 function beep(kind) {
-  const a = audio();
+  const a = ctx || audio();
+  if (a && a.state !== "running") a.resume().catch(() => {});
   if (!a) return;
   const o = a.createOscillator();
   const g = a.createGain();
@@ -86,14 +98,11 @@ function beep(kind) {
   o.stop(t + d + 0.02);
 }
 
-// Sayacı yürüten kanca: saat (200 ms), zamanında bipler, onZero ve ekranın açık kalması. Yalnız bir yerde çalışmalı (yoksa bip iki kez çalar):
-// antrenmanda Countdown'ın kendisi, yarış multimedya sayfasında sayfanın kendisi (sekmeler arasında da çalsın; Countdown run={false}).
-// mode "start": yelken start dizisi (lib/raceLive.js beepAt). onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez).
-export function useTimerRun({ mode = "", onZero, run = true } = {}) {
+// Sayacın saati (200 ms) ve onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez). Ekranlar bunu kullanır;
+// bipler ise TimerSound'da (uygulama düzeninde tek yerde): sayaç hangi sayfa açık olursa olsun öter.
+export function useTimerRun({ onZero } = {}) {
   const t = useTimer();
   const [now, setNow] = useState(0);
-  const last = useRef(null); // son bip çalan saniye
-  const lock = useRef(null);
   const zeroed = useRef(null); // onZero çağrılan bitiş anı
   const zeroFn = useRef(onZero);
   useEffect(() => {
@@ -104,22 +113,12 @@ export function useTimerRun({ mode = "", onZero, run = true } = {}) {
   const rem = running ? Math.ceil((t.end - now) / 1000) : t.left ?? t.dur;
   const up = running && rem <= 0; // 0'dan sonra ileri sayım
 
-  // Saat: çalışırken 200 ms'de bir; bipler yalnız zamanında (geç kalan bip çalmaz)
   useEffect(() => {
     if (!running) return;
-    last.current = null;
     const tick = () => {
       const n = Date.now();
       setNow(n);
-      if (!run) return;
-      const s = Math.ceil((t.end - n) / 1000);
-      const late = (t.end - n) / 1000 - (s - 1); // bu saniyeye girileli geçen
-      const kind = beepAt(s, mode);
-      if (kind && last.current !== s && (s === 0 ? n - t.end < 1500 : late > 0.6)) {
-        last.current = s;
-        beep(kind);
-      }
-      if (s <= 0 && zeroed.current !== t.end) {
+      if (n >= t.end && zeroed.current !== t.end) {
         zeroed.current = t.end;
         zeroFn.current?.(t.end);
       }
@@ -127,11 +126,54 @@ export function useTimerRun({ mode = "", onZero, run = true } = {}) {
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end, mode, run]);
+  }, [running, t.end]);
+
+  return { t, now, running, rem, up };
+}
+
+// Bipler, ses oturumu ve ekranın açık kalması: uygulama düzeninde bir kez durur ((app)/layout.jsx), sayfa ya da sekme değişse de çalışır.
+// Dizi kayıttaki `mode`a göre (Başlat'a basılan ekranın): "start" yelken start dizisi, "" antrenman (lib/raceLive.js beepAt).
+// Bipler yalnız zamanında (geç kalan bip çalmaz). Sayaç sürerken her dokunuş sesi yeniden uyandırır (iPhone sesi ancak dokunuşla açar).
+export function TimerSound() {
+  const t = useTimer();
+  const running = t.end != null;
+  const last = useRef(null); // son bip çalan saniye
+  const lock = useRef(null);
+
+  useEffect(() => {
+    if (!running) return;
+    last.current = null;
+    const tick = () => {
+      const n = Date.now();
+      const s = Math.ceil((t.end - n) / 1000);
+      const late = (t.end - n) / 1000 - (s - 1); // bu saniyeye girileli geçen
+      const kind = beepAt(s, t.mode || "");
+      if (kind && last.current !== s && (s === 0 ? n - t.end < 1500 : late > 0.6)) {
+        last.current = s;
+        beep(kind);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [running, t.end, t.mode]);
+
+  // Ses: sayaç sürerken oturum çalma kipinde; dokununca ve uygulamaya dönünce bağlam yeniden uyandırılır; durunca kip bırakılır
+  useEffect(() => {
+    if (!running) return session(false);
+    const touch = () => audio();
+    const wake = () => document.visibilityState === "visible" && audio();
+    document.addEventListener("pointerdown", touch, true);
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      document.removeEventListener("pointerdown", touch, true);
+      document.removeEventListener("visibilitychange", wake);
+    };
+  }, [running]);
 
   // Ekran açık kalsın (geri sayım sürerken); uygulamaya dönünce yeniden istenir
   useEffect(() => {
-    if (!run || !running || up || !("wakeLock" in navigator)) return;
+    if (!running || t.end + 60e3 < Date.now() || !("wakeLock" in navigator)) return;
     let off = false;
     const ask = () => {
       if (document.visibilityState !== "visible") return;
@@ -142,23 +184,29 @@ export function useTimerRun({ mode = "", onZero, run = true } = {}) {
     };
     ask();
     document.addEventListener("visibilitychange", ask);
+    const stop = setTimeout(() => {
+      lock.current?.release().catch(() => {});
+      lock.current = null;
+      off = true;
+    }, Math.max(0, t.end - Date.now()) + 60e3); // startan 1 dk sonra bırakılır
     return () => {
       off = true;
+      clearTimeout(stop);
       document.removeEventListener("visibilitychange", ask);
       lock.current?.release().catch(() => {});
       lock.current = null;
     };
-  }, [run, running, up]);
+  }, [running, t.end]);
 
-  return { t, now, running, rem, up };
+  return null;
 }
 
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
 // her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
-// run={false}: sayacı sayfa yürütüyor (useTimerRun), bu ekran yalnız gösterir ve düğmeleri tutar.
-export function Countdown({ mode = "", presets = PRESETS, onZero, run = true }) {
+// Bipler TimerSound'da (her sayfada çalışır); bu ekran gösterir ve düğmeleri tutar.
+export function Countdown({ mode = "", presets = PRESETS, onZero }) {
   const client = useClient();
-  const { t: st, now, running, rem, up } = useTimerRun({ mode, onZero, run });
+  const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
   const [pick, setPick] = useState(false);
   const save = write;
@@ -167,7 +215,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, run = true }) 
     audio();
     const left = t.left ?? t.dur;
     if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
-    save({ ...t, end: Date.now() + left * 1000, left: null });
+    save({ ...t, mode, end: Date.now() + left * 1000, left: null });
   };
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
