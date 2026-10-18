@@ -21,6 +21,7 @@ import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
 import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
+import { useLiveSync } from "./useLiveSync";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
@@ -96,6 +97,7 @@ export function RaceMedia({ orgId, id }) {
     [change, orgId, id, rdays],
   );
   const timer = useTimerRun({ onZero });
+  useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
   // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)
   const tEnd = timer.t.end;
