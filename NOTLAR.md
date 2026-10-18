@@ -5,6 +5,12 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Yarış multimedya sayfasında start sayacı artık sayfada yürüyor (Seyhun: "diğer sekmeleri dolaşırken de süreyi göstermeliyiz... sesler de çalışmalı"; telefonda denenmedi): Countdown.jsx'te `useTimer` (telefondaki kaydı olayla okur) ve `useTimerRun` (saat, bipler, onZero, ekran açık) ayrıldı; RaceMedia `useTimerRun({ mode: "start" })` çalıştırır, Süre sekmesindeki Countdown `run={false}` yalnız gösterir. Sayaç sürerken diğer sekmelerde sekmelerin altında "Start sayacı 3:42" satırı (son 10 sn kırmızı, 0'dan sonra "Startan beri"); dokununca Süre. Sayaç 0 olunca yarış satırı yazma da sayfaya taşındı.
+- Gün seçimi: bugün yarış günlerinden biriyse o gün açılır; yarıştan önce ilk gün, sonra son gün.
+- Antrenman sayacı değişmedi (Countdown kendi yürütür).
+- Start bipleri (Seyhun: "bazen çalışmıyor... ama çalışmalı"; telefonda denenmedi): bipler artık uygulama düzeninde tek yerde (Countdown.jsx `TimerSound`, (app)/layout.jsx): hangi sayfa/sekme açık olursa olsun öter; dizi kayıttaki `mode`a göre (Başlat'a basılan ekran). Sayaç sürerken iPhone ses oturumu "playback" (sessiz modda da çalar, arka plandaki müzik durabilir), bitince "auto"; her dokunuşta ve uygulamaya dönünce ses yeniden uyandırılır. Ekranlar `useTimerRun` ile yalnız saati ve onZero'yu kullanır.
+- Sebep: telefonun kamerası açılınca uygulama arkaya geçiyor, iOS o sırada ses çaldırmıyor. Çözüm uygulama içi kamera: Medya › Fotoğraf/Video artık `CameraSheet` açar (getUserMedia; sayfa önde kalır, sayaç üstte görünür, bipler sürer). Fotoğraf 1600 px; video sessiz, 960 px, ~1,6 Mbit/sn, en çok 2 dk, doğrudan küçük kaydedilir. Çekilenler sırayla yüklenir, kamera açık kalır. Kamera açılamazsa (izin yok) telefonun kamerasına düşer.
+- Fotoğrafların start'a göre ayrılması (Seyhun: "start öncesi, son bir dakika, starttan beri... süreleri fotoğrafın bir yerinde yazmalıyız"): yarış dizisi sayacı sürerken çekilen künyeye `phase` (pre: start öncesi, last: son 60 sn, race: startan sonra), `sec` (starta göre saniye) ve `end` (o startın anı) yazılır (lib/raceLive.js `momentOf`). Liste yarışa ve ana göre gruplu: "2. yarış · Yarış", "2. yarış · Son 1 dakika", "2. yarış · Start öncesi" (start daha yazılmadıysa sıradaki yarış numarası, `momentRace`). Küçük resimde "−0:42" / "+12:30", büyükte "Son 1 dakika · 0:42 kala". Fotoğrafa ve videoya sol alta basılır (stamp.js; videoda süre akarak). Sayaçsız çekilenler eskisi gibi saatine göre son startın altında.
 - Yarış multimedya sayfasına üç ek (Seyhun: "3'ü ve 5'i de ekleyelim... video max 2 dakika, sıkıştırarak gönderelim muhakkak"; telefonda denenmedi):
   - Video kuralı: en çok 2 dakika (uzunsa "Video en çok 2 dakika olabilir"); her zaman 960 px, ~1,6 Mbit/sn'ye küçültülür; telefon küçültemezse kaydedilmez; sonuç 40 MB'ı geçerse kaydedilmez. Fotoğraf 1600 px JPEG (raceLiveStore.js `prepRaceMedia`).
   - Sporcu etiketi: Medya'da fotoğrafa/videoya dokununca "Kimler var" altında yarıştaki sporcular; dokun ekle/çıkar. Künyede `ath: [id]` (lib/raceLive.js `tagMedia`, `mediaOf`). Etiketli varsa üstte sporcu süzgeci (Hepsi · Ali …). Silme artık kalan listeyi yazar (arrayRemove eski künyelerle eşleşmiyordu).
@@ -765,6 +771,10 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+1. Telefonda dene: Süre'de 5 dk başlat, Hava/Medya'ya geç; 4:00, 1:00 ve son 10 sn bipleri geliyor mu, satıra dokununca Süre açılıyor mu. iPhone sessiz modda ve uygulama arka plandayken ses çıkmaz.
+1. Telefonda dene: Süre'de 5 dk başlat, Medya'da uygulama içi kamerayla fotoğraf/video çek; bipler kesilmeden geliyor mu, üstteki süre ve fotoğrafa basılan yazı doğru mu; sessiz modda bip.
+2. Kamera izni iPhone PWA'da her açılışta sorulabilir; can sıkarsa bakılacak.
+3. Ön/arka kamera değiştirme ve yakınlaştırma yok.
 1. Telefonda dene: 2 dakikadan uzun video reddediliyor mu, 1–2 dk video ne kadar sürede ve kaç MB'a iniyor; etiketle ve süz; Özet kartını WhatsApp'a ve Instagram'a paylaş.
 2. Etiketli fotoğraflar kişi sayfasında ve Instagram gönderisi hazırlarken seçilebilsin (yapılmadı).
 3. Karta günün fotoğrafı eklemek için Storage CORS ayarı gerekir (yoksa tuval kirlenir); şimdilik fotoğrafsız.
