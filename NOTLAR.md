@@ -5,6 +5,9 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Start sayacı 0'dan sonra "Startan beri" en çok 59:59 sayar (`upSec`, `UP_MAX` lib/raceLive.js); 60. dakikada TimerSound sayacı kendiliğinden durdurur (start anı `zero` olarak kalır). Uygulama kapalıyken geçtiyse açılınca hemen durur. Süre sekmesi, sekmelerdeki küçük satır ve kamera aynı sınırı gösterir.
+- Yarış akışında sayaç böyle durursa yarışa bitiş yazılmaz; yarış satırında süre boş kalır.
+- Yarış multimedya (Medya, Hava, Sonuçlar, Süre) ve antrenman sayacında en alttakiler sabit düğmenin altında kalıyordu: `body[data-dock] main` alt boşluğu (globals.css) sayfanın kendi sınıfını eziyordu, düğme şeridi (Countdown.jsx `Bar`) body'ye taşındığı için `data-pagebar` kuralı da onu görmüyordu. Şeride `data-bar` eklendi; `body[data-dock]:has(> [data-bar]) main` alt boşluğu şerit kadar büyütür.
 - Yarış multimedya › "Kaydetmeden önce" sade: satırda küçük resim, yarış tek dokunuşla açılan seçici (iPhone çarkı), evre dört parçalı düğme (Öncesi · Son 1 dk · Sırasında · Sonrası), Sil.
 - Kaydet'e basınca liste açık kalır, her çekimde yükleniyor / ! görünür, yüklenemezse kırmızı sebep üstte ve düğme "Tekrar dene"; hepsi yüklenince kapanır ("n çekim kaydedildi").
 - Hata: yarış günleri dışında (ör. yarıştan önce denerken) çekilen kaydediliyordu ama o gün listede olmadığı için görünmüyordu. Artık çekim ya da start olan her gün gün listesine eklenir (`liveDays`, lib/raceLive.js).
@@ -783,6 +786,8 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+- Telefonda dene: geri sayımı başlat, 59:59'da durduğunu gör (beklemeden denemek için saat ileri alınabilir).
+- Telefonda dene: Medya sekmesinde en alta kaydır, son fotoğraf satırı düğmelerin üstünde tam görünmeli.
 - Telefonda dene: yarıştan önceki bir gün fotoğraf çek, Kaydet, bugünün günü seçili gelip fotoğraf görünmeli. Kırmızı yazı çıkarsa metnini Seyhun'dan iste (Storage kuralı yayınlandı mı?).
 1. Seyhun Firebase › Storage › Rules'u yayınlamalı (`pbcopy < storage.rules`); yayınlanınca bekleyen kayıtlar Medya sekmesi açılınca kendiliğinden yüklenir.
 2. Telefonda dene: kamerayı dik ve yan tut, Bitti, son çekilen; YouTube açıkken uygulamayı aç (durmamalı), sayaç başlatınca bipler.
