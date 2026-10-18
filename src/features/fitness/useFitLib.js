@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { libSetMedia } from "@/lib/fitness/library";
+import { libMerge, libSetMedia } from "@/lib/fitness/library";
 import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
-// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media }) }
+// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media }), merge(keep, keys) }
 // setMedia hareketin fotoğraf/videosunu kütüphaneye yazar ve hemen programlara ve sporcuların antrenmanlarına taşır
 // (pencere kapanmasını beklemez; sayfadan çıkılsa da video sporcuya gider).
 export function useFitLib() {
@@ -39,5 +39,16 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia };
+  // Aynı adlı kopyaları birleştirir; programlar ve antrenmanlar kalanın fotoğraf/videosunu alır
+  const merge = useCallback(
+    async (keep, keys) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      const saved = await saveLib(orgId, libMerge(cur, keep, keys));
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] birleştirme sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
+  return { lib, setMedia, merge };
 }

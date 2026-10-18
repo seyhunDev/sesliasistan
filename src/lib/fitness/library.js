@@ -1,10 +1,13 @@
 // Kulübün hareket kütüphanesi: programlarda geçen her hareket bir kez, numarasıyla kaydedilir; fotoğrafı, videosu ve
 // YouTube bağlantısı hareketin kendisinde durur. Bir harekete video eklenince o hareketin geçtiği bütün programlarda
 // (sporcularınki dahil) aynı video görünür. Kayıt tek belge: orgs/{org}/fitLib/main
-//   { next, items: { anahtar: { no, name, kind, yt, media [], m } } }
+//   { next, items: { anahtar: { no, name, kind, yt, media [], spare [], m } }, alias: { eski anahtar: anahtar } }
 // anahtar: listedeki hareketin id'si ("wall-sit"), listede olmayan (elle yazılan) hareket "c:ad" ("c:sandalyede-dips").
 // no: hareket kütüphaneye ilk girdiğinde verilir (1, 2, 3…), değişmez. m: fotoğraf/video bu kütüphaneden yönetiliyor
 // (true ise programdaki hareket kütüphanedekini kullanır; false ise programdaki kendi fotoğrafı kalır).
+// Aynı adlı iki kayıt olmaz: listedeki hareket ("split-squat") ile elle yazılan ("c:split-squat") aynı adı taşıyorsa
+// önceki kayıt kullanılır (libKey). Eskiden açılmış kopyalar birleştirilir (libMerge): kalanın anahtarı alias'ta,
+// fotoğraf/videolar birleşir; 3'ten fazlası spare'de saklanır (silinmez).
 import { exById, fold } from "./exercises";
 import { cleanMedia } from "./model";
 import { cleanYt } from "./youtube";
@@ -19,6 +22,22 @@ export function exKey(it) {
 }
 export const isCustomKey = (k) => String(k || "").startsWith("c:");
 
+// Kütüphanedeki anahtar: birleştirilmiş eski anahtar → kalan; kütüphanede yoksa aynı adlı kayıt
+export function libKey(lib, it) {
+  const k = exKey(it);
+  if (!k) return "";
+  const items = lib?.items || {};
+  const a = lib?.alias?.[k];
+  if (a && items[a]) return a;
+  if (items[k]) return k;
+  const f = fold(it?.name || exById(k)?.name);
+  if (!f) return k;
+  const same = Object.entries(items)
+    .filter(([, e]) => fold(e.name) === f)
+    .sort((x, y) => x[1].no - y[1].no)[0];
+  return same ? same[0] : k;
+}
+
 export function cleanLib(v = {}) {
   const items = {};
   let next = 1;
@@ -32,20 +51,26 @@ export function cleanLib(v = {}) {
     if (yt) o.yt = yt;
     const media = cleanMedia(e.media);
     if (media.length) o.media = media;
+    const spare = cleanMedia(e.spare, 30);
+    if (spare.length) o.spare = spare;
     if (e.m || yt || media.length) o.m = true;
     items[k] = o;
     next = Math.max(next, no + 1);
   }
-  return { next: Math.max(next, Math.round(+v?.next) || 1), items };
+  const alias = {};
+  for (const [a, b] of Object.entries(v?.alias || {})) if (a && a.length <= 60 && !items[a] && items[b]) alias[a] = b;
+  const out = { next: Math.max(next, Math.round(+v?.next) || 1), items };
+  if (Object.keys(alias).length) out.alias = alias;
+  return out;
 }
 
 // Kütüphanede olmayan hareketleri sırayla numaralayıp ekler. Programdaki hareketin kendi fotoğrafı/videosu varsa
 // (kütüphane öncesi programlar) o kütüphaneye geçer. Dönüş: { lib, added: [anahtar] }
 export function libAdd(lib, items = []) {
-  const out = { next: lib?.next || 1, items: { ...(lib?.items || {}) } };
+  const out = { ...(lib?.alias ? { alias: lib.alias } : {}), next: lib?.next || 1, items: { ...(lib?.items || {}) } };
   const added = [];
   for (const it of items) {
-    const k = exKey(it);
+    const k = libKey(out, it);
     if (!k) continue;
     const cur = out.items[k];
     const own = { yt: cleanYt(it.yt), media: cleanMedia(it.media) };
@@ -64,6 +89,12 @@ function withMedia(e, { yt, media }) {
   const o = { ...e, m: true };
   delete o.yt;
   delete o.media;
+  // Kaldırılan fotoğraf yedekte duruyorsa yedekten çıkar (dosyası silinebilsin); yedektekiler yerinde kalır
+  if (o.spare) {
+    const now = new Set(cleanMedia(media).map((m) => m.id));
+    o.spare = o.spare.filter((m) => !now.has(m.id));
+    if (!o.spare.length) delete o.spare;
+  }
   if (cleanYt(yt)) o.yt = cleanYt(yt);
   const md = cleanMedia(media);
   if (md.length) o.media = md;
@@ -72,13 +103,13 @@ function withMedia(e, { yt, media }) {
 
 // Hareketin fotoğraf/videosunu kütüphanede değiştirir (yoksa ekler, numara verir)
 export function libSetMedia(lib, it, { yt, media }) {
-  const k = exKey(it);
-  if (!k) return lib;
   const base = libAdd(lib, [{ ex: it.ex, name: it.name, kind: it.kind }]).lib;
+  const k = libKey(base, it);
+  if (!k || !base.items[k]) return lib;
   return { ...base, items: { ...base.items, [k]: withMedia(base.items[k], { yt, media }) } };
 }
 
-export const libEntry = (lib, it) => lib?.items?.[exKey(it)] || null;
+export const libEntry = (lib, it) => lib?.items?.[libKey(lib, it)] || null;
 export const libNo = (lib, it) => libEntry(lib, it)?.no || 0;
 
 // Programdaki/antrenmandaki hareket kütüphanedekini kullanır (kütüphane yönetiyorsa)
@@ -109,7 +140,55 @@ export function libList(lib, q = "") {
 }
 
 // Kütüphanedeki fotoğraf/video kimlikleri (program silinince bunlar silinmez)
-export const libMediaIds = (lib) => new Set(Object.values(lib?.items || {}).flatMap((e) => (e.media || []).map((m) => m.id)));
+export const libMediaIds = (lib) => new Set(Object.values(lib?.items || {}).flatMap((e) => [...(e.media || []), ...(e.spare || [])].map((m) => m.id)));
+
+// ---- Kopyalar ----
+const mediaCount = (e) => (e.media?.length || 0) + (e.spare?.length || 0) + (e.yt?.id ? 1 : 0);
+// Aynı adlı kayıt grupları: [{ name, keep, items: [{ key, no, name, media, yt, … }] }]; ilk satır kalacak olan
+// (fotoğrafı/videosu en çok olan; eşitse numarası küçük olan)
+export function libDupes(lib) {
+  const by = new Map();
+  for (const e of libList(lib)) {
+    const f = fold(e.name);
+    if (!f) continue;
+    by.set(f, [...(by.get(f) || []), e]);
+  }
+  return [...by.values()]
+    .filter((g) => g.length > 1)
+    .map((g) => {
+      const items = [...g].sort((a, b) => mediaCount(b) - mediaCount(a) || a.no - b.no);
+      return { name: items[0].name, keep: items[0].key, items };
+    });
+}
+
+// Kopyaları birleştirir: keep kalır, ötekiler silinir ve anahtarları keep'e yönlenir (programlar değişmeden kalanı
+// kullanır). Fotoğraf/video hiçbiri kaybolmaz: hepsi kalana geçer (ilk 3'ü görünür, fazlası spare'de). YouTube kalanınki,
+// yoksa öbürününki.
+export function libMerge(lib, keep, keys = []) {
+  const items = { ...(lib?.items || {}) };
+  const k0 = items[keep];
+  const drop = keys.filter((k) => k !== keep && items[k]);
+  if (!k0 || !drop.length) return lib;
+  const seen = new Set();
+  const all = [k0, ...drop.map((k) => items[k])]
+    .flatMap((e) => [...(e.media || []), ...(e.spare || [])])
+    .filter((m) => m?.id && !seen.has(m.id) && seen.add(m.id));
+  const yt = k0.yt || drop.map((k) => items[k].yt).find(Boolean);
+  const o = { ...k0 };
+  delete o.media;
+  delete o.spare;
+  delete o.yt;
+  if (yt) o.yt = yt;
+  if (all.length) o.media = all.slice(0, 3);
+  if (all.length > 3) o.spare = all.slice(3);
+  if (o.media || yt || drop.some((k) => items[k].m)) o.m = true;
+  items[keep] = o;
+  for (const k of drop) delete items[k];
+  const alias = {};
+  for (const [a, b] of Object.entries(lib?.alias || {})) alias[a] = drop.includes(b) ? keep : b;
+  for (const k of drop) alias[k] = keep;
+  return { ...lib, items, alias };
+}
 
 // Yapay zekaya: listede olmayan, kulübün kendi hareketleri ("c:…: ad")
 export const customCatalog = (lib) =>
