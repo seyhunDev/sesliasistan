@@ -85,6 +85,15 @@ export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts
 // hiçbir gün seçilemediği için görünmezdi (Seyhun 2026-10-18: "kaydet dediğimde kaydedilmedi").
 // Startan beri ileri sayım en çok 59:59 (Seyhun 2026-10-18: "bir saatlik limit olsun, 59:59'da bitsin"); sayaç 60. dakikada kendiliğinden durur (TimerSound)
 export const UP_MAX = 3599;
+// Cihazlar arası sayaç (useLiveSync): belgeye yazılan alanlar ve uzaktaki sayacın bu cihaza yazılıp yazılmayacağı.
+// Sayfa ilk açılırken (first) yalnız süren sayaç alınır; durmuş eski kayıt buradaki antrenman sayacını durdurmaz.
+export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null });
+export function takeTimer(remote, mine, first, now) {
+  if (!remote) return false;
+  if (JSON.stringify(pickTimer(remote)) === JSON.stringify(pickTimer(mine))) return false;
+  if (first) return remote.end != null && now < remote.end + (UP_MAX + 1) * 1000;
+  return true;
+}
 export const upSec = (end, now) => Math.min(UP_MAX, Math.max(0, Math.floor((now - end) / 1000)));
 export const liveDays = (days, live) =>
   [...new Set([...(days || []), ...(live?.days || []), ...[...(live?.media || []), ...(live?.starts || [])].map((x) => dayOf(x.at)).filter((d) => /^\d{4}-/.test(d))])].sort();
