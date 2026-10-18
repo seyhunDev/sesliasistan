@@ -2448,6 +2448,28 @@ group("Sayfa çökmesi")([
   ["boş", F("yenilemez", () => !CR.isChunkError(null) && !CR.isChunkError(undefined))],
 ]);
 
+// Gerçekleşen rüzgâr (windObs.js): Dikili istasyonunun SYNOP raporu okunur, yalnız 10 km içindeki yere gösterilir
+const WO = await import("@/lib/windObs");
+const SYN = {
+  kn: "17180,2026,10,18,12,00,AAXX 18124 17180 42970 33006 10216 20104 30102 40124 58008 333 91108=",
+  ms: "17180,2026,10,18,15,00,AAXX 18151 17180 42970 32510 10216 333 91015=",
+  calm: "17180,2026,10,18,18,00,AAXX 18184 17180 42970 30000 10216=",
+  big: "17180,2026,10,18,09,00,AAXX 18094 17180 42970 33099 00105 10216=",
+};
+group("Ölçülen rüzgâr")([
+  ["knot raporu", F("300°, 6 kn, sağanak 8", () => { const o = WO.parseSynop(SYN.kn, "17180"); return o.dir === 300 && o.kn === 6 && o.gust === 8 && o.at === "2026-10-18T12:00:00.000Z"; })],
+  ["m/s raporu", F("250°, 10 m/s = 19 kn, sağanak 29", () => { const o = WO.parseSynop(SYN.ms, "17180"); return o.dir === 250 && o.kn === 19 && o.gust === 29; })],
+  ["sakin", F("yön yok, 0 kn, sağanak yok", () => { const o = WO.parseSynop(SYN.calm, "17180"); return o.dir === null && o.kn === 0 && o.gust === null; })],
+  ["99 üstü", F("00fff grubu", () => WO.parseSynop(SYN.big, "17180").kn === 105)],
+  ["boş rapor", F("NIL, başka istasyon, bozuk satır okunmaz", () => WO.parseSynop("17180,2026,10,18,18,00,AAXX 18184 17180 NIL=", "17180") === null && WO.parseSynop(SYN.kn.replace(/^17180/, "17220"), "17180") === null && WO.parseSynop("x", "17180") === null)],
+  ["yerel saat", F("12 ve 15 UTC → 15 ve 18; başka gün çıkar", () => {
+    const r = WO.obsRows([WO.parseSynop(SYN.kn), WO.parseSynop(SYN.ms), { at: "2026-10-17T12:00:00.000Z", kn: 3, gust: null, dir: 0 }], "2026-10-18");
+    return r.map((x) => `${x.hh}:${x.wind}`).join() === "15:6,18:19";
+  })],
+  ["istek aralığı", F("yerel gün UTC'de", () => { const u = WO.utcRange("2026-10-18"); return u.begin === "202610172100" && u.end === "202610182059"; })],
+  ["Dikili yakın", F("istasyon 10 km içinde", () => { const s = WO.nearestStation(39.0717, 26.8886); return s.name === "Dikili" && s.near && s.km < 1; })],
+  ["Foça uzak", F("istasyon gösterilmez", () => { const s = WO.nearestStation(38.67, 26.75); return !s.near && s.km > 10; })],
+]);
 // Hava durumu hesapları (weather.js): Open-Meteo yanıtının sadeleşmesi, günün saatleri, yelkene uygun saatler, rüzgâr adı ve şiddeti,
 // gökyüzü adı ve grafik şeridi rengi, hava sorusu tanıma, yapay zekaya giden özet (ağa çıkmaz)
 {
