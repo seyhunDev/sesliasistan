@@ -10,7 +10,7 @@ import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, zeroRace } from "@/lib/raceLive";
+import { beginRace, cleanLive, liveDays, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -111,10 +111,11 @@ export function RaceMedia({ orgId, id }) {
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
-  const days = raceDays(race);
+  const rdays = raceDays(race);
+  const days = liveDays(rdays, live);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
-  const n = days.indexOf(cur) + 1;
-  const sub = [race.district || race.city, n > 0 && days.length > 1 ? `${n}. gün` : "", dayLabel(cur)].filter(Boolean).join(" · ");
+  const n = rdays.indexOf(cur) + 1;
+  const sub = [race.district || race.city, n > 0 && rdays.length > 1 ? `${n}. gün` : "", dayLabel(cur)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
 
   return (
