@@ -156,22 +156,30 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   );
 }
 
-// Kare alan: sıradaki yarış (ad, tarih · sporcu, büyük kalan gün, eksik iş). Dokununca yarışın sayfası
+// Kare alan: sıradaki yarış (ad, tarih · sporcu, büyük kalan gün, eksik iş). Dokununca yarışın sayfası;
+// altta "Multimedyayı aç" yarış günü sayfasını açar (Seyhun 2026-10-18: "ana sayfadan ilgili yarışın multimedya sayfasına ulaşabilirim")
 function RaceWidget({ r, cls }) {
   const sub = r.sub || "";
   return (
-    <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className={`${WIDGET} ${cls}`}>
-      <WHead tone="sp" title="Sıradaki yarış" />
-      <b className="mt-2 block truncate text-[0.96875rem] font-semibold">{r.title}</b>
-      <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
-      <span className="mt-auto flex items-baseline justify-between gap-2 pt-2">
-        <span className="text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
-          {r.days != null ? r.days : r.when}
-          {r.days != null && <span className="ml-1 text-[0.9375rem] font-medium">gün</span>}
+    <div className={`${WIDGET} ${cls}`}>
+      <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className="flex flex-1 flex-col">
+        <WHead tone="sp" title="Sıradaki yarış" />
+        <b className="mt-2 block truncate text-[0.96875rem] font-semibold">{r.title}</b>
+        <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
+        <span className="mt-auto flex items-baseline justify-between gap-2 pt-2">
+          <span className="text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
+            {r.days != null ? r.days : r.when}
+            {r.days != null && <span className="ml-1 text-[0.9375rem] font-medium">gün</span>}
+          </span>
+          {r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
         </span>
-        {r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
-      </span>
-    </Link>
+      </Link>
+      {r.id && (
+        <Link href={`/athletes/races/${r.id}/media`} className="mt-2.5 grid h-9 place-items-center rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:translate-y-px">
+          Multimedyayı aç
+        </Link>
+      )}
+    </div>
   );
 }
 

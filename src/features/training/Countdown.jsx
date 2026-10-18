@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
+import { beepAt } from "@/lib/raceLive";
 
 // Antrenman sayacı: hazır 2/5/10 dk ya da Ayarla (dakika + saniye). Son 5 saniye her saniye kısa bip, 0'da uzun bip;
 // 0'dan sonra ileri sayar ("Startan beri") ve bu an yarış startı olarak kullanılabilir (readTimer().zero).
@@ -33,6 +34,12 @@ const write = (t) => {
   } catch {}
 };
 
+// Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır; açık sayaç ekranı olayla yeniden okur
+export function startTimer(sec) {
+  write({ dur: sec, end: Date.now() + sec * 1000, left: null, zero: readTimer().zero });
+  window.dispatchEvent(new Event(KEY));
+}
+
 let ctx = null;
 // iPhone sesi ancak dokunuşla açar: Başlat'a basınca hazırlanır
 function audio() {
@@ -42,15 +49,16 @@ function audio() {
   } catch {}
   return ctx;
 }
-function beep(long) {
+// kind: short (kısa), mid (yarım saniye: start dizisinde 4 ve 1 dakika kala), long (0'da)
+function beep(kind) {
   const a = audio();
   if (!a) return;
   const o = a.createOscillator();
   const g = a.createGain();
   o.type = "sine";
-  o.frequency.value = long ? 1320 : 880;
+  o.frequency.value = kind === "long" ? 1320 : 880;
   const t = a.currentTime;
-  const d = long ? 1 : 0.18;
+  const d = kind === "long" ? 1 : kind === "mid" ? 0.5 : 0.18;
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(0.6, t + 0.02);
   g.gain.setValueAtTime(0.6, t + d - 0.05);
@@ -60,7 +68,10 @@ function beep(long) {
   o.stop(t + d + 0.02);
 }
 
-export function Countdown() {
+// mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
+// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
+// onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez); çağıran aynı anı iki kez yazmamalı.
+export function Countdown({ mode = "", presets = PRESETS, onZero }) {
   const client = useClient();
   const [st, setT] = useState(null); // null: telefondaki kayıttan okunur
   const t = st ?? (client ? readTimer() : blank);
@@ -68,6 +79,16 @@ export function Countdown() {
   const [pick, setPick] = useState(false);
   const last = useRef(null); // son bip çalan saniye
   const lock = useRef(null);
+  useEffect(() => {
+    const fresh = () => setT(null);
+    window.addEventListener(KEY, fresh);
+    return () => window.removeEventListener(KEY, fresh);
+  }, []);
+  const zeroed = useRef(null); // onZero çağrılan bitiş anı
+  const zeroFn = useRef(onZero);
+  useEffect(() => {
+    zeroFn.current = onZero;
+  }, [onZero]);
   const save = (x) => {
     setT(x);
     write(x);
@@ -85,15 +106,20 @@ export function Countdown() {
       setNow(n);
       const s = Math.ceil((t.end - n) / 1000);
       const late = (t.end - n) / 1000 - (s - 1); // bu saniyeye girileli geçen
-      if (s >= 0 && s <= 5 && last.current !== s && (s === 0 ? n - t.end < 1500 : late > 0.6)) {
+      const kind = beepAt(s, mode);
+      if (kind && last.current !== s && (s === 0 ? n - t.end < 1500 : late > 0.6)) {
         last.current = s;
-        beep(s === 0);
+        beep(kind);
+      }
+      if (s <= 0 && zeroed.current !== t.end) {
+        zeroed.current = t.end;
+        zeroFn.current?.(t.end);
       }
     };
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end]);
+  }, [running, t.end, mode]);
 
   // Ekran açık kalsın (geri sayım sürerken); uygulamaya dönünce yeniden istenir
   useEffect(() => {
@@ -119,13 +145,15 @@ export function Countdown() {
   const start = () => {
     audio();
     last.current = null;
-    save({ ...t, end: Date.now() + (t.left ?? t.dur) * 1000, left: null });
+    const left = t.left ?? t.dur;
+    if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
+    save({ ...t, end: Date.now() + left * 1000, left: null });
   };
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
   const add = (s) => (running ? save({ ...t, end: t.end + s * 1000 }) : save({ ...t, left: (t.left ?? t.dur) + s }));
   const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero });
-  const custom = !PRESETS.includes(t.dur);
+  const custom = !presets.includes(t.dur);
 
   const R = 105;
   const C = 2 * Math.PI * R;
@@ -149,7 +177,7 @@ export function Countdown() {
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         {idle ? (
           <>
-            {PRESETS.map((s) => (
+            {presets.map((s) => (
               <button key={s} onClick={() => choose(s)} className={chip(t.dur === s)}>
                 {s / 60} dk
               </button>
@@ -184,7 +212,7 @@ export function Countdown() {
 }
 
 // Eylem düğmesi sekme çubuğunun hemen üstünde sabit
-function Bar({ children }) {
+export function Bar({ children }) {
   if (!useClient()) return null;
   return createPortal(<div className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
 }

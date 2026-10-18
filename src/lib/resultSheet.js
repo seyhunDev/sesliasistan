@@ -48,7 +48,7 @@ export function clsName(raw) {
   return s.slice(0, 30);
 }
 
-// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, sex, cat }] }] (sıraya göre)
+// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, cat }] }] (sıraya göre)
 export function cleanSheet(raw) {
   const fleets = [];
   for (const f of (Array.isArray(raw) ? raw : []).slice(0, 12)) {
@@ -60,6 +60,8 @@ export function cleanSheet(raw) {
         name: String(r?.name || "").replace(/\s+/g, " ").trim().slice(0, 80),
         sail: String(r?.sail || "").trim().slice(0, 20),
         club: String(r?.club || "").replace(/\s+/g, " ").trim().slice(0, 80),
+        born: String(r?.born || "").replace(/\s+/g, " ").trim().slice(0, 10),
+        pts: Number.isFinite(Number(r?.pts)) && r?.pts !== null && r?.pts !== "" && Number(r.pts) >= 0 ? Math.round(Number(r.pts) * 10) / 10 : "",
         sex: sexOf(r?.sex),
         cat: catOf(cls, r?.cat),
       }))

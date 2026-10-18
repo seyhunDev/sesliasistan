@@ -16,11 +16,12 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // mini: ana sayfadaki küçük hâli (alçak, dokunuşla seçim yok; dokununca pencere açılır).
 // İki hâlde de üstte her saat rüzgârın estiği yöne bakan ok (17 kn ve üstü turuncu) ve altında gökyüzü şeridi
 // (Seyhun: "rüzgâr ya da sağanak artış azalışlarında ne taraftan geldiğini, hava açık mı kapalı mı görmek istiyorum").
+// marks: ölçülen rüzgâr (yarış multimedya sayfası; elle ya da ileride cihazdan) [{ i: saat sırası (kesirli), kn }]: içi boş yuvarlak.
 const W = 340, L = 22, R = 6; // grafik genişliği ve sol/sağ boşluk (saat simgeleri de buna göre dizilir)
-function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
+function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [] }) {
   const H = mini ? 110 : 182, T = 40, B = 16;
   const n = rows.length;
-  const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust)) + 2) / 5) * 5);
+  const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust), ...marks.map((m) => m.kn)) + 2) / 5) * 5);
   const x = (i) => L + (i * (W - L - R)) / Math.max(1, n - 1);
   const y = (v) => T + (1 - v / top) * (H - T - B);
   const line = (k) => rows.map((h, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(h[k]).toFixed(1)}`).join("");
@@ -86,6 +87,9 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
           <circle cx={x(sel)} cy={y(s.wind)} r="3.5" className="fill-acc stroke-card" strokeWidth="1.5" />
         </g>
       )}
+      {marks.map((m, k) => (
+        <circle key={`m${k}`} cx={(L + (m.i * (W - L - R)) / Math.max(1, n - 1)).toFixed(1)} cy={y(m.kn).toFixed(1)} r="3.6" className="fill-card stroke-fg" strokeWidth="1.6" />
+      ))}
       {nowV != null && (
         <g className="text-rec">
           <line x1={nx} x2={nx} y1={ny} y2={y(0)} stroke="currentColor" strokeOpacity=".45" strokeDasharray="2 2" />
@@ -110,7 +114,7 @@ export function TodayWind({ rows }) {
 }
 
 // Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.
-export function DayDetail({ date, rows, info, cur }) {
+export function DayDetail({ date, rows, info, cur, marks = [] }) {
   const now = useNow();
   const isToday = YMD.format(now) === date;
   const nowIdx = isToday ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
@@ -121,6 +125,7 @@ export function DayDetail({ date, rows, info, cur }) {
   const min = Math.min(...rows.map((h) => h.t));
   const max = Math.max(...rows.map((h) => h.t));
   const code = info?.code ?? peak.code;
+  const got = [...marks].reverse().find((m) => m.hh === s.hh); // seçili saatte ölçülen (son kayıt)
 
   return (
     <div className="pb-2">
@@ -154,15 +159,17 @@ export function DayDetail({ date, rows, info, cur }) {
           <span className="text-mut"> · {windName(s.dir)[0]} </span>
           <span className={`font-semibold ${windLevel(s.wind).tone}`}>{s.wind} kn</span>
           <span className="text-mut"> · sağanak {s.gust} · {s.t}° · {sky(s.code, s.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}</span>
+          {got && <span className="font-semibold"> · ölçülen {got.kn} kn</span>}
         </p>
       </div>
       <div className="mt-1">
-        <WindChart rows={rows} sel={sel} onSel={setSel} nowAt={nowAt} />
+        <WindChart rows={rows} sel={sel} onSel={setSel} nowAt={nowAt} marks={marks} />
       </div>
       <p className="flex items-center justify-end gap-2 text-[0.6875rem] text-mut">
         <span className="inline-block h-0.5 w-3 rounded bg-acc" /> rüzgâr
         <span className="inline-block w-3 border-t border-dashed border-mut" /> sağanak
         {nowIdx >= 0 && <><span className="inline-block size-2 rounded-full bg-rec" /> şimdi</>}
+        {marks.length > 0 && <><span className="inline-block size-2 rounded-full border border-fg" /> ölçülen</>}
         <span>· parmağınla kaydır</span>
       </p>
       <p className="mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-mut">

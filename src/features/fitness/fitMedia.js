@@ -25,7 +25,7 @@ const cacheKey = (id) => `fitm:${id}`;
 export const isVideoFile = (f) => /^video\//.test(f?.type || "") || /\.(mov|mp4|m4v|webm)$/i.test(f?.name || "");
 const isImageFile = (f) => /^image\//.test(f?.type || "") || /\.(jpe?g|png|heic|heif|webp)$/i.test(f?.name || "");
 
-function videoMeta(url) {
+export function videoMeta(url) {
   return new Promise((res, rej) => {
     const v = document.createElement("video");
     v.preload = "metadata";
@@ -43,16 +43,16 @@ function recType() {
   return "";
 }
 
-// Videoyu 640 px'e küçültüp yeniden kaydeder (sessiz; hareket gösterimi). onProg(0..1)
-async function shrinkVideo(v, onProg) {
+// Videoyu 640 px'e (max) küçültüp yeniden kaydeder (sessiz; hareket gösterimi; yarış videosu da kullanır). onProg(0..1)
+export async function shrinkVideo(v, onProg, max = 640, bps = 900_000) {
   const type = recType();
   const c = document.createElement("canvas");
   if (!type || !c.captureStream) throw new Error("no-shrink");
-  const k = Math.min(1, 640 / Math.max(v.videoWidth || 640, v.videoHeight || 640));
-  c.width = Math.max(2, Math.round((v.videoWidth || 640) * k / 2) * 2);
+  const k = Math.min(1, max / Math.max(v.videoWidth || max, v.videoHeight || max));
+  c.width = Math.max(2, Math.round((v.videoWidth || max) * k / 2) * 2);
   c.height = Math.max(2, Math.round((v.videoHeight || 360) * k / 2) * 2);
   const ctx = c.getContext("2d");
-  const rec = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: 900_000 });
+  const rec = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: bps });
   const chunks = [];
   rec.ondataavailable = (e) => e.data?.size && chunks.push(e.data);
   const done = new Promise((res) => (rec.onstop = res));

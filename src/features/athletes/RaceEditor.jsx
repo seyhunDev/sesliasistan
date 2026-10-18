@@ -285,6 +285,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   // Değişiklikler kendiliğinden kaydedilir (yarış adı yazıldıktan sonra); kayıtlar sırayla gider, çift kayıt olmaz.
   // Sayfadan çıkarken bekleyen değişiklik de yazılır.
   const id = useRef(start.id || null);
+  const [rid, setRid] = useState(start.id || ""); // ekranda kullanılan kimlik (yeni yarış ilk kayıttan sonra)
   const queue = useRef(Promise.resolve());
   const latest = useRef(r);
   const dirty = useRef(false);
@@ -293,6 +294,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     dirty.current = false;
     queue.current = queue.current.then(async () => {
       id.current = await onSave(data, id.current);
+      setRid(id.current || "");
     });
     return queue.current;
   }, [onSave]);
@@ -923,6 +925,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             Talimat
           </button>
         </div>
+        {/* Yarış günü: sayaç, hava, sonuçlar, fotoğraf/video ayrı sayfada (multimedya) */}
+        {rid && (
+          <Link href={`/athletes/races/${rid}/media`} className="mt-3 flex h-10 items-center justify-center rounded-xl bg-white/15 text-[0.875rem] font-semibold text-white active:scale-[.99]">
+            Multimedyayı aç
+          </Link>
+        )}
       </Hero>
 
       <Seg
@@ -1083,7 +1091,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           {athletes.length > 0 && resultsOpen(r, todayStr()) && (
             <RaceResults
               orgId={orgId}
-              race={r}
+              race={{ ...r, id: rid || r.id }}
               athletes={chosen}
               club={athletes.filter(isActive)}
               onChange={(v) => put("results", v)}
