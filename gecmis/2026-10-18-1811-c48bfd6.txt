@@ -1,8 +1,8 @@
-Commit: c89755c · Mesajlar: klavye boşluğu kalktı, yeni mesaj hafifçe belirir (#420)
-Zaman: 2026-10-14-1839 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38591094863
+Commit: c48bfd6 · Yarış akışı: Başlat/iptal/bitir ve Geri al, seri boyunca numara, fotoğraflar yarışa ve ana göre, kaydetmeden önce düzeltme (#487)
+Zaman: 2026-10-18-1811 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39139268032
 
-TAM TEST · 14.10.2026 18:38:45
+TAM TEST · 18.10.2026 18:10:34
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 58 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 64 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
