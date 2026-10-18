@@ -1,8 +1,8 @@
-Commit: a24d95f · Hava grafiği: ölçülen saatin oku koyu, tahmin okları soluk (#522)
-Zaman: 2026-10-18-2224 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39158267116
+Commit: 7379d7c · Ölçülen rüzgâr: seçilen her yer en yakın resmî istasyonu kendisi bulur (#523)
+Zaman: 2026-10-18-2240 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39159498948
 
-TAM TEST · 18.10.2026 22:20:31
+TAM TEST · 18.10.2026 22:36:19
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1318/1319 geçti · 1 kalan · 248 sn
+SONUÇ: 1318/1319 geçti · 1 kalan · 246 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
