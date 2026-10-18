@@ -5,6 +5,7 @@ import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Countdown, useTimerRun } from "@/features/training/Countdown";
 import { addWind } from "@/features/athletes/raceLiveStore";
+import { raceDays } from "@/features/athletes/raceWeather";
 import { COURSES, FLAGS, VOIDS, atOf, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
 import { WindSheet } from "./WeatherTab";
 
@@ -22,10 +23,11 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
   const [wind, setWind] = useState(false);
   const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null ? live.starts.find((x) => x.id === ridOf(timer)) : null;
+  const rdays = raceDays(race);
   const lastWind = windOn(live.wind, day).at(-1);
   const add = () => {
     const now = new Date();
-    const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind);
+    const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind, null, rdays);
     if (s) setEdit({ ...s, fresh: true });
   };
   // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
@@ -108,7 +110,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
             s={edit}
             onSave={(x) => {
               const { fresh, ...rest } = x;
-              save(renumber(fresh ? [...live.starts, rest] : live.starts.map((o) => (o.id === x.id ? rest : o))));
+              save(renumber(fresh ? [...live.starts, rest] : live.starts.map((o) => (o.id === x.id ? rest : o)), rdays));
               setEdit(null);
             }}
             onDrop={
@@ -116,7 +118,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
                 ? null
                 : () => {
                     const before = live.starts;
-                    save(dropRace(live.starts, edit.id));
+                    save(dropRace(live.starts, edit.id, rdays));
                     undo(`${raceName(edit)} silindi`, before);
                     setEdit(null);
                   }

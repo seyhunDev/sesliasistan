@@ -11,7 +11,7 @@ import { VOIDS, beginRace, dropRace, finishRace, nextRaceNo, raceName, raceTime,
 // "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; +30 sn/+1 dk start anını kaydırır; "Yarışı bitir" bitiş saatini yazar.
 // İptal: geri sayımda ya da startan sonra sebep sorulur (Tehir, Genel geri çağırma, İptal; kapatınca İptal). Yarış geçersiz sayılır,
 // numarası tekrarına geçer. Geri sayımda "Yanlış başlattım" yarışı siler. Her adımdan sonra 8 sn "Geri al" (liste ve sayaç geri yazılır).
-export function useRaceFlow({ orgId, raceId, live, onChange }) {
+export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today = "" }) {
   const toast = useToast();
   const [ask, setAsk] = useState(null); // iptal sebebi sorulan: { id, prevT, canDrop, at }
   const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, raceId, next));
@@ -19,14 +19,14 @@ export function useRaceFlow({ orgId, raceId, live, onChange }) {
     toast(msg, { duration: 8000, action: { label: "Geri al", onClick: () => (save(before), prevT && writeTimer(prevT)) } });
   const ridOf = (t) => t?.rid || live.starts.find((x) => t?.end && Math.abs(Date.parse(x.at) - t.end) < 5000)?.id || "";
   const flow = {
-    label: `${nextRaceNo(live.starts)}. yarış`,
+    label: `${nextRaceNo(live.starts, today, rdays)}. yarış`,
     onStart: (end, rid, prevT) => {
       const before = live.starts;
-      const got = beginRace(live.starts, Date.now(), end);
+      const got = beginRace(live.starts, Date.now(), end, rdays);
       save(got.starts);
       undo(`${raceName(got.starts.find((x) => x.id === got.id))} geri sayımı başladı`, before, prevT);
     },
-    onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end)),
+    onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end, rdays)),
     onCancel: (prevT) => {
       const id = ridOf(prevT);
       if (live.starts.some((x) => x.id === id)) setAsk({ id, prevT, canDrop: true, at: Date.now() });
@@ -39,7 +39,7 @@ export function useRaceFlow({ orgId, raceId, live, onChange }) {
     onFinish: (prevT) => {
       const before = live.starts;
       const id = ridOf(prevT);
-      const next = id ? finishRace(live.starts, id, Date.now()) : live.starts;
+      const next = id ? finishRace(live.starts, id, Date.now(), rdays) : live.starts;
       save(next);
       const s = next.find((x) => x.id === id);
       undo(s ? `${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}` : "Yarış bitti", before, prevT);
@@ -51,10 +51,10 @@ export function useRaceFlow({ orgId, raceId, live, onChange }) {
     const before = live.starts;
     setAsk(null);
     if (!reason) {
-      save(dropRace(live.starts, ask.id));
+      save(dropRace(live.starts, ask.id, rdays));
       return undo("Geri sayım iptal edildi, yarış silindi", before, ask.prevT);
     }
-    const next = voidRace(live.starts, ask.id, reason, ask.at); // bitiş: İptal'e basılan an
+    const next = voidRace(live.starts, ask.id, reason, ask.at, rdays); // bitiş: İptal'e basılan an
     save(next);
     const s = next.find((x) => x.id === ask.id);
     undo(s ? raceTitle(s) : reason, before, ask.prevT);
