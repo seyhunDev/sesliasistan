@@ -99,6 +99,17 @@ export function FitWorkout({ rec, by, hero = false }) {
     const r = fit.items[i]?.rest || 60;
     if (on && !quiet) startRest(r); // adım adım ekran kendi sayacını kullanır
   }
+  // Baştan başlat: yarım kalan setlerin işaretleri ve değerleri silinir, adım adım ekran ilk setten açılır
+  function restart() {
+    if (!confirm("Antrenman baştan başlasın mı? İşaretlenen setler sıfırlanır.")) return;
+    const fresh = startSets({ ...fit, res: null }, plans, rec.date);
+    setSets(fresh);
+    setFeel(0);
+    setRest(null);
+    setAt(null);
+    save(cleanRes({ ex: fresh.map((s) => ({ sets: s })), st: "", at: new Date().toISOString() }, fit.items || []));
+    setGuide(true);
+  }
   const setVal = (i, k, key, v) => setSets((p) => p.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, [key]: n(v) } : x)) : s)));
   const addSet = (i) => setSets((p) => p.map((s, a) => (a === i ? [...s, { ...(s.at(-1) || {}), ok: false }] : s)));
 
@@ -165,6 +176,11 @@ export function FitWorkout({ rec, by, hero = false }) {
           <button type="button" onClick={() => setGuide(true)} className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-[1.0625rem] font-bold text-deep shadow-sm active:scale-[.98]">
             <Icon name="dumbbell" className="size-5" />
             {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
+          </button>
+        )}
+        {done > 0 && !allDone && (
+          <button type="button" onClick={restart} className="mt-2 h-11 w-full rounded-2xl bg-white/12 text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+            Baştan başlat
           </button>
         )}
       </section>
