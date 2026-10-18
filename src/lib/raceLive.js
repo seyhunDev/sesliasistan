@@ -71,6 +71,9 @@ export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts
 // Günün kayıtları
 // Sayfadaki günler: yarışın günleri + çekim ya da start olan başka günler (deneme, erteleme). Yoksa o gün çekilen kaydedilir ama
 // hiçbir gün seçilemediği için görünmezdi (Seyhun 2026-10-18: "kaydet dediğimde kaydedilmedi").
+// Startan beri ileri sayım en çok 59:59 (Seyhun 2026-10-18: "bir saatlik limit olsun, 59:59'da bitsin"); sayaç 60. dakikada kendiliğinden durur (TimerSound)
+export const UP_MAX = 3599;
+export const upSec = (end, now) => Math.min(UP_MAX, Math.max(0, Math.floor((now - end) / 1000)));
 export const liveDays = (days, live) =>
   [...new Set([...(days || []), ...[...(live?.media || []), ...(live?.starts || [])].map((x) => dayOf(x.at)).filter((d) => /^\d{4}-/.test(d))])].sort();
 export const windOn = (wind, day) => (wind || []).filter((w) => dayOf(w.at) === day);

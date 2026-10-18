@@ -10,7 +10,7 @@ import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, liveDays, zeroRace } from "@/lib/raceLive";
+import { beginRace, cleanLive, liveDays, upSec, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -134,7 +134,7 @@ export function RaceMedia({ orgId, id }) {
         {timer.running && tab !== "sure" && (
           <button type="button" onClick={() => setTab("sure")} className={`mt-2 flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
             <span className="text-[0.875rem]">{timer.up ? "Startan beri" : "Start sayacı"}</span>
-            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? Math.floor((timer.now - timer.t.end) / 1000) : Math.max(0, timer.rem))}</b>
+            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? upSec(timer.t.end, timer.now) : Math.max(0, timer.rem))}</b>
           </button>
         )}
       </div>
