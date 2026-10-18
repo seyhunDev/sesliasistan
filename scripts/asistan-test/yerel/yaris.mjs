@@ -362,6 +362,7 @@ group("Yarış multimedya")([
   }, ok: ({ a, b }) => a.rid === "s2" && a.phase === "race" && a.sec === 120 && a.ath[0] === "a1" && a.dur === 42 && !b.phase && !b.rid && b.ath[0] === "a1" }],
   ["antrenman günleri", { desc: "elle eklenen gün listede; yarış günleri 1. gün, öncesi/sonrası Antrenman 1, 2", fn: () => { const rd = ["2026-10-26", "2026-10-27"]; const d = RL.liveDays(rd, RL.cleanLive({ days: ["2026-10-29", "x", "2026-10-29"], media: [{ id: "m", at: "2026-10-18T09:00:00.000Z", url: "https://a/b", path: "p", kind: "photo" }] })); return [d.join(), Object.values(RL.dayNames(rd, d)).join(), RL.dayNames(["2026-10-26"], ["2026-10-26"])["2026-10-26"]]; }, ok: ([d, n, one]) => d === "2026-10-18,2026-10-26,2026-10-27,2026-10-29" && n === "Antrenman 1,1. gün,2. gün,Antrenman 2" && one === "Yarış" }],
   ["antrenman numarası ayrı", { desc: "antrenman günü yarışları kendi içinde 1'den; yarış serisi kaymaz", fn: () => { const rd = ["2026-10-26"]; const st = (id, day, h) => ({ id, day, at: new Date(`${day}T${h}:00`).toISOString() }); const r = RL.renumber([st("a", "2026-10-18", "10:00"), st("b", "2026-10-18", "11:00"), st("c", "2026-10-26", "11:00"), st("d", "2026-10-27", "10:00")], rd); return [r.map((x) => `${x.id}${x.n}`).join(), RL.nextRaceNo(r, "2026-10-26", rd), RL.nextRaceNo(r, "2026-10-18", rd), RL.nextRaceNo(r, "2026-10-20", rd)]; }, ok: ([r, a, b, c]) => r === "a1,b2,c1,d1" && a === 2 && b === 3 && c === 1 }],
+  ["akıntı ve not", { desc: "akıntı ondalıklı knot + yön, not saklanır; akıntı yoksa yön atılır", fn: () => RL.cleanWind([{ at: at("10:00"), dir: 90, kn: 12, ckn: 1.25, cdir: 180, note: "  dalga  var " }, { at: at("11:00"), dir: 90, kn: 12, ckn: 0, cdir: 180 }]), ok: ([a, b]) => a.ckn === 1.3 && a.cdir === 180 && a.note === "dalga var" && b.ckn === null && b.cdir === null && b.note === "" }],
   ["yarış dışı gün", { desc: "yarış günleri dışında çekilen ya da start verilen gün de listede (yoksa çekilen görünmezdi)", fn: () => RL.liveDays(["2026-10-25", "2026-10-26"], { media: [{ at: at("11:00") }, { at: "x" }], starts: [{ at: "2026-10-25T09:00:00.000Z" }] }), ok: (d) => d.join() === "2026-10-19,2026-10-25,2026-10-26" }],
   ["yarış akışı", { desc: "Başlat yarışı açar, +1 dk kaydırır, 0 rüzgârı yazar, bitir süreyi verir; ertesi gün numara devam eder", fn: () => {
     const prev = RL.renumber([{ id: "d1", day: "2026-10-18", at: new Date("2026-10-18T11:00:00").toISOString() }, { id: "d2", day: "2026-10-18", at: new Date("2026-10-18T12:00:00").toISOString() }, { id: "d3", day: "2026-10-18", at: new Date("2026-10-18T13:00:00").toISOString() }]);
@@ -385,4 +386,22 @@ group("Yarış multimedya")([
 // Multimedya sayfasının hava satırları (raceWeather.js rowsFrom): o günün saatleri, yağmur olasılığı
 group("Yarış günü havası")([
   ["günün saatleri", { desc: "yalnız istenen gün, yağmur %", fn: () => RW.rowsFrom({ hourly: { ...WJ.hourly, precipitation_probability: HRS.map(() => 30) } }, "2026-10-08"), ok: (r) => r.length === 24 && r[0].hh === "00" && r[0].rain === 30 && r[12].wind === 12 && r[0].time === "2026-10-08T00:00" }],
+]);
+
+// Yarış multimedya: kalan küçük hesaplar (gün/saat, elle eklenen günler, günün rüzgârı ve startları, yön kısaltması, iptal sebepleri)
+group("Yarış multimedya: yardımcılar")([
+  ["gün ve saat", { desc: "telefon saatine göre; saatsiz gün öğlen", fn: () => [RL.dayOf(RL.atOf("2026-10-19", "09:05")), RL.hm(RL.atOf("2026-10-19", "09:05")), RL.hm(RL.atOf("2026-10-19", "")), RL.hm(RL.atOf("2026-10-19", "9:5"))], ok: (r) => r.join() === "2026-10-19,09:05,12:00,12:00" }],
+  ["elle eklenen günler", { desc: "bozuk tarih atılır, tekrar teke iner, sıralanır", fn: () => RL.cleanDays(["2026-10-21", "x", "2026-10-19", "2026-10-21", null, "2026-1-1"]), ok: (r) => r.join() === "2026-10-19,2026-10-21" }],
+  ["günün rüzgârı ve startları", { desc: "yalnız o güne ait olanlar", fn: () => {
+    const w = RL.cleanWind([{ at: RL.atOf("2026-10-19", "10:00"), dir: 300, kn: 10 }, { at: RL.atOf("2026-10-20", "10:00"), dir: 300, kn: 12 }]);
+    const s = [{ day: "2026-10-19", id: "a" }, { day: "2026-10-20", id: "b" }];
+    return [RL.windOn(w, "2026-10-20").map((x) => x.kn).join(), RL.startsOn(s, "2026-10-19").map((x) => x.id).join(), RL.windOn(null, "2026-10-19").length];
+  }, ok: (r) => r.join() === "12,a,0" }],
+  ["yön kısaltması", { desc: "315 KB, 0 K, -90 B, 359 K, yazıyla sayı", fn: () => [315, 0, -90, 359, "45"].map(RL.dirShort).join(), ok: (r) => r === "KB,K,B,K,KD" }],
+  ["iptal sebepleri", { desc: "eski 'Ertelendi' bayrağı Tehir olur; bilinmeyen sebep geçersiz sayılmaz", fn: () => RL.cleanStarts([{ id: "s1", day: "2026-10-19", at: RL.atOf("2026-10-19", "11:00"), flag: "Ertelendi" }, { id: "s2", day: "2026-10-19", at: RL.atOf("2026-10-19", "12:00"), void: "Kafamda" }]).map((x) => x.void || "-").join(), ok: (r) => r === "Tehir,-" }],
+  ["evre adları", { desc: "dört evre, üç rota, üç iptal sebebi", fn: () => [Object.keys(RL.PHASES).length, RL.COURSES.length, RL.VOIDS.join("/")], ok: ([p, c, v]) => p === 4 && c === 3 && v === "Tehir/Genel geri çağırma/İptal" }],
+  ["bağsız çekimin yarışı", { desc: "starta 5 sn yakınsa o yarış; değilse o günün önceki startlarından sonraki", fn: () => {
+    const S = RL.cleanStarts([{ id: "r1", day: "2026-10-19", n: 1, at: RL.atOf("2026-10-19", "11:00") }, { id: "r2", day: "2026-10-19", n: 2, at: RL.atOf("2026-10-19", "12:00") }]);
+    return [RL.momentRace({ end: RL.atOf("2026-10-19", "12:00") }, S), RL.momentRace({ end: RL.atOf("2026-10-19", "13:00") }, S), RL.momentRace({ rid: "r1", end: RL.atOf("2026-10-19", "13:00") }, S)].join();
+  }, ok: (r) => r === "2,3,1" }],
 ]);

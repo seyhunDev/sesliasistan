@@ -1148,7 +1148,7 @@ group("Temiz başlık ve sorusuz ekleme")([
   const R = (desc, ok) => ({ desc, fn: ringOf, ok });
   const L3 = (a, b, c) => [{ label: "Notlar", st: a }, { label: "Planlar", st: b }, { label: "Mesaj", st: c }];
   group("İlerleme halkası")([
-    ["dinlerken", R("kırmızı, çubuklu", (r) => r.tone === "listen" && r.bars && r.label === "Dinliyorum")].map((x) => x),
+    ["dinlerken", R("kırmızı, çubuklu, yazısız", (r) => r.tone === "listen" && r.bars && r.label === "")].map((x) => x),
   ].map(([n, t]) => [n, { ...t, fn: () => ringOf({ state: "listening" }) }]).concat([
     ["düşünürken", { desc: "kehribar, az dolu", fn: () => ringOf({ state: "busy" }), ok: (r) => r.tone === "work" && r.label === "Düşünüyorum" && r.fill > 0 && r.fill < 0.3 }],
     ["yazıya çevrilirken", { desc: "düşünüyorum, alt yazısız", fn: () => ringOf({ state: "busy", transcribing: true }), ok: (r) => r.label === "Düşünüyorum" && !r.sub }],

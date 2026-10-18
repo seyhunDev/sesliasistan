@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
-import { PLACE, cached, dayHours, loadWeather, sky, windLevel, windName } from "./weather";
+import { PLACE, cached, dayHours, getPlace, loadWeather, sky, windLevel, windName } from "./weather";
 import { Col, WindArrow } from "./parts";
 import { DayDetail } from "./DaySheet";
 import { Loading } from "@/components/ui/Loader";
@@ -119,7 +119,7 @@ export function WeatherCard() {
 
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open ? LONG.format(new Date(`${open}T12:00:00`)) : ""}>
         {rows?.length ? (
-          <DayDetail key={open} date={open} rows={rows} info={open === today ? w.today : w.days.find((d) => d.date === open)} />
+          <DayDetail key={open} date={open} rows={rows} info={open === today ? w.today : w.days.find((d) => d.date === open)} at={getPlace()} />
         ) : err ? (
           <p className="py-8 text-center text-[0.875rem] text-mut">Hava durumu alınamadı</p>
         ) : (

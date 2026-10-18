@@ -2447,3 +2447,75 @@ group("Sayfa çökmesi")([
   ["kod hatası", F("yenilemez", () => !CR.isChunkError(new TypeError("Cannot read properties of undefined (reading 'map')")))],
   ["boş", F("yenilemez", () => !CR.isChunkError(null) && !CR.isChunkError(undefined))],
 ]);
+
+// Gerçekleşen rüzgâr (windObs.js): Dikili istasyonunun SYNOP raporu okunur, yalnız 10 km içindeki yere gösterilir
+const WO = await import("@/lib/windObs");
+const SYN = {
+  kn: "17180,2026,10,18,12,00,AAXX 18124 17180 42970 33006 10216 20104 30102 40124 58008 333 91108=",
+  ms: "17180,2026,10,18,15,00,AAXX 18151 17180 42970 32510 10216 333 91015=",
+  calm: "17180,2026,10,18,18,00,AAXX 18184 17180 42970 30000 10216=",
+  big: "17180,2026,10,18,09,00,AAXX 18094 17180 42970 33099 00105 10216=",
+};
+group("Ölçülen rüzgâr")([
+  ["knot raporu", F("300°, 6 kn, sağanak 8", () => { const o = WO.parseSynop(SYN.kn, "17180"); return o.dir === 300 && o.kn === 6 && o.gust === 8 && o.at === "2026-10-18T12:00:00.000Z"; })],
+  ["m/s raporu", F("250°, 10 m/s = 19 kn, sağanak 29", () => { const o = WO.parseSynop(SYN.ms, "17180"); return o.dir === 250 && o.kn === 19 && o.gust === 29; })],
+  ["sakin", F("yön yok, 0 kn, sağanak yok", () => { const o = WO.parseSynop(SYN.calm, "17180"); return o.dir === null && o.kn === 0 && o.gust === null; })],
+  ["99 üstü", F("00fff grubu", () => WO.parseSynop(SYN.big, "17180").kn === 105)],
+  ["boş rapor", F("NIL, başka istasyon, bozuk satır okunmaz", () => WO.parseSynop("17180,2026,10,18,18,00,AAXX 18184 17180 NIL=", "17180") === null && WO.parseSynop(SYN.kn.replace(/^17180/, "17220"), "17180") === null && WO.parseSynop("x", "17180") === null)],
+  ["yerel saat", F("12 ve 15 UTC → 15 ve 18; başka gün çıkar", () => {
+    const r = WO.obsRows([WO.parseSynop(SYN.kn), WO.parseSynop(SYN.ms), { at: "2026-10-17T12:00:00.000Z", kn: 3, gust: null, dir: 0 }], "2026-10-18");
+    return r.map((x) => `${x.hh}:${x.wind}`).join() === "15:6,18:19";
+  })],
+  ["istek aralığı", F("yerel gün UTC'de", () => { const u = WO.utcRange("2026-10-18"); return u.begin === "202610172100" && u.end === "202610182059"; })],
+  ["Dikili yakın", F("istasyon 10 km içinde", () => { const s = WO.nearestStation(39.0717, 26.8886); return s.name === "Dikili" && s.near && s.km < 1; })],
+  ["Foça uzak", F("istasyon gösterilmez", () => { const s = WO.nearestStation(38.67, 26.75); return !s.near && s.km > 10; })],
+]);
+// Hava durumu hesapları (weather.js): Open-Meteo yanıtının sadeleşmesi, günün saatleri, yelkene uygun saatler, rüzgâr adı ve şiddeti,
+// gökyüzü adı ve grafik şeridi rengi, hava sorusu tanıma, yapay zekaya giden özet (ağa çıkmaz)
+{
+  const T = Array.from({ length: 48 }, (_, i) => `2026-10-18T${String(i % 24).padStart(2, "0")}:00`.replace("18T", i < 24 ? "18T" : "19T"));
+  const J = {
+    current: { time: "2026-10-18T10:15", temperature_2m: 19.6, weather_code: 1, is_day: 1, wind_speed_10m: 11.4, wind_gusts_10m: 16.5, wind_direction_10m: 315 },
+    hourly: { time: T, temperature_2m: T.map(() => 18.4), weather_code: T.map(() => 2), is_day: T.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 18 ? 1 : 0)),
+      wind_speed_10m: T.map((t) => (+t.slice(11, 13) >= 12 && +t.slice(11, 13) <= 15 ? 12 : 4)), wind_gusts_10m: T.map(() => 15), wind_direction_10m: T.map(() => 315), precipitation_probability: T.map(() => 20) },
+    daily: { time: ["2026-10-18", "2026-10-19", "2026-10-20"], weather_code: [1, 3, 61], temperature_2m_max: [23.4, 21, 18], temperature_2m_min: [14.6, 13, 12],
+      wind_speed_10m_max: [12, 18, 25], wind_gusts_10m_max: [16, 24, 33], wind_direction_10m_dominant: [315, 45, 225] },
+  };
+  const W = WXN.shape(J, new Date(2026, 9, 18, 10, 15));
+  group("Hava hesapları")([
+    ["sadeleşme", F("şimdi yuvarlanır, sonraki 15 saat 11:00'den, bugün ve yarından sonraki günler", () =>
+      W.now.t === 20 && W.now.wind === 11 && W.now.day === true && W.hours.length === 15 && W.hours[0].hh === "11" && W.today.max === 23 && W.today.date === "2026-10-18"
+      && W.days.length === 2 && W.days[0].date === "2026-10-19" && W.h48.length === 38 && W.hourly.length === 48 && W.hourly[0][7] === 20)],
+    ["günün saatleri", F("yarının 24 saati, yağmur olasılığıyla; eski önbellekte null", () => {
+      const d = WXN.dayHours(W, "2026-10-19");
+      return d.length === 24 && d[13].wind === 12 && d[13].rain === 20 && d[3].day === false && WXN.dayHours({}, "2026-10-19") === null;
+    })],
+    ["yelkene uygun saatler", F("gündüz 7–16 kn, sağanak 22 altı: 12–16; tek saat sayılmaz; gece sayılmaz", () => {
+      const rows = WXN.dayHours(W, "2026-10-18");
+      const one = rows.map((h) => (h.hh === "09" ? { ...h, wind: 10 } : h));
+      const night = rows.map((h) => ({ ...h, day: false, wind: 10 }));
+      return WXN.sailWindows(rows).join() === "12–16" && WXN.sailWindows(one).join() === "12–16" && WXN.sailWindows(night).length === 0;
+    })],
+    ["rüzgâr adı", F("315 karayel, 45 poyraz, 225 lodos, -45 karayel, 360 yıldız", () =>
+      WXN.windName(315)[0] === "Karayel" && WXN.windName(45)[0] === "Poyraz" && WXN.windName(225)[0] === "Lodos" && WXN.windName(-45)[1] === "KB" && WXN.windName(360)[0] === "Yıldız")],
+    ["rüzgâr şiddeti", F("6 hafif, 7 tatlı, 12 orta, 17 sert, 22 kuvvetli, 28 fırtına", () =>
+      [6, 7, 12, 17, 22, 28].map((k) => WXN.windLevel(k).label).join() === "Hafif,Tatlı,Orta,Sert,Kuvvetli,Fırtına")],
+    ["gökyüzü", F("açık gündüz güneş, gece ay; yağmur, kar, fırtına, sis; bilinmeyen kod çökmez", () =>
+      WXN.sky(0).icon === "sun" && WXN.sky(0, false).icon === "moon" && WXN.sky(63).label === "Yağmurlu" && WXN.sky(73).icon === "snow" && WXN.sky(96).icon === "storm" && WXN.sky(45).label === "Sisli" && WXN.sky(4).label === "—")],
+    ["grafik şeridi", F("açık sarı, yağmurda mavi, yağmur ihtimali yüksekse koyu mavi, %30'da açık mavi", () =>
+      WXN.skyBand(0) === "#e9b949" && WXN.skyBand(61) === "#4f7fae" && WXN.skyBand(2, 75) === "#2f5f93" && WXN.skyBand(1, 30) === "#8fb0d0" && WXN.skyBand(3) === "#8f98a3")],
+    ["hava sorusu", F("rüzgâr, yağmur, knot, Türkçe harfsiz; 'karar', 'kardeş', 'dolum' hava değil", () =>
+      ["yarın rüzgar kaç knot", "YAĞMUR yağacak mı", "denize çıkılır mı", "ruzgar nasil", "kar yağar mı"].every(WXN.wantsWeather) && !["karar verelim", "kardeşime yaz", "dolum tesisi", "notlarımı oku"].some(WXN.wantsWeather))],
+    ["yer adı", F("ilçe · il, aynıysa tek; aynı yer konumdan tanınır", () =>
+      WXN.placeLabel({ name: "Dikili", region: "İzmir" }) === "Dikili · İzmir" && WXN.placeLabel({ name: "İzmir", region: "İzmir" }) === "İzmir"
+      && WXN.samePlace({ lat: 39.07171, lon: 26.8886 }, { lat: "39.0717", lon: 26.88861 }) && !WXN.samePlace(null, WXN.PLACE))],
+    ["karşılaştırma bağlantıları", F("MGM il/ilçe ve Windy konumu", () => {
+      const l = WXN.compareLinks({ name: "Foça", region: "İzmir", lat: 38.67, lon: 26.75 });
+      return l.mgm.includes("il=%C4%B0zmir") && l.mgm.includes("ilce=Fo%C3%A7a") && l.windy.endsWith("?38.670,26.750,11");
+    })],
+    ["yapay zeka özeti", F("şimdi, bugün, 48 saatlik ve günlük satırlar; boş veride boş", () => {
+      const d = WXN.weatherDigest(W);
+      return /^## HAVA DURUMU \(Dikili · İzmir/.test(d) && /ŞİMDİ: 20°C, Az bulutlu, Karayel \(KB\) 11 kn/.test(d) && /SAATLİK/.test(d) && /GÜNLÜK:/.test(d) && WXN.weatherDigest(null) === "";
+    })],
+  ]);
+}

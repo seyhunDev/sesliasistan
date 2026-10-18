@@ -228,11 +228,15 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
   }, [text]);
   const listening = mode === "listening";
   const working = mode === "busy" || mode === "sending";
+  const quiet = listening || working || mode === "speaking";
   const keep = (e) => mode === "typing" && e.preventDefault(); // yazarken düğmeye basınca klavye kapanmasın
   return (
     <div className="px-3 pb-1 pt-2">
       <div data-mode={mode} className={`asheet-input rounded-[1.75rem] ${listening ? "asheet-on" : ""}`}>
-        {children || (
+        {/* Yazı alanı yalnız boştayken (taslak ya da "Yaz ya da konuş…"). Dinlerken, çevrilirken ve iş sürerken canlı yazı yok
+            (Seyhun: "yazı göstermeyi kaldıralım, Claude uygulamasındaki gibi", 2026-10-18): çubukta "Dinliyorum" + dalga,
+            gönderilen söz sohbete balon olarak düşer. */}
+        {children || (!quiet && (
           <div
             ref={box}
             onClick={onText}
@@ -249,13 +253,16 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
               <span className="text-mut">{ph}</span>
             )}
           </div>
-        )}
-        <div className="flex items-center gap-3 px-2 pb-2">
+        ))}
+        <div className={`flex items-center gap-3 px-2 ${quiet ? "py-2" : "pb-2"}`}>
           <button type="button" onPointerDown={keep} onClick={onX} aria-label={xLabel} className={`${ROUND} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
           {listening ? (
-            <ListenWave line className="min-w-0 flex-1 text-mut" />
+            <span className="flex min-w-0 flex-1 items-center gap-3" onClick={onText}>
+              <span className="shrink-0 text-[1rem] font-semibold text-fg">Dinliyorum</span>
+              <ListenWave line className="h-8 min-w-0 flex-1 text-[#e8705f]" />
+            </span>
           ) : working || mode === "speaking" ? (
             <span
               className={`h-7 min-w-0 flex-1 animate-pulse bg-[length:8px_8px] bg-[position:center] bg-repeat-x ${mode === "speaking" ? "bg-[radial-gradient(circle,var(--acc)_1.75px,transparent_1.85px)]" : "bg-[radial-gradient(circle,var(--mut)_1.5px,transparent_1.6px)] opacity-70"}`}
@@ -339,7 +346,7 @@ function ProgressRing({ r, big }) {
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, onMenu, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -588,12 +595,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
             {active && (
               <div className="relative flex h-12 shrink-0 items-center justify-center px-3">
-                {/* Oluştur üstte solda, sabit (sade tasarım, 2026-10-16: alttaki kutuda yalnız iki düğme kalsın) */}
-                {!rec && (
-                  <button type="button" onClick={onMenu} aria-label="Oluştur" className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 touch-manipulation place-items-center rounded-full bg-fg/[.07] text-fg transition active:scale-90">
-                    <Icon name="plus" className="size-5" />
-                  </button>
-                )}
+                {/* Sol üstteki Oluştur (+) kaldırıldı (Seyhun, 2026-10-18) */}
                 {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
               </div>
@@ -835,10 +837,6 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
           },
         }}
         typeInit={typeInit}
-        onMenu={() => {
-          act.current.close?.(); // Oluştur menüsü açılınca konuşma kapanır
-          setMenu(true);
-        }}
         setSlot={setSlot}
         path={path}
         unread={unreadTotal}
