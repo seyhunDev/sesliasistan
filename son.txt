@@ -1,8 +1,8 @@
-Commit: 3c7adb1 · Ana sayfa: alttaki sayfa düğmelerine Antrenman sayfası (#481)
-Zaman: 2026-10-18-1514 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39126338029
+Commit: 0176a20 · Yarış multimedya sayfası: hava, start sayacı, sonuçlar, fotoğraf/video (#482)
+Zaman: 2026-10-18-1658 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39133767729
 
-TAM TEST · 18.10.2026 15:12:59
+TAM TEST · 18.10.2026 16:57:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
