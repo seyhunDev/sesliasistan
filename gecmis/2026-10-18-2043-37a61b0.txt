@@ -1,8 +1,8 @@
-Commit: 49d7df0 · Hazır cümle seti: önemli işler için Türkçe söyleyiş kalıpları ve eşleştirici (#432)
-Zaman: 2026-10-16-1908 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38929418926
+Commit: 37a61b0 · Asistan: Kaydedildi animasyonu (halka ✓ + Kaydedildi, kart parıltıyla gelir) (#501)
+Zaman: 2026-10-18-2043 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39150738099
 
-TAM TEST · 16.10.2026 19:07:39
+TAM TEST · 18.10.2026 20:41:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 69 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

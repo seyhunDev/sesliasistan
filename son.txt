@@ -1,8 +1,8 @@
-Commit: 9fd7c6a · Hava grafiği: seçili saat dokunulmadıkça şimdiyi izler, ayrı çizgi çıkmaz (#499)
-Zaman: 2026-10-18-2040 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39150532848
+Commit: 37a61b0 · Asistan: Kaydedildi animasyonu (halka ✓ + Kaydedildi, kart parıltıyla gelir) (#501)
+Zaman: 2026-10-18-2043 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39150738099
 
-TAM TEST · 18.10.2026 20:39:01
+TAM TEST · 18.10.2026 20:41:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 81 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 74 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
