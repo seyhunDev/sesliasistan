@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyTone, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
 import { todayStr } from "@/lib/utils/format";
 import { Col } from "./parts";
 import { WindMapView } from "./WindMap";
@@ -14,9 +14,11 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = sağanak; 7/17/22 kn çizgileri yelken eşikleri.
 // Parmakla sürükleyince seçilen saatin değerleri üstte yazar. Bugünde "şimdi" noktası şu anki dakikaya göre çizginin üstünde durur.
 // mini: ana sayfadaki küçük hâli (alçak, dokunuşla seçim yok; dokununca pencere açılır).
+// Büyük hâlde üstte her saat rüzgârın estiği yöne bakan ok (17 kn ve üstü turuncu) ve altında gökyüzü şeridi
+// (Seyhun: "rüzgâr ya da sağanak artış azalışlarında ne taraftan geldiğini, hava açık mı kapalı mı görmek istiyorum").
 const W = 340, L = 22, R = 6; // grafik genişliği ve sol/sağ boşluk (saat simgeleri de buna göre dizilir)
 function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
-  const H = mini ? 84 : 150, T = mini ? 14 : 8, B = 16;
+  const H = mini ? 84 : 182, T = mini ? 14 : 40, B = 16;
   const n = rows.length;
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust)) + 2) / 5) * 5);
   const x = (i) => L + (i * (W - L - R)) / Math.max(1, n - 1);
@@ -52,6 +54,23 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
         </g>
       ))}
       <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} className="text-line" stroke="currentColor" />
+      {!mini && rows.map((h, i) => (
+        <path
+          key={`a${h.time}`}
+          d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3"
+          transform={`translate(${x(i).toFixed(1)},12) rotate(${(((h.dir ?? 0) + 180) % 360).toFixed(0)})`}
+          fill="none"
+          stroke={h.wind >= 17 ? "#d9822b" : "#2f8f76"}
+          strokeWidth={i === sel ? 2 : 1.4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+      {!mini && rows.map((h, i) => {
+        const half = (W - L - R) / Math.max(1, n - 1) / 2;
+        const a = Math.max(L, x(i) - half), b = Math.min(W - R, x(i) + half);
+        return <rect key={`s${h.time}`} x={a.toFixed(1)} y="24" width={(b - a + 0.4).toFixed(1)} height="7" fill={skyBand(h.code, h.rain)} />;
+      })}
       {rows.map((h, i) =>
         +h.hh % 6 === 0 ? (
           <text key={h.time} x={x(i)} y={H - 4} textAnchor="middle" fontSize="9" className="fill-mut">{h.hh}</text>
@@ -150,7 +169,7 @@ export function DayDetail({ date, rows, info, cur }) {
           <span className="font-semibold">{s.hh}:00</span>
           <span className="text-mut"> · {windName(s.dir)[0]} </span>
           <span className={`font-semibold ${windLevel(s.wind).tone}`}>{s.wind} kn</span>
-          <span className="text-mut"> · sağanak {s.gust} · {s.t}°</span>
+          <span className="text-mut"> · sağanak {s.gust} · {s.t}° · {sky(s.code, s.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}</span>
         </p>
       </div>
       <div className="mt-1">
@@ -161,6 +180,11 @@ export function DayDetail({ date, rows, info, cur }) {
         <span className="inline-block w-3 border-t border-dashed border-mut" /> sağanak
         {nowIdx >= 0 && <><span className="inline-block size-2 rounded-full bg-rec" /> şimdi</>}
         <span>· parmağınla kaydır</span>
+      </p>
+      <p className="mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-mut">
+        {[["#e9b949", "açık"], ["#f1d37e", "az bulutlu"], ["#c9cfd6", "parçalı"], ["#8f98a3", "kapalı"], ["#4f7fae", "yağmur"]].map(([c, t]) => (
+          <span key={t} className="flex items-center gap-1"><span className="inline-block h-1.5 w-3 rounded-sm" style={{ background: c }} />{t}</span>
+        ))}
       </p>
 
       {/* 3 saatte bir */}
