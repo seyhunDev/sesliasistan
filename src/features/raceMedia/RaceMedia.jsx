@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
@@ -9,8 +9,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadLive, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, liveDays, upSec, zeroRace } from "@/lib/raceLive";
+import { loadLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
+import { beginRace, cleanLive, dayNames, dayOf, liveDays, upSec, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -20,6 +20,7 @@ import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
 import { DaySummarySheet } from "./DaySummarySheet";
+import { DaySheet } from "./DaySheet";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
@@ -43,6 +44,8 @@ export function RaceMedia({ orgId, id }) {
   const today = todayStr();
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
+  const [addDay, setAddDay] = useState(false);
+  const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
 
   useEffect(() => {
     let on = true;
@@ -84,16 +87,16 @@ export function RaceMedia({ orgId, id }) {
       if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
       if (t?.mode !== "start") return;
       change((l) => {
-        const next = zeroRace(l.starts, t.rid, end, l.wind);
+        const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
         if (next === l.starts) return {};
         saveStarts(orgId, id, next).catch(() => {});
         return { starts: next };
       });
     },
-    [change, orgId, id],
+    [change, orgId, id, rdays],
   );
   const timer = useTimerRun({ onZero });
-  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change });
+  const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
   // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)
   const tEnd = timer.t.end;
   const tFree = timer.t.mode === "start" && tEnd != null && !timer.t.rid;
@@ -103,25 +106,24 @@ export function RaceMedia({ orgId, id }) {
       const t = readTimer();
       if (t.rid || t.end == null || t.end < Date.now()) return;
       change((l) => {
-        const got = beginRace(l.starts, Date.now(), t.end);
+        const got = beginRace(l.starts, Date.now(), t.end, rdays);
         writeTimer({ ...t, rid: got.id });
         saveStarts(orgId, id, got.starts).catch(() => {});
         return { starts: got.starts };
       });
     }, 0);
     return () => clearTimeout(id2);
-  }, [race, tFree, tEnd, change, orgId, id]);
+  }, [race, tFree, tEnd, change, orgId, id, rdays]);
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
-  const rdays = raceDays(race);
   const days = liveDays(rdays, live);
+  const names = dayNames(rdays, days);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
-  const n = rdays.indexOf(cur) + 1;
-  const sub = [race.district || race.city, n > 0 && rdays.length > 1 ? `${n}. gün` : "", dayLabel(cur)].filter(Boolean).join(" · ");
+  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
-  const tab = tabPick || (rdays.includes(today) || live.starts.some((x) => x.day === today) ? "sure" : "wx");
+  const tab = tabPick || (days.includes(today) ? "sure" : "wx");
   const openCam = (kind) => (setCam({ kind, back: tab }), setTab("media"));
 
   return (
@@ -144,15 +146,16 @@ export function RaceMedia({ orgId, id }) {
           </button>
         )}
       </div>
-      {days.length > 1 && (
-        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
-          {days.map((d, i) => (
-            <button key={d} type="button" onClick={() => setDay(d)} aria-pressed={d === cur} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}>
-              {i + 1}. gün · {dayLabel(d)}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
+        {days.map((d) => (
+          <button key={d} type="button" onClick={() => setDay(d)} aria-pressed={d === cur} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}>
+            {names[d]} · {dayLabel(d)}
+          </button>
+        ))}
+        <button type="button" onClick={() => setAddDay(true)} className="h-9 shrink-0 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-95">
+          + Gün
+        </button>
+      </div>
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
@@ -170,6 +173,24 @@ export function RaceMedia({ orgId, id }) {
         />
       )}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
+      <DaySheet
+        open={addDay}
+        onClose={() => setAddDay(false)}
+        days={days}
+        today={today}
+        cur={live.days.includes(cur) && !rdays.includes(cur) ? { day: cur, name: names[cur], empty: !live.media.some((m) => dayOf(m.at) === cur) && !live.starts.some((x) => x.day === cur) } : null}
+        onAdd={(d) => {
+          setAddDay(false);
+          setDay(d);
+          change((l) => ({ days: [...l.days, d] }), () => saveDays(orgId, id, [...live.days, d]));
+        }}
+        onDrop={(d) => {
+          setAddDay(false);
+          setDay("");
+          const next = live.days.filter((x) => x !== d);
+          change({ days: next }, () => saveDays(orgId, id, next));
+        }}
+      />
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );
