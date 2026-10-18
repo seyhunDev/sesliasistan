@@ -1,8 +1,8 @@
-Commit: 1a9c058 · Yarış multimedya: en alttakiler sabit düğmenin altında kalmasın (#490)
-Zaman: 2026-10-18-1834 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39140962502
+Commit: 0f8c88f · Yarış multimedya: fotoğraf ve video tam ekran, yan çevrilince uyumlu (#491)
+Zaman: 2026-10-18-1839 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39141324306
 
-TAM TEST · 18.10.2026 18:33:07
+TAM TEST · 18.10.2026 18:37:51
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 95 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
