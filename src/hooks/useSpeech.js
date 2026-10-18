@@ -182,7 +182,16 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     if (text) {
       speechMark("text");
       cb.current.onFinal?.(text, mode);
-    } else fail(ERR[err] || NO_SPEECH);
+      return;
+    }
+    // iPhone: telefonun tanıması dinledi ama hiç yazı vermedi (hata da yok). Bir daha denenmez; bundan sonra ses kaydedilip
+    // sunucuda yazıya çevrilir (Ayarlar › Ses testi'nden yeniden açılır)
+    if (s.kind === "webspeech" && isIOS() && !s.auto && !err && recorderAvailable() && Date.now() - (s.t0 || 0) > 2500) {
+      setNative(false);
+      setProvider("server");
+      return fail("Telefonun ses tanıması yazı vermedi. Bundan sonra ses başka yolla yazıya çevrilecek, tekrar konuşur musun?");
+    }
+    fail(ERR[err] || NO_SPEECH);
   };
 
   // ---- Yol 1: tarayıcı ses tanıması, canlı yazı ----
