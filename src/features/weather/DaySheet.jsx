@@ -114,7 +114,7 @@ export function TodayWind({ rows }) {
 }
 
 // Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.
-export function DayDetail({ date, rows, info, cur, marks = [] }) {
+export function DayDetail({ date, rows, info, cur, marks = [], place = "" }) {
   const now = useNow();
   const isToday = YMD.format(now) === date;
   const nowIdx = isToday ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
@@ -129,6 +129,7 @@ export function DayDetail({ date, rows, info, cur, marks = [] }) {
 
   return (
     <div className="pb-2">
+      {place && <p className="mb-2 truncate text-[0.875rem] font-semibold">{place}</p>}
       {/* Özet: bugünde şimdiki hava büyük, yanında gün içi en düşük–en yüksek ve şimdiki rüzgâr */}
       {isToday && cur ? (
         <div className="flex items-center gap-3">
@@ -153,14 +154,20 @@ export function DayDetail({ date, rows, info, cur, marks = [] }) {
       )}
 
       {/* Seçili saat */}
-      <div className="mt-4">
-        <p className="text-[0.8125rem] tabular-nums">
+      <div className="mt-4 flex min-h-7 items-center gap-2">
+        <p className="min-w-0 flex-1 text-[0.8125rem] tabular-nums">
           <span className="font-semibold">{s.hh}:00</span>
           <span className="text-mut"> · {windName(s.dir)[0]} </span>
           <span className={`font-semibold ${windLevel(s.wind).tone}`}>{s.wind} kn</span>
           <span className="text-mut"> · sağanak {s.gust} · {s.t}° · {sky(s.code, s.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}</span>
           {got && <span className="font-semibold"> · ölçülen {got.kn} kn</span>}
         </p>
+        {/* Grafikte gezindikten sonra tek dokunuşla şimdiye dönüş (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
+        {nowIdx >= 0 && sel !== nowIdx && (
+          <button type="button" onClick={() => setSel(nowIdx)} className="shrink-0 rounded-full bg-rec/10 px-3 py-1 text-[0.75rem] font-semibold text-rec active:scale-95">
+            Şimdi
+          </button>
+        )}
       </div>
       <div className="mt-1">
         <WindChart rows={rows} sel={sel} onSel={setSel} nowAt={nowAt} marks={marks} />
@@ -181,7 +188,7 @@ export function DayDetail({ date, rows, info, cur, marks = [] }) {
       {/* 3 saatte bir */}
       <div className="mt-3 grid grid-cols-8 gap-0.5 border-t border-line pt-2.5">
         {rows.filter((h) => +h.hh % 3 === 0).map((h) => (
-          <Col key={h.time} label={h.hh} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} dir={h.dir} />
+          <Col key={h.time} label={h.hh} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} gust={h.gust} dir={h.dir} />
         ))}
       </div>
       <p className="mt-3 text-center text-[0.6875rem] text-mut">rüzgâr knot · yelken: 7–16 kn uygun, 17–21 sert, 22+ riskli</p>

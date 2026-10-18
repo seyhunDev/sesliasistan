@@ -52,7 +52,7 @@ export function RaceWeather({ r, onChange }) {
   if (!days.length) return null;
   return (
     <>
-      <Label right={w?.at ? ago(w.at, now) : ""}>YARIŞ HAVASI</Label>
+      <Label right={w?.at ? ago(w.at, now) : ""}>{w?.place?.name ? `YARIŞ HAVASI · ${w.place.name}` : "YARIŞ HAVASI"}</Label>
       {!w && days[0] > last && (
         <p className={`${card} px-4 py-3 text-[0.875rem] text-mut`}>
           Tahmin yarıştan en çok 16 gün önce çıkar; <b className="font-semibold text-fg">{shortDay(forecastFrom(days[0]))}</b> sonrasında buradan alabilirsin.
@@ -94,7 +94,7 @@ export function RaceWeather({ r, onChange }) {
                 {x.hours.length > 0 && (
                   <div className="mt-3 grid grid-cols-6 gap-1 border-t border-line pt-2.5">
                     {x.hours.map((h) => (
-                      <Col key={h.hh} label={h.hh} icon={sky(h.code, +h.hh >= 7 && +h.hh <= 19).icon} temp={h.t} wind={h.wind} dir={h.dir} />
+                      <Col key={h.hh} label={h.hh} icon={sky(h.code, +h.hh >= 7 && +h.hh <= 19).icon} temp={h.t} wind={h.wind} gust={h.gust} dir={h.dir} />
                     ))}
                   </div>
                 )}
@@ -116,7 +116,7 @@ export function RaceWeather({ r, onChange }) {
         </button>
       )}
       <p className="mt-2 px-1 text-[0.75rem] text-mut">
-        {w ? `${w.place.name} · Open-Meteo. ` : ""}
+        {w ? "Open-Meteo. " : ""}
         {over ? "Yarış geçti; son alınan tahmin duruyor." : "Tahmin tarih yaklaştıkça değişir; yarıştan önceki günlerde güncelle."}
       </p>
     </>

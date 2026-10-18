@@ -101,13 +101,13 @@ export function WeatherCard() {
         <div className="fade-in px-4 pb-3">
           <button onClick={() => show(today)} aria-label="Bugünün detayı" className="grid w-full grid-cols-5 gap-1 border-t border-line pt-2.5 transition active:opacity-60">
             {hours.map((h) => (
-              <Col key={h.time} label={`${h.hh}:00`} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} dir={h.dir} />
+              <Col key={h.time} label={`${h.hh}:00`} icon={sky(h.code, h.day).icon} temp={h.t} wind={h.wind} gust={h.gust} dir={h.dir} />
             ))}
           </button>
           <div className="mt-2 grid grid-cols-5 gap-1 border-t border-line pt-2.5">
             {w.days.map((d) => (
               <button key={d.date} onClick={() => show(d.date)} aria-label={`${LONG.format(new Date(`${d.date}T12:00:00`))} detayı`} className="rounded-xl py-0.5 transition active:scale-95 active:bg-bg">
-                <Col label={dayName(d.date)} strong icon={sky(d.code).icon} temp={d.max} wind={d.wind} dir={d.dir} />
+                <Col label={dayName(d.date)} strong icon={sky(d.code).icon} temp={d.max} wind={d.wind} gust={d.gust} dir={d.dir} />
               </button>
             ))}
           </div>
