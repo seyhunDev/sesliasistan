@@ -1,8 +1,8 @@
-Commit: a04c880 · Sesli asistan ekran testi (sahte Firebase, yapay zekasız) + Güncellendi notu asistanı örtmez (#514)
-Zaman: 2026-10-18-2207 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39157026839
+Commit: a24d95f · Hava grafiği: ölçülen saatin oku koyu, tahmin okları soluk (#522)
+Zaman: 2026-10-18-2224 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39158267116
 
-TAM TEST · 18.10.2026 22:04:25
+TAM TEST · 18.10.2026 22:20:31
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1318/1319 geçti · 1 kalan · 204 sn
+SONUÇ: 1318/1319 geçti · 1 kalan · 248 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -127,7 +127,10 @@ SONUÇ: 1318/1319 geçti · 1 kalan · 204 sn
   ✓ Giriş ekranı: 2/2
 
 3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 71/72
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
@@ -138,10 +141,7 @@ SONUÇ: 1318/1319 geçti · 1 kalan · 204 sn
   ✓ Önceki sohbetler: 2/2
   ✓ Sesli yanıt: 3/3
   ✓ Onaysız kayıt ve “Kaydedildi”: 4/4
-  ✗ Onay isteyen işler: 5/6
-      ✗ “Planlar sayfasında “dişçi randevusunu sil””
-          beklenen: silme isteği yeni plan yapmaya gönderilmez, onay sorulur
-          olan:     kayıt oluşturmaya gitti (/api/interpret) · onay yok · “Bunu kayda çeviremedim, biraz daha açık söyler misin?”
+  ✓ Onay isteyen işler: 6/6
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 4/4
