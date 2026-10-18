@@ -8,8 +8,12 @@
 
 ## Sıradaki işler
 
-- "Kaydedildi" animasyonu: örnek gösterildi, onay bekleniyor.
+- Telefonda: "yarın antrenman planı ekle" deyip animasyona ve "tüm gün" kaydına bak.
 
 ## Asistan
 
 - Ekleme/oluşturma onaysız; eksik gün bugün, eksik saat tüm gün. Geri alınamaz işler her zaman onaylı.
+
+## Tasarım
+
+- "Kaydedildi" animasyonu (onaylı örnek /mnt/project-files/asistan/kaydedildi-ornek.png, 2026-10-18): kayıt eklenince halka yeşil ✓ çizer ve "Kaydedildi" der (`ringOf({ saved })`); kayıt kartı yeşil parıltıyla aşağı kayarak gelir, ✓ rozeti büyüyerek belirir (globals.css `.asaved`, `.asaved-badge`). Telefonda denenmedi.

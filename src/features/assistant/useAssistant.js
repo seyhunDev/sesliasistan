@@ -706,8 +706,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0 });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0, saved: saved.length > 0 && !drafts.length });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps, saved.length, drafts.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;

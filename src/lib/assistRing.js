@@ -16,10 +16,11 @@ export function progressOf(list = []) {
 // shown: görev listesi ekranda: ilerlemeyi liste anlatır (✓ biten, parlayan süren, silik sıradaki); halka yalnız dolar,
 // yazı yazmaz (aynı bilgi iki yerde olmasın).
 // Çalışırken durum yazısı yalnız halkada (Seyhun: "çalışırken iki farklı yerde bilgilendirme mesajları oluyor", 2026-10-17)
-export function ringOf({ state = "idle", transcribing = false, status = "", list = [], talked = false, shown = false } = {}) {
+// saved: az önce kayıt eklendi (plan/görev/not): bitişte "Tamam" yerine "Kaydedildi" (Seyhun, 2026-10-18)
+export function ringOf({ state = "idle", transcribing = false, status = "", list = [], talked = false, shown = false, saved = false } = {}) {
   const p = progressOf(list);
   if (shown && p.total > 1 && state !== "listening" && state !== "speaking") {
-    const r = ringOf({ state, transcribing, status, list, talked });
+    const r = ringOf({ state, transcribing, status, list, talked, saved });
     return { ...r, label: "", sub: "" };
   }
   if (state === "listening") return { tone: "listen", fill: 0, label: "Dinliyorum", sub: "", bars: true };
@@ -30,7 +31,7 @@ export function ringOf({ state = "idle", transcribing = false, status = "", list
   }
   if (state === "speaking") return { tone: "speak", fill: 1, label: "Anlatıyorum", sub: "" };
   if (!talked) return { tone: "idle", fill: 0, label: "", sub: "" };
-  if (p.total < 2) return { tone: "ok", fill: 1, label: "Tamam", sub: "", check: true };
+  if (p.total < 2) return { tone: "ok", fill: 1, label: saved ? "Kaydedildi" : "Tamam", sub: "", check: true };
   const bad = list.filter((x) => x.st === "fail").length;
   const ok = list.filter((x) => x.st === "done").length;
   return { tone: "ok", fill: 1, label: "Tamam", sub: bad ? `${ok} iş bitti, ${bad} olmadı` : `${ok} iş bitti`, check: true };
