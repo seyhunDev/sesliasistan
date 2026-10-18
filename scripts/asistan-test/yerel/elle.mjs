@@ -2399,3 +2399,12 @@ group("Mesaj ekleri")([
   ["dosya sınırı", F("15 MB olur", () => CF.tooBig("file", 15 * 1024 * 1024) === "")],
   ["tür", F("ses ve görüntü", () => CF.kindOfFile("audio/mp4") === "voice" && CF.kindOfFile("image/png") === "photo" && CF.kindOfFile("application/pdf") === "file")],
 ]);
+// Sayfa çökmesi (crash.js): yeni yayından sonra kod parçası yükleme hatası tanınır, sayfa bir kez yenilenir
+const CR = await import("@/lib/crash");
+group("Sayfa çökmesi")([
+  ["Safari", F("Importing a module script failed", () => CR.isChunkError(new TypeError("Importing a module script failed.")))],
+  ["Chrome", F("ChunkLoadError", () => CR.isChunkError(Object.assign(new Error("Loading chunk 123 failed."), { name: "ChunkLoadError" })))],
+  ["Vite/Firefox", F("dynamically imported module", () => CR.isChunkError(new TypeError("Failed to fetch dynamically imported module: /x.js")))],
+  ["kod hatası", F("yenilemez", () => !CR.isChunkError(new TypeError("Cannot read properties of undefined (reading 'map')")))],
+  ["boş", F("yenilemez", () => !CR.isChunkError(null) && !CR.isChunkError(undefined))],
+]);

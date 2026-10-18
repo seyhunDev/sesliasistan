@@ -7,6 +7,7 @@ import { wireNativePush } from "@/lib/nativePush";
 import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
 import { netText, netTone } from "@/lib/netSync";
 import { checkWrites, netState, subscribeNet } from "./netWatch";
+import { watchChunkErrors } from "@/lib/crash";
 
 // Service worker'ı kaydeder: yayında çevrimdışı açılış + bildirim; geliştirmede yalnızca bildirim (önbellek kapalı)
 export function ServiceWorkerSetup() {
@@ -15,6 +16,8 @@ export function ServiceWorkerSetup() {
     const url = process.env.NODE_ENV === "production" ? "/sw.js" : "/sw.js?dev=1";
     navigator.serviceWorker.register(url).catch((e) => console.warn("[sw] kaydedilemedi:", e?.message));
   }, []);
+  // Yeni yayından sonra eski sayfanın kod parçası bulunamazsa sayfa bir kez kendiliğinden yenilenir (lib/crash.js)
+  useEffect(() => watchChunkErrors(), []);
   // Görünüm otomatikse telefonun açık/koyu ayarı değişince uygulama da değişir; elle seçimde durum çubuğu rengi tutar
   useEffect(() => {
     applyTheme(readTheme());
