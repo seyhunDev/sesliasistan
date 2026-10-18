@@ -1,8 +1,9 @@
 // Gerçekleşen (ölçülen) rüzgâr: resmî istasyonların SYNOP raporları (OGIMET üzerinden, ücretsiz, 1-3 saat gecikmeli).
 // Seyhun: "gerçekleşeni ön plana alıp sonra tahmin tarafına geçebilir miyiz… doğru noktayı bulmamız gerekiyor".
 // Yalnız seçilen yere NEAR_KM içindeki istasyon kullanılır; uzak istasyonun verisi hiç gösterilmez.
-// Liste elle tutulur: yalnız yeri ve numarası bilinen istasyon eklenir.
-export const STATIONS = [{ id: "17180", name: "Dikili", lat: 39.07, lon: 26.89 }];
+// İstasyonlar lib/windStations.js'te (Türkiye'nin resmî istasyonları); hangi yer seçilirse en yakını kendiliğinden bulunur.
+import { STATION_LIST } from "./windStations";
+export const STATIONS = STATION_LIST.map(([id, name, lat, lon]) => ({ id, name, lat, lon }));
 export const NEAR_KM = 10;
 
 export function km(a, b) {

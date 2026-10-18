@@ -2469,6 +2469,9 @@ group("Ölçülen rüzgâr")([
   ["istek aralığı", F("yerel gün UTC'de", () => { const u = WO.utcRange("2026-10-18"); return u.begin === "202610172100" && u.end === "202610182059"; })],
   ["Dikili yakın", F("istasyon 10 km içinde", () => { const s = WO.nearestStation(39.0717, 26.8886); return s.name === "Dikili" && s.near && s.km < 1; })],
   ["Foça uzak", F("istasyon gösterilmez", () => { const s = WO.nearestStation(38.67, 26.75); return !s.near && s.km > 10; })],
+  ["Bodrum", F("seçilen yer kendi istasyonunu bulur", () => { const s = WO.nearestStation(37.0344, 27.4305); return s.id === "17290" && s.near; })],
+  ["Fenerbahçe", F("İstanbul'da en yakını Göztepe", () => { const s = WO.nearestStation(40.969, 29.037); return s.id === "17062" && s.near; })],
+  ["istasyon listesi", F("numaralar tek, yerler Türkiye'de", () => new Set(WO.STATIONS.map((x) => x.id)).size === WO.STATIONS.length && WO.STATIONS.every((x) => /^17\d{3}$/.test(x.id) && x.name && x.lat > 35 && x.lat < 43 && x.lon > 25 && x.lon < 45))],
 ]);
 // Hava durumu hesapları (weather.js): Open-Meteo yanıtının sadeleşmesi, günün saatleri, yelkene uygun saatler, rüzgâr adı ve şiddeti,
 // gökyüzü adı ve grafik şeridi rengi, hava sorusu tanıma, yapay zekaya giden özet (ağa çıkmaz)
