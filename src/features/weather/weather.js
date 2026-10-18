@@ -64,6 +64,19 @@ export function sky(code, day = true) {
 const SKY_TONE = { sun: "text-[#d39a2c]", moon: "text-[#7f8daa]", cloudSun: "text-[#c9953a]", cloud: "text-[#8a9099]", fog: "text-[#8a9099]", rain: "text-[#4f7fae]", storm: "text-[#5d6f9e]", snow: "text-[#7fa6c9]" };
 export const skyTone = (icon) => SKY_TONE[icon] || "text-acc";
 
+// Grafiğin üstündeki gökyüzü şeridinin rengi: açık sarı, az bulutlu açık sarı, parçalı gri, kapalı koyu gri, sis gri,
+// yağışta mavi; yağmur ihtimali yüksekse mavi koyulaşır (rain: yüzde, yoksa null).
+export function skyBand(code, rain = null) {
+  const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+  if (wet || rain >= 50) return rain >= 70 || code >= 95 ? "#2f5f93" : "#4f7fae";
+  if (code >= 71 && code <= 86) return "#9fbad4";
+  if (rain >= 30) return "#8fb0d0";
+  if (code === 0) return "#e9b949";
+  if (code === 1) return "#f1d37e";
+  if (code === 2) return "#c9cfd6";
+  return "#8f98a3";
+}
+
 // Rüzgâr yönü (geldiği yön, derece) -> Türkçe rüzgâr adı ve kısa yön
 const WINDS = [
   ["Yıldız", "K"], ["Poyraz", "KD"], ["Gündoğusu", "D"], ["Keşişleme", "GD"],
@@ -110,7 +123,7 @@ export function shape(j, now = new Date()) {
   });
   // Gün detayı için: tüm saatler (bugün 00:00'dan itibaren, 6 gün) kısa biçimde
   const hourly = h.time.map((t, i) => [t, r(h.temperature_2m[i]), h.weather_code[i], h.is_day ? h.is_day[i] : 1,
-    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i])]);
+    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null]);
   return {
     at: now.getTime(),
     h48,
@@ -130,7 +143,7 @@ export function dayHours(w, date) {
   if (!w?.hourly) return null;
   return w.hourly
     .filter(([t]) => t.startsWith(date))
-    .map(([time, t, code, day, wind, gust, dir]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir }));
+    .map(([time, t, code, day, wind, gust, dir, rain]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir, rain: rain ?? null }));
 }
 
 // Şu anki hava: veri 20 dakikadan yeniyse alındığı andaki değer (w.now); eskiyse (uygulama sabah açıldı, yenileme gelmedi ya da bağlantı yok)
@@ -166,7 +179,7 @@ function url(p) {
   const q = new URLSearchParams({
     latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "6",
     current: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",
   });
   return `https://api.open-meteo.com/v1/forecast?${q}`;
