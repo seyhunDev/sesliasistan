@@ -7,6 +7,7 @@ import { Countdown, useTimerRun } from "@/features/training/Countdown";
 import { addWind } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { COURSES, FLAGS, VOIDS, atOf, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
+import { Icon } from "@/components/ui/Icon";
 import { WindSheet } from "./WeatherTab";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
@@ -38,19 +39,19 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
     <>
       {cur && <p className="mt-3 text-center text-[0.9375rem] font-semibold">{raceName(cur)}</p>}
       <Countdown mode="start" presets={PRESETS} race={flow} />
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setWind(true)} className={`${card} h-14 px-3 text-left active:translate-y-px`}>
-          <small className="block text-[0.75rem] text-mut">Rüzgâr{lastWind ? ` · ${hm(lastWind.at)}` : ""}</small>
-          <b className="block truncate text-[0.9375rem] font-semibold">{lastWind ? `${dirShort(lastWind.dir)} ${lastWind.kn} kn` : "Rüzgâr yaz"}</b>
+      {/* Seyhun 2026-10-18: Fotoğraf ve Video ikonlu, dikkat çekici renkte; "+" rüzgâr, akıntı ve not yazar */}
+      <div className="mt-2 grid grid-cols-[1fr_1fr_3.5rem] gap-2">
+        <button type="button" onClick={() => onCam("photo")} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-acc text-[1rem] font-semibold text-white shadow-sm active:translate-y-px">
+          <Icon name="camera" />
+          Fotoğraf
         </button>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => onCam("photo")} className={`${card} h-14 text-[0.9375rem] font-semibold active:translate-y-px`}>
-            Fotoğraf
-          </button>
-          <button type="button" onClick={() => onCam("video")} className={`${card} h-14 text-[0.9375rem] font-semibold active:translate-y-px`}>
-            Video
-          </button>
-        </div>
+        <button type="button" onClick={() => onCam("video")} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-rec text-[1rem] font-semibold text-white shadow-sm active:translate-y-px">
+          <Icon name="video" />
+          Video
+        </button>
+        <button type="button" onClick={() => setWind(true)} aria-label="Rüzgâr ve akıntı yaz" className="grid h-14 place-items-center rounded-2xl bg-deep text-white shadow-sm active:translate-y-px">
+          <Icon name="plus" className="size-6" />
+        </button>
       </div>
       <WindSheet
         open={wind}

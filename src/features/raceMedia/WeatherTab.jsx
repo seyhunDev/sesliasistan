@@ -55,13 +55,15 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {[...list].reverse().map((w) => (
               <li key={w.at + w.src}>
-                <button type="button" onClick={() => drop(w)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                <button type="button" onClick={() => drop(w)} className="flex w-full flex-wrap items-center gap-x-3 px-4 py-3 text-left active:bg-bg">
                   <span className="flex-1 text-[0.9375rem] font-medium tabular-nums">{hm(w.at)}</span>
                   <span className="text-[0.875rem] text-mut tabular-nums">
                     {dirShort(w.dir)} · <b className={`font-semibold ${windLevel(w.kn).tone}`}>{w.kn} kn</b>
                     {w.gust ? ` · sağanak ${w.gust}` : ""}
+                    {w.ckn ? ` · akıntı ${w.ckn} kn${w.cdir !== null ? ` ${dirShort(w.cdir)}` : ""}` : ""}
                     {w.src !== "elle" ? ` · ${w.src}` : ""}
                   </span>
+                  {w.note && <span className="mt-0.5 w-full truncate text-[0.8125rem] text-mut">{w.note}</span>}
                 </button>
               </li>
             ))}
@@ -88,11 +90,11 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
   );
 }
 
-// Rüzgâr kaydı: nereden esiyor (8 yön), knot, saat (şimdi), sağanak (isteğe bağlı)
+// Rüzgâr kaydı: nereden esiyor (8 yön), knot, saat (şimdi), sağanak, akıntı (hız + nereye) ve not (isteğe bağlı)
 const GRID = ["KB", "K", "KD", "B", "", "D", "GB", "G", "GD"];
 export function WindSheet({ open, onClose, day, last, onSave }) {
   return (
-    <Sheet open={open} onClose={onClose} title="Rüzgar">
+    <Sheet open={open} onClose={onClose} title="Rüzgâr ve akıntı">
       {open && <WindForm day={day} last={last} onSave={onSave} />}
     </Sheet>
   );
@@ -103,6 +105,9 @@ function WindForm({ day, last, onSave }) {
   const [kn, setKn] = useState(last?.kn ?? 10);
   const [gust, setGust] = useState(0);
   const [time, setTime] = useState(dayOf(now) === day ? hm(now) : "12:00");
+  const [ckn, setCkn] = useState(0);
+  const [cdir, setCdir] = useState(null);
+  const [note, setNote] = useState("");
   const deg = Object.fromEntries(DIRS);
   const step = "grid size-12 place-items-center rounded-full bg-bg text-[1.5rem] text-fg2 active:scale-95";
   return (
@@ -141,11 +146,35 @@ function WindForm({ day, last, onSave }) {
             <button type="button" aria-label="Sağanak artır" onClick={() => setGust((v) => Math.min(80, Math.max(v + 1, kn + 2)))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">+</button>
           </span>
         </div>
+        <div className="flex items-center justify-between py-2 text-[0.9375rem]">
+          <span className="text-mut">Akıntı</span>
+          <span className="flex items-center gap-3">
+            <button type="button" aria-label="Akıntı azalt" onClick={() => setCkn((v) => Math.max(0, Math.round((v - 0.5) * 10) / 10))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">−</button>
+            <b className="w-14 text-center font-semibold tabular-nums">{ckn ? `${ckn} kn` : "yok"}</b>
+            <button type="button" aria-label="Akıntı artır" onClick={() => setCkn((v) => Math.min(10, v + 0.5))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">+</button>
+          </span>
+        </div>
+        {ckn > 0 && (
+          <div className="py-3">
+            <p className="mb-2 text-[0.9375rem] text-mut">Akıntı nereye</p>
+            <div className="grid grid-cols-8 gap-1">
+              {DIRS.map(([d, v]) => (
+                <button key={d} type="button" onClick={() => setCdir(cdir === v ? null : v)} aria-pressed={cdir === v} className={`h-10 rounded-xl text-[0.8125rem] font-semibold active:scale-95 ${cdir === v ? "bg-acc text-white" : "bg-bg text-fg2"}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <label className="flex items-center gap-3 py-3 text-[0.9375rem]">
+          <span className="text-mut">Not</span>
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} className="min-w-0 flex-1 bg-transparent text-right outline-none" />
+        </label>
       </div>
       <button
         type="button"
         disabled={dir === null}
-        onClick={() => onSave({ at: atOf(day, time), dir, kn, gust: gust || null, src: "elle" })}
+        onClick={() => onSave({ at: atOf(day, time), dir, kn, gust: gust || null, src: "elle", ckn: ckn || null, cdir: ckn ? cdir : null, note: note.trim() })}
         className="mt-5 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-40"
       >
         Kaydet
