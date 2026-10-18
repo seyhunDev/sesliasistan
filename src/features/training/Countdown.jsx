@@ -139,9 +139,18 @@ export function TimerSound() {
   const running = t.end != null;
   const last = useRef(null); // son bip çalan saniye
   const lock = useRef(null);
-
+  // Geri sayım bitti mi (0'dan 3 sn sonra): "Startan beri" ileri sayarken ses ve ekran bırakılır. Seyhun 2026-10-18: uygulamayı
+  // açınca YouTube duruyordu; sebebi bitmiş ama "Bitir"e basılmamış sayaçta her dokunuşun ses oturumunu almasıydı.
+  const [overEnd, setOverEnd] = useState(null);
   useEffect(() => {
     if (!running) return;
+    const id = setTimeout(() => setOverEnd(t.end), Math.max(0, t.end + 3000 - Date.now()));
+    return () => clearTimeout(id);
+  }, [running, t.end]);
+  const active = running && overEnd !== t.end;
+
+  useEffect(() => {
+    if (!active) return;
     last.current = null;
     const tick = () => {
       const n = Date.now();
@@ -156,11 +165,16 @@ export function TimerSound() {
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end, t.mode]);
+  }, [active, t.end, t.mode]);
 
-  // Ses: sayaç sürerken oturum çalma kipinde; dokununca ve uygulamaya dönünce bağlam yeniden uyandırılır; durunca kip bırakılır
+  // Ses: yalnız geri sayım sürerken oturum çalma kipinde; dokununca ve uygulamaya dönünce bağlam yeniden uyandırılır.
+  // Sayaç yokken, durunca ya da bitince kip bırakılır: diğer uygulamaların sesine (YouTube, müzik) dokunulmaz.
   useEffect(() => {
-    if (!running) return session(false);
+    if (!active) {
+      session(false);
+      if (ctx?.state === "running") ctx.suspend().catch(() => {});
+      return;
+    }
     const touch = () => audio();
     const wake = () => document.visibilityState === "visible" && audio();
     document.addEventListener("pointerdown", touch, true);
@@ -169,11 +183,11 @@ export function TimerSound() {
       document.removeEventListener("pointerdown", touch, true);
       document.removeEventListener("visibilitychange", wake);
     };
-  }, [running]);
+  }, [active]);
 
   // Ekran açık kalsın (geri sayım sürerken); uygulamaya dönünce yeniden istenir
   useEffect(() => {
-    if (!running || t.end + 60e3 < Date.now() || !("wakeLock" in navigator)) return;
+    if (!active || !("wakeLock" in navigator)) return;
     let off = false;
     const ask = () => {
       if (document.visibilityState !== "visible") return;
@@ -184,19 +198,13 @@ export function TimerSound() {
     };
     ask();
     document.addEventListener("visibilitychange", ask);
-    const stop = setTimeout(() => {
-      lock.current?.release().catch(() => {});
-      lock.current = null;
-      off = true;
-    }, Math.max(0, t.end - Date.now()) + 60e3); // startan 1 dk sonra bırakılır
     return () => {
       off = true;
-      clearTimeout(stop);
       document.removeEventListener("visibilitychange", ask);
       lock.current?.release().catch(() => {});
       lock.current = null;
     };
-  }, [running, t.end]);
+  }, [active]);
 
   return null;
 }
@@ -231,7 +239,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero }) {
   const chip = (on) => `h-9 rounded-full border px-4 text-[0.9375rem] font-medium active:scale-95 ${on ? "border-acc bg-acc text-white" : "border-line bg-bg"}`;
 
   return (
-    <section onPointerDown={() => running && audio()} className="mt-3 rounded-2xl border border-line bg-card px-4 pb-4 pt-5 text-center">
+    <section onPointerDown={() => running && !up && audio()} className="mt-3 rounded-2xl border border-line bg-card px-4 pb-4 pt-5 text-center">
       <div className="relative mx-auto size-[13.5rem]">
         <svg viewBox="0 0 230 230" className="absolute inset-0 size-full -rotate-90">
           <circle cx="115" cy="115" r={R} fill="none" stroke="var(--line)" strokeWidth="8" />

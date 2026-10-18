@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -9,6 +9,7 @@ import { Bar, readTimer } from "@/features/training/Countdown";
 import { dayOf, hm, mediaGroups, mediaOf, momentBadge, momentOf, momentRace, momentText, tagMedia } from "@/lib/raceLive";
 import { CameraSheet } from "./CameraSheet";
 import { stampBlob } from "./stamp";
+import { dropPending, listPending, putPending } from "./pendingStore";
 
 // Medya: "Fotoğraf" ve "Video" uygulama içi kamerayı açar (CameraSheet: sayaç ve bipleri sürer; açılamazsa telefonun kamerası).
 // Çekilen küçük kaydedilir (video en çok 2 dk, 960 px; fotoğraf 1600 px), sırayla Storage'a yüklenir ve yarışa yazılır.
@@ -24,6 +25,10 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
   const [busy, setBusy] = useState(""); // ilerleme yazısı
   const [pending, setPending] = useState(0); // sırada bekleyen kayıt
   const queue = useRef(Promise.resolve());
+  const inflight = useRef(new Set());
+  const done = useRef(new Set());
+  const [waiting, setWaiting] = useState([]); // telefonda bekleyen (yüklenemeyen) kayıtlar
+  const [last, setLast] = useState(null); // kamerada köşedeki son çekilen: { id, kind, url, state: up | ok | err, err }
   const [cam, setCam] = useState(""); // açık uygulama içi kamera: "photo" | "video"
   const [native, setNative] = useState(false); // uygulama içi kamera açılamadı: telefonun kamerası
   const [openId, setOpen] = useState("");
@@ -40,46 +45,78 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
     const mom = momentOf(at, readTimer());
     return mom ? [`${momentRace(mom, live.starts)}. yarış · ${momentText(mom)}`, `${race.name || "Yarış"} · ${hm(at)}`] : [];
   };
-  // Kayıtlar sırayla yüklenir; kamera açık kalıp çekmeye devam edilebilir
-  const upload = async (m, at, mom, before = 0) => {
+  // Her çekilen önce telefonda saklanır (pendingStore), sonra sırayla yüklenir; yüklenince telefondan silinir.
+  // Yüklenemezse kaybolmaz: "telefonda bekliyor" kartı, sayfa açılınca ve internet gelince yeniden denenir.
+  const errText = (e) =>
+    e?.code === "storage/unauthorized" ? "Storage kuralı yayınlanmamış olabilir (Firebase › Storage › Rules)." : /network|retry-limit|offline/i.test(`${e?.code} ${e?.message}`) || !navigator.onLine ? "İnternet yok." : e?.message || "Yüklenemedi.";
+  const send = async (rec) => {
+    if (inflight.current.has(rec.id) || done.current.has(rec.id)) return; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
+    inflight.current.add(rec.id);
     try {
       setBusy("Yükleniyor…");
-      const meta = await addRaceMedia(orgId, race.id, m, at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), mom);
+      const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), rec.mom);
+      done.current.add(rec.id);
+      await dropPending(rec.id);
       onChange((l) => ({ media: [...l.media, meta] }));
-      toast(m.kind === "video" && before > m.blob.size ? `Video kaydedildi · ${sizeText(before)} → ${sizeText(m.blob.size)}` : m.kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi");
+      setWaiting((w) => w.filter((x) => x.id !== rec.id));
+      setLast((l) => (l?.id === rec.id ? { ...l, state: "ok" } : l));
+      if (!cam) toast(rec.kind === "video" && rec.before > rec.blob.size ? `Video kaydedildi · ${sizeText(rec.before)} → ${sizeText(rec.blob.size)}` : rec.kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi");
     } catch (e) {
-      toast(e?.code === "storage/unauthorized" ? "Kaydedilemedi: Storage kuralı yayınlanmamış olabilir." : e?.message || "Kaydedilemedi");
+      const err = errText(e);
+      await putPending({ ...rec, err });
+      setWaiting((w) => [...w.filter((x) => x.id !== rec.id), { ...rec, err }]);
+      setLast((l) => (l?.id === rec.id ? { ...l, state: "err", err } : l));
     }
+    inflight.current.delete(rec.id);
     setBusy("");
   };
-  const enqueue = (job) => {
+  const enqueue = (rec) => {
     setPending((n) => n + 1);
-    queue.current = queue.current.then(job).finally(() => setPending((n) => n - 1));
+    queue.current = queue.current.then(() => send(rec)).finally(() => setPending((n) => n - 1));
   };
+  const keep = async (m, at, mom, before = 0) => {
+    const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, mom, before, err: "" };
+    await putPending(rec);
+    setLast((l) => (l?.url && URL.revokeObjectURL(l.url), { id: rec.id, kind: rec.kind, url: URL.createObjectURL(rec.blob), state: "up" }));
+    enqueue(rec);
+  };
+  const retry = () => waiting.forEach((r) => enqueue(r));
+  // Sayfa açılınca telefonda kalanlar listelenir ve yeniden denenir; internet gelince de
+  useEffect(() => {
+    let on = true;
+    listPending(race.id).then((l) => {
+      if (!on || !l.length) return;
+      setWaiting(l);
+      l.forEach((r) => enqueue(r));
+    });
+    const online = () => listPending(race.id).then((l) => l.forEach((r) => enqueue(r)));
+    window.addEventListener("online", online);
+    return () => {
+      on = false;
+      window.removeEventListener("online", online);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [race.id]);
   // Uygulama içi kameradan: an çekildiği anda hesaplanır (sayaç sonra sıfırlansa da kalır)
-  const shot = (x) => {
-    const mom = momentOf(x.at, readTimer());
-    enqueue(() => upload(x, x.at, mom));
-  };
+  const shot = (x) => keep(x, x.at, momentOf(x.at, readTimer()));
   // Telefonun kendi kamerasıyla (uygulama içi kamera açılamazsa): çekildiği an dosyanın zamanı bu güne aitse o, değilse şimdi
-  const take = (file) => {
+  const take = async (file) => {
     if (!file) return;
     const t = file.lastModified ? new Date(file.lastModified).toISOString() : "";
     const now = new Date().toISOString();
     const at = t && dayOf(t) === day ? t : dayOf(now) === day ? now : new Date(`${day}T12:00:00`).toISOString();
     const mom = momentOf(at, readTimer());
     const lines = stampFor(at);
-    enqueue(async () => {
-      try {
-        setBusy("Hazırlanıyor…");
-        const m = await prepRaceMedia(file, (p) => setBusy(`Küçültülüyor %${Math.round(p * 100)}`));
-        if (m.kind === "photo" && lines.length) m.blob = await stampBlob(m.blob, lines);
-        await upload(m, at, mom, file.size);
-      } catch (e) {
-        toast(e?.message || "Kaydedilemedi");
-        setBusy("");
-      }
-    });
+    try {
+      setBusy("Hazırlanıyor…");
+      const m = await prepRaceMedia(file, (p) => setBusy(`Küçültülüyor %${Math.round(p * 100)}`));
+      if (m.kind === "photo" && lines.length) m.blob = await stampBlob(m.blob, lines);
+      setBusy("");
+      await keep(m, at, mom, file.size);
+    } catch (e) {
+      toast(e?.message || "Kaydedilemedi");
+      setBusy("");
+    }
   };
   const openCam = (k) => {
     if (native) return (k === "photo" ? photo : video).current?.click();
@@ -112,8 +149,22 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
     }
   };
 
+  const waitErr = waiting.find((x) => x.err)?.err || "";
   return (
     <>
+      {waiting.length > 0 && (
+        <div className={`${card} mt-3 flex items-center gap-3 px-4 py-3`}>
+          <span className="min-w-0 flex-1">
+            <b className="block text-[0.9375rem] font-semibold text-warn">{waiting.length} kayıt telefonda bekliyor</b>
+            <span className="block text-[0.8125rem] text-mut">{busy || waitErr || "Yükleniyor"}</span>
+          </span>
+          {!busy && (
+            <button type="button" onClick={retry} className="h-10 shrink-0 rounded-xl bg-acc px-4 text-[0.9375rem] font-semibold text-white active:translate-y-px">
+              Tekrar dene
+            </button>
+          )}
+        </div>
+      )}
       {tagged.length > 0 && (
         <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
           {[{ id: "", studentName: "Hepsi" }, ...tagged].map((a) => (
@@ -191,7 +242,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
           </div>
         )}
       </Bar>
-      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => setCam("")} onShot={shot} onFail={camFail} stampFor={stampFor} pending={pending} />
+      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => setCam("")} onShot={shot} onFail={camFail} stampFor={stampFor} pending={pending} last={last} />
     </>
   );
 }
