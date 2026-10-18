@@ -71,8 +71,10 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false, marks = [], obs
           d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3"
           transform={`translate(${x(i).toFixed(1)},12) rotate(${((obs[i]?.dir ?? h.dir ?? 0) % 360).toFixed(0)})`}
           fill="none"
-          stroke={h.wind >= 17 ? "#d9822b" : "#2f8f76"}
-          strokeWidth={i === sel ? 2 : 1.4}
+          // Ölçülen saatin oku koyu (mavi, 17 kn ve üstü turuncu), ölçüm varken tahmin okları soluk (Seyhun: "gerçekleşen koyu, tahmin soluk")
+          stroke={(obs[i]?.wind ?? h.wind) >= 17 ? "#d9822b" : obs[i] ? OBS : "#2f8f76"}
+          strokeOpacity={got.length && !obs[i] ? 0.4 : 1}
+          strokeWidth={i === sel ? 2 : obs[i] ? 1.7 : 1.4}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
