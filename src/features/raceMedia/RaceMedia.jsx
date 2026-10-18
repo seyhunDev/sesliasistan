@@ -16,11 +16,13 @@ import { WeatherTab } from "./WeatherTab";
 import { TimerTab } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
+import { DaySummarySheet } from "./DaySummarySheet";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
 // ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
+// Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
 const TABS = [["wx", "Hava"], ["sure", "Süre"], ["res", "Sonuçlar"], ["media", "Medya"]];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
@@ -34,6 +36,7 @@ export function RaceMedia({ orgId, id }) {
   const [athletes, setAthletes] = useState([]);
   const today = todayStr();
   const [day, setDay] = useState("");
+  const [sum, setSum] = useState(false);
 
   useEffect(() => {
     let on = true;
@@ -79,7 +82,16 @@ export function RaceMedia({ orgId, id }) {
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
 
   return (
-    <Shell title={race.name || "Yarış"} sub={sub} back={`/athletes/races/${id}`}>
+    <Shell
+      title={race.name || "Yarış"}
+      sub={sub}
+      back={`/athletes/races/${id}`}
+      action={
+        <button type="button" onClick={() => setSum(true)} className="h-9 rounded-full bg-card px-3.5 text-[0.875rem] font-semibold ring-1 ring-line active:scale-95">
+          Özet
+        </button>
+      }
+    >
       <Seg value={tab} onChange={setTab} options={TABS} className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2" />
       {days.length > 1 && (
         <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
@@ -93,15 +105,18 @@ export function RaceMedia({ orgId, id }) {
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
-      {tab === "media" && <MediaTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+      {tab === "media" && <MediaTab orgId={orgId} race={race} day={cur} live={live} ours={ours} onChange={change} />}
+      <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );
 }
 
-function Shell({ title, sub, back = "/athletes/races", children }) {
+function Shell({ title, sub, back = "/athletes/races", action, children }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+6rem)]">
-      <PageHeader title={title} sub={sub} back={back} />
+      <PageHeader title={title} sub={sub} back={back}>
+        {action}
+      </PageHeader>
       {children}
     </main>
   );

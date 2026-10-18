@@ -3,17 +3,16 @@
 // Yarış multimedya sayfasının kaydı (lib/raceLive.js): orgs/{org}/raceLive/{yarışId} belgesi (rüzgâr, startlar, fotoğraf/video künyeleri)
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
-// (kural storage.rules: yalnız ana hesap). Fotoğraf 1600 px JPEG; video 960 px'e küçültülerek yeniden kaydedilir (sessiz, video süresi kadar sürer).
-import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+// (kural storage.rules: yalnız ana hesap). Fotoğraf 1600 px JPEG; video (en çok 2 dk) 960 px'e küçültülerek yeniden kaydedilir (sessiz, video süresi kadar sürer).
+import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
-const VIDEO_SEC = 180;
-const VIDEO_OK = 8 * 1024 * 1024;
-const VIDEO_MAX = 55 * 1024 * 1024;
+const VIDEO_SEC = 120;
+const VIDEO_MAX = 40 * 1024 * 1024;
 const live = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id);
 const store = () => {
   const s = getStorage(app);
@@ -31,8 +30,12 @@ export async function loadLive(orgId, id) {
 export const addWind = (orgId, id, w) => setDoc(live(orgId, id), { wind: arrayUnion(cleanWind([w])[0]) }, { merge: true });
 export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cleanWind(list) }, { merge: true });
 export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
+// Bütün künye listesi (sporcu etiketi değişince)
+export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });
 
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
+// Kurallar (Seyhun 2026-10-18): fotoğraf 1600 px JPEG; video en çok 2 dakika ve her zaman küçültülür (960 px, ~1,6 Mbit/sn);
+// telefon küçültemezse kaydedilmez (sıkıştırılmamış büyük video Storage'ı doldurmasın).
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
     const img = await compressImage(file, 1600, 0.8);
@@ -42,17 +45,18 @@ export async function prepRaceMedia(file, onProg) {
   const url = URL.createObjectURL(file);
   try {
     const v = await videoMeta(url);
-    if (v.duration && isFinite(v.duration) && v.duration > VIDEO_SEC + 1) throw new Error("Video en çok 3 dakika olabilir.");
-    if (file.size > VIDEO_OK) {
-      try {
-        const blob = await shrinkVideo(v, onProg, 960, 1_600_000);
-        if (blob.size < file.size) return { blob, type: blob.type, kind: "video" };
-      } catch (e) {
-        if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
-      }
+    if (v.duration && isFinite(v.duration) && v.duration > VIDEO_SEC + 1) throw new Error("Video en çok 2 dakika olabilir. Daha kısa çek.");
+    let blob;
+    try {
+      blob = await shrinkVideo(v, onProg, 960, 1_600_000);
+    } catch (e) {
+      if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
+      throw new Error("Video bu telefonda sıkıştırılamadı, kaydedilmedi.");
     }
-    if (file.size > VIDEO_MAX) throw new Error("Video çok büyük. Daha kısa çek.");
-    return { blob: file, type: file.type || "video/mp4", kind: "video" };
+    // Zaten küçük video (sıkıştırınca büyüdüyse) olduğu gibi kalır
+    if (blob.size >= file.size && file.size <= VIDEO_MAX) return { blob: file, type: file.type || "video/mp4", kind: "video" };
+    if (blob.size > VIDEO_MAX) throw new Error("Video çok büyük. Daha kısa çek.");
+    return { blob, type: blob.type, kind: "video" };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -69,8 +73,9 @@ export async function addRaceMedia(orgId, id, m, at, onProg) {
   return meta;
 }
 
-export async function dropRaceMedia(orgId, id, meta) {
-  await setDoc(live(orgId, id), { media: arrayRemove(meta) }, { merge: true });
+// rest: kalan liste (arrayRemove birebir aynı nesneyi ister; etiket alanı eklenince eski künyeler eşleşmez)
+export async function dropRaceMedia(orgId, id, meta, rest) {
+  await setDoc(live(orgId, id), { media: cleanMedia(rest) }, { merge: true });
   await deleteObject(sref(store(), mpath(orgId, meta.id))).catch(() => {});
 }
 

@@ -1,12 +1,14 @@
 // Yarış multimedya sayfası (/athletes/races/<id>/media) saf parçaları: rüzgâr kayıtları, startlar, fotoğraf/video künyeleri,
 // genel sıralama süzgeci ve asistan cümleleri. Kayıt orgs/{org}/raceLive/{yarışId} belgesinde (raceLiveStore.js):
-// { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at }] }.
+// { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
+// (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
 const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const num = (v, max) => (Number.isFinite(Number(v)) && v !== null && v !== "" && Number(v) >= 0 && Number(v) <= max ? Math.round(Number(v)) : null);
 const ISO = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : "");
 const ID = /^[\w-]{1,40}$/;
+const cleanIds = (v) => [...new Set((Array.isArray(v) ? v : []).filter((x) => typeof x === "string" && ID.test(x)))].slice(0, 30);
 
 // Sekiz yön: rüzgârın geldiği yön (derece)
 export const DIRS = [["K", 0], ["KD", 45], ["D", 90], ["GD", 135], ["G", 180], ["GB", 225], ["B", 270], ["KB", 315]];
@@ -55,7 +57,7 @@ export function cleanStarts(list) {
 
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
-    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at) }))
+    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ath: cleanIds(m?.ath) }))
     .filter((m) => m.id && m.url && m.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-400);
@@ -107,6 +109,58 @@ export function mediaGroups(media, starts, day) {
     groups.get(key).items.push(m);
   }
   return [...groups.values()].reverse().map((g) => ({ ...g, items: g.items.reverse() }));
+}
+
+// Sporcu etiketi: dokunulan sporcu varsa çıkar, yoksa ekler. Dönüş yeni liste
+export function tagMedia(media, id, athId) {
+  return cleanMedia((media || []).map((m) => (m.id !== id ? m : { ...m, ath: m.ath?.includes(athId) ? m.ath.filter((x) => x !== athId) : [...(m.ath || []), athId] })));
+}
+// Süzgeç: yalnız o sporcunun etiketli olduğu fotoğraf/videolar ("" = hepsi)
+export const mediaOf = (media, athId) => (athId ? (media || []).filter((m) => m.ath?.includes(athId)) : media || []);
+
+// Gün sonu özeti (veliye / Instagram'a paylaşılan kart ve yazı). rows: yarış yerinin saatlik tahmini (yoksa null);
+// elle/cihazla yazılan rüzgâr varsa o, yoksa tahminin start saatleri (yoksa 10–18) arası kullanılır.
+// ours: [{ id, studentName }]; sıra yarış sonucundan (race.results.rows), en iyi sıradan.
+export function daySummary({ race, day, live, ours = [], rows = null, line = null }) {
+  const st = startsOn(live?.starts, day);
+  const wl = windOn(live?.wind, day);
+  const most = (dirs) => {
+    const c = {};
+    for (const d of dirs) c[dirShort(d)] = (c[dirShort(d)] || 0) + 1;
+    return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  };
+  let wind = null;
+  if (wl.length) {
+    const kn = wl.map((w) => w.kn);
+    const g = wl.map((w) => w.gust).filter((x) => x !== null);
+    wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.max(...g) : null, dir: most(wl.map((w) => w.dir)), src: "ölçülen", pts: wl.map((w) => ({ hh: hm(w.at), kn: w.kn })) };
+  } else if (rows?.length) {
+    const h0 = st.length ? +hm(st[0].at).slice(0, 2) : 10;
+    const h1 = st.length ? +hm(st[st.length - 1].at).slice(0, 2) + 1 : 18;
+    const r = rows.filter((x) => +x.hh >= h0 && +x.hh <= h1);
+    if (r.length) {
+      const kn = r.map((x) => Math.round(x.wind));
+      wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: Math.round(Math.max(...r.map((x) => x.gust))), dir: most(r.map((x) => x.dir)), src: "tahmin", pts: r.map((x) => ({ hh: `${x.hh}:00`, kn: Math.round(x.wind) })) };
+    }
+  }
+  const res = race?.results?.rows || {};
+  const team = ours
+    .map((a) => ({ name: a.studentName || a.name || "", place: res[a.id]?.place || 0, line: res[a.id]?.place ? (line ? line(res[a.id]) : `${res[a.id].place}.`) : "" }))
+    .filter((a) => a.name)
+    .sort((a, b) => (a.place || 999) - (b.place || 999) || a.name.localeCompare(b.name, "tr"));
+  const date = new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
+  const sub = [race?.district || race?.city, date].filter(Boolean).join(" · ");
+  const windText = wind ? `${wind.dir} ${wind.lo === wind.hi ? wind.hi : `${wind.lo}–${wind.hi}`} kn${wind.gust ? `, sağanak ${wind.gust} kn` : ""}${wind.src === "tahmin" ? " (tahmin)" : ""}` : "";
+  const starts = st.map((x) => ({ n: x.n, time: hm(x.at), wind: x.kn !== null && x.dir !== null ? `${dirShort(x.dir)} ${x.kn} kn` : "", course: x.course, flag: x.flag }));
+  const ranked = team.filter((a) => a.place);
+  const text = [
+    race?.name || "Yarış",
+    sub,
+    windText && `Rüzgâr: ${windText}`,
+    starts.length && `Yarışlar: ${starts.map((x) => `${x.n}. ${x.time}${x.flag ? ` (${x.flag.toLocaleLowerCase("tr-TR")})` : ""}`).join(" · ")}`,
+    ranked.length && `Bizimkiler:\n${ranked.map((a) => `${a.place}. ${a.name}${a.line && a.line !== `${a.place}.` ? ` · ${a.line}` : ""}`).join("\n")}`,
+  ].filter(Boolean).join("\n");
+  return { title: race?.name || "Yarış", sub, wind, windText, starts, team, text };
 }
 
 // Sayaç bipleri. Yarış (start dizisi): başlatınca, 4:00 ve 1:00 kala (süre ondan uzunsa), son 10 saniye her saniye, 0'da uzun.
