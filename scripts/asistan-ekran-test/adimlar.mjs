@@ -39,11 +39,13 @@ export async function scenarios(h) {
     const n = await page.evaluate(() => window.__t.srStarts);
     return [!!ok && n > srBefore, `${await state(page)} · tanıma ${n - srBefore} kez açıldı`];
   });
-  await check("Halka renkleri", "dinlerken", "kırmızı halka + ses çubukları, “Dinliyorum”", async () => {
+  // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
+  await check("Halka renkleri", "dinlerken", "kırmızı halka + ses çubukları, halkada yazı yok, alttaki çubukta “Dinliyorum”", async () => {
     const c = await ringColor(page);
     const bars = await page.locator("[data-dome] rect.aring-bar").count();
-    const t = await ringText(page);
-    return [c === "kırmızı" && bars === 5 && /Dinliyorum/.test(t), `${c} · ${bars} çubuk · ${t.replace(/\n/g, " ")}`];
+    const t = (await ringText(page)).trim();
+    const box = await dome(page).locator(".asheet-input").innerText();
+    return [c === "kırmızı" && bars === 5 && !t && /Dinliyorum/.test(box), `${c} · ${bars} çubuk · halka: “${t}” · çubuk: “${box.replace(/\n/g, " ")}”`];
   });
   await check("Halka renkleri", "zemin", "arkada renk bulutları ve nokta ızgara (abg)", async () => {
     const n = await page.locator("[data-dome] .abg > i").count();
@@ -51,9 +53,11 @@ export async function scenarios(h) {
     return [n >= 4 && anim !== "none", `${n} katman · ${anim}`];
   });
   await say(page, "notlarımı oku");
-  await check(G2, "konuşurken", "söylenen kutuda canlı yazılır", async () => {
-    const t = await waitFor(async () => /notlarımı oku/.test(await dome(page).innerText()), 3000);
-    return [!!t, (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ").slice(0, 80)];
+  // Canlı yazı yok (Claude uygulaması gibi, 2026-10-18): söz gönderilince sohbete balon olarak düşer
+  await check(G2, "konuşurken", "kutuda canlı yazı yok, “Dinliyorum” ve dalga", async () => {
+    await page.waitForTimeout(300);
+    const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
+    return [!/notlarımı oku/.test(box) && /Dinliyorum/.test(box), box.slice(0, 80)];
   });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();
