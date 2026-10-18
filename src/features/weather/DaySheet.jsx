@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, windLevel, windName } from "./weather";
 import { todayStr } from "@/lib/utils/format";
 import { Col } from "./parts";
 import { WindMapView } from "./WindMap";
@@ -14,11 +14,11 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // Saatlik rüzgâr grafiği: dolu alan = rüzgâr, kesikli = sağanak; 7/17/22 kn çizgileri yelken eşikleri.
 // Parmakla sürükleyince seçilen saatin değerleri üstte yazar. Bugünde "şimdi" noktası şu anki dakikaya göre çizginin üstünde durur.
 // mini: ana sayfadaki küçük hâli (alçak, dokunuşla seçim yok; dokununca pencere açılır).
-// Büyük hâlde üstte her saat rüzgârın estiği yöne bakan ok (17 kn ve üstü turuncu) ve altında gökyüzü şeridi
+// İki hâlde de üstte her saat rüzgârın estiği yöne bakan ok (17 kn ve üstü turuncu) ve altında gökyüzü şeridi
 // (Seyhun: "rüzgâr ya da sağanak artış azalışlarında ne taraftan geldiğini, hava açık mı kapalı mı görmek istiyorum").
 const W = 340, L = 22, R = 6; // grafik genişliği ve sol/sağ boşluk (saat simgeleri de buna göre dizilir)
 function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
-  const H = mini ? 84 : 182, T = mini ? 14 : 40, B = 16;
+  const H = mini ? 110 : 182, T = 40, B = 16;
   const n = rows.length;
   const top = Math.max(15, Math.ceil((Math.max(...rows.map((h) => h.gust)) + 2) / 5) * 5);
   const x = (i) => L + (i * (W - L - R)) / Math.max(1, n - 1);
@@ -54,7 +54,7 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
         </g>
       ))}
       <line x1={L} x2={W - R} y1={y(0)} y2={y(0)} className="text-line" stroke="currentColor" />
-      {!mini && rows.map((h, i) => (
+      {rows.map((h, i) => (
         <path
           key={`a${h.time}`}
           d="M0,-5.5L0,5.5M-3.2,2.3L0,5.5L3.2,2.3"
@@ -66,7 +66,7 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
           strokeLinejoin="round"
         />
       ))}
-      {!mini && rows.map((h, i) => {
+      {rows.map((h, i) => {
         const half = (W - L - R) / Math.max(1, n - 1) / 2;
         const a = Math.max(L, x(i) - half), b = Math.min(W - R, x(i) + half);
         return <rect key={`s${h.time}`} x={a.toFixed(1)} y="24" width={(b - a + 0.4).toFixed(1)} height="7" fill={skyBand(h.code, h.rain)} />;
@@ -99,30 +99,14 @@ function WindChart({ rows, sel, onSel, nowAt = -1, mini = false }) {
 }
 
 // Ana sayfadaki bugünün rüzgâr grafiği (Seyhun: "ana sayfadaki hava alanında o grafiği gösterelim, hangi saatteysek orada nokta").
-// Şu anki dakikaya göre kırmızı "şimdi" noktası, altında üç saatte bir hava simgesi; dokununca üstteki sarmalayıcı hava penceresini açar.
+// Şu anki dakikaya göre kırmızı "şimdi" noktası; üstte hava penceresindeki gibi saatlik yön okları ve gökyüzü şeridi
+// (Seyhun: "hava durumu sayfasındaki gibi yap"; eski üç saatlik simge satırı bu şerit gelince kalktı). Dokununca üstteki sarmalayıcı hava penceresini açar.
 export function TodayWind({ rows }) {
   const now = useNow();
   if (!rows?.length) return null;
   const i = rows.findIndex((h) => h.hh === HOUR.format(now));
   const nowAt = i >= 0 ? Math.min(rows.length - 1, i + now.getMinutes() / 60) : -1;
-  const n = rows.length;
-  // Üç saatte bir havanın simgesi, saat yazısının altında (Seyhun: "rüzgâr grafiğinde hava durumunu da gösterebilir miyiz")
-  const marks = rows.map((h, k) => ({ h, k })).filter(({ h }) => +h.hh % 3 === 0);
-  return (
-    <>
-      <WindChart rows={rows} sel={-1} onSel={() => {}} nowAt={nowAt} mini />
-      <span aria-hidden="true" className="relative block h-4">
-        {marks.map(({ h, k }) => {
-          const s = sky(h.code, h.day);
-          return (
-            <span key={h.time} className="absolute top-0 -translate-x-1/2" style={{ left: `${((L + (k * (W - L - R)) / Math.max(1, n - 1)) / W) * 100}%` }}>
-              <Icon name={s.icon} className={`size-4 ${skyTone(s.icon)}`} />
-            </span>
-          );
-        })}
-      </span>
-    </>
-  );
+  return <WindChart rows={rows} sel={-1} onSel={() => {}} nowAt={nowAt} mini />;
 }
 
 // Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.
