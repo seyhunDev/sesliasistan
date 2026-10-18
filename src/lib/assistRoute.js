@@ -36,6 +36,9 @@ import { timerCommand, windCommand } from "@/lib/raceLive";
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
 
+// Var olan kaydı değiştiren istek (sil, iptal, ertele, tamamla…): tür sayfasında da yeni kayıt sanılmaz (prefer'e girmez)
+export const CHANGE = { test: (s) => /(?<![\p{L}])(sil|siler|silin|sile|silelim|kaldır\p{L}*|iptal|ertele\p{L}*|tamamla\p{L}*|bitti|bitir\p{L}*|yapıldı|değiştir\p{L}*|güncelle\p{L}*|kaydır\p{L}*|öne al\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
+
 // Taslak yokken yalnız "kaydet": yapay zekaya gitmez (kaydetmeden "kaydettim" diyebiliyordu)
 export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 
@@ -144,7 +147,7 @@ export function routesOf(s, c = {}) {
   if (c.askTo && !QUESTION.test(s)) add("askTo");
   if (!mf && c.att && wantsAttendance(s, !!c.attHere)) add("attendance");
   if (racer && !mf && !c.skipRace && (wantsRaceText(s, c.raceNames || []) || (c.curRace && raceJobHere(s)))) add("race");
-  if (c.prefer && !c.drafts && !QUESTION.test(s)) add("prefer");
+  if (c.prefer && !c.drafts && !QUESTION.test(s) && !mf && !CHANGE.test(s)) add("prefer");
   const toFocus = !!c.focus && /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i.test(s);
   const cmd = !toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true });
   if (cmd) add("local", { cmd });
