@@ -129,3 +129,37 @@ export async function loadRaceWeather(r, today) {
   if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);
   return cleanWeather({ place, at: new Date().toISOString(), days: shapeDays(await res.json(), want) });
 }
+
+// Multimedya sayfası: yarış yerinin bir gününün bütün saatleri, hava sayfasındaki grafikle aynı biçimde (weather.js dayHours satırları).
+// Bu telefonda 1 saat saklanır (yarış + gün başına); geçmiş günler de alınır (Open-Meteo son 3 ayı verir).
+const DAY_TTL = 3600e3;
+export function rowsFrom(j, date) {
+  const h = j?.hourly || {};
+  return (h.time || [])
+    .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
+      wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]) }))
+    .filter((x) => x.time.startsWith(date) && x.wind !== null && x.gust !== null && x.dir !== null);
+}
+export async function loadRaceDay(r, date, force = false) {
+  const key = `sa-rwx:${r.id}:${date}`;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (!force && c && Date.now() - c.at < DAY_TTL && c.rows?.length) return c;
+  } catch {}
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (date > lastForecastDay(today)) throw new Error(`Tahmin ${forecastFrom(date)} tarihinden sonra çıkar`);
+  const place = await racePlace(r);
+  const q = new URLSearchParams({
+    latitude: place.lat, longitude: place.lon, timezone: "auto", wind_speed_unit: "kn", start_date: date, end_date: date,
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
+  });
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);
+  const out = { at: Date.now(), place: place.name, rows: rowsFrom(await res.json(), date) };
+  if (!out.rows.length) throw new Error("Bu gün için tahmin yok");
+  try {
+    localStorage.setItem(key, JSON.stringify(out));
+  } catch {}
+  return out;
+}

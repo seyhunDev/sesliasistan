@@ -3,6 +3,7 @@ rules_version = '2';
 // Firebase Storage kuralları (Firebase konsolu › Storage › Kurallar'a yapıştırılıp yayınlanır).
 // fitMedia: fitness hareketlerinin fotoğraf ve videoları (src/features/fitness/fitMedia.js); ana hesap yükler/siler, aynı kulüp okur.
 // raceFiles: yarışa eklenen evrak (src/features/athletes/raceStore.js); yalnız ana hesap.
+// raceMedia: yarış multimedya sayfasında çekilen fotoğraf ve video (src/features/athletes/raceLiveStore.js); yalnız ana hesap, en çok 60 MB.
 // receiptImages: fiş fotoğrafı (src/features/receipts/receiptPhoto.js); ana hesap hepsini, çalışan kendi eklediğini.
 // postPhotos: Instagram gönderisinin fotoğrafı (src/features/posts/posts.js); yalnız ana hesap.
 // invFiles, invoiceFiles, noticeFiles: envanter belgeleri, faturalar, yarış talimatı ve sonuç belgeleri (src/lib/firebase/fileStore.js); yalnız ana hesap.
@@ -34,6 +35,13 @@ service firebase.storage {
       allow create, update: if isOwner(orgId)
                             && request.resource.size < 20 * 1024 * 1024
                             && request.resource.contentType.matches('(image|application)/.*');
+    }
+
+    match /orgs/{orgId}/raceMedia/{id} {
+      allow read, delete: if isOwner(orgId);
+      allow create, update: if isOwner(orgId)
+                            && request.resource.size < 60 * 1024 * 1024
+                            && request.resource.contentType.matches('(image|video)/.*');
     }
 
     match /orgs/{orgId}/receiptImages/{by}/{name} {

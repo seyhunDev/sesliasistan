@@ -1,7 +1,7 @@
 "use client";
 
 import { cleanResults } from "@/lib/raceResults";
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { soon } from "@/lib/soon";
 import { cleanDocs, nextNo } from "./raceDocs";
@@ -301,6 +301,19 @@ export function tripRows(r) {
     ["Buluşma noktası", r?.meetPoint !== r?.departFrom && r?.meetPoint],
     ["Dönüş", at(r?.returnDate, r?.returnTime)],
   ].filter(([, v]) => v && String(v).trim());
+}
+
+// Tek yarış (multimedya sayfası); yoksa null
+export async function loadRace(orgId, id) {
+  const snap = await getDoc(doc(col(orgId), id));
+  return snap.exists() ? { id: snap.id, ...clean(snap.data()) } : null;
+}
+
+// Yalnız sonuçlar (multimedya sayfasından yükleme): yarışın diğer alanlarına dokunulmaz; bulunan yeni sporcular yarışa eklenir
+export async function saveRaceResults(orgId, id, results, addIds = []) {
+  const data = { results: cleanResults(results), updatedAt: serverTimestamp() };
+  if (addIds.length) data.athleteIds = arrayUnion(...addIds);
+  await soon(updateDoc(doc(col(orgId), id), data), 2500, "Yarış");
 }
 
 export async function loadRaces(orgId) {

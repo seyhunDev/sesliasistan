@@ -4,12 +4,12 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { mergeSheet, dropSheet, rankOurs, resultLine } from "@/lib/resultSheet";
-import { readResults } from "./raceResultsRead";
-import { dropNoticeFile, loadNoticeFile, noticePdf, saveNoticeFile } from "./noticeFile";
+import { dropSheet, resultLine } from "@/lib/resultSheet";
+import { dropNoticeFile, loadNoticeFile } from "./noticeFile";
+import { importResults, importToast } from "./resultsImport";
+import { dropSheetDoc } from "./raceLiveStore";
 
 const box = "h-10 w-16 rounded-lg bg-bg px-2 text-center text-[0.9375rem] tabular-nums outline-none focus:ring-1 focus:ring-acc";
-const fileName = (race, n) => `${String(race?.name || "Yarış").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60)} sonuçları${n > 1 ? ` ${n}` : ""}.pdf`;
 
 // Yarış başlayınca Sporcular sekmesinde: sonuç PDF'i yüklenir, yapay zeka listeyi okur, bizim sporcular bulunur;
 // her sporcuya kategori (Optimist Senior/Junior/Bambino, ILCA 4…) sırası ve kızlar sırası yazılır.
@@ -29,17 +29,10 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
     if (!f || busy) return;
     setBusy(true);
     try {
-      const pool = [...athletes, ...club.filter((a) => !athletes.some((x) => x.id === a.id))];
-      const { kind, fleets } = await readResults(f, athletes.map((a) => a.studentName));
-      const ranked = rankOurs(fleets, pool);
-      const pdf = await noticePdf(f, kind);
-      const meta = await saveNoticeFile(orgId, pdf, fileName(race, files.length + 1));
-      onChange(mergeSheet(res, ranked, meta));
-      const extra = Object.keys(ranked).filter((id) => !race.athleteIds.includes(id));
-      if (extra.length) onAddAthletes(extra);
-      const n = Object.keys(ranked).length;
-      const miss = athletes.filter((a) => !ranked[a.id] && !res.rows?.[a.id]?.place).length;
-      toast(n ? `${n} sporcumuz bulundu${extra.length ? `, ${extra.length} sporcu yarışa eklendi` : ""}${miss ? ` · ${miss} sporcu listede yok` : ""}` : "Sonuç kaydedildi ama listede sporcumuz bulunamadı");
+      const got = await importResults({ orgId, race, athletes, club, file: f });
+      onChange(got.results);
+      if (got.extra.length) onAddAthletes(got.extra);
+      toast(importToast(got));
     } catch (e) {
       toast(e?.message || "Sonuçlar okunamadı");
     }
@@ -56,6 +49,7 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
     if (!confirm("Bu sonuç belgesi ve ondan okunan sıralar silinsin mi?")) return;
     onChange(dropSheet(res, meta.id));
     dropNoticeFile(orgId, meta);
+    if (race.id) dropSheetDoc(orgId, race.id, meta.id);
   };
 
   const sorted = [...athletes].sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));

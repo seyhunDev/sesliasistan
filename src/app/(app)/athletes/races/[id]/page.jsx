@@ -15,6 +15,7 @@ import { leftText } from "@/features/athletes/RaceList";
 import { coachStart, rangeText } from "@/features/athletes/raceDocs";
 import { addRacePlan, deleteRace, freshRace, loadRaces, saveRace } from "@/features/athletes/races";
 import { addNoticePlans } from "@/features/athletes/raceNotice";
+import { dropLive } from "@/features/athletes/raceLiveStore";
 import { mailToMe } from "@/features/mail/outbox";
 import { db } from "@/lib/firebase/clientApp";
 import { doc, updateDoc } from "firebase/firestore";
@@ -81,6 +82,7 @@ function Race({ orgId, uid, by, mail, coach }) {
   const onDelete = async (rid) => {
     try {
       await deleteRace(orgId, rid);
+      dropLive(orgId, rid); // multimedya: rüzgâr, startlar, fotoğraf/video, genel sıralama
       goBack(router, "/athletes/races");
     } catch {
       toast("Silinemedi");

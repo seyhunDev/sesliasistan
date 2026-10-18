@@ -1,0 +1,108 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Loading } from "@/components/ui/Loader";
+import { Seg } from "@/components/ui/Page";
+import { useToast } from "@/components/ui/ToastProvider";
+import { loadAthletes, isActive } from "@/features/athletes/data";
+import { loadRace } from "@/features/athletes/races";
+import { raceDays } from "@/features/athletes/raceWeather";
+import { loadLive } from "@/features/athletes/raceLiveStore";
+import { cleanLive } from "@/lib/raceLive";
+import { todayStr } from "@/lib/utils/format";
+import { WeatherTab } from "./WeatherTab";
+import { TimerTab } from "./TimerTab";
+import { ResultsTab } from "./ResultsTab";
+import { MediaTab } from "./MediaTab";
+
+// Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
+// Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
+// ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
+// Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
+const TABS = [["wx", "Hava"], ["sure", "Süre"], ["res", "Sonuçlar"], ["media", "Medya"]];
+const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+
+export function RaceMedia({ orgId, id }) {
+  const toast = useToast();
+  const q = useSearchParams();
+  const [tab, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "wx");
+  const [race, setRace] = useState(null);
+  const [missing, setMissing] = useState(false);
+  const [live, setLive] = useState(() => cleanLive({}));
+  const [athletes, setAthletes] = useState([]);
+  const today = todayStr();
+  const [day, setDay] = useState("");
+
+  useEffect(() => {
+    let on = true;
+    loadRace(orgId, id).then(
+      (r) => on && (r ? setRace(r) : setMissing(true)),
+      () => on && setMissing(true),
+    );
+    loadLive(orgId, id).then(
+      (l) => on && setLive(l),
+      () => {},
+    );
+    loadAthletes()
+      .then((d) => on && setAthletes(d.athletes || []))
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, [orgId, id]);
+
+  // Asistanla yazılan rüzgâr (isler/yarisMedya.js) açık sayfada hemen görünür
+  useEffect(() => {
+    const on = (e) => e.detail?.id === id && setLive((l) => cleanLive({ ...l, wind: [...l.wind, e.detail.wind] }));
+    window.addEventListener("sa-race-live", on);
+    return () => window.removeEventListener("sa-race-live", on);
+  }, [id]);
+
+  // Bu sayfada yapılan değişiklik hemen görünür; kayıt arkada gider (hata olursa söylenir)
+  const change = useCallback(
+    (patch, job) => {
+      setLive((l) => cleanLive({ ...l, ...(typeof patch === "function" ? patch(l) : patch) }));
+      Promise.resolve(job?.()).catch(() => toast("Kaydedilemedi. İnterneti kontrol et."));
+    },
+    [toast],
+  );
+
+  if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
+  if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
+
+  const days = raceDays(race);
+  const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
+  const n = days.indexOf(cur) + 1;
+  const sub = [race.district || race.city, n > 0 && days.length > 1 ? `${n}. gün` : "", dayLabel(cur)].filter(Boolean).join(" · ");
+  const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
+
+  return (
+    <Shell title={race.name || "Yarış"} sub={sub} back={`/athletes/races/${id}`}>
+      <Seg value={tab} onChange={setTab} options={TABS} className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2" />
+      {days.length > 1 && (
+        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
+          {days.map((d, i) => (
+            <button key={d} type="button" onClick={() => setDay(d)} aria-pressed={d === cur} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}>
+              {i + 1}. gün · {dayLabel(d)}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+      {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
+      {tab === "media" && <MediaTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+    </Shell>
+  );
+}
+
+function Shell({ title, sub, back = "/athletes/races", children }) {
+  return (
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+6rem)]">
+      <PageHeader title={title} sub={sub} back={back} />
+      {children}
+    </main>
+  );
+}

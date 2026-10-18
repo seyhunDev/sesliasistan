@@ -71,6 +71,8 @@ export const TASKS = [
   { id: "raceHere", group: "Kulüp", name: "Açık yarışta: sporcu çıkarma, sonuç, ödeme, bilgi notu, plana ekleme, silme (onayla)", say: "Ali 3. oldu; bilgi notunu hazırla; yarışı sil", who: "sporcu", by: "yerel", confirm: true },
   { id: "results", group: "Kulüp", name: "Sporcunun yarış sonuçları", say: "Ali'nin sonuçları; Foça yarışında Ali kaçıncı oldu", who: "ana", by: "yerel" },
   { id: "hotel", group: "Kulüp", name: "Açık yarışa otel ekleme", say: "otel ekle: Foça Palas, 0232 812 34 56", who: "sporcu", by: "yerel" },
+  { id: "raceWind", group: "Kulüp", name: "Rüzgâr kaydı", say: "rüzgar 15 knot kuzeybatı", who: "ana", by: "yerel" },
+  { id: "raceTimer", group: "Kulüp", name: "Start sayacı", say: "5 dakikalık sayacı başlat", who: "sporcu", by: "yerel" },
   { id: "absent", group: "Kulüp", name: "Gelmeyenlerin velilerine haber (onayla)", say: "gelmeyenlerin velilerine haber ver", who: "ana", by: "yerel", confirm: true },
   { id: "invoiceTask", group: "Kulüp", name: "Faturayı görevliye verme, fatura silme (onayla)", say: "Turkcell faturasını Ali'ye ver; Turkcell faturasını sil", who: "ana", by: "yerel", confirm: true },
   { id: "receiptPay", group: "Kulüp", name: "Çalışanın fişini ödendi yapma", say: "F-0012 fişini ödendi yap; Ali'nin fişlerini ödedim", who: "ana", by: "yerel" },

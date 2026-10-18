@@ -17,10 +17,10 @@ Belgedeki sonuç listesini satır satır, eksiksiz çıkar. Uydurma; okuyamadı�
 - fleets: her sınıf (filo) için ayrı liste: { cls, rows }.
   - cls: sınıf adı belgede yazdığı gibi ("Optimist", "ILCA 4", "ILCA 6", "420").
   - Aynı sınıf için hem genel liste hem ayrı alt listeler (Junior, Kızlar, Gençler) varsa YALNIZ genel listeyi yaz; kategori ve cinsiyeti satırlarda işaretle. Belgede sınıfın yalnız ayrı kategori listeleri varsa (ör. yalnız Junior listesi) onları ayrı fleet olarak yaz ve satırlara kategoriyi yaz.
-  - rows: genel sıraya göre her sporcu: { rank genel sıra (sayı), name ad soyad belgedeki gibi, sail yelken numarası ("TUR 1234"), club kulüp, sex, cat }.
+  - rows: genel sıraya göre her sporcu: { rank genel sıra (sayı), name ad soyad belgedeki gibi, sail yelken numarası ("TUR 1234"), club kulüp, born doğum yılı ya da tarihi (belgede varsa, yazıldığı gibi), pts net puan (sayı; belgede "Net", "Toplam", "Total" sütunu), sex, cat }.
   - cat: sporcunun yanında ya da kategori sütununda "Junior", "J", "Jr" yazıyorsa "Junior"; "Bambino", "B" yazıyorsa "Bambino"; yazmıyorsa boş.
   - sex: belgede cinsiyet sütunu ya da işareti varsa (K, F, W, Kız, Female, Girl → "K"; E, M, Erkek, Male, Boy → "E"). Belgede yoksa sporcunun adından tahmin et (Türkçe adlarda: Ayşe, Zeynep, Elif, Defne, Ela → "K"; Ali, Mehmet, Can, Ege → "E"); her iki cinsiyette kullanılan ya da emin olmadığın adda boş bırak.
-- Puan, yarış skorları ve diğer sütunları YAZMA.`;
+- Tek tek yarış skorlarını ve diğer sütunları YAZMA (yalnız net puan).`;
 
 const s = { type: "string" };
 const SCHEMA = {
@@ -37,7 +37,7 @@ const SCHEMA = {
             type: "array",
             items: {
               type: "object",
-              properties: { rank: { type: "number" }, name: s, sail: s, club: s, sex: s, cat: s },
+              properties: { rank: { type: "number" }, name: s, sail: s, club: s, born: s, pts: { type: "number" }, sex: s, cat: s },
               required: ["rank", "name"],
             },
           },

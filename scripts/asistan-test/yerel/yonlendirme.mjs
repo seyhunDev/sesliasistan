@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -129,6 +129,8 @@ const CASES = {
   personOpen: ["Ali'nin sayfasını aç", "Zeynep Ak'ın sayfasını aç", "Ayşe Yılmaz'ın kişi sayfasını göster", "gökhanın sayfasını aç", "mehmet özün sayfasını aç"],
   athleteBody: ["Mete'nin kilosu 52", "Ali Kaya'nın boyu 1.52", "Zeynep'in boyu 148 kilosu 40,5", "Emre 45 kilo", "Ali'nin kilosu kaç", ["Mete'nin kilosu 52", { path: "/fitness" }]],
   invoiceTask: ["Turkcell faturasını Ali'ye ver", "elektrik faturasını sil"],
+  raceWind: ["rüzgar 15 knot kuzeybatı", "rüzgarı yaz karayel 12 knot", "kuzeybatıdan 14 knot esiyor yaz", "rüzgar poyraz 18 knot sağanak 24", ["rüzgar 9 knot lodos", { path: "/athletes/races/r1/media" }]],
+  raceTimer: ["5 dakikalık sayacı başlat", "sayacı başlat", "geri sayımı başlat 2 dakika", "bir dakikalık sayaç başlat", ["sayacı başlat", { path: "/training/day" }]],
   foodLog: ["öğlen tavuk pilav ve ayran içtim", "kahvaltıda 2 yumurta ve peynir yedim", "akşam mercimek çorbası yedim", ["öğlen tavuk pilav ve ayran içtim", { path: "/fitness" }], ["öğle mercimek çorbası", { path: "/fitness", food: true }]],
   "Beslenme: su": ["2 bardak su içtim", "yarım litre su içtim", ["bir şişe su içtim", { path: "/fitness" }]],
   "Beslenme: kilo": ["kilom 82", "tartıldım 81,5", ["kilom 81.5", { path: "/fitness" }]],
@@ -143,6 +145,8 @@ const CROSS = [
   ["income", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "gelir, borç değil"],
   ["send", "Ali'ye yaz, borcunu ödesin", "mesaj, borç kaydı değil"],
   ["log", "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", "yelken antrenmanı, fitness değil"],
+  ["weather", "yarın rüzgar kaç knot", "hava sorusu, rüzgâr kaydı değil"],
+  ["log", "bugün 12 knot karayelde antrenman yaptık, 2 saat sürdü", "antrenman günlüğü, yarış rüzgâr kaydı değil"],
   ["plan", "yarın 10'da antrenman ekle", "takvim planı, fitness değil"],
   ["navigate", "fitness sayfasını aç", "sayfa açma, fitness isteği değil"],
   ["plan", "yarın akşam yemeği planla", "plan, beslenme değil"],
