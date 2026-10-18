@@ -160,6 +160,11 @@ export function dayItems(plans, tasks, day) {
   };
 }
 
+// Takvim: o günün fitness antrenmanları (fitDays satırları: kendi ve sporcularınki), saat sırasıyla
+export function fitOn(fit = [], day) {
+  return fit.filter((f) => f.date === day).sort((a, b) => (a.plan?.time || "99").localeCompare(b.plan?.time || "99") || a.name.localeCompare(b.name, "tr"));
+}
+
 // Takvim ızgarası: ayın haftaları (pazartesi başlar); her hücre { day: "YYYY-MM-DD", inMonth }
 export function monthGrid(ym) {
   const [y, m] = ym.split("-").map(Number);

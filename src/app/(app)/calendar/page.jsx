@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,7 +8,9 @@ import { Label, card } from "@/components/ui/Page";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useWho } from "@/features/data/useWho";
-import { birthdaysOn, dayItems, leftLabel, lessonsOn, monthGrid, nextBirthday } from "@/lib/agenda";
+import { birthdaysOn, dayItems, fitOn, leftLabel, lessonsOn, monthGrid, nextBirthday } from "@/lib/agenda";
+import { fitDays } from "@/lib/homeTiles";
+import { isFit, statusOf } from "@/lib/fitness/model";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import Link from "next/link";
 import { monthLabel, todayStr } from "@/lib/utils/format";
@@ -19,6 +21,8 @@ const shift = (ym, n) => {
   const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
+// Fitness durumu (ana sayfadaki Fitness alanıyla aynı)
+const FST = { done: ["Yaptı", "tone-st"], missed: ["Yapmadı", "tone-gen"], skip: ["Atladı", "tone-gen"] };
 const longDay = (s) => new Date(`${s}T00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 // Adres çubuğundaki ?d=YYYY-MM-DD: ana sayfadaki haftadan gelince o gün seçili açılır
 export default function CalendarPage() {
@@ -34,9 +38,13 @@ function CalendarFromUrl() {
   return <Calendar key={day} initial={day} />;
 }
 
-// Takvim: ay görünümü; tarihli planlar ve görevler noktayla, seçili günün listesi altta
+// Takvim: ay görünümü; tarihli planlar ve görevler noktayla, seçili günün listesi altta.
+// Fitness: ana sayfadaki gibi kendi ve sporcuların antrenmanları (fitDays; fitOthers zaten yüklü, ek okuma yok), turuncu nokta ve satır.
 function Calendar({ initial }) {
-  const { plans, tasks, toggleTask, birthdays, lessons } = useData();
+  const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons } = useData();
+  const plans = useMemo(() => all.filter((p) => !isFit(p)), [all]);
+  const fit = useMemo(() => fitDays(all, fitOthers || [], members, myUid), [all, fitOthers, members, myUid]);
+  const fitDates = useMemo(() => new Set(fit.map((f) => f.date)), [fit]);
   const { openAdd } = useAdd();
   const { openBirthday } = useBirthday();
   const pillOf = useWho();
@@ -48,7 +56,7 @@ function Calendar({ initial }) {
   const mark = (day) => {
     const { plans: p, tasks: t } = dayItems(plans, tasks, day);
     const open = t.filter((x) => !x.done);
-    return { plans: p.length, tasks: open.length, late: day < today && open.length > 0, bday: birthdaysOn(birthdays, day).length };
+    return { plans: p.length, fit: fitDates.has(day), tasks: open.length, late: day < today && open.length > 0, bday: birthdaysOn(birthdays, day).length };
   };
   const pick = (day) => {
     setSel(day);
@@ -57,7 +65,8 @@ function Calendar({ initial }) {
   const items = dayItems(plans, tasks, sel);
   const bdays = birthdaysOn(birthdays, sel);
   const dayLessons = lessonsOn(lessons, sel);
-  const count = items.plans.length + items.tasks.length + bdays.length + dayLessons.length;
+  const dayFit = fitOn(fit, sel);
+  const count = items.plans.length + dayFit.length + items.tasks.length + bdays.length + dayLessons.length;
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
@@ -97,7 +106,7 @@ function Calendar({ initial }) {
               <button
                 key={day}
                 onClick={() => pick(day)}
-                aria-label={`${longDay(day)}${m.plans ? `, ${m.plans} plan` : ""}${m.tasks ? `, ${m.tasks} görev` : ""}`}
+                aria-label={`${longDay(day)}${m.plans ? `, ${m.plans} plan` : ""}${m.fit ? ", fitness" : ""}${m.tasks ? `, ${m.tasks} görev` : ""}`}
                 aria-pressed={on}
                 className="flex flex-col items-center py-1 active:opacity-60"
               >
@@ -110,6 +119,7 @@ function Calendar({ initial }) {
                 </span>
                 <span className="mt-0.5 flex h-1.5 gap-0.5">
                   {m.plans > 0 && <i className={`size-1.5 rounded-full ${inMonth ? "bg-acc" : "bg-acc/40"}`} />}
+                  {m.fit && <i className={`tone-fit tone-bar size-1.5 rounded-full ${inMonth ? "" : "opacity-40"}`} />}
                   {m.tasks > 0 && <i className={`size-1.5 rounded-full ${m.late ? "bg-rec" : inMonth ? "bg-amber-600" : "bg-amber-600/40"}`} />}
                   {m.bday > 0 && <i className={`size-1.5 rounded-full ${inMonth ? "bg-pink-500" : "bg-pink-500/40"}`} />}
                 </span>
@@ -117,8 +127,9 @@ function Calendar({ initial }) {
             );
           })}
         </div>
-        <div className="mt-1 flex justify-center gap-4 pb-0.5 text-[0.6875rem] text-mut">
+        <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 pb-0.5 text-[0.6875rem] text-mut">
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-acc" /> Plan</span>
+          <span className="flex items-center gap-1"><i className="tone-fit tone-bar size-1.5 rounded-full" /> Fitness</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-amber-600" /> Görev</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-rec" /> Gecikmiş</span>
           <span className="flex items-center gap-1"><i className="size-1.5 rounded-full bg-pink-500" /> Doğum günü</span>
@@ -190,6 +201,21 @@ function Calendar({ initial }) {
                     )}
                   </span>
                   {pillOf(p)}
+                </button>
+              </li>
+            );
+          })}
+          {dayFit.map((f) => {
+            const [st, tone] = FST[statusOf(f.plan, today)] || [];
+            return (
+              <li key={f.id}>
+                <button onClick={() => openAdd({ edit: { kind: "plan", id: f.id } })} className="tone-fit flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                  <span className="w-16 shrink-0 whitespace-nowrap text-[0.8125rem] font-semibold tabular-nums text-[var(--tfg)]">{f.plan.time || "Tüm gün"}</span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.9375rem] font-medium">{f.mine ? f.plan.fit?.name || f.plan.title || "Fitness" : f.name}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">{["Fitness", !f.mine && (f.plan.fit?.name || f.plan.title)].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  {st && <span className={`${tone} tone-chip shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold`}>{st}</span>}
                 </button>
               </li>
             );
