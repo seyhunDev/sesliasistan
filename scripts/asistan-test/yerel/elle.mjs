@@ -2139,6 +2139,33 @@ group("Fitness hareket kütüphanesi")([
     const out = LB.itemsWithLib(plan, lib);
     return out[0].media?.[0]?.url === V.url && !LB.sameMedia(plan, out) && out[0].sets === 3;
   })],
+  ["aynı ad ikinci kayıt açmaz", F("listedeki hareketle aynı adlı elle yazılan (PDF) aynı kayda gider, numara ve fotoğraf ortak", () => {
+    const P = { id: "p1", kind: "photo", type: "image/jpeg", size: 1000, parts: 1 };
+    const a = LB.libSetMedia(LB.cleanLib(), { ex: "pushup", name: "Şınav" }, { media: [P] });
+    const { lib, added } = LB.libAdd(a, [{ ex: "", name: "ŞINAV" }]);
+    return !added.length && Object.keys(lib.items).length === 1 && LB.libNo(lib, { ex: "", name: "Şınav" }) === 1 &&
+      LB.withLib({ ex: "", name: "şınav", sets: 3 }, lib).media?.[0]?.id === "p1";
+  })],
+  ["kopyaları birleştir", F("eski kopyalar: fotoğraflı kalır, bütün fotoğraf/videolar korunur, programdaki eski ad kalanı kullanır", () => {
+    const M = (id, kind = "photo") => ({ id, kind, type: "image/jpeg", size: 1000, parts: 1 });
+    const old = LB.cleanLib({ next: 4, items: {
+      pushup: { no: 1, name: "Şınav", kind: "reps", media: [M("a"), M("b")], m: true },
+      "c:sinav": { no: 2, name: "Şınav", kind: "reps", media: [M("c"), M("d", "video")], m: true },
+      plank: { no: 3, name: "Plank", kind: "time" },
+    } });
+    const d = LB.libDupes(old);
+    const lib = LB.cleanLib(LB.libMerge(old, d[0].keep, d[0].items.map((x) => x.key)));
+    const ids = LB.libMediaIds(lib);
+    const it = LB.withLib({ ex: "", name: "Şınav" }, lib);
+    return d.length === 1 && d[0].keep === "pushup" && Object.keys(lib.items).length === 2 && ["a", "b", "c", "d"].every((x) => ids.has(x)) &&
+      lib.items.pushup.media.length === 3 && lib.items.pushup.spare.length === 1 && it.media.length === 3 &&
+      lib.alias["c:sinav"] === "pushup" && !LB.libDupes(lib).length && LB.libNo(lib, { ex: "", name: "Şınav" }) === 1;
+  })],
+  ["fotoğraflı olan kalır", F("numarası büyük olsa da fotoğrafı olan kopya kalır", () => {
+    const old = LB.cleanLib({ items: { "c:dips": { no: 1, name: "Dips" }, dips: { no: 5, name: "Dips", yt: YT, m: true } } });
+    const d = LB.libDupes(old);
+    return d[0]?.keep === "dips" && d[0].items[0].yt?.id === YT.id;
+  })],
   ["değişiklik var mı", F("sameMedia", () => LB.sameMedia([{ yt: YT }], [{ yt: YT }]) && !LB.sameMedia([{ yt: YT }], [{}]))],
   ["yapay zekaya kulübün hareketleri", F("c: satırları, listedekiler girmez", () => {
     const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "squat" }, { name: "Sandalyede dips" }]);
@@ -2410,4 +2437,13 @@ group("Mesaj ekleri")([
   ["fotoğraf sınırı", F("11 MB fazla", () => CF.tooBig("photo", 11 * 1024 * 1024) !== "")],
   ["dosya sınırı", F("15 MB olur", () => CF.tooBig("file", 15 * 1024 * 1024) === "")],
   ["tür", F("ses ve görüntü", () => CF.kindOfFile("audio/mp4") === "voice" && CF.kindOfFile("image/png") === "photo" && CF.kindOfFile("application/pdf") === "file")],
+]);
+// Sayfa çökmesi (crash.js): yeni yayından sonra kod parçası yükleme hatası tanınır, sayfa bir kez yenilenir
+const CR = await import("@/lib/crash");
+group("Sayfa çökmesi")([
+  ["Safari", F("Importing a module script failed", () => CR.isChunkError(new TypeError("Importing a module script failed.")))],
+  ["Chrome", F("ChunkLoadError", () => CR.isChunkError(Object.assign(new Error("Loading chunk 123 failed."), { name: "ChunkLoadError" })))],
+  ["Vite/Firefox", F("dynamically imported module", () => CR.isChunkError(new TypeError("Failed to fetch dynamically imported module: /x.js")))],
+  ["kod hatası", F("yenilemez", () => !CR.isChunkError(new TypeError("Cannot read properties of undefined (reading 'map')")))],
+  ["boş", F("yenilemez", () => !CR.isChunkError(null) && !CR.isChunkError(undefined))],
 ]);

@@ -23,6 +23,7 @@ export function Screen({ open, onClose, title, children, voice }) {
       aria-modal="true"
       aria-label={title}
       data-voice={voice ? "" : undefined}
+      data-screen=""
       inert={!open}
       className={`fixed inset-0 z-50 flex flex-col bg-bg pt-[env(safe-area-inset-top)] transition-transform duration-300 ease-out ${
         open ? "translate-y-0" : "pointer-events-none -translate-y-full"
