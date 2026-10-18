@@ -1,8 +1,8 @@
-Commit: c9c92ab · Merge pull request #437 from seyhunDev/claude/project-thread-hanznf
-Zaman: 2026-10-16-1942 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38933883509
+Commit: 8aadb15 · Yarış multimedya Süre: ikonlu renkli Fotoğraf/Video, + ile rüzgâr, akıntı ve not (#508)
+Zaman: 2026-10-18-2116 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39153259427
 
-TAM TEST · 16.10.2026 19:41:29
+TAM TEST · 18.10.2026 21:15:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 80 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

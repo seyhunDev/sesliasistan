@@ -1,8 +1,8 @@
-Commit: 393bdf1 · Takvim: ana sayfadaki fitness antrenmanları (kendi + sporcular) takvimde turuncu nokta ve satır olarak görünür (#507)
-Zaman: 2026-10-18-2108 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39152703933
+Commit: 8aadb15 · Yarış multimedya Süre: ikonlu renkli Fotoğraf/Video, + ile rüzgâr, akıntı ve not (#508)
+Zaman: 2026-10-18-2116 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39153259427
 
-TAM TEST · 18.10.2026 21:07:45
+TAM TEST · 18.10.2026 21:15:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 72 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
