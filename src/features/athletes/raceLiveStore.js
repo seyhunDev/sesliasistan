@@ -54,9 +54,10 @@ export async function prepRaceMedia(file, onProg) {
       throw new Error("Video bu telefonda sıkıştırılamadı, kaydedilmedi.");
     }
     // Zaten küçük video (sıkıştırınca büyüdüyse) olduğu gibi kalır
-    if (blob.size >= file.size && file.size <= VIDEO_MAX) return { blob: file, type: file.type || "video/mp4", kind: "video" };
+    const dur = v.duration && isFinite(v.duration) ? Math.round(v.duration) : 0;
+    if (blob.size >= file.size && file.size <= VIDEO_MAX) return { blob: file, type: file.type || "video/mp4", kind: "video", dur };
     if (blob.size > VIDEO_MAX) throw new Error("Video çok büyük. Daha kısa çek.");
-    return { blob, type: blob.type, kind: "video" };
+    return { blob, type: blob.type, kind: "video", dur };
   } finally {
     URL.revokeObjectURL(url);
   }
