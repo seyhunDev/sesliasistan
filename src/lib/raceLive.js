@@ -36,7 +36,11 @@ export function cleanWind(list) {
 }
 
 export const COURSES = ["Trapez", "Up-down", "Üçgen"];
-export const FLAGS = ["Ertelendi", "Genel geri çağırma", "Bireysel geri çağırma", "İptal"];
+// Bayrak: yarış geçerli kalır. Geçersiz sayılan yarış (VOIDS, Seyhun 2026-10-18): tehir, genel geri çağırma ya da iptal; numarası sıradaki
+// yarışa geçer (tekrar koşulan yarış yine "2. yarış"), çekimlerinin başlığına sebep eklenir ("Genel geri çağırma · 2. yarış")
+export const FLAGS = ["Bireysel geri çağırma"];
+export const VOIDS = ["Tehir", "Genel geri çağırma", "İptal"];
+const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "İptal" }; // eskiden bayrak olarak yazılanlar
 export function cleanStarts(list) {
   return (Array.isArray(list) ? list : [])
     .map((x) => ({
@@ -51,6 +55,7 @@ export function cleanStarts(list) {
       kn: num(x?.kn, 80),
       course: S(x?.course, 30),
       flag: FLAGS.includes(x?.flag) ? x.flag : "",
+      void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
     }))
     .filter((x) => x.id && x.day && x.at)
@@ -99,17 +104,21 @@ export function newStart(starts, at, wind = [], forecast = null) {
   if ((starts || []).some((x) => Math.abs(Date.parse(x.at) - t) < 5000)) return null; // aynı start iki kez yazılmaz
   const near = [...windOn(wind, day)].reverse().find((w) => Date.parse(w.at) <= t + 60e3 && t - Date.parse(w.at) < 90 * 60e3);
   const w = near || forecast;
-  const n = (starts || []).length + 1;
-  return { id: `s${t.toString(36)}`, day, n, name: "", cd: "", at: new Date(t).toISOString(), fin: "", dir: w?.dir ?? null, kn: w?.kn ?? w?.wind ?? null, course: "", flag: "", note: "" };
+  const n = nextRaceNo(starts);
+  return { id: `s${t.toString(36)}`, day, n, name: "", cd: "", at: new Date(t).toISOString(), fin: "", dir: w?.dir ?? null, kn: w?.kn ?? w?.wind ?? null, course: "", flag: "", note: "", void: "" };
 }
 // Yarışlar bütün seri boyunca sırayla numaralanır (Seyhun 2026-10-18: ilk gün 3 yarış yapıldıysa ikinci gün 4. yarışla başlar)
+// Geçersiz yarış numara almaz: sıradaki geçerli yarışın numarasını taşır (tekrar koşulan yarışla aynı numara)
 export function renumber(starts) {
-  return cleanStarts(starts).map((x, i) => ({ ...x, n: i + 1 }));
+  let n = 0;
+  return cleanStarts(starts).map((x) => ({ ...x, n: x.void ? n + 1 : ++n }));
 }
 // Yarışın adı: elle verilen ad, yoksa "4. yarış"
 export const raceName = (s) => (s ? s.name || `${s.n}. yarış` : "");
+// Başlık: geçersiz yarışın önüne sebebi ("Genel geri çağırma · 2. yarış")
+export const raceTitle = (s) => (s?.void ? `${s.void} · ${raceName(s)}` : raceName(s));
 // Serinin sıradaki yarışının numarası
-export const nextRaceNo = (starts) => (starts || []).length + 1;
+export const nextRaceNo = (starts) => (starts || []).filter((x) => !x.void).length + 1;
 
 // ---- Yarış akışı (Süre sekmesi): Başlat yarışı açar (geri sayım), 0'da yarış başlar, "Yarışı bitir" bitirir ----
 // Her adım yeni liste döndürür; çağıran kaydeder ve önceki listeyi "Geri al" için saklar.
@@ -134,8 +143,11 @@ export function zeroRace(starts, id, endMs, wind = []) {
 }
 export const finishRace = (starts, id, finMs) => renumber((starts || []).map((x) => (x.id === id ? { ...x, fin: new Date(finMs).toISOString() } : x)));
 export const dropRace = (starts, id) => renumber((starts || []).filter((x) => x.id !== id));
+// Yarışı geçersiz say (tehir / genel geri çağırma / iptal): bitiş = iptal anı (çekimleri o ana kadar bu yarışa düşer); reason boşsa geri geçerli
+export const voidRace = (starts, id, reason, atMs) =>
+  renumber((starts || []).map((x) => (x.id !== id ? x : reason ? { ...x, void: reason, fin: x.fin || new Date(atMs).toISOString() } : { ...x, void: "" })));
 // Süre: "42:10" (start → bitiş)
-export const raceTime = (s) => (s?.fin && s?.at ? clock(Math.max(0, Math.round((Date.parse(s.fin) - Date.parse(s.at)) / 1000))) : "");
+export const raceTime = (s) => (s?.fin && s?.at && !s.void ? clock(Math.max(0, Math.round((Date.parse(s.fin) - Date.parse(s.at)) / 1000))) : "");
 
 // Çekildiği anın start sayacına göre yeri (Seyhun 2026-10-18): sayaç yarış dizisinde geri sayarken "pre" (start öncesi) ya da son 60 saniyede
 // "last" (son 1 dakika), 0'dan sonra "race" (startan beri). sec: starta göre saniye (öncesi eksi), end: sayacın 0 anı (o yarışın startı).
@@ -151,6 +163,7 @@ export function momentAt(at, starts) {
   const st = Date.parse(s.at);
   const fin = s.fin ? Date.parse(s.fin) : null;
   const sec = Math.round((t - st) / 1000);
+  if (s.void && fin != null && t > fin + 1000) return null; // iptalden sonra çekilen bu yarışa düşmez
   const phase = sec < -60 ? "pre" : sec < 0 ? "last" : fin == null ? (sec <= 3 * 3600 ? "race" : "") : t <= fin ? "race" : t - fin <= 1800e3 ? "after" : "";
   return phase ? { rid: s.id, phase, sec, end: s.at } : null;
 }
@@ -174,7 +187,7 @@ export const momentText = (m) =>
 // Çekilenin yarışının adı: bağlı yarış satırı (rid), yoksa 0 anına denk gelen start, yoksa o andan önceki startların sırası + 1
 export const momentRaceName = (m, starts) => {
   const s = m?.rid && (starts || []).find((x) => x.id === m.rid);
-  return s ? raceName(s) : `${momentRace(m, starts)}. yarış`;
+  return s ? raceTitle(s) : `${momentRace(m, starts)}. yarış`;
 };
 export function momentRace(m, starts) {
   const r = m?.rid && (starts || []).find((x) => x.id === m.rid);
@@ -197,17 +210,20 @@ export function mediaGroups(media, starts, day) {
     let n = 0;
     let name = "";
     let phase = "pre";
-    if (m.phase) (n = momentRace(m, starts)), (name = momentRaceName(m, starts)), (phase = m.phase);
+    let id = "";
+    let at = "";
+    if (m.phase) (n = momentRace(m, starts)), (name = momentRaceName(m, starts)), (phase = m.phase), (id = m.rid || ""), (at = m.end);
     else {
       const s = [...st].reverse().find((x) => x.at <= m.at);
-      if (s) (n = s.n), (name = raceName(s)), (phase = "race");
+      if (s) (n = s.n), (name = raceTitle(s)), (phase = "race"), (id = s.id), (at = s.at);
     }
-    const key = `${n}-${phase}`;
-    if (!groups.has(key)) groups.set(key, { key, n, rank: order[phase], title: n ? `${name} · ${PHASES[phase]}` : PHASES.pre, items: [] });
+    // Aynı numaralı iki yarış (geçersiz sayılan ve tekrarı) ayrı gruplarda: anahtar yarışın kendisi
+    const key = `${id || n}-${phase}`;
+    if (!groups.has(key)) groups.set(key, { key, n, at, rank: order[phase], title: n ? `${name} · ${PHASES[phase]}` : PHASES.pre, items: [] });
     groups.get(key).items.push(m);
   }
   return [...groups.values()]
-    .sort((a, b) => (b.n || 0) - (a.n || 0) || a.rank - b.rank)
+    .sort((a, b) => (b.n || 0) - (a.n || 0) || String(b.at).localeCompare(String(a.at)) || a.rank - b.rank)
     .map(({ key, title, items }) => ({ key, title, items: items.reverse() }));
 }
 
@@ -251,7 +267,7 @@ export function daySummary({ race, day, live, ours = [], rows = null, line = nul
   const date = new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
   const sub = [race?.district || race?.city, date].filter(Boolean).join(" · ");
   const windText = wind ? `${wind.dir} ${wind.lo === wind.hi ? wind.hi : `${wind.lo}–${wind.hi}`} kn${wind.gust ? `, sağanak ${wind.gust} kn` : ""}${wind.src === "tahmin" ? " (tahmin)" : ""}` : "";
-  const starts = st.map((x) => ({ n: x.n, time: hm(x.at), wind: x.kn !== null && x.dir !== null ? `${dirShort(x.dir)} ${x.kn} kn` : "", course: x.course, flag: x.flag }));
+  const starts = st.map((x) => ({ n: x.n, time: hm(x.at), wind: x.kn !== null && x.dir !== null ? `${dirShort(x.dir)} ${x.kn} kn` : "", course: x.course, flag: x.void || x.flag }));
   const ranked = team.filter((a) => a.place);
   const text = [
     race?.name || "Yarış",

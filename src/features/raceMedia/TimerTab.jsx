@@ -6,12 +6,15 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Countdown, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { saveStarts } from "@/features/athletes/raceLiveStore";
-import { COURSES, FLAGS, atOf, beginRace, dirShort, dropRace, finishRace, hm, newStart, nextRaceNo, raceName, raceTime, renumber, shiftRace, startsOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, VOIDS, atOf, beginRace, dirShort, dropRace, finishRace, hm, newStart, nextRaceNo, raceName, raceTime, raceTitle, renumber, shiftRace, startsOn, voidRace } from "@/lib/raceLive";
 
 // Süre (Seyhun 2026-10-18): yarış akışı. "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; 0'da yarış başlar (RaceMedia onZero,
 // o anki rüzgârla); "Yarışı bitir" bitiş saatini yazar. Geri sayımda Duraklat yok: "Geri sayımı iptal et" (ertelendi / geri çağırma).
 // Yarışlar bütün seri boyunca numaralanır (2. gün 4. yarıştan devam eder); adı ve saatleri dokununca değişir.
 // Yanlış dokunuşa karşı her adımdan sonra birkaç saniye "Geri al" (önceki liste ve sayaç geri yazılır).
+// İptal (Seyhun 2026-10-18): geri sayımı iptal edince ya da startan sonra "İptal"de sebep sorulur: Tehir, Genel geri çağırma, İptal
+// (sebepsiz; kapatınca da bu). Yarış geçersiz sayılır, numarası tekrarına geçer, çekimlerinin başlığına sebep eklenir. Geri sayımda
+// "Yanlış başlattım" yarışı tamamen siler. Durum sonradan yarışa dokunarak da değişir (ör. bitirdikten sonra genel geri çağırma).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip (bipler her sayfada: TimerSound).
 const PRESETS = [60, 120, 300];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
@@ -21,6 +24,7 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
+  const [ask, setAsk] = useState(null); // iptal sebebi sorulan: { id, prevT, canDrop, at }
   const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, race.id, next));
   const undo = (msg, before, prevT) =>
     toast(msg, { duration: 8000, action: { label: "Geri al", onClick: () => (save(before), prevT && writeTimer(prevT)) } });
@@ -36,11 +40,13 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
     },
     onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end)),
     onCancel: (prevT) => {
-      const before = live.starts;
       const id = ridOf(prevT);
-      const s = live.starts.find((x) => x.id === id);
-      if (s && !s.fin && Date.parse(s.at) > Date.now()) save(dropRace(live.starts, id)); // başlamamış yarış silinir
-      undo("Geri sayım iptal edildi", before, prevT);
+      if (live.starts.some((x) => x.id === id)) setAsk({ id, prevT, canDrop: true, at: Date.now() });
+      else undo("Geri sayım iptal edildi", live.starts, prevT);
+    },
+    onVoid: (prevT) => {
+      const id = ridOf(prevT);
+      if (live.starts.some((x) => x.id === id)) setAsk({ id, prevT, canDrop: false, at: Date.now() });
     },
     onFinish: (prevT) => {
       const before = live.starts;
@@ -51,6 +57,19 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
       undo(s ? `${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}` : "Yarış bitti", before, prevT);
     },
   };
+  const choose = (reason) => {
+    if (!ask) return;
+    const before = live.starts;
+    setAsk(null);
+    if (!reason) {
+      save(dropRace(live.starts, ask.id));
+      return undo("Geri sayım iptal edildi, yarış silindi", before, ask.prevT);
+    }
+    const next = voidRace(live.starts, ask.id, reason, ask.at); // bitiş: İptal'e basılan an
+    save(next);
+    const s = next.find((x) => x.id === ask.id);
+    undo(s ? raceTitle(s) : reason, before, ask.prevT);
+  };
   const add = () => {
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind);
@@ -58,7 +77,7 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
   };
   // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
   const days = [...new Set(live.starts.map((x) => x.day))].sort((a, b) => (a === day ? -1 : b === day ? 1 : b.localeCompare(a)));
-  const state = (s) => (s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
+  const state = (s) => (s.void ? "" : s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   return (
     <>
@@ -80,7 +99,7 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
                 <li key={s.id}>
                   <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
                     <span className="min-w-0 flex-1">
-                      <b className="block text-[0.9375rem] font-semibold">{raceName(s)}</b>
+                      <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
                       {(s.course || s.flag || s.note) && <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, s.note].filter(Boolean).join(" · ")}</span>}
                     </span>
                     <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
@@ -106,7 +125,23 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
           Yarış ekle
         </button>
       )}
-      <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceName(edit) : ""}>
+      <Sheet open={!!ask} onClose={() => choose("İptal")} title="Neden iptal?">
+        {ask && (
+          <div className="grid gap-2 pb-2">
+            {VOIDS.map((v) => (
+              <button key={v} type="button" onClick={() => choose(v)} className="h-12 rounded-2xl bg-bg text-[1rem] font-semibold ring-1 ring-line active:translate-y-px">
+                {v === "İptal" ? "İptal (sebepsiz)" : v}
+              </button>
+            ))}
+            {ask.canDrop && (
+              <button type="button" onClick={() => choose("")} className="h-11 text-[0.9375rem] font-semibold text-rec">
+                Yanlış başlattım · yarışı sil
+              </button>
+            )}
+          </div>
+        )}
+      </Sheet>
+      <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
             s={edit}
@@ -154,6 +189,12 @@ function StartForm({ s, onSave, onDrop }) {
       <div className="flex flex-wrap gap-2">
         {COURSES.map((c) => (
           <button key={c} type="button" onClick={() => put("course")(c)} className={chip(x.course === c)}>{c}</button>
+        ))}
+      </div>
+      <p className="mb-2 mt-4 text-[0.875rem] font-semibold text-fg2">İptal</p>
+      <div className="flex flex-wrap gap-2">
+        {VOIDS.map((c) => (
+          <button key={c} type="button" onClick={() => put("void")(c)} className={chip(x.void === c)}>{c}</button>
         ))}
       </div>
       <p className="mb-2 mt-4 text-[0.875rem] font-semibold text-fg2">Bayrak</p>

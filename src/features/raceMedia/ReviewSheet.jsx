@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { Sheet } from "@/components/ui/Sheet";
-import { dayOf, hm, raceName, startsOn } from "@/lib/raceLive";
+import { dayOf, hm, raceTitle, startsOn } from "@/lib/raceLive";
 
 // Kaydetmeden önce gözden geçir (Seyhun 2026-10-18: "kullanıcı yüklemeden önce değişiklik yapabilsin"): kameradan dönünce çekilenler
 // burada; her biri çekildiği ana göre yarışına ve evresine konmuş gelir. Çoğu zaman değişmez, o yüzden satır sade (Seyhun: "çok dağınık,
@@ -69,7 +69,7 @@ function Row({ r, starts, lock, onMom, onDrop }) {
           >
             {list.map((s) => (
               <option key={s.id} value={s.id}>
-                {raceName(s)}
+                {raceTitle(s)}
               </option>
             ))}
             <option value="">Yarışsız</option>
