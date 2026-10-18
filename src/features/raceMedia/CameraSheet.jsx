@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { recType } from "@/features/fitness/fitMedia";
 import { useTimerRun } from "@/features/training/Countdown";
+import { upSec } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { drawStamp } from "./stamp";
 
@@ -127,7 +128,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending, last })
   const shutter = () => (mode === "photo" ? photo() : recAt ? stop() : start());
 
   const t = timer;
-  const left = t.up ? Math.floor((t.now - t.t.end) / 1000) : Math.max(0, t.rem);
+  const left = t.up ? upSec(t.t.end, t.now) : Math.max(0, t.rem);
   const hot = t.running && !t.up && t.rem <= 10;
   const recSec = recAt ? Math.floor((recNow - recAt) / 1000) : 0;
 

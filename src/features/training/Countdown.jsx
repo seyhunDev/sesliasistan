@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { createPortal } from "react-dom";
 import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
-import { beepAt } from "@/lib/raceLive";
+import { UP_MAX, beepAt, upSec } from "@/lib/raceLive";
 
 // Antrenman sayacı: hazır 2/5/10 dk ya da Ayarla (dakika + saniye). Son 5 saniye her saniye kısa bip, 0'da uzun bip;
 // 0'dan sonra ileri sayar ("Startan beri") ve bu an yarış startı olarak kullanılabilir (readTimer().zero).
@@ -150,6 +150,15 @@ export function TimerSound() {
     return () => clearTimeout(id);
   }, [running, t.end]);
   const active = running && overEnd !== t.end;
+  // 59:59'dan sonra sayaç durur (start anı yarış için kalır); uygulama kapalıyken geçtiyse açılınca hemen
+  useEffect(() => {
+    if (!running) return;
+    const id = setTimeout(() => {
+      const c = readTimer();
+      if (c.end === t.end) write({ dur: c.dur, end: null, left: null, zero: c.end });
+    }, Math.max(0, t.end + (UP_MAX + 1) * 1000 - Date.now()));
+    return () => clearTimeout(id);
+  }, [running, t.end]);
 
   useEffect(() => {
     if (!active) return;
@@ -266,7 +275,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
           {!idle && !up && <circle cx="115" cy="115" r={R} fill="none" stroke={hot ? "var(--rec)" : "var(--acc)"} strokeWidth="8" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <b className={`text-[3.75rem] font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? Math.floor((now - t.end) / 1000) : Math.max(0, rem))}</b>
+          <b className={`text-[3.75rem] font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
           <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : t.left != null ? "Durdu" : "Sayaç"}</small>
         </div>
       </div>
