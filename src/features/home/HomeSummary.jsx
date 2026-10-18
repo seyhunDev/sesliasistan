@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { dayInfo, planTone, clubDues, clubFis, clubRace, duesLive, postsTile, readSum, saveSum } from "@/lib/homeTiles";
+import { dayInfo, needsLog, planTone, clubDues, clubFis, clubRace, duesLive, postsTile, readSum, saveSum } from "@/lib/homeTiles";
 import { todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
@@ -385,7 +385,7 @@ export function DayPick({ day, att, today, onClose }) {
   return (
     <Sheet open={!!day} onClose={onClose} title={title}>
       {day && (
-        <div className="space-y-4 pb-1">
+        <div className="flex flex-col gap-4 pb-1">
           {info.other.length > 0 && (
             <section>
               <h3 className={head}>PLANLAR</h3>
@@ -406,25 +406,34 @@ export function DayPick({ day, att, today, onClose }) {
             </section>
           )}
           {att || info.sail.length ? (
-            <section>
+            <section className={day.state === "miss" ? "order-first" : ""}>
               <h3 className={head}>YELKEN</h3>
               <ul className="divide-y divide-line">
-                {info.sail.map((p) => (
+                {info.sail.map((p) => {
+                  // Şeritteki ünlemin sebebi (Seyhun 2026-10-18: "tıklanınca sebebini göstersin"): günü geçmiş, günlüğü yazılmamış antrenman
+                  const noLog = needsLog(p, today);
+                  return (
                   <li key={p.id} className="flex items-center gap-3 py-2.5">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-acc">
-                      <Icon name="trend" className="size-5" />
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-full ${noLog ? "bg-warnbg text-[1.0625rem] font-bold text-warn" : "bg-acc/10 text-acc"}`}>
+                      {noLog ? "!" : <Icon name="trend" className="size-5" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Antrenman"}</b>
                       <small className="block truncate text-[0.8125rem] text-mut">{[p.time || "Tüm gün", p.place].filter(Boolean).join(" · ")}</small>
+                      {noLog && <small className="block truncate text-[0.8125rem] font-medium text-warn">Antrenman günlüğü yazılmadı</small>}
                     </span>
-                    {info.attHref && (
+                    {noLog ? (
+                      <button type="button" data-press onClick={() => { onClose(); openAdd({ edit: { kind: "plan", id: p.id } }); }} className="shrink-0 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
+                        Günlük yaz
+                      </button>
+                    ) : info.attHref && (
                       <button type="button" data-press onClick={() => go(info.attHref)} className="shrink-0 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
                         Yoklama
                       </button>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               {info.add && (
                 <>

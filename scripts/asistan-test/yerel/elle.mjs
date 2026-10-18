@@ -652,6 +652,15 @@ group("Ana sayfa kartları")([
     return w.days[0].date === "2026-10-12" && w.days[0].w === "Pzt" && st === "done,miss,today,none,plan,none,none"
       && w.planned === 4 && w.done === 1 && w.missing >= 1 && w.total >= 3 && HT.trainingWeek([], today) === null;
   })],
+  ["kulüp kartları", F("şeritteki ünlemin sebebi: günü geçmiş, günlüğü yazılmamış antrenman (pencerede Günlük yaz)", () => {
+    const today = "2026-10-18";
+    const miss = { id: "a", cat: "Antrenman", date: "2026-10-17" };
+    const w = HT.trainingWeek([miss, { id: "b", cat: "Antrenman", date: "2026-10-16", log: { wind: 10 } }], today, [], 1, true);
+    const sat = w.days.find((d) => d.date === "2026-10-17");
+    return sat.state === "miss" && HT.needsLog(sat.sail[0], today)
+      && !HT.needsLog({ ...miss, log: { wind: 8 } }, today) && !HT.needsLog({ ...miss, date: today }, today)
+      && !HT.needsLog({ ...miss, status: "cancelled" }, today) && !HT.needsLog({ id: "c", title: "Doktor", date: "2026-10-17" }, today);
+  })],
   ["kulüp kartları", F("ana sayfa şeridi üç hafta: sonraki ay da, planı orada olan gün görünür; dünden başlayınca bugün ikinci", () => {
     const today = "2026-10-17";
     const w = HT.trainingWeek([{ id: "x", title: "Doktor", date: "2026-10-30" }, { id: "y", cat: "Antrenman", date: "2026-11-01" }], today, [], 3);
