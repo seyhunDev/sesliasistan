@@ -1,8 +1,8 @@
-Commit: 2c18c74 · Merge pull request #438 from seyhunDev/claude/project-thread-6oti94
-Zaman: 2026-10-16-1954 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38935354950
+Commit: 251bedf · Yarış multimedya Hava: yarış yerinde ölçülen rüzgâr (#512)
+Zaman: 2026-10-18-2137 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39154795837
 
-TAM TEST · 16.10.2026 19:53:10
+TAM TEST · 18.10.2026 21:35:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
+SONUÇ: 1247/1247 geçti · 0 kalan · 122 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -115,9 +115,9 @@ SONUÇ: 1223/1223 geçti · 0 kalan · 83 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 38/38
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 62/62
   ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 19/19
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0

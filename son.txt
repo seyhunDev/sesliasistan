@@ -1,8 +1,8 @@
-Commit: 6c4690c · Genel test: hava ve multimedya testleri, 43 sayfa tarayıcı testi, Hesaplar anahtar hatası (#509)
-Zaman: 2026-10-18-2131 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39154346094
+Commit: 251bedf · Yarış multimedya Hava: yarış yerinde ölçülen rüzgâr (#512)
+Zaman: 2026-10-18-2137 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39154795837
 
-TAM TEST · 18.10.2026 21:29:27
+TAM TEST · 18.10.2026 21:35:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1247/1247 geçti · 0 kalan · 132 sn
+SONUÇ: 1247/1247 geçti · 0 kalan · 122 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
