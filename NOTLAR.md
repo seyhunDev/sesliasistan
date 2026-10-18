@@ -5,6 +5,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Nerede kaldım
 
+- Yarış multimedya › Medya: fotoğrafa/videoya dokununca tam ekran siyah görüntüleyici açılır (`src/features/raceMedia/MediaViewer.jsx`; eski alt pencere kalktı). Dikte üstte Kapat · an · sıra, altta "Kimler var" (sporcu etiketleri) ve Paylaş · Sil. Yan çevrilince görüntü bütün ekranı kaplar, tek üst şerit (Kapat · an · Paylaş · Sil). Fotoğrafa dokununca şeritler gizlenir; sağa-sola kaydırınca önceki/sonraki; video kendiliğinden oynar.
 - Start sayacı 0'dan sonra "Startan beri" en çok 59:59 sayar (`upSec`, `UP_MAX` lib/raceLive.js); 60. dakikada TimerSound sayacı kendiliğinden durdurur (start anı `zero` olarak kalır). Uygulama kapalıyken geçtiyse açılınca hemen durur. Süre sekmesi, sekmelerdeki küçük satır ve kamera aynı sınırı gösterir.
 - Yarış akışında sayaç böyle durursa yarışa bitiş yazılmaz; yarış satırında süre boş kalır.
 - Yarış multimedya (Medya, Hava, Sonuçlar, Süre) ve antrenman sayacında en alttakiler sabit düğmenin altında kalıyordu: `body[data-dock] main` alt boşluğu (globals.css) sayfanın kendi sınıfını eziyordu, düğme şeridi (Countdown.jsx `Bar`) body'ye taşındığı için `data-pagebar` kuralı da onu görmüyordu. Şeride `data-bar` eklendi; `body[data-dock]:has(> [data-bar]) main` alt boşluğu şerit kadar büyütür.
@@ -786,6 +787,7 @@ Kalıcı konu bilgisi (tasarım, asistan) thread'lerde değil burada durur.
 
 ## Sıradaki işler
 
+- Telefonda dene: video yan çevrilip izlenebiliyor mu; iPhone video düğmeleri alt şeritle çakışıyor mu.
 - Telefonda dene: geri sayımı başlat, 59:59'da durduğunu gör (beklemeden denemek için saat ileri alınabilir).
 - Telefonda dene: Medya sekmesinde en alta kaydır, son fotoğraf satırı düğmelerin üstünde tam görünmeli.
 - Telefonda dene: yarıştan önceki bir gün fotoğraf çek, Kaydet, bugünün günü seçili gelip fotoğraf görünmeli. Kırmızı yazı çıkarsa metnini Seyhun'dan iste (Storage kuralı yayınlandı mı?).
