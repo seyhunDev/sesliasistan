@@ -1,8 +1,8 @@
-Commit: 0176a20 · Yarış multimedya sayfası: hava, start sayacı, sonuçlar, fotoğraf/video (#482)
-Zaman: 2026-10-18-1658 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39133767729
+Commit: 2cb1bad · Yarış multimedya: video 2 dk sınırı ve zorunlu sıkıştırma, sporcu etiketi, gün özeti kartı (#483)
+Zaman: 2026-10-18-1705 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39134329282
 
-TAM TEST · 18.10.2026 16:57:04
+TAM TEST · 18.10.2026 17:04:28
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 63 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
