@@ -764,7 +764,7 @@ group("Ana sayfa kartları")([
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const a = g.flatMap((x) => x.items);
     const l = a.map((x) => x.label);
-    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && a.find((x) => x.href === "/training/day")?.label === "Antrenman" && a.find((x) => x.href === "/training")?.label === "Ant. günlüğü" && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
   })],
   ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var; boş grup yok", () => {
     const sg = HT.homeActions({ staff: true, receipts: true });

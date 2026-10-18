@@ -240,8 +240,9 @@ export function homeActions(o) {
     ["Kulüp", [
       o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
       o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
+      o.athletes && !o.side && { href: "/training/day", icon: "clock", label: "Antrenman" }, // sayaç, yoklama, yarışlar, günlük
       o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
-      (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Antrenman" },
+      (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Ant. günlüğü" },
       o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
       { href: "/wind", icon: "wind", label: "Rüzgâr" },
