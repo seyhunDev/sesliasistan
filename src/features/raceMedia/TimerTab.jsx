@@ -3,73 +3,26 @@
 import { useState } from "react";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
-import { useToast } from "@/components/ui/ToastProvider";
-import { Countdown, useTimerRun, writeTimer } from "@/features/training/Countdown";
-import { saveStarts } from "@/features/athletes/raceLiveStore";
-import { COURSES, FLAGS, VOIDS, atOf, beginRace, dirShort, dropRace, finishRace, hm, newStart, nextRaceNo, raceName, raceTime, raceTitle, renumber, shiftRace, startsOn, voidRace } from "@/lib/raceLive";
+import { Countdown, useTimerRun } from "@/features/training/Countdown";
+import { addWind } from "@/features/athletes/raceLiveStore";
+import { COURSES, FLAGS, VOIDS, atOf, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
+import { WindSheet } from "./WeatherTab";
 
-// Süre (Seyhun 2026-10-18): yarış akışı. "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; 0'da yarış başlar (RaceMedia onZero,
-// o anki rüzgârla); "Yarışı bitir" bitiş saatini yazar. Geri sayımda Duraklat yok: "Geri sayımı iptal et" (ertelendi / geri çağırma).
-// Yarışlar bütün seri boyunca numaralanır (2. gün 4. yarıştan devam eder); adı ve saatleri dokununca değişir.
-// Yanlış dokunuşa karşı her adımdan sonra birkaç saniye "Geri al" (önceki liste ve sayaç geri yazılır).
-// İptal (Seyhun 2026-10-18): geri sayımı iptal edince ya da startan sonra "İptal"de sebep sorulur: Tehir, Genel geri çağırma, İptal
-// (sebepsiz; kapatınca da bu). Yarış geçersiz sayılır, numarası tekrarına geçer, çekimlerinin başlığına sebep eklenir. Geri sayımda
-// "Yanlış başlattım" yarışı tamamen siler. Durum sonradan yarışa dokunarak da değişir (ör. bitirdikten sonra genel geri çağırma).
-// Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip (bipler her sayfada: TimerSound).
+// Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
+// numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
+// Sayacın altında: rüzgâr (son elle kayıt; "Rüzgâr yaz" ile hemen, start bu rüzgârı alır) ve kamera (Medya'nın uygulama içi kamerası,
+// içinde de Başlat/İptal/Bitir var). Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
 const PRESETS = [60, 120, 300];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
-export function TimerTab({ orgId, race, day, live, onChange }) {
-  const toast = useToast();
+export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
-  const [ask, setAsk] = useState(null); // iptal sebebi sorulan: { id, prevT, canDrop, at }
-  const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, race.id, next));
-  const undo = (msg, before, prevT) =>
-    toast(msg, { duration: 8000, action: { label: "Geri al", onClick: () => (save(before), prevT && writeTimer(prevT)) } });
-  const ridOf = (t) => t?.rid || live.starts.find((x) => t?.end && Math.abs(Date.parse(x.at) - t.end) < 5000)?.id || "";
+  const [wind, setWind] = useState(false);
+  const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null ? live.starts.find((x) => x.id === ridOf(timer)) : null;
-  const flow = {
-    label: `${nextRaceNo(live.starts)}. yarış`,
-    onStart: (end, rid, prevT) => {
-      const before = live.starts;
-      const got = beginRace(live.starts, Date.now(), end);
-      save(got.starts);
-      undo(`${raceName(got.starts.find((x) => x.id === got.id))} geri sayımı başladı`, before, prevT);
-    },
-    onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end)),
-    onCancel: (prevT) => {
-      const id = ridOf(prevT);
-      if (live.starts.some((x) => x.id === id)) setAsk({ id, prevT, canDrop: true, at: Date.now() });
-      else undo("Geri sayım iptal edildi", live.starts, prevT);
-    },
-    onVoid: (prevT) => {
-      const id = ridOf(prevT);
-      if (live.starts.some((x) => x.id === id)) setAsk({ id, prevT, canDrop: false, at: Date.now() });
-    },
-    onFinish: (prevT) => {
-      const before = live.starts;
-      const id = ridOf(prevT);
-      const next = id ? finishRace(live.starts, id, Date.now()) : live.starts;
-      save(next);
-      const s = next.find((x) => x.id === id);
-      undo(s ? `${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}` : "Yarış bitti", before, prevT);
-    },
-  };
-  const choose = (reason) => {
-    if (!ask) return;
-    const before = live.starts;
-    setAsk(null);
-    if (!reason) {
-      save(dropRace(live.starts, ask.id));
-      return undo("Geri sayım iptal edildi, yarış silindi", before, ask.prevT);
-    }
-    const next = voidRace(live.starts, ask.id, reason, ask.at); // bitiş: İptal'e basılan an
-    save(next);
-    const s = next.find((x) => x.id === ask.id);
-    undo(s ? raceTitle(s) : reason, before, ask.prevT);
-  };
+  const lastWind = windOn(live.wind, day).at(-1);
   const add = () => {
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind);
@@ -83,6 +36,30 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
     <>
       {cur && <p className="mt-3 text-center text-[0.9375rem] font-semibold">{raceName(cur)}</p>}
       <Countdown mode="start" presets={PRESETS} race={flow} />
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setWind(true)} className={`${card} h-14 px-3 text-left active:translate-y-px`}>
+          <small className="block text-[0.75rem] text-mut">Rüzgâr{lastWind ? ` · ${hm(lastWind.at)}` : ""}</small>
+          <b className="block truncate text-[0.9375rem] font-semibold">{lastWind ? `${dirShort(lastWind.dir)} ${lastWind.kn} kn` : "Rüzgâr yaz"}</b>
+        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => onCam("photo")} className={`${card} h-14 text-[0.9375rem] font-semibold active:translate-y-px`}>
+            Fotoğraf
+          </button>
+          <button type="button" onClick={() => onCam("video")} className={`${card} h-14 text-[0.9375rem] font-semibold active:translate-y-px`}>
+            Video
+          </button>
+        </div>
+      </div>
+      <WindSheet
+        open={wind}
+        onClose={() => setWind(false)}
+        day={day}
+        last={lastWind}
+        onSave={(w) => {
+          setWind(false);
+          onChange((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, race.id, w));
+        }}
+      />
       {!days.includes(day) && (
         <>
           <Label>{dayLabel(day)}</Label>
@@ -125,22 +102,6 @@ export function TimerTab({ orgId, race, day, live, onChange }) {
           Yarış ekle
         </button>
       )}
-      <Sheet open={!!ask} onClose={() => choose("İptal")} title="Neden iptal?">
-        {ask && (
-          <div className="grid gap-2 pb-2">
-            {VOIDS.map((v) => (
-              <button key={v} type="button" onClick={() => choose(v)} className="h-12 rounded-2xl bg-bg text-[1rem] font-semibold ring-1 ring-line active:translate-y-px">
-                {v === "İptal" ? "İptal (sebepsiz)" : v}
-              </button>
-            ))}
-            {ask.canDrop && (
-              <button type="button" onClick={() => choose("")} className="h-11 text-[0.9375rem] font-semibold text-rec">
-                Yanlış başlattım · yarışı sil
-              </button>
-            )}
-          </div>
-        )}
-      </Sheet>
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
