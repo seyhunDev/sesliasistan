@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
-import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addRaceMedia, dropRaceMedia, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
 import { Bar } from "@/features/training/Countdown";
 import { dayOf, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
+import { MediaViewer } from "./MediaViewer";
 import { ReviewSheet } from "./ReviewSheet";
 import { CameraSheet } from "./CameraSheet";
 import { stampBlob } from "./stamp";
@@ -250,38 +250,17 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange }) {
         </section>
       ))}
 
-      <Sheet open={!!open} onClose={() => setOpen("")} title={open ? `${open.kind === "video" ? "Video" : "Fotoğraf"} · ${hm(open.at)}` : ""}>
-        {open && (
-          <div className="pb-2">
-            {open.kind === "video" ? (
-              <video src={open.url} controls playsInline className="max-h-[60vh] w-full rounded-xl bg-black" />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={open.url} alt="" className="max-h-[60vh] w-full rounded-xl object-contain" />
-            )}
-            <p className="mt-2 text-[0.8125rem] text-mut">{[open.phase ? `${momentRaceName(open, live.starts)} · ${momentText(open)}` : "", sizeText(open.size)].filter(Boolean).join(" · ")}</p>
-            {ours.length > 0 && (
-              <>
-                <p className="mt-3 text-[0.8125rem] text-mut">Kimler var</p>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  {ours.map((a) => {
-                    const on = open.ath.includes(a.id);
-                    return (
-                      <button key={a.id} type="button" onClick={() => tag(open, a.id)} aria-pressed={on} className={`h-9 rounded-full px-3.5 text-[0.875rem] font-semibold active:scale-95 ${on ? "bg-acc text-white" : "bg-bg ring-1 ring-line"}`}>
-                        {a.studentName}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => share(open)} className="h-12 rounded-2xl bg-acc text-[1rem] font-semibold text-white">Paylaş</button>
-              <button type="button" onClick={() => drop(open)} className="h-12 rounded-2xl bg-bg text-[1rem] font-semibold text-rec">Sil</button>
-            </div>
-          </div>
-        )}
-      </Sheet>
+      <MediaViewer
+        items={groups.flatMap((g) => g.items)}
+        id={open ? open.id : ""}
+        onPick={setOpen}
+        onClose={() => setOpen("")}
+        label={(m) => [m.phase ? `${momentRaceName(m, live.starts)} · ${momentText(m)}` : "", hm(m.at)].filter(Boolean).join(" · ")}
+        ours={ours}
+        onTag={tag}
+        onShare={share}
+        onDrop={drop}
+      />
 
       <input ref={photo} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => (take(e.target.files?.[0]), (e.target.value = ""))} />
       <input ref={video} type="file" accept="video/*" capture="environment" className="hidden" onChange={(e) => (take(e.target.files?.[0]), (e.target.value = ""))} />
