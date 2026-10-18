@@ -1,8 +1,8 @@
-Commit: 251bedf · Yarış multimedya Hava: yarış yerinde ölçülen rüzgâr (#512)
-Zaman: 2026-10-18-2137 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39154795837
+Commit: 8ee8ee7 · Hava grafiği: tahmin kesintisiz, ölçülen arkasında gölge; seçili saat kutuları (#513)
+Zaman: 2026-10-18-2147 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39155559337
 
-TAM TEST · 18.10.2026 21:35:21
+TAM TEST · 18.10.2026 21:45:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1247/1247 geçti · 0 kalan · 122 sn
+SONUÇ: 1247/1247 geçti · 0 kalan · 121 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1

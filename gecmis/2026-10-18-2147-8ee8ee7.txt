@@ -1,8 +1,8 @@
-Commit: a65212f · Ana sayfa: hava satırı ve rüzgâr grafiği çerçevesiz, aradaki boşluk kalktı, yeşil ok ile dokunulabilir (#439)
-Zaman: 2026-10-16-2006 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38936933550
+Commit: 8ee8ee7 · Hava grafiği: tahmin kesintisiz, ölçülen arkasında gölge; seçili saat kutuları (#513)
+Zaman: 2026-10-18-2147 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39155559337
 
-TAM TEST · 16.10.2026 20:05:21
+TAM TEST · 18.10.2026 21:45:06
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
+SONUÇ: 1247/1247 geçti · 0 kalan · 121 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -115,9 +115,9 @@ SONUÇ: 1223/1223 geçti · 0 kalan · 71 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 38/38
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 62/62
   ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 19/19
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0
