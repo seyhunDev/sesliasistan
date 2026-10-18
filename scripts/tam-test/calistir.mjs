@@ -6,6 +6,8 @@
 //   3. Akış                çok işli cümlede görev listesi kuruluyor mu, sıra doğru mu, bir iş asistanı kapatıp listeyi
 //                          yarıda bırakıyor mu, saçma girdide çöküyor/takılıyor mu; uygulama bu bilgisayarda açılır,
 //                          tarayıcıyla bütün sayfalar açılır (sahte Firebase: gerçek veriye dokunulmaz)
+//   3b. Asistan ekranı   sahte Firebase'e (emülatör, Java gerekir) girilir, sesli asistan bir insan gibi kullanılır: açılış,
+//                          halka renkleri, görev listesi, küçültme, sesli yanıt, onaylar… (scripts/asistan-ekran-test; yapay zekasız)
 //   4. Gerçek yapay zeka   .env.local'da GEMINI_API_KEY varsa: görev listesi ve ana asistan cümleleri. Varsayılan küçük örnek
 //                          (~16 istek, ~120 bin token); --yz-tam ile bütün set (~65 istek, ~500 bin token). Kota dolarsa (429)
 //                          kalan cümleler "atlandı" sayılır, hata sayılmaz.
@@ -76,12 +78,23 @@ out("2/4 Anlama ve görev listesi (hatalı girdilerle)…");
 
 // ---------------------------------------------------------------- 3b-4. Uygulama açılır: tarayıcı + gerçek yapay zeka
 let server = null;
+let emu = null; // asistan ekran testi için sahte Firebase (emülatör)
+let emuErr = null;
 const keyAI = !!process.env.GEMINI_API_KEY && !!process.env.GEMINI_MODEL;
 if (withBrowser || (withAI && keyAI)) {
+  if (withBrowser) {
+    try {
+      const { startEmulator } = await import("../asistan-ekran-test/emulator.mjs");
+      emu = await startEmulator({ log: out });
+    } catch (e) {
+      emuErr = e;
+    }
+  }
   out("3/4 Uygulama bu bilgisayarda açılıyor (ilk derleme 1-3 dakika sürebilir)…");
   try {
     const { startServer } = await import("./sunucu.mjs");
-    server = await startServer({ log: out });
+    const { CLIENT_ENV } = await import("../asistan-ekran-test/emulator.mjs");
+    server = await startServer({ log: out, env: emu ? CLIENT_ENV : {} });
   } catch (e) {
     rows.push({ katman: "tarayıcı", grup: "Uygulama açılıyor", say: "next dev", expect: "uygulama açılır", ok: false, got: `${String(e.message).slice(0, 600)}\n      (Başka bir "npm run dev" açıksa kapatıp yeniden dene.)` });
   }
@@ -91,6 +104,11 @@ try {
     out("    Sayfalar tarayıcıda açılıyor…");
     const { run } = await import("./tarayici.mjs");
     rows.push(...(await run(server, out)));
+    out("    Sesli asistan ekranı (sahte Firebase, yapay zekasız)…");
+    if (emu) {
+      const ekran = await import("../asistan-ekran-test/senaryolar.mjs");
+      rows.push(...(await ekran.run(server, out)));
+    } else rows.push({ katman: "asistan ekran", grup: "Asistan ekranı", say: "", expect: "", ok: emuErr?.skip ? null : false, got: `${emuErr?.skip ? "ATLANDI: " : ""}${String(emuErr?.message || "emülatör yok").slice(0, 600)}` });
   } else if (!withBrowser) rows.push({ katman: "tarayıcı", grup: "Tarayıcı", say: "sayfalar", expect: "", ok: null, got: "ATLANDI (--tarayicisiz)" });
 
   out(`4/4 Gerçek yapay zeka${fullAI ? " (tam set, ~65 istek)" : " (küçük örnek, ~16 istek)"}…`);
@@ -108,6 +126,7 @@ try {
   }
 } finally {
   if (server) await server.stop();
+  if (emu) await emu.stop();
 }
 
 // ---------------------------------------------------------------- Rapor
@@ -118,6 +137,7 @@ const KATMAN = [
   ["davranış", "2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme)"],
   ["akış", "3. AKIŞ: görev listesi, takılma, çökme"],
   ["tarayıcı", "3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları"],
+  ["asistan ekran", "3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase)"],
   ["yapay zeka", "4. GERÇEK YAPAY ZEKA"],
 ];
 const counted = rows.filter((r) => r.ok !== null && r.grup !== "Birim testleri: kalanlar");

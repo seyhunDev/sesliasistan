@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -36,3 +36,14 @@ function makeDb() {
   }
 }
 export const db = makeDb();
+
+// Yalnız yerel testte (scripts/asistan-arayuz-test): sahte Firebase'e (emülatör) bağlanır, gerçek veriye dokunulmaz.
+// Yayında (production derlemesi) bu blok hiç çalışmaz.
+const EMU = process.env.NODE_ENV !== "production" ? process.env.NEXT_PUBLIC_TEST_EMULATOR : "";
+if (EMU && typeof window !== "undefined" && !globalThis.__saEmu) {
+  globalThis.__saEmu = true;
+  const [authHost, fsHost] = EMU.split(",");
+  connectAuthEmulator(auth, `http://${authHost}`, { disableWarnings: true });
+  const [h, port] = fsHost.split(":");
+  connectFirestoreEmulator(db, h, Number(port));
+}
