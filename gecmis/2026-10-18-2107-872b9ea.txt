@@ -1,8 +1,8 @@
-Commit: ea8fc33 · Ana sayfa: takvimde iki gün, Sırada seni bekleyenler, doğum günü rozeti, yuvarlak kişi şeridi (#435)
-Zaman: 2026-10-16-1916 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/38930421628
+Commit: 872b9ea · Fitness: aynı adlı hareket kopyaları önlenir ve fotoğraflar korunarak birleştirilir (#506)
+Zaman: 2026-10-18-2107 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39152532448
 
-TAM TEST · 16.10.2026 19:15:23
+TAM TEST · 18.10.2026 21:05:48
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 73 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 78 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
