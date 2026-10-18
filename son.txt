@@ -1,8 +1,8 @@
-Commit: e067865 · Fitness: programdaki dinlenme süresi toplu değiştirilebilir, tek tek ayar 5 sn adımlı (#475)
-Zaman: 2026-10-17-2200 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39060473321
+Commit: c14bbe3 · Hava grafiği: her saat rüzgâr yönü oku ve gökyüzü/yağmur ihtimali şeridi (#476)
+Zaman: 2026-10-18-0810 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39099535572
 
-TAM TEST · 17.10.2026 21:59:30
+TAM TEST · 18.10.2026 08:09:04
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,7 +12,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1223/1223 geçti · 0 kalan · 64 sn
+SONUÇ: 1223/1223 geçti · 0 kalan · 79 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
