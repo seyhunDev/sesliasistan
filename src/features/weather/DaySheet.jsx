@@ -138,18 +138,14 @@ export function TodayWind({ rows }) {
   return <WindChart rows={rows} sel={-1} onSel={() => {}} nowAt={nowAt} mini obs={obs} />;
 }
 
-// Seçili saatin rüzgârı, rüzgâr haritasındaki kutu düzeninde: büyük sayı, kn, yön oku, yön adı; altında ölçülen/tahmin ve sağanak
-function Reading({ label, kn, dir, gust, color }) {
+// Başlığın sağındaki rüzgâr sütunu: küçük ad (Ölçülen/Tahmin), büyük sayı + kn, altında sağanak
+function Num({ label, kn, gust, color }) {
   return (
-    <div className="min-w-0 flex-1 rounded-2xl bg-bg px-3 py-2">
+    <div>
       <span className="block text-[0.6875rem] font-semibold" style={color ? { color } : undefined}>{label}</span>
-      <span className="mt-0.5 flex items-center gap-1.5">
-        <b className={`text-[1.375rem] font-bold leading-none tabular-nums ${color ? "" : windLevel(kn).tone}`} style={color ? { color } : undefined}>{kn}</b>
-        <span className="text-[0.6875rem] font-semibold text-mut">kn</span>
-        {dir != null && <WindArrow deg={dir} className="size-4" />}
-        {dir != null && <b className="truncate text-[0.8125rem] font-semibold">{windName(dir)[0]}</b>}
-      </span>
-      {gust != null && <span className="mt-0.5 block text-[0.6875rem] text-mut tabular-nums">sağanak {gust}</span>}
+      <b className={`text-[1.375rem] font-bold leading-none tabular-nums ${color ? "" : windLevel(kn).tone}`} style={color ? { color } : undefined}>{kn}</b>
+      <span className="text-[0.6875rem] font-semibold text-mut"> kn</span>
+      {gust != null && <span className="block text-[0.6875rem] text-mut tabular-nums">sağanak {gust}</span>}
     </div>
   );
 }
@@ -173,53 +169,43 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
   const s = rows[sel] || peak;
   const min = Math.min(...rows.map((h) => h.t));
   const max = Math.max(...rows.map((h) => h.t));
-  const code = info?.code ?? peak.code;
   const got = [...marks].reverse().find((m) => m.hh === s.hh); // seçili saatte ölçülen (son kayıt)
   const o = obs[sel]; // seçili saatte istasyonun ölçtüğü
+  const om = o ?? (got ? { wind: got.kn } : null);
+  // Başlıktaki değerler: şimdiyi izlerken anlık hava (cur), saat seçilince o saatin tahmini
+  const v = follow && cur ? { ...s, t: cur.t, code: cur.code, day: cur.day, wind: cur.wind, gust: cur.gust, dir: cur.dir } : s;
 
   return (
     <div className="pb-2">
       {place && <p className="mb-2 truncate text-[0.875rem] font-semibold">{place}</p>}
-      {/* Özet: bugünde şimdiki hava büyük, yanında gün içi en düşük–en yüksek ve şimdiki rüzgâr */}
-      {isToday && cur ? (
-        <div className="flex items-center gap-3">
-          <Icon name={sky(cur.code, cur.day).icon} className="size-11 shrink-0 text-acc" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[2rem] font-semibold leading-none tabular-nums">{cur.t}°</p>
-            <p className="mt-1 text-[0.8125rem] text-mut">{sky(cur.code, cur.day).label} · <span className="tabular-nums">{min}–{max}°</span></p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className={`text-[1.125rem] font-semibold leading-none tabular-nums ${windLevel(cur.wind).tone}`}>{cur.wind} kn</p>
-            <p className="mt-1 text-[0.75rem] text-mut tabular-nums">{windName(cur.dir)[0]} · sağanak {cur.gust}</p>
-          </div>
+      {/* Tek başlık: seçili saat (dokunulmadıkça şimdi). Solda gökyüzü, sıcaklık, günün en düşük–en yüksek, yön; sağda ölçülen ve tahmin rüzgâr + sağanak.
+          Aynı bilgi iki yerde yazmaz (Seyhun: "aynı bilgiler, aynı sayılar tekrar ediyor, olmasın"). */}
+      <div className="flex items-center gap-3">
+        <Icon name={sky(v.code, v.day).icon} className="size-11 shrink-0 text-acc" />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2">
+            <span className="text-[2rem] font-semibold leading-none tabular-nums">{v.t}°</span>
+            <span className="text-[0.8125rem] text-mut tabular-nums">{min}–{max}°</span>
+            {!follow && <span className="text-[0.8125rem] font-semibold tabular-nums">{s.hh}:00</span>}
+            {/* Grafikte gezindikten sonra tek dokunuşla şimdiye dönüş (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
+            {nowIdx >= 0 && !follow && (
+              <button type="button" onClick={() => setPick(null)} className="rounded-full bg-rec/10 px-2.5 py-0.5 text-[0.75rem] font-semibold text-rec active:scale-95">
+                Şimdi
+              </button>
+            )}
+          </p>
+          <p className="mt-1 truncate text-[0.8125rem] text-mut">
+            {sky(v.code, v.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1 text-[0.8125rem] font-semibold">
+            <WindArrow deg={o?.dir ?? v.dir} className="size-3.5" />
+            {windName(o?.dir ?? v.dir)[0]}
+          </p>
         </div>
-      ) : (
-        <div className="flex items-center gap-3">
-          <Icon name={sky(code).icon} className="size-8 shrink-0 text-acc" />
-          <div className="min-w-0">
-            <p className="text-[1.25rem] font-semibold leading-tight tabular-nums">{min}–{max}°</p>
-            <p className="text-[0.8125rem] text-mut">{sky(code).label}</p>
-          </div>
+        <div className="flex shrink-0 gap-3 text-right">
+          {om && <Num label="Ölçülen" kn={om.wind} gust={om.gust} color={OBS} />}
+          <Num label={om ? "Tahmin" : "Rüzgâr"} kn={v.wind} gust={v.gust} />
         </div>
-      )}
-
-      {/* Seçili saat: saat, hava; altında rüzgâr haritasındaki gibi kutular (Seyhun: "o tasarımı başlıkta kullanalım, ölçülen ve tahmin net görünsün") */}
-      <div className="mt-4 flex min-h-7 items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-[0.8125rem] tabular-nums">
-          <span className="font-semibold">{s.hh}:00</span>
-          <span className="text-mut"> · {s.t}° · {sky(s.code, s.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}</span>
-        </p>
-        {/* Grafikte gezindikten sonra tek dokunuşla şimdiye dönüş (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
-        {nowIdx >= 0 && !follow && (
-          <button type="button" onClick={() => setPick(null)} className="shrink-0 rounded-full bg-rec/10 px-3 py-1 text-[0.75rem] font-semibold text-rec active:scale-95">
-            Şimdi
-          </button>
-        )}
-      </div>
-      <div className="mt-1.5 flex gap-2">
-        {o && <Reading label="Ölçülen" kn={o.wind} dir={o.dir ?? s.dir} gust={o.gust} color={OBS} />}
-        {!o && got && <Reading label="Ölçülen" kn={got.kn} dir={s.dir} color={OBS} />}
-        <Reading label="Tahmin" kn={s.wind} dir={s.dir} gust={s.gust} />
       </div>
       <div className="mt-1">
         <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} obs={obs} />
