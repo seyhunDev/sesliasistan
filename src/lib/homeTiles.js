@@ -338,6 +338,17 @@ export function cashMonth(counted = [], now = new Date()) {
 const ONES = ["", "e", "ye", "e", "e", "e", "ya", "ye", "e", "a"];
 const TENS = ["a", "a", "ye", "a", "a", "ye"];
 const dative = (n) => (n === 0 ? "a" : n % 10 ? ONES[n % 10] : TENS[n / 10]);
+// Ana sayfa plan satırının kalan gün işareti (Seyhun 2026-10-19: "tarihleri yazıyoruz ama önemli olan kaç gün kaldığı"): bugün ve yarın kırmızı,
+// 2 gün kala sarı ünlemli, sonrası gri "N gün". Dönüş { text, tone: red | warn | mut } ya da geçmiş günde null
+export function leftTag(day, today) {
+  if (!day || !today) return null;
+  const n = Math.round((Date.parse(`${day}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+  if (n < 0 || Number.isNaN(n)) return null;
+  if (n === 0) return { text: "Bugün", tone: "red" };
+  if (n === 1) return { text: "Yarın", tone: "red" };
+  if (n === 2) return { text: "! 2 gün", tone: "warn" };
+  return { text: `${n} gün`, tone: "mut" };
+}
 export function untilText(time, durationMin = 60) {
   if (!/^\d{1,2}:\d{2}$/.test(time || "")) return "";
   const [h, m] = time.split(":").map(Number);

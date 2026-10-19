@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { Icon } from "@/components/ui/Icon";
@@ -8,10 +9,11 @@ import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { dayHead, planTag, planTone, raceForPlan, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { dayHead, leftTag, planTag, planTone, raceForPlan, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
+import { RacePlanSheet } from "./RacePlanSheet";
 import { GROUP, SectionHead } from "./ui";
 
 // Ana sayfanın takvim bölümü (Seyhun 2026-10-17: "2'deki gibi, bugün kısmı 3'teki gibi, Bugün yazısına gerek yok"). Ayrı gruplu kartlar:
@@ -28,11 +30,15 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const now = useNow();
   const router = useRouter();
   const races = useRaceHome();
+  const [pick, setPick] = useState(null); // Yarış planı: Yapıldı / Yarışın sayfası / Planı aç penceresi
   if (!profile) return null;
   const today = todayStr();
   const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
   const { days, rest } = twoDays(plans, today, now, 4);
+  // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
+  // Yarışı görme yetkisi yoksa ya da başka plansa plan açılır
   const open = (p) => {
+    if ((p.cat || p.category) === "Yarış" && races.on) return setPick(p);
     const race = raceForPlan(p, races.open, today);
     if (race) router.push(`/athletes/races/${race}`);
     else openAdd({ edit: { kind: "plan", id: p.id } });
@@ -66,6 +72,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
                 live={live}
                 warn={i === 0 && windy}
                 sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
+                left={live ? null : leftTag(today, today)}
                 onOpen={() => open(p)}
               />
             ))}
@@ -88,7 +95,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
           <SectionHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
           <ul className={`px-3.5 py-1.5 ${GROUP}`}>
             {next.rows.map(({ p }) => (
-              <TimeRow key={p.id} p={p} sub={p.place} onOpen={() => open(p)} />
+              <TimeRow key={p.id} p={p} sub={p.place} left={leftTag(next.day, today)} onOpen={() => open(p)} />
             ))}
           </ul>
         </div>
@@ -99,20 +106,23 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
           <SectionHead title="Sırada" />
           <ul className={`px-3.5 py-1.5 ${GROUP}`}>
             {rest.map(({ p, day }) => (
-              <TimeRow key={p.id} p={p} date={short(day)} sub={p.place} onOpen={() => open(p)} />
+              <TimeRow key={p.id} p={p} date={short(day)} sub={p.place} left={leftTag(day, today)} onOpen={() => open(p)} />
             ))}
           </ul>
         </div>
       )}
 
       <WaitRow inbox={inbox} onAll={onInbox} />
+      <RacePlanSheet plan={pick} today={today} onClose={() => setPick(null)} />
     </section>
   );
 }
 
 // Saat çizgisi satırı (Bugün, Yarın, Sırada aynı; 3. örnek): solda saat (Sırada'da altında gün), dikey çizgi üstünde plan türünün renginde halka,
-// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad ve sağında tür adı, altında yer (warn: rüzgâr eşiği geçti, kırmızımsı)
-function TimeRow({ p, live, warn, sub, date, onOpen }) {
+// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad, alt satırda tür adı ve yer ("Yarış · Foça"; Seyhun 2026-10-19) (warn: rüzgâr eşiği geçti, kırmızımsı).
+// Ad kısaltılmaz, alt satıra geçer (Seyhun 2026-10-19); sağda kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri)
+const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
+function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
   const tag = planTag(p);
   return (
     <li>
@@ -126,16 +136,18 @@ function TimeRow({ p, live, warn, sub, date, onOpen }) {
             aria-hidden="true"
             className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
           />
-          <span className="flex min-w-0 items-baseline gap-1.5">
-            <b className={`min-w-0 truncate ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-            {tag && <span className="tone-fg shrink-0 text-[0.75rem] font-semibold">{tag}</span>}
+          <span className="flex min-w-0 items-start gap-2">
+            <b className={`min-w-0 flex-1 break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
+            {left && <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-px text-[0.75rem] font-semibold tabular-nums ${LEFT[left.tone]}`}>{left.text}</span>}
           </span>
-          {(sub || live) && (
-            <small className={`block truncate text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+          {(tag || sub || live) && (
+            <small className={`block break-words text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+              {tag && <span className="tone-fg font-semibold">{tag}</span>}
+              {tag && sub ? " · " : ""}
               {sub}
               {live && (
                 <span className="font-semibold text-[var(--red)]">
-                  {sub ? " · " : ""}şimdi
+                  {sub || tag ? " · " : ""}şimdi
                 </span>
               )}
             </small>

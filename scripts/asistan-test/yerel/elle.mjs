@@ -669,6 +669,11 @@ group("Ana sayfa kartları")([
       && !HT.needsLog({ ...miss, log: { wind: 8 } }, today) && !HT.needsLog({ ...miss, date: today }, today)
       && !HT.needsLog({ ...miss, status: "cancelled" }, today) && !HT.needsLog({ id: "c", title: "Doktor", date: "2026-10-17" }, today);
   })],
+  ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
+    const t = "2026-10-19";
+    const x = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-26", "2026-10-18"].map((d) => HT.leftTag(d, t));
+    return x[0].text === "Bugün" && x[0].tone === "red" && x[1].text === "Yarın" && x[2].text === "! 2 gün" && x[2].tone === "warn" && x[3].text === "7 gün" && x[3].tone === "mut" && x[4] === null;
+  })],
   ["kulüp kartları", F("ana sayfa şeridi üç hafta: sonraki ay da, planı orada olan gün görünür; dünden başlayınca bugün ikinci", () => {
     const today = "2026-10-17";
     const w = HT.trainingWeek([{ id: "x", title: "Doktor", date: "2026-10-30" }, { id: "y", cat: "Antrenman", date: "2026-11-01" }], today, [], 3);

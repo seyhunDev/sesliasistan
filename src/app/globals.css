@@ -493,6 +493,17 @@ body[data-typing] [data-pagebar] {
   --btn-top: #ffffff;
   --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
 }
+/* Yeşil ana düğme (Multimedyayı aç, Yapıldı; Seyhun 2026-10-19: "düğme gibi bile durmuyor"): .raised gibi gölgesiz, koyu yeşil kenarlık ve içte
+   açıktan koyuya yeşil gradyan; basınca gradyan ters döner */
+.acc-btn {
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--acc) 72%, #000);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 82%, #fff) 0%, var(--acc) 100%);
+}
+.acc-btn[data-pressed], .acc-btn:active {
+  transform: scale(0.97);
+  background: linear-gradient(180deg, var(--acc) 0%, color-mix(in srgb, var(--acc) 82%, #fff) 100%);
+}
 html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
 /* Basma hissi (usePress): parmak kısa süre durunca data-pressed gelir, kaydırırken gelmez; gradyan ters döner */
 [data-press][data-pressed] { transform: scale(0.97); filter: brightness(0.97); }
