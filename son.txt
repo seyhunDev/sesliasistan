@@ -1,8 +1,8 @@
-Commit: 158f723 · Sesli yanıt: Ayarlar'da dinlenip seçilen Google sesleri (#529)
-Zaman: 2026-10-19-1616 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39258073037
+Commit: f0b7778 · Ayarlar: ana hesap dışındaki kişilerde sade ayarlar (#531)
+Zaman: 2026-10-19-1624 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39259230757
 
-TAM TEST · 19.10.2026 16:12:23
+TAM TEST · 19.10.2026 16:20:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1319/1320 geçti · 1 kalan · 255 sn
+SONUÇ: 1319/1320 geçti · 1 kalan · 259 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
