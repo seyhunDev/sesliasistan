@@ -258,7 +258,9 @@ export function raceVoid(race) {
 // race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
 // (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish) ve yanında "İptal" (onVoid). Her biri önceki sayaç kaydını verir
 // (Geri al için, writeTimer ile geri yazılır). race.label: sıradaki yarışın adı.
-export function Countdown({ mode = "", presets = PRESETS, onZero, race = null }) {
+// compact (yarış multimedya, Seyhun 2026-10-19): sayaca dokununca başlar, süreler kısa ("1", "2", "5 dk", "…"), halkanın içinde yarışın adı
+// (title); alt şeritte ana düğmenin solunda lead (Fotoğraf, Video), sağında tail (+) durur.
+export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, compact = false, title = "", lead = null, tail = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -288,14 +290,27 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
 
   return (
     <section onPointerDown={() => running && !up && audio()} className="mt-3 rounded-2xl border border-line bg-card px-4 pb-4 pt-5 text-center">
-      <div className="relative mx-auto size-[13.5rem]">
+      <div
+        className={`relative mx-auto size-[13.5rem] ${compact && idle ? "cursor-pointer active:scale-[.98]" : ""}`}
+        onClick={compact && idle ? start : undefined}
+        role={compact && idle ? "button" : undefined}
+        aria-label={compact && idle ? "Başlat" : undefined}
+      >
         <svg viewBox="0 0 230 230" className="absolute inset-0 size-full -rotate-90">
           <circle cx="115" cy="115" r={R} fill="none" stroke="var(--line)" strokeWidth="8" />
           {!idle && !up && <circle cx="115" cy="115" r={R} fill="none" stroke={hot ? "var(--rec)" : "var(--acc)"} strokeWidth="8" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {title && <span className="text-[0.8125rem] font-semibold text-fg2">{title}</span>}
           <b className={`text-[3.75rem] font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
-          <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : t.left != null ? "Durdu" : "Sayaç"}</small>
+          {compact && idle ? (
+            <span className="mt-0.5 flex h-8 items-center gap-1.5 rounded-full bg-acc px-3.5 text-[0.875rem] font-semibold text-white">
+              <svg viewBox="0 0 24 24" className="size-3.5" fill="currentColor"><path d="M7 4.5v15l12-7.5z" /></svg>
+              Başlat
+            </span>
+          ) : (
+            <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : t.left != null ? "Durdu" : "Sayaç"}</small>
+          )}
         </div>
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -303,11 +318,11 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
           <>
             {presets.map((s) => (
               <button key={s} onClick={() => choose(s)} className={chip(t.dur === s)}>
-                {s / 60} dk
+                {compact && t.dur !== s ? s / 60 : `${s / 60} dk`}
               </button>
             ))}
-            <button onClick={() => setPick(true)} className={chip(custom)}>
-              {custom ? mmss(t.dur) : "Ayarla"}
+            <button onClick={() => setPick(true)} aria-label="Ayarla" className={chip(custom)}>
+              {custom ? mmss(t.dur) : compact ? "…" : "Ayarla"}
             </button>
           </>
         ) : (
@@ -325,17 +340,19 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
       <Pick open={pick} dur={t.dur} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       <Bar>
         <div className="flex gap-2">
+          {lead}
           {race && up && (
-            <button onClick={voidIt} className="h-14 shrink-0 rounded-2xl border border-line bg-card px-5 text-[1.0625rem] font-semibold text-rec active:translate-y-px">
+            <button onClick={voidIt} className={`h-14 shrink-0 rounded-2xl border border-line bg-card text-[1.0625rem] font-semibold text-rec active:translate-y-px ${compact ? "px-3.5" : "px-5"}`}>
               İptal
             </button>
           )}
           <button
             onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
-            className={`h-14 min-w-0 flex-1 rounded-2xl text-[1.0625rem] font-semibold active:translate-y-px ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
+            className={`h-14 min-w-0 flex-1 rounded-2xl font-semibold active:translate-y-px ${compact ? "text-[1rem]" : "text-[1.0625rem]"} ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
           >
-            {race ? (up ? "Yarışı bitir" : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
+            {race ? (up ? (compact ? "Bitir" : "Yarışı bitir") : running ? (compact ? "Geri sayımı iptal" : "Geri sayımı iptal et") : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
           </button>
+          {tail}
         </div>
       </Bar>
     </section>
@@ -346,7 +363,8 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null })
 // data-bar: şerit açıkken sayfanın alt boşluğu şerit kadar büyür (globals.css), en alttakiler düğmenin altında kalmaz (Seyhun 2026-10-18)
 export function Bar({ children }) {
   if (!useClient()) return null;
-  return createPortal(<div data-bar className="fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
+  // --bar-b: sayfanın kendi alt çubuğu varsa (yarış multimedya sekmeleri) şerit onun üstünde durur
+  return createPortal(<div data-bar className="fixed inset-x-0 bottom-[calc(var(--bar-b,var(--dome-h,var(--stage-h,5.5rem)))+0.75rem)] z-30 mx-auto w-full max-w-[30rem] px-5">{children}</div>, document.body);
 }
 
 // Ayarla: dakika ve saniye (iPhone'da çark olarak açılır)
