@@ -51,12 +51,13 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   // yapıldığını yalnız bilgi alanı söyler ("Plan hazırlanıyor…"); sohbete ve sese "Tamam / Bakıyorum" yazılmaz, yalnız asıl
   // cevap gelir. Ön cevapta veriden yardımcı bilgi varsa ("O saatlerde “Toplantı” planı da var.") yalnız o yazılır ve okunur.
   if (pc) timingMark("pre");
-  if (pc?.info) {
-    setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
-    // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
-    // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
-    enqueueSay(pc.info, viaVoice ? listenWhileThinking : undefined);
-  } else if (viaVoice) listenWhileThinking();
+  // Sesli okuma yalnız okuma isteğinde (readMode, 2026-10-19)
+  const reading = !!ctx.readMode?.current;
+  if (pc?.info) setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
+  // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
+  // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
+  if (pc?.info && reading) enqueueSay(pc.info, viaVoice ? listenWhileThinking : undefined);
+  else if (viaVoice) listenWhileThinking();
   // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
   const onText = (m) => {
     if (id !== runId.current) return;
@@ -65,7 +66,7 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     const end = Math.max(...[". ", "? ", "! ", "… ", ".\n", "?\n", "!\n"].map((p) => m.lastIndexOf(p)));
     if (end < 0) return;
     const upto = m.slice(0, end + 1);
-    if (upto.length > streamSaid.current.length && upto.startsWith(streamSaid.current)) {
+    if (reading && upto.length > streamSaid.current.length && upto.startsWith(streamSaid.current)) {
       enqueueSay(upto.slice(streamSaid.current.length).trim());
       streamSaid.current = upto;
     }

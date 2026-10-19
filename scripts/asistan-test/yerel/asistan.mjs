@@ -262,6 +262,17 @@ group("Fiş Kişisel / Kulüp (sesle)")([
   ["Migros fişini kişisel yap", { desc: "yol: receiptScope (ana hesap)", fn: (s) => routeOfMd(s, { owner: true }), ok: (r) => r === "receiptScope" }],
 ]);
 
+// Tür sayfasında (Planlar, Görevler, Notlar, Takvim) ilk cümle: yalnız yeni kayıt isteği o türde taslağa gider;
+// silme/iptal/erteleme/tamamlama ve kişiye mesaj yeni kayıt sanılmaz (#514 ekran testi)
+const { routesOf: routesOfPf } = await import("@/lib/assistRoute");
+const PF = (want) => ({ desc: want ? "yeni kayıt (prefer)" : "yeni kayıt değil", fn: (s) => routesOfPf(s, { prefer: "plan", owner: true, names: ["Ege Demir"] }).some((r) => r.id === "prefer"), ok: (r) => r === want });
+group("Tür sayfasında ilk cümle")([
+  ["yarın 10'da dişçi", PF(true)], ["cuma toplantı ekle", PF(true)], ["haftaya salı kamp", PF(true)],
+  ["dişçi randevusunu sil", PF(false)], ["toplantıyı iptal et", PF(false)], ["dişçiyi cumaya ertele", PF(false)],
+  ["tekne görevini tamamla", PF(false)], ["antrenmanı 11'e değiştir", PF(false)], ["Ege'ye yaz yarın 9'da kulüpte olsun", PF(false)],
+  ["yarın neler var", PF(false)],
+]);
+
 
 // Etkinlik planı isteği (eventWords.js): kamp, balık, gezi, konser…
 const EW = await import("@/features/events/eventWords");
@@ -647,6 +658,8 @@ group("Göreve göre ara yazı")([
       ["Ali Kaya'ya kasadan 1500 lira avans verdim", K("avans, iki kelimeli ad", (r) => r?.dir === "out" && r.cat === "Avans" && r.who === "Ali Kaya" && r.amount === 1500)],
       ["kasadan 300 lira yakıt aldım", K("yakıt", (r) => r?.book === "club" && r.dir === "out" && r.cat === "Yakıt")],
       ["nakit çıkış 200 malzeme", K("nakit çıkış", (r) => r?.dir === "out" && r.cat === "Malzeme" && r.amount === 200)],
+      ["200 lira kasa çıkışı ekle", K("fişsiz kasa çıkışı, kişisiz", (r) => r?.book === "club" && r.dir === "out" && r.amount === 200 && r.who === "")],
+      ["kasadan 150 lira çıkış yap", K("kasadan çıkış, kişisiz", (r) => r?.book === "club" && r.dir === "out" && r.amount === 150)],
       ["kişisel gider 300 market", K("kişisel gider", (r) => r?.book === "personal" && r.dir === "out" && r.cat === "Market")],
       ["kişisel gelir 2000 ders", K("kişisel gelir", (r) => r?.book === "personal" && r.dir === "in" && r.cat === "Ders" && r.amount === 2000)],
       ["Ahmet'e 1000 lira borcum var", K("borcum", (r) => r?.book === "personal" && r.dir === "debt" && r.who === "Ahmet" && r.amount === 1000)],

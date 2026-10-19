@@ -32,7 +32,7 @@ const DIRS = {
 };
 const catsOf = (book, dir) => (book === "personal" ? PERSONAL_CATS[dir] : dir === "out" ? OUT_CATS : INCOME_CATS);
 const TITLE = { club: { in: "Nakit giriş", out: "Nakit çıkış" }, personal: { in: "Kişisel gelir", out: "Kişisel gider", debt: "Borcum" } };
-const WHO = { club: { in: "Kimden", out: "Kime verildi" }, personal: { in: "Kimden (isteğe bağlı)", out: "Nereye (isteğe bağlı)", debt: "Kime borçlusun" } };
+const WHO = { club: { in: "Kimden", out: "Kime verildi (isteğe bağlı)" }, personal: { in: "Kimden (isteğe bağlı)", out: "Nereye (isteğe bağlı)", debt: "Kime borçlusun" } };
 
 // Hesaplar › "+": elle nakit giriş/çıkış (kulüp kasası) ya da kişisel gelir/gider/borç. Tür seçilir (Diğer → elle yazılır),
 // kişi Kişiler'den (çalışanlar, aile, diğer; sporcular değil) ya da daha önce yazılan adlardan seçilir veya yazılır (yeni ad
@@ -64,7 +64,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
   const [busy, setBusy] = useState(false);
 
   const isDues = book === "club" && dir === "in" && cat === "Aidat";
-  const needWho = book === "club" || dir === "debt";
+  const needWho = (book === "club" && dir === "in") || dir === "debt"; // fişsiz kasa çıkışı kişisiz de yazılır
   const opts = who.trim() ? options.filter((o) => words(who).every((w) => words(o.name).some((x) => x.startsWith(w))) && o.name !== who.trim()) : options;
   const people = [...roster].sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), "tr"));
   const shown = find.trim() ? people.filter((a) => words(find).every((w) => words(a.studentName).some((x) => x.startsWith(w)))) : people;
@@ -155,7 +155,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
         ) : (
           <div>
             <span className={label}>{WHO[book][dir]}</span>
-            <input value={who} onChange={(e) => setWho(e.target.value)} placeholder={book === "personal" && dir !== "debt" ? "" : "Ad Soyad"} aria-label={WHO[book][dir]} className={field} />
+            <input value={who} onChange={(e) => setWho(e.target.value)} placeholder={needWho ? "Ad Soyad" : ""} aria-label={WHO[book][dir]} className={field} />
             {opts.length > 0 && (
               <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
                 {opts.slice(0, 30).map((o) => (

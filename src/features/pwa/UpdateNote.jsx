@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { BUILD, buildWhen, commitOf } from "@/lib/buildInfo";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
 
 // Yeni sürüm bu cihazda ilk açılınca üstte küçük not: "Güncellendi · 9 Ekim 18:15" + son değişiklik.
 // Bir kez gösterilir (sa-build), 12 sn sonra ya da × ile kapanır. Sürüm bilgisi her zaman Ayarlar › Sürüm'de.
@@ -10,6 +11,7 @@ const KEY = "sa-build";
 
 export function UpdateNote() {
   const [show, setShow] = useState(false);
+  const { open } = useAssistant(); // tam ekran asistanın yazı kutusunu örtmesin (asistan ekran testi)
 
   useEffect(() => {
     if (!BUILD.sha || !BUILD.at) return;
@@ -31,7 +33,7 @@ export function UpdateNote() {
     return () => (clearTimeout(a), clearTimeout(b));
   }, []);
 
-  if (!show) return null;
+  if (!show || open) return null;
   const { pr, text } = commitOf(BUILD.msg);
   return (
     <div role="status" className="fade-in pointer-events-none fixed inset-x-0 bottom-[calc(var(--dome-h,var(--stage-h,5.5rem))+0.5rem)] z-[46] flex justify-center px-4">

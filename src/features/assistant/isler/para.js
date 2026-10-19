@@ -341,6 +341,9 @@ export async function duesCmd(ctx, s, viaVoice, pre = null) {
   }
 }
 
+// Kulüp nakit çıkışının sözlü özeti: "nakit çıkış, Ali, 500 TL (yakıt)" · kişisiz: "nakit çıkış, 200 TL"
+const outText = (kc, tl) => `nakit çıkış, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}`;
+
 export async function cashCmd(ctx, s, viaVoice) {
   const { done, owner, profile, reply, setPhase } = ctx;
   // Kasa çıkışı, kişisel gelir/gider/borç ve kasa sorusu (Hesaplar): "kulüpten Ali'ye 500 nakit verildi", "kişisel gider 300 market"
@@ -389,14 +392,23 @@ export async function cashCmd(ctx, s, viaVoice) {
         }
         return true;
       }
-      if (kc.book === "club" && !kc.who) {
-        reply(`Kasadan ${tl(kc.amount)} kime verildi? Adıyla yeniden söyler misin? (ör. kulüpten Ali'ye ${tl(kc.amount)} nakit verildi)`, { fail: true, engine: "local" }, viaVoice);
+      const save = async (v) => {
+        try {
+          await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
+          if (kc.book === "club" && kc.who) saveCashName(profile.orgId, kc.who).catch(() => {}); // sonraki seferde "Kime verildi" seçeneği
+          const what = kc.book === "club" ? `${outText(kc, tl)}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
+          done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, v);
+        } catch {
+          reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, v);
+        }
+      };
+      // Kulüp kasasından para çıkışı: kaydetmeden önce kısa onay (para işi); kişi söylenmediyse fişsiz çıkış olarak yazılır
+      if (kc.book === "club") {
+        const extra = [kc.who, kc.cat !== "Diğer" && kc.cat.toLocaleLowerCase("tr-TR")].filter(Boolean).join(", ");
+        ctx.askOk(`Kasadan ${tl(kc.amount)} nakit çıkış yazılsın mı?${extra ? ` (${extra})` : ""}`, "Ekle", save, viaVoice, /^(ekle|yaz|kaydet)/i);
         return true;
       }
-      await soon(addIncome(profile.orgId, { book: kc.book, dir: kc.dir, cat: kc.cat, who: kc.who, amount: kc.amount, date: todayStr(), note: kc.note }), 2500, "Kasa");
-      if (kc.book === "club" && kc.who) saveCashName(profile.orgId, kc.who).catch(() => {}); // sonraki seferde "Kime verildi" seçeneği
-      const what = kc.book === "club" ? `nakit çıkış, ${kc.who}, ${tl(kc.amount)}${kc.cat !== "Diğer" ? ` (${kc.cat.toLocaleLowerCase("tr-TR")})` : ""}. Kasadan düştüm.` : kc.dir === "debt" ? `borcun, ${kc.who ? `${kc.who}, ` : ""}${tl(kc.amount)}. Kişisel defterde.` : `kişisel ${kc.dir === "in" ? "gelir" : "gider"}, ${kc.cat}, ${tl(kc.amount)}. Kulüpten ayrı tutulur.`;
-      done(`Ekledim: ${what}`, { engine: "local", nav: "accounts" }, viaVoice);
+      await save(viaVoice);
     } catch {
       reply("Kaydedemedim, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
     }

@@ -1,4 +1,4 @@
-import { totalTL as totalOf } from "@/lib/receipts";
+import { needsCheck, totalTL as totalOf } from "@/lib/receipts";
 
 const DN = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 const DS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -99,7 +99,7 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
     block("ARŞİVDEKİ SON NOTLAR (yapıldı denen ya da arşivlenen)", notes.filter((n) => n.archived).sort((a, b) => offAt(b).localeCompare(offAt(a))).slice(0, 5).map(nl), 5),
     `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${liveNotes.length} açık, ${notes.length - liveNotes.length} arşivde`,
     // Fiş toplamları uzun yıl listesinden önce: özet 12.000 karakterde kesilince fiş bilgisi düşmesin
-    `## FİŞ TOPLAMLARI\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter((r) => r.status === "review").length}`,
+    `## FİŞ TOPLAMLARI\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter(needsCheck).length}`,
     block(`YIL ${year} TÜM PLANLAR`, yearPlans, 60),
   ]
     .join("\n\n")

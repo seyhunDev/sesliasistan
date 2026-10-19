@@ -16,7 +16,7 @@ import { todayIn } from "@/lib/notifyText";
 import { inOut, payeeMoves, payeeOf, received, searchMoves, whoIn } from "@/lib/payee";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
 import { addIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
-import { canConv, convSet, debtMoves, inKasa, kasaLink, kasaOf, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
+import { canConv, convSet, debtMoves, inKasa, kasaLink, kasaOf, needsReceipt, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { cleanDebt, leftOf, newId, paidOf, payDebt, splitDebts } from "@/lib/debts";
@@ -252,6 +252,8 @@ export default function MailPage() {
       sub: [dayText(dayOf(x)), x.who && x.note].filter(Boolean).join(" · "),
       status: link ? (link.kind === "receipt" ? "Fiş" : "Fatura") : x.conv ? "Bankadan" : x.cat || "",
       onClick: () => (x.debtId ? setDebtOpen(x.debtId) : setManual(x)),
+      // Fişsiz nakit çıkış: fiş eklenince bu çıkışa bağlanır (yeni çıkış yazılmaz)
+      action: needsReceipt(x) ? { label: "Fiş ekle", onClick: () => openReceipt?.({ kasa: true, link: { incomeId: x.incomeId, amount: -x.amount, date: dayOf(x), note: x.note, who: x.who } }) } : null,
     };
   };
   const receiptRow = (r) => ({

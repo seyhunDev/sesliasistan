@@ -14,7 +14,8 @@ const DEV_DIR = `${ROOT}.next/dev`;
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 export const TEST_TOKEN = `${b64({ alg: "none", typ: "JWT" })}.${b64({ user_id: "tam-test", sub: "tam-test", email: "tam-test@ornek.local" })}.imza`;
 
-export async function startServer({ port = 3917, log = () => {} } = {}) {
+// env: ek ortam değişkenleri (ör. asistan ekran testi: sahte Firebase emülatörü, scripts/asistan-ekran-test)
+export async function startServer({ port = 3917, log = () => {}, env: extra = {} } = {}) {
   if (!existsSync(NEXT)) throw new Error("node_modules yok: önce npm install");
   const hadDev = existsSync(DEV_DIR);
   const env = {
@@ -33,6 +34,7 @@ export async function startServer({ port = 3917, log = () => {} } = {}) {
     FIREBASE_CLIENT_EMAIL: "",
     FIREBASE_PRIVATE_KEY: "",
     FIRESTORE_EMULATOR_HOST: "127.0.0.1:9",
+    ...extra,
   };
   const child = spawn(process.execPath, [NEXT, "dev", "-p", String(port)], { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] });
   let out = "";
