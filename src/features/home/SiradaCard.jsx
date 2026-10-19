@@ -119,7 +119,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 }
 
 // Saat çizgisi satırı (Bugün, Yarın, Sırada aynı; 3. örnek): solda saat (Sırada'da altında gün), dikey çizgi üstünde plan türünün renginde halka,
-// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad ve sağında tür adı, altında yer (warn: rüzgâr eşiği geçti, kırmızımsı).
+// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad, alt satırda tür adı ve yer ("Yarış · Foça"; Seyhun 2026-10-19) (warn: rüzgâr eşiği geçti, kırmızımsı).
 // Ad kısaltılmaz, alt satıra geçer (Seyhun 2026-10-19); sağda kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri)
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
 function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
@@ -137,18 +137,17 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
             className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
           />
           <span className="flex min-w-0 items-start gap-2">
-            <span className="min-w-0 flex-1">
-              <b className={`break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-              {tag && <span className="tone-fg ml-1.5 whitespace-nowrap text-[0.75rem] font-semibold">{tag}</span>}
-            </span>
+            <b className={`min-w-0 flex-1 break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
             {left && <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-px text-[0.75rem] font-semibold tabular-nums ${LEFT[left.tone]}`}>{left.text}</span>}
           </span>
-          {(sub || live) && (
-            <small className={`block truncate text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+          {(tag || sub || live) && (
+            <small className={`block break-words text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+              {tag && <span className="tone-fg font-semibold">{tag}</span>}
+              {tag && sub ? " · " : ""}
               {sub}
               {live && (
                 <span className="font-semibold text-[var(--red)]">
-                  {sub ? " · " : ""}şimdi
+                  {sub || tag ? " · " : ""}şimdi
                 </span>
               )}
             </small>
