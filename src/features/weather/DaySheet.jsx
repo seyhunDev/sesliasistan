@@ -155,10 +155,11 @@ function Num({ label, kn, gust, color }) {
 
 // Bir günün detayı: özet, rüzgâr grafiği, 3 saatte bir hava. `cur` (şu anki hava) verilirse bugünün özeti şimdiki değerlerle yazılır.
 // at: { lat, lon } verilirse yakında (10 km) istasyon varsa gerçekleşen rüzgâr da çizilir (useWindObs).
-export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = null }) {
+// far: uzaklık sınırı yok, en yakın istasyon kullanılır (yarış multimedya: "en yakın istasyon nereyse oradan alalım").
+export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = null, far = false }) {
   const now = useNow();
   const isToday = YMD.format(now) === date;
-  const ob = useWindObs(at, date, YMD.format(now));
+  const ob = useWindObs(at, date, YMD.format(now), far);
   const obs = rows.map((h) => ob?.rows?.find((o) => o.hh === h.hh));
   const last = ob?.rows?.[ob.rows.length - 1];
   const nowIdx = isToday ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
@@ -232,7 +233,7 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
       </div>
       {ob?.station && (
         <p className="text-[0.6875rem] text-mut tabular-nums">
-          {ob.station.near
+          {ob.station.near || far
             ? `Ölçüm: ${ob.station.name} istasyonu · ${String(ob.station.km).replace(".", ",")} km · ${last ? `son ${HM.format(new Date(last.at))}` : "henüz veri yok"}`
             : `Yakında ölçüm istasyonu yok (en yakını ${Math.round(ob.station.km)} km); yalnız tahmin`}
         </p>

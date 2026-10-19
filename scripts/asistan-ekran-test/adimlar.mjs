@@ -455,6 +455,20 @@ async function scenarios4(h) {
       const nav = await page.locator("nav[aria-label='Sekmeler']:visible").count();
       return [n === 0 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme · sekme çubuğu ${nav}`];
     });
+    const picked = () => page.locator("button[data-day][aria-pressed='true']").getAttribute("data-day").catch(() => "");
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+    await check(GN, "Yarış multimedya açılışı", "dün antrenman günü varken bugün seçili, son yarış günü değil", async () => [(await picked()) === today, `${await picked()} · bugün ${today}`]);
+    await page.locator("button[data-day]").last().click().catch(() => {});
+    await page.evaluate(() => {
+      const n = Date.now;
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+      Date.now = () => n() + 60e3;
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.waitForTimeout(400);
+    await check(GN, "Yarış multimedya: arkadan dönüş", "başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün", async () => [(await picked()) === today, `${await picked()}`]);
     await page.context().close();
   }
 

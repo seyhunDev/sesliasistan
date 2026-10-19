@@ -7,7 +7,7 @@ import { OSM, OSM_ATTR, loadLeaflet } from "@/lib/leaflet";
 import { nearestStation } from "@/lib/windObs";
 
 // Yarışın yeri (Seyhun 2026-10-19: "yoksa haritadan seçip hangi lokasyonu istiyorsun diye sorabilirsin"): il/ilçe ara ya da haritaya dokun.
-// Altta en yakın resmî ölçüm istasyonu ve uzaklığı görünür (10 km'den uzaksa ölçülen rüzgâr çıkmaz). Kaydedilen yer yarışın `spot` alanına yazılır.
+// Altta en yakın resmî ölçüm istasyonu ve uzaklığı görünür (Hava'da uzaklık sınırı olmadan bu istasyonun ölçümü gösterilir). Kaydedilen yer yarışın `spot` alanına yazılır.
 export function SpotSheet({ open, onClose, spot, onSave }) {
   return (
     <Sheet open={open} onClose={onClose} title="Yarışın yeri">
@@ -69,8 +69,8 @@ function Body({ spot, onSave }) {
         <p className="mt-2 px-1 text-[0.875rem] leading-snug">
           <b className="font-semibold">{p.name}</b>
           {st && (
-            <span className={`block text-[0.8125rem] ${st.near ? "text-mut" : "text-warn"}`}>
-              Ölçüm istasyonu: {st.name}, {Math.round(st.km)} km{st.near ? "" : " · uzak, ölçülen rüzgâr çıkmaz"}
+            <span className="block text-[0.8125rem] text-mut">
+              Ölçüm istasyonu: {st.name}, {Math.round(st.km)} km
             </span>
           )}
         </p>

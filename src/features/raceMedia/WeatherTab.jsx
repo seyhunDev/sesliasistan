@@ -6,11 +6,9 @@ import { Loading } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { DayDetail } from "@/features/weather/DaySheet";
 import { windLevel } from "@/features/weather/weather";
-import { useWindObs } from "@/features/weather/useWindObs";
 import { cleanSpot, loadRaceDay } from "@/features/athletes/raceWeather";
 import { saveRaceSpot } from "@/features/athletes/races";
 import { useToast } from "@/components/ui/ToastProvider";
-import { todayStr } from "@/lib/utils/format";
 import { SpotSheet } from "./SpotSheet";
 import { addWind, saveWind } from "@/features/athletes/raceLiveStore";
 import { Bar } from "@/features/training/Countdown";
@@ -19,7 +17,7 @@ import { DIRS, atOf, dayOf, dirShort, hm, marksFor, windOn } from "@/lib/raceLiv
 // Hava: yarış yerinin o günkü saatlik tahmini, hava sayfasındaki grafiğin aynısı (DayDetail); elle yazılan rüzgâr grafikte içi boş nokta.
 // "Rüzgar yaz": yön + şiddet, saat kendiliğinden (değiştirilebilir). Satıra dokununca kayıt silinir (sorar).
 // Yer: yarışın `spot`u; yoksa ilk açılışta ilçeden bulunup yarışa kaydedilir, bulunamazsa ya da istenirse haritadan seçilir (SpotSheet).
-// Bugün ve geçmiş günlerde en yakın resmî istasyon 10 km'den uzaksa grafiğin altında hangi istasyonun ne kadar uzak olduğu yazar.
+// Bugün ve geçmiş günlerde en yakın resmî istasyonun ölçümü (uzaklık sınırı yok; istasyon ve km grafiğin altında yazar).
 export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
   const toast = useToast();
   const [wx, setWx] = useState({ day: "", rows: null, err: "" });
@@ -41,8 +39,6 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
       on = false;
     };
   }, [race, day, orgId, onRace]);
-  const ob = useWindObs(wx.day === day ? wx.at : null, day, todayStr());
-  const far = ob?.station && !ob.station.near ? ob.station : null;
   const saveSpot = async (p) => {
     const sp = cleanSpot(p);
     try {
@@ -67,7 +63,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
     <>
       <section className={`${card} mt-3 px-4 pb-3 pt-4`}>
         {rows ? (
-          <DayDetail date={day} rows={rows} marks={marks} place={wx.place} at={wx.at} />
+          <DayDetail date={day} rows={rows} marks={marks} place={wx.place} at={wx.at} far />
         ) : wx.day === day && wx.err ? (
           <div className="py-5 text-center">
             <p className="text-[0.875rem] text-mut">{wx.err}</p>
@@ -81,7 +77,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
       </section>
       {wx.place && rows && (
         <div className="mt-1.5 flex items-start gap-3 px-1 text-[0.75rem] text-mut">
-          <p className="min-w-0 flex-1 leading-snug">{far ? `Ölçülen rüzgâr yok: en yakın istasyon ${far.name}, ${Math.round(far.km)} km` : "Open-Meteo"}</p>
+          <p className="min-w-0 flex-1 leading-snug">Open-Meteo</p>
           <button type="button" onClick={() => setPick(true)} className="shrink-0 font-semibold text-acc active:opacity-60">
             Yeri değiştir
           </button>

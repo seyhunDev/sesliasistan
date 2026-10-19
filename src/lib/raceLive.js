@@ -117,6 +117,18 @@ export function takeTimer(remote, mine, first, now) {
 export const upSec = (end, now) => Math.min(UP_MAX, Math.max(0, Math.floor((now - end) / 1000)));
 export const liveDays = (days, live) =>
   [...new Set([...(days || []), ...(live?.days || []), ...[...(live?.media || []), ...(live?.starts || [])].map((x) => dayOf(x.at)).filter((d) => /^\d{4}-/.test(d))])].sort();
+// Bugün listede yoksa da gösterilir (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"; dün eklenen antrenman günü
+// varken sayfa son yarış gününü açıyordu). Yarışın ilk gününden 14 gün öncesine ve son gününden 1 gün sonrasına kadar.
+const plus = (d, n) => {
+  const x = new Date(`${d}T12:00:00Z`);
+  x.setUTCDate(x.getUTCDate() + n);
+  return x.toISOString().slice(0, 10);
+};
+export function withToday(days, rdays, today) {
+  if (!today || days.includes(today) || !rdays?.length) return days;
+  if (today < plus(rdays[0], -14) || today > plus(rdays[rdays.length - 1], 1)) return days;
+  return [...days, today].sort();
+}
 // Gün adları: yarış günleri "1. gün" (tek günse "Yarış"), diğerleri tarih sırasıyla "Antrenman 1", "Antrenman 2" (öncesi ve sonrası)
 export function dayNames(rdays, days) {
   let k = 0;
