@@ -29,6 +29,7 @@ export const TASKS = [
   { id: "send", group: "Mesaj", name: "Uygulama içi mesaj (kişi ya da grup)", say: "Ali'ye yaz, yarın 9'da iskelede olsun", who: "herkes", by: "yz", confirm: true, doing: "Tamam, mesajı hazırlıyorum.", work: "Mesaj hazırlanıyor" },
   { id: "group", group: "Mesaj", name: "Gruba mesaj (Ekip, Sporcular, kurulan gruplar)", say: "sporculara söyle antrenman iptal", who: "herkes", by: "yz", confirm: true, doing: "Tamam, grup mesajını hazırlıyorum.", work: "Grup mesajı hazırlanıyor" },
   { id: "msgDelete", group: "Mesaj", name: "Mesaj silme / arşiv", say: "son mesajımı sil", who: "herkes", by: "yerel", confirm: true, doing: "Tamam, son mesajına bakıyorum.", work: "Mesaj arşive kaldırılıyor" },
+  { id: "chatOp", group: "Mesaj", name: "Sohbet arşivi", say: "Ali ile konuşmayı arşivle", who: "ana", by: "yerel", confirm: true },
   { id: "whatsapp", group: "Mesaj", name: "WhatsApp mesajı", say: "Ali'ye WhatsApp'tan yaz, yarın gelsin", who: "herkes", by: "yz", confirm: true, doing: "Tamam, WhatsApp mesajını hazırlıyorum.", work: "WhatsApp mesajı hazırlanıyor" },
 
   // Sorular

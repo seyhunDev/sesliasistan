@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useNow } from "@/hooks/useNow";
 import { toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, isOnline, listTime } from "./bits";
@@ -18,7 +19,11 @@ const fold = (s = "") => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normal
 // son mesaja göre sıralı; okunmamışlar kalın ve sayılı. Üstte kişiler (çevrimiçi noktasıyla): dokununca birebir sohbet.
 export function ChatList() {
   const router = useRouter();
-  const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef } = useChat();
+  const { chats, people, personName, uid, denied, orgId, ready, groupIds, chatRef, chatCounts, resetChats } = useChat();
+  const toast = useToast();
+  const owner = !!orgId && orgId === uid;
+  const [showArch, setShowArch] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [filter, setFilter] = useState("all"); // all | unread | groups
   const [q, setQ] = useState("");
   const [find, setFind] = useState(false);
@@ -81,10 +86,51 @@ export function ChatList() {
   // Ekip, mesajı yokken listede yer tutmaz (kişiler şeridinin başında her zaman var)
   const rows = chatRows
     .filter((x) => !(GROUPS[x.c.id] && (!x.c.last || cards)))
+    .filter((x) => !x.c.archivedByMe || needle)
     .filter((x) => (filter === "unread" ? x.unread > 0 : filter === "groups" ? x.group : true))
     .filter((x) => !needle || fold(x.title).includes(needle))
     .sort((a, b) => b.at - a.at);
-  const unreadCount = chatRows.filter((x) => x.unread > 0).length;
+  const unreadCount = chatRows.filter((x) => x.unread > 0 && !x.c.archivedByMe).length;
+  // Arşivlenen sohbetler (yalnız benim listemden kalkar): listenin altında, dokununca açılır
+  const archRows = needle ? [] : chatRows.filter((x) => x.c.archivedByMe).sort((a, b) => b.at - a.at);
+
+  // Ana hesap: tüm mesajları herkes için sıfırla; önce kaç sohbet ve mesaj silineceği sorulur
+  const reset = async () => {
+    setResetting(true);
+    const n = await chatCounts();
+    setResetting(false);
+    if (n.error) return toast(n.error);
+    if (!n.chats) return toast("Silinecek mesaj yok");
+    if (!window.confirm(`${n.chats} sohbet, ${n.messages} mesaj ve tüm ekler herkes için kalıcı silinecek. Geri alınamaz. Mesajlar sıfırlansın mı?`)) return;
+    setResetting(true);
+    const ok = await resetChats();
+    setResetting(false);
+    toast(ok ? "Mesajlar sıfırlandı" : "Sıfırlanamadı");
+  };
+
+  const row = (x) => (
+    <li key={x.key}>
+      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} className="flex w-full items-center gap-3.5 px-5 text-left transition active:bg-line/40">
+        <span className="py-2.5">{x.avatar}</span>
+        <span className="min-w-0 flex-1 self-stretch border-b border-line/80 py-3">
+          <span className="flex items-baseline gap-2">
+            <b className={`min-w-0 flex-1 truncate text-[1rem] leading-snug ${x.unread ? "font-bold" : "font-semibold"}`}>{x.title}</b>
+            <time className={`shrink-0 text-[0.75rem] tabular-nums ${x.unread ? "font-semibold text-acc" : "text-mut"}`}>{x.at ? listTime(x.at) : ""}</time>
+          </span>
+          <span className="mt-1 flex items-center gap-2">
+            <span className={`line-clamp-1 min-w-0 flex-1 text-[0.875rem] leading-snug ${x.unread ? "text-fg" : "text-mut"}`}>{x.preview}</span>
+            {x.muted && <Icon name="mute" className="size-4 shrink-0 text-mut" />}
+            {x.unread > 0 && (
+              <span className={`grid h-[1.375rem] min-w-[1.375rem] shrink-0 place-items-center rounded-full px-1.5 text-[0.75rem] font-bold tabular-nums text-white ${x.muted ? "bg-mut" : "bg-acc"}`}>
+                {x.unread > 99 ? "99+" : x.unread}
+              </span>
+            )}
+          </span>
+          {x.sub && <small className="mt-0.5 block truncate text-[0.75rem] text-mut">{x.sub}</small>}
+        </span>
+      </button>
+    </li>
+  );
 
   return (
     // min-h-lvh: liste kısa olsa da sayfa en az ekran boyu; Safari alt çubuğu küçülmüş kalır, alt menü yerinden oynamaz
@@ -172,31 +218,7 @@ export function ChatList() {
       {cards && rows.length > 0 && <p className="px-5 pb-1 pt-3.5 text-[0.6875rem] font-bold tracking-[0.06em] text-mut">SOHBETLER</p>}
 
       {rows.length ? (
-        <ul className="mt-1">
-          {rows.map((x) => (
-            <li key={x.key}>
-              <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} className="flex w-full items-center gap-3.5 px-5 text-left transition active:bg-line/40">
-                <span className="py-2.5">{x.avatar}</span>
-                <span className="min-w-0 flex-1 self-stretch border-b border-line/80 py-3">
-                  <span className="flex items-baseline gap-2">
-                    <b className={`min-w-0 flex-1 truncate text-[1rem] leading-snug ${x.unread ? "font-bold" : "font-semibold"}`}>{x.title}</b>
-                    <time className={`shrink-0 text-[0.75rem] tabular-nums ${x.unread ? "font-semibold text-acc" : "text-mut"}`}>{x.at ? listTime(x.at) : ""}</time>
-                  </span>
-                  <span className="mt-1 flex items-center gap-2">
-                    <span className={`line-clamp-1 min-w-0 flex-1 text-[0.875rem] leading-snug ${x.unread ? "text-fg" : "text-mut"}`}>{x.preview}</span>
-                    {x.muted && <Icon name="mute" className="size-4 shrink-0 text-mut" />}
-                    {x.unread > 0 && (
-                      <span className={`grid h-[1.375rem] min-w-[1.375rem] shrink-0 place-items-center rounded-full px-1.5 text-[0.75rem] font-bold tabular-nums text-white ${x.muted ? "bg-mut" : "bg-acc"}`}>
-                        {x.unread > 99 ? "99+" : x.unread}
-                      </span>
-                    )}
-                  </span>
-                  {x.sub && <small className="mt-0.5 block truncate text-[0.75rem] text-mut">{x.sub}</small>}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <ul className="mt-1">{rows.map(row)}</ul>
       ) : !ready ? (
         <ul className="mt-1" aria-hidden="true">
           {[0, 1, 2].map((i) => (
@@ -217,6 +239,24 @@ export function ChatList() {
           <p className="mt-3 max-w-[16rem] text-[0.9375rem] leading-snug text-mut">
             {q ? `“${q}” bulunamadı.` : filter === "unread" ? "Okunmamış mesaj yok." : "Henüz sohbet yok. Kalemle yeni sohbet başlat."}
           </p>
+        </div>
+      )}
+
+      {archRows.length > 0 && (
+        <>
+          <button type="button" onClick={() => setShowArch((v) => !v)} aria-expanded={showArch} className="flex w-full items-center justify-between px-5 pb-1 pt-5 text-[0.875rem] font-semibold text-mut">
+            <span>Arşiv · {archRows.length}</span>
+            <span className="text-acc">{showArch ? "Gizle" : "Göster"}</span>
+          </button>
+          {showArch && <ul>{archRows.map(row)}</ul>}
+        </>
+      )}
+
+      {owner && ready && !denied && (
+        <div className="px-5 pt-10">
+          <button type="button" disabled={resetting} onClick={reset} className="h-11 w-full rounded-xl border border-line bg-card text-[0.875rem] font-semibold text-rec active:scale-[.98] disabled:opacity-50">
+            {resetting ? "Bekle…" : "Mesajları sıfırla"}
+          </button>
         </div>
       )}
 

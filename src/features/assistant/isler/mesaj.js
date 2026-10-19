@@ -64,7 +64,7 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
 
 // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
 export async function confirmPending(ctx, fromText = false, waOpened = false) {
-  const { by, cards, chatPurge, chatRemove, chatSend, owner, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
+  const { by, cards, chatDelete, chatPurge, chatRemove, chatSend, owner, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
   const pend = cards.pending;
   if (!pend) return;
   if (!fromText) setTurns((p) => [...p, { role: "user", text: pend.send ? "Gönder" : "Onayla", chip: true }]);
@@ -76,6 +76,14 @@ export async function confirmPending(ctx, fromText = false, waOpened = false) {
     toast(ok ? "Mesaj arşive kaldırıldı" : "Mesaj kaldırılamadı");
     if (nextStep(fromText && convo.current, ok ? "Kaldırdım. " : "Mesajı kaldıramadım. ")) return;
     return (ok ? done : reply)(ok ? (owner ? "Arşive kaldırdım, sohbette kimse görmüyor. Sohbetin üstündeki Arşiv'den geri alabilirsin." : "Senden kaldırdım. Sohbetin üstündeki Arşiv'den geri alabilirsin.") : "Mesajı kaldıramadım; tekrar dene.", { engine: "local" }, fromText && convo.current);
+  }
+  // Sohbeti herkes için kalıcı silme (yalnız ana hesap; sunucuda)
+  if (pend.chatDel) {
+    setCards((c) => ({ ...c, pending: null, awaiting: false }));
+    const ok = await chatDelete?.(pend.chatDel.cid);
+    toast(ok ? "Sohbet herkes için silindi" : "Sohbet silinemedi");
+    if (nextStep(fromText && convo.current, ok ? "Sohbeti sildim. " : "Sohbeti silemedim. ")) return;
+    return (ok ? done : reply)(ok ? `${pend.chatDel.label} sohbetini herkes için sildim.` : "Sohbeti silemedim; tekrar dene.", { engine: "local" }, fromText && convo.current);
   }
   // Arşivdeki mesajı kalıcı silme (yalnız ana hesap)
   if (pend.msgPurge) {
@@ -166,7 +174,7 @@ export function cancelPending(ctx, fromText = false) {
   }
   if ((cards.pending?.send || cards.pending?.actions) && nextStep(fromText && convo.current, cards.pending?.send ? "Tamam, göndermedim. " : "Tamam, silmedim. ")) return;
   queue.current = [];
-  done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.msgDel || cards.pending?.msgPurge ? "Tamam, silmedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
+  done(cards.pending?.send ? "Tamam, göndermedim." : cards.pending?.msgDel || cards.pending?.msgPurge || cards.pending?.chatDel ? "Tamam, silmedim." : cards.pending?.actions?.every((a) => /^(delete|delete_series|approve_delete)$/.test(a.op)) ? "Tamam, silmedim." : "Tamam, vazgeçtim.", { engine: "local" }, fromText && convo.current);
 }
 
 export async function groupCreateCmd(ctx, s, viaVoice) {

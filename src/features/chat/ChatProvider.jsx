@@ -28,7 +28,7 @@ import { dropChatFile } from "@/features/chat/chatUpload";
 
 // Mesajlaşma: kişi kişiye (dm_<uid1>_<uid2>), gruplar ve türe göre sabit gruplar: Ekip (team), Aile (family), Sporcular (athletes).
 // Kim kiminle yazışır ve hangi sabit gruptadır: lib/kinds.js (kurallar da aynı).
-// Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, recv{uid:n}, typing{uid:zaman}, muted{uid:true} }
+// Veri: orgs/{işletme}/chats/{id} { type, members, name, createdBy, seq, last{text,by,at}, read{uid:n}, recv{uid:n}, typing{uid:zaman}, muted{uid:true}, archived{uid:true} }
 //       orgs/{işletme}/chats/{id}/messages/{mid} { by, text, at, n, file{kind,name,type,size,path,url,w,h,sec}, replyTo{id,by,text}, reactions{uid:emoji}, arch, archBy, archAt, hide{uid:true}, editedAt } (arşiv: lib/chatArchive.js)
 //       chats/{id}.pinned { id, text, by }: sabitlenen mesaj
 //       orgs/{işletme}/directory/{uid} { name, role, lastSeen } — sohbet listesindeki adlar ve "çevrimiçi"
@@ -151,11 +151,11 @@ export function ChatProvider({ children }) {
     return all.map((c) => {
       const other = c.type === "dm" ? (c.members || []).find((m) => m !== uid) : null;
       const title = GROUPS[c.id] ? GROUPS[c.id].name : c.type === "dm" ? personName(other) : c.name || "Grup";
-      return { ...c, other, title, unread: unreadOf(c, uid), mutedByMe: !!c.muted?.[uid] };
+      return { ...c, other, title, unread: unreadOf(c, uid), mutedByMe: !!c.muted?.[uid], archivedByMe: !!c.archived?.[uid] };
     });
   }, [groupIds, fixed, list, uid, personName, myKind, orgId]);
 
-  const unreadTotal = chats.reduce((n, c) => n + (c.unread && !c.mutedByMe ? 1 : 0), 0);
+  const unreadTotal = chats.reduce((n, c) => n + (c.unread && !c.mutedByMe && !c.archivedByMe ? 1 : 0), 0);
 
   // ---- İşlemler ----
   const chatRef = useCallback((cid) => doc(chatsCol, cid), [chatsCol]);
@@ -292,6 +292,24 @@ export function ChatProvider({ children }) {
     [chatRef],
   );
   const mute = useCallback((c, on) => updateDoc(chatRef(c.id), { [`muted.${uid}`]: on ? true : deleteField() }).catch(() => {}), [chatRef, uid]);
+  // Sohbeti arşivle / arşivden çıkar: yalnız benim listemde (listenin altında "Arşiv"); mesajlar yerinde kalır
+  const archive = useCallback(
+    (c, on) => updateDoc(chatRef(c.id), { [`archived.${uid}`]: on ? true : deleteField() }).then(() => true, () => false),
+    [chatRef, uid],
+  );
+  // Ana hesap: bir sohbeti ya da tüm mesajları herkes için kalıcı siler (sunucuda; api/chat-admin). Dönüş: başarılı mı
+  const adminChat = useCallback(async (body) => {
+    try {
+      const res = await authFetch("/api/chat-admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const j = await res.json().catch(() => ({}));
+      return res.ok ? j : { error: j.error || "Yapılamadı." };
+    } catch {
+      return { error: "Sunucuya ulaşılamadı." };
+    }
+  }, []);
+  const deleteChat = useCallback((cid) => adminChat({ action: "delete", chat: cid }).then((j) => !j.error), [adminChat]);
+  const chatCounts = useCallback(() => adminChat({ action: "count" }), [adminChat]);
+  const resetChats = useCallback(() => adminChat({ action: "reset" }).then((j) => !j.error), [adminChat]);
 
   const createGroup = useCallback(
     async (name, memberUids) => {
@@ -334,6 +352,10 @@ export function ChatProvider({ children }) {
     edit,
     pin,
     mute,
+    archive,
+    deleteChat,
+    chatCounts,
+    resetChats,
     createGroup,
     updateGroup,
     leaveGroup,
