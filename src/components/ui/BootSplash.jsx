@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { bootShown, kickBoot, onBoot } from "@/lib/boot";
+import { RAYS } from "@/components/ui/AppLogo";
 
 const OUT = 560; // çekilme animasyonu (globals.css › .boot[data-phase=out])
 
@@ -11,8 +12,8 @@ function setRoot(v) {
 }
 
 // Uygulamanın tek açılış ekranı: sunucu çiziminde de var (ilk karede boş ekran yok), yükleme aşamaları boyunca
-// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada logo çizilir: ses dalgası onay işaretine döner;
-// yükleme sürerken hafifçe nefes alır, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
+// aynı kalır. Koyu lacivert zemin, ortada Velora logosu: ses çubukları sırayla ortadan dışa uzar,
+// yükleme sürerken konuşur gibi kısalıp uzar ve ortadaki ışık nabız gibi atar, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
 export function BootSplash() {
   const [phase, setPhase] = useState("on"); // on | out | off
 
@@ -47,15 +48,25 @@ export function BootSplash() {
   return (
     <div className="boot" data-phase={phase} role="status" aria-label="Yükleniyor" aria-hidden={phase === "out" || undefined}>
       <div className="boot-mark">
-        {/* Logo (public/logo.svg) zeminsiz: tek çizgi önce ses dalgası, sonra onay işareti; çizilerek gelir */}
-        <svg className="boot-logo" viewBox="120 300 790 400" aria-hidden="true">
-          <path
-            className="boot-line"
-            d="M160 560 C173 540 212 430 240 440 C268 450 301 615 330 620 C359 625 383 463 415 470 C447 477 502 628 520 660 L870 340"
-            pathLength="1"
-          />
+        {/* Velora logosu (public/brand/velora-mark.svg ile aynı çizim): çubuklar sırayla açılır, sonra ses gibi kısalıp uzar */}
+        <svg className="boot-logo" viewBox="132 132 760 760" aria-hidden="true">
+          <defs>
+            <linearGradient id="boot-g" gradientUnits="userSpaceOnUse" x1="160" y1="160" x2="864" y2="864">
+              <stop offset="0" stopColor="#8B5CF6" />
+              <stop offset="1" stopColor="#22D3EE" />
+            </linearGradient>
+          </defs>
+          <g stroke="url(#boot-g)" strokeWidth="30" strokeLinecap="round">
+            {RAYS.map((r, i) => (
+              <g key={i} transform={`rotate(${r.angle} 512 512)`}>
+                <line className="boot-ray" x1="512" y1="312" x2="512" y2={312 - r.len} style={{ "--i": i }} />
+              </g>
+            ))}
+          </g>
+          <circle className="boot-core-glow" cx="512" cy="512" r="96" fill="url(#boot-g)" />
+          <circle className="boot-core" cx="512" cy="512" r="64" fill="#fff" />
         </svg>
-        <p className="boot-name">Sesli Asistan</p>
+        <p className="boot-word">Velora</p>
         <p className="boot-sub">Hazırlanıyor</p>
       </div>
     </div>

@@ -20,7 +20,7 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   pdf.setTitle(`${r.name} bütçe`);
-  pdf.setCreator("Sesli Asistan");
+  pdf.setCreator("Velora");
   const f = { r: await pdf.embedFont(fonts.sans, { subset: true }), b: await pdf.embedFont(fonts.sansB, { subset: true }) };
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo) : null;
   const b = r.budget;

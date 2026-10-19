@@ -59,7 +59,7 @@ export function wireNativePush(go) {
     if (!LN) return;
     const id = Math.floor(Math.random() * 2e9);
     LN.schedule({
-      notifications: [{ id, title: n?.title || n?.data?.title || "Asistan", body: n?.body || "", channelId: "genel", extra: { url: n?.data?.url || "/" } }],
+      notifications: [{ id, title: n?.title || n?.data?.title || "Velora", body: n?.body || "", channelId: "genel", extra: { url: n?.data?.url || "/" } }],
     }).catch(() => {});
   });
 }

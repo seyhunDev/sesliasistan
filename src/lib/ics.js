@@ -34,7 +34,7 @@ const fold = (line) => {
   return out.join("\r\n ");
 };
 
-export function icsOf(plans, { name = "Sesli Asistan", now = new Date() } = {}) {
+export function icsOf(plans, { name = "Velora", now = new Date() } = {}) {
   const stamp = `${now.toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`;
   const ev = plans
     .filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.date || ""))
@@ -54,5 +54,5 @@ export function icsOf(plans, { name = "Sesli Asistan", now = new Date() } = {}) 
       ];
       return lines.map(fold).join("\r\n");
     });
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Sesli Asistan//TR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${esc(name)}`, "X-WR-TIMEZONE:Europe/Istanbul", "REFRESH-INTERVAL;VALUE=DURATION:PT6H", ...ev, "END:VCALENDAR", ""].join("\r\n");
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Velora//TR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${esc(name)}`, "X-WR-TIMEZONE:Europe/Istanbul", "REFRESH-INTERVAL;VALUE=DURATION:PT6H", ...ev, "END:VCALENDAR", ""].join("\r\n");
 }

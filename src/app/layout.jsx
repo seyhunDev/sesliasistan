@@ -9,9 +9,9 @@ import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
 
 export const metadata = {
-    title: "Sesli Asistan",
-    applicationName: "Sesli Asistan",
-    appleWebApp: { capable: true, title: "Sesli Asistan", statusBarStyle: "black-translucent" },
+    title: "Velora",
+    applicationName: "Velora",
+    appleWebApp: { capable: true, title: "Velora", statusBarStyle: "black-translucent" },
     formatDetection: { telephone: false },
 };
 

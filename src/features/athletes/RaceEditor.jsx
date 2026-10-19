@@ -370,7 +370,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         `Belgeler: ${DOCS.filter(([k]) => docs.includes(k)).map(([, t]) => t).join(", ")}`,
         `Sporcular (${chosen.length}): ${chosen.map((a) => a.studentName).join(", ")}`,
         "",
-        "Sesli Asistan ile hazırlandı.",
+        "Velora ile hazırlandı.",
       ].join("\n");
       // Her belge ayrıca tek başına (listede ayrı açılır, paylaşılır)
       const fonts = await loadFonts();

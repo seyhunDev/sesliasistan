@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v13";
+const VERSION = "sa-v15";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
@@ -48,7 +48,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
   // Değişmeyen dosyalar (adında sürüm var): önce önbellek
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || url.pathname.startsWith("/brand/")) {
     e.respondWith(
       caches.open(STATIC_CACHE).then(async (c) => {
         const hit = await c.match(req);

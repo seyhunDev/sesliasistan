@@ -34,7 +34,7 @@ const birthParts = (iso) => {
 };
 // Kolay paylaşım: giriş bilgileri WhatsApp ile
 const shareText = (name, login, pw) =>
-  `Merhaba ${name.split(" ")[0]}, Sesli Asistan uygulamasına giriş bilgilerin:\n${typeof location !== "undefined" ? location.origin : ""}\nGiriş: ${login}\nŞifre: ${pw}\nGirdikten sonra şifreni Ayarlar'dan değiştirebilirsin.`;
+  `Merhaba ${name.split(" ")[0]}, Velora uygulamasına giriş bilgilerin:\n${typeof location !== "undefined" ? location.origin : ""}\nGiriş: ${login}\nŞifre: ${pw}\nGirdikten sonra şifreni Ayarlar'dan değiştirebilirsin.`;
 const randomPw = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join("").slice(0, 8);
 
 // Kişi ekle / düzenle (ana hesap): ad, tür, yakınlık/unvan, telefon, e-posta, doğum günü; hesap aç/kapat, şifre; sil.

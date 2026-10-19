@@ -91,7 +91,7 @@ export function AccessSheet({ open, onClose, athletes }) {
     setBusy(false);
   }
 
-  const text = done ? `Sesli Asistan giriş bilgileri\n${typeof location !== "undefined" ? location.origin : ""}\nŞifre: ${password}\n${done.filter((d) => d.login && !d.note).map((d) => `${d.name}: ${d.login}`).join("\n")}` : "";
+  const text = done ? `Velora giriş bilgileri\n${typeof location !== "undefined" ? location.origin : ""}\nŞifre: ${password}\n${done.filter((d) => d.login && !d.note).map((d) => `${d.name}: ${d.login}`).join("\n")}` : "";
   const one = athletes.length === 1;
   return (
     <Sheet open={open} onClose={() => onClose(!!done)} title={one ? `${athletes[0]?.studentName} · uygulama` : `${athletes.length} sporcu · uygulama`}>

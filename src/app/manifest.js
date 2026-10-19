@@ -1,7 +1,7 @@
 export default function manifest() {
     return {
-        name: "Sesli Asistan",
-        short_name: "Asistan",
+        name: "Velora",
+        short_name: "Velora",
         start_url: "/",
         display: "standalone",
         // Uygulama dik kullanılır. Android buna uyar; iPhone ana ekran uygulamasında bunu yok sayar

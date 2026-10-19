@@ -27,7 +27,7 @@ export async function noticePdf(input, kind) {
   if (kind === "pdf") return new Blob([await input.arrayBuffer()], { type: "application/pdf" });
   const [{ PDFDocument }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   const pdf = await PDFDocument.create();
-  pdf.setCreator("Sesli Asistan");
+  pdf.setCreator("Velora");
   if (kind === "image") {
     const img = await compressImage(input, 2200, 0.8);
     const jpg = await pdf.embedJpg(Uint8Array.from(atob(img.base64), (c) => c.charCodeAt(0)));
