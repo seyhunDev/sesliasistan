@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
-import { Seg } from "@/components/ui/Page";
+import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
@@ -139,23 +139,31 @@ export function RaceMedia({ orgId, id }) {
         </button>
       }
     >
-      <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
-        <Seg value={tab} onChange={setTab} options={TABS} />
-        {timer.running && tab !== "sure" && (
-          <button type="button" onClick={() => setTab("sure")} className={`mt-2 flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
+      {timer.running && tab !== "sure" && (
+        <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
+          <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
             <span className="text-[0.875rem]">{timer.up ? "Startan beri" : "Start sayacı"}</span>
             <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? upSec(timer.t.end, timer.now) : Math.max(0, timer.rem))}</b>
           </button>
-        )}
-      </div>
-      <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none]">
+        </div>
+      )}
+      {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
+      <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
         {days.map((d) => (
-          <button key={d} type="button" onClick={() => setDay(d)} aria-pressed={d === cur} className={`h-9 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}>
-            {names[d]} · {dayLabel(d)}
+          <button
+            key={d}
+            type="button"
+            onClick={() => setDay(d)}
+            aria-pressed={d === cur}
+            aria-label={`${names[d]} · ${dayLabel(d)}`}
+            className={`flex h-[3.25rem] min-w-[3rem] shrink-0 flex-col items-center justify-center rounded-[0.875rem] px-1.5 active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}
+          >
+            <b className="text-[1.0625rem] font-semibold leading-none tabular-nums">{+d.slice(8)}</b>
+            <small className={`mt-1 text-[0.6875rem] leading-none ${d === cur ? "text-white/75" : "text-mut"}`}>{names[d].replace("Antrenman ", "Ant ")}</small>
           </button>
         ))}
-        <button type="button" onClick={() => setAddDay(true)} className="h-9 shrink-0 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-95">
-          + Gün
+        <button type="button" onClick={() => setAddDay(true)} aria-label="Gün ekle" className="grid h-[3.25rem] w-12 shrink-0 place-items-center rounded-[0.875rem] border border-dashed border-line text-[1.375rem] text-acc active:scale-95">
+          +
         </button>
       </div>
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
@@ -193,14 +201,37 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
+      <TabDock value={tab} onChange={setTab} />
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );
 }
 
+// Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b)
+const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
+export function TabDock({ value, onChange }) {
+  useEffect(() => {
+    const r = document.documentElement.style;
+    r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
+    return () => r.removeProperty("--bar-b");
+  }, []);
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+      <div className="grid grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
+        {TABS.map(([k, l]) => (
+          <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
+            <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
+            {l}
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 function Shell({ title, sub, back = "/athletes/races", action, children }) {
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+6rem)]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+11rem)]">
       <PageHeader title={title} sub={sub} back={back}>
         {action}
       </PageHeader>

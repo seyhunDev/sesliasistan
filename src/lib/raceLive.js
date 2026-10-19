@@ -46,6 +46,25 @@ export const COURSES = ["Trapez", "Up-down", "Üçgen"];
 export const FLAGS = ["Bireysel geri çağırma"];
 export const VOIDS = ["Tehir", "Genel geri çağırma", "İptal"];
 const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "İptal" }; // eskiden bayrak olarak yazılanlar
+// Parkur noktaları (Seyhun 2026-10-19): Süre'de Start · Şamandıra 1 · Şamandıra 2 · Finish kareleri; şamandıra eklenip çıkarılır.
+// Kareye dokununca o yarışın startından beri geçen saniye yazılır (yarış satırında marks: { "Şamandıra 1": 580 }).
+export const BUOYS = ["Start", "Şamandıra 1", "Şamandıra 2", "Finish"];
+export function cleanBuoys(list) {
+  const mid = (Array.isArray(list) ? list : []).filter((b) => /^Şamandıra \d{1,2}$/.test(b || ""));
+  return ["Start", ...(Array.isArray(list) ? mid : BUOYS.slice(1, -1)).slice(0, 6), "Finish"];
+}
+// + son şamandıradan sonra yenisi; − son şamandırayı çıkarır (Start ve Finish kalır)
+export const addBuoy = (list) => (list.length >= 8 ? list : [...list.slice(0, -1), `Şamandıra ${list.length - 1}`, "Finish"]);
+export const dropBuoy = (list) => (list.length <= 2 ? list : [...list.slice(0, -2), "Finish"]);
+const cleanMarks = (m) =>
+  Object.fromEntries(
+    Object.entries(m && typeof m === "object" ? m : {})
+      .filter(([k, v]) => /^(Start|Finish|Şamandıra \d{1,2})$/.test(k) && num(v, 36000) !== null)
+      .slice(0, 8)
+      .map(([k, v]) => [k, num(v, 36000)]),
+  );
+// Yarışın sıradaki noktası (çerçeveli kare): yazılmamış ilk nokta
+export const nextBuoy = (buoys, s) => buoys.find((b) => s?.marks?.[b] == null) || "";
 export function cleanStarts(list) {
   return (Array.isArray(list) ? list : [])
     .map((x) => ({
@@ -62,6 +81,7 @@ export function cleanStarts(list) {
       flag: FLAGS.includes(x?.flag) ? x.flag : "",
       void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
+      marks: cleanMarks(x?.marks),
     }))
     .filter((x) => x.id && x.day && x.at)
     .sort((a, b) => a.at.localeCompare(b.at))
@@ -78,7 +98,7 @@ export function cleanMedia(list) {
 
 // Elle eklenen günler (antrenman: yarıştan önce ya da sonra; Seyhun 2026-10-18)
 export const cleanDays = (list) => [...new Set((Array.isArray(list) ? list : []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")))].sort().slice(0, 60);
-export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days) });
+export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days), buoys: cleanBuoys(d?.buoys) });
 
 // Günün kayıtları
 // Sayfadaki günler: yarışın günleri + çekim ya da start olan başka günler (deneme, erteleme). Yoksa o gün çekilen kaydedilir ama

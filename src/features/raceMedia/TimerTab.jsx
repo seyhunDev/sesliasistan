@@ -4,16 +4,18 @@ import { useState } from "react";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { Countdown, useTimerRun } from "@/features/training/Countdown";
-import { addWind } from "@/features/athletes/raceLiveStore";
+import { mmss } from "@/lib/raceScore";
+import { addWind, saveBuoys } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { COURSES, FLAGS, VOIDS, atOf, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
 import { Icon } from "@/components/ui/Icon";
 import { WindSheet } from "./WeatherTab";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
-// Sayacın altında: rüzgâr (son elle kayıt; "Rüzgâr yaz" ile hemen, start bu rüzgârı alır) ve kamera (Medya'nın uygulama içi kamerası,
-// içinde de Başlat/İptal/Bitir var). Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
+// Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
+// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şerit: Fotoğraf · Video · ana düğme · + (rüzgâr, akıntı, not).
+// Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
 const PRESETS = [60, 120, 300];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
@@ -22,37 +24,65 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
   const [wind, setWind] = useState(false);
+  const [list, setList] = useState(false); // bugünün yarışları (eskiden sayfanın altındaki liste)
   const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null ? live.starts.find((x) => x.id === ridOf(timer)) : null;
   const rdays = raceDays(race);
   const lastWind = windOn(live.wind, day).at(-1);
   const add = () => {
+    setList(false);
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind, null, rdays);
     if (s) setEdit({ ...s, fresh: true });
   };
   // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
   const days = [...new Set(live.starts.map((x) => x.day))].sort((a, b) => (a === day ? -1 : b === day ? 1 : b.localeCompare(a)));
+  // Kareye dokununca o yarışın startından beri geçen süre yazılır (8 sn "Geri al")
+  const mark = (b) => {
+    if (!cur || timer.end == null) return;
+    const sec = upSec(timer.end, Date.now());
+    const before = live.starts;
+    save(live.starts.map((x) => (x.id === cur.id ? { ...x, marks: { ...x.marks, [b]: sec } } : x)));
+    undo(`${b} · ${mmss(sec)}`, before);
+  };
+  const setBuoys = (next) => onChange({ buoys: next }, () => saveBuoys(orgId, race.id, next));
   const state = (s) => (s.void ? "" : s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
+
+  const today = startsOn(live.starts, day);
+  const last = [...today].reverse().find((x) => x.fin && !x.void);
+  const icon = "grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-sm active:translate-y-px";
 
   return (
     <>
-      {cur && <p className="mt-3 text-center text-[0.9375rem] font-semibold">{raceName(cur)}</p>}
-      <Countdown mode="start" presets={PRESETS} race={flow} />
-      {/* Seyhun 2026-10-18: Fotoğraf ve Video ikonlu, dikkat çekici renkte; "+" rüzgâr, akıntı ve not yazar */}
-      <div className="mt-2 grid grid-cols-[1fr_1fr_3.5rem] gap-2">
-        <button type="button" onClick={() => onCam("photo")} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-acc text-[1rem] font-semibold text-white shadow-sm active:translate-y-px">
-          <Icon name="camera" />
-          Fotoğraf
-        </button>
-        <button type="button" onClick={() => onCam("video")} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-rec text-[1rem] font-semibold text-white shadow-sm active:translate-y-px">
-          <Icon name="video" />
-          Video
-        </button>
-        <button type="button" onClick={() => setWind(true)} aria-label="Rüzgâr ve akıntı yaz" className="grid h-14 place-items-center rounded-2xl bg-deep text-white shadow-sm active:translate-y-px">
-          <Icon name="plus" className="size-6" />
-        </button>
-      </div>
+      <Countdown
+        mode="start"
+        presets={PRESETS}
+        race={flow}
+        compact
+        title={cur ? raceName(cur) : flow.label}
+        lead={
+          <>
+            <button type="button" onClick={() => onCam("photo")} aria-label="Fotoğraf" className={`${icon} bg-acc`}>
+              <Icon name="camera" className="size-6" />
+            </button>
+            <button type="button" onClick={() => onCam("video")} aria-label="Video" className={`${icon} bg-rec`}>
+              <Icon name="video" className="size-6" />
+            </button>
+          </>
+        }
+        tail={
+          <button type="button" onClick={() => setWind(true)} aria-label="Rüzgâr ve akıntı yaz" className={`${icon} bg-deep`}>
+            <Icon name="plus" className="size-6" />
+          </button>
+        }
+      />
+      <Marks buoys={live.buoys} s={cur} on={!!cur && tr.up && !cur.void} onMark={mark} onBuoys={setBuoys} />
+      <button type="button" onClick={() => setList(true)} className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem] active:opacity-70">
+        <span className="min-w-0 truncate text-mut">
+          {today.length ? `Bugün ${today.length} yarış${last ? ` · son ${raceName(last)} ${raceTime(last)}` : ""}` : "Bugün yarış yok"}
+        </span>
+        <b className="shrink-0 font-semibold">Liste ›</b>
+      </button>
       <WindSheet
         open={wind}
         onClose={() => setWind(false)}
@@ -63,48 +93,56 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
           onChange((l) => ({ wind: [...l.wind, w] }), () => addWind(orgId, race.id, w));
         }}
       />
-      {!days.includes(day) && (
-        <>
-          <Label>{dayLabel(day)}</Label>
-          <p className={`${card} px-4 py-4 text-center text-[0.875rem] text-mut`}>Bu gün yarış yok. Sıradaki: {flow.label}</p>
-        </>
-      )}
-      {days.map((d) => {
-        const list = startsOn(live.starts, d);
-        return (
-          <section key={d}>
-            <Label right={list.length}>{dayLabel(d)}</Label>
-            <ul className={`${card} divide-y divide-line overflow-hidden`}>
-              {[...list].reverse().map((s) => (
-                <li key={s.id}>
-                  <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-                      {(s.course || s.flag || s.note) && <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, s.note].filter(Boolean).join(" · ")}</span>}
-                    </span>
-                    <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
-                      {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
-                      {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {d === day && (
-                <li>
-                  <button type="button" onClick={add} className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc active:bg-bg">
-                    Yarış ekle
-                  </button>
-                </li>
-              )}
-            </ul>
-          </section>
-        );
-      })}
-      {!days.includes(day) && (
-        <button type="button" onClick={add} className="mt-2 w-full py-2 text-[0.9375rem] font-semibold text-acc">
-          Yarış ekle
-        </button>
-      )}
+      <Sheet open={list} onClose={() => setList(false)} title="Yarışlar">
+        {list && (
+          <div className="-mt-3 pb-2">
+            {!days.includes(day) && (
+              <>
+                <Label>{dayLabel(day)}</Label>
+                <p className={`${card} px-4 py-4 text-center text-[0.875rem] text-mut`}>Bu gün yarış yok. Sıradaki: {flow.label}</p>
+              </>
+            )}
+            {days.map((d) => {
+              const list = startsOn(live.starts, d);
+              return (
+                <section key={d}>
+                  <Label right={list.length}>{dayLabel(d)}</Label>
+                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                    {[...list].reverse().map((s) => (
+                      <li key={s.id}>
+                        <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                          <span className="min-w-0 flex-1">
+                            <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
+                            {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+                              <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
+                            {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
+                            {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                    {d === day && (
+                      <li>
+                        <button type="button" onClick={add} className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc active:bg-bg">
+                          Yarış ekle
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                </section>
+              );
+            })}
+            {!days.includes(day) && (
+              <button type="button" onClick={add} className="mt-2 w-full py-2 text-[0.9375rem] font-semibold text-acc">
+                Yarış ekle
+              </button>
+            )}
+          </div>
+        )}
+      </Sheet>
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
@@ -180,3 +218,39 @@ function StartForm({ s, onSave, onDrop }) {
     </div>
   );
 }
+
+// Parkur noktaları: dokununca startan beri geçen süre; sıradaki çerçeveli. Yarış dışında soluk. + / − şamandıra ekler, çıkarır.
+function Marks({ buoys, s, on, onMark, onBuoys }) {
+  const next = on ? nextBuoy(buoys, s) : "";
+  const small = "grid flex-1 place-items-center rounded-[0.625rem] border border-line bg-card text-[1.0625rem] text-fg2 active:bg-bg disabled:opacity-40";
+  return (
+    <div className="mt-3 flex gap-1.5">
+      <div className="grid min-w-0 flex-1 gap-1.5" style={{ gridTemplateColumns: `repeat(${buoys.length}, minmax(0, 1fr))` }}>
+        {buoys.map((b) => {
+          const v = s?.marks?.[b];
+          return (
+            <button
+              key={b}
+              type="button"
+              disabled={!on || v != null}
+              onClick={() => onMark(b)}
+              className={`flex h-14 min-w-0 flex-col items-center justify-center rounded-[0.875rem] border px-0.5 active:translate-y-px disabled:active:translate-y-0 ${v != null ? "border-accbg bg-accbg" : b === next ? "border-2 border-acc bg-card" : "border-line bg-card"}`}
+            >
+              <small className="max-w-full truncate text-[0.6875rem] text-mut">{b.replace("Şamandıra ", buoys.length > 4 ? "Ş" : "Şamandıra ")}</small>
+              <b className="text-[0.9375rem] font-semibold tabular-nums">{v != null ? mmss(v) : "–"}</b>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex w-9 shrink-0 flex-col gap-1.5">
+        <button type="button" aria-label="Şamandıra ekle" disabled={buoys.length >= 8} onClick={() => onBuoys(addBuoy(buoys))} className={small}>+</button>
+        <button type="button" aria-label="Şamandıra çıkar" disabled={buoys.length <= 2} onClick={() => onBuoys(dropBuoy(buoys))} className={small}>−</button>
+      </div>
+    </div>
+  );
+}
+const markLine = (buoys, s) =>
+  buoys
+    .filter((b) => s.marks?.[b] != null)
+    .map((b) => `${b.replace("Şamandıra ", "Ş")} ${mmss(s.marks[b])}`)
+    .join(" ");

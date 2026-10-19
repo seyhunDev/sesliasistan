@@ -8,7 +8,7 @@ import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
-import { cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
+import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -29,6 +29,7 @@ export async function loadLive(orgId, id) {
 
 export const addWind = (orgId, id, w) => setDoc(live(orgId, id), { wind: arrayUnion(cleanWind([w])[0]) }, { merge: true });
 export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cleanWind(list) }, { merge: true });
+export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: cleanBuoys(list) }, { merge: true });
 export const saveDays = (orgId, id, list) => setDoc(live(orgId, id), { days: cleanDays(list) }, { merge: true });
 export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
 // Bütün künye listesi (sporcu etiketi değişince)
