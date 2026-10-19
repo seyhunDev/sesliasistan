@@ -309,7 +309,7 @@ function AssistBg() {
 // İlerleme halkası (onaylı örnek, 2026-10-17): dinlerken kırmızı + ses çubukları, düşünürken/işlerken kehribar ve işlerin
 // sayısıyla dolar, bitince yeşil onay. Konuşma yokken ekranın üstünde büyük, konuşma dolunca üstte küçük satır.
 const LEAVE_MS = 340; // globals.css › .afull-out
-const RING_C = { listen: "#e8705f", work: "#f0c36b", speak: "#6aaef0", ok: "#6fc39b", idle: "#6fc39b" };
+const RING_C = { listen: "#e8705f", work: "#f0c36b", speak: "#6aaef0", ok: "#6fc39b", idle: "#a78bfa" };
 function ProgressRing({ r, big }) {
   const C = 2 * Math.PI * 62;
   const c = RING_C[r.tone] || RING_C.idle;

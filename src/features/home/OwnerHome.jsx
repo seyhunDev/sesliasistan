@@ -22,6 +22,7 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { AthletesWidget, FitWidget, TalkWidgets } from "./HomeWidgets";
 import { GROUP } from "./ui";
+import { AppLogo } from "@/components/ui/AppLogo";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
@@ -53,6 +54,11 @@ export function OwnerHome() {
 
   return (
     <main className="calm grouped relative mx-auto max-w-[30rem] px-4 pt-[calc(0.875rem+env(safe-area-inset-top))]">
+      {/* Uygulamanın kimliği: Velora logosu ve adı, tarihin üstünde küçük */}
+      <div className="mb-1 flex items-center gap-1.5 px-1">
+        <AppLogo size={22} />
+        <span className="text-[0.875rem] font-semibold tracking-[-.01em] text-fg2">Velora</span>
+      </div>
       <header className="flex items-center gap-3 px-1">
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
           <span className="capitalize">{day}</span> {date}

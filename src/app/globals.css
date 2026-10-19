@@ -6,20 +6,22 @@
 @custom-variant active (&:where(.sa-no-active-variant));
 
 :root {
-  /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı, deniz yeşili vurgu (koyusu: --deep) */
+  /* Göz yormayan palet: sıcak kâğıt tonu zemin, yumuşak koyu yazı. Vurgu Velora logosundan (mor → turkuaz): yumuşak
+     mor (--acc), koyusu gece laciverti (--deep); logonun geçişi yalnız asistan düğmesinde (--brand). Yeşil yalnız "tamam/ödendi". */
   --bg: #f4f3ef;
   --card: #fdfcfa;
   --fg: #26282c;
   --mut: #74777d;
   --line: #e7e5df;
-  --acc: #2f7d6b;
-  --acc2: #2f7d6b; /* gradyan kullanan eski dosyalar düz renk görünsün */
-  --deep: #1f5a4b;
+  --acc: #5b4fd6;
+  --acc2: #5b4fd6; /* gradyan kullanan eski dosyalar düz renk görünsün */
+  --deep: #23255e;
+  --brand: linear-gradient(140deg, #8b5cf6 8%, #4f7cf3 52%, #22d3ee 100%);
   --rec: #c8574f;
   --ok: #4a8a64;
   --proc: #f59e0b;
   --fg2: #55595f;
-  --accbg: #e6efeb;
+  --accbg: #ecebfa;
   --warn: #a8742a;
   --warnbg: #f6eedf;
 }
@@ -34,12 +36,12 @@ html[data-theme="dark"] {
   --fg: #e7e6e2;
   --mut: #9a9ea4;
   --line: #2e3236;
-  --acc: #3b9680;
-  --acc2: #3b9680;
+  --acc: #9488f5;
+  --acc2: #9488f5;
   --rec: #e0675e;
   --ok: #55a374;
   --fg2: #b3b4b1;
-  --accbg: #22302c;
+  --accbg: #26243f;
   --warn: #d0a25e;
   --warnbg: #2e281f;
 }
@@ -56,7 +58,7 @@ html[data-theme="dark"] :is(.text-violet-600, .text-violet-700) { color: #b9a6fb
 html[data-theme="dark"] :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-teal-600) { color: #5fd3a6; }
 html[data-theme="dark"] .text-slate-700 { color: #c3cbd6; }
 /* Açık zemindeki koyu yeşil yazı (kubbe ve bg-deep kartlarının içi hariç) */
-html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *) { color: #7fd0b8; }
+html[data-theme="dark"] .text-deep:not(.bg-white, .bg-white *) { color: #b3aaff; }
 /* Gölgeler koyu zeminde görünmez; kartlar ince bir kenarla ayrılır */
 html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .045); }
 
@@ -89,12 +91,12 @@ html[data-theme="dark"] .bg-card { box-shadow: 0 0 0 1px rgba(255, 255, 255, .04
    başka sayfaya geçirmek için <main>'e calm sınıfı, kartlara ui.jsx CALM, başlıklara SectionHead yeter. */
 .calm {
   --bg: #f5f3ee; --card: #fbfaf7; --fg: #2f3236; --fg2: #55595f; --mut: #878a90; --line: #e6e3dc;
-  --acc: #3d7d6c; --accbg: #e6efeb; --warn: #a8742a; --warnbg: #f6eedf;
+  --acc: #5b4fd6; --accbg: #ecebfa; --warn: #a8742a; --warnbg: #f6eedf;
   color: var(--fg); line-height: 1.5; letter-spacing: -.005em; font-feature-settings: "tnum";
 }
 html[data-theme="dark"] .calm {
   --bg: #16181a; --card: #1d2023; --fg: #dcdbd6; --fg2: #b3b4b1; --mut: #8b8f94; --line: #2b2f33;
-  --acc: #6fae9c; --accbg: #22302c; --warn: #d0a25e; --warnbg: #2e281f;
+  --acc: #9d92f6; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
 }
 html[data-theme="dark"] .calm .bg-card { box-shadow: none; }
 /* GRUPLU ANA SAYFA (.calm.grouped; Seyhun 2026-10-17: "2'deki gibi"): iPhone ayarlar düzeni, açık gri zemin, çerçevesiz beyaz kartlar,
@@ -283,25 +285,28 @@ select {
 .atabbar::after, .asheet::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 6rem; background: inherit; }
 .acenter { background: var(--card); box-shadow: 0 -0.5px 0 var(--line), 0 8px 22px -10px rgba(20, 90, 70, .45); }
 /* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
-.acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .35); }
+.acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .35); }
+/* Boştaki asistan düğmesi Velora logosunun geçişini alır (mor → turkuaz); diğer durumların renkleri aynı */
+:is(.acenter, .sidenav, .asheet) .vlight[data-state="idle"] .vl-disc { background: var(--brand); box-shadow: 0 10px 26px -10px rgba(35, 37, 94, .6), inset 0 1px 0 rgba(255, 255, 255, .25); }
 .asheet { position: relative; background: var(--card); border-radius: 1.75rem 1.75rem 0 0;
   box-shadow: 0 -0.5px 0 var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); }
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
 .asheet-input { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s ease; }
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
 .asheet-on { box-shadow: inset 0 0 0 1.5px rgba(224, 88, 75, .55); }
-.asheet .vlight[data-state="idle"] { --vl-a: #4fb595; --vl-b: #1f6e59; --vl-w: #fff; --vl-h: rgba(60, 170, 135, .3); }
+.asheet .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .3); }
 /* TAM SAYFA ASİSTAN (Seyhun: "asistan tam sayfa açılsın; arka planda güzel animasyonlu bir şey, önünde görevler, yazılar net;
    futuristik, profesyonel, modern", 2026-10-14). Asistan açıkken kubbe ekranın tamamı: arkada yavaş akan renk bulutları,
    ince nokta ızgara ve duruma göre renk alan çekirdek ışık (yeşil bekliyor, mercan dinliyor, kehribar çalışıyor, mavi
    konuşuyor); önde sohbet ve görev listesi, en altta aynı konuşma kutusu. iPhone'da takılmasın diye yalnız transform ve
    opacity hareket eder; bulanıklık (filter/backdrop-filter) yok, bulutlar hazır radyal geçiş. Açık ve koyu görünümde kendi tonları. */
-@property --ab-c { syntax: "<color>"; inherits: true; initial-value: #3fb592; }
+@property --ab-c { syntax: "<color>"; inherits: true; initial-value: #8b5cf6; }
 .afull { color-scheme: dark; color: var(--fg);
-  --bg: #121416; --card: #1c1f22; --fg: #e7e6e2; --mut: #9a9ea4; --line: #2e3236; --acc: #3b9680; --acc2: #3b9680; --rec: #e0675e;
-  --ok: #55a374; --fg2: #b3b4b1; --accbg: #22302c; --warn: #d0a25e; --warnbg: #2e281f;
-  --ab-base1: #070b0d; --ab-base2: #0e1519; --ab-b1: rgba(40, 170, 135, .32); --ab-b2: rgba(60, 120, 230, .26); --ab-b3: rgba(150, 100, 240, .20);
-  --ab-dot: rgba(160, 230, 210, .14); --ab-c: #3fb592; --ab-glow: .62; --ab-panel: rgba(28, 31, 34, .82);
+  --bg: #0b1024; --card: #161b36; --fg: #e8eaf6; --mut: #9a9fbd; --line: #2a3054; --acc: #7c6cf0; --acc2: #7c6cf0; --rec: #e0675e;
+  --ok: #55a374; --fg2: #b8bcd6; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
+  /* Velora: gece laciverti zemin, mor ve turkuaz bulutlar (logonun renkleri) */
+  --ab-base1: #060914; --ab-base2: #0d1230; --ab-b1: rgba(124, 92, 255, .34); --ab-b2: rgba(34, 211, 238, .20); --ab-b3: rgba(79, 70, 229, .26);
+  --ab-dot: rgba(190, 200, 255, .14); --ab-c: #8b5cf6; --ab-glow: .62; --ab-panel: rgba(22, 27, 54, .82);
   transition: --ab-c .6s ease; }
 .afull[data-state="listening"] { --ab-c: #f26f60; }
 .afull[data-state="busy"] { --ab-c: #f1a93a; }
