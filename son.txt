@@ -1,8 +1,8 @@
-Commit: 7379d7c · Ölçülen rüzgâr: seçilen her yer en yakın resmî istasyonu kendisi bulur (#523)
-Zaman: 2026-10-18-2240 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39159498948
+Commit: 7994e7c · Asistan: cevaplar yalnız okuma istenince sesli okunur (#524)
+Zaman: 2026-10-19-1011 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39213861026
 
-TAM TEST · 18.10.2026 22:36:19
+TAM TEST · 19.10.2026 10:06:54
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1318/1319 geçti · 1 kalan · 246 sn
+SONUÇ: 1319/1320 geçti · 1 kalan · 266 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -126,7 +126,7 @@ SONUÇ: 1318/1319 geçti · 1 kalan · 246 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 71/72
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 72/73
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -139,7 +139,7 @@ SONUÇ: 1318/1319 geçti · 1 kalan · 246 sn
   ✓ Sayfa hataları: 6/6
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Önceki sohbetler: 2/2
-  ✓ Sesli yanıt: 3/3
+  ✓ Sesli yanıt: 4/4
   ✓ Onaysız kayıt ve “Kaydedildi”: 4/4
   ✓ Onay isteyen işler: 6/6
   ✓ Görev listesi ve ilerleme halkası: 3/3
