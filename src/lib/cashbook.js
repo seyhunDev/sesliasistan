@@ -160,6 +160,8 @@ export function kasaLink(x) {
   if (!m) return null;
   return m[1] === "rc" ? { kind: "receipt", id: m[2], href: `/receipts/${m[2]}` } : { kind: "invoice", id: m[2], href: "/invoices" };
 }
+// Elle yazılan fişsiz kulüp nakit çıkışı: Kasa satırında "Fiş ekle" (fiş eklenince bu çıkışa bağlanır, src "rc:<fiş>")
+export const needsReceipt = (x) => !!x?.manual && bookOf(x) === "club" && x.amount < 0 && !x.src && !x.conv;
 // Kasa satırının simgesi (Icon adı) türe göre
 const CAT_ICON = [
   [/^fiş/i, "receipt"],

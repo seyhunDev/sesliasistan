@@ -43,11 +43,11 @@ export function MonthList({ rows, step = 30, empty }) {
   );
 }
 
-// Tek satır: başlık, alt satır; sağda tutar ve durum (warn: amber, gerçek uyarı)
-export function Line({ title, sub, amount, status, warn, done, onClick }) {
+// Tek satır: başlık, alt satır; sağda tutar ve durum (warn: amber, gerçek uyarı); action: { label, onClick } sağda küçük düğme
+export function Line({ title, sub, amount, status, warn, done, onClick, action }) {
   return (
-    <li>
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+    <li className="flex items-center">
+      <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-[0.9375rem] font-medium ${done ? "text-mut line-through" : ""}`}>{title || "İsimsiz"}</span>
           {sub && <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>}
@@ -57,6 +57,11 @@ export function Line({ title, sub, amount, status, warn, done, onClick }) {
           {status && <span className={`block text-[0.75rem] ${warn ? "font-semibold text-amber-700 dark:text-amber-400" : "text-mut"}`}>{status}</span>}
         </span>
       </button>
+      {action && (
+        <button type="button" onClick={action.onClick} className="mr-3 h-9 shrink-0 rounded-full bg-acc/10 px-3 text-[0.8125rem] font-semibold text-acc">
+          {action.label}
+        </button>
+      )}
     </li>
   );
 }

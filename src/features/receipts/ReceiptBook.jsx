@@ -9,7 +9,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { PendingPayments } from "@/features/receipts/Payment";
 import { whoText } from "@/lib/people";
-import { CAT, CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
+import { CAT, CATS, DOC, PAYS, TLk, accountingName, accountingSheets, catOf, needsCheck, noText, parseTL, payOf, totalOf } from "@/lib/receipts";
 import { useToast } from "@/components/ui/ToastProvider";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -81,11 +81,11 @@ export function ReceiptBook({ kind: start = "" }) {
     const s = q.trim().toLocaleLowerCase("tr-TR");
     const match = (r) => {
         const t = totalOf(r);
-        if (month && !(r.date || "").startsWith(month)) return false;
+        if (month && !review && !(r.date || "").startsWith(month)) return false; // kontrol bekleyenler ay seçiminden bağımsız
         if (shownKind === "receipt" && cats.length && !cats.includes(r.cat)) return false;
         if (pay && r.pay !== pay) return false;
         if (by && r.createdBy?.name !== by) return false;
-        if (review && r.status !== "review") return false;
+        if (review && !needsCheck(r)) return false;
         if (state && payOf(r) !== state) return false;
         if (scope && (r.scope || "club") !== scope) return false;
         if (!Number.isNaN(lo) && t < lo) return false;
@@ -132,7 +132,7 @@ export function ReceiptBook({ kind: start = "" }) {
   const byCat = {};
   list.forEach((r) => (byCat[r.cat] = (byCat[r.cat] || 0) + totalOf(r)));
   const catRank = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
-  const pending = receipts.filter((r) => r.status === "review").length;
+  const pending = receipts.filter(needsCheck).length; // listedeki süzgeçle aynı kaynak (needsCheck)
 
   const groups = {};
   list.forEach((r) => (groups[r.date] = [...(groups[r.date] || []), r]));
@@ -142,6 +142,14 @@ export function ReceiptBook({ kind: start = "" }) {
   });
   const days = Object.keys(groups).sort().reverse();
 
+  // Uyarıya dokununca sayılan fişlerin hepsi görünsün: diğer süzgeçler temizlenir
+  const showReview = () => {
+    clear();
+    setCats([]);
+    setQ("");
+    if (kind === "invoice") setKind("");
+    setReview(true);
+  };
   const toggleCat = (c) => setCats((p) => (p.includes(c) ? p.filter((x) => x !== c) : [...p, c]));
   const clear = () => {
     setPay("");
@@ -348,7 +356,7 @@ export function ReceiptBook({ kind: start = "" }) {
       <PendingPayments />
 
       {pending > 0 && !review && (
-        <button onClick={() => setReview(true)} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
+        <button onClick={showReview} className="mt-3 flex w-full items-center gap-2.5 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-amber-900 active:scale-[.98]">
           <Icon name="alert" className="size-5" />
           <span className="flex-1 text-[0.9375rem] font-semibold">{pending} fiş kontrol bekliyor</span>
           <Icon name="chev" className="size-4" />
@@ -481,7 +489,7 @@ export function ReceiptBook({ kind: start = "" }) {
                     </small>
                     {payOf(r) === "pending" ? <small className="block text-[0.75rem] font-semibold text-amber-700">Ödeme bekliyor</small> : <small className="block text-[0.75rem] font-semibold text-ok">Ödendi</small>}
                   </span>
-                  {r.status === "review" && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
+                  {needsCheck(r) && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-label="Kontrol bekliyor" />}
                   <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
                 </Link>
                 ),

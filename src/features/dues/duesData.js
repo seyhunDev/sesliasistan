@@ -139,6 +139,9 @@ export const saveShownAccts = (orgId, keys) => setDoc(doc(db, "orgs", orgId, "ca
 const cashChanged = () => typeof window !== "undefined" && window.dispatchEvent(new Event("sa-cash-saved"));
 export const cashOutFor = (orgId, { src, cat, who, amount, note, date, book }) =>
   addDoc(collection(db, "orgs", orgId, "incomes"), clean({ ...(book === "personal" ? { book } : {}), dir: "out", cat, who, amount, note, date: date || todayStr(), src, at: new Date().toISOString() })).then((r) => (cashChanged(), r));
+// Fişsiz nakit çıkışa sonradan eklenen fiş: çıkış o fişe bağlanır (tutar fişten), ikinci çıkış yazılmaz
+export const linkCashTo = (orgId, incomeId, { src, amount, who }) =>
+  updateDoc(doc(db, "orgs", orgId, "incomes", incomeId), clean({ src, amount, cat: "Fiş", ...(who ? { who } : {}) })).then(() => cashChanged());
 // Bağlı kasa çıkışını günceller (fişin tutarı ya da defteri değişince)
 export async function setCashFor(orgId, src, patch) {
   const q = await getDocs(query(collection(db, "orgs", orgId, "incomes"), where("src", "==", src)));

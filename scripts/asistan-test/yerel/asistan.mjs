@@ -658,6 +658,8 @@ group("Göreve göre ara yazı")([
       ["Ali Kaya'ya kasadan 1500 lira avans verdim", K("avans, iki kelimeli ad", (r) => r?.dir === "out" && r.cat === "Avans" && r.who === "Ali Kaya" && r.amount === 1500)],
       ["kasadan 300 lira yakıt aldım", K("yakıt", (r) => r?.book === "club" && r.dir === "out" && r.cat === "Yakıt")],
       ["nakit çıkış 200 malzeme", K("nakit çıkış", (r) => r?.dir === "out" && r.cat === "Malzeme" && r.amount === 200)],
+      ["200 lira kasa çıkışı ekle", K("fişsiz kasa çıkışı, kişisiz", (r) => r?.book === "club" && r.dir === "out" && r.amount === 200 && r.who === "")],
+      ["kasadan 150 lira çıkış yap", K("kasadan çıkış, kişisiz", (r) => r?.book === "club" && r.dir === "out" && r.amount === 150)],
       ["kişisel gider 300 market", K("kişisel gider", (r) => r?.book === "personal" && r.dir === "out" && r.cat === "Market")],
       ["kişisel gelir 2000 ders", K("kişisel gelir", (r) => r?.book === "personal" && r.dir === "in" && r.cat === "Ders" && r.amount === 2000)],
       ["Ahmet'e 1000 lira borcum var", K("borcum", (r) => r?.book === "personal" && r.dir === "debt" && r.who === "Ahmet" && r.amount === 1000)],
