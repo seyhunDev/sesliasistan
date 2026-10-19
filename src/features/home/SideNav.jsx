@@ -12,6 +12,7 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { homeActions } from "@/lib/homeTiles";
+import { AppLogo } from "@/components/ui/AppLogo";
 
 // Geniş ekran (bilgisayar, yatay tablet): alt sekme çubuğu yerine solda sabit menü (Seyhun 2026-10-18: "cep telefonu, tablet ve
 // web uyumlu olsun"). Telefonda ve dik tablette görünmez; sayfaların içi aynı kalır, yalnız genişler (globals.css "Geniş ekran").
@@ -67,6 +68,11 @@ export function SideNav({ path, unread = 0, orb = null }) {
   const items = pages.flatMap((g) => g.items);
   return (
     <nav aria-label="Menü" className="sidenav fixed inset-y-0 left-0 z-[37] hidden w-60 flex-col border-r border-line bg-card pt-[max(1.25rem,env(safe-area-inset-top))]">
+      {/* Uygulamanın kimliği: logo ve ad, menünün en üstünde */}
+      <Link href="/" className="mb-3 flex items-center gap-2 px-6">
+        <AppLogo size={28} />
+        <span className="text-[1.125rem] font-semibold tracking-[-.01em] text-fg">Velora</span>
+      </Link>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:thin]">
         {TABS.map(([href, label]) => (
           <Link key={href} href={href} aria-current={at(href) ? "page" : undefined} className={`${row(at(href))} text-[0.9375rem] ${at(href) ? "" : "font-medium"}`}>
