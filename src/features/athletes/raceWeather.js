@@ -144,7 +144,7 @@ export async function loadRaceDay(r, date, force = false) {
   const key = `sa-rwx:${r.id}:${date}`;
   try {
     const c = JSON.parse(localStorage.getItem(key) || "null");
-    if (!force && c && Date.now() - c.at < DAY_TTL && c.rows?.length) return c;
+    if (!force && c && Date.now() - c.at < DAY_TTL && c.rows?.length && c.lat != null) return c; // konumsuz eski kayıt: ölçülen rüzgâr için yeniden alınır
   } catch {}
   const d = new Date();
   const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
