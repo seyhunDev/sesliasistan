@@ -148,8 +148,35 @@ function toWhom(raw) {
   const prev = i > 0 && /^\p{Lu}\p{Ll}/u.test(words[i - 1]) && !/^(Kulüp|Kasa|Nakit|Kişisel)/u.test(words[i - 1]) ? `${words[i - 1]} ` : "";
   return nameOf(prev + words[i]);
 }
+// Kasa / kişisel defter kaydını düzelt: "kasadaki 200 liralık çıkışın türünü yakıt yap", "Ahmet'in kasa kaydının adını Mehmet olarak
+// değiştir", "son kasa çıkışının türünü malzeme yap" → { op "edit", field "cat"|"who", value, amount?, who?, dir? } (hedef yoksa en son kayıt)
+const EDIT_FIELD = /(?:^| )(türünü|türü|kategorisini|kategorisi|adını|adı|ismini|ismi|kişisini|kişiyi) (.+?) (?:olarak |diye )?(yap|değiştir|düzelt|olsun|yaz)\p{L}*$/u;
+export function cashEditCommand(raw) {
+  const t = low(raw).replace(/[.,!?]/g, " ").replace(/\s+/g, " ").trim();
+  if (!/(kasa|nakit (giriş|çıkış)|kişisel (gider|gelir)|defter)/u.test(t)) return null;
+  const m = EDIT_FIELD.exec(t);
+  if (!m) return null;
+  const field = /^(tür|kategori)/u.test(m[1]) ? "cat" : "who";
+  const head = t.slice(0, m.index);
+  const words = String(raw).replace(/[,.;:!?]/g, " ").split(/\s+/).filter(Boolean);
+  const cut = words.findIndex((w) => /^(türünü|türü|kategorisini|kategorisi|adını|adı|ismini|ismi|kişisini|kişiyi)$/iu.test(w));
+  const val = (cut >= 0 ? words.slice(cut + 1) : []).filter((w) => !/^(olarak|diye|yap\p{L}*|değiştir\p{L}*|düzelt\p{L}*|olsun|yaz\p{L}*)$/iu.test(w)).join(" ").trim();
+  const value = field === "cat" ? (OUT_WORDS.find(([re]) => re.test(low(val))) || [null, val.charAt(0).toLocaleUpperCase("tr-TR") + val.slice(1)])[1] : nameOf(val);
+  if (!value) return null;
+  // Hedef: tutar ("200 liralık"), eski ad ("Ahmet'in", "Ali'ye verilen"), yön (çıkış/giriş); hiçbiri yoksa en son kayıt
+  const amount = amountOf(head.replace(/(19|20)\d{2} yılı/gu, "")) || 0;
+  const pre = cut >= 0 ? words.slice(0, cut) : [];
+  const nameW = pre.find((w) => /^\p{Lu}\p{Ll}+['’]/u.test(w) && !/^(Kasa|Kulüp|Nakit)/u.test(w));
+  const who = nameW ? nameOf(nameW.replace(/['’].*$/u, "")) : "";
+  const dir = /çıkış|verilen|verdiğim/u.test(head) ? "out" : /giriş|gelen/u.test(head) ? "in" : "";
+  const cat = (OUT_WORDS.find(([re]) => re.test(head)) || [null, ""])[1]; // eski tür ("avansın türünü …")
+  return { op: "edit", field, value, amount, who, dir, cat };
+}
+
 export function cashCommand(raw) {
   const t = low(raw);
+  const ed = cashEditCommand(raw);
+  if (ed) return ed;
   // Soru: "kasada ne kadar var", "kasa durumu", "kasada kaç lira kaldı", "kişisel borcum ne kadar"
   if (/(^| )kasa(da|mız|mızda|nın)?( |$)/u.test(t) && /(ne kadar|kaç|durum|kaldı|var mı|bakiye)/u.test(t) && !/(ekle|yaz|verildi|verdim)/u.test(t)) return { op: "ask", book: "club" };
   if (/(borçlarım|borcum|kişisel defter)/u.test(t) && /(ne kadar|kaç|neler|kime|durum)/u.test(t)) return { op: "ask", book: "personal" };
@@ -163,7 +190,7 @@ export function cashCommand(raw) {
   const amount = amountOf(t.replace(/(19|20)\d{2} yılı/gu, ""));
   if (!(amount > 0)) return null;
   const pick = (list, d) => (list.find(([re]) => re.test(t)) || [null, d])[1];
-  const rest = (s) => nameOf(s.replace(/\d[\d.,]*|(^| )(bin|tl|lira|nakit|kişisel|şahsi|kendi|gider\p{L}*|gelir\p{L}*|harcama\p{L}*|olarak|ekle|yaz|kaydet|için|deftere|defterime|kasadan|kulüpten|verildi|verdim|harcadım|ödedim|aldım|çıkış|var)(?= |$)/gu, " ")).slice(0, 60);
+  const rest = (s) => nameOf(s.replace(/\d[\d.,]*|(^| )(bin|tl|lira|nakit|kişisel|şahsi|kendi|gider\p{L}*|gelir\p{L}*|harcama\p{L}*|olarak|ekle|yaz|kaydet|için|deftere|defterime|kasadan|kulüpten|verildi|verdim|harcadım|ödedim|aldım|çıkış\p{L}*|kasa\p{L}*|yap|var)(?= |$)/gu, " ")).slice(0, 60);
   // Borç verme ("kulüpten Ali'ye 500 borç verildi") ve geri ödeme Borçlar'ın işi (debts.js debtCommand)
   if (/(borç|borc|ödünç)\p{L}* (olarak )?(para )?(ver|geri)/u.test(t) || /geri (verdi|ödedi|getirdi)/u.test(t)) return null;
   // Kişisel borç: "Ahmet'e 1000 lira borcum var", "kişisel borç Ahmet 1000"

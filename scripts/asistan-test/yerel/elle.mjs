@@ -1385,6 +1385,9 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaLink(l[1]);
     return g.length === 2 && g[0].label === "Ekim 2026" && g[0].items[0].id === "b" && g[0].in === 1000 && g[0].out === 250 && o.length === 1 && o[0].items.length === 1 && m.in === 1000 && m.out === 250 && k.href === "/receipts/R1" && KB.kasaLink({ src: "inv:I9" }).kind === "invoice" && !KB.kasaLink(l[0]) && KB.kasaIcon(l[1]) === "receipt" && KB.kasaIcon(l[2]) === "fuel";
   })],
+  ["kasa: düzenlenebilir kayıt", F("elle yazılanlar düzenlenir; fiş/fatura ödemesi, bankadan nakit ve aidat kaydı düzenlenmez", () =>
+    KB.canEditCash({ manual: true, incomeId: "a", amount: -200 }) && KB.canEditCash({ manual: true, incomeId: "b", amount: 300, book: "personal" }) &&
+    !KB.canEditCash({ manual: true, incomeId: "c", src: "rc:R1" }) && !KB.canEditCash({ manual: true, incomeId: "d", conv: "k1" }) && !KB.canEditCash({ amount: 500, cash: true }))],
   ["kasa: fişsiz çıkışa Fiş ekle", F("yalnız elle yazılmış, bağsız kulüp çıkışında; giriş, fişli, bankadan ve kişisel olanda yok", () =>
     KB.needsReceipt({ manual: true, amount: -200 }) && !KB.needsReceipt({ manual: true, amount: 200 }) && !KB.needsReceipt({ manual: true, amount: -200, src: "rc:R1" }) &&
     !KB.needsReceipt({ manual: true, amount: -200, conv: "k1" }) && !KB.needsReceipt({ manual: true, amount: -200, book: "personal" }) && !KB.needsReceipt({ amount: -200 }))],

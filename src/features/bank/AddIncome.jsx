@@ -38,21 +38,11 @@ const WHO = { club: { in: "Kimden", out: "Kime verildi (isteğe bağlı)" }, per
 // kişi Kişiler'den (çalışanlar, aile, diğer; sporcular değil) ya da daha önce yazılan adlardan seçilir veya yazılır (yeni ad
 // kaydedince seçeneklere eklenir, × ile silinir), tutar, tarih, not. Kulüpte Aidat seçilince sporcu ve ay sorulur; ödeme
 // Aidatlar'da o ay ödendi görünür.
-export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book = "club", dir: startDir = "in", options = [], onDropName }) {
+// edit: { incomeId, dir, cat, who, amount, day, memo } var olan kaydı düzeltir (aynı form, değerleri dolu)
+export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book = "club", dir: startDir = "in", options = [], onDropName, edit = null }) {
   const today = todayStr();
   const [dir, setDir] = useState(startDir);
   const [cat, setCat] = useState(catsOf(book, startDir)[0]);
-  // Her açılışta seçilen yönle başlar (render sırasında, efektsiz)
-  const want = open ? `${book}:${startDir}` : "";
-  const [seen, setSeen] = useState(want);
-  if (want !== seen) {
-    setSeen(want);
-    if (want) {
-      setDir(startDir);
-      setCat(catsOf(book, startDir)[0]);
-    }
-  }
-  const pickDir = (d) => (setDir(d), setCat(catsOf(book, d)[0]));
   const [other, setOther] = useState("");
   const [who, setWho] = useState("");
   const [athleteId, setAthleteId] = useState("");
@@ -60,10 +50,31 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
+  // Her açılışta seçilen yönle (düzenlemede kaydın değerleriyle) başlar (render sırasında, efektsiz)
+  const want = open ? `${book}:${startDir}:${edit?.incomeId || ""}` : "";
+  const [seen, setSeen] = useState(want);
+  if (want !== seen) {
+    setSeen(want);
+    if (want && edit) {
+      const d = edit.dir || startDir;
+      const known = catsOf(book, d).includes(edit.cat);
+      setDir(d);
+      setCat(known ? edit.cat : "Diğer");
+      setOther(known ? "" : edit.cat || "");
+      setWho(edit.who || "");
+      setAmount(String(Math.abs(edit.amount || 0)).replace(".", ","));
+      setDate(edit.day || today);
+      setNote(edit.memo || "");
+    } else if (want) {
+      setDir(startDir);
+      setCat(catsOf(book, startDir)[0]);
+    }
+  }
+  const pickDir = (d) => (setDir(d), setCat(catsOf(book, d)[0]));
   const [find, setFind] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const isDues = book === "club" && dir === "in" && cat === "Aidat";
+  const isDues = !edit && book === "club" && dir === "in" && cat === "Aidat"; // aidat kaydı Aidatlar'dan düzelir
   const needWho = (book === "club" && dir === "in") || dir === "debt"; // fişsiz kasa çıkışı kişisiz de yazılır
   const opts = who.trim() ? options.filter((o) => words(who).every((w) => words(o.name).some((x) => x.startsWith(w))) && o.name !== who.trim()) : options;
   const people = [...roster].sort((a, b) => String(a.studentName).localeCompare(String(b.studentName), "tr"));
@@ -82,7 +93,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
   const save = async () => {
     if (!ok) return;
     setBusy(true);
-    const r = await onSave({ book, dir, cat: finalCat, who: name, athleteId: isDues ? athleteId : "", ym: isDues ? ym : "", amount: amt, date, note: note.trim() });
+    const r = await onSave({ ...(edit ? { incomeId: edit.incomeId } : {}), book, dir, cat: finalCat, who: name, athleteId: isDues ? athleteId : "", ym: isDues ? ym : "", amount: amt, date, note: note.trim() });
     setBusy(false);
     if (r !== false) {
       setAmount("");
@@ -107,7 +118,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
         <div>
           <span className={label}>Tür</span>
           <div className="flex flex-wrap gap-1.5">
-            {catsOf(book, dir).map((c) => (
+            {catsOf(book, dir).filter((c) => !edit || c !== "Aidat").map((c) => (
               <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${cat === c ? "bg-acc text-white" : "bg-bg text-fg"}`}>
                 {c}
               </button>
@@ -192,7 +203,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
         </label>
 
         <button type="button" disabled={!ok} onClick={save} className="h-12 w-full rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
-          {busy ? "Kaydediliyor…" : amt > 0 ? `${money(amt)} TL · ${TITLE[book][dir]} ekle` : "Ekle"}
+          {busy ? "Kaydediliyor…" : edit ? "Kaydet" : amt > 0 ? `${money(amt)} TL · ${TITLE[book][dir]} ekle` : "Ekle"}
         </button>
       </div>
     </Sheet>
