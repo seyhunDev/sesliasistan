@@ -3,7 +3,7 @@
 // derse sonrakine geçer), testler (yerel/yonlendirme.mjs) aynı işlevi sınar; böylece test ile uygulama ayrışamaz.
 // Bekleyen sorular (yarış sorusu, kişi, onay, günlük, taslak, kart) burada değil: onlar run()'da bu adaylardan önce
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
-import { isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
+import { chatOpAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -95,6 +95,9 @@ export function routesOf(s, c = {}) {
   if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
   if (!mf && inboxClearAsk(s)) add("inboxClear");
+  // Ana hesap: "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil" (silme onaylı; ChatProvider archive/deleteChat)
+  const co = owner && !c.drafts ? chatOpAsk(s) : null;
+  if (co) add("chatOp", { co });
   // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
   const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
   if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");

@@ -9,11 +9,14 @@ import { useChat } from "./ChatProvider";
 import { Avatar, isOnline, seenText } from "./bits";
 import { GROUPS } from "@/lib/kinds";
 
-// Sohbet bilgisi: sessize al, üyeler (çevrimiçi / son görülme); grupta kuran kişi ad değiştirir, üye ekler/çıkarır; gruptan çık
+// Sohbet bilgisi: sessize al, üyeler (çevrimiçi / son görülme); grupta kuran kişi ad değiştirir, üye ekler/çıkarır; gruptan çık.
+// Ana hesap: sohbeti arşivle (yalnız kendi listesinden) ya da herkes için kalıcı sil (mesajlar ve ekleri).
 export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) {
   const router = useRouter();
   const toast = useToast();
-  const { uid, allPeople, personName, mute, updateGroup, leaveGroup } = useChat();
+  const { uid, orgId, allPeople, personName, mute, archive, deleteChat, updateGroup, leaveGroup } = useChat();
+  const [busy, setBusy] = useState(false);
+  const owner = orgId === uid;
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
   const isGroup = chat?.type === "group";
@@ -113,6 +116,45 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
               })}
             </ul>
           </div>
+
+          {owner && exists && !GROUPS[chat.id] && (
+            <button
+              type="button"
+              onClick={() =>
+                archive(chat, !chat.archivedByMe).then((ok) => {
+                  toast(ok ? (chat.archivedByMe ? "Arşivden çıkarıldı" : "Arşivlendi") : "Yapılamadı");
+                  if (ok && !chat.archivedByMe) {
+                    onClose();
+                    router.replace("/messages");
+                  }
+                })
+              }
+              className="h-12 w-full rounded-xl border border-line bg-card text-[0.9375rem] font-semibold active:scale-[.98]"
+            >
+              {chat.archivedByMe ? "Arşivden çıkar" : "Arşivle"}
+            </button>
+          )}
+
+          {owner && exists && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                if (!window.confirm(`${chat.title} sohbetindeki tüm mesajlar ve ekler herkes için kalıcı silinecek. Geri alınamaz. Silinsin mi?`)) return;
+                setBusy(true);
+                const ok = await deleteChat(chat.id);
+                setBusy(false);
+                toast(ok ? "Sohbet herkes için silindi" : "Sohbet silinemedi");
+                if (ok) {
+                  onClose();
+                  router.replace("/messages");
+                }
+              }}
+              className="h-12 w-full rounded-xl border border-line bg-card text-[0.9375rem] font-semibold text-rec active:scale-[.98] disabled:opacity-50"
+            >
+              {busy ? "Siliniyor…" : "Herkes için sil"}
+            </button>
+          )}
 
           {isGroup && (
             <button

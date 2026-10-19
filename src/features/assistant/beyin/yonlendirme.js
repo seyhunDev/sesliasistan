@@ -359,6 +359,20 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         reply(ok ? `Geri aldım: “${t}”. Sohbette yeniden görünüyor.` : "Mesajı geri alamadım; tekrar dene.", { engine: "local" }, viaVoice);
         return true;
       }
+      // Ana hesap: "Ali ile konuşmayı arşivle / arşivden çıkar" hemen; "herkes için sil" onay sorulup sunucuda silinir
+      case "chatOp": {
+        const { co } = r;
+        const dest = ctx.resolveTo(co.who);
+        const chat = dest?.cid && (ctx.chats || []).find((c) => c.id === dest.cid && !c._ghost);
+        if (!chat) return reply(co.who ? `${dest?.label || co.who} ile bir sohbetin görünmüyor.` : "Hangi sohbet? Kişinin ya da grubun adını söyle.", { engine: "local" }, viaVoice), true;
+        if (co.op === "delete") return reply(`${chat.title} sohbetindeki tüm mesajlar ve ekler herkes için kalıcı silinecek, geri alınamaz. Onaylıyor musun?`, { engine: "local", pending: { chatDel: { cid: chat.id, label: chat.title } } }, viaVoice), true;
+        if (GROUPS[chat.id]) return reply(`${chat.title} sabit bir grup, arşivlenmez.`, { engine: "local" }, viaVoice), true;
+        const on = co.op === "archive";
+        if (chat.archivedByMe === on) return reply(on ? `${chat.title} sohbeti zaten arşivde.` : `${chat.title} sohbeti arşivde değil.`, { engine: "local" }, viaVoice), true;
+        const ok = await ctx.chatArchive?.(chat, on);
+        reply(ok ? (on ? `${chat.title} sohbetini arşivledim. Mesajlar listesinin altındaki Arşiv'de duruyor.` : `${chat.title} sohbetini arşivden çıkardım.`) : "Yapamadım; tekrar dene.", { engine: "local" }, viaVoice);
+        return true;
+      }
       // "Son kaydı geri al": en son eklenen plan/görev/not, onay sorulup silinir
       case "undo": {
         const undo = r.undo;
