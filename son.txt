@@ -1,8 +1,8 @@
-Commit: 1c76d31 · Fiş kontrol uyarısı aynı kaynaktan, 10 kuruş fark yok sayılır; fişsiz kasa çıkışı ve Fiş ekle (#526)
-Zaman: 2026-10-19-1133 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39223121483
+Commit: c89a6a6 · Ana sayfa Kulüp: yarış solda uzun, aidat ve hesap sağda; hesapta kasa büyük, banka küçük; Yarışlar'a Tümü (#515)
+Zaman: 2026-10-19-1238 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39231113005
 
-TAM TEST · 19.10.2026 11:29:43
+TAM TEST · 19.10.2026 12:34:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1319/1320 geçti · 1 kalan · 211 sn
+SONUÇ: 1320/1320 geçti · 0 kalan · 196 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -126,11 +126,8 @@ SONUÇ: 1319/1320 geçti · 1 kalan · 211 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 72/73
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 73/73
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
