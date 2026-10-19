@@ -1,8 +1,8 @@
-Commit: cc66e71 · Fitness: tahmini antrenman süresi kaldırıldı, yerine hareket, set ve motivasyon cümlesi (#537)
-Zaman: 2026-10-19-1742 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39270674455
+Commit: 7fbb67c · Yarış multimedya: açılışta bugün, yarışın yeri haritadan, ölçüm yoksa sebebi (#538)
+Zaman: 2026-10-19-1800 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39273443927
 
-TAM TEST · 19.10.2026 17:38:09
+TAM TEST · 19.10.2026 17:56:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1319/1320 geçti · 1 kalan · 261 sn
+SONUÇ: 1320/1320 geçti · 0 kalan · 229 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -126,11 +126,8 @@ SONUÇ: 1319/1320 geçti · 1 kalan · 261 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 72/73
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 73/73
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
