@@ -10,7 +10,7 @@ import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, dayNames, dayOf, liveDays, upSec, zeroRace } from "@/lib/raceLive";
+import { beginRace, cleanLive, dayNames, dayOf, liveDays, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -48,13 +48,13 @@ export function RaceMedia({ orgId, id }) {
   const [addDay, setAddDay] = useState(false);
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
-  // ana ekrandan geri dönünce (5 dk'dan uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
+  // ana ekrandan ya da başka uygulamadan geri dönünce (30 sn.den uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
   useEffect(() => {
     let away = 0;
     let was = todayStr();
     const on = () => {
       if (document.hidden) return void (away = Date.now());
-      if (away && (Date.now() - away > 5 * 60e3 || todayStr() !== was)) setDay("");
+      if (away && (Date.now() - away > 30e3 || todayStr() !== was)) setDay("");
       away = 0;
       was = todayStr();
     };
@@ -148,7 +148,7 @@ export function RaceMedia({ orgId, id }) {
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
-  const days = liveDays(rdays, live);
+  const days = withToday(liveDays(rdays, live), rdays, today);
   const names = dayNames(rdays, days);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
   const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");

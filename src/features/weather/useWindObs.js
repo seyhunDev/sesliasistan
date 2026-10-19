@@ -8,15 +8,16 @@ import { authFetch } from "@/lib/authFetch";
 const MEM = new Map();
 const TTL = 10 * 60e3;
 
-export function useWindObs(at, date, today) {
-  const key = at && date && date <= today ? `${(+at.lat).toFixed(3)},${(+at.lon).toFixed(3)}|${date}` : "";
+// far: 10 km sınırı olmadan en yakın istasyon (yarış multimedya)
+export function useWindObs(at, date, today, far = false) {
+  const key = at && date && date <= today ? `${(+at.lat).toFixed(3)},${(+at.lon).toFixed(3)}|${date}${far ? "|far" : ""}` : "";
   const [got, setGot] = useState(() => ({ key, v: MEM.get(key)?.v ?? null }));
   useEffect(() => {
     if (!key) return;
     const hit = MEM.get(key);
     if (hit && Date.now() - hit.t < TTL) return;
     let on = true;
-    const q = new URLSearchParams({ lat: String(at.lat), lon: String(at.lon), date });
+    const q = new URLSearchParams({ lat: String(at.lat), lon: String(at.lon), date, ...(far ? { far: "1" } : {}) });
     authFetch(`/api/wind-obs?${q}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((v) => {
