@@ -19,7 +19,7 @@ import { WindSheet } from "./WeatherTab";
 const PRESETS = [60, 120, 300];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
-export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
+export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
@@ -140,6 +140,9 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam }) {
                 Yarış ekle
               </button>
             )}
+            <button type="button" onClick={() => (setList(false), onReset?.())} className="mt-6 w-full py-2 text-[0.9375rem] font-semibold text-rec">
+              Denemeleri sıfırla
+            </button>
           </div>
         )}
       </Sheet>

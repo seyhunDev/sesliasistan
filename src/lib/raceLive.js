@@ -107,6 +107,14 @@ export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts
 export const UP_MAX = 3599;
 // Cihazlar arası sayaç (useLiveSync): belgeye yazılan alanlar ve uzaktaki sayacın bu cihaza yazılıp yazılmayacağı.
 // Sayfa ilk açılırken (first) yalnız süren sayaç alınır; durmuş eski kayıt buradaki antrenman sayacını durdurmaz.
+// Denemeleri sıfırla (Seyhun 2026-10-19): elle eklenen günler, yarışlar (süreler, şamandıra zamanları), rüzgâr kayıtları, parkur noktaları
+// ve sayaç; fotoğraf/video yalnız istenirse. Yarışın kendisi, sonuçlar, evrak ve bütçe yarış belgesinde durur, dokunulmaz.
+export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.starts?.length || 0, wind: l?.wind?.length || 0, media: l?.media?.length || 0 });
+export function resetPatch(media, now) {
+  const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now } };
+  if (media) p.media = [];
+  return p;
+}
 export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null });
 export function takeTimer(remote, mine, first, now) {
   if (!remote) return false;

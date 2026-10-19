@@ -91,6 +91,12 @@ export async function loadSheets(orgId, id) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.at).localeCompare(String(b.at)));
 }
 
+// Denemeleri sıfırla: patch (lib/raceLive.js resetPatch) belgeye yazılır; media boşaltılıyorsa dosyalar da silinir
+export async function resetLive(orgId, id, patch, media = []) {
+  await setDoc(live(orgId, id), patch, { merge: true });
+  if (patch.media) for (const m of media) await deleteObject(sref(store(), mpath(orgId, m.id))).catch(() => {});
+}
+
 // Yarış silinince: dosyalar, listeler ve kayıt
 export async function dropLive(orgId, id) {
   const l = await loadLive(orgId, id).catch(() => null);
