@@ -122,10 +122,10 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   ].filter(Boolean);
   // Fiş / Fatura: kare değil, en altta ince tam genişlik satır
   const fis = skel("inv") ? { key: "inv", skel: true } : fisT && { key: "inv", el: () => <FisWidget t={fisT} spend={invoices && inv && money ? m.receipts : null} cls={show("inv")} /> };
-  // Dizilim (Seyhun 2026-10-18: "sıradaki yarışı dikey uzun, aidat ve hesabı yan yana"): yarış + aidat + hesap üçü de varsa yarış solda iki satır
-  // boyu, sağda aidat ve hesap üst üste; değilse iki sütun, tek kalan sonuncu iki sütunu kaplar
-  const tall = squares.length === 3 && squares[0].key === "race";
-  const span = (i) => (tall && i === 0 ? "row-span-2" : !tall && i === squares.length - 1 && squares.length % 2 === 1 ? "col-span-2" : "");
+  // Dizilim (Seyhun 2026-10-19: "boşluğu kullanıp aidat ve hesabı yan yana, ince"): yarış tam genişlik (eksik işlerin adıyla), altında aidat ve
+  // hesap yan yana ince kartlar; tek kalan iki sütunu kaplar
+  const pair = squares.filter((t) => t.key !== "race");
+  const span = (t) => (t.key === "race" || pair.length === 1 ? "col-span-2 min-h-0" : "min-h-0");
 
   // Alttaki sayfa düğmeleri: alanı görünen sayfa (yarış, aidat, fiş, hesap, Instagram) tekrar düğme olmaz; alanı yoksa düğme kalır
   const shown = {
@@ -142,7 +142,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
         <SectionHead id="home-sum" title={title} />
         <div className="grid grid-cols-2 gap-2.5">
           {lead}
-          {squares.map((t, i) => (t.skel ? <SkelWidget key={t.key} cls={span(i)} /> : <Fragment key={t.key}>{t.el(span(i))}</Fragment>))}
+          {squares.map((t) => (t.skel ? <SkelWidget key={t.key} cls={span(t)} /> : <Fragment key={t.key}>{t.el(span(t))}</Fragment>))}
           {fis && (fis.skel ? <SkelWidget cls="col-span-2 min-h-0" /> : fis.el())}
           <NotesWidget notes={notes} />
           {tail}
@@ -154,12 +154,11 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
   );
 }
 
-// Kare alan: sıradaki yarış (ad, tarih · yer · sporcu, büyük kalan gün, eksik iş sayısı; uzunken ilk üç eksik işin adı). Dokununca yarışın sayfası;
+// Tam genişlik: sıradaki yarış (ad, tarih · yer · sporcu, sağda büyük kalan gün, eksik iş sayısı ve ilk üç eksik işin adı). Dokununca yarışın sayfası;
 // sağ üstte "Tümü ›" Yarışlar sayfası (Seyhun 2026-10-18: "yarışlara ana sayfadan ulaşamıyoruz"),
 // altta "Multimedyayı aç" yarış günü sayfasını açar (Seyhun 2026-10-18: "ana sayfadan ilgili yarışın multimedya sayfasına ulaşabilirim")
 function RaceWidget({ r, cls }) {
   const sub = r.sub || "";
-  const tall = cls.includes("row-span-2");
   return (
     <div className={`${WIDGET} ${cls}`}>
       <WHead
@@ -172,16 +171,17 @@ function RaceWidget({ r, cls }) {
         }
       />
       <Link href={r.id ? `/athletes/races/${r.id}` : "/athletes/races"} className="flex flex-1 flex-col">
-        <b className="mt-2 block truncate text-[0.96875rem] font-semibold">{r.title}</b>
-        <small className={`block text-[0.8125rem] text-mut ${tall ? "" : "truncate"}`}>{sub}</small>
-        <span className={`flex items-baseline justify-between gap-2 pt-2 ${tall ? "mt-2" : "mt-auto"}`}>
-          <span className="text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
+        <span className="mt-2 flex items-start gap-3">
+          <span className="min-w-0 flex-1">
+            <b className="block text-[0.96875rem] font-semibold">{r.title}</b>
+            <small className="block text-[0.8125rem] text-mut">{sub}</small>
+          </span>
+          <span className="shrink-0 text-[1.75rem] font-semibold leading-none tracking-[-.02em] tabular-nums">
             {r.days != null ? r.days : r.when}
             {r.days != null && <span className="ml-1 text-[0.9375rem] font-medium">gün</span>}
           </span>
-          {!tall && r.left > 0 && <small className="text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>}
         </span>
-        {tall && r.left > 0 && (
+        {r.left > 0 && (
           <span className="mt-2.5 block">
             <small className="block text-[0.78125rem] font-semibold text-warn">{r.left} iş eksik</small>
             {r.steps?.map((x) => (
@@ -209,7 +209,7 @@ function DuesWidget({ t, mon, cls }) {
   return (
     <Link href="/dues" className={`${WIDGET} ${cls}`}>
       <WHead tone="st" title={`Aidat · ${mon}`} />
-      <span className="mt-2.5 flex items-center gap-2.5">
+      <span className="mt-2 flex items-center gap-2.5">
         <Ring p={t.bar || 0} label={`%${Math.round((t.bar || 0) * 100)}`} />
         <span className="min-w-0">
           <b className="block text-[1.5rem] font-semibold leading-tight tabular-nums">
@@ -259,7 +259,7 @@ function Ring({ p, label }) {
   const r = 22;
   const c = 2 * Math.PI * r;
   return (
-    <svg viewBox="0 0 52 52" aria-hidden="true" className="size-[3.25rem] shrink-0">
+    <svg viewBox="0 0 52 52" aria-hidden="true" className="size-11 shrink-0">
       <circle cx="26" cy="26" r={r} fill="none" className="stroke-line" strokeWidth="6" />
       <circle cx="26" cy="26" r={r} fill="none" className="stroke-acc" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} transform="rotate(-90 26 26)" />
       <text x="26" y="27" textAnchor="middle" dominantBaseline="middle" className="fill-fg text-[0.6875rem] font-bold">
