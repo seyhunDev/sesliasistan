@@ -60,7 +60,17 @@ export function calcTotals(items = []) {
 export const totalOf = (r) => (r?.declared > 0 ? r.declared : r?.totals?.gross || 0);
 export const totalTL = (r) => totalOf(r) / 100;
 // Kalemler toplamı ile fişteki toplam uyuşmuyor mu (5 kuruş tolerans)
-export const mismatch = (r) => r?.declared > 0 && Math.abs(r.declared - (r.totals?.gross ?? calcTotals(r.items).gross)) > 5;
+// Fiş toplamı kalemlerden 10 kuruştan fazla farklı mı (yuvarlama farkları uyarı vermez; Seyhun 2026-10-19)
+export const mismatch = (r) => r?.declared > 0 && Math.abs(r.declared - (r.totals?.gross ?? calcTotals(r.items).gross)) > 10;
+// Kontrol bekleyen fişin nedeni ("" = kontrol gerekmez). Sayaç, liste ve fiş sayfası hep bunu kullanır:
+// eski "review" kayıtları neden kalmadıysa (ör. birkaç kuruşluk fark) sayılmaz. "Doğru" denince status "ok" olur.
+export function checkWhy(r) {
+  if (r?.status !== "review") return "";
+  if (mismatch(r)) return `Kalemler ${TLk(r.totals?.gross ?? calcTotals(r.items).gross)}, fişte ${TLk(r.declared)}`;
+  if (r.src === "garanti") return "Yabancı para ile ödendi, TL tutarını kontrol et";
+  return "";
+}
+export const needsCheck = (r) => !!checkWhy(r);
 // Yapay zeka düşük güven verdi mi
 export const lowConf = (conf, key) => !!conf && typeof conf[key] === "number" && conf[key] < 0.8;
 export const confAvg = (conf) => {

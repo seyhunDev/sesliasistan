@@ -9,7 +9,7 @@ import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { calcTotals, mismatch, newPay, noText, totalOf } from "@/lib/receipts";
-import { cashOutFor, dropCashFor, setCashFor } from "@/features/dues/duesData";
+import { cashOutFor, dropCashFor, linkCashTo, setCashFor } from "@/features/dues/duesData";
 import { dropReceiptPhoto, forgetPending, pendingPhoto, uploadReceiptPhoto } from "@/features/receipts/receiptPhoto";
 import { isNewFor, lockedFor, peopleFor, pushWhy } from "@/lib/people";
 import { loadQuota } from "@/lib/quota";
@@ -850,7 +850,8 @@ export function DataProvider({ children }) {
   // image: dataURL | undefined (değişmedi) | null (kaldır)
   const saveReceipt = useCallback(
     // kasa: Hesaplar › Kasa'dan fiş fotoğrafıyla çıkış. true → nakit ödendi, kasadan çıkış yazılır (src "rc:<id>"); false → ödeme bekliyor
-    (d, { by, image, src, kasa }) => {
+    // link: { incomeId, who } fişsiz nakit çıkışa fiş eklendi: yeni çıkış yazılmaz, o çıkış bu fişe bağlanır
+    (d, { by, image, src, kasa, link }) => {
       let ownerId;
       try {
         ownerId = getOrgId();
@@ -873,7 +874,8 @@ export function DataProvider({ children }) {
       batch.set(ref, { ...body, hasImage: !!image, src: src || (image ? "photo" : "manual"), ownerId, createdBy: by, createdAt: now, ...who, ...pay });
       const saved = batch.commit();
       if (image) putPhoto(ownerId, ref.id, image, who, now);
-      if (kasa === true) cashOutFor(ownerId, { src: `rc:${ref.id}`, book: body.scope, cat: "Fiş", who: body.merchant, amount: totalOf(body) / 100, note: [body.cat, body.note].filter(Boolean).join(" · "), date: body.date }).catch((e) => fail(e, "Kasa çıkışı"));
+      if (kasa === true && link?.incomeId) linkCashTo(ownerId, link.incomeId, { src: `rc:${ref.id}`, amount: totalOf(body) / 100, who: link.who ? "" : body.merchant }).catch((e) => fail(e, "Kasa çıkışı"));
+      else if (kasa === true) cashOutFor(ownerId, { src: `rc:${ref.id}`, book: body.scope, cat: "Fiş", who: body.merchant, amount: totalOf(body) / 100, note: [body.cat, body.note].filter(Boolean).join(" · "), date: body.date }).catch((e) => fail(e, "Kasa çıkışı"));
       saved
         .then(() => kasa === undefined && pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
         .catch((e) => fail(e, "Fiş kaydetme"));
@@ -976,6 +978,22 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
+  // Kontrol bekleyen fiş "Doğru": uyarı kalkar (status "ok")
+  const setReceiptChecked = useCallback(
+    async (id) => {
+      const now = new Date().toISOString();
+      setData((p) => ({ ...p, receipts: p.receipts.map((x) => (x.id === id ? { ...x, status: "ok", updatedAt: now } : x)) }));
+      try {
+        await updateDoc(doc(db, "orgs", getOrgId(), "receipts", id), { status: "ok", updatedAt: now });
+        return true;
+      } catch (e) {
+        fail(e, "Fiş güncelleme");
+        return false;
+      }
+    },
+    [getOrgId, fail],
+  );
+
   // Çalışan: ödendi bildirimini gördü
   const markPaySeen = useCallback(
     async (ids) => {
@@ -1021,7 +1039,7 @@ export function DataProvider({ children }) {
     <Ctx.Provider
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
-        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, markPaySeen, loadReceiptImage,
+        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, setReceiptChecked, markPaySeen, loadReceiptImage,
         saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked, resendAssign, resendRemind,
       }}
     >

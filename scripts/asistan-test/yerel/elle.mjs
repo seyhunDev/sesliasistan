@@ -109,6 +109,14 @@ group("Fiş hesapları")([
   ["KDV", { desc: "%20'lik 20 TL + %10'luk 5 TL → KDV 3,78", fn: () => RC.calcTotals([{ q: 2, u: 1000, r: 20 }, { q: 1, u: 500, r: 10 }]), ok: (r) => r.gross === 2500 && r.vat === 378 && r.net === 2122 && r.byRate.length === 2 }],
   ["adet", { desc: "\"1,5\" → 1.5, boş → 1", fn: () => [RC.parseQty("1,5"), RC.parseQty("")].join(), ok: (r) => r === "1.5,1" }],
   ["toplam uyuşmazlığı", { desc: "fişte 30 TL, kalemler 25 TL → uyarı", fn: () => [RC.mismatch({ declared: 3000, items: [{ q: 1, u: 2500, r: 20 }] }), RC.mismatch({ declared: 2500, items: [{ q: 1, u: 2500, r: 20 }] })].join(), ok: (r) => r === "true,false" }],
+  ["10 kuruşluk fark", { desc: "10 kuruş uyarı vermez, 11 kuruş verir", fn: () => [RC.mismatch({ declared: 2510, items: [{ q: 1, u: 2500, r: 20 }] }), RC.mismatch({ declared: 2511, items: [{ q: 1, u: 2500, r: 20 }] })].join(), ok: (r) => r === "false,true" }],
+  ["kontrol nedeni", { desc: "sayaç/liste aynı kaynak: nedeni kalmayan eski review sayılmaz, Garanti yabancı para sayılır, ok sayılmaz", fn: () => [
+    RC.needsCheck({ status: "review", declared: 2505, items: [{ q: 1, u: 2500, r: 20 }] }),
+    RC.needsCheck({ status: "review", declared: 3000, items: [{ q: 1, u: 2500, r: 20 }] }),
+    RC.needsCheck({ status: "review", src: "garanti", items: [{ q: 1, u: 2500, r: 20 }] }),
+    RC.needsCheck({ status: "ok", declared: 3000, items: [{ q: 1, u: 2500, r: 20 }] }),
+    /Kalemler .*fişte/.test(RC.checkWhy({ status: "review", declared: 3000, items: [{ q: 1, u: 2500, r: 20 }] })),
+  ].join(), ok: (r) => r === "false,true,true,false,true" }],
 ]);
 
 // Fiş numarası, ödeme durumu ve muhasebe Excel'i (receipts.js)
@@ -1370,6 +1378,9 @@ group("Hesaplar arama ve eklenen adlar")([
     const k = KB.kasaLink(l[1]);
     return g.length === 2 && g[0].label === "Ekim 2026" && g[0].items[0].id === "b" && g[0].in === 1000 && g[0].out === 250 && o.length === 1 && o[0].items.length === 1 && m.in === 1000 && m.out === 250 && k.href === "/receipts/R1" && KB.kasaLink({ src: "inv:I9" }).kind === "invoice" && !KB.kasaLink(l[0]) && KB.kasaIcon(l[1]) === "receipt" && KB.kasaIcon(l[2]) === "fuel";
   })],
+  ["kasa: fişsiz çıkışa Fiş ekle", F("yalnız elle yazılmış, bağsız kulüp çıkışında; giriş, fişli, bankadan ve kişisel olanda yok", () =>
+    KB.needsReceipt({ manual: true, amount: -200 }) && !KB.needsReceipt({ manual: true, amount: 200 }) && !KB.needsReceipt({ manual: true, amount: -200, src: "rc:R1" }) &&
+    !KB.needsReceipt({ manual: true, amount: -200, conv: "k1" }) && !KB.needsReceipt({ manual: true, amount: -200, book: "personal" }) && !KB.needsReceipt({ amount: -200 }))],
   ["kasa: bankadan nakite çevirme", F("kasaya nakit giriş, kişisel hesaptan çıkar, tutarla bulunur", () => {
     const bank = [
       { id: "kaa1", amount: 20000, currency: "TL", who: "SEYHUN YILDIZ", desc: "Hesaba gelen", date: "11.10.2026 10:00", ts: Date.parse("2026-10-11T07:00:00Z") },

@@ -8,7 +8,7 @@ import { Tile } from "@/components/dashboard/Row";
 import { useData } from "@/features/data/DataProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
 import { PayBox } from "@/features/receipts/Payment";
-import { DOC, TLk, catOf, mismatch, noText, totalOf } from "@/lib/receipts";
+import { DOC, TLk, catOf, checkWhy, noText, totalOf } from "@/lib/receipts";
 import { fdate, rel } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 
@@ -37,7 +37,7 @@ function Kv({ k, v, sub, strong }) {
 
 export default function ReceiptDetailPage() {
   const { id } = useParams();
-  const { receipts, loading, loadReceiptImage, isStaff, setReceiptScope } = useData();
+  const { receipts, loading, loadReceiptImage, isStaff, setReceiptScope, setReceiptChecked } = useData();
   const { openReceipt } = useReceipt();
   const [img, setImg] = useState(null);
   const [zoom, setZoom] = useState(false);
@@ -60,7 +60,7 @@ export default function ReceiptDetailPage() {
 
   const t = r.totals || { gross: 0, vat: 0, net: 0, byRate: [] };
   const total = totalOf(r);
-  const bad = mismatch(r);
+  const why = checkWhy(r); // kontrol bekliyorsa nedeni
   const c = catOf(r.cat);
   const conf = r.conf;
 
@@ -91,9 +91,13 @@ export default function ReceiptDetailPage() {
         <p className="text-[0.875rem] text-mut">
           {[rel(r.date), r.time, r.cat, r.pay].filter(Boolean).join(" · ")}
         </p>
-        {bad && (
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[0.875rem] font-semibold text-amber-800">
-            <Icon name="alert" className="size-4" /> Kalemler {TLk(t.gross)}, fişte {TLk(r.declared)}
+        {why && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[0.875rem] font-semibold text-amber-800">
+            <Icon name="alert" className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1">{why}</span>
+            <button type="button" onClick={() => setReceiptChecked(r.id)} className="h-9 shrink-0 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc">
+              Doğru
+            </button>
           </div>
         )}
       </div>
