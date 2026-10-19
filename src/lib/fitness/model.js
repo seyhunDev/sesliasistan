@@ -379,6 +379,21 @@ export function estMinutes(items = []) {
   return Math.max(10, Math.round((sec / 60 + 5) / 5) * 5);
 }
 // Antrenmanda çalışılan kas grupları (sırayla, tekrarsız)
+// Antrenman ekranındaki motivasyon cümlesi: gün değişince değişir, gün içinde aynı kalır (süre tahmini gösterilmez)
+export const CHEERS = [
+  "Başlamak işin yarısı.",
+  "Her set bir adım, bugün de at.",
+  "Bugünkü emek, yarınki güç.",
+  "Teknik önce, ağırlık sonra.",
+  "Küçük ama düzenli; asıl güç bu.",
+  "Kendini dünkü hâlinle kıyasla.",
+  "Nefesine dikkat et, gerisi gelir.",
+  "Yavaş ve doğru, hızlı ve yanlıştan iyidir.",
+];
+export function cheerOf(date = "") {
+  const n = [...String(date)].reduce((t, c) => (t * 31 + c.charCodeAt(0)) % 9973, 0);
+  return CHEERS[n % CHEERS.length];
+}
 export const groupsOf = (items = []) => [...new Set((items || []).map((it) => exById(it?.ex)?.group).filter(Boolean))];
 
 // ---- Fitness planları ve sonuçlar ----

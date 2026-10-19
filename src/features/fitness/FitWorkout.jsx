@@ -13,7 +13,7 @@ import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
 import { ytThumb } from "@/lib/fitness/youtube";
-import { FEELS, PARTS, clockText, cleanRes, estMinutes, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { FEELS, PARTS, cheerOf, clockText, cleanRes, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -151,7 +151,6 @@ export function FitWorkout({ rec, by, hero = false }) {
 
   const items = fit.items || [];
   const allDone = total > 0 && done === total;
-  const est = rec.durationMin || estMinutes(items);
   // Sıradaki set: ilk işaretlenmemiş
   const next = (() => {
     for (let i = 0; i < sets.length; i++) {
@@ -195,17 +194,19 @@ export function FitWorkout({ rec, by, hero = false }) {
           </div>
         </section>
       ) : (
-        <section className={`${box} mt-2.5 grid grid-cols-3 divide-x divide-line py-3 text-center`}>
-          {[
-            [est ? `≈ ${est}` : "–", "dakika"],
-            [items.length, "hareket"],
-            [total, "set"],
-          ].map(([v, l]) => (
-            <div key={l}>
-              <b className="block text-[1.25rem] font-semibold tabular-nums">{v}</b>
-              <small className="text-[0.75rem] text-mut">{l}</small>
-            </div>
-          ))}
+        <section className={`${box} mt-2.5`}>
+          <div className="grid grid-cols-2 divide-x divide-line py-3 text-center">
+            {[
+              [items.length, "hareket"],
+              [total, "set"],
+            ].map(([v, l]) => (
+              <div key={l}>
+                <b className="block text-[1.25rem] font-semibold tabular-nums">{v}</b>
+                <small className="text-[0.75rem] text-mut">{l}</small>
+              </div>
+            ))}
+          </div>
+          {total > 0 && <p className="border-t border-line px-4 py-2.5 text-center text-[0.875rem] text-fg2">{cheerOf(rec.date)}</p>}
         </section>
       )}
       {guide && (
