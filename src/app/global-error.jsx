@@ -9,7 +9,7 @@ export default function GlobalError(props) {
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        <title>Sesli Asistan</title>
+        <title>Velora</title>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body>

@@ -115,7 +115,7 @@ function gonder() {
       var ek = Utilities.newBlob(Utilities.base64Decode(veri), k.mimeType || "application/pdf", k.fileName || "belge.pdf");
       var ekler = (k.to || []).filter(function (a) { return /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(a); }).slice(0, 10);
       var alici = (k.self === false && ekler.length ? ekler : [kime].concat(ekler)).join(",");
-      GmailApp.sendEmail(alici, k.subject || "Sesli Asistan", k.text || "", { attachments: [ek], name: "Sesli Asistan" });
+      GmailApp.sendEmail(alici, k.subject || "Velora", k.text || "", { attachments: [ek], name: "Velora" });
       parcalar.forEach(function (x) { istek("delete", x.name.split("/documents/")[1]); });
       istek("delete", yol);
       sayi++;

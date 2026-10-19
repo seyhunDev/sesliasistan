@@ -19,7 +19,7 @@ export default function AuthLayout({ children }) {
     <div data-boot-enter="" className="mx-auto flex min-h-dvh max-w-[26.25rem] flex-col justify-center px-5 py-10">
       {/* Uygulama kimliği */}
       <div className="mb-7 flex flex-col items-center text-center">
-        <AppLogo size={168} variant="full" />
+        <AppLogo size={112} variant="full" />
         <p className="mt-3 text-[0.875rem] text-mut">Planlar, görevler ve notlar; konuşarak</p>
       </div>
       <div className="rounded-3xl bg-card p-6 shadow-[0_1px_3px_rgba(38,40,44,.06),0_12px_32px_-16px_rgba(38,40,44,.18)]">{children}</div>

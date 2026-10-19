@@ -87,7 +87,7 @@ export function loginMessage({ name, login, password, site, forName }) {
   const first = String(name || "").split(" ")[0];
   const who = forName ? `${String(forName).split(" ")[0]} için ` : "";
   return [
-    `Merhaba ${first}, ${who}Sesli Asistan giriş bilgileri:`,
+    `Merhaba ${first}, ${who}Velora giriş bilgileri:`,
     site,
     `Kullanıcı adı: ${login}`,
     `Şifre: ${password}`,

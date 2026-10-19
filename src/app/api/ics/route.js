@@ -29,7 +29,7 @@ export async function GET(request) {
     const now = Date.now();
     const snap = await db.collection("orgs").doc(orgId).collection("plans").where("date", ">=", isoIn(now - 30 * DAY)).where("date", "<=", isoIn(now + 180 * DAY)).get();
     const plans = snap.docs.map((d) => ({ ...d.data(), id: d.id })).filter((p) => !staff || (p.people || []).includes(uid));
-    return new NextResponse(icsOf(plans, { name: name || "Sesli Asistan" }), {
+    return new NextResponse(icsOf(plans, { name: name || "Velora" }), {
       headers: {
         "content-type": "text/calendar; charset=utf-8",
         "content-disposition": 'inline; filename="sesliasistan.ics"',
@@ -60,7 +60,7 @@ export async function POST(request) {
     }
     const p = await profileOf(au.uid);
     const token = randomBytes(18).toString("base64url");
-    await db.collection("icsTokens").doc(token).set({ uid: au.uid, orgId: p.orgId, staff: p.role === "staff", name: p.role === "staff" ? "Sesli Asistan" : "Kulüp planları", at: new Date().toISOString() });
+    await db.collection("icsTokens").doc(token).set({ uid: au.uid, orgId: p.orgId, staff: p.role === "staff", name: p.role === "staff" ? "Velora" : "Kulüp planları", at: new Date().toISOString() });
     await user.set({ icsToken: token }, { merge: true });
     return NextResponse.json({ token });
   } catch (e) {

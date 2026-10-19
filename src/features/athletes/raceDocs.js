@@ -967,7 +967,7 @@ export async function buildRaceDocs(r, athletes, fonts, only = DOCS.map(([k]) =>
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
   pdf.setTitle(`${r.name} evrakı`);
-  pdf.setCreator("Sesli Asistan");
+  pdf.setCreator("Velora");
   const f = {};
   for (const [k, bytes] of Object.entries(fonts)) {
     if (k === "logo") {

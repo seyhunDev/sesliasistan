@@ -429,30 +429,31 @@ select {
 .vlight.vl-sm .vl-wave i { width: 2.5px; }
 
 /* AÇILIŞ EKRANI (BootSplash, lib/boot.js): tek katman, yükleme aşamaları boyunca yerinde durur.
-   Beyaz zemin (logo beyaz zemine göre çizildi; açık ve koyu modda aynı), ortada VOCA logosu: dalgalar soldan sağa akarak
-   açılır, altında VOCA yazısı belirir; yükleme sürerken dalgalar hafifçe süzülür ve üstlerinden ışık geçer. Bitince logo
-   büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
-.boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #0b3d91;
-  background: radial-gradient(110% 65% at 50% 40%, #ffffff 0%, #f3f8ff 60%, #e6f0ff 100%); }
-.boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 24rem; height: 24rem; transform: translate(-50%, -50%); border-radius: 9999px;
-  background: radial-gradient(closest-side, rgba(14, 165, 233, .16), transparent); animation: bootglow 2.6s ease-in-out infinite; }
+   Koyu lacivert zemin (ana ekran simgesiyle aynı; açık ve koyu modda aynı), ortada Velora logosu: 24 ses çubuğu sırayla
+   ortadan dışa uzar, ortadaki ışık yanar, altında Velora yazısı belirir; yükleme sürerken çubuklar konuşur gibi kısalıp
+   uzar. Bitince logo büyüyüp ekran solar; aynı anda sayfa altından belirir (html[data-boot=enter] main) ve asistan kubbesi yükselir. */
+.boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff;
+  background: radial-gradient(120% 75% at 50% 38%, #18204a 0%, #0b1024 55%, #070b18 100%); }
+.boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
+  background: radial-gradient(closest-side, rgba(124, 92, 255, .22), rgba(34, 211, 238, .08) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
-.boot-logo { position: relative; width: 13rem; aspect-ratio: 800 / 404; animation: bootfloat 3s ease-in-out 1.3s infinite; }
-.boot-waves { display: block; width: 100%; height: 100%; clip-path: inset(0 100% 0 0); animation: bootflow 1.1s cubic-bezier(.65, 0, .35, 1) .1s forwards; }
-/* dalgaların üstünden geçen ışık: logonun kendi biçimiyle maskelenir, dışına taşmaz */
-.boot-sheen { position: absolute; inset: 0; pointer-events: none; opacity: 0;
-  background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, .75) 50%, transparent 65%) no-repeat; background-size: 250% 100%;
-  -webkit-mask: url(/brand/voca-mark.webp) center / 100% 100% no-repeat; mask: url(/brand/voca-mark.webp) center / 100% 100% no-repeat;
-  animation: bootsheen 2.6s ease-in-out 1.3s infinite; }
-.boot-word { display: block; width: 8.5rem; height: auto; margin-top: 1.1rem; animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
-.boot-sub { margin-top: 1rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(11, 61, 145, .5);
+.boot-logo { display: block; width: 9.5rem; height: 9.5rem; overflow: visible; }
+/* her çubuk iç ucundan büyür (çizimde 512,312; view-box 132'den başladığı için köken 380px 180px; döndürme dıştaki g'de) */
+.boot-ray { transform-origin: 380px 180px; transform-box: view-box;
+  animation: bootray .5s cubic-bezier(.2, .9, .3, 1) calc(var(--i) * 28ms) both, boottalk 1.3s ease-in-out calc(1.2s + var(--i) * 70ms) infinite; }
+.boot-core { transform-origin: 380px 380px; transform-box: view-box; animation: bootcore .6s cubic-bezier(.2, .9, .3, 1.4) .15s both; }
+.boot-core-glow { opacity: .5; filter: blur(14px); transform-origin: 380px 380px; transform-box: view-box;
+  animation: bootcore .6s cubic-bezier(.2, .9, .3, 1) .15s both, bootbeat 1.3s ease-in-out 1.2s infinite; }
+.boot-word { margin-top: 1.4rem; font-size: 1.75rem; font-weight: 600; letter-spacing: .01em; color: #f1f3ff;
+  animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
+.boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(232, 236, 255, .5);
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .9s both, bootpulse 1.8s ease-in-out 1.6s infinite; }
 .boot[data-phase="out"] { pointer-events: none; animation: bootout .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 .boot[data-phase="out"] .boot-mark { animation: bootzoom .55s cubic-bezier(.4, 0, .2, 1) forwards; }
-.boot[data-phase="out"] .boot-waves { animation: none; clip-path: none; }
-@keyframes bootflow { from { clip-path: inset(0 100% 0 0); transform: translateX(-6%); } to { clip-path: inset(0 0 0 0); transform: none; } }
-@keyframes bootsheen { 0% { opacity: 1; background-position: 120% 0; } 60%, 100% { opacity: 1; background-position: -20% 0; } }
-@keyframes bootfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes bootray { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes boottalk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
+@keyframes bootcore { from { transform: scale(0); opacity: 0; } }
+@keyframes bootbeat { 0%, 100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.18); opacity: .8; } }
 @keyframes bootin { from { opacity: 0; transform: translateY(8px); } }
 @keyframes bootpulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 @keyframes bootglow { 0%, 100% { opacity: .7; transform: translate(-50%, -50%) scale(.94); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } }
@@ -465,8 +466,7 @@ html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .5s eas
 html[data-boot="enter"] :is(main, [data-boot-enter]):not(:has(.fixed)) { animation: bootenter .6s cubic-bezier(.22, .8, .24, 1) .06s backwards; }
 html[data-boot="on"] .dome-rise { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .boot::before, .boot-word, .boot-sub, .boot-mark, .boot-logo, .boot-sheen { animation: none; }
-  .boot-waves { animation: none; clip-path: none; }
+  .boot::before, .boot-word, .boot-sub, .boot-mark, .boot-ray, .boot-core, .boot-core-glow { animation: none; }
   .boot[data-phase="out"] .boot-mark { animation: none; }
   html[data-boot="enter"] :is(main, [data-boot-enter]) { animation: softin .3s ease-out backwards; }
 }

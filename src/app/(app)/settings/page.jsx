@@ -121,7 +121,7 @@ export default function SettingsPage() {
         <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
       </Group>
 
-      <p className="mt-6 text-center text-[0.75rem] text-mut">Sesli Asistan</p>
+      <p className="mt-6 text-center text-[0.75rem] text-mut">Velora</p>
     </main>
   );
 }
