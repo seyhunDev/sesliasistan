@@ -16,13 +16,13 @@ import { money } from "@/lib/bankSheet";
 import { deleteInvoice, ensureTask } from "@/features/invoices/invoiceData";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes } from "@/features/athletes/data";
-import { saveStart, saveFree, loadDuesRange, loadCash, archiveCash, convertToCash, addIncome, saveCashName } from "@/features/dues/duesData";
+import { saveStart, saveFree, loadDuesRange, loadCash, archiveCash, convertToCash, addIncome, saveCashName, updateIncome } from "@/features/dues/duesData";
 import { lastMonths, athleteDuesText, athleteDues, feeOf } from "@/lib/dues";
 import { unpaidRoster } from "@/lib/duesRemind";
 import { authFetch } from "@/lib/authFetch";
 import { setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
-import { kasaOf, convPick, debtMoves, personalOf } from "@/lib/cashbook";
+import { kasaOf, convPick, debtMoves, personalOf, canEditCash } from "@/lib/cashbook";
 import { whoIn } from "@/lib/payee";
 import { sameNamed } from "@/lib/names";
 
@@ -378,6 +378,22 @@ export async function cashCmd(ctx, s, viaVoice) {
         }
         await soon(convertToCash(profile.uid, m), 2500, "Kasa");
         done(`Kulüp kasasına ekledim: ${tl(kc.amount)} nakit (${m.date?.slice(0, 10) || "banka"}${whoIn(m) ? `, ${whoIn(m)}` : ""}). Kişisel hesabında artık sayılmaz.`, { engine: "local", nav: "accounts" }, viaVoice);
+        return true;
+      }
+      if (kc.op === "edit") {
+        const r = await loadCash(profile.orgId);
+        const key = (x) => String(x || "").toLocaleLowerCase("tr-TR");
+        const all = [...r.moves, ...r.personal].filter(canEditCash).sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+        const hit = all.filter((x) => (!kc.amount || Math.abs(Math.abs(x.amount) - kc.amount) < 0.01) && (!kc.who || key(x.who).includes(key(kc.who))) && (!kc.cat || x.cat === kc.cat) && (!kc.dir || x.dir === kc.dir));
+        const x = hit[0];
+        if (!x) {
+          reply("Düzeltilecek kaydı bulamadım. Tutarıyla söyler misin? (ör. kasadaki 200 liralık çıkışın türünü yakıt yap)", { fail: true, engine: "local", nav: "accounts" }, viaVoice);
+          return true;
+        }
+        const day = x.ts ? new Date(x.ts).toISOString().slice(0, 10) : todayStr();
+        await soon(updateIncome(profile.orgId, x.incomeId, { dir: x.dir, cat: kc.field === "cat" ? kc.value : x.cat, who: kc.field === "who" ? kc.value : x.who, amount: Math.abs(x.amount), date: day, note: x.memo }), 2500, "Kasa");
+        const what = `${tl(Math.abs(x.amount))} ${x.book === "personal" ? "kişisel kayıt" : x.dir === "out" ? "nakit çıkış" : "nakit giriş"}${x.who && kc.field !== "who" ? `, ${x.who}` : ""}`;
+        done(`Düzelttim: ${what}, ${kc.field === "cat" ? "türü" : "adı"} artık ${kc.value}.`, { engine: "local", nav: "accounts" }, viaVoice);
         return true;
       }
       if (kc.op === "ask") {

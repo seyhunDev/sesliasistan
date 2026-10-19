@@ -108,6 +108,9 @@ export async function addIncome(orgId, { book = "club", dir = "in", cat, who, at
   }
   return addDoc(collection(db, "orgs", orgId, "incomes"), clean({ ...(book === "personal" ? { book } : {}), ...(dir !== "in" ? { dir } : {}), cat, who, amount, date, note, at }));
 }
+// Elle yazılan nakit/kişisel kaydı düzelt (ad, tür, tutar, tarih, not, giriş/çıkış)
+export const updateIncome = (orgId, id, { dir = "in", cat, who, amount, date, note }) =>
+  updateDoc(doc(db, "orgs", orgId, "incomes", id), { dir: dir === "in" ? deleteField() : dir, cat, who: who || "", amount, date, note: note || "", editedAt: new Date().toISOString() });
 export const deleteIncome = (orgId, id) => deleteDoc(doc(db, "orgs", orgId, "incomes", id));
 // Banka hareketini nakite çevir: kulüp kasasına nakit giriş + cash/meta.conv (kişisel hesapta artık sayılmaz; cashbook.js)
 export async function convertToCash(orgId, m) {

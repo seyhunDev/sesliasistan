@@ -123,6 +123,7 @@ export function incomeMoves(docs = []) {
         kind: book === "club" ? "Nakit" : "Kişisel",
         cat: x.cat || "Diğer",
         who: x.who || "",
+        memo: x.note || "", // yazılan not (düzenleme formu için; note gösterim metni)
         note: x.note ? `${x.cat || "Gelir"} · ${x.note}` : x.cat || "Gelir",
         desc: LABEL[book][dir],
         date: d ? `${d}.${m}.${y}` : "",

@@ -15,8 +15,8 @@ import { moveMailFiles } from "@/features/mail/mailFiles";
 import { todayIn } from "@/lib/notifyText";
 import { inOut, payeeMoves, payeeOf, received, searchMoves, whoIn } from "@/lib/payee";
 import { ledgerStart, loadLedger } from "@/features/bank/ledgerData";
-import { addIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
-import { canConv, convSet, debtMoves, inKasa, kasaLink, kasaOf, needsReceipt, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
+import { addIncome, updateIncome, archiveCash, dropCashName, saveCashName, saveShownAccts, convertToCash, unarchiveCash, deleteIncome, loadCash, setDebtPaid, setInKasa, undoConvert } from "@/features/dues/duesData";
+import { canConv, canEditCash, convSet, debtMoves, inKasa, kasaLink, kasaOf, needsReceipt, newWhoName, personalOf, whoOptions, withoutConv } from "@/lib/cashbook";
 import { DebtDetail, DebtForm } from "@/features/debts/DebtViews";
 import { loadDebts, updateDebts } from "@/features/debts/debtData";
 import { cleanDebt, leftOf, newId, paidOf, payDebt, splitDebts } from "@/lib/debts";
@@ -74,7 +74,7 @@ export default function MailPage() {
   const [lent, setLent] = useState([]); // verilen borçlar (debts/book)
   const [debtForm, setDebtForm] = useState(null); // yeni ya da düzenlenen verilen borç
   const [debtOpen, setDebtOpen] = useState(null); // ayrıntısı açık verilen borç
-  const [add, setAdd] = useState(null); // { book, dir } nakit giriş/çıkış ya da kişisel gelir/gider/borç
+  const [add, setAdd] = useState(null); // { book, dir, edit? } nakit giriş/çıkış ya da kişisel gelir/gider/borç (edit: düzeltilen kayıt)
   const [choose, setChoose] = useState(false); // sekmenin ekleme seçenekleri
   const [bankPick, setBankPick] = useState(null); // dokunulan banka hareketi (nakite çevir)
   const [manual, setManual] = useState(null); // dokunulan nakit/kişisel hareket (sil, kasaya ekle, ödendi)
@@ -207,12 +207,12 @@ export default function MailPage() {
       () => toast("Silinemedi, tekrar dene"),
     );
   const saveIncome = (x) =>
-    addIncome(profile.uid, x).then(
+    (x.incomeId ? updateIncome(profile.uid, x.incomeId, x) : addIncome(profile.uid, x)).then(
       () => (
         x.cat !== "Aidat" && newWhoName(x.who, whoOpts) && saveCashName(profile.uid, newWhoName(x.who, whoOpts)).catch(() => {}),
         setAdd(null),
         setCashTick((n) => n + 1),
-        toast(x.book === "personal" ? "Kişisel deftere eklendi" : x.dir === "out" ? "Nakit çıkış kasadan düşüldü" : x.cat === "Aidat" ? "Aidat kasaya girdi, Aidatlar'da da ödendi görünür" : "Nakit giriş kasaya eklendi")
+        toast(x.incomeId ? "Düzeltildi" : x.book === "personal" ? "Kişisel deftere eklendi" : x.dir === "out" ? "Nakit çıkış kasadan düşüldü" : x.cat === "Aidat" ? "Aidat kasaya girdi, Aidatlar'da da ödendi görünür" : "Nakit giriş kasaya eklendi")
       ),
       () => (toast("Kaydedilemedi, internet bağlantını kontrol et"), false),
     );
@@ -506,7 +506,7 @@ export default function MailPage() {
           if (await saveDebts((list) => list.filter((y) => y.id !== curDebt.id), "Silindi")) setDebtOpen(null);
         }}
       />
-      <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} roster={cashData.roster} cfg={cashData.cfg} options={whoOpts} onDropName={dropName} onSave={saveIncome} />
+      <AddIncome open={!!add} onClose={() => setAdd(null)} book={add?.book || "club"} dir={add?.dir || "in"} edit={add?.edit || null} roster={cashData.roster} cfg={cashData.cfg} options={whoOpts} onDropName={dropName} onSave={saveIncome} />
       <Sheet open={!!bankPick} onClose={() => setBankPick(null)} title={bankPick?.amount > 0 ? "Gelen para" : "Giden para"}>
         {bankPick && (
           <div className="space-y-3 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
@@ -568,6 +568,11 @@ export default function MailPage() {
             {kasaLink(manual) && (
               <button type="button" onClick={() => (kasaLink(manual).kind === "invoice" ? (setManual(null), setTab("fis"), setFisSeen(true)) : router.push(kasaLink(manual).href))} className="h-11 w-full rounded-xl bg-acc/10 text-[0.875rem] font-semibold text-acc">
                 {kasaLink(manual).kind === "receipt" ? "Fişi aç" : "Faturaları aç"}
+              </button>
+            )}
+            {canEditCash(manual) && (
+              <button type="button" onClick={() => (setManual(null), setAdd({ book: manual.book, dir: manual.dir, edit: { incomeId: manual.incomeId, dir: manual.dir, cat: manual.cat, who: manual.who, amount: manual.amount, day: dayOf(manual), memo: manual.memo } }))} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                Düzenle
               </button>
             )}
             {manual.manual && !kasaLink(manual) && (
