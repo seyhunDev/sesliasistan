@@ -197,6 +197,7 @@ export function clubRace(next) {
     title: next.title || `${next.name} yarışı`,
     sub,
     left,
+    steps: Array.isArray(next.steps) ? next.steps.slice(0, 3) : [],
     total,
     done: total - left,
     day: d ? String(Number(d[2])) : "",
