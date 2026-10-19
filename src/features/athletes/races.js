@@ -8,7 +8,7 @@ import { cleanDocs, nextNo } from "./raceDocs";
 import { cleanBudget, cleanRooms } from "./budget";
 import { rememberRaceNames } from "./raceNames";
 import { cleanAround } from "./raceAround";
-import { cleanWeather } from "./raceWeather";
+import { cleanSpot, cleanWeather } from "./raceWeather";
 import { storedOf } from "@/lib/storedFile";
 
 // Yarışlar: orgs/{orgId}/races. Yalnızca yarış bilgisi ve sporcu kimlikleri tutulur;
@@ -42,6 +42,8 @@ export const RACE_FIELDS = [
   "around",
   // Yarış günlerinin hava tahmini, rüzgâr önde (raceWeather.js)
   "weather",
+  // Hava ve ölçülen rüzgâr için yarışın yeri { name, lat, lon }: ilk havada ilçeden bulunur ya da haritadan seçilir (raceWeather.racePlace)
+  "spot",
   // Sonuçlar { fleet, rows: { sporcuId: { place, note } } } (raceResults.js)
   "results",
   // Evrak'ta seçili belgeler (DOCS anahtarları; yoksa DOC_DEFAULT)
@@ -264,6 +266,8 @@ const clean = (r) =>
               ? cleanAround(r[k])
             : k === "weather"
               ? cleanWeather(r[k])
+            : k === "spot"
+              ? cleanSpot(r[k])
             : k === "results"
               ? cleanResults(r[k])
             : k === "docs"
@@ -285,7 +289,7 @@ export function freshRace(last = {}, today = "") {
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, spot: null, results: null,
   };
 }
 
@@ -355,6 +359,9 @@ export async function saveRace(orgId, uid, r) {
   await soon(setDoc(ref, { ...data, createdByUid: uid, createdAt: serverTimestamp() }), 2500, "Yarış");
   return ref.id;
 }
+
+// Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
+export const saveRaceSpot = (orgId, id, spot) => updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() });
 
 export const deleteRace = (orgId, id) => deleteDoc(doc(col(orgId), id));
 

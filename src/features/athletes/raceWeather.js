@@ -97,8 +97,18 @@ export const windLine = (x) => `${windName(x.dir)[0]} (${windName(x.dir)[1]}) ${
 
 // --- İstekler (telefondan) ---
 
-// Konum: yarış alanı bulunduysa orası, yoksa ilçe (il eşleşeni öncelikli)
+// Yarışın yeri (haritadan seçilen ya da ilk havada ilçeden bulunan): { name, lat, lon }
+export function cleanSpot(p) {
+  const lat = Number(p?.lat);
+  const lon = Number(p?.lon);
+  if (!p || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { name: S(p.name) || "Seçilen yer", lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4 };
+}
+
+// Konum: yarışın yeri (spot) varsa orası, sonra Çevre'de bulunan yarış alanı, yoksa ilçe (il eşleşeni öncelikli; found: true → kaydedilsin)
 export async function racePlace(r) {
+  const sp = cleanSpot(r?.spot);
+  if (sp) return sp;
   const v = r?.around?.venue;
   if (v && Number.isFinite(v.lat) && Number.isFinite(v.lon)) return { name: S(v.q) || S(r.district), lat: v.lat, lon: v.lon };
   const name = S(r?.district) || S(r?.city);
@@ -109,7 +119,7 @@ export async function racePlace(r) {
   const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
   const hit = list.find((x) => r.city && low(x.admin1) === low(r.city)) || list.find((x) => x.country_code === "TR") || list[0];
   if (!hit) throw new Error(`"${name}" haritada bulunamadı`);
-  return { name: [hit.name, hit.admin1].filter(Boolean).join(", "), lat: hit.latitude, lon: hit.longitude };
+  return { name: [hit.name, hit.admin1].filter(Boolean).join(", "), lat: hit.latitude, lon: hit.longitude, found: true };
 }
 
 // Yarış günlerinin tahmini. today: "YYYY-MM-DD". Ufuk dışındaki günler gelmez (ekranda "henüz tahmin yok").
@@ -144,7 +154,10 @@ export async function loadRaceDay(r, date, force = false) {
   const key = `sa-rwx:${r.id}:${date}`;
   try {
     const c = JSON.parse(localStorage.getItem(key) || "null");
-    if (!force && c && Date.now() - c.at < DAY_TTL && c.rows?.length && c.lat != null) return c; // konumsuz eski kayıt: ölçülen rüzgâr için yeniden alınır
+    const sp = cleanSpot(r.spot);
+    const r4 = (v) => Math.round(v * 1e4) / 1e4;
+    const same = !sp || (c && r4(c.lat) === sp.lat && r4(c.lon) === sp.lon); // yer başka telefonda değiştiyse yeniden alınır
+    if (!force && c && same && Date.now() - c.at < DAY_TTL && c.rows?.length && c.lat != null) return c; // konumsuz eski kayıt: ölçülen rüzgâr için yeniden alınır
   } catch {}
   const d = new Date();
   const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -157,6 +170,7 @@ export async function loadRaceDay(r, date, force = false) {
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);
   const out = { at: Date.now(), place: place.name, lat: place.lat, lon: place.lon, rows: rowsFrom(await res.json(), date) };
+  if (place.found) out.found = true;
   if (!out.rows.length) throw new Error("Bu gün için tahmin yok");
   try {
     localStorage.setItem(key, JSON.stringify(out));

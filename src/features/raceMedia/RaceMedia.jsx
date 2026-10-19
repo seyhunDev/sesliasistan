@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
@@ -47,6 +47,34 @@ export function RaceMedia({ orgId, id }) {
   const [sum, setSum] = useState(false);
   const [addDay, setAddDay] = useState(false);
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
+  // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
+  // ana ekrandan geri dönünce (5 dk'dan uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
+  useEffect(() => {
+    let away = 0;
+    let was = todayStr();
+    const on = () => {
+      if (document.hidden) return void (away = Date.now());
+      if (away && (Date.now() - away > 5 * 60e3 || todayStr() !== was)) setDay("");
+      away = 0;
+      was = todayStr();
+    };
+    document.addEventListener("visibilitychange", on);
+    window.addEventListener("pageshow", on);
+    return () => {
+      document.removeEventListener("visibilitychange", on);
+      window.removeEventListener("pageshow", on);
+    };
+  }, []);
+  // Seçili gün şeritte görünsün (gün çoksa bugün sağda kalıp gözden kaçmasın)
+  const strip = useRef(null);
+  const shown = useRef("");
+  useEffect(() => {
+    const el = strip.current?.querySelector('[aria-pressed="true"]');
+    if (!el || shown.current === el.dataset.day) return;
+    shown.current = el.dataset.day;
+    const box = strip.current;
+    box.scrollLeft = Math.max(0, el.offsetLeft - box.offsetLeft - (box.clientWidth - el.offsetWidth) / 2);
+  });
 
   useEffect(() => {
     let on = true;
@@ -148,10 +176,11 @@ export function RaceMedia({ orgId, id }) {
         </div>
       )}
       {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
-      <div className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
+      <div ref={strip} className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
         {days.map((d) => (
           <button
             key={d}
+            data-day={d}
             type="button"
             onClick={() => setDay(d)}
             aria-pressed={d === cur}
@@ -166,7 +195,7 @@ export function RaceMedia({ orgId, id }) {
           +
         </button>
       </div>
-      {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} />}
+      {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} onRace={setRace} />}
       {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
