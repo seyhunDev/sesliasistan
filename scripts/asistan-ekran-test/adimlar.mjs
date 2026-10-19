@@ -211,6 +211,17 @@ async function scenarios2(h) {
     const ok = await waitFor(async () => !(await full(page).count()), 4000);
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
+  // Okuma istenmeyen cevap sesli okunmaz (Seyhun: "oku dersem okusun", 2026-10-19)
+  setAI(() => ({ intent: "chat", message: "Bugün erken yat." }));
+  const sp0 = await page.evaluate(() => window.__t.spoken.length);
+  await talkAsk(page, "bana kısa bir tavsiye ver");
+  await check(GS, "okuma istenmeyen soru (sesli yanıt açık)", "cevap yazılır, sesli okunmaz", async () => {
+    const ok = await waitFor(async () => /Bugün erken yat/.test(await last(page)), 6000);
+    await page.waitForTimeout(600);
+    const said = await page.evaluate((n) => window.__t.spoken.slice(n), sp0);
+    return [!!ok && said.length === 0, `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(said.join(" | ")).slice(0, 80) || "yok"}`];
+  });
+  await closeAll(page);
   await page.evaluate(() => localStorage.setItem("sa_tts_on", "0"));
 
   await check("Sayfa hataları", "çalışırken / küçültme / sesli yanıt", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);

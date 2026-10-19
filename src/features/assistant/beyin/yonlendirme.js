@@ -501,8 +501,7 @@ export function openChatAt(ctx, cid, message, viaVoice) {
 
 // Kaydı düzenleme ekranında aç (iptal: iptal ekranıyla)
 export function openRecord(ctx, a, said, viaVoice) {
-  const { openAdd, park, tts } = ctx;
-  if (said) tts.maybeSpeak(said);
-  park();
+  const { openAdd, park } = ctx;
+  park(); // söz yalnız yazılır, sesli okunmaz (yalnız okuma isteğinde okunur, 2026-10-19)
   openAdd({ edit: { kind: a.kind, id: a.id, ...(a.op === "cancel" ? { cancel: true } : {}) } });
 }
