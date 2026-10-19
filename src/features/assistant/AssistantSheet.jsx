@@ -81,7 +81,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
   const askObj = cards.awaiting
     ? {
-      chips: cards.pending?.actions || cards.pending?.att || cards.pending?.msgDel || cards.pending?.msgPurge ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : (cards.picks || []).map((n) => ({ label: n, onPick: () => (sp.cancel(), say(n)) })), // mesaj kartının kendi düğmeleri var
+      chips: cards.pending?.actions || cards.pending?.att || cards.pending?.msgDel || cards.pending?.msgPurge || cards.pending?.chatDel ? [{ label: "Onayla", onPick: () => confirmPending() }, { label: "Vazgeç", onPick: () => cancelPending() }] : (cards.picks || []).map((n) => ({ label: n, onPick: () => (sp.cancel(), say(n)) })), // mesaj kartının kendi düğmeleri var
       onMic: () => sp.start({ autoStop: SILENCE_MS }),
       hint: "",
     }

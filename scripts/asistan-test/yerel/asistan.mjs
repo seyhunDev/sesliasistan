@@ -247,6 +247,18 @@ group("Mesaj arşivi (sesle)")([
   ["son mesajımı sil", { desc: "yol hâlâ msgDelete", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "msgDelete" }],
 ]);
 
+// Sohbeti arşivle / herkes için sil sesle (assistantLocal.js chatOpAsk, assistRoute.js chatOp; yalnız ana hesap)
+const { chatOpAsk } = await import("@/lib/assistantLocal");
+const CO = (op, who) => ({ desc: op ? `${op} · ${who || "açık sohbet"}` : "sohbet işi değil", fn: (s) => chatOpAsk(s), ok: (r) => (op ? r?.op === op && r.who === who : r === null) });
+group("Sohbet arşivi ve silme (sesle)")([
+  ["Ali ile konuşmayı arşivle", CO("archive", "ali")], ["Ali ile konuşmayı arşive at", CO("archive", "ali")], ["Ekip sohbetini arşivden çıkar", CO("unarchive", "ekip")],
+  ["bu sohbeti arşivle", CO("archive", "")], ["Ali'yle sohbeti herkes için sil", CO("delete", "ali")], ["Ayşeyle olan konuşmayı kalıcı olarak sil", CO("delete", "ayşe")],
+  ["Mehmet Yılmaz ile yazışmayı sil", CO("delete", "mehmet yılmaz")], ["Ali'nin sohbetini sil", CO("delete", "ali")],
+  ["sohbeti aç", CO(null)], ["konuşmayı sil", CO(null)], ["Ali ile sohbet ettik bunu nota yaz ve sonra sil", CO(null)], ["son mesajımı sil", CO(null)],
+  ["Ali ile konuşmayı sil", { desc: "yol: chatOp (ana hesap)", fn: (s) => routeOfMd(s, { owner: true }), ok: (r) => r === "chatOp" }],
+  ["Ali ile konuşmayı sil", { desc: "çalışanda chatOp yok", fn: (s) => routeOfMd(s, {}), ok: (r) => r !== "chatOp" }],
+]);
+
 // Fiş Kişisel ↔ Kulüp sesle (assistMore.js receiptScopeCommand; Garanti kart mailinden gelen fişler Kişisel başlar)
 const RSM = await import("@/lib/assistMore");
 const RSC = (desc, ok) => ({ desc, fn: (s) => RSM.receiptScopeCommand(s), ok });
@@ -584,7 +596,7 @@ group("Göreve göre ara yazı")([
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2800 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 2830 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi
   ]);
 }
 

@@ -165,6 +165,37 @@ export function msgArchAsk(text) {
   return null;
 }
 
+// Sohbet işi (ana hesap): "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil", "Ekip sohbetini arşivden çıkar",
+// "bu sohbeti arşivle" (açık sohbet). Dönüş: { op: "archive" | "unarchive" | "delete", who } (who boş: açık sohbet) | null
+const CHAT_NOUN = /(?:^|\s)(?:konuşma|sohbet|yazışma|mesajlaşma)\p{L}*\s+/u;
+export function chatOpAsk(text) {
+  const t = lower(String(text || "")).replace(/[.,!?]+/g, " ").replace(/\s+/g, " ").trim();
+  const m = CHAT_NOUN.exec(t);
+  if (!m) return null;
+  const rest = t.slice(m.index + m[0].length);
+  if (rest.split(" ").length > 5) return null;
+  const op = /arşivden (çıkar|al)\S*|geri (al|getir)\S*/.test(rest)
+    ? "unarchive"
+    : /^(?:\S+\s+)?arşiv\S*(?:\s+(?:at|kaldır|taşı|al)\S*)?$/.test(rest)
+      ? "archive"
+      : /(?:^|\s)(sil|kaldır|temizle)\S*$/.test(rest)
+        ? "delete"
+        : null;
+  if (!op) return null;
+  let who = t
+    .slice(0, m.index)
+    .replace(/\s+(?:olan|tüm|bütün)$/, "")
+    .replace(/\s+(?:olan|tüm|bütün)$/, "")
+    .replace(/\s+ile$/, "")
+    .replace(/['’](?:y?le|y?la|n?[ıiuü]n)$/, "")
+    .replace(/([aeıioöuü])y(?:le|la)$/, "$1")
+    .trim();
+  if (/^(?:bu|şu|açık|bu açık)$/.test(who)) who = "";
+  if (who.split(" ").length > 3) return null;
+  if (!who && !/^(?:bu|şu|açık)/.test(t)) return null;
+  return { op, who };
+}
+
 // Kişinin en son eklediği kayıt (plan, görev, not): { kind, rec } ya da null
 export function lastCreated({ plans = [], tasks = [], notes = [] }, uid, kind = "") {
   const all = [
