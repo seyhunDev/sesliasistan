@@ -1,8 +1,8 @@
-Commit: 7fbb67c · Yarış multimedya: açılışta bugün, yarışın yeri haritadan, ölçüm yoksa sebebi (#538)
-Zaman: 2026-10-19-1800 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39273443927
+Commit: a52bbb2 · Ana sayfa Kulüp: yarış tam genişlik, Aidat ve Hesap yan yana ince (#539)
+Zaman: 2026-10-19-1831 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39278105570
 
-TAM TEST · 19.10.2026 17:56:29
+TAM TEST · 19.10.2026 18:27:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1320/1320 geçti · 0 kalan · 229 sn
+SONUÇ: 1320/1320 geçti · 0 kalan · 223 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
