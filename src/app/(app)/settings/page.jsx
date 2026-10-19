@@ -18,9 +18,51 @@ import { TimingRow } from "@/features/settings/Timing";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { sendersOf } from "@/lib/bankSheet";
+import { KIND_LABEL, kindOf } from "@/lib/kinds";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
-// Ayarlar: profil, sık kullanılanlar (boyut, bildirim, özet, ses, mail, kişiler), diğer ayarlar (dokununca açılır), çıkış
+// Profil kartı (ana hesap ve kişiler ortak)
+function Profile({ profile, user, label }) {
+  return (
+    <section className="mt-2 flex items-center gap-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+      <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
+        <span className="block truncate text-[0.875rem] text-mut">{user?.email}</span>
+        <span className="mt-1.5 inline-block rounded-full bg-acc/10 px-2.5 py-0.5 text-[0.75rem] font-semibold text-acc">{label}</span>
+      </span>
+    </section>
+  );
+}
+
+// Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
+// Sporcu ve öğrencide asistan yok: sesli yanıt ve günlük özetler de yok.
+function PersonSettings({ profile, user, n }) {
+  const kind = kindOf(profile);
+  const ai = kind !== "athlete" && kind !== "student";
+  return (
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+      <PageHeader title="Ayarlar" />
+      <Profile profile={profile} user={user} label={KIND_LABEL[kind] || "Kişi"} />
+      <Group title="Ayarlar">
+        <SizeRow />
+        <ThemeRow />
+        <NotifyRow n={n} />
+        <NotifyMoreRow n={n} />
+        {ai && <SummaryRow />}
+        {ai && <VoiceRow />}
+        <WeatherPlaceRow />
+      </Group>
+      <Group title="Hesap">
+        <PasswordRow />
+        <Row icon="clock" tone="slate" title="Sürüm" sub={buildLine()} />
+        <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
+      </Group>
+    </main>
+  );
+}
+
+// Ayarlar (ana hesap): profil, sık kullanılanlar (boyut, bildirim, özet, ses, mail, kişiler), diğer ayarlar (dokununca açılır), çıkış
 export default function SettingsPage() {
   const { profile, user } = useAuth();
   const { members } = useData();
@@ -28,20 +70,13 @@ export default function SettingsPage() {
   const n = useNotifications();
   if (!profile) return null;
   const owner = profile.role === "owner";
+  if (!owner) return <PersonSettings profile={profile} user={user} n={n} />;
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Ayarlar" />
 
-      {/* Profil */}
-      <section className="mt-2 flex items-center gap-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
-        <span className="min-w-0 flex-1">
-          <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
-          <span className="block truncate text-[0.875rem] text-mut">{user?.email}</span>
-          <span className="mt-1.5 inline-block rounded-full bg-acc/10 px-2.5 py-0.5 text-[0.75rem] font-semibold text-acc">{owner ? "Ana hesap" : "Kişi"}</span>
-        </span>
-      </section>
+      <Profile profile={profile} user={user} label="Ana hesap" />
 
       {/* Sık kullanılanlar: en çok değiştirilen ayarlar */}
       <Group title="Sık kullanılanlar" footer={n.on ? "" : "Bildirimler kapalıyken günlük özet ve hatırlatmalar bu cihaza gelmez."}>
