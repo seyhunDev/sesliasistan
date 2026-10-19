@@ -1,0 +1,2 @@
+## Nerede kaldım
+- Velora logosunun yeri (Seyhun: "tarihin üstünde değil, yukarıda boşluk bırakıyor; mobilde isim gerekmez, webde yan sekmede"; telefonda denenmedi): ana sayfanın üstündeki "Velora" satırı kaldırıldı; telefonda logo tarihin solunda aynı satırda (ek yer yok, ad yok). Geniş ekranda (≥64rem) logo ve "Velora" sol menünün en üstünde (dokununca ana sayfa), ana sayfadaki logo orada gizli. OwnerHome.jsx, SideNav.jsx. Örnek: `/mnt/project-files/logo/velora/logo-yeri.png`.
