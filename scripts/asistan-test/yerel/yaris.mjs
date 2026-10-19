@@ -395,6 +395,8 @@ group("Yarış multimedya")([
 
 // Multimedya sayfasının hava satırları (raceWeather.js rowsFrom): o günün saatleri, yağmur olasılığı
 group("Yarış günü havası")([
+  ["yarışın yeri", { desc: "haritadan seçilen yer önce gelir (arama yok); bozuk yer atılır", fn: async () => { const sp = { name: " Foça Marina ", lat: 38.67031234, lon: 26.7572 }; const p = await RW.racePlace({ spot: sp, district: "Foça" }); return [p.name, p.lat, p.found, RW.cleanSpot({ lat: 200, lon: 1 }), RW.cleanSpot(null)]; }, ok: ([n, lat, f, bad, none]) => n === "Foça Marina" && lat === 38.6703 && !f && bad === null && none === null }],
+  ["Foça istasyonu uzak", { desc: "Foça'ya en yakın resmî istasyon 10 km'den uzak (ölçülen rüzgâr çıkmaz, sebebi yazılır); Dikili yakın", fn: async () => { const { nearestStation } = await import("@/lib/windObs"); return [nearestStation(38.6703, 26.7572), nearestStation(39.0717, 26.8886)]; }, ok: ([f, d]) => !f.near && f.km > 10 && d.near }],
   ["günün saatleri", { desc: "yalnız istenen gün, yağmur %", fn: () => RW.rowsFrom({ hourly: { ...WJ.hourly, precipitation_probability: HRS.map(() => 30) } }, "2026-10-08"), ok: (r) => r.length === 24 && r[0].hh === "00" && r[0].rain === 30 && r[12].wind === 12 && r[0].time === "2026-10-08T00:00" }],
 ]);
 

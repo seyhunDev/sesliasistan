@@ -6,26 +6,53 @@ import { Loading } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { DayDetail } from "@/features/weather/DaySheet";
 import { windLevel } from "@/features/weather/weather";
-import { loadRaceDay } from "@/features/athletes/raceWeather";
+import { useWindObs } from "@/features/weather/useWindObs";
+import { cleanSpot, loadRaceDay } from "@/features/athletes/raceWeather";
+import { saveRaceSpot } from "@/features/athletes/races";
+import { useToast } from "@/components/ui/ToastProvider";
+import { todayStr } from "@/lib/utils/format";
+import { SpotSheet } from "./SpotSheet";
 import { addWind, saveWind } from "@/features/athletes/raceLiveStore";
 import { Bar } from "@/features/training/Countdown";
 import { DIRS, atOf, dayOf, dirShort, hm, marksFor, windOn } from "@/lib/raceLive";
 
 // Hava: yarış yerinin o günkü saatlik tahmini, hava sayfasındaki grafiğin aynısı (DayDetail); elle yazılan rüzgâr grafikte içi boş nokta.
 // "Rüzgar yaz": yön + şiddet, saat kendiliğinden (değiştirilebilir). Satıra dokununca kayıt silinir (sorar).
-export function WeatherTab({ orgId, race, day, live, onChange }) {
+// Yer: yarışın `spot`u; yoksa ilk açılışta ilçeden bulunup yarışa kaydedilir, bulunamazsa ya da istenirse haritadan seçilir (SpotSheet).
+// Bugün ve geçmiş günlerde en yakın resmî istasyon 10 km'den uzaksa grafiğin altında hangi istasyonun ne kadar uzak olduğu yazar.
+export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
+  const toast = useToast();
   const [wx, setWx] = useState({ day: "", rows: null, err: "" });
   const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState(false);
   useEffect(() => {
     let on = true;
     loadRaceDay(race, day).then(
-      (d) => on && setWx({ day, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null, err: "" }),
+      (d) => {
+        if (!on) return;
+        setWx({ day, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null, err: "" });
+        // İlçeden bulunan yer yarışa yazılır: bir daha aranmaz, başka telefonda da aynı yer
+        const sp = d.found && !race.spot && cleanSpot({ name: d.place, lat: d.lat, lon: d.lon });
+        if (sp) saveRaceSpot(orgId, race.id, sp).then(() => onRace?.((r) => (r && !r.spot ? { ...r, spot: sp } : r)), () => {});
+      },
       (e) => on && setWx({ day, rows: null, err: e?.message || "Hava tahmini alınamadı" }),
     );
     return () => {
       on = false;
     };
-  }, [race, day]);
+  }, [race, day, orgId, onRace]);
+  const ob = useWindObs(wx.day === day ? wx.at : null, day, todayStr());
+  const far = ob?.station && !ob.station.near ? ob.station : null;
+  const saveSpot = async (p) => {
+    const sp = cleanSpot(p);
+    try {
+      await saveRaceSpot(orgId, race.id, sp);
+    } catch {
+      return toast("Kaydedilemedi. İnterneti kontrol et.");
+    }
+    setPick(false); // yer değişince hava yeniden alınır (loadRaceDay saklananın yerine bakar)
+    onRace?.((r) => (r ? { ...r, spot: sp } : r));
+  };
 
   const list = windOn(live.wind, day);
   const rows = wx.day === day ? wx.rows : null;
@@ -42,12 +69,25 @@ export function WeatherTab({ orgId, race, day, live, onChange }) {
         {rows ? (
           <DayDetail date={day} rows={rows} marks={marks} place={wx.place} at={wx.at} />
         ) : wx.day === day && wx.err ? (
-          <p className="py-6 text-center text-[0.875rem] text-mut">{wx.err}</p>
+          <div className="py-5 text-center">
+            <p className="text-[0.875rem] text-mut">{wx.err}</p>
+            <button type="button" onClick={() => setPick(true)} className="mt-3 h-10 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
+              Haritadan yer seç
+            </button>
+          </div>
         ) : (
           <Loading label="Hava yükleniyor" className="py-8" />
         )}
       </section>
-      {wx.place && rows && <p className="mt-1.5 px-1 text-right text-[0.6875rem] text-mut">Open-Meteo</p>}
+      {wx.place && rows && (
+        <div className="mt-1.5 flex items-start gap-3 px-1 text-[0.75rem] text-mut">
+          <p className="min-w-0 flex-1 leading-snug">{far ? `Ölçülen rüzgâr yok: en yakın istasyon ${far.name}, ${Math.round(far.km)} km` : "Open-Meteo"}</p>
+          <button type="button" onClick={() => setPick(true)} className="shrink-0 font-semibold text-acc active:opacity-60">
+            Yeri değiştir
+          </button>
+        </div>
+      )}
+      <SpotSheet open={pick} onClose={() => setPick(false)} spot={cleanSpot(race.spot) || (wx.at && { name: wx.place, ...wx.at })} onSave={saveSpot} />
 
       {list.length > 0 && (
         <>
