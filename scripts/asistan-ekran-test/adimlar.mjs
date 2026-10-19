@@ -469,6 +469,19 @@ async function scenarios4(h) {
     });
     await page.waitForTimeout(400);
     await check(GN, "Yarış multimedya: arkadan dönüş", "başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün", async () => [(await picked()) === today, `${await picked()}`]);
+    await check(GN, "Yarış multimedya: denemeleri sıfırla", "Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
+      const before = await page.locator("button[data-day]").count();
+      const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
+      await step("Liste", () => page.locator("button", { hasText: "Liste ›" }).first().click({ timeout: 5000 }));
+      await step("Denemeleri sıfırla", () => page.getByRole("button", { name: "Denemeleri sıfırla" }).click({ timeout: 5000 }));
+      const dlg = page.getByRole("dialog", { name: "Denemeleri sıfırla" });
+      await dlg.waitFor({ timeout: 4000 });
+      const txt = (await dlg.innerText()).replace(/\s+/g, " ");
+      await step("Sıfırla", () => dlg.getByRole("button", { name: "Sıfırla", exact: true }).click({ timeout: 5000 }));
+      await page.waitForTimeout(1200);
+      const after = await page.locator("button[data-day]").count();
+      return [/Eklenen gün 1/.test(txt) && after === before - 1 && (await picked()) === today, `${before} → ${after} gün · ${txt.slice(0, 80)}`];
+    });
     await page.context().close();
   }
 

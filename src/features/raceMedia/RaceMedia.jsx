@@ -9,8 +9,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, dayNames, dayOf, liveDays, upSec, withToday, zeroRace } from "@/lib/raceLive";
+import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
+import { beginRace, cleanLive, dayNames, dayOf, liveDays, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
@@ -21,6 +21,7 @@ import { ResultsTab } from "./ResultsTab";
 import { MediaTab } from "./MediaTab";
 import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
+import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
@@ -46,6 +47,7 @@ export function RaceMedia({ orgId, id }) {
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
   const [addDay, setAddDay] = useState(false);
+  const [reset, setReset] = useState(false);
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
   // ana ekrandan ya da başka uygulamadan geri dönünce (30 sn.den uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
@@ -196,7 +198,7 @@ export function RaceMedia({ orgId, id }) {
         </button>
       </div>
       {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} onRace={setRace} />}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} />}
+      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onCam={openCam} onReset={() => setReset(true)} />}
       {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       {tab === "media" && (
         <MediaTab
@@ -231,6 +233,26 @@ export function RaceMedia({ orgId, id }) {
         }}
       />
       <TabDock value={tab} onChange={setTab} />
+      <ResetSheet
+        open={reset}
+        onClose={() => setReset(false)}
+        live={live}
+        onReset={async (media) => {
+          const patch = resetPatch(media, Date.now());
+          try {
+            await resetLive(orgId, id, patch, live.media);
+          } catch {
+            return toast("Sıfırlanamadı. İnterneti kontrol et.");
+          }
+          // Bu yarışın start sayacı da durur (diğer cihazlara useLiveSync ile gider)
+          const t = readTimer();
+          if (t.mode === "start" && t.end != null) writeTimer({ ...pickTimer({}), zero: t.zero });
+          setDay("");
+          setLive((l) => cleanLive({ ...l, ...patch }));
+          setReset(false);
+          toast("Denemeler sıfırlandı");
+        }}
+      />
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );
