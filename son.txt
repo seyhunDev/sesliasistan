@@ -1,8 +1,8 @@
-Commit: 4e7a07c · Uygulamanın adı Velora, yeni logo Ses halkası ve açılış animasyonu (#532)
-Zaman: 2026-10-19-1646 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39262334687
+Commit: 1d3b27b · Velora renkleri: mor vurgu, logolu ana sayfa, logo geçişli asistan (#533)
+Zaman: 2026-10-19-1659 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39264302592
 
-TAM TEST · 19.10.2026 16:42:08
+TAM TEST · 19.10.2026 16:55:38
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1319/1320 geçti · 1 kalan · 246 sn
+SONUÇ: 1319/1320 geçti · 1 kalan · 253 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
