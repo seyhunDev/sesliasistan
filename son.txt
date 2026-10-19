@@ -1,8 +1,8 @@
-Commit: a52bbb2 · Ana sayfa Kulüp: yarış tam genişlik, Aidat ve Hesap yan yana ince (#539)
-Zaman: 2026-10-19-1831 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39278105570
+Commit: 7ece7cd · Yarış multimedya: açılışta her zaman bugün, ölçülen rüzgâr en yakın istasyondan (#540)
+Zaman: 2026-10-19-1846 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39280008058
 
-TAM TEST · 19.10.2026 18:27:45
+TAM TEST · 19.10.2026 18:42:46
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1320/1320 geçti · 0 kalan · 223 sn
+SONUÇ: 1322/1322 geçti · 0 kalan · 228 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -126,7 +126,7 @@ SONUÇ: 1320/1320 geçti · 0 kalan · 223 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 73/73
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 75/75
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -141,7 +141,7 @@ SONUÇ: 1320/1320 geçti · 0 kalan · 223 sn
   ✓ Onay isteyen işler: 6/6
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✓ Asistanın gizli olduğu yerler: 4/4
+  ✓ Asistanın gizli olduğu yerler: 6/6
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 2/2
   ✓ Tam ekran üstte: 1/1
