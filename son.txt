@@ -1,8 +1,8 @@
-Commit: 5481763 · Velora logosu: telefonda tarihin solunda, geniş ekranda sol menüde (#535)
-Zaman: 2026-10-19-1722 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39267804663
+Commit: e2f3bb7 · Fitness: bugünkü antrenman ekranı fotoğraflı başlık, bölümlü liste ve altta sabit başla düğmesi (#536)
+Zaman: 2026-10-19-1727 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39268470621
 
-TAM TEST · 19.10.2026 17:19:04
+TAM TEST · 19.10.2026 17:23:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -18,7 +18,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1319/1320 geçti · 1 kalan · 214 sn
+SONUÇ: 1319/1320 geçti · 1 kalan · 253 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
