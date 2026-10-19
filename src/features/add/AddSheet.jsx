@@ -152,7 +152,6 @@ export function AddSheet({ open, onClose, seed }) {
     setAsk(need);
     setReply((r) => ({ ...r, message: said }));
     setTurns((p) => [...p, { role: "user", text: label, chip: true }, { role: "assistant", text: said }]);
-    tts.maybeSpeak(said);
     scrollToReply();
     navigator.vibrate?.(8);
   }
@@ -180,10 +179,6 @@ export function AddSheet({ open, onClose, seed }) {
     setHeard(pf.text);
     setTurns([{ role: "user", text: pf.text }, ...(pf.message ? [{ role: "assistant", text: pf.message }] : [])]);
     setReply({ engine: pf.engine || "", message: pf.message || "" });
-    if (pf.message) {
-      const isQuestion = pf.message.trim().includes("?");
-      if (need || isQuestion) tts.maybeSpeak(pf.message);
-    }
   }
 
   // Ekran kapanınca ses, dinleme ve bekleyen istek durur

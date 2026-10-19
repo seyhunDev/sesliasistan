@@ -87,7 +87,9 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   const said = streamSaid.current;
   streamSaid.current = "";
   const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
-  enqueueSay(rest, read && tts?.enabled ? listenOnce : planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
+  // Yalnız okuma isteğinde ("notlarımı oku", "bugün neler var") sesli okunur; diğer cevaplar yalnız yazılır
+  // (Seyhun: "bütün her şeyi okumayacak, oku dersem okusun", 2026-10-19). Sonraki adım (mikrofon) aynı kalır.
+  enqueueSay(read ? rest : "", read && tts?.enabled ? listenOnce : planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
 }
 
 export function done(ctx, message, extra = {}, viaVoice = false) {

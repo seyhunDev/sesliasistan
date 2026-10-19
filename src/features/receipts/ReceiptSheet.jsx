@@ -10,7 +10,6 @@ import { useData } from "@/features/data/DataProvider";
 import { compressImage, thumbFromDataUrl } from "@/lib/image";
 import { appAllowed, isMobile, mediaSupported, offMessage, savePermission } from "@/lib/permissions";
 import { CAT, CATS, PAYS, TLk, VATS, calcTotals, confAvg, lowConf, noText, parseQty, parseTL, toInput } from "@/lib/receipts";
-import { useTts } from "@/features/speech/TtsProvider";
 import { todayStr } from "@/lib/utils/format";
 import { readReceipt } from "@/services/receiptService";
 import { CameraView } from "./CameraView";
@@ -92,7 +91,6 @@ export function ReceiptSheet({ open, onClose, seed }) {
   const path = usePathname();
   const { profile } = useAuth();
   const { receipts, saveReceipt, updateReceipt, setReceiptScope, deleteRecord, loadReceiptImage, isStaff } = useData();
-  const { maybeSpeak } = useTts();
   const editId = seed?.edit || null;
 
   const [stage, setStage] = useState("pick"); // pick | camera | reading | form | done
@@ -272,7 +270,6 @@ export function ReceiptSheet({ open, onClose, seed }) {
       const late = new Promise((r) => setTimeout(() => r(null), 8000));
       Promise.race([res.no, late]).then((no) => {
         setDone((x) => (x?.id === res.id ? { ...x, no } : x));
-        if (seed?.voice) maybeSpeak(no ? `Fiş kaydedildi. Numarası ${no}. Bu numarayı fişin üstüne yaz.` : "Fiş kaydedildi. Numarası internet gelince verilecek.");
       });
       return;
     }
