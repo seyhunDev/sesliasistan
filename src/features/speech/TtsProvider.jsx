@@ -14,9 +14,10 @@ import { timingSpeak } from "@/lib/assistTiming";
 const KEY = "sa_tts_on";
 const VOICE_KEY = "sa_tts_voice";
 const RATE_KEY = "sa_tts_rate";
+const GVOICE_KEY = "sa_tts_gvoice"; // seçilen Google sesi (lib/speech/googleVoices.js; boş = varsayılan)
 export const RATES = [["0.9", "Yavaş"], ["1", "Normal"], ["1.1", "Hızlı"]];
 export const SAMPLE = "Merhaba, ben asistanın. Yarın saat 10:30'da antrenman var, rüzgar 12 knot.";
-const NOOP = { cloud: false, supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, enable() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
+const NOOP = { gvoice: "", setGVoice() { }, cloud: false, supported: false, enabled: false, speaking: false, hasTr: true, voices: [], voiceUri: "", rate: "1", setVoice() { }, setRate() { }, toggle() { }, enable() { }, speak() { }, speakThen(_, cb) { cb?.(); }, stop() { }, maybeSpeak() { } };
 const Ctx = createContext(NOOP);
 
 const canDevice = () => typeof window !== "undefined" && "speechSynthesis" in window && typeof window.SpeechSynthesisUtterance !== "undefined";
@@ -57,6 +58,8 @@ export function TtsProvider({ children }) {
   const cache = useRef(new Map()); // aynı metin tekrar istenmesin
   const serverOk = useRef(true); // sunucuda ses anahtarı yoksa (501) false olur, bir daha denenmez
   const [cloud, setCloud] = useState(true);
+  const [gvoice, setGVoiceState] = useState("");
+  const gvoiceRef = useRef("");
   const rid = useRef(0);
   const unlocked = useRef(false);
   const on = useRef(false);
@@ -89,6 +92,8 @@ export function TtsProvider({ children }) {
     setRateState(r0);
     rateRef.current = Number(r0) || 1;
     setVoiceUri(read(VOICE_KEY));
+    gvoiceRef.current = read(GVOICE_KEY);
+    setGVoiceState(gvoiceRef.current);
     audio.current = new Audio();
     audio.current.preload = "auto";
 
@@ -200,14 +205,14 @@ export function TtsProvider({ children }) {
 
   // Bir parçanın sesi (önbellekte varsa oradan). İlk parça en çok 4 sn beklenir, sonrakiler çalarken hazırlanır.
   const fetchPart = useCallback((p, ms) => {
-    const key = `${rateRef.current}|${p}`;
+    const key = `${gvoiceRef.current}|${rateRef.current}|${p}`;
     const hit = cache.current.get(key);
     if (hit) return hit;
     const job = (async () => {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), ms);
       try {
-        const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: p, rate: rateRef.current }), signal: ctrl.signal });
+        const res = await authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: p, rate: rateRef.current, voice: gvoiceRef.current }), signal: ctrl.signal });
         if (!res.ok) {
           const e = new Error(`tts ${res.status}`);
           e.status = res.status;
@@ -309,6 +314,12 @@ export function TtsProvider({ children }) {
     if (canDevice()) voice.current = bestVoice(window.speechSynthesis.getVoices(), uri);
   }, []);
 
+  const setGVoice = useCallback((v) => {
+    write(GVOICE_KEY, v);
+    gvoiceRef.current = v || "";
+    setGVoiceState(v || "");
+  }, []);
+
   const setRate = useCallback((r) => {
     write(RATE_KEY, r === "1" ? "" : r);
     setRateState(r);
@@ -330,7 +341,7 @@ export function TtsProvider({ children }) {
     try { localStorage.setItem(KEY, "1"); } catch { }
   }, []);
 
-  return <Ctx.Provider value={{ cloud, supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ gvoice, setGVoice, cloud, supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
 }
 
 export const useTts = () => useContext(Ctx);
