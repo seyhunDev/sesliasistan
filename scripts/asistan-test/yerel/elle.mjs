@@ -2265,6 +2265,7 @@ group("Fitness: program ayrıntıları ve şablon")([
     const c = FMI.cleanItem({ ex: "", name: "X", reps: 10, repsTo: 6 });
     return FMI.itemLine(a) === "3 × 8–12/yan" && FMI.itemLine(b) === "2 × 20–30 sn/yan" && !c.repsTo && a.rest === 75;
   })],
+  ["motivasyon cümlesi", F("aynı gün aynı cümle, listeden biri", () => FMI.cheerOf("2026-10-19") === FMI.cheerOf("2026-10-19") && FMI.CHEERS.includes(FMI.cheerOf("2026-10-20")) && new Set(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"].map(FMI.cheerOf)).size > 1)],
   ["toplu dinlenme", F("programdaki bütün hareketler 20 sn olur, kardiyo değişmez; tek gün seçilebilir; ortak değer en çok kullanılan", () => {
     const p = FMI.cleanProgram({ start: "2026-10-19", weeks: 2, days: [
       { dow: 2, name: "A", items: [{ ex: "", name: "Isınma", min: 5 }, { ex: "", name: "Row", sets: 3, reps: 10, rest: 60 }, { ex: "", name: "Plank", sets: 2, sec: 30 }] },

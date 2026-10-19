@@ -74,14 +74,8 @@ export function TodayCard({ plan, next, week, today, onOpen }) {
       </div>
       <b className="mt-1 block text-[1.625rem] font-bold leading-tight">{plan.fit?.name || plan.title}</b>
       <span className="mt-1 flex gap-3 text-[0.875rem] text-white/75">
-        <span className="flex items-center gap-1">
-          <Icon name="clock" className="size-4" />
-          {plan.durationMin || 45} dk
-        </span>
-        <span className="flex items-center gap-1">
-          <Icon name="dumbbell" className="size-4" />
-          {items.length} hareket
-        </span>
+        <span>{items.length} hareket</span>
+        <span>{items.reduce((t, it) => t + (+it.sets || 1), 0)} set</span>
       </span>
       <ul className="mt-4 space-y-2">
         {items.slice(0, 4).map((it, i) => (
@@ -283,8 +277,7 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
               <span className={`grid h-8 w-11 shrink-0 place-items-center rounded-lg text-[0.75rem] font-bold ${dowOf(today) === d.dow ? "bg-acc text-white" : "bg-bg"}`}>{DOWS[d.dow]}</span>
               <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{d.name}</span>
               <span className="shrink-0 text-[0.8125rem] font-normal tabular-nums text-mut">
-                {d.time ? `${d.time} · ` : ""}
-                {d.min} dk
+                {[d.time, `${(d.items || []).length} hareket`].filter(Boolean).join(" · ")}
               </span>
             </li>
           ))}
