@@ -11,8 +11,8 @@ function setRoot(v) {
 }
 
 // Uygulamanın tek açılış ekranı: sunucu çiziminde de var (ilk karede boş ekran yok), yükleme aşamaları boyunca
-// aynı kalır. Koyu yeşil zemin (uygulamanın kubbe rengi), ortada logo çizilir: ses dalgası onay işaretine döner;
-// yükleme sürerken hafifçe nefes alır, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
+// aynı kalır. Beyaz zemin, ortada VOCA logosu: dalgalar soldan sağa akarak açılır,
+// yükleme sürerken üstünden ışık geçer ve hafifçe süzülür, bitince büyür, ekran solarken sayfa altından belirir; asistan kubbesi o an yükselir.
 export function BootSplash() {
   const [phase, setPhase] = useState("on"); // on | out | off
 
@@ -47,15 +47,12 @@ export function BootSplash() {
   return (
     <div className="boot" data-phase={phase} role="status" aria-label="Yükleniyor" aria-hidden={phase === "out" || undefined}>
       <div className="boot-mark">
-        {/* Logo (public/logo.svg) zeminsiz: tek çizgi önce ses dalgası, sonra onay işareti; çizilerek gelir */}
-        <svg className="boot-logo" viewBox="120 300 790 400" aria-hidden="true">
-          <path
-            className="boot-line"
-            d="M160 560 C173 540 212 430 240 440 C268 450 301 615 330 620 C359 625 383 463 415 470 C447 477 502 628 520 660 L870 340"
-            pathLength="1"
-          />
-        </svg>
-        <p className="boot-name">Sesli Asistan</p>
+        {/* VOCA logosu (public/brand): dalgalar soldan sağa akarak açılır, üstünden ışık geçer; altta yazı belirir */}
+        <div className="boot-logo">
+          <img className="boot-waves" src="/brand/voca-mark.webp" alt="" width={800} height={404} draggable={false} />
+          <span className="boot-sheen" aria-hidden="true" />
+        </div>
+        <img className="boot-word" src="/brand/voca-word.webp" alt="VOCA" width={600} height={98} draggable={false} />
         <p className="boot-sub">Hazırlanıyor</p>
       </div>
     </div>
