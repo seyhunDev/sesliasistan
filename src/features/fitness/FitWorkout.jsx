@@ -7,11 +7,13 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { useKind } from "@/features/auth/useKind";
 import { exById } from "@/lib/fitness/exercises";
-import { MediaShow } from "./ExerciseMedia";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { MediaShow, useBlobUrl } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
-import { FEELS, clockText, cleanRes, estMinutes, groupsOf, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { ytThumb } from "@/lib/fitness/youtube";
+import { FEELS, PARTS, clockText, cleanRes, estMinutes, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -31,6 +33,23 @@ function startSets(fit, plans, date) {
     const t = targetFor(it, plans, date);
     return Array.from({ length: it.sets || 1 }, () => ({ reps: t.reps || "", kg: t.kg || "", sec: t.sec || "", min: t.min || "", ok: false }));
   });
+}
+
+// Hareketin resmi: ilk fotoğrafı, yoksa YouTube kapağı; yoksa boş (kart düz renk kalır)
+function Pic({ it, className = "" }) {
+  const { profile } = useAuth();
+  const ph = (it?.media || []).find((m) => m.kind === "photo" && !m.stock);
+  const { url, err, fail } = useBlobUrl(profile?.orgId, ph);
+  const src = ph && !err ? url : it?.yt?.id ? ytThumb(it.yt.id) : "";
+  if (!src) return null;
+  return <img src={src} alt="" onError={ph ? fail : undefined} className={`object-cover ${className}`} />;
+}
+
+// Hareketler bölüm bölüm (Hazırlık, Ana bölüm, Soğuma); bölüm yazılmamışsa tek liste
+function partsOf(items) {
+  const has = items.some((it) => it.part && it.part !== "ana");
+  if (!has) return [["", items.map((it, i) => i)]];
+  return PARTS.map(([k, l]) => [l, items.map((it, i) => ((it.part || "ana") === k ? i : -1)).filter((i) => i >= 0)]).filter(([, l]) => l.length);
 }
 
 export function FitWorkout({ rec, by, hero = false }) {
@@ -133,57 +152,62 @@ export function FitWorkout({ rec, by, hero = false }) {
   const items = fit.items || [];
   const allDone = total > 0 && done === total;
   const est = rec.durationMin || estMinutes(items);
-  const groups = groupsOf(items);
+  // Sıradaki set: ilk işaretlenmemiş
+  const next = (() => {
+    for (let i = 0; i < sets.length; i++) {
+      const k = sets[i].findIndex((x) => !x.ok);
+      if (k >= 0) return { i, k };
+    }
+    return null;
+  })();
   const name = fit.name || String(rec.title || "").replace(/^Fitness · /, "") || "Antrenman";
 
   return (
     <div className={hero ? "" : "mt-3"}>
-      {/* Üst kart: ne çalışılacak, ne kadar, tahmini süre; büyük "Antrenmana başla" */}
-      <section className="overflow-hidden rounded-[1.625rem] bg-deep p-5 text-white">
-        <div className="flex flex-wrap items-center gap-1.5 text-[0.75rem] font-semibold">
-          <span className="rounded-full bg-white/15 px-2.5 py-1">{when(rec)}</span>
-          {rec.place && <span className="max-w-full truncate rounded-full bg-white/10 px-2.5 py-1">{rec.place}</span>}
-          {st === "missed" && <span className="rounded-full bg-rec px-2.5 py-1">Günü geçti</span>}
+      {/* Üst kart: ilk (ya da sıradaki) hareketin fotoğrafı üstünde saat, antrenmanın adı; altında süre, hareket, set ya da ilerleme */}
+      <section className="relative h-64 overflow-hidden rounded-[1.625rem] bg-deep text-white">
+        <Pic key={next?.i ?? 0} it={items[next?.i ?? 0]} className="absolute inset-0 size-full" />
+        <span className="absolute inset-0 bg-gradient-to-b from-black/0 from-30% to-black/75" />
+        <div className="absolute inset-x-0 bottom-0 p-5">
+          <div className="flex flex-wrap items-center gap-1.5 text-[0.75rem] font-semibold">
+            <span className="rounded-full bg-white/20 px-2.5 py-1 backdrop-blur">{when(rec)}</span>
+            {rec.place && <span className="max-w-full truncate rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">{rec.place}</span>}
+            {st === "missed" && <span className="rounded-full bg-rec px-2.5 py-1">Günü geçti</span>}
+          </div>
+          <h3 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight">{name}</h3>
+          {items.length > 0 && (
+            <p className="mt-0.5 truncate text-[0.875rem] text-white/85">
+              {allDone ? "Bütün setler yapıldı" : done && next ? `Sıradaki: ${items[next.i]?.name} · ${next.k + 1}. set` : `İlk hareket: ${items[0].name}`}
+            </p>
+          )}
         </div>
-        <h3 className="mt-3 text-[1.5rem] font-bold leading-tight">{name}</h3>
-        {groups.length > 0 && <p className="mt-1 text-[0.875rem] text-white/75">{groups.join(" · ")}</p>}
-        <div className="mt-4 grid grid-cols-3 divide-x divide-white/15 rounded-2xl bg-white/10 py-3 text-center">
+      </section>
+      {done > 0 ? (
+        <section className={`${box} mt-2.5 px-4 py-3`}>
+          <div className="flex justify-between text-[0.8125rem] font-semibold">
+            <span>{allDone ? "Bütün setler yapıldı" : "Devam ediyor"}</span>
+            <span className="tabular-nums text-mut">
+              {done} / {total} set
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-accbg">
+            <div className="h-full rounded-full bg-acc transition-all" style={{ width: `${(done / total) * 100}%` }} />
+          </div>
+        </section>
+      ) : (
+        <section className={`${box} mt-2.5 grid grid-cols-3 divide-x divide-line py-3 text-center`}>
           {[
             [est ? `≈ ${est}` : "–", "dakika"],
             [items.length, "hareket"],
             [total, "set"],
           ].map(([v, l]) => (
             <div key={l}>
-              <b className="block text-[1.25rem] font-bold tabular-nums">{v}</b>
-              <small className="text-[0.75rem] text-white/70">{l}</small>
+              <b className="block text-[1.25rem] font-semibold tabular-nums">{v}</b>
+              <small className="text-[0.75rem] text-mut">{l}</small>
             </div>
           ))}
-        </div>
-        {done > 0 && (
-          <div className="mt-4">
-            <div className="flex justify-between text-[0.75rem] font-semibold text-white/80">
-              <span>{allDone ? "Bütün setler yapıldı" : "Devam ediyor"}</span>
-              <span className="tabular-nums">
-                {done}/{total} set
-              </span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/20">
-              <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(done / total) * 100}%` }} />
-            </div>
-          </div>
-        )}
-        {total > 0 && !allDone && (
-          <button type="button" onClick={() => setGuide(true)} className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-[1.0625rem] font-bold text-deep shadow-sm active:scale-[.98]">
-            <Icon name="dumbbell" className="size-5" />
-            {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
-          </button>
-        )}
-        {done > 0 && !allDone && (
-          <button type="button" onClick={restart} className="mt-2 h-11 w-full rounded-2xl bg-white/12 text-[0.9375rem] font-semibold text-white active:scale-[.98]">
-            Baştan başlat
-          </button>
-        )}
-      </section>
+        </section>
+      )}
       {guide && (
         <FitGuided
           items={items}
@@ -234,10 +258,13 @@ export function FitWorkout({ rec, by, hero = false }) {
       )}
 
       {/* Hareketler: ne, ne kadar; dokununca nasıl yapılır, fotoğraf/video ve setler */}
-      {items.length > 0 && <p className="mt-5 px-1 text-[0.75rem] font-bold tracking-[.08em] text-mut">BU ANTRENMANDA</p>}
-      {items.length > 0 && (
-        <ul className={`${box} mt-2 divide-y divide-line`}>
-          {items.map((it, i) => {
+      {items.length > 0 &&
+        partsOf(items).map(([label, idx]) => (
+          <div key={label || "all"}>
+            <p className="mt-5 px-1 text-[0.9375rem] font-semibold text-mut">{label || "Bu antrenmanda"}</p>
+            <ul className={`${box} mt-2 divide-y divide-line`}>
+              {idx.map((i) => {
+            const it = items[i];
             const ex = exById(it.ex);
             const t = targetFor(it, plans, rec.date);
             const s = sets[i] || [];
@@ -247,9 +274,14 @@ export function FitWorkout({ rec, by, hero = false }) {
             const on = open === i;
             return (
               <li key={i}>
-                <button type="button" onClick={() => setOpen(on ? -1 : i)} aria-expanded={on} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <span className={`grid size-8 shrink-0 place-items-center rounded-full text-[0.8125rem] font-bold ${all ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
-                    {all ? <Icon name="check" className="size-4 [stroke-width:2.5]" /> : i + 1}
+                <button type="button" onClick={() => setOpen(on ? -1 : i)} aria-expanded={on} className="flex w-full items-center gap-3 px-3 py-2.5 text-left">
+                  <span className="relative size-13 shrink-0">
+                    <span className="grid size-13 place-items-center overflow-hidden rounded-[0.875rem] bg-accbg text-[0.875rem] font-semibold text-acc">
+                      <Pic it={it} className="size-full" />
+                    </span>
+                    <span className={`absolute -left-1 -top-1 grid size-5 place-items-center rounded-full text-[0.6875rem] font-semibold ring-1 ${all ? "bg-acc text-white ring-acc" : "bg-card text-fg ring-line"}`}>
+                      {all ? <Icon name="check" className="size-3 [stroke-width:3]" /> : i + 1}
+                    </span>
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className={`block truncate text-[0.9375rem] font-semibold ${all ? "text-mut" : ""}`}>{it.name}</b>
@@ -258,7 +290,11 @@ export function FitWorkout({ rec, by, hero = false }) {
                       {t.up && <span className="ml-1 font-semibold text-acc">↑</span>}
                     </small>
                   </span>
-                  <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${on ? "rotate-90" : ""}`} />
+                  {done > 0 && (
+                    <span className="shrink-0 text-[0.8125rem] tabular-nums text-mut">
+                      {s.filter((x) => x.ok).length}/{s.length}
+                    </span>
+                  )}
                 </button>
                 {on && (
                   <div className="px-4 pb-4">
@@ -326,9 +362,10 @@ export function FitWorkout({ rec, by, hero = false }) {
                 )}
               </li>
             );
-          })}
-        </ul>
-      )}
+              })}
+            </ul>
+          </div>
+        ))}
 
       {rest && (
         <div className="sticky bottom-[calc(var(--rec-h,6rem)+0.5rem)] z-10 mt-3 flex items-center gap-3 rounded-2xl bg-deep px-4 py-3 text-white shadow-lg">
@@ -352,6 +389,20 @@ export function FitWorkout({ rec, by, hero = false }) {
         <button type="button" onClick={() => finish("skip")} className="mt-4 h-10 w-full text-center text-[0.8125rem] font-semibold text-mut">
           Bugün yapamayacağım
         </button>
+      )}
+
+      {/* Başla / devam et: ekranın altında sabit */}
+      {total > 0 && !allDone && !rest && (
+        <div className="sticky bottom-0 z-10 -mx-5 mt-3 bg-gradient-to-b from-bg/0 to-bg to-30% px-5 pb-1 pt-4">
+          <button type="button" onClick={() => setGuide(true)} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white shadow-[0_8px_20px_-10px_var(--acc)] active:scale-[.98]">
+            {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
+          </button>
+          {done > 0 && (
+            <button type="button" onClick={restart} className="h-10 w-full text-[0.875rem] font-semibold text-acc">
+              Baştan başlat
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

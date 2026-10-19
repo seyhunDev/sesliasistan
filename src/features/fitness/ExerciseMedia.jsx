@@ -8,7 +8,7 @@ import { MEDIA_MAX, dropMedia, loadMedia, prepMedia, saveMedia } from "./fitMedi
 // Hareketin fotoğraf ve videoları: küçük kareler (fotoğraf ya da ▶), dokununca tam ekran (düzenleme ve kütüphane; antrenmanda MediaShow büyük gösterir).
 // edit: ana hesap programı düzenlerken "Fotoğraf" ve "Video" düğmeleri (galeri ya da kamera; telefon sorar), × ile çıkarılır.
 // Dosya seçilir seçilmez yüklenir; künye onChange ile harekete yazılır, program kaydedilince plana gider.
-function useBlobUrl(orgId, m) {
+export function useBlobUrl(orgId, m) {
   const [url, setUrl] = useState("");
   const [err, setErr] = useState(false);
   useEffect(() => {
