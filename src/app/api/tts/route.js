@@ -1,6 +1,7 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
+import { googleVoiceName } from "@/lib/speech/googleVoices";
 
 export const runtime = "nodejs";
 
@@ -56,11 +57,12 @@ async function generate(model, text) {
 // Google Cloud seslendirme (Seyhun, 2026-10-14: "ücretsiz daha iyi bir seslendirme"): ayda ~1 milyon harf ücretsiz.
 // Anahtar Netlify'da GOOGLE_TTS_KEY (Google Cloud › Text-to-Speech API açık). Ses GOOGLE_TTS_VOICE ile değişir;
 // ilk ses kabul edilmezse sıradaki denenir.
-const GVOICES = () => [...new Set([process.env.GOOGLE_TTS_VOICE, "tr-TR-Chirp3-HD-Aoede", "tr-TR-Wavenet-E", "tr-TR-Standard-E"].filter(Boolean))];
+// pick: kullanıcının Ayarlar'da seçtiği ses (lib/speech/googleVoices.js listesinden), önce o denenir
+const GVOICES = (pick = "") => [...new Set([pick, process.env.GOOGLE_TTS_VOICE, "tr-TR-Chirp3-HD-Aoede", "tr-TR-Wavenet-E", "tr-TR-Standard-E"].filter(Boolean))];
 
-async function google(text, rate) {
+async function google(text, rate, pick = "") {
   let last = "";
-  for (const name of GVOICES()) {
+  for (const name of GVOICES(pick)) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
@@ -117,7 +119,7 @@ export async function POST(request) {
   let last = "";
   if (hasGoogle) {
     try {
-      const mp3 = await google(text, rate);
+      const mp3 = await google(text, rate, googleVoiceName(String(body?.voice || "")));
       countAi(au, "tts-chr", text.length);
       return new Response(new Uint8Array(mp3), { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
     } catch (e) {

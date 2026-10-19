@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { MicTest } from "@/features/permissions/PermissionsCard";
 import { RATES, SAMPLE, useTts } from "@/features/speech/TtsProvider";
 import { voiceHelp, voiceLabel, voiceQuality } from "@/lib/speech/speakText";
+import { GOOGLE_VOICES } from "@/lib/speech/googleVoices";
 import { usePermissions } from "@/hooks/usePermissions";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -99,6 +100,29 @@ export function VoiceRow() {
                 ))}
               </select>
             </label>
+          )}
+          {/* Google sesi: dokununca seçilir ve örnek cümle o sesle okunur (Seyhun, 2026-10-19) */}
+          {tts.cloud && !tts.voiceUri && (
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Google sesi">
+              {GOOGLE_VOICES.map(([id, label], i) => {
+                const on = (tts.gvoice || GOOGLE_VOICES[0][0]) === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => {
+                      tts.setGVoice(i === 0 ? "" : id);
+                      tts.speak(SAMPLE);
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
             {RATES.map(([v, label]) => (

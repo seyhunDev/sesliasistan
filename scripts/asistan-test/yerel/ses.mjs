@@ -247,4 +247,12 @@ group("Ad düzeltmeleri (öğrenilen)")([
     ["ana ekran, açıkça açık", { desc: "açık", fn: env(true, "on"), ok: (r) => r === true }],
     ["kendiliğinden kapandı", { desc: "kapalı", fn: env(false, "off"), ok: (r) => r === false }],
   ]);
+
+  // Google sesi seçimi: yalnız listedeki sesler sunucuya ad olarak geçer (lib/speech/googleVoices.js)
+  const { GOOGLE_VOICES, googleVoiceName } = await import("@/lib/speech/googleVoices");
+  const GV = (want) => ({ desc: want || "kabul edilmez", fn: (s) => googleVoiceName(s), ok: (r) => r === want });
+  group("Google sesi seçimi")([
+    ["Kore", GV("tr-TR-Chirp3-HD-Kore")], ["Charon", GV("tr-TR-Chirp3-HD-Charon")], ["", GV("")], ["en-US-Studio-O", GV("")], ["Kore/../x", GV("")],
+    ["liste", { desc: "6 ses, ilki Aoede (varsayılan)", fn: () => GOOGLE_VOICES, ok: (r) => r.length === 6 && r[0][0] === "Aoede" }],
+  ]);
 }
