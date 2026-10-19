@@ -206,6 +206,25 @@ export function doneFor(r, title, date = "") {
   const same = date ? allSteps(r).filter((s) => s.date === date && !gone(r, s)) : [];
   return same.length > 0 && same.every((s) => isDone(r, s));
 }
+// Yarışın son tarihinden açılan plan ("Foça Kupası: Online kayıt son gün", raceNotice addNoticePlans) ya da yarışın kendi planı (adı aynı):
+// hangi yarış ve hangi iş. list: loadRaces. Dönüş { race, step (bitmemiş iş ya da null), whole (yarışın kendi planı) } ya da null
+export function planRaceStep(plan, list = []) {
+  const t = String(plan?.title || "").trim();
+  if (!t) return null;
+  const race = [...list].sort((a, b) => String(b.name || "").length - String(a.name || "").length).find((r) => {
+    const n = String(r.name || "").trim();
+    return n && (t === n || t.startsWith(`${n}:`));
+  });
+  if (!race) return null;
+  const n = String(race.name).trim();
+  if (t === n) return { race, step: null, whole: true };
+  const rest = t.slice(n.length + 1).trim();
+  const open = stepsOf(race);
+  const step = open.find((s) => s.key === slug(rest) || s.key === slug(rest, "m:")) || matchStep(race, rest, open);
+  return { race, step: step || null, whole: false };
+}
+// İşi yapıldı işaretler (yarışın "Yapılanlar"ına yazılır); dönüş yeni yarış kaydı
+export const withStepDone = (r, key) => ({ ...r, done: cleanDone([...cleanDone(r.done).filter((k) => k !== key), key]) });
 // Sesle: "vize başvurusu yapıldı" → listedeki en uygun iş (kelime köklerinin örtüşmesi; eşitlikte ya da hiç yoksa null)
 export function matchStep(r, words, list = stepsOf(r)) {
   const roots = (s) => String(s || "").toLocaleLowerCase("tr-TR").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3).map((w) => w.slice(0, 4));

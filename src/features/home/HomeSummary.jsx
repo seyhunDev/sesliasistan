@@ -194,8 +194,9 @@ function RaceWidget({ r, cls }) {
         )}
       </Link>
       {r.id && (
-        <Link href={`/athletes/races/${r.id}/media`} className="mt-2.5 grid h-9 place-items-center rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:translate-y-px">
+        <Link href={`/athletes/races/${r.id}/media`} data-press className="acc-btn mt-3 flex h-11 items-center justify-center gap-1.5 rounded-2xl text-[0.9375rem] font-semibold">
           Multimedyayı aç
+          <Icon name="chev" className="size-4" />
         </Link>
       )}
     </div>
