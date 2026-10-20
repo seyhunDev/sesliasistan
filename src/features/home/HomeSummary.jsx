@@ -144,7 +144,7 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
           {lead}
           {squares.map((t) => (t.skel ? <SkelWidget key={t.key} cls={span(t)} /> : <Fragment key={t.key}>{t.el(span(t))}</Fragment>))}
           {fis && (fis.skel ? <SkelWidget cls="col-span-2 min-h-0" /> : fis.el())}
-          <NotesWidget notes={notes} />
+          {notes && <NotesWidget notes={notes} />}
           {tail}
           {post && <PostsWidget post={post} />}
         </div>
