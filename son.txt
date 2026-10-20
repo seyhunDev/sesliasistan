@@ -1,8 +1,8 @@
-Commit: 28fac11 · Asistan: dinlerken yeşil ses noktası, cevap altında geliştirici bilgisi, Örnekleri dene (#565)
-Zaman: 2026-10-20-1843 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39450219798
+Commit: 0b01ecd · Ses çevirisi: telefonun tanıması boş sonuçta kapanmaz; sunucuda yedek süre ve bekleme kaydı düzeltmesi (#567)
+Zaman: 2026-10-20-1904 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39453370365
 
-TAM TEST · 20.10.2026 18:38:32
+TAM TEST · 20.10.2026 18:59:39
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1338 geçti · 1 kalan · 310 sn
+SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,7 +128,7 @@ SONUÇ: 1337/1338 geçti · 1 kalan · 310 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 76/77
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 80/81
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -142,8 +142,8 @@ SONUÇ: 1337/1338 geçti · 1 kalan · 310 sn
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Önceki sohbetler: 2/2
   ✓ Sesli yanıt: 4/4
-  ✓ Onaysız kayıt ve “Kaydedildi”: 4/4
-  ✓ Onay isteyen işler: 6/6
+  ✓ Onaysız kayıt ve “Kaydedildi”: 6/6
+  ✓ Onay isteyen işler: 8/8
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
