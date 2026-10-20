@@ -58,10 +58,10 @@ function Body({ idx, save, athletes, classes, onClose }) {
         Sesli yoklamada adlar bu listeye göre eşleşir. Yapay zeka her sporcu için söylenişleri ve ses tanımanın olası yanlış yazımlarını çıkarır; karışabilecek adları ayırır. İstediğini elle düzelt (virgülle).
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button onClick={() => regen(false)} disabled={!!busy || !lack} className="h-10 rounded-xl bg-acc text-[0.875rem] font-semibold text-white disabled:opacity-40">
+        <button onClick={() => regen(false)} disabled={!!busy || !lack} data-press className="btn btn-primary btn-sm">
           {busy === "gen" ? "Hazırlanıyor…" : lack ? `Eksikleri hazırla (${lack})` : "Hepsi hazır"}
         </button>
-        <button onClick={() => regen(true)} disabled={!!busy} className="h-10 rounded-xl bg-bg text-[0.875rem] font-semibold disabled:opacity-40">
+        <button onClick={() => regen(true)} disabled={!!busy} data-press className="btn btn-secondary btn-sm">
           Baştan oluştur
         </button>
       </div>
@@ -92,8 +92,8 @@ function Body({ idx, save, athletes, classes, onClose }) {
       </ul>
 
       <div className="sticky bottom-0 -mx-5 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
-        <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Kapat</button>
-        <button onClick={store} disabled={!!busy} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+        <button onClick={onClose} data-press className="btn btn-secondary">Kapat</button>
+        <button onClick={store} disabled={!!busy} data-press className="btn btn-primary">
           {busy === "save" ? "Kaydediliyor…" : "Kaydet"}
         </button>
       </div>

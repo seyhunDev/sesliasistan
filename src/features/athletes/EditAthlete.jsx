@@ -130,8 +130,8 @@ function Form({ a, names, onClose, onSaved }) {
       </fieldset>
 
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
-        <button onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">Vazgeç</button>
-        <button onClick={save} disabled={busy} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
+        <button onClick={onClose} data-press className="btn btn-secondary">Vazgeç</button>
+        <button onClick={save} disabled={busy} data-press className="btn btn-primary">
           {busy ? "Kaydediliyor…" : Object.keys(patch).length ? "Kaydet" : "Kapat"}
         </button>
       </div>

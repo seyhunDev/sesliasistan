@@ -76,7 +76,7 @@ export function SendLogin({ person, onClose }) {
             >
               <Icon name="whatsapp" className="size-5" /> WhatsApp’ta gönder
             </a>
-            <button type="button" onClick={() => navigator.clipboard?.writeText(text).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))} className="h-11 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line">
+            <button type="button" onClick={() => navigator.clipboard?.writeText(text).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))} data-press className="btn btn-secondary w-full text-acc">
               Metni kopyala
             </button>
           </>

@@ -67,7 +67,7 @@ export function DikiliLogin({ onDone, denied }) {
       <section className="mt-4 rounded-2xl bg-card px-4 py-4 text-[0.875rem] shadow-[0_1px_3px_rgba(38,40,44,.05)]">
         <b className="block font-semibold text-rec">Bu hesabın sporcuları görme izni yok.</b>
         <p className="mt-1 text-mut">{user.email} ile bağlısın. Kulüp uygulamasında yönetici olan hesapla bağlan.</p>
-        <button onClick={() => disconnect()} className="mt-3 h-10 w-full rounded-xl bg-bg font-semibold active:scale-[.98]">
+        <button onClick={() => disconnect()} data-press className="btn btn-secondary btn-sm mt-3 w-full">
           Başka hesapla bağlan
         </button>
       </section>
@@ -97,10 +97,10 @@ export function DikiliLogin({ onDone, denied }) {
         className="mt-2 h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none"
       />
       {msg && <p className={`mt-2 text-[0.8125rem] ${msg.includes("gönderildi") ? "text-ok" : "text-rec"}`}>{msg}</p>}
-      <button type="submit" disabled={busy || !email || !pass} className="mt-3 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50 active:scale-[.98]">
+      <button type="submit" disabled={busy || !email || !pass} data-press className="btn btn-primary mt-3 w-full">
         {busy ? "Bağlanıyor…" : "Bağlan"}
       </button>
-      <button type="button" onClick={reset} className="mt-2 w-full py-1 text-[0.8125rem] text-mut">
+      <button type="button" onClick={reset} data-press className="btn btn-text btn-sm mt-2 w-full text-mut">
         Şifremi unuttum
       </button>
     </form>

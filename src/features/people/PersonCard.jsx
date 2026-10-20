@@ -61,33 +61,33 @@ export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
               <button type="button" onClick={onSave} className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-[0.8125rem] font-semibold text-white active:scale-[.98] ${dups.length ? "bg-amber-700" : "bg-acc"}`}>
                 <Icon name="check" className="size-4" /> {dups.length ? "Yine de kaydet" : "Kaydet"}
               </button>
-              <button type="button" onClick={onEdit} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-[.98]">
+              <button type="button" onClick={onEdit} data-press className="btn btn-secondary btn-sm text-acc">
                 Düzenle
               </button>
-              <button type="button" onClick={onCancel} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-mut active:bg-bg">
+              <button type="button" onClick={onCancel} data-press className="btn btn-text btn-sm text-mut">
                 Vazgeç
               </button>
             </>
           )}
           {step === "saved" && (
             <>
-              <button type="button" onClick={onAccount} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={onAccount} data-press className="btn btn-primary btn-sm flex-1">
                 Hesap aç
               </button>
-              <button type="button" onClick={onEdit} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-[.98]">
+              <button type="button" onClick={onEdit} data-press className="btn btn-secondary btn-sm text-acc">
                 Kişiyi aç
               </button>
-              <button type="button" onClick={onUndo} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-rec active:bg-bg">
+              <button type="button" onClick={onUndo} data-press className="btn btn-danger btn-sm">
                 Geri al
               </button>
             </>
           )}
           {step === "account" && (
             <>
-              <button type="button" onClick={onAccount} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={onAccount} data-press className="btn btn-primary btn-sm flex-1">
                 <Icon name="check" className="size-4" /> Hesabı aç
               </button>
-              <button type="button" onClick={onCancel} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-mut active:bg-bg">
+              <button type="button" onClick={onCancel} data-press className="btn btn-text btn-sm text-mut">
                 Vazgeç
               </button>
             </>
@@ -102,17 +102,17 @@ export function PersonCard({ p, onSave, onEdit, onCancel, onAccount, onUndo }) {
               >
                 <Icon name="whatsapp" className="size-4" /> WhatsApp ile gönder
               </a>
-              <button type="button" onClick={onEdit} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-[.98]">
+              <button type="button" onClick={onEdit} data-press className="btn btn-secondary btn-sm text-acc">
                 Kişiyi aç
               </button>
             </>
           )}
           {step === "undo" && (
             <>
-              <button type="button" onClick={onUndo} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-rec text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={onUndo} data-press className="btn btn-danger btn-sm flex-1">
                 <Icon name="trash" className="size-4" /> Sil
               </button>
-              <button type="button" onClick={onCancel} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-[.98]">
+              <button type="button" onClick={onCancel} data-press className="btn btn-secondary btn-sm text-acc">
                 Vazgeç
               </button>
             </>
