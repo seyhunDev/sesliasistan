@@ -1,8 +1,8 @@
-Commit: 9e2820e · Asistan: söz yapay zekası (sonuç cümlesi ayrı çağrıyla doğal) ve bilgi akışında söz adımı (#586)
-Zaman: 2026-10-20-2045 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39467723803
+Commit: 320cbc5 · Fitness: Hareketler tam ekran, arama üstte sabit (#589)
+Zaman: 2026-10-20-2103 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39470479383
 
-TAM TEST · 20.10.2026 20:38:28
+TAM TEST · 20.10.2026 20:57:40
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1326/1347 geçti · 21 kalan · 433 sn
+SONUÇ: 1325/1347 geçti · 22 kalan · 357 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,8 +191,11 @@ SONUÇ: 1326/1347 geçti · 21 kalan · 433 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 87/87
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 86/87
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
