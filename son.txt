@@ -1,8 +1,8 @@
-Commit: 85c35d2 · Fitness: Hareketlerim listesinde fotoğraf önizlemesi (telefonda saklanır), hareket adı değiştirme ve silme (#562)
-Zaman: 2026-10-20-1746 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39441454281
+Commit: 29cc93e · Ana sayfa: Notlar ve Sporcular (fitness ile tek kart) takvimin üstünde, satırlar tek biçim (#563)
+Zaman: 2026-10-20-1818 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39446307772
 
-TAM TEST · 20.10.2026 17:41:25
+TAM TEST · 20.10.2026 18:13:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1338 geçti · 1 kalan · 298 sn
+SONUÇ: 1337/1338 geçti · 1 kalan · 309 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
