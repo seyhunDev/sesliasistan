@@ -19,6 +19,8 @@ export const STEP_LABELS = {
   first: "Yapay zeka ilk parça",
   aiDone: "Yapay zeka cevabı",
   saved: "Kaydetme",
+  soz: "İşin yapılması",
+  sozDone: "Söz yapay zekası (doğal cümle)",
   reply: "Sonucun hazırlanması",
   preSay: "Ön cevap okunmaya başladı",
   speak: "Cevap okunmaya başladı",
@@ -113,6 +115,9 @@ export function timingStart(text, viaVoice) {
   speech = null;
 }
 
+// İşlenen komutun sözü (söz yapay zekasına isteğin kendisi olarak gider)
+export const timingSaid = () => cur?.text || "";
+
 export function timingMark(name) {
   if (cur && cur.marks[name] == null) cur.marks[name] = clock();
   if (name === "ai") aiCountUp();
@@ -164,17 +169,24 @@ export function devLine(r) {
   const i = r?.info || {};
   const out = [];
   if (m.text != null && m.upload != null) out.push(`Yazıya çevirme ${msText(m.text - m.upload)}`);
-  const local = (m.ai ?? m.reply) - m.run;
+  const local = (m.ai ?? m.soz ?? m.reply) - m.run;
   if (m.run != null && local >= 0) out.push(`Yerel ${msText(local)}`);
   if (m.ai != null) {
-    const end = m.aiDone ?? m.reply;
+    const end = m.aiDone ?? m.soz ?? m.reply;
     const first = m.first != null ? ` (ilk parça ${msText(m.first - m.ai)})` : "";
     out.push(i.err ? `Yapay zeka ${ERR_NAMES[i.err] || i.err}, ${msText(end - m.ai)} sonra` : `Yapay zeka ${msText(end - m.ai)}${first}`);
     if (i.model) out.push(i.model);
     out.push(`bugün ${aiCount()} istek`);
   } else out.push("yapay zekaya gitmedi");
+  // Söz yapay zekası (ayrı işlem): sonucun doğal cümlesi; olmadıysa nedeni ve yerel cümle kullanıldığı
+  if (m.soz != null) out.push(sozText(m.sozDone ?? m.reply, m.soz, i));
   return out.join(" · ");
 }
+
+const sozText = (end, start, i) => {
+  const ms = msText(Math.max(0, end - start));
+  return i.sozErr ? `Söz ${ERR_NAMES[i.sozErr] || i.sozErr}, ${ms} sonra, yerel cümle` : `Söz ${ms}${i.sozModel ? ` (${i.sozModel})` : ""}`;
+};
 
 // Cevap verildi: okuma başlayınca (ya da başlamazsa kısa süre sonra) kayıt kapanır.
 // Kim cevapladı: yapay zeka cevap verdiyse "ai" (sonucu uygulama söylese de), yoksa verilen (yerel, yedek kurallar…)
@@ -236,7 +248,8 @@ export function timingText(list = timingList()) {
       const { steps, total } = timingSteps(r);
       const head = `${new Date(r.at).toLocaleString("tr-TR")} · ${r.voice ? "sesli" : "yazılı"}${r.engine ? ` · ${engineName(r.engine)}` : ""} · toplam ${secText(total)} · “${r.text}”`;
       const lv = liveText(liveOf(r));
-      return [head, ...steps.map((s) => `  ${s.label}: ${msText(s.ms)}`), ...(lv ? [`  ${lv[0].toLocaleUpperCase("tr-TR")}${lv.slice(1)}`] : [])].join("\n");
+      const sz = r.info?.sozErr ? [`  Söz yapay zekası olmadı (${ERR_NAMES[r.info.sozErr] || r.info.sozErr}), yerel cümle kullanıldı`] : [];
+      return [head, ...steps.map((s) => `  ${s.label}: ${msText(s.ms)}`), ...sz, ...(lv ? [`  ${lv[0].toLocaleUpperCase("tr-TR")}${lv.slice(1)}`] : [])].join("\n");
     })
     .join("\n\n");
 }

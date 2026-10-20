@@ -231,7 +231,7 @@ async function scenarios2(h) {
 }
 
 async function scenarios3(h) {
-  const { check, newPage, orb, state, full, ringText, convo, last, waitFor, btn, talkAsk, typeAsk, closeAll, aiCalls, calls, setAI, setTasks, TOMORROW, log } = h;
+  const { check, newPage, orb, state, full, ringText, convo, last, waitFor, btn, talkAsk, typeAsk, closeAll, aiCalls, calls, setAI, setTasks, setSoz, TOMORROW, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
   log("    Asistan: kayıt, onaylar, görev listesi…");
   const { page, errs } = await newPage();
@@ -324,6 +324,23 @@ async function scenarios3(h) {
       const ok = await waitFor(async () => /son tarihi yarın/.test(await convo(page)), 7000);
       return [!!ok && aiCalls() === b2, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b2}`];
     });
+    await closeAll(page);
+    // Söz yapay zekası (ayrı işlem): yerel sonuç gönderilir, dönen doğal cümle gösterilir; teklif cevabı yine yerelde işlenir
+    setSoz((b) => (/Kayık boyama.*saatsiz/.test(b.result || "") ? "Kayık boyama planını yarına saatsiz koydum; saatini söylersen hemen eklerim." : null));
+    setAI((t) => (/boyama/i.test(t) ? { intent: "create", message: "", items: [{ type: "plan", title: "Kayık boyama", date: TOMORROW, time: "" }] } : { intent: "chat", message: "Tamam." }));
+    await talkAsk(page, "yarın kayık boyama planı ekle");
+    await check(GC, "doğal cümle (söz)", "sonuç söz yapay zekasına gider, dönen cümle gösterilir", async () => {
+      const ok = await waitFor(async () => /saatini söylersen hemen eklerim/.test(await convo(page)), 9000);
+      const c = calls.filter((x) => x.path === "/api/soz").pop();
+      return [!!ok && /saatsiz/.test(c?.body?.result || "") && /kayık/i.test(c?.body?.said || ""), `${clean(await convo(page)).slice(-100)} · söz: ${(c?.body?.result || "-").slice(0, 60)}`];
+    });
+    await page.waitForTimeout(2500);
+    await talkAsk(page, "akşam 7'de");
+    await check(GC, "söz sonrası teklif cevabı", "plan 19:00 olur", async () => {
+      const ok = await waitFor(async () => /19:00/.test(await convo(page)), 7000);
+      return [!!ok, clean(await convo(page)).slice(-80)];
+    });
+    setSoz(() => null);
     await closeAll(page);
   }
 

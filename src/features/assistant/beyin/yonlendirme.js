@@ -92,7 +92,7 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
     setHeard(s);
     setText("");
     const said = briefText(brief.asks, { plans: ctx.plans, tasks: ctx.tasks, notes: ctx.notes, uid: ctx.dataUid || ctx.myUid, today: todayStr() });
-    reply(said, { engine: "local" }, viaVoice);
+    reply(said, { engine: "local", soz: "" }, viaVoice); // özet bilgi olduğu gibi kalır (söz yapay zekasına gitmez)
     if (brief.rest) {
       const id = ctx.runId.current;
       await new Promise((ok) => setTimeout(ok, 300));

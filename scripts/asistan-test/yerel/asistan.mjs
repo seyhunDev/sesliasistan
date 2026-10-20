@@ -942,6 +942,8 @@ group("Geliştirici bilgisi")([
   ["sesli, yapay zeka akışla", DV([...voiceAdd.slice(0, 8), ["first", 5700], ["aiDone", 7300], ["info", 7300, { model: "gemini-test" }], ["reply", 7610, "local"]], "Yazıya çevirme 1,0 sn · Yerel 10 ms · Yapay zeka 2,5 sn (ilk parça 880 ms) · gemini-test · bugün 1 istek")],
   ["yerel komut", DV([["startText", 0, "planları aç"], ["reply", 12, "local"]], "Yerel 12 ms · yapay zekaya gitmedi")],
   ["yapay zeka zaman aşımı", DV([["startText", 0, "x"], ["ai", 5], ["info", 9000, { err: "timeout" }], ["reply", 9005, "rules"]], "Yerel 5 ms · Yapay zeka zaman aşımı, 9,0 sn sonra · bugün 1 istek")],
+  ["yerel komut, söz yapay zekası", DV([["startText", 0, "yarın tekne yıkama planı ekle"], ["soz", 40], ["sozDone", 1240], ["info", 1240, { sozModel: "gemini-hızlı" }], ["reply", 1250, "local"]], "Yerel 40 ms · yapay zekaya gitmedi · Söz 1,2 sn (gemini-hızlı)")],
+  ["söz olmadı", DV([["startText", 0, "x"], ["ai", 5], ["aiDone", 3005], ["soz", 3010], ["sozDone", 8010], ["info", 8010, { sozErr: "timeout" }], ["reply", 8020, "local"]], "Yerel 5 ms · Yapay zeka 3,0 sn · bugün 1 istek · Söz zaman aşımı, 5,0 sn sonra, yerel cümle")],
   ["istekler günde sayılır", { desc: "aynı gün 3 istek", fn: () => { devOf([["startText", 0, "a"], ["ai", 1], ["reply", 2]]); let t = 10; for (const x of ["b", "c"]) { TM.timingStart(x, false); TM.timingMark("ai"); TM.timingReply(); t += 1; } return TM.aiCount(); }, ok: (r) => r === 3 }],
 ]);
 TM.timingTest({});
@@ -1270,7 +1272,7 @@ group("Temiz başlık ve sorusuz ekleme")([
   const { startLine, spokenReply } = await import("@/lib/sayLines");
   const SL = (want, fn) => ({ desc: want, fn, ok: (r) => r === want });
   group("Sesli yanıt: hazır cümleler")([
-    ["ön cevap var", SL("Tamam, planı hazırlıyorum.", () => startLine({ line: "Tamam, planı hazırlıyorum." }))],
+    ["ön cevap cümlesi söylenmez", SL("Hemen ilgileniyorum.", () => startLine({ line: "Tamam, planı hazırlıyorum." }))],
     ["ön cevap yok", SL("Hemen ilgileniyorum.", () => startLine(null))],
     ["onay bekleyen", SL("Ali'nin borcu silinecek. Onayını bekliyorum.", () => spokenReply("Ali'nin borcu silinecek.", { confirm: true }))],
     ["onay sorusu zaten soruyor", SL("Silinsin mi?", () => spokenReply("Silinsin mi?", { confirm: true }))],
@@ -1279,6 +1281,39 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
     ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
   ]);
+  // Söz yapay zekası (lib/ai/soz.js): hangi cevap gider, dönen metin nasıl denetlenir
+  const SZ = await import("@/lib/ai/soz");
+  const ok1 = "Ekledim: Tekne yıkama, Yarın, saatsiz. İstersen saatini söyle, hemen ekleyeyim.";
+  group("Söz yapay zekası")([
+    ["yerel kayıt cümlesi gider", SL(true, () => SZ.wantsSoz({ message: ok1, engine: "local" }))],
+    ["yapay zekanın kendi cevabı gitmez", SL(false, () => SZ.wantsSoz({ message: ok1, engine: "ai" }))],
+    ["onay kartı gitmez", SL(false, () => SZ.wantsSoz({ message: ok1, engine: "local", confirm: true }))],
+    ["görev listesi gitmez", SL(false, () => SZ.wantsSoz({ message: ok1, engine: "local", midPlan: true }))],
+    ["çok kısa gitmez", SL(false, () => SZ.wantsSoz({ message: "Tamam.", engine: "local" }))],
+    ["uzun liste gitmez", SL(false, () => SZ.wantsSoz({ message: "Bugün:\n1. Antrenman\n2. Toplantı", engine: "local" }))],
+    ["doğal cümle kabul", SL(true, () => SZ.sozOk("Ekledim: Antrenman, Cuma, 18:00. Ali de var.", "Cuma 18:00'e antrenmanı koydum, Ali de geliyor."))],
+    ["saat değişmiş", SL(false, () => SZ.sozOk("Ekledim: Antrenman, Cuma, 18:00.", "Cuma akşam altıya antrenmanı koydum."))],
+    ["ad düşmüş", SL(false, () => SZ.sozOk("Mesajı gönderdim: Ali Yılmaz.", "Mesajı gönderdim."))],
+    ["tutar korunur", SL(true, () => SZ.sozOk("Bu ay 3.450 TL harcadın.", "Bu ay toplam 3.450 TL harcamışsın."))],
+    ["boş metin", SL(false, () => SZ.sozOk("Notu aldım.", ""))],
+    ["istem: istek ve sonuç", SL(true, () => { const u = SZ.sozUser({ said: "yarın antrenman", result: "Ekledim." }); return /yarın antrenman/.test(u) && /SONUÇ[\s\S]*Ekledim\./.test(u); })],
+  ]);
+  {
+    const TM2 = await import("@/lib/assistTiming");
+    let t = 0;
+    TM2.timingTest({ now: () => t, storage: memStore() });
+    TM2.timingStart("yarın antrenman", false);
+    t = 10; TM2.timingMark("soz");
+    t = 4510; TM2.timingMark("sozDone"); TM2.timingInfo({ sozErr: "timeout" });
+    t = 4520; TM2.timingReply("local");
+    TM2.timingStart("sonraki", false);
+    const txt = TM2.timingText();
+    group("Söz yapay zekası: süre kaydı")([
+      ["adımlar ve neden", SL(true, () => /İşin yapılması: 10 ms/.test(txt) && /Söz yapay zekası \(doğal cümle\): 4,5 sn/.test(txt) && /Söz yapay zekası olmadı \(zaman aşımı\), yerel cümle kullanıldı/.test(txt))],
+      ["komutun sözü", SL("sonraki", () => TM2.timingSaid())],
+    ]);
+    TM2.timingTest({});
+  }
   // Kayıt sonrası doğal cümle: açılış sırayla değişir, saatsiz tek plana saat teklif edilir
   const { savedLine } = await import("@/lib/sayLines");
   const { quickAnswer } = await import("@/lib/ai/rules");

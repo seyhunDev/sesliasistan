@@ -1,16 +1,46 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
-import { devOn, timingReply } from "@/lib/assistTiming";
+import { devOn, timingInfo, timingMark, timingReply, timingSaid } from "@/lib/assistTiming";
 import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
 import { record } from "@/lib/brain/store";
 import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
-import { spokenReply } from "@/lib/sayLines";
+import { spokenReply, startedWithin, startLine } from "@/lib/sayLines";
+import { sozOn, wantsSoz } from "@/lib/ai/soz";
+import { askSoz } from "@/services/sozService";
+
+// Söz yapay zekası (Seyhun, 2026-10-20: "Yapay zeka bunu bir metin olarak bize geri döndürsün, apayrı bir işlem olsun"):
+// iş bitti, sonuç bilgisi hazır; ayrı küçük çağrı onu doğal cümleye çevirir, sonra cevap normal yolla gösterilir ve okunur.
+// Beklerken Sesli yanıt açıksa yalnız "Hemen ilgileniyorum." söylenir. Olmazsa (süre, denetim, ağ) yerel cümle kalır.
+// İşin mantığı (puan, öğrenme, görev listesi) yerel sonuç metniyle yürür; söz yalnız gösterilen ve okunan metindir.
+function sozFits(ctx, message, x) {
+  if (x.soz !== undefined || ctx.readMode?.current || !sozOn() || !timingSaid()) return false;
+  const card = x.expect || x.pending || x.ok || x.person || x.event || x.inv || x.races?.length || x.picks?.length;
+  return wantsSoz({ message: String(message || "").replace(MORE, ""), engine: x.engine, confirm: !!card, midPlan: !!ctx.planOn.current || ctx.chain.current.length > 0 });
+}
+let sozRun = 0;
+async function phrase(ctx, message, extra, viaVoice) {
+  const { enqueueSay, reply, runId, setPhase, tts } = ctx;
+  const id = runId.current;
+  const my = ++sozRun;
+  const more = message.endsWith(MORE);
+  const result = more ? message.slice(0, -MORE.length).trim() : message;
+  // Çalışıyor durumu sürer (yapay zeka işinin sonu "boşta"ya çekse de, aynı anda kurulduğu için sonra uygulanır)
+  Promise.resolve().then(() => my === sozRun && id === runId.current && setPhase("preparing"));
+  if (tts?.enabled && !startedWithin(20000)) enqueueSay(startLine());
+  timingMark("soz");
+  const d = await askSoz({ said: timingSaid(), result });
+  if (id !== runId.current || my !== sozRun) return; // bu arada vazgeçildi ya da yeni istek geldi
+  timingMark("sozDone");
+  timingInfo(d.error ? { sozErr: d.error } : { sozModel: d.model || "" });
+  reply(message, { ...extra, soz: d.text ? `${d.text}${more ? ` ${MORE}` : ""}` : "" }, viaVoice);
+}
 
 export function reply(ctx, message, extra = {}, viaVoice = false) {
   const { aiLesson, chain, convo, readMode, tts, enqueueSay, eventFlow, holdIfTalking, inflight, invFlow, listenOnce, live, nextInChain, okFlow, personFlow, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, raceChoices, raceFailed, reply, setCards, setPhase, setPlan, setStreamText, setTurns, sp, startAuto, streamSaid, waitFor } = ctx;
   // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
   // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
   if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
+  if (sozFits(ctx, message, extra)) return void phrase(ctx, message, extra, viaVoice);
   const dev = timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı) ve geliştirici satırı
   inflight.current = null;
   // Cevap geldi: iş bitti, "çalışıyor" durumu kalkar (yerel akışların bir kısmı kendisi kaldırmıyordu; denetim B3)
@@ -46,7 +76,9 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   setStreamText("");
   // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
   const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
-  setTurns((p) => [...p, { role: "assistant", text: message, ...(links ? { links } : {}), ...(dev ? { dev } : {}) }]);
+  // Gösterilen ve okunan: söz yapay zekasının cümlesi, yoksa yerel sonuç
+  const shown = extra.soz || message;
+  setTurns((p) => [...p, { role: "assistant", text: shown, ...(links ? { links } : {}), ...(dev ? { dev } : {}) }]);
   setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks, readAsk });
   if (races?.length) waitFor("raceChoice");
   raceChoices.current = races;
@@ -89,7 +121,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
   const said = streamSaid.current;
   streamSaid.current = "";
-  const rest0 = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
+  const rest0 = !said ? shown : shown.startsWith(said) ? shown.slice(said.length).trim() : "";
   // Sıralı işlerin sonu: hepsi yapıldıysa "Tamam, hepsi yapıldı." (yapılamayan varsa mesaj zaten söylüyor)
   const rest = spokenReply(rest0, { confirm: !!pending || !!ok, planEnd, planOk: !badStep && !/Yapamadığım/.test(message) });
   // Yalnız okuma isteğinde ("notlarımı oku", "bugün neler var") sesli okunur; diğer cevaplar yalnız yazılır
