@@ -2295,6 +2295,16 @@ group("Fitness: program ayrıntıları ve şablon")([
     return FMI.itemLine(a) === "3 × 8–12/yan" && FMI.itemLine(b) === "2 × 20–30 sn/yan" && !c.repsTo && a.rest === 75;
   })],
   ["motivasyon cümlesi", F("aynı gün aynı cümle, listeden biri", () => FMI.cheerOf("2026-10-19") === FMI.cheerOf("2026-10-19") && FMI.CHEERS.includes(FMI.cheerOf("2026-10-20")) && new Set(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"].map(FMI.cheerOf)).size > 1)],
+  ["hareketler arası dinlenme", F("setler arası 20, sonraki harekete 60; boşsa setler arasıyla aynı; toplu ve tek tek", () => {
+    const p = FMI.cleanProgram({ start: "2026-10-19", weeks: 1, days: [{ dow: 2, name: "A", items: [{ ex: "", name: "Row", sets: 3, reps: 10, rest: 20 }, { ex: "", name: "Plank", sets: 2, sec: 30, rest: 20, gap: 90 }] }] });
+    const [a, b] = p.days[0].items;
+    const all = FMI.setGapAll(FMI.setRestAll(p, 20), 60);
+    const [x, y] = all.days[0].items;
+    const d = FMI.planDrafts(all);
+    return FMI.restAfter(a, false) === 20 && FMI.restAfter(a, true) === 20 && FMI.restAfter(b, true) === 90 && b.gap === 90 &&
+      x.rest === 20 && x.gap === 60 && y.gap === 60 && FMI.gapAllOf(all) === 60 && FMI.restAfter(x, true) === 60 && FMI.restAfter(x, false) === 20 &&
+      d[0].fit.items[0].gap === 60 && FMI.itemMore(x) === "dinlenme 20 sn · sonraki hareketten önce 60 sn";
+  })],
   ["toplu dinlenme", F("programdaki bütün hareketler 20 sn olur, kardiyo değişmez; tek gün seçilebilir; ortak değer en çok kullanılan", () => {
     const p = FMI.cleanProgram({ start: "2026-10-19", weeks: 2, days: [
       { dow: 2, name: "A", items: [{ ex: "", name: "Isınma", min: 5 }, { ex: "", name: "Row", sets: 3, reps: 10, rest: 60 }, { ex: "", name: "Plank", sets: 2, sec: 30 }] },

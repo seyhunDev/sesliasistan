@@ -125,6 +125,8 @@ export function cleanItem(it = {}) {
   if (bag) out.bag = bag;
   const rest = num(it.rest, 0, 300, 5);
   if (rest) out.rest = rest;
+  const gap = num(it.gap, 0, 300, 5); // sonraki harekete geçmeden dinlenme (boşsa rest)
+  if (gap) out.gap = gap;
   const part = PARTS.some(([k]) => k === it.part) ? it.part : "";
   if (part) out.part = part;
   for (const [k, n] of [["breath", 60], ["tempo", 30], ["rpe", 20], ["alt", 120]]) {
@@ -345,6 +347,23 @@ export function restOf(prog) {
   for (const [r, k] of c) if (k > n) [best, n] = [r, k];
   return best;
 }
+// Hareketler arası: son set bitince sonraki harekete geçmeden sayılan süre (gap; boşsa setler arasıyla aynı)
+export const gapOf = (it) => +it?.gap || +it?.rest || REST_DEFAULT;
+// Setten sonraki dinlenme: sıradaki set aynı hareketinse setler arası, başka hareketinse hareketler arası
+export const restAfter = (it, nextEx) => (nextEx ? gapOf(it) : +it?.rest || REST_DEFAULT);
+const common = (vals) => {
+  const c = new Map();
+  for (const v of vals) c.set(v, (c.get(v) || 0) + 1);
+  let best = REST_DEFAULT, n = 0;
+  for (const [v, k] of c) if (k > n) [best, n] = [v, k];
+  return best;
+};
+export const gapAllOf = (prog) => common((prog?.days || []).flatMap((d) => (d.items || []).map(gapOf)));
+// Toplu hareketler arası: bütün hareketlerin gap'i sec olur (5–300 sn)
+export function setGapAll(prog, sec, dow = null) {
+  const r = Math.min(300, Math.max(5, Math.round((+sec || REST_DEFAULT) / 5) * 5));
+  return { ...prog, days: (prog?.days || []).map((d) => (dow != null && d.dow !== dow ? d : { ...d, items: (d.items || []).map((it) => ({ ...it, gap: r })) })) };
+}
 // Toplu: bütün günlerdeki (ya da yalnız dow günündeki) hareketlerin dinlenmesi sec olur (5–300 sn, 5'in katı)
 export function setRestAll(prog, sec, dow = null) {
   const r = Math.min(300, Math.max(5, Math.round((+sec || REST_DEFAULT) / 5) * 5));
@@ -363,7 +382,7 @@ export function itemLine(it) {
 // Hareketin ayrıntıları (satır altında): dinlenme, tempo, zorluk, nefes
 export function itemMore(it) {
   if (!it) return "";
-  return [it.rest ? `dinlenme ${it.rest} sn` : "", it.tempo ? `tempo ${it.tempo}` : "", it.rpe ? `RPE ${it.rpe}` : "", it.breath ? `nefes: ${it.breath}` : ""].filter(Boolean).join(" · ");
+  return [it.rest ? `dinlenme ${it.rest} sn` : "", it.gap && it.gap !== it.rest ? `sonraki hareketten önce ${it.gap} sn` : "", it.tempo ? `tempo ${it.tempo}` : "", it.rpe ? `RPE ${it.rpe}` : "", it.breath ? `nefes: ${it.breath}` : ""].filter(Boolean).join(" · ");
 }
 
 // Tahmini süre (dk): set başına tekrar ~4 sn ya da süre + dinlenme, kardiyo dakikası; başa 5 dk ısınma, 5'e yuvarlanır
@@ -373,7 +392,7 @@ export function estMinutes(items = []) {
     if (it.kind === "cardio") return t + (+it.min || 0) * 60;
     const sets = +it.sets || 1;
     const work = it.kind === "time" ? +it.sec || 30 : (+it.reps || 10) * 4;
-    return t + sets * (work + (+it.rest || 60));
+    return t + sets * work + (sets - 1) * (+it.rest || 60) + gapOf(it);
   }, 0);
   if (!sec) return 0;
   return Math.max(10, Math.round((sec / 60 + 5) / 5) * 5);

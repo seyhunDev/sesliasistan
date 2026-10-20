@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { card } from "@/components/ui/Page";
 import { exById } from "@/lib/fitness/exercises";
-import { DOWS, DOW_LONG, GOALS, PARTS, REVIEW_ASK, REVIEW_ROWS, SPORTS, cleanItem, cleanProgram, itemLine, labelOf, restOf, setRestAll, toName } from "@/lib/fitness/model";
+import { DOWS, DOW_LONG, GOALS, PARTS, REVIEW_ASK, REVIEW_ROWS, SPORTS, cleanItem, cleanProgram, gapAllOf, itemLine, labelOf, restOf, setGapAll, setRestAll, toName } from "@/lib/fitness/model";
 import { editProgram } from "./fitImport";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
@@ -85,6 +85,7 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
             {it.part && it.part !== "ana" ? <Chip tone="bg-bg text-mut">{labelOf(PARTS, it.part)}</Chip> : null}
             {it.breath ? <Chip tone="bg-sky-500/10 text-sky-700 dark:text-sky-300">Nefes</Chip> : null}
             {it.rest ? <Chip tone="bg-bg text-mut">{it.rest} sn dinlen</Chip> : null}
+            {it.gap && it.gap !== it.rest ? <Chip tone="bg-bg text-mut">sonra {it.gap} sn</Chip> : null}
             {it.yt?.id ? (
               <Chip tone="bg-rec/10 text-rec">
                 <Icon name="video" className="-mt-0.5 inline size-3.5" /> YouTube
@@ -128,7 +129,8 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
             {it.kind === "cardio" && <Step label="Süre" unit="dk" value={it.min} min={1} max={180} onChange={(v) => set("min", v)} />}
             {it.kind === "reps" && <Step label="Kilo (elde)" unit="kg" dec value={it.kg} step={2.5} max={500} onChange={(v) => set("kg", v)} />}
             <Step label="Çantaya ağırlık" unit="kg" dec value={it.bag} step={1} max={100} onChange={(v) => set("bag", v)} />
-            <Step label="Dinlenme" unit="sn" value={it.rest} step={5} max={300} onChange={(v) => set("rest", v)} />
+            <Step label="Setler arası" unit="sn" value={it.rest} step={5} max={300} onChange={(v) => set("rest", v)} />
+            <Step label="Sonraki hareketten önce" unit="sn" value={it.gap} step={5} max={300} onChange={(v) => set("gap", v)} />
           </div>
           {it.kind !== "cardio" && (
             <label className="mt-2 flex h-11 items-center justify-between rounded-2xl bg-bg px-3 text-[0.875rem] font-semibold">
@@ -278,22 +280,21 @@ function DayPanel({ d, onChange, onDrop }) {
 }
 
 // Haftalara göre evreler (salt okunur) ve programın kuralları (ilerleme, güvenlik, trafik ışığı); kurallar düzenlenir
-// Toplu dinlenme: değişince bütün programdaki hareketlere uygulanır; tek tek değiştirmek hareketin içinden
+// Toplu dinlenme: setler arası ve hareketler arası (sonraki harekete geçmeden); değişince bütün programdaki hareketlere
+// uygulanır, tek tek değiştirmek hareketin içinden
 function RestAll({ p, onChange }) {
-  const [typed, setTyped] = useState(null);
-  const put = (x) => {
-    if (typeof x === "string") setTyped(x);
-    if (+x >= 5) onChange((q) => setRestAll(q, x));
+  const [typed, setTyped] = useState({});
+  const put = (k, fn) => (x) => {
+    if (typeof x === "string") setTyped((t) => ({ ...t, [k]: x }));
+    if (+x >= 5) onChange((q) => fn(q, x));
   };
   return (
-    <section className={`${card} mt-3 flex items-center gap-3 p-3`}>
-      <span className="min-w-0 flex-1 pl-1">
-        <b className="block text-[0.9375rem] font-semibold">Dinlenme</b>
-        <small className="block text-[0.8125rem] text-mut">Bütün hareketler</small>
-      </span>
-      <span className="w-44 shrink-0" onBlur={() => setTyped(null)}>
-        <Step label="Setler arası" unit="sn" value={typed ?? restOf(p)} step={5} min={5} max={300} onChange={put} />
-      </span>
+    <section className={`${card} mt-3 p-3`} onBlur={() => setTyped({})}>
+      <b className="block px-1 text-[0.9375rem] font-semibold">Dinlenme · bütün hareketler</b>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Step label="Setler arası" unit="sn" value={typed.rest ?? restOf(p)} step={5} min={5} max={300} onChange={put("rest", setRestAll)} />
+        <Step label="Hareketler arası" unit="sn" value={typed.gap ?? gapAllOf(p)} step={5} min={5} max={300} onChange={put("gap", setGapAll)} />
+      </div>
     </section>
   );
 }

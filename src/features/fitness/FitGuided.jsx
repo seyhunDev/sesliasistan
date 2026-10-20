@@ -6,7 +6,7 @@ import { exById } from "@/lib/fitness/exercises";
 import { MediaShow } from "./ExerciseMedia";
 import { YtPlayer } from "./YtVideo";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
-import { FEELS, clockText, goalSec, isTimed, nextOpen } from "@/lib/fitness/model";
+import { FEELS, clockText, goalSec, isTimed, nextOpen, restAfter } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
 
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
@@ -209,7 +209,7 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
     const next = sets.map((s, a) => (a === i ? s.map((x, b) => (b === k ? { ...x, ok: true } : x)) : s));
     const n = nextOpen(next, i, k + 1);
     setPos(n);
-    if (n) rest.start(items[i]?.rest || 60);
+    if (n) rest.start(restAfter(items[i], n.i !== i));
     return n;
   }
   function skipEx() {
@@ -258,7 +258,7 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
         return `Dinlenme bitti. ${items[pos.i]?.name}, set ${pos.k + 1} / ${sets[pos.i]?.length || 0}.`;
       }
       const n = complete();
-      return n ? `Tamam. ${items[pos.i]?.rest || 60} saniye dinlen. ${setText(n)}` : "Tamam, hepsi bitti. Nasıl geçti?";
+      return n ? `Tamam. ${restAfter(items[pos.i], n.i !== pos.i)} saniye dinlen. ${setText(n)}` : "Tamam, hepsi bitti. Nasıl geçti?";
     }
     return "";
   }

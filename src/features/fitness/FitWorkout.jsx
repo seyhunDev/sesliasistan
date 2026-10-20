@@ -13,7 +13,7 @@ import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
 import { ytThumb } from "@/lib/fitness/youtube";
-import { FEELS, PARTS, cheerOf, clockText, cleanRes, isTimed, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
+import { FEELS, PARTS, cheerOf, clockText, cleanRes, isTimed, restAfter, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
 // Fitness planının ekranında (AddSheet): antrenman. Her hareketin setleri tek tek işaretlenir (yapılan tekrar, kilo, süre);
@@ -115,7 +115,7 @@ export function FitWorkout({ rec, by, hero = false }) {
     setSets(next);
     const on = next[i][k].ok;
     save(cleanRes({ ...(fit.res || {}), ex: next.map((s) => ({ sets: s })), st: fit.res?.st || "", at: fit.res?.at || new Date().toISOString() }, fit.items || []));
-    const r = fit.items[i]?.rest || 60;
+    const r = restAfter(fit.items[i], !next[i].some((x) => !x.ok)); // setler bittiyse hareketler arası
     if (on && !quiet) startRest(r); // adım adım ekran kendi sayacını kullanır
   }
   // Baştan başlat: yarım kalan setlerin işaretleri ve değerleri silinir, adım adım ekran ilk setten açılır

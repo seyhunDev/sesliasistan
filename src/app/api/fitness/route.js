@@ -25,7 +25,7 @@ Program kuralları:
 - Her güne kısa ad ver (ör. "Üst vücut", "Alt vücut", "Tüm vücut", "Kardiyo ve karın"). min: antrenman süresi (söylenmediyse 45).
 - Her gün ısınma ile başlar ("warmup", min 5-10) ve esneme ile biter ("stretch", min 5). Aradaki hareket sayısı süreye uygun (45 dk ≈ 5-6 hareket).
 - Set/tekrar hedefe ve seviyeye göre: kas 3-4 × 8-12; güç 4-5 × 4-6; kilo verme ve kondisyon 3 × 12-15 kısa dinlenme, kardiyo eklenir; genel sağlık 2-3 × 10-12. Yeni başlayanda daha az set ve kolay hareketler.
-- Süreli hareketlerde (plank, duvarda oturma) "sec", kardiyoda "min", diğerlerinde "reps". kg yalnız ağırlıklı harekette ve tahmin edebiliyorsan (profilde kilo ve seviye varsa) yaz; emin değilsen 0 (kullanıcı ilk antrenmanda yazar). rest: set arası dinlenme saniye (60-120).
+- Süreli hareketlerde (plank, duvarda oturma) "sec", kardiyoda "min", diğerlerinde "reps". kg yalnız ağırlıklı harekette ve tahmin edebiliyorsan (profilde kilo ve seviye varsa) yaz; emin değilsen 0 (kullanıcı ilk antrenmanda yazar). rest: set arası dinlenme saniye (60-120). gap: sonraki harekete geçmeden dinlenme saniye (yalnız metinde ayrıca yazıyorsa, yoksa 0).
 - Yer ve ekipmana uy: evde ve ekipman yoksa yalnız vücut ağırlığı; spor salonunda makine ve ağırlık serbest. Kaçınılacak hareket/sakatlık varsa o bölgeyi zorlayan hareket koyma.
 - Spor (profilde "sport" ya da cümlede "Spor: …") verildiyse program o sporu destekler; hedef o sporun içinde yorumlanır (ör. yelkende "güç" = trapez ve dümen için gövde ve bacak gücü, "kondisyon" = uzun yarış dayanıklılığı). Yelken: gövde (plank, yan plank, ölü böcek), sırt ve kürek kemiği (çekiş, ters kürek), bacakta izometrik dayanıklılık (duvarda oturma, squat bekletme; hiking), kavrama ve ön kol, omuz dengesi, denge ve tek bacak hareketleri, kısa kardiyo aralıkları. Kano: çekiş, gövde dönüşü, omuz ve sırt dayanıklılığı. Yüzme: omuz sağlığı, sırt, gövde, bacak. Koşu, futbol, basketbol, voleybol, tenis: bacak gücü, sıçrama, çeviklik, gövde, sakatlık önleme. note içinde programın bu spora nasıl yardım ettiğini bir cümleyle söyle.
 - Yaşa uygun yükle (profilde "age" ya da cümlede "Sporcu N yaşında" / "N-M yaş grubunda"): 18 yaş altında en çok ağırlık ve zorlayıcı yük yok, teknik ve vücut ağırlığı önce, set 2-3 ve tekrar 10-15, kg genelde 0 ya da hafif; 12 yaş altında yalnız vücut ağırlığı, oyun gibi kısa hareketler, antrenman en çok 45 dakika; 13-15 yaşta hafif dambıl/lastik olabilir. Gelişim çağındaki sporcuda omurgaya ağır yük (ağır squat, deadlift) koyma.
@@ -44,6 +44,7 @@ const ITEM = {
     min: { type: "number" },
     kg: { type: "number" },
     rest: { type: "number" },
+    gap: { type: "number" },
     note: { type: "string" },
   },
   required: ["ex", "sets"],
@@ -105,7 +106,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const opt = (list) => list.map(([k, l]) => `${k} (${l})`).join(", ");
 
 // Mevcut programın kısa yazısı (yapay zekaya; değişiklik isteğinde tam programı geri döndürsün diye JSON)
-const progText = (p) => (p?.days?.length ? JSON.stringify({ title: p.title, weeks: p.weeks, start: p.start, days: p.days.map(({ dow, time, min, name, items }) => ({ dow, time, min, name, items: items.map(({ ex, name, sets, reps, sec, min: m, kg, rest }) => ({ ex, ...(ex ? {} : { name }), sets, reps, sec, min: m, kg, rest })) })) }) : "");
+const progText = (p) => (p?.days?.length ? JSON.stringify({ title: p.title, weeks: p.weeks, start: p.start, days: p.days.map(({ dow, time, min, name, items }) => ({ dow, time, min, name, items: items.map(({ ex, name, sets, reps, sec, min: m, kg, rest, gap }) => ({ ex, ...(ex ? {} : { name }), sets, reps, sec, min: m, kg, rest, gap })) })) }) : "");
 
 async function handle(request) {
   const au = await requireUser(request);
