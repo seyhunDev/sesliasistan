@@ -23,10 +23,10 @@ export function CrashScreen({ error, retry, reset, where }) {
         <>
           <p className="text-mut">Kayıtlı bilgilerin duruyor. Tekrar dene, düzelmezse sayfayı yenile.</p>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={again} className="h-12 rounded-xl bg-acc font-semibold text-white active:scale-[.98]">Tekrar dene</button>
-            <button onClick={() => location.reload()} className="h-12 rounded-xl border border-line bg-card font-semibold active:scale-[.98]">Yenile</button>
+            <button onClick={again} data-press className="btn btn-primary">Tekrar dene</button>
+            <button onClick={() => location.reload()} data-press className="btn btn-secondary">Yenile</button>
           </div>
-          <button onClick={() => (location.href = "/")} className="h-11 text-mut">Ana sayfaya dön</button>
+          <button onClick={() => (location.href = "/")} data-press className="btn btn-text btn-sm text-mut">Ana sayfaya dön</button>
           {msg && (
             <button onClick={() => setOpen((v) => !v)} className="text-left text-sm text-mut">
               Ayrıntı

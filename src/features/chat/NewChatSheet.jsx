@@ -54,7 +54,7 @@ export function NewChatSheet({ open, onClose }) {
             <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-bg">
               {people.map((p) => (
                 <li key={p.uid}>
-                  <button type="button" onClick={() => go(dmId(uid, p.uid))} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-card">
+                  <button type="button" onClick={() => go(dmId(uid, p.uid))} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
                     <Avatar name={p.name} photo={p.photo} online={isOnline(p)} size="size-11" />
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[0.9375rem] font-semibold">{p.name}</b>
@@ -76,7 +76,7 @@ export function NewChatSheet({ open, onClose }) {
               const on = sel.includes(p.uid);
               return (
                 <li key={p.uid}>
-                  <button type="button" role="checkbox" aria-checked={on} onClick={() => setSel((x) => (on ? x.filter((u) => u !== p.uid) : [...x, p.uid]))} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left active:bg-card">
+                  <button type="button" role="checkbox" aria-checked={on} onClick={() => setSel((x) => (on ? x.filter((u) => u !== p.uid) : [...x, p.uid]))} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
                     <Avatar name={p.name} photo={p.photo} size="size-10" />
                     <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{p.name}</b>
                     <span className={`grid size-6 place-items-center rounded-full border-2 ${on ? "border-acc bg-acc text-white" : "border-line"}`}>{on && <Icon name="check" className="size-3.5 [stroke-width:3]" />}</span>
@@ -86,10 +86,10 @@ export function NewChatSheet({ open, onClose }) {
             })}
           </ul>
           <div className="flex gap-2.5 pt-1">
-            <button type="button" onClick={() => setMode("pick")} className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold active:scale-[.98]">
+            <button type="button" onClick={() => setMode("pick")} data-press className="btn btn-secondary flex-1">
               Geri
             </button>
-            <button type="button" onClick={makeGroup} disabled={busy || !name.trim() || !sel.length} className="h-12 flex-[1.6] rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
+            <button type="button" onClick={makeGroup} disabled={busy || !name.trim() || !sel.length} data-press className="btn btn-primary flex-[1.6]">
               Grubu kur{sel.length ? ` (${sel.length + 1} kişi)` : ""}
             </button>
           </div>

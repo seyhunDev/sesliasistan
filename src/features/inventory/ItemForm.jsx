@@ -139,7 +139,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
           </ul>
         )}
         {start.id && msg && <p className="mt-1 text-[0.8125rem] text-mut">{msg}</p>}
-        <button type="button" onClick={() => pick.current?.click()} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
+        <button type="button" onClick={() => pick.current?.click()} data-press className="btn btn-secondary btn-sm mt-1.5 w-full text-acc">
           <Icon name="paperclip" className="size-4" />
           Fotoğraf ya da belge ekle
         </button>
@@ -201,7 +201,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {kit.parts.map((p) => (
                 <li key={p.id}>
-                  <button type="button" onClick={() => onOpen?.(p)} className="h-8 rounded-full bg-card px-3 text-[0.8125rem] font-medium ring-1 ring-line active:scale-95">
+                  <button type="button" onClick={() => onOpen?.(p)} data-press className="btn btn-secondary btn-sm">
                     {p.cat} · {p.no}
                     {p.damage ? " ⚠" : ""}
                   </button>
@@ -210,7 +210,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
             </ul>
           )}
           {kit.missing.length > 0 ? (
-            <button type="button" onClick={() => onKit?.(x.id)} className="mt-2 h-9 w-full rounded-lg bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-[.98]">
+            <button type="button" onClick={() => onKit?.(x.id)} data-press className="btn btn-secondary btn-sm mt-2 w-full text-acc">
               Eksik takımı ekle: {kit.missing.join(", ")}
             </button>
           ) : (
@@ -232,7 +232,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
             </button>
           ))}
           {motors.length === 0 && (
-            <button type="button" onClick={newMotor} className="mt-1.5 h-9 w-full rounded-lg bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-[.98]">
+            <button type="button" onClick={newMotor} data-press className="btn btn-secondary btn-sm mt-1.5 w-full text-acc">
               Motor ekle
             </button>
           )}
@@ -241,11 +241,11 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
       <div className="flex items-end gap-2">
         <F label="Adet" className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <button type="button" onClick={() => step(-1)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-bg text-[1.25rem] font-semibold active:scale-95" aria-label="Azalt">
+            <button type="button" onClick={() => step(-1)} data-press className="btn btn-round shrink-0" aria-label="Azalt">
               −
             </button>
             <input value={x.qty} onChange={set("qty")} inputMode="numeric" className={`${input} text-center tabular-nums`} />
-            <button type="button" onClick={() => step(1)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-bg text-[1.25rem] font-semibold active:scale-95" aria-label="Artır">
+            <button type="button" onClick={() => step(1)} data-press className="btn btn-round shrink-0" aria-label="Artır">
               +
             </button>
           </span>
@@ -301,18 +301,18 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
           <div key={i} className="mt-1.5 flex gap-2">
             <input value={e.k} onChange={setExtra(i, "k")} maxLength={40} placeholder="Başlık (ör. Dümen)" className={`${input} w-[42%] shrink-0`} />
             <input value={e.v} onChange={setExtra(i, "v")} maxLength={120} placeholder="Bilgi (ör. Hidrolik)" className={input} />
-            <button type="button" onClick={() => setX((v) => ({ ...v, extra: v.extra.filter((_, j) => j !== i) }))} aria-label="Sil" className="grid size-11 shrink-0 place-items-center rounded-xl text-mut active:bg-bg">
+            <button type="button" onClick={() => setX((v) => ({ ...v, extra: v.extra.filter((_, j) => j !== i) }))} aria-label="Sil" data-press className="btn btn-icon shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </div>
         ))}
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {hints.map((h) => (
-            <button key={h} type="button" onClick={() => addExtra(h)} className="h-8 rounded-full bg-bg px-3 text-[0.8125rem] font-medium text-fg active:scale-95">
+            <button key={h} type="button" onClick={() => addExtra(h)} data-press className="btn btn-secondary btn-sm">
               + {h}
             </button>
           ))}
-          <button type="button" onClick={() => addExtra()} className="h-8 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold text-acc active:scale-95">
+          <button type="button" onClick={() => addExtra()} data-press className="btn btn-secondary btn-sm text-acc">
             + Bilgi ekle
           </button>
         </div>
@@ -328,7 +328,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
         Kaydet
       </Button>
       {onDelete && (
-        <button type="button" onClick={onDelete} className="h-11 w-full rounded-xl text-[0.875rem] font-semibold text-rec active:bg-bg">
+        <button type="button" onClick={onDelete} data-press className="btn btn-danger w-full">
           Envanterden sil
         </button>
       )}
@@ -358,7 +358,7 @@ function Services({ list, onChange }) {
                 <span className="block text-[0.875rem] font-semibold">{serviceText(e)}</span>
                 {(e.what || e.cost > 0 || e.by) && <small className="block text-[0.75rem] text-mut">{[e.what, e.cost > 0 ? `${e.cost.toLocaleString("tr-TR")} ₺` : "", e.by].filter(Boolean).join(" · ")}</small>}
               </span>
-              <button type="button" onClick={() => window.confirm(`${serviceLabel(e.kind)} kaydı silinsin mi?`) && onChange(list.filter((y) => y.id !== e.id))} aria-label="Sil" className="grid size-8 shrink-0 place-items-center rounded-lg text-mut active:bg-card">
+              <button type="button" onClick={() => window.confirm(`${serviceLabel(e.kind)} kaydı silinsin mi?`) && onChange(list.filter((y) => y.id !== e.id))} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </li>
@@ -383,7 +383,7 @@ function Services({ list, onChange }) {
             <input value={add.by} onChange={set("by")} maxLength={60} placeholder="Yapan (servis)" className={`${input} bg-card`} />
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setAdd(null)} className="h-10 flex-1 rounded-xl text-[0.875rem] font-semibold text-mut active:bg-card">
+            <button type="button" onClick={() => setAdd(null)} data-press className="btn btn-text btn-sm flex-1 text-mut">
               Vazgeç
             </button>
             <button type="button" onClick={save} className="h-10 flex-1 rounded-xl bg-deep text-[0.875rem] font-semibold text-white active:scale-[.98]">
@@ -392,7 +392,7 @@ function Services({ list, onChange }) {
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setAdd({ date: today, kind: "periyodik", what: "", cost: "", by: "" })} className="mt-1.5 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]">
+        <button type="button" onClick={() => setAdd({ date: today, kind: "periyodik", what: "", cost: "", by: "" })} data-press className="btn btn-secondary btn-sm mt-1.5 w-full text-acc">
           + Bakım ekle
         </button>
       )}
@@ -419,16 +419,16 @@ function FileRow({ f, pending, onOpen, onRead, onLabel, onDrop }) {
         </small>
       </span>
       {onRead && (
-        <button type="button" onClick={onRead} className="h-8 shrink-0 rounded-lg px-2 text-[0.75rem] font-semibold text-acc active:bg-card">
+        <button type="button" onClick={onRead} data-press className="btn btn-text btn-sm shrink-0 text-acc">
           Bilgileri oku
         </button>
       )}
       {onOpen && (
-        <button type="button" onClick={onOpen} className="h-8 shrink-0 rounded-lg px-2 text-[0.75rem] font-semibold text-acc active:bg-card">
+        <button type="button" onClick={onOpen} data-press className="btn btn-text btn-sm shrink-0 text-acc">
           Aç
         </button>
       )}
-      <button type="button" onClick={onDrop} aria-label="Sil" className="grid size-8 shrink-0 place-items-center rounded-lg text-mut active:bg-card">
+      <button type="button" onClick={onDrop} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
         <Icon name="x" className="size-4" />
       </button>
     </li>

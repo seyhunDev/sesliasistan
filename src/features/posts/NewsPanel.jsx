@@ -232,12 +232,12 @@ export const NewsPanel = forwardRef(function NewsPanel({ show, post, pid, poster
               {form.redo && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {form.extras.map((f, i) => (
-                    <button key={i} type="button" onClick={() => set("extras", form.extras.filter((_, j) => j !== i))} className="flex h-8 items-center gap-1 rounded-full bg-card px-3 text-[0.75rem] ring-1 ring-line">
+                    <button key={i} type="button" onClick={() => set("extras", form.extras.filter((_, j) => j !== i))} data-press className="btn btn-secondary btn-sm">
                       {f.name.slice(0, 16)} <Icon name="x" className="size-3.5" />
                     </button>
                   ))}
                   {form.extras.length < NEWS_MAX_PHOTOS - 1 && (
-                    <button type="button" onClick={() => fileRef.current?.click()} className="flex h-8 items-center gap-1 rounded-full bg-card px-3 text-[0.75rem] font-semibold ring-1 ring-line">
+                    <button type="button" onClick={() => fileRef.current?.click()} data-press className="btn btn-secondary btn-sm">
                       <Icon name="plus" className="size-3.5" /> Fotoğraf ekle
                     </button>
                   )}

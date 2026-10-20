@@ -18,15 +18,15 @@ export function InvCard({ v, onOpen, onDelete, onKeep }) {
       </div>
       {v.ask?.length ? (
         <div className="mt-2.5 flex gap-2">
-          <button type="button" onClick={onDelete} className="h-9 flex-1 rounded-xl bg-rec text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+          <button type="button" onClick={onDelete} data-press className="btn btn-danger btn-sm flex-1">
             Sil
           </button>
-          <button type="button" onClick={onKeep} className="h-9 flex-1 rounded-xl bg-card text-[0.8125rem] font-semibold text-fg ring-1 ring-line active:scale-[.98]">
+          <button type="button" onClick={onKeep} data-press className="btn btn-secondary btn-sm flex-1">
             Vazgeç
           </button>
         </div>
       ) : (
-        <button type="button" onClick={onOpen} className="mt-2.5 h-9 w-full rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+        <button type="button" onClick={onOpen} data-press className="btn btn-primary btn-sm mt-2.5 w-full">
           Envanteri aç
         </button>
       )}

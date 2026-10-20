@@ -97,7 +97,7 @@ export default function LoginPage() {
       </Button>
 
       {reset ? (
-        <button type="button" onClick={() => go("login")} className="mt-4 block w-full text-center text-[0.875rem] font-medium text-mut active:opacity-60">
+        <button type="button" onClick={() => go("login")} data-press className="btn btn-text btn-sm mt-4 w-full text-mut">
           Girişe dön
         </button>
       ) : (

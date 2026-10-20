@@ -108,16 +108,16 @@ export function PdfViewer({ title, load, onClose }) {
   return (
     <div className="fixed inset-0 z-[90] flex flex-col bg-bg" role="dialog" aria-modal="true" aria-label={title}>
       <header className="flex shrink-0 items-center gap-1 border-b border-line bg-card px-1.5 pb-1.5 pt-[calc(.375rem+env(safe-area-inset-top))]">
-        <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-11 place-items-center rounded-full text-fg active:bg-bg">
+        <button type="button" onClick={onClose} aria-label="Kapat" data-press className="btn btn-icon text-fg">
           <Icon name="x" className="size-5" />
         </button>
         <p className="min-w-0 flex-1 truncate text-center text-[0.9375rem] font-semibold">{title}</p>
         {pages && (
-          <button type="button" onClick={() => setZoom((z) => (z >= 2 ? 1 : z + 0.5))} aria-label="Büyüt" className="grid h-11 min-w-11 place-items-center rounded-full px-2 text-[0.8125rem] font-semibold tabular-nums text-acc active:bg-bg">
+          <button type="button" onClick={() => setZoom((z) => (z >= 2 ? 1 : z + 0.5))} aria-label="Büyüt" data-press className="btn btn-text btn-sm text-acc">
             {zoom === 1 ? "Büyüt" : `%${zoom * 100}`}
           </button>
         )}
-        <button type="button" onClick={share} disabled={!file} aria-label="Paylaş" className="grid size-11 place-items-center rounded-full text-acc active:bg-bg disabled:opacity-40">
+        <button type="button" onClick={share} disabled={!file} aria-label="Paylaş" data-press className="btn btn-icon text-acc">
           <Icon name="up" className="size-5" />
         </button>
       </header>

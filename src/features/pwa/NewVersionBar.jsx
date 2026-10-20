@@ -26,11 +26,11 @@ export function NewVersionBar() {
           type="button"
           disabled={busy}
           onClick={() => (setBusy(true), applyUpdate())}
-          className="shrink-0 rounded-full bg-acc px-3.5 py-1.5 text-[0.8125rem] font-semibold text-white disabled:opacity-60"
+          data-press className="btn btn-primary btn-sm shrink-0"
         >
           {busy ? "Güncelleniyor…" : "Güncelle"}
         </button>
-        <button type="button" aria-label="Kapat" onClick={() => setHid(v.sha)} className="grid size-7 shrink-0 place-items-center rounded-full text-mut">
+        <button type="button" aria-label="Kapat" onClick={() => setHid(v.sha)} data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       </div>

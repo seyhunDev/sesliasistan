@@ -186,7 +186,7 @@ export function MeetingSheet({ open, onClose }) {
     <Screen open={open} onClose={close} title="Toplantı modu">
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">Toplantı modu</h2>
-        <button onClick={close} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
+        <button onClick={close} aria-label="Kapat" data-press className="btn btn-round btn-sm text-mut">
           <Icon name="x" className="size-[1.125rem]" />
         </button>
       </header>
@@ -216,9 +216,9 @@ export function MeetingSheet({ open, onClose }) {
                         <p className="text-[0.9375rem] font-medium">{when(m.startedAt)} · {mmss(m.sec * 1000)}</p>
                         <p className="text-[0.8125rem] text-mut">{m.cut ? "Kayıt yarıda kaldı, o ana kadarki kısım saklı" : m.status === "stt" ? "Ses yazıya çevrilemedi, kayıt saklı" : "Metin hazır, özet çıkarılamadı"}</p>
                         <div className="mt-2.5 flex flex-wrap gap-2">
-                          <button onClick={() => run({ ...m, cut: false })} className="rounded-full bg-acc px-3.5 py-1.5 text-[0.8125rem] font-semibold text-white active:scale-95">Özetle</button>
-                          {text && <button onClick={() => asNote(text)} className="rounded-full border border-line px-3.5 py-1.5 text-[0.8125rem] font-semibold active:scale-95">Not olarak kaydet</button>}
-                          <button onClick={() => deleteMeeting(m.id).then(refresh)} className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-rec active:scale-95">Sil</button>
+                          <button onClick={() => run({ ...m, cut: false })} data-press className="btn btn-primary btn-sm">Özetle</button>
+                          {text && <button onClick={() => asNote(text)} data-press className="btn btn-secondary btn-sm">Not olarak kaydet</button>}
+                          <button onClick={() => deleteMeeting(m.id).then(refresh)} data-press className="btn btn-danger btn-sm">Sil</button>
                         </div>
                       </li>
                     );
@@ -323,14 +323,14 @@ export function MeetingSheet({ open, onClose }) {
                             <span className="flex items-center gap-1 text-[0.8125rem] font-semibold text-emerald-700"><Icon name="check" className="size-4" /> Gönderildi</span>
                           ) : (
                             <>
-                              <button onClick={() => setMsgs((l) => l.filter((_, k) => k !== i))} disabled={!!m.state} className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-mut active:scale-95">Gönderme</button>
-                              <button onClick={() => sendMsg(i)} disabled={!!m.state} className="rounded-full bg-acc px-3.5 py-1.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">{m.state === "sending" ? "Gönderiliyor…" : "Gönder"}</button>
+                              <button onClick={() => setMsgs((l) => l.filter((_, k) => k !== i))} disabled={!!m.state} data-press className="btn btn-text btn-sm text-mut">Gönderme</button>
+                              <button onClick={() => sendMsg(i)} disabled={!!m.state} data-press className="btn btn-primary btn-sm">{m.state === "sending" ? "Gönderiliyor…" : "Gönder"}</button>
                             </>
                           )
                         ) : (
                           <>
-                            <button onClick={() => setMsgs((l) => l.filter((_, k) => k !== i))} className="rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-mut active:scale-95">Kaldır</button>
-                            <button onClick={() => navigator.clipboard?.writeText(m.text).then(() => toast("Mesaj kopyalandı"), () => {})} className="rounded-full border border-line px-3.5 py-1.5 text-[0.8125rem] font-semibold active:scale-95">Kopyala</button>
+                            <button onClick={() => setMsgs((l) => l.filter((_, k) => k !== i))} data-press className="btn btn-text btn-sm text-mut">Kaldır</button>
+                            <button onClick={() => navigator.clipboard?.writeText(m.text).then(() => toast("Mesaj kopyalandı"), () => {})} data-press className="btn btn-secondary btn-sm">Kopyala</button>
                           </>
                         )}
                       </div>
@@ -368,7 +368,7 @@ export function MeetingSheet({ open, onClose }) {
             <button onClick={toDrafts} className={`${btn} w-full bg-acc text-white`}>
               {onlyTalk(r) ? "Özeti not olarak kaydet" : "Görevleri ve özeti onayla, kaydet"}
             </button>
-            <button onClick={() => asNote(out.text)} className="h-11 w-full text-[0.9375rem] font-semibold text-mut active:text-fg">Yalnızca tam metni not olarak kaydet</button>
+            <button onClick={() => asNote(out.text)} data-press className="btn btn-text btn-sm w-full text-mut">Yalnızca tam metni not olarak kaydet</button>
           </div>
         )}
 

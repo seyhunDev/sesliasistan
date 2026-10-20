@@ -47,7 +47,7 @@ export function InventoryHome({ orgId }) {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Envanter" sub={list ? `${list.length} envanter` : "Yükleniyor…"}>
-        <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
+        <button type="button" onClick={() => setAdd({ name: "", kind: "normal" })} data-press className="btn btn-primary btn-sm">
           <Icon name="plus" className="size-[1.125rem]" />
           Envanter
         </button>

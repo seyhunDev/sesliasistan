@@ -85,7 +85,7 @@ function Archive() {
           type="button"
           onClick={exportCsv}
           disabled={!shown.length}
-          className="flex h-10 items-center gap-1.5 rounded-full bg-card px-4 text-[0.8125rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95 disabled:opacity-40"
+          data-press className="btn btn-secondary btn-sm text-acc"
         >
           <Icon name="up" className="size-4 rotate-180" /> Excel’e aktar
         </button>

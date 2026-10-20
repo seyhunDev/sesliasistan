@@ -398,7 +398,7 @@ export default function MailPage() {
                 <Icon name="search" className="size-4 shrink-0 text-mut" />
                 <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad ya da açıklama ara" enterKeyHint="search" className="h-full min-w-0 flex-1 bg-transparent text-[1rem] outline-none [&::-webkit-search-cancel-button]:hidden" />
                 {q && (
-                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" className="grid size-7 shrink-0 place-items-center rounded-full bg-bg text-mut">
+                  <button type="button" onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="btn btn-round btn-sm size-7 shrink-0 text-mut">
                     <Icon name="x" className="size-3.5" />
                   </button>
                 )}
@@ -427,7 +427,7 @@ export default function MailPage() {
             <Fold title="Kasaya sayılmayan girişler" rows={kasa.old.map(cashRow)}>
               {kasa.old.length > 1 && (
                 <li>
-                  <button type="button" onClick={() => archive(kasa.old)} className="h-11 w-full text-[0.875rem] font-semibold text-mut">
+                  <button type="button" onClick={() => archive(kasa.old)} data-press className="btn btn-text btn-sm w-full text-mut">
                     Hepsini arşivle
                   </button>
                 </li>
@@ -472,7 +472,7 @@ export default function MailPage() {
             const on = accounts.some((x) => x.key === a.key);
             return (
               <li key={a.key}>
-                <button type="button" onClick={() => toggleAcct(a.key)} aria-pressed={on} className="flex w-full items-center gap-3 py-3 text-left">
+                <button type="button" onClick={() => toggleAcct(a.key)} aria-pressed={on} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
                     <small className="block truncate text-[0.75rem] text-mut">{[a.last4 && `·${a.last4}`, cash(a.balance, a.currency)].filter(Boolean).join(" · ")}</small>
@@ -515,18 +515,18 @@ export default function MailPage() {
             {conv.has(bankPick.id) ? (
               <>
                 <p className="text-[0.8125rem] text-mut">Nakite çevrildi, kulüp kasasında.</p>
-                <button type="button" onClick={() => unConv(bankPick)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+                <button type="button" onClick={() => unConv(bankPick)} data-press className="btn btn-secondary w-full">
                   Geri al
                 </button>
               </>
             ) : (
               canConv(bankPick) && (
-                <button type="button" onClick={() => toCash(bankPick)} className="h-11 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+                <button type="button" onClick={() => toCash(bankPick)} data-press className="btn btn-primary w-full">
                   Nakite çevir · kasaya {para(Math.abs(bankPick.amount))} ₺
                 </button>
               )
             )}
-            <button type="button" onClick={() => (setTab("banka"), setQ(whoIn(bankPick) || ""), setBankPick(null))} disabled={!whoIn(bankPick)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold disabled:hidden">
+            <button type="button" onClick={() => (setTab("banka"), setQ(whoIn(bankPick) || ""), setBankPick(null))} disabled={!whoIn(bankPick)} data-press className="btn btn-secondary w-full">
               Bu kişinin bütün hareketleri
             </button>
           </div>
@@ -551,17 +551,17 @@ export default function MailPage() {
               </button>
             )}
             {kasa.old.some((x) => x.key === manual.key) && (
-              <button type="button" onClick={() => archive([manual])} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => archive([manual])} data-press className="btn btn-secondary w-full">
                 Arşivle
               </button>
             )}
             {kasa.archived.some((x) => x.key === manual.key) && (
-              <button type="button" onClick={() => unarchive([manual])} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => unarchive([manual])} data-press className="btn btn-secondary w-full">
                 Arşivden çıkar
               </button>
             )}
             {manual.athleteId && (
-              <button type="button" onClick={() => router.push(`/athletes/${manual.athleteId}`)} className="h-11 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => router.push(`/athletes/${manual.athleteId}`)} data-press className="btn btn-secondary w-full">
                 Sporcuyu aç
               </button>
             )}
@@ -576,7 +576,7 @@ export default function MailPage() {
               </button>
             )}
             {manual.manual && !kasaLink(manual) && (
-              <button type="button" onClick={() => dropIncome(manual)} className="h-11 w-full rounded-xl bg-rec/10 text-[0.875rem] font-semibold text-rec">
+              <button type="button" onClick={() => dropIncome(manual)} data-press className="btn btn-danger w-full">
                 {manual.conv ? "Nakite çevirmeyi geri al" : "Sil"}
               </button>
             )}
