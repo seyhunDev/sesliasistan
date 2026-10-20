@@ -82,6 +82,8 @@ const WINDS = [
   ["Yıldız", "K"], ["Poyraz", "KD"], ["Gündoğusu", "D"], ["Keşişleme", "GD"],
   ["Kıble", "G"], ["Lodos", "GB"], ["Günbatısı", "B"], ["Karayel", "KB"],
 ];
+// Rüzgârın geldiği yön derece olarak (Seyhun: "120'den geliyor, 140'tan geliyor… bize derece olacak"); yön yoksa boş
+export const dirDeg = (deg) => (deg == null || !Number.isFinite(+deg) ? "" : `${Math.round(((+deg % 360) + 360) % 360)}°`);
 export const windName = (deg) => WINDS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 
 // Rüzgâr şiddeti (kn): renk ve kısa açıklama (yelken için)

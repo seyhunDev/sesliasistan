@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
-import { PLACE, cached, dayHours, getPlace, loadWeather, sky, windLevel, windName } from "./weather";
+import { PLACE, cached, dayHours, dirDeg, getPlace, loadWeather, sky, windLevel, windName } from "./weather";
 import { Col, WindArrow } from "./parts";
 import { DayDetail } from "./DaySheet";
 import { Loading } from "@/components/ui/Loader";
@@ -90,7 +90,7 @@ export function WeatherCard() {
         </span>
         <span className={`flex shrink-0 items-center gap-1 rounded-full bg-bg px-2.5 py-1 text-[0.8125rem] font-semibold tabular-nums ${lvl.tone}`}>
           <WindArrow deg={n.dir} className="size-3.5" />
-          {wn} {n.wind}
+          {wn} <span className="font-normal text-mut">{dirDeg(n.dir)}</span> {n.wind}
           <span className="font-normal text-mut">/{n.gust} kn</span>
         </span>
         <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${more ? "-rotate-90" : "rotate-90"}`} />

@@ -2529,6 +2529,7 @@ group("Ölçülen rüzgâr")([
   };
   const W = WXN.shape(J, new Date(2026, 9, 18, 10, 15));
   group("Hava hesapları")([
+    ["yön derecesi", F("140° yazar, 360 → 0°, eksi düzelir, yön yoksa boş", () => WXN.dirDeg(140) === "140°" && WXN.dirDeg(360) === "0°" && WXN.dirDeg(-20) === "340°" && WXN.dirDeg(null) === "")],
     ["sadeleşme", F("şimdi yuvarlanır, sonraki 15 saat 11:00'den, bugün ve yarından sonraki günler", () =>
       W.now.t === 20 && W.now.wind === 11 && W.now.day === true && W.hours.length === 15 && W.hours[0].hh === "11" && W.today.max === 23 && W.today.date === "2026-10-18"
       && W.days.length === 2 && W.days[0].date === "2026-10-19" && W.h48.length === 38 && W.hourly.length === 48 && W.hourly[0][7] === 20)],
