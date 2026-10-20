@@ -6,6 +6,8 @@ import { Icon } from "@/components/ui/Icon";
 import { useAdd } from "@/features/add/AddProvider";
 import { useChat, toMs } from "@/features/chat/ChatProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { isTraining } from "@/lib/trainingLog";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { statusOf } from "@/lib/fitness/model";
 import { attHref, fitHref, homeNotes, linkKey, personHref } from "@/lib/homeTiles";
@@ -42,15 +44,19 @@ function Face({ name, photo, tone = "sp", cls = "size-10" }) {
 
 // Tam genişlik: Sporcular ve Fitness tek kartta (Seyhun 2026-10-20: "sporcular ve fitness birlikte; bir sporcunun bir şeyi varsa hangi sporcu
 // belirtilir, öbürleri yine durur"). Üstte fotoğraflar (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası), altında en yakın fitness günü
-// adlarıyla (FitRows), en altta düğmeler: Yoklama (yalnız bugün antrenman varsa, saatiyle; antrenmanın kendisi takvim listesinde), Mesaj
+// adlarıyla (FitRows), en altta düğmeler: Yoklama (yalnız bugün antrenman planı varsa, saatiyle; alındıysa "✓ Yoklama alındı", dokununca yine açılır; antrenmanın kendisi takvim listesinde), Mesaj
 // (Sporcular grubu), Fitness. Düğmeler tek satırda, yazı taşmaz. Başlıkta Tümü › Sporcular. Sporcu yoksa çizilmez. fit: fitDays() (HomeFeed).
 export function AthletesWidget({ att, fit }) {
   const { members, plans } = useData();
+  const { profile } = useAuth();
   const list = (members || []).filter((m) => m && m.name && m.status !== "left" && (m.kind === "athlete" || m.kind === "student")).sort((a, b) => a.name.localeCompare(b.name, "tr"));
   if (!list.length) return null;
   const today = todayStr();
-  const sail = plans.filter((p) => p.date === today && p.status !== "cancelled" && (p.cat || p.category) === "Antrenman").sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const sail = plans.filter((p) => p.date === today && p.status !== "cancelled" && isTraining(p)).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const yok = att && sail.length ? attHref(today, today) : null;
+  // Yoklama alındıysa (Seyhun 2026-10-20: "alındığını göstermeliyiz, tıklanırsa yine açılır, değişiklik yapılır"): yoklama kaydedilince ana hesabın
+  // kaydına bugünün tarihi yazılır (users.attLast; athletes/mirror.js, çalışan alırsa sunucu yazar), ek okuma yok
+  const taken = profile?.attLast === today;
   const shown = list.slice(0, 7);
   const btn = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[0.84375rem] font-semibold";
   return (
@@ -71,8 +77,15 @@ export function AthletesWidget({ att, fit }) {
       <FitRows fit={fit} head />
       <span className={`mt-3 grid gap-2 ${yok ? "grid-cols-[auto_1fr_1fr]" : "grid-cols-2"}`}>
         {yok && (
-          <Link href={yok} className={`${btn} acc-btn`}>
-            Yoklama{sail[0].time ? ` · ${sail[0].time}` : ""}
+          <Link href={yok} className={`${btn} ${taken ? "raised bg-card text-[var(--ok)]" : "acc-btn"}`}>
+            {taken ? (
+              <>
+                <Icon name="check" className="mr-1 size-4 shrink-0" />
+                Yoklama alındı
+              </>
+            ) : (
+              `Yoklama${sail[0].time ? ` · ${sail[0].time}` : ""}`
+            )}
           </Link>
         )}
         <Link href="/messages?c=athletes" className={`${btn} raised bg-card text-acc`}>
