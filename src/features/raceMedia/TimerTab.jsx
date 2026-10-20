@@ -16,7 +16,7 @@ import { WindSheet } from "./WeatherTab";
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
 // Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şerit: Fotoğraf · Video · ana düğme · + (rüzgâr, akıntı, not).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
-const PRESETS = [60, 120, 300];
+const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
 export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset }) {
@@ -26,7 +26,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
   const [wind, setWind] = useState(false);
   const [list, setList] = useState(false); // bugünün yarışları (eskiden sayfanın altındaki liste)
   const { flow, ridOf, save, undo } = rf;
-  const cur = timer.end != null ? live.starts.find((x) => x.id === ridOf(timer)) : null;
+  const cur = timer.end != null || timer.left != null ? live.starts.find((x) => x.id === ridOf(timer)) : null; // durmuş geri sayım da (Devam bekler)
   const rdays = raceDays(race);
   const lastWind = windOn(live.wind, day).at(-1);
   const add = () => {

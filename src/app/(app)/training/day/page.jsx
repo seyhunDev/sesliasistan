@@ -123,7 +123,7 @@ function Day() {
   const { flow, undo } = useTrainingFlow({ races, save: saveRaces });
   const tr = useTimerRun();
   const withRaces = plan && racer && !locked;
-  const cur = withRaces && tr.running ? races.find((r) => r.id === tr.t.rid) : null;
+  const cur = withRaces && (tr.running || tr.t.left != null) ? races.find((r) => r.id === tr.t.rid) : null;
   const buoys = plan?.buoys ? cleanBuoys(plan.buoys) : BUOYS;
   const mark = (b) => {
     if (!cur || tr.t.end == null) return;
@@ -195,7 +195,7 @@ function Day() {
         <>
           <Countdown
             mode="start"
-            presets={[60, 120, 300]}
+            presets={[60, 120, 300, 600]}
             compact
             race={withRaces ? flow : null}
             title={withRaces ? (cur ? cur.name : flow.label) : ""}

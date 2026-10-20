@@ -469,6 +469,20 @@ async function scenarios4(h) {
     });
     await page.waitForTimeout(400);
     await check(GN, "Yarış multimedya: arkadan dönüş", "başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün", async () => [(await picked()) === today, `${await picked()}`]);
+    await check(GN, "Yarış multimedya: sayaç çemberi", "Başlat düğmesi yok, çembere dokununca başlar, dokununca durur, Devam ve Sıfırla çıkar", async () => {
+      const old = await page.locator("button", { hasText: /^Başlat ·/ }).count();
+      await page.getByRole("button", { name: "Başlat", exact: true }).click({ timeout: 5000 });
+      await page.waitForTimeout(1200);
+      await page.getByRole("button", { name: "Durdur", exact: true }).click({ timeout: 5000 });
+      await page.waitForTimeout(500);
+      const dv = await page.locator("section button", { hasText: /^Devam$/ }).count();
+      const sf = await page.locator("section button", { hasText: /^Sıfırla$/ }).count();
+      await page.locator("section button", { hasText: /^Sıfırla$/ }).click();
+      await page.waitForTimeout(500);
+      await page.getByRole("button", { name: /Yanlış başlattım/ }).click({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      return [old === 0 && dv === 1 && sf === 1, `eski Başlat ${old} · Devam ${dv} · Sıfırla ${sf}`];
+    });
     await check(GN, "Yarış multimedya: denemeleri sıfırla", "Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
       const before = await page.locator("button[data-day]").count();
       const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
