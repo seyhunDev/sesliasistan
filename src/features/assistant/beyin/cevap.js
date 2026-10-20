@@ -133,6 +133,7 @@ export function failNow(ctx, message, viaVoice) {
 
 // Sohbeti bitir: panel kapanır, konuşma temizlenir
 export function finish(ctx, keepSpeech = false) {
+  ctx.flushAuto?.(); // geri sayımdaki kayıt / mesaj kapanırken yapılır (kapatmak vazgeçmek değil)
   const { askAll, cancelRun, chain, chainGen, chainRace, clearSay, convo, memo, msgDraft, onClose, planOn, queue, setPlan, sp, tts, waitFor } = ctx;
   sp.cancel();
   cancelRun();

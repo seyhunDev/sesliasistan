@@ -20,19 +20,19 @@ export function draftSay(ctx, msg, list) {
 
 // lead: görev listesinde önceki işlerin sonucu ("Tamamladım: …"); cevabın başına gelir
 export function startDrafts(ctx, items, s, msg, engine, viaVoice, lead = "") {
-  const { draftSay, draftSrc, ready, reply, saveDraftsNow, setDrafts, withAssignees } = ctx;
+  const { armSave, draftSay, draftSrc, ready, reply, setDrafts, withAssignees } = ctx;
   // Not yalnız açıkça istenince ("not al", "notlara yaz"); başka işin yanına kendiliğinden not eklenmez
   draftSrc.current = s;
   let next = autoFill(applyRepeat(keepNotes(items, s), s, todayStr()).map((x) => withAssignees(x, s)).map(fresh), todayStr());
   const need = firstNeed(next);
   if (need) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-  if (ready(next)) return saveDraftsNow(viaVoice, next, msg, lead);
+  if (ready(next)) return armSave(viaVoice, next, msg, lead); // kartta 3 sn çizgi, dolunca kaydedilir
   setDrafts(next);
   reply(`${lead}${draftSay(/^tamam\.?$/i.test(msg) ? "" : msg, next)}`, { engine }, viaVoice);
 }
 
 export async function refineDrafts(ctx, s, viaVoice) {
-  const { ctrl, draftSay, drafts, failNow, firstName, inflight, listenWhileThinking, ready, reply, runId, saveDraftsNow, setDrafts, setPhase, staff, staffNames, turns, withAssignees } = ctx;
+  const { armSave, ctrl, draftSay, drafts, failNow, firstName, inflight, listenWhileThinking, ready, reply, runId, setDrafts, setPhase, staff, staffNames, turns, withAssignees } = ctx;
   // "Saat kaçta olsun?" → "10'da": kısa cevap yerelde taslağa yazılır, yapay zekaya yeniden gidilmez
   const quick = quickAnswer(s, drafts, todayStr(), firstNeed(drafts));
   if (quick) {
@@ -41,7 +41,7 @@ export async function refineDrafts(ctx, s, viaVoice) {
     countHit("local");
     const need = firstNeed(quick);
     const next = need ? quick.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d)) : quick;
-    if (ready(next)) return saveDraftsNow(viaVoice, next);
+    if (ready(next)) return armSave(viaVoice, next);
     setDrafts(next);
     return reply(draftSay("", next), { engine: "local" }, viaVoice);
   }
@@ -64,7 +64,7 @@ export async function refineDrafts(ctx, s, viaVoice) {
     let next = autoFill(items.length ? carry(known, items) : drafts, todayStr());
     const need = firstNeed(next);
     if (need && !next[need.idx]._asked) next = next.map((d, i) => (i === need.idx ? { ...d, _asked: true } : d));
-    if (ready(next)) return saveDraftsNow(viaVoice, next, r.message);
+    if (ready(next)) return armSave(viaVoice, next, r.message);
     setDrafts(next);
     reply(draftSay(r.message, next), { engine: r.source }, viaVoice);
   } catch (e) {

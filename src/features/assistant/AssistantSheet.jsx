@@ -18,7 +18,7 @@ import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
 import { devOn } from "@/lib/assistTiming";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
-  const { busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice, history } = useAssistant({ open, onClose, seed, onLive, onAct });
+  const { auto, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice, history } = useAssistant({ open, onClose, seed, onLive, onAct });
 
   // Yapay zeka aynı kaydı birden çok kez gösterebilir: her kayıt bir kez listelenir
   const shownOf = (show = []) =>
@@ -277,6 +277,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 </li>
               ))}
             </ul>
+            {auto?.kind === "save" && auto.ref === drafts && <AutoLine key={auto.until} ms={auto.ms} />}
             <div className="flex gap-1.5 px-2.5 pb-2.5">
               <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
                 <Icon name="check" className="size-[1.125rem]" /> Kaydet
@@ -314,7 +315,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             <p className="flex items-center gap-2.5 bg-acc/[.06] px-3 py-2">
               <Avatar name={cards.pending.send.label} icon={cards.pending.send.team ? cards.pending.send.icon : null} size="size-8" text="text-[0.75rem]" tone={cards.pending.send.team ? "bg-acc text-white" : undefined} />
               <span className="min-w-0 flex-1">
-                <small className="block text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">Mesaj · onayını bekliyor</small>
+                <small className="block text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">{cards.pending.auto ? "Mesaj · gönderiliyor" : "Mesaj · onayını bekliyor"}</small>
                 <b className="block truncate text-[0.9375rem] font-semibold">{cards.pending.send.label}</b>
               </span>
             </p>
@@ -325,6 +326,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               rows={2}
               className="block max-h-48 w-full resize-none bg-card px-3.5 py-3 text-[1rem] leading-snug outline-none [field-sizing:content] focus:bg-bg"
             />
+            {auto?.kind === "send" && auto.ref === cards.pending && <AutoLine key={auto.until} ms={auto.ms} />}
             <div className="flex gap-2 border-t border-line p-2">
               {cards.pending.send.wa ? (
                 <a
@@ -397,4 +399,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   );
 
   return slot ? createPortal(<div className="pb-1 text-[1rem]">{convoView(true)}</div>, slot) : null;
+}
+
+// Geri sayım çizgisi: hazırlanan kayıt / mesaj ms sonra kendiliğinden yapılır (useAssistant AUTO_MS); çizgi o sürede dolar
+function AutoLine({ ms }) {
+  return (
+    <div className="mx-3.5 mb-2.5 h-[3px] overflow-hidden rounded-full bg-line" aria-hidden="true">
+      <div className="h-full origin-left rounded-full bg-acc" style={{ animation: `autofill ${ms}ms linear forwards` }} />
+    </div>
+  );
 }
