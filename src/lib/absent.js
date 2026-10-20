@@ -21,6 +21,6 @@ export function absentText(name, date, today, club = "Dikili Yelken Spor Kulüb�
 }
 
 // Bildirim (uygulamada hesabı olan veliye): başlık + kısa metin
-export const absentPush = (name, date, today) => ({ title: `Devamsızlık: ${first(name)}`, body: `${first(name)} ${dayWord(date, today)} antrenmana gelmedi.` });
+export const absentPush = (name, date, today) => ({ title: `${first(name)} ${dayWord(date, today)} antrenmana gelmedi`, body: "" });
 
 export const waTo = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;

@@ -119,6 +119,8 @@ async function onPush(e) {
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     data: { url: d.url || "/" },
+    // "Aç" düğmesi: bilgisayarda ve Android tarayıcısında görünür; iPhone web uygulaması düğme göstermez (dokununca yine açılır)
+    actions: [{ action: "open", title: "Aç" }],
   };
   try {
     await self.registration.showNotification(title, opts);

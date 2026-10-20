@@ -117,7 +117,7 @@ function Row({ x, first, onHide, hideLabel = "Gizle" }) {
       <span className={`flex min-w-0 flex-1 items-center gap-2 self-stretch py-3 ${first ? "" : "border-t border-line/80"}`}>
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <b className={`min-w-0 flex-1 truncate text-[0.9375rem] leading-snug ${x.old ? "font-normal text-mut" : "font-semibold"}`}>{x.title}</b>
+            <b className={`min-w-0 flex-1 line-clamp-2 text-[0.9375rem] leading-snug ${x.old ? "font-normal text-mut" : "font-semibold"}`}>{x.title}</b>
             {x.time && <time className={`shrink-0 text-[0.75rem] tabular-nums ${x.badge ? "font-semibold text-acc" : "text-mut"}`}>{x.time}</time>}
           </span>
           <span className="mt-0.5 flex items-center gap-2">

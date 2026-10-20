@@ -241,7 +241,7 @@ group("İptal ve veliye haber")([
   ["telefon biçimi", F("0532… → 90532…", () => AB.waPhone("0532 123 45 67") === "905321234567" && AB.waPhone("+90 (532) 123-4567") === "905321234567" && AB.waPhone("5321234567") === "905321234567" && AB.waPhone("123") === "")],
   ["veli metni", F("Ali bugünkü antrenmana gelmedi", () => /^Merhaba, Ali bugünkü antrenmana gelmedi\./.test(AB.absentText("Ali Kaya", "2026-10-05", "2026-10-05")))],
   ["geçmiş gün", F("4 Ekim günkü", () => /Ali 4 Ekim günkü antrenmana/.test(AB.absentText("Ali Kaya", "2026-10-04", "2026-10-05")))],
-  ["veli bildirimi", F("Devamsızlık: Ali", () => AB.absentPush("Ali Kaya", "2026-10-05", "2026-10-05").title === "Devamsızlık: Ali")],
+  ["veli bildirimi", F("Ali bugünkü antrenmana gelmedi", () => AB.absentPush("Ali Kaya", "2026-10-05", "2026-10-05").title === "Ali bugünkü antrenmana gelmedi")],
 ]);
 
 // Belge bitiş takibi (expiry.js): lisans vizesi, sağlık raporu, sigorta
@@ -941,11 +941,11 @@ group("Aidat otomatik")([
     return r.months["2026-09"]?.paid?.a1?.[0]?.amt === 1500 && !r.months["2026-10"]?.paid?.a1 && r.months["2026-10"]?.used?.includes(DU.movKey(m));
   })],
   ["liste yoksa hiçbir şey", F("Aidatlar sayfası açılmamış", () => DAU.autoDues([mvt("FAST AYSE SAHIN")], DCFG, {}).paid.length === 0 && DAU.duesText(DAU.autoDues([], DCFG)) === null)],
-  ["bildirim metni", F("Aidat geldi: Deniz Şahin / 2 sporcu · onay bekliyor", () => {
+  ["bildirim metni", F("Aidat geldi: Deniz Şahin 1.500 TL / onay bekliyor", () => {
     const a = DAU.duesText({ paid: [{ names: ["Deniz Şahin"], amount: 1500 }], open: 0 });
     const b = DAU.duesText({ paid: [{ names: ["Ege Yılmaz", "Ada Yılmaz"], amount: 2500 }], open: 1 });
     const c = DAU.duesText({ paid: [], open: 2 });
-    return a.title === "Aidat geldi: Deniz Şahin" && a.body === "Deniz Şahin 1.500 TL" && b.title === "Aidat geldi: 2 sporcu" && b.body === "Ege Yılmaz ve Ada Yılmaz 2.500 TL · 1 ödeme onay bekliyor" && c.title === "Aidat: 2 ödeme onay bekliyor";
+    return a.title === "Aidat geldi: Deniz Şahin 1.500 TL" && b.title === "Aidat geldi: Ege Yılmaz ve Ada Yılmaz 2.500 TL. 1 ödeme onayını bekliyor" && c.title === "2 aidat ödemesi onayını bekliyor";
   })],
   ["maildeki hesap özetinden yazma", F("runAutoDues ayar + ay okur, ayı ve gönderenleri yazar", async () => {
     const store = { "orgs/u1/dues/settings": { ...DCFG, roster: DAU.rosterOf(DAR) } };
@@ -979,7 +979,7 @@ group("Aidat hatırlatması")([
     const l = DR.unpaidRoster({ ...DCFG, roster: DA }, DRM);
     const p = DR.remindPush(l[0], "2026-10");
     const o = DR.ownerText(l, "2026-10");
-    return /^Aidat hatırlatması: /.test(p.title) && /^Ekim aidatı/.test(p.body) && o.title === "Aidat: 4 sporcu ödemedi" && /^Ekim aidatı · .+ · velilere hatırlatmak için dokun$/.test(o.body) && DR.ownerText([], "2026-10") === null;
+    return / için Ekim aidatı.* henüz görünmüyor\. Ödediyseniz dikkate almayın\.$/.test(p.title) && /^4 sporcu Ekim aidatını ödemedi: .+/.test(o.title) && DR.ownerText([], "2026-10") === null;
   })],
 ]);
 
@@ -1005,7 +1005,7 @@ group("Yoklama hatırlatması")([
   ["plan hatırlatması bağlantısı", F("dokununca o plan açılır", () => YR.reminderText({ id: "p1", title: "A", date: AT, time: "10:00" }, 60).url === "/?open=plan:p1")],
   ["metin ve bağlantı", F("o günün yoklaması açılır", () => {
     const m = YH.attRemindText(APL, AT);
-    return m.title === "Yoklama alınmadı" && /Optimist antrenmanı 16:00/.test(m.body) && m.url === `/athletes/attendance?gun=${AT}` && m.tag === `att-remind-${AT}`;
+    return m.title === "Bugünkü antrenmanın yoklamasını almadın (Optimist antrenmanı 16:00)" && m.url === `/athletes/attendance?gun=${AT}` && m.tag === `att-remind-${AT}`;
   })],
 ]);
 
@@ -1228,7 +1228,7 @@ group("Faturalar")([
   ["durum", F("ödendi / gecikti / ödenmedi", () => IV.stateOf(INV[2], "2026-10-05") === "paid" && IV.stateOf(INV[0], "2026-10-16") === "late" && IV.stateOf(INV[0], "2026-10-05") === "open")],
   ["özet", F("2 açık, 2.150,50 TL", () => { const s = IV.summaryOf(INV, "2026-10-05"); return s.open === 2 && s.sum === 2150.5 && s.late === 0; })],
   ["görev", F("başlık ve ödeme bilgisi", () => IV.taskTitle(INV[0]) === "Fatura öde: Turkcell İletişim Hizmetleri A.Ş." && IV.taskInvoice(INV[0]).amount === 1250.5 && /Son ödeme: 15 Eki/.test(IV.payText(INV[0])))],
-  ["görevliye bildirim", F("gövdede tutar", () => NTX.assignedText({ kind: "task", title: "Fatura öde: Turkcell", due: "2026-10-15", pay: IV.payLine(IV.taskInvoice(INV[0])), from: "Seyhun" }, "2026-10-05").body === "1.250,50 TL · Son gün 15 eki · Seyhun verdi")],
+  ["görevliye bildirim", F("metinde tutar ve son gün", () => NTX.assignedText({ kind: "task", title: "Fatura öde: Turkcell", due: "2026-10-15", pay: IV.payLine(IV.taskInvoice(INV[0])), from: "Seyhun" }, "2026-10-05").title === "Yeni görevin var: Fatura öde: Turkcell (1.250,50 TL, 15 eki kadar)")],
   ["görev tamamlandı", F("görevli tamamlayınca da", () => IV.taskDone({ done: false, doneBy: { u2: true } }) && !IV.taskDone({ done: false }) && !IV.taskDone(null))],
   ["IBAN", F("boşluklu yazılır, hatalısı boş", () => IV.cleanIban("tr12 0006 4000 0011 2345 6789 01") === "TR12 0006 4000 0011 2345 6789 01" && IV.cleanIban("TR12") === "")],
   ["asistan: ödendi", F("Turkcell faturası ödendi → Turkcell", () => { const c = IV.invoiceCommand("Turkcell faturası ödendi"); return c?.op === "paid" && IV.pickInvoice(c.t, INV).pick?.id === "i1"; })],
@@ -1243,7 +1243,7 @@ group("Faturalar")([
     const r = await IV.runAutoInvoices(io, "u1", [out("EFT TURKCELL ILETISIM HIZ", 1250.5), out("HAVALE", 900)]);
     const t = IV.invoiceText(r);
     return r.paid.length === 1 && r.guess === 1 && store["orgs/u1/invoices/i1"].status === "paid" && store["orgs/u1/invoices/i1"].paidAt === "2026-10-06" && store["orgs/u1/tasks/t1"].done === true
-      && store["orgs/u1/invoiceIndex/open"].list.length === 1 && t.title === "Fatura ödendi: Turkcell İletişim Hizmetleri A.Ş.".slice(0, 43) + "…" && t.body === "1.250,50 TL · bankadan görüldü";
+      && store["orgs/u1/invoiceIndex/open"].list.length === 1 && t.title === "Fatura ödendi: Turkcell İletişim Hizmetleri A.Ş. 1.250,50 TL";
   })],
   ["silinmiş görev", F("yeniden oluşmaz", async () => {
     const store = { "orgs/u1/invoiceIndex/open": { list: IV.openIndex(INV) } };
@@ -1305,7 +1305,7 @@ group("Garanti kart harcaması (fiş)")([
   ["mail tarihi", F("metinde tarih yoksa mailin İstanbul saati", () => { const r = GA.garantiReceipt({ merchant: "X", amount: 100, currency: "TL" }, GM1, "u1"); return r.date === "2026-10-13" && r.time === "14:30"; })],
   ["çalıştırıcı", F("yalnız Garanti mailleri, aynı mail iki kez fiş olmaz", async () => { const io = gio(); const a = await GA.runGaranti(io, "u1", [GM1, GM2, GM3, { ...GM2, id: "x", from: "bilgilendirme@ileti.isbank.com.tr" }]); const b = await GA.runGaranti(io, "u1", [GM1]); return a.added.length === 2 && Object.keys(io.db).length === 2 && !!io.db["orgs/u1/receipts/g-m1"] && b === null; })],
   ["yapay zeka yolu", F("okunamayan mail yapay zekayla fiş olur", async () => { const m = { id: "m5", from: "a@garantibbva.com.tr", subject: "Kartınızla harcama yapıldı", text: "Kartınızla 320,00 TL harcama yapıldı.\nMAVI JEANS IZMIR" }; const io = { ...gio(), ai: async () => ({ spend: true, merchant: "Mavi Jeans", amount: 320 }) }; const r = await GA.runGaranti(io, "u1", [m]); return r?.added[0]?.amount === 32000 && GA.spendOf(m).ai === true; })],
-  ["bildirim", F("tek harcama ve çok harcama", () => { const one = GA.garantiText({ added: [{ merchant: "MIGROS DIKILI", amount: 124590 }] }); const two = GA.garantiText({ added: [{ merchant: "A", amount: 100 }, { merchant: "B", amount: 200 }] }); return one.title === "Kart harcaması: MIGROS DIKILI" && /1\.245,90 TL · ödeme bekliyor/.test(one.body) && /2 kart harcaması/.test(two.title) && GA.garantiText(null) === null; })],
+  ["bildirim", F("tek harcama ve çok harcama", () => { const one = GA.garantiText({ added: [{ merchant: "MIGROS DIKILI", amount: 124590 }] }); const two = GA.garantiText({ added: [{ merchant: "A", amount: 100 }, { merchant: "B", amount: 200 }] }); return one.title === "Kart harcaması fişe eklendi: MIGROS DIKILI 1.245,90 TL" && /2 kart harcaması/.test(two.title) && GA.garantiText(null) === null; })],
   ["Hesaplar › Kişisel", F("bu ayın kişisel fişleri ve bekleyenler", () => { const r = RCx.personalReceipts([{ scope: "personal", date: "2026-10-13", totals: { gross: 1000 }, payStatus: "pending" }, { scope: "personal", date: "2026-10-01", totals: { gross: 500 }, payStatus: "paid" }, { date: "2026-10-02", totals: { gross: 900 } }, { scope: "personal", date: "2026-09-30", totals: { gross: 50 } }], "2026-10"); return r.n === 2 && r.sum === 1500 && r.wait === 1 && r.waitSum === 1000; })],
   ["kategori", F("Opet yakıt, Starbucks yemek", () => GA.catGuess("OPET DIKILI") === "Yakıt" && GA.catGuess("STARBUCKS IZMIR") === "Yemek" && GA.catGuess("XYZ LTD") === "Diğer")],
 ]);

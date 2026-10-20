@@ -74,7 +74,8 @@ export async function POST(request) {
     const at = m?.at?.toMillis?.() || 0;
     if (!m || m.by !== au.uid || Date.now() - at > 2 * 60e3) return NextResponse.json({ ok: true, skipped: "mesaj yok" });
     const from = me.name || (au.uid === me.orgId ? "Ana hesap" : "Kişi");
-    const title = c.type === "dm" ? from : GROUPS[cid]?.name || c.name || "Grup";
+    // Tek cümle: "Ali: Yarın 9'da limandayız", grupta "Ali (Ekip): …"
+    const group = c.type === "dm" ? "" : GROUPS[cid]?.name || c.name || "Grup";
     const text = String(m.text || fileLabel(m.file) || "").replace(/\s+/g, " ").slice(0, 160);
     // Herkese aynı anda: sırayla gönderilince kalabalık grupta süre doluyor, son kişilere bildirim gitmiyordu
     const sent = await sendAll(
@@ -82,7 +83,7 @@ export async function POST(request) {
       async (u) => {
         const v = (await db.collection("users").doc(u).get()).data()?.viewing;
         if (v?.key === `chat-${cid}` && Date.now() - Date.parse(v.at || 0) < 75e3) return 0;
-        return sendTo(u, { title, body: c.type === "dm" ? text : `${from}: ${text}`, tag: `chat-${cid}`, url: `/messages?c=${cid}` });
+        return sendTo(u, { title: `${from.split(" ")[0]}${group ? ` (${group})` : ""}: ${text}`, body: "", tag: `chat-${cid}`, url: `/messages?c=${cid}` });
       },
     );
     return NextResponse.json({ ok: true, sent });
@@ -144,7 +145,7 @@ export async function POST(request) {
     const ref = org.collection("fitPrograms").doc(String(body.id || "").slice(0, 128) || "-");
     const p = (await ref.get()).data();
     if (!p?.for || p.notifiedAt) return NextResponse.json({ ok: true, skipped: p ? "gönderildi" : "program yok" });
-    const sent = await sendTo(p.for, { title: "Yeni fitness programın hazır", body: String(p.title || "Antrenman programı").slice(0, 80), tag: `fit-${ref.id}`, url: "/fitness" });
+    const sent = await sendTo(p.for, { title: `Yeni fitness programın hazır: ${String(p.title || "Antrenman programı").slice(0, 80)}`, body: "", tag: `fit-${ref.id}`, url: "/fitness" });
     await ref.update({ notifiedAt: new Date().toISOString() });
     return NextResponse.json({ ok: true, sent });
   }
