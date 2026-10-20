@@ -1,8 +1,8 @@
-Commit: 431947e · Ayarlar: yapay zeka harcaması TL (bugün, ay, bütçe); sıfır sesli mikrofon yeniden açılır (#591)
-Zaman: 2026-10-20-2120 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39473009815
+Commit: 66ef148 · Asistan: "plan olarak ekle" envantere gitmez; değişiklik yoksa envanter cevabı yazılmaz (#593)
+Zaman: 2026-10-20-2133 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39474862932
 
-TAM TEST · 20.10.2026 21:14:48
+TAM TEST · 20.10.2026 21:27:53
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1325/1347 geçti · 22 kalan · 364 sn
+SONUÇ: 1325/1347 geçti · 22 kalan · 352 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
