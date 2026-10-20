@@ -59,7 +59,7 @@ export function ConvoComposer({ value, setValue, onSend, placeholder = "Mesaj", 
       <div className="flex items-center gap-2.5 rounded-2xl bg-card px-3 py-2 shadow-sm">
         <span className="size-2.5 animate-pulse rounded-full bg-rec" />
         <p className="min-w-0 flex-1 truncate text-[0.875rem]">{`${sp.finalText || ""}${sp.interim || ""}` || <span className="text-mut">Dinliyorum…</span>}</p>
-        <button type="button" onClick={() => sp.stop("edit")} className="h-9 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white">
+        <button type="button" onClick={() => sp.stop("edit")} data-press className="btn btn-primary btn-sm">
           Bitti
         </button>
       </div>
@@ -78,7 +78,7 @@ export function ConvoComposer({ value, setValue, onSend, placeholder = "Mesaj", 
           {...inputProps}
           className="max-h-36 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-[0.6875rem] pl-4 pr-1 text-base leading-snug outline-none [field-sizing:content] placeholder:text-mut"
         />
-        <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => sp.start({ autoStop: 8000 })} aria-label="Sesle yaz" className="mb-0.5 mr-0.5 grid size-10 shrink-0 place-items-center rounded-full text-acc active:bg-bg">
+        <button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => sp.start({ autoStop: 8000 })} aria-label="Sesle yaz" data-press className="btn btn-icon size-10 mb-0.5 mr-0.5 shrink-0 text-acc">
           <Icon name="mic" className="size-[1.25rem]" />
         </button>
       </div>
