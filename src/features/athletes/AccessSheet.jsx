@@ -116,7 +116,7 @@ export function AccessSheet({ open, onClose, athletes }) {
           <button
             type="button"
             onClick={() => navigator.clipboard?.writeText(text).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.9375rem] font-semibold text-acc ring-1 ring-line"
+            data-press className="btn btn-secondary w-full text-acc"
           >
             <Icon name="clip" className="size-5" /> Giriş bilgilerini kopyala
           </button>

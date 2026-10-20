@@ -85,10 +85,10 @@ export function ProfilePhoto({ orgId, uid, name, photo, photoPath, size = "size-
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={pick} />
       <Sheet open={open} onClose={() => setOpen(false)} title="Profil fotoğrafı">
         <div className="flex flex-col gap-2 pb-2">
-          <button type="button" onClick={() => (setOpen(false), input.current?.click())} className="h-12 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.98]">
+          <button type="button" onClick={() => (setOpen(false), input.current?.click())} data-press className="btn btn-primary">
             Fotoğraf seç
           </button>
-          <button type="button" onClick={() => run(() => removePhoto(uid, photoPath))} className="h-12 rounded-2xl border border-line bg-card text-[1rem] font-semibold text-rec active:scale-[.98]">
+          <button type="button" onClick={() => run(() => removePhoto(uid, photoPath))} data-press className="btn btn-danger">
             Fotoğrafı kaldır
           </button>
         </div>
@@ -179,7 +179,7 @@ function Cropper({ src, onSave }) {
         />
       </div>
       <input type="range" min="1" max="4" step="0.01" value={z} onChange={(e) => zoom(+e.target.value)} aria-label="Büyüt" className="w-full max-w-[260px]" style={{ accentColor: "var(--acc)" }} />
-      <button type="button" onClick={save} disabled={!box} className="h-12 w-full rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.98] disabled:opacity-50">
+      <button type="button" onClick={save} disabled={!box} data-press className="btn btn-primary w-full">
         Kaydet
       </button>
     </div>
