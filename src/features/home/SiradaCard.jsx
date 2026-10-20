@@ -9,18 +9,19 @@ import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { dayHead, leftTag, planTag, planTone, raceForPlan, raceGroups, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { dayHead, leftTag, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
 import { RacePlanSheet } from "./RacePlanSheet";
-import { GROUP, SectionHead } from "./ui";
+import { GROUP } from "./ui";
 
 // Ana sayfanın takvim bölümü (Seyhun 2026-10-17: "2'deki gibi, bugün kısmı 3'teki gibi, Bugün yazısına gerek yok"). Ayrı gruplu kartlar:
 // 1) gün şeridi (WeekStrip; dünden başlar, bugün kırmızı daire, üç hafta kaydırılır, sonunda Tümü › Takvim; güne dokununca o günün penceresi),
 // 2) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
 //    nokta ve alt satırda "yer · 12:00'ye kadar · şimdi"; ilk satırda antrenman/yarışın rüzgârı (eşik geçilirse kırmızımsı); sağda tür adı,
-// 3) "YARIN · PAZAR" (ya da planı olan en yakın gün) ve 4) "SIRADA" (sonraki en çok 4 plan, saatin altında gün): bugünkü gibi saat çizgisinde (Seyhun: "3. örnekteki gibi olmalıydı"), 5) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
+// 3) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
+//    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 4) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
 export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
@@ -34,9 +35,8 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   if (!profile) return null;
   const today = todayStr();
   const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
-  // Sırada: aynı yarışın planları tek satırda (raceGroups); en çok 4 satır
+  // Yarın ve Sırada tek listede (homeList): aynı yarışın planları tek satırda, yarışın yarınki işi de orada; Sırada en çok 4 satır
   const { days, rest: all } = twoDays(plans, today, now, 200);
-  const rest = raceGroups(all).slice(0, 4);
   const norm = (x) => String(x || "").trim().toLocaleLowerCase("tr-TR");
   const raceOf = (name) => races.open.find((r) => norm(r.name) && norm(r.name) === norm(name));
   // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
@@ -57,6 +57,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const first = td.rows[0];
   const wx = first && WIND_CATS.includes(first.p.cat || first.p.category) ? planWind(hours, first.p) : null;
   const windy = overWind(wx, profile.windKn || WIND_KN);
+  const { next: nextRows, later: rest } = homeList(next, all);
   const empty = !td.rows.length && !next;
   // Sıradakilerin tarihi: bu aydaysa "Sal 20", değilse "Pzt 3 Kas"
   const short = (day) => (day.slice(0, 7) === today.slice(0, 7) ? dayHead(day, today).replace(/ \S+$/, "") : dayHead(day, today));
@@ -96,39 +97,42 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             )}
           </div>
         )}
+
+        {nextRows.length > 0 && (
+          <>
+            <DayHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
+            <ul>
+              {nextRows.map(({ p }) => (
+                <TimeRow key={p.id} p={p} sub={p.place} left={leftTag(next.day, today)} onOpen={() => open(p)} />
+              ))}
+            </ul>
+          </>
+        )}
+
+        {rest.length > 0 && (
+          <>
+            <DayHead title="Sırada" />
+            <ul>
+              {rest.map((x) =>
+                x.race ? (
+                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
+                ) : (
+                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && `Başlangıç ${dayHead(x.p.date, today)}`, x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
+                ),
+              )}
+            </ul>
+          </>
+        )}
       </div>
-
-      {next && (
-        <div className="pt-3">
-          <SectionHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
-          <ul className={`px-3.5 py-1.5 ${GROUP}`}>
-            {next.rows.map(({ p }) => (
-              <TimeRow key={p.id} p={p} sub={p.place} left={leftTag(next.day, today)} onOpen={() => open(p)} />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {rest.length > 0 && (
-        <div className="pt-3">
-          <SectionHead title="Sırada" />
-          <ul className={`px-3.5 py-1.5 ${GROUP}`}>
-            {rest.map((x) =>
-              x.race ? (
-                <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
-              ) : (
-                <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && `Başlangıç ${dayHead(x.p.date, today)}`, x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
-              ),
-            )}
-          </ul>
-        </div>
-      )}
 
       <WaitRow inbox={inbox} onAll={onInbox} />
       <RacePlanSheet plan={pick} today={today} onClose={() => setPick(null)} />
     </section>
   );
 }
+
+// Tek listede gün başlığı (Yarın · Çarşamba, Sırada): ince çizginin altında küçük gri ad
+const DayHead = ({ title }) => <h2 className="mt-1 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">{title}</h2>;
 
 // Saat çizgisi satırı (Bugün, Yarın, Sırada aynı; 3. örnek): solda saat (Sırada'da altında gün), dikey çizgi üstünde plan türünün renginde halka,
 // süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad, alt satırda tür adı ve yer ("Yarış · Foça"; Seyhun 2026-10-19) (warn: rüzgâr eşiği geçti, kırmızımsı).
