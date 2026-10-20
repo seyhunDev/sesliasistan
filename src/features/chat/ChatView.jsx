@@ -623,11 +623,11 @@ export function ChatView({ cid }) {
           )}
           {exists && !raw && <MsgSkeleton />}
           {(!exists || raw) && !msgs.length && (
-            <div className="mx-auto mt-10 max-w-[18rem] rounded-2xl bg-card px-4 py-3 text-center text-[0.8125rem] leading-snug text-mut shadow-sm">
+            // Geniş kutu: iki cümle de dar alanda gereksiz yere alt satıra kaymasın (Seyhun, 2026-10-20)
+            <div className="mx-auto mt-10 w-full max-w-[24rem] rounded-2xl bg-card px-3 py-3 text-center text-[0.8125rem] leading-snug text-mut shadow-sm">
               <Icon name="chat" className="mx-auto mb-1.5 size-5 text-acc" />
-              {chat.type === "dm" ? `${chat.title} ile mesajlaşmaya başla.` : GROUPS[cid] ? `${GROUPS[cid].name} grubu: yazdığını gruptaki herkes görür.` : "Grup sohbeti: yazdığını gruptaki herkes görür."}
-              <br />
-              Mesajları yalnızca bu sohbetteki kişiler görebilir.
+              <span className="block text-balance">{chat.type === "dm" ? `${chat.title} ile mesajlaşmaya başla.` : GROUPS[cid] ? `${GROUPS[cid].name} grubu: yazdığını gruptaki herkes görür.` : "Grup sohbeti: yazdığını gruptaki herkes görür."}</span>
+              <span className="block text-balance">Mesajları yalnızca bu sohbetteki kişiler görebilir.</span>
             </div>
           )}
           {msgs.map((m, i) => {
