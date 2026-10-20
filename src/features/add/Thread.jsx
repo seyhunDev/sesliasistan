@@ -16,7 +16,7 @@ export function Thread({ turns, ask, canFix, onFix, extra }) {
           <div key={i} className="fade-in flex flex-col items-end">
             <p data-user-bubble="" className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-acc/10 px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
             {canFix && i === lastUser && (
-              <button onClick={onFix} className="mt-1 px-1 text-[0.75rem] font-medium text-mut transition active:opacity-50">
+              <button onClick={onFix} data-press className="btn btn-text btn-sm mt-1 text-mut">
                 {t.chip ? "Geri al" : "Düzelt"}
               </button>
             )}
@@ -35,7 +35,7 @@ export function Thread({ turns, ask, canFix, onFix, extra }) {
                           key={c.label}
                           type="button"
                           onClick={c.onPick}
-                          className="rounded-full bg-card px-3 py-1.5 text-[0.875rem] font-medium ring-1 ring-line transition active:scale-95"
+                          data-press className="btn btn-secondary btn-sm"
                         >
                           {c.label}
                         </button>

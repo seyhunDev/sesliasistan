@@ -100,7 +100,7 @@ export default function PlansPage() {
 
       {np && (
         <section aria-label="Sıradaki plan" className="mt-2 overflow-hidden rounded-[1.5rem] bg-deep text-white shadow-[0_14px_30px_-18px_rgba(31,90,75,.85)]">
-          <button type="button" onClick={() => open(np)} className="block w-full px-5 pb-4 pt-4 text-left active:opacity-80">
+          <button type="button" onClick={() => open(np)} data-press="row" className="block w-full px-5 pb-4 pt-4 text-left">
             <span className="flex items-center gap-1.5 text-[0.75rem] font-bold tracking-[.08em] text-white/70">
               {n.state === "now" && <span className="size-2 rounded-full bg-[#7ee2b8]" aria-hidden="true" />}
               <span className="truncate">{nowKey} · {nowTime}</span>

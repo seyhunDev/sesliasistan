@@ -112,7 +112,7 @@ export function Fold({ title, rows, children }) {
 export function AddBar({ label, onClick }) {
   return (
     <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
-      <button type="button" onClick={onClick} data-press className="btn btn-primary mx-auto w-full max-w-[26.25rem]">
+      <button type="button" onClick={onClick} data-press className="btn btn-primary mx-auto flex w-full max-w-[26.25rem]">
         {label}
       </button>
     </div>

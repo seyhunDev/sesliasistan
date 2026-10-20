@@ -86,7 +86,7 @@ function DateRow({ value, onChange, optional, warn, label }) {
           {value ? dayLabel(value) : label}
         </span>
         {optional && value && (
-          <button type="button" onClick={() => onChange("")} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-50">
+          <button type="button" onClick={() => onChange("")} data-press className="btn btn-text btn-sm shrink-0 text-mut">
             Kaldır
           </button>
         )}
@@ -169,7 +169,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
             ))}
           </div>
           {!noRemove && (
-            <button type="button" onClick={() => onRemove(index)} aria-label="Kaldır" className="grid size-9 shrink-0 place-items-center rounded-full text-mut transition active:scale-90 active:bg-line">
+            <button type="button" onClick={() => onRemove(index)} aria-label="Kaldır" data-press className="btn btn-icon btn-sm shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           )}
@@ -209,7 +209,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
                   <Picker type="date" value={d.endDate} onChange={(v) => put({ endDate: v })} className="text-[0.9375rem] font-medium">
                     Bitiş: {dayLabel(d.endDate)}
                   </Picker>
-                  <button type="button" onClick={() => put({ endDate: "" })} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-50">
+                  <button type="button" onClick={() => put({ endDate: "" })} data-press className="btn btn-text btn-sm shrink-0 text-mut">
                     Tek gün
                   </button>
                 </div>
@@ -291,7 +291,7 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
             )}
 
             {!multi && d.date && d.repeat !== "week" && (
-              <button type="button" onClick={() => put({ endDate: addDaysFrom(d.date, 1), time: "", allDay: true })} className="w-full px-4 py-3 text-left text-[0.875rem] font-medium text-acc active:bg-bg">
+              <button type="button" onClick={() => put({ endDate: addDaysFrom(d.date, 1), time: "", allDay: true })} data-press="row" className="w-full px-4 py-3 text-left text-[0.875rem] font-medium text-acc">
                 + Birden fazla gün sürecek
               </button>
             )}

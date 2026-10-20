@@ -74,15 +74,15 @@ export function CancelPlan({ rec, by, onClose }) {
       )}
       <p className="mt-2 text-[0.8125rem] text-mut">Plandaki kişilere bildirim de gider. Hesabı olmayan velilere WhatsApp ile gönder.</p>
       <div className="mt-3 flex gap-2">
-        <button type="button" disabled={busy} onClick={go} className="h-11 flex-1 rounded-full bg-rec text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={go} data-press className="btn btn-danger flex-1">
           {busy ? "İptal ediliyor…" : "İptal et"}
         </button>
-        <button type="button" onClick={() => shareText(text)} className="grid h-11 place-items-center rounded-full px-4 text-[0.9375rem] font-semibold ring-1 ring-line active:scale-[.98]">
+        <button type="button" onClick={() => shareText(text)} data-press className="btn btn-secondary">
           <span className="inline-flex items-center gap-1.5">
             <Icon name="whatsapp" className="size-4" /> WhatsApp
           </span>
         </button>
-        <button type="button" onClick={() => onClose?.()} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
+        <button type="button" onClick={() => onClose?.()} aria-label="Vazgeç" data-press className="btn btn-icon text-mut">
           <Icon name="x" className="size-5" />
         </button>
       </div>
