@@ -26,7 +26,7 @@ export const TASKS_WAIT_MS = 12000;
 export function retryable(err, ms) {
   if (ms > 7000) return false;
   const r = err?.reason || "";
-  if (r === "quota" || r === "nokey" || r === "unclear" || r === "timeout") return false;
+  if (r === "quota" || r === "nokey" || r === "model" || r === "unclear" || r === "timeout") return false;
   if (r === "network" || r === "busy") return true;
   const m = String(err?.message || "");
   return /yarıda kesildi|Load failed|Failed to fetch|NetworkError|ağ|bağlan/i.test(m) || err?.name === "TypeError";

@@ -1,6 +1,7 @@
 // Yapay zeka hatalarını sınıflar: sunucu günlüğünde tek satırda neden ve telefonda anlaşılır mesaj.
 // code: quota (kota doldu) · busy (servis yoğun) · timeout (zamanında yanıt yok) · network (ulaşılamadı)
-//       · unclear (yanıt anlaşılamadı) · nokey (anahtar/model tanımlı değil) · other
+//       · unclear (yanıt anlaşılamadı) · nokey (anahtar/model tanımlı değil) · model (model adı Google'da yok: eskimiş
+//       ya da kaldırılmış; Netlify GEMINI_MODEL değişmeli) · other
 const LABEL = {
   quota: "KOTA DOLDU",
   busy: "SERVİS YOĞUN",
@@ -8,6 +9,7 @@ const LABEL = {
   network: "ULAŞILAMADI",
   unclear: "YANIT ANLAŞILAMADI",
   nokey: "ANAHTAR YOK",
+  model: "MODEL BULUNAMADI",
   other: "BİLİNMEYEN HATA",
 };
 
@@ -18,6 +20,7 @@ export function aiErrorKind(e) {
   if (e?.name === "AbortError" || /zaman aşımı|timeout|timed out|aborted/i.test(m)) return "timeout";
   if (/fetch failed|ENOTFOUND|ECONNRESET|ECONNREFUSED|EAI_AGAIN|network/i.test(m)) return "network";
   if (/boş yanıt|geçersiz JSON|Araç çıktısı gelmedi|parse|Unexpected token/i.test(m)) return "unclear";
+  if (e?.status === 404 || /\b404\b|NOT_FOUND|is not found|not supported for generateContent/i.test(m)) return "model";
   if (/anahtar|API key|api_key|401|403|PERMISSION_DENIED|GEMINI_MODEL boş/i.test(m)) return "nokey";
   return "other";
 }
@@ -29,6 +32,7 @@ export function aiErrorText(kind, e) {
   if (kind === "timeout") return "Yapay zeka zamanında yanıt vermedi (zaman aşımı); tekrar dene.";
   if (kind === "network") return "Yapay zeka servisine ulaşılamadı; bağlantıyı kontrol et.";
   if (kind === "unclear") return "Yapay zekanın yanıtı anlaşılamadı; isteği biraz farklı söyleyip tekrar dene.";
+  if (kind === "model") return "Yapay zeka modeli Google'da bulunamadı (adı eskimiş olabilir); Netlify'daki GEMINI_MODEL değişmeli.";
   if (kind === "nokey") return "Yapay zeka anahtarı ya da modeli tanımlı değil (Netlify ortam değişkenleri).";
   return "Asistan şu an yanıt vermedi.";
 }
