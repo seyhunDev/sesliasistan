@@ -73,7 +73,7 @@ const join = (xs) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", 
 const cap = (s) => s.charAt(0).toLocaleUpperCase("tr-TR") + s.slice(1);
 
 // Sorudaki sporcu (ilk ad ya da tam ad); sesle yanlış duyulmayı yapay zekaya bırakmadan tam eşleşme arar
-function whoIn(t, list) {
+export function whoIn(t, list) {
   const full = list.filter((a) => a.studentName && t.includes(fold(a.studentName)));
   if (full.length === 1) return full[0];
   const byFirst = list.filter((a) => a.studentName && new RegExp(`(^| )${fold(first(a.studentName))}(nin|nun|in|un|ye|ya|e|a|yi|yu|i|u)?( |$)`).test(t));

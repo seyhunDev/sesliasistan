@@ -61,6 +61,7 @@ export const TASKS = [
   // Kulüp
   { id: "attendance", group: "Kulüp", name: "Yoklama", say: "Ali ve Zeynep geldi, Emre izinli", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yoklamayı alıyorum.", work: "Yoklama alınıyor" },
   { id: "attQuery", group: "Kulüp", name: "Yoklama sorusu", say: "bugünkü antrenmana kimler katıldı; Ali dün geldi mi; bu ay en çok kim gelmedi", who: "sporcu", by: "yerel" },
+  { id: "clubAsk", group: "Kulüp", name: "Kulüp sorusu", say: "kaç sporcumuz var; sıradaki yarış ne zaman; Ali'nin velisi kim; Ali kaç yaşında; yaklaşan doğum günleri", who: "sporcu", by: "yerel" },
   { id: "log", group: "Kulüp", name: "Antrenman günlüğü", say: "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", who: "yönetici", by: "yz-ayrı", doing: "Tamam, antrenman günlüğünü yazıyorum.", work: "Antrenman günlüğü yazılıyor" },
   { id: "raceOpen", group: "Kulüp", name: "Yarışı açma", say: "Foça yarışını aç", who: "sporcu", by: "yerel", work: "Yarış aranıyor" },
   { id: "race", group: "Kulüp", name: "Yarış ekleme, yarışa sporcu / not / bütçe", say: "Çeşme'de 7-11 Ekim yarış ekle, Ali ve Ayşe katılacak", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yarışı hazırlıyorum.", work: "Yarış hazırlanıyor" },

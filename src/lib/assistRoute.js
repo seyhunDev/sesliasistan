@@ -34,6 +34,7 @@ import { debtAsk, debtCommand } from "@/lib/debts";
 import { timerCommand, windCommand } from "@/lib/raceLive";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
+import { clubAsk } from "@/lib/clubAsk";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -53,6 +54,9 @@ export function moreKind(s, c = {}) {
   const onRace = /^\/athletes\/races\/[\w-]+$/.test(path) && !/\/new$/.test(path);
   // "Bugünkü antrenmana kimler katıldı", "Ali dün geldi mi": yoklamadan cevap (plan değil)
   if (racer && attQueryAsk(s, c.today || "2000-01-01")) return "attQuery";
+  // "kaç sporcumuz var", "sıradaki yarış ne zaman", "yaklaşan doğum günleri", "Ali'nin velisi kim", "Ali kaç yaşında"
+  const ca = clubAsk(s);
+  if (ca && (ca.kind === "birthdays" || racer)) return "clubAsk";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && windCommand(s)) return "raceWind";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
@@ -135,7 +139,7 @@ export function routesOf(s, c = {}) {
   if (dq || dc) add("debt", { dq, dc });
   if (c.onPost) add("postEdit");
   if (!mf && wantsSchedule(s, path === "/schedule")) add("schedule");
-  const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş/iu.test(s) && parseBirthday(s);
+  const bday = !mf && !wantsNote(s) && !/(sil|kaldır)\p{L}*[\s.!]*$/u.test(s) && !/\?\s*$|ne zaman|kaçında|hangi gün|kaç yaş|(?<![\p{L}])(kim|kimin|kimler|kimlerin|yaklaş\p{L}*|var mı|neler)(?![\p{L}])/iu.test(s) && parseBirthday(s);
   if (bday) add("birthday", { bday });
   // "Son mesajımı sil": açık sohbette (yoksa en son mesaj attığın sohbette) onay sorulup silinir
   const ma = !c.drafts ? msgArchAsk(s) : null;
