@@ -7,7 +7,8 @@ import { MomentPicker } from "./MomentPicker";
 
 // Tam ekran görüntüleyici (Seyhun 2026-10-18: "tıklandığında tam ekran olsun, yan çevirip izleyebilmeliyim"): iPhone Fotoğraflar gibi
 // siyah zemin, fotoğraf/video ekrana sığar. Dikte üstte Kapat, an ve sıra; altta "Kimler var" ve Paylaş · Düzelt · Sil (Düzelt: yarış
-// ve an, MomentPicker). Yan çevrilince görüntü bütün ekranı kaplar, tek ince üst şerit (Kapat · an · Paylaş · Sil) üstünde durur.
+// ve an, MomentPicker). Görüntü her zaman bütün ekranı kaplar, şeritler üstünde durur: yan çevirince görüntü küçülüp büyümez
+// (Seyhun 2026-10-20). Yan çevrilince tek ince üst şerit (Kapat · an · Paylaş · Sil).
 // Görüntüye dokununca çubuklar gizlenir/görünür; sağa-sola kaydırınca önceki/sonraki.
 export function MediaViewer(props) {
   if (!props.id) return null;
@@ -44,9 +45,18 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
   const side = "pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]";
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-black text-white" onTouchStart={down} onTouchEnd={up}>
+    <div className="fixed inset-0 z-[70] overflow-hidden bg-black text-white" onTouchStart={down} onTouchEnd={up}>
+      {m.kind === "video" ? (
+        // Dikte videonun oynatma çubuğu alttaki şeridin altında kalmasın: video şeridin üstünde biter (yan çevrilince bütün ekran)
+        <div className={`absolute inset-x-0 top-0 bottom-0 portrait:top-[calc(3.5rem+env(safe-area-inset-top))] ${ours.length ? "portrait:bottom-[calc(8.5rem+env(safe-area-inset-bottom))]" : "portrait:bottom-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
+          <video key={m.id} src={m.url} controls autoPlay playsInline className="size-full object-contain" />
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img key={m.id} src={m.url} alt="" onClick={() => setUi((v) => !v)} className="absolute inset-0 size-full object-contain" />
+      )}
       {ui && (
-        <div className={`flex shrink-0 items-center gap-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] landscape:absolute landscape:inset-x-0 landscape:top-0 landscape:z-10 landscape:bg-gradient-to-b landscape:from-black/70 landscape:to-transparent landscape:pb-6 ${side}`}>
+        <div className={`absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${side}`}>
           <button type="button" onClick={onClose} className="h-10 shrink-0 text-[1.0625rem]">
             Kapat
           </button>
@@ -62,16 +72,8 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
           </button>
         </div>
       )}
-      <div className="relative min-h-0 flex-1">
-        {m.kind === "video" ? (
-          <video key={m.id} src={m.url} controls autoPlay playsInline className="absolute inset-0 size-full object-contain" />
-        ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img key={m.id} src={m.url} alt="" onClick={() => setUi((v) => !v)} className="absolute inset-0 size-full object-contain" />
-        )}
-      </div>
       {ui && (
-        <div className={`shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 landscape:hidden ${side}`}>
+        <div className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-6 landscape:hidden ${side}`}>
           {fixing && onFix && (
             <div className="pb-3">
               <MomentPicker at={m.at} mom={m.phase ? { rid: m.rid, phase: m.phase, sec: m.sec, end: m.end } : null} starts={starts} onChange={(mom) => onFix(m, mom)} />
