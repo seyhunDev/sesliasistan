@@ -258,8 +258,10 @@ export function raceVoid(race) {
 // race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
 // (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish) ve yanında "İptal" (onVoid). Her biri önceki sayaç kaydını verir
 // (Geri al için, writeTimer ile geri yazılır). race.label: sıradaki yarışın adı.
-// compact (yarış multimedya, Seyhun 2026-10-19): sayaca dokununca başlar, süreler kısa ("1", "2", "5 dk", "…"), halkanın içinde yarışın adı
-// (title); alt şeritte ana düğmenin solunda lead (Fotoğraf, Video), sağında tail (+) durur.
+// compact (yarış multimedya ve antrenman Süre, Seyhun 2026-10-20): Başlat düğmesi yok, büyük çemberin kendisi düğme. Hazırken dokununca başlar,
+// geri sayımda dokununca durur; durunca çemberin altında Devam ve Sıfırla (yarışta Sıfırla geri sayımı iptal eder, sebep sorulur). Startan sonra
+// çember dokunuşa kapalı (yanlışlıkla bitmesin): Bitir ve İptal alt şeritte. Süre seçimi (presets + başka süre) sağ üstteki "⋯" penceresinde.
+// Halkanın içinde yarışın adı (title); alt şeritte lead (Fotoğraf, Video) ve tail (+); ana düğme yokken lead geniş durur.
 export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, compact = false, title = "", lead = null, tail = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
@@ -272,6 +274,13 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
   const finish = () => raceFinish(race);
   const voidIt = () => raceVoid(race); // startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
+  // Durmuş geri sayım sürer; yarışa bağlıysa start anı yeni bitişe kayar
+  const resume = () => {
+    audio();
+    const end = Date.now() + (t.left ?? t.dur) * 1000;
+    save({ ...t, end, left: null });
+    if (race && t.rid) race.onShift(end, t.rid);
+  };
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
   const add = (s) => {
     if (!running) return save({ ...t, left: (t.left ?? t.dur) + s });
@@ -281,77 +290,102 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
   const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero });
   const custom = !presets.includes(t.dur);
 
-  const R = 105;
+  const big = compact;
+  const R = big ? 134 : 105;
+  const V = big ? 288 : 230;
   const C = 2 * Math.PI * R;
   const frac = up ? 0 : Math.max(0, Math.min(1, rem / Math.max(1, running ? Math.max(t.dur, rem) : t.dur)));
   const hot = running && !up && rem <= 5;
   const idle = !running && t.left == null;
+  const paused = !running && t.left != null;
   const chip = (on) => `h-9 rounded-full border px-4 text-[0.9375rem] font-medium active:scale-95 ${on ? "border-acc bg-acc text-white" : "border-line bg-bg"}`;
+  // compact: çember düğme (hazır → başlat, geri sayım → durdur, durdu → devam); startan sonra kapalı
+  const tap = compact && !up ? (idle ? start : running ? pause : resume) : undefined;
+  const tapLabel = idle ? "Başlat" : running ? "Durdur" : "Devam";
+  const main = compact ? up : true; // compact: ana düğme yalnız startan sonra (Bitir)
 
   return (
-    <section onPointerDown={() => running && !up && audio()} className="mt-3 rounded-2xl border border-line bg-card px-4 pb-4 pt-5 text-center">
+    <section onPointerDown={() => running && !up && audio()} className={`relative mt-3 rounded-2xl border border-line bg-card px-4 text-center ${compact ? "pb-3 pt-3" : "pb-4 pt-5"}`}>
+      {compact && idle && (
+        <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className="absolute right-2.5 top-2.5 z-[1] grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] leading-none tracking-wider text-fg2 active:scale-95">
+          ⋯
+        </button>
+      )}
       <div
-        className={`relative mx-auto size-[13.5rem] ${compact && idle ? "cursor-pointer active:scale-[.98]" : ""}`}
-        onClick={compact && idle ? start : undefined}
-        role={compact && idle ? "button" : undefined}
-        aria-label={compact && idle ? "Başlat" : undefined}
+        className={`relative mx-auto ${big ? "size-[18rem] max-w-full" : "size-[13.5rem]"} ${tap ? "cursor-pointer select-none rounded-full active:scale-[.98]" : ""}`}
+        onClick={tap}
+        role={tap ? "button" : undefined}
+        aria-label={tap ? tapLabel : undefined}
       >
-        <svg viewBox="0 0 230 230" className="absolute inset-0 size-full -rotate-90">
-          <circle cx="115" cy="115" r={R} fill="none" stroke="var(--line)" strokeWidth="8" />
-          {!idle && !up && <circle cx="115" cy="115" r={R} fill="none" stroke={hot ? "var(--rec)" : "var(--acc)"} strokeWidth="8" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
+        <svg viewBox={`0 0 ${V} ${V}`} className="absolute inset-0 size-full -rotate-90">
+          <circle cx={V / 2} cy={V / 2} r={R} fill="none" stroke="var(--line)" strokeWidth={big ? 10 : 8} />
+          {!idle && !up && <circle cx={V / 2} cy={V / 2} r={R} fill="none" stroke={hot ? "var(--rec)" : paused ? "var(--mut)" : "var(--acc)"} strokeWidth={big ? 10 : 8} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {title && <span className="text-[0.8125rem] font-semibold text-fg2">{title}</span>}
-          <b className={`text-[3.75rem] font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
+          {title && <span className="text-[0.875rem] font-semibold text-fg2">{title}</span>}
+          <b className={`${big ? "text-[4.5rem] leading-[1.1]" : "text-[3.75rem]"} font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
           {compact && idle ? (
-            <span className="mt-0.5 flex h-8 items-center gap-1.5 rounded-full bg-acc px-3.5 text-[0.875rem] font-semibold text-white">
-              <svg viewBox="0 0 24 24" className="size-3.5" fill="currentColor"><path d="M7 4.5v15l12-7.5z" /></svg>
-              Başlat
-            </span>
+            <svg viewBox="0 0 24 24" className="mt-0.5 size-8 text-acc" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
           ) : (
-            <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : t.left != null ? "Durdu" : "Sayaç"}</small>
+            <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : paused ? "Durdu" : "Sayaç"}</small>
           )}
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap justify-center gap-2">
-        {idle ? (
-          <>
-            {presets.map((s) => (
-              <button key={s} onClick={() => choose(s)} className={chip(t.dur === s)}>
-                {compact && t.dur !== s ? s / 60 : `${s / 60} dk`}
+      {compact ? (
+        running && !up ? (
+          <div className="mt-1.5 flex justify-center gap-2">
+            <button onClick={() => add(30)} className={chip(false)}>+30 sn</button>
+            <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
+          </div>
+        ) : paused ? (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button onClick={resume} className="h-12 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:translate-y-px">Devam</button>
+            <button onClick={race ? cancel : reset} className="h-12 rounded-2xl border border-line bg-bg text-[1rem] font-semibold text-rec active:translate-y-px">Sıfırla</button>
+          </div>
+        ) : null
+      ) : (
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {idle ? (
+            <>
+              {presets.map((s) => (
+                <button key={s} onClick={() => choose(s)} className={chip(t.dur === s)}>
+                  {`${s / 60} dk`}
+                </button>
+              ))}
+              <button onClick={() => setPick(true)} aria-label="Ayarla" className={chip(custom)}>
+                {custom ? mmss(t.dur) : "Ayarla"}
               </button>
-            ))}
-            <button onClick={() => setPick(true)} aria-label="Ayarla" className={chip(custom)}>
-              {custom ? mmss(t.dur) : compact ? "…" : "Ayarla"}
-            </button>
-          </>
-        ) : (
-          <>
-            {!up && (
-              <>
-                <button onClick={() => add(30)} className={chip(false)}>+30 sn</button>
-                <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
-              </>
-            )}
-            {!race && <button onClick={reset} className={chip(false)}>Sıfırla</button>}
-          </>
-        )}
-      </div>
-      <Pick open={pick} dur={t.dur} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
+            </>
+          ) : (
+            <>
+              {!up && (
+                <>
+                  <button onClick={() => add(30)} className={chip(false)}>+30 sn</button>
+                  <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
+                </>
+              )}
+              {!race && <button onClick={reset} className={chip(false)}>Sıfırla</button>}
+            </>
+          )}
+        </div>
+      )}
+      <Pick open={pick} dur={t.dur} presets={compact ? presets : null} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
       <Bar>
         <div className="flex gap-2">
-          {lead}
+          {main ? lead : lead && <div className="flex min-w-0 flex-1 gap-2 [&>*]:flex-1">{lead}</div>}
           {race && up && (
             <button onClick={voidIt} className={`h-14 shrink-0 rounded-2xl border border-line bg-card text-[1.0625rem] font-semibold text-rec active:translate-y-px ${compact ? "px-3.5" : "px-5"}`}>
               İptal
             </button>
           )}
-          <button
-            onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
-            className={`h-14 min-w-0 flex-1 rounded-2xl font-semibold active:translate-y-px ${compact ? "text-[1rem]" : "text-[1.0625rem]"} ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
-          >
-            {race ? (up ? (compact ? "Bitir" : "Yarışı bitir") : running ? (compact ? "Geri sayımı iptal" : "Geri sayımı iptal et") : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
-          </button>
+          {main && (
+            <button
+              onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
+              className={`h-14 min-w-0 flex-1 rounded-2xl font-semibold active:translate-y-px ${compact ? "text-[1rem]" : "text-[1.0625rem]"} ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
+            >
+              {race ? (up ? (compact ? "Bitir" : "Yarışı bitir") : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
+            </button>
+          )}
           {tail}
         </div>
       </Bar>
@@ -368,9 +402,20 @@ export function Bar({ children }) {
 }
 
 // Ayarla: dakika ve saniye (iPhone'da çark olarak açılır)
-function Pick({ open, dur, onClose, onPick }) {
+// presets verilirse (compact "⋯"): üstte hazır süreler, altta başka süre
+function Pick({ open, dur, presets, onClose, onPick }) {
   return (
     <Sheet open={open} onClose={onClose} title="Süre">
+      {open && presets && (
+        <div className="mb-4 grid grid-cols-4 gap-2">
+          {presets.map((s) => (
+            <button key={s} onClick={() => onPick(s)} className={`h-13 rounded-2xl text-[1rem] font-semibold active:scale-95 ${dur === s ? "bg-acc text-white" : "bg-bg"}`}>
+              {s / 60} dk
+            </button>
+          ))}
+        </div>
+      )}
+      {open && presets && <p className="mb-1 text-left text-[0.875rem] font-semibold text-fg2">Başka süre</p>}
       {open && <PickBody dur={dur} onPick={onPick} />}
     </Sheet>
   );
