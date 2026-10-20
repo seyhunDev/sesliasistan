@@ -2243,6 +2243,24 @@ group("Fitness hareket kütüphanesi")([
     const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "pushup", name: "Şınav" }]);
     return LB.withLib({ ex: "pushup", name: "Diz üstü şınav" }, lib).name === "Diz üstü şınav";
   })],
+  ["hareketin adı değişir", F("numara ve fotoğraf kalır; eski ve yeni adlı program hareketi yeni adı alır; aynı ad başka harekette varsa değişmez", () => {
+    const M = (id) => ({ id, kind: "photo", type: "image/jpeg", size: 1000, parts: 1 });
+    const cur = LB.cleanLib({ next: 3, items: { "c:backpack-split-squat": { no: 1, name: "Backpack split squat", media: [M("a")], m: true }, plank: { no: 2, name: "Plank" } } });
+    const { lib: l1, err } = LB.libRename(cur, "c:backpack-split-squat", "Sırt çantalı split squat");
+    const lib = LB.cleanLib(l1);
+    const a = LB.withLib({ ex: "", name: "Backpack split squat" }, lib);
+    const b = LB.withLib({ ex: "", name: "Sırt çantalı split squat" }, lib);
+    const { added } = LB.libAdd(lib, [{ ex: "", name: "Sırt çantalı split squat" }]);
+    const p = LB.cleanLib(LB.libRename(lib, "plank", "Kale").lib);
+    const busy = LB.libRename(lib, "plank", "sırt çantalı split squat");
+    return !err && a.name === "Sırt çantalı split squat" && b.media?.[0]?.id === "a" && !added.length && LB.libNo(lib, b) === 1 &&
+      LB.withLib({ ex: "plank", name: "Plank" }, p).name === "Kale" && !!busy.err;
+  })],
+  ["hareket silinir", F("listeden çıkar, fotoğraf künyesi kütüphanede kalmaz (dosya Storage'da durur)", () => {
+    const cur = LB.cleanLib({ next: 3, items: { plank: { no: 1, name: "Plank" }, dips: { no: 2, name: "Dips" } }, alias: { "c:dips": "dips" } });
+    const lib = LB.cleanLib(LB.libDrop(cur, "dips"));
+    return Object.keys(lib.items).join() === "plank" && !lib.alias && lib.next === 3;
+  })],
   ["yüklenirken eklenen kaybolmaz", F("eski görüntüye göre değişiklik güncel listeye uygulanır", () => {
     const a = { id: "a" }, b = { id: "b" }, c = { id: "c" };
     const add = LB.mediaApply([a], [a, b], [a, c]);

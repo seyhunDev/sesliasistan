@@ -21,6 +21,8 @@ const store = () => getStorage(app);
 const path = (orgId, id) => `orgs/${orgId}/fitMedia/${id}`;
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const cacheKey = (id) => `fitm:${id}`;
+// Listede görünen küçük önizleme yalnız bu telefonda (IndexedDB) saklanır: liste her açılışta fotoğraf indirmez
+const thumbKey = (id) => `fitt:${id}`;
 
 export const isVideoFile = (f) => /^video\//.test(f?.type || "") || /\.(mov|mp4|m4v|webm)$/i.test(f?.name || "");
 const isImageFile = (f) => /^image\//.test(f?.type || "") || /\.(jpe?g|png|heic|heif|webp)$/i.test(f?.name || "");
@@ -109,7 +111,52 @@ export async function saveMedia(orgId, m, onProg) {
   const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
   const url = await getDownloadURL(r);
+  makeThumb(m.blob, m.kind)
+    .then((b) => b && saveRaceFile({ id: thumbKey(id), blob: b, name: id }))
+    .catch(() => {});
   return { id, kind: m.kind, type: m.type, size: m.blob.size, parts: 1, url };
+}
+
+// Küçük önizleme (240 px JPEG): fotoğraftan ya da videonun ilk karesinden, yüklenen dosyanın kendisinden
+async function makeThumb(blob, kind) {
+  if (kind === "photo") {
+    const img = await compressImage(blob, 240, 0.7);
+    return new Blob([Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0))], { type: "image/jpeg" });
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const v = await videoMeta(url);
+    await new Promise((res) => {
+      v.onseeked = res;
+      v.currentTime = Math.min(0.2, (v.duration || 1) / 2);
+    });
+    const k = Math.min(1, 240 / Math.max(v.videoWidth || 240, v.videoHeight || 240));
+    const c = document.createElement("canvas");
+    c.width = Math.max(2, Math.round((v.videoWidth || 240) * k));
+    c.height = Math.max(2, Math.round((v.videoHeight || 240) * k));
+    c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob(res, "image/jpeg", 0.7));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+// Bu telefondaki önizleme. Yoksa (başka cihazda ya da önizleme öncesi yüklenen) fotoğraf bir kez indirilip önizlemesi
+// yapılır; Storage tarayıcıdan indirmeye izin vermezse (CORS) bu oturumda bir daha denenmez, null döner.
+let noFetch = false;
+export async function getThumb(m) {
+  const hit = await getRaceFile(thumbKey(m.id));
+  if (hit?.blob) return hit.blob;
+  if (noFetch || m.kind !== "photo" || !m.url || m.link) return null;
+  try {
+    const res = await fetch(m.url);
+    if (!res.ok) return null;
+    const b = await makeThumb(await res.blob(), "photo");
+    if (b) saveRaceFile({ id: thumbKey(m.id), blob: b, name: m.id });
+    return b;
+  } catch {
+    noFetch = true;
+    return null;
+  }
 }
 
 // Gösterilecek adres: Storage'da ise indirme adresi (tarayıcı önbelleğinde 1 yıl kalır), eski düzende parçalardan blob (bu cihazda saklanır).
@@ -151,6 +198,7 @@ export async function dropMedia(orgId, meta) {
   if (!meta?.id || meta.link) return;
   if (meta.url) await deleteObject(sref(store(), path(orgId, meta.id))).catch(() => {});
   dropRaceFile(cacheKey(meta.id));
+  dropRaceFile(thumbKey(meta.id));
 }
 
 // Kulübün bütün fitness dosyalarını siler (Fitness'ı sıfırla). Dönüş: silinen dosya sayısı
@@ -164,6 +212,7 @@ export async function dropAllMedia(orgId) {
           .then(() => {
             n++;
             dropRaceFile(cacheKey(it.name));
+            dropRaceFile(thumbKey(it.name));
           })
           .catch(() => {}),
       ),

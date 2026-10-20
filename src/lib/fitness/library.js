@@ -54,6 +54,7 @@ export function cleanLib(v = {}) {
     const spare = cleanMedia(e.spare, 30);
     if (spare.length) o.spare = spare;
     if (e.m || yt || media.length) o.m = true;
+    if (e.renamed) o.renamed = true;
     items[k] = o;
     next = Math.max(next, no + 1);
   }
@@ -142,7 +143,9 @@ export function withLib(it, lib) {
   const e = libEntry(lib, it);
   if (!it || !e) return it;
   // Başka adla yazılmış aynı hareket (birleştirilmiş ya da eşleştirilmiş) kütüphanedeki adı alır: her programda ve sporcuda tek ad
-  const named = e.name && e.name !== it.name && libKey(lib, it) !== exKey(it) ? { ...it, name: e.name } : it;
+  // (listedeki hareket, adı elle değiştirilmediyse kendi adıyla kalır: "Diz üstü şınav")
+  const k = libKey(lib, it);
+  const named = e.name && e.name !== it.name && (k !== exKey(it) || isCustomKey(k) || e.renamed) ? { ...it, name: e.name } : it;
   if (!e.m) return named;
   const o = { ...named };
   delete o.yt;
@@ -155,7 +158,7 @@ export const itemsWithLib = (items = [], lib) => (items || []).map((it) => withL
 export const progWithLib = (prog, lib) => ({ ...prog, days: (prog?.days || []).map((d) => ({ ...d, items: itemsWithLib(d.items, lib) })) });
 
 // Aynı mı (gereksiz yazma olmasın)
-const sig = (items = []) => JSON.stringify((items || []).map((it) => [it.yt?.id || "", it.yt?.start || 0, (it.media || []).map((m) => m.id).join(",")]));
+const sig = (items = []) => JSON.stringify((items || []).map((it) => [it.name || "", it.yt?.id || "", it.yt?.start || 0, (it.media || []).map((m) => m.id).join(",")]));
 export const sameMedia = (a, b) => sig(a) === sig(b);
 
 // Kütüphanedeki sıralı liste (numaraya göre), arama Türkçe harfsiz
@@ -258,4 +261,28 @@ export function libKeepOf(lib, keys = []) {
     .map((k) => ({ k, e: lib?.items?.[k] }))
     .filter((x) => x.e)
     .sort((a, b) => mediaCount(b.e) - mediaCount(a.e) || a.e.no - b.e.no)[0]?.k || "";
+}
+
+// Hareketin adını değiştirir: numarası, fotoğrafı ve programlardaki yeri aynı kalır; yeni ad da bu harekete gider (alias).
+// Başka bir hareket bu adı taşıyorsa değiştirmez (dönüş: { lib, err }); o zaman birleştirilir.
+export function libRename(lib, key, name) {
+  const e = lib?.items?.[key];
+  const n = S(name);
+  if (!e || !n) return { lib, err: "Ad boş olamaz" };
+  if (n === e.name) return { lib };
+  const k2 = exKey({ ex: "", name: n });
+  const other = Object.entries(lib.items).find(([k, x]) => k !== key && (fold(x.name) === fold(n) || k === k2));
+  if (other) return { lib, err: `“${other[1].name}” adlı hareket var; ikisi aynıysa birleştir` };
+  const alias = { ...(lib.alias || {}) };
+  if (k2 && k2 !== key) alias[k2] = key;
+  return { lib: { ...lib, alias, items: { ...lib.items, [key]: { ...e, name: n, renamed: true } } } };
+}
+
+// Hareketi listeden siler (fotoğraf/video dosyaları silinmez; "Hareketsiz kalan dosyalar"da durur). Programda geçen silinmez.
+export function libDrop(lib, key) {
+  if (!lib?.items?.[key]) return lib;
+  const items = { ...lib.items };
+  delete items[key];
+  const alias = Object.fromEntries(Object.entries(lib.alias || {}).filter(([, b]) => b !== key));
+  return { ...lib, items, alias };
 }
