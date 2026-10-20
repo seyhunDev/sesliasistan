@@ -365,7 +365,15 @@ export function TtsProvider({ children }) {
     try { localStorage.setItem(KEY, "1"); } catch { }
   }, []);
 
-  return <Ctx.Provider value={{ gvoice, setGVoice, cloud, supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
+  // Sessiz kapatma (asistan ekranındaki hoparlör düğmesi): okuma hemen susar, sonraki cevaplar okunmaz; "kapalı" diye konuşulmaz
+  const disable = useCallback(() => {
+    on.current = false;
+    setEnabled(false);
+    try { localStorage.setItem(KEY, "0"); } catch { }
+    stop();
+  }, [stop]);
+
+  return <Ctx.Provider value={{ gvoice, setGVoice, cloud, supported, enabled, speaking, hasTr, voices, voiceUri, rate, setVoice, setRate, toggle, enable, disable, speak, speakThen, stop, maybeSpeak }}>{children}</Ctx.Provider>;
 }
 
 export const useTts = () => useContext(Ctx);
