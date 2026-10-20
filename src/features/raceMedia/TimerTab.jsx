@@ -77,7 +77,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
         }
       />
       <Marks buoys={live.buoys} s={cur} on={!!cur && tr.up && !cur.void} onMark={mark} onBuoys={setBuoys} />
-      <button type="button" onClick={() => setList(true)} className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem] active:opacity-70">
+      <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">
         <span className="min-w-0 truncate text-mut">
           {today.length ? `Bugün ${today.length} yarış${last ? ` · son ${raceName(last)} ${raceTime(last)}` : ""}` : "Bugün yarış yok"}
         </span>
@@ -110,7 +110,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
                   <ul className={`${card} divide-y divide-line overflow-hidden`}>
                     {[...list].reverse().map((s) => (
                       <li key={s.id}>
-                        <button type="button" onClick={() => setEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                        <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                           <span className="min-w-0 flex-1">
                             <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
                             {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
@@ -126,7 +126,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
                     ))}
                     {d === day && (
                       <li>
-                        <button type="button" onClick={add} className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc active:bg-bg">
+                        <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
                           Yarış ekle
                         </button>
                       </li>
@@ -136,11 +136,11 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
               );
             })}
             {!days.includes(day) && (
-              <button type="button" onClick={add} className="mt-2 w-full py-2 text-[0.9375rem] font-semibold text-acc">
+              <button type="button" onClick={add} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
                 Yarış ekle
               </button>
             )}
-            <button type="button" onClick={() => (setList(false), onReset?.())} className="mt-6 w-full py-2 text-[0.9375rem] font-semibold text-rec">
+            <button type="button" onClick={() => (setList(false), onReset?.())} data-press className="btn btn-danger btn-sm mt-6 w-full">
               Denemeleri sıfırla
             </button>
           </div>
@@ -210,11 +210,11 @@ function StartForm({ s, onSave, onDrop }) {
       </div>
       <p className="mb-2 mt-4 text-[0.875rem] font-semibold text-fg2">Not</p>
       <textarea value={x.note} onChange={(e) => setX((o) => ({ ...o, note: e.target.value }))} rows={2} className="w-full rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] outline-none focus:ring-1 focus:ring-acc" />
-      <button type="button" onClick={() => onSave({ ...x, at: atOf(x.day, x.time), fin: x.finTime ? atOf(x.day, x.finTime) : "", time: undefined, finTime: undefined })} className="mt-4 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">
+      <button type="button" onClick={() => onSave({ ...x, at: atOf(x.day, x.time), fin: x.finTime ? atOf(x.day, x.finTime) : "", time: undefined, finTime: undefined })} data-press className="btn btn-primary mt-4 h-14 w-full">
         Kaydet
       </button>
       {onDrop && (
-        <button type="button" onClick={onDrop} className="mt-2 h-11 w-full text-[0.9375rem] font-semibold text-rec">
+        <button type="button" onClick={onDrop} data-press className="btn btn-danger mt-2 w-full">
           Sil
         </button>
       )}

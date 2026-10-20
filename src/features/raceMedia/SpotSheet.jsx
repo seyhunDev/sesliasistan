@@ -55,7 +55,7 @@ function Body({ spot, onSave }) {
               <button
                 type="button"
                 onClick={() => (setP({ name: [x.name, x.region].filter(Boolean).join(", "), lat: x.lat, lon: x.lon }), setQ(""), setList([]))}
-                className="w-full px-3 py-2.5 text-left active:bg-line/40"
+                data-press="row" className="w-full px-3 py-2.5 text-left"
               >
                 <b className="block truncate text-[0.9375rem] font-medium">{x.name}</b>
                 <small className="block truncate text-[0.75rem] text-mut">{[x.district, x.region].filter(Boolean).join(" · ")}</small>
@@ -79,7 +79,7 @@ function Body({ spot, onSave }) {
         type="button"
         disabled={!p || busy}
         onClick={() => (setBusy(true), Promise.resolve(onSave(p)).finally(() => setBusy(false)))}
-        className="mt-4 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-40"
+        data-press className="btn btn-primary mt-4 h-14 w-full"
       >
         Kaydet
       </button>

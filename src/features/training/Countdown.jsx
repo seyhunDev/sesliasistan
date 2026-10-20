@@ -339,8 +339,8 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
           </div>
         ) : paused ? (
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <button onClick={resume} className="h-12 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:translate-y-px">Devam</button>
-            <button onClick={race ? cancel : reset} className="h-12 rounded-2xl border border-line bg-bg text-[1rem] font-semibold text-rec active:translate-y-px">Sıfırla</button>
+            <button onClick={resume} data-press className="btn btn-primary">Devam</button>
+            <button onClick={race ? cancel : reset} data-press className="btn btn-danger">Sıfırla</button>
           </div>
         ) : null
       ) : (
@@ -444,7 +444,7 @@ function PickBody({ dur, onPick }) {
           <small className="mt-1 block text-[0.8125rem] text-mut">saniye</small>
         </label>
       </div>
-      <button onClick={() => onPick(m * 60 + s || 5)} className="mt-5 h-12 w-full rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.99]">
+      <button onClick={() => onPick(m * 60 + s || 5)} data-press className="btn btn-primary mt-5 w-full">
         Tamam
       </button>
     </>

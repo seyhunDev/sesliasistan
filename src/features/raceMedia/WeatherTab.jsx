@@ -68,7 +68,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot:
         ) : wx.day === day && wx.err ? (
           <div className="py-5 text-center">
             <p className="text-[0.875rem] text-mut">{wx.err}</p>
-            <button type="button" onClick={() => setPick(true)} className="mt-3 h-10 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
+            <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary btn-sm mt-3">
               Haritadan yer seç
             </button>
           </div>
@@ -92,7 +92,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot:
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {[...list].reverse().map((w) => (
               <li key={w.at + w.src}>
-                <button type="button" onClick={() => drop(w)} className="flex w-full flex-wrap items-center gap-x-3 px-4 py-3 text-left active:bg-bg">
+                <button type="button" onClick={() => drop(w)} data-press="row" className="flex w-full flex-wrap items-center gap-x-3 px-4 py-3 text-left">
                   <span className="flex-1 text-[0.9375rem] font-medium tabular-nums">{hm(w.at)}</span>
                   <span className="text-[0.875rem] text-mut tabular-nums">
                     {dirShort(w.dir)} · <b className={`font-semibold ${windLevel(w.kn).tone}`}>{w.kn} kn</b>
@@ -119,7 +119,7 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot:
         }}
       />
       <Bar>
-        <button type="button" onClick={() => setOpen(true)} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">
+        <button type="button" onClick={() => setOpen(true)} data-press className="btn btn-primary h-14 w-full">
           Rüzgar yaz
         </button>
       </Bar>
@@ -178,17 +178,17 @@ function WindForm({ day, last, onSave }) {
         <div className="flex items-center justify-between py-2 text-[0.9375rem]">
           <span className="text-mut">Sağanak</span>
           <span className="flex items-center gap-3">
-            <button type="button" aria-label="Sağanak azalt" onClick={() => setGust((v) => (v <= kn + 1 ? 0 : v - 1))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">−</button>
+            <button type="button" aria-label="Sağanak azalt" onClick={() => setGust((v) => (v <= kn + 1 ? 0 : v - 1))} data-press className="btn btn-round btn-sm">−</button>
             <b className="w-14 text-center font-semibold tabular-nums">{gust ? `${gust} kn` : "yok"}</b>
-            <button type="button" aria-label="Sağanak artır" onClick={() => setGust((v) => Math.min(80, Math.max(v + 1, kn + 2)))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">+</button>
+            <button type="button" aria-label="Sağanak artır" onClick={() => setGust((v) => Math.min(80, Math.max(v + 1, kn + 2)))} data-press className="btn btn-round btn-sm">+</button>
           </span>
         </div>
         <div className="flex items-center justify-between py-2 text-[0.9375rem]">
           <span className="text-mut">Akıntı</span>
           <span className="flex items-center gap-3">
-            <button type="button" aria-label="Akıntı azalt" onClick={() => setCkn((v) => Math.max(0, Math.round((v - 0.5) * 10) / 10))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">−</button>
+            <button type="button" aria-label="Akıntı azalt" onClick={() => setCkn((v) => Math.max(0, Math.round((v - 0.5) * 10) / 10))} data-press className="btn btn-round btn-sm">−</button>
             <b className="w-14 text-center font-semibold tabular-nums">{ckn ? `${ckn} kn` : "yok"}</b>
-            <button type="button" aria-label="Akıntı artır" onClick={() => setCkn((v) => Math.min(10, v + 0.5))} className="grid size-9 place-items-center rounded-full bg-bg text-fg2">+</button>
+            <button type="button" aria-label="Akıntı artır" onClick={() => setCkn((v) => Math.min(10, v + 0.5))} data-press className="btn btn-round btn-sm">+</button>
           </span>
         </div>
         {ckn > 0 && (
@@ -212,7 +212,7 @@ function WindForm({ day, last, onSave }) {
         type="button"
         disabled={dir === null}
         onClick={() => onSave({ at: atOf(day, time), dir, kn, gust: gust || null, src: "elle", ckn: ckn || null, cdir: ckn ? cdir : null, note: note.trim() })}
-        className="mt-5 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-40"
+        data-press className="btn btn-primary mt-5 h-14 w-full"
       >
         Kaydet
       </button>

@@ -105,7 +105,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
               ))}
               {!more && rows.length > TOP && (
                 <li>
-                  <button type="button" onClick={() => setMore(true)} className="w-full py-3 text-center text-[0.9375rem] font-semibold text-acc">
+                  <button type="button" onClick={() => setMore(true)} data-press className="btn btn-text btn-sm w-full text-acc">
                     Tümünü göster · {rows.length}
                   </button>
                 </li>
@@ -134,7 +134,7 @@ export function ResultsTab({ orgId, race, ours, club, onRace }) {
 
       <input ref={pick} type="file" accept="application/pdf,image/*,.pdf" className="hidden" onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
       <Bar>
-        <button type="button" disabled={busy} onClick={() => pick.current?.click()} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={() => pick.current?.click()} data-press className="btn btn-primary h-14 w-full">
           {busy ? "Sonuçlar okunuyor…" : fleet ? "Yeni sonuç PDF'i" : "Sonuç PDF'i yükle"}
         </button>
       </Bar>

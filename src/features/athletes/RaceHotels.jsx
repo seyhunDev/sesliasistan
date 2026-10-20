@@ -33,7 +33,7 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
           return (
             <li key={`${h.name}-${i}`} className="py-1">
               <span className="flex items-center gap-2 pl-4 pr-2">
-                <button type="button" onClick={() => setEdit({ i, ...h })} className="min-w-0 flex-1 py-2 text-left">
+                <button type="button" onClick={() => setEdit({ i, ...h })} data-press="row" className="min-w-0 flex-1 py-2 text-left">
                   <b className="block text-[0.9375rem] font-semibold">{h.name}</b>
                   <span className="block text-[0.8125rem] tabular-nums text-mut">{h.phone || "Telefon yok · eklemek için dokun"}</span>
                   {h.note && <span className="block break-words text-[0.8125rem] text-mut">{h.note}</span>}
@@ -65,7 +65,7 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
           );
         })}
         <li>
-          <button type="button" onClick={() => setEdit({ i: -1, name: "", phone: "", note: "", rooms: [] })} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
+          <button type="button" onClick={() => setEdit({ i: -1, name: "", phone: "", note: "", rooms: [] })} data-press="row" className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
             <Icon name="plus" className="size-5" />
             Otel ekle
           </button>
@@ -95,11 +95,11 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
             </label>
             <div className="flex gap-2 pt-1">
               {edit.i >= 0 && (
-                <button type="button" onClick={drop} className="h-12 rounded-xl px-4 text-[0.9375rem] font-semibold text-rec ring-1 ring-line">
+                <button type="button" onClick={drop} data-press className="btn btn-danger">
                   Sil
                 </button>
               )}
-              <button type="button" disabled={!edit.name.trim()} onClick={save} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+              <button type="button" disabled={!edit.name.trim()} onClick={save} data-press className="btn btn-primary flex-1">
                 Kaydet
               </button>
             </div>

@@ -44,7 +44,7 @@ function Body({ live, onReset }) {
         type="button"
         disabled={busy}
         onClick={() => (setBusy(true), Promise.resolve(onReset(media)).finally(() => setBusy(false)))}
-        className="mt-4 h-14 w-full rounded-2xl bg-rec text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-40"
+        data-press className="btn btn-danger mt-4 h-14 w-full"
       >
         Sıfırla
       </button>

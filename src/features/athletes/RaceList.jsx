@@ -107,7 +107,7 @@ function NextCard({ r, onOpen }) {
   const step = nextStep(r);
   return (
     <section aria-label="Sıradaki yarış" className="mt-2 overflow-hidden rounded-[1.5rem] bg-deep text-white shadow-[0_14px_30px_-18px_rgba(31,90,75,.85)]">
-      <button type="button" onClick={() => onOpen(r)} className="block w-full px-5 pb-3.5 pt-4 text-left active:opacity-80">
+      <button type="button" onClick={() => onOpen(r)} data-press="row" className="block w-full px-5 pb-3.5 pt-4 text-left">
         <span className="flex items-center justify-between gap-3 text-[0.75rem] font-bold tracking-[.08em] text-white/70">
           SIRADAKİ YARIŞ
           {r.planAdded && (
@@ -196,7 +196,7 @@ export function RaceList({ races, onOpen }) {
         <section>
           <Label>GEÇMİŞ</Label>
           <div className={`overflow-hidden ${CARD}`}>
-            <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} className="flex w-full items-center gap-3 p-3.5 text-left transition active:bg-bg">
+            <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press="row" className="flex w-full items-center gap-3 p-3.5 text-left transition">
               <span className="grid size-[2.375rem] shrink-0 place-items-center rounded-xl bg-line/70 text-mut">
                 <Icon name="flag" className="size-5" />
               </span>

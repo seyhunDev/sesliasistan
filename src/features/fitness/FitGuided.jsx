@@ -321,7 +321,7 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
 
   const top = (
     <div className="flex items-center gap-3 px-5 pt-[max(0.75rem,env(safe-area-inset-top))]">
-      <button type="button" onClick={onClose} aria-label="Kapat" className="grid size-10 place-items-center rounded-full bg-card text-mut shadow-sm active:scale-90">
+      <button type="button" onClick={onClose} aria-label="Kapat" data-press className="btn btn-round size-10 text-mut">
         <Icon name="x" className="size-5" />
       </button>
       <span className="min-w-0 flex-1">
@@ -365,11 +365,11 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
         </div>
         <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
           {left ? (
-            <button type="button" onClick={() => setPos(nextOpen(sets, 0, 0))} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+            <button type="button" onClick={() => setPos(nextOpen(sets, 0, 0))} data-press className="btn btn-primary h-14 w-full">
               Kalan setlere dön
             </button>
           ) : (
-            <button type="button" onClick={() => onFinish("done")} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+            <button type="button" onClick={() => onFinish("done")} data-press className="btn btn-primary h-14 w-full">
               Antrenmanı bitir
             </button>
           )}
@@ -449,28 +449,28 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
           )}
           <div className="mt-3.5">
             {!timed && (
-              <button type="button" onClick={() => complete()} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={() => complete()} data-press className="btn btn-primary h-14 w-full">
                 Tamamlandı
               </button>
             )}
             {timed && !timer.run && (
-              <button type="button" onClick={() => timer.start(goal)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={() => timer.start(goal)} data-press className="btn btn-primary h-14 w-full">
                 <Icon name="clock" className="size-5" />
                 Başlat
               </button>
             )}
             {timed && timer.run && (
               <div className="flex gap-2">
-                <button type="button" onClick={timer.going ? timer.pause : timer.resume} className="h-14 flex-1 rounded-2xl bg-bg text-[1.0625rem] font-semibold active:scale-[.98]">
+                <button type="button" onClick={timer.going ? timer.pause : timer.resume} data-press className="btn btn-secondary h-14 flex-1">
                   {timer.going ? "Duraklat" : "Devam et"}
                 </button>
-                <button type="button" onClick={() => complete()} className="h-14 flex-1 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+                <button type="button" onClick={() => complete()} data-press className="btn btn-primary h-14 flex-1">
                   Bitirdim
                 </button>
               </div>
             )}
           </div>
-          <button type="button" onClick={skipEx} className="mt-1 h-10 w-full text-[0.875rem] font-semibold text-mut">
+          <button type="button" onClick={skipEx} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">
             Bu hareketi atla
           </button>
         </div>

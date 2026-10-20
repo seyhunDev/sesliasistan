@@ -292,7 +292,7 @@ function Day() {
             {races.length ? <RaceList races={races} present={present} onOpen={openRace} /> : <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[0.875rem] text-mut">Bugün yarış yok.</p>}
           </div>
           <Bar>
-            <button type="button" onClick={addRace} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">
+            <button type="button" onClick={addRace} data-press className="btn btn-primary h-14 w-full">
               Yeni yarış
             </button>
           </Bar>

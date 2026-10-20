@@ -64,8 +64,8 @@ export function DaySummarySheet({ open, onClose, race, day, live, ours }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={card.url} alt="Gün özeti kartı" className="mx-auto max-h-[55vh] w-auto rounded-xl ring-1 ring-line" />
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={shareImage} className="h-12 rounded-2xl bg-acc text-[1rem] font-semibold text-white active:translate-y-px">Resmi paylaş</button>
-            <button type="button" onClick={shareText} className="h-12 rounded-2xl bg-bg text-[1rem] font-semibold ring-1 ring-line active:translate-y-px">Yazıyı paylaş</button>
+            <button type="button" onClick={shareImage} data-press className="btn btn-primary">Resmi paylaş</button>
+            <button type="button" onClick={shareText} data-press className="btn btn-secondary">Yazıyı paylaş</button>
           </div>
         </div>
       )}
