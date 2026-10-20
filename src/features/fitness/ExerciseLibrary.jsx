@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
-import { Sheet } from "@/components/ui/Sheet";
+import { createPortal } from "react-dom";
 import { fold } from "@/lib/fitness/exercises";
 import { ytThumb } from "@/lib/fitness/youtube";
 import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds } from "@/lib/fitness/library";
@@ -27,6 +27,14 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const [sel, setSel] = useState("");
   const [pick, setPick] = useState(false);
   const [only, setOnly] = useState("");
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
   const all = libList(lib, q);
   const list = only === "v" ? all.filter(hasMedia) : only === "n" ? all.filter((x) => !hasMedia(x)) : all;
   // Hareketin kaç programda geçtiği
@@ -95,8 +103,10 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
       failed();
     }
   };
-  return (
-    <Sheet open={open} onClose={close} title="Hareketler">
+  if (!open) return null;
+  // Tam ekran: arama en üstte sabit, sonuçlar yukarıdan aşağı (klavye listeyi örtmez)
+  return createPortal(
+    <div role="dialog" aria-label="Hareketler" className="fixed inset-0 z-[45] overflow-y-auto overscroll-contain bg-bg">
       {e && (
         <ExerciseScreen e={e} uses={uses[e.key] || 0} put={(fn) => setMedia(it, fn)} onBack={back}>
           {join ? (
@@ -128,9 +138,17 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
           )}
         </ExerciseScreen>
       )}
-      <div>
-        <div className="flex items-center gap-2">
-          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-bg px-3">
+      <div className="sticky top-0 z-10 mx-auto max-w-[30rem] bg-bg/95 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex h-11 items-center justify-between">
+          <button type="button" onClick={close} className="-ml-1 flex h-11 items-center gap-1 pr-3 text-[0.9375rem] font-semibold text-acc">
+            <Icon name="chev" className="size-4 rotate-180" />
+            Fitness
+          </button>
+          <b className="text-[1.0625rem] font-semibold">Hareketler</b>
+          <span className="w-16" />
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-card px-3 ring-1 ring-line">
             <Icon name="search" className="size-4 text-mut" />
             <input value={q} onChange={(x) => setQ(x.target.value)} placeholder="Ara: ad ya da numara" className="h-12 w-full min-w-0 bg-transparent text-[1rem] outline-none" />
           </label>
@@ -144,11 +162,13 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             ["v", "Fotoğraflı"],
             ["n", "Fotoğrafsız"],
           ].map(([k, label]) => (
-            <button key={k || "all"} type="button" onClick={() => setOnly(k)} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${only === k ? "bg-deep text-white" : "bg-bg text-mut"}`}>
+            <button key={k || "all"} type="button" onClick={() => setOnly(k)} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${only === k ? "bg-deep text-white" : "bg-card text-mut ring-1 ring-line"}`}>
               {label}
             </button>
           ))}
         </div>
+      </div>
+      <div className="mx-auto max-w-[30rem] px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
         {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
         {!q && !only && <Similar lib={lib} uses={uses} onMerge={merge} />}
         {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
@@ -180,7 +200,8 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         </ul>
       </div>
       <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={add} />
-    </Sheet>
+    </div>,
+    document.body,
   );
 }
 
