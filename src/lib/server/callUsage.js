@@ -70,7 +70,7 @@ export async function recordCall(uid, body) {
     const body =
       res.step === 100
         ? `Bu ay TURN ${mbText(res.used)} / ${mbText(limit)}. Ay sonuna kadar aramalar yalnız doğrudan bağlanabilen ağlarda (Wi-Fi) çalışır.`
-        : `Bu ay TURN ${mbText(res.used)} / ${mbText(limit)}. Ayarlar › Aramalar'dan bakabilirsin.`;
+        : `Bu ay TURN ${mbText(res.used)} / ${mbText(limit)}. Ayarlar › Veri ve kullanım › Aramalar'dan bakabilirsin.`;
     await sendTo(org, { title, body, tag: `calls-quota-${res.step}`, url: "/settings" }).catch((e) => console.warn("[calls] bildirim:", e.message));
   }
   return res;

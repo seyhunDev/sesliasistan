@@ -5,9 +5,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { devOn, engineName, liveOf, liveText, msText, secText, setDevOn, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
 import { probeCheck, probeSamples, probeText } from "@/lib/aiProbe";
 import { askAssistant } from "@/services/assistantService";
-import { Row } from "./ui";
+import { Btn, Row } from "./ui";
 
-// Ayarlar › Asistan süre kaydı: son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
+// Ayarlar › Testler › Süre kaydı: son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
 // Toplam: sustuğun (yazıda gönderdiğin) andan cevabın okunmaya başlamasına kadar; "Konuşman" toplama girmez.
 export function TimingRow() {
   const toast = useToast();
@@ -38,7 +38,7 @@ export function TimingRow() {
   const avg = totals.length ? totals.reduce((a, b) => a + b, 0) / totals.length : 0;
 
   return (
-    <Row icon="clock" tone="violet" title="Asistan süre kaydı" sub="Son 20 komutta her adımın süresi" onClick={toggle} chevron>
+    <Row title="Süre kaydı" open={open} onClick={toggle}>
       {open && (
         <div className="px-4 pb-3">
           {!list.length ? (
@@ -88,17 +88,16 @@ export function TimingRow() {
                 })}
               </ul>
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={copy} className="rounded-lg bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
+                <Btn kind="line" small onClick={copy}>
                   Kopyala
-                </button>
-                <button type="button" onClick={clear} className="rounded-lg bg-rec/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-rec">
+                </Btn>
+                <Btn kind="danger" small onClick={clear}>
                   Temizle
-                </button>
+                </Btn>
               </div>
             </>
           )}
           <DevSwitch />
-          <Probe />
           <p className="mt-2 text-[0.75rem] leading-snug text-mut">
             Yalnız bu telefonda saklanır. Yavaş bir komutta “Kopyala”ya basıp yeni bir threade yapıştırabilirsin.
           </p>
@@ -123,7 +122,16 @@ function DevSwitch() {
   );
 }
 
-// Örnekleri dene: yapay zeka işlerinin örnek cümleleri sırayla gönderilir (kayıt yapılmaz), süre ve doğruluk listelenir
+// Testler › Örnekleri dene: yapay zeka işlerinin örnek cümleleri sırayla gönderilir (kayıt yapılmaz), süre ve doğruluk listelenir
+export function ProbeRow() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Row title="Örnekleri dene" sub={`${probeSamples().length} cümle`} open={open} onClick={() => setOpen((v) => !v)}>
+      {open && <Probe />}
+    </Row>
+  );
+}
+
 function Probe() {
   const toast = useToast();
   const [rows, setRows] = useState([]);
@@ -163,16 +171,7 @@ function Probe() {
   };
   const ok = rows.filter((x) => x.ok).length;
   return (
-    <div className="mt-3 border-t border-line pt-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[0.875rem]">Örnekleri dene <span className="text-mut">({samples.length} cümle)</span></span>
-        <span className="flex gap-2">
-          {rows.length > 0 && !busy && (
-            <button type="button" onClick={copy} className="rounded-lg bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Kopyala</button>
-          )}
-          <button type="button" onClick={run} className="rounded-lg bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">{busy ? "Durdur" : "Başlat"}</button>
-        </span>
-      </div>
+    <div className="px-4 pb-3.5">
       {rows.length > 0 && (
         <>
           <p className="mt-2 text-[0.8125rem] text-mut">
@@ -189,6 +188,10 @@ function Probe() {
           </ul>
         </>
       )}
+      <div className="mt-2.5 flex gap-2">
+        <Btn kind={busy ? "line" : "main"} onClick={run}>{busy ? "Durdur" : "Başlat"}</Btn>
+        {rows.length > 0 && !busy && <Btn kind="line" onClick={copy}>Kopyala</Btn>}
+      </div>
     </div>
   );
 }

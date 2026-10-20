@@ -9,7 +9,7 @@ import { isIOS, isStandalone, nativeOn, setNative, webSpeechAvailable } from "@/
 import { loadFixes } from "@/lib/sttFixes";
 import { toWav16k } from "@/lib/speech/wav";
 
-// Ses testi: telefonda konuşmayı yazıya çeviren üç yolu yan yana dener (Ayarlar › Diğer ayarlar › Ses testi).
+// Ses testi: telefonda konuşmayı yazıya çeviren üç yolu yan yana dener (Ayarlar › Testler › Ses testi).
 // A şimdiki yol (kayıt + sunucu, canlı parçalar), B Gemini Live (WebSocket akışı), C telefonun kendi tanıması
 // (+ isteğe bağlı aynı anda kayıt ve tek seferde Gemini düzeltmesi). Hiçbir şey kaydedilmez, sonuç kopyalanır.
 

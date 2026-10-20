@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
-import { Row } from "./ui";
+import { Btn, Row } from "./ui";
 
 // Ayarlar › iPhone takvimi: planlar iPhone/Mac Takvim'e abonelik olarak eklenir (salt okunur, birkaç saatte bir yenilenir).
 // Bağlantı gizlidir; bilen herkes planları görür, bu yüzden "Yenile" eskisini geçersiz kılar, "Kapat" siler.
@@ -42,27 +42,25 @@ export function CalendarFeedRow() {
   };
 
   return (
-    <Row icon="cal" tone="rec" title="iPhone takvimi" sub={token ? "Açık · planlar Takvim'de" : "Planları iPhone ya da Mac Takvim'de gör"} onClick={() => setOpen((o) => !o)} chevron>
+    <Row title="iPhone takvimi" sub={token ? "Açık" : "Kapalı"} open={open} onClick={() => setOpen((o) => !o)}>
       {open && (
         <div className="px-4 pb-3 text-[0.875rem]">
           {!token ? (
             <>
               <p className="text-mut">Planların iPhone Takvim’de abonelik olarak görünür; değişiklikler birkaç saat içinde gelir. Takvimden düzenlenmez, düzenleme uygulamada.</p>
-              <button type="button" disabled={busy} onClick={() => call("new")} className="mt-2 h-10 w-full rounded-xl bg-acc font-semibold text-white active:scale-[.98] disabled:opacity-50">
+              <Btn disabled={busy} onClick={() => call("new")} className="mt-2">
                 {busy ? "Hazırlanıyor…" : "Takvim bağlantısı oluştur"}
-              </button>
+              </Btn>
             </>
           ) : (
             <>
-              <a href={webcal} className="grid h-10 w-full place-items-center rounded-xl bg-acc font-semibold text-white active:scale-[.98]">
-                Takvime ekle
-              </a>
+              <Btn href={webcal}>Takvime ekle</Btn>
               <p className="mt-2 text-mut">Açılan ekranda Abone Ol › Ekle. Açılmazsa bağlantıyı kopyala: iPhone Ayarlar › Takvim › Hesaplar › Hesap Ekle › Diğer › Abone Olunan Takvim Ekle.</p>
               <p className="mt-2 break-all rounded-xl bg-bg px-3 py-2 text-[0.75rem] text-mut">{url}</p>
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={copy} className="h-9 flex-1 rounded-full font-semibold ring-1 ring-line active:scale-95">Kopyala</button>
-                <button type="button" disabled={busy} onClick={() => call("new")} className="h-9 flex-1 rounded-full font-semibold ring-1 ring-line active:scale-95 disabled:opacity-50">Yenile</button>
-                <button type="button" disabled={busy} onClick={() => call("off")} className="h-9 flex-1 rounded-full font-semibold text-rec ring-1 ring-rec/30 active:scale-95 disabled:opacity-50">Kapat</button>
+                <Btn kind="line" onClick={copy}>Kopyala</Btn>
+                <Btn kind="line" disabled={busy} onClick={() => call("new")}>Yenile</Btn>
+                <Btn kind="danger" disabled={busy} onClick={() => call("off")}>Kapat</Btn>
               </div>
               <p className="mt-2 text-[0.75rem] text-mut">Bağlantıyı bilen planları görür; paylaşma. Şüphelenirsen Yenile.</p>
             </>

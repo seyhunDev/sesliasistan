@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
-import { openOnboarding } from "@/features/onboarding/Onboarding";
-import { NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, TourResetRow, RacesRow, LedgerRow } from "@/features/settings/Groups";
+import { Fold, IntroRow, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, TestPushRow, ThemeRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, RacesRow, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
@@ -14,36 +14,47 @@ import { MailFilesRow, MoveAllRow } from "@/features/settings/MoveAll";
 import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
-import { TimingRow } from "@/features/settings/Timing";
+import { ProbeRow, TimingRow } from "@/features/settings/Timing";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
-import { sendersOf } from "@/lib/bankSheet";
 import { KIND_LABEL, kindOf } from "@/lib/kinds";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
 // Profil kartı (ana hesap ve kişiler ortak)
-function Profile({ profile, user, label }) {
+function Profile({ profile, label }) {
   return (
-    <section className="mt-2 flex items-center gap-4 rounded-2xl bg-card px-4 py-4 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+    <section className="mt-2 flex items-center gap-4 rounded-2xl border border-line bg-card px-4 py-3.5">
       <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
-        <span className="block truncate text-[0.875rem] text-mut">{user?.email}</span>
-        <span className="mt-1.5 inline-block rounded-full bg-acc/10 px-2.5 py-0.5 text-[0.75rem] font-semibold text-acc">{label}</span>
+        <span className="block truncate text-[0.875rem] text-mut">{label}</span>
       </span>
     </section>
   );
 }
 
+// Sürüm: satırda tarih ve PR, dokununca değişikliğin kendisi
+function VersionRow() {
+  const [date, pr, ...rest] = buildLine().split(" · ");
+  const short = pr?.startsWith("#") ? `${date} · ${pr}` : date;
+  const more = (pr?.startsWith("#") ? rest : [pr, ...rest]).filter(Boolean).join(" · ");
+  if (!more) return <Row title="Sürüm" sub={short} />;
+  return (
+    <Fold title="Sürüm" sub={short}>
+      <p className="px-4 pb-3.5 text-[0.875rem] leading-snug text-mut">{more}</p>
+    </Fold>
+  );
+}
+
 // Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
 // Sporcu ve öğrencide asistan yok: sesli yanıt ve günlük özetler de yok.
-function PersonSettings({ profile, user, n }) {
+function PersonSettings({ profile, n }) {
   const kind = kindOf(profile);
   const ai = kind !== "athlete" && kind !== "student";
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Ayarlar" />
-      <Profile profile={profile} user={user} label={KIND_LABEL[kind] || "Kişi"} />
+      <Profile profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
       <Group title="Ayarlar">
         <SizeRow />
         <ThemeRow />
@@ -55,73 +66,102 @@ function PersonSettings({ profile, user, n }) {
       </Group>
       <Group title="Hesap">
         <PasswordRow />
-        <Row icon="clock" tone="slate" title="Sürüm" sub={buildLine()} />
-        <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
+        <VersionRow />
+        <Row title="Çıkış yap" danger onClick={() => logout()} />
       </Group>
     </main>
   );
 }
 
-// Ayarlar (ana hesap): profil, sık kullanılanlar (boyut, bildirim, özet, ses, mail, kişiler), diğer ayarlar (dokununca açılır), çıkış
+// Seyrek kullanılanlar: satıra dokununca alttan açılan pencerede aynı düzende satırlar
+function SheetRow({ title, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Row title={title} onClick={() => setOpen(true)} chevron />
+      <Sheet open={open} onClose={() => setOpen(false)} title={title}>
+        <div className="-mt-5 pb-2">{children}</div>
+      </Sheet>
+    </>
+  );
+}
+
+// Ayarlar (ana hesap): Genel, Bildirimler, Asistan; Diğer (Bağlantılar, Veri ve kullanım, Testler pencereleri); Hesap (Seyhun, 2026-10-20)
 export default function SettingsPage() {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const { members } = useData();
-  const [brain, setBrain] = useState(false);
   const n = useNotifications();
   if (!profile) return null;
-  const owner = profile.role === "owner";
-  if (!owner) return <PersonSettings profile={profile} user={user} n={n} />;
+  if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Ayarlar" />
 
-      <Profile profile={profile} user={user} label="Ana hesap" />
+      <Profile profile={profile} label="Ana hesap" />
 
-      {/* Sık kullanılanlar: en çok değiştirilen ayarlar */}
-      <Group title="Sık kullanılanlar" footer={n.on ? "" : "Bildirimler kapalıyken günlük özet ve hatırlatmalar bu cihaza gelmez."}>
+      <Group title="Genel">
         <SizeRow />
         <ThemeRow />
-        <NotifyRow n={n} />
-        <SummaryRow />
-        <VoiceRow />
         <WeatherPlaceRow />
         <RacesRow />
-        {owner && <Row icon="wallet" tone="ok" title="Hesaplar" sub={sendersOf(profile.mailFrom).map((r) => r.name).join(", ")} href="/mail" />}
-        {owner && <Row icon="users" tone="ok" title="Kişiler" sub={members.length ? `${members.length} kişi · ekle, gör, kaldır` : "Ekip ya da aile ekle"} href="/staff" />}
-      </Group>
-
-      {/* Diğer ayarlar: seyrek değişenler; dokununca açılır */}
-      <Group title="Diğer ayarlar">
-        <PowerRow />
-        <NotifyMoreRow n={n} />
-        <PermissionsRow />
-        <PasswordRow />
-        <CalendarFeedRow />
-        {owner && <UsageRow />}
-        {owner && <CallsRow />}
-        {owner && <BackupRow />}
-        <DeviceDataRow />
-        <TimingRow />
-        <Row icon="mic" tone="rec" title="Ses testi" sub="Konuşmayı yazıya çeviren yolları yan yana dene" href="/settings/voice-test" />
-        {owner && <DemoDataRow />}
         <LedgerRow />
-        {owner && <Row icon="mail" tone="sky" title="Gmail bağlantısı" sub="Gönderenler ve kurulum" href="/mail/setup" />}
-        <Row icon="spark" tone="acc" title="Tanıtımı yeniden göster" sub="Başlangıç slaytları" onClick={openOnboarding} chevron />
-        <TourResetRow />
-        <Row icon="chart" tone="slate" title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık · miktar, kapat, sıfırla"} onClick={() => setBrain((v) => !v)} chevron>
-          {brain && <BrainCard bare owner={owner} />}
-        </Row>
       </Group>
 
-      <Group>
-        <Row icon="clock" tone="slate" title="Sürüm" sub={buildLine()} />
-        <MoveAllRow />
-        <MailFilesRow />
-        <Row icon="back" title="Çıkış yap" danger onClick={() => logout()} />
+      <Group title="Bildirimler">
+        <NotifyRow n={n} />
+        <NotifyMoreRow n={n} />
+        <SummaryRow />
       </Group>
 
-      <p className="mt-6 text-center text-[0.75rem] text-mut">Velora</p>
+      <Group title="Asistan">
+        <VoiceRow />
+        <PowerRow />
+        <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
+          <BrainCard bare owner />
+        </Fold>
+        <PermissionsRow />
+      </Group>
+
+      <Group title="Diğer">
+        <SheetRow title="Bağlantılar">
+          <Group>
+            <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+            <CalendarFeedRow />
+          </Group>
+        </SheetRow>
+        <SheetRow title="Veri ve kullanım">
+          <Group title="Kullanım">
+            <UsageRow />
+            <CallsRow />
+          </Group>
+          <Group title="Veri">
+            <BackupRow />
+            <DeviceDataRow />
+            <MoveAllRow />
+            <MailFilesRow />
+          </Group>
+        </SheetRow>
+        <SheetRow title="Testler">
+          <Group title="Asistan">
+            <Row title="Ses testi" href="/settings/voice-test" />
+            <ProbeRow />
+            <TimingRow />
+          </Group>
+          <Group title="Uygulama">
+            <TestPushRow n={n} />
+            <IntroRow />
+            <DemoDataRow />
+          </Group>
+        </SheetRow>
+      </Group>
+
+      <Group title="Hesap">
+        <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
+        <PasswordRow />
+        <VersionRow />
+        <Row title="Çıkış yap" danger onClick={() => logout()} />
+      </Group>
     </main>
   );
 }

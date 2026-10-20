@@ -9,7 +9,7 @@ import { localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore"
 import { cleanMailFiles } from "@/features/mail/mailFiles";
 import { db } from "@/lib/firebase/clientApp";
 import { listMeetings } from "@/lib/meeting/store";
-import { Row } from "./ui";
+import { Btn, Row } from "./ui";
 
 // Ayarlar › Telefondaki veriyi taşı: bu telefonda kalan her şeyi Firebase'e gönderir.
 // 1) Gönderilmeyi bekleyen kayıtlar (internetsizken yazılanlar) 2) yalnız bu telefonda duran yarış evrakı (Storage'a)
@@ -84,7 +84,7 @@ export function MoveAllRow() {
   };
 
   const text = !out
-    ? "Bu telefonda kalan kayıt ve evrakı Firebase'e gönderir"
+    ? ""
     : out.err
       ? out.why || "Taşınamadı, internet bağlantısını kontrol et"
       : [
@@ -99,13 +99,14 @@ export function MoveAllRow() {
           .join(" · ");
 
   return (
-    <Row icon="cloud" tone="slate" title="Telefondaki veriyi taşı" sub={text} onClick={busy ? undefined : move}>
+    <Row title="Telefondaki veriyi Firebase'e taşı" onClick={busy ? undefined : move} chevron={!busy}>
+      {text && <p className={`px-4 pb-3 text-[0.8125rem] leading-snug ${out?.err ? "text-rec" : "text-mut"}`}>{text}</p>}
       {busy && busy !== "drop" && <p className="px-4 pb-3 text-[0.875rem] text-mut">{busy}</p>}
       {out?.ok && !out.dropped && (
         <div className="px-4 pb-3">
-          <button type="button" disabled={!!busy} onClick={drop} className="w-full rounded-xl bg-rec/10 py-2.5 text-[0.9375rem] font-semibold text-rec disabled:opacity-40">
+          <Btn kind="danger" disabled={!!busy} onClick={drop}>
             {busy === "drop" ? "Siliniyor…" : "Telefondaki kopyaları sil"}
-          </button>
+          </Btn>
         </div>
       )}
     </Row>
@@ -137,6 +138,8 @@ export function MailFilesRow() {
   };
 
   return (
-    <Row icon="trash" tone="slate" title="Mail eklerini sil" sub={busy || out || "Banka maillerinin eski Excel eklerini siler"} onClick={busy ? undefined : run} />
+    <Row title="Eski mail eklerini sil" onClick={busy ? undefined : run} chevron={!busy}>
+      {(busy || out) && <p className="px-4 pb-3 text-[0.8125rem] leading-snug text-mut">{busy || out}</p>}
+    </Row>
   );
 }

@@ -118,7 +118,7 @@ export default function MailSetupPage() {
           icon="mail"
           tone={live ? "ok" : "slate"}
           title={live ? "Gmail bağlı" : seen ? "Gmail bir süredir bağlanmadı" : "Gmail henüz bağlanmadı"}
-          sub={seen ? `Son kontrol ${ago(seen, now)} · 5 dakikada bir bakılır` : "Aşağıdaki kurulumu bir kez yap"}
+          desc={seen ? `Son kontrol ${ago(seen, now)} · 5 dakikada bir bakılır` : "Aşağıdaki kurulumu bir kez yap"}
         />
       </Group>
 
@@ -132,7 +132,7 @@ export default function MailSetupPage() {
           icon="receipt"
           tone={garantiMissing.length ? "acc" : "ok"}
           title={garantiMissing.length ? "Garanti BBVA'yı takip et" : "Garanti BBVA takip ediliyor"}
-          sub={garantiMissing.length ? "Harcama mailleri fiş olsun" : "Yeni harcama mailleri 5 dakika içinde fiş olur"}
+          desc={garantiMissing.length ? "Harcama mailleri fiş olsun" : "Yeni harcama mailleri 5 dakika içinde fiş olur"}
           onClick={garantiMissing.length ? addGaranti : undefined}
           chevron={!!garantiMissing.length}
         />
@@ -145,7 +145,7 @@ export default function MailSetupPage() {
             icon="mail"
             tone="acc"
             title={r.name}
-            sub={r.from}
+            desc={r.from}
             right={
               r.fixed ? (
                 <span className="shrink-0 rounded-full bg-acc/10 px-2.5 py-1 text-[0.75rem] font-semibold text-acc">Sabit</span>
