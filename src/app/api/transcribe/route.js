@@ -1,7 +1,7 @@
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { countAi } from "@/lib/server/aiUsage";
 import { NextResponse } from "next/server";
-import { callGemini, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
+import { callGemini, clearCool, isCooling, markCool, withAiCool } from "@/lib/ai/gemini";
 import { dropHallucination, spokenText } from "@/lib/speech/hallucination";
 import { audioSecs, sttBody, sttText, sttVocab } from "@/lib/speech/geminiStt";
 
@@ -56,12 +56,13 @@ async function viaWhisper(name, file, names, terms, partial = false, ms = 0) {
 // Son yazı önce bununla denenir; olmazsa Whisper (Groq, OpenAI). GEMINI_TRANSCRIBE_MODEL=off ile kapatılır.
 const gtModel = () => process.env.GEMINI_TRANSCRIBE_MODEL || "gemini-3.5-transcribe";
 // live: dinlerken ara yazı (kısa süre; hatası son çeviriyi beklemeye almaz, kendi beklemesi "stt:gtlive")
-async function viaTranscribe(file, names, terms, live = false) {
+// maxMs: kalan süre (son çare denemesinde işlev süresi aşılmasın)
+async function viaTranscribe(file, names, terms, live = false, maxMs = 0) {
   const buf = Buffer.from(await file.arrayBuffer());
   const mimeType = (file.type || "audio/wav").split(";")[0];
   // Uzun konuşma (sıralı işler) daha uzun sürer: süre sesin uzunluğuyla artar (6-9 sn). Üst sınır kısa: yedek Whisper'a
   // da süre kalsın, toplam işlev süresi (Netlify ~10 sn) aşılmasın
-  const wait = live ? 5000 : Math.min(9000, 6000 + audioSecs(buf, mimeType) * 150);
+  const wait = live ? 5000 : Math.min(maxMs || 9000, 6000 + audioSecs(buf, mimeType) * 150);
   let res;
   try {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gtModel())}:generateContent`, {
@@ -88,7 +89,7 @@ async function viaTranscribe(file, names, terms, live = false) {
 
 // Gemini: ses dosyası doğrudan modele verilir
 const GSCHEMA = { type: "object", properties: { text: { type: "string", description: "Konuşmanın aynen yazıya dökülmüş hali" } }, required: ["text"] };
-async function viaGemini(file, names, terms) {
+async function viaGemini(file, names, terms, ms = 20000) {
   const data = Buffer.from(await file.arrayBuffer()).toString("base64");
   const mimeType = (file.type || "audio/webm").split(";")[0];
   const out = await callGemini({
@@ -98,7 +99,8 @@ async function viaGemini(file, names, terms) {
     schema: GSCHEMA,
     images: [{ mimeType, data }],
     maxTokens: 1024,
-    timeoutMs: 20000,
+    timeoutMs: ms,
+    attemptMs: ms,
   });
   return String(out?.text || "").trim();
 }
@@ -170,6 +172,16 @@ async function handle(request) {
   // başka bir hata (400, 500, süre) varsa genel yazı ve denenenler (denetim A6)
   let quota = 0;
   let other = 0;
+  const left = () => BUDGET - (Date.now() - start);
+  // Gemini Transcribe beklemede (ör. bir kez geç kaldı): yedekler ona da süre bıraksın, sonda son çare olarak yine denenir
+  const gtWait = list.includes("gtranscribe") && isCooling("stt:gtranscribe");
+  const ok = (p, raw, t0) => {
+    const text = dropHallucination(raw, HINT);
+    if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);
+    console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
+    if (p !== "gemini") clearCool(`stt:${p}`); // çalıştı: telefondaki bekleme kaydı da silinsin
+    return NextResponse.json({ text, provider: p });
+  };
   for (const p of list) {
     // Süre bitmek üzere: işlev kesilmeden hata dönülür (telefon bir kez daha dener)
     if (Date.now() - start > BUDGET - 2500) {
@@ -194,16 +206,31 @@ async function handle(request) {
           continue;
         }
         raw = r.text;
-      } else raw = p === "gemini" ? await viaGemini(file, names, terms) : await viaWhisper(p, file, names, terms, false, Math.max(3000, BUDGET - (Date.now() - start)));
-      const text = dropHallucination(raw, HINT);
-      if (raw && !text) console.log(`[transcribe] ${p} uydurma metin atıldı: ${raw.slice(0, 60)}`);
-      console.log(`[transcribe] ${p} ${Date.now() - t0} ms${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`);
-      return NextResponse.json({ text, provider: p });
+      } else {
+        const ms = Math.max(3000, left() - (gtWait ? 4500 : 0));
+        raw = p === "gemini" ? await viaGemini(file, names, terms, ms) : await viaWhisper(p, file, names, terms, false, ms);
+      }
+      return ok(p, raw, t0);
     } catch (e) {
       if (e.status === 429 || e.status === 401 || e.status === 403) quota++;
       else other++;
       tried.push(`${p}:${e.status || "hata"}`);
       console.error(`[transcribe:${p}]`, e.message.slice(0, 300));
+    }
+  }
+  // Son çare: beklemedeki Gemini Transcribe kalan süreyle bir kez daha (çoğu bekleme tek bir geç yanıttan)
+  if (gtWait && left() > 4000) {
+    const t0 = Date.now();
+    try {
+      const r = await viaTranscribe(file, names, terms, false, left() - 500);
+      countAi(au, "stt-sec", r.secs);
+      if (r.text) return ok("gtranscribe", r.text, t0);
+      tried.push("gtranscribe:boş");
+    } catch (e) {
+      tried.push(`gtranscribe:${e.status || "süre"}`);
+      if (e.status === 429 || e.status === 401 || e.status === 403) quota++;
+      else other++;
+      console.error("[transcribe:gtranscribe:son]", e.message.slice(0, 300));
     }
   }
   console.warn(`[transcribe] başarısız · ${tried.join(", ")}`);

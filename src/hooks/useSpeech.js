@@ -226,12 +226,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       cb.current.onFinal?.(text, mode);
       return;
     }
-    // iPhone: telefonun tanıması dinledi ama hiç yazı vermedi (hata da yok). Bir daha denenmez; bundan sonra ses kaydedilip
-    // sunucuda yazıya çevrilir (Ayarlar › Ses testi'nden yeniden açılır)
-    if (s.kind === "webspeech" && isIOS() && !s.auto && !err && recorderAvailable() && Date.now() - (s.t0 || 0) > 2500) {
-      setNative(false);
-      setProvider("server");
-      return fail("Telefonun ses tanıması yazı vermedi. Bundan sonra ses başka yolla yazıya çevrilecek, tekrar konuşur musun?");
+    // iPhone: telefonun tanıması dinledi ama hiç yazı vermedi (hata da yok). Ara sıra olur; telefonun tanıması kapatılmaz
+    // (Seyhun, 2026-10-20: tek boş sonuçta kapanıp sunucu yoluna dönmesi "ses yazıya çevrilemedi" hatalarına yol açıyordu)
+    if (s.kind === "webspeech" && isIOS() && !s.auto && !err && Date.now() - (s.t0 || 0) > 2500) {
+      return fail("Telefon sesi yazıya çeviremedi, tekrar konuşur musun?");
     }
     fail(ERR[err] || NO_SPEECH);
   };
@@ -288,9 +286,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         // kayıt + sunucu yoluyla sürer (Ayarlar › Ses testi'nden yeniden açılır)
         if (isIOS() && !s.text && (FATAL.includes(s.error) || s.emptyEnds >= 2) && recorderAvailable()) {
           s.rec = null;
-          // Kalıcı kapatma yalnız dokunuşla başlayan dinlemede (kendiliğinden açılanda iPhone dokunuş istediği için başlamayabilir);
-          // internet kesintisi de kalıcı sayılmaz
-          if (!s.auto && s.error !== "network") setNative(false);
+          // Kalıcı kapatma yalnız izin yoksa (mikrofon/konuşma tanıma izni verilmemiş); başlamayan ya da boş biten oturum
+          // yalnız bu dinlemeyi sunucu yoluna geçirir, telefonun tanıması sonraki dinlemede yine denenir
+          if (!s.auto && ["not-allowed", "service-not-allowed"].includes(s.error)) setNative(false);
           s.kind = "server";
           setProvider("server");
           startServer(sid);
