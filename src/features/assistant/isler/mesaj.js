@@ -66,6 +66,46 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
   reply(`${lead}${to2} için mesaj${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`, { ...ask, pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } } }, viaVoice);
 }
 
+// Sıralı işlerde art arda gelen mesajlar tek kartta, tek onayla gider (Seyhun 2026-10-20: "ikisini birlikte izin alıp
+// birlikte gönderebilir"). Hepsi uygulama içi olmalı; WhatsApp'lı ya da alıcısı bulunamayan varsa tek tek sorulur (null döner)
+export function prepareBatch(ctx, steps, viaVoice, lead = "", engine = "") {
+  const { msgDraft, reply, resolveTo } = ctx;
+  const items = [];
+  for (const st of steps) {
+    const dest = !st.wa && String(st.text || "").trim() ? resolveTo(st.to) : null;
+    if (!dest || dest.wa) return null;
+    items.push({ ...dest, text: st.text });
+  }
+  msgDraft.current = null; // tek taslak değil: "şunu da ekle" gibi düzeltmeler yeniden sorulur
+  const who = (x) => (x.team ? `${x.label} grubuna` : `${x.label}'a`);
+  const lines = items.map((x, i) => `${i + 1}. ${who(x)}: “${x.text}”`).join(" ");
+  reply(`${lead}${items.length} mesaj hazır. ${lines} Hepsini göndereyim mi?`, { engine, expect: true, listen: true, pending: { send: items[0], batch: items } }, viaVoice);
+  return true;
+}
+
+// Birlikte onaylanan mesajlar sırayla gönderilir; sonuç tek cümle
+async function sendBatch(ctx, pend, voice) {
+  const { chatSend, done, nextStep, reply, sentOk, setCards, setSteps, stepTo, stepsEnd, toast } = ctx;
+  setCards((c) => ({ ...c, pending: null, awaiting: false }));
+  setSteps([]);
+  let ok = 0;
+  const failed = [];
+  for (const x of pend.batch) {
+    stepTo(`Mesaj ${x.team ? `${x.label} grubuna` : x.label} gönderiliyor`);
+    const sent = await chatSend?.(x.cid, x.text, { create: x.create });
+    if (sent) ok++;
+    else failed.push(x.label);
+  }
+  if (ok) sentOk.current = true;
+  stepsEnd(!failed.length);
+  toast(failed.length ? (ok ? "Bazı mesajlar gönderilemedi" : "Mesajlar gönderilemedi") : "Mesajlar gönderildi");
+  navigator.vibrate?.([10, 40, 10]);
+  const all = pend.batch.length;
+  const line = !failed.length ? (all === 2 ? "İkisini de gönderdim." : `${all} mesajı da gönderdim.`) : ok ? `${ok} mesajı gönderdim; ${failed.join(", ")} için gönderemedim.` : "Mesajları gönderemedim.";
+  if (nextStep(voice, `${line} `)) return;
+  return (failed.length ? reply : done)(failed.length ? `${line} ${sendErrorText()}` : line, { engine: "local" }, voice);
+}
+
 // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
 export async function confirmPending(ctx, fromText = false, waOpened = false) {
   const { by, cards, chatDelete, chatPurge, chatRemove, chatSend, owner, convo, deleteRecord, deleteSeries, done, find, msgDraft, nextStep, reply, restAfterAtt, saveAtt, sentOk, setCards, setSteps, setTurns, stepTo, stepsEnd, toast, updateRecord } = ctx;
@@ -109,6 +149,7 @@ export async function confirmPending(ctx, fromText = false, waOpened = false) {
     }
     return;
   }
+  if (pend.batch) return sendBatch(ctx, pend, fromText && convo.current);
   if (pend.send?.waOnly) {
     // Yalnız WhatsApp grubu: kartta dokunulunca grup zaten açıldı; sesle onaylanınca WhatsApp kendiliğinden açılamaz (iPhone dokunuş ister), düğme verilir
     const { text: body, label } = pend.send;

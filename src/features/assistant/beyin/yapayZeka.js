@@ -1,5 +1,4 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
-import { startLine } from "@/lib/sayLines";
 import { editPrecue, draftFor, memoFor } from "@/lib/convoContext";
 import { precue } from "@/lib/precue";
 import { todayStr } from "@/lib/utils/format";
@@ -62,9 +61,9 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   if (pc?.info) setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
   // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
   // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir.
-  // Sesli yanıt açıksa yapay zeka beklenirken yalnız "Hemen ilgileniyorum." söylenir (Seyhun 2026-10-20: yerel cümleler
-  // doğal değil); yazıda değişiklik yok (bekleme yazısı gösterir)
-  const first = voiceOn && !opts.edit ? startLine() : pc?.info && reading ? pc.info : "";
+  // Yapay zeka beklenirken hazır cümle söylenmez (Seyhun 2026-10-20: önce yerel cümleler doğal değildi, sonra "Hemen
+  // ilgileniyorum"a da gerek yok dedi); yalnız ön bilgi (pc.info) varsa o okunur. Bekleme yazısı ekranda görünür
+  const first = pc?.info && reading ? pc.info : "";
   if (first) enqueueSay(first, viaVoice ? listenWhileThinking : undefined);
   else if (viaVoice) listenWhileThinking();
   // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
