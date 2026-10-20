@@ -456,7 +456,7 @@ export default function VoiceTestPage() {
       <Current report={report} />
       <Live report={report} />
       <Native report={report} />
-      <button type="button" onClick={copy} className="mt-5 w-full rounded-2xl bg-acc py-3 text-[1rem] font-semibold text-white">
+      <button type="button" onClick={copy} data-press className="btn btn-primary mt-5 w-full">
         {copied ? "Kopyalandı" : "Sonuçları kopyala"}
       </button>
     </main>

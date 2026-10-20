@@ -50,7 +50,7 @@ export default function ShoppingPage() {
 
   const row = (it) => (
     <li key={it.id} className="flex items-center gap-1">
-      <button type="button" onClick={() => toggleItem(orgId, it, uid)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left active:bg-bg">
+      <button type="button" onClick={() => toggleItem(orgId, it, uid)} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left">
         <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition ${it.done ? "bg-ok text-white ring-ok" : "ring-line"}`}>
           {it.done && <Icon name="check" className="size-4 [stroke-width:3]" />}
         </span>
@@ -59,7 +59,7 @@ export default function ShoppingPage() {
           {kind === "owner" || it.by !== uid ? <small className="block truncate text-[0.75rem] text-mut">{it.done ? (it.doneBy === uid ? "Sen aldın" : `${nameOf(it.doneBy) || "Biri"} aldı`) : it.by === uid ? "Sen ekledin" : `${nameOf(it.by) || "Biri"} ekledi`}</small> : null}
         </span>
       </button>
-      <button type="button" onClick={() => removeItem(orgId, it)} aria-label={`${it.text} sil`} className="mr-2 grid size-9 shrink-0 place-items-center rounded-full text-mut active:bg-bg">
+      <button type="button" onClick={() => removeItem(orgId, it)} aria-label={`${it.text} sil`} data-press className="btn btn-icon btn-sm mr-2 shrink-0 text-mut">
         <Icon name="x" className="size-4" />
       </button>
     </li>
@@ -117,7 +117,7 @@ export default function ShoppingPage() {
             <>
               <div className="mt-5 flex items-center justify-between px-1">
                 <span className="text-[0.75rem] font-bold tracking-[.08em] text-mut">ALINDI · {done.length}</span>
-                <button type="button" onClick={() => clearDone(orgId, items).catch(() => toast("Temizlenemedi"))} className="text-[0.8125rem] font-semibold text-acc">
+                <button type="button" onClick={() => clearDone(orgId, items).catch(() => toast("Temizlenemedi"))} data-press className="btn btn-text btn-sm">
                   Temizle
                 </button>
               </div>

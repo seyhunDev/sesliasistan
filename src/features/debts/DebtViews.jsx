@@ -70,7 +70,7 @@ export function DebtDetail({ debt, onClose, onPay, onUndo, onEdit, onDelete }) {
   const [sure, setSure] = useState(false);
   if (!debt) return <Sheet open={false} onClose={onClose} title="" />;
   const left = leftOf(debt);
-  const btn = "h-12 w-full rounded-xl text-base font-semibold";
+  const btn = "btn w-full";
   return (
     <Sheet open={!!debt} onClose={onClose} title={debt.who}>
       <div className="space-y-3 px-5 pb-2">
@@ -91,7 +91,7 @@ export function DebtDetail({ debt, onClose, onPay, onUndo, onEdit, onDelete }) {
         </div>
         {left > 0 ? (
           <>
-            <button type="button" onClick={() => onPay(0)} className={`${btn} bg-acc text-white`}>
+            <button type="button" onClick={() => onPay(0)} data-press className={`${btn} btn-primary`}>
               Hepsi ödendi
             </button>
             <div className="flex gap-2">
@@ -103,22 +103,23 @@ export function DebtDetail({ debt, onClose, onPay, onUndo, onEdit, onDelete }) {
                   onPay(Number(part.replace(",", ".")));
                   setPart("");
                 }}
-                className="h-12 shrink-0 rounded-xl bg-deep px-4 font-semibold text-white disabled:opacity-40"
+                data-press
+                className="btn btn-primary shrink-0"
               >
                 Yaz
               </button>
             </div>
           </>
         ) : (
-          <button type="button" onClick={onUndo} className={`${btn} bg-bg ring-1 ring-line`}>
+          <button type="button" onClick={onUndo} data-press className={`${btn} btn-secondary`}>
             Ödemeleri geri al
           </button>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onEdit} className={`${btn} bg-bg ring-1 ring-line`}>
+          <button type="button" onClick={onEdit} data-press className={`${btn} btn-secondary`}>
             Düzenle
           </button>
-          <button type="button" onClick={() => (sure ? onDelete() : setSure(true))} className={`${btn} ${sure ? "bg-red-600 text-white" : "bg-bg text-red-600 ring-1 ring-line"}`}>
+          <button type="button" onClick={() => (sure ? onDelete() : setSure(true))} data-press className={`${btn} btn-danger ${sure ? "!bg-none !bg-[var(--rec)] !text-white" : ""}`}>
             {sure ? "Emin misin? Sil" : "Sil"}
           </button>
         </div>

@@ -72,7 +72,7 @@ export default function NotesPage() {
     const preview = n.body && n.body !== n.title ? n.body.replace(/\s+/g, " ") : hasCat ? n.cat : "";
     return (
       <SwipeRow key={n.id} actions={acts(n)}>
-        <button onClick={() => open(n)} className="flex w-full items-stretch gap-3 px-4 py-3 text-left transition active:bg-bg">
+        <button onClick={() => open(n)} data-press="row" className="flex w-full items-stretch gap-3 px-4 py-3 text-left">
           <span className={`w-1 shrink-0 rounded-full ${hasCat ? catStyle(n.cat).bar : "bg-line"}`} aria-hidden />
           <span className="min-w-0 flex-1">
             <b className="flex items-center gap-1.5 text-[0.9375rem] font-semibold">
@@ -111,7 +111,7 @@ export default function NotesPage() {
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Notlar" sub={notes.length ? `${notes.length} not` : ""}>
         <ArchiveLink type="note" />
-        <button onClick={() => openAdd({ type: "note" })} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
+        <button onClick={() => openAdd({ type: "note" })} data-press className="btn btn-primary btn-sm">
           <Icon name="plus" className="size-4" />
           Yeni not
         </button>
@@ -130,7 +130,7 @@ export default function NotesPage() {
               className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-mut"
             />
             {q && (
-              <button onClick={() => setQ("")} aria-label="Aramayı temizle" className="grid size-7 place-items-center rounded-full text-mut active:bg-bg">
+              <button onClick={() => setQ("")} aria-label="Aramayı temizle" data-press className="btn btn-icon btn-sm size-7 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             )}
@@ -141,7 +141,7 @@ export default function NotesPage() {
 
       {logNotes.length > 0 && (
         <section className={`${card} mt-3 overflow-hidden`}>
-          <button onClick={() => setShowLog(!showLog)} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[0.8125rem] active:bg-bg">
+          <button onClick={() => setShowLog(!showLog)} data-press="row" className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[0.8125rem]">
             <Icon name="note" className="size-4 shrink-0 text-amber-600" />
             <span className="min-w-0 flex-1 truncate text-mut">
               <b className="font-semibold text-fg">{logNotes.length} not</b> antrenman günlüğüne benziyor, listede yok
@@ -153,12 +153,12 @@ export default function NotesPage() {
               <ul className="divide-y divide-line border-t border-line">
                 {logNotes.map((n) => (
                   <li key={n.id} className="flex items-start gap-2 px-4 py-2.5">
-                    <button onClick={() => open(n)} className="min-w-0 flex-1 text-left active:opacity-70">
+                    <button onClick={() => open(n)} data-press="row" className="-mx-1 min-w-0 flex-1 rounded-lg px-1 text-left">
                       <b className="block truncate text-[0.875rem] font-semibold">{n.title}</b>
                       {n.body && n.body !== n.title && <small className="line-clamp-2 block text-[0.75rem] leading-snug text-mut">{n.body}</small>}
                       {n.createdAt && <small className="block text-[0.6875rem] text-mut">{rel(n.createdAt.slice(0, 10))}</small>}
                     </button>
-                    <button onClick={() => updateRecord("note", n.id, { keepNote: true }, by)} className="shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold text-acc ring-1 ring-line active:bg-bg">
+                    <button onClick={() => updateRecord("note", n.id, { keepNote: true }, by)} data-press className="btn btn-text btn-sm shrink-0">
                       Not kalsın
                     </button>
                   </li>
