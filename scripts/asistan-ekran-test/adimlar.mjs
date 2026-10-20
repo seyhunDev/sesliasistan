@@ -202,10 +202,15 @@ async function scenarios2(h) {
     return [c === "mavi" && (await btn(page, "Okumayı kes").count()) === 1, `${c} · ${clean(await ringText(page))} · ${await state(page)}`];
   });
   const sr0 = await page.evaluate(() => window.__t.srStarts);
-  await check(GS, "okuma bitince", "mikrofon bir kez kendiliğinden açılır (cevap verilebilsin)", async () => {
-    const ok = await waitFor(async () => (await state(page)) === "listening", 5000);
-    return [!!ok, `${await state(page)} · tanıma +${(await page.evaluate(() => window.__t.srStarts)) - sr0}`];
+  // Seyhun 2026-10-20: kendiliğinden açılan mikrofon iPhone'da sesi almıyordu; artık açılmaz, "Konuş"a basılır
+  await check(GS, "okuma bitince", "mikrofon kendiliğinden açılmaz (dokun-konuş)", async () => {
+    await waitFor(async () => (await state(page)) === "idle", 5000);
+    await page.waitForTimeout(800);
+    const n = (await page.evaluate(() => window.__t.srStarts)) - sr0;
+    return [(await state(page)) === "idle" && n === 0, `${await state(page)} · tanıma +${n}`];
   });
+  await btn(page, "Konuş").click({ timeout: 5000 });
+  await waitFor(async () => (await state(page)) === "listening", 4000);
   await say(page, "kapat");
   await check(GS, "dinlerken “kapat”", "asistan hemen kapanır", async () => {
     const ok = await waitFor(async () => !(await full(page).count()), 4000);

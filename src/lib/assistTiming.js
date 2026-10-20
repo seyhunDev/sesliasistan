@@ -162,7 +162,7 @@ export function setDevOn(on) {
     box()?.setItem(DEV_KEY, on ? "1" : "0");
   } catch {}
 }
-const ERR_NAMES = { quota: "kota doldu", busy: "servis yoğun", timeout: "zaman aşımı", network: "ulaşılamadı", unclear: "yanıt anlaşılamadı", nokey: "anahtar yok", other: "hata" };
+const ERR_NAMES = { quota: "kota doldu", busy: "servis yoğun", timeout: "zaman aşımı", network: "ulaşılamadı", unclear: "yanıt anlaşılamadı", nokey: "anahtar yok", model: "model bulunamadı", other: "hata" };
 // Tek satır: "Yazıya çevirme 1,4 sn · Yerel 12 ms · Yapay zeka 3,1 sn (ilk parça 0,9 sn) · model · bugün 37 istek"
 export function devLine(r) {
   const m = r?.marks || {};

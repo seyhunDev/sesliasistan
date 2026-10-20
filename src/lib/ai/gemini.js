@@ -169,7 +169,13 @@ export async function callGemini({ model, system, user, schema, images = [], max
   };
 
   // Hepsi beklemede: Gemini'yi hiç çağırmadan dön (kota boşa harcanmasın)
-  if (!models.length) throw quotaErr(`Gemini: tüm modeller beklemede (${all.join(", ")})`, quotaSkipped.length ? quotaSkipped : all);
+  // Hepsi kaldırılmış (404) ise "kota doldu" denmez: model adı değişmeli
+  if (!models.length && !quotaSkipped.length) {
+    const err = new Error(`Gemini 404: model bulunamadı (${all.join(", ")})`);
+    err.status = 404;
+    throw err;
+  }
+  if (!models.length) throw quotaErr(`Gemini: tüm modeller beklemede (${all.join(", ")})`, quotaSkipped);
 
   const responseSchema = toSchema(schema);
   const schemaText = JSON.stringify(schema);

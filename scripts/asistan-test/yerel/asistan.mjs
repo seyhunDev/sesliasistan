@@ -1281,6 +1281,15 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
     ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
   ]);
+  // Yapay zeka hata türü: kaldırılmış model "kota doldu" değil "model bulunamadı" görünür (2026-10-20)
+  const ER = await import("@/lib/ai/errors");
+  group("Yapay zeka hata türü")([
+    ["404 model", SL("model", () => ER.aiErrorKind(new Error("Gemini 404 (gemini-x) models/gemini-x is not found")))],
+    ["404 durum kodu", SL("model", () => ER.aiErrorKind(Object.assign(new Error("x"), { status: 404 })))],
+    ["kota", SL("quota", () => ER.aiErrorKind(new Error("Gemini 429 (m) kota doldu")))],
+    ["anahtar", SL("nokey", () => ER.aiErrorKind(new Error("Gemini 403 PERMISSION_DENIED")))],
+    ["telefon yazısı", SL(true, () => /GEMINI_MODEL/.test(ER.aiErrorText("model")))],
+  ]);
   // Söz yapay zekası (lib/ai/soz.js): hangi cevap gider, dönen metin nasıl denetlenir
   const SZ = await import("@/lib/ai/soz");
   const ok1 = "Ekledim: Tekne yıkama, Yarın, saatsiz. İstersen saatini söyle, hemen ekleyeyim.";
