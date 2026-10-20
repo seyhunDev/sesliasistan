@@ -253,9 +253,11 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Seyhun (2026-10-20) bilgi sorulunca (saat, tarih, kim) mikrofonun kendiliğinden açılmasını istiyor. iPhone'da okumanın
   // hemen ardından açılan mikrofon sessiz kalabiliyordu: ses oturumu kayda geçsin diye 700 ms beklenir; mikrofon yine de
   // sıfır ses verirse ölü mikrofon denetimi (micCheck.js) onu kapatıp bir kez yeniden açar
+  // Cevap kayıt yoluyla dinlenir (server): telefonun tanıması okumanın ardından "gönder", "evet" gibi kısa sözleri
+  // çoğu zaman hiç yazıya çevirmiyordu (Seyhun 2026-10-20); kayıt yolunda ses gerçekten ölçülür, susunca gönderilir
   const listenOnce = () =>
     setTimeout(() => {
-      if (live.current.open && !live.current.text && live.current.spStatus === "idle") sp.start({ auto: true, quiet: true, autoStop: 8000, endpoint: 1500, handsFree: true });
+      if (live.current.open && !live.current.text && live.current.spStatus === "idle") sp.start({ auto: true, quiet: true, autoStop: 8000, endpoint: 1500, handsFree: true, server: true });
     }, 700);
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>

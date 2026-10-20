@@ -206,11 +206,13 @@ async function scenarios2(h) {
     const ok = await waitFor(async () => (await state(page)) === "listening", 5000);
     return [!!ok, `${await state(page)} · tanıma +${(await page.evaluate(() => window.__t.srStarts)) - sr0}`];
   });
-  await say(page, "kapat");
+  // Cevap mikrofonu kayıt yoluyla dinler (telefonun tanıması değil): söylenen ara çeviriyle (/api/transcribe) gelir
+  setTranscript("kapat");
   await check(GS, "dinlerken “kapat”", "asistan hemen kapanır", async () => {
-    const ok = await waitFor(async () => !(await full(page).count()), 4000);
+    const ok = await waitFor(async () => !(await full(page).count()), 7000);
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
+  setTranscript("");
   // Sesli yanıt açıkken her istekte önce hazır cümle, sonra cevap okunur (Seyhun, 2026-10-20; eski kural "oku dersem okusun")
   setAI(() => ({ intent: "chat", message: "Bugün erken yat." }));
   const sp0 = await page.evaluate(() => window.__t.spoken.length);
@@ -230,8 +232,18 @@ async function scenarios2(h) {
   await scenarios3(h);
 }
 
+// Asistanın sorusundan sonra kendiliğinden açılan cevap mikrofonu (kayıt yolu): kullanıcı konuşur, söz sunucuda çevrilir.
+// Testteki sahte mikrofonun bip sesi konuşma sayılmaz, "sustu" anlaşılmaz: kullanıcı ↑ ile bitirir
+async function answer(h, page, text) {
+  const { state, btn, waitFor, setTranscript } = h;
+  setTranscript(text);
+  await waitFor(async () => (await state(page)) === "listening", 6000);
+  await page.waitForTimeout(1200);
+  if (await btn(page, "Gönder").count()) await btn(page, "Gönder").click({ timeout: 5000 });
+}
+
 async function scenarios3(h) {
-  const { check, newPage, orb, state, full, ringText, convo, last, waitFor, btn, talkAsk, typeAsk, closeAll, aiCalls, calls, setAI, setTasks, setSoz, TOMORROW, log } = h;
+  const { check, newPage, orb, state, full, ringText, convo, last, waitFor, btn, talkAsk, typeAsk, closeAll, aiCalls, calls, setAI, setTasks, setSoz, setTranscript, TOMORROW, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
   log("    Asistan: kayıt, onaylar, görev listesi…");
   const { page, errs } = await newPage();
@@ -301,14 +313,17 @@ async function scenarios3(h) {
       const t = clean(await convo(page));
       return [!!ok && /Tekne yıkama.*saatsiz/.test(t) && !/Başka bir isteğin var mı\?\s*$/.test(t), t.slice(-120)];
     });
-    const b = aiCalls();
+    // Cevap mikrofonu sözü sunucuda çevirir (/api/transcribe): yalnız yapay zeka beyni sayılır
+    const brain = () => calls.filter((c) => /^\/api\/(assistant|tasks|interpret)$/.test(c.path)).length;
+    const b = brain();
     // Teklif cevabı için mikrofon kendiliğinden bir kez açılıp kapanır; Konuş'a o sırada basılırsa dinleme kapanıyordu
-    await page.waitForTimeout(2500);
-    await talkAsk(page, "akşam 6'da");
+    // Teklif okununca cevap mikrofonu kendiliğinden açılır (kayıt yolu); kullanıcı yalnız konuşur
+    await answer(h, page, "akşam 6'da");
     await check(GC, "teklife saat cevabı", "plan 18:00 olur, yapay zekaya gitmez", async () => {
       const ok = await waitFor(async () => /saat 18:00/.test(await convo(page)), 7000);
-      return [!!ok && aiCalls() === b, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b}`];
+      return [!!ok && brain() === b, `${clean(await convo(page)).slice(-80)} · yz isteği ${brain() - b}`];
     });
+    setTranscript("");
     await closeAll(page);
     // Son tarihsiz görev: son tarih teklif edilir; "yarın" görevin son tarihine yazılır
     setAI((t) => (/motor/i.test(t) ? { intent: "create", message: "", items: [{ type: "task", title: "Motoru kontrol et", date: "" }] } : { intent: "chat", message: "Tamam." }));
@@ -317,13 +332,13 @@ async function scenarios3(h) {
       const ok = await waitFor(async () => /Son tarih söylemedin/.test(await convo(page)), 9000);
       return [!!ok, clean(await convo(page)).slice(-100)];
     });
-    const b2 = aiCalls();
-    await page.waitForTimeout(2500);
-    await talkAsk(page, "yarın");
+    const b2 = brain();
+    await answer(h, page, "yarın");
     await check(GC, "teklife tarih cevabı", "son tarih yarın olur, yapay zekaya gitmez", async () => {
       const ok = await waitFor(async () => /son tarihi yarın/.test(await convo(page)), 7000);
-      return [!!ok && aiCalls() === b2, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b2}`];
+      return [!!ok && brain() === b2, `${clean(await convo(page)).slice(-80)} · yz isteği ${brain() - b2}`];
     });
+    setTranscript("");
     await closeAll(page);
     // Söz yapay zekası (ayrı işlem): yerel sonuç gönderilir, dönen doğal cümle gösterilir; teklif cevabı yine yerelde işlenir
     setSoz((b) => (/Kayık boyama.*saatsiz/.test(b.result || "") ? "Kayık boyama planını yarına saatsiz koydum; saatini söylersen hemen eklerim." : null));
@@ -334,12 +349,12 @@ async function scenarios3(h) {
       const c = calls.filter((x) => x.path === "/api/soz").pop();
       return [!!ok && /saatsiz/.test(c?.body?.result || "") && /kayık/i.test(c?.body?.said || ""), `${clean(await convo(page)).slice(-100)} · söz: ${(c?.body?.result || "-").slice(0, 60)}`];
     });
-    await page.waitForTimeout(2500);
-    await talkAsk(page, "akşam 7'de");
+    await answer(h, page, "akşam 7'de");
     await check(GC, "söz sonrası teklif cevabı", "plan 19:00 olur", async () => {
       const ok = await waitFor(async () => /19:00/.test(await convo(page)), 7000);
       return [!!ok, clean(await convo(page)).slice(-80)];
     });
+    setTranscript("");
     setSoz(() => null);
     await closeAll(page);
   }
@@ -413,13 +428,13 @@ async function scenarios3(h) {
   await home();
   await talkAsk(page, "Ege'ye yaz yarın 9'da kulüpte olsun");
   await waitFor(async () => /Göndereyim mi\?/.test(await convo(page)), 7000);
-  await page.waitForTimeout(1200);
-  await talkAsk(page, "gönder");
+  await answer(h, page, "gönder"); // soru okununca cevap mikrofonu açılır, "gönder" denir
   await check(GO, "Ege'ye yaz … → “gönder”", "sesle onaylanınca mesaj gider", async () => {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
     return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
   });
+  setTranscript("");
   await closeAll(page);
   await home();
   await page.waitForTimeout(500);
