@@ -126,7 +126,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
       <div className="space-y-2.5">
         <NotesWidget notes={notes} />
-        {athletes && owner && <AthletesWidget att={athletes} />}
+        {athletes && owner && <AthletesWidget att={athletes} races={race.open} />}
         {!side && <FitWidget fit={fit} />}
       </div>
       <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
