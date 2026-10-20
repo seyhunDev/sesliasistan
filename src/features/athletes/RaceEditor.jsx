@@ -27,6 +27,8 @@ import { tl, totals } from "./budget";
 import { buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
 import { RACE_KEY } from "@/features/posts/postModel";
+import { loadPosts } from "@/features/posts/posts";
+import { racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
@@ -148,7 +150,7 @@ function Check({ on, tone = "ok" }) {
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
-export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
@@ -477,7 +479,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     const cls = Object.fromEntries(classes.map((c) => [c.id, c.name]));
     const list = withResults(chosen.map((a) => ({ name: a.studentName, cls: cls[a.currentClassId] || "" })), chosen.map((a) => a.id), r.results);
     try {
-      sessionStorage.setItem(RACE_KEY, JSON.stringify({ name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [], organizer: r.notice?.organizer || "" } }));
+      sessionStorage.setItem(RACE_KEY, JSON.stringify({ id: rid, name: r.name, district: r.district, city: r.city, startDate: r.startDate, endDate: r.endDate, athleteIds: r.athleteIds, athletes: list, notice: { classes: r.notice?.classes || [], organizer: r.notice?.organizer || "" } }));
     } catch {}
   };
   const toPlan = async () => {
@@ -652,8 +654,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
     ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `${money.varies ? "Ortak pay" : "Sporcu başı"} ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
-  // Sıradaki adım: sırayla ilk bitmeyen (sporcu → evrak → yolculuk → bütçe)
-  const nextStep = stat.find((x) => !x[4])?.[0];
   const hidden = hiddenCount(r);
   // Yarış bitti mi: Özet'te hazırlık yerine yarışın özeti (süre, katılanlar, sonuçlar, bütçe) görünür
   const over = !!(r.endDate || r.startDate) && (r.endDate || r.startDate) < todayStr();
@@ -686,42 +686,88 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     setTodoDate("");
   };
   const dueOpen = (r.notice?.deadlines || []).filter((d) => d.date && daysTo(d.date) >= 0).length;
-  // İşlemler (plan ve not ekranlarındaki gibi): yuvarlak simge + kısa ad
-  const acts = [
-    r.planAdded
-      ? { icon: "check", label: "Planda", tone: "bg-ok/10 text-ok", onClick: () => toast("Yarış planlarda") }
-      : { icon: "cal", label: "Planlara ekle", onClick: toPlan },
-    start.id && { icon: "camera", label: "Gönderi", href: "/posts/new", onClick: toPost },
-  ].filter(Boolean);
-  // Özet: Evrak gibi gruplu tek liste. Her grubun başında durumu (dokununca o sekme), altında o konunun işleri
-  const allTasks = [...steps, ...doneList.map((s) => ({ ...s, done: true }))].filter((s) => s.key !== "docs");
-  const tasksOf = (gr) => allTasks.filter((s) => s.group === gr);
-  const statOf = (to) => stat.find((x) => x[0] === to);
-  const groups = [
-    { id: "notice", label: "KAYIT · TALİMAT", tasks: tasksOf("notice") },
-    { id: "people", label: "SPORCU", head: statOf("people"), tasks: [] },
-    { id: "docs", label: "EVRAK", head: statOf("docs"), tasks: tasksOf("docs") },
-    { id: "trip", label: "YOLCULUK", head: statOf("trip"), tasks: tasksOf("abroad") },
-    { id: "budget", label: "BÜTÇE", head: statOf("budget"), tasks: [] },
-    { id: "own", label: "DİĞER İŞLER", tasks: tasksOf("own") },
-  ].filter((g) => g.head || g.tasks.length || g.id === "own" || (g.id === "notice" && dueOpen > 0));
-  const headRow = ([to, icon, title, sub, done, ask]) => {
-    const now = to === nextStep;
+  // Yarış kartı: plan, son tarihler, gönderi (Seyhun 2026-10-20: "gönderisi hazırlandıysa o gönderiyi gösterelim"; "plandaysa planda gösterelim")
+  const links = racePlansOf(r, plans);
+  const inPlan = links.main || (r.planAdded && !plans.length ? {} : null);
+  // Gönderiler yarış açılınca bir kez okunur (yalnız kayıtlı yarışta; okunamazsa "Gönderi hazırla" görünür)
+  const [posts, setPosts] = useState(null);
+  useEffect(() => {
+    if (!rid) return;
+    let live = true;
+    loadPosts(orgId).then(
+      (list) => live && setPosts(list),
+      () => live && setPosts([]),
+    );
+    return () => {
+      live = false;
+    };
+  }, [orgId, rid]);
+  const post = posts && racePostOf({ ...r, id: rid }, posts);
+  // Hazırlık: Sporcu, Evrak, Yolculuk, Bütçe (dokununca o sekme); Yapılacaklar: talimattan gelen ve elle eklenen işler tek listede
+  const stepSrc = { notice: "talimattan", own: "Diğer iş", abroad: "Yurt dışı", docs: "Evrak" };
+  const order = ["notice", "docs", "abroad", "own"];
+  const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
+  const doneTasks = doneList.filter((x) => x.key !== "docs");
+  const [showDone, setShowDone] = useState(false);
+  const statRow = ([to, , title, sub, done]) => (
+    <li key={`h-${to}`}>
+      <button type="button" onClick={() => setTab(to)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+        <span className="w-[4.75rem] shrink-0 text-[0.875rem] text-mut">{title}</span>
+        <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${done ? "font-medium" : "font-semibold text-acc"}`}>{sub}</span>
+        {done && <Icon name="check" className="size-4 shrink-0 text-ok" />}
+        <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+      </button>
+    </li>
+  );
+  // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
+  const linkRow = ({ k, title, main, sub, act, onClick, href, thumb, right }) => {
+    const body = (
+      <>
+        <span className="w-[4.75rem] shrink-0 text-[0.875rem] leading-tight text-mut">{title}</span>
+        {thumb !== undefined && (
+          <span className="size-11 shrink-0 overflow-hidden rounded-lg bg-acc/15">{/* eslint-disable-next-line @next/next/no-img-element -- küçük görsel data adresi */}
+            {thumb && <img src={thumb} alt="" className="size-full object-cover" />}</span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className={`block truncate text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
+          {sub && <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>}
+        </span>
+        {right && <span className="shrink-0 text-[0.8125rem] text-mut">{right}</span>}
+        {!act && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
+      </>
+    );
+    const cls = "flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg";
     return (
-      <li key={`h-${to}`}>
-        <button type="button" onClick={() => setTab(to)} className={`flex w-full items-center gap-3 px-4 py-3 text-left ${now ? "bg-acc/[.07]" : ""}`}>
-          <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-ok/15 text-ok" : now ? "bg-acc text-white" : "bg-bg text-mut"}`}>
-            <Icon name={done ? "check" : icon} className="size-[1.125rem]" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <b className="block text-[0.9375rem] font-semibold">{done ? sub : now ? ask : title}</b>
-            {!done && <span className={`block truncate text-[0.8125rem] ${now ? "text-acc" : "text-mut"}`}>{sub}</span>}
-          </span>
-          <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-        </button>
+      <li key={k}>
+        {href ? (
+          <Link href={href} onClick={onClick} className={cls}>
+            {body}
+          </Link>
+        ) : (
+          <button type="button" onClick={onClick} className={cls}>
+            {body}
+          </button>
+        )}
       </li>
     );
   };
+  // "25–28 Eki · çıkış 07:00" (ay farklıysa "30 Eki–2 Kas")
+  const span = (a, b) => (!b || b === a ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`);
+  const planSub = (p) => [p.date && span(p.date, p.endDate), p.time && `çıkış ${p.time}`].filter(Boolean).join(" · ");
+  const raceRows = [
+    inPlan
+      ? { k: "plan", title: "Plan", main: "Planda", sub: links.main ? planSub(links.main) : "", onClick: () => (links.main ? onOpenPlan?.(links.main.id) : toast("Yarış planlarda")) }
+      : { k: "plan", title: "Plan", main: "Plana ekle", act: true, onClick: toPlan },
+    dueOpen > 0 &&
+      (r.notice?.planned || links.deadlines.length
+        ? { k: "due", title: "Son tarihler", main: "Planda", sub: `${links.deadlines.length || dueOpen} son tarih`, href: "/plans" }
+        : { k: "due", title: "Son tarihler", main: "Plana ekle", act: true, right: `${dueOpen} tarih`, onClick: noticePlan }),
+    rid &&
+      (post
+        ? { k: "post", title: "Instagram", main: post.headline || post.race?.name || "Gönderi", sub: ["Hazırlandı", post.at && shortDay(new Date(post.at).toLocaleDateString("sv-SE"))].filter(Boolean).join(" · "), thumb: post.thumb || "", href: `/posts/${post.id}` }
+        : { k: "post", title: "Instagram", main: "Gönderi hazırla", act: true, href: "/posts/new", onClick: toPost }),
+    r.notice && { k: "notice", title: "Talimat", main: "Program, ücret, iletişim", onClick: () => setNoticeInfo((v) => !v) },
+  ].filter(Boolean);
   const taskRow = (s) => {
     const left = s.date ? daysTo(s.date) : null;
     return (
@@ -731,7 +777,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         </button>
         <span className="min-w-0 flex-1 py-3">
           <span className="block text-[0.9375rem] font-medium leading-snug">{s.label}</span>
-          {(s.date || s.detail) && <span className="block text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail].filter(Boolean).join(" · ")}</span>}
+          <span className="block truncate text-[0.8125rem] text-mut">{[s.date && shortDay(s.date), s.detail || stepSrc[s.group]].filter(Boolean).join(" · ")}</span>
         </span>
         {left !== null && (
           <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
@@ -761,7 +807,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && addTodo()}
-        placeholder="İş ekle (ör. Tekne römorkunu ayarla)"
+        placeholder="İş ekle"
         className="h-9 min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut/60"
       />
       {todo.trim() && (
@@ -774,15 +820,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         </span>
       )}
     </li>
-  );
-  const actCls = "flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition active:scale-95 active:bg-bg";
-  const actBody = (a) => (
-    <>
-      <span className={`grid size-11 place-items-center rounded-full ${a.tone || "bg-acc/10 text-acc"}`}>
-        <Icon name={a.icon} className="size-5" />
-      </span>
-      <span className="w-full truncate text-center text-[0.8125rem] font-medium">{a.label}</span>
-    </>
   );
   if (!begun) {
     const form = r.notice || manual;
@@ -945,41 +982,36 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
           {!over && (
             <>
-          {groups.map((g) => {
-            const open = g.tasks.filter((t) => !t.done);
-            const right = g.tasks.length ? `${g.tasks.length - open.length}/${g.tasks.length}` : g.head ? (g.head[4] ? "tamam" : "eksik") : "";
-            return (
-              <div key={g.id}>
-                <Label right={right}>{g.label}</Label>
-                <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                  {g.head && headRow(g.head)}
-                  {open.map(taskRow)}
-                  {g.tasks.filter((t) => t.done).map(doneRow)}
-                  {g.id === "notice" && dueOpen > 0 && (
-                    <li>
-                      {r.notice?.planned ? (
-                        <span className="block py-3 pl-14 pr-4 text-[0.8125rem] font-semibold text-ok">Son tarihler planlarda</span>
-                      ) : (
-                        <button type="button" onClick={noticePlan} className="block w-full py-3 pl-14 pr-4 text-left text-[0.8125rem] font-semibold text-acc">
-                          Son tarihleri planlara ekle ›
-                        </button>
-                      )}
-                    </li>
-                  )}
-                  {g.id === "own" && addRow}
-                </ul>
-              </div>
-            );
-          })}
-          {hidden > 0 && (
-            <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
-              Çıkarılanları geri getir ({hidden})
-            </button>
-          )}
+              <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>Hazırlık</Label>
+              <ul className={`${card} divide-y divide-line overflow-hidden`}>{stat.map(statRow)}</ul>
+
+              <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
+              <ul className={`${card} divide-y divide-line overflow-hidden`}>
+                {todoList.map(taskRow)}
+                {addRow}
+                {doneTasks.length > 0 && (
+                  <li>
+                    <button type="button" onClick={() => setShowDone((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left text-[0.8125rem] text-mut active:bg-bg">
+                      Yapılanlar ({doneTasks.length})
+                      <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${showDone ? "rotate-90" : ""}`} />
+                    </button>
+                  </li>
+                )}
+                {showDone && doneTasks.map(doneRow)}
+              </ul>
+              {hidden > 0 && (
+                <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
+                  Çıkarılanları geri getir ({hidden})
+                </button>
+              )}
             </>
           )}
 
-          <Label>NOT</Label>
+          <Label>Yarış</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>{raceRows.map(linkRow)}</ul>
+          {r.notice && noticeInfo && <NoticeDetails n={r.notice} />}
+
+          <Label>Not</Label>
           <div className={`${card} px-4 py-3`}>
             <textarea
               value={r.note}
@@ -989,33 +1021,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               className="block w-full resize-none bg-transparent text-[0.9375rem] leading-relaxed outline-none placeholder:text-mut/60"
             />
           </div>
-
-          <Label>İŞLEMLER</Label>
-          <div className={`${card} grid gap-1 p-1.5`} style={{ gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }}>
-            {acts.map((a) =>
-              a.href ? (
-                <Link key={a.label} href={a.href} onClick={a.onClick} className={actCls}>
-                  {actBody(a)}
-                </Link>
-              ) : (
-                <button key={a.label} type="button" onClick={a.onClick} className={actCls}>
-                  {actBody(a)}
-                </button>
-              ),
-            )}
-          </div>
-
-          {r.notice && (
-            <>
-              <button type="button" onClick={() => setNoticeInfo((v) => !v)} className={`${card} mt-6 flex w-full items-center gap-3 px-4 py-3 text-left`}>
-                <Icon name="book" className="size-5 shrink-0 text-acc" />
-                <span className="shrink-0 text-[0.9375rem] font-semibold">Talimat bilgileri</span>
-                <span className="min-w-0 flex-1 truncate text-right text-[0.8125rem] text-mut">program, ücret, iletişim</span>
-                <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${noticeInfo ? "rotate-90" : ""}`} />
-              </button>
-              {noticeInfo && <NoticeDetails n={r.notice} />}
-            </>
-          )}
 
           {start.id && (
             <div className="mt-8 flex justify-center">

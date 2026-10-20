@@ -7,6 +7,7 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useAdd } from "@/features/add/AddProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
@@ -44,7 +45,8 @@ function Race({ orgId, uid, by, mail, coach }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
-  const { saveDrafts } = useData();
+  const { saveDrafts, plans } = useData();
+  const { openAdd } = useAdd();
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
   const [race, setRace] = useState(null);
@@ -116,6 +118,8 @@ function Race({ orgId, uid, by, mail, coach }) {
           onRetryAthletes={reload}
           onSave={onSave}
           onDelete={onDelete}
+          plans={plans}
+          onOpenPlan={(pid) => openAdd({ edit: { kind: "plan", id: pid } })}
           onPlan={(r) => addRacePlan(saveDrafts, r, by)}
           onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
           onSaveAthlete={onSaveAthlete}
