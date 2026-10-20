@@ -199,15 +199,15 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             </ul>
             <div className="flex gap-1.5 border-t border-line p-2">
               {cards.att.saved ? (
-                <button type="button" onClick={() => undoAtt(cards.att)} className="h-9 rounded-xl bg-bg px-3 text-[0.8125rem] font-semibold text-rec active:scale-[.98]">
+                <button type="button" onClick={() => undoAtt(cards.att)} data-press className="btn btn-danger btn-sm">
                   Geri al
                 </button>
               ) : (
-                <button type="button" onClick={() => confirmPending()} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+                <button type="button" onClick={() => confirmPending()} data-press className="btn btn-primary btn-sm flex-1">
                   <Icon name="check" className="size-4" /> Kaydet
                 </button>
               )}
-              <button type="button" onClick={() => (finish(true), router.push(PAGES.attendance.path))} className="ml-auto h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-acc active:bg-bg">
+              <button type="button" onClick={() => (finish(true), router.push(PAGES.attendance.path))} data-press className="btn btn-text btn-sm ml-auto text-acc">
                 Yoklamayı aç
               </button>
             </div>
@@ -279,11 +279,11 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             </ul>
             {auto?.kind === "save" && auto.ref === drafts && <AutoLine key={auto.until} ms={auto.ms} />}
             <div className="flex gap-1.5 px-2.5 pb-2.5">
-              <button type="button" onClick={() => saveDraftsNow(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-acc text-[0.9375rem] font-semibold text-white transition active:scale-[.98]">
+              <button type="button" onClick={() => saveDraftsNow(false)} data-press className="btn btn-primary flex-1">
                 <Icon name="check" className="size-[1.125rem]" /> Kaydet
               </button>
-              <button type="button" onClick={editDraftsFull} className="h-11 rounded-full bg-bg px-4 text-[0.875rem] font-semibold transition active:scale-[.98]">Düzenle</button>
-              <button type="button" onClick={() => dropDrafts(false)} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut transition active:bg-bg"><Icon name="x" className="size-[1.125rem]" /></button>
+              <button type="button" onClick={editDraftsFull} data-press className="btn btn-secondary">Düzenle</button>
+              <button type="button" onClick={() => dropDrafts(false)} aria-label="Vazgeç" data-press className="btn btn-icon text-mut"><Icon name="x" className="size-[1.125rem]" /></button>
             </div>
           </div>
         )}
@@ -326,10 +326,10 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
               ))}
             </ul>
             <div className="flex gap-2 border-t border-line p-2">
-              <button type="button" onClick={() => confirmPending(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+              <button type="button" onClick={() => confirmPending(false)} data-press className="btn btn-primary flex-1">
                 <Icon name="up" className="size-4" /> Hepsini gönder
               </button>
-              <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
+              <button type="button" onClick={() => cancelPending()} data-press className="btn btn-secondary text-mut">
                 Vazgeç
               </button>
             </div>
@@ -379,17 +379,17 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                     confirmPending(false, wa);
                   }}
                   disabled={!cards.pending.send.text.trim()}
-                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40"
+                  data-press className="btn btn-primary flex-1"
                 >
                   <Icon name={cards.pending.send.waOnly ? "whatsapp" : "up"} className="size-4" /> {cards.pending.send.waOnly ? "WhatsApp'ta aç" : cards.pending.send.team && cards.pending.send.alsoWa ? "Gönder + WhatsApp" : "Gönder"}
                 </button>
               )}
               {cards.pending.send.team && !cards.pending.send.waOnly && (
-                <button type="button" onClick={() => shareGroup(cards.pending.send.text)} aria-label="WhatsApp ile paylaş" className="grid h-11 place-items-center rounded-xl bg-bg px-3 text-ok active:scale-[.98]">
+                <button type="button" onClick={() => shareGroup(cards.pending.send.text)} aria-label="WhatsApp ile paylaş" data-press className="btn btn-secondary text-ok">
                   <Icon name="whatsapp" className="size-5" />
                 </button>
               )}
-              <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
+              <button type="button" onClick={() => cancelPending()} data-press className="btn btn-secondary text-mut">
                 Vazgeç
               </button>
             </div>
