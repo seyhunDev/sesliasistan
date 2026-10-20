@@ -62,7 +62,7 @@ export function TryAssistant() {
           <p className="mt-2.5 rounded-2xl bg-acc/10 px-3.5 py-3 text-[1.125rem] font-semibold text-deep">“{TRY_SENTENCE}”</p>
           <p className="mt-2 text-[0.8125rem] leading-snug text-mut">Konuşmak istemezsen ışığı basılı tut, yazarak söyle.</p>
           <div className="mt-3 flex justify-end">
-            <button type="button" onClick={done} className="rounded-full px-3 py-1.5 text-[0.875rem] font-medium text-mut active:bg-bg">
+            <button type="button" onClick={done} data-press className="btn btn-text btn-sm text-mut">
               Sonra
             </button>
           </div>
