@@ -17,15 +17,25 @@ const RECORD = /(^|\s)(plan(ı|a)? (yap|ekle|oluştur|kur|aç)\S*|planla\S*|takv
 // Envantere yönelik iş: "envantere … ekle", "envanterden … çıkar", "envanterde kaç …", "stoktan", "demirbaşlara"
 const INV_OP = /(^|\s)(envanter(e|den|de|deki|i|ime|imden|imde|ine|inden|inde)|demirbaş(a|lara|tan|lardan|ta|larda)|sto(ğa|ktan|kta))(?=\s|$)/;
 
+// Plan/görev/hatırlatma sözcüğü ve ekleme fiili ayrı yerlerde: "… envanterin oluşturulması gerekiyor, bunları yarın 14:00
+// için iki ayrı plan olarak ekle" (Seyhun, 2026-10-20: envanter kartı çıktı, oysa iş plandı)
+const RECORD_WORD = /(^|\s)(plan\S*|görev\S*|hatırlatma\S*|takvim\S*|ajanda\S*)(?=\s|$)/;
+const ADD_VERB = /(^|\s)(ekle\S*|oluştur\S*|kur|koy\S*|yap(?!ıl)\S*)(?=\s|$)/;
+const isRecord = (t) => RECORD.test(t) || (RECORD_WORD.test(t) && ADD_VERB.test(t));
+
 export function wantsInventory(text, here = false) {
   const t = lower(text);
   if (!t || t.split(" ").length > 60 || isInvNav(text)) return false;
   // "yarın 5'e plan yap, envanter listesi çıkarılacak": envanter sözcüğü geçse de iş plandır (Seyhun, 2026-10-06);
   // yalnız "envantere/envanterden …" gibi envantere yönelik cümle envantere gider
-  if (RECORD.test(t) && !INV_OP.test(t)) return false;
+  if (isRecord(t) && !INV_OP.test(t)) return false;
   if (INV.test(t)) return true;
   return here && !OTHER.test(t);
 }
+
+// Envanter sorusu: "kaç telsiz var", "stokta can yeleği var mı", "envanterde neler var", "listele". Değişiklik yapılmadıysa
+// ve cümle bu değilse iş başka (plan, görev): asistan envanter yapay zekasının cevabını yazmaz, ana asistana gönderir
+export const INV_ASK = /\?|(^|\s)(kaç|var mı|varmı|ne kadar|neler|nerede|hangi|listele\S*|göster\S*|say(ar mısın|sana)?)(?=\s|$)/;
 
 // Silme onayı
 export const isDrop = (text) => /^(vazgeç|iptal|gerek yok|istemiyorum|kalsın|silme|hayır)/.test(lower(text));
