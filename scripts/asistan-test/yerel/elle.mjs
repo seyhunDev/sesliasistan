@@ -669,6 +669,14 @@ group("Ana sayfa kartları")([
       && !HT.needsLog({ ...miss, log: { wind: 8 } }, today) && !HT.needsLog({ ...miss, date: today }, today)
       && !HT.needsLog({ ...miss, status: "cancelled" }, today) && !HT.needsLog({ id: "c", title: "Doktor", date: "2026-10-17" }, today);
   })],
+  ["kulüp kartları", F("Sırada: aynı yarışın planları tek satırda (başlangıç + işler), tek plan ve başka planlar ayrı", () => {
+    const R = (id, title, day, cat = "Yarış") => ({ p: { id, title, cat, date: day }, day });
+    const g = HT.raceGroups([R("a", "Foça Kupası: Online kayıt son gün", "2026-10-21"), R("f", "İlay · Kuvvet", "2026-10-21", "Fitness"), R("b", "foça kupası: Ücreti öde", "2026-10-22"), R("s", "Foça Kupası", "2026-10-24"), R("c", "Çeşme: Kayıt", "2026-10-25"), R("d", "Urla", "2026-10-26")]);
+    const race = g[0];
+    return g.length === 4 && race.race === "Foça Kupası" && race.start.p.id === "s" && race.items.map((x) => x.label).join("|") === "Online kayıt son gün|Ücreti öde"
+      && g[1].p.id === "f" && !g[1].start && g[2].p.id === "c" && !g[2].start && g[3].p.id === "d" && g[3].start === true
+      && HT.raceKey({ cat: "Genel", title: "X: y" }) === null && HT.raceKey({ cat: "Yarış", title: "Foça" }).whole === true;
+  })],
   ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
     const t = "2026-10-19";
     const x = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-26", "2026-10-18"].map((d) => HT.leftTag(d, t));
