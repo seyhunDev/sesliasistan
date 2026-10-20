@@ -1,8 +1,8 @@
-Commit: 7bac821 · Ana sayfa: Bugün, Yarın ve Sırada tek listede, her plan bir kez (#556)
-Zaman: 2026-10-20-1709 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39435791272
+Commit: 1a9c640 · Ana sayfa listesi: tarih ve saat tek satırda, tekrarlar kalktı (#557)
+Zaman: 2026-10-20-1714 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39436684542
 
-TAM TEST · 20.10.2026 17:04:00
+TAM TEST · 20.10.2026 17:10:01
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1338/1338 geçti · 0 kalan · 327 sn
+SONUÇ: 1337/1338 geçti · 1 kalan · 297 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,8 +128,11 @@ SONUÇ: 1338/1338 geçti · 0 kalan · 327 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 77/77
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 76/77
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
