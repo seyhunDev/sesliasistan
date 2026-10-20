@@ -422,6 +422,18 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   put("users/own", { ...own(), pushTests: { ...own().pushTests, eski: { kind: "task", at: new Date(Date.now() - 4 * 3600e3).toISOString(), due: "x", sent: "x" } } });
   await quiet(async () => api.POST({ uid: "own", json: async () => ({ kind: "chat" }) }))();
   add(G, "3 saatten eski deneme", "yeni deneme açılınca silinir", !own().pushTests.eski);
+  const rid = (await quiet(async () => (await api.POST({ uid: "own", json: async () => ({ kind: "receipt" }) })).body)()).id;
+  F.sent.length = 0;
+  await quiet(async () => api.POST({ uid: "own", json: async () => ({ run: rid }) }))();
+  add(G, "uygulama açık, 30 sn dolmadan sayfa göndermek istedi", "erken gitmez", !F.sent.some((x) => x.payload?.tag === `test-${rid}`));
+  put("users/own", { ...own(), pushTests: { ...own().pushTests, [rid]: { ...own().pushTests[rid], due: new Date(Date.now() - 6000).toISOString() } } });
+  await quiet(async () => api.POST({ uid: "own", json: async () => ({ run: rid }) }))();
+  await quiet(async () => api.POST({ uid: "own", json: async () => ({ run: rid }) }))();
+  add(G, "30 sn geçti, gitmemişti, uygulama açık", "sayfa ister, bir kez gider (yol \"uygulama\")", F.sent.filter((x) => x.payload?.tag === `test-${rid}`).length === 1 && own().pushTests[rid].via === "uygulama");
+  const beat = get("system/scheduler") || {};
+  add(G, "zamanlayıcı çalıştı", "başlangıç ve bitiş saati yazılır (sayfada \"Zamanlayıcı\" satırı)", !!beat.start && !!beat.end && beat.end >= beat.start);
+  const gb = (await quiet(async () => api.GET({ uid: "own" }))()).body;
+  add(G, "Bildirim testi sayfası açıldı", "zamanlayıcının son çalışması okunur", gb.end === beat.end);
   await quiet(async () => api.DELETE({ uid: "own" }))();
   add(G, "\"Kaydı temizle\"", "tüm deneme kayıtları silinir", !own().pushTests && !own().pushTestAt);
   add(G, "gerçek planlar", "denemeler plan listesine yazılmaz", ![...F.store.keys()].some((k) => k.startsWith("orgs/own/plans/")));

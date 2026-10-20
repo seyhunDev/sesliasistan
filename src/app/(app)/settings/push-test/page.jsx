@@ -62,6 +62,26 @@ function KindRow({ kind, label, action, busy, onSend }) {
   );
 }
 
+// Zamanlayıcı satırı: son çalışma saati; 10 dakikadan eskiyse ya da yarıda kaldıysa nedeni altında
+const ago = (iso, now) => {
+  const m = Math.round((now - Date.parse(iso)) / 60000);
+  return m < 1 ? "az önce" : m < 60 ? `${m} dk önce` : m < 1440 ? `${Math.floor(m / 60)} saat önce` : `${Math.floor(m / 1440)} gün önce`;
+};
+function beatSub(b, now) {
+  if (!b) return "";
+  if (b.error) return "Okunamadı";
+  if (!b.start) return "Hiç çalışmamış";
+  return ago(b.end && b.end >= b.start ? b.end : b.start, now);
+}
+function beatNote(b, now) {
+  if (!b) return "";
+  if (b.error) return b.error;
+  if (!b.start) return "Zamanlayıcı bu sürümden beri hiç çalışmadı; hatırlatmalar ve özetler gitmez";
+  if (now - Date.parse(b.start) > 10 * 60e3) return "10 dakikadan uzun süredir çalışmıyor; hatırlatmalar ve özetler gitmez";
+  if (!b.end || b.end < b.start) return now - Date.parse(b.start) > 60e3 ? "Son çalışması yarıda kaldı (hata)" : "";
+  return "";
+}
+
 function status(t, now) {
   if (t.got) return `Ulaştı ${clock(t.got)}`;
   if (t.sent) return t.err ? "Gönderilemedi" : "Gönderildi";
@@ -114,6 +134,23 @@ export default function PushTestPage() {
     .sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   const waiting = tests.some((t) => !t.got && !t.err);
 
+  // Zamanlayıcı (5 dakikada bir) en son ne zaman çalıştı; sayfa açılınca bir kez sorulur
+  const [beat, setBeat] = useState(null);
+  useEffect(() => {
+    authFetch("/api/push-tests")
+      .then(jsonOf)
+      .then((j) => setBeat(j.error ? { error: j.error } : j))
+      .catch((e) => setBeat({ error: e.message }));
+  }, []);
+
+  // Uygulama açıkken zamanı 5 sn geçen deneme hâlâ gitmediyse sunucudan hemen gönderilmesi istenir (yol: "uygulama")
+  const late = tests.filter((t) => t.kind !== "remind" && !t.sent && !t.err && now - Date.parse(t.due) > 5000).map((t) => t.id);
+  const lateKey = late.join(",");
+  useEffect(() => {
+    if (!lateKey) return;
+    for (const run of lateKey.split(",")) authFetch("/api/push-tests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ run }) }).catch(() => {});
+  }, [lateKey]);
+
   // Bekleyen deneme varken geri sayım saniyede bir yenilenir
   useEffect(() => {
     if (!waiting) return;
@@ -144,6 +181,7 @@ export default function PushTestPage() {
       <Group>
         <Row title="Bu telefonda bildirim" sub={n.on ? "Açık" : "Kapalı"} note={n.on ? "" : n.problem} />
         <Row title="Hemen dene" chevron={n.on} onClick={() => (n.on ? n.test() : null)} />
+        <Row title="Zamanlayıcı" sub={beatSub(beat, now)} note={beatNote(beat, now)} />
       </Group>
 
       <Group title={`${TEST_DELAY} saniye sonra`}>
