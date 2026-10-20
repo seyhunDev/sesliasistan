@@ -1,8 +1,8 @@
-Commit: 29cc93e · Ana sayfa: Notlar ve Sporcular (fitness ile tek kart) takvimin üstünde, satırlar tek biçim (#563)
-Zaman: 2026-10-20-1818 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39446307772
+Commit: 961dfb5 · Asistan: ölü mikrofonu dinlemenin başında yakala, bir kez yeniden aç, olmazsa hemen uyar (#564)
+Zaman: 2026-10-20-1834 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39448908055
 
-TAM TEST · 20.10.2026 18:13:08
+TAM TEST · 20.10.2026 18:29:58
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1338 geçti · 1 kalan · 309 sn
+SONUÇ: 1338/1338 geçti · 0 kalan · 267 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,11 +128,8 @@ SONUÇ: 1337/1338 geçti · 1 kalan · 309 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 76/77
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 77/77
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
