@@ -289,10 +289,10 @@ export function InvoicePanel({ desk }) {
       </Hero>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button onClick={pick} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold text-acc active:scale-[.98]`}>
+        <button onClick={pick} data-press className="btn btn-secondary text-acc">
           <Icon name="plus" className="size-5" /> Fatura ekle
         </button>
-        <button onClick={check} disabled={checking || !sum.open} className={`${card} flex h-12 items-center justify-center gap-2 text-[0.9375rem] font-semibold disabled:opacity-50 active:scale-[.98]`}>
+        <button onClick={check} disabled={checking || !sum.open} data-press className="btn btn-secondary">
           <Icon name={checking ? "load" : "wallet"} className={`size-5 ${checking ? "animate-spin" : ""}`} /> Bankada kontrol et
         </button>
       </div>
@@ -311,10 +311,10 @@ export function InvoicePanel({ desk }) {
                 </p>
                 <p className="mt-0.5 text-[0.75rem] text-mut">Tutar ve tarih tutuyor, açıklamada firma adı yok.</p>
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => confirmGuess(g, true)} className="h-10 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]">
+                  <button onClick={() => confirmGuess(g, true)} data-press className="btn btn-primary btn-sm h-10 flex-1">
                     Bu ödeme, ödendi
                   </button>
-                  <button onClick={() => confirmGuess(g, false)} className="h-10 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]">
+                  <button onClick={() => confirmGuess(g, false)} data-press className="btn btn-secondary btn-sm h-10 flex-1">
                     Değil
                   </button>
                 </div>
@@ -355,7 +355,7 @@ export function InvoiceRow({ inv, desk, badge }) {
   const st = stateOf(inv, desk.today);
   const who = desk.whoOf(inv);
   return (
-    <button onClick={() => desk.open(inv.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+    <button onClick={() => desk.open(inv.id)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
       <span className={`grid size-9 shrink-0 place-items-center rounded-[0.625rem] ${st === "paid" ? "bg-bg text-fg" : st === "late" ? "bg-rec/10 text-rec" : "bg-proc/20 text-fg"}`}>
         <Icon name="receipt" className="size-[1.125rem]" />
       </span>
@@ -512,11 +512,11 @@ function Detail({ inv, orgId, task, members, today, onChange, onAssign, onReplac
       )}
       <div className="mt-4 flex gap-2">
         {inv.file && (
-          <button onClick={onReplaceFile} className="h-10 flex-1 rounded-xl bg-bg text-[0.8125rem] font-semibold active:scale-[.98]">
+          <button onClick={onReplaceFile} data-press className="btn btn-secondary btn-sm h-10 flex-1">
             Dosyayı değiştir
           </button>
         )}
-        <button onClick={onDelete} className="h-10 flex-1 rounded-xl bg-rec/10 text-[0.8125rem] font-semibold text-rec active:scale-[.98]">
+        <button onClick={onDelete} data-press className="btn btn-danger btn-sm h-10 flex-1">
           Faturayı sil
         </button>
       </div>

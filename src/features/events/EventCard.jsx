@@ -13,7 +13,7 @@ export function EventCard({ e, onGeneral, onOpen, onDelete }) {
           <Icon name={icon} className="size-4 text-acc" />
           Cevap vermezsen genel bir plan hazırlarım.
         </p>
-        <button type="button" onClick={onGeneral} className="mt-2.5 h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line active:scale-[.98]">
+        <button type="button" onClick={onGeneral} data-press className="btn btn-secondary btn-sm mt-2.5 w-full">
           Genel plan yap
         </button>
       </div>
@@ -33,10 +33,10 @@ export function EventCard({ e, onGeneral, onOpen, onDelete }) {
         </span>
       </div>
       <div className="mt-2.5 flex gap-2">
-        <button type="button" onClick={onOpen} className="h-9 flex-1 rounded-xl bg-acc text-[0.8125rem] font-semibold text-white active:scale-[.98]">
+        <button type="button" onClick={onOpen} data-press className="btn btn-primary btn-sm flex-1">
           Aç
         </button>
-        <button type="button" onClick={onDelete} className="h-9 rounded-xl px-3 text-[0.8125rem] font-semibold text-rec active:bg-card">
+        <button type="button" onClick={onDelete} data-press className="btn btn-danger btn-sm">
           Sil
         </button>
       </div>

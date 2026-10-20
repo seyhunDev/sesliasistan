@@ -152,17 +152,17 @@ function Archive() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 text-right">
                     {x.kind === "task" && (
-                      <button type="button" onClick={() => toggleTask(x.r.id)} className="text-[0.8125rem] font-semibold text-acc">
+                      <button type="button" onClick={() => toggleTask(x.r.id)} data-press className="btn btn-text btn-sm">
                         Yeniden aç
                       </button>
                     )}
                     {x.kind === "plan" && x.r.done && (
-                      <button type="button" onClick={() => updateRecord("plan", x.r.id, planReopenPatch(), by)} className="text-[0.8125rem] font-semibold text-acc">
+                      <button type="button" onClick={() => updateRecord("plan", x.r.id, planReopenPatch(), by)} data-press className="btn btn-text btn-sm">
                         Planlara geri al
                       </button>
                     )}
                     {x.kind === "note" && (
-                      <button type="button" onClick={() => updateRecord("note", x.r.id, noteReopenPatch(), by)} className="text-[0.8125rem] font-semibold text-acc">
+                      <button type="button" onClick={() => updateRecord("note", x.r.id, noteReopenPatch(), by)} data-press className="btn btn-text btn-sm">
                         Notlara geri al
                       </button>
                     )}

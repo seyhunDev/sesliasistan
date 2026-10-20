@@ -25,7 +25,7 @@ function Check({ on, onClick, label }) {
 }
 function Del({ onClick, label }) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:scale-90 active:bg-bg">
+    <button type="button" onClick={onClick} aria-label={label} data-press className="btn btn-icon btn-sm size-8 text-mut">
       <Icon name="x" className="size-4" />
     </button>
   );
@@ -190,7 +190,7 @@ export function EventEditor({ start, onSave, onDelete, onPlan, onAiFill }) {
                 Eksikleri yapay zekayla tamamla
               </Button>
             )}
-            <button type="button" onClick={remove} disabled={!!busy} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[0.9375rem] font-semibold text-rec active:scale-[.98] disabled:opacity-60">
+            <button type="button" onClick={remove} disabled={!!busy} data-press className="btn btn-danger w-full">
               <Icon name="trash" className="size-[1.125rem]" />
               Etkinliği sil
             </button>
@@ -268,7 +268,7 @@ function Needs({ ev, change }) {
               <option key={c} value={c} />
             ))}
           </datalist>
-          <button type="submit" disabled={!title.trim()} className="h-11 shrink-0 rounded-xl bg-acc px-4 text-[0.9375rem] font-semibold text-white active:scale-95 disabled:opacity-50">
+          <button type="submit" disabled={!title.trim()} data-press className="btn btn-primary h-11 shrink-0">
             Ekle
           </button>
         </div>
@@ -315,7 +315,7 @@ function Budget({ ev, t, onEdit }) {
           <ul className={`${card} divide-y divide-line/70`}>
             {t.lines.map((l) => (
               <li key={l.id}>
-                <button type="button" onClick={() => onEdit({ ...l })} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                <button type="button" onClick={() => onEdit({ ...l })} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-semibold">
                       {l.title}
@@ -354,7 +354,7 @@ function CostForm({ start, people, onSave, onDelete }) {
         Kaydet
       </Button>
       {onDelete && (
-        <button type="button" onClick={onDelete} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[0.9375rem] font-semibold text-rec active:scale-[.98]">
+        <button type="button" onClick={onDelete} data-press className="btn btn-danger h-11 w-full">
           <Icon name="trash" className="size-[1.125rem]" />
           Kalemi sil
         </button>
@@ -384,7 +384,7 @@ function Todos({ ev, change }) {
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Yapılacak iş (ör. kamp yerini ayırt)" className={input} />
         <div className="flex gap-2">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Son tarih" className={input} />
-          <button type="submit" disabled={!title.trim()} className="h-11 shrink-0 rounded-xl bg-acc px-4 text-[0.9375rem] font-semibold text-white active:scale-95 disabled:opacity-50">
+          <button type="submit" disabled={!title.trim()} data-press className="btn btn-primary h-11 shrink-0">
             Ekle
           </button>
         </div>

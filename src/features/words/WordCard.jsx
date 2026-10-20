@@ -37,7 +37,7 @@ export function WordCard({ className = "" }) {
     <section aria-label="Günün İngilizce kelimesi" className={`mt-8 rounded-[1.25rem] bg-card px-4 pb-3 pt-3.5 shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)] ${className}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[0.6875rem] font-bold tracking-[.08em] text-mut">İNGİLİZCE · B2</span>
-        <button type="button" onClick={next} className="flex h-8 items-center gap-1 rounded-full px-2.5 text-[0.8125rem] font-semibold text-acc">
+        <button type="button" onClick={next} data-press className="btn btn-text btn-sm h-8 gap-1">
           Başka <Icon name="chev" className="size-4" />
         </button>
       </div>

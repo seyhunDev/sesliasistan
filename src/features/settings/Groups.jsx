@@ -837,7 +837,7 @@ export function WaGroupsRow() {
                   <small className="block truncate text-[0.75rem] text-mut">{g.link.replace("https://", "")}</small>
                 </span>
                 <a href={g.link} target="_blank" rel="noreferrer" className="rounded-lg px-2 py-1 text-[0.8125rem] font-semibold text-acc active:opacity-60">Aç</a>
-                <button type="button" aria-label={`${g.name} sil`} onClick={() => save(cur.filter((x) => x !== g))} className="grid size-8 place-items-center rounded-lg text-mut active:opacity-60">
+                <button type="button" aria-label={`${g.name} sil`} onClick={() => save(cur.filter((x) => x !== g))} data-press className="btn btn-icon btn-sm size-8 text-mut">
                   <Icon name="x" className="size-4" />
                 </button>
               </li>
@@ -855,7 +855,7 @@ export function WaGroupsRow() {
             </div>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Grup adı (uygulamadaki grupla aynı: Sporcular, Aile, Ekip…)" className="h-11 min-w-0 rounded-xl bg-bg px-3 text-base outline-none placeholder:text-mut" />
             <input value={link} onChange={(e) => setLink(e.target.value)} type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" className="h-11 min-w-0 rounded-xl bg-bg px-3 text-base outline-none placeholder:text-mut" />
-            <button type="button" onClick={add} className="h-11 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Grubu ekle</button>
+            <button type="button" onClick={add} data-press className="btn btn-primary h-11">Grubu ekle</button>
           </div>
         )}
         <p className="mt-2 px-1 text-[0.75rem] leading-snug text-mut">
