@@ -372,4 +372,59 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "Kaan bildirimleri açtı, Seyhun \"Yeniden gönder\"e bastı", "Kaan'a gider, \"gitmedi\" yalnız hesapsız kişide kalır", r.sent === 1 && sentTo("e-kisi") === 1 && !get("orgs/own/plans/pD").remindFail?.kisi && !!get("orgs/own/plans/pD").remindFail?.yok);
 }
 
+// ---------------- Bildirim testi (Ayarlar › Testler › Bildirim testi) ----------------
+{
+  const G = "Bildirim testi (deneme kayıtları)";
+  const pt = await import("@/lib/pushTest");
+  const api = await import("@/app/api/push-tests/route");
+  const ack = (await import("@/app/api/ack/route")).POST;
+  const { ackSig } = await import("@/lib/server/pushSend");
+  reset();
+  const own = () => get("users/own");
+  const inbox0 = (own().inbox || []).length;
+  const r = quiet(async () => (await api.POST({ uid: "own", json: async () => ({ kind: "task" }) })).body)();
+  const id = (await r).id;
+  const t = own().pushTests?.[id];
+  add(G, "\"Yeni görev\" 30 sn düğmesine basıldı", "deneme kaydı yalnız kişinin belgesinde, 30 sn sonrası için", !!t && Math.abs(Date.parse(t.due) - Date.parse(t.at) - 30e3) < 2000 && own().pushTestAt === t.due);
+  add(G, "deneme metni", "gerçek görev metni, sonunda \"Deneme\"", /^Yeni görev: Deneme görevi$/.test(t?.title) && / · Deneme$/.test(t?.body || ""));
+  await run();
+  add(G, "zaman gelmeden zamanlayıcı çalıştı", "henüz gitmez", !F.sent.some((x) => /^test-/.test(x.payload?.tag || "")));
+  put("users/own", { ...own(), pushTests: { [id]: { ...t, due: new Date(Date.now() - 1000).toISOString() } } });
+  await run();
+  const s = F.sent.filter((x) => x.payload?.tag === `test-${id}`);
+  add(G, "30 sn geçti, zamanlayıcı çalıştı", "telefona bir kez gider, \"zamanlayıcı\" yazılır, bekleyen kalmaz", s.length === 1 && s[0].to === "e-own" && own().pushTests[id].via === "zamanlayıcı" && !own().pushTestAt);
+  add(G, "zil ve simgedeki sayı", "deneme zile yazılmaz, sayı gönderilmez", (own().inbox || []).length === inbox0 && s[0].payload.badge === undefined);
+  await run();
+  add(G, "zamanlayıcı yine çalıştı", "ikinci kez gitmez", F.sent.filter((x) => x.payload?.tag === `test-${id}`).length === 1);
+  const a = s[0].payload.ack;
+  await quiet(ack)({ json: async () => a });
+  add(G, "telefon bildirimi aldı (onay)", "\"Ulaştı\" zamanı yazılır", !!own().pushTests[id].got);
+  const before = own().pushTests[id].got;
+  await quiet(ack)({ json: async () => ({ ...a, s: ackSig("own", "pushTests", id, "ali") }) });
+  await quiet(ack)({ json: async () => ({ ...a, i: "baska" }) });
+  add(G, "imzası tutmayan onay", "kabul edilmez", own().pushTests[id].got === before && !own().pushTests.baska);
+
+  // 1 saat önce hatırlatması: plan ~1 saat 1 dk sonra; hatırlatma zamanı gelince gerçek kuralla gider
+  F.sent.length = 0;
+  const rm = pt.newTest("remind", { id: "r1", now: new Date(Date.now() - 150e3) });
+  put("users/own", { ...own(), pushTests: { r1: rm }, pushTestAt: rm.due });
+  const fresh = pt.newTest("remind", { id: "r2" });
+  add(G, "\"1 saat önce\" denemesi oluşturuldu", "planın saati 61-62 dk sonra, hatırlatma 30-120 sn içinde", (() => { const w = (Date.parse(fresh.due) - Date.now()) / 1000; return w >= 25 && w <= 120; })());
+  add(G, "hatırlatma zamanından önce", "gitmez", pt.testDue(fresh) === false);
+  await run();
+  const rs = F.sent.find((x) => x.payload?.tag === "test-r1");
+  add(G, "hatırlatma zamanı geldi, zamanlayıcı çalıştı", "\"1 saat sonra: Deneme planı\" gider", !!rs && /^1 saat sonra: Deneme planı$/.test(rs.payload.title) && own().pushTests.r1.via === "zamanlayıcı");
+  const gone = pt.newTest("remind", { id: "r3", now: new Date(Date.now() - 2 * 3600e3) });
+  put("users/own", { ...own(), pushTests: { ...own().pushTests, r3: gone }, pushTestAt: gone.due });
+  await run();
+  add(G, "plan saati geçti, hatırlatma gitmemişti", "kayda nedeni yazılır, gönderilmez", !!own().pushTests.r3.err && !F.sent.some((x) => x.payload?.tag === "test-r3"));
+
+  put("users/own", { ...own(), pushTests: { ...own().pushTests, eski: { kind: "task", at: new Date(Date.now() - 4 * 3600e3).toISOString(), due: "x", sent: "x" } } });
+  await quiet(async () => api.POST({ uid: "own", json: async () => ({ kind: "chat" }) }))();
+  add(G, "3 saatten eski deneme", "yeni deneme açılınca silinir", !own().pushTests.eski);
+  await quiet(async () => api.DELETE({ uid: "own" }))();
+  add(G, "\"Kaydı temizle\"", "tüm deneme kayıtları silinir", !own().pushTests && !own().pushTestAt);
+  add(G, "gerçek planlar", "denemeler plan listesine yazılmaz", ![...F.store.keys()].some((k) => k.startsWith("orgs/own/plans/")));
+}
+
 for (const [g, cases] of Object.entries(rows)) group(g)(cases.map(([say, desc, got, ok]) => [say, { desc, fn: () => got, ok }]));

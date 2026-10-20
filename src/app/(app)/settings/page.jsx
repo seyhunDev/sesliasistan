@@ -150,6 +150,7 @@ export default function SettingsPage() {
           </Group>
           <Group title="Uygulama">
             <TestPushRow n={n} />
+            <Row title="Bildirim testi" href="/settings/push-test" />
             <IntroRow />
             <DemoDataRow />
           </Group>
