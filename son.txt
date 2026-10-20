@@ -1,8 +1,8 @@
-Commit: 9aa9912 · Rüzgâr yönü derece olarak da yazılır (okların yanında) (#546)
-Zaman: 2026-10-20-0931 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39380311264
+Commit: f2ca089 · Antrenman yarış sonucu sesle girilir (birinci Ali, ikinci Ayşe…) (#547)
+Zaman: 2026-10-20-1021 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39385410267
 
-TAM TEST · 20.10.2026 09:26:16
+TAM TEST · 20.10.2026 10:16:37
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1336/1337 geçti · 1 kalan · 308 sn
+SONUÇ: 1336/1337 geçti · 1 kalan · 295 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
