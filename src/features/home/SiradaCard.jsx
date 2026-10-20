@@ -12,7 +12,7 @@ import { useNow } from "@/hooks/useNow";
 import Link from "next/link";
 import { isTraining } from "@/lib/trainingLog";
 import { HideSheet } from "./HideSheet";
-import { attHref, homeHidden, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { attHref, findRace, homeHidden, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
@@ -50,16 +50,14 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
     const list = plans.filter((p) => raceKey(p)?.name.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"));
     return { id: `race:${name}`, title: name, homeDays: list.find((p) => Number.isFinite(p.homeDays))?.homeDays, list };
   };
-  const norm = (x) => String(x || "").trim().toLocaleLowerCase("tr-TR");
-  const raceOf = (name) => races.open.find((r) => norm(r.name) && norm(r.name) === norm(name));
-  // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
-  // Yarışı görme yetkisi yoksa ya da başka plansa plan açılır
-  // Yarışın kendi planı (başlangıç günü; Seyhun 2026-10-20: "tıklanınca yarışmanın sayfasına gidilmeli") doğrudan yarışın sayfasını açar
+  const raceOf = (name) => findRace(name, races.open);
+  // Yarış satırı (Seyhun 2026-10-20: "yarışa tıklayınca yarışa gidilebilmeli"): yarışın kendisi (adı yalnız yarışın adı) yarışın sayfasını açar;
+  // yarışın işi ("Ad: iş") Yapıldı / Yarışın sayfası / Planı aç penceresini açar. Yarış kaydı bulunamazsa (adı farklı ya da kayıt yok) pencere ya da plan açılır
   const open = (p) => {
     const rk = raceKey(p);
     const own = rk?.whole && raceOf(rk.name);
     if (own) return router.push(`/athletes/races/${own.id}`);
-    if (rk && races.on) return setPick(p);
+    if (rk && races.on) return setPick({ p, race: raceOf(rk.name)?.id || "" });
     const race = raceForPlan(p, races.open, today);
     if (race) router.push(`/athletes/races/${race}`);
     else openAdd({ edit: { kind: "plan", id: p.id } });
@@ -159,7 +157,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
       </div>
 
       <WaitRow inbox={inbox} onAll={onInbox} />
-      <RacePlanSheet plan={pick} today={today} onClose={() => setPick(null)} />
+      <RacePlanSheet plan={pick?.p} raceId={pick?.race} today={today} onClose={() => setPick(null)} />
       <HideSheet plan={hide === "all" ? null : hide} all={hide === "all"} onClose={() => setHide(null)} />
     </section>
   );

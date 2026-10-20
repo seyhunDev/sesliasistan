@@ -138,7 +138,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       <HomeSummary
         title={owner && (athletes || race.on) ? "Kulüp" : "Özet"}
         money={canReceipts(kind)}
-        race={race.on && race}
+        race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
         dues={athletes && owner}
         posts={!staff}
         invoices={owner}
