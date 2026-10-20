@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
 import { BootSplash } from "@/components/ui/BootSplash";
+import { PressFeedback } from "@/components/ui/PressFeedback";
 import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
                 <BootSplash />
                 <AuthProvider>{children}</AuthProvider>
                 <ServiceWorkerSetup />
+                <PressFeedback />
             </body>
         </html>
     );

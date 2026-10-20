@@ -1,10 +1,10 @@
 import { Loader } from "./Loader";
+import { buttonClass } from "./buttonClass";
 
-export function Button({ variant = "primary", loading, children, className = "", disabled, ...p }) {
-  const base = "inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold transition active:scale-[.98] disabled:opacity-60";
-  const look = variant === "primary" ? "bg-acc text-white" : "border border-line bg-card text-fg";
+// variant: primary (ana) · secondary (ikincil; eski adı ghost) · text (yazı) · icon (simge) · danger (tehlike); size: md · sm
+export function Button({ variant = "primary", size = "md", full, loading, children, className = "", disabled, ...p }) {
   return (
-    <button {...p} disabled={disabled || loading} className={`${base} ${look} ${className}`}>
+    <button {...p} data-press disabled={disabled || loading} className={`${buttonClass({ variant, size, full })} ${className}`}>
       {loading && <Loader size="sm" className="text-current" />}
       {loading ? "Bekleyin…" : children}
     </button>

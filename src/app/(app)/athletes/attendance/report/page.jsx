@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -13,7 +13,6 @@ import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { downloadExcel, monthLabel, monthReport, shiftMonth } from "@/features/athletes/attendanceReport";
 import { ClassMenu } from "@/features/athletes/RollView";
-import { usePress } from "@/hooks/usePress";
 import { todayStr } from "@/lib/utils/format";
 
 // Yoklama ay raporu: sporcu başına geldi / gelmedi / izinli ve devam oranı; Excel'e aktarılabilir.
@@ -39,8 +38,6 @@ function Report() {
   const [ym, setYm] = useState(thisMonth);
   const [cls, setCls] = useState("");
   const [busy, setBusy] = useState(false);
-  const root = useRef(null);
-  usePress(root);
 
   const classes = byId(data?.classes);
   const active = (data?.athletes || []).filter(isActive);
@@ -59,7 +56,7 @@ function Report() {
   }
 
   return (
-    <main ref={root} className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Yoklama raporu" sub={data && !err ? `${report.days.length} yoklama günü` : "Kulüp verisi"} back="/athletes/attendance" />
 
       {err?.code === "permission-denied" ? (

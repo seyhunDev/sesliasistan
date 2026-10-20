@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { usePress } from "@/hooks/usePress";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -101,8 +100,6 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
-  const root = useRef(null);
-  usePress(root);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
   // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
   const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
@@ -122,7 +119,7 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
   return (
-    <div ref={root} className="space-y-6">
+    <div className="space-y-6">
       {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
       <div className="space-y-2.5">
         <NotesWidget notes={notes} />

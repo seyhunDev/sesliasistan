@@ -4,11 +4,11 @@ import { useEffect } from "react";
 
 // Basma hissi (Seyhun: "tıklandığında app'lerdeki gibi bir tıklanma duygusu"): kök içindeki [data-press] öğelerine parmak
 // 70 ms durunca data-pressed eklenir (CSS küçültür); parmak 10 px kayarsa ya da sayfa kayarsa iptal, kaydırırken hiçbir şey
-// değişmez. Hızlı dokunuşta 110 ms kısa bir basma gösterilir. Yalnız verilen kökte (ana sayfa); uygulamanın geri kalanında
-// dokunma vurgusu yok kuralı (globals.css) sürer.
+// değişmez. Hızlı dokunuşta 110 ms kısa bir basma gösterilir. Kök verilmezse bütün sayfa (PressFeedback, kök düzende);
+// [data-press] taşımayan öğelerde dokunma vurgusu yok kuralı (globals.css) sürer.
 export function usePress(ref) {
   useEffect(() => {
-    const root = ref.current;
+    const root = ref ? ref.current : document;
     if (!root) return;
     let el = null;
     let x = 0;

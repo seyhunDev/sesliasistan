@@ -2680,3 +2680,13 @@ group("Ölçülen rüzgâr")([
     })],
   ]);
 }
+
+// Ortak düğmeler (buttonClass.js): beş çeşit tek yerden; ghost = ikincil; yazı ve simge satırı doldurmaz
+const BC = await import("@/components/ui/buttonClass");
+group("Ortak düğmeler")([
+  ["ana", F("btn btn-primary w-full", () => BC.buttonClass() === "btn btn-primary w-full")],
+  ["eski ghost", F("ikincil olur", () => BC.buttonClass({ variant: "ghost" }) === "btn btn-secondary w-full")],
+  ["tehlike küçük", F("btn-danger btn-sm", () => BC.buttonClass({ variant: "danger", size: "sm", full: false }) === "btn btn-danger btn-sm")],
+  ["yazı ve simge", F("satırı doldurmaz", () => BC.buttonClass({ variant: "text" }) === "btn btn-text" && BC.buttonClass({ variant: "icon" }) === "btn btn-icon")],
+  ["bilinmeyen çeşit", F("ana düğmeye düşer", () => BC.buttonClass({ variant: "xyz" }) === "btn btn-primary w-full")],
+]);
