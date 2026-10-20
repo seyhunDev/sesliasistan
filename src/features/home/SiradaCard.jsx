@@ -9,7 +9,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { dayHead, leftTag, planTag, planTone, raceForPlan, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { dayHead, leftTag, planTag, planTone, raceForPlan, raceGroups, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
@@ -34,11 +34,19 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   if (!profile) return null;
   const today = todayStr();
   const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
-  const { days, rest } = twoDays(plans, today, now, 4);
+  // Sırada: aynı yarışın planları tek satırda (raceGroups); en çok 4 satır
+  const { days, rest: all } = twoDays(plans, today, now, 200);
+  const rest = raceGroups(all).slice(0, 4);
+  const norm = (x) => String(x || "").trim().toLocaleLowerCase("tr-TR");
+  const raceOf = (name) => races.open.find((r) => norm(r.name) && norm(r.name) === norm(name));
   // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
   // Yarışı görme yetkisi yoksa ya da başka plansa plan açılır
+  // Yarışın kendi planı (başlangıç günü; Seyhun 2026-10-20: "tıklanınca yarışmanın sayfasına gidilmeli") doğrudan yarışın sayfasını açar
   const open = (p) => {
-    if ((p.cat || p.category) === "Yarış" && races.on) return setPick(p);
+    const rk = raceKey(p);
+    const own = rk?.whole && raceOf(rk.name);
+    if (own) return router.push(`/athletes/races/${own.id}`);
+    if (rk && races.on) return setPick(p);
     const race = raceForPlan(p, races.open, today);
     if (race) router.push(`/athletes/races/${race}`);
     else openAdd({ edit: { kind: "plan", id: p.id } });
@@ -105,9 +113,13 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
         <div className="pt-3">
           <SectionHead title="Sırada" />
           <ul className={`px-3.5 py-1.5 ${GROUP}`}>
-            {rest.map(({ p, day }) => (
-              <TimeRow key={p.id} p={p} date={short(day)} sub={p.place} left={leftTag(day, today)} onOpen={() => open(p)} />
-            ))}
+            {rest.map((x) =>
+              x.race ? (
+                <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
+              ) : (
+                <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && `Başlangıç ${dayHead(x.p.date, today)}`, x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
+              ),
+            )}
           </ul>
         </div>
       )}
@@ -138,7 +150,7 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
           />
           <span className="flex min-w-0 items-start gap-2">
             <b className={`min-w-0 flex-1 break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-            {left && <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-px text-[0.75rem] font-semibold tabular-nums ${LEFT[left.tone]}`}>{left.text}</span>}
+            <LeftPill left={left} />
           </span>
           {(tag || sub || live) && (
             <small className={`block break-words text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
@@ -157,6 +169,50 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
     </li>
   );
 }
+
+// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte yarışın adı, "Yarış · Başlangıç Cmt 24 Eki · yer", sağda başlangıca kalan gün;
+// dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (gün, iş adı, kalan gün), dokununca Yapıldı / Yarışın sayfası / Planı aç
+function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
+  const head = g.start?.p || g.items[0].p;
+  const startDay = g.start?.p.date || race?.startDate || "";
+  const href = race ? `/athletes/races/${race.id}` : "";
+  return (
+    <li className={`tone-${planTone(head)} grid grid-cols-[3.875rem_1fr]`}>
+      <span className={`whitespace-nowrap py-2.5 tabular-nums ${head.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
+        {head.time || "Tüm gün"}
+        <small className="block text-[0.75rem] font-normal text-mut">{date(g.start?.day || g.day)}</small>
+      </span>
+      <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
+        <span aria-hidden="true" className="absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 border-[var(--tfg)] bg-card" />
+        <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="flex w-full min-w-0 items-start gap-2 text-left">
+          <span className="min-w-0 flex-1">
+            <b className="break-words font-semibold">
+              {g.race}
+              {href && <span className="ml-1 font-normal text-acc">›</span>}
+            </b>
+            <small className="block break-words text-[0.84375rem] text-mut">
+              <span className="tone-fg font-semibold">Yarış</span>
+              {[startDay && `Başlangıç ${dayHead(startDay, today)}`, head.place].filter(Boolean).map((x) => ` · ${x}`)}
+            </small>
+          </span>
+          {startDay && <LeftPill left={leftTag(startDay, today)} />}
+        </button>
+        <ul className="mt-1.5 space-y-1.5">
+          {g.items.map(({ p, day, label }) => (
+            <li key={p.id}>
+              <button type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-2 rounded-xl bg-bg px-2.5 py-2 text-left">
+                <span className="w-12 shrink-0 text-[0.78125rem] tabular-nums text-mut">{date(day)}</span>
+                <span className="min-w-0 flex-1 break-words text-[0.90625rem]">{[label, p.time].filter(Boolean).join(" · ")}</span>
+                <LeftPill left={leftTag(day, today)} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </span>
+    </li>
+  );
+}
+const LeftPill = ({ left }) => (left ? <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-px text-[0.75rem] font-semibold tabular-nums ${LEFT[left.tone]}`}>{left.text}</span> : null);
 
 // "Seni bekleyenler" satırı: kırmızı karede sayı, sağda ilk işlerin adı (bekleyen yoksa çizilmez; ayrıntı zil penceresinde)
 function WaitRow({ inbox, onAll }) {

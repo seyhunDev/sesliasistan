@@ -316,6 +316,37 @@ export function upcoming(plans = [], today, now = new Date(), n = 4, days = 7) {
   return out;
 }
 
+// Sırada'da aynı yarışın planları tek satırda (Seyhun 2026-10-20: "aynı başlıktan 5 tane var, hepsi farklı iş gibi"): Yarış planı "Yarış adı: iş"
+// (talimattan) ya da yarışın kendi adı (başlangıç günü). rows: [{ p, day }]. Aynı yarıştan iki ya da daha çok satır varsa
+// { race: ad, start (yarışın kendi planı ya da null), items: [{ p, day, label }], day (ilk gün) }, değilse { p, day, start: yarışın kendi planı mı }
+export function raceKey(p) {
+  if ((p?.cat || p?.category) !== "Yarış") return null;
+  const t = String(p.title || "").trim();
+  const i = t.indexOf(":");
+  return i > 0 ? { name: t.slice(0, i).trim(), label: t.slice(i + 1).trim() } : t ? { name: t, label: "", whole: true } : null;
+}
+export function raceGroups(rows = []) {
+  const keyOf = (r) => raceKey(r.p)?.name.toLocaleLowerCase("tr-TR") || "";
+  const count = {};
+  for (const r of rows) if (keyOf(r)) count[keyOf(r)] = (count[keyOf(r)] || 0) + 1;
+  const out = [];
+  const at = {};
+  for (const r of rows) {
+    const k = keyOf(r);
+    const rk = raceKey(r.p);
+    if (!k || count[k] < 2) {
+      out.push({ ...r, start: !!rk?.whole });
+      continue;
+    }
+    if (!at[k]) {
+      at[k] = { race: rk.name, start: null, items: [], day: r.day };
+      out.push(at[k]);
+    }
+    if (rk.whole && !at[k].start) at[k].start = r;
+    else at[k].items.push({ ...r, label: rk.label || rk.name });
+  }
+  return out;
+}
 // Ana sayfa takvimi iki gün (Seyhun: "bugün ve en yakın tarih; yarın varsa yarın"): bugün (geçmiş saatler hariç) ve
 // planı olan en yakın sonraki gün; kalan planlar "Sırada seni bekleyenler" (rest, en çok n). Gün başlığı: Bugün, Yarın ya da "Cum 17 Eki".
 export function twoDays(plans = [], today, now = new Date(), n = 4, horizon = 60) {
