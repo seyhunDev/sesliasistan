@@ -15,7 +15,7 @@ import {
   where,
 } from "firebase/firestore";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
-import { db } from "@/lib/firebase/clientApp";
+import { db, healFirestore, isFsBroken } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -44,6 +44,7 @@ export function sendErrorText() {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return "İnternet bağlantısı yok; bağlanınca tekrar dene.";
   if (lastErr === "permission-denied") return "Bu sohbete yazma iznin görünmüyor. Ana hesap Firestore kurallarını yayınlamalı (firebase deploy --only firestore:rules).";
   if (lastErr === "unavailable" || lastErr === "deadline-exceeded") return "Sunucuya ulaşılamadı; biraz sonra tekrar dene.";
+  if (/INTERNAL ASSERTION|internal/i.test(lastErr)) return "Mesaj gönderilemedi, uygulama kendini yeniliyor; birazdan tekrar dene.";
   return `Mesaj gönderilemedi${lastErr ? ` (${lastErr})` : ""}.`;
 }
 export function ChatProvider({ children }) {
@@ -193,6 +194,7 @@ export function ChatProvider({ children }) {
         return true;
       } catch (e) {
         lastErr = e.code || e.message || "";
+        if (isFsBroken(e)) healFirestore(); // telefondaki önbellek bozuldu: uygulama bir kez yenilenir
         console.warn("[chat] gönderilemedi:", lastErr);
         return false;
       }

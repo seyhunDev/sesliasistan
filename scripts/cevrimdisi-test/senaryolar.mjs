@@ -214,6 +214,48 @@ export async function run(server, log = () => {}) {
       }, 10000);
       return [ok, (await again.evaluate(() => window.__net.map((x) => x.t || "(kapalı)"))).join(" → ")];
     });
+
+    // 6) Firestore iç hatası (telefonda IndexedDB bozulması, INTERNAL ASSERTION b815): uygulama bir kez kendini yeniler
+    G = "Önbellek iç hatası";
+    await again.evaluate(() => (window.__mark = 1));
+    await again.evaluate(() => console.error("FIRESTORE (12.19.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815) test"));
+    await check(G, "uygulama kendini yeniler", "sayfa 5 sn içinde yenilenir", () => until(() => again.evaluate(() => window.__mark !== 1), 8000));
+    await check(G, "yenilenince kayıt", "çalışır", async () => {
+      await input(again).waitFor({ timeout: 30000 });
+      await addItem(again, "Bal");
+      return until(async () => (await serverItems(ids.owner)).includes("Bal"), 15000);
+    });
+    await again.evaluate(() => (window.__mark = 2));
+    await again.evaluate(() => console.error("FIRESTORE INTERNAL ASSERTION FAILED: ikinci"));
+    await sleep(4500);
+    await check(G, "2 dakika içinde ikinci kez", "yenilemez (döngü yok)", () => again.evaluate(() => window.__mark === 2));
+
+    // 7) iPhone (tek sekmeli önbellek): internetsiz kayıt bağlantı gelince gider
+    G = "iPhone";
+    const ip = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block", userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148" });
+    await ip.addInitScript(INIT({ standalone: true, sha }));
+    await ip.route("**/*", (route) => {
+      const u = new URL(route.request().url());
+      if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") return route.abort();
+      if (u.pathname.startsWith("/api/") && u.pathname !== "/api/version") return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      return route.continue();
+    });
+    const pp = await ip.newPage();
+    await pp.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
+    const pi = pp.locator("input");
+    await pi.first().waitFor({ timeout: 30000 });
+    await pi.nth(0).fill(OWNER);
+    await pi.nth(1).fill(PASS);
+    await pi.nth(1).press("Enter");
+    await pp.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
+    await pp.goto(`${server.url}/shopping`, { waitUntil: "load" });
+    await input(pp).waitFor({ timeout: 30000 });
+    await ip.setOffline(true);
+    await addItem(pp, "Limon");
+    await check(G, "internetsiz kayıt ekranda", "Limon listede", () => until(() => shown(pp, "Limon"), 4000));
+    await ip.setOffline(false);
+    await check(G, "bağlantı gelince", "Limon sunucuda", () => until(async () => (await serverItems(ids.owner)).includes("Limon"), 30000));
+    await ip.close();
   } catch (e) {
     push("Akış", "senaryo", "biter", false, String(e.message).split("\n")[0].slice(0, 300));
   } finally {
