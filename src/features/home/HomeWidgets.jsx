@@ -40,16 +40,19 @@ function Face({ name, photo, tone = "sp", cls = "size-10" }) {
   );
 }
 
-// Tam genişlik: Sporcular. Fotoğraflar yan yana (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası), altında bugünkü antrenman,
-// düğmeler: Yoklama al (yetki varsa, bugünün yoklaması) ve Mesaj (Sporcular grubu). Başlıkta Tümü › Sporcular. Sporcu yoksa çizilmez.
-export function AthletesWidget({ att }) {
+// Tam genişlik: Sporcular ve Fitness tek kartta (Seyhun 2026-10-20: "sporcular ve fitness birlikte; bir sporcunun bir şeyi varsa hangi sporcu
+// belirtilir, öbürleri yine durur"). Üstte fotoğraflar (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası), altında en yakın fitness günü
+// adlarıyla (FitRows), en altta düğmeler: Yoklama (yalnız bugün antrenman varsa, saatiyle; antrenmanın kendisi takvim listesinde), Mesaj
+// (Sporcular grubu), Fitness. Düğmeler tek satırda, yazı taşmaz. Başlıkta Tümü › Sporcular. Sporcu yoksa çizilmez. fit: fitDays() (HomeFeed).
+export function AthletesWidget({ att, fit }) {
   const { members, plans } = useData();
   const list = (members || []).filter((m) => m && m.name && m.status !== "left" && (m.kind === "athlete" || m.kind === "student")).sort((a, b) => a.name.localeCompare(b.name, "tr"));
   if (!list.length) return null;
   const today = todayStr();
   const sail = plans.filter((p) => p.date === today && p.status !== "cancelled" && (p.cat || p.category) === "Antrenman").sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-  const yok = att ? attHref(today, today) : null;
+  const yok = att && sail.length ? attHref(today, today) : null;
   const shown = list.slice(0, 7);
+  const btn = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[0.84375rem] font-semibold";
   return (
     <div className={`${WIDGET} col-span-2 min-h-0`}>
       <WHead tone="sp" title="Sporcular" count={list.length} right={<Link href="/athletes" className="text-acc">Tümü ›</Link>} />
@@ -65,66 +68,84 @@ export function AthletesWidget({ att }) {
           </Link>
         )}
       </span>
-      <small className="mt-2 block truncate text-[0.8125rem] text-mut">
-        {sail.length ? `Bugün antrenman${sail[0].time ? ` ${sail[0].time}` : ""}${sail[0].place ? ` · ${sail[0].place}` : ""}` : "Bugün antrenman yok"}
-      </small>
-      <span className="mt-2.5 flex gap-2">
+      <FitRows fit={fit} head />
+      <span className={`mt-3 grid gap-2 ${yok ? "grid-cols-[auto_1fr_1fr]" : "grid-cols-2"}`}>
         {yok && (
-          <Link href={yok} className="rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
-            Yoklama al
+          <Link href={yok} className={`${btn} acc-btn`}>
+            Yoklama{sail[0].time ? ` · ${sail[0].time}` : ""}
           </Link>
         )}
-        <Link href="/messages?c=athletes" className="rounded-full bg-accbg px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
-          Sporculara mesaj
+        <Link href="/messages?c=athletes" className={`${btn} raised bg-card text-acc`}>
+          Mesaj
+        </Link>
+        <Link href="/fitness" className={`${btn} raised bg-card text-acc`}>
+          Fitness
         </Link>
       </span>
     </div>
   );
 }
 
-// Tam genişlik: Fitness (Seyhun: "aynı gün iki, üç, dört sporcu varsa nasıl gösterilecek?"). Bugün fitness varsa bugünün, yoksa en yakın günün
-// sporcuları alt alta: fotoğraf, ad · program, saat, durum (Yaptı yeşil, Bekliyor turuncu…). En çok 3 satır, fazlası "+N sporcu · ilk kalan";
-// altta sonraki fitness günü ("Yarın 2 sporcu ›", Fitness'ta o gün). Satıra dokununca o antrenman açılır. fit: fitDays() (HomeFeed).
-const FST = { done: ["Yaptı", "tone-st"], missed: ["Yapmadı", "tone-gen"], skip: ["Atladı", "tone-gen"] };
+// Tam genişlik: Fitness (sporcular kartı görünmeyen hesaplarda; Seyhun: "aynı gün iki, üç, dört sporcu varsa nasıl gösterilecek?")
 export function FitWidget({ fit }) {
+  const today = todayStr();
+  if (!(fit || []).some((f) => f.date >= today)) return null;
+  return (
+    <div className={`${WIDGET} col-span-2 min-h-0`}>
+      <WHead tone="fit" title="Fitness" right={<Link href="/fitness" className="text-acc">Tümü ›</Link>} />
+      <FitRows fit={fit} />
+    </div>
+  );
+}
+
+// Fitness satırları: bugün fitness varsa bugünün, yoksa en yakın günün sporcuları alt alta: fotoğraf, üstte ad, altında program · saat, sağda
+// durum (Yaptı yeşil, Bekliyor turuncu…). En çok 3 satır, fazlası "+N sporcu"; altta sonraki fitness günü ("Yarın 2 sporcu ›"). Satıra dokununca
+// o antrenman açılır. head: üstte ince çizgi ve "Bugün fitness · 2 sporcu" başlığı (sporcular kartında). Fitness yoksa çizilmez
+const FST = { done: ["Yaptı", "tone-st"], missed: ["Yapmadı", "tone-gen"], skip: ["Atladı", "tone-gen"] };
+function FitRows({ fit, head }) {
   const { members } = useData();
   const { openAdd } = useAdd();
   const today = todayStr();
   const days = [...new Set((fit || []).map((f) => f.date).filter((d) => d >= today))].sort();
   if (!days.length) return null;
   const [day, nextDay] = days;
-  const head = (d) => (d === today ? "Bugün" : dayName(d, today));
+  const name = (d) => (d === today ? "Bugün" : dayName(d, today));
   const rows = fit.filter((f) => f.date === day).sort((a, b) => (a.plan?.time || "").localeCompare(b.plan?.time || ""));
   const more = rows.slice(3);
   const later = nextDay ? fit.filter((f) => f.date === nextDay) : [];
+  const who = (l) => `${l.length} ${l.some((f) => !f.mine) ? "sporcu" : "antrenman"}`;
   const photo = (f) => members.find((m) => m.uid === f.plan?.fit?.for)?.photo || "";
   return (
-    <div className={`${WIDGET} col-span-2 min-h-0`}>
-      <WHead tone="fit" title={`Fitness · ${head(day)}`} count={`${rows.length} ${rows.some((f) => !f.mine) ? "sporcu" : "antrenman"}`} right={<Link href="/fitness" className="text-acc">Tümü ›</Link>} />
-      <ul className="mt-1.5">
+    <div className={head ? "mt-3 border-t border-line pt-2" : "mt-1.5"}>
+      <small className="block text-[0.75rem] uppercase tracking-[.02em] text-mut">
+        {name(day)} fitness · {who(rows)}
+      </small>
+      <ul>
         {rows.slice(0, 3).map((f) => {
           const [t, tone] = FST[statusOf(f.plan || f, today)] || ["Bekliyor", "tone-fit"];
           return (
             <li key={f.id} className="border-t border-line first:border-t-0">
               <button type="button" onClick={() => openAdd({ edit: { kind: "plan", id: f.plan?.id || f.id } })} className="flex w-full items-center gap-2.5 py-2 text-left">
                 <Face name={f.mine ? "Sen" : f.name} photo={f.mine ? "" : photo(f)} tone="fit" cls="size-8" />
-                <span className="min-w-0 flex-1 truncate">
-                  <b className="font-semibold">{f.mine ? "Sen" : f.name.split(" ")[0]}</b>
-                  <span className="text-[0.875rem] text-mut"> · {f.plan?.fit?.name || f.plan?.title || "Antrenman"}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words">{f.mine ? "Sen" : f.name.split(" ")[0]}</span>
+                  <small className="block break-words text-[0.84375rem] text-mut">
+                    {f.plan?.fit?.name || f.plan?.title || "Antrenman"}
+                    {f.plan?.time && <span className="whitespace-nowrap tabular-nums"> · {f.plan.time}</span>}
+                  </small>
                 </span>
-                {f.plan?.time && <small className="shrink-0 text-[0.8125rem] tabular-nums text-mut">{f.plan.time}</small>}
-                <span className={`${tone} tone-chip shrink-0 rounded-full px-2 py-0.5 text-[0.75rem] font-semibold`}>{t}</span>
+                <span className={`${tone} tone-chip shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.75rem] font-semibold`}>{t}</span>
               </button>
             </li>
           );
         })}
       </ul>
       {(more.length > 0 || later.length > 0) && (
-        <span className="flex items-center justify-between gap-3 border-t border-line pt-2 text-[0.8125rem] text-mut">
-          <span className="min-w-0 truncate">{more.length > 0 && `+${more.length} sporcu · ${more[0].name.split(" ")[0]}${more[0].plan?.time ? ` ${more[0].plan.time}` : ""}`}</span>
+        <span className="flex items-center justify-between gap-3 text-[0.84375rem] text-mut">
+          <span className="min-w-0 truncate">{more.length > 0 && `+${more.length} sporcu`}</span>
           {later.length > 0 && (
-            <Link href={fitHref(nextDay, later) || "/fitness"} className="shrink-0">
-              {head(nextDay)} {later.length} {later.some((f) => !f.mine) ? "sporcu" : "antrenman"} ›
+            <Link href={fitHref(nextDay, later) || "/fitness"} className="shrink-0 whitespace-nowrap">
+              {name(nextDay)} {who(later)} ›
             </Link>
           )}
         </span>

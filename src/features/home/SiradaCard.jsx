@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { Icon } from "@/components/ui/Icon";
@@ -135,7 +135,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 const DayHead = ({ title }) => <h2 className="mt-1 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">{title}</h2>;
 
 // Liste satırı (Bugün, Yarın, Sırada aynı; Seyhun 2026-10-20: "başlık üst satır yatayda full, altında diğer bilgiler yan yana"): solda ince dikey çizgi
-// ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında saat · gün · tür · yer · "şimdi" ve sağda
+// ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında gün · saat · tür · yer · "şimdi" ve sağda
 // kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri). warn: rüzgâr eşiği geçti, alt satır kırmızımsı
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
 function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
@@ -144,14 +144,8 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
     <li>
       <button type="button" onClick={onOpen} className={`tone-${planTone(p)} relative block w-full border-l-2 border-line py-2.5 pl-4 text-left`}>
         <Dot live={live} />
-        <b className={`block break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-        <Meta left={left} warn={warn}>
-          <span className={`tabular-nums ${p.time ? "font-semibold text-fg2" : ""}`}>{p.time || "Tüm gün"}</span>
-          {date && <span className="whitespace-nowrap"> · {date}</span>}
-          {tag && <span className="tone-fg font-semibold"> · {tag}</span>}
-          {sub && <span> · {sub}</span>}
-          {live && <span className="font-semibold text-[var(--red)]"> · şimdi</span>}
-        </Meta>
+        <b className="block break-words font-normal">{p.title}</b>
+        <Meta left={left} warn={warn} date={date} time={p.time || (date ? "" : "Tüm gün")} tag={tag} sub={sub} live={live} />
       </button>
     </li>
   );
@@ -162,13 +156,24 @@ const Dot = ({ live }) => (
     className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
   />
 );
-// Satırın alt bilgisi: solda yan yana bilgiler (gerekirse alt satıra geçer), sağda kalan gün
-const Meta = ({ left, warn, children }) => (
-  <span className={`mt-0.5 flex items-start gap-2 text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
-    <span className="min-w-0 flex-1 break-words">{children}</span>
-    <LeftPill left={left} />
-  </span>
-);
+// Satırın alt bilgisi, her satırda aynı sıra ve yazı (Seyhun 2026-10-20: "tarihler, saatler aynı formatta, aynı sıralamayla"):
+// gün · saat · tür (renginde) · yer/ek · şimdi; gerekirse alt satıra geçer, gün ve saat bölünmez; sağda kalan gün
+const Meta = ({ left, warn, date, time, tag, sub, live }) => {
+  const parts = [date && <span className="whitespace-nowrap">{date}</span>, time && <span className="whitespace-nowrap tabular-nums">{time}</span>, tag && <span className="tone-fg">{tag}</span>, sub, live && <span className="text-[var(--red)]">şimdi</span>].filter(Boolean);
+  return (
+    <span className={`mt-0.5 flex items-start gap-2 text-[0.84375rem] ${warn ? "text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+      <span className="min-w-0 flex-1 break-words">
+        {parts.map((x, i) => (
+          <Fragment key={i}>
+            {x}
+            {i < parts.length - 1 && "\u00a0· "}
+          </Fragment>
+        ))}
+      </span>
+      <LeftPill left={left} />
+    </span>
+  );
+};
 
 // Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte tam genişlikte yarışın adı, altında başlangıç günü · Yarış · Başlangıç · yer ve sağda
 // başlangıca kalan gün; dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (üstte iş adı, altında gün · saat ve kalan gün),
@@ -181,22 +186,18 @@ function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
     <li className={`tone-${planTone(head)} relative border-l-2 border-line py-2.5 pl-4`}>
       <Dot />
       <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="block w-full text-left">
-        <b className="block break-words font-semibold">
+        <b className="block break-words font-normal">
           {g.race}
           {href && <span className="ml-1 font-normal text-acc">›</span>}
         </b>
-        <Meta left={startDay ? leftTag(startDay, today) : null}>
-          {[head.time, date(startDay || g.day)].filter(Boolean).join(" · ")}
-          <span className="tone-fg font-semibold"> · Yarış</span>
-          {[startDay && "Başlangıç", head.place].filter(Boolean).map((x) => ` · ${x}`)}
-        </Meta>
+        <Meta left={startDay ? leftTag(startDay, today) : null} date={date(startDay || g.day)} time={head.time} tag="Yarış" sub={[startDay && "Başlangıç", head.place].filter(Boolean).join(" · ")} />
       </button>
       <ul className="mt-1.5 space-y-1.5">
         {g.items.map(({ p, day, label }) => (
           <li key={p.id}>
             <button type="button" onClick={() => onOpen(p)} className="block w-full rounded-xl bg-bg px-2.5 py-2 text-left">
-              <span className="block break-words text-[0.90625rem]">{label}</span>
-              <Meta left={leftTag(day, today)}>{[date(day), p.time].filter(Boolean).join(" · ")}</Meta>
+              <span className="block break-words">{label}</span>
+              <Meta left={leftTag(day, today)} date={date(day)} time={p.time} />
             </button>
           </li>
         ))}
