@@ -197,3 +197,37 @@ export const customCatalog = (lib) =>
     .slice(0, 60)
     .map((e) => `${e.key}: ${e.name}`)
     .join("\n");
+
+// Eski görüntüye göre yapılan değişikliği (eklenen/çıkarılan) güncel listeye uygular: arada başka bir ekleme olduysa
+// (yüklenirken bağlantı eklendi gibi) o kaybolmaz. base: değişikliğin yapıldığı liste, next: istenen, fresh: şu anki
+export function mediaApply(base = [], next = [], fresh = []) {
+  const was = new Set((base || []).map((m) => m.id));
+  const now = new Set((next || []).map((m) => m.id));
+  const gone = [...was].filter((id) => !now.has(id));
+  const add = (next || []).filter((m) => !was.has(m.id));
+  const out = (fresh || []).filter((m) => !gone.includes(m.id));
+  for (const m of add) if (!out.some((x) => x.id === m.id)) out.push(m);
+  return out;
+}
+
+// Hiçbir harekete bağlı olmayan dosyaları harekete ekler (ilk 3'ü görünür, fazlası spare'de)
+export function libAttach(lib, key, metas = []) {
+  const e = lib?.items?.[key];
+  if (!e || !metas.length) return lib;
+  const seen = new Set();
+  const all = [...(e.media || []), ...(e.spare || []), ...metas].filter((m) => m?.id && !seen.has(m.id) && seen.add(m.id));
+  const o = { ...e, m: true };
+  delete o.media;
+  delete o.spare;
+  if (all.length) o.media = all.slice(0, 3);
+  if (all.length > 3) o.spare = all.slice(3);
+  return { ...lib, items: { ...lib.items, [key]: o } };
+}
+
+// Birleştirmede kalacak olan: fotoğrafı/videosu çok olan, eşitse numarası küçük olan
+export function libKeepOf(lib, keys = []) {
+  return keys
+    .map((k) => ({ k, e: lib?.items?.[k] }))
+    .filter((x) => x.e)
+    .sort((a, b) => mediaCount(b.e) - mediaCount(a.e) || a.e.no - b.e.no)[0]?.k || "";
+}

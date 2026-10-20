@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { libMerge, libSetMedia } from "@/lib/fitness/library";
+import { libAttach, libEntry, libMerge, libSetMedia } from "@/lib/fitness/library";
 import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
-// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media }), merge(keep, keys) }
+// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media } ya da güncel kayıt => { yt, media }), merge(keep, keys), attach(key, künyeler) }
 // setMedia hareketin fotoğraf/videosunu kütüphaneye yazar ve hemen programlara ve sporcuların antrenmanlarına taşır
 // (pencere kapanmasını beklemez; sayfadan çıkılsa da video sporcuya gider).
 export function useFitLib() {
@@ -33,7 +33,9 @@ export function useFitLib() {
     async (it, v) => {
       if (!orgId) return null;
       const cur = peekLib(orgId) || (await loadLib(orgId));
-      const saved = await saveLib(orgId, libSetMedia(cur, it, v));
+      // İşlev verilirse güncel kayıttan hesaplanır: arada yapılan başka bir ekleme ezilmez
+      const val = typeof v === "function" ? v(libEntry(cur, it) || {}) : v;
+      const saved = await saveLib(orgId, libSetMedia(cur, it, val));
       spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] video sporculara aktarılamadı", e));
       return saved;
     },
@@ -50,5 +52,16 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, merge };
+  // Bağlı olmayan dosyaları harekete geri ekler
+  const attach = useCallback(
+    async (key, metas) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      const saved = await saveLib(orgId, libAttach(cur, key, metas));
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] dosya sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
+  return { lib, setMedia, merge, attach };
 }

@@ -287,6 +287,8 @@ let libCache = { org: "", lib: null };
 export const FIT_LIB = "sa-fit-lib";
 const libTold = () => window.dispatchEvent(new CustomEvent(FIT_LIB));
 export const peekLib = (orgId) => (libCache.org === orgId ? libCache.lib : null);
+// Bellekteki kütüphane (hangi kulüp olursa; yapay zekaya hareket adlarını vermek için)
+export const libNow = () => libCache.lib;
 export async function loadLib(orgId, { force = false } = {}) {
   if (!force && libCache.org === orgId && libCache.lib) return libCache.lib;
   const snap = await getDoc(libRef(orgId));

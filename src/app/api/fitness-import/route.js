@@ -32,7 +32,8 @@ Gün (days):
 
 Hareket (items), her biri:
 - part: "isinma" (hazırlık, ısınma, mobilite), "ana" (ana bölüm), "soguma" (soğuma, esneme, reset sonu). Belgede bölüm yoksa "ana".
-- ex: hareket verilen listedekiyle BİREBİR aynı hareketse listedeki id; değilse "" (boş). Emin değilsen "". name her zaman belgedeki ad.
+- ex: hareket verilen listedekiyle BİREBİR aynı hareketse listedeki id; değilse "" (boş). Emin değilsen "". name belgedeki ad;
+  ama "Kulübün hareketleri" listesinde AYNI hareket başka yazılışla varsa (aynı hareket, yalnız dil/yazım/ek kelime farkı: "Backpack split squat" ↔ "Sırt çantalı split squat") name o listedeki adın AYNISI olsun. Farklı hareketse (tek bacak, farklı ekipman, farklı yön) listedeki adı kullanma.
 - Doz: tekrarlı hareket reps (aralıksa reps alt, repsTo üst: "8–12" → reps 8, repsTo 12); süreli hareket sec (aralıksa sec ve secTo: "20–30 sn" → 20, 30; "1 dk" → 60); dakikalı yürüyüş/koşu/kardiyo min. "5 nefes", "5 yavaş nefes" → reps 5 ve breath'te nefes biçimi.
 - side: her yan/her bacak/her kol için ("/yan", "/bacak", "6/6", "30 sn/30 sn", "8/8") → true.
 - sets: set ya da tur sayısı (belgede yoksa 1; ısınma istasyonlarında 1).
@@ -119,6 +120,12 @@ async function handle(request) {
   } else if (text.length < 30) return bad("Program metni çok kısa.");
   if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil. Programı elle hazırlayabilirsin.", 503);
   const today = DAY.test(body?.today || "") ? body.today : new Date().toISOString().slice(0, 10);
+  const names = String(body?.names || "")
+    .split("\n")
+    .map((l) => S(l, 60))
+    .filter(Boolean)
+    .slice(0, 200)
+    .join("\n");
   const who = [body?.age ? `Sporcu ${Math.round(+body.age)} yaşında.` : "", body?.sport ? `Spor: ${S(body.sport, 20)}.` : ""].filter(Boolean).join(" ");
 
   const user = [
@@ -128,6 +135,7 @@ async function handle(request) {
     edit ? `Mevcut program:\n${progJson(cur)}` : text ? `Program metni (kopyalanmış, düzen bozuk olabilir):\n"""\n${text}\n"""` : "Ekteki programı oku.",
     ask ? `Antrenörün ${edit ? "istediği değişiklik" : "ek isteği"}:\n"""\n${ask}\n"""` : "",
     `Hareket listesi (id: ad), yalnız birebir aynı hareket için:\n${exerciseCatalog()}`,
+    names ? `Kulübün hareketleri (fotoğrafları bu adlarda; aynı hareketse adı aynen kullan):\n${names}` : "",
   ].filter(Boolean).join("\n\n");
 
   try {

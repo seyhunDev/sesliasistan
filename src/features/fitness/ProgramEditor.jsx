@@ -10,7 +10,8 @@ import { editProgram } from "./fitImport";
 import { ExercisePicker } from "./ExercisePicker";
 import { ExerciseMedia } from "./ExerciseMedia";
 import { YtEdit } from "./YtVideo";
-import { libNo, withLib } from "@/lib/fitness/library";
+import { libNo, mediaApply, withLib } from "@/lib/fitness/library";
+import { useToast } from "@/components/ui/ToastProvider";
 import { useFitLib } from "./useFitLib";
 
 // Program düzenleme (yapay zekanın hazırladığı önizleme ya da kayıtlı program). Üstte özet (ad, gün/hafta, dakika, hafta,
@@ -59,13 +60,15 @@ function Chip({ children, tone }) {
 function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop }) {
   // Fotoğraf/video ve YouTube hareket kütüphanesinde: aynı hareket hangi programda olursa olsun aynısı görünür
   const { lib, setMedia } = useFitLib();
+  const toast = useToast();
   const it = withLib(raw, lib);
   const no = libNo(lib, raw);
   const set = (k, v) => onChange({ ...it, [k]: v });
   const setLib = (k, v) => {
     const next = { ...it, [k]: v };
     onChange(next);
-    setMedia(raw, { yt: next.yt, media: next.media }).catch(() => {});
+    // Güncel kayda uygulanır: yükleme sürerken eklenen bağlantı ya da fotoğraf kaybolmaz
+    setMedia(raw, (cur) => (k === "yt" ? { yt: v, media: cur.media } : { yt: cur.yt, media: mediaApply(it.media, v, cur.media) })).catch(() => toast("Fotoğraf/video kaydedilemedi, tekrar dene"));
   };
   const ex = exById(it.ex);
   return (

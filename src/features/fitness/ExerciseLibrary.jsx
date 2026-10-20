@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { exById, fold } from "@/lib/fitness/exercises";
-import { libAdd, libDupes, libKey, libList } from "@/lib/fitness/library";
-import { ExerciseMedia } from "./ExerciseMedia";
+import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds, mediaApply } from "@/lib/fitness/library";
+import { ExerciseMedia, Thumb } from "./ExerciseMedia";
+import { looseMedia } from "./fitMedia";
 import { ExercisePicker } from "./ExercisePicker";
 import { YtEdit } from "./YtVideo";
 import { saveLib } from "./fitnessData";
@@ -16,7 +18,9 @@ import { useFitLib } from "./useFitLib";
 const hasVideo = (x) => !!(x.yt?.id || (x.media || []).some((m) => m.kind === "video"));
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
-  const { lib, setMedia, merge } = useFitLib();
+  const { lib, setMedia, merge, attach } = useFitLib();
+  const toast = useToast();
+  const [join, setJoin] = useState(false);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState("");
   const [pick, setPick] = useState(false);
@@ -45,7 +49,25 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   };
   const close = () => {
     setSel("");
+    setJoin(false);
     onClose();
+  };
+  const failed = () => toast("Kaydedilemedi, tekrar dene");
+  // Güncel kayda uygulanır: yükleme sürerken eklenen bağlantı ya da fotoğraf kaybolmaz
+  const putMedia = (v) => setMedia(it, (cur) => ({ yt: cur.yt, media: mediaApply(e.media, v, cur.media) })).catch(failed);
+  const putYt = (v) => setMedia(it, (cur) => ({ yt: v, media: cur.media })).catch(failed);
+  // Bu hareketi seçilenle birleştirir: fotoğrafı/videosu çok olan kalır, öbürünün adı da ileride ona gider
+  const joinWith = async (x) => {
+    if (!confirm(`“${e.name}” ile “${x.name}” aynı hareket olarak birleştirilsin mi? Fotoğraf ve videoların hepsi kalır.`)) return;
+    const keep = libKeepOf(lib, [e.key, x.key]);
+    try {
+      await merge(keep, [e.key, x.key]);
+      setJoin(false);
+      setSel(keep);
+      toast("Birleştirildi");
+    } catch {
+      failed();
+    }
   };
   return (
     <Sheet open={open} onClose={close} title={e ? `No ${e.no} · ${e.name}` : "Hareketler"}>
@@ -57,9 +79,16 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
               {exById(e.ex).how}
             </p>
           )}
-          <ExerciseMedia media={e.media || []} ex={e.ex} edit onChange={(v) => setMedia(it, { yt: e.yt, media: v }).catch(() => {})} className="mt-2" />
-          <YtEdit yt={e.yt} onChange={(v) => setMedia(it, { yt: v, media: e.media }).catch(() => {})} media={e.media || []} onMedia={(v) => setMedia(it, { yt: e.yt, media: v }).catch(() => {})} className="mt-2" />
+          <ExerciseMedia media={e.media || []} ex={e.ex} edit onChange={putMedia} className="mt-2" />
+          <YtEdit yt={e.yt} onChange={putYt} media={e.media || []} onMedia={putMedia} className="mt-2" />
           <p className="mt-2 text-[0.75rem] text-mut">Bu hareketin geçtiği bütün programlarda (sporcularınki dahil) bu fotoğraf ve video görünür.</p>
+          {join ? (
+            <Choose lib={lib} not={e.key} title="Hangi hareketle aynı?" onPick={joinWith} onCancel={() => setJoin(false)} />
+          ) : (
+            <button type="button" onClick={() => setJoin(true)} className="mt-3 flex h-11 w-full items-center justify-center rounded-xl border border-line text-[0.875rem] font-semibold">
+              Başka hareketle birleştir
+            </button>
+          )}
           <button type="button" onClick={() => setSel("")} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold">
             <Icon name="chev" className="size-4 rotate-180" />
             Hareketler
@@ -88,6 +117,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             ))}
           </div>
           {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
+          {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
           <ul className="mt-2 divide-y divide-line">
             {list.map((x) => {
               const v = hasVideo(x);
@@ -179,6 +209,104 @@ function Dupes({ groups, uses, onMerge }) {
             </button>
           )}
         </div>
+      )}
+    </section>
+  );
+}
+
+// Hareket seçimi (birleştirme ve dosya ekleme): ara, dokun
+function Choose({ lib, not = "", title, onPick, onCancel }) {
+  const [q, setQ] = useState("");
+  const list = libList(lib, q).filter((x) => x.key !== not);
+  return (
+    <section className="mt-3 rounded-2xl border border-line p-3">
+      <div className="flex items-center justify-between">
+        <b className="text-[0.9375rem] font-semibold">{title}</b>
+        <button type="button" onClick={onCancel} className="h-9 px-2 text-[0.875rem] font-semibold text-mut">
+          Vazgeç
+        </button>
+      </div>
+      <input value={q} onChange={(x) => setQ(x.target.value)} placeholder="Ara: ad ya da numara" className="mt-2 h-11 w-full rounded-xl bg-bg px-3 text-[1rem] outline-none" />
+      <ul className="mt-1 max-h-72 divide-y divide-line overflow-y-auto">
+        {list.map((x) => (
+          <li key={x.key}>
+            <button type="button" onClick={() => onPick(x)} className="flex min-h-12 w-full items-center justify-between gap-2 py-2 text-left">
+              <span className="min-w-0 truncate text-[0.9375rem]">
+                <span className="tabular-nums text-mut">{x.no} · </span>
+                {x.name}
+              </span>
+              <small className="shrink-0 text-[0.75rem] text-mut">{mediaText(x)}</small>
+            </button>
+          </li>
+        ))}
+        {!list.length && <li className="py-4 text-center text-[0.875rem] text-mut">Bulunamadı</li>}
+      </ul>
+    </section>
+  );
+}
+
+// Storage'da duran ama hiçbir harekete bağlı olmayan fotoğraf/videolar: bulunur, seçilen harekete geri eklenir (silinmez)
+function Loose({ orgId, lib, progs, onAttach }) {
+  const toast = useToast();
+  const [list, setList] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState([]);
+  const [to, setTo] = useState(false);
+  const used = () => {
+    const ids = libMediaIds(lib);
+    for (const p of progs) for (const d of p.days || []) for (const it of d.items || []) for (const m of it.media || []) ids.add(m.id);
+    return ids;
+  };
+  const find = async () => {
+    setBusy(true);
+    try {
+      setList(await looseMedia(orgId, used()));
+    } catch {
+      toast("Dosyalar okunamadı");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const put = async (x) => {
+    const metas = list.filter((m) => pick.includes(m.id));
+    try {
+      await onAttach(x.key, metas);
+      setList(list.filter((m) => !pick.includes(m.id)));
+      setPick([]);
+      setTo(false);
+      toast(`${metas.length} dosya “${x.name}” hareketine eklendi`);
+    } catch {
+      toast("Eklenemedi, tekrar dene");
+    }
+  };
+  if (!list)
+    return (
+      <button type="button" disabled={busy} onClick={find} className="mt-3 flex h-12 w-full items-center justify-between rounded-2xl border border-line px-3 text-left disabled:opacity-60">
+        <b className="text-[0.9375rem] font-semibold">{busy ? "Aranıyor…" : "Hareketsiz kalan fotoğraf ve videolar"}</b>
+        <Icon name="chev" className="size-4 text-mut" />
+      </button>
+    );
+  return (
+    <section className="mt-3 rounded-2xl border border-line p-3">
+      <b className="block text-[0.9375rem] font-semibold">{list.length ? `Hareketsiz kalan dosyalar · ${list.length}` : "Hareketsiz kalan dosya yok"}</b>
+      {list.length > 0 && (
+        <>
+          <p className="mt-1 text-[0.8125rem] text-mut">Seç, sonra hangi harekete ait olduğunu göster.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {list.map((m) => (
+              <span key={m.id} className={`rounded-[1.1rem] p-0.5 ${pick.includes(m.id) ? "bg-acc" : ""}`}>
+                <Thumb orgId={orgId} m={m} onOpen={() => setPick(pick.includes(m.id) ? pick.filter((x) => x !== m.id) : [...pick, m.id])} />
+              </span>
+            ))}
+          </div>
+          {to ? (
+            <Choose lib={lib} title="Hangi hareketin?" onPick={put} onCancel={() => setTo(false)} />
+          ) : (
+            <button type="button" disabled={!pick.length} onClick={() => setTo(true)} className="mt-2 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+              {pick.length ? `Harekete ekle (${pick.length})` : "Dosya seç"}
+            </button>
+          )}
+        </>
       )}
     </section>
   );

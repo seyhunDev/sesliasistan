@@ -31,7 +31,7 @@ export function useBlobUrl(orgId, m) {
   return { url, err, fail };
 }
 
-function Thumb({ orgId, m, onOpen, onDrop }) {
+export function Thumb({ orgId, m, onOpen, onDrop }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
   return (
     <span className="relative size-20 shrink-0">
