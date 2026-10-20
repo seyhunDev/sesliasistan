@@ -6,7 +6,7 @@ import { Label, card } from "@/components/ui/Page";
 import { Loader } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { todayStr } from "@/lib/utils/format";
-import { sky, windLevel, windName } from "@/features/weather/weather";
+import { dirDeg, sky, windLevel, windName } from "@/features/weather/weather";
 import { Col, WindArrow } from "@/features/weather/parts";
 import { cleanWeather, forecastFrom, lastForecastDay, loadRaceWeather, raceDays } from "./raceWeather";
 
@@ -88,7 +88,7 @@ export function RaceWeather({ r, onChange }) {
                     <b className={`block text-[1.125rem] font-semibold tabular-nums leading-tight ${lv.tone}`}>
                       {x.lo === x.hi ? x.hi : `${x.lo}–${x.hi}`} kn <span className="text-[0.8125rem] font-semibold">{lv.label}</span>
                     </b>
-                    <span className="block truncate text-[0.8125rem] text-mut">{`${windName(x.dir)[0]} (${windName(x.dir)[1]}) · sağanak ${x.gust} kn · gündüz 09–18`}</span>
+                    <span className="block truncate text-[0.8125rem] text-mut">{`${windName(x.dir)[0]} ${dirDeg(x.dir)} · sağanak ${x.gust} kn · gündüz 09–18`}</span>
                   </span>
                 </div>
                 {x.hours.length > 0 && (

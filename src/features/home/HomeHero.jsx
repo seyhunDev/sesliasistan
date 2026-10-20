@@ -5,7 +5,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Loading } from "@/components/ui/Loader";
 import { Icon } from "@/components/ui/Icon";
 import { TodayWind, WeatherDetail } from "@/features/weather/DaySheet";
-import { dayHours, getPlace, nowOf, sky, skyTone, windName } from "@/features/weather/weather";
+import { dayHours, dirDeg, getPlace, nowOf, sky, skyTone, windName } from "@/features/weather/weather";
 import { todayStr } from "@/lib/utils/format";
 
 // Hava kartının üstü (OwnerHome): solda havaya göre simge (güneş, ay, bulut, yağmur…; kendi renginde, skyTone), büyük sıcaklık, yanında durum ve
@@ -35,7 +35,7 @@ export function HomeHero({ weather }) {
             <span className="min-w-0 text-[0.875rem] leading-snug">
               <b className="block truncate font-semibold text-fg">{s.label}</b>
               <span className="block truncate tabular-nums text-mut">
-                {windName(n.dir)[0]} {n.wind} kn{day ? ` · ${day.min}° / ${day.max}°` : ""}
+                {windName(n.dir)[0]} {dirDeg(n.dir)} · {n.wind} kn{day ? ` · ${day.min}° / ${day.max}°` : ""}
               </span>
             </span>
           </>

@@ -1,5 +1,5 @@
 import { Icon } from "@/components/ui/Icon";
-import { windLevel } from "./weather";
+import { dirDeg, windLevel } from "./weather";
 
 // Rüzgârın estiği yönü gösteren ok (meteoroloji "geldiği yön" verir, ok 180° çevrilir)
 export function WindArrow({ deg, className = "size-3" }) {
@@ -23,6 +23,7 @@ export function Col({ label, icon, temp, wind, gust, dir, strong }) {
         {wind}
         {gust != null && gust > wind && <span className="font-normal text-mut">–{gust}</span>}
       </span>
+      <span className="text-[0.625rem] text-mut tabular-nums">{dirDeg(dir)}</span>
     </div>
   );
 }

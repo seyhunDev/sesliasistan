@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
+import { PLACE, compareLinks, dayHours, dirDeg, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
 import { todayStr } from "@/lib/utils/format";
 import { WindArrow } from "./parts";
 import { useWindObs } from "./useWindObs";
@@ -204,6 +204,7 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
           <p className="mt-0.5 flex items-center gap-1 text-[0.8125rem] font-semibold">
             <WindArrow deg={o?.dir ?? v.dir} className="size-3.5" />
             {windName(o?.dir ?? v.dir)[0]}
+            <span className="font-normal text-mut tabular-nums">{dirDeg(o?.dir ?? v.dir)}</span>
           </p>
         </div>
         <div className="flex shrink-0 gap-3 text-right">
@@ -215,7 +216,7 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
         <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} obs={obs} hourly />
         {/* Grafiğin parçası: 3 saatte bir saat, gökyüzü, sıcaklık ve rüzgâr–sağanak, grafikteki saatin tam altında
             (Seyhun: "saatlik satır grafikle bir bütün olsun"; yön üstteki oklarda, ayrı sütun listesi yok) */}
-        <div className="relative h-[4.25rem]">
+        <div className="relative h-[5rem]">
           {rows.map((h, k) =>
             +h.hh % 3 === 0 ? (
               <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-0.5" style={{ left: `${((L + (k * (W - L - R)) / Math.max(1, rows.length - 1)) / W) * 100}%` }}>
@@ -226,6 +227,7 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
                   {h.wind}
                   {h.gust > h.wind && <span className="font-normal text-mut">–{h.gust}</span>}
                 </span>
+                <span className="text-[0.625rem] text-mut tabular-nums">{dirDeg(obs[k]?.dir ?? h.dir)}</span>
               </span>
             ) : null,
           )}
