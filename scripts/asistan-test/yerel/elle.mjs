@@ -2326,17 +2326,22 @@ group("Fitness: program ayrıntıları ve şablon")([
     const d = FMI.planDrafts(p);
     return d.length === 4 && d[0].fit.items[0].sets === 3 && !d[0].fit.phase && d[3].fit.items[0].sets === 2 && d[3].fit.phase === "Hafif" && d[3].fit.note === "gün notu · az";
   })],
-  ["hazır şablon", F("Yelken ev kuvveti: 3 antrenman günü (kuvvet A, B, mikrodoz), bütün hareketler, 12 hafta, evreler ve kurallar korunur", () => {
+  ["hazır şablon", F("Yelken ev kuvveti PDF'teki hafta: 7 gün (kuvvet A, B, mikrodoz, reset günleri), bütün hareketler, 12 hafta, evreler ve kurallar", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const [a, b, c] = [at(2), at(4), at(5)];
     const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
-    return p.weeks === 12 && p.days.length === 3 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 6 &&
-      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 36;
+    return p.weeks === 12 && p.days.length === 7 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 12 &&
+      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && a.note.includes("gitar") &&
+      p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
   })],
-  ["hazır şablon rutin", F("reset, nefes ve mobilite, yelken sonrası antrenman günü değil; kurallarda başlık olarak durur", () => {
+  ["hazır şablon rutin", F("Pzt 19:00 8 dk reset, Çrş 19:00 nefes ve mobilite, Cmt ve Paz 16:00 yelken sonrası 6 dk; Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
-    return [1, 3, 6, 7].every((n) => !p.days.some((d) => d.dow === n)) && p.rules.includes("Her gün 8 dk reset:") && p.rules.includes("5 dk nefes ve mobilite") && p.rules.includes("Yelken sonrası 6 dk:");
+    const at = (n) => p.days.find((d) => d.dow === n);
+    const fri = at(5).items;
+    return at(1).time === "19:00" && at(1).items.length === 8 && at(1).note.includes("atletizm") && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
+      fri[0].name === fri[6].name && fri[0].note.startsWith("1. tur") && fri[6].note.startsWith("2. tur") && fri.every((x) => x.sets === 1 && FMI.restAfter(x, true) === 20) &&
+      !at(5).time && at(2).items.filter((x) => x.part === "isinma").every((x) => FMI.restAfter(x, true) === 10) && p.rules.includes("Her gün 8 dk reset:");
   })],
   ["belgeden rutin", F("PDF'te 'Nefes ve mobilite 6 dk' başlığı hareket olmaz; yalnız rutinden oluşan gün eklenmez", () => {
     const days = FMI.dropRoutines([
