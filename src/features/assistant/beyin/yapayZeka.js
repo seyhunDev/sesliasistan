@@ -12,6 +12,7 @@ import { askAssistant } from "@/services/assistantService";
 import { PHONE_WAIT_MS, retryable } from "@/lib/ai/budget";
 import { digestScope } from "@/lib/ai/digestScope";
 import { brainCommand } from "@/lib/commands";
+import { meterPattern } from "@/lib/brain/patternMeter";
 import { isMulti, waMode, wantsNote, keepNotes, wantsRecord, taskList, jobsIn } from "@/lib/steps";
 import { TEAM_WORD, groupOf } from "../isler/ortak";
 import { messageIntent } from "@/lib/ai/messageRules";
@@ -107,6 +108,12 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     }
     if (id !== runId.current) return;
     timingMark("aiDone");
+    // Hızlı kalıp ölçümü: telefon kendi başına aynı sonucu bulur muydu (yalnız sayılır; davranış değişmez)
+    try {
+      meterPattern(s, brainCommand(s), r);
+    } catch {
+      /* ölçüm hatası isteği etkilemez */
+    }
     timingInfo({ model: r.model || r.provider || "" });
     setPhase("preparing");
     handle(r, ask, viaVoice); // bekleme yok: işler hemen yapılır

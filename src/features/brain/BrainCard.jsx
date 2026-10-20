@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Switch } from "@/features/settings/ui";
 import { LABELS } from "@/lib/brain/model";
+import { patternReport, resetPatternMeter } from "@/lib/brain/patternMeter";
 import { flush, guess, missedLocal, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
 import { reportText } from "@/lib/brain/score";
 import { resetScore, scoreReport, subscribeScore } from "@/lib/brain/scoreStore";
@@ -32,6 +33,7 @@ export function BrainCard({ bare, owner }) {
   if (!s) return null;
   const g = q.trim() ? guess(q) : null;
   const missed = missedLocal();
+  const pr = patternReport();
   const pct = Math.min(100, Math.round((s.docBytes / s.docLimit) * 100));
 
   const h = s.hits;
@@ -50,6 +52,7 @@ export function BrainCard({ bare, owner }) {
     setBusy(true);
     try {
       const n = await resetBrain();
+      resetPatternMeter();
       await resetScore();
       toast(`Sıfırlandı · ${n} örnek silindi`);
       setAsk(false);
@@ -172,6 +175,36 @@ export function BrainCard({ bare, owner }) {
           <ul className="mt-1 space-y-0.5">
             {missed.slice(0, 5).map((m) => (
               <li key={m.x} className="truncate">“{m.x}” → {labelName(m.l)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Hızlı kalıp ölçümü: yapay zekaya giden isteklerde telefon aynı sonucu bulur muydu (iş türü başına) */}
+      {pr.n > 0 && (
+        <div className="mt-2 rounded-lg bg-card px-2.5 py-2 text-[0.8125rem] ring-1 ring-line">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-mut">Hızlı kalıp ölçümü · {pr.full}/{pr.n}</p>
+            <button
+              onClick={() =>
+                navigator.clipboard
+                  ?.writeText([...pr.rows.map((r) => `${labelName(r.label)}: ${r.full}/${r.n}${r.ready ? " hazır" : ""}`), "", ...pr.last.map((x) => `${x.ok ? "✓" : "✗"} “${x.x}” → ${labelName(x.l)}${x.g && x.g !== x.l ? ` (telefon: ${labelName(x.g)})` : ""}`)].join("\n"))
+                  .then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))
+              }
+              className="font-semibold text-acc"
+            >
+              Kopyala
+            </button>
+          </div>
+          <ul className="mt-1 space-y-0.5">
+            {pr.rows.slice(0, 6).map((r) => (
+              <li key={r.label} className="flex justify-between gap-2">
+                <span className="truncate">{labelName(r.label)}</span>
+                <span className="shrink-0 tabular-nums">
+                  {r.full}/{r.n}
+                  {r.ready ? " · hazır" : ""}
+                </span>
+              </li>
             ))}
           </ul>
         </div>
