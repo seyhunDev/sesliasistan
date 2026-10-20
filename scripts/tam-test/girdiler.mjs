@@ -26,7 +26,7 @@ add("Mesaj", AI, [
 ]);
 add("Soru", AI, [
   "Yarın ne var?", "Bu hafta neler var?", "Geciken görev var mı?", "Yarın rüzgar kaç knot?", "Dün antrenmana kimler geldi?",
-  "Antrenmana Ali geldi mi?", "Kaç sporcumuz var?", "Bu ay ne kadar fiş harcadım?",
+  "Antrenmana Ali geldi mi?", "Kaç sporcumuz var?", "Bu ay hangi planlar var?",
 ]);
 add("Yoklama", "attendance", [
   "Yoklama al, Ali ve Ayşe geldi.", "Bugün antrenmana Emre gelmedi.", "Bugün antrenmana Mustafa katıldı.", "Dünkü antrenmana Enes gelmedi, yoklamaya yaz.",

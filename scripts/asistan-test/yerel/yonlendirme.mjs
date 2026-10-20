@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { attQuery: "attQuery", clubAsk: "clubAsk", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
+const PATH = { attQuery: "attQuery", clubAsk: "clubAsk", infoAsk: "infoAsk", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -87,7 +87,7 @@ const CASES = {
   send: ["Ali'ye yaz, yarın 9'da iskelede olsun", "Gökhan'a mesaj at, botu yıkasın", "Ayşe'ye söyle toplantı ertelendi", "Zeynep'e mesaj gönder: forması hazır", "Mehmet'e haber ver, yarın gelmesin"],
   group: ["sporculara söyle antrenman iptal", "ekibe yaz, yarın 8'de iskelede toplanıyoruz", "velilere mesaj at: cumartesi antrenman var", "herkese haber ver, bugün kulüp kapalı"],
   whatsapp: ["Ali'ye WhatsApp'tan yaz, yarın gelsin", "Gökhan'a vatsaptan mesaj at, motoru getirsin", "velilere WhatsApp'tan yaz, kayıtlar başladı"],
-  query: ["bu hafta neler var", "yarın ne var?", "bugün hangi görevler var", "kaç görevim var", "Ali'nin görevleri neler", "bu ay ne kadar fiş harcadım?", "geciken görev var mı", "haftayı özetle"],
+  query: ["bu hafta neler var", "yarın ne var?", "bugün hangi görevler var", "kaç görevim var", "Ali'nin görevleri neler", "bu ay hangi planlar var?", "bu hafta kaç not aldım?", "geciken görev var mı", "haftayı özetle"],
   weather: ["yarın rüzgar kaç knot", "hava nasıl olacak cumartesi?", "bugün öğleden sonra rüzgar ne durumda", "pazar yağmur yağacak mı"],
   appUpdate: ["uygulamayı güncelle", "güncellemeyi yükle", "yeni sürüme geç", "sayfayı yenile"],
   inboxClear: ["bildirimleri temizle", "bildirimleri sil", "zildeki bildirimleri kaldır", "tüm bildirimleri temizle"],
@@ -202,6 +202,13 @@ const CROSS = [
   ["attQuery", "dün gelmeyenler kimdi?", "yoklama sorusu, veliye haber değil"],
   ["send", "velilere yaz, gelmeyenler cumartesi telafi yapacak", "mesaj, gelmeyen bildirimi değil"],
   ["delete", "Ali'nin doğum günü planını sil", "plan silme"],
+  ["infoAsk", "ödenmemiş faturalar neler", "fatura sorusu (telefonda cevap), fatura ödendi değil"],
+  ["infoAsk", "kaç faturamız ödenmedi", "fatura sorusu, fatura ödendi değil"],
+  ["infoAsk", "bu ay ne kadar harcadık", "harcama sorusu (telefonda cevap)"],
+  ["infoAsk", "okunmamış mesajım var mı", "mesaj sorusu (telefonda cevap), sayfa açma değil"],
+  ["infoAsk", "kim mesaj atmış", "mesaj sorusu, mesaj gönderme değil"],
+  ["invoice", "Turkcell faturası ödendi", "fatura ödendi, soru değil"],
+  ["navigate", "faturaları aç", "sayfa açma, fatura sorusu değil"],
 ];
 
 const { group } = suite("asistan");
@@ -663,6 +670,37 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
     ["gelmeyenlerin velilerine haber ver", AQ("")],
     ["Ali'ye geldi mi diye sor", AQ("")],
     ["bugün antrenman var mı", AQ("")],
+  ]);
+}
+
+// Fatura, harcama ve okunmamış mesaj soruları: telefondaki veriden cevap (lib/infoAsk.js; istek haritası 2026-10-20)
+{
+  const { infoAsk, infoAnswer } = await import("@/lib/infoAsk");
+  const T = "2026-10-20";
+  const rc = (date, cat, tl, scope) => ({ date, cat, declared: tl * 100, ...(scope ? { scope } : {}) });
+  const D = {
+    invoices: [{ seller: "Turkcell", amount: 1250.5 }, { seller: "Gediz", amount: 3400 }, { seller: "Deniz Malzeme", amount: 900 }, { seller: "Yelken Ltd", amount: 120, currency: "EUR" }],
+    receipts: [rc("2026-10-02", "Yakıt", 2000), rc("2026-10-10", "Market", 450), rc("2026-10-18", "Yakıt", 1000), rc("2026-09-20", "Yemek", 300), rc("2026-10-12", "Giyim", 999, "personal")],
+    chats: [{ title: "Ali Kaya", unread: 2, last: { text: "yarın geliyorum" } }, { title: "Ekip", unread: 0 }, { title: "Eski", unread: 3, archivedByMe: true }],
+  };
+  const IQ = (want, data = D) => ({ desc: want || "soru değil", fn: (s) => { const q = infoAsk(s, T); return q ? infoAnswer(q, data) : ""; }, ok: (r) => r === want });
+  group("Fatura, harcama, mesaj soruları (telefonda cevap)")([
+    ["ödenmemiş faturalar neler", IQ("4 ödenmemiş fatura var, toplam 5.551 TL: Gediz 3.400 TL, Turkcell 1.251 TL ve Deniz Malzeme 900 TL, 1 tane daha.")],
+    ["fatura var mı", IQ("Ödenmemiş fatura yok.", { ...D, invoices: [] })],
+    ["kaç faturamız var", IQ("", { ...D, invoices: undefined })],
+    ["bu ay ne kadar harcadık", IQ("Bu ay 3 kulüp fişi, toplam 3.450 TL. En çok: Yakıt 3.000 TL ve Market 450 TL.")],
+    ["geçen ay ne kadar harcadık", IQ("Geçen ay 1 kulüp fişi, toplam 300 TL. En çok: Yemek 300 TL.")],
+    ["bu ay kişisel ne kadar harcadım", IQ("Bu ay 1 kişisel fişi, toplam 999 TL. En çok: Giyim 999 TL.")],
+    ["bugün ne kadar harcadık", IQ("Bugün kulüp fişi yok.")],
+    ["okunmamış mesajım var mı", IQ("Okunmamış mesaj: Ali Kaya (2). Son mesaj: “yarın geliyorum”")],
+    ["yeni mesaj var mı", IQ("Okunmamış mesajın yok.", { ...D, chats: [] })],
+    ["kim mesaj atmış", IQ("2 sohbette okunmamış mesaj var: Ekip (5) ve Ali Kaya (2).", { ...D, chats: [...D.chats.slice(0, 1), { title: "Ekip", unread: 5 }] })],
+    ["Turkcell faturası ödendi", IQ("")],
+    ["faturaları aç", IQ("")],
+    ["Ali'ye yaz, faturayı ödedim", IQ("")],
+    ["okunmamış mesajları oku", IQ("")],
+    ["fiş ekle", IQ("")],
+    ["harcamaları göster", IQ("")],
   ]);
 }
 
