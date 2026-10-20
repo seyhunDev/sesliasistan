@@ -8,15 +8,16 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { db } from "@/lib/firebase/clientApp";
-import { shareGroup } from "@/lib/cancelPlan";
+import { waHref } from "@/lib/cancelPlan";
 import { cleanWaGroups, waGroupFor } from "@/lib/waGroups";
 import { athleteTemplates, cleanTemplates } from "@/lib/waTemplates";
 import { todayStr } from "@/lib/utils/format";
 
 // Sporculara WhatsApp mesajı (Seyhun 2026-10-20: "hazır kalıplar; kopyalar otomatik, WhatsApp'a gider, grubu seçer, yapıştırır, gönderirim").
 // Üstte metin (değiştirilebilir), altında hazır kalıplar (o anki planlardan) ve kaydedilenler; kalıba dokununca metne gelir.
-// "WhatsApp'ı aç": metin panoya kopyalanır; Ayarlar › WhatsApp gruplarında Sporcular grubu varsa grup açılır, yoksa WhatsApp metin hazır açılır
-// (grup orada seçilir). "Kalıp olarak kaydet": users/{uid}.waTemplates. races: useRaceHome().open
+// "WhatsApp'ı aç": gerçek bağlantı (<a>); iPhone uygulamayı bağlantı dokunuşuyla açıyor, kodla açma PWA'da çalışmadı.
+// Telefonda WhatsApp metin hazır açılır (grup orada seçilir), metin ayrıca panoya kopyalanır; bilgisayarda Sporcular grubu
+// bağlantısı kayıtlıysa grup, yoksa WhatsApp Web açılır. "Kalıp olarak kaydet": users/{uid}.waTemplates. races: useRaceHome().open
 export function WaSheet({ open, onClose, races = [] }) {
   const { profile } = useAuth();
   const { plans } = useData();
@@ -27,10 +28,13 @@ export function WaSheet({ open, onClose, races = [] }) {
   const ready = athleteTemplates(plans, races, todayStr()).filter((t) => !mine.includes(t));
   const group = waGroupFor("Sporcular", cleanWaGroups(profile?.waGroups))?.link || "";
   const save = (list) => updateDoc(doc(db, "users", profile.uid), { waTemplates: list }).catch(() => toast("Kaydedilemedi, tekrar dene."));
+  const msg = text.trim();
+  const href = msg ? waHref(msg, group, typeof navigator !== "undefined" ? navigator.userAgent : "") : undefined;
+  const app = href?.startsWith("whatsapp:");
   const send = () => {
-    const how = shareGroup(text.trim(), group);
-    toast(how === "group" ? "Kopyalandı, grupta yapıştır" : "Kopyalandı, WhatsApp'ta grubu seç");
-    onClose();
+    try { navigator.clipboard?.writeText?.(msg)?.catch?.(() => {}); } catch {}
+    toast(app ? "Kopyalandı, WhatsApp'ta grubu seç" : href === group ? "Kopyalandı, grupta yapıştır" : "Kopyalandı");
+    setTimeout(onClose, 600);
   };
   const row = (t, del) => (
     <li key={t} className="flex items-start gap-2 border-t border-line first:border-t-0">
@@ -49,10 +53,10 @@ export function WaSheet({ open, onClose, races = [] }) {
     <Sheet open onClose={onClose} title="Sporculara WhatsApp">
       <div className="space-y-3 pb-1">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Mesaj" className="block w-full resize-none rounded-xl bg-bg px-3 py-2.5 text-[1rem] outline-none" />
-        <button type="button" data-press disabled={!text.trim()} onClick={send} className={`${btn} acc-btn`}>
+        <a href={href} target={app ? undefined : "_blank"} rel="noreferrer" data-press aria-disabled={!msg} onClick={send} className={`${btn} acc-btn ${msg ? "" : "pointer-events-none opacity-50"}`}>
           <Icon name="whatsapp" className="size-5" />
           WhatsApp&apos;ı aç
-        </button>
+        </a>
         <button type="button" data-press disabled={!text.trim() || mine.includes(text.trim())} onClick={() => save(cleanTemplates([text.trim(), ...mine]))} className={`${btn} raised bg-card text-acc`}>
           Kalıp olarak kaydet
         </button>
