@@ -464,7 +464,7 @@ export function DayPick({ day, att, today, onClose }) {
                     {busy ? "Ekleniyor…" : info.attHref ? "Antrenman ekle, yoklamasını al" : "Antrenman ekle"}
                   </button>
                   {info.attHref && (
-                    <button type="button" onClick={() => go(info.attHref)} className="mt-2 block w-full text-center text-[0.8125rem] font-semibold text-acc">
+                    <button type="button" onClick={() => go(info.attHref)} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
                       Plan eklemeden yalnız yoklama al
                     </button>
                   )}
@@ -495,7 +495,7 @@ function FitRow({ f, onOpen }) {
   const ini = f.mine ? "Sen" : f.name.split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toLocaleUpperCase("tr-TR");
   return (
     <li>
-      <button type="button" onClick={onOpen || undefined} disabled={!onOpen} className="flex w-full items-center gap-3 py-2.5 text-left">
+      <button type="button" onClick={onOpen || undefined} disabled={!onOpen} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-orange-500/12 text-[0.8125rem] font-bold text-orange-700 dark:text-orange-300">{ini}</span>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{f.mine ? "Senin antrenmanın" : f.name}</b>

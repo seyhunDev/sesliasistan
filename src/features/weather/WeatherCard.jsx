@@ -81,7 +81,7 @@ export function WeatherCard() {
   return (
     <section className="overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]" aria-label="Hava durumu">
       {/* Özet (tek satır): dokununca detay açılır/kapanır */}
-      <button type="button" onClick={toggle} aria-expanded={more} className="flex h-14 w-full items-center gap-2.5 px-4 text-left active:bg-bg">
+      <button type="button" onClick={toggle} aria-expanded={more} data-press="row" className="flex h-14 w-full items-center gap-2.5 px-4 text-left">
         <Icon name={s.icon} className="size-6 shrink-0 text-acc" />
         <span className="text-[1.25rem] font-semibold leading-none tracking-tight tabular-nums">{n.t}°</span>
         <span className="min-w-0 flex-1 leading-tight">
@@ -111,7 +111,7 @@ export function WeatherCard() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => refresh(true)} className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-[0.75rem] font-semibold text-mut active:bg-bg">
+          <button type="button" onClick={() => refresh(true)} data-press className="btn btn-text btn-sm mt-2 w-full text-mut">
             <Icon name="load" className="size-3.5" /> Yenile
           </button>
         </div>

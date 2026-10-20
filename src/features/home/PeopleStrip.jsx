@@ -35,7 +35,7 @@ export function BirthdayBadge() {
         type="button"
         onClick={tap}
         aria-label={`Bugün ${list.length} doğum günü`}
-        className="relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-card text-fg ring-1 ring-line/70 active:scale-90"
+        data-press className="btn btn-round size-10 relative mt-0.5 shrink-0 text-fg"
       >
         <Icon name="cake" className="size-5" />
         <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acc px-1 text-[0.6875rem] font-semibold tabular-nums text-white ring-2 ring-bg">{list.length}</span>
