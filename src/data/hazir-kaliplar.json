@@ -1,0 +1,36 @@
+{
+  "surum": 1,
+  "kaliplar": [
+    { "is": "plans.today", "soz": ["bugün beni neler bekliyor", "bugün işimiz ne", "bugünkü işler ne", "bugün nereye gidiyoruz", "bugünün programını söyle", "bugün planda ne var", "bugün hangi işler var"] },
+    { "is": "plans.tomorrow", "soz": ["yarın beni neler bekliyor", "yarın işimiz ne", "yarınki programı söyle", "yarın planda ne var", "yarın hangi işler var", "yarın ne yapacağız"] },
+    { "is": "plans.week", "soz": ["bu hafta beni neler bekliyor", "bu haftanın programını söyle", "bu hafta planda ne var", "hafta boyunca neler var"] },
+    { "is": "notes.read", "soz": ["notlarımda neler yazıyor", "son notlarımı söyle", "notlarıma bir bak", "notlarda ne yazıyordu"] },
+    { "is": "tasks.list", "soz": ["yapılacaklarım ne", "yapılacaklar listesini oku", "açık işlerim neler", "bitmemiş görevlerim neler", "hangi işler bekliyor"] },
+    { "is": "day.summary", "soz": ["bugünü özetle", "günün özetini ver", "bugün neler oldu özetle"] },
+
+    { "is": "plan.add", "soz": "yarın 10'da antrenman ekle", "beklenen": { "tur": "plan", "baslik": "Antrenman", "gun": "yarın", "saat": "10:00" } },
+    { "is": "plan.add", "soz": "yarın saat 10 antrenman var", "beklenen": { "tur": "plan", "baslik": "Antrenman", "gun": "yarın", "saat": "10:00" } },
+    { "is": "plan.add", "soz": "cuma saat 14:00 toplantı ekle", "beklenen": { "tur": "plan", "baslik": "Toplantı", "gun": "cuma", "saat": "14:00" } },
+    { "is": "plan.add", "soz": "yarın akşam 6'da veli toplantısı planla", "beklenen": { "tur": "plan", "baslik": "Veli toplantısı", "gun": "yarın", "saat": "18:00" } },
+    { "is": "plan.add", "soz": "yarın öğleden sonra 2'de fiş kontrolü planı ekle", "beklenen": { "tur": "plan", "baslik": "Fiş kontrolü", "gun": "yarın", "saat": "14:00" } },
+    { "is": "plan.add", "soz": "bugün akşam 7'de yüzme ekle", "beklenen": { "tur": "plan", "baslik": "Yüzme", "gun": "bugün", "saat": "19:00" } },
+    { "is": "plan.add", "soz": "cumartesi sabah 9'da antrenman ekle", "beklenen": { "tur": "plan", "baslik": "Antrenman", "gun": "cumartesi", "saat": "09:00" } },
+    { "is": "plan.add", "soz": "pazar 11'de tekne bakımı ekle", "beklenen": { "tur": "plan", "baslik": "Tekne bakımı", "gun": "pazar", "saat": "11:00" } },
+    { "is": "plan.add", "soz": "yarın 15:30'da dişçi randevusu ekle", "beklenen": { "tur": "plan", "baslik": "Dişçi randevusu", "gun": "yarın", "saat": "15:30" } },
+    { "is": "plan.add", "soz": "perşembe akşam 8'de yönetim toplantısı ekle", "beklenen": { "tur": "plan", "baslik": "Yönetim toplantısı", "gun": "perşembe", "saat": "20:00" } },
+
+    { "is": "task.add", "soz": "motoru kontrol et diye görev ekle", "beklenen": { "tur": "task", "baslik": "Motoru kontrol et" } },
+    { "is": "task.add", "soz": "görev ekle can yeleklerini say", "beklenen": { "tur": "task", "baslik": "Can yeleklerini say" } },
+    { "is": "task.add", "soz": "sigortayı yenile diye görev ekle", "beklenen": { "tur": "task", "baslik": "Sigortayı yenile" } },
+    { "is": "task.add", "soz": "faturaları öde diye görev ekle", "beklenen": { "tur": "task", "baslik": "Faturaları öde" } },
+
+    { "is": "note.add", "soz": "not al: yelken bezi yırtık", "beklenen": { "tur": "note", "baslik": "Yelken bezi yırtık" } },
+    { "is": "note.add", "soz": "not al: optimist 4'ün dümeni gevşek", "beklenen": { "tur": "note", "baslik": "Optimist 4'ün dümeni gevşek" } },
+    { "is": "note.add", "soz": "not al: şamandıra ipi değişecek", "beklenen": { "tur": "note", "baslik": "Şamandıra ipi değişecek" } },
+
+    { "is": "msg.send", "soz": ["sporculara yarın antrenman var diye mesaj at", "velilere yarınki yarışı hatırlat", "Ali'ye yaz yarın erken gelsin", "gruba antrenman iptal diye yaz"] },
+    { "is": "task.done", "soz": ["motoru kontrol ettim", "sigortayı yeniledim, görevi kapat", "faturaları ödedim görev bitti"] },
+    { "is": "record.delete", "soz": ["yarınki antrenmanı sil", "dişçi randevusunu iptal et", "son notu sil"] },
+    { "is": "record.postpone", "soz": ["yarınki antrenmanı saat 11'e al", "toplantıyı cumaya ertele", "dişçi randevusunu bir saat ileri al"] }
+  ]
+}

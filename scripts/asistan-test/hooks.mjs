@@ -1,6 +1,6 @@
 // Testler için modül çözümleyici: "@/..." yolları src/'ye, uzantısız yollar .js/.jsx'e gider.
 // Tarayıcıya özel iki modül (öğrenme verisi, Firebase istemcisi) boş taklitle değiştirilir.
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 const SRC = fileURLToPath(new URL("../../src/", import.meta.url));
 const SRC_URL = pathToFileURL(SRC).href;
@@ -18,6 +18,8 @@ export async function resolve(spec, ctx, next) {
   return next(spec, ctx);
 }
 export async function load(url, ctx, next) {
+  // Veri dosyası (src/data/*.json): Next gibi varsayılan dışa aktarım olarak yüklenir
+  if (url.startsWith(SRC_URL) && url.endsWith(".json")) return { format: "module", source: `export default ${readFileSync(fileURLToPath(url), "utf8")};`, shortCircuit: true };
   if (url.startsWith(SRC_URL)) return { ...(await next(url, { ...ctx, format: "module" })), format: "module" };
   return next(url, ctx);
 }

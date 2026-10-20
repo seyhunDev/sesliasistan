@@ -250,14 +250,13 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     }, 150);
   // Kısa cevap beklenen soru (yoklamada "Kimi ekleyeyim?"): soru sesle sorulduysa okununca mikrofon bir kez kendiliğinden
   // açılır, ad söylenip susunca gönderilir (dokunmak gerekmez); 8 sn konuşulmazsa kapanır
-  // Seyhun (2026-10-20): "kapanıyor sonra tekrar açılıyor ama sesi algılamıyor": iPhone'da okuma ya da gönderme hemen
-  // ardından kendiliğinden açılan mikrofon çoğu zaman sessiz kalıyor. Dokun-konuş kuralı (HANDS_FREE) burada da geçerli:
-  // mikrofon kendiliğinden açılmaz, soru/teklif cevabı "Konuş"a basınca söylenir (bekleyen soru yine yerelde işlenir)
+  // Seyhun (2026-10-20) bilgi sorulunca (saat, tarih, kim) mikrofonun kendiliğinden açılmasını istiyor. iPhone'da okumanın
+  // hemen ardından açılan mikrofon sessiz kalabiliyordu: ses oturumu kayda geçsin diye 700 ms beklenir; mikrofon yine de
+  // sıfır ses verirse ölü mikrofon denetimi (micCheck.js) onu kapatıp bir kez yeniden açar
   const listenOnce = () =>
-    HANDS_FREE &&
     setTimeout(() => {
       if (live.current.open && !live.current.text && live.current.spStatus === "idle") sp.start({ auto: true, quiet: true, autoStop: 8000, endpoint: 1500, handsFree: true });
-    }, 150);
+    }, 700);
   // Yapay zeka düşünürken de dinle: kullanıcı devam ederse söylediği öncekine eklenir
   const listenWhileThinking = () =>
     HANDS_FREE &&

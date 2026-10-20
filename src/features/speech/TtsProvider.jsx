@@ -4,6 +4,7 @@ import { authFetch } from "@/lib/authFetch";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { bestVoice, rankVoices, speechChunks, speechText } from "@/lib/speech/speakText";
 import { timingSpeak } from "@/lib/assistTiming";
+import { playbackMark } from "@/lib/speech/playback";
 
 // Yanıtları sesli okur. Ses "Otomatik"teyse önce sunucudan doğal ses (Google Cloud, /api/tts) ister; sunucuda anahtar
 // yoksa, yanıt 4 sn'de gelmezse ya da çalınamazsa cihazın kendi sesine düşer. Ayarlar'da cihaz sesi seçilirse hep o.
@@ -57,7 +58,14 @@ function release(a) {
 export function TtsProvider({ children }) {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
+  const [speaking, setSpeakingState] = useState(false);
+  const playing = useRef(false);
+  // Okuma bitince ya da susturulunca an kaydedilir: hemen açılan mikrofon kısa bir süre bekler (lib/speech/playback.js)
+  const setSpeaking = useCallback((v) => {
+    if (!v && playing.current) playbackMark();
+    playing.current = !!v;
+    setSpeakingState(!!v);
+  }, []);
   const [hasTr, setHasTr] = useState(true);
   const [voices, setVoices] = useState([]); // Türkçe sesler, en iyisi başta
   const [voiceUri, setVoiceUri] = useState(""); // kullanıcının seçtiği ses ("" = otomatik)

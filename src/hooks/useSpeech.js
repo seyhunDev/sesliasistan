@@ -11,6 +11,7 @@ import { speechLive, speechLiveTry, speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel, setMicFlow } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 import { MIC_DEAD_TEXT, MIC_TRIES, micState } from "@/lib/speech/micCheck";
+import { settleWait } from "@/lib/speech/playback";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -589,7 +590,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   const start = useCallback((opts = {}) => {
     const s = R.current;
-    if (s.status !== "idle") return;
+    // Elle basış her zaman temiz bir dinleme başlatır: kendiliğinden açılmış (sessiz) bir dinleme sürüyorsa kapatılır,
+    // asistanı kapatıp açmakla aynı sonuç. Kendiliğinden açılan dinleme, süren bir dinlemenin yerine geçmez
+    if (s.status !== "idle") {
+      if (opts.auto || s.status !== "listening") return;
+      cancelNow();
+    }
     s.silent = !!opts.quiet;
     if (!appAllowed("microphone")) {
       fail(offMessage("microphone"));
@@ -613,6 +619,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       micAt: 0, micOk: false, micTries: 0, pcmPeak: undefined,
     });
     setMicFlow(false);
+    window.dispatchEvent(new Event("sa-stop-tts")); // konuşan yanıt mikrofon açılmadan susar, mikrofon onu duymasın
+    // Okuma az önce bittiyse ya da şimdi susturulduysa mikrofon kısa bir süre sonra açılır (iPhone, lib/speech/playback.js)
+    const wait = settleWait();
     // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
     if (kind === "server") {
       try {
@@ -632,10 +641,14 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     setSt("listening");
     speechMark("listen"); // süre kaydı (assistTiming)
     ticker();
-    if (kind === "webspeech") startWebSpeech(sid);
-    else startServer(sid);
+    const go = () => {
+      if (s.sid !== sid || s.status !== "listening") return; // beklerken vazgeçildi (600 ms'den kısa basış zaten iptal olur)
+      if (kind === "webspeech") startWebSpeech(sid);
+      else startServer(sid);
+    };
+    if (wait) setTimeout(go, wait);
+    else go();
     navigator.vibrate?.(12);
-    window.dispatchEvent(new Event("sa-stop-tts")); // konuşan yanıt susar, mikrofon onu duymasın
   }, []);
 
   const stop = useCallback((mode = "send") => {

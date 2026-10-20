@@ -69,7 +69,7 @@ const CASES = {
   fitLog: ["squat 3 set 10 tekrar 60 kilo yaptım", "bugün fitness'ta 30 dakika koşu yaptım", "şınav 3 set 15 tekrar yaptım", ["bench press 4 set 8 tekrar 50 kilo", { path: "/fitness" }]],
   fitPlans: ["fitness programını planlara ekle", ["programı planlara ekle", { path: "/fitness" }], ["programı takvimden kaldır", { path: "/fitness" }]],
   fitDone: ["bugünkü fitness antrenmanını yaptım", ["bugünkü antrenmanı yaptım", { path: "/fitness" }], ["bugün antrenmanı atladım", { path: "/fitness" }], "bu hafta kaç fitness antrenmanı yaptım"],
-  plan: ["yarın 10'da antrenman, Ali'ye ver, yarım saat önce hatırlat", "yarın 10'da antrenman ekle", "Cumartesi saat 14:00'te tekne yıkama planla.", "takvime ekle perşembe 16:30 yönetim toplantısı", "yarın sabah 9'da iskelede buluşma var, takvime koy", "haftaya salı 18:00 veli toplantısı ekle", "12 Ekim'de saat 11'de bakım planla", "bugün akşam 6'da antrenman ekler misin", "pazar günü Foça'ya gidiyoruz takvime yaz"],
+  plan: ["yarın 10'da antrenman, Ali'ye ver, yarım saat önce hatırlat", "yarın 10'da kürek antrenmanı ekle", "Cumartesi saat 14:00'te tekne yıkama planla.", "takvime ekle perşembe 16:30 yönetim toplantısı", "yarın sabah 9'da iskelede buluşma var, takvime koy", "haftaya salı 18:00 veli toplantısı ekle", "12 Ekim'de saat 11'de bakım planla", "bugün akşam 6'da antrenman ekler misin", "pazar günü Foça'ya gidiyoruz takvime yaz"],
   repeat: ["her salı 16:00 antrenman", "her cumartesi saat 10'da Optimist antrenmanı ekle", "her salı ve perşembe 17:00 antrenman planla", "haftada bir pazartesi 9'da toplantı ekle"],
   task: ["Ali'ye motoru kontrol etmesini hatırlat", "görev ekle: römork lastiklerini kontrol et", "yarına kadar yelkenleri katla görevi oluştur", "Gökhan'a görev ver, şamandıraları say", "bana hatırlat cuma günü sigortayı yenile", "yapılacaklara ekle can yeleklerini yıka"],
   note: ["not al: malzeme odası dolu", "not düş, iskele lambası yanmıyor", "notlara ekle yeni telsiz şifresi değişti", "Not: Emre'nin velisi aradı", "bunu not olarak kaydet: botun pervanesi çizik"],
@@ -151,7 +151,7 @@ const CROSS = [
   ["log", "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", "yelken antrenmanı, fitness değil"],
   ["weather", "yarın rüzgar kaç knot", "hava sorusu, rüzgâr kaydı değil"],
   ["log", "bugün 12 knot karayelde antrenman yaptık, 2 saat sürdü", "antrenman günlüğü, yarış rüzgâr kaydı değil"],
-  ["plan", "yarın 10'da antrenman ekle", "takvim planı, fitness değil"],
+  ["plan", "yarın 10'da kürek antrenmanı ekle", "takvim planı, fitness değil"],
   ["navigate", "fitness sayfasını aç", "sayfa açma, fitness isteği değil"],
   ["plan", "yarın akşam yemeği planla", "plan, beslenme değil"],
   ["send", "Ali'ye yaz, öğlen yemeği birlikte yiyelim", "mesaj, beslenme değil"],
@@ -372,8 +372,8 @@ group("Sohbetteki yarış")([
     ["hangi fatura", T([["faturayı ödendi işaretle", "invoice", { invAsk: { op: "paid" } }], ["Turkcell", "invoice"], ["Turkcell", "ai"]])],
     ["sporcu ve gönderme", T([["Ali Kaya'yı sporcu olarak ekle", "athlete", { memo: ["athlete", "Ali Kaya"] }], ["onu arşive al", "athlete"]])],
     ["gönderme hafızasız", T([["onu arşive al", "ai"]])],
-    ["bitiş", T([["yarın 10'da antrenman ekle", "ai", { askedMore: true }], ["yok", "close"]])],
-    ["soru kapanır", T([["yarın 10'da antrenman ekle", "ai", { askedMore: true }], ["planlara git", "navigate"], ["yok", "ai"]])],
+    ["bitiş", T([["yarın 10'da kürek antrenmanı ekle", "ai", { askedMore: true }], ["yok", "close"]])],
+    ["soru kapanır", T([["yarın 10'da kürek antrenmanı ekle", "ai", { askedMore: true }], ["planlara git", "navigate"], ["yok", "ai"]])],
     ["taslak varken kaydet", T([["cumartesi tekne yıkama", "ai", { drafts: true }], ["kaydet", "ai"], ["kaydet", "bareSave"]])],
     ["yarış, sonra sayfa", T([["Çeşme Optimist Kupası yarışını aç", "raceOpen", { memo: ["race", "Çeşme Optimist Kupası"] }], ["planlara git", "navigate"], ["kapat", "close"]])],
   ]);
@@ -726,5 +726,15 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
     ["yeni sporcu ekle", CQ("")],
     ["Ali'ye yaz yarış ne zaman", CQ("")],
     ["Ayşe'nin doğum günü 12 Mart", CQ("")],
+  ]);
+}
+
+// Hazır kalıp (src/data/hazir-kaliplar.json): dosyadaki kayıt cümlesi yapay zekaya gitmeden yerelde kaydedilir
+{
+  const { routesOf } = await import("@/lib/assistRoute");
+  const first = (x) => routesOf(x, { owner: true, today }).find((r) => r.id !== "more");
+  group("Yönlendirme: hazır kalıp")([
+    ["yarın 10'da antrenman ekle", { desc: "yerel kayıt (hazır)", fn: first, ok: (r) => r?.id === "local" && r.cmd?.ready === true }],
+    ["yarın 10'da kürek antrenmanı ekle", { desc: "dosyada yok: yapay zeka", fn: first, ok: (r) => r?.id === "ai" }],
   ]);
 }

@@ -3,7 +3,8 @@
 //   seedTop(söz)   en iyi eşleşen iş { id, at, len, words, x } ya da null
 //   seedFind(söz)  uzun paragraftaki bütün işler, söylenme sırasıyla (iç içe olanlardan uzunu kalır)
 //   withLearned(seed, learned)  öğrenilen cümleleri [{ id, x }] sete ekler (puanlama ileride kullanır)
-import { SEED } from "./seedPhrases";
+import { SEED as BASE } from "./seedPhrases";
+import { readyLearned } from "./readyData";
 
 const MAP = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i", û: "u" };
 
@@ -112,3 +113,6 @@ export function withLearned(seed, learned) {
   if (!add.size) return seed;
   return seed.map((t) => (add.has(t.id) ? { ...t, learned: [...(t.learned || []), ...add.get(t.id).filter((x) => !(t.learned || []).includes(x))] } : t));
 }
+
+// Hazır kalıplar dosyasındaki okuma cümleleri (src/data/hazir-kaliplar.json) sete eklenir; varsayılan set budur
+const SEED = withLearned(BASE, readyLearned());

@@ -1433,3 +1433,26 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["yoğun servis", B("yeniden denenir", () => retryable(Object.assign(new Error("x"), { reason: "busy" }), 1500), (r) => r === true)],
   ]);
 }
+
+// Hazır kalıplar (src/data/hazir-kaliplar.json, Seyhun 2026-10-20): GitHub'da tutulan örnek cümleler hemen kullanılır.
+// Her satır test edilir: okuma cümlesi doğru işe, kayıt cümlesi kural motoruyla beklenen kayda (tutmayan satır yapay zekaya gider)
+{
+  const RD = await import("@/lib/brain/readyData");
+  const { SEED } = await import("@/lib/brain/seedPhrases");
+  const { seedTop } = await import("@/lib/brain/seedMatch");
+  const { readyCreate } = await import("@/lib/assistRoute");
+  const rows = RD.readyRows();
+  const ids = new Set(SEED.map((t) => t.id));
+  const T = (desc, fn, ok = (r) => r === true) => ({ desc, fn, ok });
+  group("Hazır kalıplar: dosya")([
+    ["dosya okunur", T("en az 50 cümle", () => rows.length >= 50)],
+    ["iş adları sette var", T("bilinmeyen iş yok", () => rows.filter((r) => !ids.has(r.is)).map((r) => r.is).join(", ") || true)],
+    ["öğrenme örnekleri", T("her satır bir etiket alır", () => RD.readyLessons(rows).length === rows.length)],
+    ["gün: yarın", T("2026-10-21", () => RD.dayOf("yarın", "2026-10-20") === "2026-10-21")],
+    ["gün: cuma (salıdan)", T("2026-10-23", () => RD.dayOf("cuma", "2026-10-20") === "2026-10-23")],
+    ["gün: salı (salıdan) gelecek hafta", T("2026-10-27", () => RD.dayOf("salı", "2026-10-20") === "2026-10-27")],
+    ["listede olmayan cümle", T("hazır kayıt değil", () => readyCreate("yarın 10'da yelken ekle", today) === null)],
+  ]);
+  group("Hazır kalıplar: okuma cümleleri")(rows.filter((r) => !r.want).filter((r) => /^(plans|notes|tasks|day)\./.test(r.is)).map((r) => [r.x, T(r.is, () => seedTop(r.x)?.id, (v) => v === r.is)]));
+  group("Hazır kalıplar: kayıt cümleleri yapay zekasız")(rows.filter((r) => r.want).map((r) => [r.x, T(`${r.want.tur} “${r.want.baslik}”${r.want.gun ? ` ${r.want.gun}` : ""}${r.want.saat ? ` ${r.want.saat}` : ""}`, () => !!readyCreate(r.x, today)?.ready)]));
+}

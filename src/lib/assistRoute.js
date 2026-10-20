@@ -22,7 +22,9 @@ import { payeeAsk } from "@/lib/payee";
 import { shopCommand } from "@/features/shop/shopWords";
 import { wantsAttendance } from "@/features/athletes/access";
 import { messageFirst, isQuestion, wantsNote } from "@/lib/steps";
-import { localCommand } from "@/lib/commands";
+import { localCommand, localCreate } from "@/lib/commands";
+import { matchesWant, readyCreateRow } from "@/lib/brain/readyData";
+import { todayStr } from "@/lib/utils/format";
 import { absentNotifyCommand, athleteCommand, athleteOpenCommand, personOpenCommand, birthdayDeleteCommand, callCommand, cashCommand, duesCommand, groupCreateCommand, hotelAddCommand, incomeCommand, invoiceTaskCommand, personDeleteCommand, raceHereCommand, receiptPayCommand, receiptScopeCommand, shopClearCommand } from "@/lib/assistMore";
 import { matchPerson } from "@/lib/names";
 import { isPronoun } from "@/lib/convoContext";
@@ -165,10 +167,20 @@ export function routesOf(s, c = {}) {
   if (racer && !mf && !c.skipRace && (wantsRaceText(s, c.raceNames || []) || (c.curRace && raceJobHere(s)))) add("race");
   if (c.prefer && !c.drafts && !QUESTION.test(s) && !mf && !CHANGE.test(s)) add("prefer");
   const toFocus = !!c.focus && /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i.test(s);
-  const cmd = !toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true });
+  // Hazır kalıp (src/data/hazir-kaliplar.json): cümle aynıysa ve kural motoru beklenen kaydı aynen çıkarıyorsa yapay zekasız
+  const rc = !toFocus && !mf && !c.drafts ? readyCreate(s, today || undefined) : null;
+  const cmd = rc || (!toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true }));
   if (cmd) add("local", { cmd });
   add("ai", { toFocus });
   return out;
+}
+
+// Hazır kalıp kaydı: { type: "create", items, ready: true } ya da null
+export function readyCreate(s, today = todayStr()) {
+  const row = readyCreateRow(s);
+  if (!row) return null;
+  const cmd = localCreate(s, today);
+  return matchesWant(cmd, row.want, today) ? { ...cmd, ready: true } : null;
 }
 
 // İlk aday (yapay zekasız tahmin): testler ve öğrenme için. "more" adayında yalnız tanınan iş sayılır.

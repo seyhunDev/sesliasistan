@@ -230,6 +230,15 @@ group("Ses oturumu (arka plan sesi)")([
   ["varsayılan: kip değiştirme kapalı", { desc: "transient yok", fn: () => sessionRun.off, ok: (r) => r === false }],
 ]);
 
+// Okuma bittikten ya da susturulduktan hemen sonra mikrofon kısa bir süre bekler (iPhone ses oturumu, playback.js)
+const { MIC_SETTLE_MS, playbackMark, settleWait } = await import("@/lib/speech/playback");
+group("Okumadan sonra mikrofon beklemesi")([
+  ["hiç okuma olmadı", { desc: "beklemez", fn: () => settleWait(), ok: (r) => r === 0 }],
+  ["okuma şimdi sustu", { desc: `${MIC_SETTLE_MS} ms bekler`, fn: () => (playbackMark(1000), settleWait(1000)), ok: (r) => r === MIC_SETTLE_MS }],
+  ["okuma 200 ms önce bitti", { desc: "kalan süre", fn: () => (playbackMark(1000), settleWait(1200)), ok: (r) => r === MIC_SETTLE_MS - 200 }],
+  ["okuma 2 sn önce bitti", { desc: "beklemez", fn: () => (playbackMark(1000), settleWait(3000)), ok: (r) => r === 0 }],
+]);
+
 // Telefonun yanlış yazdığı adlar: yapay zekanın düzeltmeleri saklanır, sonraki sözde telefonda uygulanır (sttFixes.js)
 const { applyFixes, cleanFix, mergeFixes } = await import("@/lib/sttFixes");
 const AD = ["Samver Kaya", "Uraz Demir", "Ali Kök"];
