@@ -792,6 +792,12 @@ group("Ana sayfa kartları")([
     const day = AG.fitOn(fit, "2026-10-15");
     return day.map((f) => f.id).join() === "a1,m1" && day[0].name === "Ali Kaya" && day[1].mine && AG.fitOn(fit, "2026-10-17").length === 0;
   })],
+  ["yarış satırı", F("ad tam tutmasa da yarış kaydı bulunur (yarışın sayfası açılsın)", () => {
+    const open = [{ id: "r1", name: "Ege Kupası 2026" }, { id: "r2", name: "Çeşme Ligi" }, { id: "r3", name: "Foça Kupası" }, { id: "r4", name: "Foça Kupası Gençler" }];
+    return HT.findRace("çeşme  ligi", open)?.id === "r2" && HT.findRace("Ege Kupası", open)?.id === "r1" && HT.findRace("Foça Kupası", open)?.id === "r3"
+      && HT.findRace("Kupası", open) === null && HT.findRace("İzmir", open) === null && HT.findRace("", open) === null
+      && HT.raceForPlan({ cat: "Yarış", title: "Ege Kupası: Kayıt son gün" }, open, "2026-01-01") === "r1";
+  })],
   ["kulüp kartları", F("Şu an'daki Yarış planı yarışın sayfasını açar: aynı ad ya da bugün süren tek yarış", () => {
     const open = [{ id: "r1", name: "Foça Kupası", startDate: "2026-10-09" }, { id: "r2", name: "Çeşme Ligi", startDate: "2026-10-20" }];
     const t = "2026-10-10";

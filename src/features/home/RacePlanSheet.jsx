@@ -14,7 +14,7 @@ import { planDonePatch, planReopenPatch } from "@/lib/planActions";
 // Ana sayfada yarış planına dokununca (Seyhun 2026-10-19: "ödendiğinde buradan ödendi olarak işaretleyebilmeliyim; plana mı yarışın sayfasına mı
 // gideceğim, tercih edebilmeliyim; yapıldı deyince yarışın yapılan işlerine de yazılsın"): Yapıldı (plan biter, yarışın işi Yapılanlar'a geçer),
 // Yarışın sayfası, Planı aç. Yarış açılınca bir kez okunur (planRaceStep: plan adı "Yarış adı: iş").
-export function RacePlanSheet({ plan, today, onClose }) {
+export function RacePlanSheet({ plan, raceId, today, onClose }) {
   const { profile } = useAuth();
   const { updateRecord } = useData();
   const { openAdd } = useAdd();
@@ -40,7 +40,7 @@ export function RacePlanSheet({ plan, today, onClose }) {
   const by = { name: profile?.name ?? "Kullanıcı" };
   const left = leftTag(plan.date, today);
   const when = [new Date(`${plan.date}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" }), plan.time, left?.text.replace(/^! /, "")].filter(Boolean).join(" · ");
-  const race = hit?.race;
+  const race = hit?.race || (raceId ? { id: raceId } : null); // ad tam tutmasa da ana sayfa yarışı bulduysa sayfası açılır
   const go = (fn) => {
     onClose();
     fn();
@@ -50,7 +50,7 @@ export function RacePlanSheet({ plan, today, onClose }) {
     if (busy) return;
     setBusy(true);
     try {
-      if (hit?.step) await saveRace(orgId, profile.uid, withStepDone(race, hit.step.key));
+      if (hit?.step) await saveRace(orgId, profile.uid, withStepDone(hit.race, hit.step.key));
       await updateRecord("plan", plan.id, planDonePatch(), by);
       navigator.vibrate?.(10);
       toast(hit?.step ? `Yapıldı: ${hit.step.label}` : "Yapıldı, Arşiv'e kaldırıldı", { action: { label: "Geri al", onClick: () => updateRecord("plan", plan.id, planReopenPatch(), by) } });

@@ -214,9 +214,20 @@ export const noteGroups = (list = []) => [["SABİT", list.filter((n) => n.pinned
 // Ana sayfa › Şu an kartındaki Yarış planına ait yarış (dokununca yarışın sayfası açılsın): plan adı yarışın adıyla aynıysa o,
 // değilse bugün süren tek yarış. open: useRaceHome().open (bitmemiş yarışlar, ek okuma yok). Bulunamazsa null.
 const norm = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
+// Ada göre yarış kaydı (Seyhun 2026-10-20: "bir yarışa basınca yarışa gidiyor, diğerinde plan çıkıyor"): plan yarışa kimlikle değil adla bağlı;
+// ad tam aynıysa o, değilse adı ötekini içeren tek yarış ("Ege Kupası" ↔ "Ege Kupası 2026"). Harf/boşluk farkı yok sayılır. Bulunamazsa null.
+const loose = (s) => norm(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+export function findRace(name, open = []) {
+  const n = loose(name);
+  if (!n) return null;
+  const same = open.find((r) => loose(r.name) === n);
+  if (same) return same;
+  const near = open.filter((r) => loose(r.name) && (` ${loose(r.name)} `.includes(` ${n} `) || ` ${n} `.includes(` ${loose(r.name)} `)));
+  return near.length === 1 ? near[0] : null;
+}
 export function raceForPlan(plan, open, today) {
   if (!plan || (plan.cat || plan.category) !== "Yarış" || !open?.length) return null;
-  const same = open.find((r) => norm(r.name) && norm(r.name) === norm(plan.title));
+  const same = findRace(raceKey(plan)?.name || plan.title, open);
   if (same) return same.id;
   const now = open.filter((r) => r.startDate <= today);
   return now.length === 1 ? now[0].id : null;
