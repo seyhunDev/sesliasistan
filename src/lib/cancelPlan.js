@@ -31,26 +31,29 @@ export const canCancel = (plan, today) => !!plan && plan.status !== "cancelled" 
 export const waLink = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 // Metinle WhatsApp (Seyhun 2026-10-20: wa.me telefonda 404 verdi; "telefonda doğrudan WhatsApp uygulaması, webde WhatsApp Web"):
 // telefonda uygulama (whatsapp://, sohbet/grup orada seçilir), bilgisayarda WhatsApp Web; tarayıcı bilinmiyorsa wa.me
+const isPhone = (ua) => /iphone|ipad|ipod|android/i.test(ua) || (/macintosh/i.test(ua) && /mobile/i.test(ua));
 export function waTextUrl(text, ua = "") {
   const t = encodeURIComponent(text);
-  if (/iphone|ipad|ipod|android/i.test(ua) || (/macintosh/i.test(ua) && /mobile/i.test(ua))) return `whatsapp://send?text=${t}`;
+  if (isPhone(ua)) return `whatsapp://send?text=${t}`;
   if (ua) return `https://web.whatsapp.com/send?text=${t}`;
   return waLink(text);
 }
+// Açılacak adres: telefonda her zaman WhatsApp uygulaması, metin hazır (grup orada seçilir). Grup davet bağlantısı
+// (chat.whatsapp.com) telefonda uygulamayı açmıyor, PWA içinde web sayfası kalıyordu (Seyhun 2026-10-20: "çalışmıyor");
+// bağlantı yalnız bilgisayarda kullanılır.
+export function waHref(text, group = "", ua = "") {
+  if (group && !isPhone(ua)) return group;
+  return waTextUrl(text, ua);
+}
 // Uygulama bağlantısı (whatsapp://) aynı pencerede açılır (PWA'da yeni pencere boş sayfa/404 olur), diğerleri yeni sekmede
-const openUrl = (u) => (u.startsWith("whatsapp:") ? window.location.assign(u) : window.open(u, "_blank"));
+const openUrl = (u) => (u.startsWith("whatsapp:") ? (window.location.href = u) : window.open(u, "_blank"));
 
-// WhatsApp grubuna metin: WhatsApp'ın gruba metinle açılan bağlantısı yok (wa.me yalnız telefon numarasına).
-// Grubun davet bağlantısı kayıtlıysa (Ayarlar › WhatsApp grupları) grup doğrudan açılır, metin panodan yapıştırılır;
-// yoksa WhatsApp metin hazır açılır, grup orada seçilir. Telefonun paylaşım menüsü açılmaz (Seyhun: "doğrudan WhatsApp'a gitsin").
+// Metin panoya kopyalanır, WhatsApp açılır (waHref). Telefonun paylaşım menüsü açılmaz (Seyhun: "doğrudan WhatsApp'a gitsin").
 // Dokunuşun içinde, beklemeden çağrılmalı (iPhone pano ve yeni pencereyi yalnız dokunuşla açar).
 export function shareText(text, nav = typeof navigator !== "undefined" ? navigator : null, open = openUrl, group = "") {
   try { nav?.clipboard?.writeText?.(text)?.catch?.(() => {}); } catch {}
-  if (group) {
-    open(group);
-    return "group";
-  }
-  open(waTextUrl(text, nav?.userAgent || ""));
-  return "link";
+  const u = waHref(text, group, nav?.userAgent || "");
+  open(u);
+  return u === group ? "group" : "link";
 }
 export const shareGroup = (text, group = "") => shareText(text, undefined, undefined, group);
