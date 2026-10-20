@@ -1,8 +1,8 @@
-Commit: 7f007dc · Yarış multimedya: denemeleri sıfırla düğmesi (#541)
-Zaman: 2026-10-19-1906 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39282270752
+Commit: 7f007dc (kaydedilmemiş değişiklikle) · Yarış multimedya: denemeleri sıfırla düğmesi (#541)
+Zaman: 2026-10-20-0302 (İstanbul)
+Çalıştırma: Mac (npm run test:hepsi)
 
-TAM TEST · 19.10.2026 19:01:53
+TAM TEST · 20.10.2026 02:58:08
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -15,10 +15,12 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
     Asistan: kayıt, onaylar, görev listesi…
     Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
+    Çevrimdışı çalışma (internet kesilip açılır)…
+    Çevrimdışı: 14/14 geçti
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1323/1323 geçti · 0 kalan · 255 sn
+SONUÇ: 1337/1337 geçti · 0 kalan · 253 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -146,6 +148,13 @@ SONUÇ: 1323/1323 geçti · 0 kalan · 255 sn
   ✓ Ses kaydı yolu (ana ekran uygulaması): 2/2
   ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
+
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 14/14
+  ✓ İnternet varken: 2/2
+  ✓ Yavaş bağlantı: 3/3
+  ✓ İnternet yok: 5/5
+  ✓ Bağlantı gelince: 2/2
+  ✓ Açıkken kopup gelince: 2/2
 
 4. GERÇEK YAPAY ZEKA: 0/0
   – Gerçek yapay zeka: ATLANDI (--yzsiz)
