@@ -549,7 +549,7 @@ export function ChatView({ cid }) {
       <main className="mx-auto grid min-h-dvh max-w-[30rem] place-items-center px-6 text-center">
         <div>
           <p className="text-[0.9375rem] text-mut">Bu sohbet bulunamadı ya da artık üyesi değilsin.</p>
-          <button type="button" onClick={() => router.replace("/messages")} className="mt-4 h-11 rounded-xl bg-acc px-5 text-[0.9375rem] font-semibold text-white">
+          <button type="button" onClick={() => router.replace("/messages")} data-press className="btn btn-primary mt-4">
             Mesajlara dön
           </button>
         </div>
@@ -574,11 +574,11 @@ export function ChatView({ cid }) {
             </span>
           </button>
           {chat.type === "dm" && otherP && startCall && canCall(myKind, otherP.role === "owner" ? "owner" : kindOf(otherP)) && (
-            <button type="button" onClick={() => startCall(chat.other)} disabled={busy} aria-label="Sesli ara" className="grid size-10 shrink-0 place-items-center rounded-full text-acc active:bg-line disabled:opacity-40">
+            <button type="button" onClick={() => startCall(chat.other)} disabled={busy} aria-label="Sesli ara" data-press className="btn btn-icon size-10 shrink-0 text-acc">
               <Icon name="phone" className="size-5" />
             </button>
           )}
-          <button type="button" onClick={() => setInfo(true)} aria-label="Sohbet ayarları" className="grid size-10 shrink-0 place-items-center rounded-full text-mut active:bg-line">
+          <button type="button" onClick={() => setInfo(true)} aria-label="Sohbet ayarları" data-press className="btn btn-icon size-10 shrink-0 text-mut">
             <Icon name="sliders" className="size-5" />
           </button>
         </header>
@@ -593,7 +593,7 @@ export function ChatView({ cid }) {
                 <span className="block truncate text-[0.8125rem]">{chat.pinned.text}</span>
               </span>
             </button>
-            <button type="button" onClick={() => pin(cid, null)} aria-label="Sabitlemeyi kaldır" className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:bg-bg">
+            <button type="button" onClick={() => pin(cid, null)} aria-label="Sabitlemeyi kaldır" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </div>
@@ -615,7 +615,7 @@ export function ChatView({ cid }) {
           )}
           {archived.length > 0 && (
             <div className="flex justify-center pb-1 pt-1">
-              <button type="button" onClick={() => setArchOpen(true)} className="flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[0.75rem] font-medium text-mut shadow-sm ring-1 ring-line">
+              <button type="button" onClick={() => setArchOpen(true)} data-press className="btn btn-secondary btn-sm text-mut">
                 <Icon name="archive" className="size-3.5" /> Arşivde {archived.length} mesaj
               </button>
             </div>
@@ -747,7 +747,7 @@ export function ChatView({ cid }) {
                 <b className="block text-[0.75rem] font-semibold text-acc">Mesajı düzenle</b>
                 <span className="block truncate text-[0.8125rem] text-mut">{editing.text}</span>
               </span>
-              <button type="button" onClick={cancelEdit} aria-label="Düzenlemeyi bırak" className="grid size-8 place-items-center rounded-full text-mut active:bg-bg">
+              <button type="button" onClick={cancelEdit} aria-label="Düzenlemeyi bırak" data-press className="btn btn-icon btn-sm size-8 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </div>
@@ -758,7 +758,7 @@ export function ChatView({ cid }) {
                 <b className="block text-[0.75rem] font-semibold text-acc">{replyTo.by === uid ? "Kendine yanıt" : `${personName(replyTo.by)} yanıtlanıyor`}</b>
                 <span className="block truncate text-[0.8125rem] text-mut">{replyTo.text || fileLabel(replyTo.file)}</span>
               </span>
-              <button type="button" onClick={() => setReplyTo(null)} aria-label="Yanıtı kaldır" className="grid size-8 place-items-center rounded-full text-mut active:bg-bg">
+              <button type="button" onClick={() => setReplyTo(null)} aria-label="Yanıtı kaldır" data-press className="btn btn-icon btn-sm size-8 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </div>
@@ -784,7 +784,7 @@ export function ChatView({ cid }) {
                     setText(r);
                     input.current?.focus();
                   }}
-                  className="shrink-0 rounded-full bg-card px-3.5 py-2 text-[0.875rem] font-medium text-acc ring-1 ring-acc/25 transition active:scale-95"
+                  data-press className="btn btn-secondary btn-sm shrink-0 text-acc"
                 >
                   {r}
                 </button>
@@ -803,7 +803,7 @@ export function ChatView({ cid }) {
             orb={CHAT_AI}
             leading={
               !editing && (
-                <button type="button" onClick={() => setAttach(true)} aria-label="Ekle: fotoğraf, dosya, sesli mesaj" className="grid size-11 shrink-0 place-items-center rounded-full text-acc active:bg-card">
+                <button type="button" onClick={() => setAttach(true)} aria-label="Ekle: fotoğraf, dosya, sesli mesaj" data-press className="btn btn-icon shrink-0 text-acc">
                   <Icon name="plus" className="size-6" />
                 </button>
               )
@@ -921,7 +921,7 @@ export function ChatView({ cid }) {
                 </p>
                 <p className="mt-0.5 whitespace-pre-wrap text-[0.875rem] [overflow-wrap:anywhere]">{m.text || fileLabel(m.file) || "(boş mesaj)"}</p>
                 <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => restore(cid, m).then((ok) => toast(ok ? "Mesaj geri geldi" : "Geri alınamadı"))} className="h-9 flex-1 rounded-xl bg-card text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+                  <button type="button" onClick={() => restore(cid, m).then((ok) => toast(ok ? "Mesaj geri geldi" : "Geri alınamadı"))} data-press className="btn btn-secondary btn-sm flex-1 text-acc">
                     Geri al
                   </button>
                   {all && (
@@ -970,10 +970,10 @@ export function ChatView({ cid }) {
             {secText(rec?.sec)}
           </span>
           <div className="grid w-full grid-cols-2 gap-2">
-            <button type="button" onClick={() => stopVoice(false)} className="h-12 rounded-2xl border border-line font-medium">
+            <button type="button" onClick={() => stopVoice(false)} data-press className="btn btn-secondary">
               Vazgeç
             </button>
-            <button type="button" onClick={() => stopVoice(true)} className="h-12 rounded-2xl bg-acc font-semibold text-white">
+            <button type="button" onClick={() => stopVoice(true)} data-press className="btn btn-primary">
               Gönder
             </button>
           </div>

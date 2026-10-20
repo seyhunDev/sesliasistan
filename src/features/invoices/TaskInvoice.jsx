@@ -32,7 +32,7 @@ export function TaskInvoice({ inv }) {
         <button
           type="button"
           onClick={() => navigator.clipboard?.writeText(payText(inv)).then(() => toast("Ödeme bilgisi kopyalandı"), () => toast("Kopyalanamadı"))}
-          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.8125rem] font-semibold active:scale-[.98]"
+          data-press className="btn btn-secondary btn-sm flex-1"
         >
           <Icon name="copy" className="size-4" /> Kopyala
         </button>

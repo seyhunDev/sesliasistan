@@ -70,7 +70,7 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
                 type="button"
                 disabled={!name.trim()}
                 onClick={() => save({ name: name.trim() }, "Grup adı değişti").then(() => setName(""))}
-                className="h-11 rounded-xl bg-acc px-4 text-[0.875rem] font-semibold text-white disabled:opacity-40"
+                data-press className="btn btn-primary"
               >
                 Kaydet
               </button>
@@ -100,13 +100,13 @@ export function ChatInfoSheet({ open, onClose, chat, members, people, exists }) 
                       {u !== uid && <small className="block truncate text-[0.75rem] text-mut">{seenText(p?.lastSeen) || (p?.role === "owner" ? "Ana hesap" : "Çalışan")}</small>}
                     </span>
                     {chat.type === "dm" && u !== uid ? null : adding ? (
-                      <button type="button" onClick={() => save({ members: [...members, u] }, `${personName(u)} eklendi`)} className="h-8 rounded-full bg-acc px-3 text-[0.75rem] font-semibold text-white">
+                      <button type="button" onClick={() => save({ members: [...members, u] }, `${personName(u)} eklendi`)} data-press className="btn btn-primary btn-sm">
                         Ekle
                       </button>
                     ) : (
                       admin &&
                       u !== uid && (
-                        <button type="button" onClick={() => save({ members: members.filter((m) => m !== u) }, `${personName(u)} çıkarıldı`)} aria-label="Gruptan çıkar" className="grid size-8 place-items-center rounded-full text-rec active:bg-card">
+                        <button type="button" onClick={() => save({ members: members.filter((m) => m !== u) }, `${personName(u)} çıkarıldı`)} aria-label="Gruptan çıkar" data-press className="btn btn-icon btn-sm size-8 text-rec">
                           <Icon name="x" className="size-4" />
                         </button>
                       )

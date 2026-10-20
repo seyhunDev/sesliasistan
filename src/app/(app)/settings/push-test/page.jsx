@@ -49,7 +49,7 @@ function KindRow({ kind, label, action, busy, onSend }) {
   return (
     <div>
       <div className="flex min-h-[3rem] items-center gap-3 px-4">
-        <button type="button" onClick={() => setOpen(!open)} className="flex min-w-0 flex-1 items-center gap-2 py-2.5 text-left">
+        <button type="button" onClick={() => setOpen(!open)} data-press="row" className="flex min-w-0 flex-1 items-center gap-2 py-2.5 text-left">
           <span className="truncate text-[1rem] font-medium">{label}</span>
           <Icon name="chev" className={`size-4 shrink-0 text-mut/70 transition ${open ? "rotate-90" : ""}`} />
         </button>

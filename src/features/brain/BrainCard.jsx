@@ -72,7 +72,7 @@ export function BrainCard({ bare, owner }) {
     <div className={bare ? "px-4 pb-4" : "mt-4 rounded-xl bg-bg p-3.5"}>
       <div className="flex items-center justify-between gap-3">
         <b className={`text-[0.9375rem] font-medium ${bare ? "text-mut" : ""}`}>{bare ? "Ayrıntılar" : "Öğrenme verisi"}</b>
-        <button onClick={sync} className="rounded-full border border-line bg-card px-3 py-1.5 text-[0.8125rem] font-semibold active:scale-95">
+        <button onClick={sync} data-press className="btn btn-secondary btn-sm">
           Şimdi eşitle
         </button>
       </div>
@@ -212,14 +212,14 @@ export function BrainCard({ bare, owner }) {
 
       {/* Sıfırla */}
       {!ask ? (
-        <button onClick={() => setAsk(true)} className="mt-3 w-full rounded-lg border border-line bg-card py-2 text-[0.875rem] font-semibold text-red-600 active:scale-[.98]">
+        <button onClick={() => setAsk(true)} data-press className="btn btn-danger btn-sm mt-3 w-full">
           Öğrenilenleri sıfırla
         </button>
       ) : (
         <div className="mt-3 rounded-lg bg-card p-2.5 text-[0.8125rem] ring-1 ring-red-200">
           <p>{owner ? "Herkesin (ekip dahil) öğrenme verisi silinecek." : "Senin öğrenme verin silinecek."} Kayıtların, mesajların silinmez.</p>
           <div className="mt-2 flex justify-end gap-2">
-            <button onClick={() => setAsk(false)} className="rounded-full px-3 py-1.5 font-medium text-mut">
+            <button onClick={() => setAsk(false)} data-press className="btn btn-text btn-sm text-mut">
               Vazgeç
             </button>
             <button disabled={busy} onClick={reset} className="rounded-full bg-red-600 px-3 py-1.5 font-semibold text-white disabled:opacity-60">

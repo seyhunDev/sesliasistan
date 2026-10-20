@@ -59,8 +59,8 @@ export function PermissionPrompt() {
         {need.length > 1 ? "Fiş için kamera, konuşmak için mikrofon izni ver." : need[0] === "camera" ? "Fiş fotoğrafı için kamera izni ver." : "Konuşmak için mikrofon izni ver."}
       </p>
       <div className="flex shrink-0 flex-col items-end gap-1">
-        <button onClick={allow} className="rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white active:scale-95">İzin ver</button>
-        <button onClick={close} className="px-1 text-[0.75rem] font-medium text-mut">Sonra</button>
+        <button onClick={allow} data-press className="btn btn-primary btn-sm">İzin ver</button>
+        <button onClick={close} data-press className="btn btn-text btn-sm text-mut">Sonra</button>
       </div>
     </div>
   );

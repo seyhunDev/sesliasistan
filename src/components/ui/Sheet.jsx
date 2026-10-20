@@ -80,7 +80,7 @@ export function Sheet({ open, onClose, title, children }) {
             <div className="mx-auto h-1 w-9 rounded-full bg-line" />
             <div className="mt-2 flex items-center justify-between pb-2">
               <h2 className="text-[1.0625rem] font-semibold">{title}</h2>
-              <button onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-bg text-mut transition active:scale-90">
+              <button onClick={onClose} aria-label="Kapat" data-press className="btn btn-round btn-sm text-mut">
                 <Icon name="x" className="size-[1.125rem]" />
               </button>
             </div>

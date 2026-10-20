@@ -110,7 +110,7 @@ export function ChatList() {
 
   const row = (x) => (
     <li key={x.key}>
-      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} className="flex w-full items-center gap-3.5 px-5 text-left transition active:bg-line/40">
+      <button type="button" onPointerDown={() => x.c && warm(x.c.id)} onClick={x.open} data-press="row" className="flex w-full items-center gap-3.5 px-5 text-left transition">
         <span className="py-2.5">{x.avatar}</span>
         <span className="min-w-0 flex-1 self-stretch border-b border-line/80 py-3">
           <span className="flex items-baseline gap-2">
@@ -152,7 +152,7 @@ export function ChatList() {
           <label className="mt-2.5 flex h-10 items-center gap-2.5 rounded-xl bg-line/60 px-3.5">
             <Icon name="search" className="size-[1.125rem] text-mut" />
             <input value={q} onChange={(e) => setQ(e.target.value)} type="search" placeholder="Ara" autoFocus className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-mut" />
-            <button type="button" onClick={() => (setQ(""), setFind(false))} aria-label="Aramayı kapat" className="-mr-1.5 grid size-8 place-items-center rounded-full text-mut">
+            <button type="button" onClick={() => (setQ(""), setFind(false))} aria-label="Aramayı kapat" data-press className="btn btn-icon btn-sm size-8 -mr-1.5 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </label>
@@ -244,7 +244,7 @@ export function ChatList() {
 
       {archRows.length > 0 && (
         <>
-          <button type="button" onClick={() => setShowArch((v) => !v)} aria-expanded={showArch} className="flex w-full items-center justify-between px-5 pb-1 pt-5 text-[0.875rem] font-semibold text-mut">
+          <button type="button" onClick={() => setShowArch((v) => !v)} aria-expanded={showArch} data-press className="btn btn-text btn-sm w-full text-mut">
             <span>Arşiv · {archRows.length}</span>
             <span className="text-acc">{showArch ? "Gizle" : "Göster"}</span>
           </button>
@@ -254,7 +254,7 @@ export function ChatList() {
 
       {owner && ready && !denied && (
         <div className="px-5 pt-10">
-          <button type="button" disabled={resetting} onClick={reset} className="h-11 w-full rounded-xl border border-line bg-card text-[0.875rem] font-semibold text-rec active:scale-[.98] disabled:opacity-50">
+          <button type="button" disabled={resetting} onClick={reset} data-press className="btn btn-danger w-full">
             {resetting ? "Bekle…" : "Mesajları sıfırla"}
           </button>
         </div>

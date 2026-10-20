@@ -64,7 +64,7 @@ export default function BirthdaysPage() {
               {items.map((b) => {
                 const isToday = b.date === today;
                 return (
-                  <button key={b.id} type="button" onClick={() => openBirthday({ edit: b.id })} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                  <button key={b.id} type="button" onClick={() => openBirthday({ edit: b.id })} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <span className={`flex w-11 shrink-0 flex-col items-center rounded-xl py-1.5 ${isToday ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
                       <b className="text-[1.0625rem] font-bold leading-none tabular-nums">{+b.date.slice(8, 10)}</b>
                       <small className="mt-0.5 text-[0.625rem] font-semibold uppercase">{MON[+b.date.slice(5, 7) - 1]}</small>

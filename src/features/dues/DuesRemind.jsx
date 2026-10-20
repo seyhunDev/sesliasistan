@@ -40,7 +40,7 @@ export function DuesRemind({ list, ym, dueDay, members, reminded = {}, onMark })
 
   return (
     <div className="mt-2 rounded-2xl bg-rec/10">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={() => setOpen((o) => !o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <Icon name="bell" className="size-5 shrink-0 text-rec" />
         <span className="min-w-0 flex-1">
           <b className="block text-[0.9375rem] font-semibold">{list.length} sporcu ödemedi · velilere hatırlat</b>
@@ -51,7 +51,7 @@ export function DuesRemind({ list, ym, dueDay, members, reminded = {}, onMark })
       {open && (
         <div className="border-t border-line px-4 pb-3">
           {inApp.length > 0 && (
-            <button type="button" disabled={busy} onClick={notify} className="mt-3 h-10 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98] disabled:opacity-50">
+            <button type="button" disabled={busy} onClick={notify} data-press className="btn btn-primary btn-sm mt-3 w-full">
               {busy ? "Gönderiliyor…" : `Uygulamadaki velilere bildir (${inApp.length} sporcu)`}
             </button>
           )}

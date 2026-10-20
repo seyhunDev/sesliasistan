@@ -629,7 +629,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     <div className="flex items-center gap-2">
       <span className="min-w-0 flex-1 text-[0.8125rem] font-medium text-mut">Boyut</span>
       {post[k] !== 100 && (
-        <button type="button" onClick={() => put(k, 100)} className="h-8 shrink-0 rounded-full px-3 text-[0.75rem] font-semibold text-acc ring-1 ring-line">
+        <button type="button" onClick={() => put(k, 100)} data-press className="btn btn-secondary btn-sm shrink-0 text-acc">
           Standart
         </button>
       )}
@@ -677,7 +677,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
       {races.length === 0 && <li className="px-4 py-3 text-[0.875rem] text-mut">Kayıtlı yarış yok</li>}
       {races.map((r) => (
         <li key={r.id}>
-          <button type="button" onClick={() => setRace(r)} className="block w-full px-4 py-3 text-left active:bg-line/50">
+          <button type="button" onClick={() => setRace(r)} data-press="row" className="block w-full px-4 py-3 text-left">
             <b className="block truncate text-[0.9375rem] font-semibold">{r.name || "Adsız yarış"}</b>
             <span className="block truncate text-[0.75rem] text-mut">{[raceBrief(r)?.dates || "Tarih yok", r.athleteIds?.length ? `${r.athleteIds.length} sporcu` : ""].filter(Boolean).join(" · ")}</span>
           </button>
@@ -725,11 +725,11 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
               <span className="block truncate text-[0.75rem] text-mut">{race ? raceMeta(race) || "Yer ve tarih yok" : "Seçilirse sporcular ve tarih yazılara gelir"}</span>
             </span>
             {race && !races && (
-              <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" className="grid size-9 shrink-0 place-items-center rounded-full text-mut ring-1 ring-line active:bg-line">
+              <button type="button" onClick={dropRace} aria-label="Yarışı kaldır" data-press className="btn btn-round btn-sm shrink-0 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             )}
-            <button type="button" onClick={openRaces} disabled={busy === "races"} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-60">
+            <button type="button" onClick={openRaces} disabled={busy === "races"} data-press className="btn btn-primary btn-sm shrink-0">
               {busy === "races" ? "…" : races ? "Kapat" : race ? "Değiştir" : "Seç"}
             </button>
           </div>
@@ -848,7 +848,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
                       {busy === "img" ? "Çiziliyor…" : "Yapay zeka görseli"}
                     </button>
                     {photo && (
-                      <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-card text-rec active:scale-95">
+                      <button type="button" onClick={() => (setPhoto(""), setPhotoDirty(true))} aria-label="Fotoğrafı kaldır" data-press className="btn btn-round shrink-0 text-rec">
                         <Icon name="trash" className="size-[1.125rem]" />
                       </button>
                     )}
@@ -871,7 +871,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
                     {slider("zoom", "Büyüt", 100, 250, 5, "%")}
                     {slider("fx", "Sağa-sola", 0, 100)}
                     {slider("focus", "Yukarı-aşağı", 0, 100)}
-                    <button type="button" onClick={() => setP((x) => ({ ...x, zoom: 100, fx: 50, focus: 50 }))} className="h-8 rounded-full px-3 text-[0.75rem] font-semibold text-acc ring-1 ring-line">
+                    <button type="button" onClick={() => setP((x) => ({ ...x, zoom: 100, fx: 50, focus: 50 }))} data-press className="btn btn-secondary btn-sm text-acc">
                       Standart
                     </button>
                   </>
@@ -950,7 +950,7 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
 
         {tool === "look" &&
           list([
-            <button key="kind" type="button" onClick={toKind} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+            <button key="kind" type="button" onClick={toKind} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <span className="min-w-0 flex-1">
                 <b className="block text-[0.9375rem] font-semibold">Tür</b>
                 <span className="block truncate text-[0.75rem] text-mut">

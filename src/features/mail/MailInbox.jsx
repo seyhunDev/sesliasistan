@@ -59,7 +59,7 @@ export function MailInbox({ uid, mailFrom, ready }) {
             ))}
           </ul>
           {list.length >= max && (
-            <button type="button" onClick={() => setMax((n) => n + PAGE)} className="h-11 w-full border-t border-line text-[0.875rem] font-semibold text-acc">
+            <button type="button" onClick={() => setMax((n) => n + PAGE)} data-press className="btn btn-text btn-sm w-full text-acc">
               Daha eski mailler
             </button>
           )}
@@ -94,7 +94,7 @@ function MailRow({ m, today, head }) {
   return (
     <li>
       {head && <p className="bg-bg/60 px-4 py-1.5 text-[0.75rem] font-semibold text-mut">{dayLabel(d, today) || shortDay(d)}</p>}
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-start gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-press="row" className="flex w-full items-start gap-3 px-4 py-3 text-left">
         <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${sheets.length ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
           <Icon name={sheets.length ? "wallet" : "mail"} className="size-[1.125rem]" />
         </span>
@@ -124,7 +124,7 @@ function MailRow({ m, today, head }) {
                   key={f.name}
                   type="button"
                   onClick={() => mailFileBytes(f).then((b) => download(f.name, b, "application/vnd.ms-excel"), () => (f.url ? window.open(f.url, "_blank") : alert("Ek indirilemedi")))}
-                  className="flex h-8 max-w-full items-center gap-1.5 rounded-full bg-bg px-3 text-[0.75rem] font-semibold text-mut active:scale-95"
+                  data-press className="btn btn-secondary btn-sm max-w-full text-mut"
                 >
                   <Icon name="up" className="size-3.5 shrink-0 rotate-180" /> <span className="truncate">{f.name}</span>
                 </button>
@@ -232,7 +232,7 @@ function Statement({ s, m }) {
           <button
             type="button"
             onClick={() => download(`${(m.rule || "hesap").replace(/\s+/g, "-")}_${sum.currency || ""}_${localDate(m.at)}.csv`, statementCsv(s, m.subject))}
-            className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold text-acc active:scale-[.98]"
+            data-press className="btn btn-secondary btn-sm mt-2 w-full text-acc"
           >
             <Icon name="up" className="size-4 rotate-180" /> Excel olarak indir
           </button>

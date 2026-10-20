@@ -140,7 +140,7 @@ export function InventoryView({ orgId, id, by }) {
       title={inv.name}
       right={
         <>
-          <button type="button" onClick={() => setSettings({ name: inv.name, kind: inv.kind, prefix: inv.prefix, cats: inv.cats, add: "" })} aria-label="Envanter ayarları" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-90">
+          <button type="button" onClick={() => setSettings({ name: inv.name, kind: inv.kind, prefix: inv.prefix, cats: inv.cats, add: "" })} aria-label="Envanter ayarları" data-press className="btn btn-round size-10 text-fg">
             <Icon name="sliders" className="size-5" />
           </button>
           <button type="button" onClick={() => setItem({ ...cleanItem({ no: nextNo(inv), cat: cat || inv.cats[0], addedAt: todayStr(), qty: 1 }), id: "" })} className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
@@ -183,7 +183,7 @@ export function InventoryView({ orgId, id, by }) {
                 <ul className={`${card} divide-y divide-line/70 overflow-hidden`}>
                   {list.map((x) => (
                     <li key={x.id}>
-                      <button type="button" onClick={() => setItem(x)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors duration-100 active:bg-acc/10">
+                      <button type="button" onClick={() => setItem(x)} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors duration-100">
                         <span className="w-12 shrink-0 text-[0.75rem] font-semibold tabular-nums text-mut">{x.no}</span>
                         <span className="min-w-0 flex-1">
                           <b className={`block truncate text-[0.9375rem] font-medium ${x.qty === 0 ? "text-mut line-through" : ""}`}>{x.name}</b>
@@ -210,7 +210,7 @@ export function InventoryView({ orgId, id, by }) {
                 </ul>
               </section>
             ))}
-            <button type="button" onClick={exportXlsx} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line active:scale-[.98]">
+            <button type="button" onClick={exportXlsx} data-press className="btn btn-secondary mt-5 w-full text-acc">
               <Icon name="download" className="size-4" />
               Excel’e aktar
             </button>
@@ -221,7 +221,7 @@ export function InventoryView({ orgId, id, by }) {
       ) : (
         <>
         {orphans > 0 && (
-          <button type="button" onClick={() => delOrphans(orphans)} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.875rem] font-semibold text-rec ring-1 ring-line active:scale-[.98]">
+          <button type="button" onClick={() => delOrphans(orphans)} data-press className="btn btn-danger mt-4 w-full">
             <Icon name="trash" className="size-4" />
             Silinen ürünlerin hareketlerini temizle ({orphans})
           </button>
@@ -242,7 +242,7 @@ export function InventoryView({ orgId, id, by }) {
               </div>
               <small className="block truncate text-[0.75rem] text-mut">{[e.at.slice(0, 16).replace("T", " ").split(" ").map((p, j) => (j ? p : p.split("-").reverse().join("."))).join(" "), e.text, e.by].filter(Boolean).join(" · ")}</small>
               </div>
-              <button type="button" onClick={() => delLog(e)} aria-label="Hareketi sil" className="grid size-9 shrink-0 place-items-center rounded-full text-mut active:scale-90 active:bg-line/50">
+              <button type="button" onClick={() => delLog(e)} aria-label="Hareketi sil" data-press className="btn btn-icon btn-sm shrink-0 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </li>
@@ -337,7 +337,7 @@ function Settings({ v, set, counts, onSave, onDelete }) {
             <li key={c} className="flex items-center gap-1 py-1 pl-3 pr-1">
               <span className="min-w-0 flex-1 truncate text-[0.875rem]">{c}</span>
               {counts.get(c) > 0 && <small className="mr-1 tabular-nums text-mut">{counts.get(c)}</small>}
-              <button type="button" onClick={() => move(i, -1)} aria-label="Yukarı" className="grid size-8 place-items-center rounded-lg text-mut active:bg-card">
+              <button type="button" onClick={() => move(i, -1)} aria-label="Yukarı" data-press className="btn btn-icon btn-sm size-8 text-mut">
                 <Icon name="up" className="size-4" />
               </button>
               <button
@@ -345,7 +345,7 @@ function Settings({ v, set, counts, onSave, onDelete }) {
                 disabled={counts.get(c) > 0}
                 onClick={() => set({ ...v, cats: v.cats.filter((x) => x !== c) })}
                 aria-label="Kategoriyi sil"
-                className="grid size-8 place-items-center rounded-lg text-mut active:bg-card disabled:opacity-30"
+                data-press className="btn btn-icon btn-sm size-8 text-mut"
               >
                 <Icon name="x" className="size-4" />
               </button>
@@ -354,14 +354,14 @@ function Settings({ v, set, counts, onSave, onDelete }) {
         </ul>
         <div className="mt-2 flex gap-2">
           <input value={v.add} maxLength={30} placeholder="Yeni kategori" onChange={(e) => set({ ...v, add: e.target.value })} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCat())} className={input} />
-          <button type="button" onClick={addCat} className="h-11 shrink-0 rounded-xl bg-bg px-4 text-[0.875rem] font-semibold text-acc">
+          <button type="button" onClick={addCat} data-press className="btn btn-secondary shrink-0 text-acc">
             Ekle
           </button>
         </div>
         <span className="mt-1 block text-[0.75rem] text-mut">İçinde ürün olan kategori silinmez; önce ürünleri başka kategoriye taşı.</span>
       </div>
       <Button onClick={onSave}>Kaydet</Button>
-      <button type="button" onClick={onDelete} className="h-11 w-full rounded-xl text-[0.875rem] font-semibold text-rec active:bg-bg">
+      <button type="button" onClick={onDelete} data-press className="btn btn-danger w-full">
         Envanteri sil
       </button>
     </div>

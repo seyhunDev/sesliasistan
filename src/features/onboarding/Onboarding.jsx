@@ -213,7 +213,7 @@ export function Onboarding() {
             <span />
           )}
           {s.id !== "done" && (
-            <button onClick={i === 0 || onlyNew ? finish : next} className="rounded-full px-3 py-1.5 text-[0.875rem] font-medium text-mut active:bg-line">
+            <button onClick={i === 0 || onlyNew ? finish : next} data-press className="btn btn-text btn-sm text-mut">
               {i === 0 || onlyNew ? "Atla" : "Geç"}
             </button>
           )}
@@ -302,7 +302,7 @@ export function Onboarding() {
                 delay={120}
               />
               {summary.summaryAt && (
-                <button type="button" onClick={() => setSum({ ...summary, summaryTomorrow: !summary.summaryTomorrow })} className="fade-in flex w-full items-center gap-3 px-3.5 py-1.5 text-left">
+                <button type="button" onClick={() => setSum({ ...summary, summaryTomorrow: !summary.summaryTomorrow })} data-press="row" className="fade-in flex w-full items-center gap-3 px-3.5 py-1.5 text-left">
                   <span className={`grid size-[1.375rem] shrink-0 place-items-center rounded-md transition ${summary.summaryTomorrow ? "bg-acc text-white" : "ring-2 ring-line"}`}>
                     {summary.summaryTomorrow && <Icon name="check" className="size-4 [stroke-width:3]" />}
                   </span>
@@ -323,11 +323,11 @@ export function Onboarding() {
           {note && <p className="mt-4 max-w-[20rem] rounded-xl bg-card px-4 py-2.5 text-[0.875rem] leading-snug ring-1 ring-line">{note}</p>}
         </div>
 
-        <button onClick={act} disabled={busy} className="mt-3 h-14 w-full shrink-0 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white transition active:scale-[.98] disabled:opacity-60">
+        <button onClick={act} disabled={busy} data-press className="btn btn-primary mt-3 h-14 w-full shrink-0">
           {busy ? "Bekleniyor…" : action}
         </button>
         {((s.perm && !has) || s.href || (s.id === "races" && profile.races !== "on")) && (
-          <button onClick={next} className="mt-2 h-11 w-full shrink-0 text-[0.9375rem] font-medium text-mut">
+          <button onClick={next} data-press className="btn btn-text btn-sm mt-2 w-full shrink-0 text-mut">
             Şimdi değil
           </button>
         )}
@@ -388,11 +388,11 @@ export function AthleteWelcome({ profile, onDone }) {
           {note && <p className="mt-4 max-w-[20rem] rounded-xl bg-card px-4 py-2.5 text-[0.875rem] leading-snug ring-1 ring-line">{note}</p>}
         </div>
         {!asked && !note && <p className="mb-1 text-center text-[0.8125rem] text-mut">Yeni antrenman gelince haber verelim.</p>}
-        <button onClick={note ? onDone : go} disabled={busy} className="mt-2 h-14 w-full shrink-0 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white transition active:scale-[.98] disabled:opacity-60">
+        <button onClick={note ? onDone : go} disabled={busy} data-press className="btn btn-primary mt-2 h-14 w-full shrink-0">
           {busy ? "Bekleniyor…" : asked || note ? "Başla" : "Bildirimleri aç ve başla"}
         </button>
         {!asked && !note && (
-          <button onClick={onDone} className="mt-2 h-11 w-full shrink-0 text-[0.9375rem] font-medium text-mut">
+          <button onClick={onDone} data-press className="btn btn-text btn-sm mt-2 w-full shrink-0 text-mut">
             Şimdi değil
           </button>
         )}

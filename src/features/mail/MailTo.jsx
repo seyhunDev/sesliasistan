@@ -35,7 +35,7 @@ export function MailTo({ open, onClose, saved, onSaved, onSend }) {
     <Sheet open={open} onClose={onClose} title="Kime gönderilsin?">
       <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-bg">
         <li>
-          <button type="button" onClick={() => setSelf(!self)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+          <button type="button" onClick={() => setSelf(!self)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
             <Check on={self} />
             <span className="min-w-0 flex-1">
               <b className="block text-[0.9375rem] font-semibold">Kendime</b>
@@ -45,11 +45,11 @@ export function MailTo({ open, onClose, saved, onSaved, onSend }) {
         </li>
         {list.map((a) => (
           <li key={a} className="flex items-center">
-            <button type="button" onClick={() => toggle(a)} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+            <button type="button" onClick={() => toggle(a)} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
               <Check on={picked.includes(a)} />
               <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a}</span>
             </button>
-            <button type="button" onClick={() => remove(a)} aria-label={`${a} adresini sil`} className="grid size-11 shrink-0 place-items-center text-mut">
+            <button type="button" onClick={() => remove(a)} aria-label={`${a} adresini sil`} data-press className="btn btn-icon shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </li>
@@ -66,7 +66,7 @@ export function MailTo({ open, onClose, saved, onSaved, onSend }) {
           autoCorrect="off"
           className="h-11 min-w-0 flex-1 rounded-xl bg-bg px-3.5 text-[0.9375rem] outline-none placeholder:text-mut/70"
         />
-        <button type="button" onClick={addOne} disabled={!isEmail(add.trim())} className="h-11 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-40">
+        <button type="button" onClick={addOne} disabled={!isEmail(add.trim())} data-press className="btn btn-secondary text-acc">
           Ekle
         </button>
       </div>

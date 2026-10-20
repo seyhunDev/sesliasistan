@@ -25,7 +25,7 @@ export function DebtForm({ value, names, onClose, onSave }) {
           {hints.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {hints.map((n) => (
-                <button key={n} type="button" onClick={() => setD((x) => ({ ...x, who: n }))} className="h-8 rounded-full bg-bg px-3 text-[0.8125rem] font-medium ring-1 ring-line">
+                <button key={n} type="button" onClick={() => setD((x) => ({ ...x, who: n }))} data-press className="btn btn-secondary btn-sm">
                   {n}
                 </button>
               ))}

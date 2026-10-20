@@ -154,12 +154,12 @@ function BirthdaySheet({ seed, onClose }) {
                 removeWithUndo("birthday", rec.id);
                 onClose();
               }}
-              className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold text-rec active:scale-[.98]"
+              data-press className="btn btn-danger flex-1"
             >
               Sil
             </button>
           )}
-          <button type="button" onClick={save} className="h-12 flex-[1.6] rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+          <button type="button" onClick={save} data-press className="btn btn-primary flex-[1.6]">
             Kaydet
           </button>
         </div>

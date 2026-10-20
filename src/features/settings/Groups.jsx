@@ -538,7 +538,7 @@ export function WeatherPlaceRow() {
                     e.stopPropagation();
                     pick(p);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left active:bg-line/40"
+                  data-press="row" className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
                 >
                   <Icon name="pin" className="size-4 shrink-0 text-acc" />
                   <span className="min-w-0 flex-1">

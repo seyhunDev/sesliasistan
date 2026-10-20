@@ -45,10 +45,10 @@ function CodeBox({ label, code, toast }) {
   return (
     <div className="px-4 pb-3.5 pl-[3.75rem]">
       <div className="flex gap-2">
-        <button type="button" onClick={copy} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98]">
+        <button type="button" onClick={copy} data-press className="btn btn-primary btn-sm flex-1">
           <Icon name="checks" className="size-[1.125rem]" /> {label} kopyala
         </button>
-        <button type="button" onClick={() => setOpen((v) => !v)} className="h-10 shrink-0 rounded-xl bg-bg px-3.5 text-[0.875rem] font-semibold active:scale-[.98]">
+        <button type="button" onClick={() => setOpen((v) => !v)} data-press className="btn btn-secondary btn-sm shrink-0">
           {open ? "Gizle" : "Göster"}
         </button>
       </div>
@@ -150,7 +150,7 @@ export default function MailSetupPage() {
               r.fixed ? (
                 <span className="shrink-0 rounded-full bg-acc/10 px-2.5 py-1 text-[0.75rem] font-semibold text-acc">Sabit</span>
               ) : (
-                <button type="button" onClick={() => remove(r.from)} aria-label={`${r.name} kaldır`} className="grid size-9 place-items-center rounded-full text-mut active:bg-bg">
+                <button type="button" onClick={() => remove(r.from)} aria-label={`${r.name} kaldır`} data-press className="btn btn-icon btn-sm text-mut">
                   <Icon name="trash" className="size-[1.125rem]" />
                 </button>
               )
@@ -167,7 +167,7 @@ export default function MailSetupPage() {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad (ör. Garanti)" className="h-11 w-full rounded-xl bg-bg px-3.5 text-[0.9375rem]" />
           <div className="flex gap-2">
             <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Gönderen adresi" inputMode="email" autoCapitalize="off" autoCorrect="off" className="h-11 min-w-0 flex-1 rounded-xl bg-bg px-3.5 text-[0.9375rem]" />
-            <button type="submit" className="h-11 shrink-0 rounded-xl bg-acc px-4 text-[0.9375rem] font-semibold text-white active:scale-95">
+            <button type="submit" data-press className="btn btn-primary shrink-0">
               Ekle
             </button>
           </div>
