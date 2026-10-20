@@ -1300,6 +1300,27 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Hızlı kalıp ölçümü (lib/brain/patternMeter.js): telefonun tahmini yapay zekanın sonucuyla karşılaştırılır, yalnız sayılır
+{
+  const { comparePattern, meterPattern, patternReport } = await import("@/lib/brain/patternMeter");
+  const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
+  const plan = (o = {}) => ({ type: "plan", title: "Antrenman", date: tom, time: "10:00", ...o });
+  const L = (items, label = "create:plan") => ({ type: "create", items, brain: { label, score: 0.9 } });
+  const A = (items) => ({ intent: "create", items });
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Hızlı kalıp ölçümü")([
+    ["aynı kayıt", C("tür ve alanlar aynı", () => comparePattern(L([plan()]), A([plan({ title: "antrenman" })])), (r) => r.kind && r.full && r.label === "create:plan")],
+    ["saat farklı", C("tür aynı, alan farklı", () => comparePattern(L([plan()]), A([plan({ time: "11:00" })])), (r) => r.kind && !r.full)],
+    ["tür farklı", C("görev sandı", () => comparePattern(L([{ type: "task", title: "Antrenman" }], "create:task"), A([plan()])), (r) => !r.kind && !r.full && r.guessed === "create:task")],
+    ["telefon tahmin etmedi", C("sayılır, tutmadı", () => comparePattern(null, A([plan()])), (r) => r.label === "create:plan" && !r.kind)],
+    ["sayfa açma", C("aynı sayfa", () => comparePattern({ type: "navigate", page: "plans", brain: { label: "nav:plans" } }, { intent: "navigate", navigate: "plans" }), (r) => r.full)],
+    ["sohbet dışı bilinmeyen", C("türsüz yanıt sayılmaz", () => { const st = mem(); meterPattern("x", null, { intent: "" }, st); return patternReport(st).n; }, (r) => r === 0)],
+    ["10 aynı sonuç", C("hazır", () => { const st = mem(); for (let i = 0; i < 10; i++) meterPattern("yarın 10'da antrenman", L([plan()]), A([plan()]), st); return patternReport(st).rows[0]; }, (r) => r.n === 10 && r.full === 10 && r.ready)],
+    ["9 aynı + 3 farklı", C("hazır değil", () => { const st = mem(); for (let i = 0; i < 12; i++) meterPattern("x", L([plan()]), A([plan(i < 3 ? { time: "09:00" } : {})]), st); return patternReport(st).rows[0]; }, (r) => r.n === 12 && r.full === 9 && !r.ready)],
+    ["son karşılaştırmalar", C("en çok 20, yeniden eskiye", () => { const st = mem(); for (let i = 0; i < 25; i++) meterPattern(`söz ${i}`, null, A([plan()]), st); return patternReport(st).last; }, (r) => r.length === 20 && r[0].x === "söz 24")],
+  ]);
+}
+
 // Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon
 // bağlantı kopmasında bir kez sessizce dener (lib/ai/budget.js)
 {
