@@ -239,7 +239,7 @@ function Dues({ uid, duesAt }) {
     const [txt, tone] = right(r.info);
     return (
       <li key={r.a.id}>
-        <button type="button" onClick={() => setOpenId(on ? "" : r.a.id)} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
+        <button type="button" onClick={() => setOpenId(on ? "" : r.a.id)} data-press="row" className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[0.9375rem] font-medium">{r.a.studentName}</span>
             <span className="block truncate text-[0.8125rem] text-mut">{last ? `Son ödeme ${dayShort(last.date)} · ${VIA(last.via)} · ${TL(last.amt)}` : "Ödeme yok"}</span>
@@ -279,7 +279,7 @@ function Dues({ uid, duesAt }) {
       </section>
     );
   const alert = (text, onClick) => (
-    <button type="button" onClick={onClick} className="mt-1 flex w-full items-center justify-between px-1 py-1.5 text-left text-[0.875rem] font-semibold text-amber-700 dark:text-amber-400">
+    <button type="button" onClick={onClick} data-press="row" className="mt-1 flex w-full items-center justify-between px-1 py-1.5 text-left text-[0.875rem] font-semibold text-amber-700 dark:text-amber-400">
       <span className="truncate">{text}</span> <span>›</span>
     </button>
   );
@@ -418,7 +418,7 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
                 {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
               </span>
               <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
-              <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" className="grid size-7 shrink-0 place-items-center rounded-full text-mut">
+              <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
                 <Icon name="trash" className="size-4" />
               </button>
             </li>
@@ -428,11 +428,11 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
         <p className="mt-2 text-mut">Son 12 ayda ödeme yok.</p>
       )}
 
-      <button type="button" onClick={onPay} className="mt-2 h-10 w-full rounded-xl bg-acc font-semibold text-white">
+      <button type="button" onClick={onPay} data-press className="btn btn-primary btn-sm mt-2 w-full">
         Ödeme ekle
       </button>
 
-      <button type="button" onClick={() => setMore((x) => !x)} className="mt-2 flex w-full items-center justify-between py-1 text-left text-[0.8125rem] font-semibold text-mut">
+      <button type="button" onClick={() => setMore((x) => !x)} data-press="row" className="mt-2 flex w-full items-center justify-between py-1 text-left text-[0.8125rem] font-semibold text-mut">
         Ayarlar <span>{more ? "‹" : "›"}</span>
       </button>
       {more && (
@@ -440,7 +440,7 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 text-fg2">Bu sporcunun aidatı</span>
             <input inputMode="decimal" value={own} onChange={(e) => setOwn(e.target.value)} placeholder={String(cfg.fee || "")} className="h-10 w-24 rounded-xl bg-bg px-3 text-right outline-none" />
-            <button type="button" onClick={() => onFee(Number(String(own).replace(",", ".")) || 0)} className="h-10 rounded-xl border border-line px-3 font-semibold">
+            <button type="button" onClick={() => onFee(Number(String(own).replace(",", ".")) || 0)} data-press className="btn btn-secondary btn-sm">
               Kaydet
             </button>
           </div>
@@ -517,7 +517,7 @@ function PayForm({ a, cfg, months, yms, onSave }) {
           </p>
         )}
       </div>
-      <button type="button" disabled={!(n > 0)} onClick={() => onSave({ parts, via, date: day(date) })} className="h-11 w-full rounded-xl bg-acc font-semibold text-white disabled:opacity-50">
+      <button type="button" disabled={!(n > 0)} onClick={() => onSave({ parts, via, date: day(date) })} data-press className="btn btn-primary w-full">
         Kaydet
       </button>
     </div>
@@ -530,12 +530,12 @@ function Shell({ children, sub, onSettings, onFind, find }) {
       <PageHeader title="Aidatlar" sub={sub} back="/">
         <span className="flex items-center gap-2">
           {onFind && (
-            <button type="button" onClick={onFind} aria-label="Ara" className="grid size-10 place-items-center rounded-full border border-line bg-card">
+            <button type="button" onClick={onFind} aria-label="Ara" data-press className="btn btn-round size-10">
               <Icon name={find ? "x" : "search"} className="size-5" />
             </button>
           )}
           {onSettings && (
-            <button type="button" onClick={onSettings} aria-label="Aidat ayarları" className="grid size-10 place-items-center rounded-full border border-line bg-card">
+            <button type="button" onClick={onSettings} aria-label="Aidat ayarları" data-press className="btn btn-round size-10">
               <Icon name="sliders" className="size-5" />
             </button>
           )}
@@ -576,7 +576,7 @@ function Settings({ cfg, athletes, fees, notifyAt, pending, onFee, onDropFee, on
               <div key={id} className="flex items-center gap-3 px-4 py-2 text-[0.875rem]">
                 <span className="min-w-0 flex-1 truncate">{name(id)}</span>
                 <span className="tabular-nums">{TL(fee)}</span>
-                <button type="button" onClick={() => onDropFee(id)} aria-label="Kaldır" className="grid size-8 place-items-center rounded-full text-mut">
+                <button type="button" onClick={() => onDropFee(id)} aria-label="Kaldır" data-press className="btn btn-icon btn-sm size-8 text-mut">
                   <Icon name="x" className="size-4" />
                 </button>
               </div>
@@ -637,7 +637,7 @@ function MatchList({ pending, athletes, onConfirm, onIgnore }) {
   return (
     <div>
       {sure.length > 1 && (
-        <button type="button" onClick={() => onConfirm(sure.map(({ ym, m, r }) => ({ ym, m, picks: r.picks })))} className="mb-3 h-11 w-full rounded-xl bg-acc font-semibold text-white active:scale-[.98]">
+        <button type="button" onClick={() => onConfirm(sure.map(({ ym, m, r }) => ({ ym, m, picks: r.picks })))} data-press className="btn btn-primary mb-3 w-full">
           Eminleri onayla ({sure.length})
         </button>
       )}
@@ -659,14 +659,14 @@ function MatchList({ pending, athletes, onConfirm, onIgnore }) {
                   <ul className="mt-1 max-h-56 overflow-y-auto">
                     {[...r.list.map((x) => x.a), ...choices.filter((a) => !r.list.some((x) => x.a.id === a.id))].slice(0, 30).map((a) => (
                       <li key={a.id}>
-                        <button type="button" onClick={() => (setPick(""), onConfirm([{ ym, m, picks: [a] }]))} className="flex w-full items-baseline justify-between gap-2 py-2 text-left active:opacity-60">
+                        <button type="button" onClick={() => (setPick(""), onConfirm([{ ym, m, picks: [a] }]))} data-press="row" className="flex w-full items-baseline justify-between gap-2 py-2 text-left">
                           <span className="text-[0.9375rem]">{a.studentName}</span>
                           <small className="truncate text-[0.75rem] text-mut">{a.parentName}</small>
                         </button>
                       </li>
                     ))}
                   </ul>
-                  <button type="button" onClick={() => setPick("")} className="mt-1 text-[0.8125rem] font-semibold text-mut">Vazgeç</button>
+                  <button type="button" onClick={() => setPick("")} data-press className="btn btn-text btn-sm mt-1 text-mut">Vazgeç</button>
                 </div>
               ) : (
                 <>
@@ -680,12 +680,12 @@ function MatchList({ pending, athletes, onConfirm, onIgnore }) {
                   ) : null}
                   <div className="mt-2 flex gap-2">
                     {r.picks.length > 0 && (
-                      <button type="button" onClick={() => onConfirm([{ ym, m, picks: r.picks }])} className="h-9 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white active:scale-95">Onayla</button>
+                      <button type="button" onClick={() => onConfirm([{ ym, m, picks: r.picks }])} data-press className="btn btn-primary btn-sm">Onayla</button>
                     )}
-                    <button type="button" onClick={() => (setPick(k), setQ(""))} className="h-9 rounded-full px-4 text-[0.8125rem] font-semibold ring-1 ring-line active:scale-95">
+                    <button type="button" onClick={() => (setPick(k), setQ(""))} data-press className="btn btn-secondary btn-sm">
                       {r.picks.length ? "Başka sporcu" : "Sporcu seç"}
                     </button>
-                    <button type="button" onClick={() => onIgnore(ym, m)} className="h-9 rounded-full px-3 text-[0.8125rem] font-medium text-mut active:scale-95">Aidat değil</button>
+                    <button type="button" onClick={() => onIgnore(ym, m)} data-press className="btn btn-text btn-sm text-mut">Aidat değil</button>
                   </div>
                 </>
               )}
@@ -736,7 +736,7 @@ function BankFiles({ uid, onChange }) {
           <small className="block text-[0.75rem] text-mut">Geçmiş aylar için bankadan indirdiğin hesap hareketleri</small>
         </button>
         <input ref={input} type="file" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" className="hidden" onChange={pick} />
-        <button type="button" disabled={busy} onClick={() => input.current?.click()} className="h-9 shrink-0 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white active:scale-95 disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={() => input.current?.click()} data-press className="btn btn-primary btn-sm shrink-0">
           {busy ? "Okunuyor…" : "Yükle"}
         </button>
       </div>
@@ -753,7 +753,7 @@ function BankFiles({ uid, onChange }) {
                   <b className="block truncate text-[0.875rem] font-medium">{f.name}</b>
                   <small className="text-[0.75rem] text-mut">{day(f.from)} – {day(f.to)} · {f.total ? `${f.total} hareket` : `${f.count} gelen para`}</small>
                 </span>
-                <button type="button" onClick={() => del(f)} aria-label="Sil" className="grid size-8 place-items-center rounded-full text-mut active:scale-95">
+                <button type="button" onClick={() => del(f)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 text-mut">
                   <Icon name="trash" className="size-4" />
                 </button>
               </li>
@@ -788,7 +788,7 @@ function Payments({ list, ym, error }) {
     <section className="mt-3">
       <div className="flex items-center justify-between px-1">
         <p className="text-[0.8125rem] font-semibold text-mut">{list.length} ÖDEME · {TL(total)}</p>
-        <button type="button" onClick={excel} className="text-[0.8125rem] font-semibold text-acc">Excel’e aktar</button>
+        <button type="button" onClick={excel} data-press className="btn btn-text btn-sm text-acc">Excel’e aktar</button>
       </div>
       <ul className={`mt-2 divide-y divide-line ${card}`}>
         {list.map((p) => (

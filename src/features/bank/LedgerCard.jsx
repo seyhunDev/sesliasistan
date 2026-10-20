@@ -136,7 +136,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
                 type="button"
                 disabled={!!step}
                 onClick={() => input.current?.click()}
-                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60"
+                data-press className="btn btn-primary mt-3 w-full"
               >
                 <Icon name={step ? "load" : "download"} className={`size-[1.125rem] ${step ? "animate-spin" : "rotate-180"}`} />
                 {step === "okunuyor"
@@ -222,16 +222,16 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
               ))}
             </ul>
             {res.moves.length > ROWS && (
-              <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 h-9 w-full text-[0.8125rem] font-semibold text-acc">
+              <button type="button" onClick={() => setAll((v) => !v)} data-press className="btn btn-text btn-sm mt-1 w-full text-acc">
                 {all ? "Daha az göster" : `Bütün hareketler (${res.moves.length})`}
               </button>
             )}
 
             <div className="mt-3 flex gap-2">
-              <button type="button" disabled={!!step} onClick={() => setRes(null)} className="h-11 flex-1 rounded-xl bg-bg text-[0.9375rem] font-semibold active:scale-[.98]">
+              <button type="button" disabled={!!step} onClick={() => setRes(null)} data-press className="btn btn-secondary flex-1">
                 Vazgeç
               </button>
-              <button type="button" disabled={!!step} onClick={save} className="h-11 flex-[2] rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-60">
+              <button type="button" disabled={!!step} onClick={save} data-press className="btn btn-primary flex-[2]">
                 Deftere ekle
               </button>
             </div>
@@ -239,7 +239,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
         )}
 
         {files && !rep && (
-          <button type="button" disabled={!!step} onClick={reset} className="h-10 w-full border-t border-line text-[0.8125rem] font-semibold text-rec active:bg-bg disabled:opacity-50">
+          <button type="button" disabled={!!step} onClick={reset} data-press className="btn btn-danger btn-sm w-full">
             {step === "kuruluyor" ? "Defter baştan kuruluyor…" : EXCEL_UPLOAD ? "Baştan kur (defteri sil, Excel’i yeniden yükle)" : "Baştan kur (defteri maillerden yeniden kur)"}
           </button>
         )}
@@ -254,7 +254,7 @@ export function LedgerCard({ uid, self, payee, onSaved }) {
                     {day(f.from)} – {day(f.to)} · {f.total || f.count} hareket{f.ai ? " · yapay zeka inceledi" : ""}
                   </small>
                 </span>
-                <button type="button" onClick={() => del(f)} aria-label="Sil" className="grid size-8 place-items-center rounded-full text-mut active:scale-95">
+                <button type="button" onClick={() => del(f)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 text-mut">
                   <Icon name="trash" className="size-4" />
                 </button>
               </li>

@@ -138,7 +138,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
                   <ul className="mt-2 max-h-48 divide-y divide-line overflow-y-auto rounded-xl bg-bg">
                     {shown.map((a) => (
                       <li key={a.id}>
-                        <button type="button" onClick={() => pick(a)} className="flex h-11 w-full items-center gap-2 px-3.5 text-left text-[0.9375rem]">
+                        <button type="button" onClick={() => pick(a)} data-press="row" className="flex h-11 w-full items-center gap-2 px-3.5 text-left text-[0.9375rem]">
                           <span className="min-w-0 flex-1 truncate">{a.studentName}</span>
                           {fee(a.id) > 0 && <span className="shrink-0 text-[0.75rem] tabular-nums text-mut">{money(fee(a.id))} TL</span>}
                           {athleteId === a.id && <Icon name="check" className="size-4 shrink-0 text-acc" />}
@@ -175,7 +175,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
                       {o.name}
                     </button>
                     {o.saved && onDropName && (
-                      <button type="button" onClick={() => onDropName(o.name)} aria-label={`${o.name} seçeneklerden sil`} className="flex size-8 items-center justify-center text-mut">
+                      <button type="button" onClick={() => onDropName(o.name)} aria-label={`${o.name} seçeneklerden sil`} data-press className="btn btn-icon btn-sm size-8 text-mut">
                         <Icon name="x" className="size-3.5" />
                       </button>
                     )}
@@ -202,7 +202,7 @@ export function AddIncome({ open, onClose, roster = [], cfg = {}, onSave, book =
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={isDues ? "" : dir === "out" ? "ör. tekne yakıtı" : dir === "debt" ? "ör. ay sonu ödenecek" : "ör. 4 kişilik grup, 2 ders"} className={field} />
         </label>
 
-        <button type="button" disabled={!ok} onClick={save} className="h-12 w-full rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+        <button type="button" disabled={!ok} onClick={save} data-press className="btn btn-primary w-full">
           {busy ? "Kaydediliyor…" : edit ? "Kaydet" : amt > 0 ? `${money(amt)} TL · ${TITLE[book][dir]} ekle` : "Ekle"}
         </button>
       </div>

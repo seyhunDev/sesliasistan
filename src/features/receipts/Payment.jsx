@@ -59,7 +59,7 @@ export function PayBox({ r }) {
           <small className="text-[0.8125rem] text-mut">{[when(r.paidAt), r.paidBy?.name, r.paidVia === "cash" ? "nakit · kasadan düştü" : r.paidVia === "eft" ? "EFT" : r.paidVia === "card" ? "kart" : ""].filter(Boolean).join(" · ")}</small>
         </span>
         {!isStaff && (
-          <button onClick={() => markPaid(r.id, false)} className="shrink-0 text-[0.8125rem] font-medium text-mut active:opacity-60">
+          <button onClick={() => markPaid(r.id, false)} data-press className="btn btn-text btn-sm shrink-0 text-mut">
             Geri al
           </button>
         )}
