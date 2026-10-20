@@ -435,24 +435,24 @@ export function DayPick({ day, att, today, onClose }) {
                     <span className={`grid size-10 shrink-0 place-items-center rounded-full ${noLog ? "bg-warnbg text-[1.0625rem] font-bold text-warn" : "bg-acc/10 text-acc"}`}>
                       {noLog ? "!" : <Icon name="trend" className="size-5" />}
                     </span>
-                    {/* Satıra dokununca antrenman sayfası (Seyhun 2026-10-20: "antrenman sayfası için de bir buton olması lazım") */}
-                    <button type="button" onClick={() => go(`/training/day?id=${p.id}`)} className="flex min-w-0 flex-1 items-center gap-1 text-left">
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Antrenman"}</b>
-                        <small className="block truncate text-[0.8125rem] text-mut">{[p.time || "Tüm gün", p.place].filter(Boolean).join(" · ")}</small>
-                        {noLog && <small className="block truncate text-[0.8125rem] font-medium text-warn">Antrenman günlüğü yazılmadı</small>}
-                      </span>
-                      <Icon name="chev" className="size-4 shrink-0 text-mut" />
-                    </button>
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Antrenman"}</b>
+                      <small className="block truncate text-[0.8125rem] text-mut">{[p.time || "Tüm gün", p.place].filter(Boolean).join(" · ")}</small>
+                      {noLog && <small className="block truncate text-[0.8125rem] font-medium text-warn">Antrenman günlüğü yazılmadı</small>}
+                    </span>
                     {noLog ? (
-                      <button type="button" data-press onClick={() => { onClose(); openAdd({ edit: { kind: "plan", id: p.id } }); }} className="shrink-0 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
+                      <button type="button" data-press onClick={() => { onClose(); openAdd({ edit: { kind: "plan", id: p.id } }); }} className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
                         Günlük yaz
                       </button>
                     ) : info.attHref && (
-                      <button type="button" data-press onClick={() => go(info.attHref)} className="shrink-0 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
+                      <button type="button" data-press onClick={() => go(info.attHref)} className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
                         Yoklama
                       </button>
                     )}
+                    {/* Antrenman sayfası (Seyhun 2026-10-20: ok yerine gideceği yeri söyleyen düğme) */}
+                    <button type="button" data-press onClick={() => go(`/training/day?id=${p.id}`)} className="shrink-0 rounded-full bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">
+                      Antrenmana git
+                    </button>
                   </li>
                   );
                 })}

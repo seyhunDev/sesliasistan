@@ -4,7 +4,7 @@
 // planının yarışına yazılır (applyResult; lib/raceScore.js). Asistandaki işi isler/antrenmanYaris.js.
 import { matchNames } from "@/lib/trainingLog";
 import { closeNames, plain } from "@/lib/names";
-import { CODES } from "@/lib/raceScore";
+import { CODES, newRace } from "@/lib/raceScore";
 
 const UNITS = ["birinci", "ikinci", "üçüncü", "dördüncü", "beşinci", "altıncı", "yedinci", "sekizinci", "dokuzuncu"];
 const TENS = { onuncu: 10, yirminci: 20, otuzuncu: 30 };
@@ -35,9 +35,10 @@ const ordOf = (w) => {
 
 // Cümleyi çöz. Sonuç null ya da { race: { n } | { new: true } | { last: true } | null,
 //   runs: [{ place: sayı | null, toks: [ad sözcüğü | { code }] }], list: sıra sözcüklü liste mi }
-export function resultCommand(text) {
+// force: cümlenin sonuç olduğu belli (antrenman sayfasındaki "Sonucu söyle"): yalnız adlar da sıra sayılır ("Ali Ayşe Mehmet")
+export function resultCommand(text, { force = false } = {}) {
   let t = lowTr(text).replace(/[’`]/g, "'").replace(/\s+/g, " ").trim();
-  if (!t || t.split(" ").length > 80 || NOT_RES.test(t)) return null;
+  if (!t || t.split(" ").length > 80 || (!force && NOT_RES.test(t))) return null;
   // Harf harf söylenen kodlar: "d n f", "d.n.f." → dnf
   for (const [c] of CODES) t = t.replace(new RegExp(`(?<![\\p{L}])${c.toLowerCase().split("").join("[\\s.]*")}\\.?(?![\\p{L}])`, "gu"), ` ${c.toLowerCase()} `);
   for (const [c, re] of CODE_W) t = t.replace(re, ` ${c.toLowerCase()} `);
@@ -93,7 +94,7 @@ export function resultCommand(text) {
     (weak.some((k) => k.ord === 1) && trigger) ||
     (codes >= 1 && (trigger || ords.length >= 1)) ||
     (listy && /yarış|sonu[çc]|sıralama/.test(t));
-  if (!ok) return null;
+  if (!ok && !force) return null;
 
   // Sıra sözcüğü önce mi ("birinci Ali") sonra mı ("Ali birinci")
   const firstOrd = clean.findIndex((k) => k.ord);
@@ -251,3 +252,34 @@ export const resultLine = (race) => {
   let n = 0;
   return (race.finishes || []).map((f) => (f.code ? `${f.name} ${f.code}` : `${++n} ${f.name}`)).join(", ");
 };
+
+// Sonucu söyle → yarışa yaz (asistan ve antrenman sayfası ortak; onay yok, Seyhun 2026-10-20: "onay falan istemesin").
+// Bulunamayan ad en yakın sporcuya yazılır (fixed); hiç yakını yoksa atlanır (lost), yeri boş kalır.
+// Sonuç { error } ya da { list (yeni yarışlar), race, isNew, line, fixed: [{ said, name }], lost: [söylenen] }
+export function voiceResult(text, { races = [], athletes = [], present = [], aliases = {}, runningId = "", force = false } = {}) {
+  const cmd = resultCommand(text, { force });
+  if (!cmd) return { error: "Sonucu anlayamadım. Sırayla adları söyle: “1 Ali, 2 Ayşe” ya da “Ali, Ayşe, Mehmet”." };
+  const res = resolveResult(cmd, athletes, present, aliases);
+  const fixed = [...res.fixed];
+  const lost = [];
+  const items = [...res.items];
+  for (const u of res.unknown) {
+    const a = u.picks.length ? athletes.find((x) => x.studentName === u.picks[0]) : null;
+    if (!a || items.some((x) => x.id === a.id)) {
+      lost.push(u.said);
+      continue;
+    }
+    fixed.push({ said: u.said, name: a.studentName });
+    items.push(u.code ? { id: a.id, name: a.studentName, code: u.code } : { id: a.id, name: a.studentName, place: u.place });
+  }
+  if (!items.length) return { error: lost.length ? `${lost.map((x) => `“${x}”`).join(", ")} adında sporcu bulamadım.` : "Sonuçta sporcu adı duyamadım." };
+  const pick = pickRace(races, cmd, items, runningId);
+  if (pick.error) return { error: pick.error };
+  const race = applyResult(pick.isNew ? newRace(races) : races[pick.index], items);
+  const list = pick.isNew ? [...races, race] : races.map((r, i) => (i === pick.index ? race : r));
+  return { list, race, isNew: pick.isNew, line: resultLine(race), fixed, lost };
+}
+
+// Cevap yazısı: "Yarış 2: 1 Ali Kaya, 2 Ayşe Şahin. (“aişe” → Ayşe Şahin) Bulamadım: “zzz”."
+export const voiceText = (r) =>
+  `${r.race.name}${r.isNew ? " (yeni)" : ""}: ${r.line}.${r.fixed.length ? ` (${r.fixed.map((f) => `“${f.said}” → ${f.name}`).join(", ")})` : ""}${r.lost.length ? ` Bulamadım: ${r.lost.map((x) => `“${x}”`).join(", ")}.` : ""}`;
