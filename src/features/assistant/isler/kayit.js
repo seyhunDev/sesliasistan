@@ -1,4 +1,5 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
+import { savedLine } from "@/lib/sayLines";
 import { autoFill, firstNeed, fresh, isBlank, pub, carry, check, tidy } from "@/features/add/drafts";
 import { applyRepeat } from "@/lib/repeat";
 import { keepNotes } from "@/lib/steps";
@@ -105,7 +106,7 @@ export async function createAs(ctx, s, kind, viaVoice) {
 
 // pre: yapay zekanın ek sözü (çakışma, rüzgâr…); varsa "Ekledim" cümlesinden önce gelir (akışta okunduysa tekrar okunmaz)
 export async function saveDraftsNow(ctx, viaVoice, list = ctx.drafts, pre = "", lead = "") {
-  const { by, convo, done, draftMeta, draftSrc, extra, members, memoSet, nextStep, queue, reply, saveDrafts, setDrafts, setPhase, setSaved, toast, turns } = ctx;
+  const { by, convo, done, draftMeta, draftSrc, extra, members, memoSet, nextStep, planTimeAsk, queue, reply, saveDrafts, setDrafts, setPhase, setSaved, toast, turns, waitFor } = ctx;
   for (const d of list) {
     const e = check(d);
     if (e) return reply(`${e}. Söyler misin?`, {}, viaVoice);
@@ -133,7 +134,15 @@ export async function saveDraftsNow(ctx, viaVoice, list = ctx.drafts, pre = "", 
   const what = list.length === 1 ? [list[0].title || list[0].body, ...draftMeta(list[0]).split(" · ").slice(1).filter((x) => !x.startsWith("→"))].join(", ") : parts.join(", ");
   const whoTxt = who.length ? `, ${who.join(" ve ")} sorumlu` : "";
   if (queue.current.length) return nextStep(viaVoice, `${lead}${r.queued ? `${what} kaydedildi, bağlantı gelince gönderilecek. ` : `Ekledim: ${what}${whoTxt}. `}`);
-  done(r.queued ? `${lead}İnternet yok: ${what}${whoTxt} kaydedildi, bağlantı gelince gönderilecek.` : `${lead}${extra(pre)}Ekledim: ${what}${whoTxt}.`, { engine: "local" }, viaVoice);
+  if (r.queued) return done(`${lead}İnternet yok: ${what}${whoTxt} kaydedildi, bağlantı gelince gönderilecek.`, { engine: "local" }, viaVoice);
+  // Doğal cümle; saatsiz tek planda saat teklif edilir ("Başka bir isteğin var mı?" yerine), cevap bekleme sonraki söze bakar
+  // (görev listesi sürerken teklif yok: liste kendi sırasıyla devam eder)
+  const line = savedLine(what, whoTxt, list);
+  const pid = line.offer === "time" && !ctx.planOn?.current && !ctx.chain?.current?.length && (r.ids || []).find(([k]) => k === "plan")?.[1];
+  if (!pid) return done(`${lead}${extra(pre)}${line.text}`, { engine: "local" }, viaVoice);
+  waitFor("planTime");
+  planTimeAsk.current = { id: pid, title: list[0].title, date: list[0].date };
+  reply(`${lead}${extra(pre)}${line.text}`, { engine: "local", listen: true }, viaVoice);
 }
 
 export function dropDrafts(ctx, viaVoice) {
