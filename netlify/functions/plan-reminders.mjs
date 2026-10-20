@@ -80,6 +80,9 @@ async function sendDueReminders() {
   const db = getFirestore();
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", pub, priv);
 
+  // Çalıştığı görünsün (Ayarlar › Testler › Bildirim testi): başlangıç ve bitiş zamanı; bitiş yoksa yarıda kalmıştır
+  const beat = db.collection("system").doc("scheduler");
+  await beat.set({ start: new Date().toISOString() }, { merge: true }).catch(() => {});
   const all = await notifyUsers(db);
   const q = shared();
   let sent = 0;
@@ -120,6 +123,7 @@ async function sendDueReminders() {
   const att = await sendAttRemind(db, all, q).catch((e) => (console.error("[yoklama hatırlatma]", e.message), 0));
   const tests = await sendPushTests(db, all).catch((e) => (console.error("[bildirim testi]", e.message), 0));
   console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${own} plana özel, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama, ${tests} deneme`);
+  await beat.set({ end: new Date().toISOString(), line: `${all.length} kişi, ${sent + own} hatırlatma, ${tests} deneme` }, { merge: true }).catch(() => {});
   return new Response(`ok ${sent} ${own} ${summaries} ${mails} ${extras} ${dues} ${att} ${tests}`);
 }
 
