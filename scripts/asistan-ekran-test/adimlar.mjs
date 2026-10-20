@@ -211,15 +211,16 @@ async function scenarios2(h) {
     const ok = await waitFor(async () => !(await full(page).count()), 4000);
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
-  // Okuma istenmeyen cevap sesli okunmaz (Seyhun: "oku dersem okusun", 2026-10-19)
+  // Sesli yanıt açıkken her istekte önce hazır cümle, sonra cevap okunur (Seyhun, 2026-10-20; eski kural "oku dersem okusun")
   setAI(() => ({ intent: "chat", message: "Bugün erken yat." }));
   const sp0 = await page.evaluate(() => window.__t.spoken.length);
   await talkAsk(page, "bana kısa bir tavsiye ver");
-  await check(GS, "okuma istenmeyen soru (sesli yanıt açık)", "cevap yazılır, sesli okunmaz", async () => {
+  await check(GS, "sesli yanıt açıkken soru", "önce hazır cümle, sonra cevap okunur", async () => {
     const ok = await waitFor(async () => /Bugün erken yat/.test(await last(page)), 6000);
-    await page.waitForTimeout(600);
+    await waitFor(async () => (await page.evaluate((n) => window.__t.spoken.slice(n).join(" "), sp0)).includes("erken yat"), 4000);
     const said = await page.evaluate((n) => window.__t.spoken.slice(n), sp0);
-    return [!!ok && said.length === 0, `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(said.join(" | ")).slice(0, 80) || "yok"}`];
+    const all = said.join(" | ");
+    return [!!ok && said.length >= 2 && /erken yat/.test(all), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(all).slice(0, 100) || "yok"}`];
   });
   await closeAll(page);
   await page.evaluate(() => localStorage.setItem("sa_tts_on", "0"));

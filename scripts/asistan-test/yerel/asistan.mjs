@@ -1228,3 +1228,20 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["okurken", { desc: "mavi", fn: () => ringOf({ state: "speaking" }), ok: (r) => r.tone === "speak" }],
   ]));
 }
+
+// Sesli yanıt açıkken konuşma: hazır başlangıç cümlesi, onay bekleyen işte "Onayını bekliyorum", sıralı işlerin sonunda
+// "Tamam, hepsi yapıldı" (lib/sayLines.js; Seyhun 2026-10-20)
+{
+  const { startLine, spokenReply } = await import("@/lib/sayLines");
+  const SL = (want, fn) => ({ desc: want, fn, ok: (r) => r === want });
+  group("Sesli yanıt: hazır cümleler")([
+    ["ön cevap var", SL("Tamam, planı hazırlıyorum.", () => startLine({ line: "Tamam, planı hazırlıyorum." }))],
+    ["ön cevap yok", SL("Hemen ilgileniyorum.", () => startLine(null))],
+    ["onay bekleyen", SL("Ali'nin borcu silinecek. Onayını bekliyorum.", () => spokenReply("Ali'nin borcu silinecek.", { confirm: true }))],
+    ["onay sorusu zaten soruyor", SL("Silinsin mi?", () => spokenReply("Silinsin mi?", { confirm: true }))],
+    ["sıralı işlerin sonu", SL("Notu aldım. Tamam, hepsi yapıldı.", () => spokenReply("Notu aldım.", { planEnd: true }))],
+    ["sıralı işte yapılamayan var", SL("Yapamadığım: mesaj.", () => spokenReply("Yapamadığım: mesaj.", { planEnd: true, planOk: false }))],
+    ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
+    ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
+  ]);
+}

@@ -35,14 +35,15 @@ export function takeAct(ctx, nos) {
 }
 
 export function nextInChain(ctx, viaVoice) {
-  const { actNow, chain, chainGen, chainStep, planIdx, planKind, planNow, raceFailed, reply, run, setPlan, setWork, speaking } = ctx;
+  const { actNow, chain, chainGen, chainStep, planIdx, planKind, planNow, raceFailed, reply, run, sayQ, setPlan, setWork, speaking } = ctx;
   const next = chain.current.shift();
   if (!next) return;
   const gen = chainGen.current;
   // Cevap okunurken araya girilmez: okuma bitince (en çok ~15 sn) sıradaki iş başlar
   const go = (n = 0) => {
     if (gen !== chainGen.current) return;
-    if (speaking.current && n < 60) return setTimeout(() => go(n + 1), 250);
+    // Sıradaki söz (sesli yanıt açıkken okunacak cevap) kuyrukta bekliyorsa da beklenir: sunucu sesi gelmeden başlamasın
+    if ((speaking.current || sayQ?.current?.busy) && n < 60) return setTimeout(() => go(n + 1), 250);
     chainStep.current = true;
     planNow.current = next.label || "";
     planKind.current = next.kind || "";
