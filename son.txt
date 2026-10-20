@@ -1,8 +1,8 @@
-Commit: 8a4f4d3 · Ses testi: B hata verince bekleme yazısı kalmaz (#572)
-Zaman: 2026-10-20-1926 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39456545546
+Commit: 3ee9ce9 · Ana sayfa: yoklama alındıysa Sporcular kartında 'Yoklama alındı' (#574)
+Zaman: 2026-10-20-1936 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39458053908
 
-TAM TEST · 20.10.2026 19:21:03
+TAM TEST · 20.10.2026 19:31:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1320/1342 geçti · 22 kalan · 326 sn
+SONUÇ: 1320/1342 geçti · 22 kalan · 329 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
