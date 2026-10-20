@@ -18,3 +18,11 @@ export function prevShown(list, m) {
   const before = (i < 0 ? list : list.slice(0, i)).filter((x) => x.id !== m.id && !x.arch && !x.deleted && (x.text || x.file));
   return before.at(-1) || null;
 }
+
+// Sohbet ekranında gösterilecek mesaj listesi. Sohbet belgesi yoksa (hiç yazılmamış ya da ana hesap silip sıfırladı) mesaj
+// yoktur: bellekteki ve telefondaki eski kopya gösterilmez. Silinip yeniden açılan sohbette belgeden önce yazılmış (önbellekte
+// kalmış) mesajlar da atlanır. born: sohbet belgesinin createdAt'i (ms; yoksa 0), atMs: mesaj zamanını ms'ye çeviren işlev.
+export function liveMsgs(raw, exists, born, atMs) {
+  if (!exists) return [];
+  return (raw || []).filter((m) => !born || !m.at || atMs(m.at) >= born - 60e3);
+}

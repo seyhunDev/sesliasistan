@@ -201,7 +201,7 @@ export function ChatList() {
             const c = chats.find((x) => x.id === g);
             const at = toMs(c?.last?.at);
             return (
-              <button key={g} type="button" onPointerDown={() => warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex min-w-0 items-center gap-2 rounded-2xl bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(38,40,44,.06)]">
+              <button key={g} type="button" onPointerDown={() => c && !c._ghost && warm(g)} onClick={() => router.push(`/messages?c=${g}`)} className="relative flex min-w-0 items-center gap-2 rounded-2xl bg-card p-2.5 text-left shadow-[0_1px_2px_rgba(38,40,44,.06)]">
                 <Avatar icon={GROUPS[g].icon} size="size-[2.125rem]" tone="bg-deep text-white" />
                 <span className="min-w-0">
                   <b className="block truncate text-[0.8125rem] font-semibold leading-tight">{GROUPS[g].name}</b>
