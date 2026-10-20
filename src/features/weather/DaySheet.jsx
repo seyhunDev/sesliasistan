@@ -141,14 +141,16 @@ export function TodayWind({ rows }) {
   return <WindChart rows={rows} sel={-1} onSel={() => {}} nowAt={nowAt} mini obs={obs} />;
 }
 
-// Başlığın sağındaki rüzgâr sütunu: küçük ad (Ölçülen/Tahmin), büyük sayı + kn, altında sağanak
+// Rüzgâr şeridindeki sütun: küçük ad (Ölçülen/Tahmin), altında "rüzgâr–sağanak kn" (her yerde 4–12 biçimi)
 function Num({ label, kn, gust, color }) {
   return (
-    <div>
+    <div className="shrink-0 text-right leading-tight">
       <span className="block text-[0.6875rem] font-semibold" style={color ? { color } : undefined}>{label}</span>
-      <b className={`text-[1.375rem] font-bold leading-none tabular-nums ${color ? "" : windLevel(kn).tone}`} style={color ? { color } : undefined}>{kn}</b>
-      <span className="text-[0.6875rem] font-semibold text-mut"> kn</span>
-      {gust != null && <span className="block text-[0.6875rem] text-mut tabular-nums">sağanak {gust}</span>}
+      <b className={`whitespace-nowrap text-[1.0625rem] font-semibold tabular-nums ${color ? "" : windLevel(kn).tone}`} style={color ? { color } : undefined}>
+        {kn}
+        {gust != null && gust > kn && <span className="font-normal text-mut">–{gust}</span>}
+      </b>
+      <span className="text-[0.6875rem] text-mut"> kn</span>
     </div>
   );
 }
@@ -181,42 +183,52 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
 
   return (
     <div className="pb-2">
-      {place && <p className="mb-2 truncate text-[0.875rem] font-semibold">{place}</p>}
-      {/* Tek başlık: seçili saat (dokunulmadıkça şimdi). Solda gökyüzü, sıcaklık, günün en düşük–en yüksek, yön; sağda ölçülen ve tahmin rüzgâr + sağanak.
-          Aynı bilgi iki yerde yazmaz (Seyhun: "aynı bilgiler, aynı sayılar tekrar ediyor, olmasın"). */}
+      {/* Üst satır: yer adı; saat seçiliyken sağda o saat ve "Şimdi" (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
+      {(place || !follow) && (
+        <div className="mb-2 flex h-7 items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-[0.875rem] font-semibold">{place}</p>
+          {!follow && <span className="text-[0.8125rem] font-semibold tabular-nums">{s.hh}:00</span>}
+          {nowIdx >= 0 && !follow && (
+            <button type="button" onClick={() => setPick(null)} className="rounded-full bg-rec/10 px-2.5 py-1 text-[0.75rem] font-semibold text-rec active:scale-95">
+              Şimdi
+            </button>
+          )}
+        </div>
+      )}
+      {/* Tek başlık, iki satır: gökyüzü ve sıcaklık; altında tek şeritte rüzgâr (yön + derece, ölçülen ve tahmin "rüzgâr–sağanak").
+          Aynı bilgi iki yerde yazmaz (Seyhun: "bir karmaşa var, daha anlaşılır bir hale getirelim"). */}
       <div className="flex items-center gap-3">
-        <Icon name={sky(v.code, v.day).icon} className="size-11 shrink-0 text-acc" />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2">
-            <span className="text-[2rem] font-semibold leading-none tabular-nums">{v.t}°</span>
-            <span className="text-[0.8125rem] text-mut tabular-nums">{min}–{max}°</span>
-            {!follow && <span className="text-[0.8125rem] font-semibold tabular-nums">{s.hh}:00</span>}
-            {/* Grafikte gezindikten sonra tek dokunuşla şimdiye dönüş (Seyhun: "sonra şimdiye gitmesini istiyorum") */}
-            {nowIdx >= 0 && !follow && (
-              <button type="button" onClick={() => setPick(null)} className="rounded-full bg-rec/10 px-2.5 py-0.5 text-[0.75rem] font-semibold text-rec active:scale-95">
-                Şimdi
-              </button>
-            )}
-          </p>
-          <p className="mt-1 truncate text-[0.8125rem] text-mut">
-            {sky(v.code, v.day).label}{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}
-          </p>
-          <p className="mt-0.5 flex items-center gap-1 text-[0.8125rem] font-semibold">
-            <WindArrow deg={o?.dir ?? v.dir} className="size-3.5" />
-            {windName(o?.dir ?? v.dir)[0]}
-            <span className="font-normal text-mut tabular-nums">{dirDeg(o?.dir ?? v.dir)}</span>
+        <Icon name={sky(v.code, v.day).icon} className="size-10 shrink-0 text-acc" />
+        <span className="text-[2rem] font-semibold leading-none tabular-nums">{v.t}°</span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[0.9375rem] font-semibold">{sky(v.code, v.day).label}</p>
+          <p className="truncate text-[0.8125rem] text-mut tabular-nums">
+            {min}° / {max}°{s.rain != null && s.rain >= 10 ? ` · yağmur %${s.rain}` : ""}
           </p>
         </div>
-        <div className="flex shrink-0 gap-3 text-right">
-          {om && <Num label="Ölçülen" kn={om.wind} gust={om.gust} color={OBS} />}
-          <Num label={om ? "Tahmin" : "Rüzgâr"} kn={v.wind} gust={v.gust} />
-        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-3 rounded-xl bg-bg px-3 py-2">
+        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[0.875rem] font-semibold">
+          <WindArrow deg={o?.dir ?? v.dir} className="size-4 shrink-0" />
+          <span className="truncate">{windName(o?.dir ?? v.dir)[0]}</span>
+          <span className="font-normal text-mut tabular-nums">{dirDeg(o?.dir ?? v.dir)}</span>
+        </p>
+        {om && <Num label="Ölçülen" kn={om.wind} gust={om.gust} color={OBS} />}
+        <Num label={om ? "Tahmin" : "Rüzgâr"} kn={v.wind} gust={v.gust} />
       </div>
       <div className="mt-1">
         <WindChart rows={rows} sel={follow ? -1 : sel} onSel={setPick} nowAt={nowAt} marks={marks} obs={obs} hourly />
         {/* Grafiğin parçası: 3 saatte bir saat, gökyüzü, sıcaklık ve rüzgâr–sağanak, grafikteki saatin tam altında
             (Seyhun: "saatlik satır grafikle bir bütün olsun"; yön üstteki oklarda, ayrı sütun listesi yok) */}
-        <div className="relative h-[5rem]">
+        <div className="relative">
+          {/* Yükseklik görünmez bir sütundan gelir; büyük yazı boyunda alttaki satır üstüne binmez */}
+          <span aria-hidden className="invisible flex flex-col items-center gap-0.5 text-[0.6875rem]">
+            <span>00</span>
+            <span className="size-4" />
+            <span className="text-[0.75rem]">0°</span>
+            <span>0</span>
+            <span className="text-[0.625rem]">0°</span>
+          </span>
           {rows.map((h, k) =>
             +h.hh % 3 === 0 ? (
               <span key={h.time} className="absolute top-0 flex -translate-x-1/2 flex-col items-center gap-0.5" style={{ left: `${((L + (k * (W - L - R)) / Math.max(1, rows.length - 1)) / W) * 100}%` }}>
@@ -227,29 +239,35 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
                   {h.wind}
                   {h.gust > h.wind && <span className="font-normal text-mut">–{h.gust}</span>}
                 </span>
-                <span className="text-[0.625rem] text-mut tabular-nums">{dirDeg(obs[k]?.dir ?? h.dir)}</span>
+                <span className="flex items-center gap-0.5 text-[0.625rem] text-mut tabular-nums">
+                  <WindArrow deg={obs[k]?.dir ?? h.dir} className="size-2.5" />
+                  {dirDeg(obs[k]?.dir ?? h.dir)}
+                </span>
               </span>
             ) : null,
           )}
         </div>
       </div>
-      {ob?.station && (
-        <p className="text-[0.6875rem] text-mut tabular-nums">
-          {ob.station.near || far
-            ? `Ölçüm: ${ob.station.name} istasyonu · ${String(ob.station.km).replace(".", ",")} km · ${last ? `son ${HM.format(new Date(last.at))}` : "henüz veri yok"}`
-            : `Yakında ölçüm istasyonu yok (en yakını ${Math.round(ob.station.km)} km); yalnız tahmin`}
+      {/* Alt bilgi: çizgilerin anlamı, altında ölçümün geldiği istasyon (ipucu ve eşik yazısı yok) */}
+      <div className="mt-2 space-y-1 border-t border-line pt-2 text-[0.6875rem] text-mut tabular-nums">
+        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          {last && <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: OBS, opacity: 0.45 }} />ölçülen</span>}
+          <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded bg-acc" />{last ? "tahmin" : "rüzgâr"}</span>
+          <span className="flex items-center gap-1">
+            {last && <span className="inline-block w-3 border-t border-dashed" style={{ borderColor: OBS }} />}
+            <span className="inline-block w-3 border-t border-dashed border-mut" />
+            sağanak
+          </span>
+          {marks.length > 0 && <span className="flex items-center gap-1"><span className="inline-block size-2 rounded-full border border-fg" />elle ölçülen</span>}
         </p>
-      )}
-      <p className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-mut">
-        {last && <><span className="inline-block h-2 w-3 rounded-sm" style={{ background: OBS, opacity: 0.45 }} /> ölçülen</>}
-        {last && <><span className="inline-block w-3 border-t border-dashed" style={{ borderColor: OBS }} /> ölçülen sağanak</>}
-        <span className="inline-block h-0.5 w-3 rounded bg-acc" /> {last ? "tahmin" : "rüzgâr"}
-        <span className="inline-block w-3 border-t border-dashed border-mut" /> {last ? "tahmin sağanak" : "sağanak"}
-        {nowIdx >= 0 && <><span className="inline-block size-2 rounded-full bg-rec" /> şimdi</>}
-        {marks.length > 0 && <><span className="inline-block size-2 rounded-full border border-fg" /> ölçülen</>}
-        <span>· parmağınla kaydır</span>
-      </p>
-      <p className="mt-3 text-center text-[0.6875rem] text-mut">rüzgâr knot · yelken: 7–16 kn uygun, 17–21 sert, 22+ riskli</p>
+        {ob?.station && (
+          <p>
+            {ob.station.near || far
+              ? `Ölçüm: ${ob.station.name} istasyonu · ${String(ob.station.km).replace(".", ",")} km · ${last ? `son ${HM.format(new Date(last.at))}` : "henüz veri yok"}`
+              : `Yakında ölçüm istasyonu yok (en yakını ${Math.round(ob.station.km)} km)`}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

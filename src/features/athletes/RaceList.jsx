@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Empty, Label } from "@/components/ui/Page";
 import { CARD } from "@/features/home/ui";
@@ -77,8 +78,8 @@ function Row({ r, past, onOpen }) {
   const e = r.endDate && r.endDate !== r.startDate ? day(r.endDate) : null;
   const warn = !past && warnOf(r);
   return (
-    <li>
-      <button type="button" onClick={() => onOpen(r)} className={`flex w-full items-center gap-3 py-3 pl-3.5 pr-3 text-left transition active:bg-bg ${past ? "opacity-70" : ""}`}>
+    <li className="flex items-stretch">
+      <button type="button" onClick={() => onOpen(r)} className={`flex min-w-0 flex-1 items-center gap-3 py-3 pl-3.5 pr-2 text-left transition active:bg-bg ${past ? "opacity-70" : ""}`}>
         <span className={`flex h-[3.125rem] w-[2.875rem] shrink-0 flex-col items-center justify-center rounded-[0.8rem] ${warn ? "bg-amber-500/12 text-amber-700" : past ? "bg-line/70 text-mut" : "bg-acc/10 text-acc"}`}>
           <b className="text-[1.1875rem] font-bold leading-none tabular-nums">{s ? s.getDate() : "?"}</b>
           <small className="mt-1 text-[0.625rem] font-bold tracking-[.08em]">{s ? (past ? MON[s.getMonth()] : WD[s.getDay()]) : "—"}</small>
@@ -92,6 +93,13 @@ function Row({ r, past, onOpen }) {
         {!past && <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums tracking-tight">{soonText(r)}</b>}
         <Icon name="chev" className="size-4 shrink-0 text-mut" />
       </button>
+      {/* Yarışın multimedya sayfası (fotoğraf, video, sonuçlar) */}
+      {r.id && (
+        <Link href={`/athletes/races/${r.id}/media`} aria-label={`${r.name || "Yarış"} multimedya`} className="my-2 mr-2.5 flex w-[3.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl bg-acc/10 text-acc transition active:scale-95">
+          <Icon name="camera" className="size-[1.125rem]" />
+          <small className="text-[0.625rem] font-bold">Medya</small>
+        </Link>
+      )}
     </li>
   );
 }
@@ -154,6 +162,13 @@ function NextCard({ r, onOpen }) {
           <b className="min-w-0 flex-1 truncate text-right font-semibold">{step}</b>
           <Icon name="chev" className="size-3.5 shrink-0 text-white/70" />
         </button>
+      )}
+      {r.id && (
+        <Link href={`/athletes/races/${r.id}/media`} className="flex w-full items-center gap-3 border-t border-white/15 px-5 py-3 text-[0.875rem] active:bg-white/5">
+          <Icon name="camera" className="size-4 shrink-0 text-white/70" />
+          <b className="min-w-0 flex-1 font-semibold">Multimedya</b>
+          <Icon name="chev" className="size-3.5 shrink-0 text-white/70" />
+        </Link>
       )}
     </section>
   );
