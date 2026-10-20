@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addRaceMedia, dropRaceMedia, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
+import { addRaceMedia, dropRaceMedia, mutedCopy, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
+import { Sheet } from "@/components/ui/Sheet";
+import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { Bar } from "@/features/training/Countdown";
 import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
@@ -11,9 +14,10 @@ import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
 import { dropPending, listPending, putPending } from "./pendingStore";
 
-// Medya: "Fotoğraf" ve "Video" uygulama içi kamerayı açar (CameraSheet: sayaç ve bipleri sürer; açılamazsa telefonun kamerası).
-// Çekilen küçük kaydedilir (video en çok 2 dk, 960 px; fotoğraf 1600 px), sırayla Storage'a yüklenir ve yarışa yazılır.
-// Start sayacı sürerken çekilen, starta göre anıyla kaydedilir ve üstüne yazılır; liste yarışa ve ana göre gruplu
+// Medya: "Fotoğraf" ve "Video" iPhone'un kendi kamerasını açar (Seyhun 2026-10-20: kalite, ses, yön). Yanındaki ⋯ › Sayaçlı kamera
+// uygulama içi kamerayı açar (CameraSheet: sayaç ve bipler sürer; Süre'den açılan kamera da bu). Video en çok 2 dk, iPhone'un dosyası
+// olduğu gibi (prepRaceMedia); sırayla Storage'a yüklenir ve yarışa yazılır.
+// Start sayacı sürerken çekilen, starta göre anıyla kaydedilir; liste yarışa ve ana göre gruplu
 // ("2. yarış · Son 1 dakika", lib/raceLive.js mediaGroups), küçük resimde "−0:42" / "+12:30". Dokununca büyük açılır:
 // yarıştaki sporcular etiketlenir (dokun ekle/çıkar), Paylaş, Düzelt (yarış ve an), Sil. Etiketli varsa üstte sporcu süzgeci.
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). Süre'den açılan kamera kapanınca Süre'ye dönülür (onCamClose).
@@ -35,7 +39,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
   useEffect(() => {
     camRef.current = cam;
   }, [cam]);
-  const [native, setNative] = useState(false); // uygulama içi kamera açılamadı: telefonun kamerası
+  const [more, setMore] = useState(false); // ⋯: Sayaçlı kamera
   const [openId, setOpen] = useState("");
   const [who, setWho] = useState("");
   const open = live.media.find((m) => m.id === openId) || null;
@@ -121,13 +125,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
     }
   };
   const openCam = (k) => {
-    if (native) return (k === "photo" ? photo : video).current?.click();
-    setCam(k);
+    (k === "photo" ? photo : video).current?.click();
   };
   const camFail = (e) => {
     setCam("");
-    setNative(true);
-    toast(e?.name === "NotAllowedError" ? "Kamera izni verilmedi. Telefonun kamerası açılacak." : e?.message && !/^[A-Z]/.test(e.name || "") ? e.message : "Kamera açılamadı. Telefonun kamerası açılacak.");
+    toast(e?.name === "NotAllowedError" ? "Kamera izni verilmedi" : e?.message && !/^[A-Z]/.test(e.name || "") ? e.message : "Sayaçlı kamera açılamadı");
   };
 
   const drop = (m) => {
@@ -145,16 +147,26 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
     const next = tagMedia(live.media, m.id, athId);
     onChange({ media: next }, () => saveMedia(orgId, race.id, next));
   };
-  const share = async (m) => {
+  // muted: sessiz kopya paylaşılır (kayıttaki video sesli kalır)
+  const share = async (m, muted = false) => {
     try {
-      const blob = await (await fetch(m.url)).blob();
-      const f = new File([blob], `${race.name || "yarış"} ${hm(m.at).replace(":", ".")}.${m.kind === "video" ? (m.type.includes("webm") ? "webm" : "mp4") : "jpg"}`, { type: m.type || blob.type });
+      let blob = await (await fetch(m.url)).blob();
+      if (muted) {
+        setBusy("Sessiz kopya hazırlanıyor");
+        blob = await mutedCopy(blob, (p) => setBusy(`Sessiz kopya hazırlanıyor %${Math.round(p * 100)}`));
+        setBusy("");
+      }
+      const type = blob.type || m.type;
+      const ext = m.kind !== "video" ? "jpg" : type.includes("webm") ? "webm" : type.includes("quicktime") ? "mov" : "mp4";
+      const f = new File([blob], `${race.name || "yarış"} ${hm(m.at).replace(":", ".")}${muted ? " sessiz" : ""}.${ext}`, { type });
       if (navigator.canShare?.({ files: [f] })) await navigator.share({ files: [f] });
-      else window.open(m.url, "_blank");
+      else window.open(muted ? URL.createObjectURL(f) : m.url, "_blank");
     } catch (e) {
-      if (e?.name !== "AbortError") toast("Paylaşılamadı");
+      setBusy("");
+      if (e?.name !== "AbortError") toast(muted ? "Sessiz kopya hazırlanamadı" : "Paylaşılamadı");
     }
   };
+
 
   const waitErr = waiting.find((x) => x.err)?.err || "";
   return (
@@ -205,6 +217,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
         ours={ours}
         onTag={tag}
         onShare={share}
+        busy={busy}
         onDrop={drop}
         starts={live.starts}
         onFix={fix}
@@ -217,11 +230,23 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
           <div className="grid h-14 w-full place-items-center rounded-2xl border border-line bg-card text-[1rem] font-semibold">{pending > 1 ? `${busy} · ${pending - 1} sırada` : busy}</div>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={() => openCam("photo")} className="h-14 flex-1 rounded-2xl border border-line bg-card text-[1.0625rem] font-semibold active:translate-y-px">Fotoğraf</button>
-            <button type="button" onClick={() => openCam("video")} className="h-14 flex-1 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px">Video</button>
+            <Button variant="secondary" onClick={() => openCam("photo")} className="h-14 flex-1 text-[1.0625rem]">
+              Fotoğraf
+            </Button>
+            <Button onClick={() => openCam("video")} className="h-14 flex-1 text-[1.0625rem]">
+              Video
+            </Button>
+            <Button variant="secondary" full={false} onClick={() => setMore(true)} aria-label="Diğer çekim" className="h-14 w-14 shrink-0 px-0">
+              <Icon name="more" className="size-5" />
+            </Button>
           </div>
         )}
       </Bar>
+      <Sheet open={more} onClose={() => setMore(false)} title="Çekim">
+        <Button variant="secondary" onClick={() => (setMore(false), setCam("video"))}>
+          Sayaçlı kamera
+        </Button>
+      </Sheet>
       <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} rf={rf} />
     </>
   );

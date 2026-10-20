@@ -15,8 +15,11 @@ export function MediaViewer(props) {
   return createPortal(<View {...props} />, document.body);
 }
 
-function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop, starts = [], onFix }) {
+function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, onDrop, starts = [], onFix, busy = "" }) {
   const [ui, setUi] = useState(true);
+  // Videoyu paylaşırken sorulur: sesli ya da sessiz (Seyhun 2026-10-20)
+  const [ask, setAsk] = useState(false);
+  const shareIt = (x) => (x.kind === "video" ? setAsk(true) : onShare(x));
   const [fixing, setFixing] = useState(false);
   const start = useRef(null);
   const i = Math.max(0, items.findIndex((m) => m.id === id));
@@ -63,13 +66,31 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
           <p className="min-w-0 flex-1 truncate text-center text-[0.875rem] font-semibold">{label(m) || hm(m.at)}</p>
           <span className="w-12 shrink-0 text-right text-[0.8125rem] tabular-nums text-white/60">{items.length > 1 ? `${i + 1}/${items.length}` : ""}</span>
           {onShare && (
-            <button type="button" onClick={() => onShare(m)} className="h-10 shrink-0 text-[1.0625rem] portrait:hidden">
+            <button type="button" onClick={() => shareIt(m)} className="h-10 shrink-0 text-[1.0625rem] portrait:hidden">
               Paylaş
             </button>
           )}
           <button type="button" onClick={() => onDrop(m)} className="h-10 shrink-0 text-[1.0625rem] text-[#FF453A] portrait:hidden">
             Sil
           </button>
+        </div>
+      )}
+      {busy && <p className="absolute inset-x-0 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 mx-auto w-fit rounded-lg bg-black/70 px-3 py-1.5 text-[0.875rem] font-semibold">{busy}</p>}
+      {ask && (
+        <div className="absolute inset-0 z-30 flex items-end justify-center bg-black/50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]" onClick={() => setAsk(false)}>
+          <div className="w-full max-w-[22rem] space-y-2" onClick={(e) => e.stopPropagation()}>
+            {[
+              ["Sesli paylaş", false],
+              ["Sessiz paylaş", true],
+            ].map(([l, muted]) => (
+              <button key={l} type="button" onClick={() => (setAsk(false), onShare(m, muted))} className="h-14 w-full rounded-2xl bg-[#2C2C2E] text-[1.0625rem] font-semibold active:bg-[#3A3A3C]">
+                {l}
+              </button>
+            ))}
+            <button type="button" onClick={() => setAsk(false)} className="h-14 w-full rounded-2xl bg-[#1C1C1E] text-[1.0625rem] active:bg-[#2C2C2E]">
+              Vazgeç
+            </button>
+          </div>
         </div>
       )}
       {ui && (
@@ -93,7 +114,7 @@ function View({ items, id, onPick, onClose, label, ours = [], onTag, onShare, on
           )}
           <div className="flex items-center justify-between">
             {onShare ? (
-              <button type="button" onClick={() => onShare(m)} className="h-10 text-[1.0625rem]">
+              <button type="button" onClick={() => shareIt(m)} className="h-10 text-[1.0625rem]">
                 Paylaş
               </button>
             ) : (

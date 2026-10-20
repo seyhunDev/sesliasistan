@@ -3,7 +3,7 @@
 // Yarış multimedya sayfasının kaydı (lib/raceLive.js): orgs/{org}/raceLive/{yarışId} belgesi (rüzgâr, startlar, fotoğraf/video künyeleri)
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
-// (kural storage.rules: yalnız ana hesap). Fotoğraf 1600 px JPEG; video (en çok 2 dk) 960 px'e küçültülerek yeniden kaydedilir (sessiz, video süresi kadar sürer).
+// (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
 import { arrayUnion, collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
@@ -13,7 +13,7 @@ import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } 
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
-const VIDEO_MAX = 40 * 1024 * 1024;
+const VIDEO_MAX = 58 * 1024 * 1024; // storage.rules raceMedia: 60 MB
 const live = (orgId, id) => doc(db, "orgs", orgId, "raceLive", id);
 const store = () => {
   const s = getStorage(app);
@@ -37,11 +37,13 @@ export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts:
 export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });
 
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
-// Kurallar (Seyhun 2026-10-18): fotoğraf 1600 px JPEG; video en çok 2 dakika ve her zaman küçültülür (960 px, ~1,6 Mbit/sn);
-// telefon küçültemezse kaydedilmez (sıkıştırılmamış büyük video Storage'ı doldurmasın).
+// Kurallar (Seyhun 2026-10-20: "iPhone'un kendi kamerası"): fotoğraf 2048 px JPEG; video en çok 2 dakika, iPhone'un çektiği dosya
+// olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (60 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
+// Uygulama içi (sayaçlı) kameranın videosu zaten küçük ve sessizdir.
+const RAW_MAX = 55 * 1024 * 1024;
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
-    const img = await compressImage(file, 1600, 0.8);
+    const img = await compressImage(file, 2048, 0.85);
     const bytes = Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0));
     return { blob: new Blob([bytes], { type: "image/jpeg" }), type: "image/jpeg", kind: "photo" };
   }
@@ -49,18 +51,30 @@ export async function prepRaceMedia(file, onProg) {
   try {
     const v = await videoMeta(url);
     if (v.duration && isFinite(v.duration) && v.duration > VIDEO_SEC + 1) throw new Error("Video en çok 2 dakika olabilir. Daha kısa çek.");
+    const dur = v.duration && isFinite(v.duration) ? Math.round(v.duration) : 0;
+    const type = file.type || (/\.mov$/i.test(file.name || "") ? "video/quicktime" : "video/mp4");
+    if (file.size <= RAW_MAX) return { blob: file, type, kind: "video", dur };
     let blob;
     try {
-      blob = await shrinkVideo(v, onProg, 960, 1_600_000);
+      blob = await shrinkVideo(v, onProg, 1280, 3_000_000, true);
     } catch (e) {
       if (e.message !== "no-shrink") console.warn("[raceMedia] küçültülemedi", e);
-      throw new Error("Video bu telefonda sıkıştırılamadı, kaydedilmedi.");
+      throw new Error("Video çok büyük ve bu telefonda küçültülemedi. Daha kısa çek.");
     }
-    // Zaten küçük video (sıkıştırınca büyüdüyse) olduğu gibi kalır
-    const dur = v.duration && isFinite(v.duration) ? Math.round(v.duration) : 0;
-    if (blob.size >= file.size && file.size <= VIDEO_MAX) return { blob: file, type: file.type || "video/mp4", kind: "video", dur };
     if (blob.size > VIDEO_MAX) throw new Error("Video çok büyük. Daha kısa çek.");
     return { blob, type: blob.type, kind: "video", dur };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Paylaşmak için sessiz kopya (Seyhun 2026-10-20: "bazılarının sesini kapatmak isteyebilirim"): kayıttaki video sesli kalır.
+// Telefon videoyu baştan oynatıp sessiz yeniden kaydeder (video süresi kadar sürer). onProg(0..1)
+export async function mutedCopy(blob, onProg) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const v = await videoMeta(url);
+    return await shrinkVideo(v, onProg, 1920, 6_000_000);
   } finally {
     URL.revokeObjectURL(url);
   }
