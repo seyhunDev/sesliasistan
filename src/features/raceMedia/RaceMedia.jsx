@@ -23,6 +23,7 @@ import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
+import { useTimerHome } from "@/features/training/TimerChip";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
@@ -127,6 +128,7 @@ export function RaceMedia({ orgId, id }) {
     [change, orgId, id, rdays],
   );
   const timer = useTimerRun({ onZero });
+  useTimerHome();
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
   // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)

@@ -24,6 +24,7 @@ import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
 import { SideNav, useWide } from "./SideNav";
+import { TimerChip } from "@/features/training/TimerChip";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor
 
@@ -684,7 +685,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
                 <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
                 {!noAi && (
-                  <div className="relative">
+                  <div className="relative flex items-end justify-center pb-0.5">
+                    <TimerChip />
                     <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
                       {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}
                       <VoiceLight state={small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-[3.5rem]" />
