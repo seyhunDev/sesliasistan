@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
+const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -130,6 +130,7 @@ const CASES = {
   athleteBody: ["Mete'nin kilosu 52", "Ali Kaya'nın boyu 1.52", "Zeynep'in boyu 148 kilosu 40,5", "Emre 45 kilo", "Ali'nin kilosu kaç", ["Mete'nin kilosu 52", { path: "/fitness" }]],
   invoiceTask: ["Turkcell faturasını Ali'ye ver", "elektrik faturasını sil"],
   raceWind: ["rüzgar 15 knot kuzeybatı", "rüzgarı yaz karayel 12 knot", "kuzeybatıdan 14 knot esiyor yaz", "rüzgar poyraz 18 knot sağanak 24", ["rüzgar 9 knot lodos", { path: "/athletes/races/r1/media" }]],
+  trainResult: ["birinci Ali, ikinci Ayşe, üçüncü Mehmet", "1 Ali 2 Zeynep 3 Emre", "bir Ali oldu, iki Ayşe oldu, üç Gökhan oldu", "Ali birinci Ayşe ikinci Emre DNF", "ikinci yarış: birinci Zeynep ikinci Ali", "yarış sonucu: Ali, Ayşe, Mehmet", "son yarışta Emre bitirmedi", "antrenman yarışında birinci Ali ikinci Ayşe", ["birinci Ali ikinci Ayşe", { path: "/training/day" }]],
   raceTimer: ["5 dakikalık sayacı başlat", "sayacı başlat", "geri sayımı başlat 2 dakika", "bir dakikalık sayaç başlat", ["sayacı başlat", { path: "/training/day" }]],
   foodLog: ["öğlen tavuk pilav ve ayran içtim", "kahvaltıda 2 yumurta ve peynir yedim", "akşam mercimek çorbası yedim", ["öğlen tavuk pilav ve ayran içtim", { path: "/fitness" }], ["öğle mercimek çorbası", { path: "/fitness", food: true }]],
   "Beslenme: su": ["2 bardak su içtim", "yarım litre su içtim", ["bir şişe su içtim", { path: "/fitness" }]],
@@ -141,6 +142,9 @@ const CASES = {
 // Görevler arası karışma ihtimali olan cümleler: beklenen görev ve neden
 const CROSS = [
   ["navigate", "borçlarımı göster", "liste: sayfa açılır"],
+  ["attendance", "bugün antrenmana Ali ve Ayşe geldi", "yoklama, yarış sonucu değil"],
+  ["log", "bugün 12 knot poyrazda antrenman yaptık, start çalıştık", "günlük, yarış sonucu değil"],
+  ["results", "Ali'nin sonuçları", "sporcunun yarış sonuçları sorusu, sonuç girişi değil"],
   ["navigate", "borçlar sayfasını aç", "sayfa açma, borç sorusu değil"],
   ["income", "Ahmet Yılmaz'dan 2000 lira bağış geldi", "gelir, borç değil"],
   ["send", "Ali'ye yaz, borcunu ödesin", "mesaj, borç kaydı değil"],

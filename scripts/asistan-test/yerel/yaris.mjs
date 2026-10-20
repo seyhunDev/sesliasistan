@@ -321,6 +321,31 @@ group("Antrenman yarışları")([
   ["yeni yarış", { desc: "sıradaki ad ve kimlik", fn: () => TY.newRace([{ id: "y1" }, { id: "y3" }]), ok: (r) => r.name === "Yarış 3" && r.id === "y4" }],
 ]);
 
+// Antrenman yarışı sonucunu sesle girme (raceVoice.js): sıra sözcükleri, kodlar, ad eşleme ve düzeltme, hangi yarış, yarışa yazma
+const RV = await import("@/lib/raceVoice");
+const VA = ["Ali Kaya", "Ayşe Şahin", "Mehmet Can", "Can Er", "Ece Demir", "Ali Uz"].map((n, i) => ({ id: `s${i + 1}`, studentName: n, status: "active" }));
+const vres = (t, present = ["s1", "s2", "s3", "s4", "s5"], al = {}) => RV.resolveResult(RV.resultCommand(t), VA, present, al);
+const vline = (r) => r.items.map((x) => `${x.name.split(" ")[0]}${x.code || x.place}`).join(",");
+group("Antrenman sonucu sesle")([
+  ["sıra sözcükleri", { desc: "birinci Ali, ikinci Ayşe, üçüncü Mehmet", fn: () => vline(vres("birinci Ali, ikinci Ayşe, üçüncü Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
+  ["rakamla", { desc: "1. Ali 2. Ayşe 3 Mehmet", fn: () => vline(vres("1. Ali 2. Ayşe 3 Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
+  ["bir şu oldu", { desc: "bir Ali oldu, iki Ayşe oldu, üç Mehmet oldu", fn: () => vline(vres("bir Ali oldu, iki Ayşe oldu, üç Mehmet oldu")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
+  ["ad önce", { desc: "Ali birinci Ayşe ikinci, Can DNF", fn: () => vline(vres("Ali birinci Ayşe ikinci Can DNF")), ok: (r) => r === "Ali1,Ayşe2,CanDNF" }],
+  ["kod sözleri", { desc: "bitirmedi, siyah bayrak, d n f", fn: () => vline(vres("birinci Ayşe ikinci Ali Ece bitirmedi Mehmet siyah bayrak Can d n f")), ok: (r) => r === "Ayşe1,Ali2,EceDNF,MehmetBFD,CanDNF" }],
+  ["liste", { desc: "yarış sonucu: Ali, Ayşe, Mehmet", fn: () => vline(vres("yarış sonucu: Ali, Ayşe, Mehmet")), ok: (r) => r === "Ali1,Ayşe2,Mehmet3" }],
+  ["iki sözcüklü ad", { desc: "Ali Kaya ile Can Er ayrılır, Mehmet Can tek kişi", fn: () => vline(vres("birinci Ali Kaya ikinci Mehmet Can üçüncü Can Er")), ok: (r) => r === "Ali1,Mehmet2,Can3" }],
+  ["virgül ayırır", { desc: "Mehmet, Can DNF iki kişi; Can ilk adı Can olan (Mehmet Can değil)", fn: () => vline(vres("birinci Ali, ikinci Mehmet, Can DNF")), ok: (r) => r === "Ali1,Mehmet2,CanDNF" }],
+  ["gelenler önce", { desc: "iki Ali var, yalnız Ali Kaya geldi", fn: () => vres("birinci Ali ikinci Ece").items[0].name, ok: (r) => r === "Ali Kaya" }],
+  ["yanlış duyulan ad", { desc: "Aişe → Ayşe Şahin (gelenlerden tek yakın)", fn: () => vres("birinci Ali ikinci Aişe"), ok: (r) => r.items[1]?.name === "Ayşe Şahin" && r.fixed[0]?.said === "aişe" && !r.unknown.length }],
+  ["ses adı", { desc: "dizindeki söyleniş", fn: () => vres("birinci Memo ikinci Ali", undefined, { s3: ["memo"] }).items[0]?.name, ok: (r) => r === "Mehmet Can" }],
+  ["bilinmeyen ad", { desc: "kaydedilmez, yakınlar sorulur", fn: () => vres("birinci Zeynep ikinci Ali"), ok: (r) => r.unknown.length === 1 && r.unknown[0].said === "zeynep" && r.unknown[0].place === 1 && r.items[0].place === 2 }],
+  ["yarış numarası", { desc: "ikinci yarış / 3. yarış / yeni yarış / son yarış", fn: () => ["ikinci yarış: birinci Ali ikinci Ayşe", "3. yarış birinci Ali ikinci Ayşe", "yeni yarış 1 Ali 2 Ayşe", "son yarışta Can DNF"].map((t) => JSON.stringify(RV.resultCommand(t).race)), ok: (r) => r.join("|") === '{"n":2}|{"n":3}|{"new":true}|{"last":true}' }],
+  ["sonuç değil", { desc: "soru, rüzgâr, sayaç, tek ad, plan", fn: () => ["Ali kaçıncı oldu", "birinci kim oldu?", "rüzgar 15 knot kuzeybatı", "5 dakikalık sayacı başlat", "Ali bitirmedi", "yarın 2 yarış var", "Ali'yi yarışa ekle", "bugün 3 kişi geldi", "yarış sonuçlarını göster"].map((t) => RV.resultCommand(t)), ok: (r) => r.every((x) => x === null) }],
+  ["hangi yarış", { desc: "boş son yarış; 1. söylenince yeni; devam eden sıra eskiye; sayaç yarışı", fn: () => { const rs = [{ id: "y1", finishes: tfin("a") }, { id: "y2", finishes: [] }]; const full = [{ id: "y1", finishes: tfin("a") }]; const c = RV.resultCommand("birinci Ali ikinci Ayşe"); return [RV.pickRace(rs, c, [{ place: 1 }]).index, RV.pickRace(full, c, [{ place: 1 }]).isNew, RV.pickRace(full, c, [{ place: 4 }]).index, RV.pickRace(rs, c, [{ place: 1 }], "y1").index, RV.pickRace(full, RV.resultCommand("4. yarış birinci Ali ikinci Ayşe"), []).error]; }, ok: ([a, b, c, d, e]) => a === 1 && b === true && c === 0 && d === 0 && /1 yarış var/.test(e) }],
+  ["yarışa yaz", { desc: "söylenen eski yerinden çıkar, sıraya girer, kodlu sona", fn: () => RV.applyResult({ id: "y", finishes: tfin("a", "b", "c") }, [{ id: "c", name: "C", place: 1 }, { id: "a", name: "A", code: "DNF" }]), ok: (r) => r.finishes.map((f) => f.id + (f.code || "")).join() === "c,b,aDNF" }],
+  ["sonuç satırı", { desc: "kodlular sıra almaz", fn: () => RV.resultLine({ finishes: tfin("a", ["b", "DNF"], "c") }), ok: (r) => r === "1 A, B DNF, 2 C" }],
+]);
+
 // Yarış multimedya sayfası (lib/raceLive.js): start sayacı bipleri, rüzgâr kaydı, startlar, fotoğraf grupları, genel sıralama, asistan cümleleri
 const RL = await import("@/lib/raceLive");
 const at = (hhmm) => new Date(`2026-10-19T${hhmm}:00`).toISOString();
