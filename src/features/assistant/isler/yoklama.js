@@ -7,6 +7,7 @@ import { absentNotifyCommand } from "@/lib/assistMore";
 import { addDays, todayStr } from "@/lib/utils/format";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { authFetch } from "@/lib/authFetch";
+import { attQueryAsk, attQueryAnswer } from "@/lib/attQuery";
 
 // ---- Yoklama (asistandan) ----
 // rest: cümledeki diğer işler ({ s, history }); yoklama kaydedilince (ya da onay kartında vazgeçilince) yapay zekaya gider
@@ -120,4 +121,25 @@ export async function absentNotifyCmd(ctx, s, viaVoice) {
     }, viaVoice, /^gönder\p{L}*[\s.!]*$/iu);
     return true;
   }
+}
+
+// Yoklama sorusu ("bugünkü antrenmana kimler katıldı", "Ali dün geldi mi", "bu ay kim en çok gelmedi"): telefondaki
+// yoklamadan anında cevap; yapay zekaya ve planlara gitmez
+export async function attQueryCmd(ctx, s, viaVoice) {
+  const { racer, reply, setPhase, stepTo, stepsEnd } = ctx;
+  const q = racer ? attQueryAsk(s, todayStr()) : null;
+  if (!q) return undefined;
+  setPhase("thinking");
+  stepTo("Yoklama kayıtlarına bakılıyor");
+  try {
+    const { athletes } = await loadAthletes();
+    stepsEnd();
+    reply(attQueryAnswer(q, athletes), { engine: "local", nav: "attendance" }, viaVoice);
+  } catch {
+    stepsEnd(false);
+    reply("Yoklamayı okuyamadım.", { engine: "local", fail: true }, viaVoice);
+  } finally {
+    setPhase("idle");
+  }
+  return true;
 }

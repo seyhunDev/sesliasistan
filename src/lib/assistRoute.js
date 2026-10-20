@@ -33,6 +33,7 @@ import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { timerCommand, windCommand } from "@/lib/raceLive";
 import { resultCommand } from "@/lib/raceVoice";
+import { attQueryAsk } from "@/lib/attQuery";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -50,6 +51,8 @@ export const EARLY = new Set(["close", "logBare", "log", "event", "inventory", "
 export function moreKind(s, c = {}) {
   const { owner, racer, path = "", names = [] } = c;
   const onRace = /^\/athletes\/races\/[\w-]+$/.test(path) && !/\/new$/.test(path);
+  // "Bugünkü antrenmana kimler katıldı", "Ali dün geldi mi": yoklamadan cevap (plan değil)
+  if (racer && attQueryAsk(s, c.today || "2000-01-01")) return "attQuery";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && windCommand(s)) return "raceWind";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";

@@ -155,6 +155,13 @@ export const SEED = [
     not: ["antrenmana Ali geldi mi"],
   },
   {
+    // "antrenmana kim geldi" yoklama almaya da uyar; buradaki kalıp daha uzun sayılsın diye (?!\s+…) eki var
+    id: "attendance.read", title: "Yoklama sorusu", kind: "read", route: "more", quick: true,
+    keys: ["kim(?!se)* (gel|katil)*", "antrenman* kim(?!se)(?!\\s+yok)* (gel|katil)*", "(gel|katil)* kim(?!se)*", "antrenman* (geldi|katildi|gelmedi|katilmadi) mi*", "(dun|bugun) (geldi|katildi|gelmedi|katilmadi) mi*", "kac (sporcu|kisi) (gel|katil)*", "kac antrenman* (gel|katil)*", "en cok kim(?!se)* (gel|devamsiz)*", "yoklama* kim(?!se)*"],
+    say: ["bugünkü antrenmana kimler katıldı", "bugün antrenmana kim geldi", "dün kimler gelmedi", "dün gelmeyenler kimdi", "Ali bugün antrenmana geldi mi", "Ayşe dün katıldı mı", "bugün kaç sporcu geldi", "bu ay Ali kaç antrenmana katıldı", "bu hafta en çok kim gelmedi", "pazartesi kimler geldi", "yoklamada kimler var"],
+    not: ["Ali geldi Ayşe gelmedi", "bugün antrenmana kimse gelmedi", "gelmeyenlerin velilerine haber ver"],
+  },
+  {
     id: "shopping.add", title: "Listeye ekle", kind: "do", route: "shopping", quick: true,
     keys: ["liste* ekle*", "liste* yaz*", "alisveris* ekle*", "liste* koy*"],
     say: ["listeye süt ekle", "alışveriş listesine ekmek yaz", "listeye çay şeker koy", "alışverişe deterjan ekle"],

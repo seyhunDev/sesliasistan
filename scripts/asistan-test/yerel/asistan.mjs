@@ -566,7 +566,8 @@ group("Başka isteğin var mı (cevap)")([
 group("Kısa ön cevap")([
   ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda ne yaptığını söyler", (r) => r?.line === "Tamam, mesajı hazırlıyorum." && r.work === "Mesaj hazırlanıyor")],
   ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
-  ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
+  ["bugün neler var", PC("soruda takvime bakılıyor yazısı", (r) => r?.work === "Takvime bakılıyor")],
+  ["bugünkü antrenmana kimler katıldı", PC("yoklamaya bakılıyor, takvim söylenmez", (r) => r?.work === "Yoklama kayıtlarına bakılıyor" && r.line === "Bakıyorum.")],
   ["Ali'ye yaz yarın 9'da gelsin", PC("tek bilgi kanalı: sohbete yazılacak bilgi yok", (r) => !r?.info)],
   ["tekneleri hazırla görevi ekle", PC("yapay zekaya söylenmemiş giriş anlatılmaz", (r) => !/söylendi/.test(r?.hint || "") && /tür=görev/.test(r?.hint || ""))],
 ]);
