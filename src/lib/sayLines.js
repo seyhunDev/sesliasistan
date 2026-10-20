@@ -16,12 +16,15 @@ export function spokenReply(message, { confirm = false, planEnd = false, planOk 
 
 // Kayıt sonrası doğal cümle (çalışma haritası 3. iş; Seyhun 2026-10-20: "saatsiz oluşturuldu, saat eklemeni istersen
 // hemen ekleyelim"). Aynı açılış her seferinde tekrarlanmasın diye sırayla değişir. Saatsiz tek plan için saat teklif
-// edilir; cevap ("17:00", "akşam beşte") planın saatine yazılır (beyin/yonlendirme.js planTime).
+// edilir; cevap ("17:00", "akşam beşte") planın saatine yazılır (beyin/yonlendirme.js planTime). Son tarihsiz tek görev için
+// son tarih teklif edilir ("cuma", "yarın").
 const OPENERS = ["Ekledim", "Tamam, ekledim", "Kaydettim"];
 let turn = 0;
 export const untimedPlan = (list) => list.length === 1 && list[0].type === "plan" && !list[0].time && !list[0].endDate && list[0].repeat !== "week";
+export const undatedTask = (list) => list.length === 1 && list[0].type === "task" && !list[0].date;
 export function savedLine(what, who = "", list = [], n = turn++) {
   const open = OPENERS[n % OPENERS.length];
+  if (undatedTask(list)) return { text: `${open}: ${what}${who}. Son tarih söylemedin; istersen söyle, ekleyeyim.`, offer: "due" };
   if (!untimedPlan(list)) return { text: `${open}: ${what}${who}.`, offer: "" };
   const w = String(what).replace(/, tüm gün(?=,|$)/, "");
   return { text: `${open}: ${w}, saatsiz${who}. İstersen saatini söyle, hemen ekleyeyim.`, offer: "time" };

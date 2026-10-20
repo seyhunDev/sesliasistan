@@ -344,7 +344,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const [plan, setPlan] = useState([]); // görev listesi: [{ label, st: wait | run | done | fail }]
   const planOn = useRef(false); // görev listesi sürüyor
   const raceFollow = useRef(null); // yeni yarışta tarih / sporcu soruldu: { id, n }
-  const planTimeAsk = useRef(null); // saatsiz eklenen plana saat teklif edildi: { id, title, date }
+  const planTimeAsk = useRef(null); // saatsiz plana saat ya da tarihsiz göreve son tarih teklif edildi: { kind: "time" | "due", id, title, date }
   // Sohbet hafızası: az önce konuşulan yarış, kişi, sporcu, gönderi, kayıt (convoContext `remember`); sohbet kapanınca sıfırlanır
   const memo = useRef({});
   const memoSet = (key, value) => (memo.current = remember(memo.current, key, value));

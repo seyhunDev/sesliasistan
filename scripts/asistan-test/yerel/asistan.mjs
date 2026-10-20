@@ -1285,6 +1285,7 @@ group("Temiz başlık ve sorusuz ekleme")([
   const P = (more = {}) => [{ type: "plan", title: "Antrenman", date: tom, time: "", ...more }];
   const SV = (desc, fn, ok) => ({ desc, fn, ok });
   const pt = (s) => quickAnswer(s, P({ allDay: false }), today, { idx: 0, kind: "time" })?.[0]?.time || null;
+  const dd = (s) => quickAnswer(s, [{ type: "task", title: "Motoru kontrol et", date: "" }], today, { idx: 0, kind: "date" })?.[0]?.date || null;
   group("Doğal kayıt cümlesi")([
     ["saatli plan", SV("Ekledim: …", () => savedLine("Antrenman, Yarın, 10:00", "", P({ time: "10:00" }), 0), (r) => r.text === "Ekledim: Antrenman, Yarın, 10:00." && !r.offer)],
     ["ikinci kayıt", SV("açılış değişir", () => savedLine("Süt al", "", [{ type: "note" }], 1).text, (r) => r === "Tamam, ekledim: Süt al.")],
@@ -1298,6 +1299,12 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["“saat 10”", SV("10:00", () => pt("saat 10"), (r) => r === "10:00")],
     ["“5'te”", SV("öğleden sonra 17:00", () => pt("5'te"), (r) => r === "17:00")],
     ["“Ali'ye mesaj at”", SV("saat değil", () => pt("Ali'ye mesaj at"), (r) => r === null)],
+    ["tarihsiz görev", SV("son tarih teklifi", () => savedLine("Motoru kontrol et", "", [{ type: "task", title: "Motoru kontrol et", date: "" }], 0), (r) => r.text === "Ekledim: Motoru kontrol et. Son tarih söylemedin; istersen söyle, ekleyeyim." && r.offer === "due")],
+    ["tarihli görev", SV("teklif yok", () => savedLine("Motoru kontrol et, Yarın", "", [{ type: "task", title: "Motoru kontrol et", date: tom }], 0).offer, (r) => r === "")],
+    ["not", SV("teklif yok", () => savedLine("Süt al", "", [{ type: "note", title: "Süt al" }], 0).offer, (r) => r === "")],
+    ["“yarın”", SV("son tarih yarın", () => dd("yarın"), (r) => r === tom)],
+    ["“cumaya kadar”", SV("bir tarih", () => dd("cumaya kadar"), (r) => /^\d{4}-\d{2}-\d{2}$/.test(r || ""))],
+    ["“Ali'ye mesaj at”", SV("tarih değil", () => dd("Ali'ye mesaj at"), (r) => r === null)],
   ]);
 }
 

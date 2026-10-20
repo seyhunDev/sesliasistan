@@ -302,10 +302,27 @@ async function scenarios3(h) {
       return [!!ok && /Tekne yıkama.*saatsiz/.test(t) && !/Başka bir isteğin var mı\?\s*$/.test(t), t.slice(-120)];
     });
     const b = aiCalls();
+    // Teklif cevabı için mikrofon kendiliğinden bir kez açılıp kapanır; Konuş'a o sırada basılırsa dinleme kapanıyordu
+    await page.waitForTimeout(2500);
     await talkAsk(page, "akşam 6'da");
     await check(GC, "teklife saat cevabı", "plan 18:00 olur, yapay zekaya gitmez", async () => {
       const ok = await waitFor(async () => /saat 18:00/.test(await convo(page)), 7000);
       return [!!ok && aiCalls() === b, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b}`];
+    });
+    await closeAll(page);
+    // Son tarihsiz görev: son tarih teklif edilir; "yarın" görevin son tarihine yazılır
+    setAI((t) => (/motor/i.test(t) ? { intent: "create", message: "", items: [{ type: "task", title: "Motoru kontrol et", date: "" }] } : { intent: "chat", message: "Tamam." }));
+    await talkAsk(page, "motoru kontrol et diye görev ekle");
+    await check(GC, "son tarihsiz görev", "son tarih teklif edilir", async () => {
+      const ok = await waitFor(async () => /Son tarih söylemedin/.test(await convo(page)), 9000);
+      return [!!ok, clean(await convo(page)).slice(-100)];
+    });
+    const b2 = aiCalls();
+    await page.waitForTimeout(2500);
+    await talkAsk(page, "yarın");
+    await check(GC, "teklife tarih cevabı", "son tarih yarın olur, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => /son tarihi yarın/.test(await convo(page)), 7000);
+      return [!!ok && aiCalls() === b2, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b2}`];
     });
     await closeAll(page);
   }
