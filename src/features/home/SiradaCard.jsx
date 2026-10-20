@@ -62,6 +62,14 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
     if (race) router.push(`/athletes/races/${race}`);
     else openAdd({ edit: { kind: "plan", id: p.id } });
   };
+  // Yarışın multimedyası (Seyhun 2026-10-20: "Sıradaki yarış kartı gitti, multimedyaya nereden ulaşacağız"): yarış bugün ya da yarınsa
+  // yarışın satırında "Multimedya" düğmesi (yarış kaydı bulunursa)
+  const mediaOf = (p, day = p?.date) => {
+    const rk = raceKey(p);
+    const race = rk?.whole && raceOf(rk.name);
+    const n = leftTag(day, today);
+    return race && (!n || n.tone === "red") ? `/athletes/races/${race.id}/media` : "";
+  };
   const hours = dayHours(weather?.w, today)?.map(({ hh, wind, gust }) => ({ hh, wind, gust })) || [];
   // Bugünün ilk satırının rüzgârı (antrenman/yarış): o saatlerin rüzgârı; eşik geçilirse kırmızımsı
   const [td, next] = days;
@@ -94,6 +102,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
                 warn={i === 0 && windy}
                 roll={att && isTraining(p) && p.status !== "cancelled" ? { href: attHref(today, today), taken: profile.attLast === today } : null}
                 sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
+                media={mediaOf(p, today)}
                 onOpen={() => open(p)}
               />
             ))}
@@ -115,7 +124,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             <DayHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
             <ul>
               {nextRows.map(({ p }) => (
-                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} onOpen={() => open(p)} onHide={() => setHide(p)} />
+                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} media={mediaOf(p, next.day)} onOpen={() => open(p)} onHide={() => setHide(p)} />
               ))}
             </ul>
           </>
@@ -135,9 +144,9 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             <ul>
               {rest.map((x) =>
                 x.race ? (
-                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} onHide={() => setHide(raceHide(x.race))} />
+                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} media={x.start ? mediaOf(x.start.p, x.start.day) : ""} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} onHide={() => setHide(raceHide(x.race))} />
                 ) : (
-                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} onHide={() => setHide(x.p)} />
+                  <TimeRow key={x.p.id} p={x.p} media={mediaOf(x.p, x.day)} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} onHide={() => setHide(x.p)} />
                 ),
               )}
             </ul>
@@ -178,7 +187,7 @@ const DayHead = ({ title, right }) => (
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
 // roll: bugünün antrenmanında yoklama ({ href, taken }): satırın altında "Yoklama al" ya da yeşil "✓ Yoklama alındı" (dokununca yine açılır)
 // onHide: sağ üstte gizle düğmesi (Yarın ve Sırada; HideSheet)
-function TimeRow({ p, live, warn, sub, date, left, roll, onOpen, onHide }) {
+function TimeRow({ p, live, warn, sub, date, left, roll, media, onOpen, onHide }) {
   const tag = planTag(p);
   return (
     <li className={`tone-${planTone(p)} relative border-l-2 border-line py-2.5 pl-4`}>
@@ -194,9 +203,17 @@ function TimeRow({ p, live, warn, sub, date, left, roll, onOpen, onHide }) {
           {roll.taken ? "Yoklama alındı" : "Yoklama al"}
         </Link>
       )}
+      <MediaBtn href={media} />
     </li>
   );
 }
+// Yarışın multimedya sayfası (yarış bugün/yarın)
+const MediaBtn = ({ href }) =>
+  href ? (
+    <Link href={href} data-press className="raised mt-2 inline-flex h-9 items-center whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold text-acc">
+      Multimedya
+    </Link>
+  ) : null;
 // Sağ üstte gizle düğmesi (HideSheet)
 const HideBtn = ({ onHide }) =>
   onHide ? (
@@ -232,7 +249,7 @@ const Meta = ({ left, warn, date, time, tag, sub, live }) => {
 // Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte tam genişlikte yarışın adı, altında başlangıç günü · Yarış · Başlangıç · yer ve sağda
 // başlangıca kalan gün; dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (üstte iş adı, altında gün · saat ve kalan gün),
 // dokununca Yapıldı / Yarışın sayfası / Planı aç
-function RaceGroupRow({ g, race, date, today, onRace, onOpen, onHide }) {
+function RaceGroupRow({ g, race, media, date, today, onRace, onOpen, onHide }) {
   const head = g.start?.p || g.items[0].p;
   const startDay = g.start?.p.date || race?.startDate || "";
   const href = race ? `/athletes/races/${race.id}` : "";
@@ -247,6 +264,7 @@ function RaceGroupRow({ g, race, date, today, onRace, onOpen, onHide }) {
         <Meta left={startDay ? leftTag(startDay, today) : null} date={date(startDay || g.day)} time={head.time} tag="Yarış" sub={[startDay && "Başlangıç", head.place].filter(Boolean).join(" · ")} />
       </button>
       <HideBtn onHide={onHide} />
+      <MediaBtn href={media} />
       <ul className="mt-1.5 space-y-1.5">
         {g.items.map(({ p, day, label }) => (
           <li key={p.id}>
