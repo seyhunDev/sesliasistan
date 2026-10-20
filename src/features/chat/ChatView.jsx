@@ -14,7 +14,7 @@ import { sendErrorText, setOpenChat, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
 import { ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
-import { inArchive, shownMsg } from "@/lib/chatArchive";
+import { inArchive, liveMsgs, shownMsg } from "@/lib/chatArchive";
 import { canCall } from "@/lib/call";
 import { useCall } from "@/features/call/CallProvider";
 import { authFetch } from "@/lib/authFetch";
@@ -60,6 +60,7 @@ const keep = (cid, list) => {
 };
 const lastQ = (cref, n = PAGE) => query(collection(cref, "messages"), orderBy("at", "desc"), limit(n));
 const busy = new Set();
+// Silinmiş sohbetin mesajları sunucudan okunamaz (kurallar sohbet belgesine bakar); yalnız var olan sohbet için çağrılır.
 export async function prefetchChat(cref, cid) {
   if (!cref || MSGS.has(cid) || busy.has(cid)) return;
   busy.add(cid);
@@ -102,7 +103,8 @@ export function ChatView({ cid }) {
   const otherP = chat?.type === "dm" ? allPeople.find((p) => p.uid === chat.other) : null;
 
   const [raw, setRaw] = useState(() => MSGS.get(cid) || null); // null: henüz okunmadı (boş sohbetle karışmasın)
-  const all = raw || [];
+  // Sıfırlamadan sonra Sporcular, Aile, Ekip gruplarında eski mesajlar görünüyordu (lib/chatArchive.js liveMsgs)
+  const all = liveMsgs(raw, exists, toMs(chat?.createdAt), toMs);
   const owner = myKind === "owner";
   // Arşivlenen mesajlar sohbette görünmez: ana hesabın arşivi herkes için, diğerlerinin yalnız kendileri için
   const msgs = all.filter((m) => shownMsg(m, uid));

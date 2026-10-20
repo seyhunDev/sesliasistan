@@ -2252,6 +2252,15 @@ group("Mesaj arşivi")([
   ["son mesaj arşivlenince özet", F("bir önceki görünen mesaj", () => CA.prevShown([AM[0], AM[1], AM[3]], AM[3])?.id === "a")],
   ["hiç kalmazsa", F("null", () => CA.prevShown([AM[1]], AM[1]) === null)],
 ]);
+// Sıfırlama / herkes için silmeden sonra (sohbet belgesi yok): eski kopya gösterilmez (Seyhun: Sporcular grubunda mesajlar duruyordu)
+const ms = (x) => x;
+group("Silinen sohbet")([
+  ["belge yok", F("bellekteki eski mesajlar gösterilmez", () => CA.liveMsgs([{ id: "a", at: 100 }], false, 0, ms).length === 0)],
+  ["belge var", F("mesajlar görünür", () => CA.liveMsgs([{ id: "a", at: 100 }], true, 0, ms).length === 1)],
+  ["yeniden açıldı", F("belgeden önceki önbellek atlanır", () => CA.liveMsgs([{ id: "eski", at: 1000 }, { id: "yeni", at: 500000 }], true, 400000, ms).map((m) => m.id).join() === "yeni")],
+  ["gönderilmekte", F("zamanı olmayan kalır", () => CA.liveMsgs([{ id: "p" }], true, 400000, ms).length === 1)],
+  ["henüz okunmadı", F("boş liste", () => CA.liveMsgs(null, true, 0, ms).length === 0)],
+]);
 
 // Sporcu boy ve kilo (lib/athleteBody.js; sporcu sayfası ve asistan "Mete'nin kilosu 52")
 const SBK = await import("@/lib/athleteBody");
