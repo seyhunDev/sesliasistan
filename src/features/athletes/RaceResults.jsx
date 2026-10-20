@@ -59,19 +59,19 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
       <section className={`${card} overflow-hidden`}>
         {files.map((m) => (
           <div key={m.id} className="flex items-center gap-1 border-b border-line pl-4 pr-1.5">
-            <button type="button" onClick={() => open(m)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+            <button type="button" onClick={() => open(m)} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">PDF</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{m.name}</b>
                 <span className="block truncate text-[0.8125rem] text-mut">Sonuç belgesi · her cihazdan açılır</span>
               </span>
             </button>
-            <button type="button" onClick={() => drop(m)} aria-label={`${m.name} sil`} className="grid size-10 shrink-0 place-items-center text-mut">
+            <button type="button" onClick={() => drop(m)} aria-label={`${m.name} sil`} data-press className="btn btn-icon size-10 shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => pickRef.current?.click()} disabled={busy} className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc disabled:opacity-60">
+        <button type="button" onClick={() => pickRef.current?.click()} disabled={busy} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc disabled:opacity-60">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
             {busy ? <span className="size-5 animate-spin rounded-full border-2 border-acc/25 border-t-acc" /> : <Icon name="plus" className="size-5" />}
           </span>

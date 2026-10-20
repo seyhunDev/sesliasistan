@@ -55,11 +55,11 @@ export default function TrainingPage() {
         )}
       </PageHeader>
       <div className="mt-2 flex items-center justify-between rounded-2xl bg-card px-2 py-2 shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} className="grid size-10 place-items-center rounded-full active:scale-95">
+        <button type="button" aria-label="Önceki ay" onClick={() => setYm(shiftMonth(ym, -1))} data-press className="btn btn-icon size-10">
           <Icon name="back" className="size-5" />
         </button>
         <b className="text-[1rem] font-semibold">{monthLabel(ym)}</b>
-        <button type="button" aria-label="Sonraki ay" disabled={ym >= today.slice(0, 7)} onClick={() => setYm(shiftMonth(ym, 1))} className="grid size-10 place-items-center rounded-full active:scale-95 disabled:opacity-30">
+        <button type="button" aria-label="Sonraki ay" disabled={ym >= today.slice(0, 7)} onClick={() => setYm(shiftMonth(ym, 1))} data-press className="btn btn-icon size-10">
           <Icon name="chev" className="size-5" />
         </button>
       </div>
@@ -100,7 +100,7 @@ export default function TrainingPage() {
           <ul className="mt-2 divide-y divide-line rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
             {missing.map((p) => (
               <li key={p.id}>
-                <button type="button" onClick={() => open(p)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left active:opacity-60">
+                <button type="button" onClick={() => open(p)} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-medium">{p.title}</b>
                     <small className="text-[0.8125rem] text-mut">{dayText(p)}{p.time ? ` · ${p.time}` : ""}</small>
@@ -123,7 +123,7 @@ export default function TrainingPage() {
           <ul className="mt-2 divide-y divide-line rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
             {m.logged.map((p) => (
               <li key={p.id}>
-                <button type="button" onClick={() => open(p)} className="block w-full px-4 py-3 text-left active:opacity-60">
+                <button type="button" onClick={() => open(p)} data-press="row" className="block w-full px-4 py-3 text-left">
                   <span className="flex items-baseline justify-between gap-2">
                     <b className="truncate text-[0.9375rem] font-semibold">{p.title}</b>
                     <small className="shrink-0 text-[0.75rem] text-mut">{dayText(p)}</small>

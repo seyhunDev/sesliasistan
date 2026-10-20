@@ -23,11 +23,11 @@ function Body({ days, today, cur, onAdd, onDrop }) {
         <input type="date" value={d} onChange={(e) => setD(e.target.value)} className="bg-transparent text-right font-semibold tabular-nums outline-none" />
       </label>
       {has && <p className="mt-2 px-1 text-[0.8125rem] text-mut">Bu gün zaten var.</p>}
-      <button type="button" disabled={!d || has} onClick={() => onAdd(d)} className="mt-4 h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:translate-y-px disabled:opacity-40">
+      <button type="button" disabled={!d || has} onClick={() => onAdd(d)} data-press className="btn btn-primary mt-4 h-14 w-full">
         Ekle
       </button>
       {cur?.empty && (
-        <button type="button" onClick={() => onDrop(cur.day)} className="mt-2 h-11 w-full text-[0.9375rem] font-semibold text-rec">
+        <button type="button" onClick={() => onDrop(cur.day)} data-press className="btn btn-danger mt-2 w-full">
           {cur.name} gününü kaldır
         </button>
       )}

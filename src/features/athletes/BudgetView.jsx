@@ -23,11 +23,11 @@ function Stepper({ label, value, onChange, max }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5">
       <span className="flex-1 text-[0.9375rem]">{label}</span>
-      <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label={`${label} azalt`} className="grid size-8 place-items-center rounded-full bg-bg text-acc">
+      <button type="button" onClick={() => onChange(Math.max(0, value - 1))} aria-label={`${label} azalt`} data-press className="btn btn-round btn-sm size-8 text-acc">
         <Icon name="minus" className="size-4" />
       </button>
       <b className="w-6 text-center text-[1rem] tabular-nums">{value}</b>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} aria-label={`${label} artır`} className="grid size-8 place-items-center rounded-full bg-bg text-acc">
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} aria-label={`${label} artır`} data-press className="btn btn-round btn-sm size-8 text-acc">
         <Icon name="plus" className="size-4" />
       </button>
     </div>
@@ -120,7 +120,7 @@ export function BudgetView({ r, athletes, onChange }) {
             <div className={`h-full rounded-full ${used > t.total ? "bg-rec" : "bg-acc"}`} style={{ width: `${Math.min(100, Math.round((used / t.total) * 100))}%` }} />
           </div>
         )}
-        <button type="button" onClick={() => setLink(true)} className="mt-2 text-[0.8125rem] font-semibold text-acc active:opacity-60">
+        <button type="button" onClick={() => setLink(true)} data-press className="btn btn-text btn-sm mt-2 text-acc">
           {near.length ? "Fiş bağla" : "Yarış tarihlerine yakın fiş yok"}
         </button>
       </div>
@@ -131,7 +131,7 @@ export function BudgetView({ r, athletes, onChange }) {
             const on = spent.includes(x.id);
             return (
               <li key={x.id}>
-                <button type="button" onClick={() => set({ spent: on ? spent.filter((y) => y !== x.id) : [...spent, x.id] })} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                <button type="button" onClick={() => set({ spent: on ? spent.filter((y) => y !== x.id) : [...spent, x.id] })} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-acc text-white ring-acc" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-medium">{x.merchant || "Fiş"}</b>
@@ -161,7 +161,7 @@ export function BudgetView({ r, athletes, onChange }) {
       {groups.map(([c, lines]) => (
         <div key={c} className={`${card} mb-2 divide-y divide-line overflow-hidden`}>
           {lines.map((l) => (
-            <button key={l.id} type="button" onClick={() => setEdit(l)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+            <button key={l.id} type="button" onClick={() => setEdit(l)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
                 <Icon name={CAT_ICON[l.cat] || "wallet"} className="size-5" />
               </span>
@@ -234,7 +234,7 @@ export function BudgetView({ r, athletes, onChange }) {
       {/* Alt çubuk: bütçe çıktısı */}
       <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
         <div className="mx-auto flex max-w-[26rem] gap-2">
-          <button type="button" disabled={pdfBusy || !b.items.length} onClick={() => pdf(false)} className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+          <button type="button" disabled={pdfBusy || !b.items.length} onClick={() => pdf(false)} data-press className="btn btn-secondary text-acc">
             <Icon name="print" className="size-5" />
             Aç
           </button>
@@ -262,11 +262,11 @@ function Count({ label, value, min = 1, max, onChange }) {
   return (
     <div className="flex items-center gap-3">
       <span className="flex-1 text-[0.9375rem]">{label}</span>
-      <button type="button" onClick={() => onChange(Math.max(min, v - 1))} aria-label={`${label} azalt`} className="grid size-9 place-items-center rounded-full bg-bg text-acc">
+      <button type="button" onClick={() => onChange(Math.max(min, v - 1))} aria-label={`${label} azalt`} data-press className="btn btn-round btn-sm text-acc">
         <Icon name="minus" className="size-4" />
       </button>
       <b className="w-6 text-center text-[1rem] tabular-nums">{v}</b>
-      <button type="button" onClick={() => onChange(Math.min(max, v + 1))} aria-label={`${label} artır`} className="grid size-9 place-items-center rounded-full bg-bg text-acc">
+      <button type="button" onClick={() => onChange(Math.min(max, v + 1))} aria-label={`${label} artır`} data-press className="btn btn-round btn-sm text-acc">
         <Icon name="plus" className="size-4" />
       </button>
     </div>
@@ -388,11 +388,11 @@ function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
       </button>
       <div className="flex gap-2 pt-1">
         {onRemove && (
-          <button type="button" onClick={onRemove} className="h-12 rounded-xl px-4 text-[0.9375rem] font-semibold text-rec ring-1 ring-line">
+          <button type="button" onClick={onRemove} data-press className="btn btn-danger">
             Sil
           </button>
         )}
-        <button type="button" disabled={!amount} onClick={() => onSave({ ...x, amount, est: false })} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+        <button type="button" disabled={!amount} onClick={() => onSave({ ...x, amount, est: false })} data-press className="btn btn-primary flex-1">
           Kaydet
         </button>
       </div>

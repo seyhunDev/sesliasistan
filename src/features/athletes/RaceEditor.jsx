@@ -71,18 +71,18 @@ const DOC_INFO = {
 function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
   return (
     <li className="flex items-center gap-1 pl-4 pr-1.5">
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
+      <button type="button" onClick={onOpen} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">{tag}</span>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
           <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
         </span>
       </button>
-      <button type="button" onClick={onShare} aria-label={`${title} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+      <button type="button" onClick={onShare} aria-label={`${title} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
         <Icon name="up" className="size-5" />
       </button>
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label={`${title} sil`} className="grid size-10 shrink-0 place-items-center text-mut">
+        <button type="button" onClick={onRemove} aria-label={`${title} sil`} data-press className="btn btn-icon size-10 shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       )}
@@ -106,11 +106,11 @@ function PeopleList({ people, openPdf, share }) {
     <ul className="divide-y divide-line">
       {people.map((p) => (
         <li key={p.id} className="flex items-center gap-1 pl-1">
-          <button type="button" onClick={() => openPdf(p.file)} className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
+          <button type="button" onClick={() => openPdf(p.file)} data-press="row" className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
             <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
           </button>
-          <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} className="grid size-10 shrink-0 place-items-center text-acc">
+          <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
             <Icon name="up" className="size-5" />
           </button>
         </li>
@@ -713,7 +713,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const [showDone, setShowDone] = useState(false);
   const statRow = ([to, , title, sub, done]) => (
     <li key={`h-${to}`}>
-      <button type="button" onClick={() => setTab(to)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+      <button type="button" onClick={() => setTab(to)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <span className="w-[4.75rem] shrink-0 text-[0.875rem] text-mut">{title}</span>
         <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${done ? "font-medium" : "font-semibold text-acc"}`}>{sub}</span>
         {done && <Icon name="check" className="size-4 shrink-0 text-ok" />}
@@ -774,7 +774,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
     const left = s.date ? daysTo(s.date) : null;
     return (
       <li key={s.key} className="flex items-center gap-1 pl-1">
-        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
+        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon shrink-0">
           <span className="size-[1.375rem] rounded-full border-2 border-line" />
         </button>
         <span className="min-w-0 flex-1 py-3">
@@ -786,7 +786,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
           </span>
         )}
-        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} className="grid size-11 shrink-0 place-items-center text-mut">
+        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       </li>
@@ -794,7 +794,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   };
   const doneRow = (s) => (
     <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
-      <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} className="grid size-11 shrink-0 place-items-center">
+      <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} data-press className="btn btn-icon shrink-0">
         <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
           <Icon name="check" className="size-3.5" />
         </span>
@@ -816,7 +816,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         <span className="flex w-full items-center gap-2 pb-1 pl-7">
           <span className="text-[0.8125rem] text-mut">Son tarih</span>
           <input type="date" value={todoDate} onChange={(e) => setTodoDate(e.target.value)} aria-label="Son tarih (isteğe bağlı)" className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-2 text-[0.8125rem]" />
-          <button type="button" onClick={addTodo} className="h-9 shrink-0 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+          <button type="button" onClick={addTodo} data-press className="btn btn-primary btn-sm shrink-0">
             Ekle
           </button>
         </span>
@@ -874,13 +874,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               type="button"
               disabled={!r.name.trim()}
               onClick={() => (setBegun(true), setTab("sum"))}
-              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-40"
+              data-press className="btn btn-primary mt-5 w-full"
             >
               Devam
               <Icon name="chev" className="size-4" />
             </button>
             {!r.notice && (
-              <button type="button" onClick={() => setManual(false)} className="mt-2 h-10 w-full text-[0.8125rem] font-semibold text-acc">
+              <button type="button" onClick={() => setManual(false)} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
                 Talimatla başla
               </button>
             )}
@@ -950,7 +950,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           <Row label="Federasyon">{field("federation", "Yelken")}</Row>
         </Group>
         {r.abroad && <p className="mt-2 px-1 text-[0.75rem] text-mut">Yapılacaklara Türkiye’de yapılacaklar eklenir (pasaport, vize, izinler, sigorta, nakliye…).</p>}
-        <button type="button" onClick={() => setEdit(false)} className="mt-4 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white">
+        <button type="button" onClick={() => setEdit(false)} data-press className="btn btn-primary mt-4 w-full">
           Tamam
         </button>
       </Sheet>
@@ -988,7 +988,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 {addRow}
                 {doneTasks.length > 0 && (
                   <li>
-                    <button type="button" onClick={() => setShowDone((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left text-[0.8125rem] text-mut active:bg-bg">
+                    <button type="button" onClick={() => setShowDone((v) => !v)} data-press="row" className="flex w-full items-center justify-between px-4 py-3 text-left text-[0.8125rem] text-mut">
                       Yapılanlar ({doneTasks.length})
                       <Icon name="chev" className={`size-4 shrink-0 text-mut/60 transition ${showDone ? "rotate-90" : ""}`} />
                     </button>
@@ -997,7 +997,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 {showDone && doneTasks.map(doneRow)}
               </ul>
               {hidden > 0 && (
-                <button type="button" onClick={restoreSteps} className="mt-2 px-1 text-[0.75rem] font-semibold text-acc">
+                <button type="button" onClick={restoreSteps} data-press className="btn btn-text btn-sm mt-2 text-acc">
                   Çıkarılanları geri getir ({hidden})
                 </button>
               )}
@@ -1039,14 +1039,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               </span>
               <b className="mt-3 text-[1.0625rem] font-semibold">Katılacak sporcuları ekle</b>
               <span className="mt-1 text-[0.8125rem] text-mut">Evrak için önce sporcuları seç</span>
-              <button type="button" onClick={() => setPick(true)} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white">
+              <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary mt-5 w-full">
                 <Icon name="plus" className="size-5" />
                 Sporcu ekle
               </button>
             </div>
           ) : (
             <div className={`${card} divide-y divide-line overflow-hidden`}>
-              <button type="button" onClick={() => setPick(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc active:bg-bg">
+              <button type="button" onClick={() => setPick(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
                   <Icon name="plus" className="size-5" />
                 </span>
@@ -1077,7 +1077,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
           {chosen.length > 0 && (
-            <button type="button" onClick={() => setTab("docs")} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white">
+            <button type="button" onClick={() => setTab("docs")} data-press className="btn btn-primary mt-3 w-full">
               {file ? "Evraka git" : "Evrakı hazırla"}
               <Icon name="chev" className="size-4" />
             </button>
@@ -1109,7 +1109,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
           ) : (
             <ul className={`${card} divide-y divide-line overflow-hidden`}>
               <li>
-                <button type="button" onClick={() => setSheetIds(sheetIds ? null : [])} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                <button type="button" onClick={() => setSheetIds(sheetIds ? null : [])} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <Check on={!sheetIds} tone="acc" />
                   <b className="flex-1 text-[0.9375rem] font-semibold">Hepsi</b>
                 </button>
@@ -1123,7 +1123,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                 };
                 return (
                   <li key={a.id}>
-                    <button type="button" onClick={toggle} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+                    <button type="button" onClick={toggle} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
                       <Check on={on} tone="acc" />
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
                       <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
@@ -1140,7 +1140,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               const on = ok && sheetShow[key] !== false;
               return (
                 <li key={key} className="flex items-center">
-                  <button type="button" onClick={() => ok && toggleShow(key)} disabled={!ok} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => ok && toggleShow(key)} disabled={!ok} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
                     <Check on={on} tone="acc" />
                     <span className="min-w-0 flex-1">
                       <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{title}</b>
@@ -1148,7 +1148,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                     </span>
                   </button>
                   {!ok && to !== "sum" && (
-                    <button type="button" onClick={() => (to === "notice" ? setNoticeMenu(true) : setTab(to))} className="shrink-0 px-4 py-3 text-[0.8125rem] font-semibold text-acc">
+                    <button type="button" onClick={() => (to === "notice" ? setNoticeMenu(true) : setTab(to))} data-press className="btn btn-text btn-sm shrink-0 text-acc">
                       {to === "notice" ? "Talimat" : "Ekle"}
                     </button>
                   )}
@@ -1232,14 +1232,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               <Label right={lacks ? `${lacks}` : "tamam"}>EKSİKLER</Label>
               <div className={`${card} divide-y divide-line overflow-hidden`}>
                 {!ready[0][1] && (
-                  <button type="button" onClick={() => setEdit(true)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => setEdit(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">{ready[0][0]}</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Düzelt</span>
                   </button>
                 )}
                 {!chosen.length && (
-                  <button type="button" onClick={() => setTab("people")} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => setTab("people")} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">Sporcu seçilmedi</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Sporcu ekle</span>
@@ -1261,7 +1261,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   const miss = missing(a, docs);
                   const gone = raceExpired(a, r);
                   return (
-                    <button key={a.id} type="button" onClick={() => setFix(a)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                       <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
@@ -1272,7 +1272,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   );
                 })}
                 {coachLack.length > 0 && (
-                  <button type="button" onClick={() => (setCoachOpen(true), setTimeout(() => coachRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <button type="button" onClick={() => (setCoachOpen(true), setTimeout(() => coachRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50))} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                     <span className="min-w-0 flex-1">
                       <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
@@ -1304,12 +1304,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   return (
                     <li key={k}>
                       <div className="flex items-center gap-1 pl-2 pr-1.5">
-                        <button type="button" onClick={() => pickDoc(k, !on)} aria-pressed={on} aria-label={`${label} ${on ? "çıkar" : "seç"}`} className="grid size-10 shrink-0 place-items-center">
+                        <button type="button" onClick={() => pickDoc(k, !on)} aria-pressed={on} aria-label={`${label} ${on ? "çıkar" : "seç"}`} data-press className="btn btn-icon size-10 shrink-0">
                           <span className={`grid size-6 place-items-center rounded-md ring-2 ${on ? "bg-acc text-white ring-acc" : "ring-line"}`}>
                             {on && <Icon name="check" className="size-4 [stroke-width:3]" />}
                           </span>
                         </button>
-                        <button type="button" onClick={main} aria-expanded={more ? open : undefined} className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
+                        <button type="button" onClick={main} aria-expanded={more ? open : undefined} data-press="row" className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
                           <span className="min-w-0 flex-1">
                             <b className={`block truncate text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
                             <span className={`block truncate text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
@@ -1317,7 +1317,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                           {more && <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />}
                         </button>
                         {part && (
-                          <button type="button" onClick={() => openPdf(part.file)} aria-label={`${label} aç`} className="grid size-10 shrink-0 place-items-center text-acc">
+                          <button type="button" onClick={() => openPdf(part.file)} aria-label={`${label} aç`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
                             <Icon name="print" className="size-5" />
                           </button>
                         )}
@@ -1355,7 +1355,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                         <button
                           type="button"
                           onClick={() => (dropFile(), setR((p) => ({ ...p, clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "" })))}
-                          className="mt-1 px-1 text-[0.8125rem] font-semibold text-acc"
+                          data-press className="btn btn-text btn-sm mt-1 text-acc"
                         >
                           Yarışın tarih, ad ve yerine dön
                         </button>
@@ -1417,7 +1417,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
           <Label>ORTAK BİLGİLER</Label>
           <div className={`${card} overflow-hidden`}>
-            <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+            <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <Icon name="edit" className="size-5 shrink-0 text-acc" />
               <span className="min-w-0 flex-1">
                 <b className="block text-[0.9375rem] font-semibold">İmza ve tarih</b>
@@ -1498,7 +1498,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
                   <b className="block text-[0.875rem] font-semibold">{extras.length} evrak yalnız bu telefonda</b>
                   Telefon değişirse kaybolur, Mac&apos;ten açılmaz.
                 </span>
-                <button type="button" disabled={upload != null} onClick={sendLocal} className="shrink-0 rounded-full bg-acc px-3.5 py-2 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
+                <button type="button" disabled={upload != null} onClick={sendLocal} data-press className="btn btn-primary btn-sm shrink-0">
                   Firebase&apos;e gönder
                 </button>
               </li>
@@ -1515,7 +1515,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               />
             ))}
             <li>
-              <button type="button" disabled={upload != null} onClick={() => pickExtra.current?.click()} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+              <button type="button" disabled={upload != null} onClick={() => pickExtra.current?.click()} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
                   <Icon name="plus" className="size-5" />
                 </span>
@@ -1545,12 +1545,12 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         <div className="mx-auto flex max-w-[26rem] gap-2">
           {file ? (
             <>
-              <button type="button" onClick={() => openPdf()} className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line">
+              <button type="button" onClick={() => openPdf()} data-press className="btn btn-secondary text-acc">
                 <Icon name="print" className="size-5" />
                 Aç
               </button>
               {onMail && (
-                <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" className="flex h-12 items-center gap-1.5 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50">
+                <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" data-press className="btn btn-secondary text-acc">
                   <Icon name="mail" className="size-5" />
                   {mailing ? "…" : "Mail"}
                 </button>
@@ -1582,13 +1582,13 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
               ))}
             </ul>
             <div className="mt-4 space-y-2">
-              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "update"))} className="h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white">
+              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "update"))} data-press className="btn btn-primary w-full">
                 Bilgileri güncelle
               </button>
-              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "keep"))} className="h-12 w-full rounded-xl bg-bg text-[0.9375rem] font-semibold text-acc">
+              <button type="button" onClick={() => (setAsk(null), takeNotice(ask.n, ask.pdf, "keep"))} data-press className="btn btn-secondary w-full text-acc">
                 Yalnız dosyayı sakla
               </button>
-              <button type="button" onClick={() => setAsk(null)} className="h-11 w-full text-[0.875rem] font-semibold text-mut">
+              <button type="button" onClick={() => setAsk(null)} data-press className="btn btn-text btn-sm w-full text-mut">
                 Vazgeç
               </button>
             </div>
@@ -1633,7 +1633,7 @@ function Pick({ open, athletes, value, onClose, onChange }) {
       <ul className="mt-2 divide-y divide-line">
         {list.map((a) => (
           <li key={a.id}>
-            <button type="button" onClick={() => toggle(a.id)} aria-pressed={sel.has(a.id)} className="flex w-full items-center gap-3 py-2.5 text-left active:bg-bg">
+            <button type="button" onClick={() => toggle(a.id)} aria-pressed={sel.has(a.id)} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
               <Check on={sel.has(a.id)} tone="acc" />
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
               <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
@@ -1710,10 +1710,10 @@ function DocFields({ a, onSave, onClose, onSaved }) {
         ))}
       </div>
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
-        <button type="button" onClick={onClose} className="h-12 rounded-xl bg-bg text-[0.9375rem] font-semibold">
+        <button type="button" onClick={onClose} data-press className="btn btn-secondary">
           Vazgeç
         </button>
-        <button type="button" onClick={save} disabled={busy} className="h-12 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+        <button type="button" onClick={save} disabled={busy} data-press className="btn btn-primary">
           {busy ? "Kaydediliyor…" : Object.keys(patch).length ? "Kaydet" : "Kapat"}
         </button>
       </div>
@@ -1762,7 +1762,7 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
         })}
         {chosen.length > 0 && (
           <li>
-            <button type="button" onClick={() => onTab("people")} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.875rem] font-semibold text-acc">
+            <button type="button" onClick={() => onTab("people")} data-press="row" className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.875rem] font-semibold text-acc">
               <Icon name={anyResult ? "edit" : "plus"} className="size-4" />
               {anyResult ? "Sonuçları düzenle" : "Sonuçları ekle"}
             </button>
@@ -1796,7 +1796,7 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
           <ul className={`${card} divide-y divide-line overflow-hidden`}>
             {steps.map((s) => (
               <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
-                <button type="button" onClick={() => onMark(s)} aria-label={`${s.label}: yapıldı`} className="grid size-11 shrink-0 place-items-center">
+                <button type="button" onClick={() => onMark(s)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon shrink-0">
                   <span className="size-[1.375rem] rounded-full border-2 border-line" />
                 </button>
                 <span className="min-w-0 flex-1 py-3 text-[0.9375rem] leading-snug text-mut">{s.label}</span>

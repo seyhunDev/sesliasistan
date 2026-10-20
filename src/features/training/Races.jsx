@@ -77,7 +77,7 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
         ) : (
           <>
             <RaceList races={races} present={present} onOpen={openRace} />
-            <button onClick={create} className="mt-4 h-12 w-full rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.99]">
+            <button onClick={create} data-press className="btn btn-primary mt-4 w-full">
               Yeni yarış
             </button>
           </>
@@ -102,7 +102,7 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
       <Sheet open={!!del} onClose={() => setDel(null)} title={`${races.find((r) => r.id === del)?.name || "Yarış"} silinsin mi?`}>
         <div className="grid gap-2 pb-2">
           <p className="text-[0.9375rem] text-fg2">Sonuçları da silinir, puan durumundan çıkar.</p>
-          <button onClick={drop} className="h-12 rounded-2xl bg-rec text-[1rem] font-semibold text-white active:translate-y-px">Sil</button>
+          <button onClick={drop} data-press className="btn btn-danger">Sil</button>
           <button onClick={() => setDel(null)} className="h-11 text-[0.9375rem] font-semibold text-fg2">Vazgeç</button>
         </div>
       </Sheet>
@@ -120,7 +120,7 @@ export function RaceList({ races, present, onOpen }) {
         <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
           {races.map((r) => (
             <li key={r.id}>
-              <button onClick={() => onOpen(r.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left active:bg-bg">
+              <button onClick={() => onOpen(r.id)} data-press="row" className="flex w-full items-center gap-2 px-4 py-3 text-left">
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{r.name}</span>
                 <span className="shrink-0 text-[0.875rem] text-mut">{[winner(r) ? `${winner(r)} birinci` : "Sonuç yok", r.fin != null ? mmss(r.fin) : ""].filter(Boolean).join(" · ")}</span>
                 <span className="shrink-0 text-mut">›</span>
@@ -142,7 +142,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
   return (
     <div className="pb-2">
       <div className="flex items-center gap-2">
-        <button onClick={onBack} className="h-9 shrink-0 rounded-full bg-bg px-3 text-[0.875rem] font-semibold text-acc">‹ Yarışlar</button>
+        <button onClick={onBack} data-press className="btn btn-secondary btn-sm shrink-0 text-acc">‹ Yarışlar</button>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -166,7 +166,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
             {race.finishes.map((f) => (
               <li key={f.id}>
-                <button onClick={() => onRow(f.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left active:bg-bg">
+                <button onClick={() => onRow(f.id)} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
                   <span className={`w-9 shrink-0 text-[0.9375rem] font-semibold ${f.code ? "text-rec" : "text-acc"}`}>{f.code || pl[f.id]}</span>
                   <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{f.name}</span>
                   {f.t != null && <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{mmss(f.t)}</span>}
@@ -188,7 +188,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
       )}
       {others.length > 0 && (
         <>
-          <button onClick={onMore} className="mt-4 w-full rounded-xl py-2 text-[0.875rem] font-semibold text-acc">
+          <button onClick={onMore} data-press className="btn btn-text btn-sm mt-4 w-full text-acc">
             {more ? "Diğer sporcuları gizle" : `Yoklamada olmayanlar · ${others.length}`}
           </button>
           {more && (
@@ -200,7 +200,7 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           )}
         </>
       )}
-      <button onClick={onDelete} className="mt-5 w-full py-2 text-[0.875rem] font-semibold text-rec">
+      <button onClick={onDelete} data-press className="btn btn-danger btn-sm mt-5 w-full">
         Yarışı sil
       </button>
     </div>
@@ -273,10 +273,10 @@ function CodeSheet({ f, place, penalty, n, onClose, onCode, onMove, onRemove, co
                 ))}
               </select>
             </label>
-            <button onClick={() => onMove(-1)} className="h-11 w-16 rounded-xl border border-line text-[1rem] font-semibold" aria-label="Yukarı">↑</button>
-            <button onClick={() => onMove(1)} className="h-11 w-16 rounded-xl border border-line text-[1rem] font-semibold" aria-label="Aşağı">↓</button>
+            <button onClick={() => onMove(-1)} data-press className="btn btn-secondary w-16" aria-label="Yukarı">↑</button>
+            <button onClick={() => onMove(1)} data-press className="btn btn-secondary w-16" aria-label="Aşağı">↓</button>
           </div>
-          <button onClick={onRemove} className="mt-3 w-full py-2 text-[0.9375rem] font-semibold text-rec">Sıradan çıkar</button>
+          <button onClick={onRemove} data-press className="btn btn-danger btn-sm mt-3 w-full">Sıradan çıkar</button>
         </div>
       )}
     </Sheet>

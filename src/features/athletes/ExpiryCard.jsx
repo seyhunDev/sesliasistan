@@ -14,7 +14,7 @@ export function ExpiryCard({ athletes }) {
   const gone = rows.filter((r) => r.items.some((x) => x.state === "expired")).length;
   return (
     <div className={`mt-3 rounded-2xl ${gone ? "bg-rec/10" : "bg-amber-500/10"}`}>
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={() => setOpen((o) => !o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <Icon name="alert" className={`size-5 shrink-0 ${gone ? "text-rec" : "text-amber-700"}`} />
         <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
           <b className="block font-semibold">{rows.length} sporcunun belgesi {gone ? "bitti ya da bitiyor" : "yakında bitiyor"}</b>

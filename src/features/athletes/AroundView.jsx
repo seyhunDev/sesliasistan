@@ -97,7 +97,7 @@ export function AroundView({ r, onChange, onWeather }) {
         type="button"
         onClick={fetchAll}
         disabled={!!busy}
-        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-70"
+        data-press className="btn btn-primary mt-3 w-full"
       >
         {busy ? <Loader size="sm" className="text-white" label={busy} /> : <Icon name="spark" className="size-[1.125rem]" />}
         {busy ? `${busy}…` : a ? "Yeniden getir" : "Yapay zekayla getir"}
@@ -156,7 +156,7 @@ export function AroundView({ r, onChange, onWeather }) {
                 <ul className={`${card} divide-y divide-line overflow-hidden`}>
                   {list.map((p) => (
                     <li key={p.id} className="flex items-center pl-4 pr-1">
-                      <button type="button" onClick={() => look(p)} className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
+                      <button type="button" onClick={() => look(p)} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-left">
                         <span className="grid size-8 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold text-white" style={{ background: KINDS[p.kind].tone }}>
                           {KINDS[p.kind].letter}
                         </span>
@@ -169,7 +169,7 @@ export function AroundView({ r, onChange, onWeather }) {
                       <a href={placeLink(p)} target="_blank" rel="noreferrer" aria-label={`${p.name}: ${appName}'da aç`} className="grid size-10 shrink-0 place-items-center text-acc">
                         <Icon name="nav" className="size-[1.125rem]" />
                       </a>
-                      <button type="button" onClick={() => removePlace(p.id)} aria-label={`${p.name} sil`} className="grid size-10 shrink-0 place-items-center text-mut">
+                      <button type="button" onClick={() => removePlace(p.id)} aria-label={`${p.name} sil`} data-press className="btn btn-icon size-10 shrink-0 text-mut">
                         <Icon name="x" className="size-4" />
                       </button>
                     </li>

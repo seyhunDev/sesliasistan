@@ -164,7 +164,7 @@ export function RaceMedia({ orgId, id }) {
       sub={sub}
       back={`/athletes/races/${id}`}
       action={
-        <button type="button" onClick={() => setSum(true)} className="h-9 rounded-full bg-card px-3.5 text-[0.875rem] font-semibold ring-1 ring-line active:scale-95">
+        <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary btn-sm">
           Özet
         </button>
       }
