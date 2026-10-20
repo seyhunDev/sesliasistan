@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { attQuery: "attQuery", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
+const PATH = { attQuery: "attQuery", clubAsk: "clubAsk", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -186,7 +186,7 @@ const CROSS = [
   ["plan", "yarın 9'da fiş teslimi için muhasebeciye git, takvime ekle", "plan, fiş kamerası değil"],
   ["send", "Ali'ye yaz, ayarları değiştirsin", "mesaj, sayfa açma değil"],
   ["task", "kişileri güncelle görevi ekle", "görev, sayfa açma değil"],
-  ["query", "kaç sporcumuz var", "soru, sayfa açma değil"],
+  ["clubAsk", "kaç sporcumuz var", "kulüp sorusu (telefonda cevap), sayfa açma değil"],
   ["delete", "Ali'nin görevini kaldır", "silme"],
   ["send", "Ali'ye söyle teşekkürler", "mesaj, kapatma değil"],
   ["query", "bu ay kaç aidat ödendi", "soru (aidat), ödeme sorusu karışmamalı"],
@@ -194,7 +194,10 @@ const CROSS = [
   ["task", "yarın Ali'yi ara diye görev ekle", "görev, arama değil"],
   ["noteDone", "malzeme odası notunu arşive al", "not arşivi, sporcu arşivi değil"],
   ["send", "velilere yaz, aidat son günü 10 Ekim", "mesaj, aidat hatırlatması değil"],
-  ["query", "kaç sporcu var", "soru, sporcu ekleme değil"],
+  ["clubAsk", "kaç sporcu var", "kulüp sorusu (telefonda cevap), sporcu ekleme değil"],
+  ["clubAsk", "kimin doğum günü yaklaşıyor", "doğum günü sorusu, doğum günü ekleme değil"],
+  ["clubAsk", "bu ay kimlerin doğum günü var", "doğum günü sorusu, doğum günü ekleme değil"],
+  ["clubAsk", "sıradaki yarış ne zaman", "yarış sorusu, yarış ekleme değil"],
   ["send", "Ali'ye yaz, fişini ödedim", "mesaj, fiş ödemesi değil"],
   ["attQuery", "dün gelmeyenler kimdi?", "yoklama sorusu, veliye haber değil"],
   ["send", "velilere yaz, gelmeyenler cumartesi telafi yapacak", "mesaj, gelmeyen bildirimi değil"],
@@ -660,5 +663,30 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
     ["gelmeyenlerin velilerine haber ver", AQ("")],
     ["Ali'ye geldi mi diye sor", AQ("")],
     ["bugün antrenman var mı", AQ("")],
+  ]);
+}
+
+// Kulüp soruları: telefondaki veriden cevap (lib/clubAsk.js; istek haritası 2026-10-20)
+{
+  const { clubAsk, clubAnswer } = await import("@/lib/clubAsk");
+  const D = {
+    today: "2026-10-20",
+    athletes: [{ studentName: "Ali Kaya", status: "active", parentName: "Mehmet Kaya", parentPhone: "0532 111 22 33", studentBirthDate: "2014-11-02" }, { studentName: "Zeynep Ak", status: "active", studentBirthDate: "2013-03-05" }, { studentName: "Eski Sporcu", status: "passive" }],
+    races: [{ name: "Foça Kupası", district: "Foça", startDate: "2026-10-26", endDate: "2026-10-31" }, { name: "Çeşme Kupası", startDate: "2026-11-07", endDate: "2026-11-11" }, { name: "Eski", startDate: "2026-09-01", endDate: "2026-09-03" }],
+    birthdays: [{ name: "Annem", month: 10, day: 25, year: 1960 }, { name: "Ayşe", month: 12, day: 1 }],
+  };
+  const CQ = (want) => ({ desc: want || "kulüp sorusu değil", fn: (s) => { const q = clubAsk(s); return q ? clubAnswer(q, D) : ""; }, ok: (r) => r === want });
+  group("Kulüp soruları (telefonda cevap)")([
+    ["kaç sporcumuz var", CQ("2 aktif sporcu var.")],
+    ["sıradaki yarış ne zaman", CQ("Sıradaki yarış Foça Kupası, Foça; Pazartesi (6 gün sonra) başlıyor. Sonra: Çeşme Kupası, 7 Kas.")],
+    ["yarışa kaç gün kaldı", CQ("Sıradaki yarış Foça Kupası, Foça; Pazartesi (6 gün sonra) başlıyor. Sonra: Çeşme Kupası, 7 Kas.")],
+    ["kimin doğum günü yaklaşıyor", CQ("Yaklaşan doğum günleri: Annem Pazar (5 gün sonra), 66 yaşına giriyor.")],
+    ["Ali'nin velisi kim", CQ("Ali'nin velisi Mehmet Kaya, telefonu 0532 111 22 33.")],
+    ["Zeynep'in velisinin numarası ne", CQ("Zeynep için veli telefonu yazılmamış.")],
+    ["Ali kaç yaşında", CQ("Ali 11 yaşında.")],
+    ["annem kaç yaşında", CQ("")],
+    ["yeni sporcu ekle", CQ("")],
+    ["Ali'ye yaz yarış ne zaman", CQ("")],
+    ["Ayşe'nin doğum günü 12 Mart", CQ("")],
   ]);
 }

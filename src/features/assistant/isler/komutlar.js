@@ -11,6 +11,7 @@ import * as arama from "./arama";
 import * as boykilo from "./boykilo";
 import * as yarisMedya from "./yarisMedya";
 import * as antrenmanYaris from "./antrenmanYaris";
+import * as sorular from "./sorular";
 
 const first = async (list, ctx, s, viaVoice) => {
   for (const f of list) {
@@ -20,8 +21,8 @@ const first = async (list, ctx, s, viaVoice) => {
   return false;
 };
 
-// Yoklama sorusu, yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
-const EXTRA = [yoklama.attQueryCmd, yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
+// Yoklama sorusu, kulüp soruları, yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
+const EXTRA = [yoklama.attQueryCmd, sorular.clubAskCmd, yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
 // Yarış günü (rüzgâr kaydı, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
 const MORE = [yarisMedya.timerCmd, yarisMedya.windLogCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 
