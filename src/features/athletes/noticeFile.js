@@ -5,7 +5,8 @@
 // Yarışta künye durur: noticeFile { id, name, size, path, url, at } (sonuçlarda results.files).
 // Yükleme olmazsa eski yol: Firestore'da parçalar orgs/{org}/noticeFiles/{id}/parts/{000..} (künyede parts;
 // açılınca bu cihazda saklanır). Eski talimatlar parçalı yoldan okunmaya devam eder.
-import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
+import { Bytes, collection, doc, getDocs, serverTimestamp } from "firebase/firestore";
+import { deleteDoc, setDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { compressImage } from "@/lib/image";

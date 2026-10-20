@@ -1518,14 +1518,26 @@ group("Rüzgâr haritası")([
   ["günün en serti", F("o günün en yüksek knot'u", () => WM.dayMax({ w: [5, 12, null, 9] }, 0, 4) === 12 && WM.dayMax({ w: [null] }, 0, 1) === null)],
 ]);
 
-// İnternet göstergesi (netSync.js): üstteki şeridin yazısı
+// İnternet göstergesi (netSync.js): üstteki şeridin yazısı. İnternet varken bekleyen kayıt hemen şerit açmaz.
 const NS = await import("@/lib/netSync");
 group("İnternet göstergesi")([
   ["bağlı, bekleyen yok", F("şerit yok", () => NS.netText({ online: true, pending: false, sent: false }) === "")],
-  ["internet yok", F("bağlantı gelince gönderilir", () => /^İnternet yok · kaydettiklerin bağlantı gelince gönderilir$/.test(NS.netText({ online: false })))],
-  ["internet yok, kayıt var", F("kaydedildi, gönderilecek", () => /kaydedildi, bağlantı gelince gönderilecek/.test(NS.netText({ online: false, pending: true })))],
-  ["zayıf bağlantı", F("gönderiliyor", () => /^Bağlantı zayıf/.test(NS.netText({ online: true, pending: true })) && NS.netTone({ online: true, pending: true }) === "wait")],
-  ["hepsi gitti", F("gönderildi, yeşil", () => /gönderildi$/.test(NS.netText({ online: true, sent: true })) && NS.netTone({ online: true }) === "ok")],
+  ["internet yok", F("telefonda saklanır", () => /^İnternet yok · kaydettiklerin telefonda saklanır$/.test(NS.netText({ online: false })))],
+  ["internet yok, kayıt var", F("bağlantı gelince gönderilecek", () => /telefonda, bağlantı gelince gönderilecek/.test(NS.netText({ online: false, pending: true })))],
+  ["uzun süren gönderim", F("'zayıf' demeden gönderiliyor", () => NS.netText({ online: true, pending: true }) === "Kayıtların gönderiliyor…" && NS.netTone({ online: true, pending: true }) === "wait")],
+  ["hepsi gitti", F("gönderildi", () => /gönderildi$/.test(NS.netText({ online: true, sent: true })) && NS.netTone({ online: true }) === "ok")],
+  ["bekleme süreleri", F("internetsiz hemen, varken 12 sn sonra; kısa kopma 2,5 sn sayılmaz", () => NS.pendingGrace(false) === 0 && NS.pendingGrace(true) >= 10e3 && NS.OFFLINE_GRACE >= 2000)],
+]);
+
+// Kayıt sözü (soon.js settle, lib/firebase/write.js): internetsiz yazma takılmaz, erken hata yine görünür
+const SO = await import("@/lib/soon");
+const never = () => new Promise(() => {});
+const later = (ms, v, bad) => new Promise((res, rej) => setTimeout(() => (bad ? rej(new Error("ret")) : res(v)), ms));
+group("Kayıt sözü")([
+  ["onay hızlı", F("yazmanın değeri döner", async () => (await SO.settle(later(5, "x"), 60)) === "x")],
+  ["onay hiç gelmiyor (internet yok)", F("söz yine biter, takılmaz", async () => (await SO.settle(never(), 40)) === undefined)],
+  ["erken ret", F("hata fırlatılır", async () => { try { await SO.settle(later(5, 0, true), 60); return false; } catch (e) { return e.message === "ret"; } })],
+  ["geç ret", F("söz biter, hata arkada kalır (ekranda uyarı olayı)", async () => (await SO.settle(later(60, 0, true), 20)) === undefined && (await later(80, true)))],
 ]);
 
 // Karanlık mod (theme.js): seçim ve otomatik

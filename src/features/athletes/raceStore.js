@@ -5,7 +5,8 @@
 // Telefonda kopya tutulmaz: yüklenen/taşınan dosya yalnız Storage'da durur, açılınca indirilir (tarayıcı önbelleği yeter).
 // Önceki sürümün bıraktığı kopyalar ("rf:<id>") dropRaceCopies ile silinir.
 // Eskiden bu evrak yalnız telefonda duruyordu ("<yarış>:extra", raceFiles.js); moveLocalExtras onları Storage'a taşır.
-import { arrayUnion, doc, getDoc, updateDoc } from "firebase/firestore";
+import { arrayUnion, doc, getDoc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getStorage, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { dropRaceFile, listRaceFiles, saveRaceFile } from "./raceFiles";

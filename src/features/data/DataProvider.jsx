@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
+import { afterSent, setDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { Splash } from "@/components/ui/Splash";
 import { checkWrites } from "@/features/pwa/netWatch";
 import { db } from "@/lib/firebase/clientApp";
@@ -30,7 +31,7 @@ const NAMES = { plan: "Plan", task: "Görev", note: "Not", receipt: "Fiş", birt
 // Kişiye özel kayıtlar: çalışan da kendi eklediğini onaysız siler (Firestore kuralları da izin verir)
 const PERSONAL = ["birthday", "lesson"];
 const UNDO_MS = 5000; // silme bu süre boyunca geri alınabilir
-const SEEN_MS = 4 * 60e3;
+const SEEN_MS = 5 * 60e3;
 // Okuma tasarrufu (ana hesap): 90 günden eski planlar canlı dinlenmez; günde bir kez sunucudan okunur, arada cihazdaki
 // önbellekten gösterilir (yerel değişiklikler de görünür). Uygulama her açılışta tüm planları yeniden saymaz.
 const OLD_DAYS = 90;
@@ -135,7 +136,7 @@ export function DataProvider({ children }) {
   // Sorumlulara "sana atandı" bildirimi (sunucu her kişiye bir kez gönderir)
   // Sorumlunun telefonuna gitmediyse ana hesaba hemen söylenir (neden kaydın Sorumlu bölümünde de yazar)
   const notifyAssign = useCallback((kind, id) =>
-    authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id }) })
+    afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id }) }))
       .then((r) => r.json())
       .then((j) => {
         const f = j?.fail?.[0];
@@ -166,7 +167,7 @@ export function DataProvider({ children }) {
   }, [toast]);
   // Kayda not eklendi / kişi tamamladı: kaydı verene ve ana hesaba bildirim (metni sunucu kayıttan okur)
   const notifyEvent = (kind, id, event) =>
-    authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, event }) }).catch(() => {});
+    afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, id, event }) })).catch(() => {});
 
   // Hata olursa kullanıcıya söyle. Ekrandaki iyimser değişikliği canlı dinleyici zaten geri alır.
   const fail = useCallback(
@@ -283,7 +284,7 @@ export function DataProvider({ children }) {
     if (!uid || !orgId || !staff) return;
     let last = 0;
     const ping = () => {
-      if (document.visibilityState !== "visible" || Date.now() - last < 60e3) return;
+      if (document.visibilityState !== "visible" || navigator.onLine === false || Date.now() - last < SEEN_MS - 5e3) return;
       last = Date.now();
       updateDoc(doc(db, "orgs", orgId, "members", uid), { lastSeen: serverTimestamp() }).catch(() => {});
     };
@@ -877,10 +878,10 @@ export function DataProvider({ children }) {
       if (kasa === true && link?.incomeId) linkCashTo(ownerId, link.incomeId, { src: `rc:${ref.id}`, amount: totalOf(body) / 100, who: link.who ? "" : body.merchant }).catch((e) => fail(e, "Kasa çıkışı"));
       else if (kasa === true) cashOutFor(ownerId, { src: `rc:${ref.id}`, book: body.scope, cat: "Fiş", who: body.merchant, amount: totalOf(body) / 100, note: [body.cat, body.note].filter(Boolean).join(" · "), date: body.date }).catch((e) => fail(e, "Kasa çıkışı"));
       saved
-        .then(() => kasa === undefined && pay.payStatus === "pending" && authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) }).catch(() => {}))
+        .then(() => kasa === undefined && pay.payStatus === "pending" && afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: ref.id, event: "new" }) })).catch(() => {}))
         .catch((e) => fail(e, "Fiş kaydetme"));
       // Fiş numarası (kulüp genelinde sıralı) sunucudan; internet yoksa sonra verilir (aşağıdaki numarasız fiş taraması)
-      const no = saved.then(() => receiptNos([ref.id])).then((m) => m[ref.id] || null).catch(() => null);
+      const no = saved.then(() => afterSent(() => receiptNos([ref.id]))).then((m) => m[ref.id] || null).catch(() => null);
       return { id: ref.id, no };
     },
     [getOrgId, fail],
@@ -949,7 +950,7 @@ export function DataProvider({ children }) {
           cashOutFor(org, { src: `rc:${id}`, book: r.scope, cat: "Fiş", who, amount: totalOf(r) / 100, note: [r.merchant, noText(r.no)].filter(Boolean).join(" · ") }).catch((e) => fail(e, "Kasa çıkışı"));
         }
         await updateDoc(doc(db, "orgs", org, "receipts", id), patch);
-        if (paid) authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: id }) }).catch(() => {});
+        if (paid) afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ receiptId: id }) })).catch(() => {});
       } catch (e) {
         fail(e, "Ödeme güncelleme");
       }

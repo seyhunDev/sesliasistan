@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanLive, pickTimer as pick, takeTimer } from "@/lib/raceLive";
 import { readTimer, writeTimer } from "@/features/training/Countdown";

@@ -1,6 +1,7 @@
 "use client";
 
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getBlob, getDownloadURL, getStorage, ref as sref, uploadBytes } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";

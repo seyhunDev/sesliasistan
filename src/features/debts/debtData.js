@@ -2,7 +2,8 @@
 
 // Borçlar tek belgede: orgs/{orgId}/debts/book = { items, updatedAt } (yalnız ana hesap; mevcut kural ana hesaba orgs altını açıyor).
 // Okuma sayfa açılınca bir kez (1 okuma), 3 dakika bellekte; değişiklik okuma + yazma işlemiyle (iki cihaz aynı anda yazsa da kaybolmaz).
-import { doc, getDoc, runTransaction, setDoc } from "firebase/firestore";
+import { doc, getDoc, runTransaction } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanBook } from "@/lib/debts";
 

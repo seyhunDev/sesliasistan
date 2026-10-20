@@ -5,7 +5,8 @@
 // news/{id} { title, body, date, published, cover, photoCount, createdAt, updatedAt, source: "afis-asistani", sourceId }
 // news/{id}/photos/{"0".."7"} { data (JPEG dataURL), order }; 0 afişin kendisi.
 // Yazma izni o projenin kurallarında: kulüp hesabıyla giriş + admins/{uid} belgesi. Kurallar burada değişmez.
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, where } from "firebase/firestore";
+import { deleteDoc, setDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { dikiliAuth, dikiliDb } from "@/features/athletes/dikili";
 import { NEWS_MAX_PHOTOS, newsFields } from "./newsModel";
 

@@ -1,4 +1,5 @@
-import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
+import { afterSent, addDoc, deleteDoc, updateDoc } from "@/lib/firebase/write";
 import { authFetch } from "@/lib/authFetch";
 import { db } from "@/lib/firebase/clientApp";
 import { fromAi, memberData, parsePerson } from "./assistPerson";
@@ -54,7 +55,7 @@ export const newPassword = () => Array.from(crypto.getRandomValues(new Uint32Arr
 
 // Giriş hesabı aç (ana hesap, ayrı onaydan sonra): var olan kişi kaydına; hata metni sunucudan
 export async function openAccount({ uid, name, kind, login, password }) {
-  const res = await authFetch("/api/staff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ memberId: uid, name, kind, login, password }) });
+  const res = await afterSent(() => authFetch("/api/staff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ memberId: uid, name, kind, login, password }) }), 8000);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Hesap açılamadı.");
   return data;

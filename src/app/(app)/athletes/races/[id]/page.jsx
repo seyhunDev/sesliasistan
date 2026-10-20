@@ -18,7 +18,8 @@ import { addNoticePlans } from "@/features/athletes/raceNotice";
 import { dropLive } from "@/features/athletes/raceLiveStore";
 import { mailToMe } from "@/features/mail/outbox";
 import { db } from "@/lib/firebase/clientApp";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { todayStr } from "@/lib/utils/format";
 import { goBack } from "@/lib/navTrail";
 

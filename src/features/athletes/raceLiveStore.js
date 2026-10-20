@@ -4,7 +4,8 @@
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 1600 px JPEG; video (en çok 2 dk) 960 px'e küçültülerek yeniden kaydedilir (sessiz, video süresi kadar sürer).
-import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { deleteDoc, setDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";

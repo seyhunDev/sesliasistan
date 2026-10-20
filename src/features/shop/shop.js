@@ -3,7 +3,8 @@
 // Ortak alışveriş listesi: orgs/{ana hesap}/shop/{madde} = { text, list: "family" | "team", done, by, at, doneBy, doneAt }
 // Aile listesini ana hesap + aile bireyleri, Ekip listesini ana hesap + çalışanlar görür (firestore.rules).
 import { useEffect, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
+import { addDoc, deleteDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { kindOf } from "@/lib/kinds";
 

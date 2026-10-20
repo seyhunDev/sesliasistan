@@ -3,7 +3,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   collection,
-  deleteDoc,
   deleteField,
   doc,
   getDocs,
@@ -13,10 +12,9 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  setDoc,
-  updateDoc,
   where,
 } from "firebase/firestore";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -35,7 +33,7 @@ import { dropChatFile } from "@/features/chat/chatUpload";
 // Kurallar (firestore.rules): sohbeti yalnızca üyeleri okur; kimse (ana hesap dahil) başkasının konuşmasını göremez.
 
 const Ctx = createContext(null);
-const SEEN_MS = 2 * 60e3;
+const SEEN_MS = 5 * 60e3; // her yazma, rehberi dinleyen herkese bir okuma (kota)
 export const toMs = (v) => (!v ? 0 : typeof v === "number" ? v : typeof v.toMillis === "function" ? v.toMillis() : Date.parse(v) || 0);
 export const dmId = (a, b) => `dm_${[a, b].sort().join("_")}`;
 export const unreadOf = (c, uid) => Math.max(0, (c?.seq || 0) - (c?.read?.[uid] || 0));
@@ -102,7 +100,7 @@ export function ChatProvider({ children }) {
     );
     let last = 0;
     const ping = () => {
-      if (document.visibilityState !== "visible" || Date.now() - last < 60e3) return;
+      if (document.visibilityState !== "visible" || navigator.onLine === false || Date.now() - last < SEEN_MS - 5e3) return;
       last = Date.now();
       setDoc(doc(db, "orgs", orgId, "directory", uid), { name: profile?.name || "Kişi", role: orgId === uid ? "owner" : "staff", ...(orgId === uid ? {} : { kind: kindOf(profile) }), lastSeen: serverTimestamp() }, { merge: true }).catch(
         (e) => console.warn("[chat] rehber yazılamadı:", e.code),

@@ -1,4 +1,5 @@
-import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, increment, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, getDocs, increment, query, where } from "firebase/firestore";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { knownLesson, lessonKey, predict, train } from "./model";
 

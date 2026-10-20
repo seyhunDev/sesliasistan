@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { syncPush } from "@/lib/push";
 import { wireNativePush } from "@/lib/nativePush";
 import { applyTheme, readTheme, watchTheme } from "@/lib/theme";
-import { netText, netTone } from "@/lib/netSync";
+import { OFFLINE_GRACE, netText, netTone } from "@/lib/netSync";
 import { checkWrites, netState, subscribeNet } from "./netWatch";
 import { watchChunkErrors } from "@/lib/crash";
 
@@ -62,25 +62,31 @@ const subscribe = (cb) => {
 // İnternet var mı (sunucuda her zaman var sayılır)
 export const useOnline = () => useSyncExternalStore(subscribe, () => navigator.onLine, () => true);
 
-// Üstte ince şerit: internet yokken, kayıt sunucuya gitmeyi beklerken ve hepsi gidince kısa süre "gönderildi".
-// Ekranın en üstünde sabit (iPhone durum çubuğunun altına kadar); açıkken sayfa ve yapışkan başlıklar aşağı kayar
-// (body[data-net], globals.css). Kayıtlar cihazda (IndexedDB) sırada kalır, uygulama kapansa da bağlantı gelince gider.
+// Üstte ince şerit: yalnız internet gerçekten yokken (kısa kopma sayılmaz), kayıt uzun süre gitmeyi beklerken ve
+// bekleyenler gidince kısa süre "gönderildi". Ekranın en üstünde sabit (iPhone durum çubuğunun altına kadar); açıkken sayfa ve
+// yapışkan başlıklar aşağı kayar (body[data-net], globals.css). Kayıtlar telefonda (IndexedDB) sırada kalır, uygulama kapansa da
+// bağlantı gelince gider (lib/firebase/write.js).
 export function OfflineBanner() {
   const online = useOnline();
+  const [down, setDown] = useState(false); // OFFLINE_GRACE süresinden uzun çevrimdışı
   const net = useSyncExternalStore(subscribeNet, netState, netState);
-  const text = netText({ online, ...net });
+  // Kopmanın ilk saniyelerinde hiçbir şey gösterilmez (kısa kopma)
+  const text = online || down ? netText({ online: !down, ...net }) : "";
 
-  // Bağlantı değişince, uygulamaya dönünce ve aralıklarla (çevrimdışıyken sık) bekleyen yazma var mı bakılır
   useEffect(() => {
-    checkWrites();
-    const t = setInterval(() => document.visibilityState === "visible" && checkWrites(), online ? 20e3 : 3e3);
-    const vis = () => document.visibilityState === "visible" && checkWrites();
-    document.addEventListener("visibilitychange", vis);
+    if (online) return void checkWrites(); // telefonda bekleyen varsa gidince "gönderildi"
+    const t = setTimeout(() => setDown(true), OFFLINE_GRACE);
     return () => {
-      clearInterval(t);
-      document.removeEventListener("visibilitychange", vis);
+      clearTimeout(t);
+      setDown(false);
     };
   }, [online]);
+
+  // Kullanıcının kaydı 2,5 sn içinde onaylanmadı (lib/soon.js): bekleyen kayıt izlenir
+  useEffect(() => {
+    window.addEventListener("sa-write-wait", checkWrites);
+    return () => window.removeEventListener("sa-write-wait", checkWrites);
+  }, []);
 
   useEffect(() => {
     if (!text) return;
@@ -89,11 +95,11 @@ export function OfflineBanner() {
   }, [text]);
 
   if (!text) return null;
-  const ok = netTone({ online, ...net }) === "ok";
   return (
     <div
       role="status"
-      className={`fade-in fixed inset-x-0 top-0 z-[45] flex h-[calc(1.75rem+env(safe-area-inset-top))] items-end justify-center px-4 pb-1.5 text-center text-[0.8125rem] font-medium text-white ${ok ? "bg-[#1f7a4d]" : "bg-[#1f2a2e]"}`}
+      data-net-banner={netTone({ online: !down, ...net })}
+      className="fade-in fixed inset-x-0 top-0 z-[45] flex h-[calc(1.75rem+env(safe-area-inset-top))] items-end justify-center bg-fg px-4 pb-1.5 text-center text-[0.8125rem] font-medium text-bg"
     >
       {text}
     </div>

@@ -2,7 +2,7 @@ import { Icon } from "@/components/ui/Icon";
 import { FadeImg } from "@/components/ui/FadeImg";
 import { toMs } from "./ChatProvider";
 
-export const ONLINE_MS = 3 * 60e3;
+export const ONLINE_MS = 7 * 60e3; // "son görülme" 5 dakikada bir yazılır (ChatProvider SEEN_MS)
 const dayKey = (ms) => new Date(ms).toDateString();
 
 // Liste zamanı: bugün saat, dün "Dün", bu hafta gün adı, daha eski tarih
