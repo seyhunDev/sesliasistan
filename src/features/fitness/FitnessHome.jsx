@@ -269,7 +269,7 @@ export function FitnessHome() {
     }
   }
   async function drop(pg = prog) {
-    if (!window.confirm("Program silinsin mi? Bütün antrenmanları (yapılanlar dahil), fotoğraf ve videoları da silinir. Geri alınamaz.")) return false;
+    if (!window.confirm("Program silinsin mi? Bütün antrenmanları (yapılanlar dahil) silinir. Hareketlerim'deki hareketler, fotoğraf ve videolar kalır. Geri alınamaz.")) return false;
     setBusy("drop");
     try {
       const n = await deleteProgram(orgId, pg.id);

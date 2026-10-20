@@ -87,9 +87,12 @@ export async function deleteProgram(orgId, id) {
   await dropPlans(orgId, snap.docs.map((d) => d.id));
   const list = cache.org === orgId && cache.list ? cache.list : [];
   const prog = list.find((p) => p.id === id);
-  // Kütüphanedeki (başka programlarda da kullanılan) hareket fotoğraf/videoları silinmez
-  const others = new Set([...list.filter((p) => p.id !== id).flatMap(mediaOf).map((m) => m.id), ...libMediaIds(await loadLib(orgId).catch(() => null))]);
-  await Promise.all(mediaOf(prog).filter((m) => !others.has(m.id)).map((m) => dropMedia(orgId, m)));
+  // Hareketlerim'deki (ya da başka programdaki) fotoğraf/videolar silinmez; kütüphane okunamazsa hiçbiri silinmez
+  const lib = await loadLib(orgId).catch(() => null);
+  if (lib) {
+    const others = new Set([...list.filter((p) => p.id !== id).flatMap(mediaOf).map((m) => m.id), ...libMediaIds(lib)]);
+    await Promise.all(mediaOf(prog).filter((m) => !others.has(m.id)).map((m) => dropMedia(orgId, m)));
+  }
   await deleteDoc(doc(col(orgId), id));
   if (cache.org === orgId && cache.list) {
     cache.list = cache.list.filter((p) => p.id !== id);
