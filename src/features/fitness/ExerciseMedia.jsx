@@ -277,11 +277,11 @@ export function ExerciseMedia({ media = [], ex, edit, onChange, className = "", 
       )}
       {edit && list.length < MEDIA_MAX && !busy && (
         <div className="mt-1.5 flex gap-2">
-          <button type="button" onClick={() => photoRef.current?.click()} className="flex h-9 items-center gap-1.5 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold">
+          <button type="button" onClick={() => photoRef.current?.click()} data-press className="btn btn-secondary btn-sm">
             <Icon name="camera" className="size-4 text-acc" />
             Fotoğraf ekle
           </button>
-          <button type="button" onClick={() => videoRef.current?.click()} className="flex h-9 items-center gap-1.5 rounded-full bg-bg px-3 text-[0.8125rem] font-semibold">
+          <button type="button" onClick={() => videoRef.current?.click()} data-press className="btn btn-secondary btn-sm">
             <Icon name="video" className="size-4 text-acc" />
             Video ekle
           </button>

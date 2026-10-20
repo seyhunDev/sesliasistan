@@ -248,11 +248,11 @@ export function FitWorkout({ rec, by, hero = false }) {
               <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Not (isteğe bağlı)" className="h-10 w-full min-w-0 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none" />
             </div>
           ) : (
-            <button type="button" onClick={() => setExtra(true)} className="mt-2 px-1 text-[0.8125rem] font-semibold text-acc">
+            <button type="button" onClick={() => setExtra(true)} data-press className="btn btn-text btn-sm mt-2 text-acc">
               {lock ? "+ Not ekle" : "+ Süre ve not ekle"}
             </button>
           )}
-          <button type="button" onClick={() => finish("done")} className="mt-3 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+          <button type="button" onClick={() => finish("done")} data-press className="btn btn-primary mt-3 w-full">
             Antrenmanı bitir
           </button>
         </section>
@@ -275,7 +275,7 @@ export function FitWorkout({ rec, by, hero = false }) {
             const on = open === i;
             return (
               <li key={i}>
-                <button type="button" onClick={() => setOpen(on ? -1 : i)} aria-expanded={on} className="flex w-full items-center gap-3 px-3 py-2.5 text-left">
+                <button type="button" onClick={() => setOpen(on ? -1 : i)} aria-expanded={on} data-press="row" className="flex w-full items-center gap-3 px-3 py-2.5 text-left">
                   <span className="relative size-13 shrink-0">
                     <span className="grid size-13 place-items-center overflow-hidden rounded-[0.875rem] bg-accbg text-[0.875rem] font-semibold text-acc">
                       <Pic it={it} className="size-full" />
@@ -355,7 +355,7 @@ export function FitWorkout({ rec, by, hero = false }) {
                       ))}
                     </div>
                     {!lock && (
-                      <button type="button" onClick={() => addSet(i)} className="mt-1.5 text-[0.75rem] font-semibold text-acc">
+                      <button type="button" onClick={() => addSet(i)} data-press className="btn btn-text btn-sm mt-1.5 text-acc">
                         + Set
                       </button>
                     )}
@@ -387,7 +387,7 @@ export function FitWorkout({ rec, by, hero = false }) {
       )}
 
       {!allDone && total > 0 && (
-        <button type="button" onClick={() => finish("skip")} className="mt-4 h-10 w-full text-center text-[0.8125rem] font-semibold text-mut">
+        <button type="button" onClick={() => finish("skip")} data-press className="btn btn-text btn-sm mt-4 w-full text-mut">
           Bugün yapamayacağım
         </button>
       )}
@@ -395,11 +395,11 @@ export function FitWorkout({ rec, by, hero = false }) {
       {/* Başla / devam et: ekranın altında sabit */}
       {total > 0 && !allDone && !rest && (
         <div className="sticky bottom-0 z-10 -mx-5 mt-3 bg-gradient-to-b from-bg/0 to-bg to-30% px-5 pb-1 pt-4">
-          <button type="button" onClick={() => setGuide(true)} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white shadow-[0_8px_20px_-10px_var(--acc)] active:scale-[.98]">
+          <button type="button" onClick={() => setGuide(true)} data-press className="btn btn-primary h-14 w-full">
             {done ? "Kaldığın yerden devam et" : "Antrenmana başla"}
           </button>
           {done > 0 && (
-            <button type="button" onClick={restart} className="h-10 w-full text-[0.875rem] font-semibold text-acc">
+            <button type="button" onClick={restart} data-press className="btn btn-text btn-sm w-full text-acc">
               Baştan başlat
             </button>
           )}
@@ -471,7 +471,7 @@ function ResultCard({ rec, fit, hero, onEdit }) {
       )}
       {r.note && <p className="border-t border-line/60 px-4 py-2.5 text-[0.875rem] text-mut">{r.note}</p>}
       <div className="px-4 pb-4 pt-1">
-        <button type="button" onClick={onEdit} className="h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold">
+        <button type="button" onClick={onEdit} data-press className="btn btn-secondary btn-sm w-full">
           Düzenle
         </button>
       </div>

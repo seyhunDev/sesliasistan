@@ -445,7 +445,7 @@ export function FitnessHome() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <PageHeader title="Fitness" sub={tab === "ath" ? "Sporcuların programı ve takibi" : "Antrenman programın ve takibin"}>
-        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)]">
+        <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
           <Icon name="more" className="size-5" />
         </button>
         <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" className="grid size-10 place-items-center rounded-full bg-acc text-white shadow-[0_6px_14px_-8px_rgba(47,125,107,.9)]">
@@ -572,7 +572,7 @@ export function FitnessHome() {
               setMenuOpen(false);
               reset();
             }}
-            className="mt-3 h-11 w-full rounded-xl text-[0.875rem] font-semibold text-rec disabled:opacity-50"
+            data-press className="btn btn-danger mt-3 w-full"
           >
             {busy === "reset" ? "Sıfırlanıyor…" : "Fitness'ı sıfırla"}
           </button>
@@ -728,7 +728,7 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
       <div className="sticky top-0 z-10 -mx-5 mb-3 flex items-center gap-2.5 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
         <BackButton onClick={onBack} />
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold">{name}</h1>
-        <button type="button" aria-label="Diğer işlemler" onClick={() => (setSure(false), setMore(true))} className="grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
+        <button type="button" aria-label="Diğer işlemler" onClick={() => (setSure(false), setMore(true))} data-press className="btn btn-round shrink-0">
           <Icon name="more" className="size-5" />
         </button>
       </div>
@@ -793,11 +793,11 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
           {listOpen && (
             <div className={`${card} mt-2 p-3`}>
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap font-sans text-[0.8125rem] leading-snug">{text}</pre>
-              <button type="button" onClick={copy} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white">
+              <button type="button" onClick={copy} data-press className="btn btn-primary mt-2 w-full">
                 <Icon name={copied ? "check" : "copy"} className="size-4" />
                 {copied ? "Kopyalandı" : "Kopyala"}
               </button>
-              <button type="button" onClick={() => setListOpen(false)} className="mt-1 h-10 w-full text-[0.875rem] font-semibold text-mut">
+              <button type="button" onClick={() => setListOpen(false)} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">
                 Kapat
               </button>
             </div>
@@ -821,7 +821,7 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
                 const [t, c] = pill(p);
                 return (
                   <li key={p.id}>
-                    <button type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                    <button type="button" onClick={() => onOpen(p)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                       <span className="w-[4.5rem] shrink-0 text-[0.8125rem] text-mut">{dayText(p.date)}</span>
                       <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{p.fit?.name || p.title}</span>
                       <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-semibold ${c}`}>{t}</span>
@@ -834,7 +834,7 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
             <p className="mt-1 text-[0.8125rem] text-mut">Bu hafta antrenman yok.</p>
           )}
           {later && (
-            <button type="button" onClick={() => setWeeks((w) => w + 1)} className="mt-1.5 h-11 w-full rounded-2xl text-[0.9375rem] font-semibold text-acc">
+            <button type="button" onClick={() => setWeeks((w) => w + 1)} data-press className="btn btn-text btn-sm mt-1.5 w-full text-acc">
               Daha fazla
             </button>
           )}
@@ -862,12 +862,12 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
             type="button"
             disabled={busy}
             onClick={() => (sure ? (setMore(false), onDrop(prog)) : setSure(true))}
-            className="mt-3 h-12 w-full rounded-2xl bg-rec/10 text-[0.9375rem] font-semibold text-rec disabled:opacity-50"
+            data-press className="btn btn-danger mt-3 w-full"
           >
             {sure ? "Emin misin? Silmek için yeniden dokun" : "Programı sil"}
           </button>
         )}
-        <button type="button" onClick={() => setMore(false)} className="mt-1 h-11 w-full text-[0.9375rem] font-semibold text-mut">
+        <button type="button" onClick={() => setMore(false)} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">
           Vazgeç
         </button>
       </Sheet>
@@ -905,16 +905,16 @@ function ContinueSheet({ open, onClose, prog, today, onGo }) {
         <div>
           <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">HAFTA</small>
           <div className="mt-1.5 flex h-12 items-center justify-between rounded-2xl bg-bg px-1">
-            <button type="button" aria-label="Azalt" onClick={() => setWeeks((w) => Math.max(1, w - 1))} className="grid size-10 place-items-center"><Icon name="minus" className="size-4" /></button>
+            <button type="button" aria-label="Azalt" onClick={() => setWeeks((w) => Math.max(1, w - 1))} data-press className="btn btn-icon size-10"><Icon name="minus" className="size-4" /></button>
             <b className="text-[1rem] tabular-nums">{weeks}</b>
-            <button type="button" aria-label="Artır" onClick={() => setWeeks((w) => Math.min(26, w + 1))} className="grid size-10 place-items-center"><Icon name="plus" className="size-4" /></button>
+            <button type="button" aria-label="Artır" onClick={() => setWeeks((w) => Math.min(26, w + 1))} data-press className="btn btn-icon size-10"><Icon name="plus" className="size-4" /></button>
           </div>
         </div>
       </div>
       <div className="mt-5">
         <Button disabled={!start} onClick={() => onGo(n, start, weeks)}>Hazırla</Button>
       </div>
-      <button type="button" onClick={onClose} className="mt-1 h-11 w-full text-[0.9375rem] font-semibold text-mut">Vazgeç</button>
+      <button type="button" onClick={onClose} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">Vazgeç</button>
     </Sheet>
   );
 }
@@ -933,7 +933,7 @@ function GiveSheet({ open, onClose, others, today, onGo }) {
       <ul className="mt-1.5 divide-y divide-line">
         {others.map((a) => (
           <li key={a.uid}>
-            <button type="button" disabled={!start} onClick={() => onGo(a, start)} className="flex w-full items-center gap-3 py-3 text-left">
+            <button type="button" disabled={!start} onClick={() => onGo(a, start)} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc">{initialsOf(a.name)}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold">{a.name}</b>
@@ -944,7 +944,7 @@ function GiveSheet({ open, onClose, others, today, onGo }) {
           </li>
         ))}
       </ul>
-      <button type="button" onClick={onClose} className="mt-1 h-11 w-full text-[0.9375rem] font-semibold text-mut">Vazgeç</button>
+      <button type="button" onClick={onClose} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">Vazgeç</button>
     </Sheet>
   );
 }
@@ -955,7 +955,7 @@ function Head({ title, action, onAction }) {
     <div className="mb-2 mt-5 flex items-center justify-between">
       <small className="text-[0.75rem] font-bold tracking-[.06em] text-mut">{title}</small>
       {action && (
-        <button type="button" onClick={onAction} className="h-8 px-1 text-[0.875rem] font-semibold text-acc">
+        <button type="button" onClick={onAction} data-press className="btn btn-text btn-sm text-acc">
           {action}
         </button>
       )}
@@ -987,11 +987,11 @@ function DaySheet({ open, onClose, date, setDate, today, rows, onOpen }) {
   return (
     <Sheet open={open} onClose={onClose} title="Sporcuların antrenmanı">
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="Önceki gün" onClick={() => setDate(addDays(date, -1))} className="grid size-11 place-items-center rounded-full bg-bg">
+        <button type="button" aria-label="Önceki gün" onClick={() => setDate(addDays(date, -1))} data-press className="btn btn-round">
           <Icon name="chev" className="size-4 rotate-180" />
         </button>
         <b className="min-w-0 flex-1 truncate text-center text-[1rem] font-semibold">{title}</b>
-        <button type="button" aria-label="Sonraki gün" onClick={() => setDate(addDays(date, 1))} className="grid size-11 place-items-center rounded-full bg-bg">
+        <button type="button" aria-label="Sonraki gün" onClick={() => setDate(addDays(date, 1))} data-press className="btn btn-round">
           <Icon name="chev" className="size-4" />
         </button>
       </div>
@@ -1001,7 +1001,7 @@ function DaySheet({ open, onClose, date, setDate, today, rows, onOpen }) {
             const [t, c] = pill(r.st, r.plan);
             return (
               <li key={r.plan.id}>
-                <button type="button" onClick={() => onOpen(r.plan)} className="flex w-full items-center gap-3 py-3 text-left">
+                <button type="button" onClick={() => onOpen(r.plan)} data-press="row" className="flex w-full items-center gap-3 py-3 text-left">
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-bold text-acc">{initialsOf(r.name)}</span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.9375rem] font-semibold">{r.name}</b>

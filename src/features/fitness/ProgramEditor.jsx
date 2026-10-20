@@ -32,7 +32,7 @@ function Step({ label, value, onChange, step = 1, min = 0, max = 999, unit, dec 
     <div className="min-w-0 rounded-2xl bg-bg p-1.5">
       <small className="block pb-1 text-center text-[0.6875rem] font-semibold text-mut">{label}</small>
       <div className="flex items-center">
-        <button type="button" aria-label={`${label} azalt`} onClick={() => put(v - step)} className="grid size-9 shrink-0 place-items-center rounded-xl bg-card text-fg shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]">
+        <button type="button" aria-label={`${label} azalt`} onClick={() => put(v - step)} data-press className="btn btn-round btn-sm shrink-0 text-fg">
           <Icon name="minus" className="size-4" />
         </button>
         <span className="flex min-w-0 flex-1 items-baseline justify-center">
@@ -45,7 +45,7 @@ function Step({ label, value, onChange, step = 1, min = 0, max = 999, unit, dec 
           />
           {unit && <small className="-ml-1 pr-1 text-[0.6875rem] text-mut">{unit}</small>}
         </span>
-        <button type="button" aria-label={`${label} artır`} onClick={() => put(v + step)} className="grid size-9 shrink-0 place-items-center rounded-xl bg-card text-fg shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]">
+        <button type="button" aria-label={`${label} artır`} onClick={() => put(v + step)} data-press className="btn btn-round btn-sm shrink-0 text-fg">
           <Icon name="plus" className="size-4" />
         </button>
       </div>
@@ -73,7 +73,7 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
   const ex = exById(it.ex);
   return (
     <li className={`rounded-2xl border transition ${open ? "border-acc bg-acc/[.04]" : "border-line bg-card"}`}>
-      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 p-3 text-left">
+      <button type="button" onClick={onOpen} data-press="row" className="flex w-full items-center gap-3 p-3 text-left">
         <span className={`relative grid size-11 shrink-0 place-items-center rounded-xl ${open ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
           <Icon name={iconOf(it)} className="size-5" />
           <b className="absolute -left-1 -top-1 grid size-5 place-items-center rounded-full bg-deep text-[0.625rem] font-bold text-white">{i + 1}</b>
@@ -178,14 +178,14 @@ function ItemCard({ it: raw, i, count, open, onOpen, onChange, onMove, onDrop })
           <YtEdit yt={it.yt} onChange={(v) => setLib("yt", v)} media={it.media} onMedia={(v) => setLib("media", v)} className="mt-2" />
           <p className="mt-1 text-[0.75rem] text-mut">Fotoğraf ve video bu hareketin geçtiği bütün programlarda görünür.</p>
           <div className="mt-2 flex items-center gap-2">
-            <button type="button" aria-label="Yukarı taşı" disabled={i === 0} onClick={() => onMove(-1)} className="grid size-9 place-items-center rounded-full bg-bg disabled:opacity-30">
+            <button type="button" aria-label="Yukarı taşı" disabled={i === 0} onClick={() => onMove(-1)} data-press className="btn btn-round btn-sm">
               <Icon name="up" className="size-4" />
             </button>
-            <button type="button" aria-label="Aşağı taşı" disabled={i === count - 1} onClick={() => onMove(1)} className="grid size-9 place-items-center rounded-full bg-bg disabled:opacity-30">
+            <button type="button" aria-label="Aşağı taşı" disabled={i === count - 1} onClick={() => onMove(1)} data-press className="btn btn-round btn-sm">
               <Icon name="up" className="size-4 rotate-180" />
             </button>
             <span className="flex-1" />
-            <button type="button" onClick={onDrop} className="flex h-9 items-center gap-1.5 rounded-full bg-rec/10 px-3 text-[0.8125rem] font-semibold text-rec">
+            <button type="button" onClick={onDrop} data-press className="btn btn-danger btn-sm">
               <Icon name="trash" className="size-4" />
               Çıkar
             </button>
@@ -221,13 +221,13 @@ function DayPanel({ d, onChange, onDrop }) {
           <input type="time" value={d.time} onChange={(e) => set("time", e.target.value)} aria-label="Saat" className="h-full w-full min-w-0 appearance-none bg-transparent text-[0.9375rem] font-semibold outline-none" />
         </label>
         <div className="flex h-12 items-center rounded-2xl bg-bg px-1.5">
-          <button type="button" aria-label="Süreyi azalt" onClick={() => set("min", Math.max(15, n(d.min) - 15))} className="grid size-9 place-items-center rounded-xl bg-card shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]">
+          <button type="button" aria-label="Süreyi azalt" onClick={() => set("min", Math.max(15, n(d.min) - 15))} data-press className="btn btn-round btn-sm">
             <Icon name="minus" className="size-4" />
           </button>
           <b className="flex-1 text-center text-[0.9375rem] tabular-nums">
             {n(d.min)} <small className="font-medium text-mut">dk</small>
           </b>
-          <button type="button" aria-label="Süreyi artır" onClick={() => set("min", Math.min(180, n(d.min) + 15))} className="grid size-9 place-items-center rounded-xl bg-card shadow-[0_1px_4px_-2px_rgba(0,0,0,.25)]">
+          <button type="button" aria-label="Süreyi artır" onClick={() => set("min", Math.min(180, n(d.min) + 15))} data-press className="btn btn-round btn-sm">
             <Icon name="plus" className="size-4" />
           </button>
         </div>
@@ -262,11 +262,11 @@ function DayPanel({ d, onChange, onDrop }) {
           />
         ))}
       </ul>
-      <button type="button" onClick={() => setPick(true)} className="mt-2 flex h-12 w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-acc/30 text-[0.9375rem] font-semibold text-acc">
+      <button type="button" onClick={() => setPick(true)} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
         <Icon name="plus" className="size-4" />
         Hareket ekle
       </button>
-      <button type="button" onClick={onDrop} className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 text-[0.8125rem] font-semibold text-mut">
+      <button type="button" onClick={onDrop} data-press className="btn btn-text btn-sm mt-3 w-full text-mut">
         <Icon name="trash" className="size-3.5" />
         {DOW_LONG[d.dow]} antrenmanını kaldır
       </button>
@@ -354,7 +354,7 @@ function TrackEdit({ p, onChange }) {
               <input value={x.unit} maxLength={20} onChange={(e) => row(i, "unit", e.target.value)} placeholder="Kayıt" className={inp} />
               <input value={x.goal} maxLength={80} onChange={(e) => row(i, "goal", e.target.value)} placeholder="Hedef" className={`${inp} col-span-2`} />
             </span>
-            <button type="button" aria-label="Satırı sil" onClick={() => set((r) => ({ ...r, rows: r.rows.filter((_, j) => j !== i) }))} className="grid size-9 shrink-0 place-items-center rounded-full text-mut">
+            <button type="button" aria-label="Satırı sil" onClick={() => set((r) => ({ ...r, rows: r.rows.filter((_, j) => j !== i) }))} data-press className="btn btn-icon btn-sm shrink-0 text-mut">
               <Icon name="x" className="size-4" />
             </button>
           </li>
@@ -485,10 +485,10 @@ function Ready({ p, busy, onStart, onAll, onCancel }) {
           <Icon name="check" className="size-5" />
           {p.forName ? `Kaydet, ${p.forName} görsün` : "Tamam, başlayalım"}
         </Button>
-        <button type="button" disabled={!!busy} onClick={onAll} className="h-11 text-[0.9375rem] font-semibold text-acc">
+        <button type="button" disabled={!!busy} onClick={onAll} data-press className="btn btn-text btn-sm text-acc">
           Tüm programı gör
         </button>
-        <button type="button" disabled={!!busy} onClick={onCancel} className="h-9 text-[0.8125rem] font-semibold text-mut">
+        <button type="button" disabled={!!busy} onClick={onCancel} data-press className="btn btn-text btn-sm text-mut">
           Vazgeç
         </button>
       </div>
@@ -510,7 +510,7 @@ function AthleteReady({ p, busy, onStart, onDay, onCancel }) {
       <ul className={`${card} mt-3 divide-y divide-line px-4`}>
         {p.days.map((d) => (
           <li key={d.dow}>
-            <button type="button" onClick={() => onDay(d.dow)} className="flex w-full items-center gap-2 py-3.5 text-left">
+            <button type="button" onClick={() => onDay(d.dow)} data-press="row" className="flex w-full items-center gap-2 py-3.5 text-left">
               <span className="min-w-0 flex-1 truncate text-[0.9375rem]">
                 <b className="font-semibold">{[DOWS[d.dow], d.time].filter(Boolean).join(" ")}</b> · {d.name}
               </span>
@@ -526,7 +526,7 @@ function AthleteReady({ p, busy, onStart, onDay, onCancel }) {
           <Icon name="check" className="size-5" />
           {`Kaydet ve ${toName(p.forName)} gönder`}
         </Button>
-        <button type="button" disabled={!!busy} onClick={onCancel} className="h-10 text-[0.875rem] font-semibold text-mut">
+        <button type="button" disabled={!!busy} onClick={onCancel} data-press className="btn btn-text btn-sm text-mut">
           Vazgeç
         </button>
       </div>
@@ -654,7 +654,7 @@ export function ProgramEditor({ prog, onSave, onCancel, busy, fresh, simple }) {
           </>
         )}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancel} disabled={!!busy} className="h-11 rounded-2xl bg-bg text-[0.9375rem] font-semibold text-mut">
+          <button type="button" onClick={onCancel} disabled={!!busy} data-press className="btn btn-secondary text-mut">
             Vazgeç
           </button>
           <Button variant={onCal ? "primary" : "ghost"} loading={busy === "save"} disabled={!!busy || !p.days.length} onClick={() => onSave(p, onCal)}>

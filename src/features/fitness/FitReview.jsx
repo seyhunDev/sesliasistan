@@ -92,14 +92,14 @@ export function FitReview({ orgId, uid, name, meta = "", prog, plans = [], today
       </div>
 
       <div className={`${card} flex items-center gap-2 p-2`}>
-        <button type="button" aria-label="Önceki hafta" onClick={() => go(-1)} className="grid size-10 place-items-center rounded-full text-mut">
+        <button type="button" aria-label="Önceki hafta" onClick={() => go(-1)} data-press className="btn btn-icon size-10 text-mut">
           <Icon name="back" className="size-5" />
         </button>
         <span className="min-w-0 flex-1 text-center">
           <b className="block text-[1rem] font-semibold">{weekLabel(week)}</b>
           <small className="text-[0.8125rem] text-mut">{[name, saved ? "kaydedildi" : ""].filter(Boolean).join(" · ")}</small>
         </span>
-        <button type="button" aria-label="Sonraki hafta" disabled={week >= weekOf(today)} onClick={() => go(1)} className="grid size-10 rotate-180 place-items-center rounded-full text-mut disabled:opacity-30">
+        <button type="button" aria-label="Sonraki hafta" disabled={week >= weekOf(today)} onClick={() => go(1)} data-press className="btn btn-icon size-10 text-mut">
           <Icon name="back" className="size-5" />
         </button>
       </div>
@@ -211,7 +211,7 @@ export function FitReview({ orgId, uid, name, meta = "", prog, plans = [], today
           <ul className={`${card} mt-1.5 divide-y divide-line overflow-hidden`}>
             {list.map((r) => (
               <li key={r.week}>
-                <button type="button" onClick={() => (setDraft(null), setDirty(false), setWeek(r.week))} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                <button type="button" onClick={() => (setDraft(null), setDirty(false), setWeek(r.week))} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className={`min-w-0 flex-1 text-[0.9375rem] ${r.week === week ? "font-semibold text-acc" : "font-medium"}`}>{weekLabel(r.week)}</span>
                   <span className="shrink-0 truncate text-[0.8125rem] text-mut">
                     {r.rows
@@ -263,11 +263,11 @@ function Report({ html, onClose }) {
       <style>{`${REPORT_CSS}
 @media print{body>*:not(#fit-report){display:none!important}#fit-report{position:static!important;display:block!important;background:#fff!important}#fit-report .bar{display:none!important}#fit-report .scroll{overflow:visible!important}.fr{padding:0;max-width:none}@page{margin:14mm}}`}</style>
       <div className="bar flex items-center gap-2 bg-card px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm">
-        <button type="button" onClick={onClose} className="h-10 rounded-full bg-bg px-4 text-[0.9375rem] font-semibold">
+        <button type="button" onClick={onClose} data-press className="btn btn-secondary btn-sm">
           Kapat
         </button>
         <span className="flex-1" />
-        <button type="button" onClick={() => window.print()} className="h-10 rounded-full bg-acc px-5 text-[0.9375rem] font-semibold text-white">
+        <button type="button" onClick={() => window.print()} data-press className="btn btn-primary btn-sm">
           Yazdır
         </button>
       </div>

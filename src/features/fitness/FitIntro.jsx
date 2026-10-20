@@ -27,7 +27,7 @@ function HoldBtn({ label, onStep, children }) {
     <button
       type="button"
       aria-label={label}
-      className="grid size-12 shrink-0 select-none place-items-center rounded-full bg-bg text-[1.5rem] font-medium text-fg touch-manipulation"
+      data-press className="btn btn-round btn-sm size-12 shrink-0 text-fg touch-manipulation"
       onPointerDown={(e) => {
         e.preventDefault();
         onStep();
@@ -146,7 +146,7 @@ export function BodyStep({ fit, onSave, onLater, laterText = "Şimdi değil" }) 
         Devam
       </Button>
       {onLater && (
-        <button type="button" onClick={onLater} className="mt-1 h-11 w-full text-[0.875rem] font-semibold text-mut">
+        <button type="button" onClick={onLater} data-press className="btn btn-text btn-sm mt-1 w-full text-mut">
           {laterText}
         </button>
       )}

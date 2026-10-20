@@ -196,7 +196,7 @@ export function ProgressCard({ recs: list, plans }) {
       title="Gelişim"
       right={
         recs.length > 4 && (
-          <button type="button" onClick={() => setAll(!all)} className="text-[0.8125rem] font-semibold text-acc">
+          <button type="button" onClick={() => setAll(!all)} data-press className="btn btn-text btn-sm text-acc">
             {all ? "Daha az" : "Tümü"}
           </button>
         )
@@ -261,11 +261,11 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
           <div className="mt-3">
             <pre className="max-h-[55svh] select-text overflow-auto whitespace-pre-wrap rounded-xl bg-bg p-3 font-sans text-[0.875rem] leading-relaxed">{text}</pre>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <button type="button" onClick={copy} className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+              <button type="button" onClick={copy} data-press className="btn btn-primary">
                 <Icon name={copied ? "check" : "copy"} className="size-4" />
                 {copied ? "Kopyalandı" : "Kopyala"}
               </button>
-              <button type="button" onClick={() => setList(false)} className="h-11 rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => setList(false)} data-press className="btn btn-secondary">
                 Kapat
               </button>
             </div>
@@ -284,27 +284,27 @@ export function ProgramCard({ prog, today, onCal, busy, onEdit, onPlan, onUnplan
         </ul>
         )}
         {!list && (
-          <button type="button" onClick={() => setList(true)} className="mt-1 flex h-10 w-full items-center justify-center gap-1.5 text-[0.875rem] font-semibold text-acc">
+          <button type="button" onClick={() => setList(true)} data-press className="btn btn-text btn-sm mt-1 w-full text-acc">
             <Icon name="copy" className="size-4" />
             Liste olarak al
           </button>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onEdit} className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-bg text-[0.875rem] font-semibold">
+          <button type="button" onClick={onEdit} data-press className="btn btn-secondary">
             <Icon name="edit" className="size-4" />
             Düzenle
           </button>
           {onCal ? (
-            <button type="button" disabled={busy} onClick={onUnplan} className="h-11 rounded-xl bg-bg text-[0.875rem] font-semibold text-mut">
+            <button type="button" disabled={busy} onClick={onUnplan} data-press className="btn btn-secondary text-mut">
               Takvimden kaldır
             </button>
           ) : (
-            <button type="button" disabled={busy} onClick={onPlan} className="h-11 rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+            <button type="button" disabled={busy} onClick={onPlan} data-press className="btn btn-primary">
               Planlara ekle
             </button>
           )}
         </div>
-        <button type="button" disabled={busy} onClick={onDrop} className="mt-1 h-9 w-full text-[0.8125rem] font-semibold text-rec">
+        <button type="button" disabled={busy} onClick={onDrop} data-press className="btn btn-danger btn-sm mt-1 w-full">
           Programı sil
         </button>
       </div>
@@ -392,7 +392,7 @@ export function HistoryCard({ list, today, onOpen }) {
       title="Geçmiş"
       right={
         list.length > 5 && (
-          <button type="button" onClick={() => setAll(!all)} className="text-[0.8125rem] font-semibold text-acc">
+          <button type="button" onClick={() => setAll(!all)} data-press className="btn btn-text btn-sm text-acc">
             {all ? "Daha az" : "Tümü"}
           </button>
         )
@@ -402,7 +402,7 @@ export function HistoryCard({ list, today, onOpen }) {
         {shown.map((p) => {
           const st = statusOf(p, today);
           return (
-            <button key={p.id} type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+            <button key={p.id} type="button" onClick={() => onOpen(p)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
               <span className="w-[4.5rem] shrink-0 text-[0.8125rem] text-mut">{dayText(p.date)}</span>
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-medium">{p.fit?.name || p.title}</b>

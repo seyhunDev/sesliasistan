@@ -349,7 +349,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
                 <b className="block truncate text-[1rem] font-semibold">{whoName}</b>
                 <small className="block truncate text-[0.8125rem] text-mut">{[f.age ? `${f.age} yaş` : "", labelOf(SPORTS, f.sport)].filter(Boolean).join(" · ")}</small>
               </span>
-              <button type="button" onClick={() => setPicking(true)} className="h-9 shrink-0 px-1 text-[0.875rem] font-semibold text-acc">
+              <button type="button" onClick={() => setPicking(true)} data-press className="btn btn-text btn-sm shrink-0 text-acc">
                 Değiştir
               </button>
             </div>
@@ -377,7 +377,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
               <Icon name="paperclip" className="size-5 shrink-0 text-acc" />
               <span className="min-w-0 flex-1 truncate">{file ? file.name : "PDF ya da fotoğraf seç"}</span>
               {file && (
-                <button type="button" aria-label="Dosyayı kaldır" onClick={(e) => (e.preventDefault(), setFile(null))} className="grid size-7 place-items-center rounded-full text-mut">
+                <button type="button" aria-label="Dosyayı kaldır" onClick={(e) => (e.preventDefault(), setFile(null))} data-press className="btn btn-icon btn-sm size-7 text-mut">
                   <Icon name="x" className="size-4" />
                 </button>
               )}
@@ -452,9 +452,9 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
           {who && (
             <Box title="Yaşı ve sporu" note={ageSrc === "birth" ? "Yaş doğum tarihinden" : ""}>
               <div className="flex items-center gap-3">
-                <button type="button" aria-label="Azalt" onClick={() => (set("age", Math.max(6, (f.age || 12) - 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">−</button>
+                <button type="button" aria-label="Azalt" onClick={() => (set("age", Math.max(6, (f.age || 12) - 1)), setAgeSrc("hand"))} data-press className="btn btn-round size-10">−</button>
                 <span className="min-w-16 text-center text-[1.375rem] font-bold tabular-nums">{f.age ? `${f.age} yaş` : "—"}</span>
-                <button type="button" aria-label="Artır" onClick={() => (set("age", Math.min(60, (f.age || 11) + 1)), setAgeSrc("hand"))} className="grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] font-bold">+</button>
+                <button type="button" aria-label="Artır" onClick={() => (set("age", Math.min(60, (f.age || 11) + 1)), setAgeSrc("hand"))} data-press className="btn btn-round size-10">+</button>
               </div>
               <div className="mt-3">{chips(SPORTS, f.sport, (k) => set("sport", k))}</div>
             </Box>
@@ -501,7 +501,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
             <Icon name="spark" className="size-5" />
             {who ? "Programı hazırla" : "Programımı hazırla"}
           </Button>
-          <button type="button" disabled={busy || !!missing} onClick={() => onBlank(pre, f)} className="h-10 px-2 text-[0.875rem] font-semibold text-mut">
+          <button type="button" disabled={busy || !!missing} onClick={() => onBlank(pre, f)} data-press className="btn btn-text btn-sm text-mut">
             Kendim hazırlayacağım
           </button>
         </div>
