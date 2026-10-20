@@ -178,7 +178,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
             <span className="block text-[0.8125rem] text-mut">{busy || waitErr || "Yükleniyor"}</span>
           </span>
           {!busy && (
-            <button type="button" onClick={retry} className="h-10 shrink-0 rounded-xl bg-acc px-4 text-[0.9375rem] font-semibold text-white active:translate-y-px">
+            <button type="button" onClick={retry} data-press className="btn btn-primary btn-sm shrink-0">
               Tekrar dene
             </button>
           )}
