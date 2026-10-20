@@ -10,6 +10,7 @@ import { clubDigest } from "@/lib/ai/clubDigest";
 import { buildDigest } from "@/lib/ai/digest";
 import { askAssistant } from "@/services/assistantService";
 import { PHONE_WAIT_MS, retryable } from "@/lib/ai/budget";
+import { digestScope } from "@/lib/ai/digestScope";
 import { brainCommand } from "@/lib/commands";
 import { isMulti, waMode, wantsNote, keepNotes, wantsRecord, taskList, jobsIn } from "@/lib/steps";
 import { TEAM_WORD, groupOf } from "../isler/ortak";
@@ -83,8 +84,11 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     const wx = wantsWeather(s) || history.slice(-2).some((h) => h.role === "user" && wantsWeather(h.text));
     const weather = wx ? weatherDigest(await loadWeather().catch(() => cachedWeather())) : "";
     const { athletes: clubAth, dues: clubDues, invoices: clubInv, inventories: clubInvs } = club.current;
-    const clubText = clubDigest({ races: races.current, athletes: clubAth, dues: clubDues, invoices: clubInv, inventories: clubInvs, today: todayStr() });
-    const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff }), clubText, weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
+    // Küçük özet: isteğin konusu dışındaki bölümler (kulüp, yılın tüm planları, fişler) gitmez; açık ekran varsa hepsi gider
+    const recent = history.slice(-4).filter((h) => h.role === "user").map((h) => h.text);
+    const scope = focusRef.current?.text ? null : digestScope(ask, recent, [...(clubAth || []).map((a) => a.studentName), ...(races.current || []).map((r) => r.name)]);
+    const clubText = !scope || scope.club ? clubDigest({ races: races.current, athletes: clubAth, dues: clubDues, invoices: clubInv, inventories: clubInvs, today: todayStr() }) : "";
+    const digest = [buildDigest({ plans, tasks, notes, receipts, name: firstName, members: staff, scope }), clubText, weather, focusRef.current?.text && `## AÇIK EKRAN\n${focusRef.current.text}`].filter(Boolean).join("\n\n");
     if (id !== runId.current) return;
     countHit("ai");
     timingMark("ai");

@@ -32,7 +32,7 @@ function ask(provider, user, timeoutMs) {
       system: ASSISTANT_SYSTEM,
       user,
       schema: ASSISTANT_TOOL.input_schema,
-      maxTokens: 8192,
+      maxTokens: 4096, // çok kayıtlı yanıt bile ~2000 token; 8192 gereksiz uzun üretime izin veriyordu
       timeoutMs,
       attemptMs: timeoutMs,
     });
@@ -107,7 +107,7 @@ async function handle(request) {
               system: ASSISTANT_SYSTEM,
               user,
               schema: ASSISTANT_TOOL.input_schema,
-              maxTokens: 8192,
+              maxTokens: 4096,
               ...streamPlan(total), // ilk parça ~4 sn'de gelmezse kalan süreyle yedek modele (önceden 8 + 22 sn; Netlify keserdi)
               onText: (acc) => {
                 // İş yapılan yanıtlarda (kayıt, işlem, mesaj) sonucu uygulama gerçek duruma göre söyler: yapay zekanın cümlesi akışta okunmaz
