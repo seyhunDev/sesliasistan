@@ -1,8 +1,8 @@
-Commit: 66ef148 · Asistan: "plan olarak ekle" envantere gitmez; değişiklik yoksa envanter cevabı yazılmaz (#593)
-Zaman: 2026-10-20-2133 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39474862932
+Commit: ddfde33 · Hazır kalıp verisi, soru sonrası mikrofon ve ikinci basışta temiz mikrofon başlangıcı (#596)
+Zaman: 2026-10-20-2155 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39477923305
 
-TAM TEST · 20.10.2026 21:27:53
+TAM TEST · 20.10.2026 21:48:40
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1325/1347 geçti · 22 kalan · 352 sn
+SONUÇ: 1325/1347 geçti · 22 kalan · 382 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
