@@ -42,11 +42,33 @@ function Face({ name, photo, tone = "sp", cls = "size-10" }) {
   );
 }
 
-// Tam genişlik: Sporcular ve Fitness tek kartta (Seyhun 2026-10-20: "sporcular ve fitness birlikte; bir sporcunun bir şeyi varsa hangi sporcu
-// belirtilir, öbürleri yine durur"). Üstte fotoğraflar (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası), altında en yakın fitness günü
-// adlarıyla (FitRows), en altta düğmeler: Yoklama (yalnız bugün antrenman planı varsa, saatiyle; alındıysa "✓ Yoklama alındı", dokununca yine açılır; antrenmanın kendisi takvim listesinde), Mesaj
-// (Sporcular grubu), Fitness. Düğmeler tek satırda, yazı taşmaz. Başlıkta Tümü › Sporcular. Sporcu yoksa çizilmez. fit: fitDays() (HomeFeed).
-export function AthletesWidget({ att, fit }) {
+// Kartların ortak dili (Seyhun 2026-10-20: "bir tasarım dilimiz olmalı; butonların yeri"): başlıkta solda nokta + ad + sayı, sağda yalnız
+// "Tümü ›" (o sayfa); kartın işleri en altta aynı boyda düğmeler (Actions: h-10, yuvarlak köşe, adı açık: "Not ekle", "Sporculara mesaj").
+// Ana iş (Yoklama) dolu mor, diğerleri kenarlıklı. Her kart yalnız kendi işini yapar.
+const BTN = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-3 text-[0.84375rem] font-semibold";
+const Actions = ({ children }) => <span className="mt-3 flex gap-2 [&>*]:flex-1">{children}</span>;
+function Act({ href, onClick, main, ok, children }) {
+  const cls = `${BTN} ${main ? "acc-btn" : `raised bg-card ${ok ? "text-[var(--ok)]" : "text-acc"}`}`;
+  return href ? (
+    <Link href={href} className={cls}>
+      {children}
+    </Link>
+  ) : (
+    <button type="button" data-press onClick={onClick} className={cls}>
+      {children}
+    </button>
+  );
+}
+const More = ({ href }) => (
+  <Link href={href} className="text-acc">
+    Tümü ›
+  </Link>
+);
+
+// Tam genişlik: Sporcular (Seyhun 2026-10-20: "sporcuları ayrı, fitness ayrı; yoklamanın fitness'la, mesajın tek sporcuyla ne alakası var").
+// Fotoğraflar yan yana (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası). Altta: Yoklama (yalnız bugün antrenman planı varsa, saatiyle;
+// alındıysa yeşil "✓ Yoklama alındı", dokununca yine açılır) ve Sporculara mesaj (Sporcular grubu). Sporcu yoksa çizilmez.
+export function AthletesWidget({ att }) {
   const { members, plans } = useData();
   const { profile } = useAuth();
   const list = (members || []).filter((m) => m && m.name && m.status !== "left" && (m.kind === "athlete" || m.kind === "student")).sort((a, b) => a.name.localeCompare(b.name, "tr"));
@@ -54,14 +76,12 @@ export function AthletesWidget({ att, fit }) {
   const today = todayStr();
   const sail = plans.filter((p) => p.date === today && p.status !== "cancelled" && isTraining(p)).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const yok = att && sail.length ? attHref(today, today) : null;
-  // Yoklama alındıysa (Seyhun 2026-10-20: "alındığını göstermeliyiz, tıklanırsa yine açılır, değişiklik yapılır"): yoklama kaydedilince ana hesabın
-  // kaydına bugünün tarihi yazılır (users.attLast; athletes/mirror.js, çalışan alırsa sunucu yazar), ek okuma yok
+  // Yoklama alındı: yoklama kaydedilince ana hesabın kaydına bugünün tarihi yazılır (users.attLast; athletes/mirror.js, çalışan alırsa sunucu), ek okuma yok
   const taken = profile?.attLast === today;
   const shown = list.slice(0, 7);
-  const btn = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[0.84375rem] font-semibold";
   return (
     <div className={`${WIDGET} col-span-2 min-h-0`}>
-      <WHead tone="sp" title="Sporcular" count={list.length} right={<Link href="/athletes" className="text-acc">Tümü ›</Link>} />
+      <WHead tone="sp" title="Sporcular" count={list.length} right={<More href="/athletes" />} />
       <span className="mt-2.5 flex items-center">
         {shown.map((m, i) => (
           <Link key={m.uid} href={personHref(m)} aria-label={m.name} className={`rounded-full ring-[2.5px] ring-card ${i ? "-ml-2.5" : ""}`}>
@@ -74,10 +94,9 @@ export function AthletesWidget({ att, fit }) {
           </Link>
         )}
       </span>
-      <FitRows fit={fit} head />
-      <span className={`mt-3 grid gap-2 ${yok ? "grid-cols-[auto_1fr_1fr]" : "grid-cols-2"}`}>
+      <Actions>
         {yok && (
-          <Link href={yok} className={`${btn} ${taken ? "raised bg-card text-[var(--ok)]" : "acc-btn"}`}>
+          <Act href={yok} main={!taken} ok={taken}>
             {taken ? (
               <>
                 <Icon name="check" className="mr-1 size-4 shrink-0" />
@@ -86,53 +105,44 @@ export function AthletesWidget({ att, fit }) {
             ) : (
               `Yoklama${sail[0].time ? ` · ${sail[0].time}` : ""}`
             )}
-          </Link>
+          </Act>
         )}
-        <Link href="/messages?c=athletes" className={`${btn} raised bg-card text-acc`}>
-          Mesaj
-        </Link>
-        <Link href="/fitness" className={`${btn} raised bg-card text-acc`}>
-          Fitness
-        </Link>
-      </span>
+        <Act href="/messages?c=athletes">Sporculara mesaj</Act>
+      </Actions>
     </div>
   );
 }
 
-// Tam genişlik: Fitness (sporcular kartı görünmeyen hesaplarda; Seyhun: "aynı gün iki, üç, dört sporcu varsa nasıl gösterilecek?")
+// Tam genişlik: Fitness, kendi kartı (Seyhun 2026-10-20: "fitness ayrı, kendi içinde düzeni, bilgilendirmesi olmalı"). Başlık "Fitness · Bugün"
+// (ya da en yakın gün) ve sporcu sayısı, sağda Tümü › Fitness; altında o günün sporcuları (FitRows). Fitness yoksa çizilmez. fit: fitDays()
 export function FitWidget({ fit }) {
-  const today = todayStr();
-  if (!(fit || []).some((f) => f.date >= today)) return null;
-  return (
-    <div className={`${WIDGET} col-span-2 min-h-0`}>
-      <WHead tone="fit" title="Fitness" right={<Link href="/fitness" className="text-acc">Tümü ›</Link>} />
-      <FitRows fit={fit} />
-    </div>
-  );
-}
-
-// Fitness satırları: bugün fitness varsa bugünün, yoksa en yakın günün sporcuları alt alta: fotoğraf, üstte ad, altında program · saat, sağda
-// durum (Yaptı yeşil, Bekliyor turuncu…). En çok 3 satır, fazlası "+N sporcu"; altta sonraki fitness günü ("Yarın 2 sporcu ›"). Satıra dokununca
-// o antrenman açılır. head: üstte ince çizgi ve "Bugün fitness · 2 sporcu" başlığı (sporcular kartında). Fitness yoksa çizilmez
-const FST = { done: ["Yaptı", "tone-st"], missed: ["Yapmadı", "tone-gen"], skip: ["Atladı", "tone-gen"] };
-function FitRows({ fit, head }) {
-  const { members } = useData();
-  const { openAdd } = useAdd();
   const today = todayStr();
   const days = [...new Set((fit || []).map((f) => f.date).filter((d) => d >= today))].sort();
   if (!days.length) return null;
-  const [day, nextDay] = days;
+  const rows = fit.filter((f) => f.date === days[0]);
+  return (
+    <div className={`${WIDGET} col-span-2 min-h-0`}>
+      <WHead tone="fit" title={`Fitness · ${days[0] === today ? "Bugün" : dayName(days[0], today)}`} count={fitWho(rows)} right={<More href="/fitness" />} />
+      <FitRows fit={fit} day={days[0]} nextDay={days[1]} />
+    </div>
+  );
+}
+const fitWho = (l) => `${l.length} ${l.some((f) => !f.mine) ? "sporcu" : "antrenman"}`;
+
+// Fitness satırları: o günün sporcuları alt alta: fotoğraf, üstte ad, altında program · saat, sağda durum (Yaptı yeşil, Bekliyor turuncu…).
+// En çok 3 satır, fazlası "+N sporcu"; altta sonraki fitness günü ("Yarın 2 sporcu ›"). Satıra dokununca o antrenman açılır
+const FST = { done: ["Yaptı", "tone-st"], missed: ["Yapmadı", "tone-gen"], skip: ["Atladı", "tone-gen"] };
+function FitRows({ fit, day, nextDay }) {
+  const { members } = useData();
+  const { openAdd } = useAdd();
+  const today = todayStr();
   const name = (d) => (d === today ? "Bugün" : dayName(d, today));
   const rows = fit.filter((f) => f.date === day).sort((a, b) => (a.plan?.time || "").localeCompare(b.plan?.time || ""));
   const more = rows.slice(3);
   const later = nextDay ? fit.filter((f) => f.date === nextDay) : [];
-  const who = (l) => `${l.length} ${l.some((f) => !f.mine) ? "sporcu" : "antrenman"}`;
   const photo = (f) => members.find((m) => m.uid === f.plan?.fit?.for)?.photo || "";
   return (
-    <div className={head ? "mt-3 border-t border-line pt-2" : "mt-1.5"}>
-      <small className="block text-[0.75rem] uppercase tracking-[.02em] text-mut">
-        {name(day)} fitness · {who(rows)}
-      </small>
+    <div className="mt-1.5">
       <ul>
         {rows.slice(0, 3).map((f) => {
           const [t, tone] = FST[statusOf(f.plan || f, today)] || ["Bekliyor", "tone-fit"];
@@ -158,7 +168,7 @@ function FitRows({ fit, head }) {
           <span className="min-w-0 truncate">{more.length > 0 && `+${more.length} sporcu`}</span>
           {later.length > 0 && (
             <Link href={fitHref(nextDay, later) || "/fitness"} className="shrink-0 whitespace-nowrap">
-              {name(nextDay)} {who(later)} ›
+              {name(nextDay)} {fitWho(later)} ›
             </Link>
           )}
         </span>
@@ -175,18 +185,13 @@ const dayName = (d, today) => {
 };
 
 // Tam genişlik: Notlar (Seyhun: "notlar da önemli"). En çok 3 not (sabitler önce, sonra en yeniler; homeNotes), adı ve altında
-// "Sabit / ne zaman · ilk satır". Başlıkta Tümü › ve + (yeni not). Dokununca not açılır. Not yoksa yalnız başlık ve "Not ekle".
+// "Sabit / ne zaman · ilk satır". Başlıkta Tümü ›, altta "Not ekle" (kartların ortak dili). Dokununca not açılır. Not yoksa yalnız başlık ve "Not ekle".
 export function NotesWidget({ notes }) {
   const { openAdd } = useAdd();
   const { list, total } = homeNotes(notes || [], 3);
-  const add = (
-    <button type="button" data-press aria-label="Not ekle" onClick={() => openAdd({ type: "note" })} className="grid size-7 place-items-center rounded-full bg-accbg text-acc">
-      <Icon name="plus" className="size-4" />
-    </button>
-  );
   return (
     <div className={`${WIDGET} col-span-2 min-h-0`}>
-      <WHead tone="fa" title="Notlar" count={total || ""} right={<>{total > 0 && <Link href="/notes" className="text-acc">Tümü ›</Link>}{add}</>} />
+      <WHead tone="fa" title="Notlar" count={total || ""} right={total > 0 && <More href="/notes" />} />
       {list.length ? (
         <ul className="mt-1">
           {list.map((n) => {
@@ -209,6 +214,9 @@ export function NotesWidget({ notes }) {
       ) : (
         <small className="mt-2 block text-[0.875rem] text-mut">Henüz not yok</small>
       )}
+      <Actions>
+        <Act onClick={() => openAdd({ type: "note" })}>Not ekle</Act>
+      </Actions>
     </div>
   );
 }
