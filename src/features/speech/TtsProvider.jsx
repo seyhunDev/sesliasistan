@@ -42,6 +42,18 @@ function silentWav() {
   return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
 }
 
+// Okuma bitince ses öğesi boşaltılır: kaynak dolu kalırsa iPhone ses oturumu "çalma" kipinde kalır, ardından açılan
+// mikrofon (telefonun tanıması ya da kayıt) ses alamaz; asistan kapatılıp açılsa da düzelmez (Seyhun, 2026-10-20:
+// "sesli cevaptan sonra mikrofon çalışmıyor, ses duyulamadı diyor")
+function release(a) {
+  if (!a || !a.getAttribute?.("src")) return;
+  try {
+    a.pause();
+    a.removeAttribute("src");
+    a.load();
+  } catch { }
+}
+
 export function TtsProvider({ children }) {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -72,6 +84,7 @@ export function TtsProvider({ children }) {
     const wake = a?.onended; // bekleyen sunucu sesi okumasını bitir (pause'da onended gelmez)
     if (a) a.onended = a.onerror = null;
     wake?.();
+    release(a);
     if (canDevice()) {
       const s = window.speechSynthesis;
       // Yalnız konuşuyorsa sustur: iOS'ta cancel'dan hemen sonraki konuşma düşebiliyor, boşuna bekletmeyelim
@@ -246,6 +259,7 @@ export function TtsProvider({ children }) {
           setCloud(false);
         }
         if (id !== rid.current) return true;
+        release(a);
         if (!started) {
           setSpeaking(false);
           return false;
@@ -266,6 +280,7 @@ export function TtsProvider({ children }) {
       });
       if (id !== rid.current) return true;
       if (!done) {
+        release(a);
         if (!started) {
           setSpeaking(false);
           return false;
@@ -274,6 +289,7 @@ export function TtsProvider({ children }) {
         return true;
       }
     }
+    release(a);
     setSpeaking(false);
     onDone?.();
     return true;
