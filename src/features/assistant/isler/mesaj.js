@@ -57,15 +57,13 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
     if (known) return reply(`${lead}${known} uygulamada değil ve kişilerde telefonu yok; mesaj gönderemiyorum. Kişiler'den telefonunu eklersen WhatsApp'la gönderebilirim.`, { engine }, viaVoice);
     return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
   }
-  if (waOnly) return reply(`${lead}${dest.label} WhatsApp grubu için mesaj hazır: “${text}” WhatsApp'ta açayım mı?`, { pending: { send: { ...dest, text, waOnly: true } }, engine, expect: true }, viaVoice);
-  // Uygulama içi mesaj geri sayımla gider (kartta 3 sn çizgi; useAssistant AUTO_MS). WhatsApp dokunuş ister: onay sorulur
-  const auto = !dest.wa && !(alsoWa && dest.team) && !!String(text || "").trim();
-  if (auto) {
-    const ready = `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır: “${text}”`;
-    return reply(msg && !/\?\s*$/.test(msg) ? msg : ready, { pending: { send: { ...dest, text }, auto: true }, engine, expect: true }, viaVoice);
-  }
-  const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
-  reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
+  // Mesaj sesle onaylanır (Seyhun 2026-10-20, 3 sn çizgi yerine): metin okunur, mikrofon bir kez açılır, "gönder / evet"
+  // denince gider, "hayır" denince vazgeçilir, değişiklik söylenirse taslak düzelir. Cümle her zaman aynı kalıptadır
+  // (yapay zekanın "yapıyorum, onayını bekliyorum" gibi kendi cümlesi kullanılmaz)
+  const to2 = dest.team ? `${dest.label} grubu` : dest.label;
+  const ask = { engine, expect: true, listen: true };
+  if (waOnly) return reply(`${lead}${dest.label} WhatsApp grubu için mesaj: “${text}” WhatsApp'ta açayım mı?`, { ...ask, pending: { send: { ...dest, text, waOnly: true } } }, viaVoice);
+  reply(`${lead}${to2} için mesaj${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`, { ...ask, pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } } }, viaVoice);
 }
 
 // waOpened: kartta "Gönder + WhatsApp"a dokunuldu, WhatsApp paylaşımı zaten açıldı
