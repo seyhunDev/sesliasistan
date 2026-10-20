@@ -84,7 +84,7 @@ export function VoiceRow() {
   const best = tts.voices.find((v) => voiceQuality(v) > 0);
   const using = tts.voices.find((v) => v.voiceURI === tts.voiceUri) || best;
   return (
-    <Row icon="volume" tone="sky" title="Sesli yanıt" sub="“Notlarımı oku” gibi istediğinde yanıt sesli okunur" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />}>
+    <Row icon="volume" tone="sky" title="Sesli yanıt" sub="Açıkken asistan ne yaptığını ve cevabı sesli söyler" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />}>
       {tts.enabled && (
         <div className="fade-in space-y-2.5 px-4 pb-3.5 pl-[3.75rem]">
           {tts.voices.length > 0 && (

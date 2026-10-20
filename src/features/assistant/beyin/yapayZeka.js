@@ -1,4 +1,5 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
+import { startLine } from "@/lib/sayLines";
 import { editPrecue, draftFor, memoFor } from "@/lib/convoContext";
 import { precue } from "@/lib/precue";
 import { todayStr } from "@/lib/utils/format";
@@ -51,12 +52,16 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   // yapıldığını yalnız bilgi alanı söyler ("Plan hazırlanıyor…"); sohbete ve sese "Tamam / Bakıyorum" yazılmaz, yalnız asıl
   // cevap gelir. Ön cevapta veriden yardımcı bilgi varsa ("O saatlerde “Toplantı” planı da var.") yalnız o yazılır ve okunur.
   if (pc) timingMark("pre");
-  // Sesli okuma yalnız okuma isteğinde (readMode, 2026-10-19)
-  const reading = !!ctx.readMode?.current;
+  // Sesli okuma: okuma isteğinde (readMode, 2026-10-19) ya da Ayarlar › Sesli yanıt açıksa (2026-10-20)
+  const voiceOn = !!ctx.tts?.enabled;
+  const reading = !!ctx.readMode?.current || voiceOn;
   if (pc?.info) setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
   // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
-  // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir
-  if (pc?.info && reading) enqueueSay(pc.info, viaVoice ? listenWhileThinking : undefined);
+  // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir.
+  // Sesli yanıt açıksa yapay zeka beklenirken hemen hazır cümle söylenir ("Tamam, planı hazırlıyorum.", "Bakıyorum.");
+  // yazıda değişiklik yok (bekleme yazısı gösterir)
+  const first = voiceOn && !opts.edit ? startLine(pc) : pc?.info && reading ? pc.info : "";
+  if (first) enqueueSay(first, viaVoice ? listenWhileThinking : undefined);
   else if (viaVoice) listenWhileThinking();
   // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
   const onText = (m) => {
