@@ -138,10 +138,12 @@ export async function saveDraftsNow(ctx, viaVoice, list = ctx.drafts, pre = "", 
   // Doğal cümle; saatsiz tek planda saat teklif edilir ("Başka bir isteğin var mı?" yerine), cevap bekleme sonraki söze bakar
   // (görev listesi sürerken teklif yok: liste kendi sırasıyla devam eder)
   const line = savedLine(what, whoTxt, list);
-  const pid = line.offer === "time" && !ctx.planOn?.current && !ctx.chain?.current?.length && (r.ids || []).find(([k]) => k === "plan")?.[1];
-  if (!pid) return done(`${lead}${extra(pre)}${line.text}`, { engine: "local" }, viaVoice);
+  const kind = { time: "plan", due: "task" }[line.offer];
+  const pid = kind && !ctx.planOn?.current && !ctx.chain?.current?.length && (r.ids || []).find(([k]) => k === kind)?.[1];
+  // Teklif yapılamıyorsa (liste sürüyor, kimlik yok) teklif cümlesi de söylenmez
+  if (!pid) return done(`${lead}${extra(pre)}${line.text.replace(/ (İstersen saatini|Son tarih söylemedin).*$/, "")}`, { engine: "local" }, viaVoice);
   waitFor("planTime");
-  planTimeAsk.current = { id: pid, title: list[0].title, date: list[0].date };
+  planTimeAsk.current = { kind: line.offer, id: pid, title: list[0].title, date: list[0].date };
   reply(`${lead}${extra(pre)}${line.text}`, { engine: "local", listen: true }, viaVoice);
 }
 

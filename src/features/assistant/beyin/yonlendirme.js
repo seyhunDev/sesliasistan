@@ -177,7 +177,15 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   // bırakır; başka bir istekse teklif düşer, aşağıdan devam ("5'te" 17:00 sayılır, quickAnswer)
   const pt = planTimeAsk.current;
   planTimeAsk.current = null;
-  if (pt && !fresh) {
+  // Görevde son tarih teklifi: "cuma", "yarın", "15 Kasım" görevin son tarihine yazılır
+  if (pt?.kind === "due" && !fresh) {
+    if (isNo(s) || /^(gerek yok|kalsın|tarihsiz kalsın|sonra|daha sonra|şimdilik yok|boş ver|yok)[\s.!]*$/iu.test(s)) return done("Tamam, tarihsiz kalsın.", { engine: "local" }, viaVoice);
+    const due = quickAnswer(s, [{ type: "task", title: pt.title, date: "" }], todayStr(), { idx: 0, kind: "date" })?.[0]?.date;
+    if (due) {
+      await updateRecord("task", pt.id, { due }, by);
+      return done(`Tamam, “${pt.title}” son tarihi ${rel(due).replace(/^(Bugün|Yarın)$/, (m) => m.toLocaleLowerCase("tr-TR"))}.`, { engine: "local" }, viaVoice);
+    }
+  } else if (pt && !fresh) {
     if (isNo(s) || /^(gerek yok|kalsın|saatsiz kalsın|sonra|daha sonra|şimdilik yok|boş ver|yok)[\s.!]*$/iu.test(s)) return done("Tamam, saatsiz kalsın.", { engine: "local" }, viaVoice);
     const time = quickAnswer(s, [{ type: "plan", title: pt.title, date: pt.date, time: "", allDay: false }], todayStr(), { idx: 0, kind: "time" })?.[0]?.time;
     if (time) {
