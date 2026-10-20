@@ -686,6 +686,10 @@ group("Ana sayfa kartları")([
     return x.next.length === 1 && x.next[0].p.id === "f" && x.later.length === 2 && x.later[0].race === "Foça Kupası" && x.later[0].items.length === 2 && x.later[1].p.id === "k"
       && y.next.length === 0 && y.later[0].items.length === 1;
   })],
+  ["kulüp kartları", F("liste tarihi: gün adı + gün, başka ayda ay da; yarın için de tarih (Yarın yazmaz)", () => {
+    const t = "2026-10-20";
+    return HT.shortDay("2026-10-21", t) === "Çar 21" && HT.shortDay("2026-12-03", t) === "Per 3 Ara" && HT.shortDay("2027-06-30", t) === "Çar 30 Haz";
+  })],
   ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
     const t = "2026-10-19";
     const x = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-26", "2026-10-18"].map((d) => HT.leftTag(d, t));

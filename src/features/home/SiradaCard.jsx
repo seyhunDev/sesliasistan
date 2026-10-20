@@ -9,7 +9,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { dayHead, leftTag, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
@@ -60,7 +60,8 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const { next: nextRows, later: rest } = homeList(next, all);
   const empty = !td.rows.length && !next;
   // Sıradakilerin tarihi: bu aydaysa "Sal 20", değilse "Pzt 3 Kas"
-  const short = (day) => (day.slice(0, 7) === today.slice(0, 7) ? dayHead(day, today).replace(/ \S+$/, "") : dayHead(day, today));
+  // ("Yarın" yazılmaz, o kalan gün işaretinde; Seyhun 2026-10-20: "tekrarlardan kaçınalım, tarih saat başlık düzgün yazılsın")
+  const short = (day) => shortDay(day, today);
   const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
 
   return (
@@ -81,7 +82,6 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
                 live={live}
                 warn={i === 0 && windy}
                 sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
-                left={live ? null : leftTag(today, today)}
                 onOpen={() => open(p)}
               />
             ))}
@@ -103,7 +103,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             <DayHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
             <ul>
               {nextRows.map(({ p }) => (
-                <TimeRow key={p.id} p={p} sub={p.place} left={leftTag(next.day, today)} onOpen={() => open(p)} />
+                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} onOpen={() => open(p)} />
               ))}
             </ul>
           </>
@@ -117,7 +117,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
                 x.race ? (
                   <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
                 ) : (
-                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && `Başlangıç ${dayHead(x.p.date, today)}`, x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
+                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
                 ),
               )}
             </ul>
@@ -142,7 +142,7 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
   const tag = planTag(p);
   return (
     <li>
-      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} grid w-full grid-cols-[3.875rem_1fr] text-left`}>
+      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} grid w-full grid-cols-[4.5rem_1fr] text-left`}>
         <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
           {p.time || "Tüm gün"}
           {date && <small className="block text-[0.75rem] font-normal text-mut">{date}</small>}
@@ -174,17 +174,17 @@ function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
   );
 }
 
-// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte yarışın adı, "Yarış · Başlangıç Cmt 24 Eki · yer", sağda başlangıca kalan gün;
+// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte yarışın adı, solda başlangıç günü, "Yarış · Başlangıç · yer", sağda başlangıca kalan gün;
 // dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (gün, iş adı, kalan gün), dokununca Yapıldı / Yarışın sayfası / Planı aç
 function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
   const head = g.start?.p || g.items[0].p;
   const startDay = g.start?.p.date || race?.startDate || "";
   const href = race ? `/athletes/races/${race.id}` : "";
   return (
-    <li className={`tone-${planTone(head)} grid grid-cols-[3.875rem_1fr]`}>
+    <li className={`tone-${planTone(head)} grid grid-cols-[4.5rem_1fr]`}>
       <span className={`whitespace-nowrap py-2.5 tabular-nums ${head.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
         {head.time || "Tüm gün"}
-        <small className="block text-[0.75rem] font-normal text-mut">{date(g.start?.day || g.day)}</small>
+        <small className="block text-[0.75rem] font-normal text-mut">{date(startDay || g.day)}</small>
       </span>
       <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
         <span aria-hidden="true" className="absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 border-[var(--tfg)] bg-card" />
@@ -196,7 +196,7 @@ function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
             </b>
             <small className="block break-words text-[0.84375rem] text-mut">
               <span className="tone-fg font-semibold">Yarış</span>
-              {[startDay && `Başlangıç ${dayHead(startDay, today)}`, head.place].filter(Boolean).map((x) => ` · ${x}`)}
+              {[startDay && "Başlangıç", head.place].filter(Boolean).map((x) => ` · ${x}`)}
             </small>
           </span>
           {startDay && <LeftPill left={leftTag(startDay, today)} />}
@@ -205,8 +205,9 @@ function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
           {g.items.map(({ p, day, label }) => (
             <li key={p.id}>
               <button type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-2 rounded-xl bg-bg px-2.5 py-2 text-left">
-                <span className="w-12 shrink-0 text-[0.78125rem] tabular-nums text-mut">{date(day)}</span>
-                <span className="min-w-0 flex-1 break-words text-[0.90625rem]">{[label, p.time].filter(Boolean).join(" · ")}</span>
+                <span className="w-[4.25rem] shrink-0 whitespace-nowrap text-[0.78125rem] tabular-nums text-mut">{date(day)}</span>
+                <span className="min-w-0 flex-1 break-words text-[0.90625rem]">{label}</span>
+                {p.time && <span className="shrink-0 whitespace-nowrap text-[0.78125rem] tabular-nums text-mut">{p.time}</span>}
                 <LeftPill left={leftTag(day, today)} />
               </button>
             </li>

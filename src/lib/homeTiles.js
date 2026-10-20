@@ -404,6 +404,14 @@ export function dayHead(day, today) {
   return `${d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "")} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
 }
 
+// Liste satırının tarihi: hep gün adı ve gün ("Per 3"), başka aydaysa ay da ("Per 3 Ara"); "Yarın" yazılmaz (kalan gün işaretinde)
+export function shortDay(day, today) {
+  const d = new Date(`${day}T12:00:00`);
+  const wd = d.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
+  const mon = day.slice(0, 7) === String(today || "").slice(0, 7) ? "" : ` ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}`;
+  return `${wd} ${d.getDate()}${mon}`;
+}
+
 // Kişinin sayfası (/people/p/<uid>): ad, Mesaj · Ara · WhatsApp, yapılacaklar, para, kulüp, bilgiler. Tek yerde değişir.
 export function personHref(m) {
   if (!m?.uid) return "/people/staff";
