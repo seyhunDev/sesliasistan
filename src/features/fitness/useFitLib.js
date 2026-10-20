@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { libAttach, libEntry, libMerge, libSetMedia } from "@/lib/fitness/library";
+import { libAttach, libDrop, libEntry, libMerge, libRename, libSetMedia } from "@/lib/fitness/library";
 import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
-// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media } ya da güncel kayıt => { yt, media }), merge(keep, keys), attach(key, künyeler) }
+// Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media } ya da güncel kayıt => { yt, media }), merge(keep, keys), attach(key, künyeler), rename(key, ad), drop(key) }
 // setMedia hareketin fotoğraf/videosunu kütüphaneye yazar ve hemen programlara ve sporcuların antrenmanlarına taşır
 // (pencere kapanmasını beklemez; sayfadan çıkılsa da video sporcuya gider).
 export function useFitLib() {
@@ -63,5 +63,26 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, merge, attach };
+  // Adını değiştirir (programlara ve sporcuların antrenmanlarına da gider); hata varsa Error fırlatır
+  const rename = useCallback(
+    async (key, name) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      const { lib: next, err } = libRename(cur, key, name);
+      if (err) throw new Error(err);
+      const saved = await saveLib(orgId, next);
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] ad sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
+  const drop = useCallback(
+    async (key) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      return saveLib(orgId, libDrop(cur, key));
+    },
+    [orgId],
+  );
+  return { lib, setMedia, merge, attach, rename, drop };
 }

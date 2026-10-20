@@ -1,32 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { fold } from "@/lib/fitness/exercises";
+import { ytThumb } from "@/lib/fitness/youtube";
 import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds } from "@/lib/fitness/library";
 import { Thumb } from "./ExerciseMedia";
 import { ExerciseScreen } from "./ExerciseScreen";
-import { looseMedia } from "./fitMedia";
+import { getThumb, loadMedia, looseMedia } from "./fitMedia";
 import { ExercisePicker } from "./ExercisePicker";
 import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
 
 // Hareketler: kulübün hareket kütüphanesi (programlarda geçen her hareket bir kez, numarasıyla). Harekete eklenen
 // fotoğraf, video ve YouTube bağlantısı o hareketin geçtiği bütün programlarda ve sporcuların antrenmanlarında görünür.
-const hasVideo = (x) => !!(x.yt?.id || (x.media || []).some((m) => m.kind === "video"));
+const hasMedia = (x) => !!(x.yt?.id || (x.media || []).length);
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
-  const { lib, setMedia, merge, attach } = useFitLib();
+  const { lib, setMedia, merge, attach, rename, drop } = useFitLib();
   const toast = useToast();
   const [join, setJoin] = useState(false);
+  const [naming, setNaming] = useState(null);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState("");
   const [pick, setPick] = useState(false);
   const [only, setOnly] = useState("");
   const all = libList(lib, q);
-  const list = only === "v" ? all.filter(hasVideo) : only === "n" ? all.filter((x) => !hasVideo(x)) : all;
+  const list = only === "v" ? all.filter(hasMedia) : only === "n" ? all.filter((x) => !hasMedia(x)) : all;
   // Hareketin kaç programda geçtiği
   const uses = useMemo(() => {
     const m = {};
@@ -56,6 +58,29 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const back = () => {
     setSel("");
     setJoin(false);
+    setNaming(null);
+  };
+  const saveName = async () => {
+    try {
+      await rename(e.key, naming);
+      setNaming(null);
+      toast("Adı değişti");
+    } catch (x) {
+      toast(x.message || "Kaydedilemedi");
+    }
+  };
+  // Programda geçen hareket silinmez (yeniden eklenirdi); fotoğraf/video dosyaları silinmez
+  const remove = async () => {
+    const n = uses[e.key] || 0;
+    if (n) return toast(`${n} programda var; önce programdan çıkar`);
+    if (!confirm(`“${e.name}” listeden silinsin mi? Fotoğraf ve videoları silinmez, "Hareketsiz kalan dosyalar"da durur.`)) return;
+    try {
+      await drop(e.key);
+      back();
+      toast("Silindi");
+    } catch {
+      failed();
+    }
   };
   // Bu hareketi seçilenle birleştirir: fotoğrafı/videosu çok olan kalır, öbürünün adı da ileride ona gider
   const joinWith = async (x) => {
@@ -76,10 +101,30 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         <ExerciseScreen e={e} uses={uses[e.key] || 0} put={(fn) => setMedia(it, fn)} onBack={back}>
           {join ? (
             <Choose lib={lib} not={e.key} title="Hangi hareketle aynı?" onPick={joinWith} onCancel={() => setJoin(false)} />
+          ) : naming !== null ? (
+            <section className="mt-4 rounded-2xl border border-line bg-card p-3">
+              <input value={naming} onChange={(x) => setNaming(x.target.value)} onKeyDown={(x) => x.key === "Enter" && saveName()} autoFocus maxLength={60} className="h-12 w-full rounded-xl bg-bg px-3 text-[1rem] outline-none" />
+              <div className="mt-2 flex gap-2">
+                <button type="button" onClick={() => setNaming(null)} className="h-11 flex-1 rounded-xl bg-bg text-[0.9375rem] font-semibold">
+                  Vazgeç
+                </button>
+                <button type="button" disabled={!naming.trim()} onClick={saveName} className="h-11 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+                  Kaydet
+                </button>
+              </div>
+            </section>
           ) : (
-            <button type="button" onClick={() => setJoin(true)} className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
-              Başka hareketle birleştir
-            </button>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setNaming(e.name)} className="h-12 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
+                Adı değiştir
+              </button>
+              <button type="button" onClick={() => setJoin(true)} className="h-12 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
+                Birleştir
+              </button>
+              <button type="button" onClick={remove} className="col-span-2 h-12 rounded-xl text-[0.9375rem] font-semibold text-rec">
+                Hareketi sil
+              </button>
+            </div>
           )}
         </ExerciseScreen>
       )}
@@ -96,8 +141,8 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         <div className="mt-2 flex gap-2">
           {[
             ["", `Hepsi ${all.length}`],
-            ["v", "Videolu"],
-            ["n", "Videosuz"],
+            ["v", "Fotoğraflı"],
+            ["n", "Fotoğrafsız"],
           ].map(([k, label]) => (
             <button key={k || "all"} type="button" onClick={() => setOnly(k)} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${only === k ? "bg-deep text-white" : "bg-bg text-mut"}`}>
               {label}
@@ -109,23 +154,23 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
         <ul className="mt-2 divide-y divide-line">
           {list.map((x) => {
-            const v = hasVideo(x);
+            const v = hasMedia(x);
             const n = uses[x.key] || 0;
             return (
               <li key={x.key}>
                 <button type="button" onClick={() => setSel(x.key)} className="flex min-h-[4.5rem] w-full items-center gap-3 py-2.5 text-left">
-                  <span className={`relative grid size-14 shrink-0 place-items-center rounded-2xl ${v ? "bg-deep text-white" : "bg-bg text-mut"}`}>
-                    <Icon name={v ? "video" : "plus"} className="size-6" />
+                  <span className="relative size-14 shrink-0">
+                    <Mini orgId={orgId} x={x} />
                     <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-card px-1 text-[0.6875rem] font-bold tabular-nums text-fg ring-1 ring-line">{x.no}</span>
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[1rem] font-semibold">{x.name}</b>
-                    <small className="block truncate text-[0.8125rem] text-mut">{[v ? "Video" : "Video yok", n ? `${n} programda` : ""].filter(Boolean).join(" · ")}</small>
+                    <small className="block truncate text-[0.8125rem] text-mut">{[mediaText(x), n ? `${n} programda` : ""].filter(Boolean).join(" · ")}</small>
                   </span>
                   {v ? (
                     <Icon name="chev" className="size-5 shrink-0 text-mut" />
                   ) : (
-                    <span className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Video ekle</span>
+                    <span className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Ekle</span>
                   )}
                 </button>
               </li>
@@ -334,5 +379,36 @@ function Similar({ lib, uses, onMerge }) {
       <b className="text-[0.9375rem] font-semibold">{busy ? "Aranıyor…" : groups ? "Farklı adlı kopya yok" : "Farklı adlı kopyaları bul"}</b>
       <Icon name="chev" className="size-4 text-mut" />
     </button>
+  );
+}
+
+// Listedeki küçük resim: önce bu telefondaki önizleme (yüklenirken yapılır), yoksa fotoğrafın kendisi (tarayıcı önbelleğinde
+// kalır), YouTube kapağı; video için video işareti, hiçbiri yoksa artı
+function Mini({ orgId, x }) {
+  const m = (x.media || [])[0];
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    if (!m?.id) return undefined;
+    let live = true;
+    let u = "";
+    getThumb(m)
+      .then((b) => {
+        if (b) return (u = URL.createObjectURL(b));
+        if (m.kind !== "photo") return "";
+        return loadMedia(orgId, m).then(({ src: s0, blob }) => (blob ? (u = URL.createObjectURL(blob)) : s0));
+      })
+      .then((s1) => live && setSrc(s1 || ""))
+      .catch(() => {});
+    return () => {
+      live = false;
+      if (u) URL.revokeObjectURL(u);
+    };
+  }, [orgId, m?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const img = src || (x.yt?.id ? ytThumb(x.yt.id) : "");
+  if (img) return <img src={img} alt="" loading="lazy" onError={() => setSrc("")} className="size-14 rounded-2xl bg-bg object-cover" />;
+  return (
+    <span className={`grid size-14 place-items-center rounded-2xl ${m ? "bg-deep text-white" : "bg-bg text-mut"}`}>
+      <Icon name={m ? (m.kind === "video" ? "video" : "camera") : "plus"} className="size-6" />
+    </span>
   );
 }
