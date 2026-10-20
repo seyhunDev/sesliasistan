@@ -75,7 +75,7 @@ function Calendar({ initial }) {
           <Icon name="book" className="size-[1.125rem]" />
         </Link>
         {(sel !== today || month !== today.slice(0, 7)) && (
-          <button onClick={() => pick(today)} className="rounded-full bg-card px-3 py-1.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line active:scale-95">
+          <button onClick={() => pick(today)} data-press className="btn btn-secondary btn-sm text-acc">
             Bugün
           </button>
         )}
@@ -84,11 +84,11 @@ function Calendar({ initial }) {
       {/* Ay */}
       <section className={`${card} mt-2 px-2 pb-2 pt-2.5`}>
         <div className="flex items-center justify-between px-1">
-          <button onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" className="grid size-9 place-items-center rounded-full active:bg-bg">
+          <button onClick={() => setMonth((m) => shift(m, -1))} aria-label="Önceki ay" data-press className="btn btn-icon btn-sm">
             <Icon name="back" className="size-5" />
           </button>
           <b className="text-[1rem] font-semibold capitalize">{monthLabel(month)}</b>
-          <button onClick={() => setMonth((m) => shift(m, 1))} aria-label="Sonraki ay" className="grid size-9 place-items-center rounded-full active:bg-bg">
+          <button onClick={() => setMonth((m) => shift(m, 1))} aria-label="Sonraki ay" data-press className="btn btn-icon btn-sm">
             <Icon name="chev" className="size-5" />
           </button>
         </div>
@@ -145,13 +145,13 @@ function Calendar({ initial }) {
         <div className={`${card} px-4 py-5 text-center`}>
           <p className="text-[0.875rem] text-mut">Bu gün için kayıt yok.</p>
           <div className="mt-3 flex justify-center gap-2">
-            <button onClick={() => openAdd({ type: "plan", date: sel })} className="rounded-full bg-acc px-4 py-2 text-[0.875rem] font-semibold text-white active:scale-95">
+            <button onClick={() => openAdd({ type: "plan", date: sel })} data-press className="btn btn-primary btn-sm">
               Plan ekle
             </button>
-            <button onClick={() => openAdd({ type: "task", date: sel })} className="rounded-full bg-bg px-4 py-2 text-[0.875rem] font-semibold text-fg active:scale-95">
+            <button onClick={() => openAdd({ type: "task", date: sel })} data-press className="btn btn-secondary btn-sm">
               Görev ekle
             </button>
-            <button onClick={() => openBirthday({ date: sel })} aria-label="Doğum günü ekle" className="grid size-9 place-items-center rounded-full bg-bg text-pink-600 active:scale-95">
+            <button onClick={() => openBirthday({ date: sel })} aria-label="Doğum günü ekle" data-press className="btn btn-round btn-sm text-pink-600">
               <Icon name="cake" className="size-5" />
             </button>
           </div>
@@ -162,7 +162,7 @@ function Calendar({ initial }) {
             const age = nextBirthday(b, sel).age;
             return (
               <li key={b.id}>
-                <button onClick={() => openBirthday({ edit: b.id })} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                <button onClick={() => openBirthday({ edit: b.id })} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className="grid w-16 shrink-0 place-items-start text-pink-600">
                     <Icon name="cake" className="size-5" />
                   </span>

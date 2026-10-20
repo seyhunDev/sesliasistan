@@ -114,7 +114,7 @@ export function PlanActions({ rec, by, cancelStart = false, onDone, onDelete, on
       {cancelOpen && !cancelled && !finished && <CancelPlan rec={rec} by={by} onClose={() => setCancelOpen(false)} />}
       <div className="mt-6 flex flex-col items-center gap-1">
         {onDelete && (
-          <button type="button" onClick={onDelete} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.875rem] font-medium text-rec transition active:scale-95 active:bg-rec/10">
+          <button type="button" onClick={onDelete} data-press className="btn btn-danger btn-sm">
             <Icon name="trash" className="size-4" />
             Planı sil
           </button>

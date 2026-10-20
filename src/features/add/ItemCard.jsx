@@ -36,7 +36,7 @@ export function ItemCard({ d, index, plan, assign, onAddStaff, onChange, onType,
           </span>
           <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${isOpen ? "rotate-90" : ""}`} />
         </button>
-        <button type="button" onClick={() => onRemove(index)} aria-label="Kaldır" className="grid size-8 shrink-0 place-items-center rounded-full text-mut transition active:scale-90 active:bg-bg">
+        <button type="button" onClick={() => onRemove(index)} aria-label="Kaldır" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       </div>

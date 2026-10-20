@@ -129,8 +129,8 @@ export function TrainingLog({ rec, by, startOpen = false, onDone }) {
       </div>
       <textarea value={f.note} onChange={(e) => set("note", e.target.value)} rows={3} placeholder="Not: kim ne yaptı, sonraki antrenmanda ne çalışılacak…" className="mt-3 w-full resize-none rounded-xl bg-bg px-3 py-2.5 text-[0.9375rem] leading-snug outline-none" />
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={save} className="h-11 flex-1 rounded-full bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">Kaydet</button>
-        <button type="button" onClick={() => (setOpen(false), onDone?.())} aria-label="Vazgeç" className="grid size-11 place-items-center rounded-full text-mut active:scale-95">
+        <button type="button" onClick={save} data-press className="btn btn-primary flex-1">Kaydet</button>
+        <button type="button" onClick={() => (setOpen(false), onDone?.())} aria-label="Vazgeç" data-press className="btn btn-icon text-mut">
           <Icon name="x" className="size-5" />
         </button>
       </div>
