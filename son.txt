@@ -1,8 +1,8 @@
-Commit: f2ca089 · Antrenman yarış sonucu sesle girilir (birinci Ali, ikinci Ayşe…) (#547)
-Zaman: 2026-10-20-1021 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39385410267
+Commit: 4e367ed · Antrenman sayfası yarış multimedya düzeninde: Süre · Medya · Hava · Sonuçlar (#549)
+Zaman: 2026-10-20-1155 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39396201121
 
-TAM TEST · 20.10.2026 10:16:37
+TAM TEST · 20.10.2026 11:50:19
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1336/1337 geçti · 1 kalan · 295 sn
+SONUÇ: 1336/1337 geçti · 1 kalan · 306 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
