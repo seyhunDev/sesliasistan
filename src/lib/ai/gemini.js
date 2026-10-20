@@ -1,5 +1,6 @@
 // Yalnızca sunucuda çalışır. Anahtar tarayıcıya çıkmaz.
 import { AsyncLocalStorage } from "node:async_hooks";
+import { spendAdd, spendRun } from "@/lib/server/aiSpend";
 
 // Claude'a verdiğimiz JSON şemasını Gemini'nin şema biçimine çevirir (tipler büyük harf)
 function toSchema(s) {
@@ -91,7 +92,7 @@ export function withAiCool(handler) {
     const seed = parseCool(request.headers.get("x-ai-cool"));
     // "Güçlü sürüm": kullanıcı ayarlardan açtıysa telefon x-ai-power: strong gönderir
     const strong = request.headers.get("x-ai-power") === "strong";
-    const res = await reqPower.run(strong, () => reqCool.run(seed, () => handler(request, ctx)));
+    const res = await spendRun(() => reqPower.run(strong, () => reqCool.run(seed, () => handler(request, ctx))));
     try {
       const now = Date.now();
       const all = new Map(seed);
@@ -221,6 +222,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
 
         if (status === 200) {
           const data = JSON.parse(text);
+          spendAdd(m, data.usageMetadata); // harcama (Ayarlar › Yapay zeka kullanımı)
           const cand = data.candidates?.[0];
           const out = (cand?.content?.parts || []).map((p) => p.text || "").join("").trim();
           if (!out) {
@@ -368,6 +370,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
     let buf = "";
     let out = "";
     let first = 0;
+    let usage = null;
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -379,6 +382,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
         if (!line.startsWith("data:")) continue;
         try {
           const d = JSON.parse(line.slice(5));
+          if (d.usageMetadata) usage = d.usageMetadata; // son parçada toplam
           const piece = (d.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
           if (!piece) continue;
           started = true;
@@ -390,6 +394,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
         }
       }
     }
+    spendAdd(m, usage);
     const json = JSON.parse(out.replace(/^```(?:json)?\s*|\s*```$/g, ""));
     console.log(`[gemini] ${m} akış: ilk parça ${first} ms, toplam ${Date.now() - t0} ms`);
     return withModel(json, m);

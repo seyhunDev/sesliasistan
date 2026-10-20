@@ -1281,6 +1281,32 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
     ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
   ]);
+  // Yapay zeka harcaması (lib/aiPrice.js): token sayısından dolar, ay belgesinden TL (Seyhun 2026-10-20, bütçe 250 TL)
+  const AP = await import("@/lib/aiPrice");
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  group("Yapay zeka harcaması")([
+    ["flash lite fiyatı", SL(true, () => near(AP.costUsd("gemini-3.5-flash-lite", { promptTokenCount: 1e6, candidatesTokenCount: 1e6 }), 0.5))],
+    ["flash: düşünme çıktı sayılır", SL(true, () => near(AP.costUsd("gemini-3.8-flash", { promptTokenCount: 1000, candidatesTokenCount: 100, thoughtsTokenCount: 100 }), (1000 * 0.3 + 200 * 2.5) / 1e6))],
+    ["bilinmeyen model flash sayılır", SL(true, () => near(AP.costUsd("x-model", { promptTokenCount: 1e6 }), 0.3))],
+    ["Netlify fiyat tablosu önce gelir", SL(true, () => near(AP.costUsd("gemini-3.5-flash-lite", { promptTokenCount: 1e6 }, AP.parsePrices('{"3.5-flash-lite":[0.2,1]}')), 0.2))],
+    ["bozuk tablo varsayılana düşer", SL(true, () => AP.parsePrices("{x") === AP.PRICES)],
+    ["bugün ve ay (TL)", SL("1,00 TL · 3,00 TL · 2 gün", () => { const r = AP.spendOf({ month: "2026-10", usd: 0.075, usdDay: { 19: 0.05, 20: 0.025 } }, "2026-10-20", 40); return `${AP.tlText(r.today)} · ${AP.tlText(r.month)} · ${r.days.length} gün`; })],
+    ["başka ay: bugün 0", SL(0, () => AP.spendOf({ month: "2026-09", usd: 1, usdDay: { 20: 1 } }, "2026-10-20", 40).today)],
+  ]);
+  {
+    const SP = await import("@/lib/server/aiSpend");
+    const got = [];
+    SP.spendWriter((au, kind, usd) => got.push(`${au.uid}:${kind}:${usd.toFixed(6)}`));
+    await SP.spendRun(async () => {
+      SP.spendAdd("gemini-3.5-flash-lite", { promptTokenCount: 10000 }); // kim olduğu henüz bilinmiyor: bekler
+      await new Promise((r) => setTimeout(r, 5));
+      SP.spendWho({ uid: "u1" }, "assistant");
+      SP.spendAdd("gemini-3.5-flash-lite", { candidatesTokenCount: 1000 });
+    });
+    SP.spendAdd("gemini-3.5-flash-lite", { promptTokenCount: 5 }); // kapsam dışı: yazılmaz
+    group("Yapay zeka harcaması: kayıt")([["istek kapsamında yazılır", SL("u1:assistant:0.001000 | u1:assistant:0.000400", () => got.join(" | "))]]);
+    SP.spendWriter(null);
+  }
   // Yapay zeka hata türü: kaldırılmış model "kota doldu" değil "model bulunamadı" görünür (2026-10-20)
   const ER = await import("@/lib/ai/errors");
   group("Yapay zeka hata türü")([
