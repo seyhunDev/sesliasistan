@@ -12,8 +12,9 @@ const stamp = () => Date.now();
 // Sayaçla da sayaçsız da çalışır; sayaç 0'a ulaştıysa ilk bitişte o an start sayılır ve süreler yazılır.
 // Kayıt antrenman planının `races` alanına (lib/raceScore.js); her dokunuş hemen yazılır.
 // Düzenleme (Seyhun 2026-10-20): yarışa dokun → ad, bitiş sırası, kodlar, sıra numarası değişir; Yarışı sil onay sorar.
-export function Races({ open, onClose, races, onSave, present, others, buoys = [] }) {
-  const [rid, setRid] = useState(null); // açık yarış
+// rid0: açılınca doğrudan bu yarış (Sonuçlar sekmesinde yarışa dokununca); açılışta yeniden okunsun diye çağıran key verir
+export function Races({ open, onClose, races, onSave, present, others, buoys = [], rid0 = null }) {
+  const [rid, setRid] = useState(rid0); // açık yarış
   const [who, setWho] = useState(null); // kod penceresindeki sporcu
   const [more, setMore] = useState(false); // yoklamada olmayan sporcular
   const [now, setNow] = useState(0);
@@ -53,7 +54,6 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
   };
 
   const table = standings(races, present);
-  const winner = (r) => r.finishes.find((f) => !f.code)?.name.split(" ")[0];
 
   return (
     <>
@@ -76,20 +76,7 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
           />
         ) : (
           <>
-            {races.length > 0 && (
-              <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
-                {races.map((r) => (
-                  <li key={r.id}>
-                    <button onClick={() => openRace(r.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left active:bg-bg">
-                      <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{r.name}</span>
-                      <span className="shrink-0 text-[0.875rem] text-mut">{[winner(r) ? `${winner(r)} birinci` : "Sonuç yok", r.fin != null ? mmss(r.fin) : ""].filter(Boolean).join(" · ")}</span>
-                      <span className="shrink-0 text-mut">›</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {table.races.length > 0 && table.rows.length > 0 && <Table table={table} races={table.races} />}
+            <RaceList races={races} present={present} onOpen={openRace} />
             <button onClick={create} className="mt-4 h-12 w-full rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.99]">
               Yeni yarış
             </button>
@@ -119,6 +106,30 @@ export function Races({ open, onClose, races, onSave, present, others, buoys = [
           <button onClick={() => setDel(null)} className="h-11 text-[0.9375rem] font-semibold text-fg2">Vazgeç</button>
         </div>
       </Sheet>
+    </>
+  );
+}
+
+// Günün yarışları (dokununca yarış) ve puan durumu: yarışlar penceresinde ve antrenman sayfasının Sonuçlar sekmesinde
+export function RaceList({ races, present, onOpen }) {
+  const table = standings(races, present);
+  const winner = (r) => r.finishes.find((f) => !f.code)?.name.split(" ")[0];
+  return (
+    <>
+      {races.length > 0 && (
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
+          {races.map((r) => (
+            <li key={r.id}>
+              <button onClick={() => onOpen(r.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left active:bg-bg">
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{r.name}</span>
+                <span className="shrink-0 text-[0.875rem] text-mut">{[winner(r) ? `${winner(r)} birinci` : "Sonuç yok", r.fin != null ? mmss(r.fin) : ""].filter(Boolean).join(" · ")}</span>
+                <span className="shrink-0 text-mut">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {table.races.length > 0 && table.rows.length > 0 && <Table table={table} races={table.races} />}
     </>
   );
 }

@@ -51,7 +51,8 @@ const PAGES = {
 // Tek yarış sayfası: kubbe sekmesiz görünür (sayfanın kendi alt çubuğu kubbenin üstüne oturur, globals.css)
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
-const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path);
+// Yarış multimedya ve antrenman sayfası kendi alt sekmelerini (Süre · Medya · Hava · Sonuçlar) gösterir
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path) || path === "/training/day";
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");

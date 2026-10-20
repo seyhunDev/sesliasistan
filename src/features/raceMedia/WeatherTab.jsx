@@ -18,7 +18,8 @@ import { DIRS, atOf, dayOf, dirShort, hm, marksFor, windOn } from "@/lib/raceLiv
 // "Rüzgar yaz": yön + şiddet, saat kendiliğinden (değiştirilebilir). Satıra dokununca kayıt silinir (sorar).
 // Yer: yarışın `spot`u; yoksa ilk açılışta ilçeden bulunup yarışa kaydedilir, bulunamazsa ya da istenirse haritadan seçilir (SpotSheet).
 // Bugün ve geçmiş günlerde en yakın resmî istasyonun ölçümü (uzaklık sınırı yok; istasyon ve km grafiğin altında yazar).
-export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
+// saveSpot: yerin kaydı (antrenman sayfası planına yazar); verilmezse yarışa (saveRaceSpot)
+export function WeatherTab({ orgId, race, day, live, onChange, onRace, saveSpot: put }) {
   const toast = useToast();
   const [wx, setWx] = useState({ day: "", rows: null, err: "" });
   const [open, setOpen] = useState(false);
@@ -31,18 +32,18 @@ export function WeatherTab({ orgId, race, day, live, onChange, onRace }) {
         setWx({ day, rows: d.rows, place: d.place, at: d.lat != null ? { lat: d.lat, lon: d.lon } : null, err: "" });
         // İlçeden bulunan yer yarışa yazılır: bir daha aranmaz, başka telefonda da aynı yer
         const sp = d.found && !race.spot && cleanSpot({ name: d.place, lat: d.lat, lon: d.lon });
-        if (sp) saveRaceSpot(orgId, race.id, sp).then(() => onRace?.((r) => (r && !r.spot ? { ...r, spot: sp } : r)), () => {});
+        if (sp) (put ? put(sp) : saveRaceSpot(orgId, race.id, sp)).then(() => onRace?.((r) => (r && !r.spot ? { ...r, spot: sp } : r)), () => {});
       },
       (e) => on && setWx({ day, rows: null, err: e?.message || "Hava tahmini alınamadı" }),
     );
     return () => {
       on = false;
     };
-  }, [race, day, orgId, onRace]);
+  }, [race, day, orgId, onRace, put]);
   const saveSpot = async (p) => {
     const sp = cleanSpot(p);
     try {
-      await saveRaceSpot(orgId, race.id, sp);
+      await (put ? put(sp) : saveRaceSpot(orgId, race.id, sp));
     } catch {
       return toast("Kaydedilemedi. İnterneti kontrol et.");
     }
