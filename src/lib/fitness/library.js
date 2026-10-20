@@ -109,14 +109,42 @@ export function libSetMedia(lib, it, { yt, media }) {
   return { ...base, items: { ...base.items, [k]: withMedia(base.items[k], { yt, media }) } };
 }
 
+// Kütüphanede karşılığı olmayan (yeni) hareketler, ada göre tekil
+export function libNew(lib, items = []) {
+  const seen = new Set();
+  return (items || []).filter((it) => {
+    const k = libKey(lib, it);
+    if (!k || lib?.items?.[k] || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+// Yapay zekanın eşleştirmesi (pairs [{ name, key }]): yeni adın anahtarı kütüphanedeki harekete yönlenir (alias)
+export function libAliases(lib, items = [], pairs = []) {
+  const alias = { ...(lib?.alias || {}) };
+  let n = 0;
+  for (const p of pairs || []) {
+    if (!lib?.items?.[p.key]) continue;
+    const it = (items || []).find((x) => fold(x.name) === fold(p.name));
+    const k = it && exKey(it);
+    if (!k || lib.items[k] || alias[k]) continue;
+    alias[k] = p.key;
+    n++;
+  }
+  return n ? { ...lib, alias } : lib;
+}
+
 export const libEntry = (lib, it) => lib?.items?.[libKey(lib, it)] || null;
 export const libNo = (lib, it) => libEntry(lib, it)?.no || 0;
 
 // Programdaki/antrenmandaki hareket kütüphanedekini kullanır (kütüphane yönetiyorsa)
 export function withLib(it, lib) {
   const e = libEntry(lib, it);
-  if (!it || !e?.m) return it;
-  const o = { ...it };
+  if (!it || !e) return it;
+  // Başka adla yazılmış aynı hareket (birleştirilmiş ya da eşleştirilmiş) kütüphanedeki adı alır: her programda ve sporcuda tek ad
+  const named = e.name && e.name !== it.name && libKey(lib, it) !== exKey(it) ? { ...it, name: e.name } : it;
+  if (!e.m) return named;
+  const o = { ...named };
   delete o.yt;
   delete o.media;
   if (e.yt) o.yt = e.yt;

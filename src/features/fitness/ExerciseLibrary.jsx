@@ -10,7 +10,7 @@ import { ExerciseMedia, Thumb } from "./ExerciseMedia";
 import { looseMedia } from "./fitMedia";
 import { ExercisePicker } from "./ExercisePicker";
 import { YtEdit } from "./YtVideo";
-import { saveLib } from "./fitnessData";
+import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
 
 // Hareketler: kulübün hareket kütüphanesi (programlarda geçen her hareket bir kez, numarasıyla). Harekete eklenen
@@ -117,6 +117,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             ))}
           </div>
           {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
+          {!q && !only && <Similar lib={lib} uses={uses} onMerge={merge} />}
           {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
           <ul className="mt-2 divide-y divide-line">
             {list.map((x) => {
@@ -159,8 +160,8 @@ const mediaText = (x) => {
   const vd = m.filter((y) => y.kind === "video").length + (x.yt?.id ? 1 : 0);
   return [ph ? `${ph} fotoğraf` : "", vd ? `${vd} video` : ""].filter(Boolean).join(" · ") || "Fotoğraf yok";
 };
-function Dupes({ groups, uses, onMerge }) {
-  const [open, setOpen] = useState(false);
+function Dupes({ groups, uses, onMerge, title = "Aynı adlı hareketler", start = false }) {
+  const [open, setOpen] = useState(start);
   const [busy, setBusy] = useState("");
   const run = async (list) => {
     const names = list.map((g) => g.name).join(", ");
@@ -177,7 +178,9 @@ function Dupes({ groups, uses, onMerge }) {
   return (
     <section className="mt-3 rounded-2xl border border-line">
       <button type="button" onClick={() => setOpen(!open)} className="flex h-12 w-full items-center justify-between px-3 text-left">
-        <b className="text-[0.9375rem] font-semibold">Aynı adlı hareketler · {groups.length}</b>
+        <b className="text-[0.9375rem] font-semibold">
+          {title} · {groups.length}
+        </b>
         <Icon name="chev" className={`size-4 text-mut transition ${open ? "rotate-90" : ""}`} />
       </button>
       {open && (
@@ -309,5 +312,40 @@ function Loose({ orgId, lib, progs, onAttach }) {
         </>
       )}
     </section>
+  );
+}
+
+// Aynı hareketin farklı adlı kayıtları (yapay zeka bulur, antrenör bakıp birleştirir): "Backpack split squat" ↔ "Sırt çantalı split squat"
+function Similar({ lib, uses, onMerge }) {
+  const toast = useToast();
+  const [groups, setGroups] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const find = async () => {
+    setBusy(true);
+    try {
+      const keys = await similarGroups(lib);
+      setGroups(
+        keys.map((g) => {
+          const keep = libKeepOf(lib, g);
+          const items = libList(lib).filter((x) => g.includes(x.key)).sort((a, b) => (a.key === keep ? -1 : b.key === keep ? 1 : a.no - b.no));
+          return { name: items.map((x) => x.name).join(" = "), keep, items };
+        }),
+      );
+    } catch (e) {
+      toast(e.message || "Bulunamadı, tekrar dene");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const merge = async (keep, keys) => {
+    await onMerge(keep, keys);
+    setGroups((gs) => (gs || []).filter((g) => g.keep !== keep));
+  };
+  if (groups?.length) return <Dupes groups={groups} uses={uses} onMerge={merge} title="Aynı hareket, farklı ad" start />;
+  return (
+    <button type="button" disabled={busy} onClick={find} className="mt-3 flex h-12 w-full items-center justify-between rounded-2xl border border-line px-3 text-left disabled:opacity-60">
+      <b className="text-[0.9375rem] font-semibold">{busy ? "Aranıyor…" : groups ? "Farklı adlı kopya yok" : "Farklı adlı kopyaları bul"}</b>
+      <Icon name="chev" className="size-4 text-mut" />
+    </button>
   );
 }
