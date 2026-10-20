@@ -11,7 +11,7 @@ import { db } from "@/lib/firebase/clientApp";
 
 // Planı ana sayfa listesinde gizle (Seyhun 2026-10-20: "10 gün kala, 20 gün ya da artı eksiyle; tarihi gelince gösterilsin"): planın homeDays
 // alanına gün yazılır, gününe o kadar gün kalana dek listede çıkmaz (homeHidden), takvimde hep görünür. Gizliyse "Hep göster" alanı siler.
-// all: listenin toplu ayarı (Seyhun: "toplu olarak yalnız 10 gün kalan planları göster"; users.homeDays), plan yerine açılır
+// plan.list: bir yarışın bütün planları birlikte (her biri kendi gününe göre görünür). all: listenin toplu ayarı (Seyhun: "toplu olarak yalnız 10 gün kalan planları göster"; users.homeDays), plan yerine açılır
 export function HideSheet({ plan, all, onClose }) {
   const { profile } = useAuth();
   const { updateRecord } = useData();
@@ -24,7 +24,8 @@ export function HideSheet({ plan, all, onClose }) {
   const set = (v) => setGot({ id, n: Math.max(1, Math.min(365, v)) });
   const by = { name: profile?.name ?? "Kullanıcı" };
   const save = (patch, msg) => {
-    if (plan) updateRecord("plan", plan.id, patch, by);
+    if (plan?.list) plan.list.forEach((p) => updateRecord("plan", p.id, patch, by));
+    else if (plan) updateRecord("plan", plan.id, patch, by);
     else updateDoc(doc(db, "users", profile.uid), patch).catch(() => toast("Kaydedilemedi, tekrar dene."));
     toast(msg);
     onClose();
@@ -34,7 +35,7 @@ export function HideSheet({ plan, all, onClose }) {
     <Sheet open onClose={onClose} title={plan ? "Listede gizle" : "Sıradaki planlar"}>
       <div className="space-y-3 pb-1">
         {plan && <p className="break-words text-[0.9375rem]">{plan.title}</p>}
-        <p className="text-[0.875rem] text-mut">{plan ? "Kaç gün kala görünsün?" : "Listede kaç gün kalan planlar görünsün?"}</p>
+        <p className="text-[0.875rem] text-mut">{plan?.list ? "Yarışın her işi kaç gün kala görünsün?" : plan ? "Kaç gün kala görünsün?" : "Listede kaç gün kalan planlar görünsün?"}</p>
         <div className="flex gap-2">
           {[10, 20].map((v) => (
             <button key={v} type="button" data-press onClick={() => set(v)} className={`${pick} ${n === v ? "acc-btn" : "raised bg-card text-acc"}`}>

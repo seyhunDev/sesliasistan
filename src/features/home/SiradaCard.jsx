@@ -45,6 +45,11 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const { days, rest: all } = twoDays(shownPlans, today, now, 200);
   const rows = (d) => d.days.reduce((n, x) => n + x.rows.length, 0) + d.rest.length; // listede çıkacak plan sayısı (60 gün)
   const hiddenN = shownPlans.length < plans.length ? rows(twoDays(plans, today, now, 200)) - rows({ days, rest: all }) : 0;
+  // Yarışın bütün planları birlikte gizlenir (Seyhun 2026-10-20: "o yarışın son tarihlerini şimdilik görmek istemiyorum"); her iş kendi gününe göre görünür
+  const raceHide = (name) => {
+    const list = plans.filter((p) => raceKey(p)?.name.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"));
+    return { id: `race:${name}`, title: name, homeDays: list.find((p) => Number.isFinite(p.homeDays))?.homeDays, list };
+  };
   const norm = (x) => String(x || "").trim().toLocaleLowerCase("tr-TR");
   const raceOf = (name) => races.open.find((r) => norm(r.name) && norm(r.name) === norm(name));
   // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
@@ -132,7 +137,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             <ul>
               {rest.map((x) =>
                 x.race ? (
-                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
+                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} onHide={() => setHide(raceHide(x.race))} />
                 ) : (
                   <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} onHide={() => setHide(x.p)} />
                 ),
@@ -184,11 +189,7 @@ function TimeRow({ p, live, warn, sub, date, left, roll, onOpen, onHide }) {
         <b className={`block break-words font-normal ${onHide ? "pr-9" : ""}`}>{p.title}</b>
         <Meta left={left} warn={warn} date={date} time={p.time || (date ? "" : "Tüm gün")} tag={tag} sub={sub} live={live} />
       </button>
-      {onHide && (
-        <button type="button" aria-label="Listede gizle" onClick={onHide} className="absolute right-0 top-1 grid size-9 place-items-center text-mut/70">
-          <Icon name="eyeOff" className="size-4" />
-        </button>
-      )}
+      <HideBtn onHide={onHide} />
       {roll && (
         <Link href={roll.href} data-press className={`raised mt-2 inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold ${roll.taken ? "text-[var(--ok)]" : "text-acc"}`}>
           {roll.taken && <Icon name="check" className="size-4 shrink-0" />}
@@ -198,6 +199,13 @@ function TimeRow({ p, live, warn, sub, date, left, roll, onOpen, onHide }) {
     </li>
   );
 }
+// Sağ üstte gizle düğmesi (HideSheet)
+const HideBtn = ({ onHide }) =>
+  onHide ? (
+    <button type="button" aria-label="Listede gizle" onClick={onHide} className="absolute right-0 top-1 grid size-9 place-items-center text-mut/70">
+      <Icon name="eyeOff" className="size-4" />
+    </button>
+  ) : null;
 const Dot = ({ live }) => (
   <span
     aria-hidden="true"
@@ -226,7 +234,7 @@ const Meta = ({ left, warn, date, time, tag, sub, live }) => {
 // Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte tam genişlikte yarışın adı, altında başlangıç günü · Yarış · Başlangıç · yer ve sağda
 // başlangıca kalan gün; dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (üstte iş adı, altında gün · saat ve kalan gün),
 // dokununca Yapıldı / Yarışın sayfası / Planı aç
-function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
+function RaceGroupRow({ g, race, date, today, onRace, onOpen, onHide }) {
   const head = g.start?.p || g.items[0].p;
   const startDay = g.start?.p.date || race?.startDate || "";
   const href = race ? `/athletes/races/${race.id}` : "";
@@ -234,12 +242,13 @@ function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
     <li className={`tone-${planTone(head)} relative border-l-2 border-line py-2.5 pl-4`}>
       <Dot />
       <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="block w-full text-left">
-        <b className="block break-words font-normal">
+        <b className="block break-words pr-9 font-normal">
           {g.race}
           {href && <span className="ml-1 font-normal text-acc">›</span>}
         </b>
         <Meta left={startDay ? leftTag(startDay, today) : null} date={date(startDay || g.day)} time={head.time} tag="Yarış" sub={[startDay && "Başlangıç", head.place].filter(Boolean).join(" · ")} />
       </button>
+      <HideBtn onHide={onHide} />
       <ul className="mt-1.5 space-y-1.5">
         {g.items.map(({ p, day, label }) => (
           <li key={p.id}>
