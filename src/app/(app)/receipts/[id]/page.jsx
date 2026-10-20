@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BackLink } from "@/components/ui/BackLink";
+import { BackButton } from "@/components/ui/BackButton";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Tile } from "@/components/dashboard/Row";
@@ -12,7 +13,7 @@ import { DOC, TLk, catOf, checkWhy, noText, totalOf } from "@/lib/receipts";
 import { fdate, rel } from "@/lib/utils/format";
 import { Loading } from "@/components/ui/Loader";
 
-const btn = "inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-card px-3 text-sm font-semibold transition active:scale-95";
+const btn = buttonClass({ variant: "secondary", size: "sm", full: false });
 
 function Sec({ title, children }) {
   return (
@@ -52,7 +53,7 @@ export default function ReceiptDetailPage() {
   if (!r) {
     return (
       <main className="mx-auto max-w-[30rem] px-5 pt-4">
-        <BackLink href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</BackLink>
+        <BackButton href="/receipts" label="Fişler" />
         {loading ? <Loading /> : <p className="mt-12 text-center text-mut">Fiş bulunamadı.</p>}
       </main>
     );
@@ -67,8 +68,8 @@ export default function ReceiptDetailPage() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       <div className="flex items-center justify-between py-1.5">
-        <BackLink href="/receipts" className={btn}><Icon name="back" className="size-[1.125rem]" /> Fişler</BackLink>
-        <button onClick={() => openReceipt({ edit: r.id })} className={btn}><Icon name="edit" className="size-[1.125rem]" /> Düzenle</button>
+        <BackButton href="/receipts" label="Fişler" />
+        <button onClick={() => openReceipt({ edit: r.id })} data-press className={btn}><Icon name="edit" className="size-[1.125rem]" /> Düzenle</button>
       </div>
 
       {/* Başlık kartı */}

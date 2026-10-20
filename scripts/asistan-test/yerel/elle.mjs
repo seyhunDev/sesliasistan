@@ -2688,5 +2688,6 @@ group("Ortak düğmeler")([
   ["eski ghost", F("ikincil olur", () => BC.buttonClass({ variant: "ghost" }) === "btn btn-secondary w-full")],
   ["tehlike küçük", F("btn-danger btn-sm", () => BC.buttonClass({ variant: "danger", size: "sm", full: false }) === "btn btn-danger btn-sm")],
   ["yazı ve simge", F("satırı doldurmaz", () => BC.buttonClass({ variant: "text" }) === "btn btn-text" && BC.buttonClass({ variant: "icon" }) === "btn btn-icon")],
+  ["geri", F("btn-back, satırı doldurmaz", () => BC.buttonClass({ variant: "back" }) === "btn btn-back")],
   ["bilinmeyen çeşit", F("ana düğmeye düşer", () => BC.buttonClass({ variant: "xyz" }) === "btn btn-primary w-full")],
 ]);
