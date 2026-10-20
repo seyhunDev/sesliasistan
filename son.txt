@@ -1,8 +1,8 @@
-Commit: 35ca11b · Küre altında sayaç düğmesi (#624)
-Zaman: 2026-10-21-0008 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39497107445
+Commit: 3471512 · Küre sayacı kürenin üstünde, daha büyük (#625)
+Zaman: 2026-10-21-0043 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39501805472
 
-TAM TEST · 21.10.2026 00:02:51
+TAM TEST · 21.10.2026 00:37:21
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1335/1357 geçti · 22 kalan · 341 sn
+SONUÇ: 1335/1357 geçti · 22 kalan · 345 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -206,7 +206,7 @@ SONUÇ: 1335/1357 geçti · 22 kalan · 341 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 12 ms · taklit · bugün 8 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 14 ms · taklit · bugün 8 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
