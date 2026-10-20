@@ -2,6 +2,7 @@
 import { waMode } from "@/lib/steps";
 import { PAGES } from "@/lib/assistantLocal";
 import { historyFor, draftFor, memoFor } from "@/lib/convoContext";
+import { TASKS_WAIT_MS } from "@/lib/ai/budget";
 import { athleteNames } from "@/features/athletes/data";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
@@ -109,8 +110,8 @@ export function startPlan(ctx, tasks, viaVoice, fresh) {
 }
 
 // Görev listesini yapay zekaya sordurur. Adı askTasks: etkinlik planının askPlan'ı (events.js) ile karışmasın
-// (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 18 sn: sunucu 16 sn
-// içinde takılan isteği bir kez yeniler; cevap yoksa liste yerelde kurulur (localPlan).
+// (önceden aynı adlı yerel işlev içe aktarılanı gölgeliyordu, etkinlik planı yanlış uca gidiyordu). En çok 12 sn: sunucu 9 sn
+// içinde bitirir (lib/ai/budget.js); cevap yoksa liste yerelde kurulur (localPlan).
 // Önceki konuşma ve açık mesaj taslağı da gider: "onu da ekle", "Ali'yi çıkar" önceki konuşmaya göre bölünür
 export async function askTasks(ctx, s, fresh) {
   const { contacts, memo, msgDraft, past, pastOn, pastTurns, planCutN, sayRace, staffNames, turns } = ctx;
@@ -119,7 +120,7 @@ export async function askTasks(ctx, s, fresh) {
   // Ses tanıma ipuçları: bilinen adlar ve öğrenilen düzeltmeler; yapay zeka düzelttiği adları geri verir, saklanır
   const names = [...new Set([...staffNames, ...contacts.map((c) => c.name), ...athleteNames()])].slice(0, 150);
   try {
-    const res = await authFetch("/api/tasks", { method: "POST", timeout: 18000, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current), history, names, fixes: loadFixes().slice(0, 40), sessions: ctx.sessionsNow?.() || [], ...(draft ? { draft } : {}) }) });
+    const res = await authFetch("/api/tasks", { method: "POST", timeout: TASKS_WAIT_MS, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: s, today: todayStr(), race: sayRace(), memo: memoFor(memo.current), history, names, fixes: loadFixes().slice(0, 40), sessions: ctx.sessionsNow?.() || [], ...(draft ? { draft } : {}) }) });
     const d = await res.json().catch(() => ({}));
     if (res.ok) learnFixes(d.fixes, names);
     planCutN.current = res.ok && d.cut > 0 ? d.cut : 0;

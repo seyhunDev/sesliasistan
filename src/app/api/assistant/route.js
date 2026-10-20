@@ -6,6 +6,7 @@ import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/l
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
 import { aiErrorText, logAiError } from "@/lib/ai/errors";
+import { budgetMs, fallbackMs, streamPlan } from "@/lib/ai/budget";
 import { draftBlock, historyBlock, memoBlock, sessionsBlock } from "@/lib/convoContext";
 
 export const runtime = "nodejs";
@@ -24,7 +25,7 @@ const hasKey = (p) => (p === "gemini" ? !!process.env.GEMINI_API_KEY : p === "an
 const bad = (error, status = 400, detail = "", extra = {}) =>
   NextResponse.json({ error, ...extra, ...(DEV && detail ? { detail } : {}) }, { status });
 
-function ask(provider, user, timeoutMs = 20000) {
+function ask(provider, user, timeoutMs) {
   if (provider === "gemini") {
     return callGemini({
       model: process.env.GEMINI_MODEL,
@@ -33,6 +34,7 @@ function ask(provider, user, timeoutMs = 20000) {
       schema: ASSISTANT_TOOL.input_schema,
       maxTokens: 8192,
       timeoutMs,
+      attemptMs: timeoutMs,
     });
   }
   return callClaude({
@@ -85,6 +87,7 @@ async function handle(request) {
   const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n${sessions ? `${sessions}\n\n` : ""}## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
 
   const started = Date.now();
+  const total = budgetMs(); // Netlify sınırı: toplam ~9,5 sn (lib/ai/budget.js)
   const forPeople = contacts.map((c) => c.replace(/\s*\(.*\)\s*$/, ""));
 
   // Akış (stream: true, Gemini): okunacak metin geldikçe satır satır gönderilir ({t:"m"}), sonunda tüm yanıt ({t:"done"}).
@@ -105,8 +108,7 @@ async function handle(request) {
               user,
               schema: ASSISTANT_TOOL.input_schema,
               maxTokens: 8192,
-              timeoutMs: 20000,
-              firstMs: 8000, // ilk parça 8 sn'de gelmezse yedek modellere geç (önceden 20 sn bekleyip sonra 20 sn daha deniyordu)
+              ...streamPlan(total), // ilk parça ~4 sn'de gelmezse kalan süreyle yedek modele (önceden 8 + 22 sn; Netlify keserdi)
               onText: (acc) => {
                 // İş yapılan yanıtlarda (kayıt, işlem, mesaj) sonucu uygulama gerçek duruma göre söyler: yapay zekanın cümlesi akışta okunmaz
                 if (isJobJson(acc)) return;
@@ -119,8 +121,10 @@ async function handle(request) {
             });
           } catch (e) {
             if (e.started) throw e;
-            // Toplam süre ~22 sn'yi geçmesin: yedek çağrı kalan süreyle (telefon da 25 sn sonra vazgeçer)
-            raw = await ask(provider, user, Math.max(6000, 22000 - (Date.now() - t0)));
+            // Yedek çağrı kalan süreyle; süre kalmadıysa zaman aşımı (telefon 14 sn bekler, bağlantı kopmasında bir kez dener)
+            const left = fallbackMs(total, Date.now() - started);
+            if (!left) throw Object.assign(new Error("zaman aşımı: yedek için süre kalmadı"), { name: "AbortError" });
+            raw = await ask(provider, user, left);
           }
           const ms = Date.now() - t0;
           const r = parseAssistant(raw, people, forPeople, text);
@@ -140,7 +144,7 @@ async function handle(request) {
 
   try {
     const t0 = Date.now();
-    const raw = await ask(provider, user);
+    const raw = await ask(provider, user, total);
     const ms = Date.now() - t0;
     const r = parseAssistant(raw, people, forPeople, text);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);

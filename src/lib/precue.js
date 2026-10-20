@@ -56,7 +56,7 @@ function when(date, today) {
 }
 
 // guess: öğrenilmiş tahmin ({ label, score }) varsa türü güçlendirir. weatherRows(date): o günün saatlik rüzgârı.
-export function precue(raw, { plans = [], today, guess = null, weatherRows = null } = {}) {
+export function precue(raw, { plans = [], today, now = "", guess = null, weatherRows = null } = {}) {
   const text = normalizeSpeech(String(raw || "")).trim();
   if (!text) return null;
   const t = lower(text);
@@ -133,7 +133,7 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
   // Ayrıntıyı ("Ekledim: Antrenman, yarın, 10:00") sonuçta uygulama söyler; aynı şey iki kez okunmaz.
   // Planda veriden tek yardımcı bilgi kalır (aynı saatte plan, o saatte rüzgâr).
   const cue = cueOf(type === "plan" && /(^| )(her|haftada bir) /u.test(t) ? "repeat" : type);
-  const info = type === "plan" ? facts({ date, time, plans, weatherRows }).trim() : "";
+  const info = type === "plan" ? facts({ date, time, plans, weatherRows, today, now: now || nowHm() }).trim() : "";
   const line = `${cue.line}${info ? ` ${info}` : ""}`;
 
   return {
@@ -147,19 +147,33 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
 }
 
 // Gerçek veriden tek yardımcı bilgi (cümle kısa kalsın, sesli okuması ~3 sn): önce aynı saatte (±90 dk) başka plan,
-// yoksa saat belliyse o saatte rüzgâr, o da yoksa o günkü plan sayısı
-function facts({ date, time, plans, weatherRows }) {
+// yoksa saat belliyse o saatte rüzgâr, o da yoksa o günkü öteki planlar. Bugünse saati geçmiş, yapılmış ve iptal planlar
+// sayılmaz (Seyhun: "o plan geçmişte kalmış, bir plan daha var demek mantıksız", 2026-10-20)
+function facts({ date, time, plans, weatherRows, today = "", now = "" }) {
   if (!date) return "";
-  const same = plans.filter((p) => p.date <= date && (p.endDate || p.date) >= date);
+  const gone = (p) => date === today && now && p.time && (p.endTime || p.time) < now;
+  const same = plans.filter((p) => p && p.date <= date && (p.endDate || p.date) >= date && p.status !== "cancelled" && !p.done && !gone(p));
   const tm = mins(time);
   const clash = tm == null ? null : same.find((p) => p.time && Math.abs(mins(p.time) - tm) <= 90);
-  if (clash) return ` O saatlerde “${clash.title}” planı da var.`;
+  if (clash) return ` Bilgin olsun, o saatlerde “${clash.title}” planın da var.`;
   if (tm != null && weatherRows) {
     const rows = weatherRows(date) || [];
     const r = rows.find((x) => +x.hh === Math.round(tm / 60)) || rows.find((x) => +x.hh === Math.floor(tm / 60));
     if (r && r.wind != null) return ` O saatte rüzgâr ${Math.round(r.wind)} knot görünüyor.`;
   }
-  return same.length ? ` O gün ${same.length} plan daha var.` : "";
+  if (!same.length) return "";
+  const day = date === today ? "bugün" : today && date === addDays(today, 1) ? "yarın" : "o gün";
+  const open = day === "o gün" ? "" : " İstersen “planları aç” de.";
+  if (same.length === 1) {
+    const p = same[0];
+    return ` Bilgin olsun, ${day} “${p.title}”${p.time ? ` (${p.time})` : ""} planın da var.${open}`;
+  }
+  return ` Bilgin olsun, ${day} ${same.length} planın daha var.${open}`;
+}
+
+function nowHm() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 // Yapay zekaya: kullanıcıya ne söylendiği ve telefonun ne anladığı (doğruysa tamamlasın, yanlışsa düzeltsin)
