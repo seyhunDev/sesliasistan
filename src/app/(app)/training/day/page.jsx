@@ -21,6 +21,9 @@ import { WeatherTab, WindSheet } from "@/features/raceMedia/WeatherTab";
 import { TabDock } from "@/features/raceMedia/RaceMedia";
 import { useLiveSync } from "@/features/raceMedia/useLiveSync";
 import { RaceList, Races } from "@/features/training/Races";
+import { aliasesOf, useNameIndex } from "@/features/athletes/names";
+import { useSpeech } from "@/hooks/useSpeech";
+import { voiceResult, voiceText } from "@/lib/raceVoice";
 import { canLog, isTraining, pickPlan } from "@/lib/trainingLog";
 import { cleanRaces, mmss, newRace, standings } from "@/lib/raceScore";
 import { BUOYS, cleanBuoys, cleanLive, upSec, windOn } from "@/lib/raceLive";
@@ -31,6 +34,7 @@ import { todayStr } from "@/lib/utils/format";
 // Süre: multimedyanın sayacı (Countdown compact + Marks, useTrainingFlow; her start bir yarış açar) ve Yoklama, Yarışlar, Günlük satırları.
 // Medya: multimedyanın MediaTab'ı; fotoğraf/video bu antrenmana bağlı (raceLive/ant-<planId>, Storage raceMedia), antrenman yarışlarına göre gruplu.
 // Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
+// Süre'de "Sonucu söyle": yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
 // Açılış: ?id=<antrenman planı> (plan penceresinden, gün penceresinden) ya da bugünün antrenmanı; ?tab=media|wx|res. Sesle: "antrenman sayfasını aç".
 const stamp = () => Date.now();
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
@@ -134,6 +138,24 @@ function Day() {
   const planId = plan?.id;
   const saveSpot = useCallback((sp) => updateRecord("plan", planId, { spot: sp }, by), [planId]); // eslint-disable-line react-hooks/exhaustive-deps
   const ours = present.length ? athletes.filter((a) => stateOf(a) === "present") : athletes;
+  // Sonucu söyle: dokun konuş, bitince dokun; adlar sporculara eşlenir, yarışa hemen yazılır
+  const { idx: nameIdx } = useNameIndex();
+  const [said, setSaid] = useState("");
+  const sayResult = (text) => {
+    const r = voiceResult(text, {
+      races,
+      athletes,
+      present: present.map((a) => a.id),
+      aliases: Object.fromEntries(athletes.map((a) => [a.id, aliasesOf(nameIdx, a.id)])),
+      runningId: tr.t.rid || "",
+      force: true,
+    });
+    if (r.error) return setSaid(`“${text}” · ${r.error}`);
+    saveRaces(r.list);
+    setSaid(voiceText(r));
+    undo(`${r.race.name} sonucu yazıldı`, races);
+  };
+  const sp = useSpeech({ names: athletes.map((a) => a.studentName), noLevel: true, onFinal: sayResult, onFail: (m) => toast(m) });
   const rf = { flow, ask: null, choose: () => {} };
 
   async function addPlan() {
@@ -198,6 +220,20 @@ function Day() {
             }
           />
           {withRaces && <Marks buoys={buoys} s={cur} on={!!cur && tr.up} onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
+          {withRaces && (
+            <>
+              <button
+                type="button"
+                onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}
+                disabled={sp.status === "transcribing"}
+                className={`mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold active:translate-y-px disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card"}`}
+              >
+                <Icon name={sp.status === "listening" ? "stop" : "mic"} className="size-5" />
+                {sp.status === "listening" ? "Dinliyorum · bitince dokun" : sp.status === "transcribing" ? "Yazıya çevriliyor…" : "Sonucu söyle"}
+              </button>
+              {said && <p className="mt-2 px-1 text-[0.875rem] leading-snug text-fg2">{said}</p>}
+            </>
+          )}
 
           {!plan ? (
             <button onClick={addPlan} disabled={adding} className="mt-3 flex w-full items-center justify-between rounded-2xl border border-line bg-card px-4 py-3.5 text-left disabled:opacity-50">
