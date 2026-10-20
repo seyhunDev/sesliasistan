@@ -1,8 +1,8 @@
-Commit: 0b01ecd · Ses çevirisi: telefonun tanıması boş sonuçta kapanmaz; sunucuda yedek süre ve bekleme kaydı düzeltmesi (#567)
-Zaman: 2026-10-20-1904 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39453370365
+Commit: 795fbd2 · Asistan: yoklama soruları telefonda cevaplanır, soru bekleme yazısı konuyu söyler (#568)
+Zaman: 2026-10-20-1912 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39454586053
 
-TAM TEST · 20.10.2026 18:59:39
+TAM TEST · 20.10.2026 19:07:26
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,18 +20,24 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
+SONUÇ: 1327/1342 geçti · 15 kalan · 309 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
   ✓ Birim testleri: 1/1
 
-2. ANLAMA: temiz cümleler: 121/121
+2. ANLAMA: temiz cümleler: 119/121
   ✓ Temiz cümle: Plan / takvim: 8/8
   ✓ Temiz cümle: Görev: 6/6
   ✓ Temiz cümle: Not: 3/3
   ✓ Temiz cümle: Mesaj: 10/10
-  ✓ Temiz cümle: Soru: 8/8
+  ✗ Temiz cümle: Soru: 6/8
+      ✗ “Dün antrenmana kimler geldi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “Antrenmana Ali geldi mi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
   ✓ Temiz cümle: Yoklama: 6/6
   ✓ Temiz cümle: Yoklama (yoklama sayfasında): 3/3
   ✓ Temiz cümle: Antrenman günlüğü: 3/3
@@ -58,12 +64,39 @@ SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
   ✓ Temiz cümle: Geri al: 1/1
   ✓ Temiz cümle: çok iş: 18/18
 
-2. ANLAMA: insan ve ses tanıma hataları: 631/631
-  ✓ Bozuk: noktalamasız: 121/121
-  ✓ Bozuk: küçük harf, kesme işaretsiz: 121/121
-  ✓ Bozuk: Türkçe harfsiz (klavye): 103/103
-  ✓ Bozuk: dolgu sözlü (şey, ııı): 121/121
-  ✓ Bozuk: kekeme (ilk söz iki kez): 121/121
+2. ANLAMA: insan ve ses tanıma hataları: 620/631
+  ✗ Bozuk: noktalamasız: 119/121
+      ✗ “Dün antrenmana kimler geldi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “Antrenmana Ali geldi mi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+  ✗ Bozuk: küçük harf, kesme işaretsiz: 119/121
+      ✗ “dün antrenmana kimler geldi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “antrenmana ali geldi mi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+  ✗ Bozuk: Türkçe harfsiz (klavye): 102/103
+      ✗ “Dun antrenmana kimler geldi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+  ✗ Bozuk: dolgu sözlü (şey, ııı): 119/121
+      ✗ “şey ııı Dün antrenmana kimler geldi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “şey ııı Antrenmana Ali geldi mi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+  ✗ Bozuk: kekeme (ilk söz iki kez): 119/121
+      ✗ “Dün Dün antrenmana kimler geldi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “Antrenmana Antrenmana Ali geldi mi?”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
   ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
   ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
   ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
@@ -96,13 +129,19 @@ SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
   ✓ Gerçek hata: konuşma dili (yapcaz): 1/1
   ✓ Gerçek hata: yazım hatası (yazz): 1/1
   ✓ Gerçek hata: mesaj, yoklama sanılmamalı: 1/1
-  ✓ Gerçek hata: soru, yoklama yazılmamalı: 2/2
+  ✗ Gerçek hata: soru, yoklama yazılmamalı: 0/2
+      ✗ “bugün antremana kimler geldi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “mustafa geldi mi antrenmana”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
   ✓ Gerçek hata: mesaj, kapatma sanılmamalı: 1/1
   ✓ Gerçek hata: optimist → optimus: 1/1
   ✓ Gerçek hata: noktasız (yoklama sayfasında): 1/1
   ✓ Gerçek hata: yazım hatası (gönderi ekranında): 1/1
 
-2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 187/187
+2. ANLAMA: insan davranışları (düzeltme, vazgeçme, onay, tekrar, soru/komut, öğrenme): 185/187
   ✓ Mesaj kartına cevap (gönder / vazgeç / değiştir): 45/45
   ✓ Kayıt taslağına cevap (kaydet / vazgeç / değiştir): 24/24
   ✓ “Başka bir isteğin var mı?” cevabı: 19/19
@@ -110,7 +149,13 @@ SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
   ✓ Yeni cümle: Düzeltme: 8/8
   ✓ Yeni cümle: Vazgeçme: 7/7
   ✓ Yeni cümle: Gönderme: 9/9
-  ✓ Yeni cümle: Soru / komut: 13/13
+  ✗ Yeni cümle: Soru / komut: 11/13
+      ✗ “Ali geldi mi”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
+      ✗ “Ali bugün geldi mi antrenmana”
+          beklenen: yapay zeka (plan/görev/not/mesaj/soru)
+          olan:     attQuery
   ✓ Yeni cümle: Tekrar: 6/6
   ✓ Yeni cümle: Kibar / sokak ağzı: 12/12
   ✓ Uzun, dağınık anlatım (yapay zeka cevap vermezse): 4/4
@@ -128,11 +173,8 @@ SONUÇ: 1341/1342 geçti · 1 kalan · 292 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 80/81
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 81/81
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
