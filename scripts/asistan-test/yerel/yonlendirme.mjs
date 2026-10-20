@@ -47,7 +47,7 @@ function cue(s) {
 }
 
 // Beklenen yol (görev id → yol)
-const PATH = { undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
+const PATH = { attQuery: "attQuery", undo: "undo", birthday: "birthday", payee: "payee", results: "results", version: "version", appUpdate: "appUpdate", inboxClear: "inboxClear", navigate: "navigate", receiptCam: "receiptCam", meeting: "meeting", close: "close", attendance: "attendance", log: "log", raceOpen: "raceOpen", race: "race", inventory: "inventory", invoice: "invoice", post: "post", event: "event", schedule: "schedule", person: "person", shopping: "shopping", call: "call", dues: "dues", income: "income", cash: "income", athlete: "athlete", raceHere: "raceHere", receiptPay: "receiptPay", absent: "absent", shopClear: "shopClear", bdayDelete: "bdayDelete", personDelete: "personDelete", groupCreate: "groupCreate", hotel: "hotel", athleteOpen: "athleteOpen", personOpen: "personOpen", athleteBody: "athleteBody", raceWind: "raceWind", raceTimer: "raceTimer", trainResult: "trainResult", invoiceTask: "invoiceTask", fitProgram: "fitness", fitLog: "fitness", fitPlans: "fitness", fitDone: "fitness", foodLog: "food", "Beslenme: su": "food", "Beslenme: kilo": "food", "Beslenme: kaç kalori": "food", debt: "debt(add)", debtPay: "debt(pay)", debtAsk: "debt(ask)", debtDelete: "debt(delete)" };
 // Yapay zekaya giden işlerde ön cevabın kabul edilebilir türleri
 const CUE_OK = {
   plan: ["plan", "repeat"], repeat: ["repeat"], task: ["task"], note: ["note"], record: ["record", "plan", "task", "-"], complete: ["complete"], reopen: ["reopen"], noteDone: ["noteDone"], planDone: ["planDone"],
@@ -160,8 +160,10 @@ const CROSS = [
   ["send", "Ali'ye mesaj at, antrenmana gelmedi diye merak ettim", "mesaj, yoklama değil"],
   ["send", "velilere yaz, antrenmana gelmeyenler cumartesi telafi yapacak", "mesaj, yoklama değil"],
   ["plan", "yarın 17:00 antrenman var, sporcular gelmedi derse ararım", "plan, yoklama değil"],
-  ["query", "dün antrenmana kimler geldi?", "soru, yoklama yazılmamalı"],
-  ["query", "antrenmana Ali geldi mi", "soru, yoklama yazılmamalı"],
+  ["attQuery", "dün antrenmana kimler geldi?", "yoklama sorusu (telefonda cevap), yoklama yazılmamalı"],
+  ["attQuery", "antrenmana Ali geldi mi", "yoklama sorusu (telefonda cevap), yoklama yazılmamalı"],
+  ["attQuery", "bugünkü antrenmana kimler katıldı", "yoklama sorusu, plan değil"],
+  ["attQuery", "bu ay Ali kaç antrenmana katıldı", "yoklama sorusu, fitness değil"],
   ["send", "Gökhan'a envanter sayımını yarın yapacağımızı yaz", "mesaj, envanter değil"],
   ["task", "Ali'ye envanter sayımı görevi ver, cumaya kadar", "görev, envanter değil"],
   ["plan", "cumartesi 10'da envanter sayımı planla", "plan, envanter değil"],
@@ -194,7 +196,7 @@ const CROSS = [
   ["send", "velilere yaz, aidat son günü 10 Ekim", "mesaj, aidat hatırlatması değil"],
   ["query", "kaç sporcu var", "soru, sporcu ekleme değil"],
   ["send", "Ali'ye yaz, fişini ödedim", "mesaj, fiş ödemesi değil"],
-  ["query", "dün gelmeyenler kimdi?", "soru, veliye haber değil"],
+  ["attQuery", "dün gelmeyenler kimdi?", "yoklama sorusu, veliye haber değil"],
   ["send", "velilere yaz, gelmeyenler cumartesi telafi yapacak", "mesaj, gelmeyen bildirimi değil"],
   ["delete", "Ali'nin doğum günü planını sil", "plan silme"],
 ];
@@ -632,3 +634,31 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
   ["afişi haberlerden çıkar", NEWS("remove")],
   ["başlığı daha kısa yaz", { desc: "haber işi değil", fn: (s) => newsCommand(s), ok: (r) => r === null }],
 ]);
+
+// Yoklama soruları: telefondaki yoklamadan cevap (lib/attQuery.js; Seyhun 2026-10-20: "kimler katıldı dedim, planları getirdi")
+{
+  const { attQueryAsk, attQueryAnswer } = await import("@/lib/attQuery");
+  const T = "2026-10-20"; // salı
+  const A = [
+    { studentName: "Ali Kaya", att: { 2026: { "10-20": "present", "10-19": "absent", "10-15": "present" } } },
+    { studentName: "Ayşe Yılmaz", att: { 2026: { "10-20": "present", "10-19": "present" } } },
+    { studentName: "Zeynep Ak", att: { 2026: { "10-20": "absent", "10-19": "excused" } } },
+  ];
+  const AQ = (want) => ({ desc: want || "soru değil", fn: (s) => { const q = attQueryAsk(s, T); return q ? attQueryAnswer(q, A) : ""; }, ok: (r) => r === want });
+  group("Yoklama soruları (telefonda cevap)")([
+    ["bugünkü antrenmana kimler katıldı", AQ("Bugün 2 sporcu geldi: Ali ve Ayşe. Gelmeyen: Zeynep.")],
+    ["dün kimler gelmedi", AQ("Dün 1 sporcu gelmedi: Ali.")],
+    ["Ayşe bugün geldi mi", AQ("Ayşe bugün geldi.")],
+    ["Zeynep dün antrenmana katıldı mı", AQ("Zeynep dün izinli.")],
+    ["bugün kaç sporcu geldi", AQ("Bugün 2 sporcu geldi, 1 gelmedi.")],
+    ["bu ay Ali kaç antrenmana katıldı", AQ("Ali bu ay 2 gün geldi ve 1 gün gelmedi (yoklama alınan 3 gün).")],
+    ["bu hafta en çok kim gelmedi", AQ("Bu hafta 2 gün yoklama alındı; en çok gelmeyenler: Ali 1, Zeynep 1.")],
+    ["pazartesi kimler geldi", AQ("Pazartesi 1 sporcu geldi: Ayşe. Gelmeyen: Ali. İzinli: Zeynep.")],
+    ["geçen ay kimler geldi", AQ("Geçen ay hiç yoklama alınmamış.")],
+    ["Ali geldi Ayşe gelmedi", AQ("")],
+    ["bugün antrenmana kimse gelmedi", AQ("")],
+    ["gelmeyenlerin velilerine haber ver", AQ("")],
+    ["Ali'ye geldi mi diye sor", AQ("")],
+    ["bugün antrenman var mı", AQ("")],
+  ]);
+}
