@@ -1,5 +1,6 @@
 // Antrenman yarışları: antrenman planının `races` alanında durur (ek koleksiyon, ek kural yok).
-// races = [{ id, name, startAt (ms, sayaç 0 olduğunda), finishes: [{ id, name, code?, t? (startan beri sn) }] }]
+// races = [{ id, name, startAt (ms, sayaç 0 olduğunda), fin? (yarış süresi sn, Bitir), marks? ({ "Şamandıra 1": sn }),
+//   finishes: [{ id, name, code?, t? (startan beri sn) }] }]. Sonucu girilmemiş yarış puan durumuna girmez.
 // finishes bitiş sırasıdır; kodlu olan (DNF, DNS…) yer almaz, arkasındakiler bir sıra öne geçer.
 // Puanlama yelken yarış kurallarındaki düşük puan sistemi (RRS Ek A): 1. → 1 puan, 2. → 2 puan…
 // Katılan = o gün yoklamada "geldi" olanlar + yarışlara eklenen herkes. Yarışa eklenmeyen katılan DNC olur.
@@ -28,7 +29,15 @@ export function cleanRaces(races) {
         .map((f) => ({ id: str(f?.id, 60), name: str(f?.name, 60), ...(okCode(f?.code) ? { code: f.code } : {}), ...(Number.isFinite(f?.t) && f.t >= 0 ? { t: Math.round(f.t) } : {}) }))
         .filter((f) => f.id && f.name && !seen.has(f.id) && seen.add(f.id))
         .slice(0, 80);
-      return { id: str(r?.id, 30) || `y${i + 1}`, name: str(r?.name, 40) || `Yarış ${i + 1}`, ...(Number.isFinite(r?.startAt) ? { startAt: r.startAt } : {}), finishes };
+      const marks = Object.fromEntries(Object.entries(r?.marks || {}).filter(([k, v]) => /^(Start|Finish|Şamandıra \d{1,2})$/.test(k) && Number.isFinite(v) && v >= 0).map(([k, v]) => [k, Math.round(v)]));
+      return {
+        id: str(r?.id, 30) || `y${i + 1}`,
+        name: str(r?.name, 40) || `Yarış ${i + 1}`,
+        ...(Number.isFinite(r?.startAt) ? { startAt: r.startAt } : {}),
+        ...(Number.isFinite(r?.fin) && r.fin >= 0 ? { fin: Math.round(r.fin) } : {}),
+        ...(Object.keys(marks).length ? { marks } : {}),
+        finishes,
+      };
     })
     .slice(0, 30);
 }
@@ -49,9 +58,10 @@ export function entrantsOf(present, races) {
   return [...m].map(([id, name]) => ({ id, name })).sort((a, b) => String(a.name).localeCompare(String(b.name), "tr"));
 }
 
-// Puan durumu. Sonuç { n, penalty, discard (atılan sayısı), rows: [{ id, name, cells: [{ pts, place, code, drop }], total, net, rank }] }
+// Puan durumu (yalnız sonucu girilmiş yarışlar). Sonuç { races (puanlanan yarışlar), n, penalty, discard (atılan sayısı),
+// rows: [{ id, name, cells: [{ pts, place, code, drop }], total, net, rank }] }
 export function standings(races, present) {
-  const list = races || [];
+  const list = (races || []).filter((r) => r.finishes?.length);
   const entrants = entrantsOf(present, list);
   const n = entrants.length;
   const penalty = n + 1;
@@ -82,7 +92,7 @@ export function standings(races, present) {
   };
   rows.sort((a, b) => a.net - b.net || tie(a, b));
   rows.forEach((r, i) => (r.rank = i + 1));
-  return { n, penalty, discard, rows };
+  return { races: list, n, penalty, discard, rows };
 }
 
 // Yarışın başlangıcı: yarışa start zamanı yazılmamışsa ve sayaç son 2 saat içinde 0'a ulaştıysa, ilk bitişte
@@ -102,7 +112,14 @@ export function addFinish(race, a, now = Date.now()) {
 }
 export const setCode = (race, id, code) => ({ ...race, finishes: race.finishes.map((f) => (f.id === id ? (code ? { ...f, code } : (({ code: _, ...x }) => x)(f)) : f)) });
 export const removeFinish = (race, id) => ({ ...race, finishes: race.finishes.filter((f) => f.id !== id) });
-// Sırayı değiştir: listede bir yukarı (-1) ya da aşağı (+1)
+// Sırayı değiştir: listede bir yukarı (-1) ya da aşağı (+1); placeAt: listede verilen sıraya (0'dan)
+export function placeAt(race, id, to) {
+  const l = race.finishes.filter((f) => f.id !== id);
+  const f = race.finishes.find((x) => x.id === id);
+  if (!f) return race;
+  l.splice(Math.max(0, Math.min(l.length, to)), 0, f);
+  return { ...race, finishes: l };
+}
 export function moveFinish(race, id, d) {
   const l = [...race.finishes];
   const i = l.findIndex((f) => f.id === id);

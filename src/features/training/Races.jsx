@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { lastZero } from "@/features/training/Countdown";
-import { CODES, addFinish, cleanRaces, mmss, moveFinish, newRace, places, removeFinish, setCode, standings, startFor } from "@/lib/raceScore";
+import { CODES, addFinish, cleanRaces, mmss, moveFinish, newRace, placeAt, places, removeFinish, setCode, standings, startFor } from "@/lib/raceScore";
 
 const stamp = () => Date.now();
 
@@ -11,11 +11,13 @@ const stamp = () => Date.now();
 // Bitiş: bekleyen sporcunun adına dokun, sıradaki yeri alır. Sıradakine dokun: DNF/DNS/BFD/OCS/RET/DSQ, sıra değiştir, çıkar.
 // Sayaçla da sayaçsız da çalışır; sayaç 0'a ulaştıysa ilk bitişte o an start sayılır ve süreler yazılır.
 // Kayıt antrenman planının `races` alanına (lib/raceScore.js); her dokunuş hemen yazılır.
-export function Races({ open, onClose, races, onSave, present, others }) {
+// Düzenleme (Seyhun 2026-10-20): yarışa dokun → ad, bitiş sırası, kodlar, sıra numarası değişir; Yarışı sil onay sorar.
+export function Races({ open, onClose, races, onSave, present, others, buoys = [] }) {
   const [rid, setRid] = useState(null); // açık yarış
   const [who, setWho] = useState(null); // kod penceresindeki sporcu
   const [more, setMore] = useState(false); // yoklamada olmayan sporcular
   const [now, setNow] = useState(0);
+  const [del, setDel] = useState(null); // silinmesi sorulan yarış
   const race = races.find((r) => r.id === rid);
   const close = () => {
     setRid(null);
@@ -45,8 +47,9 @@ export function Races({ open, onClose, races, onSave, present, others }) {
     put(addFinish(st != null ? { ...race, startAt: st } : race, a, n));
   };
   const drop = () => {
-    save(races.filter((r) => r.id !== rid));
-    setRid(null);
+    save(races.filter((r) => r.id !== del));
+    if (del === rid) setRid(null);
+    setDel(null);
   };
 
   const table = standings(races, present);
@@ -68,7 +71,8 @@ export function Races({ open, onClose, races, onSave, present, others }) {
             onFinish={finish}
             onRow={setWho}
             onBack={() => setRid(null)}
-            onDelete={drop}
+            onDelete={() => setDel(race.id)}
+            buoys={buoys}
           />
         ) : (
           <>
@@ -78,13 +82,14 @@ export function Races({ open, onClose, races, onSave, present, others }) {
                   <li key={r.id}>
                     <button onClick={() => openRace(r.id)} className="flex w-full items-center gap-2 px-4 py-3 text-left active:bg-bg">
                       <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{r.name}</span>
-                      <span className="shrink-0 text-[0.875rem] text-mut">{winner(r) ? `${winner(r)} birinci` : "Sonuç yok"}</span>
+                      <span className="shrink-0 text-[0.875rem] text-mut">{[winner(r) ? `${winner(r)} birinci` : "Sonuç yok", r.fin != null ? mmss(r.fin) : ""].filter(Boolean).join(" · ")}</span>
+                      <span className="shrink-0 text-mut">›</span>
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-            {races.length > 0 && table.rows.length > 0 && <Table table={table} races={races} />}
+            {table.races.length > 0 && table.rows.length > 0 && <Table table={table} races={table.races} />}
             <button onClick={create} className="mt-4 h-12 w-full rounded-2xl bg-acc text-[1rem] font-semibold text-white active:scale-[.99]">
               Yeni yarış
             </button>
@@ -99,18 +104,28 @@ export function Races({ open, onClose, races, onSave, present, others }) {
         onClose={() => setWho(null)}
         onCode={(c) => put(setCode(race, who, c))}
         onMove={(d) => put(moveFinish(race, who, d))}
+        count={race?.finishes.length || 0}
+        index={race && who ? race.finishes.findIndex((x) => x.id === who) : -1}
+        onPlace={(i) => put(placeAt(race, who, i))}
         onRemove={() => {
           put(removeFinish(race, who));
           setWho(null);
         }}
       />
+      <Sheet open={!!del} onClose={() => setDel(null)} title={`${races.find((r) => r.id === del)?.name || "Yarış"} silinsin mi?`}>
+        <div className="grid gap-2 pb-2">
+          <p className="text-[0.9375rem] text-fg2">Sonuçları da silinir, puan durumundan çıkar.</p>
+          <button onClick={drop} className="h-12 rounded-2xl bg-rec text-[1rem] font-semibold text-white active:translate-y-px">Sil</button>
+          <button onClick={() => setDel(null)} className="h-11 text-[0.9375rem] font-semibold text-fg2">Vazgeç</button>
+        </div>
+      </Sheet>
     </>
   );
 }
 
-function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, onRow, onBack, onDelete }) {
+function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, onRow, onBack, onDelete, buoys }) {
   const [name, setName] = useState(race.name);
-  const [sure, setSure] = useState(false); // silmek için ikinci dokunuş
+  const marks = buoys.filter((b) => race.marks?.[b] != null).map((b) => `${b.replace("Şamandıra ", "Ş")} ${mmss(race.marks[b])}`);
   const pl = places(race);
   const nb = "min-h-12 rounded-xl border border-line bg-card px-2 py-2 text-[0.9375rem] font-medium shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
   return (
@@ -125,7 +140,10 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           className="h-9 min-w-0 flex-1 rounded-xl bg-bg px-3 text-[0.9375rem] outline-none"
         />
       </div>
-      {race.startAt && (
+      {(marks.length > 0 || race.fin != null) && (
+        <p className="mt-3 px-1 text-[0.875rem] tabular-nums text-fg2">{[...marks, race.fin != null ? `Süre ${mmss(race.fin)}` : ""].filter(Boolean).join(" · ")}</p>
+      )}
+      {race.startAt && race.fin == null && (
         <div className="mt-3 flex items-center justify-between rounded-2xl border border-line px-4 py-2.5">
           <span className="text-[0.9375rem] text-fg2">Startan beri</span>
           <b className="text-[1.75rem] font-semibold tabular-nums">{mmss(Math.max(0, Math.floor((now - race.startAt) / 1000)))}</b>
@@ -171,8 +189,8 @@ function RaceView({ race, now, waiting, others, more, onMore, onName, onFinish, 
           )}
         </>
       )}
-      <button onClick={() => (sure ? onDelete() : setSure(true))} className="mt-5 w-full py-2 text-[0.875rem] font-semibold text-rec">
-        {sure ? "Silmek için tekrar dokun" : "Yarışı sil"}
+      <button onClick={onDelete} className="mt-5 w-full py-2 text-[0.875rem] font-semibold text-rec">
+        Yarışı sil
       </button>
     </div>
   );
@@ -218,7 +236,7 @@ function Table({ table, races }) {
   );
 }
 
-function CodeSheet({ f, place, penalty, n, onClose, onCode, onMove, onRemove }) {
+function CodeSheet({ f, place, penalty, n, onClose, onCode, onMove, onRemove, count, index, onPlace }) {
   const cell = (on) => `rounded-xl border px-1 py-2 text-center active:scale-95 ${on ? "border-rec bg-rec text-white" : "border-line bg-bg"}`;
   return (
     <Sheet open={!!f} onClose={onClose} title={f ? `${f.name}${place ? ` · ${place}.` : ""}` : ""}>
@@ -236,8 +254,16 @@ function CodeSheet({ f, place, penalty, n, onClose, onCode, onMove, onRemove }) 
             Kodlu sonuç {penalty} puan · katılan {n} sporcu + 1
           </p>
           <div className="mt-3 flex gap-2">
-            <button onClick={() => onMove(-1)} className="h-11 flex-1 rounded-xl border border-line text-[0.9375rem] font-semibold">Yukarı</button>
-            <button onClick={() => onMove(1)} className="h-11 flex-1 rounded-xl border border-line text-[0.9375rem] font-semibold">Aşağı</button>
+            <label className="flex h-11 flex-1 items-center justify-between rounded-xl border border-line px-3 text-[0.9375rem] font-semibold">
+              Sıra
+              <select value={index} onChange={(e) => onPlace(+e.target.value)} aria-label="Sırası" className="bg-transparent text-right tabular-nums outline-none">
+                {Array.from({ length: count }, (_, i) => (
+                  <option key={i} value={i}>{i + 1}.</option>
+                ))}
+              </select>
+            </label>
+            <button onClick={() => onMove(-1)} className="h-11 w-16 rounded-xl border border-line text-[1rem] font-semibold" aria-label="Yukarı">↑</button>
+            <button onClick={() => onMove(1)} className="h-11 w-16 rounded-xl border border-line text-[1rem] font-semibold" aria-label="Aşağı">↓</button>
           </div>
           <button onClick={onRemove} className="mt-3 w-full py-2 text-[0.9375rem] font-semibold text-rec">Sıradan çıkar</button>
         </div>
