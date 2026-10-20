@@ -64,7 +64,7 @@ export function AthleteFitness() {
           <small className="block px-1 text-[0.75rem] font-bold tracking-[.06em] text-mut">SIRADAKİ ANTRENMANLAR</small>
           <div className={`${card} mt-2 divide-y divide-line/60`}>
             {upcoming.map((p) => (
-              <button key={p.id} type="button" onClick={() => open(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <button key={p.id} type="button" onClick={() => open(p)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                 <span className="w-24 shrink-0 text-[0.8125rem] text-mut">
                   {dayText(p.date)}
                   {p.time ? ` ${p.time}` : ""}

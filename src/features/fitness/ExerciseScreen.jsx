@@ -82,7 +82,7 @@ export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
     <div role="dialog" aria-label={e.name} className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-bg">
       <div className="mx-auto max-w-[30rem] px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex h-11 items-center justify-between">
-          <button type="button" onClick={onBack} className="-ml-1 flex h-11 items-center gap-1 pr-3 text-[0.9375rem] font-semibold text-acc">
+          <button type="button" onClick={onBack} data-press className="btn btn-text btn-sm -ml-1 text-acc">
             <Icon name="chev" className="size-4 rotate-180" />
             Hareketler
           </button>

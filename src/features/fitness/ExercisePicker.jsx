@@ -25,7 +25,7 @@ export function ExercisePicker({ open, onClose, onPick }) {
   };
   const row = (key, name, sub, no, e) => (
     <li key={key}>
-      <button type="button" onClick={() => pick(e)} className="flex w-full items-center gap-3 py-2.5 text-left">
+      <button type="button" onClick={() => pick(e)} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
         {no ? <span className="w-8 shrink-0 text-[0.75rem] font-semibold tabular-nums text-mut">{no}</span> : null}
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-medium">{name}</b>
@@ -51,7 +51,7 @@ export function ExercisePicker({ open, onClose, onPick }) {
       <ul className="mt-2 divide-y divide-line">
         {q.trim() && !exact && (
           <li>
-            <button type="button" onClick={() => pick({ id: "", name: q.trim().slice(0, 60), custom: true })} className="flex w-full items-center gap-3 py-2.5 text-left">
+            <button type="button" onClick={() => pick({ id: "", name: q.trim().slice(0, 60), custom: true })} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
               <span className="min-w-0 flex-1">
                 <b className="block truncate text-[0.9375rem] font-semibold text-acc">“{q.trim()}” adıyla ekle</b>
                 <small className="block truncate text-[0.75rem] text-mut">Listede yok, yeni hareket olarak eklenir</small>

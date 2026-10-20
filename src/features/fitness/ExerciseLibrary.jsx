@@ -115,23 +115,23 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             <section className="mt-4 rounded-2xl border border-line bg-card p-3">
               <input value={naming} onChange={(x) => setNaming(x.target.value)} onKeyDown={(x) => x.key === "Enter" && saveName()} autoFocus maxLength={60} className="h-12 w-full rounded-xl bg-bg px-3 text-[1rem] outline-none" />
               <div className="mt-2 flex gap-2">
-                <button type="button" onClick={() => setNaming(null)} className="h-11 flex-1 rounded-xl bg-bg text-[0.9375rem] font-semibold">
+                <button type="button" onClick={() => setNaming(null)} data-press className="btn btn-secondary flex-1">
                   Vazgeç
                 </button>
-                <button type="button" disabled={!naming.trim()} onClick={saveName} className="h-11 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+                <button type="button" disabled={!naming.trim()} onClick={saveName} data-press className="btn btn-primary flex-1">
                   Kaydet
                 </button>
               </div>
             </section>
           ) : (
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setNaming(e.name)} className="h-12 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
+              <button type="button" onClick={() => setNaming(e.name)} data-press className="btn btn-secondary">
                 Adı değiştir
               </button>
-              <button type="button" onClick={() => setJoin(true)} className="h-12 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
+              <button type="button" onClick={() => setJoin(true)} data-press className="btn btn-secondary">
                 Birleştir
               </button>
-              <button type="button" onClick={remove} className="col-span-2 h-12 rounded-xl text-[0.9375rem] font-semibold text-rec">
+              <button type="button" onClick={remove} data-press className="btn btn-danger col-span-2">
                 Hareketi sil
               </button>
             </div>
@@ -140,7 +140,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
       )}
       <div className="sticky top-0 z-10 mx-auto max-w-[30rem] bg-bg/95 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
         <div className="flex h-11 items-center justify-between">
-          <button type="button" onClick={close} className="-ml-1 flex h-11 items-center gap-1 pr-3 text-[0.9375rem] font-semibold text-acc">
+          <button type="button" onClick={close} data-press className="btn btn-text btn-sm -ml-1 text-acc">
             <Icon name="chev" className="size-4 rotate-180" />
             Fitness
           </button>
@@ -178,7 +178,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             const n = uses[x.key] || 0;
             return (
               <li key={x.key}>
-                <button type="button" onClick={() => setSel(x.key)} className="flex min-h-[4.5rem] w-full items-center gap-3 py-2.5 text-left">
+                <button type="button" onClick={() => setSel(x.key)} data-press="row" className="flex min-h-[4.5rem] w-full items-center gap-3 py-2.5 text-left">
                   <span className="relative size-14 shrink-0">
                     <Mini orgId={orgId} x={x} />
                     <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-card px-1 text-[0.6875rem] font-bold tabular-nums text-fg ring-1 ring-line">{x.no}</span>
@@ -230,7 +230,7 @@ function Dupes({ groups, uses, onMerge, title = "Aynı adlı hareketler", start 
   };
   return (
     <section className="mt-3 rounded-2xl border border-line">
-      <button type="button" onClick={() => setOpen(!open)} className="flex h-12 w-full items-center justify-between px-3 text-left">
+      <button type="button" onClick={() => setOpen(!open)} data-press="row" className="flex h-12 w-full items-center justify-between px-3 text-left">
         <b className="text-[0.9375rem] font-semibold">
           {title} · {groups.length}
         </b>
@@ -253,14 +253,14 @@ function Dupes({ groups, uses, onMerge, title = "Aynı adlı hareketler", start 
                     </li>
                   ))}
                 </ul>
-                <button type="button" disabled={!!busy} onClick={() => run([g])} className="mt-2 h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc disabled:opacity-60">
+                <button type="button" disabled={!!busy} onClick={() => run([g])} data-press className="btn btn-secondary btn-sm mt-2 w-full text-acc">
                   {busy === g.keep ? "Birleştiriliyor…" : "Birleştir"}
                 </button>
               </li>
             ))}
           </ul>
           {groups.length > 1 && (
-            <button type="button" disabled={!!busy} onClick={() => run(groups)} className="mt-2 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-60">
+            <button type="button" disabled={!!busy} onClick={() => run(groups)} data-press className="btn btn-primary mt-2 w-full">
               {busy === "*" ? "Birleştiriliyor…" : `Hepsini birleştir (${groups.length})`}
             </button>
           )}
@@ -278,7 +278,7 @@ function Choose({ lib, not = "", title, onPick, onCancel }) {
     <section className="mt-3 rounded-2xl border border-line p-3">
       <div className="flex items-center justify-between">
         <b className="text-[0.9375rem] font-semibold">{title}</b>
-        <button type="button" onClick={onCancel} className="h-9 px-2 text-[0.875rem] font-semibold text-mut">
+        <button type="button" onClick={onCancel} data-press className="btn btn-text btn-sm text-mut">
           Vazgeç
         </button>
       </div>
@@ -286,7 +286,7 @@ function Choose({ lib, not = "", title, onPick, onCancel }) {
       <ul className="mt-1 max-h-72 divide-y divide-line overflow-y-auto">
         {list.map((x) => (
           <li key={x.key}>
-            <button type="button" onClick={() => onPick(x)} className="flex min-h-12 w-full items-center justify-between gap-2 py-2 text-left">
+            <button type="button" onClick={() => onPick(x)} data-press="row" className="flex min-h-12 w-full items-center justify-between gap-2 py-2 text-left">
               <span className="min-w-0 truncate text-[0.9375rem]">
                 <span className="tabular-nums text-mut">{x.no} · </span>
                 {x.name}
@@ -358,7 +358,7 @@ function Loose({ orgId, lib, progs, onAttach }) {
           {to ? (
             <Choose lib={lib} title="Hangi hareketin?" onPick={put} onCancel={() => setTo(false)} />
           ) : (
-            <button type="button" disabled={!pick.length} onClick={() => setTo(true)} className="mt-2 h-11 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+            <button type="button" disabled={!pick.length} onClick={() => setTo(true)} data-press className="btn btn-primary mt-2 w-full">
               {pick.length ? `Harekete ekle (${pick.length})` : "Dosya seç"}
             </button>
           )}

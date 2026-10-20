@@ -67,7 +67,7 @@ export function YtToggle({ yt, className = "" }) {
         <a href={ytWatch(yt.id, yt.start)} target="_blank" rel="noreferrer" className="text-[0.8125rem] font-semibold text-mut underline-offset-2">
           YouTube&apos;da aç
         </a>
-        <button type="button" onClick={() => set(true)} className="flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
+        <button type="button" onClick={() => set(true)} data-press className="btn btn-secondary btn-sm text-mut">
           <Icon name="x" className="size-4" />
           Videoyu gizle
         </button>
@@ -85,7 +85,7 @@ export function YtSmall({ yt, className = "" }) {
     return (
       <div className={className}>
         <YtPlayer yt={yt} auto />
-        <button type="button" onClick={() => setPlay(false)} className="mt-1.5 flex h-9 items-center gap-1.5 rounded-full bg-card px-3 text-[0.8125rem] font-semibold text-mut shadow-sm">
+        <button type="button" onClick={() => setPlay(false)} data-press className="btn btn-secondary btn-sm mt-1.5 text-mut">
           <Icon name="x" className="size-4" />
           Küçült
         </button>
@@ -186,7 +186,7 @@ export function YtEdit({ yt, onChange, media = [], onMedia, className = "", big 
             YouTube videosu
             <small className="block font-normal text-mut">Sporcu antrenmanda izler</small>
           </span>
-          <button type="button" onClick={() => onChange(null)} className="h-9 rounded-full bg-rec/10 px-3 text-[0.8125rem] font-semibold text-rec">
+          <button type="button" onClick={() => onChange(null)} data-press className="btn btn-danger btn-sm">
             Kaldır
           </button>
         </div>
@@ -212,17 +212,17 @@ export function YtEdit({ yt, onChange, media = [], onMedia, className = "", big 
           className={`min-w-0 flex-1 bg-bg px-3 outline-none ${big ? "h-12 rounded-xl text-[1rem]" : "h-9 rounded-full text-[0.8125rem]"}`}
         />
         {!big && text.trim() && (
-          <button type="button" disabled={busy} onClick={() => add(text)} className="h-9 rounded-full bg-acc px-3 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={() => add(text)} data-press className="btn btn-primary btn-sm">
             {busy ? "Aranıyor…" : "Ekle"}
           </button>
         )}
       </div>
       {big && (
         <div className="mt-2 flex gap-2">
-          <button type="button" disabled={busy} onClick={paste} className="h-12 flex-1 rounded-xl bg-bg text-[0.9375rem] font-semibold disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={paste} data-press className="btn btn-secondary flex-1">
             Yapıştır
           </button>
-          <button type="button" disabled={busy || !text.trim()} onClick={() => add(text)} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+          <button type="button" disabled={busy || !text.trim()} onClick={() => add(text)} data-press className="btn btn-primary flex-1">
             {busy ? "Aranıyor…" : "Ekle"}
           </button>
         </div>

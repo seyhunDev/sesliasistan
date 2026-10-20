@@ -96,7 +96,7 @@ export function FoodView({ orgId, uid, fit = {}, fitW = [], trainDays = 3, onBod
                     {!list.length && <small className="text-[0.8125rem] text-mut">Eklenmedi</small>}
                   </span>
                   {kc > 0 && <span className="text-[0.875rem] font-semibold tabular-nums text-mut">{fmt(kc)} kcal</span>}
-                  <button type="button" onClick={() => setAdd({ slot: k })} aria-label={`${name} ekle`} className="grid size-9 shrink-0 place-items-center rounded-full bg-acc/10 text-acc active:scale-90">
+                  <button type="button" onClick={() => setAdd({ slot: k })} aria-label={`${name} ekle`} data-press className="btn btn-icon btn-sm shrink-0 text-acc">
                     <Icon name="plus" className="size-5" />
                   </button>
                 </div>
@@ -232,7 +232,7 @@ function WaterCard({ n, goal, onSet }) {
           ))}
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button type="button" disabled={!n} onClick={() => onSet(n - 1)} aria-label="Bir bardak eksilt" className="grid size-10 place-items-center rounded-full bg-bg text-fg disabled:opacity-40">
+          <button type="button" disabled={!n} onClick={() => onSet(n - 1)} aria-label="Bir bardak eksilt" data-press className="btn btn-round size-10 text-fg">
             <Icon name="minus" className="size-5" />
           </button>
           <button type="button" onClick={() => onSet(n + 1)} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-sky-500/12 text-[0.9375rem] font-semibold text-sky-600 dark:text-sky-300">
@@ -257,7 +257,7 @@ function Glass({ full }) {
 function WeightCard({ list, trend, onAdd }) {
   const pts = list.slice(-30);
   return (
-    <Section title="Kilo" right={<button type="button" onClick={onAdd} className="text-[0.875rem] font-semibold text-acc">Kilo yaz</button>}>
+    <Section title="Kilo" right={<button type="button" onClick={onAdd} data-press className="btn btn-text btn-sm text-acc">Kilo yaz</button>}>
       <div className={`${card} p-4`}>
         {trend ? (
           <>
@@ -412,7 +412,7 @@ function AddFood({ open, slot: slot0, often, onClose, onAdd }) {
                 </span>
                 <input inputMode="numeric" value={r.kcal} onChange={(e) => setRow(i, "kcal", e.target.value.replace(/\D/g, ""))} className="w-14 bg-transparent text-right text-[0.9375rem] font-semibold tabular-nums outline-none" />
                 <span className="text-[0.75rem] text-mut">kcal</span>
-                <button type="button" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} aria-label="Çıkar" className="grid size-8 place-items-center text-mut">
+                <button type="button" onClick={() => setRows((x) => x.filter((_, j) => j !== i))} aria-label="Çıkar" data-press className="btn btn-icon btn-sm size-8 text-mut">
                   <Icon name="x" className="size-4" />
                 </button>
               </div>
@@ -446,7 +446,7 @@ function AddFood({ open, slot: slot0, often, onClose, onAdd }) {
               <H>SIK YEDİKLERİN</H>
               <div className="flex flex-wrap gap-1.5">
                 {often.map((m) => (
-                  <button key={m.id} type="button" onClick={() => onAdd([{ ...m, slot }])} className="rounded-full bg-bg px-3 py-2 text-[0.8125rem] font-medium">
+                  <button key={m.id} type="button" onClick={() => onAdd([{ ...m, slot }])} data-press className="btn btn-secondary btn-sm">
                     {m.name} <span className="text-mut">· {fmt(m.kcal)}</span>
                   </button>
                 ))}
@@ -508,7 +508,7 @@ function EditFood({ meal, onClose, onSave, onDrop }) {
       >
         Kaydet
       </Button>
-      <button type="button" onClick={onDrop} className="mt-3 flex h-11 w-full items-center justify-center gap-2 text-[0.9375rem] font-semibold text-rec">
+      <button type="button" onClick={onDrop} data-press className="btn btn-danger mt-3 w-full">
         <Icon name="trash" className="size-4" />
         Sil
       </button>
@@ -525,14 +525,14 @@ function WeightSheet({ open, last, onClose, onSave }) {
   return (
     <Sheet open={open} onClose={onClose} title="Bugünkü kilon">
       <div className="mt-2 flex items-center justify-center gap-4">
-        <button type="button" onClick={() => step(-0.1)} aria-label="Azalt" className="grid size-12 place-items-center rounded-full bg-bg">
+        <button type="button" onClick={() => step(-0.1)} aria-label="Azalt" data-press className="btn btn-round btn-sm size-12">
           <Icon name="minus" className="size-5" />
         </button>
         <label className="flex items-baseline gap-1">
           <input inputMode="decimal" value={kg} onChange={(e) => setKg(e.target.value.replace(",", "."))} className="w-28 bg-transparent text-center text-[2.5rem] font-bold tabular-nums outline-none" />
           <span className="text-[1rem] font-semibold text-mut">kg</span>
         </label>
-        <button type="button" onClick={() => step(0.1)} aria-label="Artır" className="grid size-12 place-items-center rounded-full bg-bg">
+        <button type="button" onClick={() => step(0.1)} aria-label="Artır" data-press className="btn btn-round btn-sm size-12">
           <Icon name="plus" className="size-5" />
         </button>
       </div>
