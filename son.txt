@@ -1,8 +1,8 @@
-Commit: 7f007dc (kaydedilmemiş değişiklikle) · Yarış multimedya: denemeleri sıfırla düğmesi (#541)
-Zaman: 2026-10-20-0302 (İstanbul)
-Çalıştırma: Mac (npm run test:hepsi)
+Commit: a3269f0 · Çevrimdışı kayıt: internet varken yanlış "bağlantı zayıf" şeridi yok, kayıtlar internetsiz takılmaz (#542)
+Zaman: 2026-10-20-0308 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39345307759
 
-TAM TEST · 20.10.2026 02:58:08
+TAM TEST · 20.10.2026 03:03:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1337 geçti · 0 kalan · 253 sn
+SONUÇ: 1336/1337 geçti · 1 kalan · 271 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,8 +128,11 @@ SONUÇ: 1337/1337 geçti · 0 kalan · 253 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 76/76
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 75/76
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
