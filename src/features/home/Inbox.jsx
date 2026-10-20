@@ -153,7 +153,7 @@ export function InboxBell({ inbox, onOpen }) {
       type="button"
       onClick={onOpen}
       aria-label={n ? `Senin için, ${n} yeni` : "Senin için"}
-      className="relative mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-card text-fg ring-1 ring-line/70 active:scale-90"
+      data-press className="btn btn-round size-10 relative mt-0.5 shrink-0 text-fg"
     >
       <Icon name="bell" className="size-5" />
       {n > 0 && (

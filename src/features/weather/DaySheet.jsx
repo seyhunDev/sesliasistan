@@ -341,7 +341,7 @@ export function WeatherDetail({ w, refresh, busy }) {
           >
             i
           </button>
-          <button type="button" onClick={() => refresh(true)} disabled={busy} aria-label="Yenile" className="grid size-8 place-items-center rounded-full bg-card text-acc ring-1 ring-line disabled:opacity-50">
+          <button type="button" onClick={() => refresh(true)} disabled={busy} aria-label="Yenile" data-press className="btn btn-round btn-sm size-8 text-acc">
             <Icon name="load" className={`size-3.5 ${busy ? "animate-spin" : ""}`} />
           </button>
         </div>

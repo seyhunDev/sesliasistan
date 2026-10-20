@@ -38,11 +38,11 @@ export function WaSheet({ open, onClose, races = [] }) {
   };
   const row = (t, del) => (
     <li key={t} className="flex items-start gap-2 border-t border-line first:border-t-0">
-      <button type="button" onClick={() => setText(t)} className="min-w-0 flex-1 break-words py-2.5 text-left text-[0.9375rem]">
+      <button type="button" onClick={() => setText(t)} data-press="row" className="min-w-0 flex-1 break-words py-2.5 text-left text-[0.9375rem]">
         {t}
       </button>
       {del && (
-        <button type="button" aria-label="Kalıbı sil" onClick={() => save(mine.filter((x) => x !== t))} className="grid size-10 shrink-0 place-items-center text-mut">
+        <button type="button" aria-label="Kalıbı sil" onClick={() => save(mine.filter((x) => x !== t))} data-press className="btn btn-icon size-10 shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       )}

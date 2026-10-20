@@ -666,7 +666,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               // Plan/görev/not ekranının üstünde (rec), asistan kapalıyken: tek satır kutu, dokun yaz, ışığa dokun konuş
               <div className="px-3 py-2">
                 <div className="asheet-input flex min-h-12 items-center gap-1 rounded-full pl-5 pr-1.5">
-                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-mut">
+                  <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press="row" className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-mut">
                     {said || cfg.ph}
                   </button>
                   <VoiceLight state={small ? state : "idle"} onTap={talk} onHold={typeNow} size="size-9" compact />
