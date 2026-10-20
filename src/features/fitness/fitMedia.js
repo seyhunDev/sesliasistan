@@ -8,7 +8,7 @@
 // Fotoğraf 1280 px JPEG'e küçültülür. Video en çok 60 sn; 6 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
 // (video süresi kadar sürer); küçültülemezse en çok 80 MB kabul edilir.
 import { collection, getDocs } from "firebase/firestore";
-import { deleteObject, getStorage, listAll, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { deleteObject, getMetadata, getStorage, listAll, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
 import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/raceFiles";
@@ -125,6 +125,25 @@ export async function loadMedia(orgId, meta) {
   const blob = new Blob(list, { type: meta.type || (meta.kind === "video" ? "video/mp4" : "image/jpeg") });
   saveRaceFile({ id: cacheKey(meta.id), blob, name: meta.id });
   return { blob };
+}
+
+// Storage'da duran ama hiçbir harekete bağlı olmayan dosyalar (used: bağlı kimlikler). Dönüş: künyeler, yeniden eskiye
+// (at: yüklenme zamanı; kaydedilirken cleanMedia atar)
+export async function looseMedia(orgId, used = new Set(), max = 60) {
+  const all = await listAll(sref(store(), `orgs/${orgId}/fitMedia`));
+  const free = all.items.filter((it) => !used.has(it.name)).slice(0, max);
+  const out = await Promise.all(
+    free.map(async (it) => {
+      try {
+        const [md, url] = await Promise.all([getMetadata(it), getDownloadURL(it)]);
+        const type = md.contentType || "";
+        return { id: it.name, kind: /^video\//.test(type) ? "video" : "photo", type, size: md.size || 0, parts: 1, url, at: md.timeCreated || "" };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return out.filter(Boolean).sort((a, b) => String(b.at).localeCompare(String(a.at)));
 }
 
 // Siler; hata sessiz

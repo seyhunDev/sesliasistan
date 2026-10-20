@@ -6,6 +6,8 @@ import { authFetch } from "@/lib/authFetch";
 import { compressImage } from "@/lib/image";
 import { todayStr } from "@/lib/utils/format";
 import { kindOf } from "@/features/athletes/raceNotice";
+import { libList } from "@/lib/fitness/library";
+import { libNow } from "./fitnessData";
 
 const MAX = 4 * 1024 * 1024;
 
@@ -47,11 +49,18 @@ export function editProgram(program, ask, { age, sport } = {}) {
   return send({ program, ask, age, sport });
 }
 
+// Kulübün hareket adları (Hareketlerim): aynı hareket yeni adla ikinci kez açılmasın diye yapay zeka bu adı kullanır
+const libNames = () =>
+  libList(libNow())
+    .map((e) => e.name)
+    .slice(0, 200)
+    .join("\n");
+
 async function send(body) {
   const res = await authFetch("/api/fitness-import", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...body, today: todayStr() }),
+    body: JSON.stringify({ ...body, today: todayStr(), names: libNames() }),
     timeout: 65000,
   });
   const p = await res.json().catch(() => ({}));

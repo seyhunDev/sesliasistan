@@ -2215,6 +2215,32 @@ group("Fitness hareket kütüphanesi")([
       lib.items.pushup.media.length === 3 && lib.items.pushup.spare.length === 1 && it.media.length === 3 &&
       lib.alias["c:sinav"] === "pushup" && !LB.libDupes(lib).length && LB.libNo(lib, { ex: "", name: "Şınav" }) === 1;
   })],
+  ["farklı adlı aynı hareketi birleştir", F("elle birleştirme: fotoğraflı kalır, yeni programda iki ad da onu kullanır, ikinci kayıt açılmaz", () => {
+    const M = (id) => ({ id, kind: "photo", type: "image/jpeg", size: 1000, parts: 1 });
+    const old = LB.cleanLib({ next: 3, items: {
+      "c:backpack-split-squat": { no: 1, name: "Backpack split squat", media: [M("a"), M("b")], m: true },
+      "c:sirt-cantali-split-squat": { no: 2, name: "Sırt çantalı split squat" },
+    } });
+    const keys = Object.keys(old.items);
+    const keep = LB.libKeepOf(old, keys);
+    const lib = LB.cleanLib(LB.libMerge(old, keep, keys));
+    const { lib: after, added } = LB.libAdd(lib, [{ ex: "", name: "Sırt çantalı split squat" }, { ex: "", name: "Backpack split squat" }]);
+    const it = LB.withLib({ ex: "", name: "Sırt çantalı split squat" }, after);
+    return keep === "c:backpack-split-squat" && !added.length && Object.keys(after.items).length === 1 && it.media.length === 2;
+  })],
+  ["yüklenirken eklenen kaybolmaz", F("eski görüntüye göre değişiklik güncel listeye uygulanır", () => {
+    const a = { id: "a" }, b = { id: "b" }, c = { id: "c" };
+    const add = LB.mediaApply([a], [a, b], [a, c]);
+    const drop = LB.mediaApply([a, c], [c], [a, b, c]);
+    return add.map((m) => m.id).join() === "a,c,b" && drop.map((m) => m.id).join() === "b,c";
+  })],
+  ["hareketsiz dosya geri eklenir", F("ilk 3'ü görünür, fazlası yedekte, hiçbiri kaybolmaz", () => {
+    const M = (id) => ({ id, kind: "photo", type: "image/jpeg", size: 1000, parts: 1 });
+    const old = LB.cleanLib({ items: { plank: { no: 1, name: "Plank", media: [M("a"), M("b")], m: true } } });
+    const lib = LB.cleanLib(LB.libAttach(old, "plank", [M("c"), M("d"), M("a")]));
+    const ids = LB.libMediaIds(lib);
+    return lib.items.plank.media.length === 3 && lib.items.plank.spare.length === 1 && ["a", "b", "c", "d"].every((x) => ids.has(x)) && ids.size === 4;
+  })],
   ["fotoğraflı olan kalır", F("numarası büyük olsa da fotoğrafı olan kopya kalır", () => {
     const old = LB.cleanLib({ items: { "c:dips": { no: 1, name: "Dips" }, dips: { no: 5, name: "Dips", yt: YT, m: true } } });
     const d = LB.libDupes(old);
