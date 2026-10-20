@@ -11,7 +11,8 @@ import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
 import Link from "next/link";
 import { isTraining } from "@/lib/trainingLog";
-import { attHref, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { HideSheet } from "./HideSheet";
+import { attHref, homeHidden, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
@@ -33,12 +34,17 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const now = useNow();
   const router = useRouter();
   const races = useRaceHome();
-  const [pick, setPick] = useState(null); // Yarış planı: Yapıldı / Yarışın sayfası / Planı aç penceresi
+  const [pick, setPick] = useState(null);
+  const [hide, setHide] = useState(null); // listede gizle penceresi // Yarış planı: Yapıldı / Yarışın sayfası / Planı aç penceresi
   if (!profile) return null;
   const today = todayStr();
   const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
   // Yarın ve Sırada tek listede (homeList): aynı yarışın planları tek satırda, yarışın yarınki işi de orada; Sırada en çok 4 satır
-  const { days, rest: all } = twoDays(plans, today, now, 200);
+  // Listede gizlenen planlar (homeHidden; gizle düğmesi HideSheet) günü yaklaşana dek çıkmaz, altta "N plan gizli · Takvim ›"
+  const shownPlans = plans.filter((p) => !homeHidden(p, today, profile.homeDays));
+  const { days, rest: all } = twoDays(shownPlans, today, now, 200);
+  const rows = (d) => d.days.reduce((n, x) => n + x.rows.length, 0) + d.rest.length; // listede çıkacak plan sayısı (60 gün)
+  const hiddenN = shownPlans.length < plans.length ? rows(twoDays(plans, today, now, 200)) - rows({ days, rest: all }) : 0;
   const norm = (x) => String(x || "").trim().toLocaleLowerCase("tr-TR");
   const raceOf = (name) => races.open.find((r) => norm(r.name) && norm(r.name) === norm(name));
   // Yarış planı (Seyhun 2026-10-19: "plana mı yarışın sayfasına mı gideceğim, tercih edebilmeliyim; yapıldı diyebilmeliyim"): pencere açılır.
@@ -106,7 +112,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
             <DayHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
             <ul>
               {nextRows.map(({ p }) => (
-                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} onOpen={() => open(p)} />
+                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} onOpen={() => open(p)} onHide={() => setHide(p)} />
               ))}
             </ul>
           </>
@@ -114,43 +120,75 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 
         {rest.length > 0 && (
           <>
-            <DayHead title="Sırada" />
+            <DayHead
+              title="Sırada"
+              right={
+                <button type="button" onClick={() => setHide("all")} className="flex items-center gap-1 font-semibold normal-case tracking-normal text-acc">
+                  <Icon name="eyeOff" className="size-3.5" />
+                  {Number.isFinite(profile.homeDays) ? `${profile.homeDays} gün kala` : "Tümü"}
+                </button>
+              }
+            />
             <ul>
               {rest.map((x) =>
                 x.race ? (
                   <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} />
                 ) : (
-                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} />
+                  <TimeRow key={x.p.id} p={x.p} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} onHide={() => setHide(x.p)} />
                 ),
               )}
             </ul>
           </>
         )}
+        {hiddenN > 0 && (
+          <div className="mt-1 flex items-center justify-between gap-3 border-t border-line py-2.5 text-[0.84375rem] text-mut">
+            <button type="button" onClick={() => setHide("all")} className="flex items-center gap-1.5">
+              <Icon name="eyeOff" className="size-4 shrink-0" />
+              {hiddenN} plan gizli
+            </button>
+            <Link href="/calendar" className="shrink-0 font-semibold text-acc">
+              Takvim ›
+            </Link>
+          </div>
+        )}
       </div>
 
       <WaitRow inbox={inbox} onAll={onInbox} />
       <RacePlanSheet plan={pick} today={today} onClose={() => setPick(null)} />
+      <HideSheet plan={hide === "all" ? null : hide} all={hide === "all"} onClose={() => setHide(null)} />
     </section>
   );
 }
 
 // Tek listede gün başlığı (Yarın · Çarşamba, Sırada): ince çizginin altında küçük gri ad
-const DayHead = ({ title }) => <h2 className="mt-1 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">{title}</h2>;
+// right: sağda tek eylem (Sırada'da listenin toplu gizleme ayarı)
+const DayHead = ({ title, right }) => (
+  <h2 className="mt-1 flex items-center justify-between gap-3 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">
+    {title}
+    {right}
+  </h2>
+);
 
 // Liste satırı (Bugün, Yarın, Sırada aynı; Seyhun 2026-10-20: "başlık üst satır yatayda full, altında diğer bilgiler yan yana"): solda ince dikey çizgi
 // ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında gün · saat · tür · yer · "şimdi" ve sağda
 // kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri). warn: rüzgâr eşiği geçti, alt satır kırmızımsı
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
 // roll: bugünün antrenmanında yoklama ({ href, taken }): satırın altında "Yoklama al" ya da yeşil "✓ Yoklama alındı" (dokununca yine açılır)
-function TimeRow({ p, live, warn, sub, date, left, roll, onOpen }) {
+// onHide: sağ üstte gizle düğmesi (Yarın ve Sırada; HideSheet)
+function TimeRow({ p, live, warn, sub, date, left, roll, onOpen, onHide }) {
   const tag = planTag(p);
   return (
     <li className={`tone-${planTone(p)} relative border-l-2 border-line py-2.5 pl-4`}>
       <Dot live={live} />
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <b className="block break-words font-normal">{p.title}</b>
+        <b className={`block break-words font-normal ${onHide ? "pr-9" : ""}`}>{p.title}</b>
         <Meta left={left} warn={warn} date={date} time={p.time || (date ? "" : "Tüm gün")} tag={tag} sub={sub} live={live} />
       </button>
+      {onHide && (
+        <button type="button" aria-label="Listede gizle" onClick={onHide} className="absolute right-0 top-1 grid size-9 place-items-center text-mut/70">
+          <Icon name="eyeOff" className="size-4" />
+        </button>
+      )}
       {roll && (
         <Link href={roll.href} data-press className={`raised mt-2 inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold ${roll.taken ? "text-[var(--ok)]" : "text-acc"}`}>
           {roll.taken && <Icon name="check" className="size-4 shrink-0" />}
