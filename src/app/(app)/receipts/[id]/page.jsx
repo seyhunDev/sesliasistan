@@ -96,7 +96,7 @@ export default function ReceiptDetailPage() {
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[0.875rem] font-semibold text-amber-800">
             <Icon name="alert" className="size-4 shrink-0" />
             <span className="min-w-0 flex-1">{why}</span>
-            <button type="button" onClick={() => setReceiptChecked(r.id)} className="h-9 shrink-0 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc">
+            <button type="button" onClick={() => setReceiptChecked(r.id)} data-press className="btn btn-secondary btn-sm shrink-0 text-acc">
               Doğru
             </button>
           </div>

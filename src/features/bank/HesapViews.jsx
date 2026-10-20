@@ -47,7 +47,7 @@ export function MonthList({ rows, step = 30, empty }) {
 export function Line({ title, sub, amount, status, warn, done, onClick, action }) {
   return (
     <li className="flex items-center">
-      <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={onClick} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-[0.9375rem] font-medium ${done ? "text-mut line-through" : ""}`}>{title || "İsimsiz"}</span>
           {sub && <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>}
@@ -90,7 +90,7 @@ export function Fold({ title, rows, children }) {
   if (!rows.length) return null;
   return (
     <section className="mt-5">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 px-1 pb-2 text-left text-[0.8125rem] font-semibold text-mut">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} data-press="row" className="flex w-full items-center gap-2 px-1 pb-2 text-left text-[0.8125rem] font-semibold text-mut">
         <span className="min-w-0 flex-1">
           {title} ({rows.length})
         </span>
@@ -112,7 +112,7 @@ export function Fold({ title, rows, children }) {
 export function AddBar({ label, onClick }) {
   return (
     <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
-      <button type="button" onClick={onClick} className="mx-auto flex h-12 w-full max-w-[26.25rem] items-center justify-center rounded-2xl bg-acc text-[0.9375rem] font-semibold text-white shadow-[0_2px_8px_rgba(38,40,44,.12)] active:scale-[.98]">
+      <button type="button" onClick={onClick} data-press className="btn btn-primary mx-auto w-full max-w-[26.25rem]">
         {label}
       </button>
     </div>
@@ -125,7 +125,7 @@ export function Choose({ open, onClose, title, options }) {
     <Sheet open={open} onClose={onClose} title={title}>
       <div className="space-y-2 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         {(options || []).map(([label, fn]) => (
-          <button key={label} type="button" onClick={() => (onClose(), fn())} className="h-12 w-full rounded-xl bg-bg text-[0.9375rem] font-semibold active:scale-[.98]">
+          <button key={label} type="button" onClick={() => (onClose(), fn())} data-press className="btn btn-secondary w-full">
             {label}
           </button>
         ))}

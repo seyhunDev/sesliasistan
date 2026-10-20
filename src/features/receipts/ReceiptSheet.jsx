@@ -307,7 +307,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
           <span className="truncate">{title}</span>
           <QuotaPill kind="receipt" />
         </h2>
-        <button onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
+        <button onClick={onClose} aria-label="Kapat" data-press className="btn btn-round btn-sm text-mut">
           <Icon name="x" className="size-[1.125rem]" />
         </button>
       </header>
@@ -364,13 +364,13 @@ export function ReceiptSheet({ open, onClose, seed }) {
             <p className="mt-4 text-[1.0625rem] font-semibold">Fişin fotoğrafını çek</p>
             <p className="mt-1 text-[0.875rem] text-mut">Düz zemine koy, tamamı görünsün</p>
             <div className="mt-6 flex w-full max-w-[20rem] flex-col gap-2.5">
-              <button onClick={takePhoto} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-acc text-base font-semibold text-white transition active:scale-[.98]">
+              <button onClick={takePhoto} data-press className="btn btn-primary">
                 <Icon name="camera" className="size-5" /> Fotoğraf çek
               </button>
-              <button onClick={() => galRef.current?.click()} className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-base font-semibold transition active:scale-[.98]">
+              <button onClick={() => galRef.current?.click()} data-press className="btn btn-secondary">
                 <Icon name="image" className="size-5" /> Galeriden seç
               </button>
-              <button onClick={() => setStage("form")} className="h-11 text-[0.9375rem] font-medium text-mut transition active:text-fg">
+              <button onClick={() => setStage("form")} data-press className="btn btn-text btn-sm text-mut">
                 Elle gir
               </button>
             </div>
@@ -396,7 +396,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                       Tekrar dene
                     </button>
                   )}
-                  <button onClick={() => { setError(""); setStage("form"); }} className="h-10 rounded-xl border border-amber-300 px-4 text-sm font-semibold active:scale-95">
+                  <button onClick={() => { setError(""); setStage("form"); }} data-press className="btn btn-secondary btn-sm">
                     Elle gir
                   </button>
                   <button onClick={takePhoto} className="h-10 rounded-xl px-3 text-sm font-semibold active:scale-95">
@@ -410,7 +410,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                   <Loader size="sm" /> Fiş okunuyor
                 </p>
                 <p className="mt-1 text-[0.8125rem] tabular-nums text-mut">{secs} sn{secs >= 12 ? " · yoğunluk olabilir" : ""}</p>
-                <button onClick={cancelRead} className="mt-4 h-10 px-4 text-[0.9375rem] font-semibold text-mut active:text-fg">
+                <button onClick={cancelRead} data-press className="btn btn-text btn-sm mt-4 text-mut">
                   Vazgeç
                 </button>
               </>
@@ -456,7 +456,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                 {lowAny && <p className="mt-1 text-[0.8125rem] text-amber-800">Turuncu alanları kontrol et</p>}
               </div>
               {image && (
-                <button type="button" onClick={() => galRef.current?.click()} className="text-sm font-semibold text-acc active:opacity-50">
+                <button type="button" onClick={() => galRef.current?.click()} data-press className="btn btn-text btn-sm text-acc">
                   Değiştir
                 </button>
               )}
@@ -475,7 +475,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                   <input type="time" className={`${inp} ${ok}`} value={form.time} onChange={(e) => set({ time: e.target.value })} />
                 </L>
               </div>
-              <button type="button" onClick={() => setMore((m) => !m)} className="flex items-center gap-1 text-sm font-semibold text-acc active:opacity-50">
+              <button type="button" onClick={() => setMore((m) => !m)} data-press className="btn btn-text btn-sm text-acc">
                 <Icon name="chev" className={`size-4 transition ${more ? "rotate-90" : ""}`} /> Belge ayrıntıları
               </button>
               {more && (
@@ -504,7 +504,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                     <div key={i.key} className="rounded-2xl border border-line bg-card p-2.5">
                       <div className="flex items-center gap-2">
                         <input className={`${inp} ${ok} h-10`} value={i.n} onChange={(e) => setItem(i.key, { n: e.target.value })} placeholder="Ürün / hizmet" />
-                        <button type="button" onClick={() => removeItem(i.key)} aria-label="Kalemi sil" className="grid size-10 shrink-0 place-items-center rounded-xl bg-bg text-mut active:scale-90">
+                        <button type="button" onClick={() => removeItem(i.key)} aria-label="Kalemi sil" data-press className="btn btn-round size-10 shrink-0 text-mut">
                           <Icon name="x" className="size-4" />
                         </button>
                       </div>
@@ -520,7 +520,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
                   );
                 })}
               </div>
-              <button type="button" onClick={() => set({ items: [...form.items, newItem()] })} className="mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line text-sm font-semibold text-mut active:scale-[.98]">
+              <button type="button" onClick={() => set({ items: [...form.items, newItem()] })} data-press className="btn btn-secondary mt-2 w-full text-mut">
                 <Icon name="plus" className="size-4" /> Kalem ekle
               </button>
             </section>
