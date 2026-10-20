@@ -11,16 +11,20 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { isActive, loadAthletes } from "@/features/athletes/data";
 import { RollPanel } from "@/features/athletes/RollPanel";
 import { TrainingLog } from "@/features/add/TrainingLog";
-import { Countdown } from "@/features/training/Countdown";
+import { Countdown, useTimerRun } from "@/features/training/Countdown";
+import { useTrainingFlow } from "@/features/training/useTrainingFlow";
+import { Marks } from "@/features/raceMedia/TimerTab";
 import { Races } from "@/features/training/Races";
 import { canLog, isTraining, pickPlan } from "@/lib/trainingLog";
-import { standings } from "@/lib/raceScore";
+import { cleanRaces, mmss, standings } from "@/lib/raceScore";
+import { BUOYS, cleanBuoys, upSec } from "@/lib/raceLive";
 import { todayStr } from "@/lib/utils/format";
 
 // Antrenman sayfası (kulüp antrenmanı günü): sayaç, yoklama, yarışlar (bitiş sırası + puan durumu), günlük.
 // Açılış: ?id=<antrenman planı> (plan penceresinden) ya da bugünün antrenmanı. Yoklama ve günlük mevcut ekranların
 // aynısı (RollPanel, TrainingLog), aynı yere yazar; yarışlar planın `races` alanında (lib/raceScore.js).
-// Sesle: "antrenman sayfasını aç" (nav.js). Sayacı ve sonuçları sesle girmek sonraki iş.
+// Sayaç yarış multimedyanın sayacı (Countdown compact + Marks, useTrainingFlow). Sesle: "antrenman sayfasını aç" (nav.js).
+const stamp = () => Date.now();
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 
 export default function TrainingDayPage() {
@@ -65,6 +69,19 @@ function Day() {
   const races = plan?.races || [];
   const table = standings(races, present);
   const locked = plan && isLocked?.("plan", plan.id);
+  // Sayaç yarış multimedyadakiyle aynı (sayaca dokununca başlar, start dizisi bipleri); planı olan günde her start bir yarış açar
+  const saveRaces = (list) => updateRecord("plan", plan.id, { races: cleanRaces(list) }, by);
+  const { flow, undo } = useTrainingFlow({ races, save: saveRaces });
+  const tr = useTimerRun();
+  const withRaces = plan && racer && !locked;
+  const cur = withRaces && tr.running ? races.find((r) => r.id === tr.t.rid) : null;
+  const buoys = plan?.buoys ? cleanBuoys(plan.buoys) : BUOYS;
+  const mark = (b) => {
+    if (!cur || tr.t.end == null) return;
+    const sec = upSec(tr.t.end, stamp());
+    saveRaces(races.map((r) => (r.id === cur.id ? { ...r, marks: { ...r.marks, [b]: sec } } : r)));
+    undo(`${b} · ${mmss(sec)}`, races);
+  };
 
   async function addPlan() {
     setAdding(true);
@@ -75,12 +92,13 @@ function Day() {
 
   const sub = plan ? [date === today ? "Bugün" : "", dayText(date), plan.time, plan.place].filter(Boolean).join(" · ") : `Bugün · ${dayText(today)}`;
   const row = "flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-bg";
-  const leader = table.rows[0]?.name.split(" ")[0];
+  const leader = table.races.length ? table.rows[0]?.name.split(" ")[0] : "";
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]">
       <PageHeader title={plan && plan.title !== "Antrenman" ? plan.title : "Antrenman"} sub={sub} back="/training" />
-      <Countdown />
+      <Countdown mode="start" presets={[60, 120, 300]} compact race={withRaces ? flow : null} title={withRaces ? (cur ? cur.name : flow.label) : ""} />
+      {withRaces && <Marks buoys={buoys} s={cur} on={!!cur && tr.up} onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
 
       {!plan ? (
         <button onClick={addPlan} disabled={adding} className="mt-3 flex w-full items-center justify-between rounded-2xl border border-line bg-card px-4 py-3.5 text-left disabled:opacity-50">
@@ -103,7 +121,7 @@ function Day() {
             <li>
               <button onClick={() => setSheet("races")} className={row}>
                 <span className="flex-1 text-[1rem] font-medium">Yarışlar</span>
-                <span className="text-[0.9375rem] text-mut">{races.length ? `${races.length} yarış${leader && races.some((r) => r.finishes.length) ? ` · ${leader} önde` : ""}` : "Yok"}</span>
+                <span className="text-[0.9375rem] text-mut">{races.length ? `${races.length} yarış${leader ? ` · ${leader} önde` : ""}` : "Yok"}</span>
               </button>
             </li>
           )}
@@ -124,7 +142,7 @@ function Day() {
         </Sheet>
       )}
       {plan && racer && (
-        <Races open={sheet === "races"} onClose={() => setSheet("")} races={races} present={present} others={others} onSave={(list) => updateRecord("plan", plan.id, { races: list }, by)} />
+        <Races open={sheet === "races"} onClose={() => setSheet("")} races={races} present={present} others={others} onSave={saveRaces} buoys={buoys} />
       )}
       {plan && isTraining(plan) && (
         <Sheet open={sheet === "log"} onClose={() => setSheet("")} title="Günlük">
