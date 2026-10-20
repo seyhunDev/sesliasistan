@@ -8,9 +8,13 @@ export const MIC_DEAD_TEXT = "Mikrofondan ses gelmiyor. Asistanı kapatıp yenid
 
 // s: { micAt, chunks: [{ size }], pcmLen }; now: şimdiki zaman. "wait" henüz erken, "ok" ses geliyor, "dead" ses yok
 // Ses gelir gelmez "ok" (dinlerken yeşil nokta hemen yanar)
+// pcmPeak: ham sesin en yüksek genliği. iPhone'da (okuma ya da kendiliğinden açılan mikrofondan sonra) mikrofon "açık"
+// görünüp veri verdiği hâlde ses tamamen sıfır gelebiliyor (Seyhun 2026-10-20: "basınca ses algılanamadı diyor, asistanı
+// kapatıp açınca çalışıyor"). Gerçek mikrofon sessiz odada bile sıfır vermez: tam sıfır = ölü, yeniden açılır.
 export function micState(s, now) {
   if (!s?.micAt) return "wait";
   const bytes = (s.chunks || []).reduce((n, c) => n + (c?.size || 0), 0);
-  if (bytes > 0 || (s.pcmLen || 0) > 0) return "ok";
+  const zero = (s.pcmLen || 0) > 0 && s.pcmPeak === 0;
+  if (!zero && (bytes > 0 || (s.pcmLen || 0) > 0)) return "ok";
   return now - s.micAt < MIC_CHECK_MS ? "wait" : "dead";
 }

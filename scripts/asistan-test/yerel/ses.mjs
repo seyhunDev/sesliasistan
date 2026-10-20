@@ -124,6 +124,9 @@ group("Mikrofon ses veriyor mu")([
   ["sessiz ortam ama mikrofon çalışıyor", MC({ micAt: 1000, chunks: [{ size: 300 }], pcmLen: 20000 }, 5000, "ok")],
   ["hiçbir şey gelmedi", MC({ micAt: 1000, chunks: [], pcmLen: 0 }, 1000 + MIC_CHECK_MS, "dead")],
   ["boş parçalar", MC({ micAt: 1000, chunks: [{ size: 0 }], pcmLen: 0 }, 4000, "dead")],
+  ["ham ses tamamen sıfır (iPhone okumadan sonra)", MC({ micAt: 1000, chunks: [{ size: 900 }], pcmLen: 40000, pcmPeak: 0 }, 1000 + MIC_CHECK_MS, "dead")],
+  ["ham ses sıfır ama erken", MC({ micAt: 1000, chunks: [{ size: 900 }], pcmLen: 4096, pcmPeak: 0 }, 1500, "wait")],
+  ["ham seste ses var", MC({ micAt: 1000, chunks: [], pcmLen: 4096, pcmPeak: 1 }, 1300, "ok")],
 ]);
 
 // Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)

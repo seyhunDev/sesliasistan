@@ -4,6 +4,8 @@
 // Kişinin kulübü sunucu belleğinde saklanır (her istekte ek okuma olmasın).
 const adminOn = () => !!(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 const orgs = globalThis.__aiOrg || (globalThis.__aiOrg = new Map());
+import { spendDirect, spendWho, spendWriter } from "@/lib/server/aiSpend";
+import { STT_PRICE_MIN } from "@/lib/aiUsage";
 export const monthIn = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(d).slice(0, 7);
 
 async function orgOf(uid) {
@@ -15,9 +17,29 @@ async function orgOf(uid) {
   return o;
 }
 
+const dayIn = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(d).slice(8, 10);
+
+// Harcama (lib/server/aiSpend.js): token sayısından dolar; ayın belgesine toplam, gün ve iş başına
+spendWriter((au, kind, usd) => {
+  if (!adminOn()) return;
+  (async () => {
+    const org = await orgOf(au.uid);
+    const { adminDb } = await import("@/lib/server/admin");
+    const { FieldValue } = await import("firebase-admin/firestore");
+    const month = monthIn();
+    const inc = FieldValue.increment(usd);
+    await adminDb()
+      .collection("usage")
+      .doc(`ai_${org}_${month}`)
+      .set({ month, org, usd: inc, usdDay: { [dayIn()]: inc }, usdKind: { [kind || "diger"]: inc } }, { merge: true });
+  })().catch((e) => console.warn("[aiSpend]", e?.message));
+});
+
 // n: artış (çoğunlukla 1; "stt-sec" ses saniyesi, "tts-chr" seslendirilen harf sayar ve kişi sayacına girmez)
 export function countAi(au, kind, n = 1) {
   if (!adminOn() || !au?.uid || !/^[a-z-]{2,20}$/.test(kind) || !(n > 0)) return;
+  if (kind === "stt-sec") spendDirect(au, "transcribe", (n / 60) * STT_PRICE_MIN);
+  else if (kind !== "tts-chr") spendWho(au, kind);
   (async () => {
     const org = await orgOf(au.uid);
     const { adminDb } = await import("@/lib/server/admin");

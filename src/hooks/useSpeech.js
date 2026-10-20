@@ -125,6 +125,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     s.analyser = null;
     s.pcm = [];
     s.pcmLen = 0;
+    s.pcmPeak = undefined;
     s.chunks = null;
     s.meterLive = false;
     micReset();
@@ -471,6 +472,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         const proc = ctx.createScriptProcessor(4096, 1, 1);
         s.pcm = [];
         s.pcmLen = 0;
+        s.pcmPeak = 0; // en yüksek genlik: tam sıfır kalırsa mikrofon ölü (micCheck)
         s.rate = ctx.sampleRate;
         proc.onaudioprocess = (e) => {
           e.outputBuffer.getChannelData(0).fill(0); // hoparlöre ses gitmez
@@ -478,6 +480,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
           const d = new Float32Array(e.inputBuffer.getChannelData(0));
           s.pcm.push(d);
           s.pcmLen += d.length;
+          if (!s.pcmPeak) for (let i = 0; i < d.length; i += 16) if (d[i] !== 0) (s.pcmPeak = 1), (i = d.length);
         };
         src.connect(proc);
         proc.connect(ctx.destination);
@@ -607,7 +610,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, chunks: null, mrType: "", proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
-      micAt: 0, micOk: false, micTries: 0,
+      micAt: 0, micOk: false, micTries: 0, pcmPeak: undefined,
     });
     setMicFlow(false);
     // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
