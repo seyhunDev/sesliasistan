@@ -605,7 +605,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       fail("Mikrofon için HTTPS gerekir. Tünel adresini (https://…) kullan.");
       return;
     }
-    const kind = pickProvider();
+    // server: kayıt + sunucu yolu istenir (asistanın sorusuna kısa cevap: telefonun tanıması okumadan hemen sonra
+    // "gönder" gibi tek kelimeyi çoğu zaman hiç yazıya çevirmiyordu; kayıt yolu sesi gerçekten ölçer, sunucu çevirir)
+    const kind = opts.server && recorderAvailable() ? "server" : pickProvider();
     if (kind === "none") {
       fail("Bu tarayıcıda ses kaydı yok. Yazarak ekleyebilirsin.");
       return;
@@ -651,9 +653,11 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     navigator.vibrate?.(12);
   }, []);
 
-  const stop = useCallback((mode = "send") => {
+  const stopNow = (mode = "send", byUser = false) => {
     const s = R.current;
     if (s.status !== "listening") return;
+    // Kullanıcı kendisi bitirdi (↑): kendiliğinden açılmış dinleme olsa da kayıt sunucuya gider (ölçer sesi kaçırmış olabilir)
+    if (byUser) s.auto = false;
     const m = mode === "edit" ? "edit" : "send";
     if (Date.now() - s.t0 < 600 && !s.text) {
       cancelNow();
@@ -670,8 +674,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       s.finalTimer = setTimeout(() => deliver(sid, m), FINAL_WAIT); // son sonuç gecikirse eldeki metinle devam
     } else if (s.mr && s.mr.state !== "inactive") s.mr.stop();
     else s.stopReq = true;
-  }, []);
-  stopRef.current = stop;
+  };
+  const stop = useCallback((mode = "send") => stopNow(mode, true), []); // eslint-disable-line react-hooks/exhaustive-deps
+  stopRef.current = stopNow;
 
   const cancel = useCallback(() => cancelNow(), []);
   const setAutoStop = useCallback((ms) => {
