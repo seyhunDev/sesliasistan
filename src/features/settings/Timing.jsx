@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
-import { engineName, liveOf, liveText, msText, secText, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
+import { devOn, engineName, liveOf, liveText, msText, secText, setDevOn, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
+import { probeCheck, probeSamples, probeText } from "@/lib/aiProbe";
+import { askAssistant } from "@/services/assistantService";
 import { Row } from "./ui";
 
 // Ayarlar › Asistan süre kaydı: son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
@@ -95,11 +97,98 @@ export function TimingRow() {
               </div>
             </>
           )}
+          <DevSwitch />
+          <Probe />
           <p className="mt-2 text-[0.75rem] leading-snug text-mut">
             Yalnız bu telefonda saklanır. Yavaş bir komutta “Kopyala”ya basıp yeni bir threade yapıştırabilirsin.
           </p>
         </div>
       )}
     </Row>
+  );
+}
+
+// Asistan sayfasında her cevabın altında süre satırı (geliştirme süresince açık)
+function DevSwitch() {
+  const [on, setOn] = useState(devOn);
+  const flip = () => {
+    setDevOn(!on);
+    setOn(!on);
+  };
+  return (
+    <label className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-[0.875rem]">
+      <span>Asistan sayfasında süreleri göster</span>
+      <input type="checkbox" checked={on} onChange={flip} className="size-5 accent-[var(--acc)]" />
+    </label>
+  );
+}
+
+// Örnekleri dene: yapay zeka işlerinin örnek cümleleri sırayla gönderilir (kayıt yapılmaz), süre ve doğruluk listelenir
+function Probe() {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const stop = useRef(null);
+  const samples = probeSamples();
+  const run = async () => {
+    if (busy) return stop.current?.abort();
+    if (!confirm(`${samples.length} örnek cümle yapay zekaya gönderilecek (kayıt yapılmaz). Kotadan ${samples.length} istek düşer. Başlasın mı?`)) return;
+    const ctl = new AbortController();
+    stop.current = ctl;
+    setBusy(true);
+    setRows([]);
+    for (const x of samples) {
+      if (ctl.signal.aborted) break;
+      const t0 = Date.now();
+      let first = 0;
+      let row;
+      try {
+        const r = await askAssistant({ text: x.say, onText: () => (first ||= Date.now() - t0) }, ctl.signal);
+        row = { ...x, ...probeCheck(x, r), ms: Date.now() - t0, first, model: r.model || r.provider || "" };
+      } catch (e) {
+        if (ctl.signal.aborted) break;
+        row = { ...x, ok: false, err: e.reason || e.message || "hata", ms: Date.now() - t0 };
+      }
+      setRows((p) => [...p, row]);
+    }
+    setBusy(false);
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(probeText(rows));
+      toast("Sonuçlar kopyalandı");
+    } catch {
+      toast("Kopyalanamadı");
+    }
+  };
+  const ok = rows.filter((x) => x.ok).length;
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[0.875rem]">Örnekleri dene <span className="text-mut">({samples.length} cümle)</span></span>
+        <span className="flex gap-2">
+          {rows.length > 0 && !busy && (
+            <button type="button" onClick={copy} className="rounded-lg bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Kopyala</button>
+          )}
+          <button type="button" onClick={run} className="rounded-lg bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white">{busy ? "Durdur" : "Başlat"}</button>
+        </span>
+      </div>
+      {rows.length > 0 && (
+        <>
+          <p className="mt-2 text-[0.8125rem] text-mut">
+            {ok}/{rows.length} doğru{busy ? ` · ${rows.length}/${samples.length} gönderildi` : ""}
+          </p>
+          <ul className="mt-1 space-y-1">
+            {rows.map((x) => (
+              <li key={x.id} className="flex items-baseline gap-2 text-[0.8125rem]">
+                <span className={x.ok ? "text-ok" : "text-rec"}>{x.ok ? "✓" : "✗"}</span>
+                <span className="min-w-0 flex-1 truncate">{x.say}{!x.ok && <span className="text-mut"> → {x.err || x.got || "?"}</span>}</span>
+                <span className="shrink-0 tabular-nums text-mut">{msText(x.ms)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   );
 }

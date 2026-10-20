@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
 import { callClaude } from "@/lib/ai/anthropic";
-import { callGemini, partialMessage, streamGemini, withAiCool } from "@/lib/ai/gemini";
+import { callGemini, modelOf, partialMessage, streamGemini, withAiCool } from "@/lib/ai/gemini";
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOL, isJobJson, parseAssistant } from "@/lib/ai/assistant";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { overQuota, spend, withQuota } from "@/lib/server/quota";
@@ -127,7 +127,7 @@ async function handle(request) {
           console.log(`[assistant:${provider}] akış ${ms} ms, intent=${r.intent}, items=${r.items.length}`);
           if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
           const q = await spend(au, "assistant");
-          send({ t: "done", ...r, source: "ai", provider, ms, ...(q && !q.unlimited ? { quota: q } : {}) });
+          send({ t: "done", ...r, source: "ai", provider, model: modelOf(raw), ms, ...(q && !q.unlimited ? { quota: q } : {}) });
         } catch (e) {
           const kind = logAiError("assistant", provider, e, Date.now() - started);
           send({ t: "err", error: aiErrorText(kind, e), reason: kind, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) });
@@ -145,7 +145,7 @@ async function handle(request) {
     const r = parseAssistant(raw, people, forPeople, text);
     console.log(`[assistant:${provider}] ${ms} ms, ~${Math.round(user.length / 4)} token istem, intent=${r.intent}, show=${r.show.length}, actions=${r.actions.length}, items=${r.items.length}, send=${r.send ? "1" : "0"}`);
     if (!r.message && !r.items.length && !r.actions.length && !r.sends.length && !r.navigate && !r.openChat) throw new Error(`boş yanıt: ${JSON.stringify(raw).slice(0, 200)}`);
-    return withQuota(NextResponse.json({ ...r, source: "ai", provider, ms }), await spend(au, "assistant"));
+    return withQuota(NextResponse.json({ ...r, source: "ai", provider, model: modelOf(raw), ms }), await spend(au, "assistant"));
   } catch (e) {
     const kind = logAiError("assistant", provider, e, Date.now() - started);
     const status = kind === "quota" ? 429 : kind === "busy" ? 503 : kind === "timeout" ? 504 : 502;

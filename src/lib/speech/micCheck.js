@@ -7,8 +7,10 @@ export const MIC_TRIES = 1; // kaç kez sessizce yeniden açılır; sonra hemen 
 export const MIC_DEAD_TEXT = "Mikrofondan ses gelmiyor. Asistanı kapatıp yeniden aç; olmazsa mikrofonu kullanan başka bir uygulamayı kapat.";
 
 // s: { micAt, chunks: [{ size }], pcmLen }; now: şimdiki zaman. "wait" henüz erken, "ok" ses geliyor, "dead" ses yok
+// Ses gelir gelmez "ok" (dinlerken yeşil nokta hemen yanar)
 export function micState(s, now) {
-  if (!s?.micAt || now - s.micAt < MIC_CHECK_MS) return "wait";
+  if (!s?.micAt) return "wait";
   const bytes = (s.chunks || []).reduce((n, c) => n + (c?.size || 0), 0);
-  return bytes > 0 || (s.pcmLen || 0) > 0 ? "ok" : "dead";
+  if (bytes > 0 || (s.pcmLen || 0) > 0) return "ok";
+  return now - s.micAt < MIC_CHECK_MS ? "wait" : "dead";
 }

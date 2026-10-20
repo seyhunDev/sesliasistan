@@ -1,5 +1,5 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
-import { timingReply } from "@/lib/assistTiming";
+import { devOn, timingReply } from "@/lib/assistTiming";
 import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
 import { record } from "@/lib/brain/store";
 import { scoreEnd } from "@/lib/brain/scoreStore";
@@ -10,7 +10,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   // Yanıt geldiğinde kullanıcı hâlâ konuşuyorsa yanıtı gösterme ve sözünü kesme: konuşması kendiliğinden
   // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
   if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
-  timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı)
+  const dev = timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı) ve geliştirici satırı
   inflight.current = null;
   // Cevap geldi: iş bitti, "çalışıyor" durumu kalkar (yerel akışların bir kısmı kendisi kaldırmıyordu; denetim B3)
   setPhase("idle");
@@ -43,7 +43,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   setStreamText("");
   // Sonuç düğmeleri (kayıtlar, Sohbeti aç, WhatsApp, sayfa aç) bu cevabın altına sabitlenir: sohbet altta sürer, düğmeler yerinde kalır
   const links = show.length || chat || share || nav ? { show, chat, share, wa, nav } : null;
-  setTurns((p) => [...p, links ? { role: "assistant", text: message, links } : { role: "assistant", text: message }]);
+  setTurns((p) => [...p, { role: "assistant", text: message, ...(links ? { links } : {}), ...(dev ? { dev } : {}) }]);
   setCards({ show: [], pending, nav: "", chat: "", share: "", att, engine, awaiting, races, person, event, inv, ok, picks, readAsk });
   if (races?.length) waitFor("raceChoice");
   raceChoices.current = races;
@@ -127,7 +127,8 @@ export function showPage(ctx) {
 export function failNow(ctx, message, viaVoice) {
   const { planOn, reply, setError } = ctx;
   if (planOn.current) return reply(message, { fail: true, engine: "local" }, viaVoice);
-  setError(message);
+  const dev = timingReply("rules"); // süre kaydına hata da girer; geliştirici bilgisi açıksa nedeni ve süresi yazılır
+  setError(dev && devOn() ? `${message} (${dev})` : message);
 }
 
 // Sohbeti bitir: panel kapanır, konuşma temizlenir

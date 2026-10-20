@@ -15,6 +15,7 @@ import { EventCard } from "@/features/events/EventCard";
 import { InvCard } from "@/features/inventory/InvCard";
 import { waTo } from "./isler/ortak";
 import { useAssistant, SILENCE_MS, KIND_ICON } from "./useAssistant";
+import { devOn } from "@/lib/assistTiming";
 
 export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
   const { busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listenOnce, listening, nextStep, okFlow: okFlowRef, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, tts, turns, undoAtt, used, voice, history } = useAssistant({ open, onClose, seed, onLive, onAct });
@@ -98,7 +99,13 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
 
         <PastSessions list={history} />
 
-        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => turnLinks(t, i, embedded)} />
+        <Thread turns={turns} engine={cards.engine} tts={tts} ask={askObj} canFix={false} onFix={() => { }} extra={(t, i) => (
+          <>
+            {turnLinks(t, i, embedded)}
+            {/* Geliştirici bilgisi: süreler, model, bugünkü istek sayısı (Ayarlar › Asistan süre kaydı'ndan kapatılır) */}
+            {t.dev && devOn() && <p className="mt-1.5 font-mono text-[0.6875rem] leading-snug text-mut">{t.dev}</p>}
+          </>
+        )} />
 
         {/* Bekleme yazıları burada yok: çalışırken durum yalnız üstteki halkada (Seyhun: "iki farklı yerde bilgilendirme
             mesajları oluyor. Olmasın o", 2026-10-17); durdurmak için alttaki kutunun düğmesi */}

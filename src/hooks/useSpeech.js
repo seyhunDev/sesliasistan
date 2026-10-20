@@ -8,7 +8,7 @@ import { appAllowed, errorState, offMessage, permissionHelp, savePermission } fr
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
 import { speechLive, speechLiveTry, speechMark } from "@/lib/assistTiming";
-import { setMeter, setMeterLevel } from "@/lib/speech/meter";
+import { setMeter, setMeterLevel, setMicFlow } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 import { MIC_DEAD_TEXT, MIC_TRIES, micState } from "@/lib/speech/micCheck";
 
@@ -80,6 +80,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     s.preCtx = null;
     if (s.analyser) setMeter(null, s.analyser);
     s.analyser = null;
+    setMicFlow(false);
     if (s.micOn) {
       s.micOn = false;
       micClosed(); // iPhone: ses oturumu bırakılır, arka plandaki ses (YouTube, müzik) devam eder
@@ -169,7 +170,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       // Kayıt yolu: mikrofon açıldıktan kısa süre sonra ses gelmiyorsa (iPhone ölü mikrofon) beklemeden yeniden açılır (micCheck.js)
       if (s.kind === "server" && !s.micOk) {
         const ms = micState(s, now);
-        if (ms === "ok") s.micOk = true;
+        if (ms === "ok") (s.micOk = true), setMicFlow(true);
         else if (ms === "dead") return reopenMic();
       }
       if (sec >= MAX_SEC) {
@@ -610,6 +611,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, chunks: null, mrType: "", proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
       micAt: 0, micOk: false, micTries: 0,
     });
+    setMicFlow(false);
     // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
     if (kind === "server") {
       try {

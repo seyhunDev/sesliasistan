@@ -17,6 +17,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
+import { MicDot } from "@/features/speech/MicDot";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
@@ -261,6 +262,7 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
           </button>
           {listening ? (
             <span className="flex min-w-0 flex-1 items-center gap-3" onClick={onText}>
+              <MicDot />
               <span className="shrink-0 text-[1rem] font-semibold text-fg">Dinliyorum</span>
               <ListenWave line className="h-8 min-w-0 flex-1 text-[#e8705f]" />
             </span>
