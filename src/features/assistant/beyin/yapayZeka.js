@@ -9,6 +9,7 @@ import { timingInfo, timingMark } from "@/lib/assistTiming";
 import { clubDigest } from "@/lib/ai/clubDigest";
 import { buildDigest } from "@/lib/ai/digest";
 import { askAssistant } from "@/services/assistantService";
+import { PHONE_WAIT_MS, retryable } from "@/lib/ai/budget";
 import { brainCommand } from "@/lib/commands";
 import { isMulti, waMode, wantsNote, keepNotes, wantsRecord, taskList, jobsIn } from "@/lib/steps";
 import { TEAM_WORD, groupOf } from "../isler/ortak";
@@ -33,12 +34,13 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   ctrl.current?.abort();
   const c = new AbortController();
   ctrl.current = c;
-  // Bağlantı takılırsa (iPhone Wi-Fi ↔ hücresel geçişi) istek dakikalarca asılı kalmasın: 25 sn sonra vazgeçilir, yedek yola geçilir
+  // Bağlantı takılırsa (iPhone Wi-Fi ↔ hücresel geçişi) istek asılı kalmasın: sunucu ~9,5 sn'de biter, telefon 14 sn sonra
+  // vazgeçer ve yedek yola geçer (önceden 25 sn; lib/ai/budget.js)
   let late = false;
   const limit = setTimeout(() => {
     late = true;
     c.abort();
-  }, 25000);
+  }, PHONE_WAIT_MS);
   setPhase("thinking");
   // Ön cevap: yapay zeka düşünürken hemen kısa bir giriş (veriden bilgiyle) söylenir ve gösterilir; bildiği alanlar
   // taslak kartta belirir. Yapay zekaya da ne söylendiği gider, cevabı bunun devamı olur (lib/precue.js).
@@ -86,7 +88,19 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     if (id !== runId.current) return;
     countHit("ai");
     timingMark("ai");
-    const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), sessions: ctx.sessionsNow?.() || [], people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
+    const req = { text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), sessions: ctx.sessionsNow?.() || [], people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText };
+    const t0 = Date.now();
+    let r;
+    try {
+      r = await askAssistant(req, c.signal);
+    } catch (e1) {
+      // Bağlantı koptu ya da sunucuya ulaşılamadı (hızlı hata): bir kez sessizce yeniden denenir. Cevabın bir kısmı
+      // okunduysa denenmez (aynı cümle iki kez söylenmesin)
+      if (late || id !== runId.current || streamSaid.current || !retryable(e1, Date.now() - t0)) throw e1;
+      timingInfo({ retry: e1?.reason || "network" });
+      setStreamText("");
+      r = await askAssistant(req, c.signal);
+    }
     if (id !== runId.current) return;
     timingMark("aiDone");
     timingInfo({ model: r.model || r.provider || "" });

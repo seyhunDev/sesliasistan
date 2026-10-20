@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
+import { budgetMs } from "@/lib/ai/budget";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { PLAN_KINDS, cleanPlan, planCut } from "@/lib/taskPlan";
@@ -84,7 +85,7 @@ async function handle(request) {
   const today = /^\d{4}-\d{2}-\d{2}$/.test(body?.today || "") ? body.today : "";
   try {
     const t0 = Date.now();
-    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${sessions ? `\n\n${sessions}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1400, timeoutMs: 16000, attemptMs: 8000 });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SYSTEM, user: `Bugün: ${today}${race ? `\nSohbetteki yarış: ${race}` : ""}${hints ? `\n\n${hints}` : ""}${memo ? `\n\n${memo}` : ""}${sessions ? `\n\n${sessions}` : ""}${history ? `\n\n## ÖNCEKİ KONUŞMA\n${history}` : ""}${draft ? `\n\n${draft}` : ""}\n\nKullanıcının yeni söylediği:\n"""\n${text}\n"""`, schema: SCHEMA, maxTokens: 1400, timeoutMs: budgetMs() - 500, attemptMs: 5000 });
     const tasks = cleanPlan(raw);
     console.log(`[tasks] ${Date.now() - t0} ms, iş=${tasks.length}`);
     const fixes = (Array.isArray(raw?.fixes) ? raw.fixes : []).map((f) => ({ heard: line(f?.heard), meant: line(f?.meant) })).filter((f) => f.heard && f.meant).slice(0, 10);

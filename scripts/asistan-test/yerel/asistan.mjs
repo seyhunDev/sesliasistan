@@ -122,7 +122,7 @@ const { precue } = await import("@/lib/precue");
 const pcWx = (d) => (d === tom ? [{ hh: "16", wind: 13.6 }] : []);
 const PC = (desc, ok) => ({ desc, fn: (s) => precue(s, { plans: data.plans, today, weatherRows: pcWx }), ok });
 group("Ön cevap")([
-  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planı da var/.test(r.line) && /^O saatlerde/.test(r.info) && /söylendi: "O saatlerde/.test(r.hint))],
+  ["yarın saat 10'da antrenman ekle", PC("plan, yarın 10:00, kısa ve çakışan plan", (r) => r?.kind === "plan" && r.slots.time === "10:00" && r.slots.date === tom && /^Tamam, planı hazırlıyorum\. /.test(r.line) && /Yönetim kurulu toplantısı” planın da var/.test(r.line) && /^Bilgin olsun, o saatlerde/.test(r.info) && /söylendi: "Bilgin olsun, o saatlerde/.test(r.hint))],
   ["yarın 16'da yarış antrenmanı var", PC("plan, o saatte rüzgâr", (r) => r?.kind === "plan" && /rüzgâr 14 knot/.test(r.line))],
   ["cumartesi yarış planla", PC("plan, ne yaptığını söyler", (r) => r?.kind === "plan" && /^Tamam, planı hazırlıyorum\./.test(r.line) && r.work === "Plan hazırlanıyor")],
   ["Ali'ye motoru kontrol etmesini hatırlat", PC("görev", (r) => r?.kind === "task")],
@@ -130,6 +130,19 @@ group("Ön cevap")([
   ["bugün neler var", PC("soru, bugünkü plan sayısı", (r) => r?.kind === "query" && /bugün 1 plan/.test(r.line))],
   ["ekibe yaz yarın 9'da iskelede olun", PC("mesaj", (r) => r?.kind === "send")],
   ["teşekkürler", PC("kısa söz: ön cevap yok", (r) => r === null)],
+  // Bugün saati geçmiş, yapılmış ya da iptal plan "bir plan daha var" diye söylenmez (Seyhun, 2026-10-20)
+  ...(() => {
+    const at = (plans, now) => (s) => precue(s, { plans, today, now });
+    const P = (title, time, more = {}) => ({ id: title, title, date: today, time, ...more });
+    const Q = (desc, plans, now, ok) => ({ desc, fn: at(plans, now), ok });
+    return [
+      ["bugün akşam 8'de toplantı ekle", Q("sabahki geçmiş plan söylenmez", [P("Antrenman", "10:00")], "17:00", (r) => r?.kind === "plan" && !r.info)],
+      ["bugün akşam 8'de toplantı ekle", Q("ileride kalan plan adıyla", [P("Antrenman", "10:00"), P("Veli görüşmesi", "18:00")], "17:00", (r) => r?.info === "Bilgin olsun, bugün “Veli görüşmesi” (18:00) planın da var. İstersen “planları aç” de.")],
+      ["bugün akşam 8'de toplantı ekle", Q("saatsiz bugünkü plan", [P("Tekne bakımı", "")], "17:00", (r) => r?.info === "Bilgin olsun, bugün “Tekne bakımı” planın da var. İstersen “planları aç” de.")],
+      ["bugün akşam 8'de toplantı ekle", Q("yapılmış ve iptal sayılmaz", [P("Tekne bakımı", "", { done: true }), P("Yemek", "", { status: "cancelled" })], "17:00", (r) => r?.kind === "plan" && !r.info)],
+      ["bugün akşam 8'de toplantı ekle", Q("iki plan: sayı", [P("Tekne bakımı", ""), P("Aidat", "")], "17:00", (r) => r?.info === "Bilgin olsun, bugün 2 planın daha var. İstersen “planları aç” de.")],
+    ];
+  })(),
   ["bu konuda ne düşünüyorsun acaba söyle", PC("emin değil: genel giriş", (r) => r && !/plan|görev|not/.test(r.line))],
 ]);
 
@@ -1243,5 +1256,28 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["sıralı işte yapılamayan var", SL("Yapamadığım: mesaj.", () => spokenReply("Yapamadığım: mesaj.", { planEnd: true, planOk: false }))],
     ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
     ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
+  ]);
+}
+
+// Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon
+// bağlantı kopmasında bir kez sessizce dener (lib/ai/budget.js)
+{
+  const { budgetMs, streamPlan, fallbackMs, retryable, PHONE_WAIT_MS, TASKS_WAIT_MS } = await import("@/lib/ai/budget");
+  const B = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Süre sınırları")([
+    ["varsayılan bütçe", B("9500", () => budgetMs({}), (r) => r === 9500)],
+    ["ortam değeri", B("20000", () => budgetMs({ AI_BUDGET_MS: "20000" }), (r) => r === 20000)],
+    ["çok büyük değer", B("25000 ile sınırlı", () => budgetMs({ AI_BUDGET_MS: "90000" }), (r) => r === 25000)],
+    ["bozuk değer", B("9500", () => budgetMs({ AI_BUDGET_MS: "abc" }), (r) => r === 9500)],
+    ["akış süreleri", B("ilk parça 3,8 sn, toplam 9 sn", () => streamPlan(9500), (r) => r.firstMs === 3800 && r.timeoutMs === 9000)],
+    ["yedeğe süre var", B("kalan süre", () => fallbackMs(9500, 4000), (r) => r === 5200)],
+    ["yedeğe süre yok", B("0 (denenmez)", () => fallbackMs(9500, 7500), (r) => r === 0)],
+    ["telefon sunucudan uzun bekler", B("evet", () => PHONE_WAIT_MS > budgetMs({}) + 2000 && TASKS_WAIT_MS > budgetMs({}), (r) => r === true)],
+    ["akış yarıda kesildi", B("yeniden denenir", () => retryable(new Error("Asistan yanıtı yarıda kesildi"), 3000), (r) => r === true)],
+    ["Safari ağ hatası", B("yeniden denenir", () => retryable(new TypeError("Load failed"), 800), (r) => r === true)],
+    ["kota doldu", B("denenmez", () => retryable(Object.assign(new Error("kota"), { reason: "quota" }), 800), (r) => r === false)],
+    ["zaman aşımı", B("denenmez", () => retryable(Object.assign(new Error("x"), { reason: "timeout" }), 9000), (r) => r === false)],
+    ["geç gelen ağ hatası", B("denenmez (süre yok)", () => retryable(Object.assign(new Error("x"), { reason: "network" }), 8000), (r) => r === false)],
+    ["yoğun servis", B("yeniden denenir", () => retryable(Object.assign(new Error("x"), { reason: "busy" }), 1500), (r) => r === true)],
   ]);
 }
