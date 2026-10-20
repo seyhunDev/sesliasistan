@@ -393,24 +393,29 @@ async function scenarios3(h) {
   const sendsBefore = calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length;
   setAI((t) => ({ intent: "message", message: "Ege'ye şunu göndereyim mi?", send: { to: "Ege Demir", text: "Yarın 9'da kulüpte ol." } }));
   await talkAsk(page, "Ege'ye yaz yarın 9'da kulüpte olsun");
-  await check(GO, "Ege'ye yaz …", "mesaj kartı “gönderiliyor” ve dolan çizgiyle gelir, hemen gitmez (Gönder / Vazgeç)", async () => {
-    const ok = await waitFor(async () => /gönderiliyor/.test((await convo(page)).toLocaleLowerCase("tr-TR")) && (await page.locator("[data-dome] [style*='autofill']").count()) > 0, 7000);
+  await check(GO, "Ege'ye yaz …", "mesaj okunur, “Göndereyim mi?” diye sorulur, kendiliğinden gitmez (Seyhun 2026-10-20: sesle onay)", async () => {
+    const ok = await waitFor(async () => /Ege Demir için mesaj: “Yarın 9'da kulüpte ol\.” Göndereyim mi\?/.test(clean(await convo(page))), 7000);
+    await page.waitForTimeout(4500);
+    const bar = await page.locator("[data-dome] [style*='autofill']").count();
     const sent = calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length - sendsBefore;
-    return [!!ok && sent === 0, `${ok ? "kart ve çizgi var" : `kart yok · ${clean(await convo(page)).slice(-120)}`} · gönderilen ${sent}`];
+    return [!!ok && bar === 0 && sent === 0, `${ok ? "soru var" : `soru yok · ${clean(await convo(page)).slice(-120)}`} · çizgi ${bar} · gönderilen ${sent}`];
   });
   {
     const v = page.locator("[data-dome] button", { hasText: /^Vazgeç$/ }).last();
     if (await v.count()) await v.click();
   }
-  await check(GO, "geri sayımda Vazgeç", "mesaj gönderilmez", async () => {
-    await page.waitForTimeout(4000);
+  await check(GO, "mesajda Vazgeç", "mesaj gönderilmez", async () => {
+    await page.waitForTimeout(1500);
     const t = clean(await convo(page));
     return [/göndermedim/i.test(t) && !/Gönderdim/.test(t), `“${t.slice(-80)}”`];
   });
   await closeAll(page);
   await home();
   await talkAsk(page, "Ege'ye yaz yarın 9'da kulüpte olsun");
-  await check(GO, "Ege'ye yaz … (dokunulmadı)", "çizgi dolunca mesaj kendiliğinden gider", async () => {
+  await waitFor(async () => /Göndereyim mi\?/.test(await convo(page)), 7000);
+  await page.waitForTimeout(1200);
+  await talkAsk(page, "gönder");
+  await check(GO, "Ege'ye yaz … → “gönder”", "sesle onaylanınca mesaj gider", async () => {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
     return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
