@@ -110,7 +110,8 @@ export function YtSmall({ yt, className = "" }) {
 // Program düzenleme: bağlantı yapıştırılır. YouTube bağlantısı videonun yerine geçer; fotoğraf ya da .mp4 dosyası
 // hareketin fotoğraf/videolarına eklenir (en çok 3). Başka bir sitenin hareket sayfası (ör. muscleandstrength.com)
 // verilirse sunucu sayfadaki videoyu bulur: YouTube ise videonun yerine, sitenin kendi videosuysa fotoğraf/videolara.
-export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
+// big: tam ekran hareket sayfası (büyük alan, "Yapıştır" düğmesi panodaki bağlantıyı ekler)
+export function YtEdit({ yt, onChange, media = [], onMedia, className = "", big = false }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -158,6 +159,17 @@ export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
     if (!isFileLink(v)) return fromPage(v);
     addMedia(m);
   };
+  // Panodaki bağlantıyı okur ve ekler (izin verilmezse kutuya yapıştırılır)
+  const paste = async () => {
+    try {
+      const v = (await navigator.clipboard.readText()).trim();
+      if (!v) return setErr("Panoda bağlantı yok");
+      setText(v);
+      add(v);
+    } catch {
+      setErr("Pano okunamadı; kutuya basılı tutup yapıştır");
+    }
+  };
   return (
     <div className={className}>
       {yt?.id && (
@@ -197,14 +209,24 @@ export function YtEdit({ yt, onChange, media = [], onMedia, className = "" }) {
           }}
           onKeyDown={(e) => e.key === "Enter" && add(text)}
           placeholder={yt?.id ? "Fotoğraf, video ya da sayfa bağlantısı" : "YouTube, video ya da hareket sayfası bağlantısı"}
-          className="h-9 min-w-0 flex-1 rounded-full bg-bg px-3 text-[0.8125rem] outline-none"
+          className={`min-w-0 flex-1 bg-bg px-3 outline-none ${big ? "h-12 rounded-xl text-[1rem]" : "h-9 rounded-full text-[0.8125rem]"}`}
         />
-        {text.trim() && (
+        {!big && text.trim() && (
           <button type="button" disabled={busy} onClick={() => add(text)} className="h-9 rounded-full bg-acc px-3 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
             {busy ? "Aranıyor…" : "Ekle"}
           </button>
         )}
       </div>
+      {big && (
+        <div className="mt-2 flex gap-2">
+          <button type="button" disabled={busy} onClick={paste} className="h-12 flex-1 rounded-xl bg-bg text-[0.9375rem] font-semibold disabled:opacity-60">
+            Yapıştır
+          </button>
+          <button type="button" disabled={busy || !text.trim()} onClick={() => add(text)} className="h-12 flex-1 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+            {busy ? "Aranıyor…" : "Ekle"}
+          </button>
+        </div>
+      )}
       {busy && <p className="mt-1 text-[0.75rem] text-mut">Sayfadaki video aranıyor…</p>}
       {err && <p className="mt-1 text-[0.75rem] font-semibold text-rec">{err}</p>}
     </div>

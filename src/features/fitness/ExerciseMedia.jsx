@@ -31,11 +31,13 @@ export function useBlobUrl(orgId, m) {
   return { url, err, fail };
 }
 
-export function Thumb({ orgId, m, onOpen, onDrop }) {
+// big: kutuyu doldurur (tam ekran hareket sayfası)
+export function Thumb({ orgId, m, onOpen, onDrop, big = false }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
+  const sz = big ? "size-full" : "size-20";
   return (
-    <span className="relative size-20 shrink-0">
-      <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu aç" : "Fotoğrafı aç"} className="grid size-20 place-items-center overflow-hidden rounded-2xl bg-bg">
+    <span className={`relative ${sz} shrink-0`}>
+      <button type="button" onClick={() => url && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu aç" : "Fotoğrafı aç"} className={`grid ${sz} place-items-center overflow-hidden rounded-2xl bg-bg`}>
         {err ? (
           <Icon name="alert" className="size-5 text-mut" />
         ) : !url ? (
@@ -62,7 +64,7 @@ export function Thumb({ orgId, m, onOpen, onDrop }) {
   );
 }
 
-function Viewer({ orgId, m, onClose }) {
+export function Viewer({ orgId, m, onClose }) {
   const { url } = useBlobUrl(orgId, m);
   return (
     <div role="dialog" aria-label="Hareket" className="fixed inset-0 z-[70] flex flex-col bg-black" onClick={onClose}>
@@ -85,7 +87,7 @@ function Viewer({ orgId, m, onClose }) {
 }
 
 // Büyük gösterim (sporcunun hareket ekranı): ilk dosya kenardan kenara, video sessiz ve tekrar ederek oynar
-function Big({ orgId, m, onOpen }) {
+export function Big({ orgId, m, onOpen }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
   if (err) return null;
   return (

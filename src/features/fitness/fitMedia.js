@@ -5,7 +5,7 @@
 // Harekette yalnız künye durur: media [{ id, type, size, kind photo|video, url }] (en çok 3). url indirme adresidir;
 // video oradan akarak oynar (baştan sona inmesi beklenmez); dosya tarayıcı önbelleğinde kalır.
 // Eski düzen (Firestore'da 900 KB'lık parçalar, url yok) yalnız okunur.
-// Fotoğraf 1280 px JPEG'e küçültülür. Video en çok 60 sn; 6 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
+// Fotoğraf 1280 px JPEG'e küçültülür. Video en çok 60 sn; 25 MB'tan büyükse telefonda 640 px'e küçültülerek yeniden kaydedilir
 // (video süresi kadar sürer); küçültülemezse en çok 80 MB kabul edilir.
 import { collection, getDocs } from "firebase/firestore";
 import { deleteObject, getMetadata, getStorage, listAll, ref as sref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -15,7 +15,7 @@ import { dropRaceFile, getRaceFile, saveRaceFile } from "@/features/athletes/rac
 
 export const MEDIA_MAX = 3;
 const VIDEO_SEC = 60;
-const VIDEO_OK = 6 * 1024 * 1024;
+const VIDEO_OK = 25 * 1024 * 1024;
 const VIDEO_MAX = 80 * 1024 * 1024;
 const store = () => getStorage(app);
 const path = (orgId, id) => `orgs/${orgId}/fitMedia/${id}`;

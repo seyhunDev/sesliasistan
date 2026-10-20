@@ -4,12 +4,12 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
-import { exById, fold } from "@/lib/fitness/exercises";
-import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds, mediaApply } from "@/lib/fitness/library";
-import { ExerciseMedia, Thumb } from "./ExerciseMedia";
+import { fold } from "@/lib/fitness/exercises";
+import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds } from "@/lib/fitness/library";
+import { Thumb } from "./ExerciseMedia";
+import { ExerciseScreen } from "./ExerciseScreen";
 import { looseMedia } from "./fitMedia";
 import { ExercisePicker } from "./ExercisePicker";
-import { YtEdit } from "./YtVideo";
 import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
 
@@ -53,9 +53,10 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
     onClose();
   };
   const failed = () => toast("Kaydedilemedi, tekrar dene");
-  // Güncel kayda uygulanır: yükleme sürerken eklenen bağlantı ya da fotoğraf kaybolmaz
-  const putMedia = (v) => setMedia(it, (cur) => ({ yt: cur.yt, media: mediaApply(e.media, v, cur.media) })).catch(failed);
-  const putYt = (v) => setMedia(it, (cur) => ({ yt: v, media: cur.media })).catch(failed);
+  const back = () => {
+    setSel("");
+    setJoin(false);
+  };
   // Bu hareketi seçilenle birleştirir: fotoğrafı/videosu çok olan kalır, öbürünün adı da ileride ona gider
   const joinWith = async (x) => {
     if (!confirm(`“${e.name}” ile “${x.name}” aynı hareket olarak birleştirilsin mi? Fotoğraf ve videoların hepsi kalır.`)) return;
@@ -70,83 +71,69 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
     }
   };
   return (
-    <Sheet open={open} onClose={close} title={e ? `No ${e.no} · ${e.name}` : "Hareketler"}>
-      {e ? (
-        <div>
-          {exById(e.ex)?.how && (
-            <p className="flex gap-2 rounded-xl bg-bg px-3 py-2 text-[0.8125rem] leading-snug text-mut">
-              <Icon name="spark" className="mt-0.5 size-3.5 shrink-0 text-acc" />
-              {exById(e.ex).how}
-            </p>
-          )}
-          <ExerciseMedia media={e.media || []} ex={e.ex} edit onChange={putMedia} className="mt-2" />
-          <YtEdit yt={e.yt} onChange={putYt} media={e.media || []} onMedia={putMedia} className="mt-2" />
-          <p className="mt-2 text-[0.75rem] text-mut">Bu hareketin geçtiği bütün programlarda (sporcularınki dahil) bu fotoğraf ve video görünür.</p>
+    <Sheet open={open} onClose={close} title="Hareketler">
+      {e && (
+        <ExerciseScreen e={e} uses={uses[e.key] || 0} put={(fn) => setMedia(it, fn)} onBack={back}>
           {join ? (
             <Choose lib={lib} not={e.key} title="Hangi hareketle aynı?" onPick={joinWith} onCancel={() => setJoin(false)} />
           ) : (
-            <button type="button" onClick={() => setJoin(true)} className="mt-3 flex h-11 w-full items-center justify-center rounded-xl border border-line text-[0.875rem] font-semibold">
+            <button type="button" onClick={() => setJoin(true)} className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-line bg-card text-[0.9375rem] font-semibold">
               Başka hareketle birleştir
             </button>
           )}
-          <button type="button" onClick={() => setSel("")} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-bg text-[0.875rem] font-semibold">
-            <Icon name="chev" className="size-4 rotate-180" />
-            Hareketler
+        </ExerciseScreen>
+      )}
+      <div>
+        <div className="flex items-center gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-bg px-3">
+            <Icon name="search" className="size-4 text-mut" />
+            <input value={q} onChange={(x) => setQ(x.target.value)} placeholder="Ara: ad ya da numara" className="h-12 w-full min-w-0 bg-transparent text-[1rem] outline-none" />
+          </label>
+          <button type="button" onClick={() => setPick(true)} aria-label="Hareket ekle" className="grid size-12 shrink-0 place-items-center rounded-xl bg-acc text-white">
+            <Icon name="plus" className="size-6" />
           </button>
         </div>
-      ) : (
-        <div>
-          <div className="flex items-center gap-2">
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-bg px-3">
-              <Icon name="search" className="size-4 text-mut" />
-              <input value={q} onChange={(x) => setQ(x.target.value)} placeholder="Ara: ad ya da numara" className="h-12 w-full min-w-0 bg-transparent text-[1rem] outline-none" />
-            </label>
-            <button type="button" onClick={() => setPick(true)} aria-label="Hareket ekle" className="grid size-12 shrink-0 place-items-center rounded-xl bg-acc text-white">
-              <Icon name="plus" className="size-6" />
+        <div className="mt-2 flex gap-2">
+          {[
+            ["", `Hepsi ${all.length}`],
+            ["v", "Videolu"],
+            ["n", "Videosuz"],
+          ].map(([k, label]) => (
+            <button key={k || "all"} type="button" onClick={() => setOnly(k)} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${only === k ? "bg-deep text-white" : "bg-bg text-mut"}`}>
+              {label}
             </button>
-          </div>
-          <div className="mt-2 flex gap-2">
-            {[
-              ["", `Hepsi ${all.length}`],
-              ["v", "Videolu"],
-              ["n", "Videosuz"],
-            ].map(([k, label]) => (
-              <button key={k || "all"} type="button" onClick={() => setOnly(k)} className={`h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold ${only === k ? "bg-deep text-white" : "bg-bg text-mut"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
-          {!q && !only && <Similar lib={lib} uses={uses} onMerge={merge} />}
-          {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
-          <ul className="mt-2 divide-y divide-line">
-            {list.map((x) => {
-              const v = hasVideo(x);
-              const n = uses[x.key] || 0;
-              return (
-                <li key={x.key}>
-                  <button type="button" onClick={() => setSel(x.key)} className="flex min-h-[4.5rem] w-full items-center gap-3 py-2.5 text-left">
-                    <span className={`relative grid size-14 shrink-0 place-items-center rounded-2xl ${v ? "bg-deep text-white" : "bg-bg text-mut"}`}>
-                      <Icon name={v ? "video" : "plus"} className="size-6" />
-                      <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-card px-1 text-[0.6875rem] font-bold tabular-nums text-fg ring-1 ring-line">{x.no}</span>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate text-[1rem] font-semibold">{x.name}</b>
-                      <small className="block truncate text-[0.8125rem] text-mut">{[v ? "Video" : "Video yok", n ? `${n} programda` : ""].filter(Boolean).join(" · ")}</small>
-                    </span>
-                    {v ? (
-                      <Icon name="chev" className="size-5 shrink-0 text-mut" />
-                    ) : (
-                      <span className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Video ekle</span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-            {!list.length && <li className="py-6 text-center text-[0.875rem] text-mut">{q || only ? "Bulunamadı" : "Program hazırlayınca hareketler burada numarasıyla görünür"}</li>}
-          </ul>
+          ))}
         </div>
-      )}
+        {!q && !only && dupes.length > 0 && <Dupes groups={dupes} uses={uses} onMerge={merge} />}
+        {!q && !only && <Similar lib={lib} uses={uses} onMerge={merge} />}
+        {!q && !only && <Loose orgId={orgId} lib={lib} progs={progs} onAttach={attach} />}
+        <ul className="mt-2 divide-y divide-line">
+          {list.map((x) => {
+            const v = hasVideo(x);
+            const n = uses[x.key] || 0;
+            return (
+              <li key={x.key}>
+                <button type="button" onClick={() => setSel(x.key)} className="flex min-h-[4.5rem] w-full items-center gap-3 py-2.5 text-left">
+                  <span className={`relative grid size-14 shrink-0 place-items-center rounded-2xl ${v ? "bg-deep text-white" : "bg-bg text-mut"}`}>
+                    <Icon name={v ? "video" : "plus"} className="size-6" />
+                    <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-card px-1 text-[0.6875rem] font-bold tabular-nums text-fg ring-1 ring-line">{x.no}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[1rem] font-semibold">{x.name}</b>
+                    <small className="block truncate text-[0.8125rem] text-mut">{[v ? "Video" : "Video yok", n ? `${n} programda` : ""].filter(Boolean).join(" · ")}</small>
+                  </span>
+                  {v ? (
+                    <Icon name="chev" className="size-5 shrink-0 text-mut" />
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-acc/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">Video ekle</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+          {!list.length && <li className="py-6 text-center text-[0.875rem] text-mut">{q || only ? "Bulunamadı" : "Program hazırlayınca hareketler burada numarasıyla görünür"}</li>}
+        </ul>
+      </div>
       <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={add} />
     </Sheet>
   );
