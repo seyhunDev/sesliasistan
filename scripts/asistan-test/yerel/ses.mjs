@@ -112,6 +112,19 @@ group("Son yazı: tam çeviri mi parçalar mı")([
   ["tam çeviri kısa kalmış", { desc: "parçalar (söylenen kaybolmaz)", fn: () => bestText("Yarış oluştur", "Cumhuriyet yarışı oluştur, yarış için görsel hazırla, Mustafa geldi"), ok: (r) => r.startsWith("Cumhuriyet") }],
 ]);
 
+// Ölü mikrofon (iPhone "Ses alınamadı"): açıldıktan kısa süre sonra ne kayıt parçası ne ham ses geldiyse yeniden açılır
+const { micState, MIC_CHECK_MS } = await import("@/lib/speech/micCheck");
+const MC = (s, now, want) => ({ desc: want, fn: () => micState(s, now), ok: (r) => r === want });
+group("Mikrofon ses veriyor mu")([
+  ["mikrofon henüz açılmadı (izin bekleniyor)", MC({ micAt: 0, chunks: [], pcmLen: 0 }, 9000, "wait")],
+  ["açılalı az oldu", MC({ micAt: 1000, chunks: [], pcmLen: 0 }, 1000 + MIC_CHECK_MS - 1, "wait")],
+  ["kayıt parçası geldi", MC({ micAt: 1000, chunks: [{ size: 900 }], pcmLen: 0 }, 1000 + MIC_CHECK_MS, "ok")],
+  ["yalnız ham ses geldi (kayıt parçası yok)", MC({ micAt: 1000, chunks: [], pcmLen: 4096 }, 1000 + MIC_CHECK_MS, "ok")],
+  ["sessiz ortam ama mikrofon çalışıyor", MC({ micAt: 1000, chunks: [{ size: 300 }], pcmLen: 20000 }, 5000, "ok")],
+  ["hiçbir şey gelmedi", MC({ micAt: 1000, chunks: [], pcmLen: 0 }, 1000 + MIC_CHECK_MS, "dead")],
+  ["boş parçalar", MC({ micAt: 1000, chunks: [{ size: 0 }], pcmLen: 0 }, 4000, "dead")],
+]);
+
 // Groq Whisper parçaları: sessizlikte uydurulan parça atılır (no_speech_prob yüksek ve model emin değil)
 const { spokenText } = await import("@/lib/speech/hallucination");
 const SPK = (desc, data, exp) => [desc, { desc: exp ? `“${exp}”` : "boş", fn: () => spokenText(data), ok: (r) => r === exp }];

@@ -10,6 +10,7 @@ import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/sp
 import { speechLive, speechLiveTry, speechMark } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
+import { MIC_DEAD_TEXT, MIC_TRIES, micState } from "@/lib/speech/micCheck";
 
 const ERR = {
   "not-allowed": "Mikrofon ya da ses tanıma izni verilmedi. iPhone: Ayarlar › Safari › Mikrofon › İzin Ver.",
@@ -95,6 +96,40 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     setRemaining(null);
   };
 
+  // Ölü mikrofon: kayıt ve ses motoru sessizce kapatılıp mikrofon yeniden açılır (dinleme sürer). Yine ses gelmezse
+  // kullanıcı sonda "Ses alınamadı" görmek yerine hemen uyarılır
+  const reopenMic = () => {
+    const s = R.current;
+    if ((s.micTries || 0) >= MIC_TRIES) {
+      cancelNow();
+      fail(MIC_DEAD_TEXT);
+      return;
+    }
+    s.micTries = (s.micTries || 0) + 1;
+    s.micAt = 0;
+    const mr = s.mr;
+    s.mr = null;
+    if (mr) {
+      mr.onstop = null;
+      mr.ondataavailable = null;
+      try { if (mr.state !== "inactive") mr.stop(); } catch {}
+    }
+    try { s.proc?.disconnect(); } catch {}
+    s.proc = null;
+    s.stream?.getTracks().forEach((t) => t.stop());
+    s.stream = null;
+    try { s.ctx?.close(); } catch {}
+    s.ctx = null;
+    if (s.analyser) setMeter(null, s.analyser);
+    s.analyser = null;
+    s.pcm = [];
+    s.pcmLen = 0;
+    s.chunks = null;
+    s.meterLive = false;
+    micReset();
+    startServer(s.sid);
+  };
+
   const ticker = () => {
     const s = R.current;
     clearInterval(s.timer);
@@ -131,6 +166,12 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       if (!s.analyser) setMeterLevel(s.lvl);
 
       if (s.status !== "listening") return;
+      // Kayıt yolu: mikrofon açıldıktan kısa süre sonra ses gelmiyorsa (iPhone ölü mikrofon) beklemeden yeniden açılır (micCheck.js)
+      if (s.kind === "server" && !s.micOk) {
+        const ms = micState(s, now);
+        if (ms === "ok") s.micOk = true;
+        else if (ms === "dead") return reopenMic();
+      }
       if (sec >= MAX_SEC) {
         stopRef.current?.("send");
         return;
@@ -528,6 +569,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     };
     s.early = s.stopReq;
     mr.start(1000); // saniyede bir parça: ham ses toplanamazsa dinlerken de yazıya çevrilebilsin (liveWhole)
+    s.micAt = Date.now(); // ses gelip gelmediği bundan MIC_CHECK_MS sonra denetlenir (ticker)
     if (s.stopReq) mr.stop(); // parmak izin ekranı sırasında kalktıysa
   };
 
@@ -566,6 +608,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
       endpoint: opts.endpoint || 0, handsFree: !!opts.handsFree, pcm: null, pcmLen: 0, chunks: null, mrType: "", proc: null, partial: "", segs: [], segPos: 0, segBusy: 0, segFrom: 0,
+      micAt: 0, micOk: false, micTries: 0,
     });
     // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
     if (kind === "server") {
