@@ -1,8 +1,8 @@
-Commit: 961dfb5 · Asistan: ölü mikrofonu dinlemenin başında yakala, bir kez yeniden aç, olmazsa hemen uyar (#564)
-Zaman: 2026-10-20-1834 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39448908055
+Commit: 28fac11 · Asistan: dinlerken yeşil ses noktası, cevap altında geliştirici bilgisi, Örnekleri dene (#565)
+Zaman: 2026-10-20-1843 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39450219798
 
-TAM TEST · 20.10.2026 18:29:58
+TAM TEST · 20.10.2026 18:38:32
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1338/1338 geçti · 0 kalan · 267 sn
+SONUÇ: 1337/1338 geçti · 1 kalan · 310 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -128,8 +128,11 @@ SONUÇ: 1338/1338 geçti · 0 kalan · 267 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 77/77
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 76/77
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (yapay zekasız): 6/6
