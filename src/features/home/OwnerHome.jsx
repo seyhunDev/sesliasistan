@@ -87,7 +87,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Notlar › Sporcular (fitness ile) › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
+// Sıra: Notlar › Sporcular › Fitness › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › kalan sayfalar küçük düğmeler (PageChips).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
@@ -123,10 +123,11 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div ref={root} className="space-y-6">
-      {/* Notlar ve Sporcular (fitness ile tek kart) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor") */}
+      {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
       <div className="space-y-2.5">
         <NotesWidget notes={notes} />
-        {athletes && owner && <AthletesWidget att={athletes} fit={side ? [] : fit} />}
+        {athletes && owner && <AthletesWidget att={athletes} />}
+        {!side && <FitWidget fit={fit} />}
       </div>
       <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
       <div className="empty:hidden">
@@ -141,10 +142,9 @@ export function HomeFeed({ weather, inbox, onInbox }) {
         dues={athletes && owner}
         posts={!staff}
         invoices={owner}
-        lead={!(athletes && owner) && !side && <FitWidget fit={fit} />}
         tail={<TalkWidgets meeting={!side} />}
         pages={actions}
-        hide={["/notes", ...(!side ? ["meeting"] : []), ...(athletes && owner ? ["/athletes", "/athletes/attendance"] : []), ...((athletes && owner) || (!side && fit.some((f) => f.date >= todayStr())) ? ["/fitness"] : [])]}
+        hide={["/notes", ...(!side ? ["meeting"] : []), ...(athletes && owner ? ["/athletes", "/athletes/attendance"] : []), ...(!side && fit.some((f) => f.date >= todayStr()) ? ["/fitness"] : [])]}
       />
     </div>
   );
