@@ -4,13 +4,13 @@ import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
 import { record } from "@/lib/brain/store";
 import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
-import { spokenReply, startedWithin, startLine } from "@/lib/sayLines";
+import { spokenReply } from "@/lib/sayLines";
 import { sozOn, wantsSoz } from "@/lib/ai/soz";
 import { askSoz } from "@/services/sozService";
 
 // Söz yapay zekası (Seyhun, 2026-10-20: "Yapay zeka bunu bir metin olarak bize geri döndürsün, apayrı bir işlem olsun"):
 // iş bitti, sonuç bilgisi hazır; ayrı küçük çağrı onu doğal cümleye çevirir, sonra cevap normal yolla gösterilir ve okunur.
-// Beklerken Sesli yanıt açıksa yalnız "Hemen ilgileniyorum." söylenir. Olmazsa (süre, denetim, ağ) yerel cümle kalır.
+// Beklerken bir şey söylenmez (Seyhun 2026-10-20: "ilgileniyorum"a gerek yok). Olmazsa (süre, denetim, ağ) yerel cümle kalır.
 // İşin mantığı (puan, öğrenme, görev listesi) yerel sonuç metniyle yürür; söz yalnız gösterilen ve okunan metindir.
 function sozFits(ctx, message, x) {
   if (x.soz !== undefined || ctx.readMode?.current || !sozOn() || !timingSaid()) return false;
@@ -26,7 +26,6 @@ async function phrase(ctx, message, extra, viaVoice) {
   const result = more ? message.slice(0, -MORE.length).trim() : message;
   // Çalışıyor durumu sürer (yapay zeka işinin sonu "boşta"ya çekse de, aynı anda kurulduğu için sonra uygulanır)
   Promise.resolve().then(() => my === sozRun && id === runId.current && setPhase("preparing"));
-  if (tts?.enabled && !startedWithin(20000)) enqueueSay(startLine());
   timingMark("soz");
   const d = await askSoz({ said: timingSaid(), result });
   if (id !== runId.current || my !== sozRun) return; // bu arada vazgeçildi ya da yeni istek geldi

@@ -1,5 +1,6 @@
 // Asistanın beyni: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
 import { waMode } from "@/lib/steps";
+import { mergeMessageTasks } from "@/lib/chainMessages";
 import { PAGES } from "@/lib/assistantLocal";
 import { historyFor, draftFor, memoFor } from "@/lib/convoContext";
 import { TASKS_WAIT_MS } from "@/lib/ai/budget";
@@ -65,7 +66,15 @@ export function nextInChain(ctx, viaVoice) {
 // Sıralı işlerin bir adımı: mesaj kartı (onayla gönderilir) ya da kayıtlar (bilgisi tamamsa hemen kaydedilir)
 // lead: önceki adımın sonucu ("Gönderdim. "); msg: yapay zekanın ilk adım için yazdığı cümle (akışta okunmuş olabilir)
 export function runStep(ctx, st, viaVoice, lead = "", msg = "") {
-  const { askDelete, prepareSend, startDrafts } = ctx;
+  const { askDelete, prepareBatch, prepareSend, queue, startDrafts } = ctx;
+  // Sıradaki işler de mesajsa hepsi tek kartta, tek onayla (olmazsa tek tek)
+  if (st.send && queue.current[0]?.send) {
+    const more = [];
+    while (queue.current[0]?.send) more.push(queue.current.shift());
+    const all = [st, ...more].map((x) => ({ to: x.send.to, text: x.send.text, wa: waMode(x.s) }));
+    if (prepareBatch(all, viaVoice, lead, st.engine)) return;
+    queue.current.unshift(...more);
+  }
   if (st.send) return prepareSend(st.send.to, st.send.text, msg, st.engine, viaVoice, lead, waMode(st.s));
   if (st.actions) return askDelete(st.actions, viaVoice, lead, msg);
   return startDrafts(st.items, st.s, msg, st.engine, viaVoice, lead);
@@ -90,7 +99,13 @@ export function go(ctx, page, message, viaVoice = false) {
 }
 
 // Görev listesini başlat: işler sırayla, her biri kendi akışında; listede yalnız işlerin adı ve sonucu görünür
-export function startPlan(ctx, tasks, viaVoice, fresh) {
+export function startPlan(ctx, list, viaVoice, fresh) {
+  // Art arda mesajlar tek işte: hepsi tek kartta, tek onayla gider (lib/chainMessages.js)
+  const tasks = mergeMessageTasks(list);
+  if (tasks.length === 1) {
+    ctx.chainStep.current = true;
+    return ctx.run(tasks[0].say, viaVoice, fresh);
+  }
   const { actNow, chain, chainGen, chainStep, planFails, planIdx, planKind, planLearn, planNow, planOn, raceFailed, raceFollow, run, setPlan, setWork } = ctx;
   chain.current = tasks.slice(1).map((x, k) => ({ ...x, i: k + 1 }));
   chainGen.current++;

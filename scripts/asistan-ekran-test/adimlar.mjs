@@ -213,16 +213,16 @@ async function scenarios2(h) {
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
   setTranscript("");
-  // Sesli yanıt açıkken her istekte önce hazır cümle, sonra cevap okunur (Seyhun, 2026-10-20; eski kural "oku dersem okusun")
+  // Sesli yanıt açıkken cevap okunur; beklerken "Hemen ilgileniyorum" söylenmez (Seyhun, 2026-10-20)
   setAI(() => ({ intent: "chat", message: "Bugün erken yat." }));
   const sp0 = await page.evaluate(() => window.__t.spoken.length);
   await talkAsk(page, "bana kısa bir tavsiye ver");
-  await check(GS, "sesli yanıt açıkken soru", "önce hazır cümle, sonra cevap okunur", async () => {
+  await check(GS, "sesli yanıt açıkken soru", "cevap okunur, “ilgileniyorum” denmez", async () => {
     const ok = await waitFor(async () => /Bugün erken yat/.test(await last(page)), 6000);
     await waitFor(async () => (await page.evaluate((n) => window.__t.spoken.slice(n).join(" "), sp0)).includes("erken yat"), 4000);
     const said = await page.evaluate((n) => window.__t.spoken.slice(n), sp0);
     const all = said.join(" | ");
-    return [!!ok && said.length >= 2 && /erken yat/.test(all), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(all).slice(0, 100) || "yok"}`];
+    return [!!ok && /erken yat/.test(all) && !/ilgileniyorum/i.test(all), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(all).slice(0, 100) || "yok"}`];
   });
   // Asistan ekranındaki hoparlör düğmesi: okurken kapatılınca okuma hemen susar, sonraki cevap okunmaz; yeniden açılır
   setAI(() => ({ intent: "chat", message: "Rüzgar öğleden sonra artar, erken çık." }));
@@ -461,6 +461,24 @@ async function scenarios3(h) {
     const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
     const t = clean(await convo(page));
     return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
+  });
+  setTranscript("");
+  await closeAll(page);
+  await home();
+  // İki mesaj tek kartta, tek "gönder" ile ikisi de gider (Seyhun 2026-10-20)
+  setAI(() => ({ intent: "message", message: "", send: { to: "Ege Demir", text: "Yarın 9'da kulüpte ol." }, sends: [{ to: "Ege Demir", text: "Yarın 9'da kulüpte ol." }, { to: "Ege Demir", text: "Botunu da getir." }] }));
+  const sendsB = calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length;
+  await talkAsk(page, "Ege'ye yarın 9'da kulüpte ol diye yaz, sonra Ege'ye botunu da getir diye yaz");
+  await check(GO, "iki mesaj", "tek kartta ikisi, “Hepsini göndereyim mi?”", async () => {
+    const ok = await waitFor(async () => /2 mesaj hazır.*Hepsini göndereyim mi\?/.test(clean(await convo(page))), 7000);
+    const btnN = await page.locator("[data-dome] button", { hasText: "Hepsini gönder" }).count();
+    return [!!ok && btnN === 1, `${ok ? "soru var" : clean(await convo(page)).slice(-140)} · düğme ${btnN}`];
+  });
+  await answer(h, page, "gönder");
+  await check(GO, "iki mesaj → “gönder”", "ikisi de gider", async () => {
+    const ok = await waitFor(async () => /İkisini de gönderdim|gönderemedim/.test(await convo(page)), 9000);
+    const t = clean(await convo(page));
+    return [!!ok && /İkisini de gönderdim/.test(t), `“${t.slice(-90)}” · istek ${calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length - sendsB}`];
   });
   setTranscript("");
   await closeAll(page);

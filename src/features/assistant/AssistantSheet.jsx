@@ -310,7 +310,33 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
           </div>
         )}
 
-        {cards.pending?.send && (
+        {/* Birden çok mesaj: tek kartta hepsi, tek onayla gider (Seyhun 2026-10-20) */}
+        {cards.pending?.batch && (
+          <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
+            <p className="bg-acc/[.06] px-3 py-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-acc">{cards.pending.batch.length} mesaj · onayını bekliyor</p>
+            <ul className="divide-y divide-line bg-card">
+              {cards.pending.batch.map((x, i) => (
+                <li key={i} className="flex gap-2.5 px-3 py-2.5">
+                  <Avatar name={x.label} icon={x.team ? x.icon : null} size="size-8" text="text-[0.75rem]" tone={x.team ? "bg-acc text-white" : undefined} />
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[0.875rem] font-semibold">{x.label}</b>
+                    <span className="block text-[0.9375rem] leading-snug">{x.text}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 border-t border-line p-2">
+              <button type="button" onClick={() => confirmPending(false)} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+                <Icon name="up" className="size-4" /> Hepsini gönder
+              </button>
+              <button type="button" onClick={() => cancelPending()} className="h-11 rounded-xl bg-bg px-4 text-[0.9375rem] font-semibold text-mut active:scale-[.98]">
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cards.pending?.send && !cards.pending.batch && (
           <div className="fade-in mt-3 overflow-hidden rounded-2xl ring-1 ring-acc/30">
             <p className="flex items-center gap-2.5 bg-acc/[.06] px-3 py-2">
               <Avatar name={cards.pending.send.label} icon={cards.pending.send.team ? cards.pending.send.icon : null} size="size-8" text="text-[0.75rem]" tone={cards.pending.send.team ? "bg-acc text-white" : undefined} />

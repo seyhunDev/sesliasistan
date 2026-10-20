@@ -1278,6 +1278,20 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]));
 }
 
+// Görev listesinde art arda mesajlar tek işte birleşir: tek kart, tek onay (lib/chainMessages.js; Seyhun 2026-10-20)
+{
+  const { mergeMessageTasks, isMessageTask } = await import("@/lib/chainMessages");
+  const T2 = (say) => ({ say, label: say.slice(0, 12), kind: "other" });
+  const M = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Sıralı mesajlar: tek onay")([
+    ["iki mesaj", M("tek işte birleşir", () => mergeMessageTasks([T2("Sporculara yarın 9'da antrenman var diye yaz"), T2("Velilere de servis 8'de diye mesaj at")]), (r) => r.length === 1 && /Ayrıca Velilere/.test(r[0].say) && r[0].label === "2 mesaj")],
+    ["mesaj, not, mesaj", M("not araya girince birleşmez", () => mergeMessageTasks([T2("Ali'ye yaz yarın gel"), T2("notlara malzeme listesi yaz"), T2("Ayşe'ye mesaj at geç kalma")]), (r) => r.length === 3)],
+    ["üç mesaj", M("üçü bir işte", () => mergeMessageTasks([T2("Ali'ye yaz gel"), T2("Ayşe'ye yaz gel"), T2("ekibe haber ver toplantı var")]), (r) => r.length === 1 && r[0].label === "3 mesaj")],
+    ["notlara yaz", M("mesaj sayılmaz", () => isMessageTask(T2("notlara yaz su al")), (r) => r === false)],
+    ["plan ve mesaj", M("birleşmez", () => mergeMessageTasks([T2("yarın 10'da plan ekle"), T2("Ali'ye yaz gel")]), (r) => r.length === 2)],
+  ]);
+}
+
 // Sesli yanıt açıkken konuşma: hazır başlangıç cümlesi, onay bekleyen işte "Onayını bekliyorum", sıralı işlerin sonunda
 // "Tamam, hepsi yapıldı" (lib/sayLines.js; Seyhun 2026-10-20)
 {
