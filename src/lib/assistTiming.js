@@ -115,17 +115,78 @@ export function timingStart(text, viaVoice) {
 
 export function timingMark(name) {
   if (cur && cur.marks[name] == null) cur.marks[name] = clock();
+  if (name === "ai") aiCountUp();
+}
+
+// Sunucudan gelen bilgi (model, sunucudaki süre) ya da hata nedeni: geliştirici satırında gösterilir
+export function timingInfo(o) {
+  if (cur && o) cur.info = { ...(cur.info || {}), ...o };
+}
+
+// Bu telefondan bugün yapay zekaya giden asistan isteği (Google kalan kotayı söylemiyor; okuma maliyeti yok)
+const AI_DAY = "sa-ai-day";
+const dayOf = () => {
+  const d = new Date(clock());
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+export function aiCount() {
+  try {
+    const d = JSON.parse(box()?.getItem(AI_DAY) || "{}");
+    return d.day === dayOf() ? d.n || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+function aiCountUp() {
+  try {
+    box()?.setItem(AI_DAY, JSON.stringify({ day: dayOf(), n: aiCount() + 1 }));
+  } catch {}
+}
+
+// Geliştirici bilgisi (asistan sayfasında her cevabın altında; Ayarlar › Asistan süre kaydı'ndan kapatılır)
+const DEV_KEY = "sa-dev";
+export function devOn() {
+  try {
+    return box()?.getItem(DEV_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+export function setDevOn(on) {
+  try {
+    box()?.setItem(DEV_KEY, on ? "1" : "0");
+  } catch {}
+}
+const ERR_NAMES = { quota: "kota doldu", busy: "servis yoğun", timeout: "zaman aşımı", network: "ulaşılamadı", unclear: "yanıt anlaşılamadı", nokey: "anahtar yok", other: "hata" };
+// Tek satır: "Yazıya çevirme 1,4 sn · Yerel 12 ms · Yapay zeka 3,1 sn (ilk parça 0,9 sn) · model · bugün 37 istek"
+export function devLine(r) {
+  const m = r?.marks || {};
+  const i = r?.info || {};
+  const out = [];
+  if (m.text != null && m.upload != null) out.push(`Yazıya çevirme ${msText(m.text - m.upload)}`);
+  const local = (m.ai ?? m.reply) - m.run;
+  if (m.run != null && local >= 0) out.push(`Yerel ${msText(local)}`);
+  if (m.ai != null) {
+    const end = m.aiDone ?? m.reply;
+    const first = m.first != null ? ` (ilk parça ${msText(m.first - m.ai)})` : "";
+    out.push(i.err ? `Yapay zeka ${ERR_NAMES[i.err] || i.err}, ${msText(end - m.ai)} sonra` : `Yapay zeka ${msText(end - m.ai)}${first}`);
+    if (i.model) out.push(i.model);
+    out.push(`bugün ${aiCount()} istek`);
+  } else out.push("yapay zekaya gitmedi");
+  return out.join(" · ");
 }
 
 // Cevap verildi: okuma başlayınca (ya da başlamazsa kısa süre sonra) kayıt kapanır.
 // Kim cevapladı: yapay zeka cevap verdiyse "ai" (sonucu uygulama söylese de), yoksa verilen (yerel, yedek kurallar…)
 export function timingReply(engine) {
-  if (!cur) return;
+  if (!cur) return "";
   timingMark("reply");
   if (!cur.engine) cur.engine = cur.marks.aiDone ? "ai" : engine || "local";
+  const dev = devLine(cur);
   clearTimeout(timer);
   if (cur.marks.speak) flush();
   else timer = setTimeout(flush, AFTER_REPLY);
+  return dev;
 }
 
 // Sesli okuma başladı: önce ön cevap ("Tamam.") okunur, sonra cevap

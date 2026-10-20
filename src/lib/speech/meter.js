@@ -1,7 +1,7 @@
 // Canlı ses ölçeri: dinlerken dalganın (ListenWave) okuduğu tek kaynak. İkinci mikrofon açılmaz:
 // kayıt yolunda useSpeech'in konuşma bandı (170-4000 Hz) analizcisi paylaşılır, React yeniden çizimi olmadan
 // ekran karesi başına okunur. Canlı yazı yolunda (Web Speech ses vermez) useSpeech'in yumuşatılmış seviyesi kullanılır.
-const m = { an: null, buf: null, lvl: 0 };
+const m = { an: null, buf: null, lvl: 0, flow: false };
 
 // an boşsa ölçer kapanır; owner verilirse yalnız o analizci hâlâ bağlıysa (başka dinleme onu ezmesin)
 export function setMeter(an, owner) {
@@ -29,4 +29,13 @@ export function readMeter() {
     sum += v * v;
   }
   return Math.min(1, Math.sqrt(sum / m.buf.length) * 4);
+}
+
+// Mikrofondan gerçekten ses verisi geliyor mu (dinlerken yeşil nokta, MicDot). Kayıt yolunda useSpeech bildirir
+// (kayıt parçası ya da ham ses geldi, micCheck.js); canlı yazı yolunda yeni kelime gelince seviye yükselir.
+export function setMicFlow(on) {
+  m.flow = !!on;
+}
+export function readMicFlow() {
+  return m.flow || (!m.an && m.lvl > 0.2);
 }

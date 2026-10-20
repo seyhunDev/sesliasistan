@@ -15,6 +15,15 @@ function toSchema(s) {
   return o;
 }
 
+// Cevabı veren model (geliştirici bilgisi): yanıt nesnesine görünmez alan olarak eklenir, JSON'a ve ayrıştırmaya girmez
+export const modelOf = (json) => (json && typeof json === "object" ? json.__model || "" : "");
+function withModel(json, m) {
+  try {
+    if (json && typeof json === "object") Object.defineProperty(json, "__model", { value: m, enumerable: false });
+  } catch {}
+  return json;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Hız için düşünmeyi kapat/azalt: Gemini 3 ve sonrası thinkingBudget yerine thinkingLevel kullanır
 // (bütçe 0 yok sayılır ve model uzun düşünüp zaman aşımına düşebilir)
@@ -215,6 +224,7 @@ export async function callGemini({ model, system, user, schema, images = [], max
             tried.push(`${m}:json`);
             break;
           }
+          withModel(json, m);
           console.log(
             `[gemini] ${m} ${Date.now() - t0} ms${noThink ? " (düşünme kapalı)" : ""}${useSchema ? "" : " (şemasız)"}${retries ? ` (${retries}. tekrar)` : ""}${tried.length ? ` · önce: ${tried.join(", ")}` : ""}`,
           );
@@ -370,7 +380,7 @@ export async function streamGemini({ model, system, user, schema, maxTokens = 40
     }
     const json = JSON.parse(out.replace(/^```(?:json)?\s*|\s*```$/g, ""));
     console.log(`[gemini] ${m} akış: ilk parça ${first} ms, toplam ${Date.now() - t0} ms`);
-    return json;
+    return withModel(json, m);
   } catch (e) {
     if (e.started === undefined) e.started = started;
     throw e;

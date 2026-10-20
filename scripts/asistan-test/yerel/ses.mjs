@@ -118,6 +118,7 @@ const MC = (s, now, want) => ({ desc: want, fn: () => micState(s, now), ok: (r) 
 group("Mikrofon ses veriyor mu")([
   ["mikrofon henüz açılmadı (izin bekleniyor)", MC({ micAt: 0, chunks: [], pcmLen: 0 }, 9000, "wait")],
   ["açılalı az oldu", MC({ micAt: 1000, chunks: [], pcmLen: 0 }, 1000 + MIC_CHECK_MS - 1, "wait")],
+  ["ses hemen geldi (yeşil nokta beklemeden yanar)", MC({ micAt: 1000, chunks: [], pcmLen: 4096 }, 1300, "ok")],
   ["kayıt parçası geldi", MC({ micAt: 1000, chunks: [{ size: 900 }], pcmLen: 0 }, 1000 + MIC_CHECK_MS, "ok")],
   ["yalnız ham ses geldi (kayıt parçası yok)", MC({ micAt: 1000, chunks: [], pcmLen: 4096 }, 1000 + MIC_CHECK_MS, "ok")],
   ["sessiz ortam ama mikrofon çalışıyor", MC({ micAt: 1000, chunks: [{ size: 300 }], pcmLen: 20000 }, 5000, "ok")],

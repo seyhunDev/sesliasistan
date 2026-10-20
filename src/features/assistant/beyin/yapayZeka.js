@@ -4,7 +4,7 @@ import { precue } from "@/lib/precue";
 import { todayStr } from "@/lib/utils/format";
 import { guess as brainGuess, countHit } from "@/lib/brain/store";
 import { dayHours, cached as cachedWeather, wantsWeather, weatherDigest, loadWeather } from "@/features/weather/weather";
-import { timingMark } from "@/lib/assistTiming";
+import { timingInfo, timingMark } from "@/lib/assistTiming";
 import { clubDigest } from "@/lib/ai/clubDigest";
 import { buildDigest } from "@/lib/ai/digest";
 import { askAssistant } from "@/services/assistantService";
@@ -84,11 +84,13 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
     const r = await askAssistant({ text: ask, name: firstName, digest, history, draft: draftFor(msgDraft.current), memo: memoFor(memo.current), sessions: ctx.sessionsNow?.() || [], people: staffNames, contacts: contactNames, precue: pc?.hint || "", onText }, c.signal);
     if (id !== runId.current) return;
     timingMark("aiDone");
+    timingInfo({ model: r.model || r.provider || "" });
     setPhase("preparing");
     handle(r, ask, viaVoice); // bekleme yok: işler hemen yapılır
   } catch (err) {
     if (id !== runId.current) return;
     const e = late ? new Error("Yapay zeka çok geç kaldı, bağlantını kontrol edip tekrar dene.") : err;
+    timingInfo({ err: late ? "timeout" : err?.reason || (err?.name === "TimeoutError" ? "timeout" : err?.name === "NetworkError" ? "network" : "other") });
     setStreamText("");
     streamSaid.current = "";
     inflight.current = null;

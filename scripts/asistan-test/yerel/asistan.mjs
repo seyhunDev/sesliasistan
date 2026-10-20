@@ -886,7 +886,41 @@ group("Süre kaydı")([
   ["istek gitti ama yazı gelmedi", { desc: "3 istek, 3 boş, neden ve ham ses yok", fn: () => { const T = (p, w) => ["try", 1000, [p, w]]; return TM.liveText(TM.liveOf(scene([["speech", 0, ["listen"]], T("whole"), T("", "Gemini 400"), T("whole"), T("", "Gemini 400"), T("whole"), T("", "Gemini 400"), ...voiceAdd.slice(1)])[0])); }, ok: (r) => r === "canlı yazı gelmedi: 3 istek, 3 boş (Gemini 400), ham ses yok" }],
   ["kopyalanan metin", { desc: "toplam ve adımlar yazılı", fn: () => TM.timingText(scene(voiceAdd)), ok: (s) => /toplam 5,7 sn/.test(s) && /Susmanın beklenmesi: 1,6 sn/.test(s) && /Kaydetme: 300 ms/.test(s) }],
 ]);
+// Geliştirici satırı (asistan sayfasında her cevabın altında): cevap anında yazılır
+function devOf(steps) {
+  let t = 0;
+  let dev = "";
+  TM.timingTest({ now: () => t, storage: memStore() });
+  for (const [what, ms, arg] of steps) {
+    t = ms;
+    if (what === "speech") TM.speechMark(arg[0], arg[1]);
+    else if (what === "start") TM.timingStart(arg, true);
+    else if (what === "startText") TM.timingStart(arg, false);
+    else if (what === "info") TM.timingInfo(arg);
+    else if (what === "reply") dev = TM.timingReply(arg);
+    else TM.timingMark(what);
+  }
+  return dev;
+}
+const DV = (steps, want) => ({ desc: want, fn: () => devOf(steps), ok: (r) => r === want });
+group("Geliştirici bilgisi")([
+  ["sesli, yapay zeka akışla", DV([...voiceAdd.slice(0, 8), ["first", 5700], ["aiDone", 7300], ["info", 7300, { model: "gemini-test" }], ["reply", 7610, "local"]], "Yazıya çevirme 1,0 sn · Yerel 10 ms · Yapay zeka 2,5 sn (ilk parça 880 ms) · gemini-test · bugün 1 istek")],
+  ["yerel komut", DV([["startText", 0, "planları aç"], ["reply", 12, "local"]], "Yerel 12 ms · yapay zekaya gitmedi")],
+  ["yapay zeka zaman aşımı", DV([["startText", 0, "x"], ["ai", 5], ["info", 9000, { err: "timeout" }], ["reply", 9005, "rules"]], "Yerel 5 ms · Yapay zeka zaman aşımı, 9,0 sn sonra · bugün 1 istek")],
+  ["istekler günde sayılır", { desc: "aynı gün 3 istek", fn: () => { devOf([["startText", 0, "a"], ["ai", 1], ["reply", 2]]); let t = 10; for (const x of ["b", "c"]) { TM.timingStart(x, false); TM.timingMark("ai"); TM.timingReply(); t += 1; } return TM.aiCount(); }, ok: (r) => r === 3 }],
+]);
 TM.timingTest({});
+
+// Örnekleri dene (aiProbe.js): yapay zeka işlerinin örnekleri ve beklenen tür
+const PB = await import("@/lib/aiProbe");
+group("Örnekleri dene")([
+  ["örnekler iş listesinden", { desc: "15+ örnek, hepsi tek cümle, beklenen tür dolu", fn: () => PB.probeSamples(), ok: (l) => l.length >= 15 && l.every((x) => x.say && !x.say.includes(";") && x.want) }],
+  ["çoklu iş yok", { desc: "multi listede değil", fn: () => PB.probeSamples().some((x) => x.id === "multi"), ok: (r) => r === false }],
+  ["doğru tür", { desc: "ok", fn: () => PB.probeCheck({ want: "create" }, { intent: "create" }).ok, ok: (r) => r === true }],
+  ["yanlış tür", { desc: "ok değil", fn: () => PB.probeCheck({ want: "message" }, { intent: "create" }).ok, ok: (r) => r === false }],
+  ["kayıt yokken soru sordu", { desc: "kabul, not yazılır", fn: () => PB.probeCheck({ want: "action" }, { intent: "query" }), ok: (r) => r.ok && r.note }],
+  ["kopyalanan metin", { desc: "başlık ve satır", fn: () => PB.probeText([{ ok: true, name: "Plan", say: "yarın 10'da antrenman ekle", got: "create", ms: 2100, first: 700, model: "m" }]), ok: (s) => /1\/1 doğru/.test(s) && /✓ Plan: “yarın 10'da antrenman ekle” → create · 2.1 sn \(ilk parça 0.7 sn\) · m/.test(s) }],
+]);
 
 // Envanter cümleleri (invWords.js): her yerde "envanter/demirbaş/stok" geçince, envanter sayfasında başka işe benzemeyen her cümle
 const IW = await import("@/features/inventory/invWords");
