@@ -699,6 +699,10 @@ group("Ana sayfa kartları")([
     const c = W.cleanTemplates([" a ", "a", "", "b"]);
     return x[0] === "Yarın 09:30 antrenman var, yer: Yat limanı." && /Yarın 09:30 Optimist antrenmanı rüzgâr nedeniyle iptal edildi/.test(x[1]) && /^Foça Kupası 24 Ekim Cumartesi başlıyor\.$/.test(x[2]) && c.join() === "a,b";
   })],
+  ["kulüp kartları", F("listede gizlenen plan: gününe homeDays'ten çok gün varken gizli, sonra görünür; alanı yoksa hep görünür", () => {
+    const t = "2026-10-20";
+    return HT.homeHidden({ date: "2026-11-15", homeDays: 10 }, t) && !HT.homeHidden({ date: "2026-10-30", homeDays: 10 }, t) && !HT.homeHidden({ date: "2026-11-15" }, t) && HT.homeHidden({ date: "2026-11-15" }, t, 10) && !HT.homeHidden({ date: "2026-11-15", homeDays: 30 }, t, 10);
+  })],
   ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
     const t = "2026-10-19";
     const x = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-26", "2026-10-18"].map((d) => HT.leftTag(d, t));

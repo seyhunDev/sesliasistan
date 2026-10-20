@@ -388,6 +388,13 @@ export function leftTag(day, today) {
   if (n === 2) return { text: "! 2 gün", tone: "warn" };
   return { text: `${n} gün`, tone: "mut" };
 }
+// Ana sayfa listesinde gizlenen plan (Seyhun 2026-10-20: "gizle; 10 gün kala, 20 gün ya da artı eksiyle; tarihi gelince gösterilsin"):
+// planın homeDays alanı (gün) varsa, yoksa listenin toplu ayarı (all: users.homeDays, "yalnız N gün kalanları göster") varsa, gününe ondan
+// fazla gün varken listede çıkmaz (takvimde hep görünür)
+export function homeHidden(p, today, all) {
+  const n = Number.isFinite(p?.homeDays) ? p.homeDays : all;
+  return Number.isFinite(n) && !!p?.date && Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5) > n;
+}
 export function untilText(time, durationMin = 60) {
   if (!/^\d{1,2}:\d{2}$/.test(time || "")) return "";
   const [h, m] = time.split(":").map(Number);
