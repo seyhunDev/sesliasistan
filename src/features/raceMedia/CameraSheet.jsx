@@ -7,11 +7,10 @@ import { raceCancel, raceFinish, raceStart, raceVoid, useTimerRun } from "@/feat
 import { VoidChoices } from "./useRaceFlow";
 import { upSec } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
-import { drawStamp } from "./stamp";
 
 // Uygulama içi kamera (Seyhun 2026-10-18: telefonun kamerası açılınca uygulama arkaya geçiyor, start bipleri susuyordu).
 // Sayfa önde kaldığı için sayaç ve bipleri sürer; üstte sayaç görünür. Fotoğraf 1600 px JPEG; video sessiz, 960 px, ~1,6 Mbit/sn,
-// en çok 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Sayaç sürerken çekilenin üstüne an yazılır (stampFor).
+// en çok 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın").
 // Kamera açılamazsa onFail: çağıran telefonun kendi kamerasına düşer. Çekilen her kare onShot ile hemen verilir, kamera açık kalır;
 // last: köşedeki son çekilen ve yükleme durumu (yükleniyor / yüklenemedi: telefonda saklandı, dokununca sebebi).
 // rf (useRaceFlow): sayacın yanında yarış düğmeleri (Seyhun 2026-10-18: "suda tek ekran"): sayaç yokken "Başlat · 4. yarış",
@@ -23,19 +22,19 @@ export function CameraSheet({ open, ...props }) {
   return createPortal(<Cam {...props} />, document.body);
 }
 
-function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending = 0, last = null, rf = null }) {
+function Cam({ mode, onMode, onClose, onShot, onFail, last = null, rf = null }) {
   const vid = useRef(null);
   const stream = useRef(null);
   const rec = useRef(null); // { r, raf, stop }
-  const fns = useRef({ onShot, onFail, stampFor });
+  const fns = useRef({ onShot, onFail });
   const [ready, setReady] = useState(false);
   const [recAt, setRecAt] = useState(0);
   const [recNow, setRecNow] = useState(0);
   const [flash, setFlash] = useState(false);
   const timer = useTimerRun();
   useEffect(() => {
-    fns.current = { onShot, onFail, stampFor };
-  }, [onShot, onFail, stampFor]);
+    fns.current = { onShot, onFail };
+  }, [onShot, onFail]);
 
   useEffect(() => {
     let off = false;
@@ -98,9 +97,16 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending = 0, las
     const ctx = c.getContext("2d");
     const at = new Date().toISOString();
     let raf = 0;
+    // Kayıt sürerken telefon çevrilirse görüntü ezilmez: kareye sığdırılır, boşluk siyah
     const draw = () => {
-      ctx.drawImage(v, 0, 0, w, h);
-      drawStamp(ctx, w, h, fns.current.stampFor(new Date().toISOString()));
+      const sc = Math.min(w / (v.videoWidth || w), h / (v.videoHeight || h));
+      const dw = Math.round((v.videoWidth || w) * sc);
+      const dh = Math.round((v.videoHeight || h) * sc);
+      if (dw !== w || dh !== h) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, w, h);
+      }
+      ctx.drawImage(v, (w - dw) / 2, (h - dh) / 2, dw, dh);
       raf = requestAnimationFrame(draw);
     };
     draw();
@@ -136,7 +142,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending = 0, las
   const recSec = recAt ? Math.floor((recNow - recAt) / 1000) : 0;
 
   const close = () => (stop(), onClose());
-  const info = (t.running || recAt) && (
+  const info = (t.running || recAt > 0) && (
     <div className="flex items-center gap-2">
       {t.running && (
         <span className={`rounded-lg px-2.5 py-1 text-[1.0625rem] font-semibold tabular-nums ${hot ? "bg-rec" : "bg-black/50"}`}>
@@ -168,7 +174,8 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending = 0, las
       )}
     </div>
   );
-  const status = last?.state === "err" ? `Yüklenemedi, telefonda saklandı. ${last.err || ""}` : !ready ? "Kamera açılıyor…" : pending ? `Kaydediliyor · ${pending}` : "";
+  // Yalnız hata yazılır (kaydediliyor bilgisi köşedeki son çekilende dönen çember)
+  const status = last?.state === "err" ? "Yüklenemedi, telefonda saklandı" : "";
   const modes = !recAt && (
     <div className="flex justify-center gap-6 text-[0.8125rem] font-semibold tracking-wide landscape:flex-col landscape:gap-4">
       {[["video", "VİDEO"], ["photo", "FOTOĞRAF"]].map(([k, l]) => (
@@ -208,42 +215,46 @@ function Cam({ mode, onMode, onClose, onShot, onFail, stampFor, pending = 0, las
     </button>
   );
 
-  // iPhone kamerası gibi: dikte üst ve alt siyah şerit, altta solda Bitti, ortada deklanşör, sağda son çekilen; üstünde VİDEO · FOTOĞRAF.
-  // Yan çevrilince şerit sağa geçer (deklanşör ortada), sayaç görüntünün sol üstünde.
+  // iPhone kamerası gibi: görüntü her zaman bütün ekranı kaplar, düğmeler üstünde durur (Seyhun 2026-10-20: yan çevirince önce küçülüp
+  // sonra büyüyordu; düğmeler kenara yapışıktı). Dikte altta Bitti · deklanşör · son çekilen, üstünde VİDEO · FOTOĞRAF; yan çevrilince
+  // sağda dikey şerit (çentik payı kadar geniş, içi ortalı), sayaç sol üstte.
+  const safeX = "pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]";
   return (
-    <div data-cam className="fixed inset-0 z-[80] flex flex-col bg-black text-white landscape:flex-row">
-      <div className="flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-end justify-between gap-2 px-4 pb-2 landscape:hidden">
+    <div data-cam className="fixed inset-0 z-[80] overflow-hidden bg-black text-white">
+      <video ref={vid} muted playsInline autoPlay className="absolute inset-0 size-full object-cover" />
+      {flash && <div className="pointer-events-none absolute inset-0 bg-black/60" />}
+      <div className={`absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${safeX} landscape:right-[calc(6.5rem+env(safe-area-inset-right))] landscape:justify-start`}>
         <div className="min-w-0">{info}</div>
         {ctrl}
       </div>
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        <video ref={vid} muted playsInline autoPlay className="absolute inset-0 size-full object-cover" />
-        {flash && <div className="pointer-events-none absolute inset-0 bg-black/60" />}
-        <div className="absolute left-[calc(0.75rem+env(safe-area-inset-left))] top-3 flex items-center gap-2 portrait:hidden">
-          {info}
-          {ctrl}
-        </div>
-        {rf?.ask && (
-          <div className="absolute inset-0 z-10 grid place-items-center bg-black/60 p-6">
-            <div className="w-full max-w-[20rem] rounded-2xl bg-[#1C1C1E] p-4">
-              <p className="mb-3 text-center text-[1.0625rem] font-semibold">Neden iptal?</p>
-              <VoidChoices ask={rf.ask} onChoose={rf.choose} dark />
-            </div>
+      {rf?.ask && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-black/60 p-6">
+          <div className="w-full max-w-[20rem] rounded-2xl bg-[#1C1C1E] p-4">
+            <p className="mb-3 text-center text-[1.0625rem] font-semibold">Neden iptal?</p>
+            <VoidChoices ask={rf.ask} onChoose={rf.choose} dark />
           </div>
-        )}
-        {status && <p className={`absolute inset-x-3 bottom-3 mx-auto w-fit max-w-full rounded-lg px-3 py-1.5 text-center text-[0.8125rem] ${last?.state === "err" ? "bg-[#FF3B30]" : "bg-black/50"}`}>{status}</p>}
+        </div>
+      )}
+      {status && (
+        <p className="absolute inset-x-3 bottom-[calc(10rem+env(safe-area-inset-bottom))] mx-auto w-fit max-w-full rounded-lg bg-[#FF3B30] px-3 py-1.5 text-center text-[0.8125rem] landscape:bottom-4 landscape:right-[calc(6.5rem+env(safe-area-inset-right))]">
+          {status}
+        </p>
+      )}
+      <div className={`absolute inset-x-0 bottom-0 bg-black/45 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 ${safeX} landscape:hidden`}>
+        {modes}
+        <div className="mt-3 grid grid-cols-3 items-center">
+          <div>{done}</div>
+          <div className="flex justify-center">{shut}</div>
+          <div className="flex justify-end">{thumb}</div>
+        </div>
       </div>
-      <div className="shrink-0 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 landscape:flex landscape:w-[7.5rem] landscape:flex-col landscape:items-center landscape:justify-between landscape:px-2 landscape:py-[calc(1rem+env(safe-area-inset-top))] landscape:pr-[calc(0.5rem+env(safe-area-inset-right))]">
-        <div className="portrait:hidden">{thumb}</div>
-        <div className="landscape:flex landscape:flex-col landscape:items-center landscape:gap-4">
+      <div className="absolute inset-y-0 right-0 hidden w-[calc(6.5rem+env(safe-area-inset-right))] flex-col items-center justify-between bg-black/45 pr-[env(safe-area-inset-right)] py-[calc(1rem+env(safe-area-inset-bottom))] landscape:flex">
+        {thumb}
+        <div className="flex flex-col items-center gap-4">
           {modes}
-          <div className="mt-3 grid grid-cols-3 items-center landscape:mt-0 landscape:block">
-            <div className="landscape:hidden">{done}</div>
-            <div className="flex justify-center">{shut}</div>
-            <div className="flex justify-end landscape:hidden">{thumb}</div>
-          </div>
+          {shut}
         </div>
-        <div className="portrait:hidden">{done}</div>
+        {done}
       </div>
     </div>
   );
