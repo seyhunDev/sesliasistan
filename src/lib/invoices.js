@@ -181,9 +181,9 @@ export async function runAutoInvoices(io, uid, movements) {
 export function invoiceText(res) {
   if (!res?.paid?.length) return null;
   const p = res.paid;
-  const title = p.length === 1 ? `Fatura ödendi: ${p[0].seller || "Fatura"}` : `${p.length} fatura ödendi`;
-  const body = [p.length === 1 ? amountText(p[0]) : p.slice(0, 2).map((x) => x.seller).join(", "), "bankadan görüldü"].filter(Boolean).join(" · ");
-  return { title: title.length > 44 ? `${title.slice(0, 43)}…` : title, body };
+  // "Fatura ödendi: Turkcell 1.250 TL", "2 fatura ödendi: Turkcell, Enerjisa"
+  if (p.length === 1) return { title: `Fatura ödendi: ${[p[0].seller || "Fatura", amountText(p[0])].filter(Boolean).join(" ")}`, body: "" };
+  return { title: `${p.length} fatura ödendi: ${p.slice(0, 2).map((x) => x.seller).filter(Boolean).join(", ")}${p.length > 2 ? "…" : ""}`, body: "" };
 }
 
 // ---- Ana sayfa ----

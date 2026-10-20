@@ -194,7 +194,7 @@ const tl = (k) => `${(k / 100).toLocaleString("tr-TR", { minimumFractionDigits: 
 export function garantiText(res) {
   const a = res?.added || [];
   if (!a.length) return null;
-  const title = a.length === 1 ? `Kart harcaması: ${a[0].merchant}` : `${a.length} kart harcaması fişe eklendi`;
-  const body = [a.length === 1 ? tl(a[0].amount) : a.slice(0, 2).map((x) => `${x.merchant} ${tl(x.amount)}`).join(", "), "ödeme bekliyor"].join(" · ");
-  return { title: title.length > 44 ? `${title.slice(0, 43)}…` : title, body };
+  // "Kart harcaması fişe eklendi: Migros 250 TL", "3 kart harcaması fişe eklendi: Migros 250 TL, Shell 1.200 TL"
+  const list = a.slice(0, 2).map((x) => `${x.merchant} ${tl(x.amount)}`).join(", ");
+  return { title: `${a.length === 1 ? "Kart harcaması" : `${a.length} kart harcaması`} fişe eklendi: ${list}${a.length > 2 ? "…" : ""}`, body: "" };
 }

@@ -63,8 +63,12 @@ export function windAlert({ rows = [], plans = [], today, kn = WIND_KN }) {
   const line = ({ p, wind, gust }) => `${p.time ? `${p.time} ` : ""}${p.title}: rüzgâr ${wind} kn, sağanak ${gust} kn`;
   // Tek plan varsa bildirime dokununca o plan açılır (İptal et ve haber ver oradan)
   const one = hits.length === 1 && hits[0].p.id;
+  if (one) {
+    const h = hits[0];
+    return { title: `${h.p.title} saatinde rüzgâr ${h.wind} kn, sağanak ${h.gust} kn olacak. Denize çıkmadan kontrol et.`, body: "", url: `/?open=plan:${h.p.id}` };
+  }
   return {
-    title: "Rüzgâr uyarısı",
+    title: `Bugün ${hits.length} planda rüzgâr sert olacak`,
     body: `${hits.map(line).join("\n")}\nEşik ${lim} kn. Denize çıkmadan kontrol et.${one ? " İptal edeceksen dokun." : ""}`,
     ...(one ? { url: `/?open=plan:${hits[0].p.id}` } : {}),
   };

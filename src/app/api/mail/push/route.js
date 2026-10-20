@@ -71,9 +71,9 @@ export async function POST(request) {
   let sent = 0;
   const errors = [];
   const msg = dues
-    ? { ...dues, ...(inv || card ? { body: [dues.body, inv?.title, card?.title].filter(Boolean).join(" · ") } : {}), tag: `dues-${list[0].id}`, url: "/dues" }
+    ? { title: [dues.title, inv?.title, card?.title].filter(Boolean).join(". "), body: "", tag: `dues-${list[0].id}`, url: "/dues" }
     : inv
-      ? { ...inv, ...(card ? { body: `${inv.body} · ${card.title}` } : {}), tag: `inv-${list[0].id}`, url: "/invoices" }
+      ? { title: [inv.title, card?.title].filter(Boolean).join(". "), body: "", tag: `inv-${list[0].id}`, url: "/invoices" }
       : card
         ? { ...card, tag: `card-${list[0].id}`, url: "/receipts" }
         : { ...mailDigestText(mails), tag: `mail-${list[0].id}`, url: "/mail" };

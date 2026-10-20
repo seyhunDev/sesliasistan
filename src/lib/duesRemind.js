@@ -45,12 +45,12 @@ export function remindText(x, ym, club = "Dikili Yelken Spor Kulübü") {
   return `Merhaba, ${first(x.a.studentName)} için ${owed(x, ym)} henüz hesabımıza ulaşmadı. Ödediyseniz bu mesajı dikkate almayın. Teşekkürler.${club ? ` ${club}` : ""}`;
 }
 // Uygulamadaki veliye bildirim
-export const remindPush = (x, ym) => ({ title: `Aidat hatırlatması: ${first(x.a.studentName)}`, body: `${cap(owed(x, ym))} henüz görünmüyor. Ödediyseniz dikkate almayın.` });
+export const remindPush = (x, ym) => ({ title: `${first(x.a.studentName)} için ${owed(x, ym)} henüz görünmüyor. Ödediyseniz dikkate almayın.`, body: "" });
 
 // Ana hesaba: "Aidat: 3 sporcu ödemedi" / "Ekim aidatı · Deniz, Ege, Ada · velilere hatırlatmak için dokun"
 export function ownerText(list, ym) {
   if (!list.length) return null;
   const names = list.map((x) => x.a.studentName).filter(Boolean);
   const shown = names.slice(0, 4).join(", ") + (names.length > 4 ? ` +${names.length - 4}` : "");
-  return { title: `Aidat: ${list.length} sporcu ödemedi`, body: `${cap(monthName(ym))} aidatı · ${shown} · velilere hatırlatmak için dokun` };
+  return { title: `${list.length} sporcu ${monthName(ym)} aidatını ödemedi: ${shown}`, body: "" };
 }

@@ -15,10 +15,10 @@ const hm = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${Str
 
 // Deneme türleri: ad ve gerçek metin işleviyle örnek bildirim (title, body)
 export const TEST_KINDS = [
-  { kind: "task", label: "Yeni görev", text: (today) => assignedText({ kind: "task", title: "Deneme görevi", due: today, from: "Seyhun" }, today) },
-  { kind: "plan", label: "Yeni plan", text: (today) => assignedText({ kind: "plan", title: "Deneme planı", date: today, time: "16:00", place: "Liman", from: "Seyhun" }, today) },
-  { kind: "chat", label: "Mesaj", text: () => ({ title: "Ali", body: "Deneme mesajı: yarın 9'da limandayız" }) },
-  { kind: "receipt", label: "Fiş ödeme bekliyor", text: () => receiptNewText({ merchant: "Deneme fişi", amount: "250 ₺", from: "Ali" }) },
+  { kind: "task", label: "Yeni görev", text: (today) => assignedText({ kind: "task", title: "Motor yağını al", due: today, from: "Seyhun" }, today) },
+  { kind: "plan", label: "Yeni plan", text: (today) => assignedText({ kind: "plan", title: "Antrenman", date: today, time: "16:00", place: "Liman", from: "Seyhun" }, today) },
+  { kind: "chat", label: "Mesaj", text: () => ({ title: "Ali: Yarın 9'da limandayız", body: "" }) },
+  { kind: "receipt", label: "Fiş ödeme bekliyor", text: () => receiptNewText({ merchant: "Marin Yedek Parça", amount: "250 ₺", from: "Ali" }) },
   { kind: "att", label: "Yoklama alınmadı", text: (today) => attRemindText([{ title: "Antrenman", time: "16:00", date: today, cat: "Antrenman" }], today) },
   { kind: "summary", label: "Sabah özeti", text: (today) => morningText({ plans: [], tasks: [], today, name: "Seyhun" }) },
 ];
@@ -33,13 +33,13 @@ export function flatLine({ title, body }) {
   return h && r ? `${h}${h.includes(":") || r.includes(":") ? " · " : ": "}${r}` : h || r;
 }
 
-// Deneme olduğu her bildirimin sonunda yazar
-export const mark = (m) => ({ title: m.title, body: [m.body, "Deneme"].filter(Boolean).join(" · ") });
+// Deneme bildirimi gerçeğiyle aynı görünür (Seyhun: "deneme gibi şeylere gerek yok"); ayrımı etiket (test-…) ve kayıt yapar
+export const mark = (m) => ({ title: m.title, body: m.body || "" });
 
 // Örnek metin (önizleme için)
 export function previewOf(kind, { now = new Date(), tz = DEFAULT_TZ } = {}) {
   const today = todayIn(tz);
-  if (kind === "remind") return mark(reminderText({ id: "test", title: "Deneme planı", date: today, time: "18:00", place: "Liman" }, REMIND_LEAD, { tz, now: new Date(0) }));
+  if (kind === "remind") return mark(reminderText({ id: "test", title: "Antrenman", date: today, time: "18:00", place: "Liman" }, REMIND_LEAD, { tz, now: new Date(0) }));
   const k = TEST_KINDS.find((x) => x.kind === kind);
   return k ? mark(k.text(today)) : null;
 }
@@ -54,7 +54,7 @@ export function newTest(kind, { now = new Date(), tz = DEFAULT_TZ, id } = {}) {
     const plus = sec < 30 ? 1 : 2; // hatırlatma zamanına en az 30 sn kalsın
     const pm = n.min - Math.floor(n.min / 1440) * 1440 + REMIND_LEAD + plus;
     const date = pm >= 1440 ? new Date(Date.parse(`${n.date}T12:00:00Z`) + 864e5).toISOString().slice(0, 10) : n.date;
-    const plan = { title: "Deneme planı", date, time: hm(pm), place: "Liman" };
+    const plan = { title: "Antrenman", date, time: hm(pm), place: "Liman" };
     const due = new Date(Math.floor(now.getTime() / 60000) * 60000 + plus * 60000).toISOString();
     return { id, kind, at, due, plan, lead: REMIND_LEAD, tz };
   }

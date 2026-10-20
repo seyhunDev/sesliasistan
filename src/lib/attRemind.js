@@ -53,8 +53,9 @@ export function attRemindDue({ plans, today, nowHM, sunset, sent, taken }) {
 export function attRemindText(plans, today) {
   const list = trainingsOn(plans, today);
   const p = list[0];
-  const what = list.length > 1 ? `${list.length} antrenman` : [p?.title || "Antrenman", p?.time].filter(Boolean).join(" ");
-  return { title: "Yoklama alınmadı", body: `Bugün: ${what} · Doldurmak için dokun`, tag: `att-remind-${today}`, url: `/athletes/attendance?gun=${today}` };
+  // "Bugünkü antrenmanın yoklamasını almadın (Optimist antrenmanı 16:00)"
+  const what = list.length > 1 ? `Bugünkü ${list.length} antrenmanın yoklamasını almadın` : `Bugünkü antrenmanın yoklamasını almadın${p?.title && !/^antre?nman$/i.test(p.title) ? ` (${[p.title, p.time].filter(Boolean).join(" ")})` : ""}`;
+  return { title: what, body: "", tag: `att-remind-${today}`, url: `/athletes/attendance?gun=${today}` };
 }
 
 // Kulüp sitesinden girilen yoklama: sporcular okununca o güne yoklama yazılmışsa alındı sayılır (athletes/data.js)

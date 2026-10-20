@@ -65,13 +65,12 @@ export function autoDues(movements, cfg = {}, months = {}, now = new Date().toIS
 // Bildirim: { title, body } ya da null (aidatla ilgili bir şey yoksa mail özeti gider)
 export function duesText(res) {
   if (!res || (!res.paid.length && !res.open)) return null;
-  const wait = res.open ? `${res.open} ödeme onay bekliyor` : "";
-  if (!res.paid.length) return { title: `Aidat: ${wait}`, body: "Aidatlar › Eşleştir'den onayla" };
-  const names = res.paid.flatMap((p) => p.names);
-  const title = names.length === 1 ? `Aidat geldi: ${names[0]}` : `Aidat geldi: ${names.length} sporcu`;
+  const wait = res.open ? `${res.open} ödeme onayını bekliyor` : "";
+  if (!res.paid.length) return { title: `${res.open} aidat ödemesi onayını bekliyor`, body: "" };
+  // "Aidat geldi: Deniz 500 ₺, Ege 500 ₺. 1 ödeme onayını bekliyor"
   const parts = res.paid.map((p) => `${p.names.join(" ve ")} ${TL(p.amount)}`);
-  const body = [...(parts.length > 3 ? [...parts.slice(0, 2), `+${parts.length - 2} ödeme`] : parts), wait].filter(Boolean).join(" · ");
-  return { title, body };
+  const list = (parts.length > 3 ? [...parts.slice(0, 2), `${parts.length - 2} ödeme daha`] : parts).join(", ");
+  return { title: `Aidat geldi: ${list}${wait ? `. ${wait}` : ""}`, body: "" };
 }
 
 // io: { get(path) → veri | null, set(path, alanlar) (yalnız verilen alanlar, belge yoksa oluşturur) }

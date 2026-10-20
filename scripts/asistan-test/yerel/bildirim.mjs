@@ -151,14 +151,14 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   msg("dm1", "m1", "own", "Yarın 9'da iskelede ol");
   let r = await call("own", { event: "chat", chat: "dm1", mid: "m1" });
   const p = to("e-ali")[0]?.payload;
-  add(G, "Seyhun Ali'ye yazdı", "Ali'ye gider, başlıkta Seyhun", r.sent === 1 && p?.title === "Seyhun" && /iskelede/.test(p?.body) && sentTo("e-own") === 0);
+  add(G, "Seyhun Ali'ye yazdı", "Ali'ye gider, \"Seyhun: …\"", r.sent === 1 && /^Seyhun: .*iskelede/.test(p?.title) && sentTo("e-own") === 0);
 
   F.sent.length = 0;
   put("orgs/own/chats/athletes", { type: "group" });
   msg("athletes", "m2", "own", "Cumartesi antrenman 10:00");
   r = await call("own", { event: "chat", chat: "athletes", mid: "m2" });
   add(G, "Sporcular grubuna yazıldı", "Ali (antrenör), Mete, veli Ayşe alır; aile Eda almaz", sentTo("e-ali") === 1 && F.sent.some((x) => x.to === "t-mete") && sentTo("e-veli") === 1 && sentTo("e-es") === 0);
-  add(G, "grup bildirim metni", "\"Seyhun: …\" ve grup adı Sporcular", to("e-veli")[0]?.payload.title === "Sporcular" && /^Seyhun: /.test(to("e-veli")[0]?.payload.body));
+  add(G, "grup bildirim metni", "\"Seyhun (Sporcular): …\"", /^Seyhun \(Sporcular\): /.test(to("e-veli")[0]?.payload.title));
 
   F.sent.length = 0;
   put("orgs/own/chats/team", { type: "group" });
@@ -386,7 +386,7 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   const id = (await r).id;
   const t = own().pushTests?.[id];
   add(G, "\"Yeni görev\" 30 sn düğmesine basıldı", "deneme kaydı yalnız kişinin belgesinde, 30 sn sonrası için", !!t && Math.abs(Date.parse(t.due) - Date.parse(t.at) - 30e3) < 2000 && own().pushTestAt === t.due);
-  add(G, "deneme metni", "gerçek görev metni, sonunda \"Deneme\"", /^Yeni görev: Deneme görevi$/.test(t?.title) && / · Deneme$/.test(t?.body || ""));
+  add(G, "deneme metni", "gerçek görev metni", /^Yeni görevin var: Motor yağını al/.test(t?.title));
   await run();
   add(G, "zaman gelmeden zamanlayıcı çalıştı", "henüz gitmez", !F.sent.some((x) => /^test-/.test(x.payload?.tag || "")));
   put("users/own", { ...own(), pushTests: { [id]: { ...t, due: new Date(Date.now() - 1000).toISOString() } } });
@@ -413,7 +413,7 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "hatırlatma zamanından önce", "gitmez", pt.testDue(fresh) === false);
   await run();
   const rs = F.sent.find((x) => x.payload?.tag === "test-r1");
-  add(G, "hatırlatma zamanı geldi, zamanlayıcı çalıştı", "\"1 saat sonra: Deneme planı\" gider", !!rs && /^1 saat sonra: Deneme planı$/.test(rs.payload.title) && own().pushTests.r1.via === "zamanlayıcı");
+  add(G, "hatırlatma zamanı geldi, zamanlayıcı çalıştı", "\"1 saat sonra Antrenman var (Liman)\" gider", !!rs && rs.payload.title === "1 saat sonra Antrenman var (Liman)" && own().pushTests.r1.via === "zamanlayıcı");
   const gone = pt.newTest("remind", { id: "r3", now: new Date(Date.now() - 2 * 3600e3) });
   put("users/own", { ...own(), pushTests: { ...own().pushTests, r3: gone }, pushTestAt: gone.due });
   await run();
