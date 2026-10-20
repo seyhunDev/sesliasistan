@@ -35,7 +35,7 @@ export function Label({ children, right, tone, className = "" }) {
   );
 }
 
-// Segment seçici: [["up", "Yaklaşan", 3], ...]
+// Segment seçici: [["up", "Yaklaşan", 3], ...] → "Yaklaşan (3)"
 export function Seg({ value, onChange, options, className = "" }) {
   return (
     <div className={`flex rounded-full bg-line/60 p-1 ${className}`}>
@@ -45,10 +45,11 @@ export function Seg({ value, onChange, options, className = "" }) {
           type="button"
           onClick={() => onChange(k)}
           aria-pressed={value === k}
-          className={`flex-1 rounded-full py-1.5 text-[0.8125rem] font-semibold transition ${value === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.1)]" : "text-mut"}`}
+          className={`flex-1 whitespace-nowrap rounded-full py-1.5 text-[0.8125rem] font-semibold transition ${value === k ? "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.1)]" : "text-mut"}`}
         >
           {l}
-          {n > 0 && <span className="ml-1 font-normal text-mut tabular-nums">{n}</span>}
+          {/* Sayı yazının yanında parantezle, alt satıra inmez (Seyhun 2026-10-20) */}
+          {n > 0 && <span className="ml-0.5 font-normal text-mut tabular-nums">({n})</span>}
         </button>
       ))}
     </div>

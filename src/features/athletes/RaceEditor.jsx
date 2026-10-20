@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
-import { Hero, Label, Seg, card } from "@/components/ui/Page";
+import { Label, Seg, card } from "@/components/ui/Page";
+import { Button } from "@/components/ui/Button";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
@@ -32,7 +34,7 @@ import { racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
-import { DateBadge, initials, leftText, placeText } from "./RaceList";
+import { initials, placeText } from "./RaceList";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -150,7 +152,7 @@ function Check({ on, tone = "ok" }) {
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
-export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
@@ -890,26 +892,40 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
 
   return (
     <>
-      <Sheet open={noticeMenu} onClose={() => setNoticeMenu(false)} title="Yarış talimatı">
-        <div className="space-y-2">
-          {r.noticeFile && (
-            <button type="button" onClick={() => (setNoticeMenu(false), noticeOpen())} className="flex h-12 w-full items-center gap-3 rounded-xl bg-bg px-4 text-left text-[0.9375rem] font-semibold">
-              <Icon name="paperclip" className="size-5 text-acc" />
-              Talimatı aç
+      {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
+      <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
+        <ul className={`${card} divide-y divide-line overflow-hidden`}>
+          {[
+            ["Bilgileri düzenle", () => setEdit(true)],
+            r.notice && ["Talimatı değiştir", () => setNoticeMenu(true)],
+            r.notice && ["Talimatı sil", dropNotice, true],
+          ]
+            .filter(Boolean)
+            .map(([l, fn, red]) => (
+              <li key={l}>
+                <button type="button" data-press="row" onClick={() => (onMenu?.(false), fn())} className={`block w-full px-4 py-3.5 text-left text-[1rem] font-medium ${red ? "text-rec" : ""}`}>
+                  {l}
+                </button>
+              </li>
+            ))}
+        </ul>
+        {start.id && (
+          <div className={`${card} mt-3 overflow-hidden`}>
+            <button type="button" data-press="row" onClick={() => (onMenu?.(false), remove())} className="block w-full px-4 py-3.5 text-left text-[1rem] font-medium text-rec">
+              Yarışı sil
             </button>
-          )}
-          <NoticeUpload
-            busy={reading}
-            onFile={(f) => (setNoticeMenu(false), loadNotice(f))}
-            onText={(t) => (setNoticeMenu(false), loadNotice(t))}
-            title={!r.notice ? "Talimat yükle" : r.noticeFile ? "Değiştir" : "Talimat dosyasını yükle"}
-            sub={!r.notice ? "Ad, tarih, program, son tarihler, ücret ve oteller kendiliğinden dolar." : r.noticeFile ? "Yeni talimatı yükle; fark varsa gösteririm." : "Bilgiler okundu ama dosya saklanmamış. Aynı talimatı yükle, saklayayım."}
-          />
-          {r.notice && <button type="button" onClick={dropNotice} className="flex h-12 w-full items-center justify-center gap-1.5 text-[0.875rem] font-medium text-rec">
-            <Icon name="trash" className="size-4" />
-            Talimatı sil
-          </button>}
-        </div>
+          </div>
+        )}
+      </Sheet>
+
+      <Sheet open={noticeMenu} onClose={() => setNoticeMenu(false)} title="Yarış talimatı">
+        <NoticeUpload
+          busy={reading}
+          onFile={(f) => (setNoticeMenu(false), loadNotice(f))}
+          onText={(t) => (setNoticeMenu(false), loadNotice(t))}
+          title={!r.notice ? "Talimat yükle" : r.noticeFile ? "Değiştir" : "Talimat dosyasını yükle"}
+          sub={!r.notice ? "Ad, tarih, program, son tarihler, ücret ve oteller kendiliğinden dolar." : r.noticeFile ? "Yeni talimatı yükle; fark varsa gösteririm." : "Bilgiler okundu ama dosya saklanmamış. Aynı talimatı yükle, saklayayım."}
+        />
       </Sheet>
 
       <Sheet open={edit} onClose={() => setEdit(false)} title="Yarış bilgisi">
@@ -939,36 +955,17 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         </button>
       </Sheet>
 
-      {/* Üst kart: yer, tarih, kalan gün, sporcu (dokununca yarış bilgisi) */}
-      <Hero className="mt-3">
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setEdit(true)} aria-label="Yarışın adını, tarihini, yerini düzenle" className="flex min-w-0 flex-1 items-center gap-3 text-left">
-            <DateBadge r={r} light />
-            <span className="min-w-0 flex-1">
-              <b className="flex items-center gap-1.5 text-[1.0625rem] font-semibold leading-tight">
-                <span className="truncate">{placeText(r) || "Yer girilmedi"}</span>
-                <Icon name="edit" className="size-3.5 shrink-0 text-white/70" />
-              </b>
-              {!r.startDate && <span className="mt-0.5 block truncate text-[0.8125rem] text-white/75">Tarih girilmedi</span>}
-              <span className="mt-1.5 block truncate text-[0.8125rem] font-medium text-white/90">{[leftText(r), `${chosen.length} sporcu`, r.abroad && "Yurt dışı"].filter(Boolean).join(" · ")}</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setNoticeMenu(true)}
-            className={`flex h-8 shrink-0 items-center gap-1 self-start rounded-full px-2.5 text-[0.75rem] font-semibold ${r.notice ? "bg-white/15 text-white" : "bg-white text-deep"}`}
-          >
-            <Icon name={r.notice ? (r.noticeFile ? "check" : "alert") : "plus"} className="size-3.5" />
-            Talimat
-          </button>
-        </div>
-        {/* Yarış günü: sayaç, hava, sonuçlar, fotoğraf/video ayrı sayfada (multimedya) */}
+      {/* Üstte yalnız iki düğme (ad, yer, tarih başlıkta; düzenle ve sil ⋯ içinde) */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
         {rid && (
-          <Link href={`/athletes/races/${rid}/media`} className="mt-3 flex h-10 items-center justify-center rounded-xl bg-white/15 text-[0.875rem] font-semibold text-white active:scale-[.99]">
-            Multimedyayı aç
+          <Link href={`/athletes/races/${rid}/media`} data-press className={buttonClass({ variant: "secondary" })}>
+            Multimedya
           </Link>
         )}
-      </Hero>
+        <Button variant="secondary" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} className={rid ? "" : "col-span-2"}>
+          {r.notice ? "Talimat" : "Talimat yükle"}
+        </Button>
+      </div>
 
       <Seg
         value={tab}
@@ -1022,14 +1019,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             />
           </div>
 
-          {start.id && (
-            <div className="mt-8 flex justify-center">
-              <button type="button" onClick={remove} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.875rem] font-medium text-rec transition active:scale-95 active:bg-rec/10">
-                <Icon name="trash" className="size-4" />
-                Yarışı sil
-              </button>
-            </div>
-          )}
         </>
       )}
 
