@@ -13,7 +13,8 @@ import { cueOf, queryTopic } from "@/lib/assistTasks";
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
 const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|neydi|ne zaman|nerede|kim|kimler|nasıl|ne durumda|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
 // "eklediğim", "ayarları" ekleme isteği değildir
-const CREATE = /(ekle(?!diğ|dim|din|di )|oluştur|kaydet|koy(?!ul)|planla|hatırlat|not (al|düş|et)|takvime|ayarla(?!r))/;
+// "planlar" (çoğul) ve "not aldım" (geçmiş) soru cümlesinde de geçer: ekleme sayılmaz ("bu ay hangi planlar var?")
+const CREATE = /(ekle(?!diğ|dim|din|di )|oluştur|kaydet|koy(?!ul)|planla(?!r)|hatırlat|not (al(?!dı|dığ)|düş(?!tü)|et(?!ti))|takvime|ayarla(?!r))/;
 const SEND = /(^| )(yaz|gönder|ilet|haber ver|mesaj (at|gönder|yaz))( |$)|('|’)?(e|a|ye|ya) (yaz|söyle)( |$)/;
 const TYPE_W = [
   ["note", /(^| )(not al\S*|not düş\S*|not et|not ekle\S*|^not )/],

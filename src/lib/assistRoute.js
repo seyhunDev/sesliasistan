@@ -35,6 +35,7 @@ import { timerCommand, windCommand } from "@/lib/raceLive";
 import { resultCommand } from "@/lib/raceVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
+import { infoAsk } from "@/lib/infoAsk";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -57,6 +58,9 @@ export function moreKind(s, c = {}) {
   // "kaç sporcumuz var", "sıradaki yarış ne zaman", "yaklaşan doğum günleri", "Ali'nin velisi kim", "Ali kaç yaşında"
   const ca = clubAsk(s);
   if (ca && (ca.kind === "birthdays" || racer)) return "clubAsk";
+  // "ödenmemiş faturalar neler", "bu ay ne kadar harcadık", "okunmamış mesajım var mı"
+  const ia = infoAsk(s, c.today || "2000-01-01");
+  if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && windCommand(s)) return "raceWind";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
