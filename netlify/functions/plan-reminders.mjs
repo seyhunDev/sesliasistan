@@ -19,6 +19,8 @@ import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
+import { testDue } from "../../src/lib/pushTest.js";
+import { missTest, sendTest } from "../../src/lib/server/pushTestSend.js";
 import { attRemindDue, attRemindText, sunsetHM } from "../../src/lib/attRemind.js";
 
 // Sporcuya hazırlanan fitness antrenmanı (fit.for başka kişi): ana hesaba hatırlatma/özet gitmez, yalnız sporcuya
@@ -31,7 +33,7 @@ export const config = { schedule: "*/5 * * * *" };
 
 // Okuma tasarrufu: bildirimle ilgili kullanıcılar her çalışmada tek sorguyla bir kez okunur (önceden 7 ayrı sorgu,
 // aynı kişi her birinde yeniden okunuyordu). Kulübün plan/görev sorguları da çalışma boyunca paylaşılır.
-const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt", "duesAt", "attAt"];
+const NOTIFY_FIELDS = ["summaryAt", "eveningAt", "birthdayAt", "windAt", "weeklyAt", "duesAt", "attAt", "pushTestAt"];
 const hasAt = (d, k) => typeof d[k] === "string" && d[k] > "";
 async function notifyUsers(db) {
   const users = db.collection("users");
@@ -116,8 +118,26 @@ async function sendDueReminders() {
   const extras = await sendExtras(db, all, q).catch((e) => (console.error("[extras]", e.message), 0));
   const dues = await sendDuesRemind(db, all).catch((e) => (console.error("[aidat hatırlatma]", e.message), 0));
   const att = await sendAttRemind(db, all, q).catch((e) => (console.error("[yoklama hatırlatma]", e.message), 0));
-  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${own} plana özel, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama`);
-  return new Response(`ok ${sent} ${own} ${summaries} ${mails} ${extras} ${dues} ${att}`);
+  const tests = await sendPushTests(db, all).catch((e) => (console.error("[bildirim testi]", e.message), 0));
+  console.log(`[reminders] ${all.length} kullanıcı, ${sent} bildirim, ${own} plana özel, ${summaries} özet, ${mails} mail, ${extras} ek, ${dues} aidat, ${att} yoklama, ${tests} deneme`);
+  return new Response(`ok ${sent} ${own} ${summaries} ${mails} ${extras} ${dues} ${att} ${tests}`);
+}
+
+// Bildirim testi (lib/pushTest): zamanı gelen deneme kayıtları. Hatırlatma denemesi gerçek hatırlatma kuralıyla,
+// 30 sn denemeleri bekleyen işlev göndermediyse burada gider. Kişi belgesi zaten okundu (pushTestAt), ek okuma yok.
+async function sendPushTests(db, all) {
+  let n = 0;
+  const now = new Date();
+  for (const u of all) {
+    const tests = u.data().pushTests;
+    if (!u.data().pushTestAt || !tests) continue;
+    for (const [id, t] of Object.entries(tests)) {
+      const due = testDue(t, now);
+      if (due === "gone") await missTest(db, u.id, id, tests);
+      else if (due) n += await sendTest(db, u.id, id, "zamanlayıcı", now);
+    }
+  }
+  return n;
 }
 
 // Plana özel hatırlatma (plan formundaki "Hatırlat"): kişinin kendi hatırlatma ayarından bağımsız, planın sorumlularına
