@@ -184,6 +184,8 @@ export function cleanRace(r) {
   if (!r || typeof r !== "object" || !S(r.name, 100)) return null;
   const athletes = cleanAthletes(r.athletes);
   return {
+    // Yarışın kimliği: yarışın sayfası gönderisini bununla bulur (eski gönderilerde yok)
+    ...(S(r.id, 60) ? { id: S(r.id, 60) } : {}),
     name: S(r.name, 100),
     place: S(r.place, 80),
     dates: S(r.dates, 60),
@@ -307,6 +309,7 @@ export function dateRange(a, b) {
 export const raceBrief = (r, athletes) =>
   cleanRace({
     athletes,
+    id: r?.id,
     name: r?.name,
     place: [r?.district, r?.city].filter(Boolean).join(", "),
     dates: dateRange(r?.startDate, r?.endDate),

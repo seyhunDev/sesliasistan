@@ -452,3 +452,31 @@ group("Yarış multimedya: yardımcılar")([
     return [RL.momentRace({ end: RL.atOf("2026-10-19", "12:00") }, S), RL.momentRace({ end: RL.atOf("2026-10-19", "13:00") }, S), RL.momentRace({ rid: "r1", end: RL.atOf("2026-10-19", "13:00") }, S)].join();
   }, ok: (r) => r === "2,3,1" }],
 ]);
+
+// Yarış detayı › Özet › Yarış kartı (raceLinks.js): yarışın planı, son tarih planları, Instagram gönderisi
+const RK = await import("@/features/athletes/raceLinks");
+const PM = await import("@/features/posts/postModel");
+group("Yarış detayı özeti")([
+  ["yarışın planı", { desc: "adı aynı Yarış planı (harf/boşluk farkı yok), son tarihler 'Ad: iş'; başka tür ve başka yarış sayılmaz; aynı adlıdan tarihi yakın olan", fn: () => {
+    const P = [
+      { id: "p0", cat: "Yarış", title: "Foça Kupası", date: "2025-10-24" },
+      { id: "p1", cat: "Yarış", title: "foça  kupası", date: "2026-10-25", endDate: "2026-10-28", time: "07:00" },
+      { id: "p2", cat: "Yarış", title: "Foça Kupası: Online kayıt son gün", date: "2026-10-22" },
+      { id: "p3", cat: "Antrenman", title: "Foça Kupası", date: "2026-10-25" },
+      { id: "p4", cat: "Yarış", title: "Foça Kupası 2", date: "2026-10-25" },
+    ];
+    const a = RK.racePlansOf({ name: "Foça Kupası", startDate: "2026-10-26", departDate: "2026-10-25" }, P);
+    return [a.main?.id, a.deadlines.map((x) => x.id).join(), RK.racePlansOf({ name: "Ege" }, P).main, RK.racePlansOf({ name: "" }, P).main];
+  }, ok: ([m, d, none, empty]) => m === "p1" && d === "p2" && none === null && empty === null }],
+  ["yarışın gönderisi", { desc: "yarışın kimliğiyle; eski gönderide (kimliksiz) aynı ad ve yıl; arşivde olmayan önce; başka yarışın kimliği sayılmaz", fn: () => {
+    const R = { id: "r1", name: "Foça Kupası", startDate: "2026-10-26" };
+    const P = [
+      { id: "g1", year: 2026, archived: true, race: { id: "r1", name: "Foça Kupası" } },
+      { id: "g2", year: 2026, race: { id: "r1", name: "Foça Kupası" } },
+      { id: "g3", year: 2026, race: { id: "r9", name: "Foça Kupası" } },
+    ];
+    const old = [{ id: "o1", year: 2025, race: { name: "Foça Kupası" } }, { id: "o2", year: 2026, race: { name: "foça kupası" } }];
+    return [RK.racePostOf(R, P)?.id, RK.racePostOf(R, old)?.id, RK.racePostOf(R, [P[2]]), RK.racePostOf(R, [old[0]])];
+  }, ok: ([a, b, c, d]) => a === "g2" && b === "o2" && c === null && d === null }],
+  ["gönderide yarışın kimliği", { desc: "yarıştan hazırlanan gönderi yarışın kimliğini taşır (yarışın sayfası gönderiyi bununla bulur)", fn: () => PM.postFromRace({ id: "r1", name: "Foça Kupası", startDate: "2026-10-26" }, "2026-10-20").race, ok: (r) => r.id === "r1" && r.name === "Foça Kupası" }],
+]);
