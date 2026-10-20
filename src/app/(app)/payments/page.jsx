@@ -107,15 +107,15 @@ function Payments() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title={title} sub={named ? "Bu adla gelen ve giden ödemeler" : "Aldığı ödemeler · banka hesaplarından"} back="/mail">
-        <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95 disabled:opacity-50">
+        <button type="button" disabled={busy} onClick={refresh} aria-label="Yenile" data-press className="btn btn-round size-10 text-fg">
           <Icon name="repeat" className={`size-5 ${busy ? "animate-spin" : ""}`} />
         </button>
         {named ? (
-          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="İsmi kaldır" className="grid size-10 place-items-center rounded-full bg-card text-rec shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
+          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="İsmi kaldır" data-press className="btn btn-round size-10 text-rec">
             <Icon name="trash" className="size-5" />
           </button>
         ) : (
-          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="Hesap ayarı" className="grid size-10 place-items-center rounded-full bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.08)] active:scale-95">
+          <button type="button" onClick={() => setEdit((v) => !v)} aria-label="Hesap ayarı" data-press className="btn btn-round size-10 text-fg">
             <Icon name="edit" className="size-5" />
           </button>
         )}
@@ -126,10 +126,10 @@ function Payments() {
           <section className={`${card} fade-in mt-2 space-y-3 px-4 py-4`}>
             <p className="text-[0.875rem] leading-snug">“{named}” Hesaplar sayfasından kaldırılsın mı? Banka hareketleri silinmez.</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setEdit(false)} className="h-11 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold">
+              <button type="button" onClick={() => setEdit(false)} data-press className="btn btn-secondary flex-1">
                 Vazgeç
               </button>
-              <button type="button" onClick={drop} className="h-11 flex-1 rounded-xl bg-rec text-[0.875rem] font-semibold text-white">
+              <button type="button" onClick={drop} data-press className="btn btn-danger flex-1">
                 Kaldır
               </button>
             </div>
@@ -189,7 +189,7 @@ function Payments() {
                 <ul className="divide-y divide-line">
                   {sum.byMonth.map((mo) => (
                     <li key={mo.ym}>
-                      <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                      <button type="button" onClick={() => setOpen(mo.ym === shown ? "-" : mo.ym)} aria-expanded={mo.ym === shown} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                         <span className="min-w-0 flex-1">
                           <b className="block truncate text-[0.9375rem] font-semibold first-letter:uppercase">{monthName(mo.ym)}</b>
                           <small className="block text-[0.75rem] text-mut">{mo.count} ödeme</small>
@@ -218,7 +218,7 @@ function Payments() {
                               </span>
                               <b className={`shrink-0 text-[0.875rem] font-semibold tabular-nums ${m.amount < 0 ? "" : "text-ok"}`}>{m.amount < 0 ? `−${money(-m.amount)}` : `+${money(m.amount)}`}</b>
                               {act === m.id && (
-                                <button type="button" onClick={(e) => (e.stopPropagation(), toCash(m))} className="fade-in mt-2 h-10 w-full rounded-xl bg-acc text-[0.8125rem] font-semibold text-white">
+                                <button type="button" onClick={(e) => (e.stopPropagation(), toCash(m))} data-press className="btn btn-primary btn-sm fade-in mt-2 w-full">
                                   Nakite çevir · kulüp kasasına
                                 </button>
                               )}
@@ -230,7 +230,7 @@ function Payments() {
                   ))}
                 </ul>
               </div>
-              <button type="button" onClick={() => download(`${title}-odemeler.csv`, named ? payeeCsv(list, named, "gelen ve giden ödemeler") : payeeCsv(list, payee.name))} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card text-[0.875rem] font-semibold text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.98]">
+              <button type="button" onClick={() => download(`${title}-odemeler.csv`, named ? payeeCsv(list, named, "gelen ve giden ödemeler") : payeeCsv(list, payee.name))} data-press className="btn btn-secondary mt-3 w-full text-acc">
                 <Icon name="download" className="size-4" /> Excel olarak indir
               </button>
             </section>
@@ -265,10 +265,10 @@ function Settings({ payee, accounts, onSave, onClose }) {
       )}
       <p className="text-[0.75rem] leading-snug text-mut">Hesaplardan bu ada giden paralar sayılır. Kendi hesabını seçersen o hesaba gelenler de sayılır; ad boşsa yalnız seçili hesaba gelenler.</p>
       <div className="flex gap-2">
-        <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl bg-bg text-[0.875rem] font-semibold">
+        <button type="button" onClick={onClose} data-press className="btn btn-secondary flex-1">
           Vazgeç
         </button>
-        <button type="button" onClick={() => onSave({ name: name.trim(), account })} className="h-11 flex-1 rounded-xl bg-acc text-[0.875rem] font-semibold text-white">
+        <button type="button" onClick={() => onSave({ name: name.trim(), account })} data-press className="btn btn-primary flex-1">
           Kaydet
         </button>
       </div>

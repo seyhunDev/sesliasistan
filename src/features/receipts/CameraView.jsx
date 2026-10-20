@@ -71,7 +71,7 @@ export function CameraView({ onShot, onError, onGallery, onCancel }) {
       <p className="mt-3 text-[0.875rem] text-mut">Fişi çerçeveye sığdır, düz tut</p>
 
       <div className="mt-4 flex w-full max-w-[20rem] items-center justify-between">
-        <button onClick={onGallery} aria-label="Galeriden seç" className="grid size-12 place-items-center rounded-full border border-line bg-card text-mut active:scale-90">
+        <button onClick={onGallery} aria-label="Galeriden seç" data-press className="btn btn-round btn-sm size-12 text-mut">
           <Icon name="image" className="size-5" />
         </button>
         <button
@@ -82,7 +82,7 @@ export function CameraView({ onShot, onError, onGallery, onCancel }) {
         >
           <Icon name="camera" className="size-7" />
         </button>
-        <button onClick={onCancel} aria-label="Vazgeç" className="grid size-12 place-items-center rounded-full border border-line bg-card text-mut active:scale-90">
+        <button onClick={onCancel} aria-label="Vazgeç" data-press className="btn btn-round btn-sm size-12 text-mut">
           <Icon name="x" className="size-5" />
         </button>
       </div>

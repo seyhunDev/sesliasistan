@@ -96,7 +96,7 @@ function AthleteList() {
     <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
       <PageHeader title="Sporcular" sub={err ? "Kulüp verisi" : data ? `${activeCount} aktif${all.length > activeCount ? ` · ${all.length - activeCount} arşivde` : ""}` : "Yükleniyor…"}>
         {data && !err && (
-          <button type="button" onClick={() => setAdding(true)} aria-label="Sporcu ekle" title="Sporcu ekle" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
+          <button type="button" onClick={() => setAdding(true)} aria-label="Sporcu ekle" title="Sporcu ekle" data-press className="btn btn-round size-10 text-acc">
             <Icon name="plus" className="size-5" />
           </button>
         )}
@@ -120,7 +120,7 @@ function AthleteList() {
           className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut"
         />
         {q && (
-          <button onClick={() => setQ("")} aria-label="Temizle" className="grid size-7 place-items-center rounded-full text-mut active:bg-bg">
+          <button onClick={() => setQ("")} aria-label="Temizle" data-press className="btn btn-icon btn-sm size-7 text-mut">
             <Icon name="x" className="size-4" />
           </button>
         )}
@@ -193,7 +193,7 @@ function AthleteList() {
                         disabled={inApp}
                         onClick={() => toggle(a.id)}
                         aria-pressed={sel.has(a.id)}
-                        className="flex w-full items-center gap-3 py-3 pl-4 pr-4 text-left active:bg-bg disabled:opacity-50"
+                        data-press="row" className="flex w-full items-center gap-3 py-3 pl-4 pr-4 text-left disabled:opacity-50"
                       >
                         <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${sel.has(a.id) ? "bg-acc ring-acc text-white" : "ring-line"}`}>
                           {sel.has(a.id) && <Icon name="check" className="size-4 [stroke-width:3]" />}
@@ -245,7 +245,7 @@ function AthleteList() {
                 <button
                   type="button"
                   onClick={() => setSel(new Set(list.filter((a) => isActive(a) && !(linked.get(a.id)?.account !== false && linked.has(a.id))).map((a) => a.id)))}
-                  className="h-12 rounded-xl bg-card px-4 text-[0.875rem] font-semibold text-acc ring-1 ring-line"
+                  data-press className="btn btn-secondary text-acc"
                 >
                   Tümünü seç
                 </button>

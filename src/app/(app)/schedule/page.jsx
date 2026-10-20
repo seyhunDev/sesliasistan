@@ -179,7 +179,7 @@ export default function SchedulePage() {
       )}
 
       {mine.length > 0 && !busy && (
-        <button type="button" onClick={() => setAskClear(true)} className="mx-auto mt-6 flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.8125rem] font-medium text-rec active:bg-rec/10">
+        <button type="button" onClick={() => setAskClear(true)} data-press className="btn btn-danger btn-sm mx-auto mt-6 flex">
           <Icon name="trash" className="size-4" />
           Tüm programı sil
         </button>
@@ -210,7 +210,7 @@ export default function SchedulePage() {
       <Sheet open={askClear} onClose={() => setAskClear(false)} title="Tüm programı sil">
         <p className="text-[0.9375rem] text-mut">Haftalık programındaki {mine.length} dersin hepsi silinecek. Hemen ardından “Geri al” diyebilirsin.</p>
         <div className="flex gap-2.5 pb-2 pt-4">
-          <button type="button" onClick={() => setAskClear(false)} className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold active:scale-[.98]">
+          <button type="button" onClick={() => setAskClear(false)} data-press className="btn btn-secondary flex-1">
             Vazgeç
           </button>
           <button
@@ -219,7 +219,7 @@ export default function SchedulePage() {
               clearLessons();
               setAskClear(false);
             }}
-            className="h-12 flex-1 rounded-xl bg-rec text-[0.9375rem] font-semibold text-white active:scale-[.98]"
+            data-press className="btn btn-danger flex-1"
           >
             Hepsini sil
           </button>
@@ -310,11 +310,11 @@ function LessonSheet({ lesson, onClose, onSave, onDelete }) {
         </div>
         <div className="flex gap-2.5 pt-1">
           {onDelete && (
-            <button type="button" onClick={onDelete} className="h-12 flex-1 rounded-xl border border-line bg-card text-[0.9375rem] font-semibold text-rec active:scale-[.98]">
+            <button type="button" onClick={onDelete} data-press className="btn btn-danger flex-1">
               Sil
             </button>
           )}
-          <button type="button" onClick={save} disabled={!String(f.title || "").trim() || !f.start} className="h-12 flex-[1.6] rounded-xl bg-acc text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-40">
+          <button type="button" onClick={save} disabled={!String(f.title || "").trim() || !f.start} data-press className="btn btn-primary flex-[1.6]">
             Kaydet
           </button>
         </div>
@@ -332,7 +332,7 @@ function Preview({ data, hasOld, onClose, onSave }) {
     <>
       <header className="flex shrink-0 items-center justify-between px-5 py-3">
         <h2 className="text-xl font-bold tracking-tight">Önizleme</h2>
-        <button onClick={onClose} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line active:scale-90">
+        <button onClick={onClose} aria-label="Kapat" data-press className="btn btn-round btn-sm text-mut">
           <Icon name="x" className="size-[1.125rem]" />
         </button>
       </header>
@@ -352,7 +352,7 @@ function Preview({ data, hasOld, onClose, onSave }) {
                     <b className="block truncate text-[0.9375rem] font-medium">{l.title}</b>
                     {(l.place || l.teacher) && <small className="block truncate text-[0.8125rem] text-mut">{[l.place, l.teacher].filter(Boolean).join(" · ")}</small>}
                   </span>
-                  <button onClick={() => setList((x) => x.filter((y) => y._k !== l._k))} aria-label="Çıkar" className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:bg-bg">
+                  <button onClick={() => setList((x) => x.filter((y) => y._k !== l._k))} aria-label="Çıkar" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
                     <Icon name="x" className="size-4" />
                   </button>
                 </li>
@@ -374,7 +374,7 @@ function Preview({ data, hasOld, onClose, onSave }) {
         <button
           onClick={() => onSave(list.map(({ _k, ...l }) => l), replace)}
           disabled={!list.length}
-          className="h-12 flex-1 rounded-xl bg-acc text-base font-semibold text-white active:scale-[.98] disabled:opacity-40"
+          data-press className="btn btn-primary flex-1"
         >
           Kaydet ({list.length} ders)
         </button>

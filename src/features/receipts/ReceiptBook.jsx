@@ -252,13 +252,13 @@ export function ReceiptBook({ kind: start = "" }) {
       <PageHeader title={owner ? "Fişler ve faturalar" : "Fişler"}>
         {shownKind !== "invoice" && (
           <>
-        <button onClick={excel} disabled={!list.length} aria-label="Muhasebe Excel'i" className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-card px-3 text-[0.875rem] font-semibold text-fg transition active:scale-95 disabled:opacity-40">
+        <button onClick={excel} disabled={!list.length} aria-label="Muhasebe Excel'i" data-press className="btn btn-secondary btn-sm">
           <Icon name="download" className="size-4" /> Excel
         </button>
-        <button onClick={mail} disabled={!list.length || mailing} aria-label="Excel'i mail at" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
+        <button onClick={mail} disabled={!list.length || mailing} aria-label="Excel'i mail at" data-press className="btn btn-round btn-sm text-fg">
           <Icon name="mail" className="size-[1.125rem]" />
         </button>
-        <button onClick={print} disabled={!list.length} aria-label="Yazdır" className="grid size-9 place-items-center rounded-xl border border-line bg-card text-fg transition active:scale-95 disabled:opacity-40">
+        <button onClick={print} disabled={!list.length} aria-label="Yazdır" data-press className="btn btn-round btn-sm text-fg">
           <Icon name="print" className="size-[1.125rem]" />
         </button>
           </>
@@ -288,13 +288,13 @@ export function ReceiptBook({ kind: start = "" }) {
 
       {/* Ay seçici */}
       <div className="mt-2 flex items-center justify-between rounded-2xl border border-line bg-card p-1">
-        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), -1))} aria-label="Önceki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg">
+        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), -1))} aria-label="Önceki ay" data-press className="btn btn-icon size-10">
           <Icon name="back" className="size-5" />
         </button>
         <button onClick={() => setMonth((m) => (m ? "" : todayStr().slice(0, 7)))} className="text-[0.9375rem] font-semibold capitalize">
           {month ? monthLabel(month) : "Tüm zamanlar"}
         </button>
-        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), 1))} aria-label="Sonraki ay" className="grid size-10 place-items-center rounded-xl active:bg-bg">
+        <button onClick={() => setMonth((m) => shiftMonth(m || todayStr().slice(0, 7), 1))} aria-label="Sonraki ay" data-press className="btn btn-icon size-10">
           <Icon name="chev" className="size-5" />
         </button>
       </div>
@@ -342,11 +342,11 @@ export function ReceiptBook({ kind: start = "" }) {
         // Ekleme düğmeleri altta sabit, alt çubuğun hemen üstünde (globals.css body[data-dock] .fixed[data-pagebar])
         <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
         <div className={`mx-auto grid max-w-[26.25rem] gap-2 ${shownKind === "" ? "grid-cols-2" : ""}`}>
-          <button onClick={() => openReceipt()} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_2px_8px_rgba(38,40,44,.08)]">
+          <button onClick={() => openReceipt()} data-press className="btn btn-secondary text-acc">
             <Icon name="camera" className="size-5" /> Fiş ekle
           </button>
           {shownKind === "" && (
-          <button onClick={desk.pick} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-card text-[0.9375rem] font-semibold text-acc shadow-[0_2px_8px_rgba(38,40,44,.08)]">
+          <button onClick={desk.pick} data-press className="btn btn-secondary text-acc">
             <Icon name="plus" className="size-5" /> Fatura ekle
           </button>
           )}
@@ -420,7 +420,7 @@ export function ReceiptBook({ kind: start = "" }) {
             <input type="checkbox" className="size-5 accent-[var(--acc)]" checked={review} onChange={(e) => setReview(e.target.checked)} />
           </label>
           {active > 0 && (
-            <button onClick={clear} className="h-10 w-full text-sm font-semibold text-acc">
+            <button onClick={clear} data-press className="btn btn-text btn-sm w-full text-acc">
               Filtreleri temizle
             </button>
           )}

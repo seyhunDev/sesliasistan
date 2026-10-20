@@ -39,7 +39,7 @@ function Row({ icon, label, value, tone, open, onToggle, children }) {
         type="button"
         onClick={onToggle}
         disabled={!expandable}
-        className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left transition active:bg-bg disabled:active:bg-transparent"
+        data-press="row" className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left transition disabled:active:bg-transparent"
       >
         {icon && <Icon name={icon} className="size-5 shrink-0 text-mut" />}
         <span className="shrink-0 text-[0.9375rem]">{label}</span>
@@ -66,7 +66,7 @@ function DayChips({ value, onPick, onClear }) {
         {custom ? dayLabel(value).replace(/^(Bugün|Yarın) · /, "") : "Tarih seç"}
       </Picker>
       {onClear && value && (
-        <button type="button" onClick={onClear} className="shrink-0 rounded-full px-3 py-1.5 text-[0.875rem] font-medium text-rec active:opacity-60">
+        <button type="button" onClick={onClear} data-press className="btn btn-danger btn-sm shrink-0">
           Kaldır
         </button>
       )}
@@ -155,7 +155,7 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
             </p>
           ))}
         {onResend && (
-          <button type="button" onClick={onResend} className="mt-1.5 text-[0.875rem] font-semibold text-acc">
+          <button type="button" onClick={onResend} data-press className="btn btn-text btn-sm mt-1.5 text-acc">
             Yeniden gönder
           </button>
         )}
@@ -176,7 +176,7 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
         </p>
       ))}
       {onRemindResend && (
-        <button type="button" onClick={onRemindResend} className="mt-1.5 text-[0.875rem] font-semibold text-acc">
+        <button type="button" onClick={onRemindResend} data-press className="btn btn-text btn-sm mt-1.5 text-acc">
           Yeniden gönder
         </button>
       )}
@@ -185,7 +185,7 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
 
   const addStaffRow = assign && !assign.length && onAddStaff && (
     <li className="border-b border-line">
-      <button type="button" onClick={onAddStaff} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left active:bg-bg">
+      <button type="button" onClick={onAddStaff} data-press="row" className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left">
         <Icon name="users" className="size-5 shrink-0 text-mut" />
         <span className="text-[0.9375rem]">Sorumlu</span>
         <span className="ml-auto text-[0.9375rem] font-medium text-acc">Kişi ekle</span>

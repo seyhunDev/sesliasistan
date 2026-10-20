@@ -111,10 +111,10 @@ function BodyCard({ a }) {
           <input type="date" value={form.d} onChange={(e) => setForm({ ...form, d: e.target.value })} className={`${field} col-span-3`} />
           <input inputMode="numeric" placeholder="Boy cm" value={form.h} onChange={(e) => setForm({ ...form, h: e.target.value })} className={field} />
           <input inputMode="decimal" placeholder="Kilo kg" value={form.kg} onChange={(e) => setForm({ ...form, kg: e.target.value })} className={field} autoFocus />
-          <button disabled={!ok || busy} onClick={() => save(form)} className="rounded-xl bg-acc text-[0.875rem] font-semibold text-white disabled:opacity-40">
+          <button disabled={!ok || busy} onClick={() => save(form)} data-press className="btn btn-primary btn-sm h-auto">
             Kaydet
           </button>
-          <button onClick={() => setForm(null)} className="col-span-3 py-1 text-[0.8125rem] text-mut">
+          <button onClick={() => setForm(null)} data-press className="btn btn-text btn-sm col-span-3 text-mut">
             Vazgeç
           </button>
         </div>
@@ -125,13 +125,13 @@ function BodyCard({ a }) {
             <div key={m.d} className="flex items-center justify-between gap-3 py-1.5 text-[0.875rem]">
               <span className="text-mut">{fmtDate(m.d)}</span>
               <span className="ml-auto tabular-nums">{bodyText(m)}</span>
-              <button disabled={busy} onClick={() => save(null, m.d)} aria-label="Ölçümü sil" className="-mr-1 grid size-7 place-items-center rounded-full text-mut">
+              <button disabled={busy} onClick={() => save(null, m.d)} aria-label="Ölçümü sil" data-press className="btn btn-icon btn-sm size-7 -mr-1 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </div>
           ))}
           {rows.length > 4 && (
-            <button onClick={() => setAll(!all)} className="py-1 text-[0.8125rem] font-medium text-acc">
+            <button onClick={() => setAll(!all)} data-press className="btn btn-text btn-sm text-acc">
               {all ? "Daha az" : `Tümü (${rows.length})`}
             </button>
           )}
@@ -259,7 +259,7 @@ function Detail() {
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <PageHeader title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")} back="/athletes">
-        <button onClick={() => setEdit(true)} aria-label="Düzenle" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
+        <button onClick={() => setEdit(true)} aria-label="Düzenle" data-press className="btn btn-round size-10 text-acc">
           <Icon name="edit" className="size-5" />
         </button>
       </PageHeader>
@@ -400,7 +400,7 @@ function Manage({ a, names, onChanged }) {
 
   return (
     <section className="mt-6 space-y-2">
-      <button type="button" disabled={busy} onClick={archive} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-card text-[0.9375rem] font-semibold text-acc ring-1 ring-line disabled:opacity-50 active:scale-[.98]">
+      <button type="button" disabled={busy} onClick={archive} data-press className="btn btn-secondary w-full text-acc">
         <Icon name="archive" className="size-5" /> {active ? "Arşive al" : "Arşivden çıkar"}
       </button>
       <p className="px-1 text-[0.75rem] text-mut">
@@ -414,14 +414,14 @@ function Manage({ a, names, onChanged }) {
             {withAcc.length ? " Uygulama hesabı kalır, istersen Kişiler'den ayrıca silersin." : ""} Ödenmiş aidat kayıtları kalır. Sadece listede görmek istemiyorsan arşive al.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setAsk(false)} className="h-11 rounded-xl bg-card text-[0.9375rem] font-semibold">Vazgeç</button>
-            <button type="button" disabled={busy} onClick={remove} className="h-11 rounded-xl bg-rec text-[0.9375rem] font-semibold text-white disabled:opacity-50">
+            <button type="button" onClick={() => setAsk(false)} data-press className="btn btn-secondary">Vazgeç</button>
+            <button type="button" disabled={busy} onClick={remove} data-press className="btn btn-danger">
               {busy ? "Siliniyor…" : "Sil"}
             </button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setAsk(true)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[0.9375rem] font-semibold text-rec active:scale-[.98]">
+        <button type="button" onClick={() => setAsk(true)} data-press className="btn btn-danger w-full">
           <Icon name="trash" className="size-5" /> Sporcuyu sil
         </button>
       )}
@@ -486,7 +486,7 @@ function Attendance({ a }) {
                 const m = count(e);
                 const t = m.present + m.absent + m.excused;
                 return (
-                  <button key={MONTHS[i]} disabled={!t} onClick={() => setMonth(i)} className="flex w-full items-center gap-3 py-0.5 text-left disabled:opacity-40">
+                  <button key={MONTHS[i]} disabled={!t} onClick={() => setMonth(i)} data-press="row" className="flex w-full items-center gap-3 py-0.5 text-left disabled:opacity-40">
                     <span className="w-8 shrink-0 text-[0.75rem] text-mut">{MONTHS[i].slice(0, 3)}</span>
                     <span className="flex h-2 flex-1 overflow-hidden rounded-full bg-bg">
                       {t > 0 && Object.keys(STATE).map((k) => m[k] > 0 && <span key={k} className={STATE[k].bg} style={{ width: `${(m[k] / t) * 100}%` }} />)}

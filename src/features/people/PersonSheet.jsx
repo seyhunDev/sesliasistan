@@ -212,10 +212,10 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
                     Giriş: <b className="font-semibold text-fg">{shownLogin(person.loginName || person.email) || "—"}</b>
                   </p>
                   <div className="mt-2.5 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => (setAcc({ login: "", password: randomPw() }), setMade(null), setStep("password"))} className="h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+                    <button type="button" onClick={() => (setAcc({ login: "", password: randomPw() }), setMade(null), setStep("password"))} data-press className="btn btn-secondary btn-sm text-acc">
                       Şifreyi değiştir
                     </button>
-                    <button type="button" onClick={closeAccount} disabled={busy} className="h-9 rounded-full px-3.5 text-[0.8125rem] font-semibold text-rec">
+                    <button type="button" onClick={closeAccount} disabled={busy} data-press className="btn btn-danger btn-sm">
                       Hesabı kapat
                     </button>
                   </div>
@@ -223,7 +223,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
               ) : (
                 <>
                   <p className="mt-1 text-[0.8125rem] leading-snug text-mut">Hesap açınca kendi telefonundan girer; yalnızca kendine verilen işleri ve grubunu görür.</p>
-                  <button type="button" onClick={startAccount} className="mt-2.5 h-9 rounded-full bg-acc px-4 text-[0.8125rem] font-semibold text-white active:scale-95">
+                  <button type="button" onClick={startAccount} data-press className="btn btn-primary btn-sm mt-2.5">
                     Hesap aç
                   </button>
                 </>
@@ -374,7 +374,7 @@ function DeleteStep({ person, linkedBday, data, myUid, onBack, onDone, deps }) {
         <Button type="button" variant="ghost" onClick={onBack} className="flex-1">
           Vazgeç
         </Button>
-        <button type="button" onClick={go} disabled={busy} className="h-12 flex-1 rounded-xl bg-rec text-[0.9375rem] font-semibold text-white active:scale-[.98] disabled:opacity-50">
+        <button type="button" onClick={go} disabled={busy} data-press className="btn btn-danger flex-1">
           {busy ? "Siliniyor…" : "Sil"}
         </button>
       </div>

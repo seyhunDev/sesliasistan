@@ -316,13 +316,13 @@ export function AddSheet({ open, onClose, seed }) {
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
         <div className="flex items-center gap-2">
           {edit && (locked || edit.kind === "note" || edit.kind === "plan") ? null : edit ? (
-            <button onClick={removeRecord} aria-label="Sil" className="grid size-9 place-items-center rounded-full text-rec transition active:scale-90 active:bg-rec/10">
+            <button onClick={removeRecord} aria-label="Sil" data-press className="btn btn-icon btn-sm text-rec">
               <Icon name="trash" className="size-5" />
             </button>
           ) : (
             <SpeakToggle />
           )}
-          <button onClick={shut} aria-label="Kapat" className="grid size-9 place-items-center rounded-full bg-card text-mut ring-1 ring-line transition active:scale-90">
+          <button onClick={shut} aria-label="Kapat" data-press className="btn btn-round btn-sm text-mut">
             <Icon name="x" className="size-[1.125rem]" />
           </button>
         </div>
@@ -428,7 +428,7 @@ export function AddSheet({ open, onClose, seed }) {
                     <DraftCard d={d} index={i} plan={plan} bare noRemove={drafts.length === 1} assign={assign} onAddStaff={addStaff} onChange={update} onType={changeType} onRemove={remove} />
                   </div>
                 ))}
-                <button onClick={() => setDrafts((p) => [...p, blank(drafts[drafts.length - 1].type)])} className="mx-auto mt-5 block text-[0.875rem] font-medium text-mut transition active:opacity-50">
+                <button onClick={() => setDrafts((p) => [...p, blank(drafts[drafts.length - 1].type)])} data-press className="btn btn-text btn-sm mx-auto mt-5 text-mut flex">
                   + Bir kayıt daha
                 </button>
               </>
@@ -442,7 +442,7 @@ export function AddSheet({ open, onClose, seed }) {
                     <button
                       key={t}
                       onClick={() => setDrafts([blank(t)])}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[0.875rem] font-medium shadow-[0_1px_3px_rgba(38,40,44,.07)] transition active:scale-95"
+                      data-press className="btn btn-secondary btn-sm"
                     >
                       <Icon name={ic} className="size-4 text-acc" />
                       {l}
@@ -463,7 +463,7 @@ export function AddSheet({ open, onClose, seed }) {
                           {n}
                         </button>
                       ))}
-                      <button type="button" onClick={() => setWhoAsk(null)} className="rounded-full px-3 py-1.5 text-[0.875rem] text-mut">
+                      <button type="button" onClick={() => setWhoAsk(null)} data-press className="btn btn-text btn-sm text-mut">
                         Hiçbiri
                       </button>
                     </div>
@@ -493,7 +493,7 @@ export function AddSheet({ open, onClose, seed }) {
             <NoteActions rec={rec} by={by} onDone={onClose} onDelete={removeRecord} />
           ) : edit?.kind === "note" ? (
             <>
-              <button onClick={() => setDrafts([fromRecord("note", rec)])} className="h-12 flex-1 rounded-xl bg-card text-base font-semibold text-fg ring-1 ring-line transition active:scale-[.98]">
+              <button onClick={() => setDrafts([fromRecord("note", rec)])} data-press className="btn btn-secondary flex-1">
                 Vazgeç
               </button>
               <button onClick={saveEdit} className={primary}>
@@ -539,7 +539,7 @@ function AssignAsk({ members, pick, count, total, onPick, onSave, onBack }) {
             {total > 1 && count < total ? `Sorumlusu olmayan ${count} kayda eklenir.` : total > 1 ? `${total} kaydın hepsine eklenir.` : "Birden fazla kişi seçebilirsin."}
           </small>
         </div>
-        <button type="button" onClick={onBack} aria-label="Geri" className="grid size-8 shrink-0 place-items-center rounded-full text-mut active:bg-line">
+        <button type="button" onClick={onBack} aria-label="Geri" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
           <Icon name="x" className="size-4" />
         </button>
       </div>
@@ -563,14 +563,14 @@ function AssignAsk({ members, pick, count, total, onPick, onSave, onBack }) {
         })}
       </div>
       <div className="mt-4 flex gap-2.5">
-        <button type="button" onClick={() => onSave([])} className="h-12 flex-1 whitespace-nowrap rounded-xl border border-line bg-card px-2 text-[0.9375rem] font-semibold transition active:scale-[.98]">
+        <button type="button" onClick={() => onSave([])} data-press className="btn btn-secondary flex-1">
           Sorumlusuz kaydet
         </button>
         <button
           type="button"
           onClick={() => onSave(pick)}
           disabled={!pick.length}
-          className="h-12 min-w-0 flex-1 truncate rounded-xl bg-acc px-3 text-[0.9375rem] font-semibold text-white transition active:scale-[.98] disabled:opacity-40"
+          data-press className="btn btn-primary min-w-0 flex-1 truncate"
         >
           {names.length ? `${names.join(", ")} ile kaydet` : "Kişi seç"}
         </button>

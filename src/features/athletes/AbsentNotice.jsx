@@ -34,7 +34,7 @@ export function AbsentNotice({ absent, date, today, members }) {
 
   return (
     <div className="mt-3 rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={() => setOpen((o) => !o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <Icon name="bell" className="size-5 shrink-0 text-rec" />
         <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">
           {absent.length} sporcu gelmedi · velilere haber ver
@@ -44,7 +44,7 @@ export function AbsentNotice({ absent, date, today, members }) {
       {open && (
         <div className="border-t border-line px-4 pb-3">
           {ids.length > 0 && (
-            <button type="button" disabled={busy || sent[date]} onClick={notify} className="mt-3 h-10 w-full rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98] disabled:opacity-50">
+            <button type="button" disabled={busy || sent[date]} onClick={notify} data-press className="btn btn-primary btn-sm mt-3 w-full">
               {sent[date] ? "Uygulamadaki velilere bildirildi" : busy ? "Gönderiliyor…" : `Uygulamadaki velilere bildir (${ids.length} sporcu)`}
             </button>
           )}

@@ -270,7 +270,7 @@ export function PersonPage({ uid }) {
           </Row>
         )}
         <Row key="ac" title="Uygulama hesabı" right={hasAccount ? shownLogin(m.email) || "Var" : "Yok"} />
-        <button key="ed" type="button" onClick={() => setEdit(true)} className="w-full px-4 py-3 text-left text-[1rem] text-acc active:bg-bg">
+        <button key="ed" type="button" onClick={() => setEdit(true)} data-press="row" className="w-full px-4 py-3 text-left text-[1rem] text-acc">
           Düzenle
         </button>
       </Section>
