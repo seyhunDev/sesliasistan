@@ -7,7 +7,7 @@ import { dropRaceFile, listRaceFiles } from "@/features/athletes/raceFiles";
 import { dropRaceCopies, localExtraCount, moveLocalExtras } from "@/features/athletes/raceStore";
 import { listMeetings } from "@/lib/meeting/store";
 import { bytesOf, raceFileInfo, sizeText, storageBytes } from "@/lib/deviceData";
-import { Row } from "./ui";
+import { Btn, Row } from "./ui";
 
 // Ayarlar › Bu cihazdaki veriler: telefonda saklananlar ve boyutları. Firebase'den okuma yapmaz.
 // Yarış evrakı ve talimat kopyaları tek tek silinebilir (gerekince yeniden hazırlanır / indirilir);
@@ -116,13 +116,13 @@ export function DeviceDataRow() {
     </li>
   );
   const del = (onClick, key) => (
-    <button type="button" disabled={!!busy} onClick={onClick} className="shrink-0 rounded-lg bg-rec/10 px-2.5 py-1 text-[0.8125rem] font-semibold text-rec disabled:opacity-40">
+    <Btn kind="danger" small disabled={!!busy} onClick={onClick}>
       {busy === key ? "…" : "Sil"}
-    </button>
+    </Btn>
   );
 
   return (
-    <Row icon="box" tone="slate" title="Bu cihazdaki veriler" sub={d && !d.err ? `Toplam ${sizeText(d.total)}${d.quota ? ` · ${sizeText(d.quota)} sınır` : ""}` : "Telefonda saklananlar ve boyutları"} onClick={toggle} chevron>
+    <Row title="Bu cihazdaki veriler" sub={d && !d.err ? sizeText(d.total) : ""} open={open} onClick={toggle}>
       {open && (
         <div className="px-4 pb-3">
           {!d ? (
@@ -137,9 +137,9 @@ export function DeviceDataRow() {
                     <b className="block font-semibold">{d.extras} yarış evrakı yalnız bu telefonda</b>
                     <span className="text-mut">Telefon değişirse kaybolur, Mac&apos;ten açılmaz.</span>
                   </span>
-                  <button type="button" disabled={!!busy} onClick={send} className="shrink-0 rounded-lg bg-acc px-3 py-1.5 text-[0.8125rem] font-semibold text-white disabled:opacity-60">
+                  <Btn small disabled={!!busy} onClick={send}>
                     {busy.startsWith("send") ? `Gönderiliyor… %${busy.split(":")[1] || 0}` : "Firebase'e gönder"}
-                  </button>
+                  </Btn>
                 </div>
               )}
               {d.copies > 0 && (
@@ -148,9 +148,9 @@ export function DeviceDataRow() {
                     <b className="block font-semibold">{d.copies} evrakın kopyası telefonda · {sizeText(d.copyBytes)}</b>
                     <span className="text-mut">Asılları Firebase&apos;de, kopyaya gerek yok.</span>
                   </span>
-                  <button type="button" disabled={!!busy} onClick={dropCopies} className="shrink-0 rounded-lg bg-rec/10 px-3 py-1.5 text-[0.8125rem] font-semibold text-rec disabled:opacity-40">
+                  <Btn kind="danger" small disabled={!!busy} onClick={dropCopies}>
                     {busy === "copies" ? "Siliniyor…" : "Kopyaları sil"}
-                  </button>
+                  </Btn>
                 </div>
               )}
               <ul className="divide-y divide-line">

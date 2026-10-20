@@ -33,7 +33,7 @@ export function CallsRow() {
   const pct = d?.limit ? Math.min(100, ((m.relayBytes || 0) / d.limit) * 100) : 0;
   const name = (u) => personName?.(u) || "Kişi";
   return (
-    <Row icon="phone" tone="ok" title="Aramalar" sub="Sesli aramalar, veri kullanımı ve kota" onClick={toggle} chevron>
+    <Row title="Aramalar" open={open} onClick={toggle}>
       {open && (
         <div className="px-4 pb-3 text-[0.875rem]">
           {err ? (

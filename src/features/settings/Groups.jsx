@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { MicTest } from "@/features/permissions/PermissionsCard";
+import { openOnboarding } from "@/features/onboarding/Onboarding";
 import { RATES, SAMPLE, useTts } from "@/features/speech/TtsProvider";
 import { voiceHelp, voiceLabel, voiceQuality } from "@/lib/speech/speakText";
 import { GOOGLE_VOICES } from "@/lib/speech/googleVoices";
@@ -20,21 +21,21 @@ import { WIND_KN, WIND_KNS } from "@/lib/notifyExtra";
 import { SIZES, applySize } from "@/lib/textSize";
 import { THEMES, applyTheme, readTheme } from "@/lib/theme";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
-import { Badge, Chips, Row, Switch } from "./ui";
+import { Badge, Btn, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/waGroups";
 
-// Ayarlar sayfasının satırları. Sayfa bunları "Sık kullanılanlar" ve "Diğer ayarlar" olarak dizer;
-// seyrek ayarlar (izinler, hatırlatma süresi…) dokununca açılan satırlarda durur.
+// Ayarlar sayfasının satırları. Sayfa bunları Genel, Bildirimler, Asistan, Hesap olarak dizer; seyrek kullanılanlar
+// (bağlantılar, veri, testler) alttan açılan pencerelerde durur. Ayrıntı dokununca satırın altında açılır.
 
 const saveUser = (uid, patch) => updateDoc(doc(db, "users", uid), patch);
 
 // Dokununca altı açılan satır (az kullanılan ayarlar için)
-function Fold({ children, ...row }) {
+export function Fold({ children, ...row }) {
   const [open, setOpen] = useState(false);
   return (
-    <Row {...row} onClick={() => setOpen((v) => !v)} right={<Icon name="chev" className={`size-4 shrink-0 text-mut/70 transition ${open ? "rotate-90" : ""}`} />}>
+    <Row {...row} open={open} onClick={() => setOpen((v) => !v)}>
       {open && <div className="fade-in">{children}</div>}
     </Row>
   );
@@ -56,9 +57,9 @@ export function SizeRow() {
     });
   };
   return (
-    <Row icon="search" tone="sky" title="Yazı boyutu" sub="Yazılar, simgeler ve düğmeler birlikte büyür">
+    <Fold title="Yazı boyutu" sub={SIZES.find(([v]) => v === size)?.[1]}>
       <Chips value={size} options={SIZES} onChange={pick} />
-    </Row>
+    </Fold>
   );
 }
 
@@ -70,9 +71,9 @@ export function ThemeRow() {
     applyTheme(v);
   };
   return (
-    <Row icon="moon" tone="slate" title="Görünüm" sub="Otomatik: telefon koyu moddaysa uygulama da koyu olur">
+    <Fold title="Görünüm" sub={THEMES.find(([v]) => v === theme)?.[1]}>
       <Chips value={theme} options={THEMES} onChange={pick} />
-    </Row>
+    </Fold>
   );
 }
 
@@ -84,9 +85,9 @@ export function VoiceRow() {
   const best = tts.voices.find((v) => voiceQuality(v) > 0);
   const using = tts.voices.find((v) => v.voiceURI === tts.voiceUri) || best;
   return (
-    <Row icon="volume" tone="sky" title="Sesli yanıt" sub="“Notlarımı oku” gibi istediğinde yanıt sesli okunur" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />}>
+    <Row title="Sesli yanıt" right={<Switch on={tts.enabled} onChange={() => tts.toggle()} label="Sesli yanıt" />}>
       {tts.enabled && (
-        <div className="fade-in space-y-2.5 px-4 pb-3.5 pl-[3.75rem]">
+        <div className="fade-in space-y-2.5 px-4 pb-3.5">
           {tts.voices.length > 0 && (
             <label className="flex items-center gap-2 text-[0.8125rem] text-mut">
               Ses
@@ -117,7 +118,7 @@ export function VoiceRow() {
                       tts.setGVoice(i === 0 ? "" : id);
                       tts.speak(SAMPLE);
                     }}
-                    className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-bg text-fg"}`}
+                    className={`rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "border border-line bg-card text-fg"}`}
                   >
                     {label}
                   </button>
@@ -131,15 +132,14 @@ export function VoiceRow() {
                 key={v}
                 type="button"
                 onClick={() => tts.setRate(v)}
-                className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-medium transition active:scale-95 ${tts.rate === v ? "bg-acc text-white" : "bg-bg text-fg"}`}
+                className={`rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition active:scale-95 ${tts.rate === v ? "bg-acc text-white" : "border border-line bg-card text-fg"}`}
               >
                 {label}
               </button>
             ))}
-            <button type="button" onClick={() => tts.speak(SAMPLE)} className="ml-auto flex items-center gap-1 rounded-full bg-bg px-3 py-1.5 text-[0.8125rem] font-semibold text-acc transition active:scale-95">
-              <Icon name="volume" className="size-4" />
-              Dene
-            </button>
+            <Btn kind="line" small className="ml-auto" onClick={() => tts.speak(SAMPLE)}>
+              Dinle
+            </Btn>
           </div>
           {!(tts.cloud && !tts.voiceUri) && (!using || voiceQuality(using) < 3 || using.localService === false) && (
             <p className="text-[0.75rem] leading-snug text-mut">
@@ -170,10 +170,7 @@ export function PowerRow() {
   };
   return (
     <Row
-      icon="zap"
-      tone="violet"
       title="Güçlü yapay zeka"
-      sub={strong ? "Açık: daha akıllı; kotası dolunca standarda geçer" : "Standart yapay zeka"}
       right={<Switch on={strong} onChange={flip} label="Güçlü yapay zeka" />}
     />
   );
@@ -242,10 +239,8 @@ export function useNotifications() {
 export function NotifyRow({ n }) {
   return (
     <Row
-      icon="bell"
-      tone="rec"
-      title="Bildirimler"
-      sub={n.problem || (n.on ? "Bu cihazda açık: işler, hatırlatmalar, özetler" : "Bu cihazda kapalı")}
+      title="Bu telefonda bildirim"
+      note={n.problem}
       right={<Switch on={n.on} onChange={n.toggle} label="Bildirimler" disabled={n.disabled} />}
     />
   );
@@ -254,14 +249,22 @@ export function NotifyRow({ n }) {
 export function NotifyMoreRow({ n }) {
   if (!n.on) return null;
   return (
-    <Fold icon="clock" tone="amber" title="Plan hatırlatması" sub={`${LEADS.find((l) => l.min === n.st?.lead)?.label || "1 saat önce"} · deneme bildirimi`}>
+    <Fold title="Plan hatırlatması" sub={LEADS.find((l) => l.min === n.st?.lead)?.label || "1 saat önce"}>
       <Chips value={n.st?.lead} options={LEADS.map((l) => [l.min, l.label])} onChange={n.pickLead} />
-      <div className="px-4 pb-3.5 pl-[3.75rem]">
-        <button type="button" onClick={n.test} className="h-10 rounded-xl bg-bg px-4 text-[0.875rem] font-semibold text-acc active:scale-95">
-          Deneme bildirimi gönder
-        </button>
-      </div>
     </Fold>
+  );
+}
+
+// Testler › Deneme bildirimi: bu telefona hemen bir bildirim gönderir (bildirim kapalıysa nedenini söyler)
+export function TestPushRow({ n }) {
+  return (
+    <Row
+      title="Deneme bildirimi"
+      sub={n.on ? "" : "Bildirim kapalı"}
+      note={n.on ? "" : n.problem}
+      onClick={() => (n.on ? n.test() : null)}
+      chevron={n.on}
+    />
   );
 }
 
@@ -286,13 +289,10 @@ function Check({ on, onChange, label }) {
 }
 
 // Bir özet türü: simge, ad, açıklama, anahtar; açıkken saat seçimi
-function SummaryItem({ icon, tint, title, desc, at, times, onAt, children }) {
+function SummaryItem({ title, desc, at, times, onAt, children }) {
   return (
     <div className="px-3 py-2.5">
       <div className="flex h-10 items-center gap-3">
-        <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${tint}`}>
-          <Icon name={icon} className="size-[1.125rem]" />
-        </span>
         <span className="min-w-0 flex-1 leading-tight">
           <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
           <small className="block truncate text-[0.75rem] text-mut">{desc}</small>
@@ -300,7 +300,7 @@ function SummaryItem({ icon, tint, title, desc, at, times, onAt, children }) {
         <Switch on={!!at} onChange={(v) => onAt(v ? times.default : "")} label={title} />
       </div>
       {at && (
-        <div className="mt-2 flex h-9 items-center gap-3 pl-11">
+        <div className="mt-2 flex h-9 items-center gap-3">
           <select value={at} onChange={(e) => onAt(e.target.value)} aria-label={`${title} saati`} className="h-9 shrink-0 rounded-lg bg-bg px-2.5 text-[0.9375rem] font-semibold tabular-nums">
             {(times.list.includes(at) ? times.list : [at, ...times.list]).map((t) => (
               <option key={t} value={t}>
@@ -341,12 +341,13 @@ export function SummaryRow() {
     [sum.summaryAt && `Sabah ${sum.summaryAt}`, sum.eveningAt && `Akşam ${sum.eveningAt}`, sum.weeklyAt && "Haftalık", sum.birthdayAt && "Doğum günü", sum.windAt && "Rüzgâr", canAtt && sum.attAt && "Yoklama"]
       .filter(Boolean)
       .join(" · ") || "Kapalı";
+  // Satırda kısa: ilk özet + kaç tane daha
+  const parts = status.split(" · ");
+  const short = parts.length > 1 ? `${parts[0]} +${parts.length - 1}` : parts[0];
   return (
-    <Fold icon="sun" tone="amber" title="Günlük özetler" sub={status}>
-      <div className="mx-4 mb-3.5 divide-y divide-line rounded-xl ring-1 ring-line">
+    <Fold title="Günlük özetler" sub={short}>
+      <div className="mx-4 mb-3.5 divide-y divide-line rounded-xl border border-line">
         <SummaryItem
-          icon="sun"
-          tint="bg-amber-500/15 text-amber-600"
           title="Sabah özeti"
           desc="Bugünün işleri ve gecikenler"
           at={sum.summaryAt}
@@ -356,8 +357,6 @@ export function SummaryRow() {
           <Check on={sum.summaryTomorrow} onChange={(v) => put({ summaryTomorrow: v })} label="Yarını da ekle" />
         </SummaryItem>
         <SummaryItem
-          icon="moon"
-          tint="bg-violet-500/15 text-violet-600"
           title="Akşam özeti"
           desc="Yarının planları ve görevleri"
           at={sum.eveningAt}
@@ -365,8 +364,6 @@ export function SummaryRow() {
           onAt={(v) => put({ eveningAt: v })}
         />
         <SummaryItem
-          icon="cal"
-          tint="bg-sky-500/15 text-sky-600"
           title="Haftalık özet"
           desc="Pazartesi: haftanın planları ve görevleri"
           at={sum.weeklyAt}
@@ -374,8 +371,6 @@ export function SummaryRow() {
           onAt={(v) => put({ weeklyAt: v })}
         />
         <SummaryItem
-          icon="cake"
-          tint="bg-rose-500/15 text-rose-600"
           title="Doğum günleri"
           desc="O gün doğum günü olanlar"
           at={sum.birthdayAt}
@@ -383,8 +378,6 @@ export function SummaryRow() {
           onAt={(v) => put({ birthdayAt: v })}
         />
         <SummaryItem
-          icon="wind"
-          tint="bg-teal-500/15 text-teal-600"
           title="Rüzgâr uyarısı"
           desc="Antrenman ya da yarış saatinde eşik aşılırsa"
           at={sum.windAt}
@@ -401,9 +394,6 @@ export function SummaryRow() {
         </SummaryItem>
         {canAtt && (
           <div className="flex h-[3.75rem] items-center gap-3 px-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600">
-              <Icon name="check" className="size-[1.125rem]" />
-            </span>
             <span className="min-w-0 flex-1 leading-tight">
               <b className="block truncate text-[0.9375rem] font-semibold">Yoklama hatırlatması</b>
               <small className="block truncate text-[0.75rem] text-mut">Antrenman bitince yoklama girilmediyse (bitiş yoksa gün batımında)</small>
@@ -412,7 +402,6 @@ export function SummaryRow() {
           </div>
         )}
       </div>
-      <p className="-mt-1.5 px-4 pb-3.5 text-[0.75rem] leading-snug text-mut">Seçtiğin saatte bildirim olarak gelir; sabah ve akşam özeti ana ekranda kart olarak da görünür.</p>
     </Fold>
   );
 }
@@ -445,9 +434,10 @@ export function PermissionsRow() {
   }
 
   const denied = PERM_NAMES.filter((k) => allowed[k] && perms[k] === "denied");
-  const summary = PERM_NAMES.map((k) => `${PERM_LABEL[k]}: ${allowed[k] ? (STATE[perms[k]] || ["…"])[0].toLocaleLowerCase("tr-TR") : "kapalı"}`).join(" · ");
+  const open = PERM_NAMES.filter((k) => allowed[k] && perms[k] === "granted").map((k) => PERM_LABEL[k]);
+  const summary = denied.length ? `${PERM_LABEL[denied[0]]} engelli` : open.join(" · ") || "Sorulmadı";
   return (
-    <Fold icon="mic" tone="slate" title="İzinler" sub={summary}>
+    <Fold title="İzinler" sub={summary}>
       <ul className="space-y-2 px-4 pb-3.5">
         {PERM_NAMES.map((k) => {
           const [label, tone] = allowed[k] ? STATE[perms[k]] || ["…", "mut"] : ["Kapalı", "mut"];
@@ -468,9 +458,9 @@ export function PermissionsRow() {
         {denied.length > 0 && <li className="px-1 text-[0.8125rem] leading-snug text-rec">{`${PERM_LABEL[denied[0]]} tarayıcıda engelli. ${permissionHelp(denied[0])}`}</li>}
         {allowed.microphone && (
           <li>
-            <button type="button" onClick={() => setTesting((v) => !v)} className="h-10 rounded-xl bg-bg px-4 text-[0.875rem] font-semibold text-acc active:scale-95">
-              {testing ? "Testi kapat" : "Mikrofonu test et"}
-            </button>
+            <Btn kind="line" onClick={() => setTesting((v) => !v)}>
+              {testing ? "Testi kapat" : "Mikrofonu dene"}
+            </Btn>
             {testing && (
               <div className="mt-2">
                 <MicTest />
@@ -522,7 +512,7 @@ export function WeatherPlaceRow() {
 
   const shown = q.trim().length >= 2 ? list : [];
   return (
-    <Fold icon="cloudSun" tone="sky" title="Hava durumu konumu" sub={cur ? placeLabel(cur) : "…"}>
+    <Fold title="Hava konumu" sub={cur ? placeLabel(cur) : "…"}>
       <div className="px-4 pb-3.5">
         <label className="flex h-11 items-center gap-2 rounded-xl bg-bg px-3">
           <Icon name="search" className="size-4 text-mut" />
@@ -560,7 +550,6 @@ export function WeatherPlaceRow() {
             ))}
           </ul>
         )}
-        <p className="mt-2 px-1 text-[0.75rem] leading-snug text-mut">Ana sayfadaki hava, rüzgâr ve asistanın hava cevapları bu konuma göre gelir.</p>
       </div>
     </Fold>
   );
@@ -607,7 +596,7 @@ export function DemoDataRow() {
   }
   const busy = step === "busy";
   return (
-    <Fold icon="box" tone="slate" title="Örnek veri" sub="Verileri sil · örnek kişi ve kayıt oluştur">
+    <Fold title="Örnek veri">
       <div className="space-y-3 px-4 pb-3.5">
         <p className="text-[0.8125rem] leading-snug text-mut">
           Silme: kişiler ve hesapları, planlar, görevler, notlar, fişler, doğum günleri, dersler ve sohbetler. Senin hesabın, ayarların ve sporcu verisi kalır.
@@ -628,23 +617,18 @@ export function DemoDataRow() {
               Banka/mail bildirimlerini de sil
             </label>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setStep("")} className="h-10 flex-1 rounded-xl bg-card text-[0.875rem] font-semibold ring-1 ring-line">
+              <Btn kind="line" onClick={() => setStep("")}>
                 Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={wipe}
-                disabled={word.trim().toLocaleUpperCase("tr-TR") !== "SİL"}
-                className="h-10 flex-1 rounded-xl bg-rec text-[0.875rem] font-semibold text-white disabled:opacity-40"
-              >
+              </Btn>
+              <Btn kind="danger" onClick={wipe} disabled={word.trim().toLocaleUpperCase("tr-TR") !== "SİL"}>
                 Tümünü sil
-              </button>
+              </Btn>
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => setStep("wipe")} disabled={busy} className="h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-rec ring-1 ring-line disabled:opacity-50">
+          <Btn kind="danger" onClick={() => setStep("wipe")} disabled={busy}>
             Tüm verileri sil
-          </button>
+          </Btn>
         )}
         <div className="rounded-xl bg-bg p-3">
           <p className="text-[0.8125rem] leading-snug text-mut">
@@ -654,9 +638,9 @@ export function DemoDataRow() {
             <input type="checkbox" checked={accounts} onChange={(e) => setAccounts(e.target.checked)} className="size-4 accent-deep" />
             Kişilere uygulama hesabı aç (kullanıcı adıyla)
           </label>
-          <button type="button" onClick={seed} disabled={busy} className="mt-2.5 h-10 w-full rounded-xl bg-deep text-[0.875rem] font-semibold text-white disabled:opacity-50">
+          <Btn onClick={seed} disabled={busy} className="mt-2.5">
             {busy ? "Bekleyin…" : "Örnek veri oluştur"}
-          </button>
+          </Btn>
         </div>
         {result?.accounts?.length > 0 && (
           <div className="rounded-xl bg-card p-3 text-[0.8125rem] ring-1 ring-line">
@@ -702,21 +686,21 @@ export function PasswordRow() {
     setBusy(false);
   }
   return (
-    <Fold icon="user" tone="slate" title="Şifremi değiştir" sub="Giriş şifreni yenile">
+    <Fold title="Şifremi değiştir">
       <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="space-y-2.5 px-4 pb-3.5">
         <input type="password" autoComplete="current-password" placeholder="Mevcut şifre" value={cur} onChange={(e) => setCur(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
         <input type="password" autoComplete="new-password" placeholder="Yeni şifre (en az 6 karakter)" value={next} onChange={(e) => setNext(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
-        <button type="submit" disabled={busy || !cur || next.length < 6} className="h-10 w-full rounded-xl bg-deep text-[0.875rem] font-semibold text-white disabled:opacity-40">
+        <Btn type="submit" disabled={busy || !cur || next.length < 6}>
           {busy ? "Bekleyin…" : "Şifreyi değiştir"}
-        </button>
+        </Btn>
       </form>
     </Fold>
   );
 }
 
-// Deneme için: tanıtım slaytları, sesli karşılama ve "Şimdi sen dene" baştan görünsün.
+// Testler › Tanıtım ve karşılama: tanıtım slaytlarını şimdi göster ya da karşılamayı baştan başlat.
 // Ana hesap herkes için sıfırlar (kişiler uygulamayı açınca görür), diğer hesaplar yalnız kendisi için.
-export function TourResetRow() {
+export function IntroRow() {
   const toast = useToast();
   const { profile } = useAuth();
   const owner = profile?.role === "owner";
@@ -736,26 +720,31 @@ export function TourResetRow() {
     setBusy(false);
   }
   return (
-    <Fold icon="spark" tone="acc" title="Karşılamayı sıfırla" sub={owner ? "Herkes için: tanıtım ve sesli karşılama baştan" : "Tanıtım ve sesli karşılama baştan"}>
-      <div className="space-y-3 px-4 pb-3.5">
+    <Fold title="Tanıtım ve karşılama">
+      <div className="space-y-2.5 px-4 pb-3.5">
         <p className="text-[0.8125rem] leading-snug text-mut">
           {owner
-            ? "Deneme için. Senin ve kişilerinin tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” yönlendirmesi sıfırlanır; herkes uygulamayı açınca baştan görür."
-            : "Deneme için. Tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” yönlendirmesi baştan görünür."}
+            ? "Sıfırlayınca senin ve kişilerinin tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” baştan görünür."
+            : "Sıfırlayınca tanıtım slaytları, sesli karşılama ve “Şimdi sen dene” baştan görünür."}
         </p>
         {ask ? (
           <div className="flex gap-2">
-            <button type="button" onClick={() => setAsk(false)} className="h-10 flex-1 rounded-xl bg-card text-[0.875rem] font-semibold ring-1 ring-line">
+            <Btn kind="line" onClick={() => setAsk(false)}>
               Vazgeç
-            </button>
-            <button type="button" onClick={reset} disabled={busy} className="h-10 flex-[1.4] rounded-xl bg-acc text-[0.875rem] font-semibold text-white disabled:opacity-50">
+            </Btn>
+            <Btn onClick={reset} disabled={busy}>
               {busy ? "Sıfırlanıyor…" : owner ? "Herkes için sıfırla" : "Sıfırla"}
-            </button>
+            </Btn>
           </div>
         ) : (
-          <button type="button" onClick={() => setAsk(true)} className="h-10 w-full rounded-xl bg-card text-[0.875rem] font-semibold text-acc ring-1 ring-line">
-            Sıfırla
-          </button>
+          <div className="flex gap-2">
+            <Btn kind="line" onClick={openOnboarding}>
+              Tanıtımı göster
+            </Btn>
+            <Btn kind="line" onClick={() => setAsk(true)}>
+              Sıfırla
+            </Btn>
+          </div>
         )}
       </div>
     </Fold>
@@ -778,11 +767,8 @@ export function RacesRow() {
   };
   return (
     <Row
-      icon="flag"
-      tone="acc"
-      title="Yarışlar ana sayfada"
-      sub={cur ? "Açık: ana sayfada Yarışlar kartı" : "Kapalı: Sporcular sayfasından girilir"}
-      right={<Switch on={cur} onChange={flip} label="Yarışlar ana sayfada" />}
+      title="Ana sayfada yarışlar"
+      right={<Switch on={cur} onChange={flip} label="Ana sayfada yarışlar" />}
     />
   );
 }
@@ -803,10 +789,7 @@ export function LedgerRow() {
   };
   return (
     <Row
-      icon="wallet"
-      tone="slate"
       title="Banka defteri kartı"
-      sub={cur ? "Açık: Hesaplar sayfasında görünür" : "Kapalı: Hesaplar sayfasında gizli"}
       right={<Switch on={cur} onChange={flip} label="Banka defteri kartı" />}
     />
   );

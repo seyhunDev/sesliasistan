@@ -66,7 +66,7 @@ export function BrainCard({ bare, owner }) {
   }
 
   return (
-    <div className={bare ? "px-4 pb-4 pl-[3.75rem]" : "mt-4 rounded-xl bg-bg p-3.5"}>
+    <div className={bare ? "px-4 pb-4" : "mt-4 rounded-xl bg-bg p-3.5"}>
       <div className="flex items-center justify-between gap-3">
         <b className={`text-[0.9375rem] font-medium ${bare ? "text-mut" : ""}`}>{bare ? "Ayrıntılar" : "Öğrenme verisi"}</b>
         <button onClick={sync} className="rounded-full border border-line bg-card px-3 py-1.5 text-[0.8125rem] font-semibold active:scale-95">

@@ -8,7 +8,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { backupName, backupSheets, clean } from "@/lib/backup";
 import { todayStr } from "@/lib/utils/format";
-import { Row } from "./ui";
+import { Btn, Row } from "./ui";
 
 // Ayarlar › Yedek indir (yalnız ana hesap). Planlar, görevler, notlar, fişler ve kişiler zaten cihazda (ek okuma yok);
 // yarışlar ve etkinlikler bir kez okunur. Sporcu kişisel bilgileri (kulüp projesi) ve fiş görselleri yedeğe girmez.
@@ -61,16 +61,16 @@ export function BackupRow() {
   }
 
   return (
-    <Row icon="archive" tone="slate" title="Yedek indir" sub="Planlar, görevler, notlar, fişler, yarışlar, etkinlikler, kişiler" onClick={() => setOpen((v) => !v)} chevron>
+    <Row title="Yedek indir" open={open} onClick={() => setOpen((v) => !v)}>
       {open && (
         <div className="px-4 pb-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" disabled={!!busy} onClick={excel} className="h-10 rounded-xl bg-acc text-[0.875rem] font-semibold text-white active:scale-[.98] disabled:opacity-50">
+          <div className="flex gap-2">
+            <Btn disabled={!!busy} onClick={excel}>
               {busy === "xlsx" ? "Hazırlanıyor…" : "Excel"}
-            </button>
-            <button type="button" disabled={!!busy} onClick={json} className="h-10 rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98] disabled:opacity-50">
+            </Btn>
+            <Btn kind="line" disabled={!!busy} onClick={json}>
               {busy === "json" ? "Hazırlanıyor…" : "Tam yedek (JSON)"}
-            </button>
+            </Btn>
           </div>
           <p className="mt-2 text-[0.75rem] leading-snug text-mut">Ayda bir indirip bilgisayarda ya da iCloud’da sakla. Sporcu kartları kulüp uygulamasında durduğu için yedeğe girmez; fiş fotoğrafları da girmez.</p>
         </div>

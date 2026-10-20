@@ -269,7 +269,7 @@ export function Onboarding() {
                   </span>
                 </li>
               ))}
-              <li className="px-1 pt-1 text-[0.75rem] text-mut">Sonra Ayarlar › Yarışlar ana sayfada&apos;dan açıp kapatabilirsin.</li>
+              <li className="px-1 pt-1 text-[0.75rem] text-mut">Sonra Ayarlar › Ana sayfada yarışlar&apos;dan açıp kapatabilirsin.</li>
             </ul>
           )}
           {s.id === "push" && (

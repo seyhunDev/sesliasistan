@@ -31,7 +31,7 @@ export function UsageRow() {
   const tts = ttsUsage(d?.ai?.month);
   const textCost = (n) => n * (d?.textPrice || 0.001);
   return (
-    <Row icon="chart" tone="sky" title="Kullanım" sub="Yapay zeka istekleri ve yaklaşık maliyet" onClick={toggle} chevron>
+    <Row title="Yapay zeka kullanımı" open={open} onClick={toggle}>
       {open && (
         <div className="px-4 pb-3 text-[0.875rem]">
           {err ? (
