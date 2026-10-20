@@ -1,8 +1,10 @@
 // Asistanın işleri: AssistantSheet.jsx'ten taşındı (ctx: bileşenin durumu ve yardımcıları).
 import { inventoryWork } from "@/lib/assistTasks";
+import { timingMark } from "@/lib/assistTiming";
 import { loadInventories, lastInv, askInventory, createInventory, setLastInv, changeInventory } from "@/features/inventory/inventory";
 import { pickInv, applyOps, statsText, itemLabel, dropItem } from "@/features/inventory/invModel";
 import { dropInvFile } from "@/features/inventory/invFiles";
+import { INV_ASK } from "@/features/inventory/invWords";
 
 // Envanter: hedef envanter (cümlede adı geçen, açık sayfadaki, son kullanılan, yoksa kulüp) seçilir, yapay zeka işlemleri verir
 export async function runInventory(ctx, s, viaVoice) {
@@ -16,7 +18,9 @@ export async function runInventory(ctx, s, viaVoice) {
     const list = await loadInventories(org);
     let inv = pickInv(s, list, { here: invHere, last: lastInv() });
     if (!inv) throw new Error("Envanter bulunamadı.");
+    timingMark("ai"); // süre satırı: envanter yapay zekası da "Yapay zeka" adımı olarak görünür
     const r = await askInventory(s, inv, list.filter((x) => x.id !== inv.id).map((x) => x.name));
+    timingMark("aiDone");
     if (id !== runId.current) return;
     if (r.newInv) {
       stepTo("Yeni envanter açılıyor");
@@ -42,6 +46,9 @@ export async function runInventory(ctx, s, viaVoice) {
       const q = `${plan.deletes.map((x) => `“${itemLabel(x)}”`).join(", ")} envanterden silinsin mi?`;
       return reply(`${said} ${q}`.trim(), { inv: { ...card, ask: plan.deletes }, engine: "ai", expect: true }, viaVoice);
     }
+    // Envanterde değişiklik yok ve cümle envanter sorusu değil: iş başka (plan, görev…), ana asistana gider. Envanter
+    // yapay zekasının serbest cevabı yazılmaz, kart çıkmaz (Seyhun 2026-10-20: "planları ekledim" dedi, plan yoktu)
+    if (!said && !INV_ASK.test(s.toLocaleLowerCase("tr-TR"))) return ctx.askAI(s, s, viaVoice, [], false);
     if (!said) return reply(r.message || "Envanterde bir değişiklik yapmadım. Ne eklememi ya da çıkarmamı istersin?", { inv: card, engine: "ai", expect: !r.message }, viaVoice);
     done(`${said}${r.message && /\?\s*$/.test(r.message) ? ` ${r.message}` : ""}`, { inv: card, engine: "ai" }, viaVoice);
   } catch (e) {

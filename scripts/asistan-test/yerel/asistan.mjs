@@ -963,6 +963,14 @@ group("Örnekleri dene")([
 const IW = await import("@/features/inventory/invWords");
 const WI = (want, here = false) => ({ desc: `${want ? "envanter" : "envanter değil"}${here ? " (sayfada)" : ""}`, fn: (s) => IW.wantsInventory(s, here) && !localNavigate(s, { names: navNames }), ok: (r) => r === want });
 const NI = { desc: "Envanter sayfası açılır", fn: (s) => localNavigate(s, { names: navNames }), ok: (r) => r?.page === "inventory" };
+{
+  const { INV_ASK } = await import("@/features/inventory/invWords");
+  const IA = (want) => ({ desc: want ? "envanter sorusu" : "soru değil (ana asistana)", fn: (x) => INV_ASK.test(x.toLocaleLowerCase("tr-TR")), ok: (r) => r === want });
+  group("Envanter: değişiklik yoksa soru mu")([
+    ["kulüp envanterinde kaç telsiz var", IA(true)], ["stokta can yeleği var mı", IA(true)], ["envanterdeki ürünleri listele", IA(true)],
+    ["envanterin oluşturulması gerekiyor bunları yarın iki ayrı plan olarak ekle", IA(false)], ["envanter işini hallet", IA(false)],
+  ]);
+}
 group("Envanter (tanıma)")([
   ["envantere 3 optimist teknesi ekle", WI(true)], ["yelken kulübü envanterinden 2 şamandıra çıkar", WI(true)], ["kulüp envanterinde kaç telsiz var", WI(true)],
   ["demirbaşlara lazer yazıcı ekle", WI(true)], ["stokta kaç can yeleği var", WI(true)], ["envanterdeki optimist 4'ü sil", WI(true)],
@@ -972,7 +980,10 @@ group("Envanter (tanıma)")([
   ["envanteri aç", NI], ["envanter", NI], ["demirbaşları göster", NI],
   // "plan yap / hatırlat / not al" denince envanter sözcüğü geçse de kayıt (Seyhun'un cümlesi, 2026-10-06)
   ["yarın akşam 5'e plan yap envanter listesi çıkarılacak", WI(false)], ["envanter sayımını hatırlat", WI(false)], ["not al envanter eksik", WI(false)],
-  ["Ali'ye yaz envanter listesini çıkarsın", WI(false)], ["envantere 3 telsiz ekle", WI(true)], ["envanterden 2 şamandıra çıkar, Ali'ye de hatırlat", WI(true)],
+  ["Ama fişleri ve faturaların kontrol edilmesi ve envanterin oluşturulması gerekiyor bunları yarın öğleden sonra saat 2:00 için iki ayrı plan olarak ekle", WI(false)],
+  ["envanter sayımı için cuma görev oluştur", WI(false)], ["envanterin güncellenmesini takvime koy", WI(false)],
+  ["envantere yeni plan kitabı ekle", WI(true)], ["envanter planı yapılmadı, stokta kaç yelken var", WI(true)],
+    ["Ali'ye yaz envanter listesini çıkarsın", WI(false)], ["envantere 3 telsiz ekle", WI(true)], ["envanterden 2 şamandıra çıkar, Ali'ye de hatırlat", WI(true)],
 ]);
 
 // ---- Mesaj + WhatsApp: yalnız mesaj istenince kayıt açılmaz; WhatsApp isteği tanınır ----
