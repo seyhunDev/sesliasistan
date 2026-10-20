@@ -202,6 +202,7 @@ function Live({ report }) {
       x.ws?.close();
     } catch {}
     setOn(false);
+    setNote(x.model || ""); // "anahtar alınıyor…" / "bağlanıyor…" hata sonrası kalmasın
     if (why) setErr(why);
     report("B", { first: x.first ?? null, text: x.text || "", note: x.model || "", err: why || x.err || "" });
   }
