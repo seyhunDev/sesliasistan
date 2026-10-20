@@ -22,8 +22,8 @@ export const isNativeApp = () =>
 export const recorderAvailable = () =>
   typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
 
-// iPhone'da telefonun kendi ses tanıması (Safari Web Speech) kullanılsın mı: varsayılan evet; çalışmazsa (hata, hiç başlamadı)
-// kendiliğinden "off" yazılır ve kayıt + sunucu yoluna dönülür; Ayarlar › Ses testi'nden değiştirilir
+// iPhone'da telefonun kendi ses tanıması (Safari Web Speech) kullanılsın mı: varsayılan evet; yalnız izin verilmezse
+// kendiliğinden "off" yazılır (boş sonuç kapatmaz, 2026-10-20); Ayarlar › Ses testi'nden değiştirilir
 // (Seyhun: "sesi telefonda anında yazıya çevirelim, sunucuya göndermeyelim", 2026-10-10)
 const NATIVE_KEY = "sa-stt-native";
 // Ana ekrandaki uygulamada (iPhone) telefonun tanıması çoğu zaman hiç yazı vermiyor: dinliyor görünür, dalga oynar, yazı gelmez

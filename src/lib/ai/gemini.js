@@ -79,6 +79,11 @@ export const isCooling = (key) => coolUntil(key) > Date.now();
 export function markCool(key, ms) {
   G.cool.set(key, { until: Date.now() + ms, kind: ms >= HOUR ? "day" : "minute", id: key });
 }
+// Servis yine çalıştı: bekleme kaydı silinir; telefona 0 gider, telefondaki kayıt da kalkar
+export function clearCool(key) {
+  G.cool.delete(key);
+  reqCool.getStore()?.set(key, 0);
+}
 
 // Route'u sarar: gelen başlığı okur, yanıta güncel bekleme listesini ekler
 export function withAiCool(handler) {
@@ -91,7 +96,8 @@ export function withAiCool(handler) {
       const now = Date.now();
       const all = new Map(seed);
       for (const [m, v] of G.cool) if (v.until > now && v.kind !== "gone") all.set(m, Math.max(all.get(m) || 0, v.until));
-      const live = Object.fromEntries([...all].filter(([, u]) => u > now));
+      // 0: bu istekte temizlenen bekleme (telefon kendi kaydını siler)
+      const live = Object.fromEntries([...all].filter(([, u]) => u > now || u === 0));
       res.headers.set("x-ai-cool", JSON.stringify(live));
     } catch {}
     return res;
