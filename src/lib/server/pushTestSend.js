@@ -1,11 +1,13 @@
 // Bildirim testi gönderimi (lib/pushTest): deneme kaydını bir kez gönderir, kişinin tüm cihazlarına gider.
-// Zile ve simgedeki sayıya yazılmaz. Telefon alınca service worker imzalı onayla /api/ack'a "ulaştı" yazar.
+// Gerçek bildirim gibi zile de yazılır ve simgedeki sayıyı artırır (Seyhun: "ikonun üstünde sayıyı görmek istiyorum");
+// zildeki deneme satırları (etiket test-…) "Kaydı temizle" ve 3 saatlik temizlikte silinir. Telefon alınca service worker imzalı onayla /api/ack'a "ulaştı" yazar.
 // Hem /api/push-tests (anında), hem push-test-background (30 sn bekleyip), hem plan-reminders (5 dakikada bir) kullanır.
 import webpush from "web-push";
 import { FieldValue } from "firebase-admin/firestore";
 import { sendDevice } from "./sendDevice.js";
 import { ackSig } from "./ackSign.js";
 import { pendingAt, testText } from "../pushTest.js";
+import { recordInbox } from "../inbox.js";
 
 export const TEST_COL = "pushTests";
 
@@ -40,7 +42,9 @@ export async function sendTest(db, uid, id, via, now = new Date()) {
     await ref.update({ [`pushTests.${id}.err`]: "Bildirim anahtarı sunucuda geçersiz" });
     return 0;
   }
-  const payload = JSON.stringify({ ...got.msg, tag: `test-${id}`, url: "/settings/push-test", ack: { o: uid, c: TEST_COL, i: id, u: uid, s: ackSig(uid, TEST_COL, id, uid) } });
+  const msg = { ...got.msg, tag: `test-${id}`, url: "/settings/push-test" };
+  const badge = await recordInbox(db, uid, msg);
+  const payload = JSON.stringify({ ...msg, ...(badge !== undefined && { badge }), ack: { o: uid, c: TEST_COL, i: id, u: uid, s: ackSig(uid, TEST_COL, id, uid) } });
   let n = 0;
   const errs = [];
   await Promise.all(
