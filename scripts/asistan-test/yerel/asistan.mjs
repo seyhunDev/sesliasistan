@@ -852,6 +852,27 @@ group("Yerel adımların süresi")([
   ["veri özeti boyu sınırlı", { desc: "en çok 26.000 karakter (sunucu sınırı)", fn: () => buildDigest({ ...big, receipts: [], name: "Seyhun", members: [] }).length, ok: (r) => r > 0 && r <= 26000 }],
 ]);
 
+// Küçük veri özeti: isteğin konusu dışındaki bölümler gitmez (lib/ai/digestScope.js)
+{
+  const { digestScope } = await import("@/lib/ai/digestScope");
+  const SC = (want) => ({ desc: JSON.stringify(want), fn: (s) => digestScope(s, [], ["Ali Yılmaz", "Atatürk Kupası"]), ok: (r) => Object.entries(want).every(([k, v]) => r[k] === v) });
+  group("Küçük veri özeti")([
+    ["yarın 10'da toplantı ekle", SC({ club: false, year: false, receipts: false })],
+    ["bugün neler var", SC({ club: false, year: false, receipts: false })],
+    ["kaç sporcumuz var", SC({ club: true })],
+    ["Atatürk Kupası ne zaman", SC({ club: true, year: true })],
+    ["Ali'ye yarın gelmesini hatırlat", SC({ club: true })],
+    ["bu ay ne kadar harcadık", SC({ receipts: true })],
+    ["ödenmemiş faturalar neler", SC({ club: true, receipts: true })],
+    ["mart ayında kaç plan vardı", SC({ year: true })],
+    ["okul toplantısını sil", SC({ year: true })],
+    ["toplantıyı cumaya ertele", SC({ year: true })],
+    ["bu hafta antrenman var mı", SC({ club: true })],
+    ["peki geçen ay?", { desc: "önceki söz de bakılır", fn: (s) => digestScope(s, ["bu ay kasaya ne kadar girdi"]), ok: (r) => r.receipts && r.year }],
+    ["küçük özet daha kısa", { desc: "yıl ve fiş bölümleri yok", fn: () => { const full = buildDigest({ ...big, receipts: [], name: "Seyhun", members: [] }); const lite = buildDigest({ ...big, receipts: [], name: "Seyhun", members: [], scope: { year: false, receipts: false } }); return { full: full.length, lite: lite.length, ok: !/TÜM PLANLAR|FİŞ TOPLAMLARI/.test(lite) && /TÜM PLANLAR/.test(full) }; }, ok: (r) => r.ok && r.lite < r.full }],
+  ]);
+}
+
 // Asistan süre kaydı (Ayarlar › Asistan süre kaydı): uydurma saatle bir komutun anları yazılır, adımlar ve toplam denetlenir.
 const TM = await import("@/lib/assistTiming");
 const memStore = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };

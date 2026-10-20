@@ -21,7 +21,10 @@ export function weekRange(s) {
 }
 
 // members: ana hesabın çalışanları [{ uid, name }]; verilirse kayıtlara sorumlu adları ve çalışan özeti eklenir
-export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [], name = "", members = [], now = new Date() }) {
+// scope (lib/ai/digestScope.js): { year, receipts } false ise yılın tüm planları ve fiş toplamları eklenmez (küçük özet)
+export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [], name = "", members = [], now = new Date(), scope = null }) {
+  const wantYear = !scope || scope.year;
+  const wantReceipts = !scope || scope.receipts;
   const today = fmt(now);
   const { start: ws, end: we } = weekRange(today);
   const { start: ns, end: ne } = weekRange(addDate(today, 7));
@@ -97,11 +100,12 @@ export function buildDigest({ plans = [], tasks = [], notes = [], receipts = [],
     block("TARİHSİZ AÇIK GÖREVLER", open.filter((t) => !t.due).map(tl)),
     block("SON NOTLAR", [...liveNotes].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")).slice(0, 10).map(nl), 10),
     block("ARŞİVDEKİ SON NOTLAR (yapıldı denen ya da arşivlenen)", notes.filter((n) => n.archived).sort((a, b) => offAt(b).localeCompare(offAt(a))).slice(0, 5).map(nl), 5),
-    `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${liveNotes.length} açık, ${notes.length - liveNotes.length} arşivde`,
+    wantYear && `## YIL ${year} ÖZETİ\nAylara göre plan sayısı: ${perMonth}\nGörevler: ${tasks.filter((t) => t.done).length} tamamlandı, ${open.length} açık | Notlar: ${liveNotes.length} açık, ${notes.length - liveNotes.length} arşivde`,
     // Fiş toplamları uzun yıl listesinden önce: özet 12.000 karakterde kesilince fiş bilgisi düşmesin
-    `## FİŞ TOPLAMLARI\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter(needsCheck).length}`,
-    block(`YIL ${year} TÜM PLANLAR`, yearPlans, 60),
+    wantReceipts && `## FİŞ TOPLAMLARI\n${rc(today.slice(0, 7))}\n${rc(prevYm)}\nKontrol bekleyen fiş: ${receipts.filter(needsCheck).length}`,
+    wantYear && block(`YIL ${year} TÜM PLANLAR`, yearPlans, 60),
   ]
+    .filter(Boolean)
     .join("\n\n")
     .slice(0, 12000);
 }
