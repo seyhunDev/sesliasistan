@@ -1,8 +1,8 @@
-Commit: 709862c · Yarış detayı Özet: Hazırlık, Yapılacaklar, Yarış kartı (plan, son tarihler, gönderi, talimat), Not (#604)
-Zaman: 2026-10-20-2251 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39485954542
+Commit: cdac07c · Asistan: soru sonrası cevap mikrofonu kayıt yolunu kullanır, ↑ ile bitirilen kayıt hep çevrilir (#605)
+Zaman: 2026-10-20-2257 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39486998351
 
-TAM TEST · 20.10.2026 22:44:46
+TAM TEST · 20.10.2026 22:51:44
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1330/1352 geçti · 22 kalan · 386 sn
+SONUÇ: 1329/1352 geçti · 23 kalan · 337 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,7 +191,7 @@ SONUÇ: 1330/1352 geçti · 22 kalan · 386 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 86/87
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 85/87
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -206,7 +206,10 @@ SONUÇ: 1330/1352 geçti · 22 kalan · 386 sn
   ✓ Önceki sohbetler: 2/2
   ✓ Sesli yanıt: 4/4
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
-  ✓ Onay isteyen işler: 8/8
+  ✗ Onay isteyen işler: 7/8
+      ✗ “Ege'ye yaz … → “gönder””
+          beklenen: sesle onaylanınca mesaj gider
+          olan:     “ay zeka 12 ms · taklit · bugün 8 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
