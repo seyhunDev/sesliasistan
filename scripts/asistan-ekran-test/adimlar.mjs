@@ -211,15 +211,16 @@ async function scenarios2(h) {
     const ok = await waitFor(async () => !(await full(page).count()), 4000);
     return [!!ok, `tam ekran ${await full(page).count()}`];
   });
-  // Okuma istenmeyen cevap sesli okunmaz (Seyhun: "oku dersem okusun", 2026-10-19)
+  // Sesli yanıt açıkken her istekte önce hazır cümle, sonra cevap okunur (Seyhun, 2026-10-20; eski kural "oku dersem okusun")
   setAI(() => ({ intent: "chat", message: "Bugün erken yat." }));
   const sp0 = await page.evaluate(() => window.__t.spoken.length);
   await talkAsk(page, "bana kısa bir tavsiye ver");
-  await check(GS, "okuma istenmeyen soru (sesli yanıt açık)", "cevap yazılır, sesli okunmaz", async () => {
+  await check(GS, "sesli yanıt açıkken soru", "önce hazır cümle, sonra cevap okunur", async () => {
     const ok = await waitFor(async () => /Bugün erken yat/.test(await last(page)), 6000);
-    await page.waitForTimeout(600);
+    await waitFor(async () => (await page.evaluate((n) => window.__t.spoken.slice(n).join(" "), sp0)).includes("erken yat"), 4000);
     const said = await page.evaluate((n) => window.__t.spoken.slice(n), sp0);
-    return [!!ok && said.length === 0, `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(said.join(" | ")).slice(0, 80) || "yok"}`];
+    const all = said.join(" | ");
+    return [!!ok && said.length >= 2 && /erken yat/.test(all), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(all).slice(0, 100) || "yok"}`];
   });
   await closeAll(page);
   await page.evaluate(() => localStorage.setItem("sa_tts_on", "0"));
@@ -245,7 +246,13 @@ async function scenarios3(h) {
         : { intent: "chat", message: "Tamam." },
   );
   await talkAsk(page, "yarın sabah 9'da tekne bakımı planı ekle");
-  await check(GC, "yarın 9'da tekne bakımı planı ekle", "onay sorulmadan kaydedilir: yeşil ✓ kartı, “Kaydet” düğmesi yok", async () => {
+  // Geri sayım (2026-10-20): kart önce 3 sn çizgiyle bekler (Kaydet / Düzenle / ✕), çizgi dolunca kendiliğinden kaydedilir
+  await check(GC, "yarın 9'da tekne bakımı planı ekle", "önce kartta dolan çizgi, kayıt henüz yazılmadı", async () => {
+    const ok = await waitFor(async () => (await page.locator("[data-dome] [style*='autofill']").count()) > 0, 7000);
+    const kaydet = await page.locator("[data-dome] button", { hasText: /Kaydet$/ }).count();
+    return [!!ok && kaydet > 0, `${ok ? "çizgi var" : "çizgi yok"} · Kaydet düğmesi ${kaydet}`];
+  });
+  await check(GC, "3 sn sonra", "sormadan kaydedilir: yeşil ✓ kartı, “Kaydet” düğmesi yok", async () => {
     const ok = await waitFor(async () => (await page.locator("[data-dome] .asaved").count()) > 0, 7000);
     const card = clean(await page.locator("[data-dome] .asaved").innerText().catch(() => ""));
     const kaydet = await page.locator("[data-dome] button", { hasText: /^Kaydet$/ }).count();
@@ -268,8 +275,25 @@ async function scenarios3(h) {
     return [!!ok, ok ? "Planlar'da var" : "Planlar'da yok"];
   });
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+  {
+    // Geri sayım sırasında ✕: kayıt yapılmaz
+    await page.goto(new URL(page.url()).origin + "/");
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+    await page.waitForTimeout(1200);
+    await talkAsk(page, "not al süt al");
+    await waitFor(async () => (await page.locator("[data-dome] [style*='autofill']").count()) > 0, 7000);
+    const x = page.locator("[data-dome] button[aria-label='Vazgeç']").last();
+    if (await x.count()) await x.click();
+    await check(GC, "geri sayımda ✕", "kaydedilmez, “kaydetmedim” denir", async () => {
+      await page.waitForTimeout(4000);
+      const saved = await page.locator("[data-dome] .asaved").count();
+      const t = clean(await convo(page));
+      return [saved === 0 && /kaydetmedim/i.test(t), `kaydedilen kart ${saved} · “${t.slice(-80)}”`];
+    });
+    await closeAll(page);
+  }
 
-  // ================================================================ 5. Silme / para / mesaj onay ister
+  // ================================================================ 5. Silme / para onay ister; mesaj geri sayımla gider
   const GO = "Onay isteyen işler";
   const home = async () => {
     await page.goto(new URL(page.url()).origin + "/");
@@ -318,15 +342,30 @@ async function scenarios3(h) {
   const sendsBefore = calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length;
   setAI((t) => ({ intent: "message", message: "Ege'ye şunu göndereyim mi?", send: { to: "Ege Demir", text: "Yarın 9'da kulüpte ol." } }));
   await talkAsk(page, "Ege'ye yaz yarın 9'da kulüpte olsun");
-  await check(GO, "Ege'ye yaz …", "mesaj gönderilmeden önce “onayını bekliyor” kartı (Gönder / Vazgeç)", async () => {
-    const ok = await waitFor(async () => /onayını bekliyor/.test((await convo(page)).toLocaleLowerCase("tr-TR")), 7000);
+  await check(GO, "Ege'ye yaz …", "mesaj kartı “gönderiliyor” ve dolan çizgiyle gelir, hemen gitmez (Gönder / Vazgeç)", async () => {
+    const ok = await waitFor(async () => /gönderiliyor/.test((await convo(page)).toLocaleLowerCase("tr-TR")) && (await page.locator("[data-dome] [style*='autofill']").count()) > 0, 7000);
     const sent = calls.filter((c) => c.path === "/api/notify" || c.path === "/api/chat").length - sendsBefore;
-    return [!!ok && sent === 0, `${ok ? "kart var" : `kart yok · ${clean(await convo(page)).slice(-120)}`} · gönderilen ${sent}`];
+    return [!!ok && sent === 0, `${ok ? "kart ve çizgi var" : `kart yok · ${clean(await convo(page)).slice(-120)}`} · gönderilen ${sent}`];
   });
   {
     const v = page.locator("[data-dome] button", { hasText: /^Vazgeç$/ }).last();
     if (await v.count()) await v.click();
   }
+  await check(GO, "geri sayımda Vazgeç", "mesaj gönderilmez", async () => {
+    await page.waitForTimeout(4000);
+    const t = clean(await convo(page));
+    return [/göndermedim/i.test(t) && !/Gönderdim/.test(t), `“${t.slice(-80)}”`];
+  });
+  await closeAll(page);
+  await home();
+  await talkAsk(page, "Ege'ye yaz yarın 9'da kulüpte olsun");
+  await check(GO, "Ege'ye yaz … (dokunulmadı)", "çizgi dolunca mesaj kendiliğinden gider", async () => {
+    const ok = await waitFor(async () => /Gönderdim|gönderemedim/.test(await convo(page)), 9000);
+    const t = clean(await convo(page));
+    return [!!ok && /Gönderdim/.test(t), `“${t.slice(-90)}”`];
+  });
+  await closeAll(page);
+  await home();
   await page.waitForTimeout(500);
 
   setAI(() => ({ intent: "chat", message: "Tamam." }));

@@ -8,10 +8,10 @@ import { interpretRules } from "@/lib/ai/rules";
 import { dayLabel } from "@/lib/agenda";
 import { normalizeSpeech } from "@/lib/speech/normalize";
 import { isMulti, jobsIn, jobsText, wantsNote, wantsWhatsApp } from "@/lib/steps";
-import { cueOf } from "@/lib/assistTasks";
+import { cueOf, queryTopic } from "@/lib/assistTasks";
 
 const lower = (s) => s.toLocaleLowerCase("tr-TR");
-const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|neydi|ne zaman|nerede|kim|nasıl|ne durumda|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
+const QUESTION = /(\?|(^| )(neler|ne var|kaç|hangi|var mı|varmı|nedir|neydi|ne zaman|nerede|kim|kimler|nasıl|ne durumda|mi|mı|mu|mü)( |$)|göster|söyler misin|anlat)/;
 // "eklediğim", "ayarları" ekleme isteği değildir
 const CREATE = /(ekle(?!diğ|dim|din|di )|oluştur|kaydet|koy(?!ul)|planla|hatırlat|not (al|düş|et)|takvime|ayarla(?!r))/;
 const SEND = /(^| )(yaz|gönder|ilet|haber ver|mesaj (at|gönder|yaz))( |$)|('|’)?(e|a|ye|ya) (yaz|söyle)( |$)/;
@@ -76,12 +76,15 @@ export function precue(raw, { plans = [], today, guess = null, weatherRows = nul
     const day = /(^| )yarın/.test(t) ? "yarın" : /(^| )bugün/.test(t) ? "bugün" : "";
     let line = "Bakıyorum.";
     const wx = /hava|rüzgar|rüzgâr|yağmur|knot|sağanak/.test(t);
-    if (day && !wx) {
+    // Konu: plan sayısı yalnız takvim sorusunda söylenir ("kimler katıldı" sorusunda "takvim boş" denmez)
+    const topic = wx ? null : queryTopic(t);
+    const cal = !topic || topic[0] === "Takvime bakılıyor";
+    if (day && !wx && cal) {
       const d = day === "bugün" ? today : addDays(today, 1);
       const n = plans.filter((p) => p.date <= d && (p.endDate || p.date) >= d).length;
       line = n ? `Bakıyorum, ${day} ${n} plan görüyorum.` : `Bakıyorum, ${day} için takvim boş görünüyor.`;
     }
-    return { kind: "query", line, work: wx ? cueOf("weather").work : cueOf("query").work, hint: hintOf("", { kind: "soru" }) };
+    return { kind: "query", line, work: wx ? cueOf("weather").work : topic?.[0] || cueOf("query").work, hint: hintOf("", { kind: "soru" }) };
   }
 
   // Birden çok iş ("Gökhan'a mesaj at, takvime ekle ve notlara liste hazırla"): tek bir türü söyleme, sırayı söyle

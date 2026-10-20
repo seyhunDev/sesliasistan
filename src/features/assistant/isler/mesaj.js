@@ -58,6 +58,12 @@ export function prepareSend(ctx, to, text, msg, engine, viaVoice, lead = "", wa 
     return reply(`${lead}${who ? `${who} adında birini bulamadım. ` : ""}Kime göndereyim? Bir kişinin, grubun adını ya da "ekip" de.`, { engine, expect: true }, viaVoice);
   }
   if (waOnly) return reply(`${lead}${dest.label} WhatsApp grubu için mesaj hazır: “${text}” WhatsApp'ta açayım mı?`, { pending: { send: { ...dest, text, waOnly: true } }, engine, expect: true }, viaVoice);
+  // Uygulama içi mesaj geri sayımla gider (kartta 3 sn çizgi; useAssistant AUTO_MS). WhatsApp dokunuş ister: onay sorulur
+  const auto = !dest.wa && !(alsoWa && dest.team) && !!String(text || "").trim();
+  if (auto) {
+    const ready = `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır: “${text}”`;
+    return reply(msg && !/\?\s*$/.test(msg) ? msg : ready, { pending: { send: { ...dest, text }, auto: true }, engine, expect: true }, viaVoice);
+  }
   const said = msg || `${lead}${dest.team ? `${dest.label} grubu` : dest.label} için mesaj hazır${dest.wa ? " (WhatsApp'la)" : ""}: “${text}” Göndereyim mi?`;
   reply(/\?\s*$/.test(said) || /göndereyim mi/i.test(said) ? said : `${said} Göndereyim mi?`, { pending: { send: { ...dest, text, ...(alsoWa && dest.team ? { alsoWa: true } : {}) } }, engine, expect: true }, viaVoice);
 }

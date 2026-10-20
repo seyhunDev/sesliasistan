@@ -566,7 +566,8 @@ group("Başka isteğin var mı (cevap)")([
 group("Kısa ön cevap")([
   ["Ali'ye yaz yarın 9'da gelsin", PC("mesajda ne yaptığını söyler", (r) => r?.line === "Tamam, mesajı hazırlıyorum." && r.work === "Mesaj hazırlanıyor")],
   ["tekneleri hazırla görevi ekle", PC("görevde ne yaptığını söyler", (r) => r?.line === "Tamam, görevi hazırlıyorum." && r.work === "Görev hazırlanıyor")],
-  ["bugün neler var", PC("soruda bakılıyor yazısı", (r) => r?.work === "Bakıyorum")],
+  ["bugün neler var", PC("soruda takvime bakılıyor yazısı", (r) => r?.work === "Takvime bakılıyor")],
+  ["bugünkü antrenmana kimler katıldı", PC("yoklamaya bakılıyor, takvim söylenmez", (r) => r?.work === "Yoklama kayıtlarına bakılıyor" && r.line === "Bakıyorum.")],
   ["Ali'ye yaz yarın 9'da gelsin", PC("tek bilgi kanalı: sohbete yazılacak bilgi yok", (r) => !r?.info)],
   ["tekneleri hazırla görevi ekle", PC("yapay zekaya söylenmemiş giriş anlatılmaz", (r) => !/söylendi/.test(r?.hint || "") && /tür=görev/.test(r?.hint || ""))],
 ]);
@@ -1226,4 +1227,21 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["konuşma yok", { desc: "boş halka, yazı yok", fn: () => ringOf({}), ok: (r) => r.fill === 0 && !r.label }],
     ["okurken", { desc: "mavi", fn: () => ringOf({ state: "speaking" }), ok: (r) => r.tone === "speak" }],
   ]));
+}
+
+// Sesli yanıt açıkken konuşma: hazır başlangıç cümlesi, onay bekleyen işte "Onayını bekliyorum", sıralı işlerin sonunda
+// "Tamam, hepsi yapıldı" (lib/sayLines.js; Seyhun 2026-10-20)
+{
+  const { startLine, spokenReply } = await import("@/lib/sayLines");
+  const SL = (want, fn) => ({ desc: want, fn, ok: (r) => r === want });
+  group("Sesli yanıt: hazır cümleler")([
+    ["ön cevap var", SL("Tamam, planı hazırlıyorum.", () => startLine({ line: "Tamam, planı hazırlıyorum." }))],
+    ["ön cevap yok", SL("Hemen ilgileniyorum.", () => startLine(null))],
+    ["onay bekleyen", SL("Ali'nin borcu silinecek. Onayını bekliyorum.", () => spokenReply("Ali'nin borcu silinecek.", { confirm: true }))],
+    ["onay sorusu zaten soruyor", SL("Silinsin mi?", () => spokenReply("Silinsin mi?", { confirm: true }))],
+    ["sıralı işlerin sonu", SL("Notu aldım. Tamam, hepsi yapıldı.", () => spokenReply("Notu aldım.", { planEnd: true }))],
+    ["sıralı işte yapılamayan var", SL("Yapamadığım: mesaj.", () => spokenReply("Yapamadığım: mesaj.", { planEnd: true, planOk: false }))],
+    ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
+    ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
+  ]);
 }

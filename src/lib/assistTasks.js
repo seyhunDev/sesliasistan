@@ -60,6 +60,7 @@ export const TASKS = [
 
   // Kulüp
   { id: "attendance", group: "Kulüp", name: "Yoklama", say: "Ali ve Zeynep geldi, Emre izinli", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yoklamayı alıyorum.", work: "Yoklama alınıyor" },
+  { id: "attQuery", group: "Kulüp", name: "Yoklama sorusu", say: "bugünkü antrenmana kimler katıldı; Ali dün geldi mi; bu ay en çok kim gelmedi", who: "sporcu", by: "yerel" },
   { id: "log", group: "Kulüp", name: "Antrenman günlüğü", say: "dün 14 knot poyrazda start çalıştık, 2 saat sürdü", who: "yönetici", by: "yz-ayrı", doing: "Tamam, antrenman günlüğünü yazıyorum.", work: "Antrenman günlüğü yazılıyor" },
   { id: "raceOpen", group: "Kulüp", name: "Yarışı açma", say: "Foça yarışını aç", who: "sporcu", by: "yerel", work: "Yarış aranıyor" },
   { id: "race", group: "Kulüp", name: "Yarış ekleme, yarışa sporcu / not / bütçe", say: "Çeşme'de 7-11 Ekim yarış ekle, Ali ve Ayşe katılacak", who: "sporcu", by: "yz-ayrı", doing: "Tamam, yarışı hazırlıyorum.", work: "Yarış hazırlanıyor" },
@@ -172,7 +173,6 @@ const MORE = {
   send: ["Alıcı bulunuyor", "Mesaj yazılıyor"],
   group: ["Grup bulunuyor", "Mesaj yazılıyor"],
   whatsapp: ["Alıcı bulunuyor", "Mesaj yazılıyor"],
-  query: ["Planlar, görevler ve notlar okunuyor", "Cevap hazırlanıyor"],
   weather: ["Tahmin okunuyor", "Rüzgâr hesaplanıyor", "Cevap hazırlanıyor"],
   attendance: ["Sporcular eşleştiriliyor", "Yoklama işaretleniyor"],
   log: ["Rüzgâr ve konular ayrılıyor", "Günlük düzenleniyor"],
@@ -184,6 +184,27 @@ const MORE = {
   person: ["Bilgiler ayrılıyor", "Kişiler kontrol ediliyor"],
 };
 const GENERIC = ["İstek inceleniyor", "Cevap hazırlanıyor"];
+
+// Soru neyle ilgili: bekleme yazısı yalnız o konuyu söyler (Seyhun, 2026-10-20: "kimler katıldı dedim, planlar, görevler,
+// notlar inceleniyor yazdı; ben plan, not, görev demedim"). Konu bilinmiyorsa genel yazı.
+const TOPICS = [
+  [/yoklama|katıl|gel(di|medi|en|meyen)|devams[ıi]z|izinli/u, ["Yoklama kayıtlarına bakılıyor", "Sporcular sayılıyor"]],
+  [/aidat/u, ["Aidatlara bakılıyor", "Ödemeler sayılıyor"]],
+  [/fiş|kasa|harca|gider|ödeme|para|bakiye|fatura/u, ["Kasa ve fişlere bakılıyor", "Tutarlar toplanıyor"]],
+  [/yarış|regat/u, ["Yarışlara bakılıyor"]],
+  [/sporcu/u, ["Sporculara bakılıyor"]],
+  [/mesaj|yazdı|okunmamış/u, ["Mesajlara bakılıyor"]],
+  [/görev|yapılacak/u, ["Görevlere bakılıyor"]],
+  [/(^|\s)not/u, ["Notlara bakılıyor"]],
+  [/doğum gün/u, ["Doğum günlerine bakılıyor"]],
+  [/alışveriş|liste/u, ["Alışveriş listesine bakılıyor"]],
+  [/envanter|malzeme|tekne/u, ["Envantere bakılıyor"]],
+  [/plan|takvim|program|ne var|neler var|toplantı|antrenman/u, ["Takvime bakılıyor"]],
+];
+export function queryTopic(text) {
+  const t = String(text || "").toLocaleLowerCase("tr-TR");
+  return TOPICS.find(([re]) => re.test(t))?.[1] || null;
+}
 const TAIL = "Biraz uzun sürdü, bekliyorum"; // en sonda: yanıt hâlâ gelmediyse (25 sn'de vazgeçilir)
 const BY_WORK = Object.fromEntries(TASKS.filter((x) => x.work).map((x) => [x.work, x.id]));
 
@@ -194,7 +215,10 @@ export function waitStages(work, { transcribing = false, text = "" } = {}) {
   // Söylenen yazıya geçerken: teknik değil, kısa bilgi (sonra istekten gelen yazılar)
   if (transcribing) return ["Hazırlıyorum"];
   const about = aboutLine(text);
-  const id = BY_WORK[work] || (/^Envanter/.test(work || "") ? "inventory" : /hava/i.test(work || "") ? "weather" : work === "Bakıyorum" ? "query" : "");
+  const id = BY_WORK[work] || (/^Envanter/.test(work || "") ? "inventory" : /hava/i.test(work || "") ? "weather" : work === "Bakıyorum" || / bakılıyor$/.test(work || "") ? "query" : "");
+  // Soru: konusu belliyse yalnız o konu ("Yoklama kayıtlarına bakılıyor"), değilse genel yazı
+  const topic = id === "query" ? queryTopic(text) || (work && work !== "Bakıyorum" ? [work] : null) : null;
+  if (id === "query") return [...(topic || ["Bakıyorum"]), "Cevap hazırlanıyor"];
   const more = MORE[id] || GENERIC;
   if (about) return [about, ...more];
   return work ? [work, ...more] : GENERIC;

@@ -156,6 +156,8 @@ body {
 @keyframes ripple { from { transform: scale(1); opacity: .45; } to { transform: scale(1.7); opacity: 0; } }
 .animate-ripple { animation: ripple 1.8s ease-out infinite; }
 @keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+/* Asistan geri sayım çizgisi (AutoLine): hazırlanan kayıt / mesaj bu sürede kendiliğinden yapılır */
+@keyframes autofill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .animate-pop { animation: pop .3s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {

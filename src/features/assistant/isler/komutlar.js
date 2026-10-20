@@ -20,8 +20,8 @@ const first = async (list, ctx, s, viaVoice) => {
   return false;
 };
 
-// Yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
-const EXTRA = [yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
+// Yoklama sorusu, yarış sayfası, fiş, yoklama velileri, alışveriş, doğum günü, kişi silme, mesaj grubu
+const EXTRA = [yoklama.attQueryCmd, yaris.raceHereCmd, para.receiptPayCmd, para.receiptScopeCmd, yoklama.absentNotifyCmd, alisveris.shopClearCmd, kisi.birthdayDeleteCmd, kisi.personDeleteCmd, mesaj.groupCreateCmd];
 // Yarış günü (rüzgâr kaydı, start sayacı), antrenman yarışı sonucu, sporcu boy/kilo, otel, kişi sayfası, sporcu kartı, fatura görevi, arama, aidat, kasa, nakit gelir, sporcu ekle/arşiv/sil
 const MORE = [yarisMedya.timerCmd, yarisMedya.windLogCmd, antrenmanYaris.trainingResultCmd, boykilo.athleteBodyCmd, yaris.hotelAddCmd, kisi.personOpenCmd, sporcu.athleteOpenCmd, para.invoiceTaskCmd, arama.callCmd, para.duesCmd, para.cashCmd, para.incomeCmd, sporcu.athleteCmd];
 

@@ -270,3 +270,21 @@ group("Ad düzeltmeleri (öğrenilen)")([
     ["liste", { desc: "6 ses, ilki Aoede (varsayılan)", fn: () => GOOGLE_VOICES, ok: (r) => r.length === 6 && r[0][0] === "Aoede" }],
   ]);
 }
+
+// Ses çevirisi bekleme kaydı: servis yine çalışınca telefondaki bekleme kaydı da silinir (x-ai-cool'da 0)
+{
+  const { withAiCool, isCooling, markCool, clearCool } = await import("@/lib/ai/gemini");
+  const run = async (seed, fn) => {
+    const req = { headers: new Headers(seed ? { "x-ai-cool": JSON.stringify(seed) } : {}) };
+    const res = await withAiCool(async () => ({ seen: fn(), headers: new Headers() }))(req);
+    return { seen: res.seen, out: JSON.parse(res.headers.get("x-ai-cool") || "{}") };
+  };
+  const later = Date.now() + 3 * 60 * 1000;
+  const rows = [
+    ["telefondan gelen bekleme", { desc: "beklemede sayılır", fn: () => run({ "stt:gtranscribe": later }, () => isCooling("stt:gtranscribe")), ok: (r) => r.seen === true && r.out["stt:gtranscribe"] === later }],
+    ["çalıştı, temizlendi", { desc: "telefona 0 gider", fn: () => run({ "stt:gtranscribe": later }, () => (clearCool("stt:gtranscribe"), isCooling("stt:gtranscribe"))), ok: (r) => r.seen === false && r.out["stt:gtranscribe"] === 0 }],
+    ["sunucuda bekleyen temizlendi", { desc: "kalkar", fn: () => run(null, () => (markCool("stt:groq", 60000), clearCool("stt:groq"), isCooling("stt:groq"))), ok: (r) => r.seen === false && r.out["stt:groq"] === 0 }],
+  ];
+  const res = await Promise.all(rows.map(([, t]) => t.fn()));
+  group("Ses çevirisi bekleme kaydı")(rows.map(([n, t], i) => [n, { ...t, fn: () => res[i] }]));
+}

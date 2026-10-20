@@ -67,6 +67,7 @@ export const PAST = [[/ekleniyor$/, "eklendi"], [/yükleniyor$/, "yüklendi"], [
 export const pastOf = (s) => pastTense(PAST.reduce((t, [re, to]) => t.replace(re, to), s));
 // Sohbeti bitiren sözler ("bitir", "kapat", "tamam teşekkürler", "şimdilik bu kadar")
 export const KIND_ICON = { plan: "cal", task: "task", note: "note" };
+export const AUTO_MS = 3000; // hazırlanan kayıt / mesaj bu kadar sonra kendiliğinden yapılır (kartta dolan çizgi)
 
 // Ekrandan kalkan konuşma (keepPast): son 12 tur, taslak ve hafızayla birlikte, saklandığı an
 export const recentPast = (p) => Date.now() - p.at < PAST_MS;
@@ -416,7 +417,26 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const extra = (m) => extraNote(m);
   const ready = (list) => list.length > 0 && !firstNeed(list) && list.every((d) => !check(d));
   function saveDraftsNow(...a) {
+    setAuto(null);
     return is_kayit.saveDraftsNow(ctx, ...a);
+  }
+  // Geri sayımlı iş (Seyhun, 2026-10-20): hazırlanan kayıt ve mesaj kartta AUTO_MS boyunca bekler, altında çizgi dolar;
+  // dolunca kendiliğinden kaydedilir / gönderilir. İptal (✕, Vazgeç) ya da hemen (Kaydet, Gönder) seçilebilir.
+  // Mesaj metni elle düzeltilirse (setSendText) sayım durur, Gönder'e basılır. Silme ve para işleri onayla kalır.
+  // Kullanıcı o an konuşuyorsa beklenir (sözü bitince yeniden sayılır).
+  const [auto, setAuto] = useState(null); // { kind: "save" | "send", until, ms, ref, args }
+  function armSave(viaVoice, list, pre = "", lead = "") {
+    setDrafts(list);
+    setPhase("idle");
+    setAuto({ kind: "save", until: nowMs() + AUTO_MS, ms: AUTO_MS, ref: list, args: [viaVoice, list, pre, lead] });
+  }
+  // Asistan kapanırken sayım sürüyorsa iş beklemeden yapılır (kapatmak vazgeçmek değildir)
+  function flushAuto() {
+    const a = auto;
+    if (!a) return;
+    setAuto(null);
+    if (a.kind === "save" && drafts === a.ref) is_kayit.saveDraftsNow(ctx, ...a.args);
+    else if (a.kind === "send" && cards.pending === a.ref) is_mesaj.confirmPending(ctx, true);
   }
   function dropDrafts(...a) {
     return is_kayit.dropDrafts(ctx, ...a);
@@ -513,6 +533,20 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   function prepareSend(...a) {
     return is_mesaj.prepareSend(ctx, ...a);
   }
+  // Mesaj kartı geri sayımla gelir (pending.auto: uygulama içi gönderim; WhatsApp dokunuş ister, sayılmaz)
+  useEffect(() => {
+    const p = cards.pending;
+    if (p?.send && p.auto) setAuto((a) => (a?.ref === p ? a : { kind: "send", until: nowMs() + AUTO_MS, ms: AUTO_MS, ref: p }));
+    else setAuto((a) => (a?.kind === "send" ? null : a));
+  }, [cards.pending]);
+  useEffect(() => {
+    if (!auto) return;
+    const t = setTimeout(() => {
+      if (sp.talking()) return setAuto((a) => (a === auto ? { ...a, until: nowMs() + 1500, ms: 1500 } : a));
+      flushAuto();
+    }, Math.max(0, auto.until - nowMs()));
+    return () => clearTimeout(t);
+  });
   const setSendText = (t) => {
     if (msgDraft.current) msgDraft.current = { ...msgDraft.current, text: t }; // kartta elle düzeltilen metin de bağlama gider
     setCards((c) => (c.pending?.send ? { ...c, pending: { send: { ...c.pending.send, text: t } } } : c));
@@ -849,6 +883,6 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Tek görünüm: konuşma alttaki yeşil kubbenin (TabBar › Dome) içindeki yuvaya çizilir; ayrı pencere yok
   // Taşınan işler (isler/, beyin/) bileşenin durumuna ve yardımcılarına ctx ile ulaşır; her çizimde yenilenir
   // eslint-disable-next-line react-hooks/refs -- ref nesneleri yalnız iletilir; .current olaylarda okunur
-  Object.assign(ctx, { readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatArchive, chatDelete, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
-  return { WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
+  Object.assign(ctx, { armSave, flushAuto, readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatArchive, chatDelete, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
+  return { auto, WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
 }

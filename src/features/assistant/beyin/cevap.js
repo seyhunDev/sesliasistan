@@ -4,6 +4,7 @@ import { failed, PLAN_MAX, planLessons, rememberPlan } from "@/lib/taskPlan";
 import { record } from "@/lib/brain/store";
 import { scoreEnd } from "@/lib/brain/scoreStore";
 import { DROPPED, MORE } from "./ortak";
+import { spokenReply } from "@/lib/sayLines";
 
 export function reply(ctx, message, extra = {}, viaVoice = false) {
   const { aiLesson, chain, convo, readMode, tts, enqueueSay, eventFlow, holdIfTalking, inflight, invFlow, listenOnce, live, nextInChain, okFlow, personFlow, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, raceChoices, raceFailed, reply, setCards, setPhase, setPlan, setStreamText, setTurns, sp, startAuto, streamSaid, waitFor } = ctx;
@@ -19,9 +20,11 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   const awaiting = expect || !!pending || !!ok;
   // Sesli okuma isteği ("notları oku", "bugün hangi planlar var"): cevap okunur, bitince mikrofon bir kez açılır.
   // Sesli yanıt kapalıysa okunmaz, "Sesli yanıtı aç" düğmesi çıkar (Seyhun, 2026-10-14)
-  const read = !awaiting && !!readMode?.current;
-  if (read) readMode.current = false;
-  const readAsk = read && !tts?.enabled && tts?.supported ? message : "";
+  const asked = !awaiting && !!readMode?.current;
+  if (asked) readMode.current = false;
+  const readAsk = asked && !tts?.enabled && tts?.supported ? message : "";
+  // Ayarlar › Sesli yanıt açıksa her cevap okunur (onay bekleyen de); kapalıysa yalnız yazı (Seyhun, 2026-10-20)
+  const read = asked || !!tts?.enabled;
   // Görev listesinin son işi: yapılamayanlar elle yapılsın diye söylenir
   // İşin sonucu: akış açıkça "olmadı" dediyse (fail) ya da cevapta başarısızlık sözü varsa ✗
   const badStep = !awaiting && planOn.current && (extra.fail ?? failed(message));
@@ -86,10 +89,12 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   // Akışta bir kısmı okunduysa yalnızca kalanı (yanıt farklı çıktıysa tekrar okunmaz)
   const said = streamSaid.current;
   streamSaid.current = "";
-  const rest = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
+  const rest0 = !said ? message : message.startsWith(said) ? message.slice(said.length).trim() : "";
+  // Sıralı işlerin sonu: hepsi yapıldıysa "Tamam, hepsi yapıldı." (yapılamayan varsa mesaj zaten söylüyor)
+  const rest = spokenReply(rest0, { confirm: !!pending || !!ok, planEnd, planOk: !badStep && !/Yapamadığım/.test(message) });
   // Yalnız okuma isteğinde ("notlarımı oku", "bugün neler var") sesli okunur; diğer cevaplar yalnız yazılır
   // (Seyhun: "bütün her şeyi okumayacak, oku dersem okusun", 2026-10-19). Sonraki adım (mikrofon) aynı kalır.
-  enqueueSay(read ? rest : "", read && tts?.enabled ? listenOnce : planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
+  enqueueSay(read ? rest : "", asked && tts?.enabled ? listenOnce : planEnd || midPlan ? undefined : listen && viaVoice ? listenOnce : viaVoice || convo.current ? startAuto : undefined);
 }
 
 export function done(ctx, message, extra = {}, viaVoice = false) {
@@ -133,6 +138,7 @@ export function failNow(ctx, message, viaVoice) {
 
 // Sohbeti bitir: panel kapanır, konuşma temizlenir
 export function finish(ctx, keepSpeech = false) {
+  ctx.flushAuto?.(); // geri sayımdaki kayıt / mesaj kapanırken yapılır (kapatmak vazgeçmek değil)
   const { askAll, cancelRun, chain, chainGen, chainRace, clearSay, convo, memo, msgDraft, onClose, planOn, queue, setPlan, sp, tts, waitFor } = ctx;
   sp.cancel();
   cancelRun();
