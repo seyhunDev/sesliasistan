@@ -17,6 +17,7 @@ import { confirmWord } from "@/lib/ai/messageRules";
 import { attRetry } from "@/lib/attAsk";
 import { isLogAnswer, canLog } from "@/lib/trainingLog";
 import { todayStr, rel } from "@/lib/utils/format";
+import { quickAnswer } from "@/lib/ai/rules";
 import { postHandler } from "@/features/posts/posts";
 import { openChat, lastSentChat } from "@/features/chat/ChatProvider";
 import { listsFor } from "@/features/shop/shop";
@@ -44,7 +45,7 @@ import { briefOf, briefText } from "@/lib/brief";
 const DIRECT = [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
 
 export async function run(ctx, t, viaVoice = false, fresh = false) {
-  const { askAI, askAll, chatRestore, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
+  const { askAI, askAll, chatRestore, askTasks, askTo, askedMore, athAsk, attAsk, attHere, cancelPending, cards, chainRace, chainStep, confirmPending, contacts, continuePerson, convo, createAs, curRace, done, drafts, dropDrafts, eventFlow, finish, flowOf, focusRef, goRace, heldQ, invAsk, invDelete, invFlow, invPage, isStaff, logFlow, members, memo, msgDraft, myKind, notes, okFlow, openBirthday, openNav, openRace, owner, park, planTimeAsk, updateRecord, by, parked, past, pastOn, pastTurns, path, personFlow, planCutN, planLearn, planOn, plans, preferRef, prepareSend, profile, queue, raceChoices, raceFollow, raceOrg, racer, races, refineDrafts, reply, run, runAttendance, runDebt, runEvent, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, saveBirthday, saveDraftsNow, setCards, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setText, setTurns, setVoice, setWork, skipRace, startPerson, startPlan, startPost, tasks, toast, tts, turns, waitFor } = ctx;
   const s = cleanSay(t); // dolgu söz, kekemelik, Türkçe harfsiz yazım, bozuk iş fiilleri ("şey ııı", "foca yarisini ac", "yarışı oluru")
   if (!s) return toast("Yaz veya mikrofona bas");
   timingStart(s, viaVoice);
@@ -171,6 +172,18 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
   if (rf && !fresh) {
     if (isNo(s) || isDrop(s) || /^(bilmiyorum|sonra|daha sonra|geç|atla|şimdilik yok|belli değil)[\s.!]*$/iu.test(s)) return done("Tamam, sonra Yarışlar'dan eklersin.", { engine: "local" }, viaVoice);
     if (!QUESTION.test(s) && !localNavigate(s, { names: contacts.map((c) => c.name) })) return runRace(s, viaVoice, rf);
+  }
+  // Saatsiz eklenen plana saat teklif edildi ("İstersen saatini söyle"): "17:00", "akşam beşte" saate yazılır, "gerek yok"
+  // bırakır; başka bir istekse teklif düşer, aşağıdan devam ("5'te" 17:00 sayılır, quickAnswer)
+  const pt = planTimeAsk.current;
+  planTimeAsk.current = null;
+  if (pt && !fresh) {
+    if (isNo(s) || /^(gerek yok|kalsın|saatsiz kalsın|sonra|daha sonra|şimdilik yok|boş ver|yok)[\s.!]*$/iu.test(s)) return done("Tamam, saatsiz kalsın.", { engine: "local" }, viaVoice);
+    const time = quickAnswer(s, [{ type: "plan", title: pt.title, date: pt.date, time: "", allDay: false }], todayStr(), { idx: 0, kind: "time" })?.[0]?.time;
+    if (time) {
+      await updateRecord("plan", pt.id, { time, allDay: false, durationMin: 60, timeSource: "user" }, by);
+      return done(`Tamam, “${pt.title}” saat ${time}.`, { engine: "local" }, viaVoice);
+    }
   }
   // Kişi ekleme sürüyor: cevap, düzeltme, onay ya da vazgeç (başka bir istekse akış biter, aşağıdan devam)
   if (personFlow.current && !fresh && !["saving", "opening"].includes(personFlow.current.step) && (await continuePerson(s, viaVoice))) return;

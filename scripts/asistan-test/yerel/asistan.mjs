@@ -1278,6 +1278,26 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["cevap akışta okunduysa", SL("Tamam, hepsi yapıldı.", () => spokenReply("", { planEnd: true }))],
     ["düz cevap", SL("Kaydettim.", () => spokenReply("Kaydettim."))],
   ]);
+  // Kayıt sonrası doğal cümle: açılış sırayla değişir, saatsiz tek plana saat teklif edilir
+  const { savedLine } = await import("@/lib/sayLines");
+  const { quickAnswer } = await import("@/lib/ai/rules");
+  const P = (more = {}) => [{ type: "plan", title: "Antrenman", date: tom, time: "", ...more }];
+  const SV = (desc, fn, ok) => ({ desc, fn, ok });
+  const pt = (s) => quickAnswer(s, P({ allDay: false }), today, { idx: 0, kind: "time" })?.[0]?.time || null;
+  group("Doğal kayıt cümlesi")([
+    ["saatli plan", SV("Ekledim: …", () => savedLine("Antrenman, Yarın, 10:00", "", P({ time: "10:00" }), 0), (r) => r.text === "Ekledim: Antrenman, Yarın, 10:00." && !r.offer)],
+    ["ikinci kayıt", SV("açılış değişir", () => savedLine("Süt al", "", [{ type: "note" }], 1).text, (r) => r === "Tamam, ekledim: Süt al.")],
+    ["saatsiz plan", SV("saatsiz + teklif", () => savedLine("Antrenman, Yarın, tüm gün", "", P(), 2), (r) => r.text === "Kaydettim: Antrenman, Yarın, saatsiz. İstersen saatini söyle, hemen ekleyeyim." && r.offer === "time")],
+    ["saatsiz, sorumlu var", SV("sorumlu da söylenir", () => savedLine("Antrenman, Yarın, tüm gün", ", Ali sorumlu", P(), 0).text, (r) => r === "Ekledim: Antrenman, Yarın, saatsiz, Ali sorumlu. İstersen saatini söyle, hemen ekleyeyim.")],
+    ["çok günlü plan", SV("teklif yok", () => savedLine("Kamp", "", P({ endDate: "2026-12-01" }), 0).offer, (r) => r === "")],
+    ["haftalık plan", SV("teklif yok", () => savedLine("Antrenman", "", P({ repeat: "week" }), 0).offer, (r) => r === "")],
+    ["iki kayıt", SV("teklif yok", () => savedLine("2 plan", "", [...P(), ...P()], 0).offer, (r) => r === "")],
+    ["“akşam 6'da”", SV("18:00", () => pt("akşam 6'da"), (r) => r === "18:00")],
+    ["“17:30”", SV("17:30", () => pt("17:30"), (r) => r === "17:30")],
+    ["“saat 10”", SV("10:00", () => pt("saat 10"), (r) => r === "10:00")],
+    ["“5'te”", SV("öğleden sonra 17:00", () => pt("5'te"), (r) => r === "17:00")],
+    ["“Ali'ye mesaj at”", SV("saat değil", () => pt("Ali'ye mesaj at"), (r) => r === null)],
+  ]);
 }
 
 // Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon

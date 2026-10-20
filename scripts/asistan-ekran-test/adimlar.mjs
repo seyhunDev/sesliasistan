@@ -292,6 +292,23 @@ async function scenarios3(h) {
     });
     await closeAll(page);
   }
+  {
+    // Saatsiz plan: "saatsiz" denir ve saat teklif edilir; "akşam 6'da" yapay zekaya gitmeden plana yazılır (2026-10-20)
+    setAI((t) => (/yıkama/i.test(t) ? { intent: "create", message: "", items: [{ type: "plan", title: "Tekne yıkama", date: TOMORROW, time: "" }] } : { intent: "chat", message: "Tamam." }));
+    await talkAsk(page, "yarın tekne yıkama planı ekle");
+    await check(GC, "saatsiz plan", "“saatsiz” denir, saat teklif edilir", async () => {
+      const ok = await waitFor(async () => /saatini söyle/.test(await convo(page)), 9000);
+      const t = clean(await convo(page));
+      return [!!ok && /Tekne yıkama.*saatsiz/.test(t) && !/Başka bir isteğin var mı\?\s*$/.test(t), t.slice(-120)];
+    });
+    const b = aiCalls();
+    await talkAsk(page, "akşam 6'da");
+    await check(GC, "teklife saat cevabı", "plan 18:00 olur, yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => /saat 18:00/.test(await convo(page)), 7000);
+      return [!!ok && aiCalls() === b, `${clean(await convo(page)).slice(-80)} · yz isteği ${aiCalls() - b}`];
+    });
+    await closeAll(page);
+  }
 
   // ================================================================ 5. Silme / para onay ister; mesaj geri sayımla gider
   const GO = "Onay isteyen işler";
