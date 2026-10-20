@@ -285,6 +285,8 @@ select {
   box-shadow: 0 -0.5px 0 var(--line), 0 -8px 24px -18px rgba(20, 40, 34, .25); }
 /* Altta, güvenli alanın da altında aynı renk: iPhone sabit çubuğu yukarı iterse altta boşluk görünmesin */
 .atabbar::after, .asheet::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 6rem; background: inherit; }
+/* Sayaç süresi kürenin üstünde (TimerChip): kubbe o kadar uzar, sayfa düğmeleri de üstüne çıkar */
+.atabbar-wrap:has([data-timer-chip]) { padding-top: 3.5rem; }
 .acenter { background: var(--card); box-shadow: 0 -0.5px 0 var(--line), 0 8px 22px -10px rgba(20, 90, 70, .45); }
 /* Ortadaki asistan düğmesi açık zeminde yeşil (durum renkleri aynı: kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor) */
 .acenter .vlight[data-state="idle"], .sidenav .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .35); }
