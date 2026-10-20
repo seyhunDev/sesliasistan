@@ -224,6 +224,34 @@ async function scenarios2(h) {
     const all = said.join(" | ");
     return [!!ok && said.length >= 2 && /erken yat/.test(all), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(all).slice(0, 100) || "yok"}`];
   });
+  // Asistan ekranındaki hoparlör düğmesi: okurken kapatılınca okuma hemen susar, sonraki cevap okunmaz; yeniden açılır
+  setAI(() => ({ intent: "chat", message: "Rüzgar öğleden sonra artar, erken çık." }));
+  await page.evaluate(() => (window.__t.speakMs = 6000));
+  const sp1 = await page.evaluate(() => window.__t.spoken.length);
+  await talkAsk(page, "yarın ne zaman çıkayım");
+  await waitFor(async () => (await state(page)) === "speaking", 6000);
+  await page.locator("[data-dome] button[aria-label='Sesli yanıtı kapat']").click({ timeout: 5000 });
+  await check(GS, "okurken hoparlöre basınca", "okuma hemen susar, düğme kapalı görünür", async () => {
+    const ok = await waitFor(async () => (await state(page)) !== "speaking", 1500);
+    const off = await page.locator("[data-dome] button[aria-label='Sesli yanıtı aç'][aria-pressed='false']").count();
+    const saved = await page.evaluate(() => localStorage.getItem("sa_tts_on"));
+    return [!!ok && off === 1 && saved === "0", `${await state(page)} · düğme ${off ? "kapalı" : "yok"} · ayar ${saved}`];
+  });
+  await page.evaluate(() => (window.__t.speakMs = 2500));
+  setAI(() => ({ intent: "chat", message: "Yarın hava güzel." }));
+  const sp2 = await page.evaluate(() => window.__t.spoken.length);
+  await talkAsk(page, "yarın hava nasıl");
+  await check(GS, "hoparlör kapalıyken soru", "cevap yazılır, okunmaz", async () => {
+    const ok = await waitFor(async () => /Yarın hava güzel/.test(await last(page)), 6000);
+    await page.waitForTimeout(800);
+    const said = await page.evaluate((n) => window.__t.spoken.slice(n).join(" | "), sp2);
+    return [!!ok && !/hava güzel/.test(said), `${ok ? "cevap var" : "cevap yok"} · okunan: ${clean(said) || "yok"} · önce ${sp1}`];
+  });
+  await page.locator("[data-dome] button[aria-label='Sesli yanıtı aç']").click({ timeout: 5000 });
+  await check(GS, "hoparlöre yeniden basınca", "sesli yanıt açılır", async () => {
+    const on = await page.locator("[data-dome] button[aria-label='Sesli yanıtı kapat'][aria-pressed='true']").count();
+    return [on === 1 && (await page.evaluate(() => localStorage.getItem("sa_tts_on"))) === "1", `düğme ${on ? "açık" : "yok"}`];
+  });
   await closeAll(page);
   await page.evaluate(() => localStorage.setItem("sa_tts_on", "0"));
 

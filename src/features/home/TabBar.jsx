@@ -18,6 +18,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { MicDot } from "@/features/speech/MicDot";
+import { useTts } from "@/features/speech/TtsProvider";
 import { useSpeech } from "@/hooks/useSpeech";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { miniText, pullAction } from "@/lib/miniOrb";
@@ -349,6 +350,34 @@ function ProgressRing({ r, big }) {
   );
 }
 
+// Sesli yanıt düğmesi (Seyhun 2026-10-20: "asistan kullanılırken de seslendirmeyi kapatabilmeliyim, uygun ortam olmayabilir"):
+// sağ üstte hoparlör. Kapatınca okuma o an susar, sonraki cevaplar yalnız yazılır; açınca sonraki cevaplar okunur.
+// Ayarlar › Sesli yanıt ile aynı ayar. Simge yumuşak geçişle değişir, alttaki kısa yazı ne olduğunu söyler.
+function ReadToggle() {
+  const tts = useTts();
+  const toast = useToast();
+  if (!tts?.supported) return null;
+  const on = !!tts.enabled;
+  const flip = () => {
+    navigator.vibrate?.(8);
+    if (on) tts.disable();
+    else tts.enable();
+    toast(on ? "Sesli yanıt kapalı" : "Sesli yanıt açık");
+  };
+  return (
+    <button
+      type="button"
+      onClick={flip}
+      aria-pressed={on}
+      aria-label={on ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
+      className={`absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border transition-[background-color,border-color,color,transform] duration-200 active:scale-90 ${on ? "border-acc/40 bg-acc/15 text-acc" : "border-white/10 bg-white/5 text-mut"}`}
+    >
+      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}><Icon name="volume" className="size-5" /></span>
+      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-75 opacity-0" : "scale-100 opacity-100"}`}><Icon name="mute" className="size-5" /></span>
+    </button>
+  );
+}
+
 function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
@@ -601,6 +630,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 {/* Sol üstteki Oluştur (+) kaldırıldı (Seyhun, 2026-10-18) */}
                 {/* Tutamaç: aşağı çekerek kapatılabildiği anlaşılsın */}
                 <span className="pointer-events-none h-[5px] w-10 rounded-full bg-mut/30" aria-hidden="true" />
+                <ReadToggle />
               </div>
             )}
             {active && <ProgressRing big={!open} r={ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved })} />}
