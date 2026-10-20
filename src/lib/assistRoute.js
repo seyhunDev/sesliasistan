@@ -32,6 +32,7 @@ import { inboxClearAsk } from "@/lib/inbox";
 import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { timerCommand, windCommand } from "@/lib/raceLive";
+import { resultCommand } from "@/lib/raceVoice";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -52,6 +53,7 @@ export function moreKind(s, c = {}) {
   if (racer && timerCommand(s)) return "raceTimer";
   if (owner && racer && windCommand(s)) return "raceWind";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
+  if (owner && racer && !onRace && resultCommand(s)) return "trainResult";
   if (owner && receiptPayCommand(s)) return "receiptPay";
   if (owner && receiptScopeCommand(s)) return "receiptScope";
   if (owner && racer && absentNotifyCommand(s)) return "absent";
