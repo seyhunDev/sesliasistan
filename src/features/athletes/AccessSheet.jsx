@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { addDoc, arrayUnion, collection, doc, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc } from "firebase/firestore";
+import { afterSent, addDoc, updateDoc } from "@/lib/firebase/write";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -24,7 +25,7 @@ async function openAccount({ memberId, name, kind, login, password }) {
   const base = login;
   for (let i = 1; i <= 5; i++) {
     const tryLogin = i === 1 ? base : `${base}${i}`;
-    const res = await authFetch("/api/staff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ memberId, name, kind, login: tryLogin, password }) });
+    const res = await afterSent(() => authFetch("/api/staff", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ memberId, name, kind, login: tryLogin, password }) }), 8000);
     const data = await res.json().catch(() => ({}));
     if (res.ok) return tryLogin;
     if (!/alınmış/.test(data.error || "") || base.includes("@")) throw new Error(data.error || "Hesap açılamadı");

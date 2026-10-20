@@ -1,7 +1,8 @@
 "use client";
 
 import { cleanResults } from "@/lib/raceResults";
-import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { soon } from "@/lib/soon";
 import { cleanDocs, nextNo } from "./raceDocs";

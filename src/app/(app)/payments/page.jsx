@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { arrayRemove, doc, updateDoc } from "firebase/firestore";
+import { arrayRemove, doc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { PageHeader } from "@/components/ui/PageHeader";

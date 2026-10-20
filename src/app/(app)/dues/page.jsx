@@ -23,7 +23,8 @@ import { rosterOf } from "@/lib/duesAuto";
 import { dueDayOf, pastDue, unpaidOf } from "@/lib/duesRemind";
 import { DuesRemind } from "@/features/dues/DuesRemind";
 import { useData } from "@/features/data/DataProvider";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { CALM } from "@/features/home/ui";
 import { db } from "@/lib/firebase/clientApp";
 

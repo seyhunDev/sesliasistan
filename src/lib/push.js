@@ -1,6 +1,7 @@
 // Plan hatırlatma bildirimleri (Web Push): izin, bu cihazın aboneliği ve ayarların kaydı.
 // Ayarlar users/{uid} belgesinde: reminders { on, lead, tz } ve push { <cihaz>: abonelik }.
-import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, getDoc } from "firebase/firestore";
+import { setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { isIOS } from "@/lib/speech/detect";

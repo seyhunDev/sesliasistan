@@ -1,6 +1,7 @@
 "use client";
 
-import { collection, deleteDoc, deleteField, doc, documentId, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from "firebase/firestore";
+import { collection, deleteField, doc, documentId, getDoc, getDocs, limit, orderBy, query, startAfter, where } from "firebase/firestore";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { movementsOf } from "@/lib/mailBoard";
 import { sheetsFromRaw, xlsxOf } from "@/lib/mailParse";

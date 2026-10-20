@@ -4,7 +4,8 @@
 // alır, betiğin çalıştığı Gmail hesabına ekli mail olarak gönderir ve kaydı siler. Sunucu ve gizli anahtar yok.
 // Belge 1 MB sınırına takılmasın diye dosya parçalara bölünür (outbox/{id}/parts/{0..n}); ana kayıt en son yazılır,
 // betik yarım kaydı görmez.
-import { collection, doc, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { setDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 
 const PART = 700_000; // base64 karakter (Firestore belge sınırı 1 MiB)

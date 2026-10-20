@@ -1,4 +1,5 @@
-import { arrayUnion, deleteField, doc, getDoc, increment, setDoc } from "firebase/firestore";
+import { arrayUnion, deleteField, doc, getDoc, increment } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { applyEvent, endPoints, isCorrection, oldestKeys, patternKey, POINTS, report, similar, WIN } from "./score";
 

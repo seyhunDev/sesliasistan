@@ -108,6 +108,9 @@ try {
     if (emu) {
       const ekran = await import("../asistan-ekran-test/senaryolar.mjs");
       rows.push(...(await ekran.run(server, out)));
+      out("    Çevrimdışı çalışma (internet kesilip açılır)…");
+      const cev = await import("../cevrimdisi-test/senaryolar.mjs");
+      rows.push(...(await cev.run(server, out)));
     } else rows.push({ katman: "asistan ekran", grup: "Asistan ekranı", say: "", expect: "", ok: emuErr?.skip ? null : false, got: `${emuErr?.skip ? "ATLANDI: " : ""}${String(emuErr?.message || "emülatör yok").slice(0, 600)}` });
   } else if (!withBrowser) rows.push({ katman: "tarayıcı", grup: "Tarayıcı", say: "sayfalar", expect: "", ok: null, got: "ATLANDI (--tarayicisiz)" });
 
@@ -138,6 +141,7 @@ const KATMAN = [
   ["akış", "3. AKIŞ: görev listesi, takılma, çökme"],
   ["tarayıcı", "3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları"],
   ["asistan ekran", "3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase)"],
+  ["çevrimdışı", "3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase)"],
   ["yapay zeka", "4. GERÇEK YAPAY ZEKA"],
 ];
 const counted = rows.filter((r) => r.ok !== null && r.grup !== "Birim testleri: kalanlar");

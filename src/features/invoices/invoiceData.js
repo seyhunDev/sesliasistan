@@ -4,7 +4,8 @@
 // altındaki her koleksiyona yazabiliyor). Liste tek okumada gelir ve 3 dakika bellekte kalır.
 // Dosya (PDF/fotoğraf) Firebase Storage'da orgs/{org}/invoiceFiles/{id} (künyede path, url; lib/firebase/fileStore.js).
 // Yükleme olmazsa ve eski faturalarda parçalı: orgs/{org}/invoiceFiles/{id}/parts/{000..}; açılınca cihazda saklanır.
-import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { Bytes, collection, doc, getDocs, serverTimestamp } from "firebase/firestore";
+import { afterSent, deleteDoc, setDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { authFetch, jsonOf } from "@/lib/authFetch";
@@ -38,7 +39,7 @@ const remember = (orgId, list) => {
 };
 // Bellekteki tam liste (yoksa okunur): sunucunun açık fatura listesi eksik yazılmasın
 const current = async (orgId) => (memo?.org === orgId ? memo.list : loadInvoices(orgId));
-const notifyAssign = (id) => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "task", id }) }).catch(() => {});
+const notifyAssign = (id) => afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "task", id }) })).catch(() => {});
 
 // Sunucunun banka mailinde baktığı açık faturalar listesi (tek belge)
 export const syncIndex = (orgId, list) => setDoc(doc(db, "orgs", orgId, "invoiceIndex", "open"), { list: openIndex(list), at: new Date().toISOString() }).catch(() => {});

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
+import { afterSent, addDoc, updateDoc } from "@/lib/firebase/write";
 import { Button } from "@/components/ui/Button";
 import { Field, PasswordField } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
@@ -19,7 +20,7 @@ import { TLk, totalOf } from "@/lib/receipts";
 import { isUpcoming } from "@/lib/utils/format";
 
 async function call(method, body) {
-  const res = await authFetch("/api/staff", { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const res = await afterSent(() => authFetch("/api/staff", { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), 8000);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "İşlem yapılamadı");
   return data;

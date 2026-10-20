@@ -1,6 +1,7 @@
 "use client";
 
-import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { afterSent, deleteDoc, setDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { todayStr } from "@/lib/utils/format";
@@ -198,7 +199,7 @@ export async function dropFrom(orgId, progId, plans, from) {
 // Sporcuya "Yeni fitness programın hazır" bildirimi (sunucu programdan okur, bir program için bir kez gönderir)
 export async function notifyProgram(id) {
   try {
-    await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitProgram", id }) });
+    await afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitProgram", id }) }));
   } catch {}
 }
 

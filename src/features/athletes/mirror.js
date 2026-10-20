@@ -4,7 +4,8 @@
 // bizim projeye kopyalanır: orgs/{ana hesap}/athleteAtt/{sporcunun kişi kimliği} = { name, athleteId, att: { "YYYY-MM-DD": durum }, parents: [veli kimlikleri] }
 // Yalnızca uygulamada hesabı olan sporcular için. Okuyabilenler: ana hesap, sporcunun kendisi, bağlı velileri (firestore.rules).
 // Sağlık, T.C., adres gibi kulüp bilgileri kopyalanmaz.
-import { arrayUnion, deleteField, doc, setDoc } from "firebase/firestore";
+import { arrayUnion, deleteField, doc } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { todayStr } from "@/lib/utils/format";
 import { markAttTaken } from "./attTaken";

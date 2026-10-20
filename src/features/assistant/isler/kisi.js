@@ -7,7 +7,8 @@ import { QUESTION } from "./ortak";
 import { birthdayDeleteCommand, personDeleteCommand, personOpenCommand } from "@/lib/assistMore";
 import { personPath } from "@/lib/personPage";
 import { matchPerson } from "@/lib/names";
-import { setDoc, doc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 
 export async function startPerson(ctx, s, viaVoice) {

@@ -4,7 +4,8 @@
 // maile yazıp eki siler (/api/mail/push). Bakiye, aidat, fatura ve banka defteri yalnız tabloyu kullanır, orijinal dosya Gmail'de durur.
 // Eskiden kalan ekler (mailde `raw` ya da Storage'a taşınmış `rawFiles`) Ayarlar › Mail eklerini sil ile sunucuda silinir
 // (cleanMailFiles → /api/mail/clean); telefon büyük mailleri indirmez.
-import { deleteField, doc, updateDoc } from "firebase/firestore";
+import { deleteField, doc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { MAIL_ROWS, sheetsFromRaw, xlsxOf } from "@/lib/mailParse";

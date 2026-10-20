@@ -10,7 +10,7 @@ import { authFetch } from "@/lib/authFetch";
 import { assigneesOf } from "@/lib/people";
 import { isUpcoming, rel } from "@/lib/utils/format";
 
-const ONLINE_MS = 6 * 60e3; // bu süreden yakın görüldüyse "çevrimiçi"
+const ONLINE_MS = 7 * 60e3; // bu süreden yakın görüldüyse "çevrimiçi"
 
 // Firestore zaman damgası ya da ISO metin → Date
 const toDate = (v) => (!v ? null : typeof v.toDate === "function" ? v.toDate() : new Date(v));

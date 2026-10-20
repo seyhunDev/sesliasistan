@@ -5,7 +5,8 @@
 // Yükleme olmazsa (internet, kural) eski yol: Firestore'da 900 KB'lık parçalar orgs/{org}/invFiles/{id}/parts/{000..}
 // (künyede parts; parçalı dosya açılınca bu cihazda saklanır). Eski dosyalar parçalı yoldan okunmaya devam eder.
 // Fotoğraflar telefonda küçültülür (en çok 1600 px, ~200-400 KB).
-import { Bytes, collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
+import { Bytes, collection, doc, getDocs, serverTimestamp } from "firebase/firestore";
+import { deleteDoc, setDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { dropStored, getStored, putStored } from "@/lib/firebase/fileStore";
 import { compressImage } from "@/lib/image";

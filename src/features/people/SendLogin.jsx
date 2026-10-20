@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc } from "@/lib/firebase/write";
 import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";

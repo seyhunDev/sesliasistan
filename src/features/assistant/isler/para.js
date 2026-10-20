@@ -20,7 +20,8 @@ import { saveStart, saveFree, loadDuesRange, loadCash, archiveCash, convertToCas
 import { lastMonths, athleteDuesText, athleteDues, feeOf } from "@/lib/dues";
 import { unpaidRoster } from "@/lib/duesRemind";
 import { authFetch } from "@/lib/authFetch";
-import { setDoc, doc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { kasaOf, convPick, debtMoves, personalOf, canEditCash } from "@/lib/cashbook";
 import { whoIn } from "@/lib/payee";

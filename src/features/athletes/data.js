@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { FieldPath, Timestamp, addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
+import { FieldPath, Timestamp, collection, deleteField, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
+import { addDoc, deleteDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { dikiliAuth, dikiliDb } from "./dikili";
 import { EXPIRY_KEYS } from "@/lib/expiry";
 import { attTakenIn, markAttTaken } from "./attTaken";
