@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -13,7 +13,6 @@ import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, message, saveAttendance, useDikili } from "@/features/athletes/data";
 import { missing, useNameIndex } from "@/features/athletes/names";
 import { RollView, ST } from "@/features/athletes/RollView";
-import { usePress } from "@/hooks/usePress";
 import { setAttDay } from "@/features/athletes/assistAttendance";
 import { NamesSheet } from "@/features/athletes/NamesSheet";
 import { todayStr } from "@/lib/utils/format";
@@ -35,8 +34,6 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
   const { members, myUid } = useData(); // uygulamada hesabı olan sporcuların yoklama kopyası için
   const { idx, save } = useNameIndex();
   const [names, setNames] = useState(false); // ses adları penceresi
-  const root = useRef(null);
-  usePress(root);
 
   const classes = byId(data?.classes);
   const active = (data?.athletes || []).filter(isActive);
@@ -89,7 +86,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
   }, []);
 
   return (
-    <main ref={root} className={inSheet ? "pb-2" : "mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]"}>
+    <main className={inSheet ? "pb-2" : "mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]"}>
       {!inSheet && <PageHeader title="Yoklama" sub={data && !err ? `${list.length} aktif sporcu` : "Kulüp verisi"} back="/athletes">
         {data && !err && (
           <Link href="/athletes/attendance/report" data-press aria-label="Ay raporu" className="raised grid size-10 place-items-center !rounded-full text-acc">

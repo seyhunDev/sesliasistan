@@ -525,6 +525,52 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
   [data-press][data-pressed], .raised[data-pressed] { transform: none; }
 }
 
+/* ORTAK DÜĞMELER (Seyhun, 2026-10-20; components/ui/Button.jsx, buttonClass.js): beş çeşit, renkler temadan.
+   Ana = mor (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz.
+   Basılı hal yalnız parmak dururken (usePress, data-pressed): kabarıklar içe göçer, zeminsizlerde hafif gri zemin.
+   Görünüm @layer components içinde: sayfadaki Tailwind sınıfları (text-rec, h-10…) gerekirse üstüne yazar; basılı hal katmansız. */
+@layer components {
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    height: 3rem; padding: 0 1rem; border-radius: .875rem;
+    font-size: 1rem; font-weight: var(--font-weight-semibold); line-height: 1; white-space: nowrap;
+    --btn-top: #ffffff;
+    --btn-bot: color-mix(in srgb, var(--card) 80%, var(--line));
+  }
+  html[data-theme="dark"] .btn { --btn-top: color-mix(in srgb, var(--card) 88%, var(--fg)); --btn-bot: var(--card); }
+  .btn-sm { height: 2.25rem; padding: 0 .75rem; border-radius: .75rem; font-size: .84375rem; }
+  .btn:disabled { opacity: .5; }
+  .btn-primary {
+    color: #fff;
+    border: 1px solid color-mix(in srgb, var(--acc) 72%, #000);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 82%, #fff) 0%, var(--acc) 100%);
+  }
+  .btn-secondary, .btn-danger {
+    color: var(--fg);
+    border: 1px solid color-mix(in srgb, var(--line) 80%, var(--fg) 20%);
+    background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
+  }
+  .btn-danger { color: var(--rec); border-color: color-mix(in srgb, var(--rec) 35%, var(--line)); }
+  .btn-text { color: var(--acc); background: transparent; padding: 0 .625rem; }
+  .btn-icon { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; color: var(--fg2); background: transparent; }
+  .btn-sm.btn-icon { width: 2.25rem; height: 2.25rem; }
+}
+.btn-primary[data-pressed] {
+  transform: scale(0.97); filter: none;
+  background: linear-gradient(180deg, var(--acc) 0%, color-mix(in srgb, var(--acc) 82%, #fff) 100%);
+}
+.btn-secondary[data-pressed], .btn-danger[data-pressed] {
+  transform: scale(0.97); filter: none;
+  background: linear-gradient(180deg, var(--btn-bot) 0%, var(--btn-top) 100%);
+}
+/* Zeminsiz düğme ve liste satırı (data-press="row"): WhatsApp gibi hafif gri zemin, büyüklük değişmez */
+.btn-text[data-pressed], .btn-icon[data-pressed] { transform: none; filter: none; background: color-mix(in srgb, var(--fg) 8%, transparent); }
+[data-press="row"] { transition: background-color .12s; }
+[data-press="row"][data-pressed] { transform: none; filter: none; background-color: color-mix(in srgb, var(--fg) 6%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .btn[data-pressed] { transform: none; }
+}
+
 /* Sayfa geçişinde ortada sade yükleniyor çemberi (NavProgress.jsx). Hızlı açılışta görünmesin diye 0,35 sn sonra belirir. */
 .navspin {
   width: 2rem; height: 2rem; border-radius: 9999px;
