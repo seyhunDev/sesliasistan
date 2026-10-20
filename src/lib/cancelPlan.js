@@ -12,7 +12,7 @@ const plus = (s, n) => {
   d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-function dayWord(date, today) {
+export function dayWord(date, today) {
   if (date === today) return "Bugün";
   if (date === plus(today, 1)) return "Yarın";
   return D(date).toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });

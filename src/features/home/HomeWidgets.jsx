@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { WaSheet } from "./WaSheet";
 import { FadeImg } from "@/components/ui/FadeImg";
 import { Icon } from "@/components/ui/Icon";
 import { useAdd } from "@/features/add/AddProvider";
@@ -45,7 +47,7 @@ function Face({ name, photo, tone = "sp", cls = "size-10" }) {
 // Kartların ortak dili (Seyhun 2026-10-20: "bir tasarım dilimiz olmalı; butonların yeri"): başlıkta solda nokta + ad + sayı, sağda yalnız
 // "Tümü ›" (o sayfa); kartın işleri en altta aynı boyda düğmeler (Actions: h-10, yuvarlak köşe, adı açık: "Not ekle", "Sporculara mesaj").
 // Ana iş (Yoklama) dolu mor, diğerleri kenarlıklı. Her kart yalnız kendi işini yapar.
-const BTN = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-3 text-[0.84375rem] font-semibold";
+const BTN = "flex h-10 min-w-0 items-center justify-center whitespace-nowrap rounded-xl px-2 text-[0.84375rem] font-semibold";
 const Actions = ({ children }) => <span className="mt-3 flex gap-2 [&>*]:flex-1">{children}</span>;
 function Act({ href, onClick, main, ok, children }) {
   const cls = `${BTN} ${main ? "acc-btn" : `raised bg-card ${ok ? "text-[var(--ok)]" : "text-acc"}`}`;
@@ -67,8 +69,10 @@ const More = ({ href }) => (
 
 // Tam genişlik: Sporcular (Seyhun 2026-10-20: "sporcuları ayrı, fitness ayrı; yoklamanın fitness'la, mesajın tek sporcuyla ne alakası var").
 // Fotoğraflar yan yana (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası). Altta: Yoklama (yalnız bugün antrenman planı varsa, saatiyle;
-// alındıysa yeşil "✓ Yoklama alındı", dokununca yine açılır) ve Sporculara mesaj (Sporcular grubu). Sporcu yoksa çizilmez.
-export function AthletesWidget({ att }) {
+// alındıysa yeşil "✓ Yoklama alındı", dokununca yine açılır), Sporculara mesaj (Sporcular grubu) ve WhatsApp (hazır kalıplarla, WaSheet).
+// Sporcu yoksa çizilmez. races: useRaceHome().open (kalıplarda sıradaki yarış)
+export function AthletesWidget({ att, races }) {
+  const [wa, setWa] = useState(false);
   const { members, plans } = useData();
   const { profile } = useAuth();
   const list = (members || []).filter((m) => m && m.name && m.status !== "left" && (m.kind === "athlete" || m.kind === "student")).sort((a, b) => a.name.localeCompare(b.name, "tr"));
@@ -108,7 +112,11 @@ export function AthletesWidget({ att }) {
           </Act>
         )}
         <Act href="/messages?c=athletes">Sporculara mesaj</Act>
+        <button type="button" data-press aria-label="Sporculara WhatsApp" onClick={() => setWa(true)} className={`${BTN} raised !flex-none w-12 bg-card px-0 text-[#1f9d55]`}>
+          <Icon name="whatsapp" className="size-5" />
+        </button>
       </Actions>
+      <WaSheet open={wa} onClose={() => setWa(false)} races={races} />
     </div>
   );
 }

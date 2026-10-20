@@ -5,6 +5,7 @@ const { group } = suite("elle");
 const F = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 // Ek bildirimler (notifyExtra.js): doğum günü, rüzgâr, haftalık özet
 const NX = await import("@/lib/notifyExtra");
+const W = await import("@/lib/waTemplates");
 const WROWS = Array.from({ length: 24 }, (_, i) => ({ hh: String(i).padStart(2, "0"), wind: i >= 14 && i <= 18 ? 23 : 10, gust: i >= 14 && i <= 18 ? 30 : 14 }));
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];
 group("Ek bildirimler")([
@@ -689,6 +690,14 @@ group("Ana sayfa kartları")([
   ["kulüp kartları", F("liste tarihi: gün adı + gün, başka ayda ay da; yarın için de tarih (Yarın yazmaz)", () => {
     const t = "2026-10-20";
     return HT.shortDay("2026-10-21", t) === "Çar 21" && HT.shortDay("2026-12-03", t) === "Per 3 Ara" && HT.shortDay("2027-06-30", t) === "Çar 30 Haz";
+  })],
+  ["kulüp kartları", F("WhatsApp kalıpları: sıradaki antrenman ve iptali, sıradaki yarış; geçmiş saat ve iptal sayılmaz; kayıtlılar temizlenir", () => {
+    const t = "2026-10-20";
+    const now = new Date("2026-10-20T12:00:00");
+    const plans = [{ title: "Optimist antrenmanı", cat: "Antrenman", date: t, time: "10:00" }, { title: "Optimist antrenmanı", cat: "Antrenman", date: "2026-10-21", time: "09:30", place: "Yat limanı" }, { title: "Antrenman", cat: "Antrenman", date: "2026-10-21", time: "08:00", status: "cancelled" }];
+    const x = W.athleteTemplates(plans, [{ name: "Foça Kupası", startDate: "2026-10-24" }], t, now);
+    const c = W.cleanTemplates([" a ", "a", "", "b"]);
+    return x[0] === "Yarın 09:30 antrenman var, yer: Yat limanı." && /Yarın 09:30 Optimist antrenmanı rüzgâr nedeniyle iptal edildi/.test(x[1]) && /^Foça Kupası 24 Ekim Cumartesi başlıyor\.$/.test(x[2]) && c.join() === "a,b";
   })],
   ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
     const t = "2026-10-19";

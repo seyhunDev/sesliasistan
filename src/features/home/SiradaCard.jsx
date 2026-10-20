@@ -9,7 +9,9 @@ import { useData } from "@/features/data/DataProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { dayHours } from "@/features/weather/weather";
 import { useNow } from "@/hooks/useNow";
-import { leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import Link from "next/link";
+import { isTraining } from "@/lib/trainingLog";
+import { attHref, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { WeekStrip } from "./HomeSummary";
@@ -81,6 +83,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
                 p={p}
                 live={live}
                 warn={i === 0 && windy}
+                roll={att && isTraining(p) && p.status !== "cancelled" ? { href: attHref(today, today), taken: profile.attLast === today } : null}
                 sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
                 onOpen={() => open(p)}
               />
@@ -138,15 +141,22 @@ const DayHead = ({ title }) => <h2 className="mt-1 border-t border-line pb-0.5 p
 // ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında gün · saat · tür · yer · "şimdi" ve sağda
 // kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri). warn: rüzgâr eşiği geçti, alt satır kırmızımsı
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
-function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
+// roll: bugünün antrenmanında yoklama ({ href, taken }): satırın altında "Yoklama al" ya da yeşil "✓ Yoklama alındı" (dokununca yine açılır)
+function TimeRow({ p, live, warn, sub, date, left, roll, onOpen }) {
   const tag = planTag(p);
   return (
-    <li>
-      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} relative block w-full border-l-2 border-line py-2.5 pl-4 text-left`}>
-        <Dot live={live} />
+    <li className={`tone-${planTone(p)} relative border-l-2 border-line py-2.5 pl-4`}>
+      <Dot live={live} />
+      <button type="button" onClick={onOpen} className="block w-full text-left">
         <b className="block break-words font-normal">{p.title}</b>
         <Meta left={left} warn={warn} date={date} time={p.time || (date ? "" : "Tüm gün")} tag={tag} sub={sub} live={live} />
       </button>
+      {roll && (
+        <Link href={roll.href} data-press className={`raised mt-2 inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold ${roll.taken ? "text-[var(--ok)]" : "text-acc"}`}>
+          {roll.taken && <Icon name="check" className="size-4 shrink-0" />}
+          {roll.taken ? "Yoklama alındı" : "Yoklama al"}
+        </Link>
+      )}
     </li>
   );
 }
