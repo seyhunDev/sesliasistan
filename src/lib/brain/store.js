@@ -1,3 +1,4 @@
+import { readyLessons } from "@/lib/brain/readyData";
 import { arrayUnion, collection, doc, getDoc, getDocs, increment, query, where } from "firebase/firestore";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { auth, db } from "@/lib/firebase/clientApp";
@@ -162,8 +163,10 @@ export async function flush(force = false) {
 // Tahmin: yeterli örnek yoksa null
 export function guess(text) {
   const s = load();
-  if (s.off || s.items.length < 5) return null;
-  if (!index) index = train(s.items);
+  if (s.off) return null;
+  // Hazır kalıplar (src/data/hazir-kaliplar.json) kullanıcı örneği gibi baştan dizinde: öğrenme beklemeden tahmin yapılır
+  if (!index) index = train([...readyLessons(), ...s.items]);
+  if (index.n < 5) return null;
   return predict(index, text);
 }
 
