@@ -685,7 +685,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
                 <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
                 {!noAi && (
-                  <div className="relative flex items-end justify-center pb-0.5">
+                  <div className="relative">
                     <TimerChip />
                     <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-1">
                       {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}

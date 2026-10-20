@@ -7,7 +7,7 @@ import { mmss } from "@/lib/raceScore";
 import { upSec } from "@/lib/raceLive";
 import { useTimer } from "./Countdown";
 
-// Sayaç çalışırken asistan küresinin altında küçük süre düğmesi (Seyhun 2026-10-20: "geri sayım devam ediyor ya da ileri akıyor,
+// Sayaç çalışırken asistan küresinin üstünde (2026-10-20: altta küreyle karışıyordu, büyütüldü) küçük süre düğmesi (Seyhun 2026-10-20: "geri sayım devam ediyor ya da ileri akıyor,
 // tıklanınca ilgili sayfaya gider"). Sayacın sayfası (yarış multimedya ya da antrenman günü) o sayfa açıkken burada saklanır.
 const YER = "sa-sayac-yer";
 const sub = (f) => (window.addEventListener(YER, f), () => window.removeEventListener(YER, f));
@@ -51,8 +51,9 @@ export function TimerChip() {
   return (
     <Link
       href={href}
+      data-timer-chip=""
       aria-label={up ? `Startan beri ${text}, sayaca git` : `Starta ${text}, sayaca git`}
-      className="relative z-10 flex h-5 items-center rounded-full bg-acc px-2 text-[0.75rem] font-semibold tabular-nums leading-none text-white ring-2 ring-[var(--card)] active:scale-95"
+      className="pointer-events-auto absolute -top-[3.5rem] left-1/2 z-10 flex h-8 -translate-x-1/2 items-center rounded-full bg-acc px-3.5 text-[1rem] font-semibold tabular-nums leading-none text-white shadow-[0_2px_10px_rgba(38,40,44,.18)] active:scale-95"
     >
       {text}
     </Link>
