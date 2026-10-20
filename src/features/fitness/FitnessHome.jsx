@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { BackButton } from "@/components/ui/BackButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
@@ -725,9 +726,7 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
   return (
     <>
       <div className="sticky top-0 z-10 -mx-5 mb-3 flex items-center gap-2.5 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
-        <button type="button" aria-label="Geri" onClick={onBack} className="grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
-          <Icon name="back" className="size-5" />
-        </button>
+        <BackButton onClick={onBack} />
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold">{name}</h1>
         <button type="button" aria-label="Diğer işlemler" onClick={() => (setSure(false), setMore(true))} className="grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]">
           <Icon name="more" className="size-5" />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { BackLink } from "@/components/ui/BackLink";
+import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { useAdd } from "@/features/add/AddProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -133,9 +133,7 @@ export function PersonPage({ uid }) {
   if (!m) {
     return (
       <main className="calm mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
-        <BackLink href="/people/staff" className="text-[1rem] text-acc">
-          ‹ Geri
-        </BackLink>
+        <BackButton href="/people/staff" />
         <p className="mt-10 text-center text-mut">{members.length ? "Kişi bulunamadı." : "Yükleniyor…"}</p>
       </main>
     );
@@ -158,9 +156,7 @@ export function PersonPage({ uid }) {
 
   return (
     <main className="calm mx-auto max-w-[30rem] px-4 pb-32 pt-[calc(1rem+env(safe-area-inset-top))]">
-      <BackLink href={`/people/${groupOfKind(kindOf(m))}`} className="inline-block py-1 text-[1rem] text-acc">
-        ‹ Geri
-      </BackLink>
+      <BackButton href={`/people/${groupOfKind(kindOf(m))}`} />
 
       <header className="mt-2 flex flex-col items-center text-center">
         <ProfilePhoto orgId={orgId} uid={uid} name={m.name} photo={m.photo} photoPath={m.photoPath} />

@@ -526,7 +526,8 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
 }
 
 /* ORTAK DÜĞMELER (Seyhun, 2026-10-20; components/ui/Button.jsx, buttonClass.js): beş çeşit, renkler temadan.
-   Ana = mor (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz.
+   Ana = mor (.acc-btn gibi), İkincil = kabarık (.raised gibi), Tehlike = kabarık + kırmızı yazı, Yazı ve Simge = zeminsiz,
+   Geri = kabarık yuvarlak.
    Basılı hal yalnız parmak dururken (usePress, data-pressed): kabarıklar içe göçer, zeminsizlerde hafif gri zemin.
    Görünüm @layer components içinde: sayfadaki Tailwind sınıfları (text-rec, h-10…) gerekirse üstüne yazar; basılı hal katmansız. */
 @layer components {
@@ -554,12 +555,19 @@ html[data-theme="dark"] .raised { --btn-top: color-mix(in srgb, var(--card) 88%,
   .btn-text { color: var(--acc); background: transparent; padding: 0 .625rem; }
   .btn-icon { width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; color: var(--fg2); background: transparent; }
   .btn-sm.btn-icon { width: 2.25rem; height: 2.25rem; }
+  /* Geri: kabarık yuvarlak (Seyhun, 2026-10-20: geri düğmeleri de ortak sisteme) */
+  .btn-back {
+    width: 2.75rem; height: 2.75rem; padding: 0; border-radius: 9999px; flex-shrink: 0; color: var(--fg);
+    border: 1px solid color-mix(in srgb, var(--line) 80%, var(--fg) 20%);
+    background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-bot) 100%);
+  }
+  .btn-sm.btn-back { width: 2.25rem; height: 2.25rem; }
 }
 .btn-primary[data-pressed] {
   transform: scale(0.97); filter: none;
   background: linear-gradient(180deg, var(--acc) 0%, color-mix(in srgb, var(--acc) 82%, #fff) 100%);
 }
-.btn-secondary[data-pressed], .btn-danger[data-pressed] {
+.btn-secondary[data-pressed], .btn-danger[data-pressed], .btn-back[data-pressed] {
   transform: scale(0.97); filter: none;
   background: linear-gradient(180deg, var(--btn-bot) 0%, var(--btn-top) 100%);
 }

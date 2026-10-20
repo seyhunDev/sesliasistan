@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, getDocsFromCache, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { Icon } from "@/components/ui/Icon";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loader } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -561,9 +562,7 @@ export function ChatView({ cid }) {
       <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
         <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
-          <button type="button" onClick={() => goBack(router, "/messages")} aria-label="Geri" className="grid size-10 shrink-0 place-items-center rounded-full active:bg-line">
-            <Icon name="back" className="size-5" />
-          </button>
+          <BackButton onClick={() => goBack(router, "/messages")} className="mx-1" />
           <button type="button" onClick={() => (owner && chat.type === "dm" && otherP && otherP.role !== "owner" ? router.push(`/people/p/${chat.other}`) : setInfo(true))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <Avatar name={chat.title} photo={otherP?.photo} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
             <span className="min-w-0">
