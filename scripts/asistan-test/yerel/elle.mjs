@@ -2228,6 +2228,21 @@ group("Fitness hareket kütüphanesi")([
     const it = LB.withLib({ ex: "", name: "Sırt çantalı split squat" }, after);
     return keep === "c:backpack-split-squat" && !added.length && Object.keys(after.items).length === 1 && it.media.length === 2;
   })],
+  ["hazır program kütüphanedekini kullanır", F("yapay zeka eşleştirmesi: başka adla gelen aynı hareket yeni kayıt açmaz, kütüphanedeki adı ve fotoğrafı alır", () => {
+    const M = (id) => ({ id, kind: "photo", type: "image/jpeg", size: 1000, parts: 1 });
+    const cur = LB.cleanLib({ next: 3, items: { "c:backpack-split-squat": { no: 1, name: "Backpack split squat", media: [M("a")], m: true }, plank: { no: 2, name: "Plank" } } });
+    const items = [{ ex: "", name: "Sırt çantalı split squat" }, { ex: "", name: "Plank" }, { ex: "", name: "Hip thrust" }];
+    const fresh = LB.libNew(cur, items).map((x) => x.name);
+    const lib1 = LB.libAliases(cur, items, [{ name: "Sırt çantalı split squat", key: "c:backpack-split-squat" }, { name: "Hip thrust", key: "yok" }]);
+    const { lib, added } = LB.libAdd(lib1, items);
+    const it = LB.withLib(items[0], lib);
+    const again = LB.libNew(LB.cleanLib(lib), items);
+    return fresh.join() === "Sırt çantalı split squat,Hip thrust" && added.join() === "c:hip-thrust" && it.name === "Backpack split squat" && it.media?.[0]?.id === "a" && !again.length;
+  })],
+  ["kendi adı korunur", F("listedeki hareket kendi adıyla kalır (yalnız eşleştirilen ad değişir)", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "pushup", name: "Şınav" }]);
+    return LB.withLib({ ex: "pushup", name: "Diz üstü şınav" }, lib).name === "Diz üstü şınav";
+  })],
   ["yüklenirken eklenen kaybolmaz", F("eski görüntüye göre değişiklik güncel listeye uygulanır", () => {
     const a = { id: "a" }, b = { id: "b" }, c = { id: "c" };
     const add = LB.mediaApply([a], [a, b], [a, c]);

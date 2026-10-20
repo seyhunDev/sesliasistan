@@ -8,7 +8,7 @@ import { todayStr } from "@/lib/utils/format";
 import { FIT_CAT, cleanProfile, cleanProgram, planDrafts } from "@/lib/fitness/model";
 import { introKey } from "@/lib/fitness/forecast";
 import { cleanReview, reviewId } from "@/lib/fitness/review";
-import { cleanLib, customCatalog, itemsWithLib, libAdd, libMediaIds, progWithLib, sameMedia } from "@/lib/fitness/library";
+import { cleanLib, customCatalog, itemsWithLib, libAdd, libAliases, libList, libMediaIds, libNew, progWithLib, sameMedia } from "@/lib/fitness/library";
 import { dropAllMedia, dropMedia } from "./fitMedia";
 
 // Fitness programları: orgs/{orgId}/fitPrograms/{id} (yalnız ana hesap; kural ana hesaba orgs altını zaten açıyor).
@@ -313,14 +313,33 @@ export async function saveLib(orgId, lib) {
   return clean;
 }
 // Programın hareketlerini kütüphaneye ekler (yenilere numara), programı kütüphanedeki fotoğraf/videolarla döndürür
+// Kütüphanede adı birebir olmayan hareketler önce yapay zekayla eşleştirilir: aynı hareket başka adla yazılmışsa
+// (hazır program, PDF) yeni kayıt açılmaz, kütüphanedeki kullanılır (eşleşme alias olarak kalır, bir daha sorulmaz).
 export async function adoptProgram(orgId, prog) {
-  const cur = await loadLib(orgId).catch(() => null);
+  let cur = await loadLib(orgId).catch(() => null);
   if (!cur) return prog;
-  const { lib, added } = libAdd(cur, (prog?.days || []).flatMap((d) => d.items || []));
+  const items = (prog?.days || []).flatMap((d) => d.items || []);
+  const fresh = libNew(cur, items);
+  if (fresh.length && libList(cur).length) {
+    const pairs = await matchNames(cur, fresh.map((it) => it.name)).catch(() => []);
+    cur = libAliases(cur, items, pairs);
+  }
+  const { lib, added } = libAdd(cur, items);
   const changed = added.length || JSON.stringify(lib) !== JSON.stringify(cur);
   const out = changed ? await saveLib(orgId, lib).catch(() => cur) : cur;
   return progWithLib(prog, out);
 }
+
+// Yapay zeka eşleştirmesi (/api/fitness-match): yeni adlar → [{ name, key }]; kütüphanedeki farklı adlı kopyalar → [[key…]]
+const libRows = (lib) => libList(lib).map((e) => ({ key: e.key, name: e.name }));
+async function match(body) {
+  const res = await authFetch("/api/fitness-match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), timeout: 25000 });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || "Eşleştirilemedi");
+  return d;
+}
+export const matchNames = async (lib, names) => (await match({ names, lib: libRows(lib) })).pairs || [];
+export const similarGroups = async (lib) => (await match({ lib: libRows(lib) })).groups || [];
 
 // Kütüphanedeki fotoğraf/video değişince: o hareketin geçtiği bütün programlar ve bugün ile sonraki
 // antrenmanlar (sporcularınki dahil) güncellenir. Yalnız değişen belgeler yazılır. plans: kendi planların + fitOthers.
