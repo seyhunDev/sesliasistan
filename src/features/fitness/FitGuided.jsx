@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { exById } from "@/lib/fitness/exercises";
-import { MediaShow } from "./ExerciseMedia";
-import { YtPlayer } from "./YtVideo";
+import { Viewer, useBlobUrl } from "./ExerciseMedia";
+import { ytEmbed } from "@/lib/fitness/youtube";
 import { guideSteps } from "@/lib/fitness/exerciseGuide";
 import { FEELS, clockText, goalSec, isTimed, nextOpen, restAfter } from "@/lib/fitness/model";
 import { setGuideHandler } from "./guideVoice";
@@ -14,9 +15,9 @@ import { setGuideHandler } from "./guideVoice";
 // Sayılar programdaki gibi gösterilir (− / + yok).
 // Süreli harekette (süre ve kardiyo, 5 dk dahil) set geri sayımla yapılır: Başlat › Duraklat/Devam › süre dolunca set kendiliğinden
 // tamamlanır; erken "Bitirdim" denirse kaç saniyede geçildiği yazılır (sette took, full; setTimeText).
-// Hareketin videosu (YouTube ya da eklenen video/fotoğraf) ve açıklaması hareket ekranında doğrudan görünür,
-// setler altında; ayrı "Nasıl yapılır" ekranı yok. Video oynatılmıyorken küçük kart (dokununca büyür), geri sayım
-// arka plansız: ekran kaydırmadan sığsın.
+// Düzen: üstte fotoğraf/video/YouTube hep aynı boyda tek kutuda (birden çoksa kaydırılır, noktalar), altında hareketin adı,
+// "Not" kartı ve yapılış adımları. Set, tekrar/süre ve düğme altta sabit panelde (hedef yalnız orada yazar; tekrar yok);
+// dinlenmede panel koyulaşır, geri sayım orada.
 // Sonda "Nasıl geçti?" ve "Antrenmanı bitir". Kapatınca ilerleme kalır (her set işaretlenince plana yazılır).
 // Ana asistanla da yürür: ekran kayıt kubbesinin (z-55) altında durur; "tamam", "atla", "15 saniye ekle", "nasıl yapılır",
 // "zor geçti", "antrenmanı bitir" buraya gelir (guideWord, words.js; setGuideHandler, guideVoice.js).
@@ -126,16 +127,6 @@ function useSetClock(onEnd) {
   };
 }
 
-// Programdaki sayı olduğu gibi görünür; antrenmanda artırılıp azaltılmaz
-function Adjust({ value, unit }) {
-  return (
-    <div className="text-center">
-      <b className="block text-[2.75rem] font-bold leading-none tabular-nums">{value ? String(value).replace(".", ",") : "–"}</b>
-      <small className="mt-1 block text-[0.8125rem] text-mut">{unit}</small>
-    </div>
-  );
-}
-
 function howOf(it) {
   const steps = guideSteps(it?.ex);
   if (steps.length) return steps;
@@ -145,13 +136,62 @@ function howOf(it) {
     .filter(Boolean);
 }
 
-// Hedef: "3 set × 12 tekrar · 20 kg"
-function targetText(it, n) {
+const kgText = (v) => `${String(v).replace(".", ",")} kg`;
+// Paneldeki büyük sayı ve altındaki ek bilgi: "8–12" tekrar · "her yan · çanta 3 kg"
+function goalOf(it, cur) {
   const key = KEY[it.kind] || "reps";
+  const v = cur[key] || it[key] || "";
   const to = key === "reps" ? it.repsTo : key === "sec" ? it.secTo : 0;
-  const kg = (v) => `${String(v).replace(".", ",")} kg`;
-  const head = [`${n} set`, it[key] ? `${it[key]}${to ? `–${to}` : ""} ${UNIT[key]}${it.side ? " (her yan)" : ""}` : ""].filter(Boolean).join(" × ");
-  return [head, it.kg ? kg(it.kg) : "", it.bag ? `çanta ${kg(it.bag)}` : ""].filter(Boolean).join(" · ");
+  const more = [it.side ? "her yan" : "", (cur.kg || it.kg) && it.kind === "reps" ? kgText(cur.kg || it.kg) : "", it.bag ? `çanta ${kgText(it.bag)}` : ""];
+  return { big: v ? `${String(v).replace(".", ",")}${to && key === "reps" ? `–${to}` : ""}` : "–", unit: UNIT[key], more: more.filter(Boolean), to: key === "sec" && to ? `hedef ${v}–${to} sn` : "" };
+}
+
+// Fotoğraf, video ve YouTube aynı kutuda (4:3, ekran genişliği); birden çoksa yana kaydırılır
+function MediaBox({ it }) {
+  const list = (it.media || []).filter((x) => !x.stock && (x.kind === "video" || x.kind === "photo"));
+  const slides = [...list.map((m) => ({ k: m.id, m })), ...(it.yt?.id ? [{ k: `yt${it.yt.id}`, yt: it.yt }] : [])];
+  const [at, setAt] = useState(0);
+  const [open, setOpen] = useState(null);
+  const { profile } = useAuth();
+  if (!slides.length) return null;
+  const onScroll = (e) => {
+    const el = e.currentTarget;
+    setAt(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+  };
+  return (
+    <div className="relative">
+      <div onScroll={onScroll} className="flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-3xl bg-black [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {slides.map((x) => (
+          <div key={x.k} className="relative size-full shrink-0 snap-center">
+            {x.yt ? (
+              <iframe src={ytEmbed(x.yt.id, x.yt.start)} title="Hareket videosu" className="size-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+            ) : (
+              <Slide orgId={profile?.orgId} m={x.m} onOpen={setOpen} />
+            )}
+          </div>
+        ))}
+      </div>
+      {slides.length > 1 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2.5 flex justify-center gap-1.5">
+          {slides.map((x, i) => (
+            <i key={x.k} className={`size-[0.4375rem] rounded-full ${i === at ? "bg-white" : "bg-white/50"}`} />
+          ))}
+        </div>
+      )}
+      {open && <Viewer orgId={profile?.orgId} m={open} onClose={() => setOpen(null)} />}
+    </div>
+  );
+}
+function Slide({ orgId, m, onOpen }) {
+  const { url, err, fail } = useBlobUrl(orgId, m);
+  if (err) return <span className="grid size-full place-items-center text-[0.8125rem] text-white/70">{m.kind === "video" ? "Video açılamadı" : "Fotoğraf açılamadı"}</span>;
+  if (!url) return <span className="shimmer block size-full" />;
+  if (m.kind === "video") return <video src={url} controls autoPlay loop muted playsInline onError={fail} className="size-full object-cover" />;
+  return (
+    <button type="button" onClick={() => onOpen(m)} aria-label="Fotoğrafı büyüt" className="block size-full">
+      <img src={url} alt="" onError={fail} className="size-full object-cover" />
+    </button>
+  );
 }
 
 function HowBody({ it }) {
@@ -160,10 +200,11 @@ function HowBody({ it }) {
   return (
     <>
       {more.length > 0 && (
-        <p className="mt-2 rounded-xl bg-acc/10 px-3 py-2 text-[0.875rem] leading-snug text-fg">{more.join(" · ")}</p>
+        <div className="mt-3 rounded-2xl border border-line bg-card px-3.5 py-2.5">
+          <small className="block text-[0.75rem] font-semibold text-mut">Not</small>
+          <p className="text-[0.9375rem] leading-snug">{more.join(" · ")}</p>
+        </div>
       )}
-      <MediaShow media={it.media} className="mt-3" />
-      <YtPlayer key={it.yt?.id} yt={it.yt} className="mt-2" />
       {how.length > 0 && (
         <ol className="mt-3 space-y-1.5">
           {how.map((h, n) => (
@@ -175,6 +216,17 @@ function HowBody({ it }) {
         </ol>
       )}
     </>
+  );
+}
+
+// Set çubukları: yapılan dolu, şu anki çerçeveli
+function SetBars({ s, k, dark = false }) {
+  return (
+    <span className="mt-1.5 flex justify-end gap-1">
+      {s.map((x, i) => (
+        <i key={i} className={`h-2 w-5 rounded-full ${x.ok ? (dark ? "bg-white" : "bg-acc") : i === k ? (dark ? "bg-white/25 ring-2 ring-inset ring-white" : "bg-acc/15 ring-2 ring-inset ring-acc") : dark ? "bg-white/20" : "bg-line"}`} />
+      ))}
+    </span>
   );
 }
 
@@ -329,105 +381,100 @@ export function FitGuided({ items = [], sets = [], at = null, onCheck, feel, set
   const it = items[pos.i] || {};
   const s = sets[pos.i] || [];
   const cur = s[pos.k] || {};
-  const key = KEY[it.kind] || "reps";
-  const val = cur[key] || it[key] || "";
   const timed = isTimed(it);
   const goal = timed ? goalSec(it, cur) : 0;
+  const g = goalOf(it, cur);
+  const left = timer.run ? timer.left : goal;
 
   return (
     <div role="dialog" aria-label="Antrenman" className="fixed inset-0 z-[54] flex flex-col bg-bg">
       {top}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4">
-        <h2 className="text-[1.625rem] font-bold leading-tight">{it.name}</h2>
-        <p className="mt-1 text-[0.9375rem] font-semibold text-mut">{targetText(it, s.length)}</p>
-        <HowBody key={pos.i} it={it} />
-
-        {rest.run ? (
-          <div className="mt-6 rounded-3xl bg-deep px-5 py-7 text-center text-white">
-            <small className="block text-[0.8125rem] font-bold tracking-[.08em] text-white/70">DİNLEN</small>
-            <b className="mt-2 block text-[3.5rem] font-bold leading-none tabular-nums">{rest.left}</b>
-            <small className="mt-1 block text-[0.875rem] text-white/70">saniye · sıradaki: set {pos.k + 1} / {s.length}</small>
-            <span className="mx-auto mt-4 block h-1.5 max-w-[14rem] overflow-hidden rounded-full bg-white/20">
-              <span className="block h-full rounded-full bg-white transition-all" style={{ width: `${(rest.left / rest.run.total) * 100}%` }} />
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-3.5">
+        <MediaBox key={pos.i} it={it} />
+        <h2 className="mt-3.5 text-[1.5625rem] font-semibold leading-tight">{it.name}</h2>
+        <HowBody key={`h${pos.i}`} it={it} />
+      </div>
+      {rest.run ? (
+        <div className="rounded-t-[1.625rem] bg-deep px-5 pt-4 text-white pb-[calc(var(--rec-h,0px)+0.75rem)]">
+          <div className="flex items-end justify-between gap-3">
+            <span>
+              <b className="text-[3rem] font-semibold leading-none tabular-nums">{rest.left}</b>
+              <span className="ml-1.5 text-[1.0625rem] text-white/70">sn dinlen</span>
+              <small className="mt-1 block text-[0.8125rem] text-white/70">
+                sıradaki: set {pos.k + 1} / {s.length}
+              </small>
             </span>
-            <div className="mt-5 flex justify-center gap-2">
-              <button type="button" onClick={() => rest.add(15)} className="h-10 rounded-full bg-white/15 px-4 text-[0.875rem] font-semibold">
-                +15 sn
-              </button>
-              <button type="button" onClick={rest.stop} className="h-10 rounded-full bg-white px-5 text-[0.875rem] font-semibold text-deep">
-                Geç
-              </button>
-            </div>
+            <SetBars s={s} k={pos.k} dark />
           </div>
-        ) : (
-          <div className={timed ? "mt-4" : "mt-6 rounded-3xl bg-card px-4 py-6 shadow-[0_1px_3px_rgba(38,40,44,.05)]"}>
-            <p className="text-center text-[0.9375rem] font-semibold text-mut">
-              Set {pos.k + 1} / {s.length}
-            </p>
-            {timed ? (
-              <Clock left={timer.run ? timer.left : goal} total={goal} run={timer.run} going={timer.going} />
-            ) : null}
-            {!timer.run && !timed && (
-              <div className="mt-4">
-                <Adjust value={val} unit={UNIT[key]} />
+          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20">
+            <span className="block h-full rounded-full bg-white transition-all" style={{ width: `${(rest.left / rest.run.total) * 100}%` }} />
+          </span>
+          <div className="mt-3.5 flex gap-2">
+            <button type="button" onClick={() => rest.add(15)} className="h-14 flex-1 rounded-2xl bg-white/15 text-[1.0625rem] font-semibold active:scale-[.98]">
+              +15 sn
+            </button>
+            <button type="button" onClick={rest.stop} className="h-14 flex-1 rounded-2xl bg-white text-[1.0625rem] font-semibold text-deep active:scale-[.98]">
+              Geç
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-t-[1.625rem] border-t border-line bg-card px-5 pt-4 shadow-[0_-6px_20px_rgba(38,40,44,.06)] pb-[calc(var(--rec-h,0px)+0.5rem)]">
+          <div className="flex items-end justify-between gap-3">
+            <span className="min-w-0">
+              {timed ? (
+                <b className={`text-[3rem] font-semibold leading-none tabular-nums ${left <= 3 && timer.run ? "text-rec" : ""}`}>{clockText(left)}</b>
+              ) : (
+                <>
+                  <b className="text-[3rem] font-semibold leading-none tabular-nums">{g.big}</b>
+                  <span className="ml-1.5 text-[1.0625rem] text-mut">{g.unit}</span>
+                </>
+              )}
+              {(() => {
+                const sub = [...g.more, timed && timer.run ? (timer.going ? "kalan" : "Duraklatıldı") : g.to].filter(Boolean);
+                return sub.length > 0 && <small className="mt-1 block truncate text-[0.8125rem] text-mut">{sub.join(" · ")}</small>;
+              })()}
+            </span>
+            <span className="shrink-0 text-right">
+              <small className="block text-[0.8125rem] font-semibold text-mut">
+                Set {pos.k + 1} / {s.length}
+              </small>
+              <SetBars s={s} k={pos.k} />
+            </span>
+          </div>
+          {timed && timer.run && (
+            <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-line">
+              <span className="block h-full rounded-full bg-acc transition-all" style={{ width: `${goal ? (left / goal) * 100 : 0}%` }} />
+            </span>
+          )}
+          <div className="mt-3.5">
+            {!timed && (
+              <button type="button" onClick={() => complete()} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+                Tamamlandı
+              </button>
+            )}
+            {timed && !timer.run && (
+              <button type="button" onClick={() => timer.start(goal)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+                <Icon name="clock" className="size-5" />
+                Başlat
+              </button>
+            )}
+            {timed && timer.run && (
+              <div className="flex gap-2">
+                <button type="button" onClick={timer.going ? timer.pause : timer.resume} className="h-14 flex-1 rounded-2xl bg-bg text-[1.0625rem] font-semibold active:scale-[.98]">
+                  {timer.going ? "Duraklat" : "Devam et"}
+                </button>
+                <button type="button" onClick={() => complete()} className="h-14 flex-1 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
+                  Bitirdim
+                </button>
               </div>
             )}
-            {it.kind === "reps" && (cur.kg || it.kg) ? (
-              <div className="mt-4">
-                <Adjust value={cur.kg || it.kg} unit="kg" />
-              </div>
-            ) : null}
-
           </div>
-        )}
-      </div>
-      <div className="px-5 pb-[calc(var(--rec-h,0px)+0.75rem)]">
-        {!rest.run && !timed && (
-          <button type="button" onClick={() => complete()} className="h-14 w-full rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
-            Tamamlandı
+          <button type="button" onClick={skipEx} className="mt-1 h-10 w-full text-[0.875rem] font-semibold text-mut">
+            Bu hareketi atla
           </button>
-        )}
-        {!rest.run && timed && !timer.run && (
-          <button type="button" onClick={() => timer.start(goal)} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
-            <Icon name="clock" className="size-5" />
-            Başlat · {clockText(goal)}
-          </button>
-        )}
-        {!rest.run && timed && timer.run && (
-          <div className="flex gap-2">
-            <button type="button" onClick={timer.going ? timer.pause : timer.resume} className="h-14 flex-1 rounded-2xl bg-card text-[1.0625rem] font-semibold shadow-sm active:scale-[.98]">
-              {timer.going ? "Duraklat" : "Devam et"}
-            </button>
-            <button type="button" onClick={() => complete()} className="h-14 flex-1 rounded-2xl bg-acc text-[1.0625rem] font-semibold text-white active:scale-[.98]">
-              Bitirdim
-            </button>
-          </div>
-        )}
-        <button type="button" onClick={skipEx} className="mt-2 h-10 w-full text-[0.875rem] font-semibold text-mut">
-          Bu hareketi atla
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Büyük geri sayım halkası: kalan süre (0:30, 5:00), duraklatılınca "Duraklatıldı"
-function Clock({ left, total, run, going }) {
-  const r = 70;
-  const c = 2 * Math.PI * r;
-  const part = total ? left / total : 1;
-  return (
-    <div className="relative mx-auto mt-2 size-[9.5rem]">
-      <svg viewBox="0 0 160 160" className="size-full -rotate-90">
-        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" className="stroke-line/60" />
-        <circle cx="80" cy="80" r={r} fill="none" strokeWidth="10" strokeLinecap="round" className="stroke-acc transition-[stroke-dashoffset] duration-200" strokeDasharray={c} strokeDashoffset={c * (1 - part)} />
-      </svg>
-      <span className="absolute inset-0 grid place-items-center text-center">
-        <span>
-          <b className={`block text-[2.5rem] font-bold leading-none tabular-nums ${left <= 3 && run ? "text-rec" : ""}`}>{clockText(left)}</b>
-          <small className="mt-1 block text-[0.8125rem] text-mut">{!run ? "hazır" : going ? "kalan" : "Duraklatıldı"}</small>
-        </span>
-      </span>
+        </div>
+      )}
     </div>
   );
 }
