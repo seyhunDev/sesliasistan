@@ -62,9 +62,9 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   if (pc?.info) setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
   // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
   // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir.
-  // Sesli yanıt açıksa yapay zeka beklenirken hemen hazır cümle söylenir ("Tamam, planı hazırlıyorum.", "Bakıyorum.");
-  // yazıda değişiklik yok (bekleme yazısı gösterir)
-  const first = voiceOn && !opts.edit ? startLine(pc) : pc?.info && reading ? pc.info : "";
+  // Sesli yanıt açıksa yapay zeka beklenirken yalnız "Hemen ilgileniyorum." söylenir (Seyhun 2026-10-20: yerel cümleler
+  // doğal değil); yazıda değişiklik yok (bekleme yazısı gösterir)
+  const first = voiceOn && !opts.edit ? startLine() : pc?.info && reading ? pc.info : "";
   if (first) enqueueSay(first, viaVoice ? listenWhileThinking : undefined);
   else if (viaVoice) listenWhileThinking();
   // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)

@@ -3,8 +3,16 @@
 // önce şunu, sonra şunu yapıyorum, tamam hepsi yapıldı; onay bekleyen varsa onay beklediğini söylesin. Sesli yanıt
 // kapalıysa yazıyla gösterilir." Saf işlevler, test edilir.
 
-// İstek alınınca (yapay zeka beklenirken) hemen söylenen cümle: ön cevabın cümlesi ("Tamam, planı hazırlıyorum.")
-export const startLine = (pc) => String(pc?.line || "").trim() || "Hemen ilgileniyorum.";
+// İstek alınınca (yapay zeka beklenirken) hemen söylenen tek cümle. Seyhun (2026-10-20): "Yerelde seslendirme yapmayalım,
+// doğal olmuyor; yerelde sadece ilgileniyorum olsun." Sonuç cümlesini söz yapay zekası yazar (lib/ai/soz.js).
+// Aynı komutta iki kez söylenmesin diye an tutulur (iş yapay zekası söyledikten sonra söz beklenirken yeniden söylenmez).
+export const START = "Hemen ilgileniyorum.";
+let startAt = -1e9;
+export function startLine() {
+  startAt = Date.now();
+  return START;
+}
+export const startedWithin = (ms, now = Date.now()) => now - startAt < ms;
 
 // Cevabın okunan hali: onay bekleyen işte (soru sorulmadıysa) "Onayını bekliyorum.", sıralı işlerin sonunda
 // (hepsi yapıldıysa) "Tamam, hepsi yapıldı."

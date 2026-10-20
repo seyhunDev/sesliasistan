@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { devOn, engineName, liveOf, liveText, msText, secText, setDevOn, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
 import { probeCheck, probeSamples, probeText } from "@/lib/aiProbe";
 import { askAssistant } from "@/services/assistantService";
+import { setSozOn, sozOn } from "@/lib/ai/soz";
 import { Btn, Row } from "./ui";
 
 // Ayarlar › Testler › Süre kaydı: son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
@@ -98,6 +99,7 @@ export function TimingRow() {
             </>
           )}
           <DevSwitch />
+          <SozSwitch />
           <p className="mt-2 text-[0.75rem] leading-snug text-mut">
             Yalnız bu telefonda saklanır. Yavaş bir komutta “Kopyala”ya basıp yeni bir threade yapıştırabilirsin.
           </p>
@@ -117,6 +119,21 @@ function DevSwitch() {
   return (
     <label className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-[0.875rem]">
       <span>Asistan sayfasında süreleri göster</span>
+      <input type="checkbox" checked={on} onChange={flip} className="size-5 accent-[var(--acc)]" />
+    </label>
+  );
+}
+
+// Söz yapay zekası (lib/ai/soz.js): sonuç cümlesini ayrı küçük yapay zeka çağrısı doğal yazar; kapalıysa yerel cümle
+function SozSwitch() {
+  const [on, setOn] = useState(sozOn);
+  const flip = () => {
+    setSozOn(!on);
+    setOn(!on);
+  };
+  return (
+    <label className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-[0.875rem]">
+      <span>Cevap cümlesini yapay zeka yazsın</span>
       <input type="checkbox" checked={on} onChange={flip} className="size-5 accent-[var(--acc)]" />
     </label>
   );

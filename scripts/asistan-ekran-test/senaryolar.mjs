@@ -98,6 +98,7 @@ export async function run(server, log = () => {}) {
   let aiDelay = 0;
   let tasksReply = () => null; // /api/tasks cevabı
   let transcript = ""; // /api/transcribe cevabı
+  let sozReply = () => null; // /api/soz cevabı (doğal cümle); boşsa 503, uygulama yerel cümleyi kullanır
   const outside = new Set(); // kesilen dış adresler
 
   async function newPage({ email = OWNER, width = 390, height = 844, standalone = false, note = false, mobile = true } = {}) {
@@ -135,6 +136,10 @@ export async function run(server, log = () => {}) {
         return t ? json({ tasks: t }) : json({ error: "yok" }, 503);
       }
       if (u.pathname === "/api/transcribe") return json({ text: transcript });
+      if (u.pathname === "/api/soz") {
+        const t = sozReply(body || {});
+        return t ? json({ text: t, ms: 1, model: "taklit" }) : json({ error: "yok", reason: "other" }, 503);
+      }
       if (u.pathname === "/api/tts") return json({ error: "anahtar yok" }, 501);
       return json({ ok: true });
     });
@@ -247,7 +252,7 @@ export async function run(server, log = () => {}) {
   };
   try {
     const { scenarios } = await import("./adimlar.mjs");
-    await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), TODAY, TOMORROW });
+    await scenarios({ getDoc, log, check, push, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI: (f, d = 0) => ((ai = f), (aiDelay = d)), setTasks: (f) => (tasksReply = f), setTranscript: (t) => (transcript = t), setSoz: (f) => (sozReply = f), TODAY, TOMORROW });
   } catch (e) {
     push("Senaryolar", "çalıştırma", "tamamlanır", false, String(e.stack || e.message).split("\n").slice(0, 3).join(" | "));
   } finally {
