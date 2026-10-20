@@ -9,7 +9,6 @@ import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momen
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
-import { stampBlob } from "./stamp";
 import { dropPending, listPending, putPending } from "./pendingStore";
 
 // Medya: "Fotoğraf" ve "Video" uygulama içi kamerayı açar (CameraSheet: sayaç ve bipleri sürer; açılamazsa telefonun kamerası).
@@ -47,8 +46,6 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
   const first = (a) => (a.studentName || "").split(" ")[0];
 
   // Çekilenin anı (Süre sekmesindeki yarışlara göre: momentAt) ve üstüne basılan yazı ("4. yarış · Son 1 dakika · 0:42 kala" / yarış adı · saat)
-  const linesFor = (mom, at) => (mom ? [`${momentRaceName(mom, live.starts)} · ${momentText(mom)}`, `${race.name || "Yarış"} · ${hm(at)}`] : []);
-  const stampFor = (at) => linesFor(momentAt(at, live.starts), at);
   // Her çekilen önce telefonda saklanır (pendingStore), sonra sırayla yüklenir; yüklenince telefondan silinir.
   // Yüklenemezse kaybolmaz: "telefonda bekliyor" kartı, sayfa açılınca ve internet gelince yeniden denenir.
   const errText = (e) =>
@@ -79,12 +76,11 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
     setPending((n) => n + 1);
     queue.current = queue.current.then(() => send(rec)).finally(() => setPending((n) => n - 1));
   };
-  // Çekilen hemen kaydedilir (Seyhun 2026-10-18: çoğu zaman yarış ve an doğru; yanlışsa büyük açıp "Düzelt"): fotoğrafa an basılır,
-  // telefonda saklanır, sıraya girer
+  // Çekilen hemen kaydedilir (Seyhun 2026-10-18: çoğu zaman yarış ve an doğru; yanlışsa büyük açıp "Düzelt"): telefonda saklanır, sıraya girer.
+  // Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın"); an uygulamada görüntünün başlığında yazar
   const keep = async (m, at, mom, before = 0) => {
     const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, dur: m.dur || 0, mom, before, err: "" };
     setLast((l) => (l?.url && URL.revokeObjectURL(l.url), { id: rec.id, kind: rec.kind, url: URL.createObjectURL(rec.blob), state: "up" }));
-    if (rec.kind === "photo" && mom) rec.blob = await stampBlob(rec.blob, linesFor(mom, at));
     await putPending(rec);
     enqueue(rec);
   };
@@ -226,7 +222,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
           </div>
         )}
       </Bar>
-      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} stampFor={stampFor} pending={pending} last={last} rf={rf} />
+      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} rf={rf} />
     </>
   );
 }
