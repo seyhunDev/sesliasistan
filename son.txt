@@ -1,8 +1,8 @@
-Commit: f9e4f5a · Ana sayfa listesi: başlık üstte tam genişlikte, bilgiler altta yan yana (#560)
-Zaman: 2026-10-20-1734 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39439554135
+Commit: f0dccce · Fitness: Hareketlerim'de hareket tam ekran, hızlı ve güvenli fotoğraf/video ekleme (#561)
+Zaman: 2026-10-20-1741 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39440670629
 
-TAM TEST · 20.10.2026 17:29:14
+TAM TEST · 20.10.2026 17:36:11
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1338 geçti · 1 kalan · 293 sn
+SONUÇ: 1337/1338 geçti · 1 kalan · 288 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
