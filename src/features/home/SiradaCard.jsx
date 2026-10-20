@@ -134,86 +134,73 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 // Tek listede gün başlığı (Yarın · Çarşamba, Sırada): ince çizginin altında küçük gri ad
 const DayHead = ({ title }) => <h2 className="mt-1 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">{title}</h2>;
 
-// Saat çizgisi satırı (Bugün, Yarın, Sırada aynı; 3. örnek): solda saat (Sırada'da altında gün), dikey çizgi üstünde plan türünün renginde halka,
-// süren planda kırmızı dolu nokta ve alt satırın sonunda "şimdi"; ad, alt satırda tür adı ve yer ("Yarış · Foça"; Seyhun 2026-10-19) (warn: rüzgâr eşiği geçti, kırmızımsı).
-// Ad kısaltılmaz, alt satıra geçer (Seyhun 2026-10-19); sağda kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri)
+// Liste satırı (Bugün, Yarın, Sırada aynı; Seyhun 2026-10-20: "başlık üst satır yatayda full, altında diğer bilgiler yan yana"): solda ince dikey çizgi
+// ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında saat · gün · tür · yer · "şimdi" ve sağda
+// kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri). warn: rüzgâr eşiği geçti, alt satır kırmızımsı
 const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
 function TimeRow({ p, live, warn, sub, date, left, onOpen }) {
   const tag = planTag(p);
   return (
     <li>
-      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} grid w-full grid-cols-[4.5rem_1fr] text-left`}>
-        <span className={`whitespace-nowrap py-2.5 tabular-nums ${p.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
-          {p.time || "Tüm gün"}
-          {date && <small className="block text-[0.75rem] font-normal text-mut">{date}</small>}
-        </span>
-        <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
-          <span
-            aria-hidden="true"
-            className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
-          />
-          <span className="flex min-w-0 items-start gap-2">
-            <b className={`min-w-0 flex-1 break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
-            <LeftPill left={left} />
-          </span>
-          {(tag || sub || live) && (
-            <small className={`block break-words text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
-              {tag && <span className="tone-fg font-semibold">{tag}</span>}
-              {tag && sub ? " · " : ""}
-              {sub}
-              {live && (
-                <span className="font-semibold text-[var(--red)]">
-                  {sub || tag ? " · " : ""}şimdi
-                </span>
-              )}
-            </small>
-          )}
-        </span>
+      <button type="button" onClick={onOpen} className={`tone-${planTone(p)} relative block w-full border-l-2 border-line py-2.5 pl-4 text-left`}>
+        <Dot live={live} />
+        <b className={`block break-words ${live ? "font-semibold" : "font-normal"}`}>{p.title}</b>
+        <Meta left={left} warn={warn}>
+          <span className={`tabular-nums ${p.time ? "font-semibold text-fg2" : ""}`}>{p.time || "Tüm gün"}</span>
+          {date && <span className="whitespace-nowrap"> · {date}</span>}
+          {tag && <span className="tone-fg font-semibold"> · {tag}</span>}
+          {sub && <span> · {sub}</span>}
+          {live && <span className="font-semibold text-[var(--red)]"> · şimdi</span>}
+        </Meta>
       </button>
     </li>
   );
 }
+const Dot = ({ live }) => (
+  <span
+    aria-hidden="true"
+    className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
+  />
+);
+// Satırın alt bilgisi: solda yan yana bilgiler (gerekirse alt satıra geçer), sağda kalan gün
+const Meta = ({ left, warn, children }) => (
+  <span className={`mt-0.5 flex items-start gap-2 text-[0.84375rem] ${warn ? "font-medium text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+    <span className="min-w-0 flex-1 break-words">{children}</span>
+    <LeftPill left={left} />
+  </span>
+);
 
-// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte yarışın adı, solda başlangıç günü, "Yarış · Başlangıç · yer", sağda başlangıca kalan gün;
-// dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (gün, iş adı, kalan gün), dokununca Yapıldı / Yarışın sayfası / Planı aç
+// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte tam genişlikte yarışın adı, altında başlangıç günü · Yarış · Başlangıç · yer ve sağda
+// başlangıca kalan gün; dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (üstte iş adı, altında gün · saat ve kalan gün),
+// dokununca Yapıldı / Yarışın sayfası / Planı aç
 function RaceGroupRow({ g, race, date, today, onRace, onOpen }) {
   const head = g.start?.p || g.items[0].p;
   const startDay = g.start?.p.date || race?.startDate || "";
   const href = race ? `/athletes/races/${race.id}` : "";
   return (
-    <li className={`tone-${planTone(head)} grid grid-cols-[4.5rem_1fr]`}>
-      <span className={`whitespace-nowrap py-2.5 tabular-nums ${head.time ? "text-[0.90625rem] font-bold" : "text-[0.75rem] font-semibold text-fg2"}`}>
-        {head.time || "Tüm gün"}
-        <small className="block text-[0.75rem] font-normal text-mut">{date(startDay || g.day)}</small>
-      </span>
-      <span className="relative min-w-0 border-l-2 border-line py-2.5 pl-4">
-        <span aria-hidden="true" className="absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 border-[var(--tfg)] bg-card" />
-        <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="flex w-full min-w-0 items-start gap-2 text-left">
-          <span className="min-w-0 flex-1">
-            <b className="break-words font-semibold">
-              {g.race}
-              {href && <span className="ml-1 font-normal text-acc">›</span>}
-            </b>
-            <small className="block break-words text-[0.84375rem] text-mut">
-              <span className="tone-fg font-semibold">Yarış</span>
-              {[startDay && "Başlangıç", head.place].filter(Boolean).map((x) => ` · ${x}`)}
-            </small>
-          </span>
-          {startDay && <LeftPill left={leftTag(startDay, today)} />}
-        </button>
-        <ul className="mt-1.5 space-y-1.5">
-          {g.items.map(({ p, day, label }) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => onOpen(p)} className="flex w-full items-center gap-2 rounded-xl bg-bg px-2.5 py-2 text-left">
-                <span className="w-[4.25rem] shrink-0 whitespace-nowrap text-[0.78125rem] tabular-nums text-mut">{date(day)}</span>
-                <span className="min-w-0 flex-1 break-words text-[0.90625rem]">{label}</span>
-                {p.time && <span className="shrink-0 whitespace-nowrap text-[0.78125rem] tabular-nums text-mut">{p.time}</span>}
-                <LeftPill left={leftTag(day, today)} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </span>
+    <li className={`tone-${planTone(head)} relative border-l-2 border-line py-2.5 pl-4`}>
+      <Dot />
+      <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="block w-full text-left">
+        <b className="block break-words font-semibold">
+          {g.race}
+          {href && <span className="ml-1 font-normal text-acc">›</span>}
+        </b>
+        <Meta left={startDay ? leftTag(startDay, today) : null}>
+          {[head.time, date(startDay || g.day)].filter(Boolean).join(" · ")}
+          <span className="tone-fg font-semibold"> · Yarış</span>
+          {[startDay && "Başlangıç", head.place].filter(Boolean).map((x) => ` · ${x}`)}
+        </Meta>
+      </button>
+      <ul className="mt-1.5 space-y-1.5">
+        {g.items.map(({ p, day, label }) => (
+          <li key={p.id}>
+            <button type="button" onClick={() => onOpen(p)} className="block w-full rounded-xl bg-bg px-2.5 py-2 text-left">
+              <span className="block break-words text-[0.90625rem]">{label}</span>
+              <Meta left={leftTag(day, today)}>{[date(day), p.time].filter(Boolean).join(" · ")}</Meta>
+            </button>
+          </li>
+        ))}
+      </ul>
     </li>
   );
 }
