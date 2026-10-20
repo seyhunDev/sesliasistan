@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 // Bildirim testi (Ayarlar › Testler › Bildirim testi). POST { kind }: deneme kaydı açar. 30 sn denemelerini
 // push-test-background bekleyip gönderir; o çalışmazsa ya da hatırlatma denemesinde 5 dakikalık zamanlayıcı gönderir.
-// DELETE: deneme kayıtlarını siler. Kayıtlar yalnız kişinin kendi belgesinde (users/{uid}.pushTests).
+// DELETE: deneme kayıtlarını ve zildeki deneme bildirimlerini siler. Kayıtlar yalnız kişinin kendi belgesinde (users/{uid}.pushTests).
 export async function POST(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
@@ -34,11 +34,14 @@ export async function POST(request) {
   const t = newTest(kind, { id, tz });
   if (!t) return NextResponse.json({ error: "Bilinmeyen deneme" }, { status: 400 });
   const ref = adminDb().collection("users").doc(au.uid);
-  const tests = (await ref.get()).data()?.pushTests || {};
+  const u = (await ref.get()).data() || {};
+  const tests = u.pushTests || {};
   const old = oldTests(tests);
+  const inbox = old.length ? dropTests(u.inbox, old) : null;
   const keep = Object.fromEntries(Object.entries(tests).filter(([k]) => !old.includes(k)));
   await ref.update({
     ...Object.fromEntries(old.map((k) => [`pushTests.${k}`, FieldValue.delete()])),
+    ...(inbox && { inbox }),
     [`pushTests.${id}`]: t,
     pushTestAt: pendingAt({ ...keep, [id]: t }),
   });
@@ -58,11 +61,20 @@ export async function POST(request) {
   return NextResponse.json({ ok: true, id });
 }
 
+// Zildeki deneme bildirimleri (etiket test-…): ids verilirse yalnız onlar. Değişen yoksa null (yazılmaz).
+function dropTests(list, ids) {
+  if (!Array.isArray(list)) return null;
+  const out = list.filter((x) => !(String(x?.tag || "").startsWith("test-") && (!ids || ids.includes(String(x.tag).slice(5)))));
+  return out.length === list.length ? null : out;
+}
+
 export async function DELETE(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
   if (!adminReady()) return NextResponse.json({ error: "Sunucu anahtarı tanımlı değil" }, { status: 503 });
-  await adminDb().collection("users").doc(au.uid).update({ pushTests: FieldValue.delete(), pushTestAt: FieldValue.delete() });
+  const ref = adminDb().collection("users").doc(au.uid);
+  const inbox = dropTests((await ref.get()).data()?.inbox);
+  await ref.update({ pushTests: FieldValue.delete(), pushTestAt: FieldValue.delete(), ...(inbox && { inbox }) });
   return NextResponse.json({ ok: true });
 }
 

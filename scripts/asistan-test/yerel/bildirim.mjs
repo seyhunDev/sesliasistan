@@ -393,7 +393,7 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   await run();
   const s = F.sent.filter((x) => x.payload?.tag === `test-${id}`);
   add(G, "30 sn geçti, zamanlayıcı çalıştı", "telefona bir kez gider, \"zamanlayıcı\" yazılır, bekleyen kalmaz", s.length === 1 && s[0].to === "e-own" && own().pushTests[id].via === "zamanlayıcı" && !own().pushTestAt);
-  add(G, "zil ve simgedeki sayı", "deneme zile yazılmaz, sayı gönderilmez", (own().inbox || []).length === inbox0 && s[0].payload.badge === undefined);
+  add(G, "zil ve simgedeki sayı", "gerçek gibi zile yazılır, simgedeki sayı gider", (own().inbox || []).length === inbox0 + 1 && own().inbox[0].tag === `test-${id}` && s[0].payload.badge === 1);
   await run();
   add(G, "zamanlayıcı yine çalıştı", "ikinci kez gitmez", F.sent.filter((x) => x.payload?.tag === `test-${id}`).length === 1);
   const a = s[0].payload.ack;
@@ -434,8 +434,10 @@ const plan = (id, d) => put(`orgs/own/plans/${id}`, { title: "Antrenman", date: 
   add(G, "zamanlayıcı çalıştı", "başlangıç ve bitiş saati yazılır (sayfada \"Zamanlayıcı\" satırı)", !!beat.start && !!beat.end && beat.end >= beat.start);
   const gb = (await quiet(async () => api.GET({ uid: "own" }))()).body;
   add(G, "Bildirim testi sayfası açıldı", "zamanlayıcının son çalışması okunur", gb.end === beat.end);
+  put("users/own", { ...own(), inbox: [{ id: "g1", tag: "plan-p9", title: "Gerçek", at: new Date().toISOString() }, ...(own().inbox || [])] });
   await quiet(async () => api.DELETE({ uid: "own" }))();
-  add(G, "\"Kaydı temizle\"", "tüm deneme kayıtları silinir", !own().pushTests && !own().pushTestAt);
+  add(G, "zilde gerçek bildirim de vardı", "temizlemede gerçek bildirim kalır", own().inbox.some((x) => x.id === "g1"));
+  add(G, "\"Kaydı temizle\"", "tüm deneme kayıtları ve zildeki deneme bildirimleri silinir", !own().pushTests && !own().pushTestAt && !(own().inbox || []).some((x) => x.tag.startsWith("test-")));
   add(G, "gerçek planlar", "denemeler plan listesine yazılmaz", ![...F.store.keys()].some((k) => k.startsWith("orgs/own/plans/")));
 }
 
