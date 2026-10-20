@@ -677,6 +677,15 @@ group("Ana sayfa kartları")([
       && g[1].p.id === "f" && !g[1].start && g[2].p.id === "c" && !g[2].start && g[3].p.id === "d" && g[3].start === true
       && HT.raceKey({ cat: "Genel", title: "X: y" }) === null && HT.raceKey({ cat: "Yarış", title: "Foça" }).whole === true;
   })],
+  ["kulüp kartları", F("tek liste: yarışın yarınki işi Yarın'da değil yarışın satırında; yarının başka planı Yarın'da", () => {
+    const P = (id, title, date, cat = "Yarış") => ({ id, title, cat, date });
+    const next = { day: "2026-10-21", rows: [{ p: P("a", "Foça Kupası: Online kayıt son gün", "2026-10-21") }, { p: P("f", "İlay · Kuvvet", "2026-10-21", "Fitness") }] };
+    const rest = [{ p: P("b", "Foça Kupası: Ücreti öde", "2026-10-22"), day: "2026-10-22" }, { p: P("s", "Foça Kupası", "2026-10-24"), day: "2026-10-24" }, { p: P("k", "Kamp", "2026-10-26", "Genel"), day: "2026-10-26" }];
+    const x = HT.homeList(next, rest);
+    const y = HT.homeList(null, rest);
+    return x.next.length === 1 && x.next[0].p.id === "f" && x.later.length === 2 && x.later[0].race === "Foça Kupası" && x.later[0].items.length === 2 && x.later[1].p.id === "k"
+      && y.next.length === 0 && y.later[0].items.length === 1;
+  })],
   ["kulüp kartları", F("plan satırında kalan gün: bugün/yarın kırmızı, 2 gün sarı ünlemli, sonrası gri; geçmiş yok", () => {
     const t = "2026-10-19";
     const x = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-26", "2026-10-18"].map((d) => HT.leftTag(d, t));

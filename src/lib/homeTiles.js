@@ -347,6 +347,14 @@ export function raceGroups(rows = []) {
   }
   return out;
 }
+// Ana sayfanın tek listesi (Seyhun 2026-10-20: "tek bir listemiz olsun, tarihli liste saat saat ve sıradaki"): yarının satırları ve sonrakiler
+// birlikte gruplanır (raceGroups), böylece yarışın yarınki işi yalnız yarışın satırında görünür. Dönüş { next: yarının tek planları, later: en çok n satır }
+export function homeList(next, rest = [], n = 4) {
+  const rows = [...(next ? next.rows.map((r) => ({ ...r, day: next.day })) : []), ...rest];
+  const all = raceGroups(rows);
+  const isNext = (x) => next && !x.race && x.day === next.day;
+  return { next: all.filter(isNext), later: all.filter((x) => !isNext(x)).slice(0, n) };
+}
 // Ana sayfa takvimi iki gün (Seyhun: "bugün ve en yakın tarih; yarın varsa yarın"): bugün (geçmiş saatler hariç) ve
 // planı olan en yakın sonraki gün; kalan planlar "Sırada seni bekleyenler" (rest, en çok n). Gün başlığı: Bugün, Yarın ya da "Cum 17 Eki".
 export function twoDays(plans = [], today, now = new Date(), n = 4, horizon = 60) {
