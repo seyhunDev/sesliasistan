@@ -63,16 +63,20 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 
 Sayfanın ana bölümleri önemliyse (yarış detay) sekmeler lacivert üstte büyük `raised` düğmeler olur (3 sütun), seçili `ck-sel`; her düğmede kısa durum ("3 iş", "Hazır"), eksikse sarı. Aynı durum aşağıda ayrıca liste olarak tekrar edilmez.
 
+## Arama ve süzgeç
+
+Arama kutusu ve süzgeç çipleri lacivert üstte durur: kutu `ck-glass`, çip seçiliyse beyaz (`border-white bg-white text-[#141938]`), değilse `ck-glass`.
+
 ## Alttan pencereler
 
 Örnek: `src/features/home/DayPick.jsx`. Başlık kısa olur ("Pzt 21 Eki"). İçerik bölüm bölüm `ListHead` + `RowList` ile gelir. İş düğmeleri en altta durur: solda `secondary`, sağda `primary`. Seyrek kullanılan iş `text` düğmesi olarak yazılır.
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`) Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte) Yarışlar (`/athletes/races`; sıradaki yarış lacivertte) Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi) ve Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
+Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; gün, sayılar, toplu işaret lacivertte) ve Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
 
-Henüz eski tasarımda olanlar: archive, athletes (yoklama dahil; yarış multimedya alt sayfası ayrı), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
+Henüz eski tasarımda olanlar: archive, athletes alt sayfaları (sporcu detayı, yoklama raporu, yarış multimedya), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
 
-Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓. Sonrası Seyhun'a sorulacak.
+Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓ · Sporcular ✓ · Yoklama ✓. Sonrası Seyhun'a sorulacak.
 
 Bir sayfa geçince bu listeyi güncelle.

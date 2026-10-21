@@ -2,34 +2,33 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Icon } from "@/components/ui/Icon";
 import { alertText, expiryList } from "@/lib/expiry";
 import { todayStr } from "@/lib/utils/format";
 
-// Sporcular sayfasının başında: lisans vizesi, sağlık raporu ya da sigortası bitmiş / 30 gün içinde bitecek sporcular
+// Sporcular sayfasının başında (tek satır, dokununca açılır): lisans vizesi, sağlık raporu ya da sigortası bitmiş / 30 gün içinde bitecek sporcular
 export function ExpiryCard({ athletes }) {
   const [open, setOpen] = useState(false);
   const rows = expiryList(athletes, todayStr());
   if (!rows.length) return null;
   const gone = rows.filter((r) => r.items.some((x) => x.state === "expired")).length;
+  const names = rows.map((r) => r.a.studentName);
   return (
-    <div className={`mt-3 rounded-2xl ${gone ? "bg-rec/10" : "bg-amber-500/10"}`}>
-      <button type="button" onClick={() => setOpen((o) => !o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-        <Icon name="alert" className={`size-5 shrink-0 ${gone ? "text-rec" : "text-amber-700"}`} />
-        <span className="min-w-0 flex-1 text-[0.875rem] leading-snug">
-          <b className="block font-semibold">{rows.length} sporcunun belgesi {gone ? "bitti ya da bitiyor" : "yakında bitiyor"}</b>
-          <span className="text-mut">Lisans vizesi, sağlık raporu, sigorta</span>
+    <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 px-3.5 py-2.5 text-left">
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-semibold">{rows.length} sporcunun belgesi {gone ? "bitti ya da bitiyor" : "bitiyor"}</b>
+          <small className="block truncate text-[0.8125rem] font-semibold text-warn">{names.slice(0, 2).join(", ")}{names.length > 2 ? ` +${names.length - 2}` : ""}</small>
         </span>
-        <Icon name="chev" className={`size-4 text-mut transition ${open ? "rotate-90" : ""}`} />
+        <span className="shrink-0 text-[0.875rem] font-semibold text-mut">{open ? "Kapat" : "Gör"}</span>
       </button>
       {open && (
-        <ul className="divide-y divide-line/70 px-4 pb-2">
+        <ul className="divide-y divide-line border-t border-line px-3.5">
           {rows.map(({ a, items }) => (
             <li key={a.id}>
-              <Link href={`/athletes/${a.id}`} className="block py-2 active:opacity-60">
+              <Link href={`/athletes/${a.id}`} data-press="row" className="block py-2.5">
                 <b className="block text-[0.875rem] font-semibold">{a.studentName}</b>
                 {items.map((x) => (
-                  <small key={x.key} className={`block text-[0.75rem] ${x.state === "expired" ? "font-medium text-rec" : "text-amber-800"}`}>
+                  <small key={x.key} className={`block text-[0.8125rem] ${x.state === "expired" ? "font-semibold text-warn" : "text-mut"}`}>
                     {alertText(x)}
                   </small>
                 ))}

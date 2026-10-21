@@ -33,7 +33,7 @@ export function AbsentNotice({ absent, date, today, members }) {
   }
 
   return (
-    <div className="mt-3 rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+    <div className="mt-3 rounded-[1.25rem] border border-line bg-card">
       <button type="button" onClick={() => setOpen((o) => !o)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <Icon name="bell" className="size-5 shrink-0 text-rec" />
         <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">

@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ExpiryCard } from "@/features/athletes/ExpiryCard";
 import { alertsOf } from "@/lib/expiry";
 import { todayStr } from "@/lib/utils/format";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
@@ -28,7 +28,7 @@ function birthParts(iso) {
   return Number.isNaN(d.getTime()) ? null : { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() };
 }
 
-// Sporcular (kulübün diğer projesinden). Ekleme burada, arşiv ve silme sporcunun sayfasında. Yalnızca izinli hesap görür.
+// Sporcular (kulübün diğer projesinden; yeni tasarım 2026-10-21: lacivert üstte ekle, Yoklama/Yarışlar, arama ve sınıflar; altta belge uyarısı ve liste). Ekleme burada, arşiv ve silme sporcunun sayfasında. Yalnızca izinli hesap görür.
 export default function AthletesPage() {
   const { profile } = useAuth();
   const router = useRouter();
@@ -92,68 +92,70 @@ function AthleteList() {
   );
   const activeCount = all.filter(isActive).length;
 
+  const sub = err ? "Kulüp verisi" : data ? `${activeCount} aktif${linked.size ? ` · ${[...linked.values()].filter((m) => m.account !== false).length} uygulamada` : ""}` : "Yükleniyor…";
+  const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
+
   return (
     <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
-      <PageHeader title="Sporcular" sub={err ? "Kulüp verisi" : data ? `${activeCount} aktif${all.length > activeCount ? ` · ${all.length - activeCount} arşivde` : ""}` : "Yükleniyor…"}>
-        {data && !err && (
-          <button type="button" onClick={() => setAdding(true)} aria-label="Sporcu ekle" title="Sporcu ekle" data-press className="btn btn-round size-10 text-acc">
-            <Icon name="plus" className="size-5" />
-          </button>
-        )}
-        <Link href="/athletes/races" aria-label="Yarış evrakı" title="Yarış evrakı" className="grid size-10 place-items-center rounded-full bg-card text-acc shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-90">
-          <Icon name="flag" className="size-5" />
-        </Link>
-        <Link href="/athletes/attendance" className="flex h-10 items-center gap-1.5 rounded-full bg-acc px-4 text-[0.875rem] font-semibold text-white active:scale-95">
-          <Icon name="check" className="size-[1.125rem]" />
-          Yoklama
-        </Link>
-      </PageHeader>
-
-      {/* Arama */}
-      <label className={`mt-2 h-11 items-center gap-2 rounded-xl bg-card px-3 shadow-[0_1px_3px_rgba(38,40,44,.05)] ${err ? "hidden" : "flex"}`}>
-        <Icon name="search" className="size-[1.125rem] shrink-0 text-mut" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Ad, T.C. ya da veli"
-          inputMode="search"
-          className="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-mut"
-        />
-        {q && (
-          <button onClick={() => setQ("")} aria-label="Temizle" data-press className="btn btn-icon btn-sm size-7 text-mut">
-            <Icon name="x" className="size-4" />
-          </button>
-        )}
-      </label>
-
-      {/* Sınıf filtresi + pasifler */}
-      {data && !err && (
-        <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
-          {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-            <button
-              key={c.id || "all"}
-              onClick={() => setCls(c.id)}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[0.8125rem] font-medium transition active:scale-95 ${cls === c.id ? "bg-acc text-white" : "bg-card text-fg shadow-[0_1px_3px_rgba(38,40,44,.05)]"}`}
-            >
-              {c.name}
-            </button>
-          ))}
-          {all.length > activeCount && (
-            <button
-              onClick={() => setPassive((v) => !v)}
-              className={`h-8 shrink-0 rounded-full border px-3.5 text-[0.8125rem] font-medium transition active:scale-95 ${passive ? "border-fg text-fg" : "border-line text-mut"}`}
-            >
-              Arşiv ({all.length - activeCount}) {passive ? "görünür" : "gizli"}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Sporcular">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Sporcular</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
+          </div>
+          {data && !err && (
+            <button type="button" onClick={() => setAdding(true)} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+              <Icon name="plus" className="size-4" />
+              Sporcu
             </button>
           )}
-        </div>
-      )}
+        </header>
 
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Link href="/athletes/attendance" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+            Yoklama
+          </Link>
+          <Link href="/athletes/races" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+            Yarışlar
+          </Link>
+        </div>
+
+        {/* Arama */}
+        <label className={`ck-glass mt-3.5 h-11 items-center gap-2 rounded-xl px-3 ${err ? "hidden" : "flex"}`}>
+          <Icon name="search" className="size-[1.125rem] shrink-0 text-white/55" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Ad, T.C. ya da veli"
+            inputMode="search"
+            className="min-w-0 flex-1 bg-transparent text-[0.9375rem] text-white outline-none placeholder:text-white/55"
+          />
+          {q && (
+            <button onClick={() => setQ("")} aria-label="Temizle" data-press className="grid size-7 place-items-center rounded-full text-white/70">
+              <Icon name="x" className="size-4" />
+            </button>
+          )}
+        </label>
+
+        {/* Sınıf filtresi */}
+        {data && !err && usedClasses.length > 1 && (
+          <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
+            {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
+              <button key={c.id || "all"} type="button" onClick={() => setCls(c.id)} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#141938]" : "ck-glass text-white"}`}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
       {err?.code === "permission-denied" ? (
         <DikiliLogin denied={!!user} onDone={reload} />
       ) : (
         err && (
-          <button onClick={reload} className="mt-4 w-full rounded-2xl bg-card px-4 py-4 text-left text-[0.875rem] shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+          <button onClick={reload} className="w-full rounded-[1.25rem] border border-line bg-card px-4 py-4 text-left text-[0.875rem]">
             <b className="block font-semibold text-rec">{err.text}</b>
             <span className="text-mut">Tekrar denemek için dokun</span>
           </button>
@@ -164,22 +166,19 @@ function AthleteList() {
       {data && !err && (
         <>
           <ExpiryCard athletes={all.filter(isActive)} />
-          <div className="mt-3 flex items-center justify-between px-1">
-            <p className="text-[0.8125rem] text-mut">
-              {list.length} sporcu{linked.size ? ` · ${[...linked.values()].filter((m) => m.account !== false).length} uygulamada` : ""}
-            </p>
-            <button
-              type="button"
-              onClick={() => setSel((s) => (s ? null : new Set()))}
-              className={`h-8 rounded-full px-3.5 text-[0.8125rem] font-semibold active:scale-95 ${sel ? "bg-deep text-white" : "bg-card text-acc ring-1 ring-line"}`}
-            >
+          <section>
+          <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+              SPORCU <span className="ml-0.5 font-semibold tabular-nums">{list.length}</span>
+            </h2>
+            <button type="button" onClick={() => setSel((s) => (s ? null : new Set()))} className="text-[0.8125rem] font-semibold text-acc">
               {sel ? "Seçimi bitir" : "Uygulamaya ekle"}
             </button>
           </div>
           {list.length === 0 ? (
-            <p className="mt-6 text-center text-[0.875rem] text-mut">Eşleşen sporcu yok</p>
+            <p className="mt-4 text-center text-[0.875rem] text-mut">Eşleşen sporcu yok</p>
           ) : (
-            <ul className="mt-1.5 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
+            <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
               {list.map((a) => {
                 const b = birthParts(a.studentBirthDate);
                 const canAdd = b && !hasBday(a, b);
@@ -207,21 +206,21 @@ function AthleteList() {
                   );
                 return (
                 <li key={a.id} className="flex items-center">
-                  <Link href={`/athletes/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 active:bg-bg">
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-full text-[0.8125rem] font-semibold ${isActive(a) ? "bg-acc/10 text-acc" : "bg-bg text-mut"}`}>
+                  <Link href={`/athletes/${a.id}`} data-press="row" className="flex min-h-[3.75rem] min-w-0 flex-1 items-center gap-3 py-2.5 pl-3.5 pr-3">
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-full text-[0.8125rem] font-bold ${isActive(a) ? "bg-accbg text-acc" : "bg-bg text-mut"}`}>
                       {a.studentName.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR")}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate text-[0.9375rem] font-semibold ${isActive(a) ? "" : "text-mut"}`}>{a.studentName}</span>
-                      <span className="block truncate text-[0.8125rem] text-mut">
+                      <b className={`block truncate text-[0.9375rem] font-semibold ${isActive(a) ? "" : "text-mut"}`}>{a.studentName}</b>
+                      <small className="block truncate text-[0.8125rem] text-mut">
                         {[classes[a.currentClassId], coaches[a.currentCoachId], !isActive(a) && "Arşivde"].filter(Boolean).join(" · ") || "Sınıf atanmamış"}
-                      </span>
-                      {inApp && <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-ok/10 px-2 py-px text-[0.6875rem] font-semibold text-ok">Uygulamada</span>}
-                      {isActive(a) && alertsOf(a, todayStr()).some((x) => x.state === "expired") && (
-                        <span className="ml-1 mt-0.5 inline-flex items-center gap-1 rounded-full bg-rec/10 px-2 py-px text-[0.6875rem] font-semibold text-rec">Belge bitti</span>
-                      )}
+                      </small>
                     </span>
-                    {!canAdd && <Icon name="chev" className="size-4 shrink-0 text-mut" />}
+                    {isActive(a) && alertsOf(a, todayStr()).some((x) => x.state === "expired") ? (
+                      <span className="shrink-0 rounded-full bg-warnbg px-2 py-0.5 text-[0.75rem] font-semibold text-warn">Belge bitti</span>
+                    ) : (
+                      inApp && <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">Uygulamada</span>
+                    )}
                   </Link>
                   {canAdd && (
                     <button
@@ -229,7 +228,7 @@ function AthleteList() {
                       onClick={() => addBday(a, b)}
                       title="Doğum gününü takvime ekle"
                       aria-label={`${a.studentName} doğum gününü takvime ekle (${b.day}.${String(b.month).padStart(2, "0")})`}
-                      className="mr-2 grid size-10 shrink-0 place-items-center rounded-full text-pink-600 transition hover:bg-pink-500/10 active:scale-90"
+                      className="-ml-1 mr-2 grid size-10 shrink-0 place-items-center rounded-full text-pink-600 transition hover:bg-pink-500/10 active:scale-90"
                     >
                       <Icon name="cake" className="size-5" />
                     </button>
@@ -239,6 +238,12 @@ function AthleteList() {
               })}
             </ul>
           )}
+          {all.length > activeCount && (
+            <button type="button" onClick={() => setPassive((v) => !v)} aria-pressed={passive} className="mt-3 block w-full text-center text-[0.875rem] font-semibold text-acc">
+              {passive ? "Arşivi gizle" : `Arşiv (${all.length - activeCount})`}
+            </button>
+          )}
+          </section>
           {sel && (
             <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6">
               <div className="mx-auto flex max-w-[26rem] gap-2">
@@ -282,7 +287,7 @@ function AthleteList() {
             athletes={all}
           />
           {user && (
-            <p className="mt-6 text-center text-[0.75rem] text-mut">
+            <p className="text-center text-[0.75rem] text-mut">
               Kulüp hesabı: {user.email} ·{" "}
               <button onClick={() => disconnect().then(reload)} className="underline underline-offset-2">
                 bağlantıyı kes
@@ -291,6 +296,7 @@ function AthleteList() {
           )}
         </>
       )}
+      </div>
     </main>
   );
 }
