@@ -850,6 +850,19 @@ async function scenarios4(h) {
       });
       setLive(null);
     }
+    // Asistanla hazırlanan Instagram gönderisi kaydedilince (PostEditor "sa-post-ready"): son cevabın altında görsel + düğme
+    await check("Instagram gönderisi", "kaydedilince", "son cevabın altında görselin küçüğü ve “Gönderiyi aç” düğmesi", async () => {
+      await page.evaluate(() => {
+        const c = document.createElement("canvas");
+        c.width = 40;
+        c.height = 50;
+        window.dispatchEvent(new CustomEvent("sa-post-ready", { detail: { id: "gonderi-taklit", thumb: c.toDataURL("image/jpeg") } }));
+      });
+      const b = page.locator("[data-dome] button", { hasText: "Gönderiyi aç" });
+      const ok = await waitFor(() => b.count(), 3000);
+      const img = await b.locator("img").count();
+      return [!!ok && img === 1, `düğme ${await b.count()} · görsel ${img}`];
+    });
     await check(GR, "asistanı kapat", "tutulan mikrofon bırakılır", async () => {
       await closeAll(page);
       const ended = await waitFor(async () => page.evaluate(() => window.__tracks.length > 0 && window.__tracks.every((x) => x.readyState === "ended")), 3000);

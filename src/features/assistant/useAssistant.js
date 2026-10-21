@@ -820,6 +820,22 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
       close: () => finish(false),
     });
   });
+  // Asistanla hazırlanan Instagram gönderisi kaydedilince (PostEditor): son cevabın altına görselin küçüğü ve açma düğmesi
+  useEffect(() => {
+    if (!open) return;
+    const on = (e) => {
+      const { id, thumb } = e.detail || {};
+      if (!id) return;
+      setTurns((p) => {
+        const i = p.findLastIndex((t) => t.role === "assistant");
+        if (i < 0) return p;
+        const t = p[i];
+        return [...p.slice(0, i), { ...t, links: { ...(t.links || {}), post: { id, thumb: thumb || "" } } }, ...p.slice(i + 1)];
+      });
+    };
+    window.addEventListener("sa-post-ready", on);
+    return () => window.removeEventListener("sa-post-ready", on);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     document.body.dataset.asst = "dock";
