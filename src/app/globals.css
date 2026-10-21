@@ -704,5 +704,7 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* Kokpit iş düğmeleri (Seyhun 2026-10-21): kokpitteki iş düğmeleri yarı saydam, ana iş beyaz */
 .ck .raised { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck .raised.act-main { background: #fff; color: #141938; }
+/* Kokpitte yarı saydam kutu (antrenman sayacının şeridi ve düğmeleri, training/Countdown dark) */
+.ck-glass { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); }
 /* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
 .ck .raised.ck-sel { background: #8b5cf6; color: #fff; border-color: #a78bfa; }
