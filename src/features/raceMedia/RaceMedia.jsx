@@ -12,7 +12,7 @@ import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
 import { beginRace, cleanLive, dayNames, dayOf, liveDays, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
-import { readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { mineHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { WeatherTab } from "./WeatherTab";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
@@ -23,7 +23,6 @@ import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
-import { useTimerHome } from "@/features/training/TimerChip";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
@@ -128,7 +127,6 @@ export function RaceMedia({ orgId, id }) {
     [change, orgId, id, rdays],
   );
   const timer = useTimerRun({ onZero });
-  useTimerHome();
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
   // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)
@@ -138,7 +136,7 @@ export function RaceMedia({ orgId, id }) {
     if (!race || !tFree) return;
     const id2 = setTimeout(() => {
       const t = readTimer();
-      if (t.rid || t.end == null || t.end < Date.now()) return;
+      if (t.rid || t.end == null || t.end < Date.now() || !mineHere(t)) return;
       change((l) => {
         const got = beginRace(l.starts, Date.now(), t.end, rdays);
         writeTimer({ ...t, rid: got.id });
@@ -248,7 +246,7 @@ export function RaceMedia({ orgId, id }) {
           }
           // Bu yarışın start sayacı da durur (diğer cihazlara useLiveSync ile gider)
           const t = readTimer();
-          if (t.mode === "start" && t.end != null) writeTimer({ ...pickTimer({}), zero: t.zero });
+          if (t.mode === "start" && t.end != null && mineHere(t)) writeTimer({ ...pickTimer({}), zero: t.zero });
           setDay("");
           setLive((l) => cleanLive({ ...l, ...patch }));
           setReset(false);

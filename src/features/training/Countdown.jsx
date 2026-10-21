@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { createPortal } from "react-dom";
 import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
-import { UP_MAX, beepAt, upSec } from "@/lib/raceLive";
+import { UP_MAX, beepAt, ownedBy, upSec } from "@/lib/raceLive";
 
 // Antrenman sayacı: hazır 2/5/10 dk ya da Ayarla (dakika + saniye). Son 5 saniye her saniye kısa bip, 0'da uzun bip;
 // 0'dan sonra ileri sayar ("Startan beri") ve bu an yarış startı olarak kullanılabilir (readTimer().zero).
@@ -48,6 +48,15 @@ const sub = (f) => {
   window.addEventListener("storage", f);
   return () => (window.removeEventListener(KEY, f), window.removeEventListener("storage", f));
 };
+// Bu sayfanın sayaç sahibi adı (lib/raceLive ownedBy): yol, antrenman gününde ?id=plan da
+export function ownHere() {
+  if (typeof window === "undefined") return "";
+  const id = new URLSearchParams(window.location.search).get("id");
+  return window.location.pathname + (id ? `?id=${id}` : "");
+}
+export const mineHere = (t) => ownedBy(t?.own, ownHere());
+// Başka sayfanın sayacı bu sayfada boş görünür (süre seçimi kalır); burada başlatılınca onun yerine geçer
+const hereView = (t) => (mineHere(t) ? t : { dur: t.dur, end: null, left: null, zero: null });
 export function useTimer() {
   const r = useSyncExternalStore(sub, raw, () => "");
   return useMemo(() => parse(r), [r]);
@@ -56,8 +65,9 @@ export function useTimer() {
 // Asistan: "5 dakikalık sayacı başlat" sayacı burada başlatır (mode "start": yarış dizisi)
 // Geri al: önceki sayaç kaydı olduğu gibi geri yazılır
 export const writeTimer = (t) => write(t);
-export function startTimer(sec, mode = "") {
-  write({ dur: sec, end: Date.now() + sec * 1000, left: null, mode, zero: readTimer().zero });
+export function startTimer(sec, mode = "", own = ownHere()) {
+  const t = readTimer();
+  write({ dur: sec, end: Date.now() + sec * 1000, left: null, mode, zero: ownedBy(t.own, own) ? t.zero : null, own });
 }
 
 let ctx = null;
@@ -103,7 +113,8 @@ function beep(kind) {
 // Sayacın saati (200 ms) ve onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez). Ekranlar bunu kullanır;
 // bipler ise TimerSound'da (uygulama düzeninde tek yerde): sayaç hangi sayfa açık olursa olsun öter.
 export function useTimerRun({ onZero } = {}) {
-  const t = useTimer();
+  const all = useTimer();
+  const t = useMemo(() => hereView(all), [all]);
   const [now, setNow] = useState(0);
   const zeroed = useRef(null); // onZero çağrılan bitiş anı
   const zeroFn = useRef(onZero);
@@ -225,7 +236,7 @@ export function TimerSound() {
 // Sayaç düğmelerinin işi (Countdown ve uygulama içi kamera aynı yolu kullanır, CameraSheet). race: yarış akışı (TimerTab useRaceFlow);
 // her biri o anki sayaç kaydını okur, yazar ve akışa önceki kaydı verir (Geri al için).
 function plainStart(mode) {
-  const t = readTimer();
+  const t = { ...hereView(readTimer()), own: ownHere() };
   audio();
   const left = t.left ?? t.dur;
   if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
@@ -267,7 +278,7 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, c
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
   const [pick, setPick] = useState(false);
-  const save = write;
+  const save = (x) => write({ ...x, own: ownHere() });
 
   const start = () => raceStart(race, mode);
   const cancel = () => raceCancel(race);

@@ -115,7 +115,16 @@ export function resetPatch(media, now) {
   if (media) p.media = [];
   return p;
 }
-export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null });
+export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null, own: t?.own || "" });
+// Sayacın sahibi (Seyhun 2026-10-21: "süreyi başlatıyorum, diğer yarışın sayımını açıyor"): sayaç telefonda tek, ama her sayfa yalnız kendi
+// başlattığını gösterir. own = sayacın sayfası (yol, antrenmanda ?id=plan). Biri planlı biri plansız antrenman adresiyse yol yeter (asistan
+// "/training/day" yazar, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
+export function ownedBy(own, here) {
+  if (!own || own === here) return true;
+  const [a, qa] = String(own).split("?");
+  const [b, qb] = String(here || "").split("?");
+  return a === b && (!qa || !qb);
+}
 export function takeTimer(remote, mine, first, now) {
   if (!remote) return false;
   if (JSON.stringify(pickTimer(remote)) === JSON.stringify(pickTimer(mine))) return false;

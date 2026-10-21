@@ -38,8 +38,9 @@ export async function timerCmd(ctx, s, viaVoice) {
   const tc = racer ? timerCommand(s) : null;
   if (!tc) return undefined;
   const r = raceFor(ctx);
-  startTimer(tc.sec, r ? "start" : "");
-  const href = r ? `/athletes/races/${r.id}/media?tab=sure` : "/training/day";
+  const own = r ? `/athletes/races/${r.id}/media` : "/training/day";
+  startTimer(tc.sec, r ? "start" : "", own); // sayaç gidilen sayfanın (kendi sayfasında görünür)
+  const href = r ? `${own}?tab=sure` : own;
   if (`${window.location.pathname}${window.location.search}` !== href) router.push(href);
   done(`Sayaç başladı: ${tc.sec / 60} dakika.`, { engine: "local" }, viaVoice);
   return true;

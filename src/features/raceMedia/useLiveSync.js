@@ -5,7 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { setDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { cleanLive, pickTimer as pick, takeTimer } from "@/lib/raceLive";
-import { readTimer, writeTimer } from "@/features/training/Countdown";
+import { mineHere, ownHere, readTimer, writeTimer } from "@/features/training/Countdown";
 
 // Kendi cihazlarım arasında canlı (Seyhun 2026-10-18): yarış multimedya sayfası açıkken raceLive belgesi dinlenir. Başka telefonda ya da
 // bilgisayarda başlatılan, kaydırılan, iptal edilen ya da biten sayaç bu cihazın sayacına yazılır (bipler de çalar); yarışlar, rüzgâr ve
@@ -21,6 +21,7 @@ export function useLiveSync({ orgId, raceId, setLive }) {
     const push = () => {
       if (applying.current) return;
       const t = readTimer();
+      if (!mineHere(t)) return; // başka sayfanın sayacı bu yarışın belgesine yazılmaz
       seen.current = Date.now();
       setDoc(ref, { timer: { ...pick(t), at: seen.current } }, { merge: true }).catch(() => {});
     };
@@ -33,12 +34,14 @@ export function useLiveSync({ orgId, raceId, setLive }) {
         setLive(cleanLive(d));
         const r = d.timer;
         if (!r || !(r.at > seen.current)) return;
-        const go = takeTimer(r, readTimer(), seen.current === 0, Date.now());
+        const mine = readTimer();
+        // Açılışta başka sayfada süren sayacın yerine bu belgedeki eski sayaç geçmez
+        const go = takeTimer(r, mine, seen.current === 0, Date.now()) && !(seen.current === 0 && mine.end != null && !mineHere(mine));
         seen.current = r.at;
         if (!go) return;
         applying.current = true;
         try {
-          writeTimer(pick(r));
+          writeTimer({ ...pick(r), own: r.own || ownHere() });
         } finally {
           applying.current = false;
         }
