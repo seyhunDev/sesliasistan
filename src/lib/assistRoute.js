@@ -12,7 +12,7 @@ import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/word
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
 import { bodyCommand } from "@/lib/athleteBody";
-import { wantsPost } from "@/features/posts/postModel";
+import { wantsPost, wantsPostOpen } from "@/features/posts/postModel";
 import { raceAsk, wantsRaceOpen, findRace, raceJobHere, wantsRaceText } from "@/features/athletes/raceNav";
 import { wantsPerson } from "@/features/people/assistPerson";
 import { localNavigate } from "@/lib/nav";
@@ -137,6 +137,8 @@ export function routesOf(s, c = {}) {
   const fitWho = owner && !isStaff && c.fitPeople?.length && athleteIn(s, c.fitPeople) && /\b(antrenman|idman|fitness)\w*/.test(fold(s)) && /\b(yapt|yapmis|yapmadi|kac\b|durum)/.test(fold(s));
   if (!mf && !bodyFirst && ((owner && !isStaff && (wantsFitness(s, !!c.fitHere) || fl?.op === "athletes" || fitWho)) || (isStaff && c.myFit && (myFitOp || wantsFitness(s, !!c.fitHere)))) && !nav(s)) add("fitness");
   if (!c.drafts && !c.pending && BARE_SAVE.test(s)) add("bareSave");
+  // "Atatürk Kupası'nın görselini aç": yarışın kayıtlı gönderisi açılır (yarış sayfası değil)
+  if (!mf && owner && !isStaff && racer && wantsPostOpen(s)) add("postOpen");
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   const ra = !mf && owner && racer ? resultsAsk(s) : null;
   if (ra) add("results", { ra });

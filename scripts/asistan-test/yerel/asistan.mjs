@@ -1504,7 +1504,11 @@ group("Temiz başlık ve sorusuz ekleme")([
   t = day + 5000;
   TM3.timingError("Ses anlaşılamadı, tekrar dene.");
   const txt = RP.reportText({ now: day + 6000, meta: { version: "21 Eki · #630", device: "iOS 26, ana ekran uygulaması", voice: true, quick: false } });
+  const ses = RP.reportText({ now: day + 6000, since: day - 1000, session: true, meta: {} });
   TM3.timingTest({});
+  group("Asistan raporu: konuşma kaydı")([
+    ["kapsam", { desc: "bu konuşma, açılış saati", fn: () => ses, ok: (r) => /Kapsam: bu konuşma \(09:59:59'de açıldı\), bu cihaz/.test(r) && /bugün plan var mı/.test(r) && !/dünkü istek/.test(r) }],
+  ]);
   const T = (desc, ok) => ({ desc, fn: () => txt, ok });
   group("Asistan raporu")([
     ["özet", T("1 istek, 1 sesli, yapay zekaya 1", (r) => /ÖZET: 1 istek \(1 sesli, 0 yazılı\) · yapay zekaya 1/.test(r))],

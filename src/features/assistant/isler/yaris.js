@@ -7,9 +7,10 @@ import { saveRace, loadRaces } from "@/features/athletes/races";
 import { loadAthletes } from "@/features/athletes/data";
 import { matchPerson, sameNamed, plain } from "@/lib/names";
 import { resultsAnswer } from "@/lib/resultSheet";
-import { raceWithAthletes, RACE_KEY, POST_ASK_KEY, wantsPostImage } from "@/features/posts/postModel";
+import { raceWithAthletes, RACE_KEY, POST_ASK_KEY, postGeneric, wantsPostImage } from "@/features/posts/postModel";
+import { racePostOf } from "@/features/athletes/raceLinks";
 import { record } from "@/lib/brain/store";
-import { postHandler } from "@/features/posts/posts";
+import { loadPosts, postHandler } from "@/features/posts/posts";
 import { raceHereCommand, hotelAddCommand } from "@/lib/assistMore";
 import { deleteRace, addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
 import { cleanResults } from "@/lib/raceResults";
@@ -137,7 +138,7 @@ export function sameIn(ctx, unknown, names) {
 
 // Instagram gönderisi: söylenen yarış bulunursa sporcularıyla bağlanır; gönderi ekranı açılınca yapay zeka yazar (POST_ASK_KEY)
 export async function startPost(ctx, s, viaVoice) {
-  const { chainRace, curRace, leave, memoSet, raceOrg, racer, races, router, runId, setPhase, setSteps, stepTo, stepsEnd } = ctx;
+  const { leave, memoSet, raceOrg, racer, races, router, runId, setPhase, setSteps, stepTo, stepsEnd } = ctx;
   const id = ++runId.current;
   setPhase("thinking");
   setSteps([]);
@@ -146,10 +147,7 @@ export async function startPost(ctx, s, viaVoice) {
     if (racer) {
       stepTo("Yarış aranıyor");
       if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
-      // Bu sohbette az önce oluşturulan / açılan yarış adla uyuşuyorsa önce o: aynı adlı eski yarış seçilmesin (denetim B7)
-      const near = chainRace.current && races.current.find((x) => x.id === chainRace.current);
-      const words = near ? near.name.split(/\s+/).map(plain).filter((w) => w.length > 2 && !/^(yaris|kupasi|kupa|ayak|ligi)$/.test(w)) : [];
-      r = (near && words.length && words.every((w) => plain(s).includes(w)) ? near : null) || raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race || null;
+      r = postRaceOf(ctx, s);
       if (r) {
         stepTo("Sporcular alınıyor");
         const data = await loadAthletes().catch(() => null);
@@ -168,6 +166,49 @@ export async function startPost(ctx, s, viaVoice) {
     // cevabın ve işaretin önüne geçmesin (Seyhun: "en son gönderiyi oluşturdu ama tik işareti çıkmadı", 2026-10-09)
     setTimeout(() => router.push("/posts/new"), 400);
     leave(r ? `${r.name} için gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.` : "Gönderiyi hazırlıyorum, hazır olunca kendiliğinden kaydedilir. Değiştirmek istediğini söyle.", viaVoice);
+  } finally {
+    if (id === runId.current) setPhase("idle");
+  }
+}
+
+// Gönderinin yarışı: söylenen ad; ad yoksa ("Instagram görseli hazırla", "bunun için afiş yap") sohbetin az önceki yarışı
+// (oluşturulan / açılan) ya da açık yarış sayfası (Seyhun: "görsel yarışa niye bağlantılı olmuyor", 2026-10-21)
+function postRaceOf(ctx, s) {
+  const { chainRace, curRace, races } = ctx;
+  const near = chainRace.current && races.current.find((x) => x.id === chainRace.current);
+  const words = near ? near.name.split(/\s+/).map(plain).filter((w) => w.length > 2 && !/^(yaris|kupasi|kupa|ayak|ligi)$/.test(w)) : [];
+  if (near && words.length && words.every((w) => plain(s).includes(w))) return near; // aynı adlı eski yarış seçilmesin (denetim B7)
+  const ref = raceRef(s, races.current, todayStr(), chainRace.current || curRace)?.race;
+  if (ref) return ref;
+  if (!postGeneric(s)) return null;
+  return near || (curRace && races.current.find((x) => x.id === curRace)) || null;
+}
+
+// Kayıtlı gönderiyi aç: "Atatürk Kupası'nın görselini aç". Yarışın gönderisi (yarış kimliğiyle, eskilerde adla) açılır,
+// sohbette görselin küçüğü ve "Gönderiyi aç" düğmesi çıkar; yarış söylenmediyse Gönderiler sayfası
+export async function openPost(ctx, s, viaVoice) {
+  const { leave, raceOrg, races, router, runId, setPhase, setSteps, stepTo, stepsEnd } = ctx;
+  const id = ++runId.current;
+  setPhase("thinking");
+  setSteps([]);
+  try {
+    stepTo("Gönderi aranıyor");
+    if (raceOrg && !races.current.length) races.current = await loadRaces(raceOrg).catch(() => []);
+    const r = postRaceOf(ctx, s);
+    const posts = raceOrg ? await loadPosts(raceOrg).catch(() => []) : [];
+    if (id !== runId.current) return;
+    stepsEnd();
+    record(s, "nav:posts", "local");
+    if (!r) {
+      router.push("/posts");
+      return leave("Gönderiler sayfasını açtım.", viaVoice);
+    }
+    const p = racePostOf(r, posts);
+    if (!p) return leave(`${r.name} için kayıtlı gönderi yok. “Gönderi hazırla” dersen hazırlarım.`, viaVoice);
+    router.push(`/posts/${p.id}`);
+    leave(`${r.name} gönderisini açtım.`, viaVoice);
+    // Sohbette görselin küçüğü ve açma düğmesi (hazırlanan gönderiyle aynı, useAssistant)
+    setTimeout(() => window.dispatchEvent(new CustomEvent("sa-post-ready", { detail: { id: p.id, thumb: p.thumb || "" } })), 50);
   } finally {
     if (id === runId.current) setPhase("idle");
   }

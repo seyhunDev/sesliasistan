@@ -744,3 +744,31 @@ group("Yönlendirme: afiş Kulüpten haberler'e")([
     ["yarışlar sayfasını aç", { desc: "sayfa açma yerelde", fn: first, ok: (r) => r?.id === "navigate" || (r?.id === "local" && r.cmd?.type === "navigate") }],
   ]);
 }
+
+// Instagram gönderisi yarışa bağlı (2026-10-21): "X'in görselini aç" kayıtlı gönderiyi açar; ad söylenmeyen gönderi
+// isteği sohbetin yarışına bağlanır (postGeneric)
+{
+  const { routesOf } = await import("@/lib/assistRoute");
+  const { wantsPostOpen, postGeneric } = await import("@/features/posts/postModel");
+  const ids = (x) => routesOf(x, { owner: true, racer: true, today }).map((r) => r.id);
+  const W = (want) => ({ desc: want ? "gönderiyi aç" : "açma değil", fn: wantsPostOpen, ok: (r) => r === want });
+  group("Instagram gönderisini açma")([
+    ["Atatürk Kupası'nın görselini aç", W(true)],
+    ["Atatürk Kupası Instagram gönderisini göster", W(true)],
+    ["yarışın afişini aç", W(true)],
+    ["Atatürk Kupası için Instagram görseli hazırla", W(false)],
+    ["görsel oluştur ve aç", W(false)],
+    ["açıklamayı göster", W(false)],
+    ["Atatürk Kupası'nın görselini aç", { desc: "yarış sayfasından önce gönderi açılır", fn: ids, ok: (r) => r.indexOf("postOpen") >= 0 && (r.indexOf("raceOpen") < 0 || r.indexOf("postOpen") < r.indexOf("raceOpen")) }],
+    ["Instagram görseli hazırla", { desc: "hazırlama (açma değil)", fn: ids, ok: (r) => r.includes("post") && !r.includes("postOpen") }],
+  ]);
+  const G = (want) => ({ desc: want ? "yarış söylenmedi: sohbetin yarışı" : "başka konu var", fn: postGeneric, ok: (r) => r === want });
+  group("Gönderi isteği yarışa bağlanır mı")([
+    ["Instagram görseli hazırla", G(true)],
+    ["bunun için bir Instagram gönderisi hazırla", G(true)],
+    ["yarış için afiş yap", G(true)],
+    ["onun görselini aç", G(true)],
+    ["29 Ekim gönderisi hazırla", G(false)],
+    ["Cumhuriyet Bayramı için görsel hazırla", G(false)],
+  ]);
+}

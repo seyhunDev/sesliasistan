@@ -868,6 +868,11 @@ async function scenarios4(h) {
       const ended = await waitFor(async () => page.evaluate(() => window.__tracks.length > 0 && window.__tracks.every((x) => x.readyState === "ended")), 3000);
       return [!!ended, await page.evaluate(() => window.__tracks.map((x) => x.readyState).join(", ") || "iz yok")];
     });
+    await check("Asistan raporu", "kapanınca kaydedilir", "o konuşmanın raporu sunucuya gider (söylenenler içinde)", async () => {
+      const got = await waitFor(async () => calls.some((c) => c.path === "/api/assist-log" && c.body?.text), 4000);
+      const b = calls.filter((c) => c.path === "/api/assist-log" && c.body?.text).at(-1)?.body || {};
+      return [!!got && /ASİSTAN RAPORU/.test(b.text) && /bu konuşma/.test(b.text) && /notlarımı oku/.test(b.text) && b.n >= 4, `${b.n ?? 0} istek · ilk: “${b.first || ""}”`];
+    });
     setTranscript("");
     await check("Sayfa hataları", "kayıt yolu", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
     await page.context().close();
