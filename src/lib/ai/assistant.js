@@ -108,6 +108,7 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 - KİŞİLER bölümü varsa: kullanıcı işi birine VERİYORSA ("Sanver tekneleri yıkasın", "Ali'nin benzin alma görevi var") o kişiyi listedeki TAM adıyla (ör. "Sanver Kaya") assignTo'ya yaz ve adı başlıktan çıkar. Kişiyle yapılan etkinlikte ("Sanver ile toplantı") atama yapma. Listede olmayan kişiyi yazma.
 - Aynı ada sahip birden fazla kişi varsa ve soyad/ikinci ad söylenmediyse ("Ali" derken Ali Kaya ve Ali Yılmaz) tahmin etme: assignTo'yu boş bırak, uygulama kullanıcıya soracak.
 - Soyad söylenmesi gerekmez: yalnızca ad, ekli ad ("Sanver'e") ya da ses tanımanın yanlış yazdığı ad ("san ver", "Sanvar") listedeki en yakın kişidir. Tek başına söylenen ad önce ADI o olan kişiye aittir.
+- Önemli plan: kullanıcı "önemli" derse ("yarın önemli toplantı ekle", "kayıt son günü önemli") yeni planda important true; "önemli" başlığa girmez. Var olan plan için "bu planı önemli yap / önemli olarak işaretle" -> op update, patch {important: true}; "önemliden çıkar / önemli değil" -> patch {important: false}.
 - message'da işi birine verdiğini söylüyorsan ("görevi Sanver'e verdim") o kişi MUTLAKA o kaydın assignTo'sunda olmalı.
 
 ## Hava durumu
@@ -178,6 +179,7 @@ export const ASSISTANT_TOOL = {
                 allDay: { type: "boolean" },
                 assignTo: { type: "array", items: { type: "string" }, description: "Sorumluları değiştirirken: yeni sorumluların tam listesi (KİŞİLER bölümündeki tam adlar)" },
                 remind: { type: "number", description: "Yalnız plan: kaç dakika önce hatırlatılsın (15, 30, 60, 1440); 0 = hatırlatma yok" },
+                important: { type: "boolean", description: "Yalnız plan: önemli yap true, önemliden çıkar false" },
               },
             },
           },
@@ -237,6 +239,7 @@ function cleanPatch(p) {
   if (okT(p?.time)) o.time = okT(p.time);
   if (txt(p?.place, 80)) o.place = txt(p.place, 80);
   if (p?.allDay === true) o.allDay = true;
+  if (typeof p?.important === "boolean") o.important = p.important;
   if (Number.isFinite(p?.remind) && p.remind >= 0 && p.remind <= 2880) o.remind = Math.round(p.remind);
   if (Array.isArray(p?.assignTo)) o.assignTo = p.assignTo.map((x) => txt(x, 60)).filter(Boolean).slice(0, 10);
   return o;
@@ -265,6 +268,20 @@ function parseSend(raw, contacts, one = raw?.send) {
   if (same) return { to: same, text };
   if (GROUP_NAME(to)) return { to: GROUP_NAME(to), text };
   return { to: (to && matchPerson(to, contacts)) || to, text };
+}
+
+// Önemli plan (lib/planImportant.js): yapay zeka "önemli" sözünü kaçırırsa (important yazmazsa ya da başlığa koyarsa)
+// cümleden düzeltilir: cümlede "önemli" geçiyor ("önemli değil" hariç) ve yeni plan varsa planlar önemli olur
+const SAID_IMPORTANT = /(^|\s)önemli(?!\s+değil)(\s|[.,!]|$)/iu;
+export function markImportant(items, said = "") {
+  const want = SAID_IMPORTANT.test(lowTr(said));
+  return items.map((d) => {
+    if (d.type !== "plan") return d;
+    const cut = /^önemli\s+\S/iu.test(d.title); // "Önemli toplantı" → "Toplantı"
+    const title = cut ? d.title.replace(/^önemli\s+/iu, "").replace(/^\p{Ll}/u, (c) => c.toLocaleUpperCase("tr-TR")) : d.title;
+    const imp = d.important || (want && !items.some((x) => x.important)) || cut;
+    return { ...d, title, ...(imp ? { important: true } : {}) };
+  });
 }
 
 // Öğrenme kaydı (Seyhun: "her istekte yapay zekadan öğrenmeye ekleyebileceğimiz formatta data dönsün", 2026-10-21):
@@ -329,7 +346,7 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
       // "antrenmanı yarım saat önce hatırlat": yapay zeka patch.remind yazmayı unutursa cümleden
       .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a)),
     learn: cleanLearn(raw?.learn, said),
-    items: said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message),
+    items: markImportant(said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message), said),
   };
 }
 const trToday = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
