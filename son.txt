@@ -1,8 +1,8 @@
-Commit: b9838e8 · Merge pull request #645 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-21-1936 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39635289590
+Commit: 0858965 · Asistan raporu: "rapor oluştur" bugünkü istekleri, cevapları, süreleri ve hataları paylaşır (#647)
+Zaman: 2026-10-21-1947 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39636801646
 
-TAM TEST · 21.10.2026 19:30:16
+TAM TEST · 21.10.2026 19:40:59
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1337/1360 geçti · 23 kalan · 373 sn
+SONUÇ: 1341/1363 geçti · 22 kalan · 419 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,17 +191,14 @@ SONUÇ: 1337/1360 geçti · 23 kalan · 373 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 93/95
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 97/98
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 2/2
   ✓ Basılı tut yaz: 1/1
-  ✓ Sayfa hataları: 6/6
+  ✓ Sayfa hataları: 7/7
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Önceki sohbetler: 2/2
   ✓ Sesli yanıt: 8/8
@@ -209,11 +206,12 @@ SONUÇ: 1337/1360 geçti · 23 kalan · 373 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 17 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
+  ✓ Asistan raporu: 2/2
   ✓ Ses kaydı yolu (ana ekran uygulaması): 4/4
   ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
