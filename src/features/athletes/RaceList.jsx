@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { Empty, Label } from "@/components/ui/Page";
-import { CARD } from "@/features/home/ui";
+import { Empty } from "@/components/ui/Page";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { todayStr } from "@/lib/utils/format";
 import { rangeText } from "./raceDocs";
 import { doneFor, stepTotal, stepsOf } from "./races";
@@ -72,43 +72,42 @@ const monthOf = (r) => {
 };
 const byMonth = (list) => list.reduce((g, r) => (g.at(-1)?.[0] === monthOf(r) ? g.at(-1)[1].push(r) : g.push([monthOf(r), [r]]), g), []);
 
-// Liste satırı: solda gün ve haftanın günü, ortada ad ve yer (eksik varsa turuncu), sağda kalan süre
-function Row({ r, past, onOpen }) {
+// Liste satırı (ortak Row): solda gün ve haftanın günü, ortada ad ve yer (eksik varsa sarı), sağda kalan süre
+function RaceRow({ r, past, onOpen }) {
   const s = r.startDate && day(r.startDate);
   const e = r.endDate && r.endDate !== r.startDate ? day(r.endDate) : null;
   const warn = !past && warnOf(r);
+  const sub = warn || (past ? [placeText(r), e ? `${s.getDate()}–${e.getDate()} ${MON[e.getMonth()].toLocaleLowerCase("tr-TR")}` : ""].filter(Boolean).join(" · ") || subOf(r) : subOf(r));
   return (
-    <li>
-      <button type="button" onClick={() => onOpen(r)} className={`flex w-full items-center gap-3 py-3 pl-3.5 pr-3 text-left transition active:bg-bg ${past ? "opacity-70" : ""}`}>
-        <span className={`flex h-[3.125rem] w-[2.875rem] shrink-0 flex-col items-center justify-center rounded-[0.8rem] ${warn ? "bg-amber-500/12 text-amber-700" : past ? "bg-line/70 text-mut" : "bg-acc/10 text-acc"}`}>
-          <b className="text-[1.1875rem] font-bold leading-none tabular-nums">{s ? s.getDate() : "?"}</b>
+    <Row
+      onClick={() => onOpen(r)}
+      lead={
+        <span className={`flex h-12 w-11 shrink-0 flex-col items-center justify-center rounded-[0.8rem] ${warn ? "bg-warnbg text-warn" : past ? "bg-bg text-mut" : "bg-accbg text-acc"}`}>
+          <b className="text-[1.125rem] font-bold leading-none tabular-nums">{s ? s.getDate() : "?"}</b>
           <small className="mt-1 text-[0.625rem] font-bold tracking-[.08em]">{s ? (past ? MON[s.getMonth()] : WD[s.getDay()]) : "—"}</small>
         </span>
-        <span className="min-w-0 flex-1">
-          <b className="block truncate text-[0.9375rem] font-semibold leading-snug">{r.name || "Adsız yarış"}</b>
-          <small className={`block truncate text-[0.8125rem] leading-snug ${warn ? "font-semibold text-amber-700" : "text-mut"}`}>
-            {warn || (past ? [placeText(r), e ? `${s.getDate()}–${e.getDate()} ${MON[e.getMonth()].toLocaleLowerCase("tr-TR")}` : ""].filter(Boolean).join(" · ") || subOf(r) : subOf(r))}
-          </small>
-        </span>
-        {!past && <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums tracking-tight">{soonText(r)}</b>}
-        <Icon name="chev" className="size-4 shrink-0 text-mut" />
-      </button>
-    </li>
+      }
+      title={r.name || "Adsız yarış"}
+      sub={sub}
+      warn={!!warn}
+      right={past ? null : soonText(r)}
+    />
   );
 }
 
-// Sıradaki yarış: ana sayfadaki "Şu an" kartı gibi koyu yeşil; kocaman kalan gün, ad, yer · tarih · sporcu, hazırlık çubuğu,
-// altında en yakın son tarih (bir haftadan yakınsa sarı) ve sıradaki iş
-function NextCard({ r, onOpen }) {
+// Sıradaki yarış (yeni tasarım 2026-10-21, örnek /mnt/project-files/yarislar/yeni-tasarim/ornek.png): lacivert üstün içinde büyük kalan gün,
+// ad, yer · tarih · sporcu, hazırlık çubuğu; altında yarı saydam kutuda en yakın son tarih (bir haftadan yakınsa sarı) ve sıradaki iş; Multimedya.
+function NextTop({ r, onOpen }) {
   const a = diff(r.startDate);
   const total = stepTotal(r);
   const done = total - stepsOf(r).length;
   const dl = nextDeadline(r);
   const step = nextStep(r);
+  const line = "flex w-full items-center gap-3 border-t border-white/15 px-4 py-3 text-left text-[0.875rem] first:border-t-0 active:bg-white/5";
   return (
-    <section aria-label="Sıradaki yarış" className="mt-2 overflow-hidden rounded-[1.5rem] bg-deep text-white shadow-[0_14px_30px_-18px_rgba(31,90,75,.85)]">
-      <button type="button" onClick={() => onOpen(r)} data-press="row" className="block w-full px-5 pb-3.5 pt-4 text-left">
-        <span className="flex items-center justify-between gap-3 text-[0.75rem] font-bold tracking-[.08em] text-white/70">
+    <div className="mt-5" aria-label="Sıradaki yarış">
+      <button type="button" onClick={() => onOpen(r)} className="block w-full text-left active:opacity-80">
+        <span className="flex items-center justify-between gap-3 text-[0.75rem] font-bold tracking-[.06em] text-white/65">
           SIRADAKİ YARIŞ
           {r.planAdded && (
             <span className="flex items-center gap-1">
@@ -120,103 +119,100 @@ function NextCard({ r, onOpen }) {
         <span className="mt-1.5 flex items-baseline gap-2">
           {a > 1 ? (
             <>
-              <b className="text-[3.25rem] font-bold leading-none tracking-tight tabular-nums">{a}</b>
+              <b className="text-[3.25rem] font-bold leading-none tracking-[-.04em] tabular-nums">{a}</b>
               <span className="text-[1rem] font-semibold text-white/75">gün kaldı</span>
             </>
           ) : (
             <b className="text-[2.25rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
           )}
         </span>
-        <b className="mt-2.5 block text-[1.3125rem] font-bold leading-tight tracking-tight">{r.name || "Adsız yarış"}</b>
-        <span className="mt-0.5 block truncate text-[0.9rem] text-white/80">{[placeText(r), rangeText(r.startDate, r.endDate), `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
+        <b className="mt-2.5 block truncate text-[1.3125rem] font-bold leading-tight tracking-tight">{r.name || "Adsız yarış"}</b>
+        <span className="mt-0.5 block truncate text-[0.875rem] text-white/70">{[placeText(r), rangeText(r.startDate, r.endDate), `${r.athleteIds.length} sporcu`].filter(Boolean).join(" · ")}</span>
         {total > 0 && (
           <>
             <span className="mt-3.5 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
-              <span className="block h-full rounded-full bg-[#7ee2b8]" style={{ width: `${Math.round((done / total) * 100)}%` }} />
+              <span className="block h-full rounded-full bg-[#a78bfa]" style={{ width: `${Math.round((done / total) * 100)}%` }} />
             </span>
-            <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/75">
+            <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
               <span>Hazırlık</span>
               <span className="tabular-nums">{done === total ? "Hepsi tamam" : `${done} / ${total} iş tamam`}</span>
             </span>
           </>
         )}
       </button>
-      {dl && (
-        <button type="button" onClick={() => onOpen(r)} className="flex w-full items-center gap-3 border-t border-white/15 px-5 py-3 text-left text-[0.875rem] active:bg-white/5">
-          <span className="shrink-0 text-white/70">Son tarih</span>
-          <b className={`min-w-0 flex-1 truncate text-right font-semibold ${diff(dl.date) <= 7 ? "text-[#ffd59a]" : ""}`}>
-            {dl.title} · {diff(dl.date) ? `${diff(dl.date)} gün` : "Bugün"}
-          </b>
-        </button>
-      )}
-      {step && (
-        <button type="button" onClick={() => onOpen(r)} className="flex w-full items-center gap-3 border-t border-white/15 px-5 py-3 text-left text-[0.875rem] active:bg-white/5">
-          <span className="shrink-0 text-white/70">Sıradaki iş</span>
-          <b className="min-w-0 flex-1 truncate text-right font-semibold">{step}</b>
-          <Icon name="chev" className="size-3.5 shrink-0 text-white/70" />
-        </button>
+      {(dl || step) && (
+        <div className="ck-glass mt-3.5 overflow-hidden rounded-2xl">
+          {dl && (
+            <button type="button" onClick={() => onOpen(r)} className={line}>
+              <span className="shrink-0 text-white/65">Son tarih</span>
+              <b className={`min-w-0 flex-1 truncate text-right font-semibold ${diff(dl.date) <= 7 ? "text-[#ffd59a]" : ""}`}>
+                {dl.title} · {diff(dl.date) ? `${diff(dl.date)} gün` : "Bugün"}
+              </b>
+            </button>
+          )}
+          {step && (
+            <button type="button" onClick={() => onOpen(r)} className={line}>
+              <span className="shrink-0 text-white/65">Sıradaki iş</span>
+              <b className="min-w-0 flex-1 truncate text-right font-semibold">{step}</b>
+              <Icon name="chev" className="size-3.5 shrink-0 text-white/65" />
+            </button>
+          )}
+        </div>
       )}
       {r.id && (
-        <Link href={`/athletes/races/${r.id}/media`} className="flex w-full items-center gap-3 border-t border-white/15 px-5 py-3 text-[0.875rem] active:bg-white/5">
-          <Icon name="camera" className="size-4 shrink-0 text-white/70" />
-          <b className="min-w-0 flex-1 font-semibold">Multimedya</b>
-          <Icon name="chev" className="size-3.5 shrink-0 text-white/70" />
+        <Link href={`/athletes/races/${r.id}/media`} data-press className="raised mt-3 flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          Multimedya
         </Link>
       )}
-    </section>
+    </div>
   );
 }
 
-// Yarış listesi: üstte sıradaki yarış kartı, altında yaklaşan yarışlar ay ay tek kartta satırlar, en altta geçmiş yarışlar (dokununca açılır)
-export function RaceList({ races, onOpen }) {
+// Yarış listesi: lacivert üstte başlık (head) ve sıradaki yarış; açık zeminde yaklaşan yarışlar ay ay, en altta geçmiş (son yarış + "N yarış daha")
+export function RaceList({ races, onOpen, head, children }) {
   const [showPast, setShowPast] = useState(false);
-  const up = races.filter((r) => !isPast(r)).sort((a, b) => (a.startDate || "9").localeCompare(b.startDate || "9"));
-  const past = races.filter(isPast).sort((a, b) => b.startDate.localeCompare(a.startDate));
+  const list = races || [];
+  const up = list.filter((r) => !isPast(r)).sort((a, b) => (a.startDate || "9").localeCompare(b.startDate || "9"));
+  const past = list.filter(isPast).sort((a, b) => b.startDate.localeCompare(a.startDate));
   const next = up.find((r) => r.startDate);
   const rest = up.filter((r) => r !== next);
 
-  if (!races.length)
-    return <Empty icon="flag" title="Henüz yarış yok" sub="Yarışı ekle ya da yarış talimatını yükle; sporcuları seç, izin yazıları ve veli belgeleri hazır olsun. Asistana “yarış ekle” de diyebilirsin." />;
-
   return (
     <>
-      {next && <NextCard r={next} onOpen={onOpen} />}
-      {!up.length && <p className="mt-6 text-center text-[0.875rem] text-mut">Yaklaşan yarış yok</p>}
-      {byMonth(rest).map(([m, list]) => (
-        <section key={m}>
-          <Label right={`${list.length} yarış`}>{m}</Label>
-          <ul className={`divide-y divide-line overflow-hidden ${CARD}`}>
-            {list.map((r) => (
-              <Row key={r.id} r={r} onOpen={onOpen} />
-            ))}
-          </ul>
-        </section>
-      ))}
-      {past.length > 0 && (
-        <section>
-          <Label>GEÇMİŞ</Label>
-          <div className={`overflow-hidden ${CARD}`}>
-            <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press="row" className="flex w-full items-center gap-3 p-3.5 text-left transition">
-              <span className="grid size-[2.375rem] shrink-0 place-items-center rounded-xl bg-line/70 text-mut">
-                <Icon name="flag" className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold leading-snug">Geçmiş yarışlar</b>
-                <small className="block truncate text-[0.8125rem] leading-snug text-mut">Son: {past[0].name || "Adsız yarış"}</small>
-              </span>
-              <b className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{past.length}</b>
-              <Icon name="chev" className={`size-4 shrink-0 text-mut transition ${showPast ? "rotate-90" : ""}`} />
-            </button>
-            {showPast && (
-              <ul className="divide-y divide-line border-t border-line">
-                {past.map((r) => (
-                  <Row key={r.id} r={r} past onOpen={onOpen} />
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-      )}
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Yarışlar">
+        {head}
+        {next && <NextTop r={next} onOpen={onOpen} />}
+      </section>
+      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+        {children}
+        {races && !list.length && <Empty icon="flag" title="Henüz yarış yok" sub="Yarışı ekle ya da talimatını yükle." />}
+        {races && list.length > 0 && !up.length && <p className="text-center text-[0.875rem] text-mut">Yaklaşan yarış yok</p>}
+        {byMonth(rest).map(([m, l]) => (
+          <section key={m}>
+            <ListHead title={m} count={l.length} />
+            <RowList>
+              {l.map((r) => (
+                <RaceRow key={r.id} r={r} onOpen={onOpen} />
+              ))}
+            </RowList>
+          </section>
+        ))}
+        {past.length > 0 && (
+          <section>
+            <ListHead title="Geçmiş" count={past.length} />
+            <RowList>
+              {(showPast ? past : past.slice(0, 1)).map((r) => (
+                <RaceRow key={r.id} r={r} past onOpen={onOpen} />
+              ))}
+              {past.length > 1 && (
+                <button type="button" onClick={() => setShowPast((v) => !v)} aria-expanded={showPast} data-press="row" className="flex min-h-[3rem] w-full items-center border-t border-line text-left text-[0.9375rem] font-semibold text-acc">
+                  {showPast ? "Daha az göster" : `${past.length - 1} yarış daha`}
+                </button>
+              )}
+            </RowList>
+          </section>
+        )}
+      </div>
     </>
   );
 }
