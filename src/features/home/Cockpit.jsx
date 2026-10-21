@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AppLogo } from "@/components/ui/AppLogo";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -37,7 +36,6 @@ export function Cockpit({ weather, inbox, onInbox, children }) {
   return (
     <section className="ck -mx-4 px-4 pb-9 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
       <header className="flex items-center gap-3">
-        <AppLogo size={28} className="-mr-1 flex shrink-0 lg:hidden" />
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
           <span className="capitalize">{dname}</span> {date}
         </h1>
