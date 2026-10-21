@@ -5,7 +5,7 @@
 const adminOn = () => !!(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 const orgs = globalThis.__aiOrg || (globalThis.__aiOrg = new Map());
 import { spendDirect, spendWho, spendWriter } from "@/lib/server/aiSpend";
-import { STT_PRICE_MIN } from "@/lib/aiUsage";
+import { LIVE_PRICE_MIN, STT_PRICE_MIN } from "@/lib/aiUsage";
 export const monthIn = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(d).slice(0, 7);
 
 async function orgOf(uid) {
@@ -35,10 +35,11 @@ spendWriter((au, kind, usd) => {
   })().catch((e) => console.warn("[aiSpend]", e?.message));
 });
 
-// n: artış (çoğunlukla 1; "stt-sec" ses saniyesi, "tts-chr" seslendirilen harf sayar ve kişi sayacına girmez)
+// n: artış (çoğunlukla 1; "stt-sec" ses saniyesi, "live-sec" canlı yazıya akan ses saniyesi, "tts-chr" seslendirilen harf sayar ve kişi sayacına girmez)
 export function countAi(au, kind, n = 1) {
   if (!adminOn() || !au?.uid || !/^[a-z-]{2,20}$/.test(kind) || !(n > 0)) return;
   if (kind === "stt-sec") spendDirect(au, "transcribe", (n / 60) * STT_PRICE_MIN);
+  else if (kind === "live-sec") spendDirect(au, "live", (n / 60) * LIVE_PRICE_MIN);
   else if (kind !== "tts-chr") spendWho(au, kind);
   (async () => {
     const org = await orgOf(au.uid);
@@ -48,7 +49,7 @@ export function countAi(au, kind, n = 1) {
     await adminDb()
       .collection("usage")
       .doc(`ai_${org}_${month}`)
-      .set({ month, org, [kind]: FieldValue.increment(n), ...(kind === "stt-sec" || kind === "tts-chr" ? {} : { by: { [au.uid]: FieldValue.increment(1) } }) }, { merge: true });
+      .set({ month, org, [kind]: FieldValue.increment(n), ...(kind === "stt-sec" || kind === "live-sec" || kind === "tts-chr" ? {} : { by: { [au.uid]: FieldValue.increment(1) } }) }, { merge: true });
   })().catch((e) => console.warn("[aiUsage]", e?.message));
 }
 
