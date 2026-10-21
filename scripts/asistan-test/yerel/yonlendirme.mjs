@@ -109,7 +109,7 @@ const CASES = {
   schedule: ["ders programıma çarşamba 10'da kimya ekle", ["salı 13:00 fizik B-204", { path: "/schedule" }]],
   person: ["Kişi ekle: Ayşe Yılmaz, eşim, 0532 111 22 33", "Annem Fatma Yıldız'ı aileye ekle", "Ali Kaya'yı çalışan olarak ekle, antrenör"],
   call: ["Ali'yi ara", "Gökhan Demir'i arar mısın", "Zeynep'e arama yap", ["oteli ara", { path: "/athletes/races/r1" }]],
-  dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi", "Ali Kaya'nın aidat durumu ne", "Zeynep aidatını ödedi mi", "Emre Şahin'in aidat borcu var mı", "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın"],
+  dues: ["aidat hatırlatması gönder", "aidatını ödemeyenlere hatırlat", "bu ay kim aidat ödemedi", "Ali Kaya'nın aidat durumu ne", "Zeynep aidatını ödedi mi", "Emre Şahin'in aidat borcu var mı", "Ali Kaya'nın aidatı kasımdan başlasın", "Ali bu ay aidattan muaf", "Zeynep'in ekim aidatı sayılmasın", "Ali Kaya burslu", "Zeynep artık burslu değil"],
   cash: ["önceki nakit girişlerini arşivle", "gelen 20 bin lirayı nakite çevirdim", "kulüpten Ali'ye 500 nakit verildi", "kasada ne kadar var", "kişisel gider 300 market", "Ahmet'e 1000 lira borcum var", "200 lira kasa çıkışı ekle", "kasadan 150 lira çıkış yap", "kasa çıkışı 300 lira yakıt", "kasadaki 200 liralık çıkışın türünü yakıt yap", "Ahmet'in kasa kaydının adını Mehmet olarak değiştir", "son kasa çıkışının türünü malzeme yap"],
   debt: ["Ali'ye 500 lira borç verdim", "Kulüpten Ahmet Kaya'ya 2 bin TL borç verildi", "Mehmet'e 300 lira borç verdim not: tekne parası", "Zeynep'e 1000 lira ödünç verdim"],
   debtPay: ["Ali borcunu ödedi", "Ali 200 lirasını geri verdi", "Ahmet'in borcu kapandı"],

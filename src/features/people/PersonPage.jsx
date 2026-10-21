@@ -116,7 +116,7 @@ function useClub(athleteId, allowed, orgId) {
   return { a, dues, races };
 }
 
-const DUE = { paid: ["Ödendi", "text-acc"], part: ["Eksik", "text-amber-700"], free: ["Sayılmıyor", "text-mut"], none: ["Başlamadı", "text-mut"] };
+const DUE = { paid: ["Ödendi", "text-acc"], part: ["Eksik", "text-amber-700"], free: ["Sayılmıyor", "text-mut"], burs: ["Burslu", "text-mut"], none: ["Başlamadı", "text-mut"] };
 const ATT = { present: "geldi", absent: "gelmedi", excused: "izinli" };
 
 export function PersonPage({ uid }) {

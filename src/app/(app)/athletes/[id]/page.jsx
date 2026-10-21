@@ -157,7 +157,7 @@ function DuesCard({ a }) {
     return () => void (on = false);
   }, [owner, profile?.orgId, profile?.uid, a]);
   if (!owner || !d || d.error) return null;
-  const now = d.now.state === "paid" ? ["Ödendi", "text-ok"] : d.now.state === "part" ? [`Eksik · ${TLx(d.now.paid)}`, "text-amber-700"] : d.now.state === "free" ? ["Sayılmıyor", "text-mut"] : d.now.state === "none" ? ["Henüz başlamadı", "text-mut"] : ["Ödenmedi", "text-rec"];
+  const now = d.now.state === "paid" ? ["Ödendi", "text-ok"] : d.now.state === "part" ? [`Eksik · ${TLx(d.now.paid)}`, "text-amber-700"] : d.now.state === "burs" ? ["Burslu", "text-mut"] : d.now.state === "free" ? ["Sayılmıyor", "text-mut"] : d.now.state === "none" ? ["Henüz başlamadı", "text-mut"] : ["Ödenmedi", "text-rec"];
   const mon = (ym, f = "long") => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: f }).replace(".", "");
   return (
     <Card title="Aidat" icon="wallet">
@@ -170,7 +170,7 @@ function DuesCard({ a }) {
           {d.cells.map((c) => (
             <span key={c.ym} className="flex w-9 flex-col items-center gap-1">
               <span className={`grid size-6 place-items-center rounded-full ${c.state === "paid" ? "bg-ok text-white" : c.state === "part" ? "bg-amber-500/20 text-[0.625rem] font-bold text-amber-700" : ""}`}>
-                {c.state === "paid" ? <Icon name="check" className="size-3.5" /> : c.state === "part" ? "½" : c.state === "free" ? <span className="text-[0.75rem] text-mut">–</span> : <span className={`size-2 rounded-full ${c.state === "due" ? "bg-rec/50" : "bg-line"}`} />}
+                {c.state === "paid" ? <Icon name="check" className="size-3.5" /> : c.state === "part" ? "½" : c.state === "free" || c.state === "burs" ? <span className="text-[0.75rem] text-mut">–</span> : <span className={`size-2 rounded-full ${c.state === "due" ? "bg-rec/50" : "bg-line"}`} />}
               </span>
               <small className="text-[0.6875rem] capitalize text-mut">{mon(c.ym, "short")}</small>
             </span>

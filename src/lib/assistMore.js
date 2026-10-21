@@ -237,6 +237,15 @@ export function monthYm(mon, today) {
 
 export function duesCommand(raw) {
   const t = low(raw);
+  // Burslu: "Ali Kaya burslu", "Ali'yi burslu yap", "Zeynep artık burslu değil", "Ali'nin bursunu kaldır"; soru ise durumu söylenir
+  const bm = t.match(/^(.+?) (?:aidat\p{L}* )?(?:artık |de |da )?burs(?:lu|unu|u|tan)?(?: |$)/u);
+  if (bm) {
+    const name = nameOf(bm[1].replace(MONTH_WORDS, " "));
+    if (name && name.split(" ").length <= 3 && !/^(Bu|Kim|Kimler|Hangi|Kaç)( |$)/u.test(name)) {
+      if (QUESTION.test(t)) return { op: "one", name };
+      return { op: "burs", name, undo: /(burslu değil|burslu olmasın|bursu(nu)? (kaldır|iptal|bitti)|burstan çıkar)/u.test(t) };
+    }
+  }
   if (!/aidat/u.test(t)) return null;
   // Tek kişiye hatırlatma ("Enes aidatını ödemedi ona hatırlat"): toplu hatırlatma değil, mesaj (yapay zeka)
   const one = /(^| )(ona|kendisine|velisine|annesine|babasına)( |$)/u.test(t) || /^\p{Lu}\p{Ll}+(\s\p{Lu}\p{Ll}+)?['’]?\p{L}*\s+aidat/u.test(String(raw || "").trim());
