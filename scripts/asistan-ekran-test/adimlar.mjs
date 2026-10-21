@@ -595,7 +595,7 @@ async function scenarios3(h) {
 }
 
 async function scenarios4(h) {
-  const { check, newPage, orb, state, full, waitFor, btn, last, aiCalls, calls, setAI, setTranscript, closeAll, log } = h;
+  const { check, newPage, orb, state, full, waitFor, btn, last, aiCalls, calls, setAI, setTranscript, closeAll, talkAsk, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
   log("    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…");
 
@@ -698,6 +698,27 @@ async function scenarios4(h) {
       return [w <= 545, `${Math.round(w)} px`];
     });
     await check("Sayfa hataları", "geniş ekran", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+    await page.context().close();
+  }
+
+  // ================================================================ 8b. "Rapor oluştur": bugünkü istekler, cevaplar ve süreler
+  {
+    const { page, errs } = await newPage();
+    setAI(() => ({ intent: "chat", message: "Yarın rüzgâr 12 knot, yelken için iyi." }));
+    await talkAsk(page, "yarın hava nasıl");
+    await waitFor(async () => /12 knot/.test(await last(page)), 6000);
+    const b = aiCalls();
+    await talkAsk(page, "rapor oluştur");
+    await check("Asistan raporu", "rapor oluştur", "rapor sayfası açılır; önceki istek, cevabı ve süresi yazılı; yapay zekaya gitmez", async () => {
+      const ok = await waitFor(async () => new URL(page.url()).pathname === "/settings/report" && /yarın hava nasıl/.test(await page.locator("pre", { hasText: "ASİSTAN RAPORU" }).first().innerText().catch(() => "")), 8000);
+      const txt = await page.locator("pre", { hasText: "ASİSTAN RAPORU" }).first().innerText().catch(() => "");
+      return [!!ok && /ASİSTAN RAPORU/.test(txt) && /Cevap: “Yarın rüzgâr 12 knot/.test(txt) && /Süreler:/.test(txt) && aiCalls() === b, clean(txt).slice(0, 160) || `${new URL(page.url()).pathname} · ${clean(await page.locator("body").innerText()).slice(0, 200)}`];
+    });
+    await check("Asistan raporu", "düğmeler", "Paylaş ve Kopyala var", async () => {
+      const n = (await page.getByRole("button", { name: "Paylaş" }).count()) + (await page.getByRole("button", { name: "Kopyala" }).count());
+      return [n === 2, `${n} düğme`];
+    });
+    await check("Sayfa hataları", "asistan raporu", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
     await page.context().close();
   }
 

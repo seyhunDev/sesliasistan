@@ -1,10 +1,12 @@
-// Asistan süre kaydı (Ayarlar › Asistan süre kaydı): her komutun adım adım ne kadar sürdüğü, son 20 komut.
+// Asistan süre kaydı (Ayarlar › Asistan süre kaydı): her komutun adım adım ne kadar sürdüğü, verilen cevap, son 100 komut
+// (asistan raporu bunu kullanır, lib/assistReport.js).
 // Yalnız bu cihazda (localStorage "sa-timing"); sunucuya ve Firebase'e gitmez.
 // Anlar: dinleme (useSpeech) → komut (AssistantSheet run) → yapay zeka → kayıt → cevap → okuma (TtsProvider).
 // Sesli komutta dinlemenin anları ayrı tutulur (speechMark), komut başlayınca kayda eklenir.
 
 export const TIMING_KEY = "sa-timing";
-export const TIMING_MAX = 20;
+export const TIMING_MAX = 100;
+export const TIMING_ERR_KEY = "sa-timing-err";
 const AFTER_REPLY = 4000; // cevaptan sonra okuma başlamazsa (sesli yanıt kapalı) kayıt bu kadar sonra kapanır
 
 // Her an, bir önceki andan bu yana geçen adımın adıyla gösterilir
@@ -56,6 +58,23 @@ export function timingList() {
 export function timingClear() {
   try {
     box()?.removeItem(TIMING_KEY);
+    box()?.removeItem(TIMING_ERR_KEY);
+  } catch {}
+}
+
+// Dinleme hataları ("Ses anlaşılamadı", "Mikrofondan ses gelmiyor"…): komut olmadığı için ayrı tutulur, son 50
+export function timingErrors() {
+  try {
+    const l = JSON.parse(box()?.getItem(TIMING_ERR_KEY) || "[]");
+    return Array.isArray(l) ? l : [];
+  } catch {
+    return [];
+  }
+}
+export function timingError(msg) {
+  if (!msg) return;
+  try {
+    box()?.setItem(TIMING_ERR_KEY, JSON.stringify([{ at: clock(), msg: String(msg).slice(0, 160) }, ...timingErrors()].slice(0, 50)));
   } catch {}
 }
 
@@ -111,7 +130,7 @@ export function timingStart(text, viaVoice) {
   const t = clock();
   const sp = viaVoice && speech?.text && t - speech.text < 10000 ? speech : null;
   const { live, tries, ...marks } = sp || {};
-  cur = { at: t, text: String(text || "").slice(0, 90), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}), ...(tries ? { tries } : {}) };
+  cur = { at: t, text: String(text || "").slice(0, 300), voice: !!viaVoice, engine: "", marks: { ...marks, run: t }, ...(live?.length ? { live } : {}), ...(tries ? { tries } : {}) };
   speech = null;
 }
 
@@ -188,11 +207,12 @@ const sozText = (end, start, i) => {
   return i.sozErr ? `Söz ${ERR_NAMES[i.sozErr] || i.sozErr}, ${ms} sonra, yerel cümle` : `Söz ${ms}${i.sozModel ? ` (${i.sozModel})` : ""}`;
 };
 
-// Cevap verildi: okuma başlayınca (ya da başlamazsa kısa süre sonra) kayıt kapanır.
+// Cevap verildi (answer: verilen cevap, rapora girer): okuma başlayınca (ya da başlamazsa kısa süre sonra) kayıt kapanır.
 // Kim cevapladı: yapay zeka cevap verdiyse "ai" (sonucu uygulama söylese de), yoksa verilen (yerel, yedek kurallar…)
-export function timingReply(engine) {
+export function timingReply(engine, answer = "") {
   if (!cur) return "";
   timingMark("reply");
+  if (answer && !cur.answer) cur.answer = String(answer).replace(/\s+/g, " ").trim().slice(0, 600); // rapor için
   if (!cur.engine) cur.engine = cur.marks.aiDone ? "ai" : engine || "local";
   const dev = devLine(cur);
   clearTimeout(timer);

@@ -40,7 +40,7 @@ export function reply(ctx, message, extra = {}, viaVoice = false) {
   // bitince (sessizlik) söyledikleri öncekiyle birleştirilip yeniden sorulur
   if (holdIfTalking(() => reply(message, extra, viaVoice))) return;
   if (sozFits(ctx, message, extra)) return void phrase(ctx, message, extra, viaVoice);
-  const dev = timingReply(extra.engine); // süre kaydı (Ayarlar › Asistan süre kaydı) ve geliştirici satırı
+  const dev = timingReply(extra.engine, message); // süre kaydı (Ayarlar › Asistan süre kaydı) ve geliştirici satırı
   inflight.current = null;
   // Cevap geldi: iş bitti, "çalışıyor" durumu kalkar (yerel akışların bir kısmı kendisi kaldırmıyordu; denetim B3)
   setPhase("idle");
@@ -163,7 +163,7 @@ export function showPage(ctx) {
 export function failNow(ctx, message, viaVoice) {
   const { planOn, reply, setError } = ctx;
   if (planOn.current) return reply(message, { fail: true, engine: "local" }, viaVoice);
-  const dev = timingReply("rules"); // süre kaydına hata da girer; geliştirici bilgisi açıksa nedeni ve süresi yazılır
+  const dev = timingReply("rules", message); // süre kaydına hata da girer; geliştirici bilgisi açıksa nedeni ve süresi yazılır
   setError(dev && devOn() ? `${message} (${dev})` : message);
 }
 
