@@ -699,11 +699,6 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 @media (prefers-reduced-motion: reduce) { .aring-logo { animation: none; } }
 /* İş düğmeleri ızgarasında günün ana işi (ActionGrid main): açık mor zemin, mor yazı */
 .raised.act-main { --btn-top: color-mix(in srgb, var(--accbg) 70%, #fff); --btn-bot: var(--accbg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 28%, var(--line)); }
-/* İlk ekran "A · tam lacivert" (Seyhun 2026-10-21): kokpitteki iş düğmeleri yarı saydam, ana iş beyaz; ana sayfa en üstteyken alt sekme çubuğu
-   da lacivert, asistan alanıyla tek parça (OwnerHome body[data-ck-top]) */
+/* Kokpit iş düğmeleri (Seyhun 2026-10-21): kokpitteki iş düğmeleri yarı saydam, ana iş beyaz */
 .ck .raised { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck .raised.act-main { background: #fff; color: #141938; }
-body[data-ck-top] .atabbar { background: #141938; box-shadow: 0 -0.5px 0 rgba(255, 255, 255, .1); }
-body[data-ck-top] .atabbar a { color: rgba(255, 255, 255, .6); }
-body[data-ck-top] .atabbar a[aria-current] { color: #fff; }
-body[data-ck-top] .acenter { background: #141938; box-shadow: none; }

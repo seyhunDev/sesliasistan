@@ -19,7 +19,7 @@ import { RacePlanSheet } from "./RacePlanSheet";
 import { GROUP } from "./ui";
 
 // Ana sayfanın takvim bölümü (Seyhun 2026-10-17: "2'deki gibi, bugün kısmı 3'teki gibi, Bugün yazısına gerek yok"). Ayrı gruplu kartlar:
-// (gün şeridi 2026-10-21'den beri kokpitin altındaki büyük günler, HomeDays.jsx) 1) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
+// (gün şeridi ve günün penceresi 2026-10-21den beri kokpitte: HomeDays.jsx, DayPick.jsx) 1) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
 //    nokta ve alt satırda "yer · 12:00'ye kadar · şimdi"; ilk satırda antrenman/yarışın rüzgârı (eşik geçilirse kırmızımsı); sağda tür adı,
 // 2) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
 //    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 3) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
@@ -85,7 +85,7 @@ export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
   const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
 
   return (
-    <section id="takvim" aria-label="Takvim" className="scroll-mt-4 space-y-2.5">
+    <section aria-label="Takvim" className="space-y-2.5">
 
       <div className={`px-3.5 py-1.5 ${GROUP}`}>
         {td.rows.length ? (
