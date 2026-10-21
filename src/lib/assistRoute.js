@@ -182,7 +182,8 @@ export function routesOf(s, c = {}) {
   // Yapay zeka önce (Seyhun 2026-10-21: "uygulama içinde cevaplar doğru olmuyor, kesinlikle yapay zekaya
   // göndermeliyiz"): kayıt, tamamlama, özet gibi işleri yapay zeka anlar; yerelde yalnız cihaz işleri kalır
   // (fiş kamerası, toplantı kaydı, sayfa açma). Hazır kalıplar (src/data/hazir-kaliplar.json) yalnız Hazır cevaplar açıkken.
-  const rc = c.quick && !toFocus && !mf && !c.drafts ? readyCreate(s, today || undefined) : null;
+  // Öğrenilen hazır kalıplar (yapay zekanın öğrenme kaydı, brain/aiPatterns.js) da yalnız Hazır cevaplar açıkken
+  const rc = c.quick && !toFocus && !mf && !c.drafts ? readyCreate(s, today || undefined) || learnedCreate(s, c.learned, today || undefined) : null;
   const lc = rc || (!toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true }));
   const cmd = lc && (c.quick || DEVICE.has(lc.type)) ? lc : null;
   if (cmd) add("local", { cmd });
@@ -196,6 +197,20 @@ export function readyCreate(s, today = todayStr()) {
   if (!row) return null;
   const cmd = localCreate(s, today);
   return matchesWant(cmd, row.want, today) ? { ...cmd, ready: true } : null;
+}
+
+// Öğrenilen kalıp kaydı: cümle hazır bir kalıba uyuyorsa kayıt kural motoruyla çıkarılır; türü kalıbın türü olmalı,
+// kalıbın başlığı varsa başlıkta geçmeli (tutmazsa yapay zekaya gider). learned: store.js learnedReady
+const KIND_OF = { "create:plan": "plan", "create:task": "task", "create:note": "note" };
+export function learnedCreate(s, learned, today = todayStr()) {
+  const hit = typeof learned === "function" ? learned(s) : null;
+  if (!hit) return null;
+  const cmd = localCreate(s, today);
+  const items = cmd?.type === "create" ? cmd.items || [] : [];
+  if (items.length !== 1 || items[0].type !== KIND_OF[hit.row.l]) return null;
+  const want = fold(hit.slots["başlık"] || "");
+  if (want && !fold(items[0].title || items[0].body || "").includes(want)) return null;
+  return { ...cmd, ready: true, learned: hit.row.key };
 }
 
 // İlk aday (yapay zekasız tahmin): testler ve öğrenme için. "more" adayında yalnız tanınan iş sayılır.

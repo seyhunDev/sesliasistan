@@ -136,7 +136,8 @@ Sayfa isteğinde navigate'i doldur, message'ı çok kısa yaz ("Görevleri açı
 - "Antrenmanı 11'e al, Ali'ye ve Ayşe'ye haber ver, motor yağı görevini tamamla" -> intent action; actions: [{op: update, kind: plan, id: ..., patch: {time: "11:00"}}, {op: complete_task, kind: task, id: ...}]; sends: [{to: "Ali Kaya", text: "Ali, antrenman saat 11'e alındı."}, {to: "Ayşe Yılmaz", text: "Ayşe, antrenman saat 11'e alındı."}]; message: "Tamam."
 
 ## Çıktı
-Yalnızca "asistan" aracını çağır. intent ve message her zaman dolu olsun. Kullanılmayan alanları boş bırak veya hiç gönderme.`;
+Yalnızca "asistan" aracını çağır. intent ve message her zaman dolu olsun. Kullanılmayan alanları boş bırak veya hiç gönderme.
+Her yanıtın SONUNA kısa bir learn yaz: task, pattern (değişen yerler süslü parantezle), slots, ses tanıma hatası varsa fixes, conf. Kısa tut.`;
 
 const idProp = { type: "string", description: "Veri özetindeki gerçek kimlik (p:, t:, n: sonrası)" };
 
@@ -198,6 +199,25 @@ export const ASSISTANT_TOOL = {
         description: "Birden çok kişiye/gruba ayrı mesaj isteniyorsa her biri (ilki send ile aynı olabilir)",
         items: { type: "object", properties: { to: { type: "string" }, text: { type: "string" } }, required: ["to", "text"] },
       },
+      learn: {
+        type: "object",
+        description: "Öğrenme kaydı: bu isteğin genel kalıbı (kısa)",
+        properties: {
+          task: { type: "string", description: "İşin kısa adı, küçük harf: plan.ekle, gorev.ekle, not.ekle, plan.degistir, gorev.tamamla, sil, mesaj, hava.sor, soru, sayfa.ac, sohbet gibi" },
+          pattern: { type: "string", description: "Cümlenin kalıbı: değişen yerler {gün} {saat} {kişi} {başlık} {yer} {tutar} {sayı} ile; ör. \"{gün} {saat}'te {başlık} ekle\"" },
+          slots: {
+            type: "array",
+            description: "Kalıptaki yerlerin bu cümledeki değerleri",
+            items: { type: "object", properties: { k: { type: "string" }, v: { type: "string" } }, required: ["k", "v"] },
+          },
+          fixes: {
+            type: "array",
+            description: "Ses tanımanın yanlış yazdığı sözler: heard cümlede geçen yazım, meant doğrusu. Yoksa boş.",
+            items: { type: "object", properties: { heard: { type: "string" }, meant: { type: "string" } }, required: ["heard", "meant"] },
+          },
+          conf: { type: "number", description: "Ne kadar emin anladın, 0-1" },
+        },
+      },
     },
     required: ["intent", "message"],
   },
@@ -247,6 +267,30 @@ function parseSend(raw, contacts, one = raw?.send) {
   return { to: (to && matchPerson(to, contacts)) || to, text };
 }
 
+// Öğrenme kaydı (Seyhun: "her istekte yapay zekadan öğrenmeye ekleyebileceğimiz formatta data dönsün", 2026-10-21):
+// iş adı, cümle kalıbı ({gün} {saat}…), yerlerin değerleri, ses tanıma düzeltmeleri, güven. Geçersiz parça atılır;
+// düzeltmenin duyulan yazımı cümlede geçmiyorsa uydurmadır, alınmaz. Hiçbir şey kalmazsa null.
+const SLOT = ["gün", "saat", "kişi", "başlık", "yer", "tutar", "sayı", "tarih", "süre", "yarış", "metin"];
+const lowTr = (v) => String(v || "").toLocaleLowerCase("tr-TR");
+export function cleanLearn(l, said = "") {
+  if (!l || typeof l !== "object") return null;
+  const task = lowTr(txt(l.task, 40)).replace(/[^a-z0-9çğıöşü._:-]+/g, ".").replace(/^\.+|\.+$/g, "");
+  const pattern = lowTr(txt(l.pattern, 140)).replace(/\s+/g, " ");
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const slots = arr(l.slots)
+    .map((x) => ({ k: lowTr(txt(x?.k, 12)).replace(/[{}]/g, ""), v: txt(x?.v, 60) }))
+    .filter((x) => SLOT.includes(x.k) && x.v)
+    .slice(0, 8);
+  const heardIn = lowTr(said);
+  const fixes = arr(l.fixes)
+    .map((x) => ({ heard: txt(x?.heard, 40), meant: txt(x?.meant, 40) }))
+    .filter((x) => x.heard && x.meant && lowTr(x.heard) !== lowTr(x.meant) && (!said || heardIn.includes(lowTr(x.heard))))
+    .slice(0, 5);
+  const conf = Number.isFinite(l.conf) ? Math.round(Math.max(0, Math.min(1, l.conf)) * 100) / 100 : null;
+  if (!task && !/\S/.test(pattern)) return null;
+  return { task, pattern, slots, fixes, conf };
+}
+
 // Modelin çıktısını doğrular: geçersiz alanlar atılır
 // people: çalışan adları; yeni kayıtlardaki sorumlular bu listeye göre doğrulanır
 // contacts: mesaj alıcılarının adları; alıcı bu listeye göre doğrulanır ("Ekip" her zaman geçerli)
@@ -284,6 +328,7 @@ export function parseAssistant(raw, people = [], contacts = [], said = "") {
       .map((a) => ({ op: a.op, kind: a.kind, id: cid(a.id), patch: cleanPatch(a.patch) }))
       // "antrenmanı yarım saat önce hatırlat": yapay zeka patch.remind yazmayı unutursa cümleden
       .map((a) => (a.op === "update" && a.kind === "plan" && a.patch.remind === undefined && remindOf(said) !== null ? { ...a, patch: { ...a.patch, remind: remindOf(said) } } : a)),
+    learn: cleanLearn(raw?.learn, said),
     items: said ? applyRepeat(toDrafts(raw?.items, people, raw?.message), said, trToday()) : toDrafts(raw?.items, people, raw?.message),
   };
 }

@@ -20,6 +20,8 @@ import { interpretText } from "@/services/aiService";
 import { isAthleteSide } from "@/lib/kinds";
 import { looksLikeLog } from "@/lib/trainingLog";
 import { labelFromAI } from "@/lib/brain/model";
+import { lessonOf } from "@/lib/brain/aiPatterns";
+import { learnFixes } from "@/lib/sttFixes";
 import { fromMessage } from "@/lib/ai/assistant";
 import { noteDonePatch, noteReopenPatch } from "@/lib/noteState";
 import { planDonePatch, planReopenPatch } from "@/lib/planActions";
@@ -185,7 +187,11 @@ export function handle(ctx, r, s, viaVoice) {
   // Not açıkça istenmediyse yapay zekanın başka işin yanına eklediği not atılır (öğrenme verisine de girmez)
   if (r.items?.length) r = { ...r, items: keepNotes(r.items, s) };
   const msg = (r.message || "").trim();
-  aiLesson.current = { x: s, l: labelFromAI(r) }; // öğrenme verisi: iş ✓ bitince yazılır (reply)
+  const label = labelFromAI(r);
+  // Öğrenme verisi: iş ✓ bitince yazılır (reply). pat: yapay zekanın öğrenme kaydı (kalıp, yerler, güven; aiPatterns.js)
+  aiLesson.current = { x: s, l: label, pat: lessonOf(s, r, label) };
+  // Ses tanımanın yanlış yazdığı adlar: bir dahaki sefere telefonda düzeltilir (sttFixes.js, yalnız bilinen adlar)
+  if (r.learn?.fixes?.length) learnFixes(r.learn.fixes, [...(ctx.staffNames || []), ...(ctx.contacts || []).map((c) => c.name)]);
   const held = heldQ.current;
   heldQ.current = null;
 
