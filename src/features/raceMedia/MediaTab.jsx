@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addRaceMedia, dropRaceMedia, mutedCopy, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
+import { addRaceMedia, backfillPoster, dropRaceMedia, mutedCopy, prepRaceMedia, saveMedia } from "@/features/athletes/raceLiveStore";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -21,7 +21,7 @@ import { dropPending, listPending, putPending } from "./pendingStore";
 // ("2. yarış · Son 1 dakika", lib/raceLive.js mediaGroups), küçük resimde "−0:42" / "+12:30". Dokununca büyük açılır:
 // yarıştaki sporcular etiketlenir (dokun ekle/çıkar), Paylaş, Düzelt (yarış ve an), Sil. Etiketli varsa üstte sporcu süzgeci.
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). Süre'den açılan kamera kapanınca Süre'ye dönülür (onCamClose).
-const sizeText = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+const tried = new Set(); // bu açılışta küçük resmi denenen kayıtlar (olmazsa yeniden denenmez)
 
 export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "", onCamClose }) {
   const toast = useToast();
@@ -33,6 +33,13 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const inflight = useRef(new Set());
   const done = useRef(new Set());
   const [waiting, setWaiting] = useState([]); // telefonda bekleyen (yüklenemeyen) kayıtlar
+  // Yüklenenler listede hemen, telefondaki önizlemesiyle (Seyhun 2026-10-21, örnek yaris-tasarim/medya/yukleme.png): üstünde dolan halka,
+  // bitince kısa ✓. ups: yüklenen/bekleyen kayıtlar { [id]: { rec, url, p, err } }; mine: bu telefonda çekilip yüklenen künye → yerel dosya
+  const [ups, setUps] = useState({});
+  const [mine, setMine] = useState({});
+  const [tick, setTick] = useState(0); // eski kayıtların küçük resmi: biri bitince sıradaki
+  const up = (id, f) => setUps((u) => (u[id] ? { ...u, [id]: { ...u[id], ...f(u[id]) } } : u));
+  const addUp = (rec, err = false) => setUps((u) => (u[rec.id] ? u : { ...u, [rec.id]: { rec, url: URL.createObjectURL(rec.blob), p: err ? null : 0, err } }));
   const [last, setLast] = useState(null); // kamerada köşedeki son çekilen: { id, kind, url, state: up | ok | err, err }
   const [cam, setCam] = useState(cam0); // açık uygulama içi kamera: "photo" | "video" (cam0: Süre'den açıldı)
   const camRef = useRef(cam0);
@@ -46,7 +53,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
   const todays = live.media.filter((m) => dayOf(m.at) === day);
   const tagged = ours.filter((a) => todays.some((m) => m.ath.includes(a.id)));
   const pick = tagged.some((a) => a.id === who) ? who : "";
-  const groups = mediaGroups(mediaOf(live.media, pick), live.starts, day);
+  const upItems = pick ? [] : Object.values(ups).map(({ rec, url, p, err }) => ({ id: rec.id, kind: rec.kind, at: rec.at, dur: rec.dur, ...rec.mom, u: { url, p, err } }));
+  const groups = mediaGroups([...mediaOf(live.media, pick), ...upItems], live.starts, day);
   const first = (a) => (a.studentName || "").split(" ")[0];
 
   // Çekilenin anı (Süre sekmesindeki yarışlara göre: momentAt) ve üstüne basılan yazı ("4. yarış · Son 1 dakika · 0:42 kala" / yarış adı · saat)
@@ -58,23 +66,29 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     if (inflight.current.has(rec.id) || done.current.has(rec.id)) return; // aynı kayıt iki kez sıraya girdiyse bir kez yüklenir
     inflight.current.add(rec.id);
     try {
-      setBusy("Yükleniyor…");
-      const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => setBusy(`Yükleniyor %${Math.round(p * 100)}`), { ...rec.mom, dur: rec.dur });
+      addUp(rec);
+      up(rec.id, () => ({ p: 0, err: false }));
+      const meta = await addRaceMedia(orgId, race.id, rec, rec.at, (p) => up(rec.id, () => ({ p })), { ...rec.mom, dur: rec.dur });
       done.current.add(rec.id);
       await dropPending(rec.id);
+      setUps((u) => {
+        const { [rec.id]: x, ...rest } = u;
+        if (x) setMine((m) => ({ ...m, [meta.id]: { url: x.url, done: true } }));
+        return rest;
+      });
+      setTimeout(() => setMine((m) => (m[meta.id] ? { ...m, [meta.id]: { ...m[meta.id], done: false } } : m)), 1500);
       onChange((l) => ({ media: [...l.media, meta] }));
       setWaiting((w) => w.filter((x) => x.id !== rec.id));
       setLast((l) => (l?.id === rec.id ? { ...l, state: "ok" } : l));
-      if (!camRef.current) toast(rec.kind === "video" && rec.before > rec.blob.size ? `Video kaydedildi · ${sizeText(rec.before)} → ${sizeText(rec.blob.size)}` : rec.kind === "video" ? "Video kaydedildi" : "Fotoğraf kaydedildi");
     } catch (e) {
       const err = errText(e);
       console.warn("[raceMedia] yüklenemedi", e);
       await putPending({ ...rec, err });
       setWaiting((w) => [...w.filter((x) => x.id !== rec.id), { ...rec, err }]);
       setLast((l) => (l?.id === rec.id ? { ...l, state: "err", err } : l));
+      up(rec.id, () => ({ p: null, err: true }));
     }
     inflight.current.delete(rec.id);
-    setBusy("");
   };
   const enqueue = (rec) => {
     setPending((n) => n + 1);
@@ -86,6 +100,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     const rec = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, raceId: race.id, at, kind: m.kind, type: m.type, blob: m.blob, dur: m.dur || 0, mom, before, err: "" };
     setLast((l) => (l?.url && URL.revokeObjectURL(l.url), { id: rec.id, kind: rec.kind, url: URL.createObjectURL(rec.blob), state: "up" }));
     await putPending(rec);
+    addUp(rec);
     enqueue(rec);
   };
   const retry = () => waiting.forEach((r) => enqueue(r));
@@ -95,7 +110,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     listPending(race.id).then((all) => {
       if (!on || !all.length) return;
       setWaiting(all);
-      all.forEach((r) => enqueue(r));
+      all.forEach((r) => (addUp(r, !!r.err), enqueue(r)));
     });
     const online = () => listPending(race.id).then((l) => l.forEach((r) => enqueue(r)));
     window.addEventListener("online", online);
@@ -105,6 +120,21 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [race.id]);
+  // Küçük resmi olmayan eski kayıtlar sırayla bir kez tamamlanır (sonra liste videoyu indirmez)
+  const noThumb = live.media.find((m) => !m.thumb && !tried.has(m.id));
+  useEffect(() => {
+    if (!noThumb || !navigator.onLine) return;
+    tried.add(noThumb.id);
+    let on = true;
+    backfillPoster(orgId, race.id, noThumb)
+      .then((thumb) => on && thumb && onChange((l) => ({ media: l.media.map((x) => (x.id === noThumb.id ? { ...x, thumb } : x)) })))
+      .catch(() => {})
+      .finally(() => on && setTick((n) => n + 1));
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noThumb?.id, tick]);
   // Uygulama içi kameradan: an çekildiği anda hesaplanır (sayaç sonra sıfırlansa da kalır)
   const shot = (x) => keep(x, x.at, momentAt(x.at, live.starts));
   // Telefonun kendi kamerasıyla (uygulama içi kamera açılamazsa): çekildiği an dosyanın zamanı bu güne aitse o, değilse şimdi
@@ -201,8 +231,8 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
           <p className="mb-1.5 mt-4 px-1 text-[0.8125rem] text-mut">{g.title}</p>
           <div className={`${card} grid grid-cols-3 gap-1 overflow-hidden p-1`}>
             {g.items.map((m) => (
-              <button key={m.id} type="button" onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
-                <Thumb kind={m.kind} url={m.url} dur={m.dur} />
+              <button key={m.id} type="button" disabled={!!m.u} onClick={() => setOpen(m.id)} className="relative aspect-square overflow-hidden rounded-xl bg-line active:opacity-80">
+                <Thumb kind={m.kind} url={m.url} thumb={m.thumb} dur={m.dur} local={m.u?.url || mine[m.id]?.url} up={m.u && !m.u.err ? m.u.p : null} err={!!m.u?.err} done={!!mine[m.id]?.done} />
                 {m.phase && <span className="absolute left-1 top-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-white">{momentBadge(m)}</span>}
               </button>
             ))}
@@ -211,7 +241,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       ))}
 
       <MediaViewer
-        items={groups.flatMap((g) => g.items)}
+        items={groups.flatMap((g) => g.items).filter((m) => !m.u)}
         id={open ? open.id : ""}
         onPick={setOpen}
         onClose={() => setOpen("")}
