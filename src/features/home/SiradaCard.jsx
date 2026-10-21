@@ -16,13 +16,14 @@ import { attHref, findRace, homeHidden, leftTag, shortDay, planTag, planTone, ra
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
 import { RacePlanSheet } from "./RacePlanSheet";
-import { GROUP } from "./ui";
+import { ListHead } from "@/components/ui/Row";
+import { SwipeRow } from "@/components/ui/SwipeRow";
 
-// Ana sayfanın takvim bölümü (Seyhun 2026-10-17: "2'deki gibi, bugün kısmı 3'teki gibi, Bugün yazısına gerek yok"). Ayrı gruplu kartlar:
-// (gün şeridi ve günün penceresi 2026-10-21den beri kokpitte: HomeDays.jsx, DayPick.jsx) 1) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
-//    nokta ve alt satırda "yer · 12:00'ye kadar · şimdi"; ilk satırda antrenman/yarışın rüzgârı (eşik geçilirse kırmızımsı); sağda tür adı,
-// 2) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
-//    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 3) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
+// Ana sayfanın takvim bölümü (yeni tasarım, Seyhun 2026-10-21 örneği): "TAKVİM" başlığı (Tümü › takvim) ve tek kart. Kartta gün başlıklarıyla
+// 1) Bugün: solda saat, ad, altında tür (renginde) · yer · ilk satırda rüzgâr (eşik geçilirse kırmızımsı); süren planda sağda "Şimdi" ve bitiş,
+// 2) Yarın (ya da planı olan en yakın gün): aynı satır, 3) Sırada (en çok 4): solda tarih kutusu (23 EKİ, türün renginde), ad, altında
+//    tür · gün saat · yer, sağda kalan gün (2 gün sarı); bir yarışın işleri yarışın altında ince satırlarda. Yarın ve Sırada satırı sola
+//    kaydırınca "Gizle" (HideSheet); altta "N plan gizli" ve "Gizleme ayarı" (toplu). Sonra "Seni bekleyenler" satırı (zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; att: yoklama yetkisi, skip: kokpitte gösterilen plan (OwnerHome).
 export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
@@ -79,17 +80,18 @@ export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
   const empty = !td.rows.length && !next;
   // Bugünün tek planı kokpitte gösteriliyorsa (skip) "Bugün plan kalmadı" yazmaz
   const skipToday = !!skip && plans.some((p) => p.id === skip && p.date === today);
-  // Sıradakilerin tarihi: bu aydaysa "Sal 20", değilse "Pzt 3 Kas"
-  // ("Yarın" yazılmaz, o kalan gün işaretinde; Seyhun 2026-10-20: "tekrarlardan kaçınalım, tarih saat başlık düzgün yazılsın")
-  const short = (day) => shortDay(day, today);
   const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
 
-  return (
-    <section aria-label="Takvim" className="space-y-2.5">
+  const dayHead = (day, label) => `${label} · ${shortDay(day, "")}`;
+  const hideAct = (x) => [{ label: "Gizle", icon: "eyeOff", tone: "neutral", onAction: () => setHide(x) }];
 
-      <div className={`px-3.5 py-1.5 ${GROUP}`}>
+  return (
+    <section aria-label="Takvim">
+      <ListHead title="Takvim" href="/calendar" />
+      <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
         {td.rows.length ? (
-          <ul>
+          <>
+            <DayHead title={dayHead(today, "Bugün")} today />
             {td.rows.map(({ p, now: live }, i) => (
               <TimeRow
                 key={p.id}
@@ -97,14 +99,14 @@ export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
                 live={live}
                 warn={i === 0 && windy}
                 roll={att && isTraining(p) && p.status !== "cancelled" ? { href: attHref(today, today), taken: profile.attLast === today } : null}
-                sub={[p.place, live && untilText(p.time, p.durationMin), i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
+                sub={[p.place, i === 0 && wx && `rüzgâr ${wx.wind} kn${windy ? `, sağanak ${wx.gust} kn` : ""}`].filter(Boolean).join(" · ")}
                 media={mediaOf(p, today)}
                 onOpen={() => open(p)}
               />
             ))}
-          </ul>
+          </>
         ) : skipToday && !empty ? null : (
-          <div className="flex items-center justify-between gap-3 py-1.5">
+          <div className="flex min-h-[3.5rem] items-center justify-between gap-3 px-3.5 py-2">
             <span className="text-[0.9375rem] text-mut">{empty ? "Plan yok" : "Bugün plan kalmadı"}</span>
             {empty && (
               <button type="button" data-press onClick={() => openAdd({ type: "plan" })} className="raised flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold text-acc">
@@ -117,46 +119,35 @@ export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
 
         {nextRows.length > 0 && (
           <>
-            <DayHead title={next.label === "Yarın" ? `Yarın · ${weekday(next.day)}` : next.label} />
-            <ul>
-              {nextRows.map(({ p }) => (
-                <TimeRow key={p.id} p={p} sub={p.place} left={next.label === "Yarın" ? null : leftTag(next.day, today)} media={mediaOf(p, next.day)} onOpen={() => open(p)} onHide={() => setHide(p)} />
-              ))}
-            </ul>
+            <DayHead title={dayHead(next.day, next.label === "Yarın" ? "Yarın" : weekday(next.day))} line />
+            {nextRows.map(({ p }) => (
+              <SwipeRow key={p.id} actions={hideAct(p)}>
+                <TimeRow p={p} sub={p.place} left={next.label === "Yarın" ? null : next.day} today={today} media={mediaOf(p, next.day)} onOpen={() => open(p)} />
+              </SwipeRow>
+            ))}
           </>
         )}
 
         {rest.length > 0 && (
           <>
-            <DayHead
-              title="Sırada"
-              right={
-                <button type="button" onClick={() => setHide("all")} className="flex items-center gap-1 font-semibold normal-case tracking-normal text-acc">
-                  <Icon name="eyeOff" className="size-3.5" />
-                  {Number.isFinite(profile.homeDays) ? `${profile.homeDays} gün kala` : "Tümü"}
-                </button>
-              }
-            />
-            <ul>
-              {rest.map((x) =>
-                x.race ? (
-                  <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} media={x.start ? mediaOf(x.start.p, x.start.day) : ""} date={short} today={today} onRace={(href) => router.push(href)} onOpen={open} onHide={() => setHide(raceHide(x.race))} />
-                ) : (
-                  <TimeRow key={x.p.id} p={x.p} media={mediaOf(x.p, x.day)} date={short(x.day)} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} left={leftTag(x.day, today)} onOpen={() => open(x.p)} onHide={() => setHide(x.p)} />
-                ),
-              )}
-            </ul>
+            <DayHead title="Sırada" line />
+            {rest.map((x) =>
+              x.race ? (
+                <RaceGroupRow key={`r:${x.race}`} g={x} race={raceOf(x.race)} media={x.start ? mediaOf(x.start.p, x.start.day) : ""} today={today} onRace={(href) => router.push(href)} onOpen={open} actions={hideAct(raceHide(x.race))} />
+              ) : (
+                <SwipeRow key={x.p.id} actions={hideAct(x.p)}>
+                  <DateRow p={x.p} day={x.day} today={today} sub={[x.start && "Başlangıç", x.p.place].filter(Boolean).join(" · ")} media={mediaOf(x.p, x.day)} onOpen={() => open(x.p)} />
+                </SwipeRow>
+              ),
+            )}
           </>
         )}
-        {hiddenN > 0 && (
-          <div className="mt-1 flex items-center justify-between gap-3 border-t border-line py-2.5 text-[0.84375rem] text-mut">
-            <button type="button" onClick={() => setHide("all")} className="flex items-center gap-1.5">
-              <Icon name="eyeOff" className="size-4 shrink-0" />
-              {hiddenN} plan gizli
+        {(hiddenN > 0 || rest.length > 0) && (
+          <div className="mt-1 flex items-center justify-between gap-3 border-t border-line px-3.5 py-2.5 text-[0.84375rem] font-semibold text-mut">
+            <span>{hiddenN > 0 ? `${hiddenN} plan gizli` : Number.isFinite(profile.homeDays) ? `${profile.homeDays} gün kalanlar görünür` : ""}</span>
+            <button type="button" onClick={() => setHide("all")} className="shrink-0 text-acc">
+              Gizleme ayarı
             </button>
-            <Link href="/calendar" className="shrink-0 font-semibold text-acc">
-              Takvim ›
-            </Link>
           </div>
         )}
       </div>
@@ -168,113 +159,141 @@ export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
   );
 }
 
-// Tek listede gün başlığı (Yarın · Çarşamba, Sırada): ince çizginin altında küçük gri ad
-// right: sağda tek eylem (Sırada'da listenin toplu gizleme ayarı)
-const DayHead = ({ title, right }) => (
-  <h2 className="mt-1 flex items-center justify-between gap-3 border-t border-line pb-0.5 pt-2.5 first:mt-0 first:border-t-0 first:pt-1.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">
-    {title}
-    {right}
-  </h2>
+// Gün başlığı (Bugün · Çar 21 Eki mor, Yarın · Per 22 Eki, Sırada); line: üstünde ince çizgi
+const DayHead = ({ title, today, line }) => (
+  <h2 className={`px-3.5 pb-0.5 pt-3 text-[0.78125rem] font-bold ${today ? "text-acc" : "text-mut"} ${line ? "mx-3.5 mt-1 border-t border-line !px-0" : ""}`}>{title}</h2>
 );
 
-// Liste satırı (Bugün, Yarın, Sırada aynı; Seyhun 2026-10-20: "başlık üst satır yatayda full, altında diğer bilgiler yan yana"): solda ince dikey çizgi
-// ve plan türünün renginde halka (süren planda kırmızı dolu nokta), üstte tam genişlikte ad, altında gün · saat · tür · yer · "şimdi" ve sağda
-// kalan gün (left: leftTag; bugün/yarın kırmızı, 2 gün sarı, sonrası gri). warn: rüzgâr eşiği geçti, alt satır kırmızımsı
-const LEFT = { red: "bg-[var(--red)] text-white", warn: "bg-warnbg text-warn", mut: "bg-line/60 text-fg2" };
-// roll: bugünün antrenmanında yoklama ({ href, taken }): satırın altında "Yoklama al" ya da yeşil "✓ Yoklama alındı" (dokununca yine açılır)
-// onHide: sağ üstte gizle düğmesi (Yarın ve Sırada; HideSheet)
-function TimeRow({ p, live, warn, sub, date, left, roll, media, onOpen, onHide }) {
-  const tag = planTag(p);
+// Kalan gün (sağda): bugün/yarın kırmızı söz, 2 gün sarı, sonrası büyük sayı + "gün"
+const daysTo = (day, today) => Math.round((Date.parse(`${day}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+function Left({ day, today }) {
+  const n = daysTo(day, today);
+  if (!(n >= 0)) return null;
+  if (n < 2) return <span className="shrink-0 text-[0.875rem] font-bold text-[var(--red)]">{n ? "Yarın" : "Bugün"}</span>;
   return (
-    <li className={`tone-${planTone(p)} relative border-l-2 border-line py-2.5 pl-4`}>
-      <Dot live={live} />
-      <button type="button" onClick={onOpen} className="block w-full text-left">
-        <b className={`block break-words font-normal ${onHide ? "pr-9" : ""}`}>{p.title}</b>
-        <Meta left={left} warn={warn} date={date} time={p.time || (date ? "" : "Tüm gün")} tag={tag} sub={sub} live={live} />
+    <span className={`min-w-[2.75rem] shrink-0 text-right leading-none ${n === 2 ? "text-warn" : ""}`}>
+      <b className="block text-[1.1875rem] font-bold tabular-nums">{n}</b>
+      <small className={`mt-0.5 block text-[0.71875rem] font-semibold ${n === 2 ? "" : "text-mut"}`}>gün</small>
+    </span>
+  );
+}
+const Tag = ({ p }) => {
+  const t = planTag(p);
+  return t ? <span className="tone-fg">{t}</span> : null;
+};
+const join = (parts) =>
+  parts.filter(Boolean).map((x, i, all) => (
+    <Fragment key={i}>
+      {x}
+      {i < all.length - 1 && "\u00a0· "}
+    </Fragment>
+  ));
+
+// Bugün ve Yarın satırı: solda saat (gün boyu planda "Gün"), ad, altında tür · yer; süren planda sağda "Şimdi" ve bitiş.
+// left: Yarın değilse planın günü (sağda kalan gün). roll: bugünün antrenmanında yoklama ({ href, taken }); media: yarışın multimedyası
+function TimeRow({ p, live, warn, sub, left, today, roll, media, onOpen }) {
+  return (
+    <div className={`tone-${planTone(p)} bg-card`}>
+      <button type="button" onClick={onOpen} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
+        <b className="w-[2.875rem] shrink-0 text-center text-[0.9375rem] font-bold tabular-nums">{p.time || "Gün"}</b>
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-semibold">{p.title}</b>
+          <small className={`block truncate text-[0.8125rem] ${warn ? "text-rose-600 dark:text-rose-400" : "text-mut"}`}>{join([<Tag key="t" p={p} />, sub])}</small>
+        </span>
+        {live ? (
+          <span className="shrink-0 text-right leading-tight">
+            <b className="block text-[0.875rem] font-bold text-[var(--red)]">Şimdi</b>
+            {p.time && <small className="block text-[0.75rem] font-semibold text-mut">{untilText(p.time, p.durationMin).slice(0, 5)} bitiş</small>}
+          </span>
+        ) : (
+          left && <Left day={left} today={today} />
+        )}
       </button>
-      <HideBtn onHide={onHide} />
-      {roll && (
-        <Link href={roll.href} data-press className={`raised mt-2 inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold ${roll.taken ? "text-[var(--ok)]" : "text-acc"}`}>
-          {roll.taken && <Icon name="check" className="size-4 shrink-0" />}
-          {roll.taken ? "Yoklama alındı" : "Yoklama al"}
-        </Link>
+      {(roll || media) && (
+        <div className="flex gap-2 pb-2.5 pl-[4.625rem] pr-3.5">
+          {roll && (
+            <Link href={roll.href} data-press className={`raised inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold ${roll.taken ? "text-[var(--ok)]" : "text-acc"}`}>
+              {roll.taken && <Icon name="check" className="size-4 shrink-0" />}
+              {roll.taken ? "Yoklama alındı" : "Yoklama al"}
+            </Link>
+          )}
+          <MediaBtn href={media} />
+        </div>
       )}
-      <MediaBtn href={media} />
-    </li>
+    </div>
   );
 }
 // Yarışın multimedya sayfası (yarış bugün/yarın)
 const MediaBtn = ({ href }) =>
   href ? (
-    <Link href={href} data-press className="raised mt-2 inline-flex h-9 items-center whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold text-acc">
+    <Link href={href} data-press className="raised inline-flex h-9 items-center whitespace-nowrap rounded-xl bg-card px-3 text-[0.84375rem] font-semibold text-acc">
       Multimedya
     </Link>
   ) : null;
-// Sağ üstte gizle düğmesi (HideSheet)
-const HideBtn = ({ onHide }) =>
-  onHide ? (
-    <button type="button" aria-label="Listede gizle" onClick={onHide} className="absolute right-0 top-1 grid size-9 place-items-center text-mut/70">
-      <Icon name="eyeOff" className="size-4" />
-    </button>
-  ) : null;
-const Dot = ({ live }) => (
-  <span
-    aria-hidden="true"
-    className={`absolute -left-[7px] top-[0.9rem] size-3 rounded-full border-2 ${live ? "border-[var(--red)] bg-[var(--red)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--red)_18%,transparent)]" : "border-[var(--tfg)] bg-card"}`}
-  />
-);
-// Satırın alt bilgisi, her satırda aynı sıra ve yazı (Seyhun 2026-10-20: "tarihler, saatler aynı formatta, aynı sıralamayla"):
-// gün · saat · tür (renginde) · yer/ek · şimdi; gerekirse alt satıra geçer, gün ve saat bölünmez; sağda kalan gün
-const Meta = ({ left, warn, date, time, tag, sub, live }) => {
-  const parts = [date && <span className="whitespace-nowrap">{date}</span>, time && <span className="whitespace-nowrap tabular-nums">{time}</span>, tag && <span className="tone-fg">{tag}</span>, sub, live && <span className="text-[var(--red)]">şimdi</span>].filter(Boolean);
+
+// Tarih kutusu (Sırada): gün ve ay her satırda aynı (23 EKİ, 2 KAS), plan türünün renginde
+function DateBox({ day }) {
+  const d = new Date(`${day}T12:00:00`);
   return (
-    <span className={`mt-0.5 flex items-start gap-2 text-[0.84375rem] ${warn ? "text-rose-600 dark:text-rose-400" : "text-mut"}`}>
-      <span className="min-w-0 flex-1 break-words">
-        {parts.map((x, i) => (
-          <Fragment key={i}>
-            {x}
-            {i < parts.length - 1 && "\u00a0· "}
-          </Fragment>
-        ))}
-      </span>
-      <LeftPill left={left} />
+    <span className="tone-chip flex h-[3.125rem] w-[2.875rem] shrink-0 flex-col items-center justify-center rounded-[0.8rem] leading-none">
+      <b className="text-[1.1875rem] font-bold tabular-nums">{d.getDate()}</b>
+      <small className="mt-1 text-[0.625rem] font-bold tracking-[.08em]">{d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "").toLocaleUpperCase("tr-TR")}</small>
     </span>
   );
-};
+}
+const wdOf = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
 
-// Sırada'da bir yarışın planları (Seyhun 2026-10-20): üstte tam genişlikte yarışın adı, altında başlangıç günü · Yarış · Başlangıç · yer ve sağda
-// başlangıca kalan gün; dokununca yarışın sayfası. Altında yarışın işleri gün sırasıyla (üstte iş adı, altında gün · saat ve kalan gün),
-// dokununca Yapıldı / Yarışın sayfası / Planı aç
-function RaceGroupRow({ g, race, media, date, today, onRace, onOpen, onHide }) {
-  const head = g.start?.p || g.items[0].p;
-  const startDay = g.start?.p.date || race?.startDate || "";
-  const href = race ? `/athletes/races/${race.id}` : "";
+// Sırada satırı (Seyhun 2026-10-21 örneği): tarih kutusu, ad, altında tür · gün saat · yer, sağda kalan gün
+function DateRow({ p, day, today, sub, media, onOpen, title }) {
   return (
-    <li className={`tone-${planTone(head)} relative border-l-2 border-line py-2.5 pl-4`}>
-      <Dot />
-      <button type="button" onClick={() => (href ? onRace(href) : onOpen(head))} className="block w-full text-left">
-        <b className="block break-words pr-9 font-normal">
-          {g.race}
-          {href && <span className="ml-1 font-normal text-acc">›</span>}
-        </b>
-        <Meta left={startDay ? leftTag(startDay, today) : null} date={date(startDay || g.day)} time={head.time} tag="Yarış" sub={[startDay && "Başlangıç", head.place].filter(Boolean).join(" · ")} />
+    <div className={`tone-${planTone(p)} bg-card`}>
+      <button type="button" onClick={onOpen} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2 text-left">
+        <DateBox day={day} />
+        <span className="min-w-0 flex-1">
+          <b className="block truncate text-[0.9375rem] font-semibold">{title || p.title}</b>
+          <small className="block truncate text-[0.8125rem] text-mut">{join([<Tag key="t" p={p} />, `${wdOf(day)} ${p.time || "· gün boyu"}`, sub])}</small>
+        </span>
+        <Left day={day} today={today} />
       </button>
-      <HideBtn onHide={onHide} />
-      <MediaBtn href={media} />
-      <ul className="mt-1.5 space-y-1.5">
-        {g.items.map(({ p, day, label }) => (
-          <li key={p.id}>
-            <button type="button" onClick={() => onOpen(p)} className="block w-full rounded-xl bg-bg px-2.5 py-2 text-left">
-              <span className="block break-words">{label}</span>
-              <Meta left={leftTag(day, today)} date={date(day)} time={p.time} />
-            </button>
-          </li>
-        ))}
-      </ul>
-    </li>
+      {media && (
+        <div className="pb-2.5 pl-[4.625rem] pr-3.5">
+          <MediaBtn href={media} />
+        </div>
+      )}
+    </div>
   );
 }
-const LeftPill = ({ left }) => (left ? <span className={`mt-0.5 shrink-0 whitespace-nowrap rounded-full px-2 py-px text-[0.75rem] font-semibold tabular-nums ${LEFT[left.tone]}`}>{left.text}</span> : null);
+
+// Sırada'da bir yarış: yarışın satırı (dokununca yarışın sayfası), altında işleri ince satırlarda ("Kayıt son günü · Cum 23 Eki · 2 gün"),
+// dokununca Yapıldı / Yarışın sayfası / Planı aç. Sola kaydırınca yarışın bütün planları gizlenir.
+function RaceGroupRow({ g, race, media, today, onRace, onOpen, actions }) {
+  const head = g.start?.p || g.items[0].p;
+  const startDay = g.start?.p.date || race?.startDate || g.day;
+  const href = race ? `/athletes/races/${race.id}` : "";
+  return (
+    <SwipeRow actions={actions}>
+      <div className="bg-card">
+        <DateRow p={{ ...head, cat: "Yarış" }} title={g.race} day={startDay} today={today} sub={[g.start && "Başlangıç", head.place].filter(Boolean).join(" · ")} media={media} onOpen={() => (href ? onRace(href) : onOpen(head))} />
+        <ul className="mb-2 ml-[4.625rem] mr-3.5 border-l-2 border-line pl-2.5">
+          {g.items.map(({ p, day, label }) => {
+            const n = daysTo(day, today);
+            return (
+              <li key={p.id}>
+                <button type="button" onClick={() => onOpen(p)} className="flex w-full items-baseline justify-between gap-2 py-1 text-left text-[0.84375rem]">
+                  <span className="min-w-0 truncate font-semibold">{label || p.title}</span>
+                  <span className={`shrink-0 tabular-nums ${n <= 2 ? "font-semibold text-warn" : "text-mut"}`}>
+                    {shortDay(day, "")}
+                    {p.time ? ` ${p.time}` : ""} · {n === 0 ? "Bugün" : n === 1 ? "Yarın" : `${n} gün`}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </SwipeRow>
+  );
+}
 
 // "Seni bekleyenler" satırı: kırmızı karede sayı, sağda ilk işlerin adı (bekleyen yoksa çizilmez; ayrıntı zil penceresinde)
 function WaitRow({ inbox, onAll }) {
@@ -282,7 +301,7 @@ function WaitRow({ inbox, onAll }) {
   if (!list.length) return null;
   const peek = list.map((x) => x.title).filter((t) => typeof t === "string" && t).slice(0, 3).join(", ");
   return (
-    <button type="button" onClick={onAll} className={`flex w-full items-center gap-3 px-3.5 py-2.5 text-left ${GROUP}`}>
+    <button type="button" onClick={onAll} className="mt-2.5 flex w-full items-center gap-3 rounded-[1.25rem] border border-line bg-card px-3.5 py-2.5 text-left">
       <span aria-hidden="true" className="grid size-[1.875rem] shrink-0 place-items-center rounded-lg bg-[var(--red)] text-[0.8125rem] font-bold tabular-nums text-white">
         {list.length}
       </span>
