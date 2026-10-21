@@ -28,7 +28,6 @@ import { canLog, isTraining, pickPlan } from "@/lib/trainingLog";
 import { cleanRaces, mmss, newRace, standings } from "@/lib/raceScore";
 import { BUOYS, cleanBuoys, cleanLive, upSec, windOn } from "@/lib/raceLive";
 import { todayStr } from "@/lib/utils/format";
-import { useTimerHome } from "@/features/training/TimerChip";
 
 // Antrenman sayfası (kulüp antrenmanı günü), yarış multimedya sayfasının düzeninde (Seyhun 2026-10-20 onayı,
 // /mnt/project-files/antrenman-sayfasi/medya-ornek.png): altta Süre · Medya · Hava · Sonuçlar.
@@ -123,7 +122,6 @@ function Day() {
   const saveRaces = (list) => updateRecord("plan", plan.id, { races: cleanRaces(list) }, by);
   const { flow, undo } = useTrainingFlow({ races, save: saveRaces });
   const tr = useTimerRun();
-  useTimerHome();
   const withRaces = plan && racer && !locked;
   const cur = withRaces && (tr.running || tr.t.left != null) ? races.find((r) => r.id === tr.t.rid) : null;
   const buoys = plan?.buoys ? cleanBuoys(plan.buoys) : BUOYS;
