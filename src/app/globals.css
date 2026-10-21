@@ -309,7 +309,7 @@ select {
   --bg: #0b1024; --card: #161b36; --fg: #e8eaf6; --mut: #9a9fbd; --line: #2a3054; --acc: #7c6cf0; --acc2: #7c6cf0; --rec: #e0675e;
   --ok: #55a374; --fg2: #b8bcd6; --accbg: #26243f; --warn: #d0a25e; --warnbg: #2e281f;
   /* Velora: gece laciverti zemin, mor ve turkuaz bulutlar (logonun renkleri) */
-  --ab-base1: #060914; --ab-base2: #0d1230; --ab-b1: rgba(124, 92, 255, .34); --ab-b2: rgba(34, 211, 238, .20); --ab-b3: rgba(79, 70, 229, .26);
+  --ab-base1: #10142f; --ab-base2: #141938; /* ana sayfa kokpitiyle aynı lacivert (.ck), açılınca aynı dünyanın devamı */ --ab-b1: rgba(124, 92, 255, .34); --ab-b2: rgba(34, 211, 238, .20); --ab-b3: rgba(79, 70, 229, .26);
   --ab-dot: rgba(190, 200, 255, .14); --ab-c: #8b5cf6; --ab-glow: .62; --ab-panel: rgba(22, 27, 54, .82);
   transition: --ab-c .6s ease; }
 .afull[data-state="listening"] { --ab-c: #f26f60; }
@@ -671,3 +671,31 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
   body[data-side] [data-sheet] > div { border-radius: 1.5rem; max-height: calc(100dvh - 3rem); padding-bottom: 1.25rem; }
   body[data-side] [data-sheet].translate-y-full { translate: 0 calc(100% + 2rem); }
 }
+
+/* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte mor,
+   sol altta turkuaz hafif ışık; iki temada aynı. İçindeki yuvarlak düğmeler (zil, doğum günü) yarı saydam beyaz. */
+.ck {
+  color: #eceaf8;
+  background:
+    radial-gradient(120% 70% at 88% 0%, rgba(139, 92, 246, .38), transparent 62%),
+    radial-gradient(90% 60% at 0% 100%, rgba(34, 211, 238, .14), transparent 62%),
+    #141938;
+}
+.ck .btn-round { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+.ck .btn-round .ring-bg { --tw-ring-color: #141938; }
+/* Kokpitteki beyaz küçük düğme (Süre) */
+.ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #141938; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.ck-btn[data-pressed] { transform: translateY(1px) scale(.97); box-shadow: 0 1px 0 rgba(0, 0, 0, .35); }
+/* Rüzgâr grafiği açılışta soldan sağa çizilir; şimdi noktası atar */
+.ck-draw { animation: ck-draw .9s cubic-bezier(.22, .8, .24, 1) both; }
+@keyframes ck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.ck-pulse { transform-box: fill-box; transform-origin: center; animation: ck-pulse 2s ease-out infinite; }
+@keyframes ck-pulse { 0% { opacity: .45; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.6); } }
+@media (prefers-reduced-motion: reduce) { .ck-draw, .ck-pulse { animation: none; } .ck-pulse { opacity: .2; } }
+/* Asistan halkasının ortasındaki logo: yavaş nefes (TabBar ProgressRing) */
+.aring-logo { transform-box: fill-box; transform-origin: center; animation: aring-logo 3.2s ease-in-out infinite; }
+.afull[data-state="busy"] .aring-logo { animation-duration: 1.1s; }
+@keyframes aring-logo { 50% { transform: scale(.88); opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .aring-logo { animation: none; } }
+/* İş düğmeleri ızgarasında günün ana işi (ActionGrid main): açık mor zemin, mor yazı */
+.raised.act-main { --btn-top: color-mix(in srgb, var(--accbg) 70%, #fff); --btn-bot: var(--accbg); color: var(--acc); border-color: color-mix(in srgb, var(--acc) 28%, var(--line)); }

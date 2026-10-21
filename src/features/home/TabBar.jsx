@@ -329,6 +329,8 @@ function ProgressRing({ r, big }) {
       {r.bars && [14, 26, 38, 26, 14].map((h, i) => (
         <rect key={i} x={73 + i * 12} y={100 - h / 2} width="6" height={h} rx="3" fill={c} className="aring-bar" style={{ animationDelay: `${i * 0.12}s` }} />
       ))}
+      {/* Boşta ve çalışırken halkanın ortasında Velora logosu yavaşça nefes alır (kokpit tasarımı "C", 2026-10-21); dinlerken ses çubukları, bitince onay */}
+      {big && !r.bars && !r.check && <image href="/brand/velora-mark.svg" x="58" y="58" width="84" height="84" className="aring-logo" />}
       {r.check && <path d="M78 101 l15 15 l30 -32" fill="none" stroke={c} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" className="aring-check" />}
     </svg>
   );

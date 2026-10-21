@@ -464,3 +464,22 @@ export function storyPeople(members = [], bdays = []) {
     .map((m) => ({ id: m.uid, name: m.name, photo: m.photo || "", href: personHref(m), bday: born.has(m.uid), r: rank[m.kind] || 1, tone: personTone(m.kind) }))
     .sort((a, b) => (b.bday - a.bday) || a.r - b.r || a.name.localeCompare(b.name, "tr"));
 }
+
+// Ana sayfa kokpitindeki sıradaki iş (Cockpit.jsx, 2026-10-21): bugün süren ya da sıradaki plan (bitişi = saat + süre, süre yoksa 60 dk; saatsiz plan gün boyu),
+// yoksa 7 gün içindeki ilk plan. İptal, tamamlanan ve fitness planları sayılmaz. Yoksa null.
+export function nextPlan(plans, now, today = now.toLocaleDateString("sv-SE")) {
+  const hm = now.toTimeString().slice(0, 5);
+  const end = (p) => {
+    if (!p.time) return "24:00";
+    const [h, m] = p.time.split(":").map(Number);
+    const t = h * 60 + m + (Number(p.durationMin) || 60);
+    return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  };
+  const lim = new Date(now.getTime() + 7 * 864e5).toLocaleDateString("sv-SE");
+  return (
+    (plans || [])
+      .filter((p) => p?.date && p.status !== "cancelled" && p.status !== "done" && p.date >= today && p.date <= lim && !p.fit)
+      .filter((p) => p.date > today || end(p) > hm)
+      .sort((a, b) => `${a.date} ${a.time || "99"}`.localeCompare(`${b.date} ${b.time || "99"}`))[0] || null
+  );
+}
