@@ -1,27 +1,24 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import Link from "next/link";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
 import { useNow } from "@/hooks/useNow";
-import { fitDays, homeActions } from "@/lib/homeTiles";
+import { fitDays, homeActions, nextPlan } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
-import { initials, todayStr } from "@/lib/utils/format";
+import { todayStr } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
-import { InboxBell, InboxSheet, useInbox } from "./Inbox";
+import { InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
-import { BirthdayBadge } from "./PeopleStrip";
-import { HomeHero, HomeWind } from "./HomeHero";
+import { Cockpit } from "./Cockpit";
+import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
 import { AthletesWidget, FitWidget, NotesWidget, TalkWidgets } from "./HomeWidgets";
-import { GROUP } from "./ui";
-import { AppLogo } from "@/components/ui/AppLogo";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
@@ -29,11 +26,10 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
-// Ana sayfa (gruplu, iPhone ayarlar düzeni; Seyhun 2026-10-17 "2'deki gibi"): üstte "Cmt 17 Ekim", sağda zil (Senin için penceresi) ve Ayarlar; altında hava kartı (hava satırı + rüzgâr grafiği). Akış (HomeFeed): Sırada kartı,
-// "N şey seni bekliyor" satırı (zil ile aynı pencere), doğum günü, sporcu/veli: Yoklamam, Kulüp/Özet satırları, Kısayollar. Alttaki asistan kubbesi her sayfada aynı (TabBar); akış onun üstünde biter.
+// Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit"): üstte lacivert kokpit (Cockpit: tarih, zil, Ayarlar, hava, rüzgâr grafiği, sıradaki iş),
+// altında açık zeminde akış (HomeFeed): iş düğmeleri, Notlar, Sporcular, Fitness, takvim, doğum günü, Kulüp/Özet. Alttaki asistan kubbesi her sayfada aynı (TabBar).
 export function OwnerHome() {
   const { profile } = useAuth();
-  const now = useNow();
   const weather = useWeather();
   const staff = profile?.role === "staff";
   const qa = useQuota("assistant");
@@ -47,38 +43,18 @@ export function OwnerHome() {
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
 
-  // Tarih başlığı: "Cmt 17 Ekim" (kısa gün, uzun ay; büyük "Bugün" başlığı yok)
-  const day = now.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
-  const date = now.toLocaleDateString("tr-TR", { day: "numeric", month: "long" });
-
   return (
-    <main className="calm grouped relative mx-auto max-w-[30rem] px-4 pt-[calc(0.875rem+env(safe-area-inset-top))]">
-      <header className="flex items-center gap-3 px-1">
-        {/* Velora logosu tarihin solunda, aynı satırda (yer kaplamaz); geniş ekranda sol menüde olduğu için gizli */}
-        <AppLogo size={28} className="-mr-1 flex shrink-0 lg:hidden" />
-        <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
-          <span className="capitalize">{day}</span> {date}
-        </h1>
-        <BirthdayBadge />
-        <InboxBell inbox={inbox} onOpen={() => setSheet(true)} />
-        <Link href="/settings" aria-label="Ayarlar" className="grid size-9 shrink-0 place-items-center rounded-full bg-card text-[0.8125rem] font-semibold text-acc active:scale-90">
-          {initials(profile?.name)}
-        </Link>
-      </header>
-      {staff && qa && qr && (
-        <p className="mt-0.5 px-1 text-[0.75rem] tabular-nums text-mut">
-          Bugün kalan · asistan {qa.left}/{qa.limit} · fiş {qr.left}/{qr.limit}
-        </p>
-      )}
-
-      {/* Hava kartı: üstte simge, sıcaklık, durum; altında bugünün rüzgâr grafiği (ikisi de hava penceresini açar) */}
-      <div className={`mt-2.5 px-3.5 pb-2.5 pt-3 ${GROUP}`}>
-        <HomeHero weather={weather} />
-        <HomeWind weather={weather} />
-      </div>
-      <PaidNotice />
-
-      <div className="mt-2.5">
+    <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
+      {/* Lacivert üst kısım (kokpit): tarih, zil, Ayarlar, bugünün havası, rüzgâr grafiği, sıradaki iş (Seyhun 2026-10-21 "C · Lacivert kokpit") */}
+      <Cockpit weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
+      {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
+      <div className="relative -mx-4 -mt-6 rounded-t-[1.75rem] bg-bg px-4 pt-4">
+        {staff && qa && qr && (
+          <p className="mb-2 px-1 text-[0.75rem] tabular-nums text-mut">
+            Bugün kalan · asistan {qa.left}/{qa.limit} · fiş {qr.left}/{qr.limit}
+          </p>
+        )}
+        <PaidNotice />
         <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
       </div>
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
@@ -100,6 +76,8 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   const athletes = canSeeAthletes(profile?.email);
   const race = useRaceHome();
   const { openMeeting } = useMeeting();
+  const now = useNow();
+  const next = nextPlan(plans, now);
   const training = plans.some((p) => (p.cat || p.category) === "Antrenman");
   // Antrenman kartında fitness antrenmanları da: kendi planların ve (ana hesapta) sporcularınki
   const fit = useMemo(() => (side ? [] : fitDays(plans, owner ? fitOthers || [] : [], members, profile?.uid)), [side, owner, plans, fitOthers, members, profile?.uid]);
@@ -120,13 +98,15 @@ export function HomeFeed({ weather, inbox, onInbox }) {
 
   return (
     <div className="space-y-6">
+      {/* İş düğmeleri: en sık işler adıyla, sonunda Tümü (bütün sayfalar) */}
+      <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
       {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
       <div className="space-y-2.5">
         <NotesWidget notes={notes} />
         {athletes && owner && <AthletesWidget att={athletes} races={race.open} />}
         {!side && <FitWidget fit={fit} />}
       </div>
-      <SiradaCard weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
+      <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
@@ -139,8 +119,8 @@ export function HomeFeed({ weather, inbox, onInbox }) {
         dues={athletes && owner}
         posts={!staff}
         invoices={owner}
-        tail={<TalkWidgets meeting={!side} />}
-        pages={actions}
+        tail={<TalkWidgets meeting={false /* Toplantı kokpitin altındaki düğmelerde (HomeGrid) */} />}
+        pages={[] /* bütün sayfalar artık iş düğmelerindeki "Tümü" penceresinde (HomeGrid) */}
         hide={["/notes", ...(!side ? ["meeting"] : []), ...(athletes && owner ? ["/athletes", "/athletes/attendance"] : []), ...(!side && fit.some((f) => f.date >= todayStr()) ? ["/fitness"] : [])]}
       />
     </div>

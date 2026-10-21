@@ -8,11 +8,9 @@ import { Icon } from "@/components/ui/Icon";
 import { useAdd } from "@/features/add/AddProvider";
 import { useChat, toMs } from "@/features/chat/ChatProvider";
 import { useData } from "@/features/data/DataProvider";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { isTraining } from "@/lib/trainingLog";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { statusOf } from "@/lib/fitness/model";
-import { attHref, fitHref, homeNotes, linkKey, personHref } from "@/lib/homeTiles";
+import { fitHref, homeNotes, linkKey, personHref } from "@/lib/homeTiles";
 import { initials, rel, todayStr } from "@/lib/utils/format";
 
 // Ana sayfanın canlı alanları (Seyhun 2026-10-17: "kısa yolların içini doldurup güzel alanlar yapalım"; örnek 7-canli-alanlar-notlar.png).
@@ -68,20 +66,14 @@ const More = ({ href }) => (
 );
 
 // Tam genişlik: Sporcular (Seyhun 2026-10-20: "sporcuları ayrı, fitness ayrı; yoklamanın fitness'la, mesajın tek sporcuyla ne alakası var").
-// Fotoğraflar yan yana (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası). Altta: Yoklama (yalnız bugün antrenman planı varsa, saatiyle;
-// alındıysa yeşil "✓ Yoklama alındı", dokununca yine açılır), Sporculara mesaj (Sporcular grubu) ve WhatsApp (hazır kalıplarla, WaSheet).
+// Fotoğraflar yan yana (en çok 7, fazlası "+N"; dokununca o sporcunun sayfası). Altta WhatsApp (hazır kalıplarla, WaSheet);
+// Yoklama ve Sporculara mesaj 2026-10-21'den beri kokpitin altındaki iş düğmelerinde (HomeGrid).
 // Sporcu yoksa çizilmez. races: useRaceHome().open (kalıplarda sıradaki yarış)
-export function AthletesWidget({ att, races }) {
+export function AthletesWidget({ races }) {
   const [wa, setWa] = useState(false);
-  const { members, plans } = useData();
-  const { profile } = useAuth();
+  const { members } = useData();
   const list = (members || []).filter((m) => m && m.name && m.status !== "left" && (m.kind === "athlete" || m.kind === "student")).sort((a, b) => a.name.localeCompare(b.name, "tr"));
   if (!list.length) return null;
-  const today = todayStr();
-  const sail = plans.filter((p) => p.date === today && p.status !== "cancelled" && isTraining(p)).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-  const yok = att && sail.length ? attHref(today, today) : null;
-  // Yoklama alındı: yoklama kaydedilince ana hesabın kaydına bugünün tarihi yazılır (users.attLast; athletes/mirror.js, çalışan alırsa sunucu), ek okuma yok
-  const taken = profile?.attLast === today;
   const shown = list.slice(0, 7);
   return (
     <div className={`${WIDGET} col-span-2 min-h-0`}>
@@ -98,23 +90,12 @@ export function AthletesWidget({ att, races }) {
           </Link>
         )}
       </span>
+      {/* Yoklama ve Sporculara mesaj kokpitin altındaki düğmelerde (HomeGrid); burada yalnız WhatsApp (hazır kalıplarla) */}
       <Actions>
-        {yok && (
-          <Act href={yok} main={!taken} ok={taken}>
-            {taken ? (
-              <>
-                <Icon name="check" className="mr-1 size-4 shrink-0" />
-                Yoklama alındı
-              </>
-            ) : (
-              `Yoklama${sail[0].time ? ` · ${sail[0].time}` : ""}`
-            )}
-          </Act>
-        )}
-        <Act href="/messages?c=athletes">Sporculara mesaj</Act>
-        <button type="button" data-press aria-label="Sporculara WhatsApp" onClick={() => setWa(true)} className={`${BTN} raised !flex-none w-12 bg-card px-0 text-[#1f9d55]`}>
-          <Icon name="whatsapp" className="size-5" />
-        </button>
+        <Act onClick={() => setWa(true)}>
+          <Icon name="whatsapp" className="mr-1.5 size-4 shrink-0 text-[#1f9d55]" />
+          WhatsApp
+        </Act>
       </Actions>
       <WaSheet open={wa} onClose={() => setWa(false)} races={races} />
     </div>
@@ -193,7 +174,7 @@ const dayName = (d, today) => {
 };
 
 // Tam genişlik: Notlar (Seyhun: "notlar da önemli"). En çok 3 not (sabitler önce, sonra en yeniler; homeNotes), adı ve altında
-// "Sabit / ne zaman · ilk satır". Başlıkta Tümü ›, altta "Not ekle" (kartların ortak dili). Dokununca not açılır. Not yoksa yalnız başlık ve "Not ekle".
+// "Sabit / ne zaman · ilk satır". Başlıkta Tümü ›. Dokununca not açılır. Not ekleme kokpitin altındaki "Not" düğmesinde (HomeGrid; aynı iş iki yerde yok).
 export function NotesWidget({ notes }) {
   const { openAdd } = useAdd();
   const { list, total } = homeNotes(notes || [], 3);
@@ -222,9 +203,6 @@ export function NotesWidget({ notes }) {
       ) : (
         <small className="mt-2 block text-[0.875rem] text-mut">Henüz not yok</small>
       )}
-      <Actions>
-        <Act onClick={() => openAdd({ type: "note" })}>Not ekle</Act>
-      </Actions>
     </div>
   );
 }

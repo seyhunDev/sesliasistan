@@ -2691,3 +2691,23 @@ group("Ortak düğmeler")([
   ["geri", F("btn-back, satırı doldurmaz", () => BC.buttonClass({ variant: "back" }) === "btn btn-back")],
   ["bilinmeyen çeşit", F("ana düğmeye düşer", () => BC.buttonClass({ variant: "xyz" }) === "btn btn-primary w-full")],
 ]);
+
+// Ana sayfa kokpiti (homeTiles.js nextPlan, 2026-10-21): lacivert üst kısımdaki "sıradaki iş"
+{
+  const HT = await import("@/lib/homeTiles");
+  const at = new Date("2026-10-21T13:00:00");
+  const P = [
+    { id: "a", title: "Sabah", date: "2026-10-21", time: "09:00" },
+    { id: "b", title: "Süren", date: "2026-10-21", time: "12:30", durationMin: 90 },
+    { id: "c", title: "Akşam", date: "2026-10-21", time: "18:00" },
+    { id: "d", title: "Yarın", date: "2026-10-22", time: "10:00" },
+  ];
+  group("Ana sayfa kokpiti")([
+    ["süren plan", F("12:30 + 90 dk sürüyor, o gelir", () => HT.nextPlan(P, at, "2026-10-21")?.id === "b")],
+    ["biten plan", F("süren yoksa sıradaki (18:00)", () => HT.nextPlan(P.filter((p) => p.id !== "b"), at, "2026-10-21")?.id === "c")],
+    ["bugün bitti", F("yarının ilk planı", () => HT.nextPlan(P.filter((p) => p.date !== "2026-10-21" || p.id === "a"), at, "2026-10-21")?.id === "d")],
+    ["iptal ve fitness", F("sayılmaz", () => HT.nextPlan([{ ...P[2], status: "cancelled" }, { ...P[2], id: "f", fit: { name: "x" } }, P[3]], at, "2026-10-21")?.id === "d")],
+    ["saatsiz plan", F("gün boyu sürer", () => HT.nextPlan([{ id: "s", title: "Kamp", date: "2026-10-21" }], at, "2026-10-21")?.id === "s")],
+    ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
+  ]);
+}

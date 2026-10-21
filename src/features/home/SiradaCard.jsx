@@ -26,8 +26,8 @@ import { GROUP } from "./ui";
 // 3) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
 //    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 4) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
-// weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi (OwnerHome).
-export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
+// weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi, skip: kokpitte gösterilen plan (OwnerHome).
+export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip }) {
   const { profile } = useAuth();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -41,10 +41,12 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
   // Yarın ve Sırada tek listede (homeList): aynı yarışın planları tek satırda, yarışın yarınki işi de orada; Sırada en çok 4 satır
   // Listede gizlenen planlar (homeHidden; gizle düğmesi HideSheet) günü yaklaşana dek çıkmaz, altta "N plan gizli · Takvim ›"
-  const shownPlans = plans.filter((p) => !homeHidden(p, today, profile.homeDays));
+  // skip: kokpitteki "sıradaki iş" (Cockpit) burada tekrar yazmaz
+  const base = skip ? plans.filter((p) => p.id !== skip) : plans;
+  const shownPlans = base.filter((p) => !homeHidden(p, today, profile.homeDays));
   const { days, rest: all } = twoDays(shownPlans, today, now, 200);
   const rows = (d) => d.days.reduce((n, x) => n + x.rows.length, 0) + d.rest.length; // listede çıkacak plan sayısı (60 gün)
-  const hiddenN = shownPlans.length < plans.length ? rows(twoDays(plans, today, now, 200)) - rows({ days, rest: all }) : 0;
+  const hiddenN = shownPlans.length < base.length ? rows(twoDays(base, today, now, 200)) - rows({ days, rest: all }) : 0;
   // Yarışın bütün planları birlikte gizlenir (Seyhun 2026-10-20: "o yarışın son tarihlerini şimdilik görmek istemiyorum"); her iş kendi gününe göre görünür
   const raceHide = (name) => {
     const list = plans.filter((p) => raceKey(p)?.name.toLocaleLowerCase("tr-TR") === name.toLocaleLowerCase("tr-TR"));
@@ -78,6 +80,8 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
   const windy = overWind(wx, profile.windKn || WIND_KN);
   const { next: nextRows, later: rest } = homeList(next, all);
   const empty = !td.rows.length && !next;
+  // Bugünün tek planı kokpitte gösteriliyorsa (skip) "Bugün plan kalmadı" yazmaz
+  const skipToday = !!skip && plans.some((p) => p.id === skip && p.date === today);
   // Sıradakilerin tarihi: bu aydaysa "Sal 20", değilse "Pzt 3 Kas"
   // ("Yarın" yazılmaz, o kalan gün işaretinde; Seyhun 2026-10-20: "tekrarlardan kaçınalım, tarih saat başlık düzgün yazılsın")
   const short = (day) => shortDay(day, today);
@@ -107,7 +111,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
               />
             ))}
           </ul>
-        ) : (
+        ) : skipToday && !empty ? null : (
           <div className="flex items-center justify-between gap-3 py-1.5">
             <span className="text-[0.9375rem] text-mut">{empty ? "Plan yok" : "Bugün plan kalmadı"}</span>
             {empty && (
@@ -175,7 +179,7 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training }) {
 // Tek listede gün başlığı (Yarın · Çarşamba, Sırada): ince çizginin altında küçük gri ad
 // right: sağda tek eylem (Sırada'da listenin toplu gizleme ayarı)
 const DayHead = ({ title, right }) => (
-  <h2 className="mt-1 flex items-center justify-between gap-3 border-t border-line pb-0.5 pt-2.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">
+  <h2 className="mt-1 flex items-center justify-between gap-3 border-t border-line pb-0.5 pt-2.5 first:mt-0 first:border-t-0 first:pt-1.5 text-[0.75rem] uppercase tracking-[.02em] text-mut">
     {title}
     {right}
   </h2>
