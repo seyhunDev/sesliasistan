@@ -7,7 +7,7 @@ import { isIOS, pickProvider, recorderAvailable, setNative } from "@/lib/speech/
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
-import { speechLive, speechLiveTry, speechMark, timingError } from "@/lib/assistTiming";
+import { speechDiag, speechLive, speechLiveTry, speechMark, timingError } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel, setMicFlow } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 import { MIC_DEAD_TEXT, MIC_TRIES, micState } from "@/lib/speech/micCheck";
@@ -44,7 +44,9 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 // noLevel: ses seviyesi React durumuna yazılmaz (yalnız ölçere, meter.js); dinlerken saniyede 10 yeniden çizim olmaz
 // onMiss(): dinleme metinsiz bitti (sessiz dinlemede de çağrılır; bekletilen yanıt uygulansın diye)
 // hold: kayıt yolunda mikrofon turlar arasında kapatılmaz (asistan açıkken aynı mikrofon); bırakmak için release()
-export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false, hold = false } = {}) {
+// preferServer(): true ise telefonun tanıması yerine kayıt yolu (sunucuda çeviri) kullanılır; onWebFail(): telefonun
+// tanıması elle başlatılan dinlemede yazı vermedi
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false, hold = false, preferServer, onWebFail } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -55,11 +57,11 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail, onMiss, names, terms, hold };
+  cb.current = { onFinal, onFail, onMiss, names, terms, hold, preferServer, onWebFail };
   const fail = (m) => {
     if (!R.current.silent) {
-      cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
-      timingError(m); // asistan raporuna girer (lib/assistReport.js)
+      cb.current.onFail?.(String(m).replace(/ \[[^\]]*\]$/, "")); // otomatik başlatılan dinlemede hata sessiz geçilir
+      timingError(m); // asistan raporuna girer, ayrıntısıyla (lib/assistReport.js)
     }
     cb.current.onMiss?.();
   };
@@ -235,6 +237,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
     // iPhone: telefonun tanıması dinledi ama hiç yazı vermedi (hata da yok). Ara sıra olur; telefonun tanıması kapatılmaz
     // (Seyhun, 2026-10-20: tek boş sonuçta kapanıp sunucu yoluna dönmesi "ses yazıya çevrilemedi" hatalarına yol açıyordu)
+    if (s.kind === "webspeech" && !s.auto) cb.current.onWebFail?.();
     if (s.kind === "webspeech" && isIOS() && !s.auto && !err && Date.now() - (s.t0 || 0) > 2500) {
       return fail("Telefon sesi yazıya çeviremedi, tekrar konuşur musun?");
     }
@@ -531,9 +534,11 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const fromPcm = async () => (s.pcmLen > (s.rate || 16000) * 0.3 ? pcmToWav16k(pcmRange(s, 0, s.pcmLen), s.rate) : null);
       let upload = blob;
       let name = `kayit.${type.includes("mp4") ? "m4a" : "webm"}`;
+      let raw = false; // gönderilen ses ham sesten mi
       if (blob.size < 1500) {
         upload = await fromPcm().catch(() => null);
         name = "kayit.wav";
+        raw = true;
         if (!alive()) return;
         if (!upload) {
           finish();
@@ -551,7 +556,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
             name = "kayit.wav";
           } catch {
             const w = await fromPcm().catch(() => null);
-            if (w) (upload = w), (name = "kayit.wav");
+            if (w) (upload = w), (name = "kayit.wav"), (raw = true);
           }
         }
         if (!alive()) return;
@@ -568,12 +573,31 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         const data = await jsonOf(res);
         if (!alive()) return;
         if (!res.ok) throw new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
+        let text = bestText(data.text, s.partial);
+        // Boş çeviri: kayıt (MediaRecorder) sessiz gelmiş olabilir (iPhone'da sesli cevaptan sonra; Seyhun 2026-10-21:
+        // "sesli cevaptan sonra mikrofona basınca ses anlaşılamadı"). Aynı anda toplanan ham sesle bir kez daha denenir
+        const lv = pcmLevel(s);
+        let again = "";
+        if (!text && !raw && lv.peak > 0.01 && alive()) {
+          const w = await fromPcm().catch(() => null);
+          if (w && alive()) {
+            const fd2 = new FormData();
+            fd2.append("audio", w, "kayit.wav");
+            if (cb.current.names?.length) fd2.append("names", cb.current.names.join(","));
+            if (cb.current.terms?.length) fd2.append("terms", cb.current.terms.join("|"));
+            const r2 = await authFetch("/api/transcribe", { method: "POST", body: fd2, timeout: 12000 }).catch(() => null);
+            const d2 = r2?.ok ? await jsonOf(r2) : {};
+            text = bestText(d2.text, "");
+            again = text ? "ham sesle bulundu" : "ham sesle de boş";
+          }
+        }
+        if (!alive()) return;
         finish();
-        const text = bestText(data.text, s.partial);
+        speechDiag({ sec: Math.round((s.pcmLen / (s.rate || 16000)) * 10) / 10, kb: Math.round(blob.size / 1024), peak: lv.peak, rms: lv.rms, again, by: data.provider || "" });
         if (text) {
           speechMark("text");
           cb.current.onFinal?.(text, mode);
-        } else fail("Ses anlaşılamadı, tekrar dene.");
+        } else fail(`Ses anlaşılamadı, tekrar dene.${diagNote(lv, blob.size, again)}`);
       } catch (e) {
         if (!alive()) return;
         finish();
@@ -619,7 +643,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
     // server: kayıt + sunucu yolu istenir (asistanın sorusuna kısa cevap: telefonun tanıması okumadan hemen sonra
     // "gönder" gibi tek kelimeyi çoğu zaman hiç yazıya çevirmiyordu; kayıt yolu sesi gerçekten ölçer, sunucu çevirir)
-    const kind = opts.server && recorderAvailable() ? "server" : pickProvider();
+    const kind = (opts.server || cb.current.preferServer?.()) && recorderAvailable() ? "server" : pickProvider();
     if (kind === "none") {
       fail("Bu tarayıcıda ses kaydı yok. Yazarak ekleyebilirsin.");
       return;
@@ -716,6 +740,24 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop, talking, release };
 }
+
+// Ham sesin gücü: tepe ve ortalama (0-1). Rapor için ve boş çeviride ham sesle yeniden denemek için
+function pcmLevel(s) {
+  let peak = 0;
+  let sum = 0;
+  let n = 0;
+  for (const d of s.pcm || []) {
+    for (let i = 0; i < d.length; i += 4) {
+      const v = Math.abs(d[i]);
+      if (v > peak) peak = v;
+      sum += v * v;
+      n += 1;
+    }
+  }
+  return { peak: Math.round(peak * 1000) / 1000, rms: n ? Math.round(Math.sqrt(sum / n) * 1000) / 1000 : 0 };
+}
+// Hata yazısı sade kalır; ayrıntı yalnız rapora gider (timingError metni köşeli parantezden sonrası)
+const diagNote = (lv, bytes, again) => ` [kayıt ${Math.round(bytes / 1024)} KB, ham ses tepe ${lv.peak}, ortalama ${lv.rms}${again ? `, ${again}` : ""}]`;
 
 // Turlar arasında tutulan mikrofon (hold). Tek bir asistan olduğu için modül düzeyinde
 let held = null;

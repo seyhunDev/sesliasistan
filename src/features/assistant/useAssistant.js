@@ -18,7 +18,7 @@ import { seriesDates } from "@/lib/repeat";
 import { pastTense } from "@/lib/assistTasks";
 import { useWaitLines } from "./WaitLines";
 import { ASK_EMPTY, PAST_MS, asksToClear, remember, sessionOf, sessionsFor } from "@/lib/convoContext";
-import { loadSessions, saveSession } from "@/lib/sessionStore";
+import { PAST_CLEAR, loadSessions, pastShown, saveSession } from "@/lib/sessionStore";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { raceNames } from "@/features/athletes/raceNames";
 import { loadRaces } from "@/features/athletes/races";
@@ -211,9 +211,14 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Canlı yazı ve son yazı bu adları doğru yazar ("Uğraz" → "Uraz"; Seyhun: "kelimeler düzeltilmiş gösterilsin", 2026-10-09)
   const athNames = useMemo(() => (open && racer ? athleteNames() : []), [open, racer]);
   const sttNames = [...new Set([...staffNames, ...contacts.map((c) => c.name), ...athNames])].slice(0, 60);
+  const webFail = useRef(false); // bu açılışta telefonun tanıması yazı vermedi: kapanana kadar kayıt yolu
   const sp = useSpeech({
     noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
     hold: true, // asistan açıkken aynı mikrofon (kayıt yolu): her turda yeniden açılan mikrofon iPhone'da ses vermeyebiliyordu
+    // Sesli yanıt açıksa ya da telefonun tanıması bu açılışta bir kez yazı vermediyse kayıt yolu (sunucuda çeviri):
+    // iPhone'un kendi tanıması sesli cevaptan sonra art arda "Ses duyulmadı" veriyordu (Seyhun'un raporu, 2026-10-21)
+    preferServer: () => !!tts?.enabled || webFail.current,
+    onWebFail: () => (webFail.current = true),
     names: sttNames,
     terms: racer ? raceNames().slice(0, 12) : [],
     onFinal: (raw, mode) => {
@@ -371,7 +376,17 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   }, [open]);
   // Ekranda, yeni konuşmanın üstünde son 3 oturum (Seyhun: "önceki birkaç sohbet gösterirsin her zaman", 2026-10-17)
   const [history, setHistory] = useState([]);
-  const loadHistory = () => setHistory(loadSessions(dataUid).slice(-3));
+  // Ayarlar'da gizlendiyse ekranda gösterilmez; hafıza (yapay zekaya giden oturumlar) sürer
+  const loadHistory = () => setHistory(pastShown() ? loadSessions(dataUid).slice(-3) : []);
+  // Ayarlar › Geçmişi sil: az önceki konuşma da unutulur
+  useEffect(() => {
+    const clear = () => {
+      past.current = { turns: [], at: 0, msgDraft: null, memo: {} };
+      setHistory([]);
+    };
+    window.addEventListener(PAST_CLEAR, clear);
+    return () => window.removeEventListener(PAST_CLEAR, clear);
+  }, []);
   // Yapay zekaya giden son oturumlar (az önceki, zaten geçmiş olarak giden oturum hariç)
   const sessionsNow = () => sessionsFor(loadSessions(dataUid), nowMs(), pastOn() ? past.current.at : 0);
   // Tek bekleyen soru: yeni bir soru sorulunca öncekiler kapanır (sonraki cümle yalnız son soruya cevap sayılır)
@@ -821,6 +836,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
     if (!open) {
       cancelRun();
       sp.release(); // dinlemeyi iptal eder, tutulan mikrofonu bırakır (iPhone'da kayıt işareti söner)
+      webFail.current = false;
       startedFor.current = null;
       setBooting(false);
       // Kapanma animasyonu bitince temizle: bir sonraki açılışta eski konuşma görünmesin (yapay zekanın bağlamında kalır)

@@ -185,6 +185,16 @@ async function scenarios2(h) {
     return [n <= 3, `${n} sohbet`];
   });
   await closeAll(page);
+  // Ayarlar › Geçmiş sohbetler › gizle: ekranda görünmez (hafıza kalır)
+  await page.evaluate(() => localStorage.setItem("sa-asst-past-shown", "0"));
+  await orb(page).click();
+  await check(GP, "gizliyken yeniden aç", "eski sohbetler ekranda görünmez", async () => {
+    await page.waitForTimeout(1200);
+    const n = await page.locator("[data-dome] [data-past]").count();
+    return [n === 0, `${n} eski sohbet alanı`];
+  });
+  await closeAll(page);
+  await page.evaluate(() => localStorage.removeItem("sa-asst-past-shown"));
 
   // Sesli yanıt açık: okur (mavi), bitince mikrofon bir kez açılır
   const GS = "Sesli yanıt";
@@ -770,6 +780,21 @@ async function scenarios4(h) {
       const gum = await page.evaluate(() => window.__gum);
       return [!!ok && n >= 1 && gum === 1, `mikrofon isteği ${gum} · yazıya çevirme ${n} · “${clean(await last(page)).slice(0, 60)}”`];
     });
+    // Üçüncü tur: kayıt boş çevrilirse ham sesle bir kez daha denenir (sesli cevaptan sonra iPhone'da kayıt sessiz geliyordu)
+    {
+      let finals = 0;
+      setTranscript(({ partial }) => (partial ? "" : ++finals === 1 ? "" : "bugün ne var"));
+      setAI(() => ({ intent: "chat", message: "Bugün saat 18'de yelken var." }));
+      await waitFor(async () => (await state(page)) === "idle", 6000);
+      await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+      await waitFor(async () => (await state(page)) === "listening", 5000);
+      await page.waitForTimeout(1800);
+      await btn(page, "Gönder").click().catch(() => {});
+      await check(GR, "boş çeviri", "ham sesle yeniden denenir, cevap gelir (“Ses anlaşılamadı” çıkmaz)", async () => {
+        const ok = await waitFor(async () => /yelken var/.test(await last(page)), 9000);
+        return [!!ok && finals === 2, `son çeviri isteği ${finals} · “${clean(await last(page)).slice(0, 60)}”`];
+      });
+    }
     await check(GR, "asistanı kapat", "tutulan mikrofon bırakılır", async () => {
       await closeAll(page);
       const ended = await waitFor(async () => page.evaluate(() => window.__tracks.length > 0 && window.__tracks.every((x) => x.readyState === "ended")), 3000);
