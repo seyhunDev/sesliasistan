@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/authFetch";
 import { isIOS, isStandalone, nativeOn, setNative, webSpeechAvailable } from "@/lib/speech/detect";
 import { loadFixes } from "@/lib/sttFixes";
 import { toWav16k } from "@/lib/speech/wav";
+import { b64, openLive, pcm16 } from "@/lib/speech/geminiLive";
 
 // Ses testi: telefonda konuşmayı yazıya çeviren üç yolu yan yana dener (Ayarlar › Testler › Ses testi).
 // A şimdiki yol (kayıt + sunucu, canlı parçalar), B Gemini Live (WebSocket akışı), C telefonun kendi tanıması
@@ -112,71 +113,6 @@ function Current({ report }) {
       note={`${sp.provider} · ${sp.status}`}
     />
   );
-}
-
-// 16 kHz tek kanal 16 bit PCM (Gemini Live'ın istediği biçim), base64
-function pcm16(input, rate) {
-  const ratio = rate / 16000;
-  const n = Math.floor(input.length / ratio);
-  const out = new Int16Array(n);
-  for (let i = 0; i < n; i++) {
-    const s = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)]));
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-  }
-  return out;
-}
-function b64(int16) {
-  const bytes = new Uint8Array(int16.buffer);
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-const wsText = async (d) => (typeof d === "string" ? d : d instanceof Blob ? d.text() : new TextDecoder().decode(d));
-
-const LIVE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained";
-
-// Bir modelle bağlantı kurar; kurulum tamamlanınca açık soketi döndürür, olmazsa hata fırlatır
-function openLive(token, model, onMsg) {
-  return new Promise((ok, fail) => {
-    const ws = new WebSocket(`${LIVE_URL}?access_token=${encodeURIComponent(token)}`);
-    let ready = false;
-    const timer = setTimeout(() => {
-      ws.close();
-      fail(new Error(`${model}: 8 sn içinde hazır olmadı`));
-    }, 8000);
-    ws.onopen = () => {
-      const audio = /native-audio/.test(model);
-      ws.send(
-        JSON.stringify({
-          setup: {
-            model: `models/${model}`,
-            generationConfig: { responseModalities: [audio ? "AUDIO" : "TEXT"] },
-            inputAudioTranscription: {},
-            systemInstruction: { parts: [{ text: "Sadece dinle. Hiçbir zaman cevap verme." }] },
-          },
-        }),
-      );
-    };
-    ws.onmessage = async (e) => {
-      let m;
-      try {
-        m = JSON.parse(await wsText(e.data));
-      } catch {
-        return;
-      }
-      if (m.setupComplete && !ready) {
-        ready = true;
-        clearTimeout(timer);
-        ok(ws);
-        return;
-      }
-      onMsg(m);
-    };
-    ws.onclose = (e) => {
-      clearTimeout(timer);
-      if (!ready) fail(new Error(`${model}: kapandı ${e.code} ${e.reason || ""}`.trim()));
-    };
-  });
 }
 
 // B: Gemini Live, ses parça parça akar, yazı geldikçe görünür (Claude uygulaması gibi)

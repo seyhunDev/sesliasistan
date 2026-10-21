@@ -7,6 +7,7 @@ import { isIOS, pickProvider, recorderAvailable, setNative } from "@/lib/speech/
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
+import { startLive } from "@/lib/speech/geminiLive";
 import { speechDiag, speechLive, speechLiveTry, speechMark, timingError } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel, setMicFlow } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
@@ -46,7 +47,9 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 // hold: kayıt yolunda mikrofon turlar arasında kapatılmaz (asistan açıkken aynı mikrofon); bırakmak için release()
 // preferServer(): true ise telefonun tanıması yerine kayıt yolu (sunucuda çeviri) kullanılır; onWebFail(): telefonun
 // tanıması elle başlatılan dinlemede yazı vermedi
-export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false, hold = false, preferServer, onWebFail } = {}) {
+// live: kayıt yolunda dinlerken canlı yazı Gemini Live akışından gelir (kelime kelime, lib/speech/geminiLive.js); hat
+// açılamazsa ya da koparsa eski yol (parça parça sunucuda çeviri). Gönderilen son yazı yine kaydın sunucuda çevirisi.
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false, hold = false, preferServer, onWebFail, live = false } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -57,7 +60,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail, onMiss, names, terms, hold, preferServer, onWebFail };
+  cb.current = { onFinal, onFail, onMiss, names, terms, hold, preferServer, onWebFail, live };
   const fail = (m) => {
     if (!R.current.silent) {
       cb.current.onFail?.(String(m).replace(/ \[[^\]]*\]$/, "")); // otomatik başlatılan dinlemede hata sessiz geçilir
@@ -77,6 +80,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     clearInterval(s.timer);
     s.timer = null;
     clearTimeout(s.finalTimer);
+    s.gl?.end(); // canlı yazı hattı: son kelimeler gelsin diye kısa süre açık kalır, sonra kapanır
+    s.gl = null;
     try { s.proc?.disconnect(); } catch {}
     s.proc = null;
     // Tutulan mikrofon (hold) kapatılmaz: sıradaki tur aynı mikrofonla başlar
@@ -192,12 +197,14 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         return;
       }
       // Kayıt yolu: söylenen ara ara yazıya çevrilip gösterilir (gönderme yine kullanıcının dokunuşuyla)
-      if (s.kind === "server" && s.pcmLen && segmentDue(s, now)) liveSegment(s.sid);
+      // Canlı yazı Gemini Live'dan geliyorsa parça çevirisi yapılmaz
+      const segOn = !(s.liveOk && s.gl?.ok);
+      if (segOn && s.kind === "server" && s.pcmLen && segmentDue(s, now)) liveSegment(s.sid);
       // Konuşma bitişi anlaşılamasa da (ses ölçer askıda ya da gürültüde konuşma algılanmadı) yazı 2,5 sn'de bir gelsin
       // (Seyhun: "neden Dinliyorum yazıyor, kullanıcının dediklerini anlık göstermeliyiz", 2026-10-09)
-      else if (s.kind === "server" && s.pcmLen && (s.segBusy || 0) < 2 && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveSegment(s.sid);
+      else if (segOn && s.kind === "server" && s.pcmLen && (s.segBusy || 0) < 2 && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveSegment(s.sid);
       // Ham ses hiç toplanamıyorsa (iPhone'da ses motoru askıda): kaydın o ana kadarki tamamı yazıya çevrilir, yazı yenilenir
-      else if (s.kind === "server" && !s.pcmLen && s.chunks?.length && !s.segBusy && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveWhole(s.sid);
+      else if (segOn && s.kind === "server" && !s.pcmLen && s.chunks?.length && !s.segBusy && now - (s.segFrom || s.t0 || now) >= LIVE_EVERY) liveWhole(s.sid);
       // Canlı yazı yolu, canlı sohbet: konuşma bitti (yeni kelime gelmiyor), kendiliğinden gönder.
       // Kısa duraksamada kelimeler gelmeye devam ettiği için kesilmez.
       if (s.endpoint > 0 && s.kind === "webspeech" && s.text && now - s.lastSpeech >= s.endpoint) {
@@ -381,6 +388,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       if (res.ok && data.text) {
         speechLive(Date.now() - t0, data.provider); // süre kaydı: canlı yazının gecikmesi
         s.segs[i] = data.text;
+        if (s.liveOk && s.gl?.ok) return; // canlı hat yazıyor: parça yazısı onun yerine geçmez
         s.partial = segText(s);
         setFinalText(s.partial);
       }
@@ -413,7 +421,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const data = await res.json().catch(() => ({}));
       if (!data.text) speechLiveTry("", res.ok ? data.why || "boş" : `hata ${res.status}`);
       if (s.sid !== sid || s.status !== "listening" || s.pcmLen) return;
-      if (res.ok && data.text) {
+      if (res.ok && data.text && !(s.liveOk && s.gl?.ok)) {
         speechLive(Date.now() - t0, data.provider);
         s.partial = String(data.text).trim();
         setFinalText(s.partial);
@@ -494,6 +502,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
           e.outputBuffer.getChannelData(0).fill(0); // hoparlöre ses gitmez
           if (!alive() || s.status !== "listening") return;
           const d = new Float32Array(e.inputBuffer.getChannelData(0));
+          s.gl?.push(d, s.rate);
           s.pcm.push(d);
           s.pcmLen += d.length;
           if (!s.pcmPeak) for (let i = 0; i < d.length; i += 16) if (d[i] !== 0) (s.pcmPeak = 1), (i = d.length);
@@ -650,6 +659,9 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
     s.sid += 1;
     const sid = s.sid;
+    s.gl?.close();
+    s.gl = null;
+    s.liveOk = false;
     Object.assign(s, {
       kind, text: "", base: "", error: null, lastAct: 0, lastSpeech: 0, voiceSeen: false, voiceFrom: 0, analyser: null, emptyEnds: 0, vad: makeVad({ minLvl: VOICE_LVL }),
       meterLive: false, auto: !!opts.auto, stopReq: false, mr: null, rec: null, mode: "send", delivered: false, autoStop: opts.autoStop || (opts.auto ? 15000 : 0), restarts: 0,
@@ -662,6 +674,23 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     const wait = settleWait();
     // Kayıt yolu: ses motoru dokunuşun içinde açılır (iPhone yalnız dokunuşla açılan motoru çalıştırır)
     if (kind === "server") {
+      // Canlı yazı hattı hemen (anahtar alınırken mikrofon açılır; bağlanana kadar gelen ses sırada bekler)
+      if (cb.current.live) {
+        s.gl = startLive({
+          onText: (t, by) => {
+            if (s.sid !== sid || s.status !== "listening" || !t) return;
+            if (!s.liveOk) speechLive(Date.now() - s.t0, `canlı ${by || ""}`.trim()); // süre kaydı: ilk kelimenin gecikmesi
+            s.liveOk = true;
+            s.partial = t;
+            setFinalText(t);
+          },
+          onDown: (why) => {
+            if (s.sid !== sid) return;
+            s.liveOk = false; // eski yol (parça parça çeviri) devam eder; o ana kadarki yazı kutuda kalır
+            speechLiveTry("", `canlı hat: ${why}`);
+          },
+        });
+      }
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         try { s.preCtx?.close(); } catch {}

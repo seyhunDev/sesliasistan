@@ -214,6 +214,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const webFail = useRef(false); // bu açılışta telefonun tanıması yazı vermedi: kapanana kadar kayıt yolu
   const sp = useSpeech({
     noLevel: true, // ses seviyesi dalgaya (ListenWave) doğrudan gider; burada saniyede 10 yeniden çizim olmasın
+    live: true, // kayıt yolunda dinlerken yazı Gemini Live akışından anında gelir (Claude uygulaması gibi; Seyhun, 2026-10-21)
     hold: true, // asistan açıkken aynı mikrofon (kayıt yolu): her turda yeniden açılan mikrofon iPhone'da ses vermeyebiliyordu
     // Sesli yanıt açıksa ya da telefonun tanıması bu açılışta bir kez yazı vermediyse kayıt yolu (sunucuda çeviri):
     // iPhone'un kendi tanıması sesli cevaptan sonra art arda "Ses duyulmadı" veriyordu (Seyhun'un raporu, 2026-10-21)

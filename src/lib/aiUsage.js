@@ -3,6 +3,7 @@ export const AI_LABELS = {
   assistant: "Asistan",
   interpret: "Kayıt anlama",
   transcribe: "Ses tanıma",
+  live: "Canlı yazı (bağlantı)",
   receipt: "Fiş okuma",
   replies: "Hazır yanıt",
   meeting: "Toplantı özeti",
@@ -39,6 +40,8 @@ export function usageRows(doc) {
 
 // Gemini ses tanıma (Gemini 3.5 Transcribe): ses saniyesi sayılır, ücret dakika başına
 export const STT_PRICE_MIN = 0.005;
+// Gemini Live canlı yazı (dinlerken akan ses): ses girişi ~0,005 $/dk + kısa cevap payı, tahmini
+export const LIVE_PRICE_MIN = 0.006;
 export function sttUsage(doc) {
   const min = Math.round(((Number(doc?.["stt-sec"]) || 0) / 60) * 10) / 10;
   return { min, cost: min * STT_PRICE_MIN };

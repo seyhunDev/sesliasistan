@@ -112,6 +112,24 @@ group("Son yazı: tam çeviri mi parçalar mı")([
   ["tam çeviri kısa kalmış", { desc: "parçalar (söylenen kaybolmaz)", fn: () => bestText("Yarış oluştur", "Cumhuriyet yarışı oluştur, yarış için görsel hazırla, Mustafa geldi"), ok: (r) => r.startsWith("Cumhuriyet") }],
 ]);
 
+// Canlı yazı hattı (Gemini Live): Google'ın listesinden Live destekleyen modeller, yazı cevaplı flash önce
+const { liveOrder } = await import("@/lib/ai/liveModels");
+const { pcm16, b64 } = await import("@/lib/speech/geminiLive");
+const LM = [
+  { name: "models/gemini-2.5-flash", supportedGenerationMethods: ["generateContent"] },
+  { name: "models/gemini-2.5-flash-native-audio-preview", supportedGenerationMethods: ["bidiGenerateContent"] },
+  { name: "models/gemini-3.1-flash-live-preview", supportedGenerationMethods: ["bidiGenerateContent", "countTokens"] },
+  { name: "models/gemini-3.5-live-translate-preview", supportedGenerationMethods: ["bidiGenerateContent"] },
+];
+group("Canlı yazı hattı")([
+  ["Live desteklemeyen model alınmaz", { desc: "yalnız bidiGenerateContent", fn: () => liveOrder(LM), ok: (r) => !r.includes("gemini-2.5-flash") && r.length === 3 }],
+  ["yazı cevaplı flash live önce, sesli sonra, çeviri en son", { desc: "sıra", fn: () => liveOrder(LM), ok: (r) => r[0] === "gemini-3.1-flash-live-preview" && r[1].includes("native-audio") && r[2].includes("translate") }],
+  ["liste boş ya da bozuk", { desc: "boş", fn: () => liveOrder(undefined), ok: (r) => Array.isArray(r) && r.length === 0 }],
+  ["48 kHz ses 16 kHz'e iner", { desc: "üçte bir örnek", fn: () => pcm16(new Float32Array(4800).fill(0.5), 48000), ok: (r) => r.length === 1600 && r[0] === Math.floor(0.5 * 0x7fff) }],
+  ["taşan ses kırpılır", { desc: "-1..1", fn: () => pcm16(Float32Array.from([2, -2]), 16000), ok: (r) => r[0] === 0x7fff && r[1] === -0x8000 }],
+  ["base64", { desc: "2 örnek 4 bayt", fn: () => b64(Int16Array.from([1, 2])), ok: (r) => r === "AQACAA==" }],
+]);
+
 // Ölü mikrofon (iPhone "Ses alınamadı"): açıldıktan kısa süre sonra ne kayıt parçası ne ham ses geldiyse yeniden açılır
 const { micState, MIC_CHECK_MS } = await import("@/lib/speech/micCheck");
 const MC = (s, now, want) => ({ desc: want, fn: () => micState(s, now), ok: (r) => r === want });

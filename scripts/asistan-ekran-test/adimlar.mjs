@@ -2,7 +2,7 @@
 // Her check(grup, söz, beklenen, fn): fn true/false ya da [geçti mi, olan] döndürür.
 
 export async function scenarios(h) {
-  const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, TODAY, TOMORROW, log } = h;
+  const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
   // ================================================================ 1. Sekme çubuğu ve açılış
   log("    Asistan: sekme çubuğu, açılış, dinleme, kapanış…");
@@ -136,7 +136,7 @@ export async function scenarios(h) {
 }
 
 async function scenarios2(h) {
-  const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, TODAY, TOMORROW, log } = h;
+  const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
 
   // ================================================================ 3. Çalışırken (kehribar), küçültme, sesli yanıt
@@ -615,7 +615,7 @@ async function scenarios3(h) {
 }
 
 async function scenarios4(h) {
-  const { check, newPage, orb, state, full, waitFor, btn, last, aiCalls, calls, setAI, setTranscript, closeAll, talkAsk, log } = h;
+  const { check, newPage, orb, dome, state, full, waitFor, btn, last, aiCalls, calls, setAI, setTranscript, setLive, closeAll, talkAsk, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
   log("    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…");
 
@@ -804,6 +804,51 @@ async function scenarios4(h) {
         const ok = await waitFor(async () => /yelken var/.test(await last(page)), 9000);
         return [!!ok && finals === 2, `son çeviri isteği ${finals} · “${clean(await last(page)).slice(0, 60)}”`];
       });
+    }
+    // Dördüncü tur: canlı yazı hattı (Gemini Live, taklit WebSocket): konuşurken kelimeler kutuya akar, parça çevirisi yapılmaz
+    {
+      setLive({ token: "auth_tokens/taklit", models: ["taklit-live"] });
+      setTranscript(({ partial }) => (partial ? "" : "yarın saat onda antrenman var mı"));
+      setAI(() => ({ intent: "chat", message: "Evet, yarın 10'da antrenman var." }));
+      await page.evaluate(() => {
+        window.__ws = { audio: 0, words: ["Yarın ", "saat ", "onda ", "antrenman"], urls: [] };
+        window.WebSocket = class {
+          constructor(u) {
+            this.readyState = 0;
+            window.__ws.urls.push(u);
+            setTimeout(() => ((this.readyState = 1), this.onopen?.()), 30);
+          }
+          send(d) {
+            const m = JSON.parse(d);
+            const say = (o) => setTimeout(() => this.onmessage?.({ data: JSON.stringify(o) }), 20);
+            if (m.setup) return say({ setupComplete: {} });
+            if (m.realtimeInput?.audio && ++window.__ws.audio % 3 === 0 && window.__ws.words.length) say({ serverContent: { inputTranscription: { text: window.__ws.words.shift() } } });
+          }
+          close() {
+            this.readyState = 3;
+            setTimeout(() => this.onclose?.({ code: 1000 }), 0);
+          }
+        };
+      });
+      await waitFor(async () => (await state(page)) === "idle", 6000);
+      const part0 = calls.filter((c) => c.path === "/api/transcribe").length;
+      await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+      await waitFor(async () => (await state(page)) === "listening", 5000);
+      await check(GR, "canlı yazı (akış)", "konuşurken kelimeler kutuya akar, parça çevirisi istenmez", async () => {
+        const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asheet-input").innerText()), 6000);
+        const box = clean(await dome(page).locator(".asheet-input").innerText());
+        const parts = calls.filter((c) => c.path === "/api/transcribe").length - part0;
+        const url = await page.evaluate(() => window.__ws.urls[0] || "");
+        return [!!ok && /BidiGenerateContentConstrained\?access_token=auth_tokens/.test(url), `“${box.slice(0, 60)}” · ses parçası ${await page.evaluate(() => window.__ws.audio)} · parça çevirisi ${parts}`];
+      });
+      await btn(page, "Gönder").click().catch(() => {});
+      await check(GR, "canlı yazıdan sonra Gönder", "son yazı sunucudan gelir, cevap gelir, akan süre bildirilir", async () => {
+        const ok = await waitFor(async () => /10'da antrenman/.test(await last(page)), 9000);
+        await page.waitForTimeout(1500);
+        const used = calls.filter((c) => c.path === "/api/live-token" && c.body?.used != null).length;
+        return [!!ok, `“${clean(await last(page)).slice(0, 60)}” · süre bildirimi ${used}`];
+      });
+      setLive(null);
     }
     await check(GR, "asistanı kapat", "tutulan mikrofon bırakılır", async () => {
       await closeAll(page);
