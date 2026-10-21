@@ -115,7 +115,7 @@ export function resetPatch(media, now) {
   if (media) p.media = [];
   return p;
 }
-export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null, own: t?.own || "" });
+export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null, own: t?.own || "", where: t?.where || "" });
 // Sayacın sahibi (Seyhun 2026-10-21: "süreyi başlatıyorum, diğer yarışın sayımını açıyor"): sayaç telefonda tek, ama her sayfa yalnız kendi
 // başlattığını gösterir. own = sayacın sayfası (yol, antrenmanda ?id=plan). Biri planlı biri plansız antrenman adresiyse yol yeter (asistan
 // "/training/day" yazar, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
@@ -131,6 +131,20 @@ export function takeTimer(remote, mine, first, now) {
   if (first) return remote.end != null && now < remote.end + (UP_MAX + 1) * 1000;
   return true;
 }
+// Start dizisi şeridi (Yarış Kuralları 26): 5 dk'da uyarı, 4'te hazırlık, 1'de son dakika, 0'da start. Süre kısaysa olmayanlar düşer.
+export function seqSteps(dur) {
+  const top = Math.round((dur || 0) / 60);
+  const name = { 4: "Hazırlık", 1: "Son dk", 0: "Start" };
+  return [...new Set([top, 4, 1, 0])].filter((m) => m <= top).sort((a, b) => b - a).map((m) => ({ m, name: m === top && m > 4 ? "Uyarı" : name[m] || "Uyarı" }));
+}
+// Kalan saniyeye göre: geçen işaretler (done), son geçilen (now)
+export function seqState(steps, rem, running) {
+  if (!running) return steps.map(() => "");
+  const passed = steps.map((x) => rem <= x.m * 60);
+  const last = passed.lastIndexOf(true);
+  return steps.map((_, i) => (i === last ? "now" : passed[i] ? "done" : ""));
+}
+
 export const upSec = (end, now) => Math.min(UP_MAX, Math.max(0, Math.floor((now - end) / 1000)));
 export const liveDays = (days, live) =>
   [...new Set([...(days || []), ...(live?.days || []), ...[...(live?.media || []), ...(live?.starts || [])].map((x) => dayOf(x.at)).filter((d) => /^\d{4}-/.test(d))])].sort();

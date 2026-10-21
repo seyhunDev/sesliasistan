@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { mmss } from "@/lib/raceScore";
-import { UP_MAX, beepAt, ownedBy, upSec } from "@/lib/raceLive";
+import { UP_MAX, beepAt, ownedBy, seqState, seqSteps, upSec } from "@/lib/raceLive";
 
 // Antrenman sayacı: hazır 2/5/10 dk ya da Ayarla (dakika + saniye). Son 5 saniye her saniye kısa bip, 0'da uzun bip;
 // 0'dan sonra ileri sayar ("Startan beri") ve bu an yarış startı olarak kullanılabilir (readTimer().zero).
@@ -55,8 +57,6 @@ export function ownHere() {
   return window.location.pathname + (id ? `?id=${id}` : "");
 }
 export const mineHere = (t) => ownedBy(t?.own, ownHere());
-// Başka sayfanın sayacı bu sayfada boş görünür (süre seçimi kalır); burada başlatılınca onun yerine geçer
-const hereView = (t) => (mineHere(t) ? t : { dur: t.dur, end: null, left: null, zero: null });
 export function useTimer() {
   const r = useSyncExternalStore(sub, raw, () => "");
   return useMemo(() => parse(r), [r]);
@@ -113,8 +113,7 @@ function beep(kind) {
 // Sayacın saati (200 ms) ve onZero(an): sayaç 0'a ulaşınca (uygulama kapalıyken ulaştıysa açılınca bir kez). Ekranlar bunu kullanır;
 // bipler ise TimerSound'da (uygulama düzeninde tek yerde): sayaç hangi sayfa açık olursa olsun öter.
 export function useTimerRun({ onZero } = {}) {
-  const all = useTimer();
-  const t = useMemo(() => hereView(all), [all]);
+  const t = useTimer();
   const [now, setNow] = useState(0);
   const zeroed = useRef(null); // onZero çağrılan bitiş anı
   const zeroFn = useRef(onZero);
@@ -133,13 +132,13 @@ export function useTimerRun({ onZero } = {}) {
       setNow(n);
       if (n >= t.end && zeroed.current !== t.end) {
         zeroed.current = t.end;
-        zeroFn.current?.(t.end, { mode: t.mode, rid: t.rid });
+        zeroFn.current?.(t.end, { mode: t.mode, rid: t.rid, own: t.own });
       }
     };
     tick();
     const id = setInterval(tick, 200);
     return () => clearInterval(id);
-  }, [running, t.end, t.mode, t.rid]);
+  }, [running, t.end, t.mode, t.rid, t.own]);
 
   return { t, now, running, rem, up };
 }
@@ -232,19 +231,17 @@ export function TimerSound() {
 }
 
 // mode "start" (yarış multimedya sayfası, Seyhun 2026-10-18): yelken start dizisi; başlatınca, 4:00 ve 1:00 kala bip, son 10 saniye
-// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Hazır süreler 1/2/5 dk. Antrenman sayfası eskisi gibi (son 5 saniye).
-// Sayaç düğmelerinin işi (Countdown ve uygulama içi kamera aynı yolu kullanır, CameraSheet). race: yarış akışı (TimerTab useRaceFlow);
-// her biri o anki sayaç kaydını okur, yazar ve akışa önceki kaydı verir (Geri al için).
-function plainStart(mode) {
-  const t = { ...hereView(readTimer()), own: ownHere() };
+// her saniye, 0'da uzun bip (lib/raceLive.js beepAt). Sayaç düğmelerinin işi (Countdown ve uygulama içi kamera aynı yolu kullanır, CameraSheet).
+// TEK SAYAÇ (Seyhun 2026-10-21: "tek bir sayaç kullanalım, oradan yönetelim"): telefonda bir sayaç var; antrenman, yarış multimedya, kamera ve
+// küre aynı sayacı gösterir ve yönetir. own/where: sayacın başlatıldığı sayfa ve adı (başka sayfada üstte yazar, dokununca oraya gider).
+// race: o sayfanın yarış akışı; yalnız sayaç o sayfanın ve yarışa bağlıysa (rid) çağrılır. Akışa önceki kayıt verilir (Geri al için).
+const flowOf = (race, t) => (race && t.rid && mineHere(t) ? race : null);
+export function raceStart(race, mode = "start", where = "") { // race yoksa düz start (yarış açılmaz)
+  const t = { ...readTimer(), own: ownHere(), where };
   audio();
   const left = t.left ?? t.dur;
   if (mode === "start" && t.left == null && !beepAt(left, mode)) beep("mid"); // start dizisi: başlarken bip (1 ya da 4 dk'da zaten çalar)
   const end = Date.now() + left * 1000;
-  return { t, end };
-}
-export function raceStart(race, mode = "start") { // race yoksa düz sayaç (antrenman)
-  const { t, end } = plainStart(mode);
   const rid = race ? `s${end.toString(36)}` : undefined;
   write({ ...t, mode, end, left: null, rid });
   race?.onStart(end, rid, t);
@@ -252,155 +249,138 @@ export function raceStart(race, mode = "start") { // race yoksa düz sayaç (ant
 export function raceCancel(race) {
   const t = readTimer();
   write({ dur: t.dur, end: null, left: null, zero: t.zero });
-  race.onCancel(t);
+  flowOf(race, t)?.onCancel(t);
 }
 export function raceFinish(race) {
   const t = readTimer();
   write({ dur: t.dur, end: null, left: null, zero: t.end });
-  race.onFinish(t);
+  flowOf(race, t)?.onFinish(t);
 }
 export function raceVoid(race) {
   const t = readTimer();
   write({ dur: t.dur, end: null, left: null, zero: t.end });
-  race.onVoid(t);
+  flowOf(race, t)?.onVoid(t);
+}
+// Düz start yarışa çevrilir ("+ Yarış yap"): start anı yarışın startı
+export function makeRace(race) {
+  const t = readTimer();
+  if (!race || t.end == null || t.rid) return;
+  const rid = `s${t.end.toString(36)}`;
+  write({ ...t, rid, own: ownHere() });
+  race.onStart(t.end, rid, t);
 }
 
-// Bipler TimerSound'da (her sayfada çalışır); bu ekran gösterir ve düğmeleri tutar.
-// race (yarış multimedya Süre sekmesi): sayaç yarışa bağlı; Başlat yarışı açar (race.onStart(end, rid)), +30 sn/+1 dk start anını kaydırır
-// (onShift), geri sayımda Duraklat yerine "İptal" (onCancel), startan sonra "Yarışı bitir" (onFinish) ve yanında "İptal" (onVoid). Her biri önceki sayaç kaydını verir
-// (Geri al için, writeTimer ile geri yazılır). race.label: sıradaki yarışın adı.
-// compact (yarış multimedya ve antrenman Süre, Seyhun 2026-10-20): Başlat düğmesi yok, büyük çemberin kendisi düğme. Hazırken dokununca başlar,
-// geri sayımda dokununca durur; durunca çemberin altında Devam ve Sıfırla (yarışta Sıfırla geri sayımı iptal eder, sebep sorulur). Startan sonra
-// çember dokunuşa kapalı (yanlışlıkla bitmesin): Bitir ve İptal alt şeritte. Süre seçimi (presets + başka süre) sağ üstteki "⋯" penceresinde.
-// Halkanın içinde yarışın adı (title); alt şeritte lead (Fotoğraf, Video) ve tail (+); ana düğme yokken lead geniş durur.
-export function Countdown({ mode = "", presets = PRESETS, onZero, race = null, compact = false, title = "", lead = null, tail = null }) {
+// Süre ekranı (Seyhun 2026-10-21 onayı, örnek yaris-tasarim/sayac/tek-sayac.png): kartta üstte durum ve süre seçimi, büyük rakamlar, start
+// sırası şeridi; geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
+// İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
+// title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
+// Alt şeritte lead ve tail (Fotoğraf, Video, Rüzgâr).
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
   const [pick, setPick] = useState(false);
-  const save = (x) => write({ ...x, own: ownHere() });
+  const save = (x) => write({ ...x, own: x.own || ownHere(), where: x.where || where });
+  const mine = !client || mineHere(t);
+  const race = flowOf(all, t);
+  const idle = !running && t.left == null;
+  const paused = !running && t.left != null;
+  // Başka sayfanın yarışına bağlı sayaç burada yalnız görünür: yarışı bitirmek, iptal ve kaydırma o sayfada (yarışın kaydı orada)
+  const away = !mine && !!t.rid && !idle && !!t.own;
+  const ownHref = t.own?.startsWith("/athletes/races/") ? `${t.own}?tab=sure` : t.own;
 
-  const start = () => raceStart(race, mode);
-  const cancel = () => raceCancel(race);
-  const finish = () => raceFinish(race);
-  const voidIt = () => raceVoid(race); // startan sonra yarışı iptal (genel geri çağırma, tehir): sayaç durur, sebebi çağıran sorar
+  const start = () => (beforeStart?.(), raceStart(null, mode, where));
   const pause = () => save({ ...t, end: null, left: Math.max(1, rem) });
-  // Durmuş geri sayım sürer; yarışa bağlıysa start anı yeni bitişe kayar
   const resume = () => {
     audio();
     const end = Date.now() + (t.left ?? t.dur) * 1000;
     save({ ...t, end, left: null });
-    if (race && t.rid) race.onShift(end, t.rid);
+    race?.onShift(end, t.rid);
   };
   const reset = () => save({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero }); // son start anı yarış için kalır
-  const add = (s) => {
-    if (!running) return save({ ...t, left: (t.left ?? t.dur) + s });
-    save({ ...t, end: t.end + s * 1000 });
-    race?.onShift(t.end + s * 1000, t.rid);
-  };
-  const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero });
-  const custom = !presets.includes(t.dur);
+  const shift = (end) => (save({ ...t, end }), race?.onShift(end, t.rid));
+  const add = (s) => running && shift(t.end + s * 1000);
+  const even = () => running && shift(Date.now() + Math.round(rem / 60) * 60000);
+  const choose = (s) => save({ dur: s, end: null, left: null, zero: t.zero, own: "", where: "" });
 
-  const big = compact;
-  const R = big ? 134 : 105;
-  const V = big ? 288 : 230;
-  const C = 2 * Math.PI * R;
-  const frac = up ? 0 : Math.max(0, Math.min(1, rem / Math.max(1, running ? Math.max(t.dur, rem) : t.dur)));
-  const hot = running && !up && rem <= 5;
-  const idle = !running && t.left == null;
-  const paused = !running && t.left != null;
-  const chip = (on) => `h-9 rounded-full border px-4 text-[0.9375rem] font-medium active:scale-95 ${on ? "border-acc bg-acc text-white" : "border-line bg-bg"}`;
-  // compact: çember düğme (hazır → başlat, geri sayım → durdur, durdu → devam); startan sonra kapalı
-  const tap = compact && !up ? (idle ? start : running ? pause : resume) : undefined;
-  const tapLabel = idle ? "Başlat" : running ? "Durdur" : "Devam";
-  const main = compact ? up : true; // compact: ana düğme yalnız startan sonra (Bitir)
+  const steps = mode === "start" ? seqSteps(running || paused ? Math.max(t.dur, rem) : t.dur) : [];
+  const seq = seqState(steps, paused ? t.left : rem, running && !up);
+  const hot = running && !up && rem <= 10;
+  const head = up ? "Startan beri" : running ? "Starta kalan" : paused ? "Durdu" : "Start sayacı";
+  const time = up ? `+${mmss(upSec(t.end, now))}` : mmss(Math.max(0, paused ? t.left : rem));
+  const btn = "flex h-12 min-w-0 flex-1 items-center justify-center rounded-[0.875rem] border border-line bg-card px-2 text-[1rem] font-semibold shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
+  const mainCls = (on) =>
+    `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${on ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]" : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"}`;
 
   return (
-    <section onPointerDown={() => running && !up && audio()} className={`relative mt-3 rounded-2xl border border-line bg-card px-4 text-center ${compact ? "pb-3 pt-3" : "pb-4 pt-5"}`}>
-      {compact && idle && (
-        <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className="absolute right-2.5 top-2.5 z-[1] grid size-10 place-items-center rounded-full bg-bg text-[1.25rem] leading-none tracking-wider text-fg2 active:scale-95">
-          ⋯
-        </button>
-      )}
-      <div
-        className={`relative mx-auto ${big ? "size-[18rem] max-w-full" : "size-[13.5rem]"} ${tap ? "cursor-pointer select-none rounded-full active:scale-[.98]" : ""}`}
-        onClick={tap}
-        role={tap ? "button" : undefined}
-        aria-label={tap ? tapLabel : undefined}
-      >
-        <svg viewBox={`0 0 ${V} ${V}`} className="absolute inset-0 size-full -rotate-90">
-          <circle cx={V / 2} cy={V / 2} r={R} fill="none" stroke="var(--line)" strokeWidth={big ? 10 : 8} />
-          {!idle && !up && <circle cx={V / 2} cy={V / 2} r={R} fill="none" stroke={hot ? "var(--rec)" : paused ? "var(--mut)" : "var(--acc)"} strokeWidth={big ? 10 : 8} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} />}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {title && <span className="text-[0.875rem] font-semibold text-fg2">{title}</span>}
-          <b className={`${big ? "text-[4.5rem] leading-[1.1]" : "text-[3.75rem]"} font-semibold tabular-nums tracking-tight ${hot ? "text-rec" : ""}`}>{mmss(up ? upSec(t.end, now) : Math.max(0, rem))}</b>
-          {compact && idle ? (
-            <svg viewBox="0 0 24 24" className="mt-0.5 size-8 text-acc" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-          ) : (
-            <small className="text-[0.875rem] text-mut">{up ? "Startan beri" : running ? "Kalan" : paused ? "Durdu" : "Sayaç"}</small>
-          )}
-        </div>
-      </div>
-      {compact ? (
-        running && !up ? (
-          <div className="mt-1.5 flex justify-center gap-2">
-            <button onClick={() => add(30)} className={chip(false)}>+30 sn</button>
-            <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
-          </div>
-        ) : paused ? (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button onClick={resume} data-press className="btn btn-primary">Devam</button>
-            <button onClick={race ? cancel : reset} data-press className="btn btn-danger">Sıfırla</button>
-          </div>
-        ) : null
-      ) : (
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
+    <>
+      <section onPointerDown={() => running && !up && audio()} className="mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center">
+        <div className="flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold text-fg2">
+          <span>{head}</span>
           {idle ? (
-            <>
-              {presets.map((s) => (
-                <button key={s} onClick={() => choose(s)} className={chip(t.dur === s)}>
-                  {`${s / 60} dk`}
-                </button>
-              ))}
-              <button onClick={() => setPick(true)} aria-label="Ayarla" className={chip(custom)}>
-                {custom ? mmss(t.dur) : "Ayarla"}
-              </button>
-            </>
+            <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className="flex h-8 items-center gap-1 rounded-full px-1 text-fg active:opacity-60">
+              {mmss(t.dur).replace(/^0(\d):00$/, "$1 dk").replace(/^(\d\d):00$/, "$1 dk")}
+              <Icon name="chev" className="size-4 rotate-90 text-mut" />
+            </button>
+          ) : !mine && t.own ? (
+            <Link href={ownHref} className="truncate text-acc">
+              {t.where || "Sayacın sayfası"} ›
+            </Link>
           ) : (
-            <>
-              {!up && (
-                <>
-                  <button onClick={() => add(30)} className={chip(false)}>+30 sn</button>
-                  <button onClick={() => add(60)} className={chip(false)}>+1 dk</button>
-                </>
-              )}
-              {!race && <button onClick={reset} className={chip(false)}>Sıfırla</button>}
-            </>
+            <span className="truncate">{title}</span>
           )}
         </div>
+        <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? "text-rec" : ""}`}>{time}</b>
+        {steps.length > 1 && !up && (
+          <div className="mt-4 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+            {steps.map((x, i) => (
+              <div key={x.m} className={`flex h-11 flex-col items-center justify-center rounded-xl leading-tight ${seq[i] === "now" ? "bg-acc text-white" : seq[i] === "done" ? "bg-acc/15 text-acc" : "bg-bg text-mut"}`}>
+                <b className="text-[0.9375rem] font-semibold tabular-nums">{x.m}</b>
+                <small className="text-[0.6875rem] font-semibold">{x.name}</small>
+              </div>
+            ))}
+          </div>
+        )}
+        {running && !up && !away && (
+          <div className="mt-3.5 flex gap-2">
+            <button type="button" onClick={() => add(-60)} disabled={rem <= 60} className={`${btn} disabled:opacity-40`}>−1 dk</button>
+            <button type="button" onClick={even} className={btn}>Eşitle</button>
+            <button type="button" onClick={() => add(60)} className={btn}>+1 dk</button>
+          </div>
+        )}
+        {paused && !away && (
+          <div className="mt-3.5 flex gap-2">
+            <button type="button" onClick={race ? () => raceCancel(race) : reset} className={`${btn} text-rec`}>Sıfırla</button>
+          </div>
+        )}
+        {up && !away && (
+          <div className="mt-3.5 flex gap-2">
+            {all && !race && mine && (
+              <button type="button" onClick={() => makeRace(all)} className={`${btn} text-acc`}>+ Yarış yap</button>
+            )}
+            <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} text-rec`}>İptal</button>
+          </div>
+        )}
+      </section>
+      {away ? (
+        <Link href={ownHref} className={mainCls(true)}>
+          {t.where || "Sayacın sayfası"} ›
+        </Link>
+      ) : (
+      <button type="button" onClick={idle ? start : up ? (race ? () => raceFinish(race) : reset) : running ? pause : resume} className={mainCls(!running || up)}>
+        {idle ? "Başlat" : up ? "Bitir" : running ? "Durdur" : "Devam"}
+      </button>
       )}
-      <Pick open={pick} dur={t.dur} presets={compact ? presets : null} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
-      <Bar>
-        <div className="flex gap-2">
-          {main ? lead : lead && <div className="flex min-w-0 flex-1 gap-2 [&>*]:flex-1">{lead}</div>}
-          {race && up && (
-            <button onClick={voidIt} className={`h-14 shrink-0 rounded-2xl border border-line bg-card text-[1.0625rem] font-semibold text-rec active:translate-y-px ${compact ? "px-3.5" : "px-5"}`}>
-              İptal
-            </button>
-          )}
-          {main && (
-            <button
-              onClick={race ? (up ? finish : running ? cancel : start) : up ? reset : running ? pause : start}
-              className={`h-14 min-w-0 flex-1 rounded-2xl font-semibold active:translate-y-px ${compact ? "text-[1rem]" : "text-[1.0625rem]"} ${running && !up ? "border border-line bg-card text-fg" : "bg-acc text-white"}`}
-            >
-              {race ? (up ? (compact ? "Bitir" : "Yarışı bitir") : running ? "Geri sayımı iptal et" : `Başlat · ${race.label}`) : up ? "Bitir" : running ? "Duraklat" : t.left != null ? "Devam" : "Başlat"}
-            </button>
-          )}
-          {tail}
-        </div>
-      </Bar>
-    </section>
+      <Pick open={pick} dur={t.dur} presets={presets} onClose={() => setPick(false)} onPick={(s) => (choose(s), setPick(false))} />
+      {(lead || tail) && (
+        <Bar>
+          <div className="flex gap-2 [&>*]:min-w-0 [&>*]:flex-1">
+            {lead}
+            {tail}
+          </div>
+        </Bar>
+      )}
+    </>
   );
 }
 

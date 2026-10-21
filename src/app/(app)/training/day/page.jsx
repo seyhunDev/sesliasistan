@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -174,7 +175,6 @@ function Day() {
   const sub = plan ? [date === today ? "Bugün" : "", dayText(date), plan.time, plan.place].filter(Boolean).join(" · ") : `Bugün · ${dayText(today)}`;
   const row = "flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-bg";
   const leader = table.races.length ? table.rows[0]?.name.split(" ")[0] : "";
-  const icon = "grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-sm active:translate-y-px";
   const tabs = !!liveId && !locked;
   const shown = tabs ? tab : "sure";
   const lastWind = windOn(live.wind, date).at(-1);
@@ -196,28 +196,19 @@ function Day() {
           <Countdown
             mode="start"
             presets={[60, 120, 300, 600]}
-            compact
             race={withRaces ? flow : null}
-            title={withRaces ? (cur ? cur.name : flow.label) : ""}
+            title={cur ? cur.name : ""}
+            where={title}
+            beforeStart={!plan && racer ? addPlan : undefined}
             lead={
               tabs && (
                 <>
-                  <button type="button" onClick={() => (setCam({ kind: "photo" }), setTab("media"))} aria-label="Fotoğraf" className={`${icon} bg-acc`}>
-                    <Icon name="camera" className="size-6" />
-                  </button>
-                  <button type="button" onClick={() => (setCam({ kind: "video" }), setTab("media"))} aria-label="Video" className={`${icon} bg-rec`}>
-                    <Icon name="video" className="size-6" />
-                  </button>
+                  <Button variant="secondary" onClick={() => (setCam({ kind: "photo" }), setTab("media"))}>Fotoğraf</Button>
+                  <Button variant="secondary" onClick={() => (setCam({ kind: "video" }), setTab("media"))}>Video</Button>
                 </>
               )
             }
-            tail={
-              tabs && (
-                <button type="button" onClick={() => setWind(true)} aria-label="Rüzgâr yaz" className={`${icon} bg-deep`}>
-                  <Icon name="plus" className="size-6" />
-                </button>
-              )
-            }
+            tail={tabs && <Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
           />
           {withRaces && <Marks buoys={buoys} s={cur} on={!!cur && tr.up} onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
           {withRaces && (

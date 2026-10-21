@@ -18,7 +18,7 @@ export function useTrainingFlow({ races, save }) {
     onStart: (end, rid, prevT) => {
       const r = { id: rid, name: `Yarış ${races.length + 1}`, startAt: end, finishes: [] };
       save([...races, r]);
-      undo(`${r.name} geri sayımı başladı`, races, prevT);
+      undo(`${r.name} ${end < Date.now() ? "açıldı" : "geri sayımı başladı"}`, races, prevT);
     },
     onShift: (end, rid) => rid && save(races.map((r) => (r.id === rid ? { ...r, startAt: end } : r))),
     onCancel: (prevT) => {

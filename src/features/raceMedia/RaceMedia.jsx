@@ -10,9 +10,9 @@ import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
-import { beginRace, cleanLive, dayNames, dayOf, liveDays, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
+import { cleanLive, dayNames, dayOf, liveDays, ownedBy, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
-import { mineHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
+import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 import { WeatherTab } from "./WeatherTab";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
@@ -116,7 +116,7 @@ export function RaceMedia({ orgId, id }) {
   const onZero = useCallback(
     (end, t) => {
       if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
-      if (t?.mode !== "start") return;
+      if (t?.mode !== "start" || !t.rid || !ownedBy(t.own, ownHere())) return; // düz start yarış açmaz ("+ Yarış yap" ile); başka sayfanın sayacı bu yarışa yazılmaz
       change((l) => {
         const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
         if (next === l.starts) return {};
@@ -129,23 +129,6 @@ export function RaceMedia({ orgId, id }) {
   const timer = useTimerRun({ onZero });
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
-  // Sayaç asistanla ("5 dakikalık sayacı başlat") başlatıldıysa yarışa bağlı değildir: yarış satırı burada açılır (fotoğraflar ona düşsün)
-  const tEnd = timer.t.end;
-  const tFree = timer.t.mode === "start" && tEnd != null && !timer.t.rid;
-  useEffect(() => {
-    if (!race || !tFree) return;
-    const id2 = setTimeout(() => {
-      const t = readTimer();
-      if (t.rid || t.end == null || t.end < Date.now() || !mineHere(t)) return;
-      change((l) => {
-        const got = beginRace(l.starts, Date.now(), t.end, rdays);
-        writeTimer({ ...t, rid: got.id });
-        saveStarts(orgId, id, got.starts).catch(() => {});
-        return { starts: got.starts };
-      });
-    }, 0);
-    return () => clearTimeout(id2);
-  }, [race, tFree, tEnd, change, orgId, id, rdays]);
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
