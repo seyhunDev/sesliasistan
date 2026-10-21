@@ -80,13 +80,69 @@ export async function mutedCopy(blob, onProg) {
   }
 }
 
+// Küçük resim (Seyhun 2026-10-21: "sürekli video yüklemesi olmasın"): listede videonun kendisi yerine ilk karesinden 480 px JPEG.
+// Çekilince telefonda hazırlanır, dosyanın yanına `<id>-k` adıyla yüklenir. Olmazsa null (liste eskisi gibi videodan gösterir).
+export async function posterOf(blob, kind) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const src = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error("zaman")), 10000);
+      const ok = (x) => (clearTimeout(t), res(x));
+      const no = () => (clearTimeout(t), rej(new Error("açılamadı")));
+      if (kind !== "video") {
+        const im = new Image();
+        im.onload = () => ok(im);
+        im.onerror = no;
+        im.src = url;
+        return;
+      }
+      const v = document.createElement("video");
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = "auto";
+      v.onloadeddata = () => {
+        v.onseeked = () => ok(v);
+        v.currentTime = Math.min(0.3, (v.duration || 1) / 2);
+      };
+      v.onerror = no;
+      v.src = url;
+    });
+    const w0 = src.videoWidth || src.naturalWidth;
+    const h0 = src.videoHeight || src.naturalHeight;
+    if (!w0 || !h0) return null;
+    const k = Math.min(1, 480 / Math.max(w0, h0));
+    const c = document.createElement("canvas");
+    c.width = Math.round(w0 * k);
+    c.height = Math.round(h0 * k);
+    c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob((b) => res(b), "image/jpeg", 0.72));
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+const tpath = (orgId, id) => `${mpath(orgId, id)}-k`;
+async function putPoster(orgId, mid, poster) {
+  if (!poster) return "";
+  try {
+    const r = sref(store(), tpath(orgId, mid));
+    await uploadBytesResumable(r, poster, { contentType: "image/jpeg", cacheControl: "private, max-age=31536000" });
+    return await getDownloadURL(r);
+  } catch {
+    return "";
+  }
+}
+
 // Yükler ve yarışa yazar; künyeyi döndürür. at: çekildiği an (ISO); extra: start sayacına göre an (lib/raceLive.js momentOf)
 export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const mid = newId();
   const r = sref(store(), mpath(orgId, mid));
+  const poster = await posterOf(m.blob, m.kind);
   const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
   await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
-  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, ...extra }])[0];
+  const thumb = await putPoster(orgId, mid, poster);
+  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, thumb, ...extra }])[0];
   await setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
   return meta;
 }
@@ -95,6 +151,18 @@ export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
 export async function dropRaceMedia(orgId, id, meta, rest) {
   await setDoc(live(orgId, id), { media: cleanMedia(rest) }, { merge: true });
   await deleteObject(sref(store(), mpath(orgId, meta.id))).catch(() => {});
+  if (meta.thumb) await deleteObject(sref(store(), tpath(orgId, meta.id))).catch(() => {});
+}
+
+// Küçük resmi olmayan eski kayıt: dosya bir kez indirilir, küçük resim yapılıp yüklenir ve kayda yazılır. Küçük resmin adresini döndürür.
+export async function backfillPoster(orgId, id, meta) {
+  const res = await fetch(meta.url);
+  if (!res.ok) return "";
+  const thumb = await putPoster(orgId, meta.id, await posterOf(await res.blob(), meta.kind));
+  if (!thumb) return "";
+  const l = await loadLive(orgId, id);
+  await saveMedia(orgId, id, l.media.map((x) => (x.id === meta.id ? { ...x, thumb } : x)));
+  return thumb;
 }
 
 // Sonuç belgesinin bütün listesi (genel sıralama)
@@ -109,13 +177,13 @@ export async function loadSheets(orgId, id) {
 // Denemeleri sıfırla: patch (lib/raceLive.js resetPatch) belgeye yazılır; media boşaltılıyorsa dosyalar da silinir
 export async function resetLive(orgId, id, patch, media = []) {
   await setDoc(live(orgId, id), patch, { merge: true });
-  if (patch.media) for (const m of media) await deleteObject(sref(store(), mpath(orgId, m.id))).catch(() => {});
+  if (patch.media) for (const m of media) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
 }
 
 // Yarış silinince: dosyalar, listeler ve kayıt
 export async function dropLive(orgId, id) {
   const l = await loadLive(orgId, id).catch(() => null);
-  for (const m of l?.media || []) await deleteObject(sref(store(), mpath(orgId, m.id))).catch(() => {});
+  for (const m of l?.media || []) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
   const sh = await getDocs(sheets(orgId, id)).catch(() => null);
   for (const d of sh?.docs || []) await deleteDoc(d.ref).catch(() => {});
   await deleteDoc(live(orgId, id)).catch(() => {});
