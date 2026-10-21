@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { HomeDays } from "./HomeDays";
+import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -42,6 +45,43 @@ export function OwnerHome() {
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
 
+  // ÖRNEK (2026-10-21): ?ilk=a tam ekran lacivert, ?ilk=b lacivert + açık; ilk ekran tam sayfa, altında büyük gün şeridi
+  const [ilk] = useState(() => (typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("ilk") || ""));
+  useEffect(() => {
+    if (ilk !== "a") return;
+    const on = () => (window.scrollY < window.innerHeight * 0.6 ? (document.body.dataset.ckTop = "1") : delete document.body.dataset.ckTop);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => (window.removeEventListener("scroll", on), delete document.body.dataset.ckTop);
+  }, [ilk]);
+  const pick = () => document.getElementById("takvim")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const days = <HomeDays today={todayStr()} dark={ilk === "a"} onPick={pick} />;
+
+  if (ilk) {
+    return (
+      <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
+        {ilk === "a" ? (
+          <Cockpit weather={weather} inbox={inbox} onInbox={() => setSheet(true)} fill>
+            <div id="ilk-slot" className="mt-auto pt-4" />
+            <div className="mt-auto pt-4">{days}</div>
+          </Cockpit>
+        ) : (
+          <div className="flex min-h-[calc(100svh-var(--stage-h,5rem))] flex-col">
+            <Cockpit weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
+            <div className="relative -mx-4 -mt-6 flex flex-1 flex-col rounded-t-[1.75rem] bg-bg px-4 pt-4">
+              <div id="ilk-slot" className="my-auto" />
+              <div className="py-3">{days}</div>
+            </div>
+          </div>
+        )}
+        <div className={`relative -mx-4 bg-bg px-4 ${ilk === "a" ? "rounded-t-[1.75rem] pt-5" : "pt-2"}`}>
+          <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} slot />
+        </div>
+        <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
+      </main>
+    );
+  }
+
   return (
     <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
       {/* Lacivert üst kısım (kokpit): tarih, zil, Ayarlar, bugünün havası, rüzgâr grafiği, sıradaki iş (Seyhun 2026-10-21 "C · Lacivert kokpit") */}
@@ -65,7 +105,11 @@ export function OwnerHome() {
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
-export function HomeFeed({ weather, inbox, onInbox }) {
+export function HomeFeed({ weather, inbox, onInbox, slot }) {
+  const [slotEl, setSlotEl] = useState(null);
+  useEffect(() => {
+    if (slot) setSlotEl(document.getElementById("ilk-slot"));
+  }, [slot]);
   const { profile } = useAuth();
   const { plans, lessons, members, notes, fitOthers } = useData();
   const staff = profile?.role === "staff";
@@ -98,10 +142,10 @@ export function HomeFeed({ weather, inbox, onInbox }) {
   return (
     <div className="space-y-6">
       {/* İş düğmeleri: en sık işler adıyla, sonunda Tümü (bütün sayfalar) */}
-      <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
+      {slot ? slotEl && createPortal(<HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />, slotEl) : <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />}
       {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
       <NotesWidget notes={notes} />
-      <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
+      <SiradaCard noWeek={slot} skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
       {athletes && owner && <AthletesWidget races={race.open} />}
       {!side && <FitWidget fit={fit} />}
       <div className="empty:hidden">

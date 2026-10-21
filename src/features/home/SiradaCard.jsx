@@ -27,7 +27,7 @@ import { GROUP } from "./ui";
 //    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 4) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
 // weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi, skip: kokpitte gösterilen plan (OwnerHome).
-export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip }) {
+export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip, noWeek }) {
   const { profile } = useAuth();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -88,8 +88,8 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip }
   const weekday = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long" });
 
   return (
-    <section aria-label="Takvim" className="space-y-2.5">
-      {week && (
+    <section id="takvim" aria-label="Takvim" className="scroll-mt-4 space-y-2.5">
+      {week && !noWeek && (
         <div className={`py-2.5 ${GROUP}`}>
           <WeekStrip w={week} att={att} today={today} />
         </div>
