@@ -297,7 +297,7 @@ select {
 @media (min-width: 34rem) { .asheet { box-shadow: 0 0 0 0.5px var(--line), 0 -18px 40px -20px rgba(20, 40, 34, .35); } }
 .asheet-input { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .3s ease; }
 .asheet-input:focus-within { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 55%, transparent); }
-.asheet-on { box-shadow: inset 0 0 0 1.5px rgba(224, 88, 75, .55); }
+.asheet-on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 70%, transparent); }
 .asheet .vlight[data-state="idle"] { --vl-a: #8b5cf6; --vl-b: #22d3ee; --vl-w: #fff; --vl-h: rgba(124, 92, 255, .3); }
 /* TAM SAYFA ASİSTAN (Seyhun: "asistan tam sayfa açılsın; arka planda güzel animasyonlu bir şey, önünde görevler, yazılar net;
    futuristik, profesyonel, modern", 2026-10-14). Asistan açıkken kubbe ekranın tamamı: arkada yavaş akan renk bulutları,

@@ -55,11 +55,21 @@ export async function scenarios(h) {
     return [n >= 4 && anim !== "none", `${n} katman · ${anim}`];
   });
   await say(page, "notlarımı oku");
-  // Canlı yazı yok (Claude uygulaması gibi, 2026-10-18): söz gönderilince sohbete balon olarak düşer
-  await check(G2, "konuşurken", "kutuda canlı yazı yok, “Dinliyorum” ve dalga", async () => {
-    await page.waitForTimeout(300);
+  // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutuya akar, altta süre + dalga, ■ Dur ve ↑ Gönder
+  await check(G2, "konuşurken", "kutuda canlı yazı, süre, Dur ve Gönder düğmeleri", async () => {
+    const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
     const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
-    return [!/notlarımı oku/.test(box) && /Dinliyorum/.test(box), box.slice(0, 80)];
+    const dur = await btn(page, "Dur").count();
+    return [!!ok && /\d:\d\d/.test(box) && dur === 1 && (await btn(page, "Gönder").count()) === 1, `${box.slice(0, 80)} · Dur ${dur}`];
+  });
+  const beforeDur = h.aiCalls();
+  await btn(page, "Dur").click();
+  await check(G2, "Dur'a basınca", "dinleme biter, söz kutuda kalır, gönderilmez; 🎤 devam ve ↑ Gönder", async () => {
+    await waitFor(async () => (await state(page)) === "idle", 3000);
+    await page.waitForTimeout(400);
+    const box = (await dome(page).locator(".asheet-input").innerText()).replace(/\n/g, " ");
+    const devam = await btn(page, "Konuşmaya devam").count();
+    return [/notlarımı oku/.test(box) && devam === 1 && h.aiCalls() === beforeDur && (await state(page)) === "idle", `${box.slice(0, 80)} · devam ${devam} · yz ${h.aiCalls() - beforeDur} · ${await state(page)}`];
   });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();

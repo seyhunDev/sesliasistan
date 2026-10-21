@@ -217,28 +217,30 @@ function NavTab({ href, icon, label, active, badge }) {
 }
 
 // Asistan kutusu, sade (Seyhun: "daha sade, daha kullanıcı dostu", 2026-10-16). Sesle ve yazarak aynı kutu: üstte yazı,
-// altta yalnız iki düğme: solda ×, sağda duruma göre tek ana düğme. Arada dinlerken ses dalgası, iş yapılırken noktalar.
-//   idle      × kapatır (taslak varsa siler)  · ana düğme 🎤 konuş (taslak varsa ↑ gönder) · kutuya dokun: yaz
-//   listening × sözü siler                    · ↑ gönder · yazıya dokun: dinlemeyi durdur, düzelt (göndermez)
+// altta düğmeler. Konuşurken Claude uygulamasındaki gibi (Seyhun, 2026-10-21): söylenen yazı kutuya akar (son, henüz
+// kesinleşmemiş kısım soluk), altta süre ve sesle oynayan dalga, sağda ■ Dur ve ↑ Gönder.
+//   idle      × kapatır (taslak varsa siler)  · ana düğme 🎤 konuş (taslak varsa 🎤 devam + ↑ gönder) · kutuya dokun: yaz
+//   listening × sözü siler · ■ dur (söz kutuda kalır, gönderilmez) · ↑ gönder · yazıya dokun: dur, düzelt
 //   sending / busy  × kapatır                 · ■ durdur
 //   speaking  × kapatır                       · ■ okumayı kes, dinle
 // mode: listening | sending | busy | speaking | idle | typing (klavye; children yazı alanı)
+// tail: yazının soluk son kısmı (telefonun tanımasında kesinleşmemiş söz). onStop: dinlerken ■; onTalk: taslakla 🎤 devam
 const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
-function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, children }) {
+function AssistBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, children }) {
   const box = useRef(null);
   useEffect(() => {
     const el = box.current;
     if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
-  }, [text]);
+  }, [text, tail]);
   const listening = mode === "listening";
   const working = mode === "busy" || mode === "sending";
-  const quiet = listening || working || mode === "speaking";
+  const quiet = working || mode === "speaking";
   const keep = (e) => mode === "typing" && e.preventDefault(); // yazarken düğmeye basınca klavye kapanmasın
+  const said = [text, tail].filter(Boolean).join(" ");
   return (
     <div className="px-3 pb-1 pt-2">
       <div data-mode={mode} className={`asheet-input rounded-[1.75rem] ${listening ? "asheet-on" : ""}`}>
-        {/* Yazı alanı yalnız boştayken (taslak ya da "Yaz ya da konuş…"). Dinlerken, çevrilirken ve iş sürerken canlı yazı yok
-            (Seyhun: "yazı göstermeyi kaldıralım, Claude uygulamasındaki gibi", 2026-10-18): çubukta "Dinliyorum" + dalga,
+        {/* Yazı alanı boştayken (taslak ya da "Yaz ya da konuş…") ve dinlerken (canlı söz). Çevrilirken ve iş sürerken yok:
             gönderilen söz sohbete balon olarak düşer. */}
         {children || (!quiet && (
           <div
@@ -246,27 +248,31 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
             onClick={onText}
             className={`max-h-[7.5rem] min-h-[3.5rem] overflow-hidden px-5 pb-1 pt-4 text-[1.0625rem] leading-snug ${onText ? "cursor-text" : ""}`}
           >
-            {text ? (
-              <span className={working ? "text-fg/60" : "text-fg"}>
+            {said ? (
+              <span className="text-fg">
                 {text}
+                {tail && <span className="text-mut">{text ? " " : ""}{tail}</span>}
                 {listening && <i className="box-caret" aria-hidden="true" />}
               </span>
             ) : listening ? (
-              <i className="box-caret" aria-label="Dinliyor" />
+              <span className="text-mut">
+                Dinliyorum…
+                <i className="box-caret" aria-hidden="true" />
+              </span>
             ) : (
               <span className="text-mut">{ph}</span>
             )}
           </div>
         ))}
-        <div className={`flex items-center gap-3 px-2 ${quiet ? "py-2" : "pb-2"}`}>
+        <div className={`flex items-center gap-2.5 px-2 ${quiet ? "py-2" : "pb-2"}`}>
           <button type="button" onPointerDown={keep} onClick={onX} aria-label={xLabel} className={`${ROUND} bg-fg/[.07] text-fg`}>
             <Icon name="x" className="size-[1.375rem]" />
           </button>
           {listening ? (
-            <span className="flex min-w-0 flex-1 items-center gap-3" onClick={onText}>
+            <span className="flex min-w-0 flex-1 items-center gap-2.5" onClick={onText}>
               <MicDot />
-              <span className="shrink-0 text-[1rem] font-semibold text-fg">Dinliyorum</span>
-              <ListenWave line className="h-8 min-w-0 flex-1 text-[#e8705f]" />
+              <ListenClock />
+              <ListenWave line className="h-8 min-w-0 flex-1 text-acc" />
             </span>
           ) : working || mode === "speaking" ? (
             <span
@@ -276,6 +282,16 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
           ) : (
             <span className="min-w-0 flex-1" />
           )}
+          {listening && onStop && (
+            <button type="button" onClick={onStop} aria-label="Dur" className={`${ROUND} bg-fg/[.12]`}>
+              <span className="size-3.5 rounded-[3px] bg-fg" aria-hidden="true" />
+            </button>
+          )}
+          {onTalk && (
+            <button type="button" onPointerDown={keep} onClick={onTalk} aria-label="Konuşmaya devam" className={`${ROUND} bg-fg/[.12] text-fg`}>
+              <Icon name="mic" className="size-[1.25rem]" />
+            </button>
+          )}
           <button type="button" onPointerDown={keep} onClick={onMain} disabled={!mainOn} aria-label={mainLabel} className={`${ROUND} size-12 bg-acc text-white disabled:opacity-40`}>
             {mainIcon === "stop" ? <span className="size-4 rounded-[3px] bg-white" aria-hidden="true" /> : <Icon name={mainIcon} className="size-[1.375rem]" />}
           </button>
@@ -283,6 +299,17 @@ function AssistBox({ mode, text, ph, onX, xLabel, onMain, mainIcon, mainLabel, m
       </div>
     </div>
   );
+}
+
+// Dinleme süresi (0:07): dinleme başlayınca sıfırdan sayar; yalnız bu küçük parça saniyede bir yeniden çizilir
+function ListenClock() {
+  const [sec, setSec] = useState(0);
+  useEffect(() => {
+    const t0 = Date.now();
+    const id = setInterval(() => setSec(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums text-mut">{`${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`}</span>;
 }
 
 // ASİSTAN ALANI ("Merkez", 2026-10-07): açık renkli alt sekme çubuğu, ortada asistan düğmesi; asistan açılınca alttan sayfa.
@@ -601,7 +628,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
   // (kullanıcı devam ederse diye) kutuyu "dinliyor"a çevirmez; yalnız yeni söz duyulunca
   const mode = live.listening && (!live.busy || heard) ? "listening" : live.transcribing ? "sending" : state === "busy" || live.busy ? "busy" : state === "speaking" ? "speaking" : "idle";
   const boxText =
-    mode === "listening" ? [draft, heard].filter(Boolean).join(" ")
+    mode === "listening" ? [draft, heard ? live.heardFix ?? heard : ""].filter(Boolean).join(" ")
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "busy" ? live.said || ""
     : draft;
@@ -658,8 +685,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 mode={mode}
                 text={boxText}
                 ph={boxPh}
+                tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
                 onX={mode === "listening" || draft ? voice.cancel : onClose}
                 xLabel={mode === "listening" ? "Sil ve dinlemeyi bırak" : draft ? "Yazıyı sil" : "Konuşmayı bitir"}
+                onStop={voice.edit}
+                onTalk={mode === "idle" && draft ? talk : undefined}
                 onMain={mode === "listening" ? voice.stop : mode === "idle" ? (draft ? voice.send : talk) : mode === "speaking" ? talk : voice.abort}
                 mainIcon={mode === "listening" || (mode === "idle" && draft) ? "up" : mode === "idle" ? "mic" : "stop"}
                 mainLabel={mode === "listening" || (mode === "idle" && draft) ? "Gönder" : mode === "idle" ? "Konuş" : mode === "speaking" ? "Okumayı kes" : "Durdur"}
