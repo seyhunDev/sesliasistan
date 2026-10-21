@@ -275,8 +275,8 @@ export function makeRace(race) {
 // sırası şeridi; geri sayımda −1 dk · Eşitle (en yakın tam dakika, komitenin işaretiyle eşitlemek için) · +1 dk; startan sonra "+ Yarış yap" ve
 // İptal. Kartın altında tek ana düğme: Başlat · Durdur · Devam · Bitir (çember yok, yanlış dokunuş sayacı değiştirmez).
 // title: yarışa bağlı sayaçta yarışın adı; where: bu sayfanın adı (sayaç başlatılınca kayda yazılır). beforeStart: Başlat'tan önce (planı yoksa açar).
-// Alt şeritte lead ve tail (Fotoğraf, Video, Rüzgâr).
-export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null }) {
+// Alt şeritte lead ve tail (Fotoğraf, Video, Rüzgâr). dark: lacivert kokpitin içinde (antrenman günü, 2026-10-21 yeni tasarım): kart yok, beyaz yazı.
+export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = null, title = "", where = "", beforeStart, lead = null, tail = null, dark = false }) {
   const client = useClient();
   const { t: st, now, running, rem, up } = useTimerRun({ onZero });
   const t = client ? st : blank;
@@ -309,33 +309,47 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
   const hot = running && !up && rem <= 10;
   const head = up ? "Startan beri" : running ? "Starta kalan" : paused ? "Durdu" : "Start sayacı";
   const time = up ? `+${mmss(upSec(t.end, now))}` : mmss(Math.max(0, paused ? t.left : rem));
-  const btn = "flex h-12 min-w-0 flex-1 items-center justify-center rounded-[0.875rem] border border-line bg-card px-2 text-[1rem] font-semibold shadow-[0_2px_0_var(--line)] active:translate-y-px active:shadow-none";
+  const btn = `flex h-12 min-w-0 flex-1 items-center justify-center rounded-[0.875rem] border px-2 text-[1rem] font-semibold active:translate-y-px active:shadow-none ${dark ? "ck-glass text-white shadow-[0_2px_0_rgba(0,0,0,.35)]" : "border-line bg-card shadow-[0_2px_0_var(--line)]"}`;
   const mainCls = (on) =>
-    `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${on ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]" : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"}`;
+    `mt-3 flex h-16 w-full items-center justify-center rounded-[1.125rem] text-[1.25rem] font-semibold active:translate-y-0.5 active:shadow-none ${
+      dark
+        ? on
+          ? "bg-white text-[#141938] shadow-[0_3px_0_rgba(0,0,0,.35)]"
+          : "ck-glass text-white shadow-[0_3px_0_rgba(0,0,0,.35)]"
+        : on
+          ? "bg-acc text-white shadow-[0_3px_0_color-mix(in_srgb,var(--acc)_70%,#000)]"
+          : "border border-line bg-card text-fg shadow-[0_3px_0_var(--line)]"
+    }`;
+  const red = dark ? "text-[#f4a49c]" : "text-rec"; // lacivertte koyu kırmızı okunmuyor
+  const accTx = dark ? "text-[#c4b5fd]" : "text-acc";
+  const stepCls = (st) =>
+    dark
+      ? st === "now" ? "bg-[#8b5cf6] text-white" : st === "done" ? "bg-white/20 text-white" : "ck-glass text-white/80"
+      : st === "now" ? "bg-acc text-white" : st === "done" ? "bg-acc/15 text-acc" : "bg-bg text-mut";
 
   return (
     <>
-      <section onPointerDown={() => running && !up && audio()} className="mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center">
-        <div className="flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold text-fg2">
+      <section onPointerDown={() => running && !up && audio()} className={dark ? "mt-4 text-center" : "mt-3 rounded-3xl border border-line bg-card px-4 pb-4 pt-3.5 text-center"}>
+        <div className={`flex h-8 items-center justify-between gap-2 text-[0.9375rem] font-semibold ${dark ? "text-white/70" : "text-fg2"}`}>
           <span>{head}</span>
           {idle ? (
-            <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className="flex h-8 items-center gap-1 rounded-full px-1 text-fg active:opacity-60">
+            <button type="button" onClick={() => setPick(true)} aria-label="Süre seç" className={`flex h-8 items-center gap-1 rounded-full px-1 active:opacity-60 ${dark ? "text-white" : "text-fg"}`}>
               {mmss(t.dur).replace(/^0(\d):00$/, "$1 dk").replace(/^(\d\d):00$/, "$1 dk")}
-              <Icon name="chev" className="size-4 rotate-90 text-mut" />
+              <Icon name="chev" className={`size-4 rotate-90 ${dark ? "text-white/60" : "text-mut"}`} />
             </button>
           ) : !mine && t.own ? (
-            <Link href={ownHref} className="truncate text-acc">
+            <Link href={ownHref} className={`truncate ${accTx}`}>
               {t.where || "Sayacın sayfası"} ›
             </Link>
           ) : (
             <span className="truncate">{title}</span>
           )}
         </div>
-        <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? "text-rec" : ""}`}>{time}</b>
+        <b className={`mt-1 block font-semibold leading-[1.05] tabular-nums tracking-[-0.03em] ${up ? "text-[5.25rem]" : "text-[6.25rem]"} ${hot ? red : ""}`}>{time}</b>
         {steps.length > 1 && !up && (
           <div className="mt-4 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
             {steps.map((x, i) => (
-              <div key={x.m} className={`flex h-11 flex-col items-center justify-center rounded-xl leading-tight ${seq[i] === "now" ? "bg-acc text-white" : seq[i] === "done" ? "bg-acc/15 text-acc" : "bg-bg text-mut"}`}>
+              <div key={x.m} className={`flex h-11 flex-col items-center justify-center rounded-xl leading-tight ${stepCls(seq[i])}`}>
                 <b className="text-[0.9375rem] font-semibold tabular-nums">{x.m}</b>
                 <small className="text-[0.6875rem] font-semibold">{x.name}</small>
               </div>
@@ -351,15 +365,15 @@ export function Countdown({ mode = "", presets = PRESETS, onZero, race: all = nu
         )}
         {paused && !away && (
           <div className="mt-3.5 flex gap-2">
-            <button type="button" onClick={race ? () => raceCancel(race) : reset} className={`${btn} text-rec`}>Sıfırla</button>
+            <button type="button" onClick={race ? () => raceCancel(race) : reset} className={`${btn} ${red}`}>Sıfırla</button>
           </div>
         )}
         {up && !away && (
           <div className="mt-3.5 flex gap-2">
             {all && !race && mine && (
-              <button type="button" onClick={() => makeRace(all)} className={`${btn} text-acc`}>+ Yarış yap</button>
+              <button type="button" onClick={() => makeRace(all)} className={`${btn} ${accTx}`}>+ Yarış yap</button>
             )}
-            <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} text-rec`}>İptal</button>
+            <button type="button" onClick={race ? () => raceVoid(race) : reset} className={`${btn} ${red}`}>İptal</button>
           </div>
         )}
       </section>

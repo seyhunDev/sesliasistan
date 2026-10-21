@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +38,8 @@ import { useTabInUrl } from "@/hooks/useTabInUrl";
 // Medya: multimedyanın MediaTab'ı; fotoğraf/video bu antrenmana bağlı (raceLive/ant-<planId>, Storage raceMedia), antrenman yarışlarına göre gruplu.
 // Hava: multimedyanın WeatherTab'ı; yer planın `spot`u, yoksa Dikili. Sonuçlar: günün yarışları ve puan durumu (Races).
 // Süre'de "Sonucu söyle": yarış sıralaması sesle ("1 Ali, 2 Ayşe", yalnız adlar da, karışık da), onaysız yazılır, 8 sn Geri al (lib/raceVoice.js voiceResult).
+// Yeni tasarım (Seyhun 2026-10-21 onayı, /mnt/project-files/antrenman-sayfasi/yeni-tasarim/ornek.png): üstte lacivert kokpit (geri, ad, gün;
+// Süre'de sayaç da orada), altında açık zeminde "Sonucu söyle" ve tek liste (Yoklama, Yarışlar, Günlük).
 // Açılış: ?id=<antrenman planı> (plan penceresinden, gün penceresinden) ya da bugünün antrenmanı; ?tab=media|wx|res. Sesle: "antrenman sayfasını aç".
 const stamp = () => Date.now();
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
@@ -174,7 +177,7 @@ function Day() {
   };
 
   const sub = plan ? [date === today ? "Bugün" : "", dayText(date), plan.time, plan.place].filter(Boolean).join(" · ") : `Bugün · ${dayText(today)}`;
-  const row = "flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-bg";
+  const firstNames = (l) => (l.length ? l.slice(0, 3).map((a) => a.name.split(" ")[0]).join(", ") + (l.length > 3 ? ` +${l.length - 3}` : "") : "");
   const leader = table.races.length ? table.rows[0]?.name.split(" ")[0] : "";
   const tabs = !!liveId && !locked;
   const shown = tabs ? tab : "sure";
@@ -182,19 +185,17 @@ function Day() {
 
   return (
     <main className={`mx-auto max-w-[30rem] px-5 ${tabs ? "pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]"}`}>
-      <PageHeader title={title} sub={sub} back="/training" />
-      {tabs && tr.running && shown !== "sure" && (
-        <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
-          <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!tr.up && tr.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
-            <span className="text-[0.875rem]">{tr.up ? "Startan beri" : "Start sayacı"}</span>
-            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(tr.up ? upSec(tr.t.end, tr.now) : Math.max(0, tr.rem))}</b>
-          </button>
-        </div>
-      )}
-
-      {shown === "sure" && (
-        <>
+      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/training" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+            <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
+          </div>
+        </header>
+        {shown === "sure" && (
           <Countdown
+            dark
             mode="start"
             presets={[60, 120, 300, 600]}
             race={withRaces ? flow : null}
@@ -211,6 +212,20 @@ function Day() {
             }
             tail={tabs && <Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
           />
+        )}
+      </section>
+      <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      {tabs && tr.running && shown !== "sure" && (
+        <div className="sticky top-[calc(0.5rem+env(safe-area-inset-top))] z-[5] mb-3">
+          <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!tr.up && tr.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
+            <span className="text-[0.875rem]">{tr.up ? "Startan beri" : "Start sayacı"}</span>
+            <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(tr.up ? upSec(tr.t.end, tr.now) : Math.max(0, tr.rem))}</b>
+          </button>
+        </div>
+      )}
+
+      {shown === "sure" && (
+        <>
           {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
           {withRaces && (
             <>
@@ -218,7 +233,7 @@ function Day() {
                 type="button"
                 onClick={() => (sp.status === "listening" ? sp.stop() : sp.status === "idle" && (setSaid(""), sp.start({ autoStop: 0 })))}
                 disabled={sp.status === "transcribing"}
-                className={`mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold active:translate-y-px disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card"}`}
+                className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[1rem] font-semibold active:translate-y-px active:shadow-none disabled:opacity-60 ${sp.status === "listening" ? "bg-rec text-white" : "border border-line bg-card shadow-[0_2px_0_var(--line)]"}`}
               >
                 <Icon name={sp.status === "listening" ? "stop" : "mic"} className="size-5" />
                 {sp.status === "listening" ? "Dinliyorum · bitince dokun" : sp.status === "transcribing" ? "Yazıya çevriliyor…" : "Sonucu söyle"}
@@ -227,41 +242,46 @@ function Day() {
             </>
           )}
 
-          {!plan ? (
-            <button onClick={addPlan} disabled={adding} className="mt-3 flex w-full items-center justify-between rounded-2xl border border-line bg-card px-4 py-3.5 text-left disabled:opacity-50">
-              <span className="text-[0.9375rem] text-fg2">Bugün antrenman planı yok</span>
-              <span className="text-[0.9375rem] font-semibold text-acc">Ekle</span>
-            </button>
-          ) : (
-            <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
-              {racer && (
-                <li>
-                  <button onClick={() => setSheet("roll")} className={row}>
-                    <span className="flex-1 text-[1rem] font-medium">Yoklama</span>
-                    <span className={`text-[0.9375rem] ${present.length && !blank ? "font-semibold text-acc" : "text-mut"}`}>
-                      {athletes.length ? [present.length ? `${present.length} geldi` : "", blank ? `${blank} boş` : ""].filter(Boolean).join(" · ") : "Aç"}
-                    </span>
-                  </button>
-                </li>
+          <section className={withRaces ? "mt-6" : ""}>
+            <ListHead title={plan ? "Bugün" : "Plan"} />
+            <RowList>
+              {!plan ? (
+                <Row onClick={adding ? undefined : addPlan} title="Bugün antrenman planı yok" right={<span className="text-acc">Ekle</span>} chev={false} />
+              ) : (
+                <>
+                  {racer && (
+                    <Row
+                      onClick={() => setSheet("roll")}
+                      title="Yoklama"
+                      sub={firstNames(present) || (blank ? `${blank} kişi boş` : "")}
+                      right={<span className={present.length && !blank ? "text-acc" : "font-semibold text-mut"}>{athletes.length ? (present.length ? `${present.length} geldi` : `${blank} boş`) : "Aç"}</span>}
+                    />
+                  )}
+                  {racer && !locked && (
+                    <Row
+                      onClick={() => openRace(null)}
+                      title="Yarışlar"
+                      sub={leader ? `${leader} önde` : ""}
+                      right={<span className={races.length ? "" : "font-semibold text-mut"}>{races.length ? `${races.length} yarış` : "Yok"}</span>}
+                    />
+                  )}
+                  {canLog(plan, today) && !locked && (
+                    <Row
+                      onClick={() => setSheet("log")}
+                      title="Günlük"
+                      right={
+                        plan.log ? (
+                          <span className="rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">Yazıldı</span>
+                        ) : (
+                          <span className="rounded-full bg-warnbg px-2 py-0.5 text-[0.75rem] font-semibold text-warn">Yazılmadı</span>
+                        )
+                      }
+                    />
+                  )}
+                </>
               )}
-              {racer && !locked && (
-                <li>
-                  <button onClick={() => openRace(null)} className={row}>
-                    <span className="flex-1 text-[1rem] font-medium">Yarışlar</span>
-                    <span className="text-[0.9375rem] text-mut">{races.length ? `${races.length} yarış${leader ? ` · ${leader} önde` : ""}` : "Yok"}</span>
-                  </button>
-                </li>
-              )}
-              {canLog(plan, today) && !locked && (
-                <li>
-                  <button onClick={() => setSheet("log")} className={row}>
-                    <span className="flex-1 text-[1rem] font-medium">Günlük</span>
-                    <span className={`text-[0.9375rem] ${plan.log ? "font-semibold text-acc" : "text-mut"}`}>{plan.log ? "Yazıldı" : "Yazılmadı"}</span>
-                  </button>
-                </li>
-              )}
-            </ul>
-          )}
+            </RowList>
+          </section>
         </>
       )}
       {tabs && shown === "media" && (
@@ -279,7 +299,7 @@ function Day() {
       {tabs && shown === "wx" && <WeatherTab orgId={orgId} race={place} day={date} live={live} onChange={change} saveSpot={saveSpot} />}
       {tabs && shown === "res" && (
         <>
-          <div className="mt-3">
+          <div>
             {races.length ? <RaceList races={races} present={present} onOpen={openRace} /> : <p className="rounded-2xl border border-line bg-card px-4 py-6 text-center text-[0.875rem] text-mut">Bugün yarış yok.</p>}
           </div>
           <Bar>
@@ -289,6 +309,8 @@ function Day() {
           </Bar>
         </>
       )}
+
+      </div>
 
       {racer && (
         <Sheet open={sheet === "roll"} onClose={() => setSheet("")} title="Yoklama">
