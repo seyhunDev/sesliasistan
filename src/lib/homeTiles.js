@@ -483,3 +483,60 @@ export function nextPlan(plans, now, today = now.toLocaleDateString("sv-SE")) {
       .sort((a, b) => `${a.date} ${a.time || "99"}`.localeCompare(`${b.date} ${b.time || "99"}`))[0] || null
   );
 }
+
+// Ana sayfa › Kulüp listesi (Seyhun 2026-10-21: "kulüp kısmına yarışları, fitness'ı, son antrenmanı ve kimlerin katıldığını koyalım")
+const SHORT_MON = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+const shortDate = (date) => {
+  const d = new Date(`${date}T12:00:00`);
+  return `${DOW[(d.getDay() + 6) % 7]} ${d.getDate()} ${SHORT_MON[d.getMonth()]}`;
+};
+const daysTo = (date, today) => Math.round((Date.parse(`${date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+
+// Yarış satırı: süren yarış (başladı, bitmedi) önce, yoksa sıradaki. open: [{ id, name, startDate, endDate, place, count }] (raceHome.js)
+// { id, title, sub ("17-19 Eki · Foça · 6 sporcu" ya da "Sürüyor · Foça"), right ("Sürüyor", "Yarın", "4 gün") } ya da null
+export function clubRaceRow(open = [], today) {
+  const list = open.filter((r) => r.startDate && (r.endDate || r.startDate) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const r = list.find((x) => x.startDate <= today) || list[0];
+  if (!r) return null;
+  const now = r.startDate <= today;
+  const n = daysTo(r.startDate, today);
+  const dates = r.endDate && r.endDate !== r.startDate ? `${shortDate(r.startDate)} - ${shortDate(r.endDate)}` : shortDate(r.startDate);
+  return {
+    id: r.id,
+    title: r.name || "Yarış",
+    sub: [now ? "Sürüyor" : dates, r.place, r.count ? `${r.count} sporcu` : ""].filter(Boolean).join(" · "),
+    right: now ? "Bugün" : n === 1 ? "Yarın" : `${n} gün`,
+  };
+}
+
+// Son antrenman: yoklamada "geldi" işareti olan en son gün (bugün dahil) ve gelenlerin adları. athletes: loadAthletes() (att: { 2026: { "10-20": "present" } })
+// { date, when ("Sal 20 Eki"), names (ilk adlar, alfabetik), n, title (o günün antrenman planı adı) } ya da null
+export function lastTraining(athletes = [], plans = [], today) {
+  let last = "";
+  for (const a of athletes)
+    for (const [y, days] of Object.entries(a.att || {}))
+      for (const [md, v] of Object.entries(days || {})) {
+        const date = `${y}-${md}`;
+        if (v === "present" && date <= today && date > last) last = date;
+      }
+  if (!last) return null;
+  const [y, md] = [last.slice(0, 4), last.slice(5)];
+  const names = athletes
+    .filter((a) => a.att?.[y]?.[md] === "present")
+    .map((a) => String(a.studentName || "").trim().split(/\s+/)[0])
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "tr"));
+  const plan = plans.find((p) => p.date === last && isTraining(p) && p.status !== "cancelled");
+  return { date: last, when: last === today ? "Bugün" : shortDate(last), names, n: names.length, title: plan?.title || "", planId: plan?.id || "" };
+}
+
+// Fitness satırı: bu haftanın (Pazartesi-Pazar) fitness antrenmanları ve yapılanlar. fit: fitDays()
+export function fitWeek(fit = [], today) {
+  const base = new Date(`${today}T12:00:00`);
+  const mon = new Date(base);
+  mon.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const week = fit.filter((f) => f.date >= ymd(mon) && f.date <= ymd(sun));
+  return { n: week.length, done: week.filter((f) => statusOf(f.plan || f, today) === "done").length };
+}

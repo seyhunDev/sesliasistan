@@ -19,7 +19,7 @@ import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { AthletesWidget, FitWidget, NotesWidget } from "./HomeWidgets";
+import { AthletesWidget, ClubRows, FitWidget, NotesWidget } from "./HomeWidgets";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
@@ -123,6 +123,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
           dues={athletes && owner}
           posts={!staff}
           invoices={owner}
+          lead={athletes && owner ? <ClubRows open={race.open} fit={fit} /> : null}
         />
       </div>
     </>

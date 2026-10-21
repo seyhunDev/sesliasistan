@@ -57,7 +57,7 @@ function countRaces(orgId) {
     const p = loadRaces(orgId)
       .then((list) => {
         const up = list.filter((r) => r.startDate && !isPast(r));
-        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate })) };
+        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate, endDate: r.endDate || "", place: r.district || "", count: r.athleteIds?.length || 0 })) };
       })
       .catch(() => null)
       .then((c) => {

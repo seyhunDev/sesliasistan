@@ -2711,3 +2711,31 @@ group("Ortak düğmeler")([
     ["8 gün sonra", F("7 günden uzak plan yok", () => HT.nextPlan([{ id: "u", date: "2026-10-30", time: "10:00" }], at, "2026-10-21") === null)],
   ]);
 }
+
+// Ana sayfa › Kulüp satırları (homeTiles.js clubRaceRow, lastTraining, fitWeek, 2026-10-21): yarış, son antrenman ve gelenler, haftanın fitness'ı
+{
+  const HT = await import("@/lib/homeTiles");
+  const T = "2026-10-21";
+  const R = [
+    { id: "f", name: "Foça Kupası", startDate: "2026-10-25", endDate: "2026-10-26", place: "Foça", count: 6 },
+    { id: "s", name: "Sonbahar", startDate: "2026-10-20", endDate: "2026-10-22", place: "Dikili", count: 4 },
+  ];
+  const A = [
+    { studentName: "Ali Yılmaz", att: { 2026: { "10-18": "present", "10-20": "present" } } },
+    { studentName: "İlay Kaya", att: { 2026: { "10-20": "present" } } },
+    { studentName: "Ege Demir", att: { 2026: { "10-20": "absent", "10-25": "present" } } },
+  ];
+  const fit = [
+    { date: "2026-10-20", plan: { date: "2026-10-20", fit: { res: { st: "done" } } } },
+    { date: "2026-10-22", plan: { date: "2026-10-22" } },
+    { date: "2026-10-28", plan: { date: "2026-10-28" } },
+  ];
+  group("Ana sayfa kulüp satırları")([
+    ["süren yarış", F("başlamış, bitmemiş yarış önce: Bugün", () => HT.clubRaceRow(R, T)?.id === "s" && HT.clubRaceRow(R, T).right === "Bugün" && HT.clubRaceRow(R, T).sub.startsWith("Sürüyor"))],
+    ["sıradaki yarış", F("süren yoksa en yakını, kalan gün", () => HT.clubRaceRow([R[0]], T)?.right === "4 gün" && HT.clubRaceRow([R[0]], T).sub.includes("6 sporcu"))],
+    ["biten yarış", F("bitmiş yarış yok sayılır", () => HT.clubRaceRow([{ id: "x", name: "Eski", startDate: "2026-10-10", endDate: "2026-10-12" }], T) === null)],
+    ["son antrenman", F("son 'geldi' günü ve gelenler (gelecek gün sayılmaz)", () => { const t = HT.lastTraining(A, [], T); return t?.date === "2026-10-20" && t.n === 2 && t.names.join(",") === "Ali,İlay"; })],
+    ["yoklama yok", F("hiç 'geldi' yoksa satır yok", () => HT.lastTraining([{ studentName: "X", att: {} }], [], T) === null)],
+    ["haftanın fitness'ı", F("Pazartesi-Pazar arası sayılır, yapılan 1", () => HT.fitWeek(fit, T).n === 2 && HT.fitWeek(fit, T).done === 1)],
+  ]);
+}

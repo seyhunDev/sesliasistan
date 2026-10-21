@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { WaSheet } from "./WaSheet";
 import { FadeImg } from "@/components/ui/FadeImg";
 import { Icon } from "@/components/ui/Icon";
@@ -10,7 +10,8 @@ import { useAdd } from "@/features/add/AddProvider";
 import { useChat, toMs } from "@/features/chat/ChatProvider";
 import { useData } from "@/features/data/DataProvider";
 import { statusOf } from "@/lib/fitness/model";
-import { fitHref, homeNotes, personHref } from "@/lib/homeTiles";
+import { clubRaceRow, fitHref, fitWeek, homeNotes, lastTraining, personHref, readSum, saveSum } from "@/lib/homeTiles";
+import { loadAthletes } from "@/features/athletes/data";
 import { initials, rel, todayStr } from "@/lib/utils/format";
 
 // Ana sayfanın canlı alanları: Sporcular, Fitness, Notlar ve Kulüp listesindeki Mesajlar satırı (Kulüp listesi HomeSummary.jsx'te).
@@ -164,4 +165,42 @@ export function useMessagesRow() {
   const top = chats.filter((c) => c.last && !c.last.deleted).sort((a, b) => (b.unread > 0) - (a.unread > 0) || toMs(b.last?.at) - toMs(a.last?.at))[0];
   if (!top) return null;
   return <Row key="msg" href={`/messages?c=${top.id}`} title="Mesajlar" sub={`${top.title}: ${top.last.text}`} right={unreadTotal > 0 ? <span className="tone-ve tone-bar rounded-full px-2 py-px text-[0.75rem] font-bold text-white dark:text-[#111214]">{unreadTotal}</span> : null} />;
+}
+
+// Kulüp listesinin başındaki satırlar (Seyhun 2026-10-21): Yarış (süren ya da sıradaki; dokununca yarışın sayfası), Antrenman (son yoklamalı gün ve
+// gelenler; dokununca o günün yoklaması), Fitness (bu haftanın antrenmanları; dokununca Fitness). HomeSummary'ye `lead` olarak verilir.
+// Son antrenman kulüp verisindeki yoklamadan (loadAthletes, oturumda 3 dk saklanır); son sonuç bu cihazda tutulur, açılışta hemen görünür.
+export function ClubRows({ open, fit }) {
+  const { plans } = useData();
+  const today = todayStr();
+  const race = clubRaceRow(open, today);
+  const train = useLastTraining(plans, today);
+  const fw = fitWeek(fit, today);
+  const who = train && (train.n ? `${train.names.slice(0, 3).join(", ")}${train.n > 3 ? ` +${train.n - 3}` : ""}` : "");
+  return (
+    <>
+      {race && <Row href={`/athletes/races/${race.id}`} title={race.title} sub={race.sub} right={race.right} />}
+      {train && <Row href={`/athletes/attendance?gun=${train.date}`} title={`Antrenman · ${train.when}`} sub={who} right={`${train.n} kişi`} />}
+      <Row href="/fitness" title="Fitness" sub={fw.n ? `Bu hafta ${fw.done}/${fw.n} yapıldı` : "Bu hafta antrenman yok"} />
+    </>
+  );
+}
+
+function useLastTraining(plans, today) {
+  const [t, setT] = useState(() => readSum().train || null);
+  useEffect(() => {
+    let live = true;
+    loadAthletes()
+      .then(({ athletes }) => {
+        if (!live) return;
+        const next = lastTraining(athletes, plans, today);
+        saveSum("train", next);
+        setT(next);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [plans, today]);
+  return t;
 }
