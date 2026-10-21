@@ -8,7 +8,7 @@ import { mmss } from "@/lib/raceScore";
 import { addWind, saveBuoys } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
 import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn, windOn } from "@/lib/raceLive";
-import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 import { WindSheet } from "./WeatherTab";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
@@ -50,7 +50,6 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
 
   const today = startsOn(live.starts, day);
   const last = [...today].reverse().find((x) => x.fin && !x.void);
-  const icon = "grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-sm active:translate-y-px";
 
   return (
     <>
@@ -58,23 +57,15 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
         mode="start"
         presets={PRESETS}
         race={flow}
-        compact
         title={cur ? raceName(cur) : ""}
+        where={race?.name || "Yarış"}
         lead={
           <>
-            <button type="button" onClick={() => onCam("photo")} aria-label="Fotoğraf" className={`${icon} bg-acc`}>
-              <Icon name="camera" className="size-6" />
-            </button>
-            <button type="button" onClick={() => onCam("video")} aria-label="Video" className={`${icon} bg-rec`}>
-              <Icon name="video" className="size-6" />
-            </button>
+            <Button variant="secondary" onClick={() => onCam("photo")}>Fotoğraf</Button>
+            <Button variant="secondary" onClick={() => onCam("video")}>Video</Button>
           </>
         }
-        tail={
-          <button type="button" onClick={() => setWind(true)} aria-label="Rüzgâr ve akıntı yaz" className={`${icon} bg-deep`}>
-            <Icon name="plus" className="size-6" />
-          </button>
-        }
+        tail={<Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
       />
       <Marks buoys={live.buoys} s={cur} on={!!cur && tr.up && !cur.void} onMark={mark} onBuoys={setBuoys} />
       <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">

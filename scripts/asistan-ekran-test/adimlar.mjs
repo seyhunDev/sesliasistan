@@ -647,13 +647,13 @@ async function scenarios4(h) {
     });
     await page.waitForTimeout(400);
     await check(GN, "Yarış multimedya: arkadan dönüş", "başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün", async () => [(await picked()) === today, `${await picked()}`]);
-    await check(GN, "Yarış multimedya: sayaç çemberi", "Başlat düğmesi yok, çembere dokununca başlar, dokununca durur, Devam ve Sıfırla çıkar", async () => {
+    await check(GN, "Yarış multimedya: sayaç", "ana düğme Başlat → Durdur → Devam; durunca kartta Sıfırla; start yarış açmaz", async () => {
       const old = await page.locator("button", { hasText: /^Başlat ·/ }).count();
       await page.getByRole("button", { name: "Başlat", exact: true }).click({ timeout: 5000 });
       await page.waitForTimeout(1200);
       await page.getByRole("button", { name: "Durdur", exact: true }).click({ timeout: 5000 });
       await page.waitForTimeout(500);
-      const dv = await page.locator("section button", { hasText: /^Devam$/ }).count();
+      const dv = await page.getByRole("button", { name: "Devam", exact: true }).count();
       const sf = await page.locator("section button", { hasText: /^Sıfırla$/ }).count();
       await page.locator("section button", { hasText: /^Sıfırla$/ }).click();
       await page.waitForTimeout(500);

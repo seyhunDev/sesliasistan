@@ -24,7 +24,7 @@ export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today
       const before = live.starts;
       const got = beginRace(live.starts, Date.now(), end, rdays);
       save(got.starts);
-      undo(`${raceName(got.starts.find((x) => x.id === got.id))} geri sayımı başladı`, before, prevT);
+      undo(`${raceName(got.starts.find((x) => x.id === got.id))} ${end < Date.now() ? "açıldı" : "geri sayımı başladı"}`, before, prevT);
     },
     onShift: (end, rid) => rid && save(shiftRace(live.starts, rid, end, rdays)),
     onCancel: (prevT) => {
