@@ -16,7 +16,7 @@ import { money } from "@/lib/bankSheet";
 import { deleteInvoice, ensureTask } from "@/features/invoices/invoiceData";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes } from "@/features/athletes/data";
-import { saveStart, saveFree, loadDuesRange, loadCash, archiveCash, convertToCash, addIncome, saveCashName, updateIncome } from "@/features/dues/duesData";
+import { saveStart, saveFree, saveBurs, loadDuesRange, loadCash, archiveCash, convertToCash, addIncome, saveCashName, updateIncome } from "@/features/dues/duesData";
 import { lastMonths, athleteDuesText, athleteDues, feeOf } from "@/lib/dues";
 import { unpaidRoster } from "@/lib/duesRemind";
 import { authFetch } from "@/lib/authFetch";
@@ -284,6 +284,21 @@ export async function duesCmd(ctx, s, viaVoice, pre = null) {
             : `${a.studentName}: ${label} aidatı sayılmayacak.`,
         viaVoice,
       );
+      return true;
+    }
+    // Burslu: "Ali Kaya burslu", "Zeynep artık burslu değil" (her ay borç sayılmaz, ödeyen/ödemeyen sayısına girmez)
+    if (dc.op === "burs") {
+      const { athletes } = await loadAthletes().catch(() => ({ athletes: [] }));
+      const hit = matchPerson(dc.name, athletes.map((a) => a.studentName));
+      const a = hit ? athletes.find((x) => x.studentName === hit) : null;
+      if (!a) return false;
+      try {
+        await saveBurs(profile.orgId, a.id, !dc.undo);
+      } catch {
+        reply("Aidat kaydını yazamadım.", { engine: "local", fail: true }, viaVoice);
+        return true;
+      }
+      leave(dc.undo ? `${a.studentName} artık burslu değil, aidatı yeniden sayılıyor.` : `${a.studentName} burslu: aidatı borç sayılmayacak.`, viaVoice);
       return true;
     }
     // Tek sporcu: "Ahmet'in aidat durumu ne" → bu ay, son 6 aydaki borç; sporcu sayfası açılır

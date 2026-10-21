@@ -148,10 +148,12 @@ function Dues({ uid, duesAt }) {
   const qw = words(q).join(" ");
   const found = rows.filter((r) => !qw || words(`${r.a.studentName} ${r.a.parentName}`).join(" ").includes(qw));
   const byName = (x, y) => String(x.a.studentName).localeCompare(String(y.a.studentName), "tr");
-  const isOff = (r) => ["free", "none"].includes(r.info.now.state);
+  const isBurs = (r) => !!cfg.burs?.[r.a.id];
+  const isOff = (r) => isBurs(r) || ["free", "none"].includes(r.info.now.state);
   const oweRows = found.filter((r) => r.info.debt > 0).sort((x, y) => y.info.debt - x.info.debt || byName(x, y));
   const okRows = found.filter((r) => !(r.info.debt > 0) && !isOff(r)).sort(byName);
-  const offRows = found.filter((r) => !(r.info.debt > 0) && isOff(r)).sort(byName);
+  const offRows = found.filter((r) => !(r.info.debt > 0) && isOff(r) && !isBurs(r)).sort(byName);
+  const bursRows = found.filter((r) => !(r.info.debt > 0) && isBurs(r)).sort(byName);
   const debtAll = rows.reduce((s, r) => s + r.info.debt, 0);
   const owers = rows.filter((r) => r.info.debt > 0).length;
   const owed = unpaidOf(gridOf(active, months, cfg, [thisMonth]).rows.map((r) => r.cells[thisMonth]));
@@ -225,10 +227,19 @@ function Dues({ uid, duesAt }) {
     await writeMonths(next);
     toast(list.length === 1 ? `${list[0].picks.map((a) => a.studentName).join(", ")}: ${TL(list[0].m.amount)} yazıldı` : `${list.length} ödeme yazıldı`);
   }
+  // Burslu: hiçbir ay borç sayılmaz, ödeyen/ödemeyen sayısına girmez (aidatı 0 yazmak da burslu yapar)
+  const setBurs = (a, yes) => {
+    const burs = { ...(cfg.burs || {}) };
+    if (yes) burs[a.id] = true;
+    else delete burs[a.id];
+    writeCfg({ ...cfg, burs, fees: yes ? { ...(cfg.fees || {}), [a.id]: null } : cfg.fees });
+    toast(yes ? `${a.studentName} burslu` : `${a.studentName} artık burslu değil`);
+  };
   const ignore = (ym, m) => writeMonth(ym, { ...(months[ym] || {}), ignored: [...(months[ym]?.ignored || []), movKey(m)] }, "Aidat değil olarak işaretlendi");
 
-  const right = (info) => {
+  const right = (info, burs) => {
     if (info.debt > 0) return [`${info.dueMonths.length} ay · ${TL(info.debt)}`, "text-rec"];
+    if (burs) return ["Burslu", "text-mut"];
     if (info.now.state === "none") return ["Başlamadı", "text-mut"];
     if (info.now.state === "free") return ["Sayılmıyor", "text-mut"];
     return [cfg.fee || info.fee ? "Borcu yok" : "", "text-ok"];
@@ -236,7 +247,7 @@ function Dues({ uid, duesAt }) {
   const row = (r) => {
     const on = openId === r.a.id;
     const last = r.hist[0];
-    const [txt, tone] = right(r.info);
+    const [txt, tone] = right(r.info, isBurs(r));
     return (
       <li key={r.a.id}>
         <button type="button" onClick={() => setOpenId(on ? "" : r.a.id)} data-press="row" className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
@@ -263,7 +274,8 @@ function Dues({ uid, duesAt }) {
               else delete free[r.a.id];
               writeMonth(ym, { ...(months[ym] || {}), free }, yes ? `${monthLabel(ym)} sayılmayacak` : `${monthLabel(ym)} yeniden sayılıyor`);
             }}
-            onFee={(v) => (writeCfg({ ...cfg, fees: { ...(cfg.fees || {}), [r.a.id]: v || null } }), toast("Aidat tutarı kaydedildi"))}
+            onFee={(v) => (v === 0 ? setBurs(r.a, true) : (writeCfg({ ...cfg, burs: { ...(cfg.burs || {}), [r.a.id]: null }, fees: { ...(cfg.fees || {}), [r.a.id]: v || null } }), toast("Aidat tutarı kaydedildi")))}
+            onBurs={(yes) => setBurs(r.a, yes)}
           />
         )}
       </li>
@@ -296,6 +308,7 @@ function Dues({ uid, duesAt }) {
 
       {group("Borcu var", oweRows)}
       {group("Borcu yok", okRows)}
+      {group("Burslu", bursRows)}
       {group("Aidat sayılmayanlar", offRows)}
       {!found.length && <p className="mt-6 text-center text-[0.875rem] text-mut">Sporcu bulunamadı.</p>}
 
@@ -380,17 +393,17 @@ function Dues({ uid, duesAt }) {
   );
 }
 
-const CELL = { paid: "bg-ok text-white", part: "bg-amber-500 text-white", due: "border border-rec/60 text-rec", free: "bg-line text-mut", none: "bg-line/60 text-mut" };
-const MARK = { paid: "✓", part: "½", due: "", free: "–", none: "–" };
+const CELL = { paid: "bg-ok text-white", part: "bg-amber-500 text-white", due: "border border-rec/60 text-rec", free: "bg-line text-mut", burs: "bg-line text-mut", none: "bg-line/60 text-mut" };
+const MARK = { paid: "✓", part: "½", due: "", free: "–", burs: "–", none: "–" };
 
 // Açılan satır: 12 aylık şerit, ödemeler, Ödeme ekle, sporcuya özel ayar
-function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, onFee }) {
+function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, onFee, onBurs }) {
   const now = yms.at(-1);
   const [sel, setSel] = useState(now);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState(cfg.fees?.[a.id] ? String(cfg.fees[a.id]) : "");
   const c = info.cells.find((x) => x.ym === sel) || info.now;
-  const status = { paid: "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", none: "Aidat henüz başlamadı" }[c.state];
+  const status = { paid: "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", burs: "Burslu, aidat ödemiyor", none: "Aidat henüz başlamadı" }[c.state];
   const btn = "min-h-10 rounded-xl border border-line px-3 py-2 text-[0.8125rem] font-semibold disabled:opacity-50";
   return (
     <div className="border-t border-line px-4 pb-3 pt-3 text-[0.875rem]">
@@ -440,12 +453,15 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 text-fg2">Bu sporcunun aidatı</span>
             <input inputMode="decimal" value={own} onChange={(e) => setOwn(e.target.value)} placeholder={String(cfg.fee || "")} className="h-10 w-24 rounded-xl bg-bg px-3 text-right outline-none" />
-            <button type="button" onClick={() => onFee(Number(String(own).replace(",", ".")) || 0)} data-press className="btn btn-secondary btn-sm">
+            <button type="button" onClick={() => onFee(String(own).trim() === "" ? null : Number(String(own).replace(",", ".")) || 0)} data-press className="btn btn-secondary btn-sm">
               Kaydet
             </button>
           </div>
+          <button type="button" onClick={() => onBurs(!cfg.burs?.[a.id])} className={`${btn} w-full`}>
+            {cfg.burs?.[a.id] ? "Burslu değil" : "Burslu yap"}
+          </button>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => onFree(sel, c.state !== "free")} disabled={c.state === "none"} className={`${btn} capitalize`}>
+            <button type="button" onClick={() => onFree(sel, c.state !== "free")} disabled={c.state === "none" || c.state === "burs"} className={`${btn} capitalize`}>
               {shortMonth(sel)} {c.state === "free" ? "sayılsın" : "sayılmasın"}
             </button>
             <button type="button" onClick={() => onStart(sel)} disabled={info.start === sel} className={btn}>

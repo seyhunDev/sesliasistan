@@ -25,6 +25,8 @@ export const saveRoster = (orgId, roster) => setDoc(dues(orgId, "settings"), { r
 export const saveMonth = (orgId, ym, month) => setDoc(dues(orgId, ym), clean(month));
 // Asistandan: aidat başlangıç ayı ve "bu ay sayılmasın" (yalnız o alan yazılır, diğerlerine dokunmaz)
 export const saveStart = (orgId, id, ym) => setDoc(dues(orgId, "settings"), { start: { [id]: ym } }, { merge: true });
+// Asistandan: burslu (hiç aidat ödemez); burslu yapılınca özel tutar silinir
+export const saveBurs = (orgId, id, on) => setDoc(dues(orgId, "settings"), { burs: { [id]: on ? true : deleteField() }, ...(on ? { fees: { [id]: deleteField() } } : {}) }, { merge: true });
 export const saveFree = (orgId, ym, id, on) => setDoc(dues(orgId, ym), { free: { [id]: on ? true : deleteField() } }, { merge: true });
 
 // Ayın banka hareketleri (banka defterinden; ledgerData.js)
