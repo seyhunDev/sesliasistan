@@ -1,8 +1,8 @@
-Commit: 207c170 · Merge pull request #640 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-21-1529 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39599030830
+Commit: 8a0a768 · Merge pull request #641 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-21-1543 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39600881764
 
-TAM TEST · 21.10.2026 15:22:30
+TAM TEST · 21.10.2026 15:36:23
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1333/1360 geçti · 27 kalan · 425 sn
+SONUÇ: 1334/1360 geçti · 26 kalan · 407 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,11 +191,8 @@ SONUÇ: 1333/1360 geçti · 27 kalan · 425 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 89/95
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 90/95
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✗ Halka renkleri: 5/6
       ✗ “okurken”
@@ -221,7 +218,7 @@ SONUÇ: 1333/1360 geçti · 27 kalan · 425 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 24 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 22 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
