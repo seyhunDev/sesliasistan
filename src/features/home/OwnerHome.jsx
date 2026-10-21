@@ -86,27 +86,17 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
     fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
-  // En üstteyken alt sekme çubuğu da lacivert (globals.css body[data-ck-top]): ilk ekran asistan alanıyla tek parça görünür; aşağı kayınca açık rengine döner
-  useEffect(() => {
-    const on = () => (window.scrollY < window.innerHeight * 0.6 ? (document.body.dataset.ckTop = "1") : delete document.body.dataset.ckTop);
-    on();
-    window.addEventListener("scroll", on, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", on);
-      delete document.body.dataset.ckTop;
-    };
-  }, []);
   const toList = () => document.getElementById("takvim")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
-      {/* İlk ekran tam bir sayfa (Seyhun 2026-10-21 "A · tam lacivert"): kokpit, iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler;
+      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler;
           güne dokununca ya da kaydırınca aşağıdaki liste */}
       <Cockpit weather={weather} inbox={inbox} onInbox={onInbox}>
-        <div className="mt-auto pt-4">
+        <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
-        <div className="mt-auto pt-4">
+        <div className="mt-3">
           <HomeDays today={todayStr()} onPick={toList} />
         </div>
       </Cockpit>
