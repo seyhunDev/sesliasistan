@@ -1,8 +1,8 @@
-Commit: 85f7cf6 · Asistan: gönderi yarışa bağlı, yarışın görselini açma, konuşma raporları tarih tarih kaydedilir (#656)
-Zaman: 2026-10-21-2151 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39655378511
+Commit: 9f0975a · Merge pull request #657 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-21-2249 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39663887530
 
-TAM TEST · 21.10.2026 21:44:33
+TAM TEST · 21.10.2026 22:42:14
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1341/1370 geçti · 29 kalan · 409 sn
+SONUÇ: 1342/1370 geçti · 28 kalan · 412 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -209,11 +209,8 @@ SONUÇ: 1341/1370 geçti · 29 kalan · 409 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/105
-  ✗ Sekme çubuğundaki yeşil düğme: 1/2
-      ✗ “ana sayfa”
-          beklenen: ortada tek asistan düğmesi, 5 sütun
-          olan:     0 düğme · 5 sütun
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
+  ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
@@ -227,7 +224,7 @@ SONUÇ: 1341/1370 geçti · 29 kalan · 409 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 17 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 15 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
