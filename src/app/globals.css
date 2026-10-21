@@ -681,7 +681,9 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
     radial-gradient(90% 60% at 0% 100%, rgba(34, 211, 238, .14), transparent 62%),
     #141938;
 }
-.ck .btn-round { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+.ck :is(.btn-round, .btn-back) { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .16); color: #fff; box-shadow: none; }
+/* Lacivertte basınca açık renk parlamasın: yalnız içeri girer, zemin biraz koyulaşır (geri düğmesi: Seyhun 2026-10-21 "A · Yuvarlak simge") */
+.ck :is(.btn-round, .btn-back)[data-pressed] { background: rgba(255, 255, 255, .06); }
 .ck .btn-round .ring-bg { --tw-ring-color: #141938; }
 /* Kokpitteki beyaz küçük düğme (Süre) */
 .ck-btn { display: grid; place-items: center; height: 2.25rem; padding: 0 0.9rem; border-radius: 0.75rem; background: #fff; color: #141938; font-size: 0.84375rem; font-weight: 700; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
@@ -702,3 +704,5 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* Kokpit iş düğmeleri (Seyhun 2026-10-21): kokpitteki iş düğmeleri yarı saydam, ana iş beyaz */
 .ck .raised { background: rgba(255, 255, 255, .08); color: #fff; border-color: rgba(255, 255, 255, .14); box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
 .ck .raised.act-main { background: #fff; color: #141938; }
+/* Kokpitteki seçili gün (HomeDays: penceresi açık gün) */
+.ck .raised.ck-sel { background: #8b5cf6; color: #fff; border-color: #a78bfa; }
