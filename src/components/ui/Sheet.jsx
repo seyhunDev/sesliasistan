@@ -8,6 +8,14 @@ const CLOSE_AT = 110; // bu kadar piksel aşağı çekilirse kapanır
 const FLICK = 0.6; // ya da bu hızdan (px/ms) hızlı fırlatılırsa
 
 const noop = () => () => {};
+// Açık pencere sayısı: en az biri açıkken arkadaki sayfa kaymaz (Seyhun: "aşağı yukarı yaptığında arka plan aşağı yukarı oynuyor").
+let locks = 0;
+function lockPage() {
+  if (locks++ === 0) document.documentElement.style.overflow = document.body.style.overflow = "hidden";
+  return () => {
+    if (--locks === 0) document.documentElement.style.overflow = document.body.style.overflow = "";
+  };
+}
 const typing = () => {
   const el = document.activeElement;
   return (!!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) || (window.visualViewport?.offsetTop || 0) > 0;
@@ -29,7 +37,8 @@ export function Sheet({ open, onClose, title, children }) {
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open) setDy(0);
+    if (!open) return setDy(0);
+    return lockPage();
   }, [open]);
 
   const start = (fromContent) => (e) => {

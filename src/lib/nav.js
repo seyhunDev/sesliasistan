@@ -25,6 +25,7 @@ export const PAGES = {
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
   training: { path: "/training", label: "Antrenman günlüğü" },
   trainingDay: { path: "/training/day", label: "Antrenman sayfası (sayaç, yoklama, yarışlar)", need: "athletes" },
+  weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   dues: { path: "/dues", label: "Aidatlar", need: "athletes" },
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
@@ -64,6 +65,7 @@ const GROUP = [
 // Sıra önemli: özel olan önce ("yoklamam" > "yoklama", "doğum günü" > "gün")
 const TARGETS = [
   ["wind", /(^|\s)(rüzg[aâ]r harita\S*|ruzgar harita\S*|windy\S*)(?=\s|$)/],
+  ["weather", /(^|\s)(hava durumu\S*)(?=\s|$)/],
   ["food", /(^|\s)(beslenme\S*|öğünler\S*|öğünlerim\S*)(?=\s|$)/],
   ["fitness", /(^|\s)(fitness?\S*|fitnes\S*|spor salon\S*|egzersiz\S*)/],
   ["myAttendance", /(^|\s)(yoklamam\S*|yoklama geçmişim\S*|devamsızlığım\S*)(?=\s|$)/],
