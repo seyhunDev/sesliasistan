@@ -2361,6 +2361,19 @@ group("Silinen sohbet")([
   ["henüz okunmadı", F("boş liste", () => CA.liveMsgs(null, true, 0, ms).length === 0)],
 ]);
 
+// Mesajlar listesi (lib/chatList.js): mesajı olan sabit grup listede, olmayan üstte kart (Seyhun: Sporcular'a yazdım, liste boş)
+{
+const CLS = await import("@/lib/chatList");
+const FX = ["team", "family", "athletes"];
+group("Mesajlar listesi")([
+  ["yazışılan grup", F("listede", () => CLS.listed({ id: "athletes", last: { text: "x" } }, FX))],
+  ["mesajsız grup", F("listede yok", () => !CLS.listed({ id: "team" }, FX))],
+  ["birebir ve kurulan grup", F("listede", () => CLS.listed({ id: "dm_a_b", last: {} }, FX) && CLS.listed({ id: "g1" }, FX))],
+  ["kartlar", F("yalnız mesajsız gruplar", () => CLS.cardGroups(FX, [{ id: "athletes", last: {} }, { id: "team" }]).join() === "team,family")],
+  ["sıfırlamadan sonra", F("hepsi kart, liste boş", () => CLS.cardGroups(FX, []).length === 3)],
+]);
+}
+
 // Sporcu boy ve kilo (lib/athleteBody.js; sporcu sayfası ve asistan "Mete'nin kilosu 52")
 const SBK = await import("@/lib/athleteBody");
 group("Sporcu boy ve kilo")([
