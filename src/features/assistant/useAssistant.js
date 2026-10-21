@@ -749,6 +749,9 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Sahneye canlı durum: dinliyor mu, ne duyuldu, son cevap, düşünüyor mu
   const lastReply = [...turns].reverse().find((x) => x.role === "assistant")?.text || "";
   const heardNow = `${sp.finalText || ""}${sp.interim || ""}`.trim();
+  // Kutudaki canlı yazı için ikiye ayrılır: kesinleşen söz ve soluk görünen son kısım (telefonun tanımasında ara sonuç)
+  const heardFix = (sp.finalText || "").trim();
+  const heardTail = heardFix ? (sp.interim || "").trim() : heardNow;
   // Şu an yapılan iş (kubbede kürenin altında, ortada): sürmekte olan adım, işin yazısı ("WhatsApp mesajı hazırlanıyor")
   // ya da isteğin kendisinden yazı ("Cumhuriyet yarışı oluşturuluyor"); ses yazıya çevrilirken yazı yok. Yanıt akarken yok.
   const stepNow = steps.find((x) => x.st === "run")?.label || "";
@@ -765,8 +768,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   }, [open, listening, heardNow]); // eslint-disable-line react-hooks/exhaustive-deps
   // heard yalnız o an duyulan: gönderilen söz zaten balon olarak akışta (yanıt beklenirken açılan mikrofonda yeniden gösterilmez)
   useEffect(() => {
-    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0, saved: saved.length > 0 && !drafts.length });
-  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps, saved.length, drafts.length]);
+    onLive?.({ open, docked, listening, transcribing, busy, heard: heardNow, heardFix, tail: heardTail, said: heard, draft: text, lastReply, speaking: tts.speaking, booting, talked: turns.length > 0, status: workNow, prog: plan.length ? plan : steps, planShown: plan.length > 0, saved: saved.length > 0 && !drafts.length });
+  }, [onLive, open, docked, listening, transcribing, busy, heardNow, heardFix, heardTail, heard, text, lastReply, tts.speaking, booting, turns.length, workNow, plan, steps, saved.length, drafts.length]);
   // Sahnenin düğmeleri buradaki işleri çağırır
   const stageListen = () => {
     convo.current = true;
