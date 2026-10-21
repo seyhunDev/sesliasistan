@@ -3,4 +3,8 @@
 - Telefonda denenmedi.
 
 ## Sıradaki işler
-- Seyhun'un onayından sonra birleştir.
+- Telefonda dene: tarih penceresi, boşluksuz kokpit.
+
+
+## Tasarım
+- Büyük tarihe dokununca sayfa kaymaz, o günün penceresi açılır (DayPick.jsx: PLANLAR, YELKEN/yoklama, FİTNESS; Seyhun 2026-10-21: "ne varsa o gün onları göstermeliyiz"). Gün noktaları: antrenman/plan türü rengi, fitness turuncu.

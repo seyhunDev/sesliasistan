@@ -86,18 +86,16 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
     fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
-  const toList = () => document.getElementById("takvim")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
     <>
-      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler;
-          güne dokununca ya da kaydırınca aşağıdaki liste */}
+      {/* Lacivert kokpit (Seyhun 2026-10-21; boşluksuz, sıkı): iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler (güne dokununca o günün penceresi) */}
       <Cockpit weather={weather} inbox={inbox} onInbox={onInbox}>
         <div className="mt-4">
           <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
         </div>
         <div className="mt-3">
-          <HomeDays today={todayStr()} onPick={toList} />
+          <HomeDays today={todayStr()} fit={fit} att={athletes} />
         </div>
       </Cockpit>
       {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
