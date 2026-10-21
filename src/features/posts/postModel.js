@@ -520,7 +520,8 @@ export const wantsPost = (s) => {
 export const wantsPostOpen = (s) => {
   const t = String(s || "").toLocaleLowerCase("tr-TR");
   if (/mesaj|(hazırla|oluştur|tasarla|üret|çiz|yap\b|yapalım)/.test(t)) return false;
-  return /(görsel|gönderi(?!l)|gönderisi|[iı]nstagram|[iı]nsta\b|afiş|\bpost)/.test(t) && /(?<![\p{L}])aç(?![\p{L}])|açar mısın|açsana|göster|getir/u.test(t);
+  // Yalnız "Instagram'ı aç" Instagram sayfasını açar (sayfa açma); gönderi için görsel / gönderi / afiş / post sözü gerekir
+  return /(görsel|gönderi(?!l)|gönderisi|afiş|\bpost)/.test(t) && /(?<![\p{L}])aç(?![\p{L}])|açar mısın|açsana|göster|getir/u.test(t);
 };
 // Söylenen gönderi isteğinde yarışı belirten başka bir şey yok mu ("Instagram görseli hazırla", "bunun için afiş yap"):
 // öyleyse sohbetin az önceki yarışına (ya da açık yarış sayfasına) bağlanır (Seyhun, 2026-10-21)

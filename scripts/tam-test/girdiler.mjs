@@ -24,10 +24,10 @@ add("Mesaj", AI, [
   "Velilere mesaj at, cumartesi antrenman var.", "Ali'ye WhatsApp'tan yaz, yarın gelsin.", "Velilere yaz, gelmeyenler cumartesi telafi yapacak.",
   "Gökhan'a mesaj at, marketten süt alsın.",
 ]);
-add("Soru", AI, [
-  "Yarın ne var?", "Bu hafta neler var?", "Geciken görev var mı?", "Yarın rüzgar kaç knot?", "Dün antrenmana kimler geldi?",
-  "Antrenmana Ali geldi mi?", "Kaç sporcumuz var?", "Bu ay hangi planlar var?",
-]);
+add("Soru", AI, ["Yarın ne var?", "Bu hafta neler var?", "Geciken görev var mı?", "Yarın rüzgar kaç knot?", "Bu ay hangi planlar var?"]);
+// Yoklama ve kulüp soruları yapay zekanın görmediği veriden telefonda cevaplanır (#568, #571); soru yoklamaya yazılmaz
+add("Soru (yoklamadan)", ["attQuery", AI], ["Dün antrenmana kimler geldi?", "Antrenmana Ali geldi mi?"]);
+add("Soru (kulüp verisinden)", ["clubAsk", AI], ["Kaç sporcumuz var?"]);
 add("Yoklama", "attendance", [
   "Yoklama al, Ali ve Ayşe geldi.", "Bugün antrenmana Emre gelmedi.", "Bugün antrenmana Mustafa katıldı.", "Dünkü antrenmana Enes gelmedi, yoklamaya yaz.",
   "Mustafa geldi, yoklamaya ekle.", "Bugün İlay antrenmana katıldı, onu yoklamaya ekle.",
@@ -126,8 +126,8 @@ export const GERCEK = [
   ["ders programima carsamba 10da kimya ekle", "schedule", "Türkçe harfsiz"],
   ["ekibe yazz yarın 8de iskelede", "ai", "yazım hatası (yazz)"],
   ["velilere mesaj at cumartesi antreman var", "ai", "mesaj, yoklama sanılmamalı"],
-  ["bugün antremana kimler geldi", "ai", "soru, yoklama yazılmamalı"],
-  ["mustafa geldi mi antrenmana", "ai", "soru, yoklama yazılmamalı"],
+  ["bugün antremana kimler geldi", "attQuery", "soru, yoklama yazılmamalı"],
+  ["mustafa geldi mi antrenmana", "attQuery", "soru, yoklama yazılmamalı"],
   ["aliye söyle teşekkürler", "ai", "mesaj, kapatma sanılmamalı"],
   ["optimus antremanı ekle yarın 5te", "ai", "optimist → optimus"],
   ["ali ve zeynep geldi emre izinli", "attendance", "noktasız (yoklama sayfasında)", { path: "/athletes/attendance" }],

@@ -98,9 +98,9 @@ const NEW = [
   ["Gönderme", "onu da yoklamaya ekle", ["attendance", "other"]],
   ["Gönderme", "ona da yaz", ["other"]],
   // h) Soru mu komut mu (soru bir şey kaydetmemeli)
-  ["Soru / komut", "Ali geldi mi", ["other"], { path: "/athletes/attendance" }],
+  ["Soru / komut", "Ali geldi mi", ["other", "attQuery"], { path: "/athletes/attendance" }],
   ["Soru / komut", "Ali geldi", ["attendance"], { path: "/athletes/attendance" }],
-  ["Soru / komut", "Ali bugün geldi mi antrenmana", ["other"]],
+  ["Soru / komut", "Ali bugün geldi mi antrenmana", ["other", "attQuery"]],
   ["Soru / komut", "yarın antrenman var mı", ["other"]],
   ["Soru / komut", "Turkcell faturası ödendi mi", ["other", "invoice?"]],
   ["Soru / komut", "Turkcell faturası ödendi", ["invoice"]],
