@@ -9,7 +9,8 @@ import { toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, isOnline, listTime } from "./bits";
 import { NewChatSheet } from "./NewChatSheet";
 import { prefetchChat } from "./ChatView";
-import { GROUPS } from "@/lib/kinds";
+import { GROUPS, GROUP_IDS } from "@/lib/kinds";
+import { cardGroups, listed } from "@/lib/chatList";
 
 const TYPING_MS = 6000;
 // Arama: büyük/küçük harf ve ı/i, ş, ğ… farkı yok sayılır
@@ -80,12 +81,14 @@ export function ChatList() {
   });
 
   const needle = fold(q.trim());
-  // Tümü'de sabit gruplar üstte kart; listede yalnız diğer sohbetler
+  // Sabit gruplar (Ekip, Aile, Sporcular): mesajı olan grup diğer sohbetlerle birlikte listede (son mesaja göre);
+  // henüz mesajı olmayan grup Tümü'nde üstte kısa yol kartı. Böylece her sohbet tek yerde görünür
+  // (Seyhun, 2026-10-21: Sporcular'a yazmaya başladım, liste hâlâ "Henüz sohbet yok" diyordu).
   const cards = !needle && filter === "all";
+  const cardIds = cards ? cardGroups(groupIds, chats) : [];
   // Plan/görev/not konuşmaları burada gösterilmez: kendi kayıtlarında ve ana sayfadaki "Senin için"de
-  // Ekip, mesajı yokken listede yer tutmaz (kişiler şeridinin başında her zaman var)
   const rows = chatRows
-    .filter((x) => !(GROUPS[x.c.id] && (!x.c.last || cards)))
+    .filter((x) => listed(x.c, GROUP_IDS))
     .filter((x) => !x.c.archivedByMe || needle)
     .filter((x) => (filter === "unread" ? x.unread > 0 : filter === "groups" ? x.group : true))
     .filter((x) => !needle || fold(x.title).includes(needle))
@@ -195,9 +198,9 @@ export function ChatList() {
       )}
 
       {/* Sabit gruplar (Ekip, Aile, Sporcular): türüne uyan herkes otomatik üye; kişiye kalemle ya da aramayla yazılır */}
-      {cards && groupIds.length > 0 && (
-        <div className={`grid gap-2 px-5 pb-1 pt-1.5 ${groupIds.length >= 3 ? "grid-cols-3" : groupIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {groupIds.map((g) => {
+      {cardIds.length > 0 && (
+        <div className={`grid gap-2 px-5 pb-1 pt-1.5 ${cardIds.length >= 3 ? "grid-cols-3" : cardIds.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {cardIds.map((g) => {
             const c = chats.find((x) => x.id === g);
             const at = toMs(c?.last?.at);
             return (
@@ -215,7 +218,7 @@ export function ChatList() {
           })}
         </div>
       )}
-      {cards && rows.length > 0 && <p className="px-5 pb-1 pt-3.5 text-[0.6875rem] font-bold tracking-[0.06em] text-mut">SOHBETLER</p>}
+      {cardIds.length > 0 && rows.length > 0 && <p className="px-5 pb-1 pt-3.5 text-[0.6875rem] font-bold tracking-[0.06em] text-mut">SOHBETLER</p>}
 
       {rows.length ? (
         <ul className="mt-1">{rows.map(row)}</ul>
