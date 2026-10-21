@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -12,7 +12,7 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
-import { leftText, placeText } from "@/features/athletes/RaceList";
+import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { coachStart } from "@/features/athletes/raceDocs";
@@ -53,7 +53,7 @@ function Race({ orgId, uid, by, mail, coach }) {
   const user = useDikiliUser();
   const [race, setRace] = useState(null);
   const [missingRace, setMissingRace] = useState(false);
-  const [head, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
+  const [head0, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
   const [menu, setMenu] = useState(false); // sağ üstteki ⋯ (düzenle, talimat, yarışı sil)
   useEffect(() => {
     loadRaces(orgId).then(
@@ -103,53 +103,69 @@ function Race({ orgId, uid, by, mail, coach }) {
     }
   };
 
+  // Lacivert üstün başlığı (RaceEditor üst kısmı onun altına koyar): geri, ad, yer · tarih, ⋯
+  const head = (
+    <header className="flex items-center gap-2.5">
+      <BackButton href="/athletes/races" />
+      <div className="min-w-0 flex-1 leading-tight">
+        <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
+        {race && <p className="truncate text-[0.8125rem] text-white/65">{subText({ ...race, ...head0 })}</p>}
+      </div>
+      {(race?.id || head0) && (
+        <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
+          <Icon name="more" className="size-5" />
+        </button>
+      )}
+    </header>
+  );
+
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      <PageHeader title={(head || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")} sub={race ? subText({ ...race, ...head }) : ""} back="/athletes/races">
-        {(race?.id || head) && (
-          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
-            <Icon name="more" className="size-5" />
-          </button>
-        )}
-      </PageHeader>
-      {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
-      {missingRace ? (
-        <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p>
-      ) : !race ? (
-        <Loading label="Yarış yükleniyor" />
+      {!race || missingRace ? (
+        <>
+          <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
+          <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pt-1">
+            {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
+            {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : <Loading label="Yarış yükleniyor" />}
+          </div>
+        </>
       ) : (
-        <RaceEditor
-          orgId={orgId}
-          start={race}
-          athletes={data?.athletes || []}
-          classes={data?.classes || []}
-          athletesErr={err}
-          onRetryAthletes={reload}
-          onSave={onSave}
-          onDelete={onDelete}
-          plans={plans}
-          menu={menu}
-          onMenu={setMenu}
-          onOpenPlan={(pid) => openAdd({ edit: { kind: "plan", id: pid } })}
-          onPlan={(r) => addRacePlan(saveDrafts, r, by)}
-          onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
-          onSaveAthlete={onSaveAthlete}
-          onMail={mail ? async (m) => (await mailToMe(uid, m), mail.version >= (m.to.length ? 2 : 1)) : null}
-          mailTo={mail?.saved}
-          coach={coach}
-          onCoach={onCoach}
-          onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
-        />
+        <>
+          <RaceEditor
+            head={head}
+            alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
+            orgId={orgId}
+            start={race}
+            athletes={data?.athletes || []}
+            classes={data?.classes || []}
+            athletesErr={err}
+            onRetryAthletes={reload}
+            onSave={onSave}
+            onDelete={onDelete}
+            plans={plans}
+            menu={menu}
+            onMenu={setMenu}
+            onOpenPlan={(pid) => openAdd({ edit: { kind: "plan", id: pid } })}
+            onPlan={(r) => addRacePlan(saveDrafts, r, by)}
+            onNoticePlan={(r) => addNoticePlans(saveDrafts, r, by)}
+            onSaveAthlete={onSaveAthlete}
+            onMail={mail ? async (m) => (await mailToMe(uid, m), mail.version >= (m.to.length ? 2 : 1)) : null}
+            mailTo={mail?.saved}
+            coach={coach}
+            onCoach={onCoach}
+            onMailTo={(list) => updateDoc(doc(db, "users", uid), { mailTo: list }).catch(() => toast("Adres kaydedilemedi"))}
+          />
+        </>
       )}
     </main>
   );
 }
 
-// Başlığın alt satırı (tarih tek yerde): "Foça, İzmir · 26–28 Eki · 6 gün kaldı"
+// Başlığın alt satırı (tarih tek yerde; kalan gün lacivertte büyük): "Foça, İzmir · 26–28 Eki"
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 function subText(r) {
   const a = r.startDate;
   const b = r.endDate && r.endDate !== a ? r.endDate : "";
   const when = !a ? "" : !b ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`;
-  return [placeText(r), when, a && leftText(r)].filter(Boolean).join(" · ");
+  return [placeText(r), when].filter(Boolean).join(" · ");
 }
