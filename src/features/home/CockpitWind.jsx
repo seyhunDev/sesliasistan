@@ -16,10 +16,11 @@ const HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23
 // Yakında istasyon varsa geçmiş saatlerde ölçülen rüzgâr mavi gölge + kesik mavi sağanak (hava sayfasındaki grafikle aynı kural).
 // Açılışta grafik soldan sağa 0,9 sn'de çizilir (globals.css .ck-draw); hareket azaltılmışsa çizilmeden gelir. Hava sayfasındaki grafik (WindChart) değişmez.
 const W = 340, L = 6, R = 22, T = 26, H = 132, B = 4;
-export function CockpitWind({ rows }) {
+export function CockpitWind({ rows, date }) {
   const now = useNow();
   const today = YMD.format(now);
-  const ob = useWindObs(getPlace(), today, today);
+  const day = date || today;
+  const ob = useWindObs(getPlace(), day, today);
   if (!rows?.length) return null;
   const n = rows.length;
   const obs = rows.map((h) => ob?.rows?.find((o) => o.hh === h.hh));
@@ -34,7 +35,7 @@ export function CockpitWind({ rows }) {
   const oLine = path(got.map((o) => [o.i, o.wind]));
   const oGust = path(got.filter((o) => o.gust != null).map((o) => [o.i, o.gust]));
   // Şimdi: saatler arası doğrusal ara değer (14:30 → 14 ile 15'in ortası)
-  const hi = rows.findIndex((h) => h.hh === HOUR.format(now));
+  const hi = day === today ? rows.findIndex((h) => h.hh === HOUR.format(now)) : -1;
   const nowAt = hi >= 0 ? Math.min(n - 1, hi + now.getMinutes() / 60) : -1;
   const ni = Math.floor(nowAt);
   const nowV = nowAt >= 0 ? rows[ni].wind + ((rows[ni + 1]?.wind ?? rows[ni].wind) - rows[ni].wind) * (nowAt - ni) : null;

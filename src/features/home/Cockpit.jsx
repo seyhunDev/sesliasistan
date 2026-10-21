@@ -19,7 +19,9 @@ import { BirthdayBadge } from "./PeopleStrip";
 // logo + tarih + doğum günü + zil + Ayarlar; altında bugünün havası tek satırda (sıcaklık, gökyüzü, en düşük/en yüksek, günün en sert sağanağı;
 // "14:00 23 kn" = günün en sert sağanağı ve saati; sağda şimdiki rüzgâr "rüzgâr–sağanak kn"), büyük rüzgâr grafiği (CockpitWind) ve sıradaki iş (nextPlan). Hava satırı ya da grafiğe dokununca
 // hava sayfası açılır. Lacivert her iki temada aynı (logonun gecesi); altındaki açık zemin üstüne yuvarlak köşeyle biner (OwnerHome).
-export function Cockpit({ weather, inbox, onInbox }) {
+// İlk ekran tam bir sayfa (Seyhun 2026-10-21 "A · tam lacivert"): kokpit alt sekme çubuğuna kadar uzar, boşluk bölümler arasında eşit dağılır;
+// children (iş düğmeleri, büyük günler) en altta.
+export function Cockpit({ weather, inbox, onInbox, children }) {
   const { profile } = useAuth();
   const router = useRouter();
   const now = useNow();
@@ -34,7 +36,7 @@ export function Cockpit({ weather, inbox, onInbox }) {
   const goWeather = () => (w ? router.push("/weather") : refresh(true));
 
   return (
-    <section className="ck -mx-4 px-4 pb-9 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
+    <section className="ck -mx-4 flex min-h-[calc(100svh-var(--stage-h,5rem)+2.5rem)] flex-col px-4 pb-9 pt-[calc(0.875rem+env(safe-area-inset-top))]" aria-label="Bugün">
       <header className="flex items-center gap-3">
         <AppLogo size={28} className="-mr-1 flex shrink-0 lg:hidden" />
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold leading-tight tracking-[-.02em]">
@@ -76,7 +78,10 @@ export function Cockpit({ weather, inbox, onInbox }) {
           <CockpitWind rows={rows} />
         </button>
       )}
-      <NextPlan now={now} />
+      <div className="mt-auto">
+        <NextPlan now={now} />
+      </div>
+      {children}
     </section>
   );
 }

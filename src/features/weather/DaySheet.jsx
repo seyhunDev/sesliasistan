@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { useNow } from "@/hooks/useNow";
-import { PLACE, compareLinks, dayHours, dirDeg, getPlace, nowOf, placeLabel, sky, skyBand, skyTone, windLevel, windName } from "./weather";
-import { todayStr } from "@/lib/utils/format";
+import { PLACE, dirDeg, getPlace, sky, skyBand, skyTone, windLevel, windName } from "./weather";
 import { WindArrow } from "./parts";
 import { useWindObs } from "./useWindObs";
 
@@ -265,100 +264,6 @@ export function DayDetail({ date, rows, info, cur, marks = [], place = "", at = 
             {ob.station.near || far
               ? `Ölçüm: ${ob.station.name} istasyonu · ${String(ob.station.km).replace(".", ",")} km · ${last ? `son ${HM.format(new Date(last.at))}` : "henüz veri yok"}`
               : `Yakında ölçüm istasyonu yok (en yakını ${Math.round(ob.station.km)} km)`}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const SHORT = new Intl.DateTimeFormat("tr-TR", { weekday: "short", timeZone: PLACE.tz });
-const ago = (ms) => {
-  const m = Math.round((Date.now() - ms) / 60000);
-  return m < 2 ? "az önce" : m < 60 ? `${m} dk önce` : `${Math.round(m / 60)} sa önce`;
-};
-
-// Hava detayı: önce seçili günün özeti ve rüzgâr grafiği (bugün açılır), altında gün seçici, rüzgâr haritası, kaynak
-export function WeatherDetail({ w, refresh, busy }) {
-  // Veri dünden kaldıysa (gece yarısını geçti, yenileme gelmedi) gün listesi bugünden başlar
-  const now = todayStr();
-  const all = [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind }, ...(w.days || [])].filter((d) => d.date && d.date >= now);
-  const days = all.length ? all : [{ date: w.today?.date, code: w.today?.code, min: w.today?.min, max: w.today?.max, wind: w.today?.wind }];
-  const today = days[0].date;
-  const [sel, setSel] = useState(today);
-  const rows = dayHours(w, sel) || [];
-  const info = days.find((d) => d.date === sel);
-  const place = getPlace();
-  const links = compareLinks(place);
-  const [about, setAbout] = useState(false);
-  const [cmp, setCmp] = useState(false);
-  return (
-    <div>
-      <div>{rows.length ? <DayDetail key={sel} date={sel} rows={rows} info={info} cur={sel === today ? nowOf(w) : null} at={place} /> : <p className="py-6 text-center text-[0.875rem] text-mut">Bu günün saatlik verisi yok.</p>}</div>
-
-      {/* Gün seçici: bugün + 5 gün */}
-      <div className="-mx-1 mt-2 grid grid-cols-6 gap-1 border-t border-line pt-3">
-        {days.map((d, i) => {
-          const on = d.date === sel;
-          return (
-            <button
-              key={d.date}
-              type="button"
-              onClick={() => setSel(d.date)}
-              aria-pressed={on}
-              className={`flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-center transition active:scale-95 ${on ? "bg-deep text-white" : "bg-bg"}`}
-            >
-              <span className={`text-[0.6875rem] font-semibold ${on ? "text-white/80" : "text-mut"}`}>{i === 0 ? "Bugün" : SHORT.format(new Date(`${d.date}T12:00:00`))}</span>
-              <Icon name={sky(d.code).icon} className={`size-5 ${on ? "" : "text-acc"}`} />
-              <span className="text-[0.8125rem] font-semibold tabular-nums">{d.max}°</span>
-              <span className={`text-[0.6875rem] tabular-nums ${on ? "text-white/75" : "text-mut"}`}>{d.min}°</span>
-              <span className={`text-[0.6875rem] font-semibold tabular-nums ${on ? "text-white" : windLevel(d.wind).tone}`}>{d.wind} kn</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Kaynak: tek satır. "Karşılaştır" MGM ve Windy'yi, "i" kaynak ayrıntısını açar */}
-      <div className="mt-2 rounded-2xl bg-bg px-3.5 py-2 text-[0.75rem] leading-snug text-mut">
-        <div className="flex items-center gap-1.5">
-          <span className="min-w-0 flex-1 truncate">
-            <b className="font-semibold text-fg">{placeLabel(place)}</b> · {ago(w.at)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setCmp((v) => !v)}
-            aria-expanded={cmp}
-            className={`h-8 rounded-full px-3 font-semibold ring-1 ${cmp ? "bg-acc text-white ring-acc" : "bg-card text-acc ring-line"}`}
-          >
-            Karşılaştır
-          </button>
-          <button
-            type="button"
-            onClick={() => setAbout((v) => !v)}
-            aria-label="Kaynak"
-            aria-expanded={about}
-            className={`grid size-8 place-items-center rounded-full text-[0.875rem] font-bold italic ring-1 ${about ? "bg-acc text-white ring-acc" : "bg-card text-acc ring-line"}`}
-          >
-            i
-          </button>
-          <button type="button" onClick={() => refresh(true)} disabled={busy} aria-label="Yenile" data-press className="btn btn-round btn-sm size-8 text-acc">
-            <Icon name="load" className={`size-3.5 ${busy ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-        {cmp && (
-          <p className="mt-2 flex gap-2 border-t border-line pt-2">
-            <a href={links.mgm} target="_blank" rel="noopener noreferrer" className="flex h-8 flex-1 items-center justify-center rounded-full bg-card font-semibold text-acc ring-1 ring-line">
-              MGM
-            </a>
-            <a href={links.windy} target="_blank" rel="noopener noreferrer" className="flex h-8 flex-1 items-center justify-center rounded-full bg-card font-semibold text-acc ring-1 ring-line">
-              Windy
-            </a>
-          </p>
-        )}
-        {about && (
-          <p className="mt-2 border-t border-line pt-2">
-            Kaynak: Open-Meteo (ECMWF, ICON, GFS gibi resmi meteoroloji modellerinin birleşimi)
-            {w.model?.elevation != null ? ` · model noktası ${w.model.lat?.toFixed(2)}, ${w.model.lon?.toFixed(2)} (${Math.round(w.model.elevation)} m)` : ""}
           </p>
         )}
       </div>

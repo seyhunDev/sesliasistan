@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { HomeDays } from "./HomeDays";
+import { todayStr } from "@/lib/utils/format";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -25,8 +27,8 @@ import { myFit } from "@/lib/fitness/model";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 
-// Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit"): üstte lacivert kokpit (Cockpit: tarih, zil, Ayarlar, hava, rüzgâr grafiği, sıradaki iş),
-// altında açık zeminde akış (HomeFeed): iş düğmeleri, Notlar, Sporcular, Fitness, takvim, doğum günü, Kulüp/Özet. Alttaki asistan kubbesi her sayfada aynı (TabBar).
+// Ana sayfa (Seyhun 2026-10-21 "C · Lacivert kokpit", ilk ekran "A · tam lacivert"): ilk ekran tam bir sayfa lacivert kokpit (Cockpit: tarih, zil, Ayarlar,
+// hava, rüzgâr grafiği, sıradaki iş, iş düğmeleri, büyük günler), altında açık zeminde akış (HomeFeed): Notlar, Sporcular, Fitness, takvim, doğum günü, Kulüp/Özet. Alttaki asistan kubbesi her sayfada aynı (TabBar).
 export function OwnerHome() {
   const { profile } = useAuth();
   const weather = useWeather();
@@ -44,28 +46,17 @@ export function OwnerHome() {
 
   return (
     <main className="calm grouped relative mx-auto max-w-[30rem] px-4">
-      {/* Lacivert üst kısım (kokpit): tarih, zil, Ayarlar, bugünün havası, rüzgâr grafiği, sıradaki iş (Seyhun 2026-10-21 "C · Lacivert kokpit") */}
-      <Cockpit weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
-      {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
-      <div className="relative -mx-4 -mt-6 rounded-t-[1.75rem] bg-bg px-4 pt-4">
-        {staff && qa && qr && (
-          <p className="mb-2 px-1 text-[0.75rem] tabular-nums text-mut">
-            Bugün kalan · asistan {qa.left}/{qa.limit} · fiş {qr.left}/{qr.limit}
-          </p>
-        )}
-        <PaidNotice />
-        <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} />
-      </div>
+      <HomeFeed weather={weather} inbox={inbox} onInbox={() => setSheet(true)} quota={staff && qa && qr ? { qa, qr } : null} />
       <InboxSheet inbox={inbox} open={inbox.open} onClose={() => setSheet(false)} />
     </main>
   );
 }
 
-// Sıra: iş düğmeleri › Notlar › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › Sporcular › Fitness › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
+// Sıra: kokpit (iş düğmeleri, büyük günler) › Notlar › Sırada (saat çizgisi, Yarın, Sırada, "seni bekleyenler") › Sporcular › Fitness › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
-export function HomeFeed({ weather, inbox, onInbox }) {
+export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const { profile } = useAuth();
   const { plans, lessons, members, notes, fitOthers } = useData();
   const staff = profile?.role === "staff";
@@ -95,28 +86,57 @@ export function HomeFeed({ weather, inbox, onInbox }) {
     fit: staff && myFit(plans, profile?.uid).length > 0,
   }).map((g) => ({ ...g, items: g.items.map((a) => (a.id === "meeting" ? { ...a, onClick: openMeeting } : a)) }));
 
+  // En üstteyken alt sekme çubuğu da lacivert (globals.css body[data-ck-top]): ilk ekran asistan alanıyla tek parça görünür; aşağı kayınca açık rengine döner
+  useEffect(() => {
+    const on = () => (window.scrollY < window.innerHeight * 0.6 ? (document.body.dataset.ckTop = "1") : delete document.body.dataset.ckTop);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", on);
+      delete document.body.dataset.ckTop;
+    };
+  }, []);
+  const toList = () => document.getElementById("takvim")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
-    <div className="space-y-6">
-      {/* İş düğmeleri: en sık işler adıyla, sonunda Tümü (bütün sayfalar) */}
-      <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
-      {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
-      <NotesWidget notes={notes} />
-      <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
-      {athletes && owner && <AthletesWidget races={race.open} />}
-      {!side && <FitWidget fit={fit} />}
-      <div className="empty:hidden">
-        <BirthdayStrip />
+    <>
+      {/* İlk ekran tam bir sayfa (Seyhun 2026-10-21 "A · tam lacivert"): kokpit, iş düğmeleri (en sık işler adıyla, sonunda Tümü) ve büyük günler;
+          güne dokununca ya da kaydırınca aşağıdaki liste */}
+      <Cockpit weather={weather} inbox={inbox} onInbox={onInbox}>
+        <div className="mt-auto pt-4">
+          <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
+        </div>
+        <div className="mt-auto pt-4">
+          <HomeDays today={todayStr()} onPick={toList} />
+        </div>
+      </Cockpit>
+      {/* Açık zemin lacivertin üstüne yuvarlak köşeyle biner */}
+      <div className="relative -mx-4 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-4 pt-5">
+        {quota && (
+          <p className="-mb-4 px-1 text-[0.75rem] tabular-nums text-mut">
+            Bugün kalan · asistan {quota.qa.left}/{quota.qa.limit} · fiş {quota.qr.left}/{quota.qr.limit}
+          </p>
+        )}
+        <PaidNotice />
+        {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
+        <NotesWidget notes={notes} />
+        <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} att={athletes} />
+        {athletes && owner && <AthletesWidget races={race.open} />}
+        {!side && <FitWidget fit={fit} />}
+        <div className="empty:hidden">
+          <BirthdayStrip />
+        </div>
+        {side && <MyAttendanceCard kind={kind} />}
+        {staff && <MyFitCard />}
+        <HomeSummary
+          title={owner && (athletes || race.on) ? "Kulüp" : "Özet"}
+          money={canReceipts(kind)}
+          race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
+          dues={athletes && owner}
+          posts={!staff}
+          invoices={owner}
+        />
       </div>
-      {side && <MyAttendanceCard kind={kind} />}
-      {staff && <MyFitCard />}
-      <HomeSummary
-        title={owner && (athletes || race.on) ? "Kulüp" : "Özet"}
-        money={canReceipts(kind)}
-        race={null /* Sıradaki yarış kartı yok (Seyhun 2026-10-20: "artık ona ihtiyaç yok"; yarışlar listede, Yarışlar düğmesi altta) */}
-        dues={athletes && owner}
-        posts={!staff}
-        invoices={owner}
-      />
-    </div>
+    </>
   );
 }
