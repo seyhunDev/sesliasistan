@@ -920,7 +920,7 @@ group("Süre kaydı")([
   ["sesli yanıt kapalı", { desc: "okuma olmadan da kayıt; toplam cevaba kadar", fn: () => TM.timingSteps(scene([["startText", 0, "x"], ["ai", 10], ["aiDone", 2010], ["reply", 2020]])[0]).total, ok: (r) => r === 2020 }],
   ["cevapsız komut kaydedilmez", { desc: "kullanıcı devam etti, yeniden soruldu", fn: () => scene([["start", 0, "yarın 10'da"], ["ai", 5], ["start", 900, "yarın 10'da antrenman, Ali de gelsin"], ["reply", 3000], ["speak", 3100]]), ok: (l) => l.length === 1 && /Ali/.test(l[0].text) }],
   ["eski dinleme yazılı komuta karışmaz", { desc: "yazılı komutta dinleme anı yok", fn: () => scene([["speech", 0, ["listen"]], ["speech", 500, ["text"]], ["startText", 800, "planları aç"], ["reply", 801], ["speak", 900]])[0].marks, ok: (m) => m.listen == null && m.text == null }],
-  ["en çok 20 komut", { desc: "25 komuttan son 20 kalır, en yenisi önce", fn: () => scene(Array.from({ length: 25 }, (_, i) => [["startText", i * 100, `k${i}`], ["reply", i * 100 + 50]]).flat()), ok: (l) => l.length === 20 && l[0].text === "k24" }],
+  ["en çok 100 komut", { desc: "105 komuttan son 100 kalır, en yenisi önce", fn: () => scene(Array.from({ length: 105 }, (_, i) => [["startText", i * 100, `k${i}`], ["reply", i * 100 + 50]]).flat()), ok: (l) => l.length === TM.TIMING_MAX && TM.TIMING_MAX === 100 && l[0].text === "k104" }],
   ["canlı yazı gecikmesi", { desc: "2 parça, ortalama 1,2 sn, en uzun 1,4 sn (Gemini); adım sayılmaz", fn: () => { const l = scene([["speech", 0, ["listen"]], ["live", 2000, [1000, "gtranscribe"]], ["live", 4000, [1400, "gtranscribe"]], ...voiceAdd.slice(1)]); return [TM.liveText(TM.liveOf(l[0])), TM.timingSteps(l[0]).total, TM.timingText(l)]; }, ok: (r) => r[0] === "canlı yazı 2 parça, ortalama 1,2 sn, en uzun 1,4 sn (Gemini)" && r[1] === 5700 && /Canlı yazı 2 parça/.test(r[2]) }],
   ["yazılı komutta canlı yazı satırı yok", { desc: "liveOf null", fn: () => TM.liveOf(scene([["startText", 0, "x"], ["reply", 10]])[0]), ok: (r) => r === null }],
   ["sesli komutta istek gitmediyse", { desc: "ses parçası toplanmadı", fn: () => TM.liveText(TM.liveOf(scene(voiceAdd)[0])), ok: (r) => r === "canlı yazı istenmedi (ses parçası toplanmadı)" }],
@@ -1477,4 +1477,51 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
   group("Hazır kalıplar: okuma cümleleri")(rows.filter((r) => !r.want).filter((r) => /^(plans|notes|tasks|day)\./.test(r.is)).map((r) => [r.x, T(r.is, () => seedTop(r.x)?.id, (v) => v === r.is)]));
   group("Hazır kalıplar: kayıt cümleleri yapay zekasız")(rows.filter((r) => r.want).map((r) => [r.x, T(`${r.want.tur} “${r.want.baslik}”${r.want.gun ? ` ${r.want.gun}` : ""}${r.want.saat ? ` ${r.want.saat}` : ""}`, () => !!readyCreate(r.x, today)?.ready)]));
+}
+
+// Asistan raporu ("rapor oluştur", lib/assistReport.js): bugünkü istekler, duyulan, cevap, süreler, model, hatalar
+{
+  const RP = await import("@/lib/assistReport");
+  const TM3 = await import("@/lib/assistTiming");
+  const mem = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
+  const day = new Date(2026, 9, 21, 10, 0, 0).getTime();
+  let t = day;
+  TM3.timingTest({ now: () => t, storage: mem() });
+  // Dün: rapora girmez
+  t = day - 86400000;
+  TM3.timingStart("dünkü istek", false);
+  TM3.timingReply("local", "Dün.");
+  TM3.timingFlush();
+  t = day;
+  TM3.timingStart("bugün plan var mı", true);
+  TM3.timingMark("ai");
+  t = day + 2100;
+  TM3.timingInfo({ model: "gemini-test" });
+  TM3.timingMark("aiDone");
+  TM3.timingReply("ai", "Bugün saat 10'da Yönetim toplantısı var.");
+  t = day + 2300;
+  TM3.timingSpeak();
+  t = day + 5000;
+  TM3.timingError("Ses anlaşılamadı, tekrar dene.");
+  const txt = RP.reportText({ now: day + 6000, meta: { version: "21 Eki · #630", device: "iOS 26, ana ekran uygulaması", voice: true, quick: false } });
+  TM3.timingTest({});
+  const T = (desc, ok) => ({ desc, fn: () => txt, ok });
+  group("Asistan raporu")([
+    ["özet", T("1 istek, 1 sesli, yapay zekaya 1", (r) => /ÖZET: 1 istek \(1 sesli, 0 yazılı\) · yapay zekaya 1/.test(r))],
+    ["dünkü istek", T("rapora girmez", (r) => !/dünkü istek/.test(r))],
+    ["duyulan ve cevap", T("ikisi de yazılır", (r) => /Duyulan: “bugün plan var mı”/.test(r) && /Cevap: “Bugün saat 10'da Yönetim toplantısı var\.”/.test(r))],
+    ["model", T("başta ve istekte", (r) => /^Model: gemini-test$/m.test(r) && /   Model: gemini-test/.test(r))],
+    ["süreler", T("yapay zeka cevabı 2,1 sn", (r) => /Yapay zeka cevabı 2,1 sn/.test(r))],
+    ["dinleme hatası", T("saatiyle listelenir", (r) => /DİNLEME HATALARI\n- 10:00:05 Ses anlaşılamadı/.test(r) && /Hata: 0 yapay zeka, 1 dinleme/.test(r))],
+    ["ayarlar", T("Sesli yanıt açık, Hazır cevaplar kapalı, sürüm, cihaz", (r) => /Sesli yanıt: açık · Hazır cevaplar: kapalı/.test(r) && /Sürüm: 21 Eki · #630/.test(r) && /Cihaz: iOS 26/.test(r))],
+  ]);
+  const A = (ok) => ({ desc: ok ? "rapor komutu" : "rapor komutu değil", fn: RP.reportAsk, ok: (r) => r === ok });
+  group("Asistan raporu: komut")([
+    ["rapor oluştur", A(true)], ["Rapor oluştur.", A(true)], ["raporu paylaş", A(true)], ["asistan raporu hazırla", A(true)], ["bana rapor çıkar", A(true)], ["test raporu", A(true)],
+    ["sağlık raporu oluştur", A(false)], ["Ali'nin antrenman raporunu hazırla", A(false)], ["rapor", A(false)],
+  ]);
+  const { routesOf } = await import("@/lib/assistRoute");
+  group("Asistan raporu: yönlendirme")([
+    ["rapor oluştur", { desc: "rapor adayı, yapay zekaya gitmez", fn: (x) => routesOf(x, { owner: true, today })[0]?.id, ok: (r) => r === "report" }],
+  ]);
 }

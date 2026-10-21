@@ -3,6 +3,7 @@
 // derse sonrakine geçer), testler (yerel/yonlendirme.mjs) aynı işlevi sınar; böylece test ile uygulama ayrışamaz.
 // Bekleyen sorular (yarış sorusu, kişi, onay, günlük, taslak, kart) burada değil: onlar run()'da bu adaylardan önce
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
+import { reportAsk } from "@/lib/assistReport";
 import { chatOpAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
@@ -52,7 +53,7 @@ export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|
 // Yapay zeka önce: Hazır cevaplar (c.quick, lib/quickMode.js) kapalıyken soru ve kayıt cümleleri yerel kurallarla
 // cevaplanmaz; yerelde yalnız cihaz işleri kalır. yonlendirme.js'deki hızlı özet de aynı düğmeye bağlı.
 const DEVICE = new Set(["receipt", "meeting", "navigate"]);
-export const EARLY = new Set(["close", "logBare", "log", "event", "inventory", "food", "fitness"]);
+export const EARLY = new Set(["close", "report", "logBare", "log", "event", "inventory", "food", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
 export function moreKind(s, c = {}) {
@@ -112,6 +113,8 @@ export function routesOf(s, c = {}) {
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
   if (!mf && updateAsk(s)) add("appUpdate");
   if (!mf && versionAsk(s)) add("version");
+  // "Rapor oluştur": bugün asistana söylenenlerin raporu (lib/assistReport.js), Asistan raporu sayfası açılır
+  if (reportAsk(s)) add("report");
   if (!mf && inboxClearAsk(s)) add("inboxClear");
   // Ana hesap: "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil" (silme onaylı; ChatProvider archive/deleteChat)
   const co = owner && !c.drafts ? chatOpAsk(s) : null;

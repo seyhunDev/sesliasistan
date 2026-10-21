@@ -147,6 +147,7 @@ export default function SettingsPage() {
             <Row title="Ses testi" href="/settings/voice-test" />
             <ProbeRow />
             <TimingRow />
+            <Row title="Asistan raporu" href="/settings/report" />
           </Group>
           <Group title="Uygulama">
             <TestPushRow n={n} />

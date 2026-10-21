@@ -7,7 +7,7 @@ import { isIOS, pickProvider, recorderAvailable, setNative } from "@/lib/speech/
 import { appAllowed, errorState, offMessage, permissionHelp, savePermission } from "@/lib/permissions";
 import { pcmToWav16k, toWav16k } from "@/lib/speech/wav";
 import { LIVE_EVERY, bestText, makeVad, segmentDue, speechEnded } from "@/lib/speech/vad";
-import { speechLive, speechLiveTry, speechMark } from "@/lib/assistTiming";
+import { speechLive, speechLiveTry, speechMark, timingError } from "@/lib/assistTiming";
 import { setMeter, setMeterLevel, setMicFlow } from "@/lib/speech/meter";
 import { micClosed, micOpening, micReset } from "@/lib/speech/audioSession";
 import { MIC_DEAD_TEXT, MIC_TRIES, micState } from "@/lib/speech/micCheck";
@@ -57,7 +57,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
   const cb = useRef({});
   cb.current = { onFinal, onFail, onMiss, names, terms, hold };
   const fail = (m) => {
-    if (!R.current.silent) cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
+    if (!R.current.silent) {
+      cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
+      timingError(m); // asistan raporuna girer (lib/assistReport.js)
+    }
     cb.current.onMiss?.();
   };
   const stopRef = useRef(null);

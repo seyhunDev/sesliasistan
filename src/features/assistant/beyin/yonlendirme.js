@@ -287,6 +287,12 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         const ok = await clearInbox(profile?.uid).then(() => true, () => false);
         return reply(ok ? `${n} bildirimi temizledim.` : "Bildirimleri temizleyemedim, bağlantıyı kontrol et.", { engine: "local", ...(ok ? {} : { fail: true }) }, viaVoice), true;
       }
+      // "Rapor oluştur": rapor sayfası açılır, oradan paylaşılır (yapay zekaya gitmez)
+      case "report":
+        ctx.router.push("/settings/report");
+        reply("Bugünün asistan raporunu açtım. Paylaş'a basıp gönderebilirsin.", { engine: "local" }, viaVoice);
+        ctx.showPage();
+        return true;
       case "version": {
         const nv = await checkVersion();
         return reply(`${buildSpeech()}${nv ? " Yayında daha yeni bir sürüm var; “uygulamayı güncelle” de." : ""}`, { engine: "local" }, viaVoice), true;
