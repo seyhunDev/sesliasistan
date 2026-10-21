@@ -39,9 +39,10 @@ const raw = () => {
 };
 export const readTimer = () => parse(raw());
 // Her yazış olay yayar: aynı sayfadaki bütün okuyucular (sayaç ekranı, sekmelerdeki küçük süre satırı) hemen güncellenir
+// at: bu telefonda son yazılış anı. Yarış sayfası açılırken belgedeki eski sayaç, burada sonradan bitirilmiş sayacı diriltmesin (useLiveSync)
 const write = (t) => {
   try {
-    localStorage.setItem(KEY, JSON.stringify(t));
+    localStorage.setItem(KEY, JSON.stringify({ ...t, at: Date.now() }));
   } catch {}
   window.dispatchEvent(new Event(KEY));
 };
