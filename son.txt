@@ -1,8 +1,8 @@
-Commit: 3471512 · Küre sayacı kürenin üstünde, daha büyük (#625)
-Zaman: 2026-10-21-0043 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39501805472
+Commit: 915c3b6 · Asistan: yapay zeka önce, cevap bir kez okunur, aynı mikrofon (#626)
+Zaman: 2026-10-21-0922 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39554309294
 
-TAM TEST · 21.10.2026 00:37:21
+TAM TEST · 21.10.2026 09:15:56
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1335/1357 geçti · 22 kalan · 345 sn
+SONUÇ: 1333/1360 geçti · 27 kalan · 390 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,27 +191,42 @@ SONUÇ: 1335/1357 geçti · 22 kalan · 345 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 91/92
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 89/95
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
-  ✓ Halka renkleri: 6/6
-  ✓ Yerel hızlı cevap (yapay zekasız): 6/6
+  ✗ Halka renkleri: 5/6
+      ✗ “okurken”
+          beklenen: mavi halka, “Anlatıyorum”, ana düğme “Okumayı kes”
+          olan:     #a78bfa ·  · idle
+  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 2/2
   ✓ Basılı tut yaz: 1/1
   ✓ Sayfa hataları: 6/6
   ✓ Küçültme (aşağı kaydır): 4/4
   ✓ Önceki sohbetler: 2/2
-  ✓ Sesli yanıt: 7/7
+  ✗ Sesli yanıt: 4/8
+      ✗ “bugün plan var mı (sesli yanıt açık)”
+          beklenen: yapay zekaya bir kez gider, cevap bir kez okunur
+          olan:     yapay zeka 0 kez · okunan 0 kez · 
+      ✗ “notlarımı oku (sesli yanıt açık)”
+          beklenen: not sesli okunur
+          olan:     okunmadı
+      ✗ “okuma bitince”
+          beklenen: mikrofon bir kez kendiliğinden açılır (cevap verilebilsin)
+          olan:     idle · tanıma +0
+      ✗ “dinlerken “kapat””
+          beklenen: asistan hemen kapanır
+          olan:     tam ekran 1
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 14 ms · taklit · bugün 8 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
-  ✓ Ses kaydı yolu (ana ekran uygulaması): 2/2
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 4/4
   ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
 
