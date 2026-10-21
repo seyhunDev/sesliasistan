@@ -30,6 +30,7 @@ export const TOOL = {
             place: { type: "string", description: "Yer (yalnızca plan) ya da boş" },
             weekly: { type: "boolean", description: "Yalnızca plan: 'her salı', 'her hafta', 'salıları' gibi haftalık tekrar söylendiyse true; date ilk günü olur" },
             repeatUntil: { type: "string", description: "Yalnızca haftalık plan: tekrarın son günü YYYY-MM-DD ('yıl sonuna kadar', 'Aralık'a kadar') ya da boş" },
+            important: { type: "boolean", description: "Yalnızca plan: kullanıcı 'önemli' dediyse true" },
             category: { type: "string", enum: CATEGORIES },
             linkToPlan: { type: "boolean", description: "Aynı ifadedeki plana bağlı görev/not ise true" },
             assignTo: {
@@ -69,6 +70,7 @@ const Item = z.object({
   place: S,
   weekly: z.boolean().catch(false),
   repeatUntil: D,
+  important: z.boolean().catch(false),
   category: S,
   linkToPlan: z.boolean().catch(false),
   assignTo: z.array(z.string()).optional().catch(undefined),
@@ -105,6 +107,7 @@ export function toDrafts(raw, people = [], message = "") {
     allDay: i.type === "plan" ? !!i.allDay && !i.time : false,
     place: i.type === "plan" ? i.place : "",
     ...(i.type === "plan" && i.weekly && !i.endDate ? { repeat: "week", repeatUntil: i.repeatUntil } : {}),
+    ...(i.type === "plan" && i.important ? { important: true } : {}), // Önemli plan (lib/planImportant.js)
     cat: CATEGORIES.includes(i.category) ? i.category : "Genel",
     link: i.linkToPlan,
     ...(people.length ? { assignTo: canon(i.assignTo || [], people) } : {}),

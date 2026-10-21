@@ -1484,6 +1484,28 @@ group("Temiz başlık ve sorusuz ekleme")([
   ]);
 }
 
+// Önemli plan (Seyhun 2026-10-21, lib/planImportant.js): sesle "önemli" deyince plan önemli olur, var olan plan
+// "önemli yap / önemliden çıkar" ile değişir (yapay zekanın important alanı; kaçırırsa cümleden)
+{
+  const { parseAssistant } = await import("@/lib/ai/assistant");
+  const { buildPatch, describeAction } = await import("@/lib/assistantLocal");
+  const pl = (o = {}) => ({ type: "plan", title: "Toplantı", date: tom, time: "10:00", ...o });
+  const parse = (items, said) => parseAssistant({ intent: "create", message: "", items }, [], [], said).items;
+  const upd = (patch) => parseAssistant({ intent: "action", message: "", actions: [{ op: "update", kind: "plan", id: "p1", patch }] }).actions[0].patch;
+  const C = (desc, fn, ok) => ({ desc, fn, ok });
+  group("Önemli plan (sesle)")([
+    ["yapay zeka important yazdı", C("önemli", () => parse([pl({ important: true })], "yarın 10'da önemli toplantı ekle")[0], (r) => r.important === true && r.title === "Toplantı")],
+    ["yapay zeka kaçırdı", C("cümleden önemli", () => parse([pl()], "yarın 10'da önemli toplantı ekle")[0], (r) => r.important === true)],
+    ["başlığa koydu", C("başlıktan çıkar, önemli", () => parse([pl({ title: "Önemli toplantı" })], "yarın önemli toplantı")[0], (r) => r.important === true && r.title === "Toplantı")],
+    ["önemli değil", C("önemli olmaz", () => parse([pl()], "yarın 10'da toplantı ekle, önemli değil")[0], (r) => !r.important)],
+    ["önemli denmedi", C("önemli olmaz", () => parse([pl()], "yarın 10'da toplantı ekle")[0], (r) => !r.important)],
+    ["görev", C("görevde alan yok", () => parse([{ type: "task", title: "Kayıt ücreti" }], "önemli görev ekle kayıt ücreti")[0], (r) => !("important" in r))],
+    ["önemli yap", C("patch important true", () => buildPatch("plan", upd({ important: true })), (r) => r.important === true)],
+    ["önemliden çıkar", C("patch important false", () => buildPatch("plan", upd({ important: false })), (r) => r.important === false)],
+    ["söylenen", C("“önemli”", () => describeAction({ op: "update", kind: "plan", patch: { important: true } }, { title: "Toplantı" }), (r) => /önemli/.test(r))],
+  ]);
+}
+
 // Süre sınırları (motor planı 2. adım): sunucu ~9,5 sn içinde biter, ilk parça gelmezse kalan süreyle yedek; telefon
 // bağlantı kopmasında bir kez sessizce dener (lib/ai/budget.js)
 {
