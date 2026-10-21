@@ -1,8 +1,8 @@
 Commit: 7687d1d (kaydedilmemiş değişiklikle) · Asistan: sesle önemli plan (yeni planda ve var olan planda önemli yap / çıkar) (#662)
-Zaman: 2026-10-22-0016 (İstanbul)
+Zaman: 2026-10-22-0023 (İstanbul)
 Çalıştırma: Mac (npm run test:hepsi)
 
-TAM TEST · 22.10.2026 00:06:59
+TAM TEST · 22.10.2026 00:17:00
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1363/1371 geçti · 8 kalan · 591 sn
+SONUÇ: 1368/1371 geçti · 3 kalan · 410 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -135,15 +135,12 @@ SONUÇ: 1363/1371 geçti · 8 kalan · 591 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 62/63
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 63/63
   ✓ Sunucu ucu: girişsiz istek reddedilir: 17/17
-  ✗ Sayfa açılıyor (girişsiz → giriş ekranı): 43/44
-      ✗ “/athletes/races/x1/media”
-          beklenen: çökmez, giriş ekranına yönlendirir
-          olan:     404 · → /athletes/races/x1/media
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 101/105
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/105
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
@@ -158,19 +155,7 @@ SONUÇ: 1363/1371 geçti · 8 kalan · 591 sn
   ✓ Onay isteyen işler: 10/10
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✗ Asistanın gizli olduğu yerler: 4/8
-      ✗ “Yarış multimedya açılışı”
-          beklenen: dün antrenman günü varken bugün seçili, son yarış günü değil
-          olan:      · bugün 2026-10-22
-      ✗ “Yarış multimedya: arkadan dönüş”
-          beklenen: başka gün seçiliyken uygulamaya 1 dk sonra dönünce yine bugün
-          olan:     
-      ✗ “Yarış multimedya: sayaç”
-          beklenen: ana düğme Başlat → Durdur → Devam; durunca kartta Sıfırla; start yarış açmaz
-          olan:     hata: locator.click: Timeout 5000ms exceeded.
-      ✗ “Yarış multimedya: denemeleri sıfırla”
-          beklenen: Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar
-          olan:     hata: Liste: locator.click: Timeout 5000ms exceeded.
+  ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
