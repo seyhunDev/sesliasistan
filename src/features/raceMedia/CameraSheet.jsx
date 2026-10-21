@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { recType } from "@/features/fitness/fitMedia";
-import { raceCancel, raceFinish, raceStart, raceVoid, useTimerRun } from "@/features/training/Countdown";
-import { VoidChoices } from "./useRaceFlow";
+import { useTimerRun } from "@/features/training/Countdown";
 import { upSec } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 
@@ -13,8 +12,7 @@ import { mmss } from "@/lib/raceScore";
 // en çok 2 dakika (doğrudan küçük kaydedilir, sonradan küçültme yok). Görüntünün üstüne yazı basılmaz (Seyhun 2026-10-20: "çok yazı olmasın").
 // Kamera açılamazsa onFail: çağıran telefonun kendi kamerasına düşer. Çekilen her kare onShot ile hemen verilir, kamera açık kalır;
 // last: köşedeki son çekilen ve yükleme durumu (yükleniyor / yüklenemedi: telefonda saklandı, dokununca sebebi).
-// rf (useRaceFlow): sayacın yanında yarış düğmeleri (Seyhun 2026-10-18: "suda tek ekran"): sayaç yokken "Başlat · 4. yarış",
-// geri sayımda "İptal", startan sonra "İptal" ve "Bitir"; iptal sebebi kameranın üstünde sorulur.
+// Sayaç yalnız görünür (Seyhun 2026-10-21: "çekerken süreyi durdurma ve bitirme gösterilmemeli"); yönetimi Süre ekranında.
 const MAX_SEC = 120;
 
 export function CameraSheet({ open, ...props }) {
@@ -22,7 +20,7 @@ export function CameraSheet({ open, ...props }) {
   return createPortal(<Cam {...props} />, document.body);
 }
 
-function Cam({ mode, onMode, onClose, onShot, onFail, last = null, rf = null }) {
+function Cam({ mode, onMode, onClose, onShot, onFail, last = null }) {
   const vid = useRef(null);
   const stream = useRef(null);
   const rec = useRef(null); // { r, raf, stop }
@@ -153,27 +151,6 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, rf = null }) 
       {recAt > 0 && <span className="rounded-lg bg-rec px-2.5 py-1 text-[1.0625rem] font-semibold tabular-nums">{mmss(recSec)}</span>}
     </div>
   );
-  const pill = "h-9 shrink-0 rounded-full px-3.5 text-[0.9375rem] font-semibold active:scale-95";
-  const ctrl = rf && (
-    <div className="flex items-center gap-2">
-      {!t.running ? (
-        <button type="button" onClick={() => raceStart(null)} className={`${pill} bg-white text-black`}>
-          Başlat
-        </button>
-      ) : (
-        <>
-          <button type="button" onClick={() => (t.up ? raceVoid(rf.flow) : raceCancel(rf.flow))} className={`${pill} bg-white/15 text-[#FF453A]`}>
-            İptal
-          </button>
-          {t.up && (
-            <button type="button" onClick={() => raceFinish(rf.flow)} className={`${pill} bg-white text-black`}>
-              Bitir
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
   // Yalnız hata yazılır (kaydediliyor bilgisi köşedeki son çekilende dönen çember)
   const status = last?.state === "err" ? "Yüklenemedi, telefonda saklandı" : "";
   const modes = !recAt && (
@@ -225,16 +202,7 @@ function Cam({ mode, onMode, onClose, onShot, onFail, last = null, rf = null }) 
       {flash && <div className="pointer-events-none absolute inset-0 bg-black/60" />}
       <div className={`absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent pb-6 pt-[calc(0.5rem+env(safe-area-inset-top))] ${safeX} landscape:right-[calc(6.5rem+env(safe-area-inset-right))] landscape:justify-start`}>
         <div className="min-w-0">{info}</div>
-        {ctrl}
       </div>
-      {rf?.ask && (
-        <div className="absolute inset-0 z-10 grid place-items-center bg-black/60 p-6">
-          <div className="w-full max-w-[20rem] rounded-2xl bg-[#1C1C1E] p-4">
-            <p className="mb-3 text-center text-[1.0625rem] font-semibold">Neden iptal?</p>
-            <VoidChoices ask={rf.ask} onChoose={rf.choose} dark />
-          </div>
-        </div>
-      )}
       {status && (
         <p className="absolute inset-x-3 bottom-[calc(10rem+env(safe-area-inset-bottom))] mx-auto w-fit max-w-full rounded-lg bg-[#FF3B30] px-3 py-1.5 text-center text-[0.8125rem] landscape:bottom-4 landscape:right-[calc(6.5rem+env(safe-area-inset-right))]">
           {status}

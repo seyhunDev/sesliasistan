@@ -23,7 +23,7 @@ import { dropPending, listPending, putPending } from "./pendingStore";
 // Çekilen hemen kaydedilir (önce gözden geçirme yok). Süre'den açılan kamera kapanınca Süre'ye dönülür (onCamClose).
 const sizeText = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
-export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0 = "", onCamClose }) {
+export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "", onCamClose }) {
   const toast = useToast();
   const photo = useRef(null);
   const video = useRef(null);
@@ -247,7 +247,7 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, rf, cam0
           Sayaçlı kamera
         </Button>
       </Sheet>
-      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} rf={rf} />
+      <CameraSheet open={!!cam} mode={cam} onMode={setCam} onClose={() => (setCam(""), onCamClose?.())} onShot={shot} onFail={camFail} last={last} />
     </>
   );
 }
