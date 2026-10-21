@@ -1,6 +1,8 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
+import { ImpTag } from "@/components/ui/ImpTag";
+import { isImportant } from "@/lib/planImportant";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -190,12 +192,13 @@ function Calendar({ initial }) {
             const multi = p.endDate && p.endDate !== p.date;
             return (
               <li key={p.id}>
-                <button onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg">
+                <button onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className={`flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg ${isImportant(p) ? "bg-accbg" : ""}`}>
                   <span className="w-16 shrink-0 whitespace-nowrap text-[0.8125rem] font-semibold tabular-nums text-acc">{multi ? "Tüm gün" : p.time || "Tüm gün"}</span>
                   <span className="min-w-0 flex-1">
                     <b className={`block truncate text-[0.9375rem] font-medium ${p.status === "cancelled" ? "text-mut line-through" : ""}`}>{p.title}</b>
-                    {(p.place || multi) && (
+                    {(p.place || multi || isImportant(p)) && (
                       <small className="block truncate text-[0.8125rem] text-mut">
+                        {isImportant(p) && <ImpTag />}
                         {[multi && `${longDay(p.date).split(" ").slice(0, 2).join(" ")} – ${longDay(p.endDate).split(" ").slice(0, 2).join(" ")}`, p.place].filter(Boolean).join(" · ")}
                       </small>
                     )}

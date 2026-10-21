@@ -30,6 +30,13 @@ function Grow({ value, onChange, className, ...rest }) {
   return <textarea ref={ref} rows={1} value={value} onChange={onChange} className={`block w-full resize-none overflow-hidden bg-transparent outline-none ${className}`} {...rest} />;
 }
 
+// Açık/kapalı anahtarı (Önemli)
+const Toggle = ({ on }) => (
+  <span className={`relative block h-6 w-10 shrink-0 rounded-full transition ${on ? "bg-acc" : "bg-line"}`}>
+    <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${on ? "left-[1.125rem]" : "left-0.5"}`} />
+  </span>
+);
+
 // Ayrıntı satırı: solda simge + ad, sağda değer; dokununca yalnızca bu satırın seçenekleri açılır
 function Row({ icon, label, value, tone, open, onToggle, children }) {
   const expandable = !!onToggle;
@@ -283,6 +290,13 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
                   className="min-w-0 flex-1 bg-transparent text-right text-[0.9375rem] text-fg outline-none placeholder:text-mut"
                 />
               </label>
+            </li>
+            <li className="border-b border-line">
+              <button type="button" role="switch" aria-checked={!!d.important} onClick={() => onChange({ important: !d.important })} data-press="row" className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 text-left">
+                <Icon name="star" className="size-5 shrink-0 text-mut" />
+                <span className="flex-1 text-[0.9375rem]">Önemli</span>
+                <Toggle on={!!d.important} />
+              </button>
             </li>
           </ul>
         </div>
