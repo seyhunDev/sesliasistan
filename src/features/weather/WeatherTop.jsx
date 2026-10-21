@@ -37,7 +37,7 @@ export function WeatherTop({ w, refresh }) {
     <>
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Hava">
         <header className="flex items-center gap-2.5">
-          <BackButton href="/" className="ck-back" />
+          <BackButton href="/" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Hava durumu</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{placeLabel(place)}</p>
