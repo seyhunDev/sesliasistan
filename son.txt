@@ -1,8 +1,8 @@
-Commit: 0369e6f · Merge pull request #649 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-21-2013 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39641010479
+Commit: 5cbbdfa · Merge pull request #651 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-21-2043 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39645109173
 
-TAM TEST · 21.10.2026 20:08:04
+TAM TEST · 21.10.2026 20:36:23
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1341/1363 geçti · 22 kalan · 348 sn
+SONUÇ: 1343/1365 geçti · 22 kalan · 413 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,7 +191,7 @@ SONUÇ: 1341/1363 geçti · 22 kalan · 348 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 97/98
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 99/100
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
   ✓ Dokun konuş: tam ekran açılış: 4/4
   ✓ Halka renkleri: 6/6
@@ -200,19 +200,19 @@ SONUÇ: 1341/1363 geçti · 22 kalan · 348 sn
   ✓ Basılı tut yaz: 1/1
   ✓ Sayfa hataları: 7/7
   ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Önceki sohbetler: 2/2
+  ✓ Önceki sohbetler: 3/3
   ✓ Sesli yanıt: 8/8
   ✓ Onaysız kayıt ve “Kaydedildi”: 12/12
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 12 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 2/2
-  ✓ Ses kaydı yolu (ana ekran uygulaması): 4/4
+  ✓ Ses kaydı yolu (ana ekran uygulaması): 5/5
   ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
 
