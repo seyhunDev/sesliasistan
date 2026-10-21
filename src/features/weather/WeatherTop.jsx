@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useWindObs } from "./useWindObs";
 import { BackButton } from "@/components/ui/BackButton";
 import { Icon } from "@/components/ui/Icon";
 import { CockpitWind } from "@/features/home/CockpitWind";
@@ -9,10 +10,14 @@ import { dayHours, getPlace, nowOf, placeLabel, sky, windName, compareLinks } fr
 import { ListHead, Row, RowList } from "@/components/ui/Row";
 import { WindArrow } from "./parts";
 
-// ÖRNEK (2026-10-21, Seyhun: "hava durumu sayfasını da ana sayfayla uyumlu yapalım"): üstte ana sayfadaki lacivert kokpit gibi
-// (geri, yer, büyük sıcaklık, şimdiki rüzgâr, aynı büyük grafik), altında büyük gün şeridi; güne dokununca grafik o güne geçer.
-// Altta açık zeminde rüzgâr haritası ve kaynak satırı.
+// Hava sayfası (Seyhun 2026-10-21: "hava durumu sayfasını da ana sayfayla uyumlu yapalım"): üstte ana sayfadaki lacivert kokpit gibi
+// (geri, yer, yenile, büyük sıcaklık, şimdiki rüzgâr, aynı büyük grafik CockpitWind), altında büyük gün seçici; güne dokununca grafik o güne geçer
+// (başka günde sağda o günün en sert rüzgârı). Açık zeminde "Saat saat" listesi (bugün şimdiden sonrası), MGM / Windy ve kaynak satırı.
 const nowHour = () => new Date().getHours();
+const ago = (ms) => {
+  const m = Math.round((Date.now() - ms) / 60000);
+  return m < 2 ? "az önce" : m < 60 ? `${m} dk önce` : `${Math.round(m / 60)} sa önce`;
+};
 
 export function WeatherTop({ w, refresh }) {
   const today = todayStr();
@@ -25,6 +30,7 @@ export function WeatherTop({ w, refresh }) {
   const peak = rows.length ? rows.reduce((a, h) => (h.gust > a.gust ? h : a), rows[0]) : null;
   const top = rows.length ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
   const place = getPlace();
+  const st = useWindObs(place, sel, today)?.station;
   const links = compareLinks(place);
   const v = n || (top && { t: info?.max, code: info?.code, day: true, wind: top.wind, gust: top.gust, dir: top.dir });
   return (
@@ -90,6 +96,7 @@ export function WeatherTop({ w, refresh }) {
                     <span className="flex items-center gap-2">
                       <Icon name={sky(h.code, h.day).icon} className="size-5 text-acc" />
                       <span className="tabular-nums">{h.t}°</span>
+                      {h.rain >= 30 && <span className="text-[0.8125rem] font-normal text-mut tabular-nums">%{h.rain}</span>}
                       <span className="flex items-center gap-1 text-[0.8125rem] font-normal text-mut">
                         <WindArrow deg={h.dir} className="size-3" />
                         {windName(h.dir)[0]}
@@ -111,6 +118,10 @@ export function WeatherTop({ w, refresh }) {
           <a href={links.mgm} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">MGM</a>
           <a href={links.windy} target="_blank" rel="noopener noreferrer" data-press className="raised flex h-11 flex-1 items-center justify-center rounded-2xl text-[0.875rem] font-semibold">Windy</a>
         </div>
+        <p className="px-1 text-[0.75rem] leading-snug text-mut">
+          Kaynak: Open-Meteo · {ago(w.at)}
+          {st?.near ? ` · Ölçüm: ${st.name} istasyonu, ${String(st.km).replace(".", ",")} km` : ""}
+        </p>
       </div>
     </>
   );

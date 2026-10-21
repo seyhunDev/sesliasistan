@@ -12,22 +12,20 @@ import { useNow } from "@/hooks/useNow";
 import Link from "next/link";
 import { isTraining } from "@/lib/trainingLog";
 import { HideSheet } from "./HideSheet";
-import { attHref, findRace, homeHidden, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, trainingWeek, twoDays, untilText } from "@/lib/homeTiles";
+import { attHref, findRace, homeHidden, leftTag, shortDay, planTag, planTone, raceForPlan, homeList, raceKey, twoDays, untilText } from "@/lib/homeTiles";
 import { WIND_CATS, WIND_KN, overWind, planWind } from "@/lib/notifyExtra";
 import { todayStr } from "@/lib/utils/format";
-import { WeekStrip } from "./HomeSummary";
 import { RacePlanSheet } from "./RacePlanSheet";
 import { GROUP } from "./ui";
 
 // Ana sayfanın takvim bölümü (Seyhun 2026-10-17: "2'deki gibi, bugün kısmı 3'teki gibi, Bugün yazısına gerek yok"). Ayrı gruplu kartlar:
-// 1) gün şeridi (WeekStrip; dünden başlar, bugün kırmızı daire, üç hafta kaydırılır, sonunda Tümü › Takvim; güne dokununca o günün penceresi),
-// 2) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
+// (gün şeridi 2026-10-21'den beri kokpitin altındaki büyük günler, HomeDays.jsx) 1) bugünün planları saat çizgisinde (başlıksız): solda saat, ortada dikey çizgi ve plan türünün renginde halka (planTone), süren plan kırmızı dolu
 //    nokta ve alt satırda "yer · 12:00'ye kadar · şimdi"; ilk satırda antrenman/yarışın rüzgârı (eşik geçilirse kırmızımsı); sağda tür adı,
-// 3) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
-//    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 4) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
+// 2) aynı kartta ince başlıkla "YARIN · PAZAR" (ya da planı olan en yakın gün) ve "SIRADA" (sonraki en çok 4 plan, saatin altında gün; Seyhun 2026-10-20:
+//    "tek bir listemiz olsun"), her plan bir kez: yarışın planları yalnız yarışın satırında, 3) "Seni bekleyenler" satırı (sayı, ilk işler; zil ile aynı pencere).
 // Satıra dokununca plan açılır (Yarış planında yarışın sayfası). Bellekteki planlardan, ek okuma yok.
-// weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; fit: fitDays(), att: yoklama yetkisi, skip: kokpitte gösterilen plan (OwnerHome).
-export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip, noWeek }) {
+// weather: useWeather(), inbox: useInbox(), onInbox: pencereyi açar; att: yoklama yetkisi, skip: kokpitte gösterilen plan (OwnerHome).
+export function SiradaCard({ weather, inbox, onInbox, att, skip }) {
   const { profile } = useAuth();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -38,7 +36,6 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip, 
   const [hide, setHide] = useState(null); // listede gizle penceresi // Yarış planı: Yapıldı / Yarışın sayfası / Planı aç penceresi
   if (!profile) return null;
   const today = todayStr();
-  const week = training ? trainingWeek(plans, today, fit || [], 3, true) : null;
   // Yarın ve Sırada tek listede (homeList): aynı yarışın planları tek satırda, yarışın yarınki işi de orada; Sırada en çok 4 satır
   // Listede gizlenen planlar (homeHidden; gizle düğmesi HideSheet) günü yaklaşana dek çıkmaz, altta "N plan gizli · Takvim ›"
   // skip: kokpitteki "sıradaki iş" (Cockpit) burada tekrar yazmaz
@@ -89,11 +86,6 @@ export function SiradaCard({ weather, inbox, onInbox, fit, att, training, skip, 
 
   return (
     <section id="takvim" aria-label="Takvim" className="scroll-mt-4 space-y-2.5">
-      {week && !noWeek && (
-        <div className={`py-2.5 ${GROUP}`}>
-          <WeekStrip w={week} att={att} today={today} />
-        </div>
-      )}
 
       <div className={`px-3.5 py-1.5 ${GROUP}`}>
         {td.rows.length ? (
