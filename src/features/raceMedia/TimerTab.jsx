@@ -67,7 +67,7 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onCam, onReset 
         }
         tail={<Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
       />
-      <Marks buoys={live.buoys} s={cur} on={!!cur && tr.up && !cur.void} onMark={mark} onBuoys={setBuoys} />
+      {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
       <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">
         <span className="min-w-0 truncate text-mut">
           {today.length ? `Bugün ${today.length} yarış${last ? ` · son ${raceName(last)} ${raceTime(last)}` : ""}` : "Bugün yarış yok"}
@@ -213,7 +213,8 @@ function StartForm({ s, onSave, onDrop }) {
   );
 }
 
-// Parkur noktaları: dokununca startan beri geçen süre; sıradaki çerçeveli. Yarış dışında soluk. + / − şamandıra ekler, çıkarır.
+// Parkur noktaları: dokununca startan beri geçen süre; sıradaki çerçeveli. + / − şamandıra ekler, çıkarır.
+// Yalnız açılmış yarış startı geçmişken görünür (Seyhun 2026-10-21: "Yarışta göster"; düz startta boş duruyordu).
 // Start · Şamandıra · Finish kareleri (antrenman sayfası da kullanır, training/day): kareye dokununca startan beri geçen süre yazılır
 export function Marks({ buoys, s, on, onMark, onBuoys }) {
   const next = on ? nextBuoy(buoys, s) : "";
