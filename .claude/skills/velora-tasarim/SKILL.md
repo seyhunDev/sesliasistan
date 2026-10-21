@@ -59,6 +59,10 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
 - `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
 
+## Önemli plan
+
+Önemli plan (`isImportant`, `src/lib/planImportant.js`: elle/sesle işaretli ya da adında son tarih geçen) satırı açık mor zeminli (`bg-accbg`), alt satırın başında `ImpTag` (mor "Önemli"); tarih kutusu mor çerçeveli. Amber kullanılmaz (amber yalnız gerçek uyarı).
+
 ## Sekmeler
 
 Sayfanın ana bölümleri önemliyse (yarış detay) sekmeler lacivert üstte büyük `raised` düğmeler olur (3 sütun), seçili `ck-sel`; her düğmede kısa durum ("3 iş", "Hazır"), eksikse sarı. Aynı durum aşağıda ayrıca liste olarak tekrar edilmez.

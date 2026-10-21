@@ -42,7 +42,7 @@ const MANUAL = [["plan", "Plan", "cal"], ["task", "Görev", "task"], ["note", "N
 
 const fromRecord = (kind, r) => ({
   ...(kind === "plan"
-    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", remind: r.remind ?? null, cat: r.cat }
+    ? { ...blank("plan"), title: r.title, date: r.date, endDate: r.endDate || "", time: r.time || "", allDay: r.allDay ?? !r.time, place: r.place || "", remind: r.remind ?? null, cat: r.cat, important: !!r.important }
     : kind === "task"
       ? { ...blank("task"), title: r.title, date: r.due || "", cat: r.cat }
       : { ...blank("note"), title: r.title, body: r.body, cat: r.cat }),

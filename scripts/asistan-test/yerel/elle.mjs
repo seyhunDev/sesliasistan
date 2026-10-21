@@ -2752,3 +2752,17 @@ group("Ortak düğmeler")([
     ["haftanın fitness'ı", F("Pazartesi-Pazar arası sayılır, yapılan 1", () => HT.fitWeek(fit, T).n === 2 && HT.fitWeek(fit, T).done === 1)],
   ]);
 }
+
+{
+  const PI = await import("@/lib/planImportant");
+  const D = await import("@/features/add/drafts");
+  group("Önemli plan")([
+    ["son tarih kendiliğinden önemli", F("adında son gün / son ödeme / son tarih geçen plan önemli, benzer sözler değil", () =>
+      PI.isImportant({ title: "Foça: Online kayıt son günü" }) && PI.isImportant({ title: "Kayıt ücreti son ödeme" }) && PI.isImportant({ title: "Son tarih" }) &&
+      !PI.isImportant({ title: "Sonbahar kupası" }) && !PI.isImportant({ title: "Son günler antrenmanı" }) && !PI.isImportant({ title: "Optimist antrenmanı" }))],
+    ["elle önemli", F("important alanı true olan plan önemli", () => PI.isImportant({ title: "Belediye görüşmesi", important: true }) && !PI.isImportant(null))],
+    ["taslaktan kayda", F("planın Önemli anahtarı kayda important olarak gider, kapalıysa false", () =>
+      D.toPatch({ ...D.blank("plan"), title: "x", date: "2026-10-23", important: true }).important === true &&
+      D.toPatch({ ...D.blank("plan"), title: "x", date: "2026-10-23" }).important === false)],
+  ]);
+}

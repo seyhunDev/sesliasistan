@@ -257,6 +257,15 @@ export function DraftCard({ d, index, plan, editing, bare, noRemove, assign, onA
               />
             </Row>
 
+            <Row icon="star">
+              <button type="button" role="switch" aria-checked={!!d.important} onClick={() => put({ important: !d.important })} className="flex w-full items-center justify-between gap-3 text-left">
+                <span className="text-[0.9375rem] font-medium">Önemli</span>
+                <span className={`relative block h-6 w-10 shrink-0 rounded-full transition ${d.important ? "bg-acc" : "bg-line"}`}>
+                  <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${d.important ? "left-[1.125rem]" : "left-0.5"}`} />
+                </span>
+              </button>
+            </Row>
+
             {!editing && d.date && (
               <Row icon="bell" top>
                 <p className="mb-1.5 text-[0.9375rem] font-medium">Hatırlat <span className="font-normal text-mut">· {remindText(remindOf(d))}</span></p>
