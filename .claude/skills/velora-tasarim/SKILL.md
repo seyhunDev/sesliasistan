@@ -69,10 +69,10 @@ Sayfanın ana bölümleri önemliyse (yarış detay) sekmeler lacivert üstte b�
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`) Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte) Yarışlar (`/athletes/races`; sıradaki yarış lacivertte) ve Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
+Yeni tasarımda olanlar: Ana sayfa, Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`) Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte) Yarışlar (`/athletes/races`; sıradaki yarış lacivertte) Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi) ve Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum). Asistan ekranı yarı yarıya geçti (lacivert tam ekran).
 
-Henüz eski tasarımda olanlar: archive, athletes (yoklama dahil; yarış multimedya alt sayfası ayrı), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, plans, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
+Henüz eski tasarımda olanlar: archive, athletes (yoklama dahil; yarış multimedya alt sayfası ayrı), birthdays, calendar, debts, dues, events, fitness, inventory, invoices, mail, messages, my-attendance, notes, payments, people, posts, receipts, schedule, settings, shopping, staff, tasks, wind.
 
-Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar.
+Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓. Sonrası Seyhun'a sorulacak.
 
 Bir sayfa geçince bu listeyi güncelle.
