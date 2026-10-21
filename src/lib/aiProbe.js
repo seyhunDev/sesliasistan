@@ -11,6 +11,13 @@ const WANT = {
   query: "query", weather: "query",
 };
 
+// Örneklerle giden örnek kişi ve alıcı listesi: uygulamada asistan her istekte kişileri ve mesaj alıcılarını gönderir.
+// Bunlar olmadan yapay zeka "Ali'ye yaz" gibi istekleri yapamaz, sohbetle cevaplar (test yanlış ✗ verirdi, 21 Eki raporu)
+export const PROBE_CONTEXT = {
+  people: ["Ali Kaya", "Ayşe Yılmaz"],
+  contacts: ["Ali Kaya", "Ayşe Yılmaz", "Ali Kaya (WhatsApp)", "Ekip (grup)", "Sporcular (grup)"],
+};
+
 // Denenecek örnekler: [{ id, name, say, want }] (çoklu iş ayrı uçta, burada yok)
 export function probeSamples(tasks = TASKS) {
   return tasks

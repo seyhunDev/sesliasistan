@@ -8,7 +8,7 @@ import { doc, getDocFromServer } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch, jsonOf } from "@/lib/authFetch";
 import { askAssistant } from "@/services/assistantService";
-import { probeCheck, probeSamples } from "@/lib/aiProbe";
+import { PROBE_CONTEXT, probeCheck, probeSamples } from "@/lib/aiProbe";
 import { testPush } from "@/lib/push";
 
 const sec = (ms) => `${(ms / 1000).toFixed(1).replace(".", ",")} sn`;
@@ -33,7 +33,7 @@ async function probe({ signal }) {
     if (signal.aborted) break;
     const t0 = Date.now();
     try {
-      const r = await askAssistant({ text: x.say }, lim(signal, 30000));
+      const r = await askAssistant({ text: x.say, ...PROBE_CONTEXT }, lim(signal, 30000));
       rows.push({ ...x, ...probeCheck(x, r), ms: Date.now() - t0 });
     } catch (e) {
       if (signal.aborted) break;
