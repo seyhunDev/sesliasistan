@@ -1,8 +1,8 @@
-Commit: 43e0787 · Mesajlar: yazışılan Ekip/Aile/Sporcular grubu listede görünür (#654)
-Zaman: 2026-10-21-2126 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39651622727
+Commit: 04d0605 · Asistan: hazırlanan Instagram gönderisinin görseli ve Gönderiyi aç düğmesi sohbette (#655)
+Zaman: 2026-10-21-2135 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39652920411
 
-TAM TEST · 21.10.2026 21:19:53
+TAM TEST · 21.10.2026 21:28:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1345/1368 geçti · 23 kalan · 413 sn
+SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,7 +191,7 @@ SONUÇ: 1345/1368 geçti · 23 kalan · 413 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 101/103
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 102/104
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -209,13 +209,14 @@ SONUÇ: 1345/1368 geçti · 23 kalan · 413 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 16 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 17 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
   ✓ Asistan raporu: 2/2
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
+  ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
   ✓ Güvenlik: 1/1
 
