@@ -16,7 +16,7 @@ export const shift = (d, n) => {
   x.setDate(x.getDate() + n);
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 };
-const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+export const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
 export function RollView({ date, today, onDate, list, classes, usedClasses, cls, onCls, stateOf, onTap, onBulk, after }) {
   const empty = list.filter((a) => !stateOf(a)).length;
@@ -48,37 +48,43 @@ export function RollView({ date, today, onDate, list, classes, usedClasses, cls,
         </button>
       </div>
 
-      {/* Sporcular */}
-      <ul className="mt-2 divide-y divide-line overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-        {list.map((a) => {
-          const s = stateOf(a);
-          return (
-            <li key={a.id} className="relative flex items-center gap-2 py-2 pl-4 pr-2">
-              {s && <span className={`absolute inset-y-2 left-0 w-1 rounded-r-full ${ST[s].dot}`} />}
-              <span className="min-w-0 flex-1">
-                <Link href={`/athletes/${a.id}`} className="block truncate text-[0.9375rem] font-medium">{a.studentName}</Link>
-                {!cls && classes[a.currentClassId] && <small className="block truncate text-[0.75rem] text-mut">{classes[a.currentClassId]}</small>}
-              </span>
-              <span className="flex shrink-0 gap-0.5 rounded-xl bg-bg p-0.5">
-                {Object.entries(ST).map(([k, v]) => (
-                  <button
-                    key={k}
-                    data-press
-                    onClick={() => onTap(a, k)}
-                    aria-pressed={s === k}
-                    className={`h-9 w-[3.25rem] rounded-[0.625rem] text-[0.8125rem] font-semibold ${s === k ? v.on : "text-mut"}`}
-                  >
-                    {v.short}
-                  </button>
-                ))}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      <RollRows list={list} classes={classes} cls={cls} stateOf={stateOf} onTap={onTap} className="mt-2" />
 
       {after}
     </>
+  );
+}
+
+// Sporcu satırları: ad (dokununca sporcu sayfası), sınıf ve Geldi · Yok · İzin seçimi (yoklama sayfası ve antrenman penceresi)
+export function RollRows({ list, classes, cls, stateOf, onTap, className = "" }) {
+  return (
+    <ul className={`divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card ${className}`}>
+      {list.map((a) => {
+        const s = stateOf(a);
+        return (
+          <li key={a.id} className="relative flex items-center gap-2 py-2 pl-3.5 pr-2">
+            {s && <span className={`absolute inset-y-2 left-0 w-1 rounded-r-full ${ST[s].dot}`} />}
+            <span className="min-w-0 flex-1">
+              <Link href={`/athletes/${a.id}`} className="block truncate text-[0.9375rem] font-semibold">{a.studentName}</Link>
+              {!cls && classes[a.currentClassId] && <small className="block truncate text-[0.8125rem] text-mut">{classes[a.currentClassId]}</small>}
+            </span>
+            <span className="flex shrink-0 gap-0.5 rounded-xl bg-bg p-0.5">
+              {Object.entries(ST).map(([k, v]) => (
+                <button
+                  key={k}
+                  data-press
+                  onClick={() => onTap(a, k)}
+                  aria-pressed={s === k}
+                  className={`h-9 w-[3.25rem] rounded-[0.625rem] text-[0.8125rem] font-semibold ${s === k ? v.on : "text-mut"}`}
+                >
+                  {v.short}
+                </button>
+              ))}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
