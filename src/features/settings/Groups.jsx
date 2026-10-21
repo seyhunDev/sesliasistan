@@ -32,8 +32,10 @@ import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/
 const saveUser = (uid, patch) => updateDoc(doc(db, "users", uid), patch);
 
 // Dokununca altı açılan satır (az kullanılan ayarlar için)
-export function Fold({ children, ...row }) {
+// bare: yalnız içerik (başlığı olan bir pencerede, Testler › Araçlar)
+export function Fold({ children, bare, ...row }) {
   const [open, setOpen] = useState(false);
+  if (bare) return <div className="-mx-4">{children}</div>;
   return (
     <Row {...row} open={open} onClick={() => setOpen((v) => !v)}>
       {open && <div className="fade-in">{children}</div>}
@@ -252,19 +254,6 @@ export function NotifyMoreRow({ n }) {
     <Fold title="Plan hatırlatması" sub={LEADS.find((l) => l.min === n.st?.lead)?.label || "1 saat önce"}>
       <Chips value={n.st?.lead} options={LEADS.map((l) => [l.min, l.label])} onChange={n.pickLead} />
     </Fold>
-  );
-}
-
-// Testler › Deneme bildirimi: bu telefona hemen bir bildirim gönderir (bildirim kapalıysa nedenini söyler)
-export function TestPushRow({ n }) {
-  return (
-    <Row
-      title="Deneme bildirimi"
-      sub={n.on ? "" : "Bildirim kapalı"}
-      note={n.on ? "" : n.problem}
-      onClick={() => (n.on ? n.test() : null)}
-      chevron={n.on}
-    />
   );
 }
 
@@ -563,7 +552,7 @@ async function demoCall(body) {
   return data;
 }
 
-export function DemoDataRow() {
+export function DemoDataRow({ bare }) {
   const toast = useToast();
   const [step, setStep] = useState(""); // "" | wipe | busy
   const [word, setWord] = useState("");
@@ -596,7 +585,7 @@ export function DemoDataRow() {
   }
   const busy = step === "busy";
   return (
-    <Fold title="Örnek veri">
+    <Fold title="Örnek veri" bare={bare}>
       <div className="space-y-3 px-4 pb-3.5">
         <p className="text-[0.8125rem] leading-snug text-mut">
           Silme: kişiler ve hesapları, planlar, görevler, notlar, fişler, doğum günleri, dersler ve sohbetler. Senin hesabın, ayarların ve sporcu verisi kalır.
@@ -700,7 +689,7 @@ export function PasswordRow() {
 
 // Testler › Tanıtım ve karşılama: tanıtım slaytlarını şimdi göster ya da karşılamayı baştan başlat.
 // Ana hesap herkes için sıfırlar (kişiler uygulamayı açınca görür), diğer hesaplar yalnız kendisi için.
-export function IntroRow() {
+export function IntroRow({ bare }) {
   const toast = useToast();
   const { profile } = useAuth();
   const owner = profile?.role === "owner";
@@ -720,7 +709,7 @@ export function IntroRow() {
     setBusy(false);
   }
   return (
-    <Fold title="Tanıtım ve karşılama">
+    <Fold title="Tanıtım ve karşılama" bare={bare}>
       <div className="space-y-2.5 px-4 pb-3.5">
         <p className="text-[0.8125rem] leading-snug text-mut">
           {owner

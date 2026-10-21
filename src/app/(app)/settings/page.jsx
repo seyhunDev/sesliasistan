@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
-import { Fold, IntroRow, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, TestPushRow, ThemeRow, VoiceRow, WeatherPlaceRow, DemoDataRow, PasswordRow, useNotifications, RacesRow, LedgerRow } from "@/features/settings/Groups";
+import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, useNotifications, RacesRow, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
@@ -14,7 +14,6 @@ import { MailFilesRow, MoveAllRow } from "@/features/settings/MoveAll";
 import { UsageRow } from "@/features/settings/Usage";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
-import { ProbeRow, TimingRow } from "@/features/settings/Timing";
 import { PastChatsRow } from "@/features/settings/PastChats";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
@@ -87,7 +86,7 @@ function SheetRow({ title, children }) {
   );
 }
 
-// Ayarlar (ana hesap): Genel, Bildirimler, Asistan; Diğer (Bağlantılar, Veri ve kullanım, Testler pencereleri); Hesap (Seyhun, 2026-10-20)
+// Ayarlar (ana hesap): Genel, Bildirimler, Asistan; Diğer (Bağlantılar, Veri ve kullanım pencereleri, Testler sayfası); Hesap (Seyhun, 2026-10-20)
 export default function SettingsPage() {
   const { profile } = useAuth();
   const { members } = useData();
@@ -144,20 +143,7 @@ export default function SettingsPage() {
             <MailFilesRow />
           </Group>
         </SheetRow>
-        <SheetRow title="Testler">
-          <Group title="Asistan">
-            <Row title="Ses testi" href="/settings/voice-test" />
-            <ProbeRow />
-            <TimingRow />
-            <Row title="Asistan raporu" href="/settings/report" />
-          </Group>
-          <Group title="Uygulama">
-            <TestPushRow n={n} />
-            <Row title="Bildirim testi" href="/settings/push-test" />
-            <IntroRow />
-            <DemoDataRow />
-          </Group>
-        </SheetRow>
+        <Row title="Testler" href="/settings/tests" />
       </Group>
 
       <Group title="Hesap">

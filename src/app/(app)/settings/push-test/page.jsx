@@ -176,7 +176,7 @@ export default function PushTestPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Bildirim testi" back="/settings" />
+      <PageHeader title="Bildirim testi" back="/settings/tests" />
 
       <Group>
         <Row title="Bu telefonda bildirim" sub={n.on ? "Açık" : "Kapalı"} note={n.on ? "" : n.problem} />
