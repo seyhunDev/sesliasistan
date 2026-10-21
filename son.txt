@@ -1,8 +1,8 @@
 Commit: 7687d1d (kaydedilmemiş değişiklikle) · Asistan: sesle önemli plan (yeni planda ve var olan planda önemli yap / çıkar) (#662)
-Zaman: 2026-10-22-0023 (İstanbul)
+Zaman: 2026-10-22-0031 (İstanbul)
 Çalıştırma: Mac (npm run test:hepsi)
 
-TAM TEST · 22.10.2026 00:17:00
+TAM TEST · 22.10.2026 00:24:29
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1368/1371 geçti · 3 kalan · 410 sn
+SONUÇ: 1369/1371 geçti · 2 kalan · 403 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -64,7 +64,7 @@ SONUÇ: 1368/1371 geçti · 3 kalan · 410 sn
   ✓ Temiz cümle: Geri al: 1/1
   ✓ Temiz cümle: çok iş: 18/18
 
-2. ANLAMA: insan ve ses tanıma hataları: 628/630
+2. ANLAMA: insan ve ses tanıma hataları: 630/630
   ✓ Bozuk: noktalamasız: 121/121
   ✓ Bozuk: küçük harf, kesme işaretsiz: 121/121
   ✓ Bozuk: Türkçe harfsiz (klavye): 102/102
@@ -102,13 +102,7 @@ SONUÇ: 1368/1371 geçti · 3 kalan · 410 sn
   ✓ Gerçek hata: konuşma dili (yapcaz): 1/1
   ✓ Gerçek hata: yazım hatası (yazz): 1/1
   ✓ Gerçek hata: mesaj, yoklama sanılmamalı: 1/1
-  ✗ Gerçek hata: soru, yoklama yazılmamalı: 0/2
-      ✗ “bugün antremana kimler geldi”
-          beklenen: görev listesi: attQuery + yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     tek iş sanıldı, hepsi → attQuery (diğer işler yapılmaz)
-      ✗ “mustafa geldi mi antrenmana”
-          beklenen: görev listesi: attQuery + yapay zeka (plan/görev/not/mesaj/soru)
-          olan:     tek iş sanıldı, hepsi → attQuery (diğer işler yapılmaz)
+  ✓ Gerçek hata: soru, yoklama yazılmamalı: 2/2
   ✓ Gerçek hata: mesaj, kapatma sanılmamalı: 1/1
   ✓ Gerçek hata: optimist → optimus: 1/1
   ✓ Gerçek hata: noktasız (yoklama sayfasında): 1/1
@@ -140,8 +134,11 @@ SONUÇ: 1368/1371 geçti · 3 kalan · 410 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 44/44
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 105/105
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 104/105
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: ortada tek asistan düğmesi, 5 sütun
+          olan:     0 düğme · 5 sütun
   ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
