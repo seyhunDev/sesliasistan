@@ -23,6 +23,7 @@ import { DaySummarySheet } from "./DaySummarySheet";
 import { DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
+import { useTabInUrl } from "@/hooks/useTabInUrl";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
 // Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
@@ -38,6 +39,7 @@ export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
   const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
+  useTabInUrl(tabPick);
   const [cam, setCam] = useState(null); // Süre'den açılan kamera: { kind, back }
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
@@ -191,7 +193,6 @@ export function RaceMedia({ orgId, id }) {
           live={live}
           ours={ours}
           onChange={change}
-          rf={rf}
           cam0={cam?.kind || ""}
           onCamClose={() => cam && (setTab(cam.back), setCam(null))}
         />
