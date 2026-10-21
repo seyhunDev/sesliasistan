@@ -1,8 +1,8 @@
-Commit: 04d0605 · Asistan: hazırlanan Instagram gönderisinin görseli ve Gönderiyi aç düğmesi sohbette (#655)
-Zaman: 2026-10-21-2135 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39652920411
+Commit: 85f7cf6 · Asistan: gönderi yarışa bağlı, yarışın görselini açma, konuşma raporları tarih tarih kaydedilir (#656)
+Zaman: 2026-10-21-2151 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39655378511
 
-TAM TEST · 21.10.2026 21:28:09
+TAM TEST · 21.10.2026 21:44:33
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,13 +20,13 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
+SONUÇ: 1341/1370 geçti · 29 kalan · 409 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
   ✓ Birim testleri: 1/1
 
-2. ANLAMA: temiz cümleler: 118/121
+2. ANLAMA: temiz cümleler: 117/121
   ✓ Temiz cümle: Plan / takvim: 8/8
   ✓ Temiz cümle: Görev: 6/6
   ✓ Temiz cümle: Not: 3/3
@@ -61,14 +61,17 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
   ✓ Temiz cümle: Etkinlik: 2/2
   ✓ Temiz cümle: Ders programı: 1/1
   ✓ Temiz cümle: Arama: 2/2
-  ✓ Temiz cümle: Sayfa açma: 10/10
+  ✗ Temiz cümle: Sayfa açma: 9/10
+      ✗ “Instagram'ı aç.”
+          beklenen: sayfa aç
+          olan:     postOpen
   ✓ Temiz cümle: Kapatma: 4/4
   ✓ Temiz cümle: Kapatma (soru sonrası): 2/2
   ✓ Temiz cümle: Geri al: 1/1
   ✓ Temiz cümle: çok iş: 18/18
 
-2. ANLAMA: insan ve ses tanıma hataları: 614/630
-  ✗ Bozuk: noktalamasız: 118/121
+2. ANLAMA: insan ve ses tanıma hataları: 609/630
+  ✗ Bozuk: noktalamasız: 117/121
       ✗ “Dün antrenmana kimler geldi”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     attQuery
@@ -78,7 +81,10 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
       ✗ “Kaç sporcumuz var”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     clubAsk
-  ✗ Bozuk: küçük harf, kesme işaretsiz: 118/121
+      ✗ “Instagram'ı aç”
+          beklenen: sayfa aç
+          olan:     postOpen
+  ✗ Bozuk: küçük harf, kesme işaretsiz: 117/121
       ✗ “dün antrenmana kimler geldi”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     attQuery
@@ -88,14 +94,20 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
       ✗ “kaç sporcumuz var”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     clubAsk
-  ✗ Bozuk: Türkçe harfsiz (klavye): 100/102
+      ✗ “ınstagramı aç”
+          beklenen: sayfa aç
+          olan:     postOpen
+  ✗ Bozuk: Türkçe harfsiz (klavye): 99/102
       ✗ “Dun antrenmana kimler geldi?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     attQuery
       ✗ “Kac sporcumuz var?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     clubAsk
-  ✗ Bozuk: dolgu sözlü (şey, ııı): 118/121
+      ✗ “Instagram'i ac.”
+          beklenen: sayfa aç
+          olan:     postOpen
+  ✗ Bozuk: dolgu sözlü (şey, ııı): 117/121
       ✗ “şey ııı Dün antrenmana kimler geldi?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     attQuery
@@ -105,7 +117,10 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
       ✗ “şey ııı Kaç sporcumuz var?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     clubAsk
-  ✗ Bozuk: kekeme (ilk söz iki kez): 118/121
+      ✗ “şey ııı Instagram'ı aç.”
+          beklenen: sayfa aç
+          olan:     postOpen
+  ✗ Bozuk: kekeme (ilk söz iki kez): 117/121
       ✗ “Dün Dün antrenmana kimler geldi?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     attQuery
@@ -115,6 +130,9 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
       ✗ “Kaç Kaç sporcumuz var?”
           beklenen: yapay zeka (plan/görev/not/mesaj/soru)
           olan:     clubAsk
+      ✗ “Instagram'ı Instagram'ı aç.”
+          beklenen: sayfa aç
+          olan:     postOpen
   ✓ Gerçek hata: yanlış duyulan fiil (oluru, hazirla): 1/1
   ✓ Gerçek hata: aynı cümle, Türkçe harfsiz ve noktasız: 1/1
   ✓ Gerçek hata: yanlış duyulan fiil + sonra: 1/1
@@ -191,7 +209,7 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 102/104
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 103/105
   ✗ Sekme çubuğundaki yeşil düğme: 1/2
       ✗ “ana sayfa”
           beklenen: ortada tek asistan düğmesi, 5 sütun
@@ -214,7 +232,7 @@ SONUÇ: 1346/1369 geçti · 23 kalan · 412 sn
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
   ✓ Geniş ekran (sol menü): 3/3
-  ✓ Asistan raporu: 2/2
+  ✓ Asistan raporu: 3/3
   ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
   ✓ Instagram gönderisi: 1/1
   ✓ Tam ekran üstte: 1/1
