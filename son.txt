@@ -1,8 +1,8 @@
-Commit: 5cbbdfa · Merge pull request #651 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-21-2043 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39645109173
+Commit: 1cd5518 · Asistan: Claude tarzı sesli yazma (canlı yazı, süre, dalga, Dur ve Gönder) (#652)
+Zaman: 2026-10-21-2100 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39647870132
 
-TAM TEST · 21.10.2026 20:36:23
+TAM TEST · 21.10.2026 20:54:12
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1343/1365 geçti · 22 kalan · 413 sn
+SONUÇ: 1344/1366 geçti · 22 kalan · 367 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -191,9 +191,9 @@ SONUÇ: 1343/1365 geçti · 22 kalan · 413 sn
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 43/43
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 99/100
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 100/101
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✓ Dokun konuş: tam ekran açılış: 4/4
+  ✓ Dokun konuş: tam ekran açılış: 5/5
   ✓ Halka renkleri: 6/6
   ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
   ✓ Kapanış: 2/2
@@ -206,7 +206,7 @@ SONUÇ: 1343/1365 geçti · 22 kalan · 413 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 11 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
