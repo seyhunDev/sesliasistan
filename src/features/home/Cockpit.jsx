@@ -90,27 +90,29 @@ function NextPlan({ now }) {
   const p = nextPlan(plans, now, today);
   if (!p) return null;
   const mins = p.date === today && p.time ? Math.round((new Date(`${p.date}T${p.time}`) - now) / 60000) : null;
+  // Solda büyük: bugünse saat (saatsizse "Bugün"), sonraki günlerde "Yarın" ya da "3 gün"; altta bir kez gün adı (tam), saat ve yer
+  // (Seyhun 2026-10-21: "cum yerine tam yazalım ya da kaç gün kaldığını; yanında yine cuma ve saat yazıyor, tekrar oluyor")
+  const days = Math.round((Date.parse(`${p.date}T12:00:00`) - Date.parse(`${today}T12:00:00`)) / 864e5);
+  const big = days === 0 ? p.time || "Bugün" : days === 1 ? "Yarın" : `${days} gün`;
+  const d = new Date(`${p.date}T12:00`);
   const when =
-    mins == null
-      ? p.date === today
-        ? "Bugün"
-        : p.date === new Date(now.getTime() + 864e5).toLocaleDateString("sv-SE")
-          ? "Yarın"
-          : cap(new Date(`${p.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "long" }))
-      : mins <= 0
-        ? "Şimdi"
-        : mins < 60
-          ? `${mins} dk sonra`
-          : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
-  const big = p.date === today ? p.time || "Bugün" : new Date(`${p.date}T12:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
+    days > 0
+      ? `${cap(d.toLocaleDateString("tr-TR", { weekday: "long" }))} ${d.getDate()} ${d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}${p.time ? ` ${p.time}` : ""}`
+      : mins == null
+        ? "Gün boyu"
+        : mins <= 0
+          ? "Şimdi"
+          : mins < 60
+            ? `${mins} dk sonra`
+            : `${Math.floor(mins / 60)} sa ${mins % 60 ? `${mins % 60} dk ` : ""}sonra`;
   const sail = isTraining(p);
   return (
     <div className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-white/12 bg-white/[.07] py-2.5 pl-3.5 pr-2.5">
       <button type="button" data-press onClick={() => openAdd({ edit: { kind: "plan", id: p.id } })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-        <span className="shrink-0 text-[1.5rem] font-bold capitalize tracking-[-.02em] tabular-nums">{big}</span>
+        <span className="shrink-0 text-[1.5rem] font-bold tracking-[-.02em] tabular-nums">{big}</span>
         <span className="min-w-0 flex-1 leading-tight">
           <b className="block truncate text-[0.9375rem] font-semibold">{p.title || "Plan"}</b>
-          <small className="block truncate text-[0.8125rem] text-white/65">{[when, p.date !== today && p.time, p.place].filter(Boolean).join(" · ")}</small>
+          <small className="block truncate text-[0.8125rem] text-white/65">{[when, p.place].filter(Boolean).join(" · ")}</small>
         </span>
       </button>
       {sail && (
