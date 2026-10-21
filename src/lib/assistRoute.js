@@ -49,6 +49,9 @@ export const CHANGE = { test: (s) => /(?<![\p{L}])(sil|siler|silin|sile|silelim|
 export const BARE_SAVE = /^(kaydet|kaydeder misin|kaydedebilirsin|kaydet gitsin|onayla)[\s.!]*$/i;
 
 // Bekleyen taslak/kart cevabından ÖNCE denenen işler (antrenman günlüğü, etkinlik, envanter kendi akışlarında kalır)
+// Yapay zeka önce: Hazır cevaplar (c.quick, lib/quickMode.js) kapalıyken soru ve kayıt cümleleri yerel kurallarla
+// cevaplanmaz; yerelde yalnız cihaz işleri kalır. yonlendirme.js'deki hızlı özet de aynı düğmeye bağlı.
+const DEVICE = new Set(["receipt", "meeting", "navigate"]);
 export const EARLY = new Set(["close", "logBare", "log", "event", "inventory", "food", "fitness"]);
 
 // Son eklenen işlerin (assistMore.js) hangisi: test ve öğrenme kaydı için ad; uygulamada runMore kendisi seçer
@@ -167,9 +170,12 @@ export function routesOf(s, c = {}) {
   if (racer && !mf && !c.skipRace && (wantsRaceText(s, c.raceNames || []) || (c.curRace && raceJobHere(s)))) add("race");
   if (c.prefer && !c.drafts && !QUESTION.test(s) && !mf && !CHANGE.test(s)) add("prefer");
   const toFocus = !!c.focus && /(^|\s)(yaz|söyle|cevap ver|yanıtla|yanıt ver|gönder|ilet|haber ver)(\s*[:,]|[.!]?\s*$|\s)/i.test(s);
-  // Hazır kalıp (src/data/hazir-kaliplar.json): cümle aynıysa ve kural motoru beklenen kaydı aynen çıkarıyorsa yapay zekasız
-  const rc = !toFocus && !mf && !c.drafts ? readyCreate(s, today || undefined) : null;
-  const cmd = rc || (!toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true }));
+  // Yapay zeka önce (Seyhun 2026-10-21: "uygulama içinde cevaplar doğru olmuyor, kesinlikle yapay zekaya
+  // göndermeliyiz"): kayıt, tamamlama, özet gibi işleri yapay zeka anlar; yerelde yalnız cihaz işleri kalır
+  // (fiş kamerası, toplantı kaydı, sayfa açma). Hazır kalıplar (src/data/hazir-kaliplar.json) yalnız Hazır cevaplar açıkken.
+  const rc = c.quick && !toFocus && !mf && !c.drafts ? readyCreate(s, today || undefined) : null;
+  const lc = rc || (!toFocus && localCommand(s, { plans: c.plans || [], tasks: c.tasks || [], notes: c.notes || [] }, undefined, { aiFirst: true }));
+  const cmd = lc && (c.quick || DEVICE.has(lc.type)) ? lc : null;
   if (cmd) add("local", { cmd });
   add("ai", { toFocus });
   return out;

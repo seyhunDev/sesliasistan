@@ -7,6 +7,7 @@ import { LABELS } from "@/lib/brain/model";
 import { patternReport, resetPatternMeter } from "@/lib/brain/patternMeter";
 import { flush, guess, missedLocal, resetBrain, setBrainOff, stats, subscribe } from "@/lib/brain/store";
 import { reportText } from "@/lib/brain/score";
+import { quickOn, setQuick } from "@/lib/quickMode";
 import { resetScore, scoreReport, subscribeScore } from "@/lib/brain/scoreStore";
 
 const kb = (b) => (b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`);
@@ -20,6 +21,7 @@ export function BrainCard({ bare, owner }) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [r, setR] = useState(null);
+  const [quick, setQuickState] = useState(quickOn); // kart ilk çizimde boş (s yok), sunucu/tarayıcı farkı olmaz
   useEffect(() => {
     const up = () => setS(stats());
     up();
@@ -47,6 +49,12 @@ export function BrainCard({ bare, owner }) {
     } catch {
       toast("Değiştirilemedi, bağlantını kontrol et");
     }
+  }
+  // Hazır cevaplar: kapalıyken her istek yapay zekaya gider (öğrenme yine sürer)
+  function toggleQuick() {
+    setQuick(!quick);
+    setQuickState(!quick);
+    toast(quick ? "Hazır cevaplar kapatıldı" : "Hazır cevaplar açıldı");
   }
   async function reset() {
     setBusy(true);
@@ -83,6 +91,14 @@ export function BrainCard({ bare, owner }) {
           <span className="text-[0.8125rem] text-mut">{s.off ? "Söylediklerin kaydedilmiyor, öğrenilenler kullanılmıyor." : "Söylediklerinden öğrenir, sık işleri yapay zekasız yapar."}</span>
         </span>
         <Switch on={!s.off} onChange={toggle} label="Öğrenme" />
+      </div>
+      {/* Hazır cevaplar: telefonda yapay zekasız cevap (varsayılan kapalı) */}
+      <div className="mt-2 flex items-center justify-between gap-3 rounded-lg bg-card px-2.5 py-2 text-[0.875rem] ring-1 ring-line">
+        <span>
+          <b className="block font-semibold">Hazır cevaplar {quick ? "açık" : "kapalı"}</b>
+          <span className="text-[0.8125rem] text-mut">{quick ? "Kısa komutlar ve özet soruları telefonda cevaplanır." : "Her istek yapay zekaya gider."}</span>
+        </span>
+        <Switch on={quick} onChange={toggleQuick} label="Hazır cevaplar" />
       </div>
 
       {/* Bu ay: kaç istek yapay zekasız çözüldü (hız ve tasarruf) */}

@@ -84,7 +84,7 @@ async function handle(request) {
   }
 
   const recipients = `## MESAJ ALICILARI\n${contacts.length ? contacts.join("\n") : "(kimse yok)"}`;
-  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n${sessions ? `${sessions}\n\n` : ""}## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## ÖN CEVAP (kullanıcıya zaten söylendi)\n${precue}` : ""}`;
+  const user = `${digest || "(veri özeti gelmedi)"}\n\n${recipients}\n\n${sessions ? `${sessions}\n\n` : ""}## KONUŞMA GEÇMİŞİ\n${history || "(yok)"}\n\n${draft ? `${draft}\n\n` : ""}${memo ? `${memo}\n\n` : ""}## KULLANICININ YENİ İSTEĞİ${name ? ` (${name})` : ""}\n"""\n${text}\n"""${precue ? `\n\n## TELEFONUN ÖN TAHMİNİ (kullanıcıya söylenmedi)\n${precue}` : ""}`;
 
   const started = Date.now();
   const total = budgetMs(); // Netlify sınırı: toplam ~9,5 sn (lib/ai/budget.js)

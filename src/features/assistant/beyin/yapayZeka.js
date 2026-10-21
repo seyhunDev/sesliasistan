@@ -53,19 +53,17 @@ export async function askAI(ctx, s, ask, viaVoice, history, toFocus, opts = {}) 
   setWork(pc?.work || "");
   // Tek bilgi kanalı (Seyhun: "yapay zeka anladım diyor, bilgi kısmında da anladım yazıyor", 2026-10-09): beklerken ne
   // yapıldığını yalnız bilgi alanı söyler ("Plan hazırlanıyor…"); sohbete ve sese "Tamam / Bakıyorum" yazılmaz, yalnız asıl
-  // cevap gelir. Ön cevapta veriden yardımcı bilgi varsa ("O saatlerde “Toplantı” planı da var.") yalnız o yazılır ve okunur.
+  // cevap gelir. Veriden yardımcı bilgi ("O saatlerde “Toplantı” planı da var.") yapay zekaya ipucu olarak gider.
   if (pc) timingMark("pre");
   // Sesli okuma: okuma isteğinde (readMode, 2026-10-19) ya da Ayarlar › Sesli yanıt açıksa (2026-10-20)
   const voiceOn = !!ctx.tts?.enabled;
   const reading = !!ctx.readMode?.current || voiceOn;
-  if (pc?.info) setTurns((p) => [...p, { role: "assistant", text: pc.info, pre: true }]);
   // Yanıtın okunması bunun ardından (kuyruk). Okunurken mikrofon açılmaz (kendi sesini duymasın);
   // bitince dinlenir: kullanıcı devam ederse söylediği öncekine eklenir.
-  // Yapay zeka beklenirken hazır cümle söylenmez (Seyhun 2026-10-20: önce yerel cümleler doğal değildi, sonra "Hemen
-  // ilgileniyorum"a da gerek yok dedi); yalnız ön bilgi (pc.info) varsa o okunur. Bekleme yazısı ekranda görünür
-  const first = pc?.info && reading ? pc.info : "";
-  if (first) enqueueSay(first, viaVoice ? listenWhileThinking : undefined);
-  else if (viaVoice) listenWhileThinking();
+  // Yapay zeka beklenirken hazır cümle söylenmez (Seyhun 2026-10-20: "Hemen ilgileniyorum"a gerek yok). Ön bilgi (pc.info)
+  // de okunmaz (Seyhun 2026-10-21: "aynı şeyi iki defa okudu"; yapay zeka cevabı aynı bilgiyi tekrar ediyordu):
+  // sohbette de gösterilmez, yazılan ve okunan tek şey yapay zekanın cevabı
+  if (viaVoice) listenWhileThinking();
   // Akış: yanıt metni geldikçe ekranda büyür; tamamlanan cümleler hemen kuyruğa (bekleme 1–2 sn'ye iner)
   const onText = (m) => {
     if (id !== runId.current) return;

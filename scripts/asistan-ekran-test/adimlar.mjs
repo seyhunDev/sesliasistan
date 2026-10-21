@@ -7,6 +7,8 @@ export async function scenarios(h) {
   // ================================================================ 1. Sekme çubuğu ve açılış
   log("    Asistan: sekme çubuğu, açılış, dinleme, kapanış…");
   const { page, errs } = await newPage();
+  // Bu bölümdeki yerel hızlı cevaplar yalnız Ayarlar › Öğrenme › Hazır cevaplar açıkken (varsayılan: her istek yapay zekaya)
+  await page.evaluate(() => localStorage.setItem("sa-quick", "1"));
   const G1 = "Sekme çubuğundaki yeşil düğme";
   await check(G1, "ana sayfa", "ortada tek asistan düğmesi, 5 sütun", async () => {
     const n = await orb(page).count();
@@ -61,7 +63,7 @@ export async function scenarios(h) {
   });
   const before = h.aiCalls();
   await btn(page, "Gönder").click();
-  const G3 = "Yerel hızlı cevap (yapay zekasız)";
+  const G3 = "Yerel hızlı cevap (Hazır cevaplar açık)";
   await check(G3, "notlarımı oku", "not okunur, yapay zekaya gitmez", async () => {
     const ok = await waitFor(async () => /Yelken bezleri|kuru yerde/i.test(await convo(page)), 6000);
     return [!!ok && aiCalls() === before, `${(await convo(page)).replace(/\s+/g, " ").slice(0, 120)} · yz isteği ${aiCalls() - before}`];
@@ -191,6 +193,21 @@ async function scenarios2(h) {
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
   await page.waitForTimeout(1500);
   await page.evaluate(() => (window.__t.speakMs = 2500));
+  // Yapay zeka önce (2026-10-21): okuma isteği de yapay zekaya gider, cevabı bir kez okunur
+  setAI((x) => (/plan/i.test(x) ? { intent: "chat", message: "Bugün saat 10'da Yönetim toplantısı var." } : { intent: "chat", message: "Bugün bir notun var: Yelken bezleri kurutulacak." }));
+  {
+    const brain = () => calls.filter((c) => c.path === "/api/assistant").length;
+    const b = brain();
+    await talkAsk(page, "bugün plan var mı");
+    await check(GS, "bugün plan var mı (sesli yanıt açık)", "yapay zekaya bir kez gider, cevap bir kez okunur", async () => {
+      await waitFor(async () => (await state(page)) === "listening" || (await state(page)) === "idle", 9000);
+      const sp = await page.evaluate(() => window.__t.spoken.join(" | "));
+      const n = (sp.match(/Yönetim toplantısı/g) || []).length;
+      return [brain() - b === 1 && n === 1, `yapay zeka ${brain() - b} kez · okunan ${n} kez · ${clean(sp).slice(0, 100)}`];
+    });
+    await closeAll(page);
+    await page.evaluate(() => (window.__t.spoken = []));
+  }
   await talkAsk(page, "notlarımı oku");
   await check(GS, "notlarımı oku (sesli yanıt açık)", "not sesli okunur", async () => {
     const ok = await waitFor(async () => (await page.evaluate(() => window.__t.spoken.join(" "))).match(/Yelken bezleri/), 5000);
@@ -536,6 +553,8 @@ async function scenarios3(h) {
   const GT = "Tohum cümleler (telefonda cevap)";
   const { SEED } = await import("../../src/lib/brain/seedPhrases.js");
   setAI(() => ({ intent: "chat", message: "YAPAY ZEKA CEVABI" }));
+  // Yalnız Ayarlar › Öğrenme › Hazır cevaplar açıkken (varsayılan kapalı: her istek yapay zekaya)
+  await page.evaluate(() => localStorage.setItem("sa-quick", "1"));
   // Telefonda cevaplanmak üzere bağlı olanlar (lib/brief.js): notlar, bugün/yarın/hafta planları, görevler, günün özeti
   const WANT = { "notes.read": /not/i, "plans.today": /bugün/i, "plans.tomorrow": /yarın/i, "plans.week": /hafta/i, "tasks.list": /görev/i, "day.summary": /bugün|gün/i };
   const quick = SEED.filter((x) => WANT[x.id]);
@@ -556,6 +575,7 @@ async function scenarios3(h) {
       });
     }
   }
+  await page.evaluate(() => localStorage.removeItem("sa-quick"));
   {
     // Tamamlama yapay zekayla (aiFirst): taklit yanıt complete_task der, görev onaysız tamamlanır (geri alınabilir iş)
     setAI(() => ({ intent: "action", message: "Motor bakımını tamamladım.", actions: [{ op: "complete_task", kind: "task", id: "t-motor" }] }));
@@ -573,7 +593,7 @@ async function scenarios3(h) {
 }
 
 async function scenarios4(h) {
-  const { check, newPage, orb, state, full, waitFor, btn, last, aiCalls, calls, setTranscript, log } = h;
+  const { check, newPage, orb, state, full, waitFor, btn, last, aiCalls, calls, setAI, setTranscript, closeAll, log } = h;
   const clean = (t) => String(t || "").replace(/\s+/g, " ").trim();
   log("    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…");
 
@@ -684,7 +704,21 @@ async function scenarios4(h) {
   {
     const { page, errs } = await newPage({ standalone: true });
     setTranscript("notlarımı oku");
+    setAI(() => ({ intent: "chat", message: "Bugün bir notun var: Yelken bezleri kurutulacak." }));
     const tr0 = calls.filter((c) => c.path === "/api/transcribe").length;
+    // Mikrofon kaç kez istendi (asistan açıkken aynı mikrofon tutulur)
+    await page.evaluate(() => {
+      const md = navigator.mediaDevices;
+      const real = md.getUserMedia.bind(md);
+      window.__gum = 0;
+      window.__tracks = [];
+      md.getUserMedia = async (c) => {
+        window.__gum += 1;
+        const st = await real(c);
+        window.__tracks.push(...st.getTracks());
+        return st;
+      };
+    });
     await orb(page).click();
     await check(GR, "dokun konuş", "telefonun tanıması değil, kayıt başlar (dinliyor)", async () => {
       const ok = await waitFor(async () => (await state(page)) === "listening", 5000);
@@ -698,6 +732,27 @@ async function scenarios4(h) {
       const n = calls.filter((c) => c.path === "/api/transcribe").length - tr0;
       return [!!ok && n >= 1, `yazıya çevirme isteği ${n} · “${clean(await last(page)).slice(0, 80)}”`];
     });
+    // İkinci tur: Konuş'a yeniden basınca mikrofon yeniden istenmez, ses yine yazıya çevrilir
+    setTranscript("yarın ne var");
+    setAI(() => ({ intent: "chat", message: "Yarın saat 10'da toplantı var." }));
+    const tr1 = calls.filter((c) => c.path === "/api/transcribe").length;
+    await waitFor(async () => (await state(page)) === "idle", 6000);
+    await btn(page, "Konuş").click({ timeout: 5000 }).catch(() => {});
+    await waitFor(async () => (await state(page)) === "listening", 5000);
+    await page.waitForTimeout(1800);
+    await btn(page, "Gönder").click().catch(() => {});
+    await check(GR, "ikinci tur (Konuş'a yeniden bas)", "aynı mikrofonla dinler (yeniden istenmez), cevap gelir", async () => {
+      const ok = await waitFor(async () => /toplantı/.test(await last(page)), 9000);
+      const n = calls.filter((c) => c.path === "/api/transcribe").length - tr1;
+      const gum = await page.evaluate(() => window.__gum);
+      return [!!ok && n >= 1 && gum === 1, `mikrofon isteği ${gum} · yazıya çevirme ${n} · “${clean(await last(page)).slice(0, 60)}”`];
+    });
+    await check(GR, "asistanı kapat", "tutulan mikrofon bırakılır", async () => {
+      await closeAll(page);
+      const ended = await waitFor(async () => page.evaluate(() => window.__tracks.length > 0 && window.__tracks.every((x) => x.readyState === "ended")), 3000);
+      return [!!ended, await page.evaluate(() => window.__tracks.map((x) => x.readyState).join(", ") || "iz yok")];
+    });
+    setTranscript("");
     await check("Sayfa hataları", "kayıt yolu", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
     await page.context().close();
   }

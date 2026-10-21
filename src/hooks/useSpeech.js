@@ -43,7 +43,8 @@ const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürült�
 // terms: özel adlar (yarış adları gibi); aynı şekilde ipucu olur
 // noLevel: ses seviyesi React durumuna yazılmaz (yalnız ölçere, meter.js); dinlerken saniyede 10 yeniden çizim olmaz
 // onMiss(): dinleme metinsiz bitti (sessiz dinlemede de çağrılır; bekletilen yanıt uygulansın diye)
-export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false } = {}) {
+// hold: kayıt yolunda mikrofon turlar arasında kapatılmaz (asistan açıkken aynı mikrofon); bırakmak için release()
+export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, terms, noLevel = false, hold = false } = {}) {
   const [provider, setProvider] = useState(null);
   const [status, setStatus] = useState("idle");
   const [finalText, setFinalText] = useState("");
@@ -54,7 +55,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
-  cb.current = { onFinal, onFail, onMiss, names, terms };
+  cb.current = { onFinal, onFail, onMiss, names, terms, hold };
   const fail = (m) => {
     if (!R.current.silent) cb.current.onFail?.(m); // otomatik başlatılan dinlemede hata sessiz geçilir
     cb.current.onMiss?.();
@@ -73,7 +74,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     clearTimeout(s.finalTimer);
     try { s.proc?.disconnect(); } catch {}
     s.proc = null;
-    s.stream?.getTracks().forEach((t) => t.stop());
+    // Tutulan mikrofon (hold) kapatılmaz: sıradaki tur aynı mikrofonla başlar
+    if (!(s.stream && s.stream === held && cb.current.hold)) stopStream(s.stream);
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
@@ -118,7 +120,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
     try { s.proc?.disconnect(); } catch {}
     s.proc = null;
-    s.stream?.getTracks().forEach((t) => t.stop());
+    stopStream(s.stream); // ölü mikrofon tutuluyorsa o da bırakılır, yenisi istenir
     s.stream = null;
     try { s.ctx?.close(); } catch {}
     s.ctx = null;
@@ -427,14 +429,21 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     }
     try {
       const ask = () => navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-      try {
-        stream = await ask();
-      } catch (e) {
-        // İzin reddi değilse (iPhone ses oturumu takılı, mikrofon başka işte): oturumu sıfırla, bir kez daha dene
-        if (errorState(e) === "denied") throw e;
-        micReset();
-        await new Promise((r) => setTimeout(r, 300));
-        stream = await ask();
+      // Asistan açıkken tutulan mikrofon hâlâ canlıysa o kullanılır (iPhone'da okumadan sonra yeni açılan mikrofon
+      // ses vermeyebiliyordu; Seyhun 2026-10-21: "tekrar konuşmak için bastığımda ses algılanamadı")
+      if (cb.current.hold && liveStream(held)) stream = held;
+      else {
+        if (cb.current.hold) releaseMic();
+        try {
+          stream = await ask();
+        } catch (e) {
+          // İzin reddi değilse (iPhone ses oturumu takılı, mikrofon başka işte): oturumu sıfırla, bir kez daha dene
+          if (errorState(e) === "denied") throw e;
+          micReset();
+          await new Promise((r) => setTimeout(r, 300));
+          stream = await ask();
+        }
+        if (cb.current.hold) held = stream;
       }
       savePermission("microphone", "granted");
     } catch (e) {
@@ -446,7 +455,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       return;
     }
     if (!alive()) {
-      stream.getTracks().forEach((t) => t.stop());
+      if (stream !== held) stopStream(stream);
       return;
     }
     s.stream = stream;
@@ -690,8 +699,26 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
 
   useEffect(() => {
     setProvider(pickProvider());
-    return () => cancelNow();
+    return () => {
+      cancelNow();
+      if (cb.current.hold) releaseMic();
+    };
   }, []);
 
-  return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop, talking };
+  // Tutulan mikrofonu bırak (asistan kapanınca); dinleme sürüyorsa önce o iptal edilir
+  const release = useCallback(() => {
+    if (R.current.status !== "idle") cancelNow();
+    releaseMic();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop, talking, release };
+}
+
+// Turlar arasında tutulan mikrofon (hold). Tek bir asistan olduğu için modül düzeyinde
+let held = null;
+const stopStream = (st) => st?.getTracks().forEach((t) => t.stop());
+const liveStream = (st) => !!st && st.getAudioTracks().some((t) => t.readyState === "live" && t.enabled && !t.muted);
+export function releaseMic() {
+  stopStream(held);
+  held = null;
 }
