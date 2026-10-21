@@ -14,6 +14,7 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Testler: `npm test` (tüm yerel testler + derleme); derlemesiz hepsi `npm run test:hizli`; alan alan `npm run test:asistan` / `test:ses` / `test:elle` / `test:yaris` (dosyalar `scripts/asistan-test/yerel/<alan>.mjs`, yeni özelliğin testi kendi alanına eklenir); yapay zeka `npm run test:yz`; canlı `npm run test:canli` (hesap sorar). Lint'te önceden var olan hatalar: AssistantSheet 4, AddSheet 5, DataProvider 2, receipts/[id] 1; yeni hata ekleme.
 - Yapay zeka: Gemini 3.x için `thinkingLevel: "minimal"`, eskiler için `thinkingBudget: 0` (lib/ai/gemini.js). Hata türleri lib/ai/errors.js.
 - Durum, sıradaki işler, tasarım ve asistan kararları NOTLAR.md içinde (otomatik yüklenmez, gerekeni bölüm bölüm oku) ve henüz taşınmamış `notlar/yeni/*.md` dosyalarında (oturum başında bunlara da bak). Yeni not ve kalıcı karar `notlar/yeni/` altına yeni dosya olarak yazılır, NOTLAR.md elle değiştirilmez.
+- Tasarım: sayfa/pencere tasarlarken önce `.claude/skills/velora-tasarim/SKILL.md` kurallarını oku (lacivert kokpit + sade liste).
 - Token: tüm dosyaları tarama, haritadan ilgili dosyaya git.
 
 ## Harita
