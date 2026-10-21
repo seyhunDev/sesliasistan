@@ -1,6 +1,6 @@
 // Ortak göstergeler (Seyhun 2026-10-21: "ortak bir gösterge; hepsini ortaklaştıralım"). Yeni sayfalar oran/sayı göstermek için bunları kullanır.
 // Gauge: yarım daire yay (aidat 18/30, rüzgâr 11 kn); ortada büyük değer, altında kısa yazı. dark: lacivert zemin (logo geçişi), değilse mor.
-// Segments: "kaçta kaçı" için küçük parçalar (fitness 1/3); satırın sağına sığar.
+// Segments: "kaçta kaçı" için küçük parçalar (fitness 1/3); Bar: ince oran çubuğu (aidat 18/30); ikisi de satırın sağına sığar.
 import { useId } from "react";
 
 export function Gauge({ value = 0, max = 100, label, sub, dark = false, size = 96, className = "" }) {
@@ -32,6 +32,15 @@ export function Segments({ done = 0, total = 0, className = "" }) {
       {Array.from({ length: Math.min(total, 8) }, (_, i) => (
         <i key={i} className={`h-2 flex-1 rounded-sm ${i < done ? "bg-acc" : "bg-line"}`} />
       ))}
+    </span>
+  );
+}
+
+export function Bar({ p = 0, className = "" }) {
+  const v = Math.max(0, Math.min(1, p || 0));
+  return (
+    <span aria-hidden="true" className={`block h-2 w-14 shrink-0 overflow-hidden rounded-full bg-line ${className}`}>
+      <span className="block h-full rounded-full bg-acc" style={{ width: `${Math.round(v * 100)}%` }} />
     </span>
   );
 }

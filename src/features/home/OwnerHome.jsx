@@ -9,7 +9,6 @@ import { useWeather } from "@/features/weather/useWeather";
 import { useNow } from "@/hooks/useNow";
 import { fitDays, homeActions, nextPlan } from "@/lib/homeTiles";
 import { useQuota } from "@/lib/quota";
-import { todayStr } from "@/lib/utils/format";
 import { BirthdayStrip } from "./BirthdayStrip";
 import { InboxSheet, useInbox } from "./Inbox";
 import { SiradaCard } from "./SiradaCard";
@@ -18,7 +17,7 @@ import { HomeGrid } from "./HomeGrid";
 import { useKind } from "@/features/auth/useKind";
 import { canReceipts, isAthleteSide } from "@/lib/kinds";
 import { listsFor } from "@/features/shop/shop";
-import { AthletesWidget, FitWidget, NotesWidget, TalkWidgets } from "./HomeWidgets";
+import { AthletesWidget, FitWidget, NotesWidget } from "./HomeWidgets";
 import { HomeSummary } from "./HomeSummary";
 import { MyAttendanceCard } from "./MyAttendanceCard";
 import { MyFitCard } from "./MyFitCard";
@@ -63,7 +62,7 @@ export function OwnerHome() {
 }
 
 // Sıra: Notlar › Sporcular › Fitness › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
-// "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › kalan sayfalar küçük düğmeler (PageChips).
+// "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
 export function HomeFeed({ weather, inbox, onInbox }) {
@@ -101,9 +100,9 @@ export function HomeFeed({ weather, inbox, onInbox }) {
       {/* İş düğmeleri: en sık işler adıyla, sonunda Tümü (bütün sayfalar) */}
       <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
       {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
-      <div className="space-y-2.5">
+      <div className="space-y-6">
         <NotesWidget notes={notes} />
-        {athletes && owner && <AthletesWidget att={athletes} races={race.open} />}
+        {athletes && owner && <AthletesWidget races={race.open} />}
         {!side && <FitWidget fit={fit} />}
       </div>
       <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
@@ -119,9 +118,6 @@ export function HomeFeed({ weather, inbox, onInbox }) {
         dues={athletes && owner}
         posts={!staff}
         invoices={owner}
-        tail={<TalkWidgets meeting={false /* Toplantı kokpitin altındaki düğmelerde (HomeGrid) */} />}
-        pages={[] /* bütün sayfalar artık iş düğmelerindeki "Tümü" penceresinde (HomeGrid) */}
-        hide={["/notes", ...(!side ? ["meeting"] : []), ...(athletes && owner ? ["/athletes", "/athletes/attendance"] : []), ...(!side && fit.some((f) => f.date >= todayStr()) ? ["/fitness"] : [])]}
       />
     </div>
   );

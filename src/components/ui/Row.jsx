@@ -8,12 +8,14 @@ export function RowList({ children, className = "" }) {
   return <div className={`overflow-hidden rounded-[1.25rem] border border-line bg-card px-3.5 ${className}`}>{children}</div>;
 }
 
-export function Row({ href, onClick, title, sub, right, chev = true, label }) {
+// lead: soldaki küçük şey (kişi yuvarlağı); warn: alt satır kehribar (gerçek uyarı)
+export function Row({ href, onClick, lead, title, sub, right, warn = false, chev = true, label }) {
   const body = (
     <>
+      {lead}
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
-        {sub && <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>}
+        {sub && <small className={`block truncate text-[0.8125rem] ${warn ? "text-warn" : "text-mut"}`}>{sub}</small>}
       </span>
       {right != null && <span className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{right}</span>}
       {chev && (href || onClick) && <Icon name="chev" className="size-4 shrink-0 text-mut" />}
@@ -25,11 +27,14 @@ export function Row({ href, onClick, title, sub, right, chev = true, label }) {
   return <div className={cls}>{body}</div>;
 }
 
-// Bölüm başlığı (listelerin üstünde): küçük büyük harfli gri ad, sağda tek eylem ("Tümü ›" gibi)
-export function ListHead({ title, href, more = "Tümü", id }) {
+// Bölüm başlığı (listelerin üstünde): küçük büyük harfli gri ad ve sayı, sağda tek eylem ("Tümü ›" gibi)
+export function ListHead({ title, count, href, more = "Tümü", id }) {
   return (
-    <div className="mb-1.5 mt-5 flex items-center justify-between gap-3 px-1">
-      <h2 id={id} className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">{title.toLocaleUpperCase("tr-TR")}</h2>
+    <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
+      <h2 id={id} className="min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+        {title.toLocaleUpperCase("tr-TR")}
+        {count ? <span className="ml-1.5 font-semibold tabular-nums">{count}</span> : null}
+      </h2>
       {href && (
         <Link href={href} className="text-[0.8125rem] font-semibold text-acc">
           {more} ›
@@ -37,4 +42,22 @@ export function ListHead({ title, href, more = "Tümü", id }) {
       )}
     </div>
   );
+}
+
+// Okuma sürerken satırın yerinde yanıp sönen çizgiler (.shimmer globals.css)
+export function SkelRow() {
+  return (
+    <div aria-hidden="true" className="flex min-h-[3.5rem] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
+      <span className="flex-1">
+        <span className="shimmer block h-3.5 w-24 rounded-full" />
+        <span className="shimmer mt-2 block h-3 w-36 rounded-full" />
+      </span>
+      <span className="shimmer block h-4 w-14 rounded-full" />
+    </div>
+  );
+}
+
+// Durum etiketi (satırın sağında): "Yaptı", "Bekliyor", "Sabit"; tone: globals.css tone-* adı
+export function Tag({ tone = "gen", children }) {
+  return <span className={`tone-${tone} tone-chip shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.75rem] font-semibold`}>{children}</span>;
 }

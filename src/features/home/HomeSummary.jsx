@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -14,20 +14,20 @@ import { dayInfo, needsLog, planTone, clubDues, clubFis, clubRace, duesLive, pos
 import { todayStr } from "@/lib/utils/format";
 import { useAdd } from "@/features/add/AddProvider";
 import { useMoney } from "./TeamMoney";
-import { SectionHead } from "./ui";
 import { FadeImg } from "@/components/ui/FadeImg";
-import { NotesWidget, PageChips, WHead, WIDGET } from "./HomeWidgets";
+import { NotesWidget, WHead, WIDGET, useMessagesRow } from "./HomeWidgets";
+import { ListHead, Row, RowList, SkelRow } from "@/components/ui/Row";
+import { Bar } from "@/components/ui/Gauge";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { invoiceTile } from "@/lib/invoices";
 
-// Ana sayfa › Kulüp / Özet canlı alanları (Seyhun 2026-10-17: "kısa yolları güzel tasarımla ayrı ayrı alanlar yapalım"; örnek 7-canli-alanlar-notlar.png):
-// iki sütunlu ızgara; önce tam genişlik alanlar (lead: Sporcular, Fitness; HomeWidgets.jsx), sonra kare alanlar: Sıradaki yarış, Aidat (halka),
-// Fiş / Fatura, Hesap (bakiye çizgisi); tek kalan kare iki sütunu kaplar. Sonra Notlar, tail (Mesajlar, Toplantı) ve Instagram (son üç gönderi).
+// Ana sayfa › Kulüp / Özet (2026-10-21 kokpit tasarımı "C"; önceki ızgara 2026-10-17): tek listede satırlar (Row): Aidat, Hesap, Fiş / Fatura,
+// Mesajlar (tail={false} ile kapanır); altında Instagram (son üç gönderi). lead: listenin başına eklenecek satırlar.
 // Yalnız bilgisi olan alan görünür (clubDues, clubFis… homeTiles.js). Alanlar yalnız ilgili sayfayı açar.
 // Aidat özeti açılışta okunur (2 okuma, duesLive); gönderi özeti o sayfa açılınca bu cihazda saklanır; banka mailleri useMoney; yarış raceHome.js.
-// Okuması süren alanın yerinde yanıp sönen iskelet (SkelWidget); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
+// Okuması süren alanın yerinde yanıp sönen iskelet satırı (SkelRow); önbellekte bilgi varsa (aidat, gönderi, banka, aynı günün yarış ve faturası) hiç çıkmaz.
 const WAIT = 8000;
-export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes, lead, tail, pages = [], hide = [] }) {
+export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoices, notes, lead, tail }) {
   const m = useMoney();
   const [sum, setSum] = useState(readSum);
   const [duesGot, setDuesGot] = useState(false);
@@ -99,57 +99,30 @@ export function HomeSummary({ title = "ÖZET", money, race, dues, posts, invoice
     month: "long",
   });
   const show = (k) => (fade.has(k) ? "fade-in" : "");
-  // Kare alanlar (iki sütun): yalnız bilgisi olan ya da okuması süren; tek kalan sonuncu iki sütunu kaplar
-  const squares = [
-    skel("race")
-      ? { key: "race", skel: true }
-      : raceCard && {
-          key: "race",
-          el: (w) => <RaceWidget r={raceCard} cls={`${show("race")} ${w}`} />,
-        },
-    skel("dues")
-      ? { key: "dues", skel: true }
-      : duesT && {
-          key: "dues",
-          el: (w) => <DuesWidget t={duesT} mon={mon} cls={`${show("dues")} ${w}`} />,
-        },
-    skel("bank")
-      ? { key: "bank", skel: true }
-      : bankT && {
-          key: "bank",
-          el: (w) => <BankWidget b={bankT} cls={`${show("bank")} ${w}`} />,
-        },
+  // Kulüp listesi (2026-10-21 kokpit tasarımı): her bilgi bir satır, aynı biçimde (Row): Aidat (oran çubuğu + 18/30), Hesap (kasa, altında banka),
+  // Fiş / Fatura, Mesajlar. Okuması süren satırın yerinde iskelet (SkelRow). Sıradaki yarış verilirse eski tam genişlik kartı listenin üstünde.
+  const msg = useMessagesRow();
+  const rows = [
+    skel("dues") ? <SkelRow key="dues" /> : duesT && <DuesRow key="dues" t={duesT} mon={mon} />,
+    skel("bank") ? <SkelRow key="bank" /> : bankT && <Row key="bank" href="/mail" title="Hesap" sub={[bankT.label, bankT.sub].filter(Boolean).join(" · ")} right={bankT.big} />,
+    skel("inv") ? <SkelRow key="inv" /> : fisT && <FisRow key="inv" t={fisT} spend={invoices && inv && money ? m.receipts : null} />,
+    tail !== false && msg,
   ].filter(Boolean);
-  // Fiş / Fatura: kare değil, en altta ince tam genişlik satır
-  const fis = skel("inv") ? { key: "inv", skel: true } : fisT && { key: "inv", el: () => <FisWidget t={fisT} spend={invoices && inv && money ? m.receipts : null} cls={show("inv")} /> };
-  // Dizilim (Seyhun 2026-10-19: "boşluğu kullanıp aidat ve hesabı yan yana, ince"): yarış tam genişlik (eksik işlerin adıyla), altında aidat ve
-  // hesap yan yana ince kartlar; tek kalan iki sütunu kaplar
-  const pair = squares.filter((t) => t.key !== "race");
-  const span = (t) => (t.key === "race" || pair.length === 1 ? "col-span-2 min-h-0" : "min-h-0");
-
-  // Alttaki sayfa düğmeleri: alanı görünen sayfa (yarış, aidat, fiş, hesap, Instagram) tekrar düğme olmaz; alanı yoksa düğme kalır
-  const shown = {
-    race: "/athletes/races",
-    dues: "/dues",
-    inv: "/receipts",
-    bank: "/mail",
-  };
-  const gone = [...hide, ...[...squares, fis].filter(Boolean).map((t) => shown[t.key]), ...(post ? ["/posts"] : [])];
 
   return (
     <>
-      <section aria-labelledby="home-sum" aria-busy={busy}>
-        <SectionHead id="home-sum" title={title} />
-        <div className="grid grid-cols-2 gap-2.5">
-          {lead}
-          {squares.map((t) => (t.skel ? <SkelWidget key={t.key} cls={span(t)} /> : <Fragment key={t.key}>{t.el(span(t))}</Fragment>))}
-          {fis && (fis.skel ? <SkelWidget cls="col-span-2 min-h-0" /> : fis.el())}
-          {notes && <NotesWidget notes={notes} />}
-          {tail}
-          {post && <PostsWidget post={post} />}
-        </div>
-      </section>
-      <PageChips groups={pages} hide={gone} />
+      {skel("race") ? null : raceCard && <RaceWidget r={raceCard} cls={show("race")} />}
+      {(rows.length > 0 || lead) && (
+        <section aria-labelledby="home-sum" aria-busy={busy}>
+          <ListHead id="home-sum" title={title} />
+          <RowList>
+            {lead}
+            {rows}
+          </RowList>
+        </section>
+      )}
+      {notes && <NotesWidget notes={notes} />}
+      {post && <PostsWidget post={post} />}
     </>
   );
 }
@@ -203,80 +176,31 @@ function RaceWidget({ r, cls }) {
   );
 }
 
-// Kare alan: bu ayın aidatı (ödeyenlerin halkası, 9/14, ödemeyen ya da onay bekleyen). Dokununca Aidatlar
-function DuesWidget({ t, mon, cls }) {
+// Aidat satırı: bu ayın aidatı (ödeyen/toplam, oran çubuğu; altında ödemeyen ya da onay bekleyen). Dokununca Aidatlar
+function DuesRow({ t, mon }) {
   const [paid, count] = t.big.split("/");
   return (
-    <Link href="/dues" className={`${WIDGET} ${cls}`}>
-      <WHead tone="st" title={`Aidat · ${mon}`} />
-      <span className="mt-2 flex items-center gap-2.5">
-        <Ring p={t.bar || 0} label={`%${Math.round((t.bar || 0) * 100)}`} />
-        <span className="min-w-0">
-          <b className="block text-[1.5rem] font-semibold leading-tight tabular-nums">
+    <Row
+      href="/dues"
+      title={`Aidat · ${mon}`}
+      sub={t.sub}
+      warn={t.warn}
+      right={
+        <span className="flex items-center gap-2.5">
+          <Bar p={t.bar} />
+          <span>
             {paid}
-            <span className="text-[1rem] text-mut">/{count}</span>
-          </b>
-          <small className={`block text-[0.8125rem] leading-snug ${t.warn ? "text-warn" : "text-mut"}`}>{t.sub}</small>
+            <span className="font-medium text-mut">/{count}</span>
+          </span>
         </span>
-      </span>
-    </Link>
+      }
+    />
   );
 }
 
-// Kare alan: fiş / fatura (ödenmemiş fatura sayısı ve tutarı, yoksa ayın fiş harcaması; altında ayın harcaması). Dokununca Fiş / Fatura
-function FisWidget({ t, spend, cls }) {
-  return (
-    <Link href="/receipts" className={`col-span-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-card px-3.5 py-3 text-left ${cls}`}>
-      <span className="shrink-0">
-        <WHead tone="fa" title="Fiş / Fatura" />
-      </span>
-      <span className="ml-auto min-w-0 text-right">
-        <b className={`block truncate text-[0.9375rem] font-semibold tabular-nums ${t.warn ? "text-warn" : ""}`}>{[t.big, t.sub].filter(Boolean).join(" · ")}</b>
-        {spend && (
-          <small className="block truncate text-[0.78125rem] text-mut">
-            {spend.sub}: {spend.big}
-          </small>
-        )}
-      </span>
-    </Link>
-  );
-}
-
-// Kare alan: Hesap (Seyhun 2026-10-18: "kasadaki nakit ön planda, banka küçük, çok detaya gerek yok"): büyük kasa (kasa yoksa banka), altında
-// "Kasada nakit", en altta küçük "Banka … ₺" (useMoney). Dokununca Hesaplar
-function BankWidget({ b, cls }) {
-  return (
-    <Link href="/mail" className={`${WIDGET} ${cls}`}>
-      <WHead tone="st" title="Hesap" />
-      <b className="mt-2 block truncate text-[1.5rem] font-semibold leading-tight tracking-[-.02em] tabular-nums">{b.big}</b>
-      {b.label && <small className="block truncate text-[0.8125rem] text-mut">{b.label}</small>}
-      {b.sub && <small className="mt-auto block truncate pt-2 text-[0.8125rem] tabular-nums text-fg2">{b.sub}</small>}
-    </Link>
-  );
-}
-
-function Ring({ p, label }) {
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg viewBox="0 0 52 52" aria-hidden="true" className="size-11 shrink-0">
-      <circle cx="26" cy="26" r={r} fill="none" className="stroke-line" strokeWidth="6" />
-      <circle cx="26" cy="26" r={r} fill="none" className="stroke-acc" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} transform="rotate(-90 26 26)" />
-      <text x="26" y="27" textAnchor="middle" dominantBaseline="middle" className="fill-fg text-[0.6875rem] font-bold">
-        {label}
-      </text>
-    </svg>
-  );
-}
-
-function SkelWidget({ cls }) {
-  return (
-    <div aria-hidden="true" className={`${WIDGET} ${cls}`}>
-      <span className="shimmer block h-3 w-20 rounded-full" />
-      <span className="shimmer mt-3 block h-6 w-24 rounded-full" />
-      <span className="shimmer mt-2 block h-3 w-28 rounded-full" />
-    </div>
-  );
+// Fiş / Fatura satırı: ödenmemiş fatura sayısı ve tutarı, yoksa ayın fiş harcaması; altında ayın harcaması. Dokununca Fiş / Fatura
+function FisRow({ t, spend }) {
+  return <Row href="/receipts" title="Fiş / Fatura" sub={[t.sub, spend && `${spend.sub}: ${spend.big}`].filter(Boolean).join(" · ")} warn={t.warn} right={t.big} />;
 }
 
 // Tam genişlik: Instagram (gönderi sayısı, sonuncusu ne zaman; son üç gönderinin görseli, dokununca o gönderi). Görsel yoksa yalnız yazı
@@ -284,28 +208,22 @@ function PostsWidget({ post }) {
   const t = postsTile(post);
   const recent = (post.recent?.length ? post.recent : post.last ? [post.last] : []).filter((x) => x?.id && x.thumb).slice(0, 3);
   return (
-    <div className={`${WIDGET} col-span-2 min-h-0`}>
-      <WHead
-        tone="ve"
-        title="Instagram"
-        count={t.big}
-        right={
-          <Link href="/posts" className="text-acc">
-            Tümü ›
-          </Link>
-        }
-      />
-      {t.sub && <small className="mt-0.5 block text-[0.8125rem] text-mut">{t.sub}</small>}
-      {recent.length > 0 && (
-        <span className="mt-2.5 grid grid-cols-3 gap-2">
+    <section aria-label="Instagram">
+      <ListHead title="Instagram" count={t.big} href="/posts" />
+      {recent.length > 0 ? (
+        <span className="grid grid-cols-3 gap-2">
           {recent.map((x) => (
-            <Link key={x.id} href={`/posts/${x.id}`} aria-label="Gönderiyi aç" className="relative block aspect-[4/5] overflow-hidden rounded-[0.625rem] bg-line">
+            <Link key={x.id} href={`/posts/${x.id}`} aria-label="Gönderiyi aç" className="relative block aspect-[4/5] overflow-hidden rounded-[0.875rem] bg-line">
               <FadeImg src={x.thumb} className="size-full object-cover" />
             </Link>
           ))}
         </span>
+      ) : (
+        <RowList>
+          <Row href="/posts" title="Gönderiler" sub={t.sub} />
+        </RowList>
       )}
-    </div>
+    </section>
   );
 }
 
