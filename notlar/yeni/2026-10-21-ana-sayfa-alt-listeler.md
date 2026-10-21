@@ -10,3 +10,4 @@
 
 ## Tasarım
 - Ana sayfa bölümleri: dışarıda küçük büyük harfli başlık + sayı, sağda yalnız "Tümü ›"; içerik tek kartta satır satır; satır = ad + alt bilgi + sağda değer/etiket.
+- Sıra (Seyhun 2026-10-21): iş düğmeleri › Notlar › Takvim (Sırada) › Sporcular › Fitness › Kulüp.

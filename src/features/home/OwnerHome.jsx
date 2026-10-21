@@ -61,7 +61,7 @@ export function OwnerHome() {
   );
 }
 
-// Sıra: Notlar › Sporcular › Fitness › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
+// Sıra: iş düğmeleri › Notlar › Sırada (gün şeridi, saat çizgisi, Yarın, Sırada, "seni bekleyenler") › Sporcular › Fitness › doğum günü › Yoklamam › Kulüp/Özet canlı alanları (Seyhun 2026-10-17:
 // "kısa yolları canlı alanlara çevirelim": Sporcular, Fitness, yarış, aidat, fiş, hesap, Notlar, Mesajlar, Toplantı, Instagram; HomeSummary + HomeWidgets) › bütün sayfalar iş düğmelerindeki "Tümü" penceresinde (HomeGrid).
 // Kişi şeridi kaldırıldı (sporcular kendi alanında, Kişiler alttaki düğmelerde).
 // Her bölüm yalnız içeriği varsa çizilir; yazı az, her satır tek iş.
@@ -99,13 +99,11 @@ export function HomeFeed({ weather, inbox, onInbox }) {
     <div className="space-y-6">
       {/* İş düğmeleri: en sık işler adıyla, sonunda Tümü (bütün sayfalar) */}
       <HomeGrid pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />
-      {/* Notlar, Sporcular ve Fitness (ayrı kartlar) takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"; "sporcular ayrı, fitness ayrı") */}
-      <div className="space-y-6">
-        <NotesWidget notes={notes} />
-        {athletes && owner && <AthletesWidget races={race.open} />}
-        {!side && <FitWidget fit={fit} />}
-      </div>
+      {/* Notlar takvimin üstünde (Seyhun 2026-10-20: "notlar çok aşağıda kalıyor"); Sporcular ve Fitness takvimin altında, Kulüp'ten önce (2026-10-21) */}
+      <NotesWidget notes={notes} />
       <SiradaCard skip={next?.id} weather={weather} inbox={inbox} onInbox={onInbox} fit={fit} att={athletes} training={training || fit.length > 0 || plans.some((p) => p.date && p.status !== "cancelled")} />
+      {athletes && owner && <AthletesWidget races={race.open} />}
+      {!side && <FitWidget fit={fit} />}
       <div className="empty:hidden">
         <BirthdayStrip />
       </div>
