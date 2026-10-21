@@ -7,14 +7,14 @@ import { addRaceMedia, dropRaceMedia, mutedCopy, prepRaceMedia, saveMedia } from
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { Bar } from "@/features/training/Countdown";
+import { Bar, readTimer } from "@/features/training/Countdown";
 import { dayOf, fixMedia, hm, mediaGroups, mediaOf, momentAt, momentBadge, momentRaceName, momentText, tagMedia } from "@/lib/raceLive";
 import { MediaViewer } from "./MediaViewer";
 import { Thumb } from "./Thumb";
 import { CameraSheet } from "./CameraSheet";
 import { dropPending, listPending, putPending } from "./pendingStore";
 
-// Medya: "Fotoğraf" ve "Video" iPhone'un kendi kamerasını açar (Seyhun 2026-10-20: kalite, ses, yön). Yanındaki ⋯ › Sayaçlı kamera
+// Medya: "Fotoğraf" ve "Video" iPhone'un kendi kamerasını açar (Seyhun 2026-10-20: kalite, ses, yön); sayaç sayarken sayaçlı kamerayı. Yanındaki ⋯ › Sayaçlı kamera
 // uygulama içi kamerayı açar (CameraSheet: sayaç ve bipler sürer; Süre'den açılan kamera da bu). Video en çok 2 dk, iPhone'un dosyası
 // olduğu gibi (prepRaceMedia); sırayla Storage'a yüklenir ve yarışa yazılır.
 // Start sayacı sürerken çekilen, starta göre anıyla kaydedilir; liste yarışa ve ana göre gruplu
@@ -124,7 +124,9 @@ export function MediaTab({ orgId, race, day, live, ours = [], onChange, cam0 = "
       setBusy("");
     }
   };
+  // Sayaç sayarken sayaçlı kamera (süre ekranda görünsün; Seyhun 2026-10-21), sayaç yokken iPhone'un kendi kamerası
   const openCam = (k) => {
+    if (readTimer().end != null) return setCam(k);
     (k === "photo" ? photo : video).current?.click();
   };
   const camFail = (e) => {
