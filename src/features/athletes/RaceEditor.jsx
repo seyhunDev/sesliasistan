@@ -5,8 +5,6 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { todayStr } from "@/lib/utils/format";
 import { Label, Seg, card } from "@/components/ui/Page";
-import { Button } from "@/components/ui/Button";
-import { buttonClass } from "@/components/ui/buttonClass";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
@@ -34,7 +32,7 @@ import { racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
 import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
-import { initials, placeText } from "./RaceList";
+import { initials, leftText, placeText } from "./RaceList";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
@@ -152,7 +150,7 @@ function Check({ on, tone = "ok" }) {
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
-export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+export function RaceEditor({ head = null, alert = null, orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
   const toast = useToast();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
@@ -711,16 +709,6 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
   const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
-  const statRow = ([to, , title, sub, done]) => (
-    <li key={`h-${to}`}>
-      <button type="button" onClick={() => setTab(to)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-        <span className="w-[4.75rem] shrink-0 text-[0.875rem] text-mut">{title}</span>
-        <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${done ? "font-medium" : "font-semibold text-acc"}`}>{sub}</span>
-        {done && <Icon name="check" className="size-4 shrink-0 text-ok" />}
-        <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-      </button>
-    </li>
-  );
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
   const linkRow = ({ k, title, main, sub, act, onClick, href, thumb, right }) => {
     const body = (
@@ -823,10 +811,80 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       )}
     </li>
   );
+  // Lacivert üst (yeni tasarım 2026-10-21; Seyhun: "sekme butonları önemli, ön planda olsun"): kalan gün ve hazırlık çubuğu,
+  // Multimedya · Talimat, altında büyük sekme düğmeleri (her birinde kısa durum; eksikse sarı). Özet'teki eski Hazırlık listesi bu düğmelere geçti.
+  const left = r.startDate ? daysTo(r.startDate) : null;
+  const doneN = stat.filter((x) => x[4]).length;
+  const tabs = [
+    ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
+    ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
+    ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
+    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
+    ["budget", "Bütçe", money.lines.length ? tl(chosen.length ? money.perAthlete : money.total) : "Yok", !stat[3][4]],
+    ["sheet", "Veli", "Bilgi notu", false],
+  ];
+  const top = (
+    <>
+      {!over && left != null && (
+        <div className="mt-4">
+          <span className="flex items-baseline gap-2">
+            {left > 1 ? (
+              <>
+                <b className="text-[3rem] font-bold leading-none tracking-[-.04em] tabular-nums">{left}</b>
+                <span className="text-[1rem] font-semibold text-white/75">gün kaldı</span>
+              </>
+            ) : (
+              <b className="text-[2rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
+            )}
+          </span>
+          <span className="mt-3.5 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
+            <span className="block h-full rounded-full bg-[#a78bfa]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
+          </span>
+          <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
+            <span>Hazırlık</span>
+            <span className="tabular-nums">
+              {doneN} / {stat.length} tamam{todoList.length ? ` · ${todoList.length} iş` : ""}
+            </span>
+          </span>
+        </div>
+      )}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {rid && (
+          <Link href={`/athletes/races/${rid}/media`} data-press className="raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+            Multimedya
+          </Link>
+        )}
+        <button type="button" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} data-press className={`raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold ${rid ? "" : "col-span-2"}`}>
+          {r.notice ? "Talimat" : "Talimat yükle"}
+        </button>
+      </div>
+      <nav aria-label="Bölümler" className="mt-2 grid grid-cols-3 gap-2">
+        {tabs.map(([k, name, sub, warn]) => {
+          const on = tab === k;
+          return (
+            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k)} data-press className={`raised flex h-[3.875rem] min-w-0 flex-col items-center justify-center rounded-2xl border px-1.5 leading-tight ${on ? "ck-sel" : ""}`}>
+              <b className="text-[0.9375rem] font-semibold">{name}</b>
+              <small className={`mt-0.5 max-w-full truncate text-[0.75rem] font-medium ${on ? "text-white/85" : warn && !over ? "text-[#ffd59a]" : "text-white/60"}`}>{sub}</small>
+            </button>
+          );
+        })}
+      </nav>
+    </>
+  );
+  const navy = (body) => (
+    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
+      {head}
+      {body}
+    </section>
+  );
+  const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
+
   if (!begun) {
     const form = r.notice || manual;
     return (
       <>
+        {navy(null)}
+        <div className={light}>
         {!form ? (
           <>
             <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Yarış talimatın var mı?</h2>
@@ -886,6 +944,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
             )}
           </>
         )}
+        </div>
       </>
     );
   }
@@ -955,33 +1014,14 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
         </button>
       </Sheet>
 
-      {/* Üstte yalnız iki düğme (ad, yer, tarih başlıkta; düzenle ve sil ⋯ içinde) */}
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {rid && (
-          <Link href={`/athletes/races/${rid}/media`} data-press className={buttonClass({ variant: "secondary" })}>
-            Multimedya
-          </Link>
-        )}
-        <Button variant="secondary" onClick={() => (r.noticeFile ? noticeOpen() : setNoticeMenu(true))} className={rid ? "" : "col-span-2"}>
-          {r.notice ? "Talimat" : "Talimat yükle"}
-        </Button>
-      </div>
-
-      <Seg
-        value={tab}
-        onChange={setTab}
-        options={[["sum", "Özet"], ["people", "Sporcu", chosen.length], ["docs", "Evrak"], ["trip", "Yolculuk"], ["budget", "Bütçe"], ["sheet", "Veli"]]}
-        className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-3"
-      />
-
+      {navy(top)}
+      <div className={light}>
+        {alert}
       {tab === "sum" && (
         <>
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
           {!over && (
             <>
-              <Label right={`${stat.filter((x) => x[4]).length}/${stat.length}`}>Hazırlık</Label>
-              <ul className={`${card} divide-y divide-line overflow-hidden`}>{stat.map(statRow)}</ul>
-
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
               <ul className={`${card} divide-y divide-line overflow-hidden`}>
                 {todoList.map(taskRow)}
@@ -1613,6 +1653,7 @@ export function RaceEditor({ orgId, start, athletes, classes = [], athletesErr, 
       </Sheet>
       {docView && <PdfViewer title={docView.name} load={() => Promise.resolve(docView)} onClose={() => setDocView(null)} />}
       {viewer && r.noticeFile && <PdfViewer title={r.noticeFile.name || "Yarış talimatı"} load={loadViewer} onClose={() => setViewer(false)} />}
+      </div>
     </>
   );
 }
