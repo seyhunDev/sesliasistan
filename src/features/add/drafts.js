@@ -4,19 +4,20 @@ import { uidsToNames } from "@/lib/names";
 
 let seq = 0;
 export const nid = () => `d${Date.now()}_${seq++}`;
-export const blank = (type) => ({ _id: nid(), type, title: "", body: "", date: "", endDate: "", time: "", allDay: false, place: "", repeat: "", repeatUntil: "", remind: null, link: false, cat: "Genel", assignees: [] });
+export const blank = (type) => ({ _id: nid(), type, title: "", body: "", date: "", endDate: "", time: "", allDay: false, place: "", repeat: "", repeatUntil: "", remind: null, link: false, cat: "Genel", assignees: [], important: false });
 export const isBlank = (d) => !(d.title || "").trim() && !(d.body || "").trim();
 // Yapay zekaya gönderilecek sade taslak (askedTime: bu plan için saat zaten soruldu, tekrar sorma)
 export const pub = (d, members = []) => ({
   ...(members.length ? { assignTo: uidsToNames(d.assignees, members) } : {}),
   type: d.type, title: d.title || "", body: d.body || "", date: d.date || "", endDate: d.endDate || "", time: d.time || "",
   allDay: !!d.allDay, askedTime: !!d._asked, place: d.place || "", weekly: d.repeat === "week", repeatUntil: d.repeatUntil || "", category: d.cat || "Genel", linkToPlan: !!d.link,
+  ...(d.type === "plan" && d.important ? { important: true } : {}),
 });
 // Güncel listede kartlar aynı sıra ve türdeyse kimlik ve bayraklarını koru (açık kartlar kapanmasın)
 export const carry = (old, next) =>
   next.map((d, i) => {
     const o = old[i] && old[i].type === d.type ? old[i] : null;
-    return { ...d, title: cap(d.title || ""), _id: o ? o._id : nid(), _asked: o ? !!o._asked : false, assignees: d.assignees?.length ? d.assignees : o?.assignees || [], _general: !d.assignees?.length && !!o?._general, allDay: !!(d.allDay || o?.allDay) && !d.time, repeat: d.repeat ?? o?.repeat ?? "", repeatUntil: d.repeatUntil || o?.repeatUntil || "", remind: d.remind ?? o?.remind ?? null };
+    return { ...d, title: cap(d.title || ""), _id: o ? o._id : nid(), _asked: o ? !!o._asked : false, assignees: d.assignees?.length ? d.assignees : o?.assignees || [], _general: !d.assignees?.length && !!o?._general, allDay: !!(d.allDay || o?.allDay) && !d.time, repeat: d.repeat ?? o?.repeat ?? "", repeatUntil: d.repeatUntil || o?.repeatUntil || "", remind: d.remind ?? o?.remind ?? null, important: !!(d.important ?? o?.important) };
   });
 export const fresh = (x) => ({ ...x, title: cap(x.title || ""), _id: nid(), _asked: false, assignees: x.assignees || [], allDay: !!x.allDay && !x.time });
 // Kaydetmeden önce: başlık ve not metni büyük harfle başlasın, boşluklar temizlensin
@@ -45,6 +46,7 @@ export const toPatch = (raw) => {
       timeSource: d.time ? "user" : "none",
       place: (d.place || "").trim(),
       ...(d.remind != null ? { remind: d.remind } : {}),
+      important: !!d.important,
     }
     : d.type === "task"
       ? { title: d.title.trim(), due: d.date || null }

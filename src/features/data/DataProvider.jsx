@@ -341,6 +341,7 @@ export function DataProvider({ children }) {
             // Hatırlat: seçildiyse o; sorumlusu olan planda varsayılan 1 saat önce (sorumlulara ve ana hesaba gider)
             ...(d.remind != null ? { remind: d.remind } : base.assignees.length ? { remind: 60 } : {}),
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
+            ...(d.important ? { important: true } : {}), // Önemli (elle ya da sesle; lib/planImportant.js)
           };
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için

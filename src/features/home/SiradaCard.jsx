@@ -18,6 +18,8 @@ import { todayStr } from "@/lib/utils/format";
 import { RacePlanSheet } from "./RacePlanSheet";
 import { ListHead } from "@/components/ui/Row";
 import { SwipeRow } from "@/components/ui/SwipeRow";
+import { ImpTag } from "@/components/ui/ImpTag";
+import { isImportant } from "@/lib/planImportant";
 
 // Ana sayfanın takvim bölümü (yeni tasarım, Seyhun 2026-10-21 örneği): "TAKVİM" başlığı (Tümü › takvim) ve tek kart. Kartta gün başlıklarıyla
 // 1) Bugün: solda saat, ad, altında tür (renginde) · yer · ilk satırda rüzgâr (eşik geçilirse kırmızımsı); süren planda sağda "Şimdi" ve bitiş,
@@ -192,13 +194,17 @@ const join = (parts) =>
 // Bugün ve Yarın satırı: solda saat (gün boyu planda "Gün"), ad, altında tür · yer; süren planda sağda "Şimdi" ve bitiş.
 // left: Yarın değilse planın günü (sağda kalan gün). roll: bugünün antrenmanında yoklama ({ href, taken }); media: yarışın multimedyası
 function TimeRow({ p, live, warn, sub, left, today, roll, media, onOpen }) {
+  const imp = isImportant(p);
   return (
-    <div className={`tone-${planTone(p)} bg-card`}>
+    <div className={`tone-${planTone(p)} ${imp ? "bg-accbg" : "bg-card"}`}>
       <button type="button" onClick={onOpen} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left">
         <b className="w-[2.875rem] shrink-0 text-center text-[0.9375rem] font-bold tabular-nums">{p.time || "Gün"}</b>
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{p.title}</b>
-          <small className={`block truncate text-[0.8125rem] ${warn ? "text-rose-600 dark:text-rose-400" : "text-mut"}`}>{join([<Tag key="t" p={p} />, sub])}</small>
+          <small className={`block truncate text-[0.8125rem] ${warn ? "text-rose-600 dark:text-rose-400" : "text-mut"}`}>
+            {imp && <ImpTag />}
+            {join([<Tag key="t" p={p} />, sub])}
+          </small>
         </span>
         {live ? (
           <span className="shrink-0 text-right leading-tight">
@@ -232,10 +238,10 @@ const MediaBtn = ({ href }) =>
   ) : null;
 
 // Tarih kutusu (Sırada): gün ve ay her satırda aynı (23 EKİ, 2 KAS), plan türünün renginde
-function DateBox({ day }) {
+function DateBox({ day, imp }) {
   const d = new Date(`${day}T12:00:00`);
   return (
-    <span className="tone-chip flex h-[3.125rem] w-[2.875rem] shrink-0 flex-col items-center justify-center rounded-[0.8rem] leading-none">
+    <span className={`tone-chip flex ${imp ? "ring-2 ring-inset ring-acc" : ""} h-[3.125rem] w-[2.875rem] shrink-0 flex-col items-center justify-center rounded-[0.8rem] leading-none`}>
       <b className="text-[1.1875rem] font-bold tabular-nums">{d.getDate()}</b>
       <small className="mt-1 text-[0.625rem] font-bold tracking-[.08em]">{d.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "").toLocaleUpperCase("tr-TR")}</small>
     </span>
@@ -244,14 +250,17 @@ function DateBox({ day }) {
 const wdOf = (day) => new Date(`${day}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "");
 
 // Sırada satırı (Seyhun 2026-10-21 örneği): tarih kutusu, ad, altında tür · gün saat · yer, sağda kalan gün
-function DateRow({ p, day, today, sub, media, onOpen, title }) {
+function DateRow({ p, day, today, sub, media, onOpen, title, imp = isImportant(p) }) {
   return (
-    <div className={`tone-${planTone(p)} bg-card`}>
+    <div className={`tone-${planTone(p)} ${imp ? "bg-accbg" : "bg-card"}`}>
       <button type="button" onClick={onOpen} data-press="row" className="flex w-full items-center gap-3 px-3.5 py-2 text-left">
-        <DateBox day={day} />
+        <DateBox day={day} imp={imp} />
         <span className="min-w-0 flex-1">
           <b className="block truncate text-[0.9375rem] font-semibold">{title || p.title}</b>
-          <small className="block truncate text-[0.8125rem] text-mut">{join([<Tag key="t" p={p} />, `${wdOf(day)} ${p.time || "· gün boyu"}`, sub])}</small>
+          <small className="block truncate text-[0.8125rem] text-mut">
+            {imp && <ImpTag />}
+            {join([<Tag key="t" p={p} />, `${wdOf(day)} ${p.time || "· gün boyu"}`, sub])}
+          </small>
         </span>
         <Left day={day} today={today} />
       </button>
@@ -280,7 +289,10 @@ function RaceGroupRow({ g, race, media, today, onRace, onOpen, actions }) {
             return (
               <li key={p.id}>
                 <button type="button" onClick={() => onOpen(p)} className="flex w-full items-baseline justify-between gap-2 py-1 text-left text-[0.84375rem]">
-                  <span className="min-w-0 truncate font-semibold">{label || p.title}</span>
+                  <span className="min-w-0 break-words font-semibold">
+                    {isImportant(p) && <ImpTag />}
+                    {label || p.title}
+                  </span>
                   <span className={`shrink-0 tabular-nums ${n <= 2 ? "font-semibold text-warn" : "text-mut"}`}>
                     {shortDay(day, "")}
                     {p.time ? ` ${p.time}` : ""} · {n === 0 ? "Bugün" : n === 1 ? "Yarın" : `${n} gün`}
