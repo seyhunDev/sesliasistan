@@ -211,7 +211,7 @@ function Day() {
             }
             tail={tabs && <Button variant="secondary" onClick={() => setWind(true)}>Rüzgâr</Button>}
           />
-          {withRaces && <Marks buoys={buoys} s={cur} on={!!cur && tr.up} onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
+          {withRaces && !!cur && tr.up && <Marks buoys={buoys} s={cur} on onMark={mark} onBuoys={(next) => updateRecord("plan", plan.id, { buoys: next }, by)} />}
           {withRaces && (
             <>
               <button
