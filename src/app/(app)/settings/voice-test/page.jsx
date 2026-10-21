@@ -385,7 +385,7 @@ export default function VoiceTestPage() {
 
   return (
     <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ses testi" />
+      <PageHeader title="Ses testi" back="/settings/tests" />
       <p className="text-[0.875rem] leading-snug text-mut">Her yöntemde aynı cümleyi söyle (içinde bir sporcu adı olsun), sonra Durdur. En altta sonuçları kopyalayıp bana gönder.</p>
       <p className="mt-1 text-[0.75rem] text-mut">{env}</p>
       <Choice />

@@ -1529,3 +1529,39 @@ group("Temiz başlık ve sorusuz ekleme")([
     ["rapor oluştur", { desc: "rapor adayı, yapay zekaya gitmez", fn: (x) => routesOf(x, { owner: true, today })[0]?.id, ok: (r) => r === "report" }],
   ]);
 }
+
+// Testler sayfası (features/tests): "testleri çalıştır" komutu, yönlendirme ve GitHub sonucunun (son.txt) okunması
+{
+  const TW = await import("@/features/tests/testWords");
+  const A = (want) => ({ desc: want ? `test komutu (${want})` : "test komutu değil", fn: TW.testsAsk, ok: (r) => r === want });
+  group("Testler: komut")([
+    ["testleri çalıştır", A("run")], ["Testleri çalıştır.", A("run")], ["bütün testleri yap", A("run")], ["tüm testleri başlat", A("run")], ["testleri çalıştırır mısın", A("run")],
+    ["testleri aç", A("open")], ["testler sayfasını aç", A("open")], ["testler sayfası", A("open")],
+    ["test raporu", A(null)], ["Ali'nin testini aç", A(null)], ["yarın test var", A(null)],
+  ]);
+  const { routesOf } = await import("@/lib/assistRoute");
+  const today = "2026-10-21";
+  group("Testler: yönlendirme")([
+    ["testleri çalıştır", { desc: "ana hesapta testler adayı, çalıştırır", fn: (x) => routesOf(x, { owner: true, today })[0], ok: (r) => r?.id === "tests" && r.run === true }],
+    ["testleri aç", { desc: "ana hesapta testler adayı, yalnız açar", fn: (x) => routesOf(x, { owner: true, today })[0], ok: (r) => r?.id === "tests" && r.run === false }],
+    ["testleri çalıştır", { desc: "kişi hesabında testler yok", fn: (x) => routesOf(x, { owner: false, today }).some((r) => r.id === "tests"), ok: (r) => r === false }],
+  ]);
+  const GH = await import("@/features/tests/ghResult");
+  const SON = ["Commit: 9f0975a · Merge", "Zaman: 2026-10-21-2249 (İstanbul)", "Çalıştırma: https://github.com/x/y/actions/runs/1", "", "SONUÇ: 1342/1370 geçti · 28 kalan · 412 sn", "",
+    "1. BİRİM TESTLERİ: 1/1", "  ✓ Birim testleri: 1/1", "2. ANLAMA: temiz cümleler: 117/121", "  ✗ Temiz cümle: Soru: 5/8", "3. AKIŞ: görev listesi, takılma, çökme: 245/245",
+    "3. ÇEVRİMDIŞI: internetsiz kayıt (sahte Firebase): 19/19", "Okuma: ✓ geçti, ✗ kalan"].join("\n");
+  const g = GH.parseGh(SON);
+  group("Testler: GitHub sonucu")([
+    ["özet", { desc: "toplam, süre, zaman, çalıştırma bağlantısı", fn: () => g, ok: (r) => r.pass === 1342 && r.total === 1370 && r.secs === 412 && r.when === "2026-10-21T22:49:00+03:00" && r.run.endsWith("/runs/1") }],
+    ["bölümler", { desc: "4 bölüm, ad ve sayılar", fn: () => g.sections.map((s) => `${s.key}=${s.pass}/${s.total}`).join(" "), ok: (r) => r === "BİRİM TESTLERİ=1/1 ANLAMA=117/121 AKIŞ=245/245 ÇEVRİMDIŞI=19/19" }],
+    ["özellik toplamı", { desc: "Anlama + akış birlikte, gövdede kalan satır", fn: () => GH.ghPart(g, ["ANLAMA", "AKIŞ"]), ok: (r) => r.pass === 362 && r.total === 366 && /✗ Temiz cümle: Soru/.test(r.body) && !/Okuma/.test(r.body) }],
+    ["bozuk dosya", { desc: "anlaşılamazsa null", fn: () => GH.parseGh("<html>404</html>"), ok: (r) => r === null }],
+  ]);
+  const RS = await import("@/features/tests/reports");
+  const reps = [{ at: "2026-10-21T20:00:00Z", ms: 4000, items: [{ key: "ses.okuma", name: "Sesli okuma", feature: "Ses", pass: 1, total: 1, lines: [{ ok: true, text: "Ses geldi · 0,8 sn" }] }] },
+    { at: "2026-10-21T19:00:00Z", ms: 9000, items: [{ key: "ses.okuma", name: "Sesli okuma", feature: "Ses", pass: 0, total: 1, lines: [{ ok: false, text: "Ses gelmedi", sub: "Ses anahtarı yok" }] }, { key: "asistan.ornek", name: "Örnek cümleler", feature: "Asistan", pass: 22, total: 24, lines: [] }] }];
+  group("Testler: raporlar")([
+    ["son sonuçlar", { desc: "her testin en yeni sonucu", fn: () => RS.lastResults(reps), ok: (r) => r["ses.okuma"].pass === 1 && r["asistan.ornek"].pass === 22 }],
+    ["paylaşılan metin", { desc: "başlık, özellik › test, ✗ ve nedeni", fn: () => RS.reportText(reps[1]), ok: (r) => /^TEST RAPORU · .* · 22\/25 geçti · 9 sn/.test(r) && /Ses › Sesli okuma: 0\/1\n✗ Ses gelmedi \(Ses anahtarı yok\)/.test(r) }],
+  ]);
+}

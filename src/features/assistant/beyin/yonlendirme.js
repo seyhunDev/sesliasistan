@@ -293,6 +293,12 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
         reply("Bugünün asistan raporunu açtım. Paylaş'a basıp gönderebilirsin.", { engine: "local" }, viaVoice);
         ctx.showPage();
         return true;
+      // "Testleri çalıştır": Testler sayfası açılır ve telefondaki testlerin hepsi başlar (features/tests)
+      case "tests":
+        ctx.router.push(r.run ? "/settings/tests?calistir=hepsi" : "/settings/tests");
+        reply(r.run ? "Testleri başlattım. Bitince rapor açılacak." : "Testler sayfasını açtım.", { engine: "local" }, viaVoice);
+        ctx.showPage();
+        return true;
       case "version": {
         const nv = await checkVersion();
         return reply(`${buildSpeech()}${nv ? " Yayında daha yeni bir sürüm var; “uygulamayı güncelle” de." : ""}`, { engine: "local" }, viaVoice), true;
