@@ -1,8 +1,8 @@
-Commit: 2450502 · Merge pull request #643 from seyhunDev/claude/project-thread-76s7q5
-Zaman: 2026-10-21-1839 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39626573473
+Commit: 5dea3ed · Merge pull request #644 from seyhunDev/claude/project-thread-76s7q5
+Zaman: 2026-10-21-1912 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/39631648041
 
-TAM TEST · 21.10.2026 18:32:36
+TAM TEST · 21.10.2026 19:06:10
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -20,7 +20,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1333/1360 geçti · 27 kalan · 400 sn
+SONUÇ: 1333/1360 geçti · 27 kalan · 409 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 1/1
@@ -221,7 +221,7 @@ SONUÇ: 1333/1360 geçti · 27 kalan · 400 sn
   ✗ Onay isteyen işler: 9/10
       ✗ “Ege'ye yaz … → “gönder””
           beklenen: sesle onaylanınca mesaj gider
-          olan:     “ay zeka 20 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
+          olan:     “ay zeka 19 ms · taklit · bugün 9 istek ED MESAJ · ONAYINI BEKLİYOR Ege Demir Gönder Vazgeç”
   ✓ Görev listesi ve ilerleme halkası: 3/3
   ✓ Tohum cümleler (telefonda cevap): 12/12
   ✓ Asistanın gizli olduğu yerler: 8/8
