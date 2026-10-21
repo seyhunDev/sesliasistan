@@ -348,7 +348,15 @@ export function PostEditor({ title, back, start: given, startPhoto = "", photoLo
     if (!autoSave) return;
     const t = setTimeout(() => {
       setAutoSave(false);
-      save(false);
+      // Kaydedilince asistan sohbetinde görselin küçüğü ve "Gönderiyi aç" düğmesi çıkar (Seyhun, 2026-10-21; useAssistant)
+      save(false).then((id) => {
+        if (!id || !canvas.current) return;
+        let thumb = "";
+        try {
+          thumb = thumbOf(canvas.current, 300);
+        } catch {}
+        window.dispatchEvent(new CustomEvent("sa-post-ready", { detail: { id, thumb } }));
+      });
     }, 900);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

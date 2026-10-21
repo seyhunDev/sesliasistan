@@ -71,6 +71,21 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
             <Icon name="chat" className="size-4" /> Sohbeti aç
           </button>
         )}
+        {/* Hazırlanan Instagram gönderisi: görselin küçüğü, dokununca gönderi açılır */}
+        {l.post && (
+          <button
+            type="button"
+            onClick={() => {
+              markLink(i, "post");
+              finish(true);
+              router.push(`/posts/${l.post.id}`);
+            }}
+            className={`fade-in mt-3 block w-full overflow-hidden rounded-xl bg-bg text-left active:scale-[.98]${linkCls(i, "post")}`}
+          >
+            {l.post.thumb && <img src={l.post.thumb} alt="Hazırlanan gönderi görseli" className="mx-auto max-h-72 w-auto" />}
+            <span className="flex h-10 items-center justify-center text-[0.875rem] font-semibold">Gönderiyi aç</span>
+          </button>
+        )}
         {l.nav && PAGES[l.nav] && (
           <button type="button" onClick={() => (markLink(i, "nav"), go(l.nav, ""))} className={`fade-in mt-3 h-10 w-full rounded-xl bg-bg text-[0.875rem] font-semibold active:scale-[.98]${linkCls(i, "nav")}`}>
             {PAGES[l.nav].label} sayfasını aç
